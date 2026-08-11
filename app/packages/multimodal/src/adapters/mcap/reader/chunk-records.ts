@@ -1,12 +1,6 @@
 import { crc32 } from "@foxglove/crc";
 import type { McapTypes } from "@mcap/core";
 import { safeNumber } from "../../../query/bytes/bigint-utils";
-import {
-  isMcapDecodeStageMeterEnabled,
-  mcapDecodeStageNowMs,
-  recordMcapDecodeStage,
-} from "../instrumentation/meters/decode-stage";
-import { isMcapDecompressionCacheMeterEnabled } from "../instrumentation/meters/decompression-cache";
 import type {
   McapDecompressedChunkKey,
   McapDecompressedChunkLoad,

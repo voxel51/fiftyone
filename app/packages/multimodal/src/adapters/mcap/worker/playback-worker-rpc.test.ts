@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ReadContinuation } from "../../../ports";
 import type { McapResourceClient } from "../contracts";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
@@ -9,7 +8,6 @@ import {
   mcapPlaybackWorkerOperation,
   runMcapPlaybackWorkerUnaryRequest,
 } from "./playback-worker-rpc";
-import { summarizeMcapWorkerRequest } from "./playback-worker-request-attribution";
 import type { McapPlaybackWorkerResourceClient } from "./worker-resource-client";
 
 const source = { sourceId: "fixture", url: "memory://fixture" };
@@ -74,78 +72,6 @@ describe("exact-message playback worker RPC", () => {
     );
     expect(mcapPlaybackWorkerOperation(exactRequest.type).priority).toBe(
       MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-    );
-  });
-
-  it("attributes bounds and topic without logging opaque cursors", () => {
-    const indexSummary = summarizeMcapWorkerRequest({
-      id: 1,
-      payload: {
-        after: 5,
-        anchorCursor: "secret-opaque-cursor",
-        before: 7,
-        source,
-        topic: "/camera",
-      },
-      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-      sourceKey: "source-key",
-      type: "readMessageIndexWindow",
-    });
-    const exactSummary = summarizeMcapWorkerRequest({
-      id: 2,
-      payload: {
-        cursor: "secret-opaque-cursor",
-        source,
-        topic: "/camera",
-      },
-      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-      sourceKey: "source-key",
-      type: "readRawMessageAtCursor",
-    });
-    const topologySummary = summarizeMcapWorkerRequest({
-      id: 3,
-      payload: {
-        absoluteBudget: {
-          maxMessages: 10,
-          maxSourceBytes: 1_000,
-          maxUncompressedBytes: 2_000,
-          maxWallTimeMs: 100,
-        },
-        absoluteMaxChunks: 4,
-        activeTimeline: "log",
-        budget: {
-          maxMessages: 5,
-          maxSourceBytes: 500,
-          maxUncompressedBytes: 1_000,
-          maxWallTimeMs: 50,
-        },
-        continuation: {
-          secret: "secret-topology-continuation",
-        } as ReadContinuation,
-        endTimeNs: 20n,
-        frameUseTopics: ["/points", "/camera"],
-        maxChunks: 2,
-        source,
-        startTimeNs: 10n,
-      },
-      priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
-      sourceKey: "source-key",
-      type: "readTransformTopology",
-    });
-
-    expect(indexSummary).toEqual({ limit: 13, topics: ["/camera"] });
-    expect(exactSummary).toEqual({ topics: ["/camera"] });
-    expect(topologySummary).toEqual({
-      activeTimeline: "log",
-      endTimeNs: "20",
-      requestedTopics: 2,
-      startTimeNs: "10",
-    });
-    expect(JSON.stringify([indexSummary, exactSummary])).not.toContain(
-      "secret-opaque-cursor",
-    );
-    expect(JSON.stringify(topologySummary)).not.toContain(
-      "secret-topology-continuation",
     );
   });
 

@@ -599,4 +599,3 @@ export function computeBufferedRanges({
   for (const range of ranges) pushRange(range.startIndex, range.endIndex);
   return bufferedRanges;
 }
-

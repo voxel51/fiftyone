@@ -76,8 +76,6 @@ export const EMPTY_SCENE_3D_VIEW_STATE: Scene3dViewStateSnapshot = {
   userWorldFrameId: null,
 };
 
-let restoreOnceKeyCounter = 0;
-
 /** Non-reactive write-through store for one 3D inspection scope. */
 export interface Scene3dViewStateStore {
   clear(): void;
@@ -139,16 +137,6 @@ export function createScene3dViewStateStore(): Scene3dViewStateStore {
       state = { ...state, userWorldFrameId };
     },
   };
-}
-
-/**
- * Unique key prefix for the "3d view state restored" latency-debug marks.
- * The latency session outlives the tile (it is renderer-scoped), so each
- * mount needs its own onceKey namespace for restore marks.
- */
-export function nextScene3dViewStateRestoreOnceKey(): string {
-  restoreOnceKeyCounter += 1;
-  return `3d-view-state-restored:${restoreOnceKeyCounter}`;
 }
 
 /**

@@ -469,4 +469,3 @@ function formatOptionalBytes(value: number | null): string {
   if (value === null) return "Unavailable";
   return `${formatDecimal(value / (1024 * 1024))} MiB`;
 }
-

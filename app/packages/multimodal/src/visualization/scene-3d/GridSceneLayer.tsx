@@ -10,11 +10,6 @@ import {
 import type { GridPanelLayer } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
 import { isFinitePositiveNumber } from "./utils";
-import {
-  isVisualizationCostObserved,
-  recordVisualizationCost,
-  visualizationCostNowMs,
-} from "../../observability/visualization-cost";
 
 // Memoized: unrelated ticks and hovers skip re-rendering map layers whose
 // frame and transform kept identity.

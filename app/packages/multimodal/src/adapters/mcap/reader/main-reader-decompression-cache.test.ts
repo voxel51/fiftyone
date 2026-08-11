@@ -4,12 +4,8 @@ import {
   type IWritable,
   type McapTypes,
 } from "@mcap/core";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ByteClient } from "../../../query/bytes";
-import {
-  setMcapDecompressionCacheSink,
-  type McapDecompressionCacheSample,
-} from "../instrumentation/meters/decompression-cache";
 import { ByteClientReadable } from "./byte-readable";
 import { createCachedMcapDecompressHandlers } from "./decompress-cache";
 import {

@@ -1087,4 +1087,3 @@ function createChannel(
     type: "Channel",
   };
 }
-

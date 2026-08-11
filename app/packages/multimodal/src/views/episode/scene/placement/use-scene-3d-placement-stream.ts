@@ -15,13 +15,8 @@ import type {
 import { useIsPlayPending } from "@fiftyone/playback/runtime";
 import { usePlaybackStream } from "@fiftyone/playback/runtime";
 import { useEffect, useMemo, useRef } from "react";
-import {
-  isEpisodeBufferCostObserved,
-  recordEpisodeBufferCost,
-} from "../../../../observability/episode-buffer-cost";
 import type { EpisodeFrameTransformTimeRange } from "../../../../runtime/frame-transform-types";
 import type { TimelineIndex } from "../../../../runtime/index";
-import { monotonicNowMs } from "../../../../utils/monotonic-time";
 import type {
   FramePlacementReadiness,
   FrameTransformsState,

@@ -12,7 +12,6 @@ import {
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { SCENE_SOURCE_TYPE, type LocationVisualization } from "../../../../ir";
-import { markEpisodeLatencyEvent } from "../../../../observability/episode-latency";
 import { useSceneInventory } from "../../../../scene-inventory/react";
 import {
   MapRenderer,

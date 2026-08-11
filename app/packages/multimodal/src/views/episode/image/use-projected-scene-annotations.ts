@@ -52,7 +52,6 @@ export function useProjectedSceneAnnotations({
   const frames = useInterpolatedSceneUpdateFrames({
     frames: heldFrames,
     interpolate,
-    surface: "modal-image",
     streams: activeStreams,
     targetTimeNs: imageContentTimeNs ?? undefined,
   });

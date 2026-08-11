@@ -15,7 +15,6 @@ import type { ByteTimelinePoint, StreamSyncPolicies } from "../../../ir";
 import type { PlaybackReadCapability } from "../../../ports";
 import { isEpisodeReadCancelledError } from "../../../ports";
 import { type EpisodeStreamCache, type TimelineIndex } from "../../../runtime";
-import { markEpisodeLatencyEvent } from "../../../observability/episode-latency";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
 import {
   activeStreamsInCaches,

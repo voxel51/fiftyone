@@ -58,7 +58,6 @@ import { PlaybackSyncMode } from "../../schemas/v1";
 import { isEpisodeReadCancelledError } from "../../ports";
 import { throwIfAborted } from "../../utils/cancellation";
 import { compareFrameIds } from "../../utils/frame-ids";
-import { sceneSourcesFromStreamDescriptors } from "../../stream-selection";
 import type { McapGridPreviewResult } from "./resource-client/grid-preview";
 import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {
@@ -82,15 +81,6 @@ import {
   type McapPlaybackWorkerPriority,
 } from "./worker/playback-worker-types";
 import { isMcapBoundedReadCancelledError } from "./reader/bounded-read-cancellation";
-import {
-  recordMcapCostEvent,
-  startMcapCostSourceSession,
-} from "./instrumentation/host/mcap-cost-debug";
-import { buildMcapCostSourceRegistrations } from "./instrumentation/host/mcap-cost-source-catalog";
-import {
-  isMcapCostDebugEnabled,
-  isMcapLatencyDebugEnabled,
-} from "./instrumentation/host/mcap-debug-flags";
 
 type McapGridPreviewPool = Pick<
   ReturnType<typeof getMcapGridPreviewPool>,
@@ -116,7 +106,6 @@ const DATA_BEARING_TOPOLOGY_STREAM_KINDS = new Set<StreamKind>([
   STREAM_KIND.SCENE_UPDATE,
   STREAM_KIND.VIDEO,
 ]);
-let mcapDataRequestCounter = 0;
 
 /** Options for constructing the MCAP format adapter. */
 export interface CreateMcapFormatAdapterOptions {
@@ -184,12 +173,6 @@ export function createMcapFormatAdapter(
         if (openOptions?.signal?.aborted) {
           throw new EpisodeReadCancelledError();
         }
-        startMcapCostSourceSession(
-          buildMcapCostSourceRegistrations(
-            sceneSourcesFromStreamDescriptors(manifest.streams),
-            manifest.streams,
-          ),
-        );
         return new McapEpisodeSession(
           client,
           asset,
@@ -1159,7 +1142,6 @@ class McapEpisodeSession implements EpisodeSession {
         this.decodedFrames += 1;
         this.returnedBatches += 1;
       }
-      recordBoundedReadCostEvent(result.usage, result.stopReason, topics);
       reservationSettled = true;
       reservation.commit(result.usage, result.usage.chunksOpened, {
         exact: true,
@@ -1199,7 +1181,6 @@ class McapEpisodeSession implements EpisodeSession {
           error,
           completedUsage,
         );
-        recordBoundedReadCostEvent(cancellationUsage, "cancelled", topics);
         if (!reservationSettled) {
           reservationSettled = true;
           reservation.commit(cancellationUsage, cancellationUsage.chunksOpened);
@@ -1271,7 +1252,6 @@ class McapEpisodeSession implements EpisodeSession {
       readSynchronizedBatch: async (request, options) => {
         this.ensureOpen();
         try {
-          const mcapDataRequestId = nextMcapDataRequestId();
           const windows = await this.client.readSynchronizedMessageBatch(
             {
               activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
@@ -1281,7 +1261,6 @@ class McapEpisodeSession implements EpisodeSession {
               pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
                 request.pointCloudColorBy,
               ),
-              ...(mcapDataRequestId ? { mcapDataRequestId } : {}),
               source: this.source,
               streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
               timeNs: request.timeNs,
@@ -1478,10 +1457,6 @@ class McapEpisodeSession implements EpisodeSession {
       reservation.commit(result.usage, result.usage.chunksOpened, {
         exact: true,
       });
-      recordBoundedReadCostEvent(result.usage, result.stopReason, [
-        ...result.coverageByTopic.keys(),
-      ]);
-
       this.topologyFrameUses = mergeTransformTopologyFrameUses(
         this.topologyFrameUses ?? [],
         result.frameUses.map((use) => ({
@@ -1703,32 +1678,6 @@ function transformTopologyFrameUseKey(
   return `${use.frameId}\0${use.streamId}`;
 }
 
-function recordBoundedReadCostEvent(
-  usage: ReadWorkUsage,
-  stopReason: string,
-  topics: readonly string[],
-): void {
-  if (!isMcapCostDebugEnabled()) {
-    return;
-  }
-  recordMcapCostEvent({
-    chunksOpened: usage.chunksOpened,
-    decompressedBytes: usage.decompressedBytes,
-    decompressionCacheHits: usage.decompressionCacheHits,
-    durationMs: usage.elapsedMs,
-    logicalSourceBytes: usage.logicalSourceBytes,
-    logicalUncompressedBytes: usage.logicalUncompressedBytes,
-    measurementStatus: "measured",
-    messagesDecoded: usage.messagesDecoded,
-    operation: "bounded-read-grant",
-    priority: "bulk",
-    sourceTopics: topics,
-    stage: "byte-read",
-    stopReason,
-    transferredBytes: usage.transferredBytes,
-  });
-}
-
 function sameReadWorkBudget(
   left: ReadWorkBudget | undefined,
   right: ReadWorkBudget,
@@ -1739,14 +1688,6 @@ function sameReadWorkBudget(
     left.maxUncompressedBytes === right.maxUncompressedBytes &&
     left.maxWallTimeMs === right.maxWallTimeMs
   );
-}
-
-function nextMcapDataRequestId(): string | undefined {
-  if (!isMcapLatencyDebugEnabled() && !isMcapCostDebugEnabled()) {
-    return undefined;
-  }
-  mcapDataRequestCounter += 1;
-  return `mcap-data:${mcapDataRequestCounter}`;
 }
 
 function ownedClient(client: McapResourceClient): {

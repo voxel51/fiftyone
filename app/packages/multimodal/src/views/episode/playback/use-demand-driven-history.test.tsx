@@ -1,16 +1,11 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { markEpisodeLatencyEvent } from "../../../observability/episode-latency";
 import {
   FULL_HISTORY_RETENTION_MS,
   type DemandDrivenHistoryLoader,
   useDemandDrivenHistory,
 } from "./use-demand-driven-history";
-
-vi.mock("../../../observability/episode-latency", () => ({
-  markEpisodeLatencyEvent: vi.fn(),
-}));
 
 interface TestHistory {
   readonly status: "loading" | "ready";

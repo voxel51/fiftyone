@@ -3,7 +3,6 @@ import { Quaternion, Vector3 } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PointCloudVisualization } from "../../../../ir/index";
 import type { EpisodeFrameGraphSummary } from "../../../../runtime/frame-transforms";
-import { markEpisodeLatencyEvent } from "../../../../observability/episode-latency";
 import {
   createScene3dViewStateStore,
   type Scene3dViewStateStore,
@@ -14,12 +13,7 @@ import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
 
 let viewStateStore: Scene3dViewStateStore;
 
-vi.mock("../../../../observability/episode-latency", () => ({
-  markEpisodeLatencyEvent: vi.fn(),
-}));
-
 beforeEach(() => {
-  vi.mocked(markEpisodeLatencyEvent).mockClear();
   viewStateStore = createScene3dViewStateStore();
 });
 

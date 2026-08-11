@@ -51,11 +51,6 @@ import {
   type StreamSubscriptionOptions,
   type TimelineIndex,
 } from "../../../runtime";
-import {
-  episodeLatencyDurationMs,
-  episodeLatencyNowMs,
-  markEpisodeLatencyEvent,
-} from "../../../observability/episode-latency";
 import { useSetDataStream } from "./data-stream-context";
 import {
   decodedCacheBudgetBytes,

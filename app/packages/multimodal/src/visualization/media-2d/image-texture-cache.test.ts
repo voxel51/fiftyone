@@ -1,19 +1,7 @@
 import * as THREE from "three";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-  type Mock,
-} from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import type { ImageTextureHandle } from "./Base2dScene";
-import {
-  setVisualizationCostObserver,
-  type VisualizationCostObservation,
-} from "../../observability/visualization-cost";
 import {
   acquireImageTexture,
   IMAGE_TEXTURE_RETENTION_BYTE_CAP,
@@ -107,58 +95,9 @@ describe("acquireImageTexture (shared keys)", () => {
       retainedCount: 0,
       retainedDecodedBytes: 0,
     });
-    expect(
-      observations.find(
-        (observation) =>
-          observation.operation === "image-texture-retention-ineligible",
-      ),
-    ).toMatchObject({ retainedDecodedBytesDelta: 0 });
   });
 
-  it("reports stable retained-byte deltas for add, hit, and flush", async () => {
-    const observations: VisualizationCostObservation[] = [];
-    setVisualizationCostObserver((observation) =>
-      observations.push(observation),
-    );
-    const { handle } = makeHandle({ height: 10, width: 20 });
-    const decode = vi.fn(async () => handle);
-
-    const first = acquireImageTexture("recording\n/topic\n1", decode);
-    await first.promise;
-    first.release();
-    const second = acquireImageTexture("recording\n/topic\n1", decode);
-    await second.promise;
-    second.release();
-    releaseRetainedImageTextures();
-
-    const retention = observations.filter((observation) =>
-      observation.operation.startsWith("image-texture-retention-"),
-    );
-    expect(
-      retention.map((observation) => [
-        observation.operation,
-        observation.retainedDecodedBytesDelta,
-      ]),
-    ).toEqual([
-      ["image-texture-retention-add", 800],
-      ["image-texture-retention-hit", -800],
-      ["image-texture-retention-add", 800],
-      ["image-texture-retention-flush", -800],
-    ]);
-    expect(
-      retention.every(
-        (observation) =>
-          observation.sourceHint === "recording\n/topic\n1" &&
-          observation.measurementStatus === "derived",
-      ),
-    ).toBe(true);
-  });
-
-  it("accounts native depth retention and leased GPU bytes at source width", async () => {
-    const observations: VisualizationCostObservation[] = [];
-    setVisualizationCostObserver((observation) =>
-      observations.push(observation),
-    );
+  it("preserves native depth retention at source width", async () => {
     const values = new Uint16Array([0, 1_000, 2_000]);
     const texture = new THREE.DataTexture(
       values,
@@ -190,29 +129,11 @@ describe("acquireImageTexture (shared keys)", () => {
     expect(leased.texture.internalFormat).toBe("r16uint");
     expect(leased.texture.format).toBe(THREE.RedFormat);
     expect((leased.texture as THREE.DataTexture).image.data).toBe(values);
-    expect(
-      observations.find(
-        (observation) =>
-          observation.operation === "image-texture-lease" &&
-          observation.declaredGpuBytesDelta === 6,
-      ),
-    ).toBeDefined();
-
     lease.release();
     expect(imageTextureCacheStats().retainedDecodedBytes).toBe(6);
-    expect(
-      observations.find(
-        (observation) =>
-          observation.operation === "image-texture-retention-add",
-      ),
-    ).toMatchObject({ retainedDecodedBytesDelta: 6 });
   });
 
-  it("never accounts a negative decoded byte length", async () => {
-    const observations: VisualizationCostObservation[] = [];
-    setVisualizationCostObserver((observation) =>
-      observations.push(observation),
-    );
+  it("never retains a negative decoded byte length", async () => {
     const decoded = makeHandle();
     const handle: ImageTextureHandle = {
       ...decoded.handle,
@@ -220,14 +141,6 @@ describe("acquireImageTexture (shared keys)", () => {
     };
     const lease = acquireImageTexture("invalid-bytes", async () => handle);
     await lease.promise;
-
-    expect(
-      observations.find(
-        (observation) =>
-          observation.operation === "image-texture-lease" &&
-          observation.declaredGpuBytesDelta === Number.MAX_SAFE_INTEGER,
-      ),
-    ).toBeDefined();
 
     lease.release();
     expect(imageTextureCacheStats().retainedDecodedBytes).toBe(0);

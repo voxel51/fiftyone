@@ -52,10 +52,6 @@ import {
   DataStreamProvider,
   useDataStream,
 } from "../playback/data-stream-context";
-import {
-  markEpisodeLatencyEvent,
-  startEpisodeLatencySession,
-} from "../../../observability/episode-latency";
 import { FrameTransformsProvider } from "../spatial/frame-transforms/context";
 import { ImageAspectRatioProvider } from "../image/image-aspect-ratios";
 import { LogConsoleProvider } from "../logs/log-console-context";

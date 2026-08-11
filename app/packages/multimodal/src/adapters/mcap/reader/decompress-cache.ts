@@ -1,13 +1,4 @@
 import type { McapTypes } from "@mcap/core";
-import {
-  isMcapDecodeStageMeterEnabled,
-  mcapDecodeStageNowMs,
-  recordMcapDecodeStage,
-} from "../instrumentation/meters/decode-stage";
-import {
-  isMcapDecompressionCacheMeterEnabled,
-  mcapDecompressionBufferIdentity,
-} from "../instrumentation/meters/decompression-cache";
 import type {
   McapDecompressedChunkCache,
   McapDecompressedChunkKey,

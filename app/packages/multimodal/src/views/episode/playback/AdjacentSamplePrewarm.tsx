@@ -8,7 +8,6 @@ import { getIsBuffering, getIsPlayPending } from "@fiftyone/playback/runtime";
 import type { PlaybackStore } from "@fiftyone/playback/runtime";
 import { modalNavigation } from "@fiftyone/state";
 import { useEffect } from "react";
-import { markEpisodeLatencyEvent } from "../../../observability/episode-latency";
 import { episodeSourceAccessKey, prewarmEpisodeSource } from "../../../runtime";
 import {
   episodeByteSourceFromSample,

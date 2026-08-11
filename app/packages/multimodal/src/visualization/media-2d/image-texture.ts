@@ -11,11 +11,6 @@ import type {
   RawImageVisualization,
 } from "../../ir";
 import type { ImageTextureHandle } from "./Base2dScene";
-import {
-  isVisualizationCostObserved,
-  recordVisualizationCost,
-  visualizationCostNowMs,
-} from "../../observability/visualization-cost";
 
 type NativeDepthTexture = THREE.DataTexture & {
   normalized: boolean;
@@ -26,81 +21,12 @@ type NativeDepthTexture = THREE.DataTexture & {
  */
 export async function createImageTexture(
   frame: ImageVisualization,
-  textureKey?: string,
-): Promise<ImageTextureHandle> {
-  if (!isVisualizationCostObserved()) {
-    return createImageTextureUnobserved(frame);
-  }
-
-  const startMs = visualizationCostNowMs();
-  const handle = await createImageTextureUnobserved(frame);
-  const decodedBytes = imageRgbaBytes(handle);
-  recordVisualizationCost({
-    count: handle.imageWidth * handle.imageHeight,
-    durationMs: visualizationCostNowMs() - startMs,
-    inputBytes: imageInputBytes(frame),
-    measurementStatus: "measured",
-    operation: `${frame.kind}:${handle.imageWidth}x${handle.imageHeight}`,
-    outputBytes: decodedBytes,
-    sourceHint: textureKey,
-    sourceHintKind: "image-texture-key",
-    stage: "image-decode",
-  });
-  // Shared textures allocate their renderer-owned copies in the cache. A
-  // keyless texture is rendered directly, so account for that resource here.
-  return textureKey ? handle : observeImageTextureResource(handle, undefined);
-}
-
-async function createImageTextureUnobserved(
-  frame: ImageVisualization,
+  _textureKey?: string,
 ): Promise<ImageTextureHandle> {
   if (frame.kind === "raw-image") {
     return createRawImageTexture(frame);
   }
   return createEncodedImageTexture(frame);
-}
-
-function observeImageTextureResource(
-  handle: ImageTextureHandle,
-  sourceHint: string | undefined,
-): ImageTextureHandle {
-  const bytes = imageRgbaBytes(handle);
-  recordVisualizationCost({
-    declaredGpuBytesDelta: bytes,
-    measurementStatus: "derived",
-    operation: "image-texture",
-    sourceHint,
-    sourceHintKind: "image-texture-key",
-    stage: "resource-allocate",
-  });
-  let disposed = false;
-  return {
-    ...handle,
-    dispose: () => {
-      if (disposed) return;
-      disposed = true;
-      handle.dispose();
-      recordVisualizationCost({
-        declaredGpuBytesDelta: -bytes,
-        measurementStatus: "derived",
-        operation: "image-texture",
-        sourceHint,
-        sourceHintKind: "image-texture-key",
-        stage: "resource-release",
-      });
-    },
-  };
-}
-
-function imageInputBytes(frame: ImageVisualization): number {
-  if (frame.kind === "raw-image") {
-    return frame.depth?.values.byteLength ?? frame.rgba.byteLength;
-  }
-  return frame.bytes.byteLength;
-}
-
-function imageRgbaBytes(handle: ImageTextureHandle): number {
-  return handle.decodedByteLength ?? handle.imageWidth * handle.imageHeight * 4;
 }
 
 /**

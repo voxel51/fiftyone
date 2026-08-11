@@ -97,7 +97,6 @@ import {
   usePointCloudPlaybackFrames,
   useStreamPlaybackFrames,
 } from "../../playback/use-stream-values";
-import { markEpisodeVisualReadyAfterPaint } from "../../observability/visual-readiness";
 import {
   scene3dSnapshotHasLayers,
   useScene3dSnapshot,

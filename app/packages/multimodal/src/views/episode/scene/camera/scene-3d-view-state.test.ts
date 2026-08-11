@@ -3,7 +3,6 @@ import {
   createScene3dViewStateStore,
   EMPTY_SCENE_3D_VIEW_STATE,
   scene3dSourceShapeMatches,
-  nextScene3dViewStateRestoreOnceKey,
   resolveScene3dSelectionRestore,
 } from "./scene-3d-view-state";
 
@@ -74,12 +73,6 @@ describe("episode 3D view-state store", () => {
     store.recordTrackingMode("pose");
     store.clear();
     expect(store.getSnapshot()).toEqual(EMPTY_SCENE_3D_VIEW_STATE);
-  });
-
-  it("hands out unique restore once-keys", () => {
-    expect(nextScene3dViewStateRestoreOnceKey()).not.toBe(
-      nextScene3dViewStateRestoreOnceKey(),
-    );
   });
 });
 

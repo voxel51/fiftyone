@@ -83,7 +83,6 @@ import {
   getRectifiedDisplayIssue,
 } from "./image-camera-status";
 import { projectionStreamsForHover } from "./hover-projection-streams";
-import { markEpisodeVisualReadyAfterPaint } from "../observability/visual-readiness";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];

@@ -11,7 +11,6 @@ import {
   createEpisodeTransformReadRuntime,
   episodeSourceAccessKey,
 } from "../../../runtime";
-import { markEpisodeLatencyEvent } from "../../../observability/episode-latency";
 import {
   idleFrameTransformsState,
   useSetFrameTransformsContext,
@@ -88,13 +87,6 @@ export function Streams({
   const allStreams = useMemo(() => sources.map((s) => s.id), [sources]);
   const streamNames = useMemo(
     () => new Map(sources.map((s) => [s.id, s.sourceName])),
-    [sources],
-  );
-  const pointCloudStreams = useMemo(
-    () =>
-      sources
-        .filter((source) => source.type === SCENE_SOURCE_TYPE.POINT_CLOUD)
-        .map((source) => source.id),
     [sources],
   );
   // An image stream's final indexed observation is a real visual boundary.

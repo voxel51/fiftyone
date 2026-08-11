@@ -632,4 +632,3 @@ function addTickIndex(
   }
   return next;
 }
-

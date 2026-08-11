@@ -8,10 +8,6 @@ import { useIsPlayPending } from "@fiftyone/playback/runtime";
 import { useIsPlaying } from "@fiftyone/playback/runtime";
 import { useEffect, useMemo, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  setEpisodeBufferCostObserver,
-  type EpisodeBufferCostObservation,
-} from "../../../../observability/episode-buffer-cost";
 import { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "../../../../runtime/frame-transforms";
 import { createTimelineIndex } from "../../../../runtime/index";
 import {

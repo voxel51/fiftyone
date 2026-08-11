@@ -3,11 +3,6 @@ import { useMemo } from "react";
 import type { SceneUpdateVisualization } from "../../../../ir/index";
 import type { DecodedFrame } from "../../../../ir/index";
 import {
-  isVisualizationCostObserved,
-  recordVisualizationCost,
-  visualizationCostNowMs,
-} from "../../../../observability/visualization-cost";
-import {
   interpolationFraction,
   nextDistinctCachedMessage,
   useStreamCacheSnapshot,
@@ -44,13 +39,11 @@ import { useOptionalPlayhead } from "../../playback/use-optional-playhead";
 export function useInterpolatedSceneUpdateFrames({
   frames,
   interpolate,
-  surface = "modal-3d",
   streams,
   targetTimeNs,
 }: {
   readonly frames: readonly (StreamPlaybackFrame<SceneUpdateVisualization> | null)[];
   readonly interpolate: boolean;
-  readonly surface?: "modal-3d" | "modal-image";
   readonly streams: readonly string[];
   readonly targetTimeNs?: bigint;
 }): readonly (StreamPlaybackFrame<SceneUpdateVisualization> | null)[] {
@@ -199,7 +192,6 @@ export function useInterpolatedSceneUpdateFrames({
     interpolate,
     playhead,
     resolvedFrames,
-    surface,
     timeline,
     streams,
     targetTimeNs,

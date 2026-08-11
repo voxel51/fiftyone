@@ -16,9 +16,6 @@ import {
   isMcapBoundedReadCancelledError,
   McapBoundedReadCancelledError,
 } from "../reader/bounded-read-cancellation";
-import { setMcapDecodeStageSink } from "../instrumentation/meters/decode-stage";
-import { setMcapDecompressionCacheSink } from "../instrumentation/meters/decompression-cache";
-import type { McapChunkReadDebugLog } from "../reader";
 import { createMcapTransportMeter } from "./transport-meter";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
 import {

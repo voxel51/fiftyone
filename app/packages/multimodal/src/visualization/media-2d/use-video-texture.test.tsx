@@ -2,7 +2,6 @@ import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { VideoPresentation } from "../../video/types";
-import { setVisualizationCostObserver } from "../../observability/visualization-cost";
 import {
   useVideoTexture,
   VIDEO_TEXTURE_RETIRE_FALLBACK_MS,
@@ -12,7 +11,6 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
-  setVisualizationCostObserver(null);
 });
 
 describe("useVideoTexture", () => {
@@ -22,8 +20,6 @@ describe("useVideoTexture", () => {
       return 1;
     });
     const release = vi.fn();
-    const observeCost = vi.fn();
-    setVisualizationCostObserver(observeCost);
     const presentation: VideoPresentation = {
       acquire: () => ({
         height: 480,
@@ -47,20 +43,6 @@ describe("useVideoTexture", () => {
     rerender({ value: null });
     await waitFor(() => expect(result.current).toBeNull());
     expect(release).toHaveBeenCalledOnce();
-    expect(observeCost).toHaveBeenCalledWith(
-      expect.objectContaining({
-        declaredGpuBytesDelta: 640 * 480 * 4,
-        operation: "image-texture-lease",
-        stage: "resource-allocate",
-      }),
-    );
-    expect(observeCost).toHaveBeenCalledWith(
-      expect.objectContaining({
-        declaredGpuBytesDelta: -(640 * 480 * 4),
-        operation: "image-texture-lease",
-        stage: "resource-release",
-      }),
-    );
   });
 
   it("replaces the renderer texture and retires the prior lease", async () => {

@@ -6,12 +6,8 @@ import {
   type PlaybackStore,
 } from "@fiftyone/playback";
 import { createStore } from "jotai";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import {
-  setEpisodeBufferCostObserver,
-  type EpisodeBufferCostObservation,
-} from "../../../observability/episode-buffer-cost";
 import type { DecodedFrame } from "../../../ir";
 import { createTimelineIndex, EpisodeStreamCache } from "../../../runtime";
 import { VISUALIZATION_KIND } from "../../../visualization";

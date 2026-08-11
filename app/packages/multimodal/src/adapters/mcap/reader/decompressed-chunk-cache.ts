@@ -1,11 +1,4 @@
 import { LRUCache } from "lru-cache";
-import {
-  createMcapDecompressionCacheOwnerId,
-  isMcapDecompressionCacheMeterEnabled,
-  mcapDecompressionChunkIdentity,
-  recordMcapDecompressionCache,
-  type McapDecompressionCacheSample,
-} from "../instrumentation/meters/decompression-cache";
 
 const DEFAULT_MCAP_DECOMPRESSED_CHUNK_CACHE_BYTES = 128 * 1024 * 1024;
 

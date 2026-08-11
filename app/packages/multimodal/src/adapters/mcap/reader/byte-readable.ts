@@ -537,4 +537,3 @@ function readRangeKey(
 function defaultChunkReadLogger(entry: McapChunkReadDebugLog): void {
   console.log("[mcap] chunk bytes fetched", entry);
 }
-

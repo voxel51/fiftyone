@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { Quaternion, Vector3 } from "three";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   PlaybackSyncMode,
   StreamInventorySchema,
@@ -26,10 +26,6 @@ import {
   createMcapManifest,
   createMcapRawRecordCapability,
 } from "./format-adapter";
-import {
-  initMcapCostDebugBridge,
-  resetMcapCostDebugForTests,
-} from "./instrumentation/host/mcap-cost-debug";
 import { McapBoundedReadCancelledError } from "./reader";
 import {
   MCAP_ACTIVE_TIMELINE,
@@ -68,11 +64,6 @@ function recordingInventory(
 const io: ByteResources = {
   readBytes: vi.fn(),
 };
-
-afterEach(() => {
-  window.history.replaceState(null, "", "/");
-  resetMcapCostDebugForTests();
-});
 
 defineEpisodeSessionContractTests({
   createSession: () =>
@@ -717,11 +708,7 @@ describe("MCAP format adapter", () => {
     session.dispose();
   });
 
-  it("retains a cancelled grant while reporting its best-effort partial usage", async () => {
-    window.history.replaceState(null, "", "/?mcapCostDebug=1");
-    const bridge = initMcapCostDebugBridge();
-    if (!bridge) throw new Error("expected MCAP cost bridge");
-    bridge.beginCapture({ captureId: "bounded-cancel" });
+  it("retains a cancelled grant after receiving partial usage", async () => {
     const client = createClient();
     const partialUsage = {
       chunksOpened: 1,
@@ -766,21 +753,6 @@ describe("MCAP format adapter", () => {
       maxSourceBytes: 500,
       maxUncompressedBytes: 1_500,
       maxWallTimeMs: 500,
-    });
-    expect(
-      bridge
-        .snapshot()
-        .events.find((event) => event.operation === "bounded-read-grant"),
-    ).toMatchObject({
-      chunksOpened: partialUsage.chunksOpened,
-      decompressedBytes: partialUsage.decompressedBytes,
-      decompressionCacheHits: partialUsage.decompressionCacheHits,
-      durationMs: partialUsage.elapsedMs,
-      logicalSourceBytes: partialUsage.logicalSourceBytes,
-      logicalUncompressedBytes: partialUsage.logicalUncompressedBytes,
-      messagesDecoded: partialUsage.messagesDecoded,
-      stopReason: "cancelled",
-      transferredBytes: partialUsage.transferredBytes,
     });
     session.dispose();
   });
@@ -934,27 +906,6 @@ describe("MCAP format adapter", () => {
     expect(client.readTimelineRange).not.toHaveBeenCalled();
     expect(client.readTopics).not.toHaveBeenCalled();
     expect(session.playback?.timeline.byteTimeline).toHaveLength(1);
-    session.dispose();
-  });
-
-  it("correlates debug batch demand with worker attribution", async () => {
-    window.history.replaceState(null, "", "/?mcapCostDebug=1");
-    const client = createClient();
-    const session = await createMcapFormatAdapter({
-      createClient: () => client,
-    }).open(source, io);
-
-    await session.playback?.readSynchronizedBatch({
-      streams: ["camera"],
-      timeNs: [1n],
-    });
-
-    expect(client.readSynchronizedMessageBatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        mcapDataRequestId: expect.stringMatching(/^mcap-data:\d+$/),
-      }),
-      undefined,
-    );
     session.dispose();
   });
 
