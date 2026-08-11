@@ -500,7 +500,9 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         setScale: [
           (chart, key) => {
             if (key === "x") {
-              const viewportKey = `${chart.scales.x.min}:${chart.scales.x.max}`;
+              const viewportKey = `${String(chart.scales.x.min)}:${String(
+                chart.scales.x.max,
+              )}`;
               if (viewportKey !== stableViewportKey) {
                 stableViewportKey = viewportKey;
                 setStableYRange(

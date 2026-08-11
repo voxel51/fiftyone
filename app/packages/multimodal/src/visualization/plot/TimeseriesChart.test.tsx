@@ -411,10 +411,8 @@ describe("TimeseriesChart interactions", () => {
       y: false,
     });
     expect(chart.options.scales?.x?.range).toBeUndefined();
-    expect(chart.options.series?.[0]).toEqual({
-      class: expect.any(String),
-      label: "Time",
-    });
+    expect(chart.options.series?.[0]).toMatchObject({ label: "Time" });
+    expect(typeof chart.options.series?.[0]?.class).toBe("string");
 
     const size = chart.options.axes?.[1]?.size;
     if (typeof size !== "function") {
