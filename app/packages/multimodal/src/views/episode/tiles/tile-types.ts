@@ -17,6 +17,7 @@ export const TILE_TYPE = {
   PLOT: "plot",
   RAW: "raw",
   THREE_D: "3d",
+  TRANSFORMS: "transforms",
 } as const;
 
 /** Tile kinds supplied eagerly by the core multimodal package. */

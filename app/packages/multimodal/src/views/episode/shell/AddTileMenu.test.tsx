@@ -145,6 +145,7 @@ describe("tileTypesFor", () => {
       tileTypesFor({
         hasNumericSeries: true,
         hasRawRecords: false,
+        hasTransformTopology: false,
         sourceTypes: ["image", "location"],
       }),
     ).toEqual([TILE_TYPE.IMAGE, TILE_TYPE.MAP, TILE_TYPE.PLOT]);
@@ -153,9 +154,29 @@ describe("tileTypesFor", () => {
       tileTypesFor({
         hasNumericSeries: false,
         hasRawRecords: true,
+        hasTransformTopology: false,
         sourceTypes: [],
       }),
     ).toEqual([TILE_TYPE.RAW]);
+  });
+
+  it("offers transforms only when the session exposes bounded topology", () => {
+    expect(
+      tileTypesFor({
+        hasNumericSeries: false,
+        hasRawRecords: false,
+        hasTransformTopology: true,
+        sourceTypes: ["point-cloud"],
+      }),
+    ).toContain(TILE_TYPE.TRANSFORMS);
+    expect(
+      tileTypesFor({
+        hasNumericSeries: false,
+        hasRawRecords: false,
+        hasTransformTopology: false,
+        sourceTypes: ["point-cloud"],
+      }),
+    ).not.toContain(TILE_TYPE.TRANSFORMS);
   });
 
   it("orders and filters build-time tile contributions with the built-ins", () => {
@@ -172,6 +193,7 @@ describe("tileTypesFor", () => {
       tileTypesFor({
         hasNumericSeries: true,
         hasRawRecords: false,
+        hasTransformTopology: false,
         sourceTypes: ["event"],
       }),
     ).toEqual(["test:events", TILE_TYPE.PLOT]);

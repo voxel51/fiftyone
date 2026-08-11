@@ -8,6 +8,7 @@ export type EpisodeTileExtensionId = `${string}:${string}`;
 export interface EpisodeTileAvailability {
   readonly hasNumericSeries: boolean;
   readonly hasRawRecords: boolean;
+  readonly hasTransformTopology: boolean;
   readonly sourceTypes: readonly string[];
 }
 

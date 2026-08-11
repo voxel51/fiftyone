@@ -517,6 +517,20 @@ describe("buildAutoLayout", () => {
     });
   });
 
+  it("keeps transform topology with other diagnostics", () => {
+    expect(buildAutoLayout(["plot-1", "transforms-1", "log-1"])).toEqual({
+      direction: "column",
+      first: "plot-1",
+      second: {
+        direction: "column",
+        first: "transforms-1",
+        second: "log-1",
+        splitPercentage: 50,
+      },
+      splitPercentage: 100 / 3,
+    });
+  });
+
   it("stacks message tiles vertically", () => {
     expect(buildAutoLayout(["raw-1", "raw-2"])).toEqual({
       direction: "column",
