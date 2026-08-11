@@ -38,20 +38,18 @@ export function createMemoryDecodedOutputCache(
   const cache = createByteBoundedCache<DecodeResult>(options);
 
   return {
-    async clear() {
-      cache.clear();
-    },
-    async get(key) {
-      return cache.get(decodedOutputCacheKey(key));
-    },
-    async put(key, result) {
-      setByteBoundedEntry(
-        cache,
-        options,
-        decodedOutputCacheKey(key),
-        result,
-        decodedOutputSizeBytes(result.output),
-      );
-    },
+    clear: () => Promise.resolve().then(() => cache.clear()),
+    get: (key) =>
+      Promise.resolve().then(() => cache.get(decodedOutputCacheKey(key))),
+    put: (key, result) =>
+      Promise.resolve().then(() =>
+        setByteBoundedEntry(
+          cache,
+          options,
+          decodedOutputCacheKey(key),
+          result,
+          decodedOutputSizeBytes(result.output),
+        ),
+      ),
   };
 }

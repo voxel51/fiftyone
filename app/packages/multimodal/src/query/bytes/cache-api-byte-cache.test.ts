@@ -314,18 +314,22 @@ function createFakeCacheStorage(): CacheStorage {
     const store = entries;
 
     return {
-      async delete(key: RequestInfo | URL) {
-        return store.delete(keyUrl(key));
+      delete(key: RequestInfo | URL) {
+        return Promise.resolve(store.delete(keyUrl(key)));
       },
-      async keys() {
-        return [...store.keys()].map((url) => ({ url }) as unknown as Request);
+      keys() {
+        return Promise.resolve(
+          [...store.keys()].map((url) => ({ url }) as unknown as Request),
+        );
       },
-      async match(key: RequestInfo | URL) {
+      match(key: RequestInfo | URL) {
         const entry = store.get(keyUrl(key));
         if (!entry) {
-          return undefined;
+          return Promise.resolve(undefined);
         }
-        return new Response(entry.bytes.slice(), { headers: entry.headers });
+        return Promise.resolve(
+          new Response(entry.bytes.slice(), { headers: entry.headers }),
+        );
       },
       async put(key: RequestInfo | URL, response: Response) {
         store.set(keyUrl(key), {
@@ -337,20 +341,20 @@ function createFakeCacheStorage(): CacheStorage {
   };
 
   return {
-    async delete(name: string) {
-      return cachesByName.delete(name);
+    delete(name: string) {
+      return Promise.resolve(cachesByName.delete(name));
     },
-    async has(name: string) {
-      return cachesByName.has(name);
+    has(name: string) {
+      return Promise.resolve(cachesByName.has(name));
     },
-    async keys() {
-      return [...cachesByName.keys()];
+    keys() {
+      return Promise.resolve([...cachesByName.keys()]);
     },
-    async match() {
-      return undefined;
+    match() {
+      return Promise.resolve(undefined);
     },
-    async open(name: string) {
-      return openCache(name);
+    open(name: string) {
+      return Promise.resolve(openCache(name));
     },
   } as CacheStorage;
 }

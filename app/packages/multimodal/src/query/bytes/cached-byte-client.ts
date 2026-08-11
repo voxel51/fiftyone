@@ -422,7 +422,7 @@ export function createCachedByteClient(
     readaheadIssuedAtMs.delete(key);
     readaheadIssuedAtMs.set(key, now);
     if (readaheadIssuedAtMs.size > READAHEAD_TRACKED_FILLS) {
-      const oldest = readaheadIssuedAtMs.keys().next().value;
+      const [oldest] = readaheadIssuedAtMs.keys();
       if (oldest !== undefined) {
         readaheadIssuedAtMs.delete(oldest);
       }

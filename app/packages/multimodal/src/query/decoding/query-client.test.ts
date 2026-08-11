@@ -65,8 +65,9 @@ describe("decoded query client", () => {
   it("allows decode execution to be injected for worker-backed hot paths", async () => {
     const { decoder, payload, registry } = createDecoderFixture();
     const executor: DecodeExecutor = {
-      decode: vi.fn(({ bytes, context, decoder: activeDecoder }) =>
-        activeDecoder.decode(bytes, context),
+      decode: vi.fn<DecodeExecutor["decode"]>(
+        ({ bytes, context, decoder: activeDecoder }) =>
+          activeDecoder.decode(bytes, context),
       ),
     };
     const client = createDecodeClient({

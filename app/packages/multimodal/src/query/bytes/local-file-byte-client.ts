@@ -15,11 +15,10 @@ const FILE_BYTE_READ_ABORT_MESSAGE = "File byte-range read aborted";
  */
 export function createLocalFileByteClient(): ByteClient {
   return {
-    async stat(source) {
-      return source.localFile
-        ? withFileSize(source, source.localFile)
-        : undefined;
-    },
+    stat: (source) =>
+      Promise.resolve(
+        source.localFile ? withFileSize(source, source.localFile) : undefined,
+      ),
 
     async readBytes(request) {
       const file = request.source.localFile;

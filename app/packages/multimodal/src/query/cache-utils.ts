@@ -101,16 +101,16 @@ function estimateFieldSize(
     visited.add(value);
   }
   if (Array.isArray(value)) {
-    return value.reduce(
-      (size, item) => size + estimateFieldSize(item, visited),
-      0,
-    );
+    let size = 0;
+    for (const item of value) size += estimateFieldSize(item, visited);
+    return size;
   }
-  if (typeof value === "object") {
-    return Object.values(value).reduce(
-      (size, item) => size + estimateFieldSize(item, visited),
-      0,
-    );
+  if (isUnknownRecord(value)) {
+    let size = 0;
+    for (const item of Object.values(value)) {
+      size += estimateFieldSize(item, visited);
+    }
+    return size;
   }
 
   return ESTIMATED_UNKNOWN_FIELD_SIZE_BYTES;
@@ -154,6 +154,10 @@ export function decodedOutputSizeBytes(output: DecodedOutput): number {
           )
         : measuredBackingStoreBytes(output);
   return Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0;
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function normalizeCacheSizeBytes(value: number, minimum: number): number {

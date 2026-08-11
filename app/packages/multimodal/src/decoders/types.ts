@@ -25,9 +25,10 @@ export interface Decoder {
   readonly payload: PayloadDescriptor;
   readonly version: string;
 
-  decode(bytes: Uint8Array, ctx: DecodeContext): DecodedOutput;
+  decode(this: void, bytes: Uint8Array, ctx: DecodeContext): DecodedOutput;
   /** Optional packed-data fast path for replacing one point-cloud channel. */
   projectPointCloudChannel?(
+    this: void,
     bytes: Uint8Array,
     ctx: DecodeContext,
     request: PointCloudChannelProjectionRequest,

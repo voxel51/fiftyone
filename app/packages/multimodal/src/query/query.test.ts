@@ -167,11 +167,13 @@ describe("multimodal query clients", () => {
   it("fills and reuses the raw byte cache", async () => {
     const request = createByteRangeReadRequest();
     const reader: ByteClient = {
-      readBytes: vi.fn(async (readRequest) => ({
-        bytes: bytesForRange(readRequest),
-        range: readRequest.range,
-        source: readRequest.source,
-      })),
+      readBytes: vi.fn<ByteClient["readBytes"]>((readRequest) =>
+        Promise.resolve({
+          bytes: bytesForRange(readRequest),
+          range: readRequest.range,
+          source: readRequest.source,
+        }),
+      ),
     };
     const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
     const client = createCachedByteClient(reader, { memory: cache });
@@ -335,11 +337,13 @@ describe("multimodal query clients", () => {
 
   it("serves byte subranges from block cache fills", async () => {
     const reader: ByteClient = {
-      readBytes: vi.fn(async (readRequest) => ({
-        bytes: bytesForRange(readRequest),
-        range: readRequest.range,
-        source: readRequest.source,
-      })),
+      readBytes: vi.fn<ByteClient["readBytes"]>((readRequest) =>
+        Promise.resolve({
+          bytes: bytesForRange(readRequest),
+          range: readRequest.range,
+          source: readRequest.source,
+        }),
+      ),
     };
     const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
     const client = createCachedByteClient(reader, {
@@ -369,11 +373,13 @@ describe("multimodal query clients", () => {
 
   it("logs byte-cache fetch and hit debug entries when enabled", async () => {
     const reader: ByteClient = {
-      readBytes: vi.fn(async (readRequest) => ({
-        bytes: bytesForRange(readRequest),
-        range: readRequest.range,
-        source: readRequest.source,
-      })),
+      readBytes: vi.fn<ByteClient["readBytes"]>((readRequest) =>
+        Promise.resolve({
+          bytes: bytesForRange(readRequest),
+          range: readRequest.range,
+          source: readRequest.source,
+        }),
+      ),
     };
     const log = vi.fn();
     const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
@@ -420,11 +426,13 @@ describe("multimodal query clients", () => {
 
   it("allows callers to skip block cache fills for scattered exact reads", async () => {
     const reader: ByteClient = {
-      readBytes: vi.fn(async (readRequest) => ({
-        bytes: bytesForRange(readRequest),
-        range: readRequest.range,
-        source: readRequest.source,
-      })),
+      readBytes: vi.fn<ByteClient["readBytes"]>((readRequest) =>
+        Promise.resolve({
+          bytes: bytesForRange(readRequest),
+          range: readRequest.range,
+          source: readRequest.source,
+        }),
+      ),
     };
     const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
     const client = createCachedByteClient(reader, {
@@ -445,11 +453,13 @@ describe("multimodal query clients", () => {
 
   it("keeps exact reads when source size is unknown", async () => {
     const reader: ByteClient = {
-      readBytes: vi.fn(async (readRequest) => ({
-        bytes: bytesForRange(readRequest),
-        range: readRequest.range,
-        source: readRequest.source,
-      })),
+      readBytes: vi.fn<ByteClient["readBytes"]>((readRequest) =>
+        Promise.resolve({
+          bytes: bytesForRange(readRequest),
+          range: readRequest.range,
+          source: readRequest.source,
+        }),
+      ),
     };
     const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
     const client = createCachedByteClient(reader, {
@@ -471,11 +481,13 @@ describe("multimodal query clients", () => {
 
   it("does not infer remote block fills from source URL text", async () => {
     const reader: ByteClient = {
-      readBytes: vi.fn(async (readRequest) => ({
-        bytes: bytesForRange(readRequest),
-        range: readRequest.range,
-        source: readRequest.source,
-      })),
+      readBytes: vi.fn<ByteClient["readBytes"]>((readRequest) =>
+        Promise.resolve({
+          bytes: bytesForRange(readRequest),
+          range: readRequest.range,
+          source: readRequest.source,
+        }),
+      ),
     };
     const cache = createMemoryByteRangeCache({
       maxSizeBytes: DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES * 2,
@@ -504,11 +516,13 @@ describe("multimodal query clients", () => {
   it("does not expand cache fills with invalid block sizes", async () => {
     for (const blockSizeBytes of [0, -1, 1.5, Number.NaN]) {
       const reader: ByteClient = {
-        readBytes: vi.fn(async (readRequest) => ({
-          bytes: bytesForRange(readRequest),
-          range: readRequest.range,
-          source: readRequest.source,
-        })),
+        readBytes: vi.fn<ByteClient["readBytes"]>((readRequest) =>
+          Promise.resolve({
+            bytes: bytesForRange(readRequest),
+            range: readRequest.range,
+            source: readRequest.source,
+          }),
+        ),
       };
       const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
       const request = createByteRangeReadRequest({
@@ -527,11 +541,13 @@ describe("multimodal query clients", () => {
 
   it("coalesces in-flight byte cache fills", async () => {
     const reader: ByteClient = {
-      readBytes: vi.fn(async (readRequest) => ({
-        bytes: bytesForRange(readRequest),
-        range: readRequest.range,
-        source: readRequest.source,
-      })),
+      readBytes: vi.fn<ByteClient["readBytes"]>((readRequest) =>
+        Promise.resolve({
+          bytes: bytesForRange(readRequest),
+          range: readRequest.range,
+          source: readRequest.source,
+        }),
+      ),
     };
     const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
     const client = createCachedByteClient(reader, {
@@ -718,44 +734,46 @@ function createFetchMock(
   extendedFetch: ExtendedFetchFunction;
 } {
   const calls: FetchCall[] = [];
-  const extendedFetch: ExtendedFetchFunction = async <Body, Result>(
+  const extendedFetch: ExtendedFetchFunction = <Body, Result>(
     config: FetchFunctionConfig<Body>,
-  ): Promise<FetchFunctionResult<Result>> => {
-    const { body, headers, method, onProgress, path, result, signal } = config;
-    calls.push({ body, headers, method, onProgress, path, result, signal });
+  ): Promise<FetchFunctionResult<Result>> =>
+    Promise.resolve().then(() => {
+      const { body, headers, method, onProgress, path, result, signal } =
+        config;
+      calls.push({ body, headers, method, onProgress, path, result, signal });
 
-    const response = responses[path];
-    if (!response) {
-      throw new Error(`No mock response for ${path}`);
-    }
+      const response = responses[path];
+      if (!response) {
+        throw new Error(`No mock response for ${path}`);
+      }
 
-    if (method === "HEAD") {
-      if (options.head === "fail") {
-        throw new Error(`Mock HEAD failed for ${path}`);
+      if (method === "HEAD") {
+        if (options.head === "fail") {
+          throw new Error(`Mock HEAD failed for ${path}`);
+        }
+
+        return {
+          headers:
+            options.head === "missing"
+              ? new Headers()
+              : new Headers({
+                  "Content-Length": response.byteLength.toString(),
+                  ...(options.etag ? { ETag: options.etag } : {}),
+                }),
+          response: new ArrayBuffer(0) as Result,
+        };
       }
 
       return {
-        headers:
-          options.head === "missing"
-            ? new Headers()
-            : new Headers({
-                "Content-Length": response.byteLength.toString(),
-                ...(options.etag ? { ETag: options.etag } : {}),
-              }),
-        response: new ArrayBuffer(0) as Result,
+        headers: headers?.Range
+          ? new Headers({
+              "Content-Range": contentRangeHeader(headers.Range, response),
+              ...(options.etag ? { ETag: options.etag } : {}),
+            })
+          : undefined,
+        response: response as Result,
       };
-    }
-
-    return {
-      headers: headers?.Range
-        ? new Headers({
-            "Content-Range": contentRangeHeader(headers.Range, response),
-            ...(options.etag ? { ETag: options.etag } : {}),
-          })
-        : undefined,
-      response: response as Result,
-    };
-  };
+    });
 
   return { calls, extendedFetch };
 }

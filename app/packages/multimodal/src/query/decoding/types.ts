@@ -123,6 +123,7 @@ export interface DecodeExecutor {
    * strategy.
    */
   decode(
+    this: void,
     request: DecodeExecutionRequest,
   ): DecodedOutput | Promise<DecodedOutput>;
 }
@@ -188,17 +189,24 @@ export interface DecodedOutputCache {
   /**
    * Returns a cached decoded result for the fully resolved cache key.
    */
-  get(key: DecodedOutputCacheKey): Promise<DecodeResult | undefined>;
+  get(
+    this: void,
+    key: DecodedOutputCacheKey,
+  ): Promise<DecodeResult | undefined>;
 
   /**
    * Stores a decoded result under the fully resolved cache key.
    */
-  put(key: DecodedOutputCacheKey, result: DecodeResult): Promise<void>;
+  put(
+    this: void,
+    key: DecodedOutputCacheKey,
+    result: DecodeResult,
+  ): Promise<void>;
 
   /**
    * Evicts all decoded outputs.
    */
-  clear(): Promise<void>;
+  clear(this: void): Promise<void>;
 }
 
 /**

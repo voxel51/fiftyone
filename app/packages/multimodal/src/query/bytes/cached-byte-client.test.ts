@@ -996,9 +996,11 @@ describe("createCachedByteClient remote fill slots", () => {
     let persistentGets = 0;
     const persistent: ByteRangeCache = {
       clear: () => Promise.resolve(),
-      async get(getRequest) {
+      get(getRequest) {
         persistentGets += 1;
-        return persistentGets === 1 ? undefined : fillResult(getRequest);
+        return Promise.resolve(
+          persistentGets === 1 ? undefined : fillResult(getRequest),
+        );
       },
       put: () => Promise.resolve(),
     };

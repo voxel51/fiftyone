@@ -159,8 +159,8 @@ function createFile(bytes: readonly number[]): File {
 
 function createRecordingCache(): ByteRangeCache {
   return {
-    clear: vi.fn(async () => undefined),
-    get: vi.fn(async () => undefined),
-    put: vi.fn(async () => undefined),
+    clear: vi.fn(() => Promise.resolve()),
+    get: vi.fn(() => Promise.resolve(undefined)),
+    put: vi.fn(() => Promise.resolve()),
   };
 }

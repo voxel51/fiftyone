@@ -120,6 +120,7 @@ export interface ByteClient {
    * Optionally resolves source metadata without reading bytes.
    */
   stat?(
+    this: void,
     source: ByteSourceDescriptor,
   ): Promise<ByteSourceDescriptor | undefined>;
 
@@ -127,12 +128,15 @@ export interface ByteClient {
    * Resolves the physical cache-fill range a read would admit without reading
    * bytes. Bounded adapters use this pure plan as their byte-budget authority.
    */
-  planRead?(request: ByteRangeReadRequest): ByteRangeReadRequest;
+  planRead?(this: void, request: ByteRangeReadRequest): ByteRangeReadRequest;
 
   /**
    * Reads the requested source byte range and returns exactly that range.
    */
-  readBytes(request: ByteRangeReadRequest): Promise<ByteRangeReadResult>;
+  readBytes(
+    this: void,
+    request: ByteRangeReadRequest,
+  ): Promise<ByteRangeReadResult>;
 }
 
 /**
@@ -163,17 +167,20 @@ export interface ByteRangeCache {
   /**
    * Returns an exact cached read or a slice from a containing cached range.
    */
-  get(request: ByteRangeReadRequest): Promise<ByteRangeReadResult | undefined>;
+  get(
+    this: void,
+    request: ByteRangeReadRequest,
+  ): Promise<ByteRangeReadResult | undefined>;
 
   /**
    * Stores bytes under the result's source and range identity.
    */
-  put(result: ByteRangeReadResult): Promise<void>;
+  put(this: void, result: ByteRangeReadResult): Promise<void>;
 
   /**
    * Evicts all cached byte ranges.
    */
-  clear(): Promise<void>;
+  clear(this: void): Promise<void>;
 }
 
 /**

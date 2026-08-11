@@ -32,56 +32,56 @@ export function createMemoryByteRangeCache(
   const cache = createByteBoundedCache<ByteRangeReadResult>(options);
 
   return {
-    async clear() {
-      cache.clear();
-    },
-    async get(request) {
-      const exactHit = cache.get(byteRangeCacheKey(request));
-      if (exactHit) {
-        return exactHit;
-      }
-
-      // The cached byte client checks normalized fill-block keys first. This
-      // fallback keeps direct cache users and custom fill policies reusable.
-      const containingHit = cache.find((candidate) => {
-        const sourceMatches =
-          byteSourceCacheKey(candidate.source) ===
-          byteSourceCacheKey(request.source);
-        if (!sourceMatches) {
-          return false;
+    clear: () => Promise.resolve().then(() => cache.clear()),
+    get: (request) =>
+      Promise.resolve().then(() => {
+        const exactHit = cache.get(byteRangeCacheKey(request));
+        if (exactHit) {
+          return exactHit;
         }
 
-        const rangeContainsRequest =
-          candidate.range.offset <= request.range.offset &&
-          candidate.range.offset + candidate.range.length >=
-            request.range.offset + request.range.length;
+        // The cached byte client checks normalized fill-block keys first. This
+        // fallback keeps direct cache users and custom fill policies reusable.
+        const containingHit = cache.find((candidate) => {
+          const sourceMatches =
+            byteSourceCacheKey(candidate.source) ===
+            byteSourceCacheKey(request.source);
+          if (!sourceMatches) {
+            return false;
+          }
 
-        return rangeContainsRequest;
-      });
-      if (!containingHit) {
-        return undefined;
-      }
+          const rangeContainsRequest =
+            candidate.range.offset <= request.range.offset &&
+            candidate.range.offset + candidate.range.length >=
+              request.range.offset + request.range.length;
 
-      const start = safeNumber(
-        request.range.offset - containingHit.range.offset,
-      );
-      const end = start + safeNumber(request.range.length);
+          return rangeContainsRequest;
+        });
+        if (!containingHit) {
+          return undefined;
+        }
 
-      return {
-        bytes: containingHit.bytes.subarray(start, end),
-        range: request.range,
-        source: containingHit.source,
-      };
-    },
-    async put(result) {
-      setByteBoundedEntry(
-        cache,
-        options,
-        byteRangeCacheKey(result),
-        result,
-        result.bytes.byteLength,
-      );
-    },
+        const start = safeNumber(
+          request.range.offset - containingHit.range.offset,
+        );
+        const end = start + safeNumber(request.range.length);
+
+        return {
+          bytes: containingHit.bytes.subarray(start, end),
+          range: request.range,
+          source: containingHit.source,
+        };
+      }),
+    put: (result) =>
+      Promise.resolve().then(() =>
+        setByteBoundedEntry(
+          cache,
+          options,
+          byteRangeCacheKey(result),
+          result,
+          result.bytes.byteLength,
+        ),
+      ),
   };
 }
 
