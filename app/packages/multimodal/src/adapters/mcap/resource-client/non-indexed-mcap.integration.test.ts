@@ -22,9 +22,9 @@ describe("non-indexed MCAP production contract", () => {
     const fixture = await createNonIndexedMcapFixture();
     const reader = await createDefaultMcapReader(source, fixture);
 
-    expect(reader.readIndexedMessageTimes).toBeUndefined();
-    expect(reader.readLatestIndexedMessageTimes).toBeUndefined();
-    expect(reader.readIndexedMessages).toBeUndefined();
+    expect("readIndexedMessageTimes" in reader).toBe(false);
+    expect("readLatestIndexedMessageTimes" in reader).toBe(false);
+    expect("readIndexedMessages" in reader).toBe(false);
 
     const raw = await readMcapRawMessageRecord({
       reader,
@@ -40,14 +40,14 @@ describe("non-indexed MCAP production contract", () => {
     const decodeClient = createDecodeClient({
       cache: {
         enabled: false,
-        async clear() {
-          // The integration fixture disables decoded-output caching.
+        clear() {
+          return Promise.resolve();
         },
-        async get() {
-          return undefined;
+        get() {
+          return Promise.resolve(undefined);
         },
-        async put() {
-          // The integration fixture disables decoded-output caching.
+        put() {
+          return Promise.resolve();
         },
       },
       registry: createMcapDecoderRegistry(),
@@ -77,8 +77,10 @@ describe("non-indexed MCAP production contract", () => {
     expect(transforms.samples[0]).toMatchObject({
       childFrameId: "lidar",
       parentFrameId: "map",
-      timeNs: 1_500_000_000n,
     });
+    // A schema-qualified channel with one transform is static even when the
+    // source payload carries a timestamp.
+    expect(transforms.samples[0]?.timeNs).toBeUndefined();
 
     reader.dispose?.();
   });
@@ -86,7 +88,8 @@ describe("non-indexed MCAP production contract", () => {
 
 async function createNonIndexedMcapFixture(): Promise<MemoryMcapBuffer> {
   const buffer = new MemoryMcapBuffer();
-  const writer = new McapWriter({
+  const Writer = McapWriter as unknown as McapWriterConstructor;
+  const writer = new Writer({
     useMessageIndex: false,
     writable: buffer,
   });
@@ -149,20 +152,56 @@ class MemoryMcapBuffer implements McapTypes.IReadable, McapTypes.IWritable {
     return BigInt(this.bytes.byteLength);
   }
 
-  async read(offset: bigint, size: bigint): Promise<Uint8Array> {
-    return this.bytes.subarray(Number(offset), Number(offset + size));
+  read(offset: bigint, size: bigint): Promise<Uint8Array> {
+    return Promise.resolve(
+      this.bytes.subarray(Number(offset), Number(offset + size)),
+    );
   }
 
-  async size(): Promise<bigint> {
-    return BigInt(this.bytes.byteLength);
+  size(): Promise<bigint> {
+    return Promise.resolve(BigInt(this.bytes.byteLength));
   }
 
-  async write(data: Uint8Array): Promise<void> {
+  write(data: Uint8Array): Promise<void> {
     const combined = new Uint8Array(this.bytes.byteLength + data.byteLength);
     combined.set(this.bytes);
     combined.set(data, this.bytes.byteLength);
     this.bytes = combined;
+    return Promise.resolve();
   }
+}
+
+interface McapWriterLike {
+  addMessage(message: {
+    readonly channelId: number;
+    readonly data: Uint8Array;
+    readonly logTime: bigint;
+    readonly publishTime: bigint;
+    readonly sequence: number;
+  }): Promise<void>;
+  end(): Promise<void>;
+  registerChannel(channel: {
+    readonly messageEncoding: string;
+    readonly metadata: Map<string, string>;
+    readonly schemaId: number;
+    readonly topic: string;
+  }): Promise<number>;
+  registerSchema(schema: {
+    readonly data: Uint8Array;
+    readonly encoding: string;
+    readonly name: string;
+  }): Promise<number>;
+  start(header: {
+    readonly library: string;
+    readonly profile: string;
+  }): Promise<void>;
+}
+
+interface McapWriterConstructor {
+  new (options: {
+    readonly useMessageIndex: boolean;
+    readonly writable: McapTypes.IWritable;
+  }): McapWriterLike;
 }
 
 const FRAME_TRANSFORM_ROOT = Root.fromJSON({
