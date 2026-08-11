@@ -172,6 +172,17 @@ describe("zoomRect / panRect / clampToHome", () => {
     const world = worldRect(home, 0.5);
     expect(zoomRect(home, home, [5, 5], 0.1, 50, world)).toEqual(world);
   });
+
+  // Regression: bounds must not move during a zoom — clamping against
+  // home instead of the world yanked a panned view back toward center
+  it("zooming in from a panned fit view stays put", () => {
+    const world = worldRect(home, 0.5);
+    const panned = panRect(home, world, 3, 0);
+    const zoomed = zoomRect(panned, home, [8, 5], 2, 50, world);
+    expect((zoomed.x0 + zoomed.x1) / 2).toBeCloseTo(8);
+    expect((8 - zoomed.x0) / (zoomed.x1 - zoomed.x0)).toBeCloseTo(0.5);
+    expect(zoomOf(zoomed, home)).toBeCloseTo(2);
+  });
 });
 
 describe("pointInPolygon", () => {
