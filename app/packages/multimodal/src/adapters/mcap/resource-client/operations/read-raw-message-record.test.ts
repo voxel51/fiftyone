@@ -2,17 +2,25 @@ import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
 import { parseRos2idl } from "@foxglove/ros2idl-parser";
 import { MessageWriter as Ros1MessageWriter } from "@foxglove/rosmsg-serialization";
 import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serialization";
-import type { McapTypes } from "@mcap/core";
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
 import { rawNodeToJson } from "../../../../ir/index";
 import type {
+  McapChannel,
+  McapChunkIndex,
   McapIndexedMessageTime,
   McapIndexedReaderLike,
+  McapMessage,
+  McapSchema,
 } from "../../reader/index";
 import { resolveMcapTimelineStrategy } from "../timeline";
-import { createChunkIndex } from "../inline-client.test-fixtures";
+import {
+  asyncGeneratorMock,
+  asyncValues,
+  createChunkIndex,
+  promiseMock,
+} from "../inline-client.test-fixtures";
 import { mcapMessageCursorForEntry } from "./message-cursor";
 import {
   assertRawRecordSourceWorkBound,
@@ -312,7 +320,7 @@ describe("readMcapRawMessageRecord", () => {
   });
 
   it("uses the index predecessor walk when the reader supports it", async () => {
-    const readLatestIndexedMessageTimes = vi.fn(async () => {
+    const readLatestIndexedMessageTimes = promiseMock(() => {
       return new Map([
         [
           "/state",
@@ -322,7 +330,7 @@ describe("readMcapRawMessageRecord", () => {
         ],
       ]);
     });
-    const prefetchChunkData = vi.fn(async () => undefined);
+    const prefetchChunkData = promiseMock(() => undefined);
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       messages: [
@@ -331,9 +339,8 @@ describe("readMcapRawMessageRecord", () => {
         jsonMessage({ v: 3 }, 3_000_000_000n),
       ],
       prefetchChunkData,
-      readIndexedMessageTimes: async function* () {
-        yield indexedEntry({ logTimeNs: 3_000_000_000n });
-      },
+      readIndexedMessageTimes: () =>
+        asyncValues([indexedEntry({ logTimeNs: 3_000_000_000n })]),
       readLatestIndexedMessageTimes,
     });
 
@@ -365,21 +372,21 @@ describe("readMcapRawMessageRecord", () => {
     const source = createSource();
     const selectedEntry = indexedEntry({ logTimeNs: 2_000_000_000n });
     const selected = jsonMessage({ v: "selected" }, 2_000_000_000n);
-    const readIndexedMessages = vi.fn(async () => [selected]);
+    const readIndexedMessages = promiseMock(() => [selected]);
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       messages: [jsonMessage({ v: "overlap" }, 2_000_000_000n)],
       readIndexedMessages,
-      readIndexedMessageTimes: async function* () {
-        // No successor.
-      },
-      readLatestIndexedMessageTimes: async () =>
-        new Map([
-          [
-            "/state",
-            [indexedEntry({ logTimeNs: 1_000_000_000n }), selectedEntry],
-          ],
-        ]),
+      readIndexedMessageTimes: () => asyncValues([]),
+      readLatestIndexedMessageTimes: promiseMock(
+        () =>
+          new Map([
+            [
+              "/state",
+              [indexedEntry({ logTimeNs: 1_000_000_000n }), selectedEntry],
+            ],
+          ]),
+      ),
     });
 
     const result = await readMcapRawMessageRecord({
@@ -405,7 +412,7 @@ describe("readMcapRawMessageRecord", () => {
 
   it("selects the latest indexed entry from the requested channel", async () => {
     const selected = jsonMessage({ v: "requested-channel" }, 1_000_000_000n);
-    const readIndexedMessages = vi.fn(async () => [selected]);
+    const readIndexedMessages = promiseMock(() => [selected]);
     const requestedEntry = indexedEntry({
       channelId: 1,
       logTimeNs: 1_000_000_000n,
@@ -415,23 +422,23 @@ describe("readMcapRawMessageRecord", () => {
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       messages: [],
       readIndexedMessages,
-      readIndexedMessageTimes: async function* () {
-        // No successor.
-      },
-      readLatestIndexedMessageTimes: async () =>
-        new Map([
-          [
-            "/state",
+      readIndexedMessageTimes: () => asyncValues([]),
+      readLatestIndexedMessageTimes: promiseMock(
+        () =>
+          new Map([
             [
-              requestedEntry,
-              indexedEntry({
-                channelId: 2,
-                logTimeNs: 2_000_000_000n,
-                messageOffset: 2n,
-              }),
+              "/state",
+              [
+                requestedEntry,
+                indexedEntry({
+                  channelId: 2,
+                  logTimeNs: 2_000_000_000n,
+                  messageOffset: 2n,
+                }),
+              ],
             ],
-          ],
-        ]),
+          ]),
+      ),
     });
 
     const result = await readMcapRawMessageRecord({
@@ -456,7 +463,7 @@ describe("readMcapRawMessageRecord", () => {
   it("uses lowest sequence then publish time for equal indexed log times", async () => {
     const source = createSource();
     const logTime = 2_000_000_000n;
-    const readIndexedMessages = vi.fn(async () => [
+    const readIndexedMessages = promiseMock(() => [
       createMessage(new TextEncoder().encode('{"v":"sequence-2"}'), {
         logTime,
         publishTime: 1n,
@@ -482,10 +489,10 @@ describe("readMcapRawMessageRecord", () => {
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       messages: [],
       readIndexedMessages,
-      readIndexedMessageTimes: async function* () {
-        // No successor.
-      },
-      readLatestIndexedMessageTimes: async () => new Map([["/state", entries]]),
+      readIndexedMessageTimes: () => asyncValues([]),
+      readLatestIndexedMessageTimes: promiseMock(
+        () => new Map([["/state", entries]]),
+      ),
     });
 
     const result = await readMcapRawMessageRecord({
@@ -510,9 +517,10 @@ describe("readMcapRawMessageRecord", () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       messages: [],
-      readIndexedMessages: async () => [oversized],
-      readLatestIndexedMessageTimes: async () =>
-        new Map([["/state", [indexedEntry({ logTimeNs: 1n })]]]),
+      readIndexedMessages: promiseMock(() => [oversized]),
+      readLatestIndexedMessageTimes: promiseMock(
+        () => new Map([["/state", [indexedEntry({ logTimeNs: 1n })]]]),
+      ),
     });
 
     await expect(
@@ -528,18 +536,18 @@ describe("readMcapRawMessageRecord", () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       messages: [jsonMessage({ v: 1 }, 1_000_000_000n)],
-      readIndexedMessageTimes: async function* () {
-        // No entries after the selected message.
-      },
-      readLatestIndexedMessageTimes: async () =>
-        new Map([
-          [
-            "/state",
+      readIndexedMessageTimes: () => asyncValues([]),
+      readLatestIndexedMessageTimes: promiseMock(
+        () =>
+          new Map([
             [
-              indexedEntry({ logTimeNs: 1_000_000_000n }),
-            ] as readonly McapIndexedMessageTime[],
-          ],
-        ]),
+              "/state",
+              [
+                indexedEntry({ logTimeNs: 1_000_000_000n }),
+              ] as readonly McapIndexedMessageTime[],
+            ],
+          ]),
+      ),
     });
 
     const result = await readMcapRawMessageRecord({
@@ -556,22 +564,24 @@ describe("readMcapRawMessageRecord", () => {
   });
 
   it("extends indexed successor observation through a sparse requested time", async () => {
-    const readIndexedMessageTimes = vi.fn(async function* () {
+    const readIndexedMessageTimes = asyncGeneratorMock(function* () {
       // No successor through the requested target.
     });
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       messages: [jsonMessage({ v: 1 }, 0n)],
       readIndexedMessageTimes,
-      readLatestIndexedMessageTimes: async () =>
-        new Map([
-          [
-            "/state",
+      readLatestIndexedMessageTimes: promiseMock(
+        () =>
+          new Map([
             [
-              indexedEntry({ logTimeNs: 0n }),
-            ] as readonly McapIndexedMessageTime[],
-          ],
-        ]),
+              "/state",
+              [
+                indexedEntry({ logTimeNs: 0n }),
+              ] as readonly McapIndexedMessageTime[],
+            ],
+          ]),
+      ),
     });
 
     const result = await readMcapRawMessageRecord({
@@ -593,10 +603,9 @@ describe("readMcapRawMessageRecord", () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       messages: [jsonMessage({ v: 1 }, 9_000_000_000n)],
-      readIndexedMessageTimes: async function* () {
-        yield indexedEntry({ logTimeNs: 9_000_000_000n });
-      },
-      readLatestIndexedMessageTimes: async () => new Map(),
+      readIndexedMessageTimes: () =>
+        asyncValues([indexedEntry({ logTimeNs: 9_000_000_000n })]),
+      readLatestIndexedMessageTimes: promiseMock(() => new Map()),
     });
 
     const result = await readMcapRawMessageRecord({
@@ -968,8 +977,8 @@ describe("readMcapRawMessageRecord", () => {
         channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       });
       reader.readMessages = vi.fn(async function* () {
-        yield* [];
         await new Promise<void>(() => undefined);
+        yield* asyncValues<McapMessage>([]);
       });
       const read = readMcapRawMessageRecord({
         reader,
@@ -1016,7 +1025,7 @@ describe("readMcapRawMessageRecord", () => {
   });
 
   it("refuses an oversized predecessor chunk before prefetching it", async () => {
-    const prefetchChunkData = vi.fn(async () => undefined);
+    const prefetchChunkData = promiseMock(() => undefined);
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       chunkIndexes: [
@@ -1029,13 +1038,15 @@ describe("readMcapRawMessageRecord", () => {
       ],
       messages: [jsonMessage({ v: 1 }, 1n)],
       prefetchChunkData,
-      readLatestIndexedMessageTimes: async () =>
-        new Map([
-          [
-            "/state",
-            [indexedEntry({ chunkStartOffset: 1_000n, logTimeNs: 1n })],
-          ],
-        ]),
+      readLatestIndexedMessageTimes: promiseMock(
+        () =>
+          new Map([
+            [
+              "/state",
+              [indexedEntry({ chunkStartOffset: 1_000n, logTimeNs: 1n })],
+            ],
+          ]),
+      ),
     });
 
     await expect(
@@ -1061,8 +1072,9 @@ describe("readMcapRawMessageRecord", () => {
         ),
         jsonMessage({ v: "selected" }, 1n),
       ],
-      readLatestIndexedMessageTimes: async () =>
-        new Map([["/state", [indexedEntry({ logTimeNs: 1n })]]]),
+      readLatestIndexedMessageTimes: promiseMock(
+        () => new Map([["/state", [indexedEntry({ logTimeNs: 1n })]]]),
+      ),
     });
 
     await expect(
@@ -1081,7 +1093,7 @@ describe("readMcapRawMessageRecord", () => {
 function protobufMessage(
   record: Record<string, unknown>,
   logTime: bigint,
-): McapTypes.TypedMcapRecords["Message"] {
+): McapMessage {
   return createMessage(
     TELEMETRY_TYPE.encode(TELEMETRY_TYPE.create(record)).finish(),
     { logTime },
@@ -1091,7 +1103,7 @@ function protobufMessage(
 function jsonMessage(
   record: Record<string, unknown>,
   logTime: bigint,
-): McapTypes.TypedMcapRecords["Message"] {
+): McapMessage {
   return createMessage(new TextEncoder().encode(JSON.stringify(record)), {
     logTime,
   });
@@ -1127,9 +1139,9 @@ function createReader({
   readLatestIndexedMessageTimes,
   schema = createSchema(TELEMETRY_SCHEMA_DATA),
 }: {
-  readonly channel?: McapTypes.TypedMcapRecords["Channel"];
-  readonly chunkIndexes?: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
-  readonly messages?: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly channel?: McapChannel;
+  readonly chunkIndexes?: readonly McapChunkIndex[];
+  readonly messages?: readonly McapMessage[];
   readonly onYield?: () => void;
   readonly prefetchChunkData?: (request: {
     readonly chunkStartOffsets: readonly bigint[];
@@ -1148,7 +1160,7 @@ function createReader({
     readonly timeNs: bigint;
     readonly topics: readonly string[];
   }) => Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>>;
-  readonly schema?: McapTypes.TypedMcapRecords["Schema"];
+  readonly schema?: McapSchema;
 }) {
   return {
     channelsById: new Map([[channel.id, channel]]),
@@ -1157,7 +1169,7 @@ function createReader({
     readIndexedMessages,
     readIndexedMessageTimes,
     readLatestIndexedMessageTimes,
-    readMessages: vi.fn(async function* (args?: {
+    readMessages: asyncGeneratorMock(function* (args?: {
       readonly endTime?: bigint;
       readonly startTime?: bigint;
     }) {
@@ -1176,13 +1188,11 @@ function createReader({
   };
 }
 
-function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
-): McapTypes.TypedMcapRecords["Channel"] {
+function createChannel(options: Partial<McapChannel> = {}): McapChannel {
   return {
     id: options.id ?? 1,
     messageEncoding: options.messageEncoding ?? "protobuf",
-    metadata: options.metadata ?? new Map(),
+    metadata: options.metadata ?? new Map<string, string>(),
     schemaId: options.schemaId ?? 3,
     topic: options.topic ?? "/telemetry",
     type: "Channel",
@@ -1191,8 +1201,8 @@ function createChannel(
 
 function createSchema(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {},
-): McapTypes.TypedMcapRecords["Schema"] {
+  options: Partial<McapSchema> = {},
+): McapSchema {
   return {
     data,
     encoding: options.encoding ?? "protobuf",
@@ -1204,8 +1214,8 @@ function createSchema(
 
 function createMessage(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Message"]> = {},
-): McapTypes.TypedMcapRecords["Message"] {
+  options: Partial<McapMessage> = {},
+): McapMessage {
   return {
     channelId: options.channelId ?? 1,
     data,

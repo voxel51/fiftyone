@@ -1,8 +1,10 @@
-import type { McapTypes } from "@mcap/core";
 import {
   materializeIndexedEntries,
+  type McapChannel,
+  type McapChunkIndex,
   type McapIndexedMessageTime,
   type McapIndexedReaderLike,
+  type McapMessage,
 } from "../../reader/index";
 import type { McapTimelineStrategy } from "../timeline";
 import type {
@@ -90,12 +92,12 @@ export function assertRawRecordIndexedCandidateBound(
 /** Conservative non-indexed validity: never spans an unobserved successor. */
 const FALLBACK_VALIDITY_STEP_NS = 1n;
 
-type McapRawMessage = McapTypes.TypedMcapRecords["Message"];
+type McapRawMessage = McapMessage;
 
 function channelForRawRequest(
   reader: McapIndexedReaderLike,
   request: { readonly channelId?: number; readonly topic: string },
-): McapTypes.TypedMcapRecords["Channel"] {
+): McapChannel {
   if (request.channelId === undefined) {
     return mcapChannelForTopic(reader, request.topic);
   }
@@ -333,7 +335,8 @@ async function selectMessageAtOrBefore({
   readonly signal?: AbortSignal;
 }): Promise<SelectedRawMessage | null> {
   throwIfAborted(signal);
-  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  const indexedMessageTimesRequest =
+    timeline.indexedMessageTimesRequest?.bind(timeline);
   if (reader.readLatestIndexedMessageTimes && indexedMessageTimesRequest) {
     const probeBoundNs = indexedMessageTimesRequest({
       endTimeNs: timeNs,
@@ -439,8 +442,7 @@ async function selectMessageAtOrBefore({
       );
     }
   } finally {
-    const returned = iterator.return?.();
-    if (returned) void returned.catch(() => undefined);
+    if (iterator.return) void iterator.return().catch(() => undefined);
   }
 
   return newest ? { message: newest } : null;
@@ -487,8 +489,8 @@ export function rawRecordWallTimeError(): EpisodeReadUnsupportedError {
 }
 
 function assertRawRecordChunksWithinBound(
-  chunks: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
-  include: (chunk: McapTypes.TypedMcapRecords["ChunkIndex"]) => boolean,
+  chunks: readonly McapChunkIndex[],
+  include: (chunk: McapChunkIndex) => boolean,
 ): void {
   let chunkCount = 0;
   let sourceBytes = 0n;
@@ -509,7 +511,7 @@ function assertExactIndexedEntryAddressable(
 ): void {
   const channel = reader.channelsById.get(entry.channelId);
   const chunk = reader.chunkIndexes.find(
-    (candidate: McapTypes.TypedMcapRecords["ChunkIndex"]) =>
+    (candidate: McapChunkIndex) =>
       candidate.chunkStartOffset === entry.chunkStartOffset,
   );
   if (!channel || channel.topic !== topic || !chunk) {
@@ -607,8 +609,7 @@ async function selectMessageForIndexedEntries({
       );
     }
   } finally {
-    const returned = iterator.return?.();
-    if (returned) void returned.catch(() => undefined);
+    if (iterator.return) void iterator.return().catch(() => undefined);
   }
   return selected ? { message: selected } : null;
 }
@@ -664,8 +665,9 @@ async function probeNextMessageTimeNs({
 }): Promise<bigint> {
   throwIfAborted(signal);
   const readIndexedMessageTimes = reader.readIndexedMessageTimes?.bind(reader);
-  const indexedMessageTimeNs = timeline.indexedMessageTimeNs;
-  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  const indexedMessageTimeNs = timeline.indexedMessageTimeNs?.bind(timeline);
+  const indexedMessageTimesRequest =
+    timeline.indexedMessageTimesRequest?.bind(timeline);
   if (
     !readIndexedMessageTimes ||
     !indexedMessageTimeNs ||
