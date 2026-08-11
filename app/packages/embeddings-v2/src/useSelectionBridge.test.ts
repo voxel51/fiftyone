@@ -74,8 +74,8 @@ describe("useSelectionBridge", () => {
     expect(fetchLassoStage).toHaveBeenCalledWith("ds", "viz", [], { polygon });
   });
 
-  // Focus chrome (legend counts) follows the gesture, not the network:
-  // the lasso's indices surface synchronously, and every clear path
+  // The legend counts follow the gesture, not the network: the
+  // lasso's indices surface synchronously, and every clear path
   // (empty gesture, clearAll) drops them
   it("exposes lasso indices synchronously and clears them", () => {
     vi.mocked(fetchLassoStage)
@@ -270,7 +270,7 @@ describe("useSelectionBridge", () => {
     expect(result.current.selectedIndices).toBeNull();
   });
 
-  it("tracks the lasso's point count for chrome, until cleared", async () => {
+  it("tracks the lasso's point count for display, until cleared", async () => {
     vi.mocked(fetchLassoStage).mockClear().mockResolvedValue({
       _cls: "fiftyone.core.stages.GeoWithin",
       kwargs: {},
