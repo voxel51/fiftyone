@@ -34,6 +34,7 @@ export type {
   McapBoundedMessageReadRequest,
   McapBoundedMessageReadResult,
   McapIndexedReaderLike,
+  McapReadable,
   McapReadContinuation,
   McapReaderFactory,
   McapStatistics,

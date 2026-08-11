@@ -1,7 +1,11 @@
-import type { McapTypes } from "@mcap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readLatestIndexedMessageTimesForReader } from "./latest-before";
-import type { McapIndexedReaderLike } from "./types";
+import type {
+  McapChannel,
+  McapChunkIndex,
+  McapIndexedReaderLike,
+  McapReadable,
+} from "./types";
 
 const MCAP_MESSAGE_INDEX_OPCODE = 0x07;
 
@@ -325,7 +329,7 @@ describe("readLatestIndexedMessageTimesForReader", () => {
 function createReader({
   chunkIndexes,
 }: {
-  readonly chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
+  readonly chunkIndexes: readonly McapChunkIndex[];
 }): McapIndexedReaderLike {
   return {
     channelsById: new Map([
@@ -333,11 +337,7 @@ function createReader({
       [8, createChannel({ id: 8, topic: "/lidar" })],
     ]),
     chunkIndexes,
-    readMessages: vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
-        yield message;
-      }
-    }),
+    readMessages: vi.fn(() => asyncValues([])),
     schemasById: new Map(),
   };
 }
@@ -348,7 +348,7 @@ function createReadable(
     readonly offset: bigint;
   }[],
 ): {
-  readonly readable: McapTypes.IReadable;
+  readonly readable: McapReadable;
   readonly reads: Array<{ readonly offset: bigint; readonly size: bigint }>;
 } {
   const size = chunks.reduce(
@@ -362,18 +362,30 @@ function createReadable(
   }
 
   const reads: Array<{ readonly offset: bigint; readonly size: bigint }> = [];
-  const readRange = vi.fn(async (offset: bigint, readSize: bigint) => {
+  const readRange = vi.fn((offset: bigint, readSize: bigint) => {
     reads.push({ offset, size: readSize });
-    return buffer.slice(Number(offset), Number(offset + readSize));
+    return Promise.resolve(
+      buffer.slice(Number(offset), Number(offset + readSize)),
+    );
   });
 
   return {
     readable: {
       read: readRange,
-      size: vi.fn(async () => BigInt(buffer.byteLength)),
-    } as McapTypes.IReadable,
+      size: vi.fn<McapReadable["size"]>(() =>
+        Promise.resolve(BigInt(buffer.byteLength)),
+      ),
+    },
     reads,
   };
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncGenerator<Value, void, void> {
+  for await (const value of values) {
+    yield value;
+  }
 }
 
 function createMessageIndexRecord(
@@ -400,8 +412,8 @@ function createMessageIndexRecord(
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
-): McapTypes.TypedMcapRecords["ChunkIndex"] {
+  options: Partial<McapChunkIndex> = {},
+): McapChunkIndex {
   return {
     chunkLength: options.chunkLength ?? 256n,
     chunkStartOffset: options.chunkStartOffset ?? 1_000n,
@@ -409,16 +421,15 @@ function createChunkIndex(
     compression: options.compression ?? "",
     messageEndTime: options.messageEndTime ?? 20n,
     messageIndexLength: options.messageIndexLength ?? 0n,
-    messageIndexOffsets: options.messageIndexOffsets ?? new Map(),
+    messageIndexOffsets:
+      options.messageIndexOffsets ?? new Map<number, bigint>(),
     messageStartTime: options.messageStartTime ?? 10n,
     type: "ChunkIndex",
     uncompressedSize: options.uncompressedSize ?? 0n,
   };
 }
 
-function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
-): McapTypes.TypedMcapRecords["Channel"] {
+function createChannel(options: Partial<McapChannel> = {}): McapChannel {
   return {
     id: options.id ?? 7,
     messageEncoding: "protobuf",

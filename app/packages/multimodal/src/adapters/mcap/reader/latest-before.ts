@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { compareBigInt } from "../../../ir";
 import { throwIfAborted } from "../../../utils/cancellation";
 import {
@@ -9,6 +8,8 @@ import {
 import type {
   McapIndexedMessageTime,
   McapIndexedReaderLike,
+  McapChunkIndex,
+  McapReadable,
   McapReadLatestIndexedMessageTimesRequest,
 } from "./types";
 import { positiveIntegerOption } from "./validation";
@@ -34,7 +35,7 @@ export const DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES = 64;
  */
 export async function readLatestIndexedMessageTimesForReader(
   reader: McapIndexedReaderLike,
-  readable: McapTypes.IReadable,
+  readable: McapReadable,
   args: McapReadLatestIndexedMessageTimesRequest,
 ): Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>> {
   throwIfAborted(args.signal);
@@ -86,7 +87,7 @@ async function latestEntriesForTopic({
 }: {
   readonly limit: number;
   readonly maxChunkProbes: number;
-  readonly readable: McapTypes.IReadable;
+  readonly readable: McapReadable;
   readonly reader: McapIndexedReaderLike;
   readonly requestedChannelIds?: readonly number[];
   readonly signal?: AbortSignal;
@@ -107,9 +108,7 @@ async function latestEntriesForTopic({
 
   // Membership comes from the in-memory summary — chunks that can't
   // contain a qualifying entry cost zero I/O.
-  const chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
-    reader.chunkIndexes;
-  const memberChunks = chunkIndexes
+  const memberChunks = reader.chunkIndexes
     .filter(
       (chunkIndex) =>
         chunkIndex.messageStartTime <= timeNs &&
@@ -164,7 +163,7 @@ async function latestEntriesForTopic({
 }
 
 function chunkHasAnyChannel(
-  chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
+  chunkIndex: McapChunkIndex,
   channelIds: ReadonlySet<number>,
 ): boolean {
   for (const channelId of channelIds) {

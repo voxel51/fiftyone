@@ -366,3 +366,14 @@ export interface McapIndexedReaderLike {
    */
   prefetchWindow?(request: McapPrefetchWindowRequest): Promise<void>;
 }
+
+/** Minimal byte-readable contract consumed by the adapter's index readers. */
+export interface McapReadable {
+  read(offset: bigint, size: bigint): Promise<Uint8Array>;
+  readExact?(
+    offset: bigint,
+    size: bigint,
+    signal?: AbortSignal,
+  ): Promise<Uint8Array>;
+  size(): Promise<bigint>;
+}

@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import {
   createMcapDecompressedChunkCache,
@@ -6,6 +5,7 @@ import {
   type McapDecompressedChunkKey,
 } from "./decompressed-chunk-cache";
 import { mcapDecompressedChunkKeyForIndex } from "./chunk-records";
+import type { McapChunkIndex } from "./types";
 
 const key = (overrides: Partial<McapDecompressedChunkKey> = {}) => ({
   compressedLength: 4n,
@@ -36,11 +36,17 @@ describe("MCAP decompressed chunk cache", () => {
   it("keys an indexed chunk by its exact compressed payload slice", () => {
     expect(
       mcapDecompressedChunkKeyForIndex("source-a:version-1", {
+        chunkLength: 57n,
         chunkStartOffset: 100n,
         compressedSize: 4n,
         compression: "zstd",
+        messageEndTime: 0n,
+        messageIndexLength: 0n,
+        messageIndexOffsets: new Map<number, bigint>(),
+        messageStartTime: 0n,
+        type: "ChunkIndex",
         uncompressedSize: 8n,
-      } as McapTypes.TypedMcapRecords["ChunkIndex"]),
+      } satisfies McapChunkIndex),
     ).toEqual({
       compressedLength: 4n,
       compressedOffset: 153n,
