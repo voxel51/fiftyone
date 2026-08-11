@@ -172,7 +172,12 @@ class MuseGlimmerOutputProcessor(fout.OutputProcessor):
 
             try:
                 x1, y1, x2, y2 = (float(v) for v in bbox)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
+                continue
+
+            # JSON permits NaN and Infinity literals; NaN also passes the
+            # positive-area check below
+            if not all(np.isfinite(v) for v in (x1, y1, x2, y2)):
                 continue
             # Muse Glimmer reports bbox_2d on a 0-1000 normalized scale
             # with x first; convert to 0-1
@@ -388,6 +393,9 @@ class MuseGlimmerModel(fout.TorchImageModel):
             img = np.clip(img, 0, 255).astype(np.uint8)
 
         if isinstance(img, np.ndarray):
+            # Pillow maps grayscale to 2D arrays; collapse a singleton channel
+            if img.ndim == 3 and img.shape[2] == 1:
+                img = img[:, :, 0]
             img = PILImage.fromarray(img)
 
         return img

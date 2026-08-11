@@ -221,6 +221,19 @@ class TestMuseGlimmerDetectionParsing:
 
         assert len(detections) == 0
 
+    def test_parse_non_finite_coordinates(self):
+        processor = MuseGlimmerOutputProcessor()
+
+        big_int = "9" * 400
+        for raw in (
+            '[{"label": "cat", "bbox_2d": [NaN, 0, 500, 500]}]',
+            '[{"label": "cat", "bbox_2d": [0, Infinity, 500, 500]}]',
+            '[{"label": "cat", "bbox_2d": [0, -Infinity, 500, 500]}]',
+            '[{"label": "cat", "bbox_2d": [%s, 0, 500, 500]}]' % big_int,
+        ):
+            detections = processor._parse_detections(raw, (1000, 1000))
+            assert len(detections) == 0, f"Expected empty for: {raw[:60]}"
+
     def test_clamp_out_of_range(self):
         processor = MuseGlimmerOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [-100, -100, 1100, 1100]}]'
