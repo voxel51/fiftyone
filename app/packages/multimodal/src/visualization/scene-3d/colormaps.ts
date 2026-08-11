@@ -83,7 +83,7 @@ export function getGradientFromSchemeName(
       colormap: normalizedName,
       format: "hex",
       nshades: stopCount,
-    }) as string[];
+    });
 
     return colors.map((color, index) => ({
       color: normalizeHexColor(color) ?? "#000000",

@@ -106,11 +106,12 @@ describe("renderPointCloudSnapshot", () => {
     expect(fake.captures.length).toBe(1);
 
     controller.abort();
-    const bitmap = fakeBitmap();
+    const close = vi.fn();
+    const bitmap = fakeBitmap(4, 4, close);
     fake.captures[0].resolve(bitmap);
 
     expect(await result).toBeNull();
-    expect(bitmap.close).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
     expect(webGpuSnapshotRendererStats().jobsCancelled).toBe(1);
   });
 
@@ -355,28 +356,30 @@ function createFakeBackend() {
   const handles: Array<{ dispose: ReturnType<typeof vi.fn> }> = [];
   let failNext: Error | null = null;
 
-  const createRenderer = vi.fn(async () => {
-    if (failNext) {
-      const error = failNext;
-      failNext = null;
-      throw error;
-    }
+  const createRenderer = vi.fn<WebGpuSnapshotBackend["createRenderer"]>(() =>
+    Promise.resolve().then(() => {
+      if (failNext) {
+        const error = failNext;
+        failNext = null;
+        throw error;
+      }
 
-    const handle = {
-      dispose: vi.fn(),
-      renderAndCapture: (
-        scene: THREE.Scene,
-        camera: THREE.PerspectiveCamera,
-        width: number,
-        height: number,
-      ) =>
-        new Promise<ImageBitmap>((resolve, reject) => {
-          captures.push({ camera, height, reject, resolve, scene, width });
-        }),
-    };
-    handles.push(handle);
-    return handle;
-  });
+      const handle = {
+        dispose: vi.fn(),
+        renderAndCapture: (
+          scene: THREE.Scene,
+          camera: THREE.PerspectiveCamera,
+          width: number,
+          height: number,
+        ) =>
+          new Promise<ImageBitmap>((resolve, reject) => {
+            captures.push({ camera, height, reject, resolve, scene, width });
+          }),
+      };
+      handles.push(handle);
+      return handle;
+    }),
+  );
 
   const backend: WebGpuSnapshotBackend = { createRenderer };
 
@@ -391,8 +394,8 @@ function createFakeBackend() {
   };
 }
 
-function fakeBitmap(width = 4, height = 4): ImageBitmap {
-  return { close: vi.fn(), height, width } as unknown as ImageBitmap;
+function fakeBitmap(width = 4, height = 4, close = vi.fn()): ImageBitmap {
+  return { close, height, width } as unknown as ImageBitmap;
 }
 
 function findPoints(scene: THREE.Scene): THREE.Points {

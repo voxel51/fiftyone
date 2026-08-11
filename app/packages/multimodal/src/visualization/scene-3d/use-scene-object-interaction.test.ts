@@ -15,7 +15,7 @@ afterEach(() => {
 
 describe("scene object interaction", () => {
   it("keeps overlapping targets active until each target's final hit leaves", () => {
-    const onEnter = vi.fn();
+    const onEnter = vi.fn<(target: string) => void>();
     const onLeave = vi.fn();
     const { result } = renderHook(() =>
       useSceneHoverLifecycle({

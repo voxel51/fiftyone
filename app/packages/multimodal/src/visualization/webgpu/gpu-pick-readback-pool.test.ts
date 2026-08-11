@@ -28,7 +28,7 @@ describe("GPU pick readback pool", () => {
       })),
       queue: { submit: vi.fn() },
     };
-    const publicReadback = vi.fn(async () => new Uint32Array(4));
+    const publicReadback = vi.fn(() => Promise.resolve(new Uint32Array(4)));
     const renderer = {
       backend: {
         device,
@@ -58,7 +58,7 @@ describe("GPU pick readback pool", () => {
 
   it("uses Three's public path when direct WebGPU access is unavailable", async () => {
     const pixels = Uint32Array.from([1, 2, 0, 1]);
-    const publicReadback = vi.fn(async () => pixels);
+    const publicReadback = vi.fn(() => Promise.resolve(pixels));
     const renderer = { readRenderTargetPixelsAsync: publicReadback };
     const target = new THREE.RenderTarget(1, 1);
     const lease = acquireGpuPickReadbackPool(renderer);
@@ -73,7 +73,7 @@ describe("GPU pick readback pool", () => {
 class FakeGpuBuffer {
   readonly bytes = new ArrayBuffer(256);
   readonly destroy = vi.fn();
-  readonly mapAsync = vi.fn(async () => undefined);
+  readonly mapAsync = vi.fn(() => Promise.resolve());
   readonly unmap = vi.fn();
 
   getMappedRange(offset: number, size: number): ArrayBuffer {

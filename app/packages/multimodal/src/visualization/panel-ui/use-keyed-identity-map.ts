@@ -35,7 +35,10 @@ export function useKeyedIdentityMap<Item, Out>(
   const cacheRef = useRef<Map<string, KeyedIdentityEntry<Out>> | null>(null);
   const lastArrayRef = useRef<readonly Out[] | null>(null);
 
-  const cache = (cacheRef.current ??= new Map());
+  const cache = (cacheRef.current ??= new Map<
+    string,
+    KeyedIdentityEntry<Out>
+  >());
   const seen = new Set<string>();
   const next = items.map((item, index) => {
     const key = options.key(item, index);

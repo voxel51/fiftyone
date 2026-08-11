@@ -194,7 +194,7 @@ export function pointsLayerIdForObject(
 ): string | null {
   let current = object;
   while (current) {
-    const layerId = current.userData?.[POINT_PICK_LAYER_ID_KEY];
+    const layerId: unknown = current.userData?.[POINT_PICK_LAYER_ID_KEY];
     if (typeof layerId === "string") {
       return layerId;
     }

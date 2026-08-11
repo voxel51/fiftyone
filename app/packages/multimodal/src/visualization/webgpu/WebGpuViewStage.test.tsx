@@ -464,7 +464,9 @@ function StageState() {
 }
 
 function fireWindowResize() {
-  act(() => window.dispatchEvent(new Event("resize")));
+  act(() => {
+    window.dispatchEvent(new Event("resize"));
+  });
 }
 
 function rect({
