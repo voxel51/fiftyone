@@ -404,7 +404,7 @@ describe("Scene3dTileSettings", () => {
       uniformColor: "#b8c2d1",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    fireEvent.click(screen.getByRole("button", { name: "Default colormap" }));
     expect(storedPointCloudColor(LIDAR.id)).toEqual({
       colorBy: "ring",
       colormap: "turbo",
@@ -438,8 +438,7 @@ describe("Scene3dTileSettings", () => {
 
   it("wires the global point size control to the settings updater", () => {
     renderSettings();
-    ensurePointCloudStyleExpanded();
-    const input = screen.getByRole("spinbutton", { name: "Point size" });
+    const input = screen.getByRole("spinbutton", { name: "Point size (px)" });
 
     expect(input.getAttribute("aria-valuemax")).toBe("10");
     expect(input.getAttribute("aria-valuemin")).toBe("1");
@@ -464,10 +463,16 @@ describe("Scene3dTileSettings", () => {
       pointCloudStreams: [LIDAR.id, radar.id],
       selectedPointCloudSources: [LIDAR, radar],
     });
-    ensurePointCloudStyleExpanded();
-
-    expect(screen.getByText("Turbo")).toBeTruthy();
-    expect(screen.getByText("Cool-warm")).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: /^Edit style for LIDAR_TOP: Auto · Turbo/,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: /^Edit style for RADAR_FRONT: Auto · Cool-warm/,
+      }),
+    ).toBeTruthy();
   });
 
   it("resets a source row to that source's default colormap", () => {
@@ -486,10 +491,9 @@ describe("Scene3dTileSettings", () => {
       pointCloudStreams: [LIDAR.id, radar.id],
       selectedPointCloudSources: [LIDAR, radar],
     });
-    ensurePointCloudStyleExpanded();
-
+    expandColorSource(radar.label);
     fireEvent.click(
-      screen.getByRole("button", { name: `Reset color for ${radar.label}` }),
+      screen.getByRole("button", { name: `Reset style for ${radar.label}` }),
     );
 
     expect(storedPointCloudColor(radar.id)).toEqual({
@@ -519,7 +523,7 @@ describe("Scene3dTileSettings", () => {
     });
 
     expandColorSource(radar.label);
-    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    fireEvent.click(screen.getByRole("button", { name: "Default colormap" }));
 
     expect(storedPointCloudColor(radar.id)).toEqual({
       colorBy: "height",
@@ -559,7 +563,6 @@ describe("Scene3dTileSettings", () => {
 
   it("wires the point cloud color legend switch to the settings updater", () => {
     renderSettings();
-    ensurePointCloudStyleExpanded();
 
     fireEvent.click(
       screen.getByRole("switch", { name: "Show point cloud color legend" }),
@@ -724,11 +727,15 @@ describe("Scene3dTileSettings", () => {
       pointCloudStreams: [LIDAR.id, radar.id],
       selectedPointCloudSources: [LIDAR, radar],
     });
-    ensurePointCloudStyleExpanded();
-
-    expect(screen.getByRole("button", { name: "Edit color for LIDAR_TOP" }));
     expect(
-      screen.getByRole("button", { name: "Edit color for RADAR_FRONT" }),
+      screen.getByRole("button", {
+        name: /^Edit style for LIDAR_TOP:/,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: /^Edit style for RADAR_FRONT:/,
+      }),
     ).toBeTruthy();
 
     expandColorSource(LIDAR.label);
@@ -759,11 +766,75 @@ describe("Scene3dTileSettings", () => {
     ).toBeNull();
   });
 
-  it("collapses point cloud style controls by default", () => {
+  it("keeps point cloud selection and style in one section", () => {
     renderSettings();
 
-    expect(screen.queryByRole("spinbutton", { name: "Point size" })).toBeNull();
-    expect(screen.queryByText("2px · legend off · 1 active")).toBeTruthy();
+    expect(screen.queryByText("Point Clouds (Style)")).toBeNull();
+    expect(
+      screen.getByRole("spinbutton", { name: "Point size (px)" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /^Edit style for LIDAR_TOP:/ }),
+    ).toBeTruthy();
+  });
+
+  it("disables style disclosure for point clouds that are off", () => {
+    const radar = source("RADAR_FRONT", "RADAR_FRONT", LIDAR.type, 50);
+    renderSettings({
+      pointCloudSources: [LIDAR, radar],
+      pointCloudStreams: [LIDAR.id],
+      selectedPointCloudSources: [LIDAR],
+    });
+
+    expect(
+      screen
+        .getByRole("button", { name: /^Edit style for RADAR_FRONT:/ })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+  });
+
+  it("closes a source style editor when that source turns off", () => {
+    const props = renderSettings();
+    expandColorSource(LIDAR.label);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: LIDAR.label }));
+
+    expect(props.toggleSource).toHaveBeenCalledWith(LIDAR.id, false);
+    expect(
+      screen.queryByRole("combobox", { name: /^Color \(LIDAR_TOP\)/ }),
+    ).toBeNull();
+  });
+
+  it("closes the source style editor when all point clouds turn off", () => {
+    const props = renderSettings();
+    expandColorSource(LIDAR.label);
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Toggle point clouds" }),
+    );
+
+    expect(props.setSourcesEnabled).toHaveBeenCalledWith([LIDAR.id], false);
+    expect(
+      screen.queryByRole("combobox", { name: /^Color \(LIDAR_TOP\)/ }),
+    ).toBeNull();
+  });
+
+  it("summarizes point cloud style overrides when collapsed", () => {
+    renderSettings({
+      pointCloudColors: {
+        [LIDAR.id]: {
+          colorBy: "height",
+          colormap: "viridis",
+          rangeMax: null,
+          rangeMin: null,
+          uniformColor: "#b8c2d1",
+        },
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Point Clouds/ }));
+
+    expect(screen.getByText("1 of 1 on · 1 styled")).toBeTruthy();
   });
 
   it("offers the color picker only for the solid background", () => {
@@ -801,21 +872,11 @@ function expandAppearance() {
   fireEvent.click(screen.getByRole("button", { name: /Appearance/ }));
 }
 
-function ensurePointCloudStyleExpanded() {
-  const button = screen.getByRole("button", {
-    name: /Point Clouds \(Style\)/,
-  });
-  if (button.getAttribute("aria-expanded") !== "true") {
-    fireEvent.click(
-      screen.getByRole("button", { name: /Point Clouds \(Style\)/ }),
-    );
-  }
-}
-
 function expandColorSource(label: string) {
-  ensurePointCloudStyleExpanded();
   fireEvent.click(
-    screen.getByRole("button", { name: `Edit color for ${label}` }),
+    screen.getByRole("button", {
+      name: new RegExp(`^Edit style for ${label}:`),
+    }),
   );
 }
 

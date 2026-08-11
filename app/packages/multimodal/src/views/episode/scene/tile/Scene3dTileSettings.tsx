@@ -1,5 +1,5 @@
 import { Checkbox, Size, Toggle } from "@voxel51/voodo";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import type { SceneSource } from "../../../../scene-inventory/index";
 import {
   isFollowTrackingMode,
@@ -7,6 +7,7 @@ import {
 } from "../camera/scene-3d-camera";
 import {
   DEFAULT_IMAGE_PROJECTION,
+  defaultPointCloudColorForSource,
   type SceneBackgroundMode,
   usePinholeCameraSettings,
   useImageProjectionSettingsByStream,
@@ -17,7 +18,12 @@ import {
 } from "../../settings/modal/state";
 import type { ImageGeometryMode } from "../../spatial/camera-geometry/camera-model";
 import type { PointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
-import { PointCloudStyleSection } from "./PointCloudStyleSection";
+import {
+  isDefaultPointCloudColorSettings,
+  PointCloudDisplayControls,
+  PointCloudStyleButton,
+  PointCloudStyleEditor,
+} from "./PointCloudStyleSection";
 import type { PoseTrajectories } from "../entities/pose-trajectories-context";
 import { settingsBooleanNoSpaceToggleProps } from "../../settings/controls/settings-keyboard";
 import { FrameSelect } from "../../settings/controls/FrameSelect";
@@ -170,6 +176,91 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
   const { enabled, setSourcesEnabled, toggleSource } = selection;
   const pointCloudSources = sourceGroups.pointCloud.sources;
   const pointCloudStreams = sourceGroups.pointCloud.streams;
+  const selectedPointCloudSources = pointCloudInputs.selectedSources;
+  const selectedPointCloudSourceIds = new Set(
+    selectedPointCloudSources.map((source) => source.id),
+  );
+  const [expandedPointCloudSourceId, setExpandedPointCloudSourceId] = useState<
+    string | null
+  >(null);
+
+  const pointCloudStyleBySourceId = new Map(
+    pointCloudSources.map((source) => {
+      const defaultSettings = defaultPointCloudColorForSource(
+        source,
+        pointCloudSources,
+      );
+      const settings = pointCloudColors[source.id] ?? defaultSettings;
+      return [
+        source.id,
+        {
+          customized: !isDefaultPointCloudColorSettings(
+            settings,
+            defaultSettings,
+          ),
+          defaultSettings,
+          settings,
+          source,
+        },
+      ] as const;
+    }),
+  );
+  const styledPointCloudCount = [...pointCloudStyleBySourceId.values()].filter(
+    ({ customized }) => customized,
+  ).length;
+  const pointCloudStyleControlsBySourceId = new Map(
+    [...pointCloudStyleBySourceId].map(([sourceId, style]) => [
+      sourceId,
+      <PointCloudStyleButton
+        customized={style.customized}
+        disabled={!selectedPointCloudSourceIds.has(sourceId)}
+        expanded={expandedPointCloudSourceId === sourceId}
+        key={sourceId}
+        onClick={() =>
+          setExpandedPointCloudSourceId((current) =>
+            current === sourceId ? null : sourceId,
+          )
+        }
+        settings={style.settings}
+        sourceLabel={style.source.label}
+      />,
+    ]),
+  );
+  const expandedPointCloudStyle = expandedPointCloudSourceId
+    ? pointCloudStyleBySourceId.get(expandedPointCloudSourceId)
+    : undefined;
+  const pointCloudStyleContentBySourceId = new Map(
+    expandedPointCloudSourceId && expandedPointCloudStyle
+      ? [
+          [
+            expandedPointCloudSourceId,
+            <PointCloudStyleEditor
+              capabilities={pointCloudInputs.colorCapabilities.get(
+                expandedPointCloudSourceId,
+              )}
+              customized={expandedPointCloudStyle.customized}
+              defaultSettings={expandedPointCloudStyle.defaultSettings}
+              key={expandedPointCloudSourceId}
+              onChange={(patch) =>
+                setPointCloudColor(expandedPointCloudSourceId, {
+                  ...expandedPointCloudStyle.defaultSettings,
+                  ...expandedPointCloudStyle.settings,
+                  ...patch,
+                })
+              }
+              onReset={() =>
+                setPointCloudColor(
+                  expandedPointCloudSourceId,
+                  expandedPointCloudStyle.defaultSettings,
+                )
+              }
+              settings={expandedPointCloudStyle.settings}
+              sourceLabel={expandedPointCloudStyle.source.label}
+            />,
+          ] as const,
+        ]
+      : [],
+  );
   const cameraSources = sourceGroups.camera.sources;
   const cameraStreams = sourceGroups.camera.streams;
   const cameraDetailsBySourceId = useMemo(
@@ -240,8 +331,6 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
   const poseStreams = sourceGroups.pose.streams;
   const mapLayerSources = sourceGroups.mapLayer.sources;
   const mapLayerStreams = sourceGroups.mapLayer.streams;
-  const pointCloudColorCapabilities = pointCloudInputs.colorCapabilities;
-  const selectedPointCloudSources = pointCloudInputs.selectedSources;
   const selectedPoseSources = poseControls.selectedSources;
   const trackingMode = trackingControls.mode;
   const setTrackingMode = trackingControls.setMode;
@@ -280,32 +369,37 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
       </SidebarGroup>
 
       <SourceGroup
+        beforeSources={
+          <PointCloudDisplayControls
+            pointCloudPointSize={pointCloudPointSize}
+            setPointCloudPointSize={setPointCloudPointSize}
+            setShowPointCloudColorLegend={setShowPointCloudColorLegend}
+            showPointCloudColorLegend={showPointCloudColorLegend}
+          />
+        }
+        contentBySourceId={pointCloudStyleContentBySourceId}
+        controlsBySourceId={pointCloudStyleControlsBySourceId}
         enabled={enabled}
         selectedCount={pointCloudStreams.length}
-        setSourcesEnabled={setSourcesEnabled}
+        setSourcesEnabled={(sourceIds, checked) => {
+          if (!checked) setExpandedPointCloudSourceId(null);
+          setSourcesEnabled(sourceIds, checked);
+        }}
         sources={pointCloudSources}
+        summary={`${pointCloudStreams.length} of ${pointCloudSources.length} on${styledPointCloudCount > 0 ? ` · ${styledPointCloudCount} styled` : ""}`}
         title="Point Clouds"
         toggleAriaLabel="Toggle point clouds"
-        toggleSource={toggleSource}
+        toggleSource={(sourceId, checked) => {
+          if (!checked && expandedPointCloudSourceId === sourceId) {
+            setExpandedPointCloudSourceId(null);
+          }
+          toggleSource(sourceId, checked);
+        }}
       />
-
-      {pointCloudSources.length > 0 ? (
-        <PointCloudStyleSection
-          pointCloudColorCapabilities={pointCloudColorCapabilities}
-          pointCloudColors={pointCloudColors}
-          pointCloudPointSize={pointCloudPointSize}
-          pointCloudSources={pointCloudSources}
-          selectedPointCloudSources={selectedPointCloudSources}
-          setPointCloudColor={setPointCloudColor}
-          setPointCloudPointSize={setPointCloudPointSize}
-          setShowPointCloudColorLegend={setShowPointCloudColorLegend}
-          showPointCloudColorLegend={showPointCloudColorLegend}
-        />
-      ) : null}
 
       <SourceGroup
         beforeSources={
-          <div className={settingsStyles.cameraDisplayControls}>
+          <div className={settingsStyles.sharedDisplayControls}>
             <SettingsNumberInput
               label="Frustum depth (m)"
               max={100}
@@ -500,6 +594,7 @@ function isImageGeometryMode(value: unknown): value is ImageGeometryMode {
 function SourceGroup({
   beforeSources,
   children,
+  contentBySourceId,
   controlsBySourceId,
   detailsBySourceId,
   enabled,
@@ -507,6 +602,7 @@ function SourceGroup({
   selectedCount,
   setSourcesEnabled,
   sources,
+  summary: summaryOverride,
   title,
   toggleAriaLabel,
   toggleSource,
@@ -514,6 +610,7 @@ function SourceGroup({
 }: {
   readonly beforeSources?: React.ReactNode;
   readonly children?: React.ReactNode;
+  readonly contentBySourceId?: ReadonlyMap<string, React.ReactNode>;
   readonly controlsBySourceId?: ReadonlyMap<string, React.ReactNode>;
   readonly detailsBySourceId?: ReadonlyMap<string, readonly string[]>;
   readonly enabled: ReadonlySet<string>;
@@ -524,6 +621,7 @@ function SourceGroup({
     checked: boolean,
   ) => void;
   readonly sources: readonly SceneSource[];
+  readonly summary?: string;
   readonly title: string;
   readonly toggleAriaLabel: string;
   readonly toggleSource: (id: string, checked: boolean) => void;
@@ -538,7 +636,7 @@ function SourceGroup({
   const issueCount = sources.filter(
     (source) => (detailsBySourceId?.get(source.id)?.length ?? 0) > 0,
   ).length;
-  const summary = (() => {
+  const defaultSummary = (() => {
     if (unavailableCount > 0) {
       return `${selectedCount} on · ${unavailableCount} unavailable`;
     }
@@ -547,6 +645,7 @@ function SourceGroup({
     }
     return `${selectedCount} of ${sources.length} on`;
   })();
+  const summary = summaryOverride ?? defaultSummary;
 
   return (
     <SidebarGroup
@@ -577,6 +676,7 @@ function SourceGroup({
                 />
                 {controlsBySourceId?.get(s.id)}
               </div>
+              {contentBySourceId?.get(s.id)}
               {details.map((detail, index) => (
                 <div
                   className={settingsStyles.metaText}

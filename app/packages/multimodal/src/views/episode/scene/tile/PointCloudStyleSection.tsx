@@ -19,7 +19,6 @@ import {
 } from "@voxel51/voodo";
 import type { Descriptor } from "@voxel51/voodo";
 import React, { useEffect, useMemo, useState } from "react";
-import type { SceneSource } from "../../../../scene-inventory/index";
 import {
   colormapCssGradient,
   POINT_CLOUD_COLORMAP_LABELS,
@@ -43,70 +42,31 @@ import {
   MAX_POINT_CLOUD_POINT_SIZE,
   POINT_CLOUD_POINT_SIZE_STEP,
   MIN_POINT_CLOUD_POINT_SIZE,
-  defaultPointCloudColorForSource,
   type PersistedPointCloudColorSettings,
 } from "../../settings/modal/state";
 import { settingsBooleanNoSpaceToggleProps } from "../../settings/controls/settings-keyboard";
 import { SettingsNumberField } from "../../settings/controls/SettingsNumberField";
 import { SettingsNumberInput } from "../../settings/controls/SettingsNumberInput";
 import { SettingsLabel } from "../../settings/controls/SettingsLabel";
-import SidebarGroup from "../../settings/controls/SidebarGroup";
 import settingsStyles from "../../tiles/Tile.settings.module.css";
 import type { PointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 
-/** Point-cloud appearance controls for the focused 3D scene tile. */
-export function PointCloudStyleSection({
-  pointCloudColorCapabilities,
-  pointCloudColors,
+/** Shared appearance controls shown once above the point-cloud source rows. */
+export function PointCloudDisplayControls({
   pointCloudPointSize,
-  pointCloudSources,
-  selectedPointCloudSources,
-  setPointCloudColor,
   setPointCloudPointSize,
   setShowPointCloudColorLegend,
   showPointCloudColorLegend,
 }: {
-  readonly pointCloudColorCapabilities: ReadonlyMap<
-    string,
-    PointCloudColorCapabilities
-  >;
-  readonly pointCloudColors: Record<string, PersistedPointCloudColorSettings>;
   readonly pointCloudPointSize: number;
-  readonly pointCloudSources: readonly SceneSource[];
-  readonly selectedPointCloudSources: readonly SceneSource[];
-  readonly setPointCloudColor: (
-    stream: string,
-    settings: Partial<PersistedPointCloudColorSettings>,
-  ) => void;
   readonly setPointCloudPointSize: (pointSize: number) => void;
   readonly setShowPointCloudColorLegend: (visible: boolean) => void;
   readonly showPointCloudColorLegend: boolean;
 }) {
-  const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null);
-  const summary = `${pointCloudPointSize}px · ${
-    showPointCloudColorLegend ? "legend on" : "legend off"
-  } · ${selectedPointCloudSources.length} active`;
-
-  // This effect closes details for a point cloud that is no longer selected.
-  useEffect(() => {
-    if (
-      expandedSourceId &&
-      !selectedPointCloudSources.some(
-        (source) => source.id === expandedSourceId,
-      )
-    ) {
-      setExpandedSourceId(null);
-    }
-  }, [expandedSourceId, selectedPointCloudSources]);
-
   return (
-    <SidebarGroup
-      defaultExpanded={false}
-      summary={summary}
-      title="Point Clouds (Style)"
-    >
+    <div className={settingsStyles.sharedDisplayControls}>
       <SettingsNumberInput
-        label="Point size"
+        label="Point size (px)"
         max={MAX_POINT_CLOUD_POINT_SIZE}
         min={MIN_POINT_CLOUD_POINT_SIZE}
         onChange={setPointCloudPointSize}
@@ -117,7 +77,7 @@ export function PointCloudStyleSection({
       <div className={settingsStyles.field}>
         <div className={settingsStyles.sectionHeader}>
           <SettingsLabel
-            label="Show color legend"
+            label="Color legend"
             tooltip="Shows the active scalar color ramps in the top-left of the 3D view."
           />
           <Toggle
@@ -129,82 +89,92 @@ export function PointCloudStyleSection({
           />
         </div>
       </div>
-      {selectedPointCloudSources.length > 0 ? (
-        <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-          <div className={settingsStyles.colorSourceList}>
-            {selectedPointCloudSources.map((source) => {
-              const defaultSettings = defaultPointCloudColorForSource(
-                source,
-                pointCloudSources,
-              );
-              const settings = pointCloudColors[source.id] ?? defaultSettings;
-              const expanded = expandedSourceId === source.id;
-              const customized = !isDefaultPointCloudColorSettings(
-                settings,
-                defaultSettings,
-              );
-              return (
-                <div className={settingsStyles.colorSourceItem} key={source.id}>
-                  <div className={settingsStyles.colorSourceRow}>
-                    <button
-                      aria-expanded={expanded}
-                      aria-label={`Edit color for ${source.label}`}
-                      className={settingsStyles.colorSourceSummary}
-                      onClick={() =>
-                        setExpandedSourceId(expanded ? null : source.id)
-                      }
-                      type="button"
-                    >
-                      <span className={settingsStyles.colorSourceName}>
-                        {source.label}
-                      </span>
-                      <PointCloudColorSummary settings={settings} />
-                      <span className={settingsStyles.colorChip}>
-                        {customized ? "Override" : "Default"}
-                      </span>
-                    </button>
-                    <Button
-                      aria-label={`Reset color for ${source.label}`}
-                      disabled={!customized}
-                      onClick={() =>
-                        setPointCloudColor(source.id, defaultSettings)
-                      }
-                      size={Size.Xs}
-                      variant={Variant.Secondary}
-                    >
-                      Reset
-                    </Button>
-                  </div>
-                  {expanded ? (
-                    <div className={settingsStyles.colorSourceEditor}>
-                      <PointCloudColorControls
-                        capabilities={pointCloudColorCapabilities.get(
-                          source.id,
-                        )}
-                        defaultColormap={defaultSettings.colormap}
-                        onChange={(patch) =>
-                          setPointCloudColor(source.id, {
-                            ...defaultSettings,
-                            ...settings,
-                            ...patch,
-                          })
-                        }
-                        settings={settings}
-                        sourceLabel={source.label}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </Stack>
-      ) : (
-        <span className={settingsStyles.emptyText}>
-          Select a point cloud to configure its colors.
-        </span>
-      )}
-    </SidebarGroup>
+    </div>
+  );
+}
+
+/** Compact per-source color preview that discloses the full style editor. */
+export function PointCloudStyleButton({
+  customized,
+  disabled,
+  expanded,
+  onClick,
+  settings,
+  sourceLabel,
+}: {
+  readonly customized: boolean;
+  readonly disabled: boolean;
+  readonly expanded: boolean;
+  readonly onClick: () => void;
+  readonly settings: PersistedPointCloudColorSettings;
+  readonly sourceLabel: string;
+}) {
+  const summary = pointCloudStyleSummary(settings);
+  const className = customized
+    ? `${settingsStyles.pointCloudStyleButton} ${settingsStyles.pointCloudStyleButtonCustomized}`
+    : settingsStyles.pointCloudStyleButton;
+
+  return (
+    <button
+      aria-expanded={expanded}
+      aria-label={`Edit style for ${sourceLabel}: ${summary}${customized ? ", custom" : ""}`}
+      className={className}
+      disabled={disabled}
+      onClick={onClick}
+      title={`${summary}${customized ? " · custom" : ""}`}
+      type="button"
+    >
+      <PointCloudStylePreview settings={settings} />
+      <span
+        aria-hidden="true"
+        className={settingsStyles.pointCloudStyleChevron}
+      >
+        {expanded ? "▴" : "▾"}
+      </span>
+    </button>
+  );
+}
+
+/** Full color editor revealed beneath one point-cloud source row. */
+export function PointCloudStyleEditor({
+  capabilities,
+  customized,
+  defaultSettings,
+  onChange,
+  onReset,
+  settings,
+  sourceLabel,
+}: {
+  readonly capabilities?: PointCloudColorCapabilities;
+  readonly customized: boolean;
+  readonly defaultSettings: PersistedPointCloudColorSettings;
+  readonly onChange: (
+    settings: Partial<PersistedPointCloudColorSettings>,
+  ) => void;
+  readonly onReset: () => void;
+  readonly settings: PersistedPointCloudColorSettings;
+  readonly sourceLabel: string;
+}) {
+  return (
+    <div className={settingsStyles.colorSourceEditor}>
+      <PointCloudColorControls
+        capabilities={capabilities}
+        defaultColormap={defaultSettings.colormap}
+        onChange={onChange}
+        settings={settings}
+        sourceLabel={sourceLabel}
+      />
+      {customized ? (
+        <Button
+          aria-label={`Reset style for ${sourceLabel}`}
+          onClick={onReset}
+          size={Size.Xs}
+          variant={Variant.Secondary}
+        >
+          Reset style
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -247,48 +217,43 @@ type EditablePointCloudColorStop = PointCloudColorStop & {
 
 let nextPointCloudColorStopId = 0;
 
-function PointCloudColorSummary({
+function PointCloudStylePreview({
   settings,
 }: {
   readonly settings: PersistedPointCloudColorSettings;
 }) {
-  const rampActive =
-    settings.colorBy !== "rgb" && settings.colorBy !== "uniform";
-  const rangeLabel = pointCloudRangeLabel(settings);
+  if (settings.colorBy === "rgb") {
+    return (
+      <span className={settingsStyles.pointCloudStyleModePreview}>RGB</span>
+    );
+  }
+
+  const background =
+    settings.colorBy === "uniform"
+      ? settings.uniformColor
+      : colormapCssGradient(normalizePointCloudColormap(settings.colormap));
 
   return (
-    <span className={settingsStyles.colorSummaryChips}>
-      <span className={settingsStyles.colorChip}>
-        {pointCloudColorByLabel(settings.colorBy)}
-      </span>
-      {settings.colorBy === "uniform" ? (
-        <span
-          aria-label="Uniform color preview"
-          className={settingsStyles.colorSourcePreview}
-          style={{ background: settings.uniformColor }}
-        />
-      ) : null}
-      {rampActive ? (
-        <>
-          <span
-            aria-label="Colormap preview"
-            className={settingsStyles.colorSourcePreview}
-            style={{
-              background: colormapCssGradient(
-                normalizePointCloudColormap(settings.colormap),
-              ),
-            }}
-          />
-          <span className={settingsStyles.colorChip}>
-            {pointCloudColormapLabel(settings.colormap)}
-          </span>
-        </>
-      ) : null}
-      {rangeLabel ? (
-        <span className={settingsStyles.colorChip}>{rangeLabel}</span>
-      ) : null}
-    </span>
+    <span
+      aria-hidden="true"
+      className={settingsStyles.pointCloudStylePreview}
+      style={{ background }}
+    />
   );
+}
+
+function pointCloudStyleSummary(
+  settings: PersistedPointCloudColorSettings,
+): string {
+  const parts = [pointCloudColorByLabel(settings.colorBy)];
+  if (settings.colorBy !== "rgb" && settings.colorBy !== "uniform") {
+    parts.push(pointCloudColormapLabel(settings.colormap));
+  }
+  const range = pointCloudRangeLabel(settings);
+  if (range) {
+    parts.push(range);
+  }
+  return parts.join(" · ");
 }
 
 function pointCloudColorByLabel(colorBy: string): string {
@@ -317,7 +282,8 @@ function pointCloudRangeLabel({
   return `${rangeMin ?? "auto"}..${rangeMax ?? "auto"}`;
 }
 
-function isDefaultPointCloudColorSettings(
+/** Returns whether a source still uses its derived point-cloud defaults. */
+export function isDefaultPointCloudColorSettings(
   settings: PersistedPointCloudColorSettings,
   defaultSettings = DEFAULT_POINT_CLOUD_COLOR,
 ): boolean {
@@ -489,7 +455,7 @@ function PointCloudColorControls({
               size={Size.Xs}
               variant={Variant.Secondary}
             >
-              Reset
+              Default colormap
             </Button>
           </Stack>
           <SettingsNullableNumberInput
