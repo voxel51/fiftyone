@@ -1,5 +1,5 @@
 import { OrthographicCamera } from "three";
-import { MARGIN, MAX_ZOOM, PAN_GIVE } from "../constants";
+import { MARGIN, MAX_ZOOM } from "../constants";
 import {
   clampToHome,
   fitRect,
@@ -165,14 +165,7 @@ export class PlanarCamera implements CameraAdapter {
       event.offsetX,
       event.offsetY,
     );
-    this.rect = zoomRect(
-      this.rect,
-      this.home,
-      focus,
-      factor,
-      MAX_ZOOM,
-      PAN_GIVE,
-    );
+    this.rect = zoomRect(this.rect, this.home, focus, factor, MAX_ZOOM);
     this.apply();
   }
 
@@ -200,7 +193,6 @@ export class PlanarCamera implements CameraAdapter {
       this.home,
       -(event.offsetX - lastX) * perPxX,
       (event.offsetY - lastY) * perPxY,
-      PAN_GIVE,
     );
     this.apply();
   }
