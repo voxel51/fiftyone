@@ -22,8 +22,12 @@ export const SEEK_BAR_DEBOUNCE = 10;
 // TimelineWithTracks layout
 // ---------------------------------------------------------------------------
 
-/** Width of the label column shared between ruler and tracks (px). */
-export const TIMELINE_LABEL_WIDTH = 140;
+/**
+ * Width of the label column shared between ruler and tracks (px). Doubles as
+ * the *minimum* width when the user drags the column's right edge — the
+ * ceiling is the widest label actually rendered (see `TimelineWithTracks`).
+ */
+export const TIMELINE_LABEL_WIDTH = 180;
 /** Initial open size of the timeline drawer in px. Capped by content height. */
 export const TIMELINE_DEFAULT_DRAWER_SIZE = 220;
 /** Hard ceiling on the timeline drawer height in px (independent of content). */

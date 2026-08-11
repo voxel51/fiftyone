@@ -85,6 +85,15 @@ export class SidebarPom {
     return selector.click();
   }
 
+  /**
+   * The eye button on an attribute's filter row controlling whether the
+   * attribute renders in label overlays. Visible after expanding the parent
+   * field's dropdown.
+   */
+  shownAttributeToggle(path: string) {
+    return this.sidebar.getByTestId(`shown-attribute-${path}`);
+  }
+
   async waitForElement(dataCy: string) {
     const selector = this.sidebar.getByTestId(dataCy);
     await selector.waitFor();
