@@ -11,6 +11,9 @@ declare const styles: {
   readonly field: string;
   readonly fieldRow: string;
   readonly filterInput: string;
+  readonly growField: string;
+  readonly growPre: string;
+  readonly inspectorBody: string;
   readonly labelGroups: string;
   readonly labelWithTooltip: string;
   readonly metaText: string;

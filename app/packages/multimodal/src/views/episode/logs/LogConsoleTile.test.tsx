@@ -569,7 +569,9 @@ describe("LogConsoleTile", () => {
     expect(mocks.nearestTick).toHaveBeenCalledTimes(1);
 
     now = 1_500;
-    act(() => vi.advanceTimersByTime(400));
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
     expect(mocks.nearestTick).toHaveBeenLastCalledWith(2);
   });
 

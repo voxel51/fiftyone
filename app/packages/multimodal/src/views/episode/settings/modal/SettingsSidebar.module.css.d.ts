@@ -20,9 +20,13 @@ declare const styles: {
   readonly streamName: string;
   readonly streamRow: string;
   readonly streamRowHeader: string;
+  readonly streamSearchBar: string;
   readonly streamSearchInput: string;
   readonly streamStatus: string;
+  readonly streamsTabContent: string;
   readonly tabContent: string;
+  readonly tabPanelGroup: string;
+  readonly toggleSwitchRoot: string;
 };
 
 export default styles;

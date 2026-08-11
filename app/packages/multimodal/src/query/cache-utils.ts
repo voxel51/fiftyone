@@ -131,12 +131,13 @@ function measuredBackingStoreBytes(
     visited.add(value.buffer);
     return value.byteLength;
   }
-  if (typeof value !== "object" || visited.has(value)) return 0;
+  if (!isUnknownRecord(value) || visited.has(value)) return 0;
   visited.add(value);
-  return Object.values(value).reduce(
-    (size, item) => size + measuredBackingStoreBytes(item, visited),
-    0,
-  );
+  let size = 0;
+  for (const item of Object.values(value)) {
+    size += measuredBackingStoreBytes(item, visited);
+  }
+  return size;
 }
 
 /** Estimates one decoded output for every cache and retention byte ledger. */
