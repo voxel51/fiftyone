@@ -36,17 +36,12 @@ jobs:
       - name: Install Dependencies
         run: cd app && yarn install
 
-      # Guards the generated palette modules against drifting from the design
-      # system. Reads the palette out of the installed @voxel51/voodo, so it
-      # needs node_modules — hence living in this job rather than a workflow
-      # that would install them a second time.
-      #
-      # TODO: drop --skip-if-missing once the App depends on a @voxel51/voodo
-      # release that exports tokens.json. Until then the flag keeps this step
-      # from red-failing every PR, but it also means a missing tokens file is
-      # indistinguishable from a real pass, so the guard is not yet load-bearing.
+      # Guards the generated Python palette against drifting from the design
+      # system. Runs node against the installed @voxel51/voodo, so it needs
+      # node_modules — hence living in this job rather than a workflow that
+      # would install them a second time.
       - name: Check color palette is synced with @voxel51/voodo
-        run: python3 tools/sync_voodoo_palette.py --check --skip-if-missing
+        run: python3 tools/sync_voodoo_palette.py --check
 
       - parallel:
           - name: Lint ESLint packages
