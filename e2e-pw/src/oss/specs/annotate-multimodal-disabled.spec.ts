@@ -44,6 +44,7 @@ test.describe.serial("annotate-multimodal-disabled", () => {
   test("the classic sidebar's explore/annotate mode switcher is unavailable for multimodal datasets", async ({
     grid,
     modal,
+    page,
   }) => {
     await grid.openFirstSample();
 
@@ -52,5 +53,11 @@ test.describe.serial("annotate-multimodal-disabled", () => {
     // explore/annotate mode switcher to switch into "annotate" mode with in
     // the first place — nothing left to disable.
     await expect(modal.sidebar.locator).toHaveCount(0);
+
+    // ...and no leftover control offering to toggle a sidebar that can never
+    // mount.
+    await expect(
+      page.getByTestId("modal").getByTestId("action-toggle-sidebar"),
+    ).toHaveCount(0);
   });
 });

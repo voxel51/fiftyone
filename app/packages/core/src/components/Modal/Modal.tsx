@@ -45,9 +45,12 @@ import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar
 import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { TooltipInfo } from "./TooltipInfo";
-import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
+import {
+  useLookerHelpers,
+  useShowClassicSidebar,
+  useTooltipEventHandler,
+} from "./hooks";
 import { modalContext } from "./modal-context";
-import { shouldShowClassicSidebar } from "./utils";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -244,12 +247,8 @@ const Modal = () => {
     [is3dVisible, modalCloseHandler],
   );
 
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const showClassicSidebar = useShowClassicSidebar();
   const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
-  const showClassicSidebar = shouldShowClassicSidebar(
-    isSidebarVisible,
-    isMultimodal,
-  );
 
   useKeyBindings(KnownContexts.Modal, [
     {
@@ -266,13 +265,19 @@ const Modal = () => {
       label: "Fullscreen",
       description: "Enter/Exit full screen mode",
     },
-    {
-      commandId: KnownCommands.ModalSidebarToggle,
-      sequence: "s",
-      handler: sidebarFn,
-      label: "Sidebar",
-      description: "Show/Hide the sidebar",
-    },
+    // multimodal has no classic sidebar to show/hide, so the shortcut would
+    // silently flip state that mounts nothing
+    ...(isMultimodal
+      ? []
+      : [
+          {
+            commandId: KnownCommands.ModalSidebarToggle,
+            sequence: "s",
+            handler: sidebarFn,
+            label: "Sidebar",
+            description: "Show/Hide the sidebar",
+          },
+        ]),
     {
       commandId: KnownCommands.ModalSelect,
       sequence: "x",
