@@ -3,7 +3,11 @@ vi.mock("recoil");
 vi.mock("recoil-relay");
 
 import { DICT_FIELD, Field, STRING_FIELD } from "@fiftyone/utilities";
-import { TestSelector, setMockAtoms } from "../../../../__mocks__/recoil";
+import {
+  TestSelector,
+  TestSelectorFamily,
+  setMockAtoms,
+} from "../../../../__mocks__/recoil";
 import * as sidebar from "./sidebar";
 
 const mockFields = {
@@ -609,5 +613,149 @@ describe("collapsedPaths resolution", () => {
     );
 
     expect(collapsed()).toStrictEqual(new Set(["dict_list"]));
+  });
+});
+
+describe("isHiddenCheckboxPath", () => {
+  const resolve = (path: string) =>
+    <TestSelectorFamily<typeof sidebar.isHiddenCheckboxPath>>(
+      (<unknown>sidebar.isHiddenCheckboxPath(path))
+    );
+
+  it("hides the checkbox on a container with no labels beneath it", () => {
+    setMockAtoms({
+      field: () => ({
+        ftype: "fiftyone.core.fields.DynamicEmbeddedDocumentField",
+        embeddedDocType: "fiftyone.core.odm.DynamicEmbeddedDocument",
+        fields: {
+          speed: { ftype: "fiftyone.core.fields.FloatField" },
+          timestamp_ns: { ftype: "fiftyone.core.fields.IntField" },
+        },
+      }),
+    });
+
+    expect(resolve("signals.vehicle_speed")()).toBe(true);
+  });
+
+  it("keeps the checkbox on a label list", () => {
+    setMockAtoms({
+      field: () => ({
+        ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+        embeddedDocType: "fiftyone.core.labels.Detections",
+        fields: {
+          detections: {
+            ftype: "fiftyone.core.fields.ListField",
+            embeddedDocType: "fiftyone.core.labels.Detection",
+          },
+        },
+      }),
+    });
+
+    expect(resolve("ground_truth")()).toBe(false);
+  });
+
+  it("keeps the checkbox when a label is nested deeper inside", () => {
+    setMockAtoms({
+      field: () => ({
+        ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+        embeddedDocType: "fiftyone.core.odm.DynamicEmbeddedDocument",
+        fields: {
+          nested: {
+            ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+            fields: {
+              predictions: {
+                ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+                embeddedDocType: "fiftyone.core.labels.Detections",
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    expect(resolve("wrapper")()).toBe(false);
+  });
+
+  it("keeps the checkbox on a label whose own children are primitives", () => {
+    // A Classification has no label *descendant* — label/confidence/logits are
+    // all primitives — so only the early return on the field's own type saves
+    // its checkbox. Detections would survive this via the subtree walk instead.
+    setMockAtoms({
+      field: () => ({
+        ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+        embeddedDocType: "fiftyone.core.labels.Classification",
+        fields: {
+          label: { ftype: "fiftyone.core.fields.StringField" },
+          confidence: { ftype: "fiftyone.core.fields.FloatField" },
+        },
+      }),
+    });
+
+    expect(resolve("predictions")()).toBe(false);
+  });
+
+  it("hides the checkbox on a list of label-free embedded documents", () => {
+    setMockAtoms({
+      field: () => ({
+        ftype: "fiftyone.core.fields.ListField",
+        subfield: "fiftyone.core.fields.DynamicEmbeddedDocumentField",
+        embeddedDocType: "fiftyone.core.odm.DynamicEmbeddedDocument",
+        fields: { speed: { ftype: "fiftyone.core.fields.FloatField" } },
+      }),
+    });
+
+    expect(resolve("signals.readings")()).toBe(true);
+  });
+
+  it("hides the checkbox on a static embedded document with no labels", () => {
+    setMockAtoms({
+      field: () => ({
+        ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+        embeddedDocType: "fiftyone.core.metadata.Metadata",
+        fields: {
+          size_bytes: { ftype: "fiftyone.core.fields.IntField" },
+          mime_type: { ftype: "fiftyone.core.fields.StringField" },
+        },
+      }),
+    });
+
+    expect(resolve("metadata")()).toBe(true);
+  });
+
+  it("leaves primitives alone — their active state drives the modal", () => {
+    setMockAtoms({
+      field: () => ({
+        ftype: "fiftyone.core.fields.FloatField",
+        embeddedDocType: null,
+      }),
+    });
+
+    expect(resolve("uniqueness")()).toBe(false);
+  });
+
+  it("is false for an unknown path", () => {
+    setMockAtoms({ field: () => null });
+
+    expect(resolve("nonexistent")()).toBe(false);
+  });
+});
+
+describe("childMatchesTextFilter", () => {
+  const match = sidebar.childMatchesTextFilter;
+
+  it("keeps everything when the search is empty", () => {
+    expect(match("signals.imu", "speed", "")).toBe(true);
+  });
+
+  it("keeps every child when the entry itself matches", () => {
+    expect(match("signals.imu", "speed", "imu")).toBe(true);
+  });
+
+  it("keeps a child the search names even when the entry does not match", () => {
+    expect(match("signals.imu", "speed", "spe")).toBe(true);
+  });
+
+  it("drops a child when neither it nor the entry matches", () => {
+    expect(match("signals.imu", "speed", "zzz")).toBe(false);
   });
 });

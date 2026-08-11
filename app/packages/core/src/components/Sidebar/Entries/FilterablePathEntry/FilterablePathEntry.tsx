@@ -29,6 +29,7 @@ const useField = (path: string) =>
 const FilterableEntry = ({
   disabled,
   entryKey,
+  group,
   modal,
   path,
   onFocus,
@@ -58,6 +59,7 @@ const FilterableEntry = ({
     path: expandedPath,
   });
   const onClick = useOnClick({ modal, path });
+  const hideCheckbox = useRecoilValue(fos.isHiddenCheckboxPath(path));
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
 
@@ -74,21 +76,23 @@ const FilterableEntry = ({
       onHeaderClick={!disabled ? () => setExpanded((v) => !v) : undefined}
       heading={
         <>
-          {!disabled && !(modal && path === fos.LABEL_TAGS_FIELD) && (
-            <Checkbox
-              key="checkbox"
-              checked={active}
-              title={`Show ${path}`}
-              style={{
-                color: active ? color : theme.text.secondary,
-                marginLeft: 2,
-                padding: 0,
-              }}
-              data-cy={`checkbox-${path}`}
-              onClick={onClick}
-              onMouseUp={(e) => e.stopPropagation()}
-            />
-          )}
+          {!disabled &&
+            !hideCheckbox &&
+            !(modal && path === fos.LABEL_TAGS_FIELD) && (
+              <Checkbox
+                key="checkbox"
+                checked={active}
+                title={`Show ${path}`}
+                style={{
+                  color: active ? color : theme.text.secondary,
+                  marginLeft: 2,
+                  padding: 0,
+                }}
+                data-cy={`checkbox-${path}`}
+                onClick={onClick}
+                onMouseUp={(e) => e.stopPropagation()}
+              />
+            )}
           {
             <FieldLabelAndInfo
               key={"info"}
@@ -97,6 +101,7 @@ const FilterableEntry = ({
               color={color}
               expandedPath={expandedPath}
               template={useTitleTemplate({
+                group,
                 modal,
                 path,
               })}

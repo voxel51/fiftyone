@@ -34,6 +34,7 @@ import type {
 } from "@fiftyone/utilities";
 import {
   DICT_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_DOC_TYPES,
@@ -510,6 +511,45 @@ export const sidebarGroupsDefinition = (() => {
   );
 })();
 
+/**
+ * Whether a path survives the sidebar's text filter.
+ *
+ * Matches the path itself or any of its immediate children, because an
+ * entry renders its children as nested filter widgets rather than as
+ * entries of their own — matching only the path would hide the one row
+ * that can surface a searched-for child.
+ */
+/**
+ * Whether a sidebar entry's child field survives the text filter.
+ *
+ * Shared with the child list an entry renders, so a row and its rows agree on
+ * what a search means; they would otherwise drift into showing an entry whose
+ * every child filters out, or the reverse.
+ */
+export const childMatchesTextFilter = (
+  entryPath: string,
+  childName: string,
+  text: string,
+): boolean => !text || entryPath.includes(text) || childName.includes(text);
+
+export const matchesTextFilter = selectorFamily<
+  boolean,
+  { path: string; text: string }
+>({
+  key: "matchesTextFilter",
+  get:
+    ({ path, text }) =>
+    ({ get }) => {
+      if (!text || path.includes(text)) {
+        return true;
+      }
+
+      return Object.keys(get(field(path))?.fields || {}).some((name) =>
+        childMatchesTextFilter(path, name, text),
+      );
+    },
+});
+
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
   { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
@@ -525,7 +565,11 @@ export const sidebarGroups = selectorFamily<
           ...rest,
 
           paths: filtered
-            ? paths.filter((path) => get(pathIsShown(path)) && path.includes(f))
+            ? paths.filter(
+                (path) =>
+                  get(pathIsShown(path)) &&
+                  get(matchesTextFilter({ path, text: f })),
+              )
             : paths,
         }))
         .filter(
@@ -785,6 +829,54 @@ export const disabledCheckboxPaths = selector<Set<string>>({
   get: ({ get }) => {
     return new Set(get(fullyDisabledPaths));
   },
+});
+
+const hasLabelDescendant = (parent: Field): boolean => {
+  for (const child of Object.values(parent.fields || {})) {
+    if (LABELS.includes(child.embeddedDocType) || hasLabelDescendant(child)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Whether a path's sidebar checkbox should be hidden rather than rendered.
+ *
+ * The checkbox toggles a path's membership in the active fields, which is
+ * what the grid draws overlays from. On an embedded document with no label
+ * anywhere beneath it there is nothing to draw, so the control can only
+ * mislead. Primitives are left alone — their active state still drives the
+ * modal sidebar.
+ *
+ * Deliberately not folded into `disabledCheckboxPaths`: that set also
+ * disables the entry's filter dropdown and blocks it from expanding, and
+ * these paths are filterable — their columns are the filter widgets nested
+ * inside them.
+ */
+export const isHiddenCheckboxPath = selectorFamily<boolean, string>({
+  key: "isHiddenCheckboxPath",
+  get:
+    (path) =>
+    ({ get }) => {
+      const f = get(field(path));
+
+      if (!f || LABELS.includes(f.embeddedDocType)) {
+        return false;
+      }
+
+      const ftype = f.ftype === LIST_FIELD ? f.subfield : f.ftype;
+
+      if (
+        ftype !== EMBEDDED_DOCUMENT_FIELD &&
+        ftype !== DYNAMIC_EMBEDDED_DOCUMENT_FIELD
+      ) {
+        return false;
+      }
+
+      return !hasLabelDescendant(f);
+    },
 });
 
 /**
