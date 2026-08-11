@@ -1,17 +1,81 @@
-import {
-  McapIndexedReader,
-  McapWriter,
-  type IWritable,
-  type McapTypes,
-} from "@mcap/core";
+import { McapIndexedReader, McapWriter } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import type { ByteClient } from "../../../query/bytes";
 import { ByteClientReadable } from "./byte-readable";
-import { createCachedMcapDecompressHandlers } from "./decompress-cache";
+import {
+  createCachedMcapDecompressHandlers,
+  type McapChunkDecompressionContext,
+  type McapDecompressHandler,
+  type McapDecompressHandlers,
+} from "./decompress-cache";
 import {
   createMcapDecompressedChunkCache,
   type McapDecompressedChunkCache,
 } from "./decompressed-chunk-cache";
+import type { McapChunkIndex, McapReadable } from "./types";
+
+interface IndexedReaderFixture {
+  readonly chunkIndexes: readonly McapChunkIndex[];
+  readMessages(): AsyncGenerator<unknown, void, void>;
+}
+
+interface IndexedReaderConstructor {
+  Initialize(options: {
+    readonly decompressHandlers: McapDecompressHandlers;
+    readonly readable: McapReadable;
+  }): Promise<IndexedReaderFixture>;
+}
+
+interface WriterFixture {
+  addMessage(message: {
+    readonly channelId: number;
+    readonly data: Uint8Array;
+    readonly logTime: bigint;
+    readonly publishTime: bigint;
+    readonly sequence: number;
+  }): Promise<void>;
+  end(): Promise<void>;
+  registerChannel(channel: {
+    readonly messageEncoding: string;
+    readonly metadata: ReadonlyMap<string, string>;
+    readonly schemaId: number;
+    readonly topic: string;
+  }): Promise<number>;
+  start(header: {
+    readonly library: string;
+    readonly profile: string;
+  }): Promise<void>;
+}
+
+interface WriterConstructor {
+  new (options: {
+    readonly compressChunk: (data: Uint8Array) => {
+      readonly compressedData: Uint8Array;
+      readonly compression: string;
+    };
+    readonly writable: MemoryWritable;
+  }): WriterFixture;
+}
+
+function indexedReaderConstructor(): IndexedReaderConstructor {
+  const candidate: unknown = McapIndexedReader;
+  if (
+    typeof candidate !== "function" ||
+    !("Initialize" in candidate) ||
+    typeof candidate.Initialize !== "function"
+  ) {
+    throw new Error("@mcap/core did not expose McapIndexedReader.Initialize");
+  }
+  return candidate;
+}
+
+function mcapWriterConstructor(): WriterConstructor {
+  const candidate: unknown = McapWriter;
+  if (typeof candidate !== "function") {
+    throw new Error("@mcap/core did not expose McapWriter");
+  }
+  return candidate;
+}
 
 describe("McapIndexedReader decompression cache integration", () => {
   it("shares a stable chunk identity across fresh main-reader chunk copies", async () => {
@@ -24,23 +88,27 @@ describe("McapIndexedReader decompression cache integration", () => {
     };
     const reads: Uint8Array[] = [];
     const byteClient: ByteClient = {
-      readBytes: vi.fn(async (request) => {
+      readBytes: vi.fn<ByteClient["readBytes"]>((request) => {
         const bytes = mcap.slice(
           Number(request.range.offset),
           Number(request.range.offset + request.range.length),
         );
         reads.push(bytes);
-        return { bytes, range: request.range, source: request.source };
+        return Promise.resolve({
+          bytes,
+          range: request.range,
+          source: request.source,
+        });
       }),
     };
     const readable = new ByteClientReadable(source, byteClient);
     const decompressorInputs: Uint8Array[] = [];
-    const contexts: McapTypes.ChunkDecompressionContext[] = [];
+    const contexts: McapChunkDecompressionContext[] = [];
     const decompress = vi.fn(
       (
         buffer: Uint8Array,
         _size: bigint,
-        context?: McapTypes.ChunkDecompressionContext,
+        context?: McapChunkDecompressionContext,
       ) => {
         decompressorInputs.push(buffer);
         if (context) contexts.push(context);
@@ -48,7 +116,7 @@ describe("McapIndexedReader decompression cache integration", () => {
       },
     );
     const cache = createMcapDecompressedChunkCache();
-    const reader = await McapIndexedReader.Initialize({
+    const reader = await indexedReaderConstructor().Initialize({
       readable,
       decompressHandlers: createCachedMcapDecompressHandlers(
         { "identity-test": decompress },
@@ -185,13 +253,13 @@ async function createMainReader({
   readSignal,
 }: {
   readonly cache: McapDecompressedChunkCache;
-  readonly decompress: McapTypes.DecompressHandlers[string];
+  readonly decompress: McapDecompressHandler;
   readonly etag: string;
   readonly mcap: Uint8Array;
   readonly readSignal?: { current: AbortSignal | null };
 }): Promise<{
-  readonly decompress: McapTypes.DecompressHandlers[string];
-  readonly reader: McapIndexedReader;
+  readonly decompress: McapDecompressHandler;
+  readonly reader: IndexedReaderFixture;
 }> {
   const source = {
     etag,
@@ -200,17 +268,18 @@ async function createMainReader({
     url: "bytes://main-reader",
   };
   const byteClient: ByteClient = {
-    readBytes: async (request) => ({
-      bytes: mcap.slice(
-        Number(request.range.offset),
-        Number(request.range.offset + request.range.length),
-      ),
-      range: request.range,
-      source: request.source,
-    }),
+    readBytes: (request) =>
+      Promise.resolve({
+        bytes: mcap.slice(
+          Number(request.range.offset),
+          Number(request.range.offset + request.range.length),
+        ),
+        range: request.range,
+        source: request.source,
+      }),
   };
   const readable = new ByteClientReadable(source, byteClient, { readSignal });
-  const reader = await McapIndexedReader.Initialize({
+  const reader = await indexedReaderConstructor().Initialize({
     decompressHandlers: createCachedMcapDecompressHandlers(
       { "identity-test": decompress },
       { cache },
@@ -223,7 +292,7 @@ async function createMainReader({
 
 async function createIdentityCompressedMcap(): Promise<Uint8Array> {
   const target = new MemoryWritable();
-  const writer = new McapWriter({
+  const writer = new (mcapWriterConstructor())({
     compressChunk: (data: Uint8Array) => ({
       compressedData: data.slice(),
       compression: "identity-test",
@@ -248,7 +317,7 @@ async function createIdentityCompressedMcap(): Promise<Uint8Array> {
   return target.get().slice();
 }
 
-class MemoryWritable implements IWritable {
+class MemoryWritable {
   private readonly chunks: Uint8Array[] = [];
   private length = 0;
 
@@ -256,9 +325,10 @@ class MemoryWritable implements IWritable {
     return BigInt(this.length);
   }
 
-  async write(data: Uint8Array): Promise<void> {
+  write(data: Uint8Array): Promise<void> {
     this.chunks.push(data.slice());
     this.length += data.byteLength;
+    return Promise.resolve();
   }
 
   get(): Uint8Array {
