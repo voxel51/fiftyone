@@ -26,7 +26,7 @@ describe("integrity of generated contracts", () => {
 
     const roundTrip = fromBinary(
       TimeTrackSchema,
-      toBinary(TimeTrackSchema, track),
+      expectUint8Array(toBinary(TimeTrackSchema, track)),
     );
 
     expect(roundTrip.timeTrackId).toBe("sample.index");
@@ -43,7 +43,7 @@ describe("integrity of generated contracts", () => {
 
     const roundTrip = fromBinary(
       SceneInventorySchema,
-      toBinary(SceneInventorySchema, scene),
+      expectUint8Array(toBinary(SceneInventorySchema, scene)),
     );
 
     expect(roundTrip.inventoryId).toBe("inventory-1");
@@ -59,9 +59,16 @@ describe("integrity of generated contracts", () => {
 
     const roundTrip = fromBinary(
       PlaybackPlanSchema,
-      toBinary(PlaybackPlanSchema, plan),
+      expectUint8Array(toBinary(PlaybackPlanSchema, plan)),
     );
 
     expect(roundTrip.sourceInventoryId).toBe("inventory-1");
   });
 });
+
+function expectUint8Array(value: unknown): Uint8Array {
+  if (!(value instanceof Uint8Array)) {
+    throw new TypeError("protobuf serialization did not return bytes");
+  }
+  return value;
+}
