@@ -321,21 +321,15 @@ describe("resolvePlaybackLayout", () => {
     expect(layout).toBe("3d-1");
   });
 
-  it("opens a log tile for logs-only scenes", () => {
+  it("does not open a log tile for logs-only scenes", () => {
     const { tiles, layout } = resolvePlaybackLayout({
       capabilities: STRONG_LOCAL,
       readProfile: "local",
       sources: [logSource("/diagnostics", 12)],
     });
 
-    expect(tiles).toEqual([
-      {
-        id: "log-1",
-        tileType: "log",
-        title: "Logs",
-      },
-    ]);
-    expect(layout).toBe("log-1");
+    expect(tiles).toEqual([]);
+    expect(layout).toBeUndefined();
   });
 
   it("returns no tiles for scenes without renderable sources", () => {

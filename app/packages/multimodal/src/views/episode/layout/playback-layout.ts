@@ -40,7 +40,6 @@ const MAX_CONTEXT_SHELF_HEIGHT_FRACTION = 0.4;
 
 // Mosaic leaf id of the single default 3D tile.
 const THREE_D_TILE_ID = `${TILE_TYPE.THREE_D}-1`;
-const LOG_TILE_ID = `${TILE_TYPE.LOG}-1`;
 
 /**
  * Device/runtime signals the layout resolver weighs. Collected once per
@@ -223,9 +222,6 @@ export function resolvePlaybackLayout({
       source.type === SCENE_SOURCE_TYPE.MAP_LAYER ||
       source.type === SCENE_SOURCE_TYPE.POSE,
   );
-  const hasLogs = sources.some(
-    (source) => source.type === SCENE_SOURCE_TYPE.LOG,
-  );
   const tileBudget =
     rankedImages.length === 0
       ? 0
@@ -248,14 +244,6 @@ export function resolvePlaybackLayout({
       title: "3D",
     });
   }
-  if (hasLogs) {
-    tiles.push({
-      id: LOG_TILE_ID,
-      tileType: TILE_TYPE.LOG,
-      title: "Logs",
-    });
-  }
-
   return {
     layout: buildLayoutTree(tiles, capabilities),
     tiles,
