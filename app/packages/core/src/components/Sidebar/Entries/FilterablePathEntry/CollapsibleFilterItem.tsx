@@ -44,6 +44,12 @@ const Right = styled.div`
  * Expansion is keyed by the field's own path in the shared sidebar-expanded
  * store, so it survives collapsing and reopening the parent and never
  * collides with the parent's own key.
+ *
+ * Not built on `RegularEntry`, which models the same open/closed row one level
+ * up: it always wraps its children in `Draggable`, which costs two recoil
+ * subscriptions and a react-spring controller per instance. Fine for a few
+ * dozen entries, but this renders once per field of a container that may hold
+ * hundreds — the cost the collapse exists to avoid.
  */
 const CollapsibleFilterItem = ({
   color,
