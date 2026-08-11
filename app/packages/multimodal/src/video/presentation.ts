@@ -19,7 +19,7 @@ export async function copyVideoFramePresentation(
   let source: CanvasImageSource & ClosableCanvasSource;
   try {
     if (typeof createImageBitmap === "function") {
-      source = (await createImageBitmap(frame)) as ImageBitmap;
+      source = await createImageBitmap(frame);
     } else {
       const canvas = document.createElement("canvas");
       canvas.width = width;

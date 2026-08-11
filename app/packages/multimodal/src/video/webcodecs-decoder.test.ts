@@ -243,15 +243,23 @@ function fakeWebCodecs(
 
     constructor(init: EncodedVideoChunkInit) {
       this.timestamp = init.timestamp;
-      this.type = init.type;
+      const type: unknown = init.type;
+      if (type !== "key" && type !== "delta") {
+        throw new TypeError(
+          `Unexpected encoded video chunk type: ${String(type)}`,
+        );
+      }
+      this.type = type;
     }
   }
 
   class FakeDecoder {
-    static isConfigSupported = vi.fn(async (config: VideoDecoderConfig) => ({
-      config,
-      supported: options.supported ?? true,
-    }));
+    static isConfigSupported = vi.fn((config: VideoDecoderConfig) =>
+      Promise.resolve({
+        config,
+        supported: options.supported ?? true,
+      }),
+    );
     readonly close = vi.fn();
     readonly configure = vi.fn();
     readonly decode = vi.fn((chunk: FakeChunk) => {

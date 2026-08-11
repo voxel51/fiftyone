@@ -49,7 +49,7 @@ describe("VideoGopIndex", () => {
 
 describe("EncodedAccessUnitCache", () => {
   it("returns timestamp-sorted ranges and refreshes their LRU recency", () => {
-    const onEvict = vi.fn();
+    const onEvict = vi.fn<(timeNs: bigint) => void>();
     const cache = new EncodedAccessUnitCache(10, onEvict);
     const first = unit(1);
     const second = unit(2);
@@ -66,7 +66,7 @@ describe("EncodedAccessUnitCache", () => {
   });
 
   it("replaces timestamps once and rejects an oversize replacement", () => {
-    const onEvict = vi.fn();
+    const onEvict = vi.fn<(timeNs: bigint) => void>();
     const cache = new EncodedAccessUnitCache(10, onEvict);
     const original = unit(1);
     const replacement: H264AccessUnit = {
@@ -92,7 +92,7 @@ describe("EncodedAccessUnitCache", () => {
   });
 
   it("reports every retained timestamp when cleared", () => {
-    const onEvict = vi.fn();
+    const onEvict = vi.fn<(timeNs: bigint) => void>();
     const cache = new EncodedAccessUnitCache(20, onEvict);
     cache.put(unit(1));
     cache.put(unit(2));

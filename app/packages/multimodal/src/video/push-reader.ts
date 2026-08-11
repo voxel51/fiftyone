@@ -109,7 +109,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
     this.evictToBudget();
   }
 
-  async read({
+  read({
     budget,
     endTimeNs,
     signal,
@@ -118,47 +118,53 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
   }: Parameters<
     VideoAccessUnitReader["read"]
   >[0]): Promise<VideoAccessUnitReadResult> {
-    if (signal.aborted) throw new VideoIntentCancelledError();
-    const history = this.streams.get(stream);
-    const retainedStart = history?.sortedTimes[0];
-    const retainedEnd = history?.sortedTimes.at(-1);
-    if (!history || retainedStart === undefined || retainedEnd === undefined) {
-      return { complete: false, stopReason: "push-history", units: [] };
-    }
-
-    const units: H264AccessUnit[] = [];
-    let observedBytes = 0;
-    let budgetStopped = false;
-    let index = lowerBound(history.sortedTimes, startTimeNs);
-    while (index < history.sortedTimes.length) {
+    return Promise.resolve().then(() => {
       if (signal.aborted) throw new VideoIntentCancelledError();
-      const timeNs = history.sortedTimes[index];
-      if (timeNs > endTimeNs) break;
-      const unit = history.entries.get(timeNs)?.unit;
-      index += 1;
-      if (!unit) continue;
-      const nextBytes = observedBytes + unit.frame.bytes.byteLength;
+      const history = this.streams.get(stream);
+      const retainedStart = history?.sortedTimes[0];
+      const retainedEnd = history?.sortedTimes.at(-1);
       if (
-        units.length >= budget.maxMessages ||
-        nextBytes > budget.maxObservedPayloadBytes
+        !history ||
+        retainedStart === undefined ||
+        retainedEnd === undefined
       ) {
-        budgetStopped = true;
-        break;
+        return { complete: false, stopReason: "push-history", units: [] };
       }
-      units.push(unit);
-      observedBytes = nextBytes;
-    }
-    const complete =
-      !budgetStopped &&
-      startTimeNs >= retainedStart &&
-      endTimeNs <= retainedEnd;
-    return {
-      complete,
-      ...(complete
-        ? {}
-        : { stopReason: budgetStopped ? "push-budget" : "push-history" }),
-      units,
-    };
+
+      const units: H264AccessUnit[] = [];
+      let observedBytes = 0;
+      let budgetStopped = false;
+      let index = lowerBound(history.sortedTimes, startTimeNs);
+      while (index < history.sortedTimes.length) {
+        if (signal.aborted) throw new VideoIntentCancelledError();
+        const timeNs = history.sortedTimes[index];
+        if (timeNs > endTimeNs) break;
+        const unit = history.entries.get(timeNs)?.unit;
+        index += 1;
+        if (!unit) continue;
+        const nextBytes = observedBytes + unit.frame.bytes.byteLength;
+        if (
+          units.length >= budget.maxMessages ||
+          nextBytes > budget.maxObservedPayloadBytes
+        ) {
+          budgetStopped = true;
+          break;
+        }
+        units.push(unit);
+        observedBytes = nextBytes;
+      }
+      const complete =
+        !budgetStopped &&
+        startTimeNs >= retainedStart &&
+        endTimeNs <= retainedEnd;
+      return {
+        complete,
+        ...(complete
+          ? {}
+          : { stopReason: budgetStopped ? "push-budget" : "push-history" }),
+        units,
+      };
+    });
   }
 
   clear(): void {

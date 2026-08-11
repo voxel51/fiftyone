@@ -42,11 +42,13 @@ describe("SharedVideoPresentation", () => {
   it("closes the decoder-backed VideoFrame immediately after copying", async () => {
     const frameClose = vi.fn();
     const bitmapClose = vi.fn();
-    const createBitmap = vi.fn(async () => ({
-      close: bitmapClose,
-      height: 480,
-      width: 640,
-    }));
+    const createBitmap = vi.fn(() =>
+      Promise.resolve({
+        close: bitmapClose,
+        height: 480,
+        width: 640,
+      }),
+    );
     vi.stubGlobal("createImageBitmap", createBitmap);
     const frame = {
       close: frameClose,
@@ -75,7 +77,7 @@ describe("SharedVideoPresentation", () => {
     } as unknown as VideoFrame;
     vi.stubGlobal(
       "createImageBitmap",
-      vi.fn(async () => ({ close: vi.fn(), height: 240, width: 320 })),
+      vi.fn(() => Promise.resolve({ close: vi.fn(), height: 240, width: 320 })),
     );
 
     const presentation = await copyVideoFramePresentation(frame, 1n);

@@ -347,7 +347,7 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
       decodeGate: gate.promise,
       honorAbort: true,
     });
-    const read = vi.fn(async () => ({ complete: true, units: [] }));
+    const read = vi.fn(() => Promise.resolve({ complete: true, units: [] }));
     const manager = new VideoPlaybackManager("source", harness.dependencies);
     manager.setReader({ timelineStartTimeNs: 0n, read });
     const lease = manager.acquire("/camera");
@@ -436,11 +436,12 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     const manager = new VideoPlaybackManager("source", harness.dependencies);
     const weakReader: VideoAccessUnitReader = {
       timelineStartTimeNs: 0n,
-      read: async () => ({
-        complete: false,
-        stopReason: "message-ceiling",
-        units: [],
-      }),
+      read: () =>
+        Promise.resolve({
+          complete: false,
+          stopReason: "message-ceiling",
+          units: [],
+        }),
     };
     manager.setReader(weakReader);
     const lease = manager.acquire("/camera");
@@ -465,9 +466,8 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     const harness = createHarness();
     const manager = new VideoPlaybackManager("source", {
       ...harness.dependencies,
-      copyPresentation: async () => {
-        throw new Error("copy failed without taking ownership");
-      },
+      copyPresentation: () =>
+        Promise.reject(new Error("copy failed without taking ownership")),
     });
     const lease = manager.acquire("/camera");
     lease.request({ ...accessUnit(1, true), priority: "visible" });
@@ -517,15 +517,17 @@ function createHarness(
   const decodeOrder: string[] = [];
   const presentationSources: Array<{ close: ReturnType<typeof vi.fn> }> = [];
   const dependencies: VideoEngineDependencies = {
-    copyPresentation: async (frame, timeNs) => {
+    copyPresentation: (frame, timeNs) => {
       frame.close();
       const source = { close: vi.fn(), height: 480, width: 640 };
       presentationSources.push(source);
-      return new SharedVideoPresentation(
-        source as unknown as ImageBitmap,
-        timeNs,
-        640,
-        480,
+      return Promise.resolve(
+        new SharedVideoPresentation(
+          source as unknown as ImageBitmap,
+          timeNs,
+          640,
+          480,
+        ),
       );
     },
     createDecoder: () => {
@@ -669,10 +671,11 @@ function rangeReader(
 function readerForStreams(): VideoAccessUnitReader {
   return {
     timelineStartTimeNs: 0n,
-    read: async ({ endTimeNs }) => ({
-      complete: true,
-      units: [accessUnit(Number(endTimeNs), true)],
-    }),
+    read: ({ endTimeNs }) =>
+      Promise.resolve({
+        complete: true,
+        units: [accessUnit(Number(endTimeNs), true)],
+      }),
   };
 }
 
