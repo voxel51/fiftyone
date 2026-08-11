@@ -13,6 +13,7 @@ const migratedPaths = [
   "packages/multimodal/src/adapters/mcap/reader/latest-before*.ts",
   "packages/multimodal/src/adapters/mcap/reader/index.ts",
   "packages/multimodal/src/adapters/mcap/reader/types.ts",
+  "packages/multimodal/src/adapters/mcap/reader/topic-time-bounds*.ts",
   "packages/multimodal/src/adapters/fixture/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",

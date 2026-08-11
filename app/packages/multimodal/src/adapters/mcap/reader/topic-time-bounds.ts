@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { compareBigInt } from "../../../ir";
 import { DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES } from "./latest-before";
 import {
@@ -6,7 +5,9 @@ import {
   readChunkIndexedMessageTimes,
 } from "./message-index";
 import type {
+  McapChunkIndex,
   McapIndexedReaderLike,
+  McapReadable,
   McapReadTopicIndexedTimeBoundsRequest,
   McapTopicIndexedTimeBounds,
 } from "./types";
@@ -31,7 +32,7 @@ const MAX_TOPIC_TIME_BOUNDS_TOPICS = 128;
  */
 export async function readTopicIndexedTimeBoundsForReader(
   reader: McapIndexedReaderLike,
-  readable: McapTypes.IReadable,
+  readable: McapReadable,
   args: McapReadTopicIndexedTimeBoundsRequest,
 ): Promise<ReadonlyMap<string, McapTopicIndexedTimeBounds | null>> {
   if (args.topics.length > MAX_TOPIC_TIME_BOUNDS_TOPICS) {
@@ -65,7 +66,7 @@ async function topicTimeBounds({
   topic,
 }: {
   readonly maxChunkProbes: number;
-  readonly readable: McapTypes.IReadable;
+  readonly readable: McapReadable;
   readonly reader: McapIndexedReaderLike;
   readonly topic: string;
 }): Promise<McapTopicIndexedTimeBounds | null> {
@@ -74,9 +75,7 @@ async function topicTimeBounds({
     return null;
   }
 
-  const chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
-    reader.chunkIndexes;
-  const memberChunks = chunkIndexes.filter((chunkIndex) =>
+  const memberChunks = reader.chunkIndexes.filter((chunkIndex) =>
     chunkHasAnyChannel(chunkIndex, channelIds),
   );
   if (memberChunks.length === 0) {
@@ -120,8 +119,8 @@ async function directionalBound({
   readonly channelIds: ReadonlySet<number>;
   readonly direction: "first" | "last";
   readonly maxChunkProbes: number;
-  readonly memberChunks: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
-  readonly readable: McapTypes.IReadable;
+  readonly memberChunks: readonly McapChunkIndex[];
+  readonly readable: McapReadable;
   readonly reader: McapIndexedReaderLike;
   readonly topic: string;
 }): Promise<bigint | undefined> {
@@ -181,7 +180,7 @@ async function directionalBound({
 }
 
 function chunkHasAnyChannel(
-  chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
+  chunkIndex: McapChunkIndex,
   channelIds: ReadonlySet<number>,
 ): boolean {
   for (const channelId of channelIds) {
