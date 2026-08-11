@@ -24,7 +24,7 @@ import type {
   McapRecordingInventory,
   McapResourceClient,
 } from "../contracts/index";
-import { asyncValues } from "./inline-client.test-fixtures";
+import { asyncGeneratorMock, promiseMock } from "./inline-client.test-fixtures";
 
 describe("MCAP grid preview playback cadence", () => {
   it("caps playback at twelve frames per second", () => {
@@ -54,20 +54,6 @@ describe("MCAP grid preview playback cadence", () => {
     );
   });
 });
-
-function promiseMock<Args extends unknown[], Result>(
-  implementation: (...args: Args) => Result,
-) {
-  return vi.fn((...args: Args) =>
-    Promise.resolve().then(() => implementation(...args)),
-  );
-}
-
-function asyncGeneratorMock<Args extends unknown[], Value>(
-  implementation: (...args: Args) => Generator<Value, void, void>,
-) {
-  return vi.fn((...args: Args) => asyncValues(implementation(...args)));
-}
 
 describe("MCAP grid preview", () => {
   it("returns an empty no-stream state and caches the missing selection", async () => {
