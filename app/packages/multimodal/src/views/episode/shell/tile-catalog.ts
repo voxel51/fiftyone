@@ -11,6 +11,7 @@ import LogConsoleTile from "../logs/LogConsoleTile";
 import MapTile from "../map/tile/MapTile";
 import PlotTile from "../plots/PlotTile";
 import RawMessageTile from "../raw/RawMessageTile";
+import TransformGraphTile from "../transforms/TransformGraphTile";
 import {
   TILE_TYPE,
   type BuiltInTileType,
@@ -76,6 +77,13 @@ const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
     order: 50,
     Tile: PlotTile,
     typeLabel: "Plot",
+  },
+  [TILE_TYPE.TRANSFORMS]: {
+    icon: IconName.Workspaces,
+    isAvailable: ({ hasTransformTopology }) => hasTransformTopology,
+    order: 55,
+    Tile: TransformGraphTile,
+    typeLabel: "Transforms",
   },
   [TILE_TYPE.RAW]: {
     icon: IconName.JSON,

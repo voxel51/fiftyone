@@ -25,6 +25,8 @@ import type {
   McapReadTopicsRequest,
   McapReadTopicTimeBoundsRequest,
   McapReadTimelineRangeRequest,
+  McapReadTransformTopologyRequest,
+  McapTransformTopologyResult,
   McapTimelineRange,
   McapTopicNumericFields,
   McapTopicTimeBounds,
@@ -108,6 +110,7 @@ export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readSynchronizedMessageBatch: McapReadSynchronizedMessageBatchRequest;
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
   readonly readTimelineRange: McapReadTimelineRangeRequest;
+  readonly readTransformTopology: McapReadTransformTopologyRequest;
   readonly readTopics: McapReadTopicsRequest;
   readonly readTopicTimeBounds: McapReadTopicTimeBoundsRequest;
 };
@@ -144,6 +147,7 @@ export type McapPlaybackWorkerResultByType = {
   readonly readSynchronizedMessageBatch: readonly McapPlaybackWorkerSynchronizedWindow[];
   readonly readSynchronizedMessages: McapPlaybackWorkerSynchronizedWindow;
   readonly readTimelineRange: McapTimelineRange;
+  readonly readTransformTopology: McapTransformTopologyResult;
   readonly readTopics: McapRecordingInventory;
   readonly readTopicTimeBounds: readonly McapTopicTimeBounds[];
 };

@@ -69,6 +69,8 @@ import type {
   McapReadTopicsRequest,
   McapReadTopicTimeBoundsRequest,
   McapReadTimelineRangeRequest,
+  McapReadTransformTopologyRequest,
+  McapTransformTopologyResult,
   McapResourceClient,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
@@ -406,6 +408,18 @@ class WorkerMcapResourceClient implements McapResourceClient {
       resourcePriorityToWorkerPriority(options?.priority),
       options?.signal,
     ).then(hydrateMcapFrameTransformSet);
+  }
+
+  readTransformTopology(
+    request: McapReadTransformTopologyRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapTransformTopologyResult> {
+    return this.request(
+      "readTransformTopology",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    );
   }
 
   readSynchronizedMessages(

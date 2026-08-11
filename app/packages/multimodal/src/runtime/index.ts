@@ -27,6 +27,7 @@ export * from "./read-policy";
 export * from "./release-array-buffers";
 /** Public precision-safe episode timeline indexing. */
 export * from "./timeline-index";
+export * from "./transform-topology";
 /** Public inclusive timeline-index range algebra. */
 export * from "./tick-ranges";
 /** Public cadence-derived temporal policies shared by playback consumers. */

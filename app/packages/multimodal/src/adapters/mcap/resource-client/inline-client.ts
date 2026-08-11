@@ -49,6 +49,7 @@ import { readMcapMessageIndexWindow } from "./operations/read-message-index-wind
 import { readMcapPointCloudChannel } from "./operations/read-point-cloud-channel";
 import { readMcapTopics } from "./operations/read-topics";
 import { readMcapTopicTimeBounds } from "./operations/read-topic-time-bounds";
+import { readMcapTransformTopology } from "./operations/read-transform-topology";
 import type { McapFrameTransformSet } from "../transforms/types";
 import {
   type McapDecodedMessage,
@@ -487,6 +488,20 @@ export function createInlineMcapResourceClient(
         frameTransformWindowReads,
         windowKey,
         () => readerStore.get(request.source).then(readWindow),
+      );
+    },
+
+    async readTransformTopology(request, readOptions) {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      return withRequestReader(request.source, readOptions?.signal, (reader) =>
+        readMcapTransformTopology({
+          decodeClient,
+          reader,
+          request,
+          signal:
+            readOptions?.signal ?? options.readSignal?.current ?? undefined,
+          timeline,
+        }),
       );
     },
 

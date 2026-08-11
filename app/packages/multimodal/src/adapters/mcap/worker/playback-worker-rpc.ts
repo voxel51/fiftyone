@@ -107,6 +107,10 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
   },
+  readTransformTopology: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
+  },
   readTopics: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
@@ -193,6 +197,13 @@ export function runMcapPlaybackWorkerUnaryRequest(
       return client.readSynchronizedMessages(message.payload);
     case "readTimelineRange":
       return client.readTimelineRange(message.payload);
+    case "readTransformTopology":
+      if (!client.readTransformTopology) {
+        return Promise.reject(
+          new Error("Transform topology reads are unavailable"),
+        );
+      }
+      return client.readTransformTopology(message.payload);
     case "readTopics":
       return client.readTopics(message.payload);
     case "readTopicTimeBounds":

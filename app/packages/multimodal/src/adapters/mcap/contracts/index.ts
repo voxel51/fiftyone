@@ -16,6 +16,10 @@ import type {
 } from "../../../schemas/v1/index";
 import type { McapFrameTransformSet } from "../transforms/types";
 import type { PointCloudRenderChannelPayload } from "../../../ir/index";
+import type {
+  EpisodeTransformTopologyEdgeObservation,
+  EpisodeTransformTopologyFrameUse,
+} from "../../../ir/index";
 
 /**
  * MCAP timeline selected as the playback clock/time track.
@@ -157,6 +161,31 @@ export interface McapReadBoundedMessagesResult {
   readonly stopReason: BudgetedReadStopReason;
   readonly usage: ReadWorkUsage;
   readonly unavailableByTopic?: ReadonlyMap<string, readonly TimeWindow[]>;
+}
+
+/** Internal bounded request for transform topology plus sampled frame uses. */
+export interface McapReadTransformTopologyRequest {
+  readonly absoluteBudget: ReadWorkBudget;
+  readonly absoluteMaxChunks: number;
+  readonly activeTimeline?: McapActiveTimeline;
+  readonly budget: ReadWorkBudget;
+  readonly continuation?: ReadContinuation;
+  readonly endTimeNs: bigint;
+  readonly frameUseTopics: readonly string[];
+  readonly maxChunks: number;
+  readonly source: ByteSourceDescriptor;
+  readonly startTimeNs: bigint;
+}
+
+/** Worker-safe topology evidence for one bounded grant. */
+export interface McapTransformTopologyResult {
+  readonly continuation?: ReadContinuation;
+  readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
+  readonly edges: readonly EpisodeTransformTopologyEdgeObservation[];
+  readonly frameUses: readonly EpisodeTransformTopologyFrameUse[];
+  readonly stopReason: BudgetedReadStopReason;
+  readonly unavailableByTopic?: ReadonlyMap<string, readonly TimeWindow[]>;
+  readonly usage: ReadWorkUsage;
 }
 
 /**
@@ -1139,6 +1168,12 @@ export interface McapResourceClient {
     request: McapReadFrameTransformWindowRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapFrameTransformSet>;
+
+  /** Reads one explicit bounded grant of recording-wide transform topology. */
+  readTransformTopology?(
+    request: McapReadTransformTopologyRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapTransformTopologyResult>;
 
   /**
    * Reads one synchronized decoded message window around a playback time.

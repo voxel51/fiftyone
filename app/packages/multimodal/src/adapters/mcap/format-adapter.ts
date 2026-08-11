@@ -16,6 +16,8 @@ import {
   type StreamSyncPolicy,
   type SynchronizedFrameWindow,
   type TransformSample,
+  type EpisodeTransformTopologyEdgeObservation,
+  type EpisodeTransformTopologyFrameUse,
 } from "../../ir";
 import {
   EpisodeReadCancelledError,
@@ -41,6 +43,11 @@ import {
   type ReadWorkUsage,
   type SourceReadBudgetAccount,
   type TransformReadAcceleration,
+  type TransformTopologyCapability,
+  type TransformTopologySampleRequest,
+  type TransformTopologySampleResult,
+  type TransformTopologyScanRequest,
+  type TransformTopologyScanResult,
 } from "../../ports";
 import { emptyReadWorkUsage } from "../../ports/read-work-usage";
 import {
@@ -50,6 +57,7 @@ import {
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { isEpisodeReadCancelledError } from "../../ports";
 import { throwIfAborted } from "../../utils/cancellation";
+import { compareFrameIds } from "../../utils/frame-ids";
 import { sceneSourcesFromStreamDescriptors } from "../../stream-selection";
 import type { McapGridPreviewResult } from "./resource-client/grid-preview";
 import { prewarmMcapSource } from "./prewarm-mcap-source";
@@ -68,6 +76,7 @@ import {
   type McapTimelineRange,
 } from "./contracts/index";
 import { getMcapGridPreviewPool } from "./worker-host";
+import type { McapFrameTransformSample } from "./transforms/types";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerPriority,
@@ -96,6 +105,18 @@ const DEFAULT_MCAP_BOUNDED_SOURCE_ALLOWANCE: ReadWorkBudget = {
   maxUncompressedBytes: 512 * 1024 * 1024,
   maxWallTimeMs: 30_000,
 };
+const DATA_BEARING_TOPOLOGY_STREAM_KINDS = new Set<StreamKind>([
+  STREAM_KIND.CAMERA_CALIBRATION,
+  STREAM_KIND.GRID,
+  STREAM_KIND.IMAGE,
+  STREAM_KIND.IMAGE_ANNOTATIONS,
+  STREAM_KIND.LOCATION,
+  STREAM_KIND.POINT_CLOUD,
+  STREAM_KIND.POSE,
+  STREAM_KIND.SCENE_UPDATE,
+  STREAM_KIND.VIDEO,
+]);
+let mcapDataRequestCounter = 0;
 
 /** Options for constructing the MCAP format adapter. */
 export interface CreateMcapFormatAdapterOptions {
@@ -163,6 +184,12 @@ export function createMcapFormatAdapter(
         if (openOptions?.signal?.aborted) {
           throw new EpisodeReadCancelledError();
         }
+        startMcapCostSourceSession(
+          buildMcapCostSourceRegistrations(
+            sceneSourcesFromStreamDescriptors(manifest.streams),
+            manifest.streams,
+          ),
+        );
         return new McapEpisodeSession(
           client,
           asset,
@@ -848,7 +875,7 @@ function streamKindForPayload(
   if (/navsat|location|gps/.test(identity)) {
     return STREAM_KIND.LOCATION;
   }
-  if (/(^|\W)(tf2?_msgs|transform)/.test(identity)) {
+  if (/(?:^|\W)tf2?_msgs|transform/.test(identity)) {
     return STREAM_KIND.TRANSFORM;
   }
   if (/pose|odometry/.test(identity)) {
@@ -877,12 +904,14 @@ class McapEpisodeSession implements EpisodeSession {
     },
   } as const;
   readonly transformRead: TransformReadAcceleration;
+  readonly transformTopology?: TransformTopologyCapability;
   private disposed = false;
   private decodedFrames = 0;
   private readRequests = 0;
   private returnedBatches = 0;
   private budgetAllowance?: ReadWorkBudget;
   private budgetLedger?: SourceReadBudgetLedger;
+  private topologyFrameUses?: readonly EpisodeTransformTopologyFrameUse[];
   private readonly sourceNamesById: ReadonlyMap<string, string>;
 
   constructor(
@@ -949,6 +978,15 @@ class McapEpisodeSession implements EpisodeSession {
       };
     }
     this.transformRead = this.createTransformReadAcceleration();
+    if (
+      client.readTransformTopology &&
+      manifest.streams.some((stream) => stream.kind === STREAM_KIND.TRANSFORM)
+    ) {
+      this.transformTopology = {
+        sample: (request) => this.sampleTransformTopology(request),
+        scan: (request) => this.scanTransformTopology(request),
+      };
+    }
   }
 
   activate(): void {
@@ -1121,6 +1159,7 @@ class McapEpisodeSession implements EpisodeSession {
         this.decodedFrames += 1;
         this.returnedBatches += 1;
       }
+      recordBoundedReadCostEvent(result.usage, result.stopReason, topics);
       reservationSettled = true;
       reservation.commit(result.usage, result.usage.chunksOpened, {
         exact: true,
@@ -1160,6 +1199,7 @@ class McapEpisodeSession implements EpisodeSession {
           error,
           completedUsage,
         );
+        recordBoundedReadCostEvent(cancellationUsage, "cancelled", topics);
         if (!reservationSettled) {
           reservationSettled = true;
           reservation.commit(cancellationUsage, cancellationUsage.chunksOpened);
@@ -1231,6 +1271,7 @@ class McapEpisodeSession implements EpisodeSession {
       readSynchronizedBatch: async (request, options) => {
         this.ensureOpen();
         try {
+          const mcapDataRequestId = nextMcapDataRequestId();
           const windows = await this.client.readSynchronizedMessageBatch(
             {
               activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
@@ -1240,6 +1281,7 @@ class McapEpisodeSession implements EpisodeSession {
               pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
                 request.pointCloudColorBy,
               ),
+              ...(mcapDataRequestId ? { mcapDataRequestId } : {}),
               source: this.source,
               streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
               timeNs: request.timeNs,
@@ -1327,6 +1369,173 @@ class McapEpisodeSession implements EpisodeSession {
         }
       },
     };
+  }
+
+  private async sampleTransformTopology(
+    request: TransformTopologySampleRequest,
+  ): Promise<TransformTopologySampleResult> {
+    this.ensureOpen();
+    throwIfAborted(request.signal);
+    const sampledAtNs =
+      this.manifest.timeRange.startNs +
+      (this.manifest.timeRange.endNs - this.manifest.timeRange.startNs) / 2n;
+
+    try {
+      // Reuse the normal playback primitives: small static bootstrap plus one
+      // exact-time indexed placement. This never opens or widens the aggregate
+      // topology account.
+      const staticSet = await this.client.readFrameTransformBootstrap(
+        { source: this.source },
+        { signal: request.signal },
+      );
+      this.ensureOpen();
+      throwIfAborted(request.signal);
+      const placementSet = await this.client.readFrameTransformWindow(
+        {
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          endTimeNs: sampledAtNs,
+          source: this.source,
+          startTimeNs: sampledAtNs,
+        },
+        { priority: "current", signal: request.signal },
+      );
+      this.ensureOpen();
+      throwIfAborted(request.signal);
+
+      return {
+        edges: topologyEdgesFromTransformSamples(
+          [...staticSet.samples, ...placementSet.samples],
+          sampledAtNs,
+        ).map((edge) => ({
+          ...edge,
+          sourceStreamId: this.streamIdFor(edge.sourceStreamId),
+        })),
+        frameUses: this.topologyFrameUses ?? [],
+        sampledAtNs,
+      };
+    } catch (error) {
+      throw this.normalizeReadError(error);
+    }
+  }
+
+  private async scanTransformTopology(
+    request: TransformTopologyScanRequest,
+  ): Promise<TransformTopologyScanResult> {
+    this.ensureOpen();
+    throwIfAborted(request.signal);
+    // Opening is idempotent and shares the same cumulative ledger as every
+    // other background consumer for this source.
+    this.openBoundedReadAccount();
+    const ledger = this.budgetLedger;
+    const absoluteBudget = this.budgetAllowance;
+    if (!ledger || !absoluteBudget) {
+      throw new Error("MCAP source read budget account is not open");
+    }
+    const reservation = ledger.reserve(
+      request.budget,
+      this.boundedPolicy.maxChunksPerGrant,
+    );
+    if (!reservation) {
+      return {
+        ...(request.continuation ? { continuation: request.continuation } : {}),
+        coverageByStream: new Map(),
+        edges: [],
+        frameUses: this.topologyFrameUses ?? [],
+        stopReason: "account-exhausted",
+        usage: emptyReadWorkUsage(),
+      };
+    }
+
+    let completedUsage: ReadWorkUsage | undefined;
+    let reservationSettled = false;
+    try {
+      const readTransformTopology = this.client.readTransformTopology;
+      if (!readTransformTopology) {
+        throw new Error("MCAP transform topology reads are unavailable");
+      }
+      const result = await readTransformTopology.call(
+        this.client,
+        {
+          absoluteBudget,
+          absoluteMaxChunks: this.boundedPolicy.maxChunksPerGrant,
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          budget: reservation.budget,
+          continuation: request.continuation,
+          endTimeNs: this.manifest.timeRange.endNs,
+          frameUseTopics: this.manifest.streams
+            .filter((stream) =>
+              DATA_BEARING_TOPOLOGY_STREAM_KINDS.has(stream.kind),
+            )
+            .map((stream) => stream.sourceName),
+          maxChunks: reservation.maxPhysicalUnits,
+          source: this.source,
+          startTimeNs: this.manifest.timeRange.startNs,
+        },
+        { priority: "bulk", signal: request.signal },
+      );
+      completedUsage = result.usage;
+      this.ensureOpen();
+      throwIfAborted(request.signal);
+      reservationSettled = true;
+      reservation.commit(result.usage, result.usage.chunksOpened, {
+        exact: true,
+      });
+      recordBoundedReadCostEvent(result.usage, result.stopReason, [
+        ...result.coverageByTopic.keys(),
+      ]);
+
+      this.topologyFrameUses = mergeTransformTopologyFrameUses(
+        this.topologyFrameUses ?? [],
+        result.frameUses.map((use) => ({
+          ...use,
+          streamId: this.streamIdFor(use.streamId),
+        })),
+      );
+      return {
+        ...(result.continuation ? { continuation: result.continuation } : {}),
+        coverageByStream: new Map(
+          [...result.coverageByTopic].map(([topic, windows]) => [
+            this.streamIdFor(topic),
+            windows,
+          ]),
+        ),
+        edges: result.edges.map((edge) => ({
+          ...edge,
+          sourceStreamId: this.streamIdFor(edge.sourceStreamId),
+        })),
+        frameUses: this.topologyFrameUses ?? [],
+        stopReason: result.stopReason,
+        ...(result.unavailableByTopic
+          ? {
+              unavailableByStream: new Map(
+                [...result.unavailableByTopic].map(([topic, windows]) => [
+                  this.streamIdFor(topic),
+                  windows,
+                ]),
+              ),
+            }
+          : {}),
+        usage: result.usage,
+      };
+    } catch (error) {
+      const cancelled =
+        isMcapBoundedReadCancelledError(error) ||
+        isEpisodeReadCancelledError(error) ||
+        request.signal?.aborted === true;
+      if (!reservationSettled) {
+        const usage = cancelled
+          ? boundedCancellationUsage(error, completedUsage)
+          : emptyReadWorkUsage();
+        reservationSettled = true;
+        reservation.commit(usage, usage.chunksOpened, {
+          // A thrown read cannot prove that no physical work occurred. Keep
+          // the reservation conservative so retries cannot reset the account.
+          exact: false,
+        });
+      }
+      if (cancelled) throw new EpisodeReadCancelledError();
+      throw error;
+    }
   }
 
   private fromMcapWindow(
@@ -1425,6 +1634,103 @@ function boundedCancellationUsage(
   return completedUsage ?? emptyReadWorkUsage();
 }
 
+function topologyEdgesFromTransformSamples(
+  samples: readonly McapFrameTransformSample[],
+  sampledAtNs: bigint,
+): readonly EpisodeTransformTopologyEdgeObservation[] {
+  const edges = new Map<string, EpisodeTransformTopologyEdgeObservation>();
+  for (const sample of samples) {
+    const kind = sample.timeNs === undefined ? "static" : "temporal";
+    const sourceName = sample.sourceName ?? "transform";
+    const identity = transformTopologyObservationKey({
+      childFrameId: sample.childFrameId,
+      kind,
+      parentFrameId: sample.parentFrameId,
+      sourceName,
+    });
+    if (edges.has(identity)) continue;
+    const observedTimeNs = sample.timeNs ?? sampledAtNs;
+    edges.set(identity, {
+      childFrameId: sample.childFrameId,
+      firstObservedTimeNs: observedTimeNs,
+      kind,
+      lastObservedTimeNs: observedTimeNs,
+      occurrenceCount: 1,
+      parentFrameId: sample.parentFrameId,
+      sourceName,
+      sourceStreamId: sourceName,
+    });
+  }
+  return [...edges.values()].sort((left, right) =>
+    compareFrameIds(
+      transformTopologyObservationKey(left),
+      transformTopologyObservationKey(right),
+    ),
+  );
+}
+
+function transformTopologyObservationKey(
+  edge: Pick<
+    EpisodeTransformTopologyEdgeObservation,
+    "childFrameId" | "kind" | "parentFrameId" | "sourceName"
+  >,
+): string {
+  return [
+    edge.parentFrameId,
+    edge.childFrameId,
+    edge.kind,
+    edge.sourceName,
+  ].join("\0");
+}
+
+function mergeTransformTopologyFrameUses(
+  left: readonly EpisodeTransformTopologyFrameUse[],
+  right: readonly EpisodeTransformTopologyFrameUse[],
+): readonly EpisodeTransformTopologyFrameUse[] {
+  const uses = new Map<string, EpisodeTransformTopologyFrameUse>();
+  for (const use of [...left, ...right]) {
+    uses.set(transformTopologyFrameUseKey(use), use);
+  }
+  return [...uses.values()].sort((first, second) =>
+    compareFrameIds(
+      transformTopologyFrameUseKey(first),
+      transformTopologyFrameUseKey(second),
+    ),
+  );
+}
+
+function transformTopologyFrameUseKey(
+  use: EpisodeTransformTopologyFrameUse,
+): string {
+  return `${use.frameId}\0${use.streamId}`;
+}
+
+function recordBoundedReadCostEvent(
+  usage: ReadWorkUsage,
+  stopReason: string,
+  topics: readonly string[],
+): void {
+  if (!isMcapCostDebugEnabled()) {
+    return;
+  }
+  recordMcapCostEvent({
+    chunksOpened: usage.chunksOpened,
+    decompressedBytes: usage.decompressedBytes,
+    decompressionCacheHits: usage.decompressionCacheHits,
+    durationMs: usage.elapsedMs,
+    logicalSourceBytes: usage.logicalSourceBytes,
+    logicalUncompressedBytes: usage.logicalUncompressedBytes,
+    measurementStatus: "measured",
+    messagesDecoded: usage.messagesDecoded,
+    operation: "bounded-read-grant",
+    priority: "bulk",
+    sourceTopics: topics,
+    stage: "byte-read",
+    stopReason,
+    transferredBytes: usage.transferredBytes,
+  });
+}
+
 function sameReadWorkBudget(
   left: ReadWorkBudget | undefined,
   right: ReadWorkBudget,
@@ -1435,6 +1741,14 @@ function sameReadWorkBudget(
     left.maxUncompressedBytes === right.maxUncompressedBytes &&
     left.maxWallTimeMs === right.maxWallTimeMs
   );
+}
+
+function nextMcapDataRequestId(): string | undefined {
+  if (!isMcapLatencyDebugEnabled() && !isMcapCostDebugEnabled()) {
+    return undefined;
+  }
+  mcapDataRequestCounter += 1;
+  return `mcap-data:${mcapDataRequestCounter}`;
 }
 
 function ownedClient(client: McapResourceClient): {

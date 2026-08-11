@@ -87,12 +87,14 @@ import {
 } from "../layout/use-modal-layout";
 import { resolveTimelineMode } from "../playback/timeline-mode";
 import { useSceneInventoryState } from "../stream-discovery/use-scene-inventory";
+import { TransformTopologyProvider } from "../transforms/transform-topology-context";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 
 interface ReadyInventory {
   readonly hasNumericSeries: boolean;
   readonly hasRawRecords: boolean;
+  readonly hasTransformTopology: boolean;
   readonly recordingFacts?: EpisodeRecordingFacts;
   readonly sources: readonly SceneSource[];
   readonly streamCount: number;
@@ -232,6 +234,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
         ? {
             hasNumericSeries: session?.numericSeries !== undefined,
             hasRawRecords: session?.rawRecords !== undefined,
+            hasTransformTopology: session?.transformTopology !== undefined,
             recordingFacts: session?.manifest?.recordingFacts,
             sources,
             streamCount,
@@ -243,6 +246,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       session?.numericSeries,
       session?.rawRecords,
       session?.manifest?.recordingFacts,
+      session?.transformTopology,
       session?.terminology,
       sources,
       status,
@@ -280,6 +284,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       tileTypesFor({
         hasNumericSeries: shellInventory?.hasNumericSeries ?? false,
         hasRawRecords: shellInventory?.hasRawRecords ?? false,
+        hasTransformTopology: shellInventory?.hasTransformTopology ?? false,
         sourceTypes: shellSources.map((source) => source.type),
       }),
     [shellInventory, shellSources],
@@ -378,6 +383,10 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     >
       <PlaybackSessionStateProviders
         cameraViewStateScopeKey={cameraViewStateScopeKey}
+        transformTopologyCapability={
+          readyInventory ? (session?.transformTopology ?? null) : null
+        }
+        transformTopologySourceKey={playbackSource ? sourceAccessKey : null}
         viewportScopeKey={effectiveLayoutScopeKey}
       >
         <FrameTransformsProvider>
@@ -545,8 +554,18 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
 const PlaybackSessionStateProviders: React.FC<{
   readonly cameraViewStateScopeKey?: string;
   readonly children: React.ReactNode;
+  readonly transformTopologyCapability: NonNullable<
+    EpisodeSession["transformTopology"]
+  > | null;
+  readonly transformTopologySourceKey: string | null;
   readonly viewportScopeKey?: string;
-}> = ({ cameraViewStateScopeKey, children, viewportScopeKey }) => (
+}> = ({
+  cameraViewStateScopeKey,
+  children,
+  transformTopologyCapability,
+  transformTopologySourceKey,
+  viewportScopeKey,
+}) => (
   <FullHistoryInterestsProvider>
     <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
       <PanelVisibilityProvider scopeKey={cameraViewStateScopeKey}>
@@ -555,7 +574,12 @@ const PlaybackSessionStateProviders: React.FC<{
             <SceneNoticesProvider>
               <TileSettingsProvider>
                 <MapViewportScopeProvider scopeKey={viewportScopeKey}>
-                  {children}
+                  <TransformTopologyProvider
+                    capability={transformTopologyCapability}
+                    sourceKey={transformTopologySourceKey}
+                  >
+                    {children}
+                  </TransformTopologyProvider>
                 </MapViewportScopeProvider>
               </TileSettingsProvider>
             </SceneNoticesProvider>

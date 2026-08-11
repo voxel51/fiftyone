@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
-import { describe, expect, it, vi } from "vitest";
+import { Quaternion, Vector3 } from "three";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   PlaybackSyncMode,
   StreamInventorySchema,
@@ -11,7 +12,11 @@ import {
   STREAM_METADATA,
   type EpisodeRecordingFacts,
 } from "../../ir";
-import type { ByteResources, EpisodeSource } from "../../ports";
+import type {
+  ByteResources,
+  EpisodeSource,
+  ReadContinuation,
+} from "../../ports";
 import {
   defineEpisodeSessionContractTests,
   collectBatches,
@@ -63,6 +68,11 @@ function recordingInventory(
 const io: ByteResources = {
   readBytes: vi.fn(),
 };
+
+afterEach(() => {
+  window.history.replaceState(null, "", "/");
+  resetMcapCostDebugForTests();
+});
 
 defineEpisodeSessionContractTests({
   createSession: () =>
@@ -264,6 +274,293 @@ describe("MCAP format adapter", () => {
     }
   });
 
+  it("exposes demand-driven bounded transform topology and maps topic identities", async () => {
+    const client = createClient();
+    const continuation = { cursor: 1 } as ReadContinuation;
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/tf",
+          metadata: { "mcap.topic": "/tf" },
+          payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
+          recordCount: "10",
+          streamId: "tf",
+        }),
+        create(StreamInventorySchema, {
+          displayName: "/points",
+          metadata: { "mcap.topic": "/points" },
+          payload: {
+            encoding: "ros2",
+            schema: "sensor_msgs/msg/PointCloud2",
+          },
+          recordCount: "10",
+          streamId: "points",
+        }),
+      ]),
+    );
+    const topologyUsage = {
+      chunksOpened: 1,
+      decompressedBytes: 1_024,
+      decompressionCacheHits: 0,
+      elapsedMs: 3,
+      logicalSourceBytes: 512,
+      logicalUncompressedBytes: 1_024,
+      messagesDecoded: 5,
+      transferredBytes: 512,
+    };
+    client.readTransformTopology = vi
+      .fn()
+      .mockResolvedValueOnce({
+        continuation,
+        coverageByTopic: new Map([["/tf", [{ endNs: 1n, startNs: 1n }]]]),
+        edges: [
+          {
+            childFrameId: "lidar",
+            kind: "temporal" as const,
+            occurrenceCount: 4,
+            parentFrameId: "base_link",
+            sourceName: "/tf",
+            sourceStreamId: "/tf",
+          },
+        ],
+        frameUses: [
+          {
+            frameId: "lidar",
+            sourceName: "/points",
+            streamId: "/points",
+          },
+        ],
+        stopReason: "budget-exhausted" as const,
+        usage: topologyUsage,
+      })
+      .mockResolvedValueOnce({
+        coverageByTopic: new Map([["/tf", [{ endNs: 2n, startNs: 2n }]]]),
+        edges: [],
+        frameUses: [
+          {
+            frameId: "lidar",
+            sourceName: "/points",
+            streamId: "/points",
+          },
+          {
+            frameId: "camera",
+            sourceName: "/camera",
+            streamId: "/camera",
+          },
+        ],
+        stopReason: "source-exhausted" as const,
+        usage: topologyUsage,
+      });
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(source, io);
+    try {
+      expect(session.transformTopology).toBeDefined();
+      expect(client.readTransformTopology).not.toHaveBeenCalled();
+
+      const budget = {
+        maxMessages: 10_000,
+        maxSourceBytes: 16 * 1024 * 1024,
+        maxUncompressedBytes: 32 * 1024 * 1024,
+        maxWallTimeMs: 500,
+      };
+      const result = await session.transformTopology?.scan({ budget });
+
+      expect(client.readTransformTopology).toHaveBeenCalledWith(
+        expect.objectContaining({
+          budget,
+          frameUseTopics: ["/points"],
+          maxChunks: 4,
+        }),
+        { priority: "bulk", signal: undefined },
+      );
+      expect(result?.edges[0]?.sourceStreamId).toBe("tf");
+      expect(result?.continuation).toBe(continuation);
+
+      const resumed = await session.transformTopology?.scan({
+        budget,
+        continuation,
+      });
+
+      expect(client.readTransformTopology).toHaveBeenLastCalledWith(
+        expect.objectContaining({ continuation }),
+        { priority: "bulk", signal: undefined },
+      );
+      expect(resumed?.frameUses).toEqual([
+        {
+          frameId: "camera",
+          sourceName: "/camera",
+          streamId: "/camera",
+        },
+        {
+          frameId: "lidar",
+          sourceName: "/points",
+          streamId: "points",
+        },
+      ]);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("charges failed topology grants conservatively", async () => {
+    const client = createClient();
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/tf",
+          metadata: { "mcap.topic": "/tf" },
+          payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
+          streamId: "tf",
+        }),
+      ]),
+    );
+    client.readTransformTopology = vi.fn(async () => {
+      throw new Error("transform decode failed");
+    });
+    const allowance = {
+      maxMessages: 10,
+      maxSourceBytes: 1_000,
+      maxUncompressedBytes: 2_000,
+      maxWallTimeMs: 100,
+    };
+    const session = await createMcapFormatAdapter({
+      boundedSourceAllowance: allowance,
+      createClient: () => client,
+    }).open(source, io);
+    try {
+      await expect(
+        session.transformTopology?.scan({ budget: allowance }),
+      ).rejects.toThrow("transform decode failed");
+
+      await expect(
+        session.transformTopology?.scan({ budget: allowance }),
+      ).resolves.toMatchObject({ stopReason: "account-exhausted" });
+      expect(client.readTransformTopology).toHaveBeenCalledOnce();
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("samples topology through exact-time playback reads without resuming the aggregate scan", async () => {
+    const client = createClient();
+    client.readTransformTopology = vi.fn();
+    vi.mocked(client.readTimelineRange).mockResolvedValue({
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      endTimeNs: 200n,
+      startTimeNs: 100n,
+    });
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/tf",
+          metadata: { "mcap.topic": "/tf" },
+          payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
+          streamId: "tf",
+        }),
+        create(StreamInventorySchema, {
+          displayName: "/tf_static",
+          metadata: { "mcap.topic": "/tf_static" },
+          payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
+          streamId: "tf-static",
+        }),
+      ]),
+    );
+    vi.mocked(client.readFrameTransformBootstrap).mockResolvedValue({
+      samples: [
+        {
+          childFrameId: "base_link",
+          parentFrameId: "map",
+          rotation: new Quaternion(),
+          sourceName: "/tf_static",
+          translation: new Vector3(),
+        },
+      ],
+    });
+    vi.mocked(client.readFrameTransformWindow).mockResolvedValue({
+      samples: [
+        {
+          childFrameId: "lidar",
+          parentFrameId: "base_link",
+          rotation: new Quaternion(),
+          sourceName: "/tf",
+          timeNs: 150n,
+          translation: new Vector3(),
+        },
+      ],
+    });
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(source, io);
+    const controller = new AbortController();
+    try {
+      const result = await session.transformTopology?.sample?.({
+        signal: controller.signal,
+      });
+
+      expect(client.readTransformTopology).not.toHaveBeenCalled();
+      expect(client.readFrameTransformBootstrap).toHaveBeenCalledWith(
+        { source: sourceDescriptor },
+        { signal: controller.signal },
+      );
+      expect(client.readFrameTransformWindow).toHaveBeenCalledWith(
+        expect.objectContaining({ endTimeNs: 150n, startTimeNs: 150n }),
+        { priority: "current", signal: controller.signal },
+      );
+      expect(result).toMatchObject({
+        edges: [
+          {
+            childFrameId: "lidar",
+            kind: "temporal",
+            parentFrameId: "base_link",
+            sourceName: "/tf",
+            sourceStreamId: "tf",
+          },
+          {
+            childFrameId: "base_link",
+            kind: "static",
+            parentFrameId: "map",
+            sourceName: "/tf_static",
+            sourceStreamId: "tf-static",
+          },
+        ],
+        sampledAtNs: 150n,
+      });
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("recognizes Foxglove frame-transform schemas as topology-capable", async () => {
+    const client = createClient();
+    client.readTransformTopology = vi.fn();
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/tf",
+          metadata: { "mcap.topic": "/tf" },
+          payload: {
+            encoding: "protobuf",
+            schema: "foxglove.FrameTransform",
+          },
+          recordCount: "3",
+          streamId: "tf",
+        }),
+      ]),
+    );
+
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(source, io);
+    try {
+      expect(session.manifest.streams[0]?.kind).toBe("transform");
+      expect(session.transformTopology).toBeDefined();
+      expect(client.readTransformTopology).not.toHaveBeenCalled();
+    } finally {
+      session.dispose();
+    }
+  });
+
   it("stores only valid episode-average topic rates", () => {
     const topic = (recordCount?: string) =>
       create(StreamInventorySchema, {
@@ -419,7 +716,11 @@ describe("MCAP format adapter", () => {
     session.dispose();
   });
 
-  it("retains a cancelled grant after receiving partial usage", async () => {
+  it("retains a cancelled grant while reporting its best-effort partial usage", async () => {
+    window.history.replaceState(null, "", "/?mcapCostDebug=1");
+    const bridge = initMcapCostDebugBridge();
+    if (!bridge) throw new Error("expected MCAP cost bridge");
+    bridge.beginCapture({ captureId: "bounded-cancel" });
     const client = createClient();
     const partialUsage = {
       chunksOpened: 1,
@@ -464,6 +765,21 @@ describe("MCAP format adapter", () => {
       maxSourceBytes: 500,
       maxUncompressedBytes: 1_500,
       maxWallTimeMs: 500,
+    });
+    expect(
+      bridge
+        .snapshot()
+        .events.find((event) => event.operation === "bounded-read-grant"),
+    ).toMatchObject({
+      chunksOpened: partialUsage.chunksOpened,
+      decompressedBytes: partialUsage.decompressedBytes,
+      decompressionCacheHits: partialUsage.decompressionCacheHits,
+      durationMs: partialUsage.elapsedMs,
+      logicalSourceBytes: partialUsage.logicalSourceBytes,
+      logicalUncompressedBytes: partialUsage.logicalUncompressedBytes,
+      messagesDecoded: partialUsage.messagesDecoded,
+      stopReason: "cancelled",
+      transferredBytes: partialUsage.transferredBytes,
     });
     session.dispose();
   });
@@ -617,6 +933,27 @@ describe("MCAP format adapter", () => {
     expect(client.readTimelineRange).not.toHaveBeenCalled();
     expect(client.readTopics).not.toHaveBeenCalled();
     expect(session.playback?.timeline.byteTimeline).toHaveLength(1);
+    session.dispose();
+  });
+
+  it("correlates debug batch demand with worker attribution", async () => {
+    window.history.replaceState(null, "", "/?mcapCostDebug=1");
+    const client = createClient();
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(source, io);
+
+    await session.playback?.readSynchronizedBatch({
+      streams: ["camera"],
+      timeNs: [1n],
+    });
+
+    expect(client.readSynchronizedMessageBatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mcapDataRequestId: expect.stringMatching(/^mcap-data:\d+$/),
+      }),
+      undefined,
+    );
     session.dispose();
   });
 

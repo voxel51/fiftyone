@@ -16,5 +16,8 @@ export * from "./playback";
 export * from "./raw-record";
 /** Public nanosecond time values. */
 export * from "./time";
+
+/** Public transform-topology diagnostic observations. */
+export * from "./transform-topology";
 /** Public frame visualization discriminants. */
 export * from "./visualization-kinds";

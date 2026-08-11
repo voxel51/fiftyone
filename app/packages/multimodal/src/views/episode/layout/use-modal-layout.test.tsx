@@ -72,6 +72,7 @@ function renderLayoutHook(
       availableTileTypes: tileTypesFor({
         hasNumericSeries: true,
         hasRawRecords: true,
+        hasTransformTopology: false,
         sourceTypes: sources.map((source) => source.type),
       }),
       resolveTile: getTileDefinition,
@@ -622,6 +623,7 @@ describe("useModalLayout", () => {
           availableTileTypes: tileTypesFor({
             hasNumericSeries: true,
             hasRawRecords: true,
+            hasTransformTopology: false,
             sourceTypes: SCENE_SOURCES.map((source) => source.type),
           }),
           resolveTile: getTileDefinition,

@@ -325,6 +325,7 @@ function remoteNetworkBudget(downlinkMbps: number | null): number {
  * - the supporting shelf hugs its image rows between 20–40% of the mosaic;
  *   3D receives the remainder
  * - plots stack as time-series diagnostics
+ * - transform topology stays with other diagnostics
  * - raw/message tiles stack as a right inspection rail
  * - unknown tile ids fall into diagnostics after known groups
  */
@@ -344,6 +345,7 @@ export function buildAutoLayout(
   const threeD: string[] = [];
   const maps: string[] = [];
   const plots: string[] = [];
+  const transforms: string[] = [];
   const logs: string[] = [];
   const messages: string[] = [];
   const unknown: string[] = [];
@@ -361,6 +363,9 @@ export function buildAutoLayout(
         break;
       case TILE_TYPE.PLOT:
         plots.push(tileId);
+        break;
+      case TILE_TYPE.TRANSFORMS:
+        transforms.push(tileId);
         break;
       case TILE_TYPE.LOG:
         logs.push(tileId);
@@ -380,6 +385,7 @@ export function buildAutoLayout(
     ? buildContextShelf(
         images,
         plots,
+        transforms,
         logs,
         messages,
         unknown,
@@ -406,6 +412,7 @@ export function buildAutoLayout(
     images,
     maps,
     plots,
+    transforms,
     logs,
     messages,
     unknown,
@@ -417,6 +424,7 @@ function buildNon3dLayout(
   images: readonly string[],
   maps: readonly string[],
   plots: readonly string[],
+  transforms: readonly string[],
   logs: readonly string[],
   messages: readonly string[],
   unknown: readonly string[],
@@ -428,7 +436,7 @@ function buildNon3dLayout(
     direction: "row",
     splitPercentage: CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE,
   });
-  const diagnostics = buildDiagnosticsStack(plots, logs, unknown);
+  const diagnostics = buildDiagnosticsStack(plots, transforms, logs, unknown);
   const left = stackNodes([visualBank, diagnostics], {
     direction: "column",
     splitPercentage: VISUAL_WITH_PLOTS_SPLIT_PERCENTAGE,
@@ -463,6 +471,7 @@ function buildTopVisualRegion(
 function buildContextShelf(
   images: readonly string[],
   plots: readonly string[],
+  transforms: readonly string[],
   logs: readonly string[],
   messages: readonly string[],
   unknown: readonly string[],
@@ -473,7 +482,7 @@ function buildContextShelf(
   readonly layout: MosaicNode<string>;
   readonly preferredHeightFraction: number;
 } | null {
-  const diagnostics = buildDiagnosticsStack(plots, logs, unknown);
+  const diagnostics = buildDiagnosticsStack(plots, transforms, logs, unknown);
   const messageRail = stackTiles(messages, "column");
   const imageWidthFraction =
     (diagnostics ? CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE / 100 : 1) *
@@ -731,11 +740,13 @@ function buildLayoutTree(
 
 function buildDiagnosticsStack(
   plots: readonly string[],
+  transforms: readonly string[],
   logs: readonly string[],
   unknown: readonly string[],
 ): MosaicNode<string> | null {
   return stackNodes([
     stackTiles(plots, "column"),
+    stackTiles(transforms, "column"),
     stackTiles(logs, "column"),
     stackTiles(unknown, "column"),
   ]);

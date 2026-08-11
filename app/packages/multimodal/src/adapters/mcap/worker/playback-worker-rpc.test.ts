@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ReadContinuation } from "../../../ports";
 import type { McapResourceClient } from "../contracts";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
@@ -101,11 +102,50 @@ describe("exact-message playback worker RPC", () => {
       sourceKey: "source-key",
       type: "readRawMessageAtCursor",
     });
+    const topologySummary = summarizeMcapWorkerRequest({
+      id: 3,
+      payload: {
+        absoluteBudget: {
+          maxMessages: 10,
+          maxSourceBytes: 1_000,
+          maxUncompressedBytes: 2_000,
+          maxWallTimeMs: 100,
+        },
+        absoluteMaxChunks: 4,
+        activeTimeline: "log",
+        budget: {
+          maxMessages: 5,
+          maxSourceBytes: 500,
+          maxUncompressedBytes: 1_000,
+          maxWallTimeMs: 50,
+        },
+        continuation: {
+          secret: "secret-topology-continuation",
+        } as ReadContinuation,
+        endTimeNs: 20n,
+        frameUseTopics: ["/points", "/camera"],
+        maxChunks: 2,
+        source,
+        startTimeNs: 10n,
+      },
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
+      sourceKey: "source-key",
+      type: "readTransformTopology",
+    });
 
     expect(indexSummary).toEqual({ limit: 13, topics: ["/camera"] });
     expect(exactSummary).toEqual({ topics: ["/camera"] });
+    expect(topologySummary).toEqual({
+      activeTimeline: "log",
+      endTimeNs: "20",
+      requestedTopics: 2,
+      startTimeNs: "10",
+    });
     expect(JSON.stringify([indexSummary, exactSummary])).not.toContain(
       "secret-opaque-cursor",
+    );
+    expect(JSON.stringify(topologySummary)).not.toContain(
+      "secret-topology-continuation",
     );
   });
 
