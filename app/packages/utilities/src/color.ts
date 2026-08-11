@@ -2,6 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { VOODOO_COLOR_POOL } from "./voodooPalette";
+
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
@@ -299,21 +301,7 @@ export const interpolateColorsRgb = (
   ];
 };
 
-export const default_app_color = [
-  "#ee0000",
-  "#ee6600",
-  "#993300",
-  "#996633",
-  "#999900",
-  "#009900",
-  "#003300",
-  "#009999",
-  "#000099",
-  "#0066ff",
-  "#6600ff",
-  "#cc33cc",
-  "#777799",
-];
+export const default_app_color = VOODOO_COLOR_POOL;
 
 /**
  * The App's curated continuous ramps, tuned for a dark canvas. The single
