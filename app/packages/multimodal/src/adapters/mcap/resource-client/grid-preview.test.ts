@@ -24,6 +24,7 @@ import type {
   McapRecordingInventory,
   McapResourceClient,
 } from "../contracts/index";
+import { asyncValues } from "./inline-client.test-fixtures";
 
 describe("MCAP grid preview playback cadence", () => {
   it("caps playback at twelve frames per second", () => {
@@ -54,10 +55,24 @@ describe("MCAP grid preview playback cadence", () => {
   });
 });
 
+function promiseMock<Args extends unknown[], Result>(
+  implementation: (...args: Args) => Result,
+) {
+  return vi.fn((...args: Args) =>
+    Promise.resolve().then(() => implementation(...args)),
+  );
+}
+
+function asyncGeneratorMock<Args extends unknown[], Value>(
+  implementation: (...args: Args) => Generator<Value, void, void>,
+) {
+  return vi.fn((...args: Args) => asyncValues(implementation(...args)));
+}
+
 describe("MCAP grid preview", () => {
   it("returns an empty no-stream state and caches the missing selection", async () => {
     const client = createClient({
-      readTopics: vi.fn(async () => recordingInventory([])),
+      readTopics: promiseMock(() => recordingInventory([])),
     });
     const entry = { client };
 
@@ -75,7 +90,7 @@ describe("MCAP grid preview", () => {
   });
 
   it("reads an image frame and reuses the cached stream selection", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createImageMessage(request.topics?.[0] ?? "/camera", [1, 2, 3], 7n);
@@ -87,8 +102,8 @@ describe("MCAP grid preview", () => {
     const timelineRange = createTimelineRange();
     const client = createClient({
       readDecodedMessages,
-      readTimelineRange: vi.fn(async () => timelineRange),
-      readTopics: vi.fn(async () => recordingInventory(inventory)),
+      readTimelineRange: promiseMock(() => timelineRange),
+      readTopics: promiseMock(() => recordingInventory(inventory)),
     });
     const entry = { client };
 
@@ -117,14 +132,14 @@ describe("MCAP grid preview", () => {
   });
 
   it("reads raw image frames as image previews", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createRawImageMessage(request.topics?.[0] ?? "/camera/image", 11n);
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic(
             "/camera/image",
@@ -151,14 +166,14 @@ describe("MCAP grid preview", () => {
   });
 
   it("reads encoded video frames as image previews", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createVideoMessage(request.topics?.[0] ?? "/camera/video", 12n);
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic(
             "/camera/video",
@@ -182,7 +197,7 @@ describe("MCAP grid preview", () => {
   });
 
   it("decodes only media when matching annotations are available", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       if (request.topics?.[0] === "/CAM_FRONT/image_rect_compressed") {
@@ -195,7 +210,7 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic("/CAM_FRONT/image_rect_compressed"),
           createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
@@ -221,12 +236,12 @@ describe("MCAP grid preview", () => {
 
   it("returns empty with stream topics when the selected stream has no frame", async () => {
     const client = createClient({
-      readDecodedMessages: vi.fn(async function* () {
+      readDecodedMessages: asyncGeneratorMock(function* () {
         for (const item of [] as never[]) {
           yield item;
         }
       }),
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([createTopic("/camera/front")]),
       ),
     });
@@ -245,14 +260,14 @@ describe("MCAP grid preview", () => {
   });
 
   it("uses an explicit selected image stream when it is available", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createImageMessage(request.topics?.[0] ?? "/camera", [8, 9], 40n);
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic("/camera/front"),
           createTopic("/camera/back"),
@@ -280,14 +295,14 @@ describe("MCAP grid preview", () => {
   });
 
   it("uses a preferred downsampled image stream for auto selection", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createImageMessage(request.topics?.[0] ?? "/camera", [7, 8], 44n);
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic("/camera/front/image"),
           createTopic("/camera/front/image_downsampled"),
@@ -313,14 +328,14 @@ describe("MCAP grid preview", () => {
   });
 
   it("honors an explicit raw image stream when a preferred sibling exists", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createImageMessage(request.topics?.[0] ?? "/camera", [3, 4], 45n);
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic("/camera/front/image"),
           createTopic("/camera/front/image_downsampled"),
@@ -347,14 +362,14 @@ describe("MCAP grid preview", () => {
   });
 
   it("returns unavailable when an explicit selected stream is missing", async () => {
-    const readDecodedMessages = vi.fn(async function* () {
+    const readDecodedMessages = asyncGeneratorMock(function* () {
       for (const item of [] as never[]) {
         yield item;
       }
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([createTopic("/camera/front")]),
       ),
     });
@@ -379,7 +394,7 @@ describe("MCAP grid preview", () => {
   });
 
   it("uses a point-cloud stream when auto has no image stream", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createPointCloudMessage(
@@ -390,7 +405,7 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic("/lidar/points", "foxglove.PointCloud"),
         ]),
@@ -416,7 +431,7 @@ describe("MCAP grid preview", () => {
   });
 
   it("uses a preferred downsampled point-cloud stream for auto selection", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createPointCloudMessage(
@@ -427,7 +442,7 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic("/lidar/points", "foxglove.PointCloud"),
           createTopic("/lidar/points_downsampled", "foxglove.PointCloud"),
@@ -451,7 +466,7 @@ describe("MCAP grid preview", () => {
   });
 
   it("uses an explicit selected point-cloud stream", async () => {
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = asyncGeneratorMock(function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createPointCloudMessage(
@@ -462,7 +477,7 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic("/camera/front"),
           createTopic("/lidar/rear", "foxglove.PointCloud"),
@@ -494,12 +509,12 @@ describe("MCAP grid preview", () => {
     for (let index = 0; index < sourcePointCount; index++) {
       positions[index * 3] = index;
     }
-    const readDecodedMessages = vi.fn(async function* () {
+    const readDecodedMessages = asyncGeneratorMock(function* () {
       yield createPointCloudMessage("/lidar/points", positions);
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () =>
+      readTopics: promiseMock(() =>
         recordingInventory([
           createTopic("/lidar/points", "foxglove.PointCloud"),
         ]),
@@ -619,21 +634,21 @@ function createClient(
   return {
     dispose: vi.fn(),
     readBoundedMessages: vi.fn(),
-    readDecodedMessages: vi.fn(async function* () {
+    readDecodedMessages: asyncGeneratorMock(function* () {
       for (const item of [] as never[]) {
         yield item;
       }
     }),
     readFrameTransformBootstrap: vi.fn(),
     readFrameTransformWindow: vi.fn(),
-    readSynchronizedMessageBatch: vi.fn(async () => []),
+    readSynchronizedMessageBatch: promiseMock(() => []),
     readRawMessageRecord: vi.fn(),
     readSynchronizedMessages: vi.fn(),
-    readTimelineRange: vi.fn(async () => createTimelineRange()),
-    readTopics: vi.fn(async () => recordingInventory([])),
-    readTopicTimeBounds: vi.fn(async () => []),
-    enumerateNumericFields: vi.fn(async () => []),
-    readNumericSeries: vi.fn(async () => ({
+    readTimelineRange: promiseMock(() => createTimelineRange()),
+    readTopics: promiseMock(() => recordingInventory([])),
+    readTopicTimeBounds: promiseMock(() => []),
+    enumerateNumericFields: promiseMock(() => []),
+    readNumericSeries: promiseMock(() => ({
       baseTimeNs: 0n,
       fields: [],
       messageCount: 0,

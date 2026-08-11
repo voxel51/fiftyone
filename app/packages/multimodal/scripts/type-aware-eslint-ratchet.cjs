@@ -45,6 +45,7 @@ const migratedPaths = [
   "packages/multimodal/src/adapters/mcap/resource-client/message-decoder.ts",
   "packages/multimodal/src/adapters/mcap/resource-client/operations/read-synchronized-message-batch.ts",
   "packages/multimodal/src/adapters/mcap/resource-client/inline-client.synchronized-messages.test.ts",
+  "packages/multimodal/src/adapters/mcap/resource-client/grid-preview.test.ts",
   "packages/multimodal/src/adapters/fixture/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",
