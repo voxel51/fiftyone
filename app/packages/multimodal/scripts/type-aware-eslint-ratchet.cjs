@@ -16,6 +16,7 @@ const migratedPaths = [
   "packages/multimodal/src/adapters/mcap/reader/topic-time-bounds*.ts",
   "packages/multimodal/src/adapters/mcap/reader/indexed-message-reader*.ts",
   "packages/multimodal/src/adapters/mcap/reader/chunk-records.ts",
+  "packages/multimodal/src/adapters/mcap/reader/chunk-prefetch*.ts",
   "packages/multimodal/src/adapters/fixture/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",

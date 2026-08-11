@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import {
   collectChunkDataPrefetchRanges,
@@ -6,6 +5,7 @@ import {
   prefetchMcapByteRanges,
 } from "./chunk-prefetch";
 import type { McapPrefetchByteRange } from "./prefetch-types";
+import type { McapChannel, McapChunkIndex, McapReadable } from "./types";
 
 describe("collectWindowPrefetchRanges", () => {
   it("collects message-index regions before chunk data in time order", () => {
@@ -204,8 +204,8 @@ describe("prefetchMcapByteRanges", () => {
     let inFlight = 0;
     let maxInFlight = 0;
     const started: bigint[] = [];
-    const readable = {
-      read: vi.fn(async (offset: bigint) => {
+    const readable: McapReadable = {
+      read: vi.fn<McapReadable["read"]>(async (offset) => {
         inFlight += 1;
         maxInFlight = Math.max(maxInFlight, inFlight);
         started.push(offset);
@@ -213,8 +213,8 @@ describe("prefetchMcapByteRanges", () => {
         inFlight -= 1;
         return new Uint8Array(10);
       }),
-      size: vi.fn(async () => 10_000n),
-    } as unknown as McapTypes.IReadable;
+      size: vi.fn<McapReadable["size"]>(() => Promise.resolve(10_000n)),
+    };
 
     await prefetchMcapByteRanges(readable, ranges, 3);
 
@@ -227,16 +227,18 @@ describe("prefetchMcapByteRanges", () => {
 
   it("swallows read failures and keeps warming later ranges", async () => {
     const succeeded: bigint[] = [];
-    const readable = {
-      read: vi.fn(async (offset: bigint) => {
-        if (offset === 100n) {
-          throw new Error("range failed");
-        }
-        succeeded.push(offset);
-        return new Uint8Array(1);
-      }),
-      size: vi.fn(async () => 10_000n),
-    } as unknown as McapTypes.IReadable;
+    const readable: McapReadable = {
+      read: vi.fn<McapReadable["read"]>((offset) =>
+        Promise.resolve().then(() => {
+          if (offset === 100n) {
+            throw new Error("range failed");
+          }
+          succeeded.push(offset);
+          return new Uint8Array(1);
+        }),
+      ),
+      size: vi.fn<McapReadable["size"]>(() => Promise.resolve(10_000n)),
+    };
 
     await expect(
       prefetchMcapByteRanges(
@@ -252,21 +254,21 @@ describe("prefetchMcapByteRanges", () => {
   });
 
   it("skips empty ranges without reads", async () => {
-    const readable = {
-      read: vi.fn(async () => new Uint8Array(0)),
-      size: vi.fn(async () => 10_000n),
-    } as unknown as McapTypes.IReadable;
+    const read = vi.fn<McapReadable["read"]>(() =>
+      Promise.resolve(new Uint8Array(0)),
+    );
+    const readable: McapReadable = {
+      read,
+      size: vi.fn<McapReadable["size"]>(() => Promise.resolve(10_000n)),
+    };
 
     await prefetchMcapByteRanges(readable, [{ length: 0n, offset: 0n }], 2);
 
-    expect(readable.read).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
   });
 });
 
-function createChannels(): ReadonlyMap<
-  number,
-  McapTypes.TypedMcapRecords["Channel"]
-> {
+function createChannels(): ReadonlyMap<number, McapChannel> {
   return new Map([
     [7, createChannel({ id: 7, topic: "/camera" })],
     [8, createChannel({ id: 8, topic: "/lidar" })],
@@ -274,8 +276,8 @@ function createChannels(): ReadonlyMap<
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
-): McapTypes.TypedMcapRecords["ChunkIndex"] {
+  options: Partial<McapChunkIndex> = {},
+): McapChunkIndex {
   return {
     chunkLength: options.chunkLength ?? 256n,
     chunkStartOffset: options.chunkStartOffset ?? 1_000n,
@@ -283,16 +285,15 @@ function createChunkIndex(
     compression: options.compression ?? "",
     messageEndTime: options.messageEndTime ?? 20n,
     messageIndexLength: options.messageIndexLength ?? 0n,
-    messageIndexOffsets: options.messageIndexOffsets ?? new Map(),
+    messageIndexOffsets:
+      options.messageIndexOffsets ?? new Map<number, bigint>(),
     messageStartTime: options.messageStartTime ?? 10n,
     type: "ChunkIndex",
     uncompressedSize: options.uncompressedSize ?? 0n,
   };
 }
 
-function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
-): McapTypes.TypedMcapRecords["Channel"] {
+function createChannel(options: Partial<McapChannel> = {}): McapChannel {
   return {
     id: options.id ?? 7,
     messageEncoding: "protobuf",

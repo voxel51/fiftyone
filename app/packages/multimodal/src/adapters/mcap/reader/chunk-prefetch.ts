@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { compareBigInt } from "../../../ir";
 import { chunkMessageIndexRange } from "./chunk-index-ranges";
 import { channelIdsForTopics } from "./message-index";
@@ -7,6 +6,7 @@ import type {
   McapPrefetchChunkDataRequest,
   McapPrefetchWindowRequest,
 } from "./prefetch-types";
+import type { McapChannel, McapChunkIndex, McapReadable } from "./types";
 
 /**
  * Remote-transport pipelining for indexed MCAP reads.
@@ -35,9 +35,6 @@ const DEFAULT_PREFETCH_MAX_CHUNKS = 32;
  * realistic parallelism ceiling against object storage and media proxies.
  */
 const DEFAULT_PREFETCH_CONCURRENCY = 6;
-
-type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
-type McapChannel = McapTypes.TypedMcapRecords["Channel"];
 
 /**
  * Resolves the byte ranges an indexed read over a log-time window will
@@ -132,7 +129,7 @@ export function collectChunkDataPrefetchRanges({
  * read remains the single owner of error semantics.
  */
 export async function prefetchMcapByteRanges(
-  readable: McapTypes.IReadable,
+  readable: McapReadable,
   ranges: readonly McapPrefetchByteRange[],
   maxConcurrentReads = DEFAULT_PREFETCH_CONCURRENCY,
 ): Promise<void> {
