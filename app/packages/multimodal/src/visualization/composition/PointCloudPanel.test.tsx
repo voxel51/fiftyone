@@ -13,7 +13,11 @@ import {
   imageTextureCacheStats,
   resetImageTextureCacheForTests,
 } from "../media-2d/image-texture-cache";
-import { sampleColormap, type PointCloudColorSettings } from "../scene-3d";
+import {
+  sampleColormap,
+  type PointCloudColorSettings,
+  type PointCloudPanelProps,
+} from "../scene-3d";
 import { POINT_CLOUD_POINTS_MATERIAL_PROPS } from "../scene-3d/PointCloudSceneLayer";
 import * as sceneObjectInteraction from "../scene-3d/use-scene-object-interaction";
 import { PointCloudPanel } from "./PointCloudPanel";
@@ -955,11 +959,13 @@ describe("PointCloudPanel", () => {
 
   it("decodes a keyed frustum image through the shared texture cache", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const createBitmap = vi.fn(async () => ({
-      close: vi.fn(),
-      height: 900,
-      width: 1600,
-    }));
+    const createBitmap = vi.fn(() =>
+      Promise.resolve({
+        close: vi.fn(),
+        height: 900,
+        width: 1600,
+      }),
+    );
     vi.stubGlobal("createImageBitmap", createBitmap);
 
     const frustumLayer = {
@@ -1066,7 +1072,8 @@ describe("PointCloudPanel", () => {
 
   it("passes controlled camera pose through to the base scene", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const onCameraPoseChange = vi.fn();
+    const onCameraPoseChange =
+      vi.fn<NonNullable<PointCloudPanelProps["onCameraPoseChange"]>>();
     const cameraPose = {
       position: [1, 2, 3],
       target: [4, 5, 6],
@@ -1246,7 +1253,8 @@ describe("PointCloudPanel", () => {
 
   it("recenters on the current scene through the focus channel", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const onCameraPoseChange = vi.fn();
+    const onCameraPoseChange =
+      vi.fn<NonNullable<PointCloudPanelProps["onCameraPoseChange"]>>();
 
     render(
       <PointCloudPanel
@@ -1279,7 +1287,8 @@ describe("PointCloudPanel", () => {
 
   it("keeps initial fit one-shot across resize but recenters with the latest aspect", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const onCameraPoseChange = vi.fn();
+    const onCameraPoseChange =
+      vi.fn<NonNullable<PointCloudPanelProps["onCameraPoseChange"]>>();
     const layer = {
       frame: {
         fields: [],
@@ -1295,7 +1304,7 @@ describe("PointCloudPanel", () => {
         onCameraPoseChange={onCameraPoseChange}
       />,
     );
-    const initialPose = JSON.parse(
+    const initialPose = parseCameraPose(
       screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
         "null",
     );
@@ -1312,7 +1321,7 @@ describe("PointCloudPanel", () => {
 
     // Resizing does not silently take camera ownership in initial-fit mode.
     expect(
-      JSON.parse(
+      parseCameraPose(
         screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
           "null",
       ),
@@ -1340,7 +1349,7 @@ describe("PointCloudPanel", () => {
     const { rerender } = render(
       <PointCloudPanel fit="frame" layers={[layer]} />,
     );
-    const landscapePose = JSON.parse(
+    const landscapePose = parseCameraPose(
       screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
         "null",
     );
@@ -1349,7 +1358,7 @@ describe("PointCloudPanel", () => {
     rerender(
       <PointCloudPanel fit="frame" layers={[layer]} showGizmo={false} />,
     );
-    const portraitPose = JSON.parse(
+    const portraitPose = parseCameraPose(
       screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
         "null",
     );
@@ -1723,6 +1732,33 @@ function cameraPoseDistance(pose: {
 }): number {
   return new THREE.Vector3(...pose.position).distanceTo(
     new THREE.Vector3(...pose.target),
+  );
+}
+
+function parseCameraPose(serialized: string): {
+  readonly position: readonly [number, number, number];
+  readonly target: readonly [number, number, number];
+} {
+  const value: unknown = JSON.parse(serialized);
+  if (!isCameraPose(value))
+    throw new TypeError("Expected a serialized camera pose");
+  return value;
+}
+
+function isCameraPose(value: unknown): value is {
+  readonly position: readonly [number, number, number];
+  readonly target: readonly [number, number, number];
+} {
+  if (typeof value !== "object" || value === null) return false;
+  if (!("position" in value) || !("target" in value)) return false;
+  return isVector3(value.position) && isVector3(value.target);
+}
+
+function isVector3(value: unknown): value is [number, number, number] {
+  return (
+    Array.isArray(value) &&
+    value.length === 3 &&
+    value.every((component) => typeof component === "number")
   );
 }
 
