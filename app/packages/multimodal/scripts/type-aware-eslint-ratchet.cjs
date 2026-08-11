@@ -47,6 +47,7 @@ const migratedPaths = [
   "packages/multimodal/src/views/episode/plots/**/*.{ts,tsx}",
   "packages/multimodal/src/views/episode/scene/**/*.{ts,tsx}",
   "packages/multimodal/src/views/episode/settings/**/*.{ts,tsx}",
+  "packages/multimodal/src/views/episode/shell/**/*.{ts,tsx}",
   "packages/multimodal/src/views/episode/stream-discovery/**/*.{ts,tsx}",
   "packages/multimodal/src/views/episode/status/**/*.{ts,tsx}",
   "packages/multimodal/src/views/episode/tiles/**/*.{ts,tsx}",

@@ -75,7 +75,13 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             cameraPreferenceField={ctx.media.field}
             onTagCreate={onTagCreate}
             onTagUpdate={onTagUpdate}
-            onTagDelete={onTagDelete}
+            onTagDelete={
+              onTagDelete
+                ? (event) => {
+                    void onTagDelete(event);
+                  }
+                : undefined
+            }
             onTimelineDrawerOpenChange={onDrawerOpenChange}
             timelineDrawerMaxSize={preferences.drawerMaxSize}
             navigationPending={ctx.transitioning === true}

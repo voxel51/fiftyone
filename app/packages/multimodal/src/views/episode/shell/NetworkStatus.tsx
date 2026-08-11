@@ -175,13 +175,6 @@ function networkStatusViewModel({
     return null;
   }
 
-  const startupProgressPercent = gatedStart
-    ? clampedProgressPercent(gatedStart.progressFraction)
-    : null;
-  const startupTargetSeconds = gatedStart
-    ? Number(gatedStart.targetSeconds.toFixed(1))
-    : null;
-
   if (placementPending) {
     return {
       detail: "waiting for transforms",
@@ -197,6 +190,10 @@ function networkStatusViewModel({
   }
 
   if (gatedStart) {
+    const startupProgressPercent = clampedProgressPercent(
+      gatedStart.progressFraction,
+    );
+    const startupTargetSeconds = Number(gatedStart.targetSeconds.toFixed(1));
     return {
       detail: `buffering ${startupProgressPercent}% of ${startupTargetSeconds}s`,
       gaugeFillPercent: clampedProgressPercent(gatedStart.progressFraction),

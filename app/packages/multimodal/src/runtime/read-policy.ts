@@ -113,8 +113,7 @@ export function createEpisodePlaybackRuntime(
   session: EpisodeSession,
 ): PlaybackReadCapability {
   const acceleration = session.playback;
-  const subscribeTransport =
-    acceleration?.subscribeTransport?.bind(acceleration);
+  const subscribeTransport = acceleration?.subscribeTransport;
   return {
     timeline: acceleration?.timeline ?? {
       endNs: session.manifest.timeRange.endNs,

@@ -321,6 +321,7 @@ export interface PlaybackReadCapability {
     options?: SynchronizedPlaybackReadOptions,
   ): Promise<readonly SynchronizedFrameWindow[]>;
   subscribeTransport?(
+    this: void,
     listener: (sample: LaneTransportSnapshot) => void,
   ): () => void;
 }

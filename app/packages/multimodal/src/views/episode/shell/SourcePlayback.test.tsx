@@ -116,7 +116,7 @@ vi.mock("../settings/modal/SettingsSidebar", () => ({
       </span>
       <span data-testid="settings-recording-facts">
         {recordingFacts
-          ? `${recordingFacts.topicCount}:${recordingFacts.sizeBytes}`
+          ? `${recordingFacts.topicCount ?? "unknown"}:${recordingFacts.sizeBytes ?? "unknown"}`
           : "none"}
       </span>
     </>
@@ -169,8 +169,9 @@ describe("SourcePlayback", () => {
   afterEach(() => cleanup());
 
   it("treats unsupported recordings as opened files with no previewable streams", () => {
+    const activate = vi.fn();
     const session = {
-      activate: vi.fn(),
+      activate,
     } as unknown as EpisodeSession;
     const source: ByteSourceDescriptor = {
       readProfile: BYTE_SOURCE_READ_PROFILE.LOCAL,
@@ -187,7 +188,7 @@ describe("SourcePlayback", () => {
       />,
     );
 
-    expect(session.activate).not.toHaveBeenCalled();
+    expect(activate).not.toHaveBeenCalled();
     expect(
       screen.getByText(
         "No previewable streams in this recording (3 streams found)",
