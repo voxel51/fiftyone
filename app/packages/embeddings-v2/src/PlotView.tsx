@@ -211,6 +211,7 @@ export default function PlotView({
   );
   const {
     selectedIndices,
+    lassoIndices,
     selectionCount,
     handleSelection,
     handlePointClick,
@@ -249,18 +250,21 @@ export default function PlotView({
   );
 
   // Focus (selection) wins over scope (view + filters); null means
-  // nothing to scope by, and the legend shows the run's full counts
+  // nothing to scope by, and the legend shows the run's full counts.
+  // A lasso's indices live in the bridge, never in fos.selectedSamples,
+  // so they lead and grid checkbox selections are the fallback focus
+  const focusIndices = lassoIndices ?? selectedIndices;
   const scopedCounts = useMemo(
     () =>
       colorValues?.style === "categorical" && colorMeta?.classes?.length
         ? legendCounts(
             colorValues.indices,
             colorMeta.classes.length,
-            selectedIndices,
+            focusIndices,
             scopeMask,
           )
         : null,
-    [colorValues, colorMeta, selectedIndices, scopeMask],
+    [colorValues, colorMeta, focusIndices, scopeMask],
   );
 
   // Writes read the filter from a fresh snapshot, not the render-time

@@ -74,6 +74,30 @@ describe("useSelectionBridge", () => {
     expect(fetchLassoStage).toHaveBeenCalledWith("ds", "viz", [], { polygon });
   });
 
+  // Focus chrome (legend counts) follows the gesture, not the network:
+  // the lasso's indices surface synchronously, and every clear path
+  // (empty gesture, clearAll) drops them
+  it("exposes lasso indices synchronously and clears them", () => {
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockResolvedValue({ _cls: "s", kwargs: {}, count: 2 });
+    const opts = options();
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(result.current.lassoIndices).toBeNull();
+    act(() => result.current.handleSelection([0, 1]));
+    // Available before the stage round trip resolves
+    expect(result.current.lassoIndices).toEqual([0, 1]);
+
+    act(() => result.current.handleSelection([]));
+    expect(result.current.lassoIndices).toBeNull();
+
+    act(() => result.current.handleSelection([1]));
+    expect(result.current.lassoIndices).toEqual([1]);
+    act(() => result.current.clearAll());
+    expect(result.current.lassoIndices).toBeNull();
+  });
+
   it("falls back to indices when no data polygon exists", async () => {
     vi.mocked(fetchLassoStage).mockClear().mockResolvedValue({
       _cls: "fiftyone.core.stages.Select",
