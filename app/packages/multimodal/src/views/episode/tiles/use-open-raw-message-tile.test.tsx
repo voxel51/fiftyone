@@ -192,7 +192,40 @@ function probeState(): {
   readonly types: Record<string, string>;
 } {
   const probe = screen.getByTestId("probe");
-  return JSON.parse(probe.textContent ?? "{}");
+  const parsed: unknown = JSON.parse(probe.textContent ?? "{}");
+  if (
+    parsed === null ||
+    typeof parsed !== "object" ||
+    !("focusedTileId" in parsed) ||
+    !("titles" in parsed) ||
+    !("streamsByTile" in parsed) ||
+    !("types" in parsed) ||
+    (parsed.focusedTileId !== null &&
+      typeof parsed.focusedTileId !== "string") ||
+    !isRecord(parsed.titles) ||
+    !isRecord(parsed.streamsByTile) ||
+    !isRecord(parsed.types)
+  ) {
+    throw new Error("Expected serialized raw-tile probe state");
+  }
+  return {
+    focusedTileId: parsed.focusedTileId,
+    streamsByTile: stringRecord(parsed.streamsByTile),
+    titles: stringRecord(parsed.titles),
+    types: stringRecord(parsed.types),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object";
+}
+
+function stringRecord(value: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  );
 }
 
 function tile(type: string): TilingTile {

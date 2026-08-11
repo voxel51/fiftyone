@@ -53,9 +53,13 @@ describe("TileEmptyState", () => {
 
     const indicator = screen.getByTestId("episode-tile-loading-indicator");
     expect(indicator.dataset.visible).toBeUndefined();
-    act(() => vi.advanceTimersByTime(199));
+    act(() => {
+      vi.advanceTimersByTime(199);
+    });
     expect(indicator.dataset.visible).toBeUndefined();
-    act(() => vi.advanceTimersByTime(1));
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
     expect(indicator.dataset.visible).toBe("true");
   });
 
@@ -146,7 +150,9 @@ describe("TileEmptyState", () => {
       </PlaybackProvider>,
     );
 
-    act(() => vi.advanceTimersByTime(NOTICE_APPEARANCE_FLOOR_MS));
+    act(() => {
+      vi.advanceTimersByTime(NOTICE_APPEARANCE_FLOOR_MS);
+    });
     expect(screen.queryByTestId("episode-tile-status-badge")).toBeNull();
 
     const noticeButton = screen.getByRole("button", {
@@ -188,7 +194,9 @@ describe("TileStreamNoticeStrip", () => {
     );
 
     act(() => screen.getByRole("button", { name: "Enable labels" }).click());
-    act(() => vi.advanceTimersByTime(NOTICE_APPEARANCE_FLOOR_MS));
+    act(() => {
+      vi.advanceTimersByTime(NOTICE_APPEARANCE_FLOOR_MS);
+    });
 
     expect(screen.getByText(/Buffering/)).toBeTruthy();
   });

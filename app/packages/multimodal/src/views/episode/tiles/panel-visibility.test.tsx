@@ -336,12 +336,24 @@ describe("episode panel visibility persistence", () => {
       primarySourceId: "/lidar/20",
     });
 
-    const raw = JSON.parse(
+    const raw: unknown = JSON.parse(
       localStorage.getItem("fiftyone.episode.panel-visibility.v2") ?? "null",
     );
+    if (
+      raw === null ||
+      typeof raw !== "object" ||
+      !("byScope" in raw) ||
+      !isRecord(raw.byScope)
+    ) {
+      throw new Error("Expected persisted panel visibility by scope");
+    }
     expect(Object.keys(raw.byScope)).toHaveLength(20);
     expect(raw.byScope["dataset-0"]).toBeDefined();
     expect(raw.byScope["dataset-1"]).toBeUndefined();
     expect(raw.byScope["dataset-20"]).toBeDefined();
   });
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object";
+}
