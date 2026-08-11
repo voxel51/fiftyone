@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import type { ByteClient } from "../../query/bytes";
 import {
@@ -6,9 +5,13 @@ import {
   createCachedMcapDecompressHandlers,
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
+  type McapChannel,
+  type McapChunkIndex,
   type McapIndexedReaderLike,
+  type McapReaderFactory,
 } from "./reader";
 import { ByteClientReadable } from "./reader/byte-readable";
+import type { McapChunkDecompressionContext } from "./reader/decompress-cache";
 import { createMcapDecompressedChunkCache } from "./reader/decompressed-chunk-cache";
 
 const MCAP_CHUNK_OPCODE = 0x06;
@@ -340,10 +343,12 @@ describe("MCAP indexed message times", () => {
   });
 
   it("caches delimiter-like source identities independently", async () => {
-    const readerFactory = vi.fn(async () =>
-      createReader({
-        chunkIndexes: [],
-      }),
+    const readerFactory = vi.fn<McapReaderFactory>(() =>
+      Promise.resolve(
+        createReader({
+          chunkIndexes: [],
+        }),
+      ),
     );
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
@@ -367,10 +372,12 @@ describe("MCAP indexed message times", () => {
   });
 
   it("recreates readers when the source URL changes", async () => {
-    const readerFactory = vi.fn(async () =>
-      createReader({
-        chunkIndexes: [],
-      }),
+    const readerFactory = vi.fn<McapReaderFactory>(() =>
+      Promise.resolve(
+        createReader({
+          chunkIndexes: [],
+        }),
+      ),
     );
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
@@ -394,10 +401,12 @@ describe("MCAP indexed message times", () => {
   });
 
   it("reuses readers when only source size is discovered", async () => {
-    const readerFactory = vi.fn(async () =>
-      createReader({
-        chunkIndexes: [],
-      }),
+    const readerFactory = vi.fn<McapReaderFactory>(() =>
+      Promise.resolve(
+        createReader({
+          chunkIndexes: [],
+        }),
+      ),
     );
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
@@ -479,11 +488,13 @@ describe("MCAP indexed message times", () => {
       readonly url: string;
     }) => void = () => undefined;
     const byteClient: ByteClient = {
-      readBytes: vi.fn(async (request) => ({
-        bytes,
-        range: request.range,
-        source: request.source,
-      })),
+      readBytes: vi.fn<ByteClient["readBytes"]>((request) =>
+        Promise.resolve({
+          bytes,
+          range: request.range,
+          source: request.source,
+        }),
+      ),
       stat: vi.fn(
         () =>
           new Promise<Awaited<ReturnType<NonNullable<ByteClient["stat"]>>>>(
@@ -506,20 +517,20 @@ describe("MCAP indexed message times", () => {
     await Promise.resolve();
 
     await readable.read(0n, 4n);
-    expect(byteClient.readBytes).toHaveBeenCalledWith(
-      expect.objectContaining({
-        source: expect.objectContaining({ etag: "abc123" }),
-      }),
-    );
+    const lastRead = vi.mocked(byteClient.readBytes).mock.calls.at(-1);
+    if (!lastRead) throw new Error("Expected a byte read");
+    expect(lastRead[0].source.etag).toBe("abc123");
   });
 
   it("uses byte client stat when descriptor size is missing", async () => {
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
-      stat: vi.fn(async (source) => ({
-        ...source,
-        sizeBytes: "128",
-      })),
+      stat: vi.fn<NonNullable<ByteClient["stat"]>>((source) =>
+        Promise.resolve({
+          ...source,
+          sizeBytes: "128",
+        }),
+      ),
     };
     const readable = new ByteClientReadable(
       {
@@ -539,8 +550,8 @@ describe("MCAP indexed message times", () => {
 
   it("falls back to a tiny range read when stat cannot resolve size", async () => {
     const byteClient: ByteClient = {
-      readBytes: vi.fn(
-        async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
+      readBytes: vi.fn<ByteClient["readBytes"]>((request) =>
+        Promise.resolve({
           bytes: new Uint8Array([1]),
           range: request.range,
           source: {
@@ -549,7 +560,9 @@ describe("MCAP indexed message times", () => {
           },
         }),
       ),
-      stat: vi.fn(async () => undefined),
+      stat: vi.fn<NonNullable<ByteClient["stat"]>>(() =>
+        Promise.resolve(undefined),
+      ),
     };
     const source = {
       sourceId: "source:1",
@@ -566,8 +579,8 @@ describe("MCAP indexed message times", () => {
   });
 
   it("ignores malformed source sizes before byte reads", async () => {
-    const readBytes = vi.fn(
-      async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
+    const readBytes = vi.fn<ByteClient["readBytes"]>((request) =>
+      Promise.resolve({
         bytes: new Uint8Array([1]),
         range: request.range,
         source: request.source,
@@ -733,7 +746,7 @@ describe("MCAP indexed message times", () => {
       },
     );
     const compressed = new Uint8Array([7, 8, 9]);
-    const inconsistentContext: McapTypes.ChunkDecompressionContext = {
+    const inconsistentContext: McapChunkDecompressionContext = {
       chunkLength: 64n,
       chunkStartOffset: 128n,
       compressedDataLength: 4n,
@@ -759,11 +772,12 @@ describe("MCAP indexed message times", () => {
         url: "mcap-source://sample",
       },
       {
-        readBytes: async (request) => ({
-          bytes: backing.subarray(16, 80),
-          range: request.range,
-          source: request.source,
-        }),
+        readBytes: (request) =>
+          Promise.resolve({
+            bytes: backing.subarray(16, 80),
+            range: request.range,
+            source: request.source,
+          }),
       },
     );
     const bytes = await readable.read(128n, 64n);
@@ -785,13 +799,13 @@ describe("MCAP indexed message times", () => {
         url: "mcap-source://sample",
       },
       {
-        readBytes: async (request) => {
+        readBytes: (request) => {
           version += 1;
-          return {
+          return Promise.resolve({
             bytes: new Uint8Array(Number(request.range.length)),
             range: request.range,
             source: { ...request.source, etag: `"version-${version}"` },
-          };
+          });
         },
       },
     );
@@ -814,13 +828,13 @@ describe("MCAP indexed message times", () => {
         url: "mcap-source://sample",
       },
       {
-        readBytes: async (request) => {
+        readBytes: (request) => {
           version += 1;
-          return {
+          return Promise.resolve({
             bytes: shared,
             range: request.range,
             source: { ...request.source, etag: `"version-${version}"` },
-          };
+          });
         },
       },
     );
@@ -835,8 +849,8 @@ describe("MCAP indexed message times", () => {
 
   it("logs debug chunk reads with chunk ids and byte counts", async () => {
     const logChunkRead = vi.fn();
-    const readBytes = vi.fn(
-      async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
+    const readBytes = vi.fn<ByteClient["readBytes"]>((request) =>
+      Promise.resolve({
         bytes: new Uint8Array(16),
         range: request.range,
         source: request.source,
@@ -882,8 +896,8 @@ describe("MCAP indexed message times", () => {
     const consoleLog = vi
       .spyOn(console, "log")
       .mockImplementation(() => undefined);
-    const readBytes = vi.fn(
-      async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
+    const readBytes = vi.fn<ByteClient["readBytes"]>((request) =>
+      Promise.resolve({
         bytes: new Uint8Array(16),
         range: request.range,
         source: request.source,
@@ -948,7 +962,7 @@ async function collect<T>(
 function createReader({
   chunkIndexes,
 }: {
-  readonly chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
+  readonly chunkIndexes: readonly McapChunkIndex[];
 }): McapIndexedReaderLike {
   return {
     channelsById: new Map([
@@ -956,13 +970,15 @@ function createReader({
       [8, createChannel({ id: 8, topic: "/lidar" })],
     ]),
     chunkIndexes,
-    readMessages: vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
-        yield message;
-      }
-    }),
+    readMessages: vi.fn(() => asyncValues([])),
     schemasById: new Map(),
   };
+}
+
+interface McapReadable {
+  read(offset: bigint, size: bigint): Promise<Uint8Array>;
+  readExact(offset: bigint, size: bigint): Promise<Uint8Array>;
+  size(): Promise<bigint>;
 }
 
 function createReadable(
@@ -975,7 +991,7 @@ function createReadable(
     readonly offset: bigint;
     readonly size: bigint;
   }>;
-  readonly readable: McapTypes.IReadable;
+  readonly readable: McapReadable;
   readonly reads: Array<{ readonly offset: bigint; readonly size: bigint }>;
 } {
   const size = chunks.reduce(
@@ -991,23 +1007,35 @@ function createReadable(
   const reads: Array<{ readonly offset: bigint; readonly size: bigint }> = [];
   const exactReads: Array<{ readonly offset: bigint; readonly size: bigint }> =
     [];
-  const readRange = vi.fn(async (offset: bigint, readSize: bigint) => {
+  const readRange = vi.fn((offset: bigint, readSize: bigint) => {
     reads.push({ offset, size: readSize });
-    return buffer.slice(Number(offset), Number(offset + readSize));
+    return Promise.resolve(
+      buffer.slice(Number(offset), Number(offset + readSize)),
+    );
   });
 
   return {
     exactReads,
     readable: {
       read: readRange,
-      readExact: vi.fn(async (offset, readSize) => {
+      readExact: vi.fn<McapReadable["readExact"]>((offset, readSize) => {
         exactReads.push({ offset, size: readSize });
         return readRange(offset, readSize);
       }),
-      size: vi.fn(async () => BigInt(buffer.byteLength)),
-    } as McapTypes.IReadable,
+      size: vi.fn<McapReadable["size"]>(() =>
+        Promise.resolve(BigInt(buffer.byteLength)),
+      ),
+    },
     reads,
   };
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncGenerator<Value, void, void> {
+  for await (const value of values) {
+    yield value;
+  }
 }
 
 function createMessageIndexRecord(
@@ -1045,8 +1073,8 @@ function messageIndexRecordWithExtraContentByte(
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
-): McapTypes.TypedMcapRecords["ChunkIndex"] {
+  options: Partial<McapChunkIndex> = {},
+): McapChunkIndex {
   return {
     chunkLength: options.chunkLength ?? 256n,
     chunkStartOffset: options.chunkStartOffset ?? 1_000n,
@@ -1054,7 +1082,8 @@ function createChunkIndex(
     compression: options.compression ?? "",
     messageEndTime: options.messageEndTime ?? 20n,
     messageIndexLength: options.messageIndexLength ?? 0n,
-    messageIndexOffsets: options.messageIndexOffsets ?? new Map(),
+    messageIndexOffsets:
+      options.messageIndexOffsets ?? new Map<number, bigint>(),
     messageStartTime: options.messageStartTime ?? 10n,
     type: "ChunkIndex",
     uncompressedSize: options.uncompressedSize ?? 0n,
@@ -1075,9 +1104,7 @@ function createSource({
   };
 }
 
-function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
-): McapTypes.TypedMcapRecords["Channel"] {
+function createChannel(options: Partial<McapChannel> = {}): McapChannel {
   return {
     id: options.id ?? 7,
     messageEncoding: "protobuf",

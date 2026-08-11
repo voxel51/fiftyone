@@ -7,6 +7,8 @@ const typeAwareRules = require("@typescript-eslint/eslint-plugin").configs[
 // and intentionally explicit so that the migration state is visible in review.
 const migratedPaths = [
   "packages/multimodal/src/adapters/mcap/format-adapter.test.ts",
+  "packages/multimodal/src/adapters/mcap/reader.test.ts",
+  "packages/multimodal/src/adapters/mcap/reader/decompress-cache.ts",
   "packages/multimodal/src/adapters/fixture/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",

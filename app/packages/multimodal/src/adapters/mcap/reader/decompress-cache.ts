@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import type {
   McapDecompressedChunkCache,
   McapDecompressedChunkKey,
@@ -11,18 +10,37 @@ export interface CachedMcapDecompressHandlersOptions {
   readonly fallbackSourceKey?: string;
 }
 
+/** Stable structural view of the decompression context supplied by MCAP. */
+export interface McapChunkDecompressionContext {
+  readonly chunkLength: bigint;
+  readonly chunkStartOffset: bigint;
+  readonly compressedDataLength: bigint;
+  readonly compressedDataStartOffset: bigint;
+  readonly compression: string;
+  readonly sourceIdentity?: string;
+  readonly uncompressedSize: bigint;
+}
+
+export type McapDecompressHandler = (
+  buffer: Uint8Array,
+  decompressedSize: bigint,
+  context?: McapChunkDecompressionContext,
+) => Uint8Array;
+
+export type McapDecompressHandlers = Readonly<
+  Record<string, McapDecompressHandler>
+>;
+
 /**
  * Routes @mcap/core indexed-reader decompressions through an owned shared
  * cache. The patched dependency supplies the exact chunk payload range even
  * though parseChunk() copies the payload before invoking this handler.
  */
 export function createCachedMcapDecompressHandlers(
-  handlers: McapTypes.DecompressHandlers,
+  handlers: McapDecompressHandlers,
   options: CachedMcapDecompressHandlersOptions,
-): McapTypes.DecompressHandlers {
-  const entries = Object.entries(handlers) as Array<
-    [string, McapTypes.DecompressHandlers[string]]
-  >;
+): McapDecompressHandlers {
+  const entries = Object.entries(handlers);
 
   return Object.fromEntries(
     entries.map(([compression, decompress]) => [
@@ -30,7 +48,7 @@ export function createCachedMcapDecompressHandlers(
       (
         buffer: Uint8Array,
         decompressedSize: bigint,
-        context?: McapTypes.ChunkDecompressionContext,
+        context?: McapChunkDecompressionContext,
       ) => {
         if (context) {
           const key = decompressedChunkKeyForContext({
@@ -69,7 +87,7 @@ function decompressedChunkKeyForContext({
 }: {
   readonly buffer: Uint8Array;
   readonly compression: string;
-  readonly context: McapTypes.ChunkDecompressionContext;
+  readonly context: McapChunkDecompressionContext;
   readonly decompressedSize: bigint;
   readonly sourceKey?: string;
 }): McapDecompressedChunkKey | undefined {
