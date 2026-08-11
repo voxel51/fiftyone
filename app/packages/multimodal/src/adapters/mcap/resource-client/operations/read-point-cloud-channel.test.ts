@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -8,7 +7,12 @@ import {
 } from "../../../../decoders";
 import type { PointCloudRenderChannelPayload } from "../../../../ir";
 import { POINT_CLOUD_FLOAT32_SCALAR_ENCODING } from "../../../../runtime/point-cloud-channel-encoding";
-import type { McapIndexedReaderLike } from "../../reader";
+import type {
+  McapChannel,
+  McapIndexedReaderLike,
+  McapMessage,
+  McapSchema,
+} from "../../reader";
 import { MCAP_ACTIVE_TIMELINE } from "../../contracts";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import { createChunkIndex } from "../inline-client.test-fixtures";
@@ -54,10 +58,9 @@ describe("readMcapPointCloudChannel", () => {
       projectPointCloudChannel,
       version: "1",
     });
-    const readMessages = vi.fn(async function* () {
-      yield message(99n);
-      yield message(100n);
-    });
+    const readMessages = vi.fn(() =>
+      asyncValues([message(99n), message(100n)]),
+    );
     const reader = {
       channelsById: new Map([
         [
@@ -69,7 +72,7 @@ describe("readMcapPointCloudChannel", () => {
             schemaId: 3,
             topic: "/lidar",
             type: "Channel",
-          } satisfies McapTypes.TypedMcapRecords["Channel"],
+          } satisfies McapChannel,
         ],
       ]),
       chunkIndexes: [],
@@ -83,7 +86,7 @@ describe("readMcapPointCloudChannel", () => {
             id: 3,
             name: "example.PointCloud",
             type: "Schema",
-          } satisfies McapTypes.TypedMcapRecords["Schema"],
+          } satisfies McapSchema,
         ],
       ]),
     } satisfies McapIndexedReaderLike;
@@ -180,9 +183,7 @@ describe("readMcapPointCloudChannel", () => {
   it("does not enter the reader when projection is already canceled", async () => {
     const controller = new AbortController();
     controller.abort();
-    const readMessages = vi.fn(async function* () {
-      yield message(100n);
-    });
+    const readMessages = vi.fn(() => asyncValues([message(100n)]));
     const reader = {
       channelsById: new Map(),
       chunkIndexes: [],
@@ -216,9 +217,7 @@ describe("readMcapPointCloudChannel", () => {
   });
 
   it("refuses oversized indexed source work before scanning messages", async () => {
-    const readMessages = vi.fn(async function* () {
-      yield message(100n);
-    });
+    const readMessages = vi.fn(() => asyncValues([message(100n)]));
     const reader = {
       channelsById: new Map(),
       chunkIndexes: [
@@ -260,7 +259,7 @@ describe("readMcapPointCloudChannel", () => {
   });
 });
 
-function message(logTime: bigint): McapTypes.TypedMcapRecords["Message"] {
+function message(logTime: bigint): McapMessage {
   return {
     channelId: 7,
     data: new Uint8Array([1, 2, 3]),
@@ -269,4 +268,10 @@ function message(logTime: bigint): McapTypes.TypedMcapRecords["Message"] {
     sequence: 0,
     type: "Message",
   };
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncGenerator<Value, void, void> {
+  for await (const value of values) yield value;
 }

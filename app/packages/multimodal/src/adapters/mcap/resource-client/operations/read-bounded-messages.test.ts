@@ -1,9 +1,9 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import type { DecodeClient } from "../../../../query/decoding";
 import {
   isMcapBoundedReadCancelledError,
   type McapIndexedReaderLike,
+  type McapMessage,
 } from "../../reader";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import { readMcapBoundedMessages } from "./read-bounded-messages";
@@ -39,33 +39,31 @@ describe("readMcapBoundedMessages", () => {
         ],
       ]),
       chunkIndexes: [],
-      readBoundedMessages: vi.fn(async () => ({
-        coverageByTopic: new Map(),
-        messages,
-        stopReason: "source-exhausted" as const,
-        usage,
-      })),
-      readMessages: async function* () {
-        for (const entry of messages) {
-          yield entry;
-        }
-      },
+      readBoundedMessages: vi.fn(() =>
+        Promise.resolve({
+          coverageByTopic: new Map(),
+          messages,
+          stopReason: "source-exhausted" as const,
+          usage,
+        }),
+      ),
+      readMessages: () => asyncValues(messages),
       schemasById: new Map(),
     };
     let decodeCount = 0;
     const decodeClient: DecodeClient = {
       cachesDecodedOutput: false,
-      async decode(request) {
+      decode(request) {
         decodeCount += 1;
         if (decodeCount === 3) {
           controller.abort();
         }
-        return {
+        return Promise.resolve({
           decoderId: "fixture",
           decoderVersion: "1",
           output: { resourceHints: { transferables: [] } },
           payload: request.payload,
-        };
+        });
       },
     };
 
@@ -111,7 +109,7 @@ describe("readMcapBoundedMessages", () => {
   });
 });
 
-function message(sequence: number): McapTypes.TypedMcapRecords["Message"] {
+function message(sequence: number): McapMessage {
   const time = BigInt(sequence);
   return {
     channelId: 1,
@@ -121,4 +119,10 @@ function message(sequence: number): McapTypes.TypedMcapRecords["Message"] {
     sequence,
     type: "Message",
   };
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncGenerator<Value, void, void> {
+  for await (const value of values) yield value;
 }

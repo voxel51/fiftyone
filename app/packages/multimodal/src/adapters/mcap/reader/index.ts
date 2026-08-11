@@ -30,6 +30,7 @@ export { materializeIndexedEntries } from "./materialize-indexed-entries";
 export type {
   McapIndexedMessageTime,
   McapMessage,
+  McapSchema,
   McapChannel,
   McapChunkIndex,
   McapBoundedMessageReadRequest,

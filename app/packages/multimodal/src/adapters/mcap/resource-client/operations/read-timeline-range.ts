@@ -1,6 +1,5 @@
-import type { McapTypes } from "@mcap/core";
 import { maxBigInt, minBigInt } from "../../synchronization/policy";
-import type { McapIndexedReaderLike } from "../../reader/index";
+import type { McapChunkIndex, McapIndexedReaderLike } from "../../reader/index";
 import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapByteTimelinePoint,
@@ -18,8 +17,7 @@ export function mcapTimelineRangeFromReader(
     throw new Error("MCAP log timeline has no indexed chunks");
   }
 
-  const chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
-    reader.chunkIndexes;
+  const chunkIndexes = reader.chunkIndexes;
 
   return {
     activeTimeline: timeline.id,
@@ -40,7 +38,7 @@ export function mcapTimelineRangeFromReader(
  * "play through this chunk's window".
  */
 function mcapByteTimelineFromChunkIndexes(
-  chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
+  chunkIndexes: readonly McapChunkIndex[],
   timeline: McapTimelineStrategy,
 ): readonly McapByteTimelinePoint[] {
   const ordered = [...chunkIndexes].sort((a, b) => {
