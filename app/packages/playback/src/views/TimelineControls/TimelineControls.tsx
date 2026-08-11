@@ -3,7 +3,22 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { Button, Size, Spinner, Variant } from "@voxel51/voodo";
+import {
+  Align,
+  Anchor,
+  Button,
+  Justify,
+  Orientation,
+  Size,
+  Spacing,
+  Spinner,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+  Tooltip,
+  Variant,
+} from "@voxel51/voodo";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -20,10 +35,12 @@ import {
 } from "../../lib/playback/store-access";
 import {
   useBufferingDetail,
+  useBufferingStreams,
   useIsBuffering,
   useIsPlayPending,
   useIsPlaying,
 } from "../../lib/playback/use-playback-state";
+import type { BufferingStream } from "../../lib/playback/types";
 import LoopBounds from "../Loop/LoopBounds";
 import PlayheadTime from "../Playhead/PlayheadTime";
 import SpeedControl from "./SpeedControl";
@@ -191,10 +208,11 @@ function BufferingIndicator() {
   const isBuffering = useIsBuffering();
   const isPlayPending = useIsPlayPending();
   const detail = useBufferingDetail();
+  const streams = useBufferingStreams();
 
   if (!isBuffering && !isPlayPending) return null;
 
-  return (
+  const indicator = (
     <span
       className={styles.buffering}
       data-testid="timeline-controls-buffering"
@@ -203,6 +221,87 @@ function BufferingIndicator() {
       <Spinner size={Size.Xs} />
       {detail ? `Buffering ${detail}` : "Buffering"}
     </span>
+  );
+
+  if (streams.length === 0) return indicator;
+
+  return (
+    <Tooltip
+      anchor={Anchor.Top}
+      className={styles.bufferingTooltip}
+      content={<BufferingStreamDetails streams={streams} />}
+      portal
+      wrapperClassName={styles.bufferingTooltipTrigger}
+    >
+      {indicator}
+    </Tooltip>
+  );
+}
+
+function BufferingStreamDetails({
+  streams,
+}: {
+  readonly streams: readonly BufferingStream[];
+}) {
+  const waiting = streams.filter((stream) => stream.state === "waiting");
+  const ready = streams.filter((stream) => stream.state === "ready");
+
+  return (
+    <Stack
+      className={styles.bufferingDetails}
+      orientation={Orientation.Column}
+      spacing={Spacing.Sm}
+    >
+      <Stack
+        align={Align.Center}
+        justify={Justify.Between}
+        orientation={Orientation.Row}
+        spacing={Spacing.Lg}
+      >
+        <Text color={TextColor.Primary} variant={TextVariant.Label}>
+          Playback streams
+        </Text>
+        <Text
+          className={styles.bufferingSummary}
+          color={TextColor.Secondary}
+          variant={TextVariant.Caption}
+        >
+          {waiting.length} waiting · {ready.length} ready
+        </Text>
+      </Stack>
+      <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+        {[...waiting, ...ready].map((stream) => (
+          <Stack
+            align={Align.Center}
+            className={styles.bufferingStreamRow}
+            justify={Justify.Between}
+            key={stream.id}
+            orientation={Orientation.Row}
+            spacing={Spacing.Lg}
+          >
+            <Text
+              className={styles.bufferingStreamName}
+              color={TextColor.Primary}
+              title={stream.label}
+              variant={TextVariant.Xs}
+            >
+              {stream.label}
+            </Text>
+            <Text
+              className={styles.bufferingStreamState}
+              color={
+                stream.state === "waiting"
+                  ? TextColor.Warning
+                  : TextColor.Success
+              }
+              variant={TextVariant.Caption}
+            >
+              {stream.state === "waiting" ? "Waiting" : "Ready"}
+            </Text>
+          </Stack>
+        ))}
+      </Stack>
+    </Stack>
   );
 }
 
