@@ -21,6 +21,8 @@ import type {
   SynchronizedFrameWindow,
   TimeWindow,
   TransformSample,
+  EpisodeTransformTopologyEdgeObservation,
+  EpisodeTransformTopologyFrameUse,
 } from "../ir";
 
 /** Four proven scheduling lanes exposed by every episode session. */
@@ -207,6 +209,51 @@ export interface TransformReadAcceleration {
     request: TransformPlacementReadRequest,
   ): Promise<TransformPlacementReadResult | null>;
   readTransforms(request: ReadRequest): Promise<readonly TransformSample[]>;
+}
+
+/** One cancellable, resumable grant toward a recording-wide topology scan. */
+export interface TransformTopologyScanRequest {
+  readonly budget: ReadWorkBudget;
+  readonly continuation?: ReadContinuation;
+  readonly signal?: AbortSignal;
+}
+
+/**
+ * Bounded topology evidence. Absence of a continuation proves completion only
+ * when `stopReason` is `source-exhausted` and no unavailable spans exist.
+ */
+export interface TransformTopologyScanResult {
+  readonly continuation?: ReadContinuation;
+  readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
+  readonly edges: readonly EpisodeTransformTopologyEdgeObservation[];
+  /** One source-bounded playhead sample, not whole-recording frame coverage. */
+  readonly frameUses: readonly EpisodeTransformTopologyFrameUse[];
+  readonly stopReason: BudgetedReadStopReason;
+  readonly unavailableByStream?: ReadonlyMap<StreamId, readonly TimeWindow[]>;
+  readonly usage: ReadWorkUsage;
+}
+
+/** One deliberately incomplete point-in-time topology sample. */
+export interface TransformTopologySampleRequest {
+  readonly signal?: AbortSignal;
+}
+
+/** Minimal transform evidence for rendering a graph without a recording scan. */
+export interface TransformTopologySampleResult {
+  readonly edges: readonly EpisodeTransformTopologyEdgeObservation[];
+  readonly frameUses: readonly EpisodeTransformTopologyFrameUse[];
+  readonly sampledAtNs: bigint;
+}
+
+/** Optional format-neutral, demand-driven transform-topology diagnostic. */
+export interface TransformTopologyCapability {
+  /** Uses the adapter's targeted playback path; never resumes an aggregate scan. */
+  sample?(
+    request: TransformTopologySampleRequest,
+  ): Promise<TransformTopologySampleResult>;
+  scan(
+    request: TransformTopologyScanRequest,
+  ): Promise<TransformTopologyScanResult>;
 }
 
 /** Exact-time transform placement requested from an accelerated adapter. */
@@ -410,6 +457,7 @@ export interface EpisodeSession {
   readonly synchronizedRead?: SynchronizedReadAcceleration;
   readonly terminology?: EpisodeTerminology;
   readonly transformRead?: TransformReadAcceleration;
+  readonly transformTopology?: TransformTopologyCapability;
 
   activate?(): void;
   cancelIdle?(): void;

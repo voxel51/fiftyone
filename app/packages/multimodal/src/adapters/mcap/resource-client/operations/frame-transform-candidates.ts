@@ -138,19 +138,24 @@ export function normalizeFrameTransformMessage({
 
   if (entry.match.kind === "batch") {
     return requiredArray(record, entry.match.repeatedFieldName).map(
-      (transform) =>
-        normalizeFrameTransformRecord(asRecord(transform), {
+      (transform) => ({
+        ...normalizeFrameTransformRecord(asRecord(transform), {
           format: entry.match.format,
           staticTopic,
         }),
+        sourceName: entry.channel.topic,
+      }),
     );
   }
 
   return [
-    normalizeFrameTransformRecord(record, {
-      format: entry.match.format,
-      staticTopic,
-    }),
+    {
+      ...normalizeFrameTransformRecord(record, {
+        format: entry.match.format,
+        staticTopic,
+      }),
+      sourceName: entry.channel.topic,
+    },
   ];
 }
 

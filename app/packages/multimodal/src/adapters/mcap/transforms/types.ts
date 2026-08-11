@@ -4,6 +4,8 @@ export interface McapFrameTransformSample {
   readonly childFrameId: string;
   readonly parentFrameId: string;
   readonly rotation: Quaternion;
+  /** Source topic retained for topology provenance. */
+  readonly sourceName?: string;
   readonly timeNs?: bigint;
   readonly translation: Vector3;
 }
@@ -46,6 +48,7 @@ export interface McapFrameTransformSampleWire {
   readonly childFrameId: string;
   readonly parentFrameId: string;
   readonly rotation: McapQuaternionWire;
+  readonly sourceName?: string;
   readonly timeNs?: bigint;
   readonly translation: McapVector3Wire;
 }
