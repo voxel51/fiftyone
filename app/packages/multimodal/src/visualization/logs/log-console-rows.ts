@@ -146,7 +146,13 @@ function logLevelValue(value: DecodedAttributeValue | undefined): LogLevel {
 function arrayValue(
   value: DecodedAttributeValue | undefined,
 ): readonly DecodedAttributeValue[] {
-  return Array.isArray(value) ? value : [];
+  return isDecodedAttributeArray(value) ? value : [];
+}
+
+function isDecodedAttributeArray(
+  value: DecodedAttributeValue | undefined,
+): value is readonly DecodedAttributeValue[] {
+  return Array.isArray(value);
 }
 
 function recordValue(
