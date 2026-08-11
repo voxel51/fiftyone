@@ -241,7 +241,9 @@ describe("SettingsSidebar", () => {
       navigator,
       "clipboard",
     );
-    const writeText = vi.fn(async (_value: string) => undefined);
+    const writeText = vi
+      .fn<(value: string) => Promise<void>>()
+      .mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText },
@@ -626,7 +628,7 @@ describe("SettingsSidebar", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Streams" }));
 
-    const search = screen.getByLabelText("Search streams") as HTMLInputElement;
+    const search: HTMLInputElement = screen.getByLabelText("Search streams");
     expect(search).toBeTruthy();
     expect(screen.getByText("/camera/front")).toBeTruthy();
     expect(

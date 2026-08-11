@@ -571,8 +571,9 @@ export function normalizeStreamList(value: unknown): readonly string[] {
   if (!Array.isArray(value)) {
     return [];
   }
+  const streams: unknown[] = value;
   return sanitizeBoundedStringList(
-    value.map((stream) =>
+    streams.map((stream) =>
       typeof stream === "string" ? stream.trim() : stream,
     ),
     MAX_SETTINGS_STREAMS,

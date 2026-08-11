@@ -7,36 +7,40 @@ import {
   preventSettingsBooleanSpaceToggle,
 } from "./settings-keyboard";
 
-function keyboardEvent(key: string, code?: string): KeyboardEvent<HTMLElement> {
-  return {
+function keyboardEvent(key: string, code?: string) {
+  const preventDefault = vi.fn();
+  const event = {
     code,
     key,
-    preventDefault: vi.fn(),
+    preventDefault,
   } as unknown as KeyboardEvent<HTMLElement>;
+  return { event, preventDefault };
 }
 
 describe("preventSettingsBooleanSpaceToggle", () => {
   it("prevents space key checkbox activation", () => {
-    const event = keyboardEvent(" ");
+    const { event, preventDefault } = keyboardEvent(" ");
     preventSettingsBooleanSpaceToggle(event);
-    expect(event.preventDefault).toHaveBeenCalledTimes(1);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
   });
 
   it("handles key and code-based space events", () => {
-    const keyEvent = keyboardEvent("Spacebar");
-    const codeEvent = keyboardEvent("Unidentified", "Space");
+    const { event: keyEvent, preventDefault: preventKeyDefault } =
+      keyboardEvent("Spacebar");
+    const { event: codeEvent, preventDefault: preventCodeDefault } =
+      keyboardEvent("Unidentified", "Space");
 
     preventSettingsBooleanSpaceToggle(keyEvent);
     preventSettingsBooleanSpaceToggle(codeEvent);
 
-    expect(keyEvent.preventDefault).toHaveBeenCalledTimes(1);
-    expect(codeEvent.preventDefault).toHaveBeenCalledTimes(1);
+    expect(preventKeyDefault).toHaveBeenCalledTimes(1);
+    expect(preventCodeDefault).toHaveBeenCalledTimes(1);
   });
 
   it("leaves non-space keys alone", () => {
-    const event = keyboardEvent("Enter");
+    const { event, preventDefault } = keyboardEvent("Enter");
     preventSettingsBooleanSpaceToggle(event);
-    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
   });
 });
 

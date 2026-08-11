@@ -82,10 +82,13 @@ describe("episode-modal-settings", () => {
       ...readModalSettings(),
       pointCloudPointSize: 4,
     });
+    const stored: unknown = JSON.parse(
+      localStorage.getItem("fiftyone.episode.modal-settings.v3") ?? "{}",
+    );
     expect(
-      JSON.parse(
-        localStorage.getItem("fiftyone.episode.modal-settings.v3") ?? "{}",
-      ).pointCloudPointSize,
+      typeof stored === "object" && stored !== null
+        ? Reflect.get(stored, "pointCloudPointSize")
+        : undefined,
     ).toBe(4);
     expect(
       localStorage.getItem("fiftyone.episode.modal-settings.v2"),

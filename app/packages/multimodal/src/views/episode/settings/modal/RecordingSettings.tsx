@@ -62,7 +62,9 @@ const RecordingSettings = memo(function RecordingSettings({
       ) : null}
       <div className={styles.recordingActions}>
         <Button
-          onClick={copyDiagnostics}
+          onClick={() => {
+            void copyDiagnostics();
+          }}
           size={Size.Xs}
           variant={Variant.Secondary}
         >

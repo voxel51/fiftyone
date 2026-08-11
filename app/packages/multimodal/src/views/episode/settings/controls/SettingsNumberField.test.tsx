@@ -31,7 +31,7 @@ function up() {
 }
 
 function input(): HTMLInputElement {
-  return screen.getByRole("spinbutton", { name: "Value" }) as HTMLInputElement;
+  return screen.getByRole("spinbutton", { name: "Value" });
 }
 
 /** Controlled harness: commits update the rendered value like a real store. */

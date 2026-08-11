@@ -19,6 +19,13 @@ function selectSamplingPreset(value: string) {
   fireEvent.keyDown(select, { key: "Enter" });
 }
 
+function inputValue(element: HTMLElement): string {
+  if (!(element instanceof HTMLInputElement)) {
+    throw new Error("expected an input element");
+  }
+  return element.value;
+}
+
 function ControlledTimelinePlaybackSettings({
   initialRateHz,
   onRateChange,
@@ -90,11 +97,11 @@ describe("TimelinePlaybackSettings", () => {
     );
 
     expect(
-      (
+      inputValue(
         screen.getByRole("combobox", {
           name: /Data sampling preset/,
-        }) as HTMLInputElement
-      ).value,
+        }),
+      ),
     ).toBe("Economy · 24 Hz");
     expect(
       screen.queryByRole("spinbutton", {
@@ -116,21 +123,21 @@ describe("TimelinePlaybackSettings", () => {
 
     selectSamplingPreset("custom");
     expect(
-      (
+      inputValue(
         screen.getByRole("spinbutton", {
           name: "Custom data sampling rate",
-        }) as HTMLInputElement
-      ).value,
+        }),
+      ),
     ).toBe("30");
 
     selectSamplingPreset("smooth");
     expect(onRateChange).toHaveBeenCalledWith(60);
     expect(
-      (
+      inputValue(
         screen.getByRole("combobox", {
           name: /Data sampling preset/,
-        }) as HTMLInputElement
-      ).value,
+        }),
+      ),
     ).toBe("Smooth · 60 Hz");
     expect(
       screen.queryByRole("spinbutton", {
@@ -140,11 +147,11 @@ describe("TimelinePlaybackSettings", () => {
 
     selectSamplingPreset("custom");
     expect(
-      (
+      inputValue(
         screen.getByRole("spinbutton", {
           name: "Custom data sampling rate",
-        }) as HTMLInputElement
-      ).value,
+        }),
+      ),
     ).toBe("60");
   });
 
@@ -165,11 +172,11 @@ describe("TimelinePlaybackSettings", () => {
     );
 
     expect(
-      (
+      inputValue(
         screen.getByRole("spinbutton", {
           name: "Custom data sampling rate",
-        }) as HTMLInputElement
-      ).value,
+        }),
+      ),
     ).toBe("75");
     expect(onRateChange).not.toHaveBeenCalled();
   });
@@ -193,11 +200,11 @@ describe("TimelinePlaybackSettings", () => {
     expandPlayback();
 
     expect(
-      (
+      inputValue(
         screen.getByRole("spinbutton", {
           name: "Custom data sampling rate",
-        }) as HTMLInputElement
-      ).value,
+        }),
+      ),
     ).toBe("48");
     expect(onRateChange).not.toHaveBeenCalled();
   });
