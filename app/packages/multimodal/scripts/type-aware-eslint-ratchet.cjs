@@ -11,6 +11,7 @@ const migratedPaths = [
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/instrumentation/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/message-decoders/**/*.{ts,tsx}",
+  "packages/multimodal/src/adapters/mcap/prewarm-mcap-source.{ts,test.ts}",
   "packages/multimodal/src/adapters/mcap/format-adapter.ts",
   "packages/multimodal/src/adapters/mcap/resource-client-factory.test.ts",
   "packages/multimodal/src/adapters/mcap/synchronization/**/*.{ts,tsx}",

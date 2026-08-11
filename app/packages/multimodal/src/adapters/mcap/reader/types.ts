@@ -1,4 +1,3 @@
-import type { McapIndexedReader, McapTypes } from "@mcap/core";
 import type { TimeWindow } from "../../../ir";
 import type {
   BudgetedReadStopReason,
@@ -10,6 +9,65 @@ import type {
   McapPrefetchChunkDataRequest,
   McapPrefetchWindowRequest,
 } from "./prefetch-types";
+
+/** Structural MCAP records used at the TypeScript 4.9 compatibility boundary. */
+export interface McapChannel {
+  readonly id: number;
+  readonly messageEncoding: string;
+  readonly metadata: Map<string, string>;
+  readonly schemaId: number;
+  readonly topic: string;
+  readonly type: "Channel";
+}
+
+export interface McapChunkIndex {
+  readonly chunkLength: bigint;
+  readonly chunkStartOffset: bigint;
+  readonly compressedSize: bigint;
+  readonly compression: string;
+  readonly messageEndTime: bigint;
+  readonly messageIndexLength: bigint;
+  readonly messageIndexOffsets: Map<number, bigint>;
+  readonly messageStartTime: bigint;
+  readonly type: "ChunkIndex";
+  readonly uncompressedSize: bigint;
+}
+
+export interface McapMessage {
+  readonly channelId: number;
+  readonly data: Uint8Array;
+  readonly logTime: bigint;
+  readonly publishTime: bigint;
+  readonly sequence: number;
+  readonly type: "Message";
+}
+
+export interface McapSchema {
+  readonly data: Uint8Array;
+  readonly encoding: string;
+  readonly id: number;
+  readonly name: string;
+  readonly type: "Schema";
+}
+
+export interface McapStatistics {
+  readonly attachmentCount: number;
+  readonly channelCount: number;
+  readonly channelMessageCounts: Map<number, bigint>;
+  readonly chunkCount: number;
+  readonly messageCount: bigint;
+  readonly messageEndTime: bigint;
+  readonly messageStartTime: bigint;
+  readonly metadataCount: number;
+  readonly schemaCount: number;
+  readonly type: "Statistics";
+}
+
+export interface McapReadable {
+  read(offset: bigint, size: bigint): Promise<Uint8Array>;
+  size(): Promise<bigint>;
+  sourceIdentityForBytes?(bytes: Uint8Array): string | undefined;
+}
 
 /**
  * One timestamp and byte offset entry from an MCAP message index.
@@ -156,7 +214,7 @@ export interface ParsedMcapMessageIndexRecord {
  */
 export type McapReaderFactory = (
   source: ByteSourceDescriptor,
-  readable: McapTypes.IReadable,
+  readable: McapReadable,
 ) => Promise<McapIndexedReaderLike>;
 
 /** Adapter-private exact position between atomic MCAP admission groups. */
@@ -198,7 +256,7 @@ export interface McapBoundedMessageReadResult {
   readonly continuation?: McapReadContinuation;
   readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
   /** Messages ordered globally by log time with deterministic source tie-breaks. */
-  readonly messages: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly messages: readonly McapMessage[];
   readonly resumeAtNs?: bigint;
   /** Atomic source spans intentionally skipped because they exceed the hard ceiling. */
   readonly skippedByTopic?: ReadonlyMap<string, readonly TimeWindow[]>;
@@ -214,33 +272,37 @@ export interface McapIndexedReaderLike {
   dispose?(): void;
 
   /** Attachment summary indexes retained during reader initialization. */
-  readonly attachmentIndexes?: McapIndexedReader["attachmentIndexes"];
+  readonly attachmentIndexes?: readonly unknown[];
 
   /**
    * Summary channels keyed by numeric channel id.
    */
-  readonly channelsById: McapIndexedReader["channelsById"];
+  readonly channelsById: ReadonlyMap<number, McapChannel>;
 
   /**
    * Indexed chunk metadata used for timeline bounds and message-index scans.
    */
-  readonly chunkIndexes: McapIndexedReader["chunkIndexes"];
+  readonly chunkIndexes: readonly McapChunkIndex[];
 
   /** MCAP header retained during reader initialization. */
-  readonly header?: McapIndexedReader["header"];
+  readonly header?: Readonly<{
+    library: string;
+    profile: string;
+    type: "Header";
+  }>;
 
   /** Metadata summary indexes retained during reader initialization. */
-  readonly metadataIndexes?: McapIndexedReader["metadataIndexes"];
+  readonly metadataIndexes?: readonly unknown[];
 
   /**
    * Summary schemas keyed by numeric schema id.
    */
-  readonly schemasById: McapIndexedReader["schemasById"];
+  readonly schemasById: ReadonlyMap<number, McapSchema>;
 
   /**
    * Optional summary statistics from the MCAP footer section.
    */
-  readonly statistics?: McapIndexedReader["statistics"];
+  readonly statistics?: McapStatistics;
 
   /**
    * Reads admitted chunks directly instead of delegating an unbounded window
@@ -256,7 +318,7 @@ export interface McapIndexedReaderLike {
    */
   readIndexedMessages?(
     request: McapReadIndexedMessagesRequest,
-  ): Promise<readonly McapTypes.TypedMcapRecords["Message"][]>;
+  ): Promise<readonly McapMessage[]>;
 
   /**
    * Reads timestamp-only message-index entries without decoding chunk records.
@@ -284,7 +346,13 @@ export interface McapIndexedReaderLike {
   /**
    * Streams full MCAP messages through the core indexed reader API.
    */
-  readMessages: McapIndexedReader["readMessages"];
+  readMessages(args?: {
+    readonly endTime?: bigint;
+    readonly reverse?: boolean;
+    readonly startTime?: bigint;
+    readonly topics?: readonly string[];
+    readonly validateCrcs?: boolean;
+  }): AsyncGenerator<McapMessage, void, void>;
 
   /**
    * Warms the byte layer for the exact chunks an already-resolved read is

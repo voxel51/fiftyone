@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import type {
   ByteClient,
@@ -6,7 +5,11 @@ import type {
   ByteSourceDescriptor,
 } from "../../query/bytes";
 import { prewarmMcapSource } from "./prewarm-mcap-source";
-import type { McapIndexedReaderLike } from "./reader";
+import type {
+  McapChannel,
+  McapChunkIndex,
+  McapIndexedReaderLike,
+} from "./reader";
 
 describe("prewarmMcapSource", () => {
   it("warms the startup window's message indexes and chunk data", async () => {
@@ -14,29 +17,31 @@ describe("prewarmMcapSource", () => {
 
     await prewarmMcapSource(createSource(), {
       byteClient,
-      readerFactory: async () =>
-        createReader({
-          chunkIndexes: [
-            createChunkIndex({
-              chunkLength: 100n,
-              chunkStartOffset: 1_000n,
-              messageEndTime: 20n,
-              messageIndexLength: 16n,
-              messageIndexOffsets: new Map([[7, 1_100n]]),
-              messageStartTime: 10n,
-            }),
-            // Beyond the startup window from statistics.messageStartTime.
-            createChunkIndex({
-              chunkLength: 100n,
-              chunkStartOffset: 9_000n,
-              messageEndTime: 5_000_000_020n,
-              messageIndexLength: 16n,
-              messageIndexOffsets: new Map([[7, 9_100n]]),
-              messageStartTime: 5_000_000_010n,
-            }),
-          ],
-          statistics: createStatistics(10n),
-        }),
+      readerFactory: () =>
+        Promise.resolve(
+          createReader({
+            chunkIndexes: [
+              createChunkIndex({
+                chunkLength: 100n,
+                chunkStartOffset: 1_000n,
+                messageEndTime: 20n,
+                messageIndexLength: 16n,
+                messageIndexOffsets: new Map([[7, 1_100n]]),
+                messageStartTime: 10n,
+              }),
+              // Beyond the startup window from statistics.messageStartTime.
+              createChunkIndex({
+                chunkLength: 100n,
+                chunkStartOffset: 9_000n,
+                messageEndTime: 5_000_000_020n,
+                messageIndexLength: 16n,
+                messageIndexOffsets: new Map([[7, 9_100n]]),
+                messageStartTime: 5_000_000_010n,
+              }),
+            ],
+            statistics: createStatistics(10n),
+          }),
+        ),
     });
 
     expect(reads).toEqual([
@@ -51,28 +56,30 @@ describe("prewarmMcapSource", () => {
     await prewarmMcapSource(createSource(), {
       byteClient,
       maxBytes: 140n,
-      readerFactory: async () =>
-        createReader({
-          chunkIndexes: [
-            createChunkIndex({
-              chunkLength: 100n,
-              chunkStartOffset: 1_000n,
-              messageEndTime: 20n,
-              messageIndexLength: 16n,
-              messageIndexOffsets: new Map([[7, 1_100n]]),
-              messageStartTime: 10n,
-            }),
-            createChunkIndex({
-              chunkLength: 100n,
-              chunkStartOffset: 2_000n,
-              messageEndTime: 40n,
-              messageIndexLength: 16n,
-              messageIndexOffsets: new Map([[7, 2_100n]]),
-              messageStartTime: 30n,
-            }),
-          ],
-          statistics: createStatistics(10n),
-        }),
+      readerFactory: () =>
+        Promise.resolve(
+          createReader({
+            chunkIndexes: [
+              createChunkIndex({
+                chunkLength: 100n,
+                chunkStartOffset: 1_000n,
+                messageEndTime: 20n,
+                messageIndexLength: 16n,
+                messageIndexOffsets: new Map([[7, 1_100n]]),
+                messageStartTime: 10n,
+              }),
+              createChunkIndex({
+                chunkLength: 100n,
+                chunkStartOffset: 2_000n,
+                messageEndTime: 40n,
+                messageIndexLength: 16n,
+                messageIndexOffsets: new Map([[7, 2_100n]]),
+                messageStartTime: 30n,
+              }),
+            ],
+            statistics: createStatistics(10n),
+          }),
+        ),
     });
 
     // Both message-index regions and the first chunk fit in 140 bytes; the
@@ -92,18 +99,20 @@ describe("prewarmMcapSource", () => {
 
     await prewarmMcapSource(createSource(), {
       byteClient,
-      readerFactory: async () =>
-        createReader({
-          chunkIndexes: [
-            createChunkIndex({
-              chunkLength: 100n,
-              chunkStartOffset: 1_000n,
-              messageIndexLength: 16n,
-              messageIndexOffsets: new Map([[7, 1_100n]]),
-            }),
-          ],
-          statistics: createStatistics(10n),
-        }),
+      readerFactory: () =>
+        Promise.resolve(
+          createReader({
+            chunkIndexes: [
+              createChunkIndex({
+                chunkLength: 100n,
+                chunkStartOffset: 1_000n,
+                messageIndexLength: 16n,
+                messageIndexOffsets: new Map([[7, 1_100n]]),
+              }),
+            ],
+            statistics: createStatistics(10n),
+          }),
+        ),
       signal: abort.signal,
     });
 
@@ -127,31 +136,32 @@ function createRecordingByteClient(): {
 
   return {
     byteClient: {
-      readBytes: vi.fn(async (request: ByteRangeReadRequest) => {
+      readBytes: vi.fn((request: ByteRangeReadRequest) => {
         reads.push({
           length: request.range.length,
           offset: request.range.offset,
         });
-        return {
+        return Promise.resolve({
           bytes: new Uint8Array(Number(request.range.length)),
+          range: request.range,
           source: request.source,
-        };
+        });
       }),
-    } as unknown as ByteClient,
+    },
     reads,
   };
 }
 
 function createReader(options: {
-  chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
+  chunkIndexes: readonly McapChunkIndex[];
   statistics?: McapIndexedReaderLike["statistics"];
 }): McapIndexedReaderLike {
   return {
     channelsById: new Map([[7, createChannel()]]),
     chunkIndexes: options.chunkIndexes,
     readMessages: async function* () {
-      // Prewarm never streams messages.
-    } as unknown as McapIndexedReaderLike["readMessages"],
+      for await (const message of []) yield message;
+    },
     schemasById: new Map(),
     statistics: options.statistics,
   };
@@ -175,8 +185,8 @@ function createStatistics(
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
-): McapTypes.TypedMcapRecords["ChunkIndex"] {
+  options: Partial<McapChunkIndex> = {},
+): McapChunkIndex {
   return {
     chunkLength: options.chunkLength ?? 256n,
     chunkStartOffset: options.chunkStartOffset ?? 1_000n,
@@ -184,14 +194,15 @@ function createChunkIndex(
     compression: options.compression ?? "",
     messageEndTime: options.messageEndTime ?? 20n,
     messageIndexLength: options.messageIndexLength ?? 0n,
-    messageIndexOffsets: options.messageIndexOffsets ?? new Map(),
+    messageIndexOffsets:
+      options.messageIndexOffsets ?? new Map<number, bigint>(),
     messageStartTime: options.messageStartTime ?? 10n,
     type: "ChunkIndex",
     uncompressedSize: options.uncompressedSize ?? 0n,
   };
 }
 
-function createChannel(): McapTypes.TypedMcapRecords["Channel"] {
+function createChannel(): McapChannel {
   return {
     id: 7,
     messageEncoding: "protobuf",
