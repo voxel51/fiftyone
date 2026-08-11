@@ -219,20 +219,8 @@ describe("RawMessageBrowser", () => {
     );
     expect(screen.getByTestId("record-meta").textContent).toBe("cursor-2");
     expect(screen.getByTestId("marker").textContent).toBe("browser-owner:2");
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Previous message",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Next message",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+    expect(buttonDisabled("Previous message")).toBe(true);
+    expect(buttonDisabled("Next message")).toBe(true);
     expect(mocks.readRecordAtCursor).not.toHaveBeenCalled();
   });
 
@@ -391,3 +379,11 @@ describe("RawMessageBrowser", () => {
     expect(screen.getByTestId("marker").textContent).toBe("none");
   });
 });
+
+function buttonDisabled(name: string): boolean {
+  const button = screen.getByRole("button", { name });
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error(`expected ${name} to be a button`);
+  }
+  return button.disabled;
+}

@@ -79,7 +79,7 @@ export interface RawMessageContextValue {
   /**
    * Idempotently kicks the all-streams inventory read for the picker.
    */
-  ensureStreams(): void;
+  ensureStreams(this: void): void;
 
   /**
    * Reads the complete decoded message behind an inspector result as bounded,
@@ -87,6 +87,7 @@ export interface RawMessageContextValue {
    * byte buffers use a base64 envelope.
    */
   readFullMessageJson(
+    this: void,
     stream: string,
     anchor: bigint | RawRecordCursor,
     signal?: AbortSignal,
@@ -94,6 +95,7 @@ export interface RawMessageContextValue {
 
   /** Reads a selected exact record on the explicit interactive lane. */
   readRecordAtCursor(
+    this: void,
     stream: string,
     cursor: RawRecordCursor,
     signal?: AbortSignal,
@@ -101,6 +103,7 @@ export interface RawMessageContextValue {
 
   /** Reads a bounded exact index window without decoding its rows. */
   readRecordIndexWindow(
+    this: void,
     stream: string,
     request: RawRecordIndexWindowRequest,
     signal?: AbortSignal,
@@ -111,7 +114,7 @@ export interface RawMessageContextValue {
    * unsubscribe is outstanding. Interested streams follow the playhead;
    * results are kept after unsubscribe for the life of the source.
    */
-  subscribeRecord(stream: string): () => void;
+  subscribeRecord(this: void, stream: string): () => void;
 }
 
 type RawMessageHandlers = DemandContextHandlers &

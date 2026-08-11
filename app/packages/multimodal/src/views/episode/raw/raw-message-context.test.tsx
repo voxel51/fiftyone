@@ -28,10 +28,12 @@ describe("RawMessageBridge records", () => {
   it("reads complete message JSON only for an explicit request", async () => {
     const fullJson = JSON.stringify({ data: new Array(100).fill(7) });
     const client = createClient({
-      readRawRecord: vi.fn(async (request) => ({
-        ...recordResult(request),
-        fullJson: request.includeFullJson ? fullJson : undefined,
-      })),
+      readRawRecord: vi.fn<RawRecordCapability["readRawRecord"]>((request) =>
+        Promise.resolve({
+          ...recordResult(request),
+          fullJson: request.includeFullJson ? fullJson : undefined,
+        }),
+      ),
     });
     const context = createContextRef();
 
@@ -48,13 +50,14 @@ describe("RawMessageBridge records", () => {
 
     expect(copiedJson).toBe(fullJson);
     expect(client.readRawRecord).toHaveBeenCalledTimes(1);
-    expect(client.readRawRecord).toHaveBeenCalledWith({
+    const request = vi.mocked(client.readRawRecord).mock.calls[0]?.[0];
+    expect(request).toMatchObject({
       includeFullJson: true,
       intent: "export",
-      signal: expect.any(AbortSignal),
       stream: "/imu",
       timestampNs: 42_000_000_000n,
     });
+    expect(request?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("routes exact Browse reads directly through the capability", async () => {
@@ -63,7 +66,9 @@ describe("RawMessageBridge records", () => {
       cursor: "cursor-42",
       fullJson: '{"exact":true}',
     };
-    const readRawRecordAtCursor = vi.fn(async () => exactResult);
+    const readRawRecordAtCursor = vi.fn<
+      NonNullable<RawRecordCapability["readRawRecordAtCursor"]>
+    >(() => Promise.resolve(exactResult));
     const indexResult = {
       entries: [{ cursor: "cursor-42", timestampNs: 42n }],
       hasNext: false,
@@ -103,8 +108,8 @@ describe("RawMessageBridge records", () => {
       );
       await flushMicrotasks();
     });
-    const forwardedIndexSignal = readRawRecordIndexWindow.mock.calls[0]?.[0]
-      .signal as AbortSignal | undefined;
+    const forwardedIndexSignal =
+      readRawRecordIndexWindow.mock.calls[0]?.[0].signal;
     expect(forwardedIndexSignal?.aborted).toBe(false);
 
     controller.abort();
@@ -126,31 +131,37 @@ describe("RawMessageBridge records", () => {
       );
     });
 
-    expect(readRawRecordIndexWindow).toHaveBeenCalledWith({
+    const indexRequest = readRawRecordIndexWindow.mock.calls[0]?.[0];
+    expect(indexRequest).toMatchObject({
       after: 10,
       anchorCursor: "cursor-42",
       before: 10,
-      signal: expect.any(AbortSignal),
       stream: "/imu",
     });
+    expect(indexRequest?.signal).toBeInstanceOf(AbortSignal);
     expect(readRawRecordAtCursor).toHaveBeenCalledTimes(2);
-    expect(readRawRecordAtCursor).toHaveBeenLastCalledWith({
+    const exactRequest = readRawRecordAtCursor.mock.lastCall?.[0];
+    expect(exactRequest).toMatchObject({
       cursor: "cursor-42",
       includeFullJson: true,
       intent: "export",
-      signal: expect.any(AbortSignal),
       stream: "/imu",
     });
+    expect(exactRequest?.signal).toBeInstanceOf(AbortSignal);
     expect(client.readRawRecord).not.toHaveBeenCalled();
   });
 
   it("rejects exact copy JSON returned for a different cursor", async () => {
     const client = createClient({
-      readRawRecordAtCursor: vi.fn(async () => ({
-        ...recordResult({ stream: "/imu", timestampNs: 43n }),
-        cursor: "cursor-43",
-        fullJson: '{"wrong":true}',
-      })),
+      readRawRecordAtCursor: vi.fn<
+        NonNullable<RawRecordCapability["readRawRecordAtCursor"]>
+      >(() =>
+        Promise.resolve({
+          ...recordResult({ stream: "/imu", timestampNs: 43n }),
+          cursor: "cursor-43",
+          fullJson: '{"wrong":true}',
+        }),
+      ),
     });
     const context = createContextRef();
 
@@ -289,7 +300,7 @@ describe("RawMessageBridge records", () => {
     const second = deferred<RawRecordResult>();
     const requests: Parameters<RawRecordCapability["readRawRecord"]>[0][] = [];
     const client = createClient({
-      readRawRecord: vi.fn((request) => {
+      readRawRecord: vi.fn<RawRecordCapability["readRawRecord"]>((request) => {
         requests.push(request);
         return requests.length === 1 ? first.promise : second.promise;
       }),
@@ -345,11 +356,13 @@ describe("RawMessageBridge records", () => {
 
   it("does not loop when a reader returns an invalid window for its exact target", async () => {
     const client = createClient({
-      readRawRecord: vi.fn(async (request) => ({
-        ...recordResult(request),
-        validFromNs: 0n,
-        validUntilNs: 1n,
-      })),
+      readRawRecord: vi.fn<RawRecordCapability["readRawRecord"]>((request) =>
+        Promise.resolve({
+          ...recordResult(request),
+          validFromNs: 0n,
+          validUntilNs: 1n,
+        }),
+      ),
     });
     const context = createContextRef();
     const store = createStore();
@@ -376,7 +389,9 @@ describe("RawMessageBridge records", () => {
       readRawRecord: vi
         .fn<RawRecordCapability["readRawRecord"]>()
         .mockRejectedValueOnce(new Error("temporary failure"))
-        .mockImplementation(async (request) => recordResult(request)),
+        .mockImplementation((request) =>
+          Promise.resolve(recordResult(request)),
+        ),
     });
     const context = createContextRef();
 
@@ -407,7 +422,9 @@ describe("RawMessageBridge records", () => {
       readRawRecord: vi
         .fn<RawRecordCapability["readRawRecord"]>()
         .mockRejectedValueOnce(new Error("boom"))
-        .mockImplementation(async (request) => recordResult(request)),
+        .mockImplementation((request) =>
+          Promise.resolve(recordResult(request)),
+        ),
     });
     const context = createContextRef();
     const store = createStore();
@@ -523,7 +540,7 @@ describe("RawMessageBridge records", () => {
     const pending = deferred<RawRecordResult>();
     let readSignal: AbortSignal | undefined;
     const client = createClient({
-      readRawRecord: vi.fn(async (request) => {
+      readRawRecord: vi.fn<RawRecordCapability["readRawRecord"]>((request) => {
         readSignal = request.signal;
         return pending.promise;
       }),
@@ -557,10 +574,13 @@ describe("RawMessageBridge records", () => {
 describe("RawMessageBridge streams", () => {
   it("reads the inventory once and maps picker rows", async () => {
     const client = createClient({
-      listRawRecordStreams: vi.fn(async () => [
-        rawStream("/lidar", "protobuf", "foxglove.PointCloud", 42),
-        rawStream("/imu", "ros1", null, null),
-      ]),
+      listRawRecordStreams: vi.fn<RawRecordCapability["listRawRecordStreams"]>(
+        () =>
+          Promise.resolve([
+            rawStream("/lidar", "protobuf", "foxglove.PointCloud", 42),
+            rawStream("/imu", "ros1", null, null),
+          ]),
+      ),
     });
     const context = createContextRef();
 
@@ -761,8 +781,12 @@ function createClient(
   overrides: Partial<RawRecordCapability> = {},
 ): RawRecordCapability {
   return {
-    listRawRecordStreams: vi.fn(async () => []),
-    readRawRecord: vi.fn(async (request) => recordResult(request)),
+    listRawRecordStreams: vi.fn<RawRecordCapability["listRawRecordStreams"]>(
+      () => Promise.resolve([]),
+    ),
+    readRawRecord: vi.fn<RawRecordCapability["readRawRecord"]>((request) =>
+      Promise.resolve(recordResult(request)),
+    ),
     ...overrides,
   };
 }

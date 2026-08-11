@@ -56,12 +56,8 @@ describe("RawMessageTileSettings", () => {
       screen.getByRole("radiogroup", { name: "Inspected stream" }),
     ).toBeTruthy();
     expect(screen.getAllByRole("radio")).toHaveLength(2);
-    expect(
-      (screen.getByRole("radio", { name: "/imu" }) as HTMLInputElement).checked,
-    ).toBe(true);
-    expect(
-      (screen.getByRole("radio", { name: "/gps" }) as HTMLInputElement).checked,
-    ).toBe(false);
+    expect(radioChecked("/imu")).toBe(true);
+    expect(radioChecked("/gps")).toBe(false);
 
     // Selecting another stream replaces the selection — one inspected stream
     // at a time, and the rows never reach an everything-unchecked state.
@@ -84,3 +80,11 @@ describe("RawMessageTileSettings", () => {
     expect(screen.queryByRole("radio", { name: "/imu" })).toBeNull();
   });
 });
+
+function radioChecked(name: string): boolean {
+  const radio = screen.getByRole("radio", { name });
+  if (!(radio instanceof HTMLInputElement)) {
+    throw new Error(`expected ${name} to be a radio input`);
+  }
+  return radio.checked;
+}

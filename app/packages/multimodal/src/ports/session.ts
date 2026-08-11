@@ -403,34 +403,44 @@ export interface NumericSeriesSliceResult {
 
 /** Optional semantic capability for bounded raw-record inspection. */
 export interface RawRecordCapability {
-  listRawRecordStreams(options?: {
-    readonly signal?: AbortSignal;
-  }): Promise<readonly RawRecordStream[]>;
-  readRawRecord(request: {
-    readonly includeFullJson?: boolean;
-    /**
-     * Scheduling attribution. Paused inspection may use an isolated
-     * responsive lane; continuous playback stays idle and full export stays
-     * bulk so neither can head-of-line block playback.
-     */
-    readonly intent?: "background" | "paused-inspection" | "export";
-    readonly prune?: RawRecordPruneBudgets;
-    readonly signal?: AbortSignal;
-    readonly stream: StreamId;
-    readonly timestampNs: bigint;
-  }): Promise<RawRecordResult>;
+  listRawRecordStreams(
+    this: void,
+    options?: {
+      readonly signal?: AbortSignal;
+    },
+  ): Promise<readonly RawRecordStream[]>;
+  readRawRecord(
+    this: void,
+    request: {
+      readonly includeFullJson?: boolean;
+      /**
+       * Scheduling attribution. Paused inspection may use an isolated
+       * responsive lane; continuous playback stays idle and full export stays
+       * bulk so neither can head-of-line block playback.
+       */
+      readonly intent?: "background" | "paused-inspection" | "export";
+      readonly prune?: RawRecordPruneBudgets;
+      readonly signal?: AbortSignal;
+      readonly stream: StreamId;
+      readonly timestampNs: bigint;
+    },
+  ): Promise<RawRecordResult>;
   /** Reads one exact indexed record without consulting the playback clock. */
-  readRawRecordAtCursor?(request: {
-    readonly cursor: RawRecordCursor;
-    readonly includeFullJson?: boolean;
-    /** Whole-message JSON export remains on the bounded bulk lane. */
-    readonly intent?: "browse" | "export";
-    readonly prune?: RawRecordPruneBudgets;
-    readonly signal?: AbortSignal;
-    readonly stream: StreamId;
-  }): Promise<RawRecordResult>;
+  readRawRecordAtCursor?(
+    this: void,
+    request: {
+      readonly cursor: RawRecordCursor;
+      readonly includeFullJson?: boolean;
+      /** Whole-message JSON export remains on the bounded bulk lane. */
+      readonly intent?: "browse" | "export";
+      readonly prune?: RawRecordPruneBudgets;
+      readonly signal?: AbortSignal;
+      readonly stream: StreamId;
+    },
+  ): Promise<RawRecordResult>;
   /** Reads a bounded index-only window around a time or exact record. */
   readRawRecordIndexWindow?(
+    this: void,
     request: RawRecordIndexWindowRequest & {
       readonly signal?: AbortSignal;
       readonly stream: StreamId;
