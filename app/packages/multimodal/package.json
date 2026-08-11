@@ -128,6 +128,7 @@
         "@react-three/drei": "9.105.4",
         "@react-three/fiber": "catalog:",
         "@voxel51/voodo": "catalog:",
+        "@xyflow/react": "^12.4.4",
         "buffer": "catalog:",
         "colormap": "catalog:",
         "date-fns": "^4.1.0",

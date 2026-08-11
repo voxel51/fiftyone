@@ -148,7 +148,7 @@ describe("TransformGraphTile", () => {
       screen
         .getByRole("button", { name: "Frame map" })
         .getAttribute("tabindex"),
-    ).toBe("-1");
+    ).toBeNull();
 
     fireEvent.change(
       screen.getByRole("searchbox", { name: "Filter transform frames" }),
@@ -161,10 +161,14 @@ describe("TransformGraphTile", () => {
       { target: { value: "" } },
     );
     expect(
-      screen.getByRole("group", { name: "Static transform topology" }),
+      screen.getByRole("application", {
+        name: "Static transform topology",
+      }),
     ).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Frame map" }));
+    const mapFrame = screen.getByRole("button", { name: "Frame map" });
+    expect(mapFrame.tagName).toBe("DIV");
+    fireEvent.keyDown(mapFrame, { key: "Enter" });
     const frameDetails = screen.getByTestId("transform-selection-details");
     expect(within(frameDetails).queryByText("Renderable streams")).toBeNull();
     expect(within(frameDetails).queryByText("/oxts/odometry")).toBeNull();
@@ -173,9 +177,15 @@ describe("TransformGraphTile", () => {
       within(frameDetails).getByText("Component").parentElement?.textContent,
     ).toBe("Component1");
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Transform edge map to base_link" }),
-    );
+    const mapEdge = screen.getByRole("button", {
+      name: "Transform edge map to base_link",
+    });
+    expect(
+      mapEdge
+        .querySelector(".react-flow__edge-path")
+        ?.getAttribute("marker-end"),
+    ).not.toContain("var(");
+    fireEvent.keyDown(mapEdge, { key: " " });
     const edgeDetails = screen.getByTestId("transform-selection-details");
     expect(within(edgeDetails).getByText("Parent")).toBeTruthy();
     expect(within(edgeDetails).getByText("base_link")).toBeTruthy();
@@ -242,6 +252,9 @@ describe("TransformGraphTile", () => {
     expect(screen.getByText("Connected")).toBeTruthy();
     expect(screen.getByText("No structural issues observed")).toBeTruthy();
     expect(screen.queryByText("Component 1")).toBeNull();
+    expect(
+      screen.getByRole("group", { name: "Transform component" }),
+    ).toBeTruthy();
     expect(screen.queryByTestId("transform-topology-partial")).toBeNull();
   });
 

@@ -199,7 +199,6 @@ describe("transform topology layout", () => {
     const layout = layoutTransformTopology(analyzeTransformTopology([], []));
 
     expect(layout.nodes).toEqual([]);
-    expect(layout.edges).toEqual([]);
     expect(layout.bounds.width).toBeGreaterThan(0);
     expect(layout.bounds.height).toBeGreaterThan(0);
     expect(Number.isFinite(layout.bounds.width)).toBe(true);
@@ -221,7 +220,6 @@ describe("transform topology layout", () => {
       "b",
       "c",
     ]);
-    expect(first.edges).toHaveLength(3);
     expect(first.bounds.width).toBeGreaterThan(0);
     expect(first.bounds.height).toBeGreaterThan(0);
   });

@@ -102,15 +102,7 @@
 }
 
 .canvas {
-  background:
-    radial-gradient(
-        circle at 1px 1px,
-        color-mix(in srgb, var(--color-content-text-muted) 14%, transparent) 1px,
-        transparent 1.2px
-      )
-      0 0 / 18px 18px,
-    var(--fo-palette-background-level1, #0b0d10);
-  cursor: grab;
+  background: var(--fo-palette-background-level1, #0b0d10);
   flex: 1;
   min-height: 180px;
   overflow: hidden;
@@ -118,8 +110,43 @@
   touch-action: none;
 }
 
-.canvas:active {
+.canvas :global(.react-flow) {
+  background: var(--fo-palette-background-level1, #0b0d10);
+}
+
+.canvas :global(.react-flow__pane) {
+  cursor: grab;
+}
+
+.canvas :global(.react-flow__pane.dragging) {
   cursor: grabbing;
+}
+
+.canvas :global(.react-flow__node) {
+  font-family: inherit;
+}
+
+.canvas :global(.react-flow__node:focus),
+.canvas :global(.react-flow__node:focus-visible) {
+  outline: none;
+}
+
+.canvas :global(.react-flow__node-transform-component) {
+  pointer-events: none;
+}
+
+.canvas :global(.react-flow__node-transform-frame:hover) .flowNodeCard,
+.canvas :global(.react-flow__node-transform-frame:focus-visible) .flowNodeCard {
+  border-color: var(--color-content-border-focus, #7ca9ff);
+  box-shadow: 0 0 0 1px var(--color-content-border-focus, #7ca9ff);
+}
+
+.canvas
+  :global(.react-flow__edge:focus-visible)
+  :global(.react-flow__edge-path) {
+  filter: drop-shadow(0 0 3px var(--color-content-border-focus, #7ca9ff));
+  stroke: var(--color-content-border-focus, #7ca9ff) !important;
+  stroke-width: 2.5 !important;
 }
 
 .canvasControls {
@@ -129,137 +156,142 @@
   margin-left: auto;
 }
 
-.svg {
-  height: 100%;
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-  position: absolute;
-  width: 100%;
-}
-
-.svg g[role="button"],
-.edgeHitTarget {
-  pointer-events: auto;
-}
-
-.componentBox {
-  fill: color-mix(
+.flowComponent {
+  background: color-mix(
     in srgb,
     var(--fo-palette-background-level2, #15171b) 72%,
     transparent
   );
-  stroke: var(--color-content-border-default, #383835);
-  stroke-dasharray: 3 4;
+  border: 1px dashed var(--color-content-border-default, #383835);
+  border-radius: 12px;
+  box-sizing: border-box;
+  height: 100%;
+  pointer-events: none;
+  position: relative;
+  width: 100%;
 }
 
-.componentLabel {
-  fill: var(--color-content-text-secondary);
+.flowComponentLabel {
+  color: var(--color-content-text-secondary);
   font-size: 10px;
   font-weight: 600;
+  left: 12px;
   letter-spacing: 0.02em;
+  position: absolute;
   text-transform: uppercase;
+  top: 9px;
 }
 
-.edge {
-  fill: none;
-  stroke: var(--color-content-text-muted, #8d929d);
-  stroke-width: 1.6;
-}
-
-.edgeGroup {
-  outline: none;
-}
-
-.edgeGroup:focus-visible .edge {
-  filter: drop-shadow(0 0 3px var(--color-content-border-focus, #7ca9ff));
-  stroke: var(--color-content-border-focus, #7ca9ff);
-  stroke-width: 2.5;
-}
-
-.edge_static {
-  stroke-dasharray: 5 4;
-}
-
-.edge_temporal {
-  stroke: var(--fo-palette-info-main, #4ca3ff);
-}
-
-.edge_mixed {
-  stroke: var(--color-voxel-secondary, #ff8d00);
-  stroke-width: 2.2;
-}
-
-.selectedEdge {
-  filter: drop-shadow(0 0 4px var(--color-voxel-secondary, #ff8d00));
-  stroke: var(--color-voxel-secondary, #ff8d00);
-  stroke-width: 3;
-}
-
-.arrowHead {
-  fill: var(--color-content-text-secondary, #b3b6bd);
-}
-
-.edgeHitTarget {
+.flowNodeCard {
+  align-items: center;
+  background: var(--fo-palette-background-level2, #15171b);
+  border: 1px solid var(--color-content-border-default, #383835);
+  border-radius: 9px;
+  box-shadow: 0 5px 14px rgb(0 0 0 / 20%);
+  box-sizing: border-box;
+  color: var(--color-content-text-primary, #f1f2f4);
   cursor: pointer;
-  fill: none;
-  stroke: transparent;
-  stroke-width: 14;
+  display: flex;
+  gap: 9px;
+  height: 100%;
+  padding: 7px 10px;
+  transition:
+    border-color 100ms ease,
+    box-shadow 100ms ease;
+  width: 100%;
 }
 
-.node {
-  cursor: pointer;
-  outline: none;
-  pointer-events: auto;
-}
-
-.nodeBox {
-  fill: var(--fo-palette-background-level2, #15171b);
-  stroke: var(--color-content-border-default, #383835);
-  stroke-width: 1;
-}
-
-.node:hover .nodeBox,
-.node:focus-visible .nodeBox {
-  stroke: var(--color-content-border-focus, #7ca9ff);
-  stroke-width: 2;
-}
-
-.dataNode {
-  fill: color-mix(
+.flowDataNode {
+  background: color-mix(
     in srgb,
     var(--fo-palette-info-main, #4ca3ff) 11%,
     var(--fo-palette-background-level2, #15171b)
   );
-  stroke: var(--fo-palette-info-main, #4ca3ff);
+  border-color: var(--fo-palette-info-main, #4ca3ff);
 }
 
-.isolatedNode {
-  stroke: var(--fo-palette-error-main, #ff665d);
+.flowIsolatedNode {
+  border-color: var(--fo-palette-error-main, #ff665d);
 }
 
-.selectedNode {
-  fill: color-mix(
+.flowSelectedNode {
+  background: color-mix(
     in srgb,
     var(--color-voxel-secondary, #ff8d00) 18%,
     var(--fo-palette-background-level2, #15171b)
   );
-  stroke: var(--color-voxel-secondary, #ff8d00);
-  stroke-width: 2.5;
+  border-color: var(--color-voxel-secondary, #ff8d00);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--color-voxel-secondary, #ff8d00) 55%, transparent);
 }
 
-.nodeLabel {
-  fill: var(--color-content-text-primary, #f1f2f4);
+.flowNodeGlyph {
+  align-items: center;
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-primary, #f1f2f4) 7%,
+    transparent
+  );
+  border-radius: 7px;
+  color: var(--color-content-text-secondary);
+  display: flex;
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  height: 30px;
+  justify-content: center;
+  letter-spacing: 0.04em;
+  width: 30px;
+}
+
+.flowNodeText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.flowNodeKind {
+  color: var(--color-content-text-muted, #8d929d);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.flowNodeLabel {
+  color: var(--color-content-text-primary, #f1f2f4);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 600;
-  pointer-events: none;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.nodeMeta {
-  fill: var(--color-content-text-muted, #8d929d);
-  font-size: 10px;
-  pointer-events: none;
+.flowNodeMeta {
+  color: var(--color-content-text-muted, #8d929d);
+  font-size: 9px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flowHandle {
+  background: var(--color-content-text-secondary, #b3b6bd) !important;
+  border: 2px solid var(--fo-palette-background-level2, #15171b) !important;
+  height: 8px !important;
+  min-height: 8px;
+  min-width: 8px;
+  pointer-events: none !important;
+  width: 8px !important;
+}
+
+.flowLoopHandle {
+  opacity: 0;
 }
 
 .filtered {

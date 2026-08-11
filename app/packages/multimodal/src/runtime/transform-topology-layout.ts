@@ -12,25 +12,18 @@ interface TransformTopologyLayoutNode {
   readonly y: number;
 }
 
-interface TransformTopologyLayoutEdge {
-  readonly edgeId: string;
-  readonly source: readonly [number, number];
-  readonly target: readonly [number, number];
-}
-
 interface TransformTopologyLayout {
   readonly bounds: {
     readonly height: number;
     readonly width: number;
   };
-  readonly edges: readonly TransformTopologyLayoutEdge[];
   readonly nodes: readonly TransformTopologyLayoutNode[];
 }
 
-const NODE_WIDTH = 176;
-const NODE_HEIGHT = 44;
-const COLUMN_GAP = 96;
-const ROW_GAP = 24;
+const NODE_WIDTH = 196;
+const NODE_HEIGHT = 58;
+const COLUMN_GAP = 100;
+const ROW_GAP = 28;
 const COMPONENT_GAP = 88;
 const PADDING = 32;
 
@@ -80,33 +73,13 @@ export function layoutTransformTopology(
     }
     componentTop += componentHeight + COMPONENT_GAP;
   }
-  const nodeByFrame = new Map(nodes.map((node) => [node.frameId, node]));
-  const edges = analysis.edges.flatMap((edge) => {
-    const parent = nodeByFrame.get(edge.parentFrameId);
-    const child = nodeByFrame.get(edge.childFrameId);
-    if (!parent || !child) return [];
-    const forward = child.x >= parent.x;
-    return [
-      {
-        edgeId: edge.id,
-        source: [
-          parent.x + (forward ? parent.width : 0),
-          parent.y + parent.height / 2,
-        ] as const,
-        target: [
-          child.x + (forward ? 0 : child.width),
-          child.y + child.height / 2,
-        ] as const,
-      },
-    ];
-  });
   let width = 1;
   let height = 1;
   for (const node of nodes) {
     width = Math.max(width, node.x + node.width + PADDING);
     height = Math.max(height, node.y + node.height + PADDING);
   }
-  return { bounds: { height, width }, edges, nodes };
+  return { bounds: { height, width }, nodes };
 }
 
 function componentLevels(

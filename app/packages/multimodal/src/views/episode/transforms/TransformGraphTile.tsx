@@ -3,10 +3,7 @@ import {
   BackgroundColor,
   Button,
   EmptyState,
-  FormField,
   IconName,
-  Input,
-  InputType,
   Pill,
   Size,
   Spinner,
@@ -15,20 +12,12 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import React, {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import { useReadPlaybackTimeNs } from "../playback/use-playback-time-ns";
 import {
   analyzeTransformTopology,
   type TransformTopologyAnalysis,
-  type TransformTopologyComponent,
   type TransformTopologyEdge,
   type TransformTopologyFrame,
   type TransformTopologyIssue,
@@ -39,21 +28,13 @@ import {
   useTransformTopologyCapability,
   useTransformTopologyScan,
 } from "./transform-topology-context";
+import {
+  TransformGraphCanvas,
+  type TransformGraphSelection,
+} from "./TransformGraphCanvas";
 import styles from "./TransformGraphTile.module.css";
 
-type Selection =
-  | { readonly id: string; readonly kind: "edge" }
-  | { readonly id: string; readonly kind: "frame" };
-
-interface Viewport {
-  readonly scale: number;
-  readonly x: number;
-  readonly y: number;
-}
-
-const MIN_SCALE = 0.25;
-const MAX_SCALE = 2.5;
-const GRAPH_INSET = 28;
+type Selection = TransformGraphSelection;
 
 /** Static, demand-driven transform topology diagnostic tile. */
 const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
@@ -191,7 +172,7 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
       <CoverageNotice onAnalyzeMore={analyzeMore} scan={scan} />
       <div className={styles.workspace}>
         <section className={styles.graphColumn} aria-label="Transform graph">
-          <TopologyCanvas
+          <TransformGraphCanvas
             analysis={analysis}
             layout={layout}
             matchingFrameIds={matchingFrameIds}
@@ -348,347 +329,6 @@ function CoverageNotice({
         ) : null}
       </div>
     </div>
-  );
-}
-
-function TopologyCanvas({
-  analysis,
-  layout,
-  matchingFrameIds,
-  onQueryChange,
-  onSelect,
-  query,
-  queryActive,
-  selection,
-}: {
-  readonly analysis: TransformTopologyAnalysis;
-  readonly layout: ReturnType<typeof layoutTransformTopology>;
-  readonly matchingFrameIds: ReadonlySet<string>;
-  readonly onQueryChange: (query: string) => void;
-  readonly onSelect: (selection: Selection) => void;
-  readonly query: string;
-  readonly queryActive: boolean;
-  readonly selection: Selection | null;
-}) {
-  const arrowMarkerId = `transform-topology-arrow-${useId().replaceAll(":", "")}`;
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [viewport, setViewport] = useState<Viewport>({ scale: 1, x: 0, y: 0 });
-  const dragRef = useRef<{
-    readonly pointerId: number;
-    readonly startX: number;
-    readonly startY: number;
-    readonly viewport: Viewport;
-  } | null>(null);
-  const edgeById = useMemo(
-    () => new Map(analysis.edges.map((edge) => [edge.id, edge])),
-    [analysis.edges],
-  );
-  const frameById = useMemo(
-    () => new Map(analysis.frames.map((frame) => [frame.id, frame])),
-    [analysis.frames],
-  );
-  const connectedFrameIds = useMemo(
-    () =>
-      new Set(
-        analysis.edges.flatMap((edge) => [
-          edge.parentFrameId,
-          edge.childFrameId,
-        ]),
-      ),
-    [analysis.edges],
-  );
-  const componentRects = useMemo(
-    () => componentBounds(analysis.components, layout.nodes),
-    [analysis.components, layout.nodes],
-  );
-
-  const fit = useCallback(() => {
-    const element = containerRef.current;
-    if (
-      !element ||
-      element.clientWidth <= 0 ||
-      element.clientHeight <= 0 ||
-      componentRects.length === 0
-    ) {
-      return;
-    }
-    const left = Math.min(...componentRects.map((component) => component.x));
-    const top = Math.min(...componentRects.map((component) => component.y));
-    const right = Math.max(
-      ...componentRects.map((component) => component.x + component.width),
-    );
-    const bottom = Math.max(
-      ...componentRects.map((component) => component.y + component.height),
-    );
-    const width = right - left;
-    const height = bottom - top;
-    // Fit may go below the manual zoom floor so every component stays visible.
-    const scale = Math.min(
-      Math.max(1, element.clientWidth - GRAPH_INSET * 2) / width,
-      Math.max(1, element.clientHeight - GRAPH_INSET * 2) / height,
-      MAX_SCALE,
-    );
-    setViewport({
-      scale,
-      x: (element.clientWidth - width * scale) / 2 - left * scale,
-      y: (element.clientHeight - height * scale) / 2 - top * scale,
-    });
-  }, [componentRects]);
-
-  // This effect fits the graph initially and after its tile changes size.
-  useEffect(() => {
-    fit();
-    const element = containerRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(fit);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [fit]);
-
-  const zoom = useCallback((factor: number) => {
-    const element = containerRef.current;
-    if (!element) return;
-    setViewport((current) => {
-      const scale = clamp(current.scale * factor, MIN_SCALE, MAX_SCALE);
-      const centerX = element.clientWidth / 2;
-      const centerY = element.clientHeight / 2;
-      const ratio = scale / current.scale;
-      return {
-        scale,
-        x: centerX - (centerX - current.x) * ratio,
-        y: centerY - (centerY - current.y) * ratio,
-      };
-    });
-  }, []);
-
-  // This effect routes non-passive wheel input into centered graph zoom.
-  useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
-    const handleWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      zoom(event.deltaY < 0 ? 1.12 : 1 / 1.12);
-    };
-    element.addEventListener("wheel", handleWheel, { passive: false });
-    return () => element.removeEventListener("wheel", handleWheel);
-  }, [zoom]);
-
-  return (
-    <>
-      <div
-        aria-label="Transform graph controls"
-        className={styles.graphToolbar}
-      >
-        <FormField
-          className={styles.searchField}
-          control={
-            <Input
-              aria-label="Filter transform frames"
-              icon={IconName.Search}
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Frame name"
-              size={Size.Sm}
-              type={InputType.Search}
-              value={query}
-            />
-          }
-        />
-        {queryActive ? (
-          <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
-            {matchingFrameIds.size} of {analysis.frames.length}
-          </Text>
-        ) : null}
-        <div className={styles.canvasControls}>
-          <Button
-            aria-label="Zoom out"
-            borderless
-            leadingIcon={IconName.Remove}
-            onClick={() => zoom(1 / 1.2)}
-            size={Size.Xs}
-            variant={Variant.Icon}
-          />
-          <Button
-            aria-label="Zoom in"
-            borderless
-            leadingIcon={IconName.Add}
-            onClick={() => zoom(1.2)}
-            size={Size.Xs}
-            variant={Variant.Icon}
-          />
-          <Button
-            aria-label="Fit transform graph"
-            borderless
-            leadingIcon={IconName.Fullscreen}
-            onClick={fit}
-            size={Size.Xs}
-            title="Fit"
-            variant={Variant.Icon}
-          />
-        </div>
-      </div>
-      <div
-        className={styles.canvas}
-        data-testid="transform-topology-canvas"
-        onPointerDown={(event) => {
-          if (event.button !== 0 || event.target !== event.currentTarget)
-            return;
-          event.currentTarget.setPointerCapture(event.pointerId);
-          dragRef.current = {
-            pointerId: event.pointerId,
-            startX: event.clientX,
-            startY: event.clientY,
-            viewport,
-          };
-        }}
-        onPointerMove={(event) => {
-          const drag = dragRef.current;
-          if (!drag || drag.pointerId !== event.pointerId) return;
-          setViewport({
-            ...drag.viewport,
-            x: drag.viewport.x + event.clientX - drag.startX,
-            y: drag.viewport.y + event.clientY - drag.startY,
-          });
-        }}
-        onPointerUp={(event) => {
-          if (dragRef.current?.pointerId === event.pointerId)
-            dragRef.current = null;
-        }}
-        onPointerCancel={(event) => {
-          if (dragRef.current?.pointerId === event.pointerId)
-            dragRef.current = null;
-        }}
-        onLostPointerCapture={(event) => {
-          if (dragRef.current?.pointerId === event.pointerId)
-            dragRef.current = null;
-        }}
-        ref={containerRef}
-      >
-        <svg
-          aria-label="Static transform topology"
-          className={styles.svg}
-          role="group"
-        >
-          <defs>
-            <marker
-              id={arrowMarkerId}
-              markerHeight="7"
-              markerUnits="strokeWidth"
-              markerWidth="7"
-              orient="auto"
-              refX="6"
-              refY="3.5"
-            >
-              <path className={styles.arrowHead} d="M 0 0 L 7 3.5 L 0 7 z" />
-            </marker>
-          </defs>
-          <g
-            transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.scale})`}
-          >
-            {componentRects.map((component, index) => (
-              <g key={component.id}>
-                <rect
-                  className={styles.componentBox}
-                  height={component.height}
-                  rx="12"
-                  width={component.width}
-                  x={component.x}
-                  y={component.y}
-                />
-                {componentRects.length > 1 ? (
-                  <text
-                    className={styles.componentLabel}
-                    x={component.x + 12}
-                    y={component.y + 19}
-                  >
-                    {`Component ${index + 1}`}
-                  </text>
-                ) : null}
-              </g>
-            ))}
-            {layout.edges.map((layoutEdge) => {
-              const edge = edgeById.get(layoutEdge.edgeId);
-              if (!edge) return null;
-              const matched =
-                !queryActive ||
-                matchingFrameIds.has(edge.parentFrameId) ||
-                matchingFrameIds.has(edge.childFrameId);
-              const selected =
-                selection?.kind === "edge" && selection.id === edge.id;
-              const path = edgePath(layoutEdge.source, layoutEdge.target);
-              const edgeVariant = styles[`edge_${edge.kind}`] ?? "";
-              // These are independent buttons, so each match stays tabbable.
-              return (
-                <g
-                  aria-label={`Transform edge ${edge.parentFrameId} to ${edge.childFrameId}`}
-                  className={`${styles.edgeGroup} ${!matched ? styles.filtered : ""}`}
-                  key={edge.id}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSelect({ id: edge.id, kind: "edge" });
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter" && event.key !== " ") return;
-                    event.preventDefault();
-                    onSelect({ id: edge.id, kind: "edge" });
-                  }}
-                  role="button"
-                  tabIndex={matched ? 0 : -1}
-                >
-                  <path
-                    className={`${styles.edge} ${edgeVariant} ${selected ? styles.selectedEdge : ""}`}
-                    d={path}
-                    markerEnd={`url(#${arrowMarkerId})`}
-                  />
-                  <path className={styles.edgeHitTarget} d={path} />
-                </g>
-              );
-            })}
-            {layout.nodes.map((node) => {
-              const frame = frameById.get(node.frameId);
-              if (!frame) return null;
-              const matched = !queryActive || matchingFrameIds.has(frame.id);
-              const selected =
-                selection?.kind === "frame" && selection.id === frame.id;
-              const isolated = !connectedFrameIds.has(frame.id);
-              return (
-                <g
-                  aria-label={`Frame ${frame.id}`}
-                  className={`${styles.node} ${!matched ? styles.filtered : ""}`}
-                  data-isolated={isolated || undefined}
-                  key={frame.id}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSelect({ id: frame.id, kind: "frame" });
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter" && event.key !== " ") return;
-                    event.preventDefault();
-                    onSelect({ id: frame.id, kind: "frame" });
-                  }}
-                  role="button"
-                  tabIndex={matched ? 0 : -1}
-                  transform={`translate(${node.x} ${node.y})`}
-                >
-                  <rect
-                    className={`${styles.nodeBox} ${frame.dataBearing ? styles.dataNode : ""} ${isolated ? styles.isolatedNode : ""} ${selected ? styles.selectedNode : ""}`}
-                    height={node.height}
-                    rx="7"
-                    width={node.width}
-                  />
-                  <title>{`${frame.id} — ${fullTransformSourceSummary(frame.transformSources)}`}</title>
-                  <text className={styles.nodeLabel} x="12" y="18">
-                    {shortFrameLabel(frame.id)}
-                  </text>
-                  <text className={styles.nodeMeta} x="12" y="34">
-                    {shortTransformSourceSummary(frame.transformSources)}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
-        </svg>
-      </div>
-    </>
   );
 }
 
@@ -900,81 +540,6 @@ function TileState({
   );
 }
 
-function componentBounds(
-  components: readonly TransformTopologyComponent[],
-  nodes: readonly {
-    readonly frameId: string;
-    readonly height: number;
-    readonly width: number;
-    readonly x: number;
-    readonly y: number;
-  }[],
-) {
-  const nodeByFrame = new Map(nodes.map((node) => [node.frameId, node]));
-  return components.flatMap((component) => {
-    const componentNodes = component.frameIds.flatMap((frameId) => {
-      const node = nodeByFrame.get(frameId);
-      return node ? [node] : [];
-    });
-    if (componentNodes.length === 0) return [];
-    const x = Math.min(...componentNodes.map((node) => node.x)) - 12;
-    const topInset = components.length > 1 ? 32 : 12;
-    const y = Math.min(...componentNodes.map((node) => node.y)) - topInset;
-    const right = Math.max(
-      ...componentNodes.map((node) => node.x + node.width),
-    );
-    const bottom = Math.max(
-      ...componentNodes.map((node) => node.y + node.height),
-    );
-    return [
-      {
-        dataBearingFrameCount: component.dataBearingFrameCount,
-        frameCount: component.frameIds.length,
-        height: bottom - y + 12,
-        id: component.id,
-        width: right - x + 12,
-        x,
-        y,
-      },
-    ];
-  });
-}
-
-function edgePath(
-  source: readonly [number, number],
-  target: readonly [number, number],
-): string {
-  const bend = Math.max(36, Math.abs(target[0] - source[0]) * 0.45);
-  const direction = target[0] >= source[0] ? 1 : -1;
-  return `M ${source[0]} ${source[1]} C ${source[0] + bend * direction} ${source[1]}, ${target[0] - bend * direction} ${target[1]}, ${target[0]} ${target[1]}`;
-}
-
-function shortFrameLabel(frameId: string): string {
-  return frameId.length <= 24 ? frameId : `${frameId.slice(0, 21)}…`;
-}
-
-function shortTransformSourceSummary(
-  sources: readonly TransformTopologySource[],
-): string {
-  if (sources.length === 0) return "transform source unknown";
-  const visible = sources
-    .slice(0, 2)
-    .map((source) => source.sourceName.replace(/^\/+/, ""));
-  const suffix =
-    sources.length > visible.length ? ` +${sources.length - 2}` : "";
-  const summary = `${visible.join(" + ")}${suffix}`;
-  return summary.length <= 28 ? summary : `${summary.slice(0, 25)}…`;
-}
-
-function fullTransformSourceSummary(
-  sources: readonly TransformTopologySource[],
-): string {
-  if (sources.length === 0) return "no transform source observed";
-  return sources
-    .map((source) => `${source.sourceName} (${source.kind})`)
-    .join(", ");
-}
-
 function transformSourceColor(
   kind: TransformTopologySource["kind"],
 ): TextColor {
@@ -989,10 +554,6 @@ function formatNanoseconds(value: bigint): string {
 
 function capitalize(value: string): string {
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 export default TransformGraphTile;
