@@ -24,7 +24,7 @@ import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { useCallback } from "react";
 
 export function OperatorPlacementWithErrorBoundary(
-  props: OperatorPlacementProps
+  props: OperatorPlacementProps,
 ) {
   return (
     <ErrorBoundary
@@ -162,17 +162,17 @@ function ComponentPlacement(props: OperatorPlacementProps) {
 
   if (!componentName) {
     throw new Error(
-      "ComponentPlacement requires a component name as an argument"
+      "ComponentPlacement requires a component name as an argument",
     );
   }
 
   const Component = componentPlugins.find(
-    (plugin) => plugin.name === componentName
+    (plugin) => plugin.name === componentName,
   )?.component;
 
   if (!Component) {
     throw new Error(
-      `Component ${componentName} not found among active plugins`
+      `Component ${componentName} not found among active plugins`,
     );
   }
 

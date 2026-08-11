@@ -14,7 +14,7 @@ const useWriters = (
   subscription: string,
   environment: Environment,
   router: RoutingContext<Queries>,
-  sessionRef: MutableRefObject<Session>
+  sessionRef: MutableRefObject<Session>,
 ) => {
   useSession((key, value) => {
     if (env().VITE_NO_STATE && "fieldVisibilityStage" === key) {

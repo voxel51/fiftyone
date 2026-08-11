@@ -1,8 +1,9 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
+import { useTimelineDisplay } from "../../lib/playback/timeline-display";
 import { usePlayhead } from "../../lib/playback/use-playback-state";
-import { formatTime } from "../TimelineControls/timeline-controls-utils";
+import { formatDisplayValue } from "../TimelineControls/timeline-controls-utils";
 
 /**
  * Live playhead time readout, displayed as `currentTime / duration`.
@@ -12,14 +13,22 @@ import { formatTime } from "../TimelineControls/timeline-controls-utils";
 const PlayheadTime: React.FC = () => {
   const playhead = usePlayhead();
   const { duration } = usePlayback();
+  const { mode, toDisplay } = useTimelineDisplay();
   // `duration` is optional on the context (the engine can be mounted
   // without a fallback prop and before any stream has registered); guard
   // here so the readout never shows `NaN`.
   const safeDuration = duration ?? 0;
   const safePlayhead = Math.min(playhead, safeDuration);
   return (
-    <Text variant={TextVariant.Xs} color={TextColor.Secondary} style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
-      {`${formatTime(safePlayhead)} / ${formatTime(safeDuration)}`}
+    <Text
+      variant={TextVariant.Xs}
+      color={TextColor.Secondary}
+      style={{
+        fontFamily:
+          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+      }}
+    >
+      {`${formatDisplayValue(toDisplay(safePlayhead), mode)} / ${formatDisplayValue(toDisplay(safeDuration), mode)}`}
     </Text>
   );
 };

@@ -19,7 +19,7 @@ import {
   hexToRgb,
   toCamelCase,
 } from "@fiftyone/utilities";
-import { selector, selectorFamily } from "recoil";
+import { selector, selectorFamily, useRecoilValue } from "recoil";
 import * as atoms from "./atoms";
 import { configData } from "./config";
 import * as schemaAtoms from "./schema";
@@ -38,7 +38,7 @@ export const datasetColorScheme = graphQLSyncFragmentAtom<
   },
   {
     key: "datasetColorScheme",
-  }
+  },
 );
 
 export const coloring = selector<Coloring>({
@@ -86,6 +86,35 @@ export const colorMapRGB = selector<(val) => RGB>({
   },
 });
 
+/**
+ * Resolver for temporal-tag colors. Temporal tags are ALWAYS colored by value
+ * (the tag name), independent of the global color-by mode: each name maps to
+ * its configured color, falling back to the seeded hashed pool. Shared by the
+ * grid overlay, the timeline tracks, and the filter dots so a tag looks the
+ * same everywhere.
+ */
+export const temporalTagColor = selector<(value: string) => string>({
+  key: "temporalTagColor",
+  get: ({ get }) => {
+    const setting = get(atoms.colorScheme).temporalTags ?? {};
+    const map = get(colorMap);
+    const byValue = new Map(
+      (setting.valueColors ?? []).map((v) => [v.value, v.color]),
+    );
+    return (value: string) => byValue.get(value) ?? map(value);
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+/**
+ * Domain hook for the {@link temporalTagColor} resolver: returns a
+ * `(value: string) => string` mapping each temporal-tag name to its color.
+ * Consume this from components/hooks instead of reading the selector directly.
+ */
+export const useTemporalTagColor = () => useRecoilValue(temporalTagColor);
+
 export const pathColor = selectorFamily<string, string>({
   key: "pathColor",
   get:
@@ -113,7 +142,7 @@ export const pathColor = selectorFamily<string, string>({
         path === "_label_tags"
           ? get(atoms.colorScheme).labelTags
           : get(atoms.colorScheme)?.fields?.find(
-              (x) => x.path === adjustedPath
+              (x) => x.path === adjustedPath,
             );
 
       if (isValidColor(setting?.fieldColor ?? "")) {
@@ -134,9 +163,9 @@ export const eligibleFieldsToCustomizeColor = selector({
   key: "eligibleFieldsToCustomizeColor",
   get: ({ get }) => {
     const entries = get(
-      sidebarEntries({ modal: false, loading: false })
+      sidebarEntries({ modal: false, loading: false }),
     ).filter(
-      (e) => e.kind == "PATH" && !["_label_tags", "tags"].includes(e.path)
+      (e) => e.kind == "PATH" && !["_label_tags", "tags"].includes(e.path),
     ) as PathEntry[];
     const fields = entries.map((e) => get(schemaAtoms.field(e.path)));
     return fields;
@@ -145,7 +174,7 @@ export const eligibleFieldsToCustomizeColor = selector({
 
 export const ensureColorScheme = (
   colorScheme: any,
-  appConfig?: datasetQuery$data["config"]
+  appConfig?: datasetQuery$data["config"],
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
@@ -165,16 +194,22 @@ export const ensureColorScheme = (
       fieldColor: null,
       valueColors: [],
     },
+    temporalTags: (colorScheme?.temporalTags as
+      | ColorSchemeInput["temporalTags"]
+      | undefined) ?? {
+      fieldColor: null,
+      valueColors: [],
+    },
     multicolorKeypoints:
       typeof colorScheme?.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints
-        : appConfig?.multicolorKeypoints ?? false,
+        : (appConfig?.multicolorKeypoints ?? false),
     opacity:
       typeof colorScheme?.opacity === "number" ? colorScheme.opacity : 0.7,
     showSkeletons:
       typeof colorScheme?.showSkeletons == "boolean"
         ? colorScheme.showSkeletons
-        : appConfig?.showSkeletons ?? true,
+        : (appConfig?.showSkeletons ?? true),
   };
 };
 
@@ -185,7 +220,7 @@ export function removeRgbProperty(input) {
   // Process the 'colorscales' array
   if (clonedInput.colorscales && Array.isArray(clonedInput.colorscales)) {
     clonedInput.colorscales = clonedInput.colorscales.map(
-      ({ rgb, ...rest }) => rest
+      ({ rgb, ...rest }) => rest,
     );
   }
 

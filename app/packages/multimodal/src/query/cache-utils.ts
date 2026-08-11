@@ -17,11 +17,11 @@ const MIN_CACHE_ENTRY_SIZE_BYTES = 1;
  * Creates an LRU cache sized by normalized byte capacity.
  */
 export function createByteBoundedCache<Value extends object>(
-  options: MemoryCacheOptions
+  options: MemoryCacheOptions,
 ) {
   const maxSizeBytes = normalizeCacheSizeBytes(
     options.maxSizeBytes,
-    MIN_CACHE_SIZE_BYTES
+    MIN_CACHE_SIZE_BYTES,
   );
 
   return new LRUCache<string, Value>({
@@ -37,15 +37,15 @@ export function setByteBoundedEntry<Value extends object>(
   options: MemoryCacheOptions,
   key: string,
   value: Value,
-  sizeBytes: number
+  sizeBytes: number,
 ) {
   const maxSizeBytes = normalizeCacheSizeBytes(
     options.maxSizeBytes,
-    MIN_CACHE_SIZE_BYTES
+    MIN_CACHE_SIZE_BYTES,
   );
   const entrySizeBytes = normalizeCacheSizeBytes(
     sizeBytes,
-    MIN_CACHE_ENTRY_SIZE_BYTES
+    MIN_CACHE_ENTRY_SIZE_BYTES,
   );
 
   if (entrySizeBytes > maxSizeBytes) {
@@ -69,7 +69,7 @@ export function serializeCacheKey(parts: readonly (string | null)[]): string {
  */
 export function estimateFieldSize(
   value: unknown,
-  visited = new WeakSet<object>()
+  visited = new WeakSet<object>(),
 ): number {
   if (value === undefined || value === null) {
     return 0;
@@ -102,13 +102,13 @@ export function estimateFieldSize(
   if (Array.isArray(value)) {
     return value.reduce(
       (size, item) => size + estimateFieldSize(item, visited),
-      0
+      0,
     );
   }
   if (typeof value === "object") {
     return Object.values(value).reduce(
       (size, item) => size + estimateFieldSize(item, visited),
-      0
+      0,
     );
   }
 

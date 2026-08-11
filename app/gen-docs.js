@@ -70,7 +70,7 @@ class RstTableOfContents {
       `   :maxdepth: ${this.maxDepth}`,
       "",
       ...this.items.map(({ label, path }) =>
-        path ? `  ${label} <${path}>` : `  ${label}`
+        path ? `  ${label} <${path}>` : `  ${label}`,
       ),
       "",
     ];
@@ -132,7 +132,7 @@ class RstCsvTable {
           `  ${row
             .filter((c) => c)
             .map(wrapInQuotes)
-            .join(",")}`
+            .join(",")}`,
       ),
       "",
     ];
@@ -186,10 +186,10 @@ class RstFunction {
   }
   toSource(file) {
     const params = this.params.map(
-      ([name, type, description]) => `   :param ${name}: ${description || ""}`
+      ([name, type, description]) => `   :param ${name}: ${description || ""}`,
     );
     const types = this.params.map(
-      ([name, type]) => `   :type ${name}: ${type.label()}\n`
+      ([name, type]) => `   :type ${name}: ${type.label()}\n`,
     );
     if (params.length) {
       params.unshift("");
@@ -243,10 +243,10 @@ class RstClass {
   toSource() {
     const params = this.params.map(
       ([name, type, description]) =>
-        `      js:attribute:: foo.${name}: ${description || ""}`
+        `      js:attribute:: foo.${name}: ${description || ""}`,
     );
     const types = this.params.map(
-      ([name, type]) => `   :type ${name}: ${type.label()}\n`
+      ([name, type]) => `   :type ${name}: ${type.label()}\n`,
     );
     if (params.length) {
       params.unshift("");
@@ -290,7 +290,7 @@ class RstFile {
           .toSource(this)
           .filter((l) => l !== null)
           .map((l) => (child.indent ? indent(l, child.indent * 3) : l))
-          .map(replaceLastNewline)
+          .map(replaceLastNewline),
       );
     }
     return src.join("\n");
@@ -305,7 +305,7 @@ class RstFile {
     if (!node.toSource) {
       throw new Error("node must have a toSource method");
     }
-    if (!node instanceof RstSection) {
+    if ((!node) instanceof RstSection) {
       node.indent = Math.max(0, this._depth - 2);
     }
     this.children.push(node);
@@ -393,7 +393,7 @@ class RstFile {
 
     fs.writeFileSync(
       path.join(PLUGIN_RST_DOCS, this.name + ".rst"),
-      this.toSource()
+      this.toSource(),
     );
   }
 }
@@ -548,10 +548,10 @@ class MdFunction {
   }
   toSource() {
     const params = this.params.map(
-      ([name, type, description]) => `   :param ${name}: ${description || ""}`
+      ([name, type, description]) => `   :param ${name}: ${description || ""}`,
     );
     const types = this.params.map(
-      ([name, type]) => `   :type ${name}: ${type.label()}`
+      ([name, type]) => `   :type ${name}: ${type.label()}`,
     );
     if (params.length) {
       params.unshift("");
@@ -608,7 +608,7 @@ class MdFile {
         child
           .toSource()
           .filter((l) => l !== null)
-          .map(replaceLastNewline)
+          .map(replaceLastNewline),
       );
     }
     return src.join("\n");
@@ -913,13 +913,13 @@ class DocFunction extends DocFragment {
         : funcName;
       func.returns(
         returnTypeFunctionSignature.toTextSignature(returnFnName),
-        returnType.shortText()
+        returnType.shortText(),
       );
       this.writeSignature(
         file,
         returnTypeFunctionSignature,
         true,
-        returnFnName
+        returnFnName,
       );
     } else {
       func.returns(returnType, returnType.shortText());
@@ -1001,7 +1001,7 @@ class DocComment extends DocFragment {
               })
               .join(""),
           },
-          this
+          this,
         ),
       ];
     }
@@ -1104,7 +1104,7 @@ class DocVar extends DocFragment {
       const ex = type.isReadOnly()
         ? `const ${this.get("name")} = useRecoilValue(fos.${this.label()});`
         : `const [${this.get("name")}, set${capitalize(
-            this.get("name")
+            this.get("name"),
           )}] = useRecoilState(fos.${this.label()});`;
       const desc = new FragmentDescription();
       for (const T of type.typeArguments()) {
@@ -1139,7 +1139,7 @@ class DocType extends DocFragment {
         {
           name: this.get("package"),
         },
-        this.parent
+        this.parent,
       );
     }
     return this.parent.module(true);
@@ -1356,7 +1356,7 @@ class DocTypeAlias extends DocFragment {
         `Union of ${type
           .types()
           .map((t) => `:js:class:\`${t.label()}\``)
-          .join(", ")}`
+          .join(", ")}`,
       );
       return;
     }
@@ -1455,7 +1455,7 @@ class DocInterface extends DocFragment {
       const keyName = this.get("indexSignature.parameters.0.name", "key");
       const valueType = new DocType(
         this.get("indexSignature.parameters.0.type"),
-        this
+        this,
       );
       desc.addTypeRow(`[${keyName}]`, valueType, valueType.shortText());
     }
@@ -1508,7 +1508,7 @@ class DocSignature extends DocFragment {
   returnType() {
     return new DocType(
       this.get("type", { type: "intrinsic", name: "void" }),
-      this
+      this,
     );
   }
 }

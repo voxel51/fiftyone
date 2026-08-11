@@ -56,20 +56,20 @@ export default function useSwimlaneRenderer({
   // sample id. Outer Spotlight reuses row elements; we create the
   // inner once and destroy it only when the outer detaches.
   const innerSpotlights = useRef(
-    new Map<string, Spotlight<number, fos.Sample>>()
+    new Map<string, Spotlight<number, fos.Sample>>(),
   );
   const wheelHandlers = useRef(
     new Map<
       string,
       { element: HTMLElement; handler: (e: WheelEvent) => void }
-    >()
+    >(),
   );
 
   const resolveSiblingPager = useRecoilCallback(
     ({ snapshot }) =>
       async (groupId: string) =>
         snapshot.getPromise(groupSiblingsPageParameters(groupId)),
-    []
+    [],
   );
 
   /** Build the [shimmer-underlay] row scaffold once per element. */
@@ -122,7 +122,7 @@ export default function useSwimlaneRenderer({
       const coverAspect =
         ((coverNode as unknown as { aspectRatio?: number }).aspectRatio &&
         Number.isFinite(
-          (coverNode as unknown as { aspectRatio?: number }).aspectRatio
+          (coverNode as unknown as { aspectRatio?: number }).aspectRatio,
         )
           ? ((coverNode as unknown as { aspectRatio?: number })
               .aspectRatio as number)
@@ -184,7 +184,7 @@ export default function useSwimlaneRenderer({
         const factory = await resolveSiblingPager(groupId!);
         const variables = factory(
           cursor - 1,
-          SIBLINGS_PAGE_SIZE
+          SIBLINGS_PAGE_SIZE,
         ) as unknown as VariablesOf<foq.paginateSamplesQuery>;
         const data = await new Promise<foq.paginateSamplesQuery["response"]>(
           (resolve, reject) => {
@@ -192,7 +192,7 @@ export default function useSwimlaneRenderer({
               environment,
               foq.paginateSamples,
               variables,
-              { fetchPolicy: "network-only" }
+              { fetchPolicy: "network-only" },
             ).subscribe({
               next: (d) => {
                 resolve(d);
@@ -200,7 +200,7 @@ export default function useSwimlaneRenderer({
               },
               error: reject,
             });
-          }
+          },
         );
         if (!foq.isPaginateSamplesConnection(data.samples)) {
           // Connection didn't resolve (timeout / unknown). Pager
@@ -297,7 +297,7 @@ export default function useSwimlaneRenderer({
           e.stopPropagation();
           (outerHost?.firstElementChild as HTMLElement | null)?.scrollBy(
             0,
-            e.deltaY
+            e.deltaY,
           );
         }
       };
@@ -315,7 +315,7 @@ export default function useSwimlaneRenderer({
       resolveSiblingPager,
       spacing,
       store,
-    ]
+    ],
   );
 
   const hideItem = useCallback<Hide>(() => undefined, []);
@@ -343,7 +343,7 @@ export default function useSwimlaneRenderer({
         hideItem,
         showItem,
       }),
-      [detachItem, hideItem, showItem]
+      [detachItem, hideItem, showItem],
     ),
   };
 }

@@ -1,20 +1,26 @@
 import { Page, expect } from "src/oss/fixtures";
-import { EventUtils } from "src/shared/event-utils";
+import { EventCounter, EventUtils } from "src/shared/event-utils";
 import { SelectorPom } from "./selector";
 
 export class PagePom {
   readonly assert: PageAsserter;
   readonly datasetSelector: SelectorPom;
 
-  constructor(private readonly page: Page, eventUtils: EventUtils) {
+  constructor(
+    private readonly page: Page,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.assert = new PageAsserter(this);
     this.datasetSelector = new SelectorPom(page, eventUtils, "dataset");
   }
 
-  get globalLoadingScreenCount(): Promise<number> {
-    return this.page.evaluate(
-      () => window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT
-    );
+  /**
+   * Install a counter for the global "Pixelating..." loading screen's mount
+   * event. Counting installs at document start — arm BEFORE navigating to
+   * the page whose load should be observed.
+   */
+  armGlobalLoadingScreenCounter(): Promise<EventCounter> {
+    return this.eventUtils.initCounter("global-loading-screen");
   }
 
   get pathname() {
@@ -40,7 +46,7 @@ export class PagePom {
       `[data-cy=${dataset ? "dataset" : "index"}-page]`,
       {
         state: "visible",
-      }
+      },
     );
   }
 }
@@ -50,13 +56,14 @@ class PageAsserter {
 
   /**
    * Asserts that the global "Pixelating..." loading screen has fired exactly
-   * once since the page was loaded. Fires more than once indicate that the
-   * top-level Suspense boundary re-activated after initial page load, which
-   * is a regression.
+   * once since the counter was armed. Firing more than once indicates that
+   * the top-level Suspense boundary re-activated after initial page load,
+   * which is a regression.
    */
-  async hasHadOnlyOneGlobalLoadingScreen() {
-    const observedCount = await this.pagePom.globalLoadingScreenCount;
-    expect(observedCount).toBe(1);
+  async hasHadOnlyOneGlobalLoadingScreen(counter: EventCounter) {
+    expect(await counter.read(), JSON.stringify(await counter.timeline())).toBe(
+      1,
+    );
   }
 
   async verifyPage(pagename: string) {

@@ -1,5 +1,5 @@
 import { Box, Grid, Slider, TextField, Typography } from "@mui/material";
-import { isNumber, isEqual } from "lodash";
+import { isNumber } from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { useKey } from "../hooks";
 import { autoFocus, getComponentProps } from "../utils";
@@ -14,7 +14,7 @@ const valueLabelFormat = (
   max: number,
   valueFormat: ValueFormat,
   valuePrecision = 6,
-  skipUnit = true
+  skipUnit = true,
 ) => {
   const formattedValue =
     valueFormat === "%"
@@ -89,14 +89,14 @@ export default function SliderView(props: ViewPropsType) {
     isNumber(viewMax) ? viewMax : isNumber(schemaMax) ? schemaMax : 100,
   ];
 
-  const [key, setUserChanged] = useKey(path, schema, data, true);
+  const [key] = useKey(path, schema, data, true);
   const [fieldsRevision, setFieldsRevision] = useState(0);
 
   const computedMultipleOf = isNumber(multipleOf)
     ? multipleOf
     : isNumber(schemaMultipleOf)
-    ? schemaMultipleOf
-    : (max - min) / 100;
+      ? schemaMultipleOf
+      : (max - min) / 100;
 
   // external data reset re-renders the inputs
   useEffect(() => {
@@ -110,7 +110,7 @@ export default function SliderView(props: ViewPropsType) {
     min,
     max,
     unit,
-    valuePrecision
+    valuePrecision,
   );
 
   const maxText = valueLabelFormat(
@@ -118,7 +118,7 @@ export default function SliderView(props: ViewPropsType) {
     min,
     max,
     unit,
-    valuePrecision
+    valuePrecision,
   );
 
   useEffect(() => {

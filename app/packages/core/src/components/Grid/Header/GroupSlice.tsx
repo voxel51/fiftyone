@@ -1,6 +1,6 @@
 import { groupSlice, groupSlices, useSetGroupSlice } from "@fiftyone/state";
 import { Select } from "@voxel51/voodo";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
 const GroupSlice = () => {
@@ -17,7 +17,7 @@ const GroupSlice = () => {
         id: name,
         data: { label: name },
       })),
-    [groupSlicesValue]
+    [groupSlicesValue],
   );
 
   return (

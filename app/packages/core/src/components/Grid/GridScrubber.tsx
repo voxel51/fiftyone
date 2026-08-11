@@ -70,7 +70,7 @@ const GridScrubberContent = () => {
   // scroll fraction that drives the scrubber thumb when the user is
   // wheeling the grid (i.e. not actively dragging).
   const total = useRecoilValue(
-    fos.count({ extended: false, path: "", modal: false, lightning: true })
+    fos.count({ extended: false, path: "", modal: false, lightning: true }),
   );
 
   const [value, _setValue] = useState<number>(0);
@@ -89,7 +89,7 @@ const GridScrubberContent = () => {
         reset(gridPage);
         reset(gridOffset);
       },
-    []
+    [],
   );
 
   // Release handler: stop scrubbing AND commit the cursor. Bumping the
@@ -123,7 +123,7 @@ const GridScrubberContent = () => {
       resetScrollAtoms();
       commitCursor(String(value));
     },
-    [bounds, commitCursor, resetScrollAtoms, setScrubbing, sort?.descending]
+    [bounds, commitCursor, resetScrollAtoms, setScrubbing, sort?.descending],
   );
 
   // Wheel → scrubber: when the user is NOT actively scrubbing, follow the

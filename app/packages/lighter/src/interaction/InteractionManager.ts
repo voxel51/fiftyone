@@ -10,6 +10,7 @@ import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
   SegmentationTool,
+  SegmentationToolMode,
   type SegmentationToolState,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
@@ -55,7 +56,7 @@ export interface OverlayEvent {
 export type EmptyCanvasClickHandler = (
   worldPoint: Point,
   point: Point,
-  event: PointerEvent
+  event: PointerEvent,
 ) => boolean | void;
 
 /**
@@ -83,7 +84,7 @@ export interface KeypointMutationHandler {
 }
 
 function hasKeypointMutation(
-  h: InteractionHandler
+  h: InteractionHandler,
 ): h is InteractionHandler & KeypointMutationHandler {
   return (
     "getSelectedPointIndex" in h &&
@@ -132,7 +133,7 @@ export interface InteractionHandler {
   getCursor?(
     worldPoint: Point,
     scale: number,
-    modifiers?: ClickEventModifiers
+    modifiers?: ClickEventModifiers,
   ): string;
 
   /**
@@ -146,7 +147,7 @@ export interface InteractionHandler {
    */
   onModifiersChanged?(
     modifiers: ClickEventModifiers,
-    worldPoint: Point | null
+    worldPoint: Point | null,
   ): void;
 
   /** Returns the current state of the handler */
@@ -235,6 +236,16 @@ export class InteractionManager {
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
 
   private currentPixelCoordinates?: Point;
+
+  // Hover handling is rAF-coalesced.
+  // Multiple pointermoves between frames collapse into one hover update.
+  // Drag/onMove dispatch is intentionally NOT coalesced — sub-frame precision
+  // matters for precise edits.
+  private pendingHoverRaf: number | null = null;
+  private latestHoverPoint?: Point;
+  private latestHoverEvent?: PointerEvent;
+  private latestHoverHandler?: InteractionHandler;
+
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
   private pendingAction?: {
@@ -248,7 +259,7 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    eventChannel: string
+    eventChannel: string,
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
     this.setupEventListeners();
@@ -271,6 +282,15 @@ export class InteractionManager {
    */
   public getPixelCoordinates(): Point | undefined {
     return this.currentPixelCoordinates;
+  }
+
+  /**
+   * Whether the camera-pan modifier (shift) is held. A shift-drag pans over
+   * anything under the cursor — empty canvas or an overlay — so it never draws,
+   * selects, or resizes. Aspect-ratio-locked resize lives on alt/meta instead.
+   */
+  private isPanModifierActive(): boolean {
+    return this.currentModifiers.shiftKey;
   }
 
   private setupEventListeners(): void {
@@ -314,6 +334,16 @@ export class InteractionManager {
       }
     } else {
       handler = this.findHandlerAtPoint(point);
+      const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
+
+      // Modifier-drag pans the camera over anything under the cursor — empty
+      // canvas or an overlay. Leave the viewport drag plugin active (no
+      // disableZoomPan / capture / pendingAction) and bail before any selection,
+      // draw, or resize so the drag only pans.
+      if (this.isPanModifierActive()) {
+        return;
+      }
+
       // Prevent pan/zoom when target is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
         this.renderer.disableZoomPan();
@@ -338,14 +368,19 @@ export class InteractionManager {
 
       if (isUnselectedOverlay) {
         this.selectionManager.select(handler!.id);
+
+        // Select an overlay before issuing any edits. The cursor at this point
+        // is a 'pointer' indicating selection, not painting/erasing/keypoint.
+        if (segmentationModeBridge.isActive()) {
+          event.preventDefault();
+          return;
+        }
       }
 
       // Detection mode: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit detection mode.
       // Clicking on an existing overlay selects it normally instead.
       if (detectionModeBridge.isActive() || segmentationModeBridge.isActive()) {
-        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
-
         const isSelectInSegmentation =
           segmentationModeBridge.isActive() &&
           segmentationModeBridge.getActiveTool() === SegmentationTool.Select;
@@ -379,7 +414,7 @@ export class InteractionManager {
       const cursor = handler.getCursor?.(
         worldPoint,
         scale,
-        this.currentModifiers
+        this.currentModifiers,
       );
       if (cursor) {
         this.canvas.style.cursor = cursor;
@@ -422,7 +457,7 @@ export class InteractionManager {
   private configureCursorStyle(
     handler: InteractionHandler,
     worldPoint: Point,
-    scale: number
+    scale: number,
   ): void {
     if (
       segmentationModeBridge.isActive() &&
@@ -440,13 +475,13 @@ export class InteractionManager {
       this.canvas.style.cursor = "pointer";
     } else if (segmentationModeBridge.isActive()) {
       this.canvas.style.cursor = buildBrushCursor(
-        segmentationModeBridge.getToolState(scale)!
+        segmentationModeBridge.getToolState(scale)!,
       );
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(
         worldPoint,
         scale,
-        this.currentModifiers
+        this.currentModifiers,
       );
     }
   }
@@ -522,9 +557,18 @@ export class InteractionManager {
     const pending = this.pendingAction;
     this.pendingAction = undefined;
 
+    const hasSelection = this.selectionManager.getSelectionCount() > 0;
     const editingSegmentation =
+      segmentationModeBridge.isActive() && hasSelection;
+
+    // Erase with nothing selected is a no-op
+    if (
       segmentationModeBridge.isActive() &&
-      this.selectionManager.getSelectionCount() > 0;
+      !hasSelection &&
+      segmentationModeBridge.getToolMode() === SegmentationToolMode.Remove
+    ) {
+      return true;
+    }
 
     if (!editingSegmentation) {
       this.eventBus.dispatch("lighter:overlay-create", {
@@ -544,7 +588,7 @@ export class InteractionManager {
         event,
         scale: pending.scale,
         segmentationToolState: segmentationModeBridge.getToolState(
-          pending.scale
+          pending.scale,
         ),
       });
 
@@ -580,7 +624,7 @@ export class InteractionManager {
 
     const distance = Math.hypot(
       point.x - this.pendingAction.point.x,
-      point.y - this.pendingAction.point.y
+      point.y - this.pendingAction.point.y,
     );
 
     if (distance > this.CLICK_THRESHOLD) {
@@ -607,13 +651,31 @@ export class InteractionManager {
     this.syncModifiersFromEvent(event);
 
     const interactiveHandler = this.getInteractiveHandler();
-    let handler =
-      this.findInteractingHandler() || this.findHandlerAtPoint(point);
+    const interactingHandler = this.findInteractingHandler();
 
-    if (!interactiveHandler) {
-      // we don't want to handle hover in interactive mode
-      // for instance, no tooltips, no hover states, etc
-      this.handleHover(this.currentPixelCoordinates, event);
+    // Skip the full handler scan when a pointer-move is already owned.
+    // Interactive editing pins `handler` to the interactive handler, and
+    // drag pins it to the interacting handler
+    let hitHandler: InteractionHandler | undefined;
+    let handler: InteractionHandler | undefined;
+
+    if (interactiveHandler || interactingHandler) {
+      handler = interactingHandler || interactiveHandler;
+
+      if (!interactiveHandler) {
+        // Drag, no interactive editing. Still schedule a hover update so
+        // handleHover's reordered `interactingHandler` branch can dispatch
+        // the unhover for whichever overlay was hovered when the drag began.
+        this.scheduleHoverUpdate(
+          this.currentPixelCoordinates,
+          event,
+          undefined,
+        );
+      }
+    } else {
+      hitHandler = this.findHandlerAtPoint(point);
+      handler = hitHandler;
+      this.scheduleHoverUpdate(this.currentPixelCoordinates, event, hitHandler);
     }
 
     // To determine drag behavior, we allow for two cases:
@@ -670,7 +732,15 @@ export class InteractionManager {
 
         event.preventDefault();
       }
-      this.configureCursorStyle(handler, worldPoint, scale);
+    }
+
+    // Treat the canonical-media overlay as "no overlay" so the creation-mode
+    // fallbacks can fire when the user is hovering over the blank image
+    const cursorHandler =
+      handler && handler.id !== this.canonicalMediaId ? handler : undefined;
+
+    if (cursorHandler) {
+      this.configureCursorStyle(cursorHandler, worldPoint, scale);
     } else if (segmentationModeBridge.isActive() && !interactiveHandler) {
       const isMergeTool =
         segmentationModeBridge.getActiveTool() === SegmentationTool.Merge;
@@ -819,6 +889,9 @@ export class InteractionManager {
       if (TypeGuards.isSpatial(handler) && startBounds && startPosition) {
         const detail = {
           id: handler.id,
+          // `handler` is the overlay itself when moving/resizing an existing
+          // overlay; a creation proxy exposes the overlay via `.overlay`.
+          overlayId: handler.overlay?.id ?? handler.id,
           startBounds,
           startPosition,
           endPosition: handler.bounds,
@@ -832,7 +905,13 @@ export class InteractionManager {
               handler: interactiveHandler,
             });
           }
-        } else {
+        } else if (this.isSpatialDragEvent(event)) {
+          // A press that set DRAGGING/RESIZE on pointer-down but never crossed
+          // the click threshold is a selection click (or a sub-threshold
+          // micro-adjustment), not an edit — selection already ran on
+          // pointer-down. Emitting a finalize here would commit a no-op edit
+          // and, on video, promote the frame to a keyframe. Gate on the same
+          // spatial drag threshold the click path uses.
           const type =
             interactionState === "DRAGGING"
               ? "lighter:overlay-drag-end"
@@ -879,6 +958,9 @@ export class InteractionManager {
   };
 
   private handlePointerLeave = (event: PointerEvent): void => {
+    // Cancel next hover cycle; no longer on the canvas
+    this.cancelPendingHover();
+
     // Clear hover state when leaving canvas
     if (this.hoveredHandler) {
       const point = this.getCanvasPoint(event);
@@ -915,8 +997,10 @@ export class InteractionManager {
 
     this.syncModifiersFromEvent(event);
 
-    if (event.shiftKey) {
-      this.maintainAspectRatio = event.shiftKey;
+    // Alt (Windows/Linux) or Cmd/Meta (macOS) locks the resize aspect ratio;
+    // shift is reserved for camera pan.
+    if (event.altKey || event.metaKey) {
+      this.maintainAspectRatio = true;
       return;
     }
 
@@ -937,7 +1021,7 @@ export class InteractionManager {
   };
 
   /**
-   * Handles keyboard events for release of shift modifier to maintain aspect ratio.
+   * Handles release of the aspect-ratio-lock modifier (alt/meta).
    * @param event - The keyboard event.
    */
   private handleKeyUp = (event: KeyboardEvent): void => {
@@ -954,7 +1038,7 @@ export class InteractionManager {
 
     this.syncModifiersFromEvent(event);
 
-    this.maintainAspectRatio = event.shiftKey;
+    this.maintainAspectRatio = event.altKey || event.metaKey;
   };
 
   /**
@@ -1000,7 +1084,7 @@ export class InteractionManager {
       const cursor = interactiveHandler.getCursor(
         worldPoint,
         this.renderer.getScale(),
-        this.currentModifiers
+        this.currentModifiers,
       );
       if (cursor) {
         this.canvas.style.cursor = cursor;
@@ -1075,6 +1159,11 @@ export class InteractionManager {
         const segmentationToolState =
           segmentationModeBridge.getToolState(scale);
 
+        // Read before commit: an overlay with no valid bounds yet is a
+        // brand-new track whose first polygon establishes it. `commitPenPolygon`
+        // fills the bounds, so this signal must be captured beforehand.
+        const establishingNewTrack = !handler.hasValidBounds?.();
+
         handler.commitPenPolygon({
           point,
           worldPoint,
@@ -1088,6 +1177,23 @@ export class InteractionManager {
           // PaintStrokeCommand emitted by commitPenPolygon. The handler stays
           // installed so the user can keep drawing more polygons.
           interactiveHandler.pruneCommands();
+
+          // The pen handler is already installed by commit time, so the
+          // first-click establish path below is skipped — but a brand-new
+          // track's first polygon still needs `overlay-establish` to fire
+          // (it's the only signal video annotation fans the track across frames
+          // on). Re-emit it here for that first polygon, keeping the handler
+          // installed so the user can keep drawing more polygons.
+          if (establishingNewTrack && handler.hasValidBounds?.()) {
+            this.eventBus.dispatch("lighter:overlay-establish", {
+              id: handler.id,
+              overlayId: handler.overlay?.id ?? handler.id,
+              handler: interactiveHandler,
+              startBounds: handler.bounds,
+              startPosition: { x: handler.bounds.x, y: handler.bounds.y },
+              bounds: handler.bounds,
+            });
+          }
         } else if (interactiveHandler) {
           // First-click case: an InteractiveDetectionHandler still wraps the
           // freshly-created overlay. Tear it down and emit overlay-establish
@@ -1095,6 +1201,8 @@ export class InteractionManager {
           this.removeHandler(interactiveHandler);
           this.eventBus.dispatch("lighter:overlay-establish", {
             id: handler.id,
+            // `handler` is the freshly-created overlay here (see above).
+            overlayId: handler.overlay?.id ?? handler.id,
             handler: interactiveHandler,
             startBounds: handler.bounds,
             startPosition: { x: handler.bounds.x, y: handler.bounds.y },
@@ -1114,16 +1222,22 @@ export class InteractionManager {
         const pointsEstablished =
           overlay instanceof KeypointOverlay && overlay.hasValidBounds();
 
-        interactiveHandler.resetOverlay();
-        this.removeHandler(interactiveHandler);
-
         if (pointsEstablished) {
+          // Tier 1a: points placed — commit. Clear the keypoint scaffolding;
+          // the finalize handler re-arms a fresh session (deactivate→activate).
+          interactiveHandler.resetOverlay();
+          this.removeHandler(interactiveHandler);
+
           this.eventBus.dispatch("lighter:point-selection-finalize", {
             eventId: generateUUID(),
           });
 
           return;
         }
+
+        // No points placed: leave the keypoint session installed so the user
+        // can keep clicking, and fall through to the no-points right-click
+        // tiers — Tier 2 (deselect the committed label) then Tier 3 (exit mode).
       }
     }
 
@@ -1143,15 +1257,99 @@ export class InteractionManager {
     });
   };
 
-  private handleHover(point: Point, event: PointerEvent): void {
+  /**
+   * Coalesces hover work onto a single rAF callback. Multiple pointermoves
+   * between frames overwrite the stored point/handler; only the latest is
+   * processed when the rAF fires. Caller must already have resolved the
+   * hover target via {@link findHandlerAtPoint} (or pass `undefined` to
+   * trigger hover-clear).
+   */
+  private scheduleHoverUpdate(
+    point: Point,
+    event: PointerEvent,
+    resolvedHandler: InteractionHandler | undefined,
+  ): void {
+    this.latestHoverPoint = point;
+    this.latestHoverEvent = event;
+    this.latestHoverHandler = resolvedHandler;
+
+    if (this.pendingHoverRaf !== null) {
+      return;
+    }
+
+    this.pendingHoverRaf = requestAnimationFrame(() => {
+      this.pendingHoverRaf = null;
+      const latestPoint = this.latestHoverPoint;
+      const latestEvent = this.latestHoverEvent;
+      // A handler removed via removeHandler/clearHandlers between
+      // scheduling and now is stale.
+      // Drop the ref so it can be GC'd before the next frame.
+      const cached = this.latestHoverHandler;
+      this.latestHoverHandler = undefined;
+      const latestHandler =
+        cached && this.handlers.includes(cached) ? cached : undefined;
+
+      if (latestPoint && latestEvent) {
+        this.handleHover(latestPoint, latestEvent, latestHandler);
+      }
+    });
+  }
+
+  /**
+   * Cancels any pending hover rAF and drops the latest cached point/event.
+   */
+  private cancelPendingHover(): void {
+    if (this.pendingHoverRaf !== null) {
+      cancelAnimationFrame(this.pendingHoverRaf);
+      this.pendingHoverRaf = null;
+    }
+
+    this.latestHoverPoint = undefined;
+    this.latestHoverEvent = undefined;
+    this.latestHoverHandler = undefined;
+  }
+
+  private handleHover(
+    point: Point,
+    event: PointerEvent,
+    resolvedHandler: InteractionHandler | undefined,
+  ): void {
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
 
-    const handler = this.findHandlerAtPoint(point);
+    // Hover target is pre-resolved by the caller (single hit-test per
+    // pointermove). `undefined` means either nothing under the cursor or a
+    // drag is active and hover should be cleared.
+    const handler = resolvedHandler;
     const interactingHandler = this.findInteractingHandler();
 
+    // If we are dragging, we should unhover the previous one
+    if (interactingHandler) {
+      if (this.hoveredHandler) {
+        this.hoveredHandler.onHoverLeave?.(point, event);
+        this.eventBus.dispatch("lighter:overlay-unhover", {
+          id: this.hoveredHandler.id,
+          point,
+        });
+        this.hoveredHandler = undefined;
+      }
+
+      return;
+    }
+
     if (!handler || handler.id === this.canonicalMediaId) {
-      this.canvas.style.cursor = "default";
+      // Skip the "default" cursor write when a creation mode is active —
+      // handlePointerMove's synchronous fallback writes the mode cursor
+      // (crosshair for detection mode, brush for segmentation) on every
+      // event, and this rAF runs later. Writing "default" here would
+      // overwrite that, producing the flicker between mode cursor and
+      // "default" reported during bounding-box creation.
+      if (
+        !segmentationModeBridge.isActive() &&
+        !detectionModeBridge.isActive()
+      ) {
+        this.canvas.style.cursor = "default";
+      }
 
       if (this.hoveredHandler) {
         this.hoveredHandler.onHoverLeave?.(point, event);
@@ -1166,19 +1364,6 @@ export class InteractionManager {
 
       this.hoveredHandler = undefined;
 
-      return;
-    }
-
-    // If we are dragging, we should unhover the previous one
-    if (interactingHandler) {
-      if (this.hoveredHandler) {
-        this.hoveredHandler.onHoverLeave?.(point, event);
-        this.eventBus.dispatch("lighter:overlay-unhover", {
-          id: this.hoveredHandler.id,
-          point,
-        });
-        this.hoveredHandler = undefined;
-      }
       return;
     }
 
@@ -1224,7 +1409,7 @@ export class InteractionManager {
   }
 
   private handleZoomed = (
-    _event: LighterEventGroup["lighter:zoomed"]
+    _event: LighterEventGroup["lighter:zoomed"],
   ): void => {
     this.handlers?.forEach((handler) => handler.markDirty());
 
@@ -1243,7 +1428,7 @@ export class InteractionManager {
 
     const scale = this.renderer.getScale();
     this.canvas.style.cursor = buildBrushCursor(
-      segmentationModeBridge.getToolState(scale)!
+      segmentationModeBridge.getToolState(scale)!,
     );
   };
 
@@ -1253,7 +1438,7 @@ export class InteractionManager {
     const timeDiff = now - this.lastClickTime;
     const distance = Math.sqrt(
       Math.pow(point.x - this.lastClickPoint.x, 2) +
-        Math.pow(point.y - this.lastClickPoint.y, 2)
+        Math.pow(point.y - this.lastClickPoint.y, 2),
     );
 
     return (
@@ -1266,7 +1451,7 @@ export class InteractionManager {
     // self-managed handlers take precedence to allow editing on top of
     // other overlays
     const selfManaged = this.handlers.find((h) =>
-      isSelfManagedInteractiveHandler(h)
+      isSelfManagedInteractiveHandler(h),
     );
 
     return (
@@ -1300,7 +1485,7 @@ export class InteractionManager {
    */
   private findHandlerAtPoint(
     point: Point,
-    skipCanonicalMedia: boolean = false
+    skipCanonicalMedia: boolean = false,
   ): InteractionHandler | undefined {
     // Single-pass: find best handler at point using priority rules.
     // Priority: selected > highest selectable priority > topmost (reverse order).
@@ -1378,6 +1563,7 @@ export class InteractionManager {
    *
    * @private
    */
+  // @ts-expect-error unused — temporal-drag gate not yet wired up
   private isTemporalDrag(): boolean {
     if (this.clickStartTime) {
       return Date.now() - this.clickStartTime > this.DRAG_TIME_THRESHOLD;
@@ -1446,6 +1632,7 @@ export class InteractionManager {
    * Destroys the interaction manager and removes event listeners.
    */
   destroy(): void {
+    this.cancelPendingHover();
     this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
     this.canvas.removeEventListener("pointermove", this.handlePointerMove);
     this.canvas.removeEventListener("pointerup", this.handlePointerUp);

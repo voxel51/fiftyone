@@ -1,8 +1,8 @@
-FiftyOne User Guide
-===================
+FiftyOne Concepts
+=================
 
 Each section in this guide provides an example-centric deep dive into a core
-feature of FiftyOne, with the goal of getting you up-and-running with FiftyOne
+concept of FiftyOne, with the goal of getting you up-and-running with FiftyOne
 on your data quickly and easily.
 
 .. Callout items --------------------------------------------------------------
@@ -51,6 +51,12 @@ on your data quickly and easily.
     :button_link: groups.html
 
 .. customcalloutitem::
+    :header: FiftyOne Multimodal __SUB_NEW__
+    :description: Visualize, play back, and index time-synchronized multimodal sensor data stored in MCAP files.
+    :button_text: Learn more about multimodal support
+    :button_link: multimodal.html
+
+.. customcalloutitem::
     :header: Annotating datasets __SUB_NEW__
     :description: Use builtin or custom integrations to add or edit labels on your FiftyOne datasets.
     :button_text: Learn more about annotations
@@ -60,7 +66,7 @@ on your data quickly and easily.
     :header: Evaluating models  __SUB_NEW__
     :description: Use FiftyOne's builtin methods to evaluate your models and analyze their strengths and weaknesses.
     :button_text: Learn more about evaluating models
-    :button_link: evaluation.html
+    :button_link: evaluation/index.html
 
 .. customcalloutitem::
     :header: Using aggregations
@@ -112,16 +118,13 @@ on your data quickly and easily.
     :hidden:
 
     FiftyOne basics <basics>
-    Importing data <import_datasets>
-    Using datasets <using_datasets>
-    Using the App <app>
     Dataset views <using_views>
     Grouped datasets <groups>
-    Annotating datasets __SUB_NEW__ <annotation>
-    Evaluating models __SUB_NEW__ <evaluation>
     Using aggregations <using_aggregations>
     Interactive plots <plots>
-    Exporting datasets <export_datasets>
     Drawing labels on samples <draw_labels>
     Using sample parsers <sample_parsers>
     Configuring FiftyOne <config>
+    Roles and permissions 🚀 <../enterprise/roles_and_permissions>
+    Dataset Versioning 🚀 <../enterprise/dataset_versioning>
+    Query Performance 🚀 <../enterprise/query_performance>

@@ -6,6 +6,7 @@ import { groupId, nullableModalSampleId } from "@fiftyone/state";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/recoil/customEffects";
 import { atom, atomFamily, DefaultValue, selector } from "recoil";
 import { Vector3 } from "three";
+import type { CuboidResizeFace } from "../annotation/cuboid-face-resize";
 import type {
   AnnotationPlaneState,
   SegmentState,
@@ -22,12 +23,16 @@ import type {
   Actions,
   AssetLoadingLog,
   CuboidCreationState,
+  HoveredLabel,
+  HoveredLabelSource,
   LoadingStatusWithContext,
+  MainPanelPanSyncIntent,
+  MainPanelZoomSyncIntent,
   PanelId,
   RaycastResult,
   ShadeBy,
 } from "../types";
-import { Archetype3d, LoadingStatus } from "../types";
+import { Archetype3d, EMPTY_RAYCAST_RESULT, LoadingStatus } from "../types";
 
 // =============================================================================
 // GENERAL 3D
@@ -43,16 +48,16 @@ export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
   key: "fo3d-assetsParseStatusLogsThisSampleSelector",
   get: ({ get }) => {
     const thisModalUniqueId = `${get(groupId) ?? ""}-${get(
-      nullableModalSampleId
+      nullableModalSampleId,
     )}`;
     return get(fo3dAssetsParseStatusLog(`${thisModalUniqueId}`));
   },
   set: ({ get, set }, newValue) => {
     set(
       fo3dAssetsParseStatusLog(
-        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`
+        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`,
       ),
-      newValue
+      newValue,
     );
   },
 });
@@ -69,16 +74,16 @@ export const fo3dLoadingStatusThisSample = selector<LoadingStatusWithContext>({
   key: "fo3d-loadingStatusThisSampleSelector",
   get: ({ get }) => {
     const thisModalUniqueId = `${get(groupId) ?? ""}-${get(
-      nullableModalSampleId
+      nullableModalSampleId,
     )}`;
     return get(fo3dLoadingStatusLog(`${thisModalUniqueId}`));
   },
   set: ({ get, set }, newValue) => {
     set(
       fo3dLoadingStatusLog(
-        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`
+        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`,
       ),
-      newValue
+      newValue,
     );
   },
 });
@@ -92,11 +97,46 @@ export const currentActionAtom = atom<Actions>({
 export const isLevaConfigPanelOnAtom = atom<boolean>({
   key: "fo3d-isLevaConfigPanelOn",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isLevaConfigPanelOn", {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 export const isStatusBarOnAtom = atom<boolean>({
   key: "fo3d-isStatusBarOn",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isStatusBarOn", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export type Fo3dPerformanceStats = {
+  fps: number;
+  calls: number;
+  triangles: number;
+  points: number;
+  geometries: number;
+  textures: number;
+  programs: number;
+};
+
+export const DEFAULT_FO3D_PERFORMANCE_STATS: Fo3dPerformanceStats = {
+  fps: 0,
+  calls: 0,
+  triangles: 0,
+  points: 0,
+  geometries: 0,
+  textures: 0,
+  programs: 0,
+};
+
+export const fo3dPerformanceStatsAtom = atom<Fo3dPerformanceStats>({
+  key: "fo3d-performanceStats",
+  default: DEFAULT_FO3D_PERFORMANCE_STATS,
 });
 
 // GRID & BACKGROUND
@@ -113,11 +153,21 @@ export const isGridOnAtom = atom<boolean>({
 export const gridCellSizeAtom = atom<number>({
   key: "fo3d-gridCellSize",
   default: 1,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-gridCellSize", {
+      valueClass: "number",
+    }),
+  ],
 });
 
 export const gridSectionSizeAtom = atom<number>({
   key: "fo3d-gridSectionSize",
   default: 10,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-gridSectionSize", {
+      valueClass: "number",
+    }),
+  ],
 });
 
 export const isGridInfinitelyLargeAtom = atom<boolean>({
@@ -240,6 +290,16 @@ export const polylineLabelLineWidthAtom = atom({
   ],
 });
 
+export const showCuboidOrientationAtom = atom<boolean>({
+  key: "fo3d-showCuboidOrientation",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-showCuboidOrientation", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
 export const avoidZFightingAtom = atom<boolean>({
   key: "fo3d-avoidZFighting",
   default: true,
@@ -279,7 +339,7 @@ export const currentHoveredPointAtom = atom<Vector3 | null>({
 });
 
 // Hover state for labels in annotate mode
-export const hoveredLabelAtom = atom<{ id: string } | null>({
+export const hoveredLabelAtom = atom<HoveredLabel | null>({
   key: "fo3d-hoveredLabel",
   default: null,
 });
@@ -314,18 +374,42 @@ export const activeCursorPanelAtom = atom<PanelId | null>({
 });
 
 /**
+ * Whether a pointer interaction started in the main 3D panel and has not ended.
+ * Used to avoid treating incidental hover while orbiting/panning/zooming as a
+ * request to crop side panels around a label or point.
+ */
+export const isFo3dMainPanelPointerDownAtom = atom<boolean>({
+  key: "fo3d-isMainPanelPointerDown",
+  default: false,
+});
+
+/**
+ * Whether a modifier key that activates raycast-hover side-panel cropping is
+ * currently pressed while the 3D modal is active.
+ */
+export const isFo3dPointCropModifierPressedAtom = atom<boolean>({
+  key: "fo3d-isPointCropModifierPressed",
+  default: false,
+});
+
+/**
  * Centralized raycast result atom that stores intersection data from the RaycastService.
  */
 export const raycastResultAtom = atom<RaycastResult>({
   key: "fo3d-raycastResult",
-  default: {
-    sourcePanel: null,
-    worldPosition: null,
-    intersectedObjectUuid: null,
-    pointIndex: null,
-    distance: null,
-    timestamp: 0,
+  default: EMPTY_RAYCAST_RESULT,
+});
+
+export const mainPanelZoomSyncIntentAtom = atom<MainPanelZoomSyncIntent | null>(
+  {
+    key: "fo3d-mainPanelZoomSyncIntent",
+    default: null,
   },
+);
+
+export const mainPanelPanSyncIntentAtom = atom<MainPanelPanSyncIntent | null>({
+  key: "fo3d-mainPanelPanSyncIntent",
+  default: null,
 });
 
 /**
@@ -479,12 +563,75 @@ export const hoveredVertexAtom = atom<{
 });
 
 /**
+ * The currently hovered cuboid resize face. Shared across panels so the hover
+ * feedback (handle opacity/scale, face highlight) shows in every panel, not
+ * just the one under the cursor. `source` records which panel set it so a
+ * pointer-out (or deselect) in one panel doesn't clear another's hover.
+ */
+export const hoveredResizeFaceAtom = atom<{
+  labelId: string;
+  face: CuboidResizeFace;
+  source: HoveredLabelSource;
+} | null>({
+  key: "fo3d-hoveredResizeFace",
+  default: null,
+});
+
+/**
+ * The face the heading arrow would snap to if the in-progress heading drag
+ * were released now. Shared across panels (like {@link hoveredResizeFaceAtom})
+ * so the candidate-face highlight shows everywhere the label is drawn, and
+ * `source` records which panel owns the drag so another panel can't clear it.
+ *
+ * Set only while dragging the arrow; the relabel itself commits on release.
+ */
+export const hoveredHeadingTargetFaceAtom = atom<{
+  labelId: string;
+  face: CuboidResizeFace;
+  source: HoveredLabelSource;
+} | null>({
+  key: "fo3d-hoveredHeadingTargetFace",
+  default: null,
+});
+
+/**
+ * The face being hovered in the "Edit heading/up vector" sidebar's
+ * `HeadingUpVectorFields` — previewing where that arrow would land with no
+ * drag in progress. Unlike {@link hoveredHeadingTargetFaceAtom}
+ * (an in-progress *drag*'s candidate face, set from a pointer-captured
+ * gesture), this comes from a plain DOM `onMouseEnter`/`onMouseLeave` on a
+ * button, so there's no "source panel" to disambiguate — only one control can
+ * be hovered at a time.
+ */
+export const headingUpPreviewAtom = atom<{
+  labelId: string;
+  role: "heading" | "up";
+  face: CuboidResizeFace;
+} | null>({
+  key: "fo3d-headingUpPreview",
+  default: null,
+});
+
+/**
+ * Whether the pointer is anywhere over the "Edit heading/up vector" sidebar
+ * section as a whole — not tied to a specific face button like
+ * {@link headingUpPreviewAtom}, which goes `null` in the gaps between
+ * buttons as the pointer crosses them. Gating the gizmo/face-resize
+ * suppression on the per-face atom instead would flicker those controls back
+ * on every time the pointer passed between two buttons.
+ */
+export const headingUpEditorHoverAtom = atom<{ labelId: string } | null>({
+  key: "fo3d-headingUpEditorHover",
+  default: null,
+});
+
+/**
  * The current transform mode (translate, rotate, scale).
  * Determines how objects are transformed when manipulated.
  */
 export const transformModeAtom = atom<TransformMode>({
   key: "fo3d-transformMode",
-  default: "translate",
+  default: "scale",
 });
 
 /**
@@ -523,7 +670,7 @@ const annotationPlaneAtomImpl = atomFamily<AnnotationPlaneState, string>({
       `fo3d-segmentationAnnotationPlane_${datasetName}`,
       {
         useJsonSerialization: true,
-      }
+      },
     ),
   ],
 });
@@ -559,7 +706,7 @@ export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",
   get: () => null,
   set: ({ set }) => {
-    set(transformModeAtom, "translate");
+    set(transformModeAtom, "scale");
     set(selectedPolylineVertexAtom, null);
     set(currentArchetypeSelectedForTransformAtom, null);
     set(isCurrentlyTransformingAtom, false);

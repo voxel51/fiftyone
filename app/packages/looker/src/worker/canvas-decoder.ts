@@ -25,7 +25,7 @@ export const recastBufferToMonoChannel = (
   uint8Array: Uint8ClampedArray,
   width: number,
   height: number,
-  stride: number
+  stride: number,
 ) => {
   const totalPixels = width * height;
 
@@ -45,7 +45,7 @@ export const decodeWithCanvas = async (
   cls: string,
   numOriginalChannels: number,
   field: string,
-  coloring: Coloring
+  coloring: Coloring,
 ) => {
   let channels: number = numOriginalChannels;
 
@@ -77,7 +77,7 @@ export const decodeWithCanvas = async (
       imageData.data,
       width,
       height,
-      channels
+      channels,
     );
     channels = 1;
   }
@@ -96,7 +96,7 @@ export const decodeWithCanvas = async (
         imageData.data,
         width,
         height,
-        channels
+        channels,
       );
       channels = 1;
     }

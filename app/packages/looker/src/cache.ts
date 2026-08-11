@@ -33,7 +33,7 @@ export type Lookers = FrameLooker | ImageLooker | ImaVidLooker | VideoLooker;
  * @returns an exclusionary LRU cache
  */
 export const createCache = <T extends Instance | Lookers = Lookers>(
-  options: CacheOptions
+  options: CacheOptions,
 ) => {
   const { maxHiddenItems, maxHiddenItemsSizeBytes, onDispose, onSet } = options;
 
@@ -183,6 +183,22 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     sizeOf: (key: string) => resolveSize(get(key)),
 
     /**
+     * Recalculates a hidden instance's byte size without changing ownership.
+     */
+    updateSize: (key: string) => {
+      const instance = hidden.peek(key);
+      if (instance) {
+        // lru-cache keeps the original calculated size when replacing an
+        // existing key. Temporarily mark the instance shown so the delete's
+        // disposal guard preserves it, then insert it with a fresh size.
+        shown.set(key, instance);
+        hidden.delete(key);
+        shown.delete(key);
+        hidden.set(key, instance);
+      }
+    },
+
+    /**
      * Show an instance
      *
      * @param {string} key - the instance key
@@ -206,7 +222,7 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
 
 const destroy = <T extends Instance | Lookers = Lookers>(
   map: Map<string, T>,
-  onDispose?: CacheCallback
+  onDispose?: CacheCallback,
 ) => {
   for (const [key, instance] of map.entries()) {
     instance.destroy();

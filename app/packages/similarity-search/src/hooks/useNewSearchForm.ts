@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
-import { SCOPE_VIEW, SCOPE_DATASET } from "../constants";
+import { useRecoilValue } from "recoil";
+import * as fos from "@fiftyone/state";
+import { BrainKeyConfig, CloneConfig, QueryType, ViewTarget } from "../types";
 import { UploadedImage } from "../utils";
 import { useSearchSelection } from "./useSearchSelection";
 import { useSearchSubmission } from "./useSearchSubmission";
@@ -14,7 +15,7 @@ import { useSearchSubmission } from "./useSearchSubmission";
 export const useNewSearchForm = (
   brainKeys: BrainKeyConfig[],
   cloneConfig: CloneConfig | null | undefined,
-  onSubmitted: () => void
+  onSubmitted: () => void,
 ) => {
   const {
     selectedLabels,
@@ -27,7 +28,7 @@ export const useNewSearchForm = (
 
   const firstTextKey = useMemo(
     () => brainKeys.find((bk) => bk.supports_prompts),
-    [brainKeys]
+    [brainKeys],
   );
 
   const defaultBrainKey = useMemo(() => {
@@ -55,9 +56,13 @@ export const useNewSearchForm = (
   const [runName, setRunName] = useState("");
   const [dynamicResults, setDynamicResults] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
-    null
+    null,
   );
-  const [searchScope, setSearchScope] = useState<SearchScope>(SCOPE_DATASET);
+  const isGroupedDataset =
+    useRecoilValue(fos.parentMediaTypeSelector) === "group";
+  const [viewTarget, setViewTarget] = useState<ViewTarget>(
+    isGroupedDataset ? "CURRENT_VIEW" : "DATASET",
+  );
 
   // ─── Derived config ─────────────────────────────────────────────
 
@@ -95,6 +100,12 @@ export const useNewSearchForm = (
     }
   }, [supportsUpload, queryType]);
 
+  useEffect(() => {
+    if (isGroupedDataset && viewTarget === "DATASET") {
+      setViewTarget("CURRENT_VIEW");
+    }
+  }, [isGroupedDataset, viewTarget]);
+
   // ─── Submission ─────────────────────────────────────────────────
 
   const {
@@ -114,7 +125,7 @@ export const useNewSearchForm = (
     uploadedImage,
     reverse,
     selectedConfig,
-    searchScope,
+    viewTarget,
     hasView,
     view: view as unknown[],
     k,
@@ -150,8 +161,9 @@ export const useNewSearchForm = (
     setDistField,
     runName,
     setRunName,
-    searchScope,
-    setSearchScope,
+    viewTarget,
+    setViewTarget,
+    isGroupedDataset,
     dynamicResults,
     setDynamicResults,
     uploadedImage,

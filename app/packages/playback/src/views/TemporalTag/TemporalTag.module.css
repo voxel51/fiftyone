@@ -1,0 +1,150 @@
+/* -----------------------------------------------------------------------
+ * Range selection overlay — covers the ruler + tracks while tag mode
+ * is active.  Normally transparent / pass-through.
+ * ----------------------------------------------------------------------- */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.overlayActive {
+  pointer-events: all;
+}
+
+.selectRangeHint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.overlayReady {
+  cursor: crosshair;
+}
+
+.overlaySelecting {
+  pointer-events: all;
+  cursor: col-resize;
+}
+
+/* Shaded selection region */
+.selectionMask {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--color-brand-primary, #f97316);
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+/* Drag handles at selection edges */
+.handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+  pointer-events: all;
+}
+
+.handleLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--color-brand-primary, #f97316);
+  border-radius: 1px;
+}
+
+/* Time tooltip that follows the cursor or sits at handle position */
+.timeTooltip {
+  position: fixed;
+  transform: translateX(-50%);
+  background: var(--color-content-bg-card-2, #1a1a1a);
+  border: 1px solid var(--color-content-border-default, #333);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  font-family: monospace;
+  color: var(--color-content-text-primary, #fff);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10002;
+}
+
+/* -----------------------------------------------------------------------
+ * Tag creation popup
+ * ----------------------------------------------------------------------- */
+
+.popup {
+  position: fixed;
+  z-index: 10001;
+  background: var(--color-content-bg-card-2, #1e1e1e);
+  border: 1px solid var(--color-content-border-default, #333);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 12px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.popupLabel {
+  margin-bottom: 2px;
+}
+
+.popupInput {
+  width: 100%;
+  background: var(--color-content-bg-card-1, #111);
+  border: 1px solid var(--color-content-border-default, #333);
+  border-radius: 4px;
+  color: var(--color-content-text-primary, #fff);
+  font-size: 0.8125rem;
+  padding: 5px 8px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.popupInput:focus {
+  border-color: var(--color-brand-primary, #f97316);
+}
+
+.popupNudge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.popupNudgeLabel {
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.popupNudgeTime {
+  font-family: monospace;
+  min-width: 48px;
+  text-align: center;
+}
+
+/* Forces the icon inside Button > div to brand-primary when tag mode is on.
+   Specificity 0,1,1 beats the single Tailwind utility class on the inner div. */
+.tagButtonActive > div {
+  color: var(--color-brand-primary, #f97316);
+}
+
+.popupActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}

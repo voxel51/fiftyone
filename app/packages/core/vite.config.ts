@@ -1,4 +1,4 @@
-import reactRefresh from "@vitejs/plugin-react-refresh";
+import react from "@vitejs/plugin-react";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig } from "vite";
 import relay from "vite-plugin-relay";
@@ -6,13 +6,7 @@ import relay from "vite-plugin-relay";
 export default defineConfig(({ mode }) => {
   return {
     base: mode === "desktop" ? "" : "/",
-    plugins: [
-      reactRefresh({
-        parserPlugins: ["classProperties", "classPrivateProperties"],
-      }),
-      relay,
-      nodePolyfills(),
-    ],
+    plugins: [react(), relay, nodePolyfills()],
     server: {
       proxy: {
         "/plugins": {

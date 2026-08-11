@@ -1,8 +1,12 @@
 import { useEffect, useMemo } from "react";
 import styled from "styled-components";
+import type { Vector3 } from "three";
 import { PANEL_ID_SIDE_TOP, VIEW_TYPE_LEFT, VIEW_TYPE_TOP } from "../constants";
 import { useFetchFrustumParameters } from "../frustum/hooks/internal/useFetchFrustumParameters";
 import type { SidePanelId, SidePanelViewType } from "../types";
+import { Native2dAnnotations } from "./native2d/Native2dAnnotations";
+import type { Native2dLabel } from "./native2d/types";
+import { useVisibleNative2dLabels } from "./native2d/useVisibleNative2dLabels";
 import { Projected3dOverlays } from "./projection";
 
 const ImageSliceContainer = styled.div`
@@ -47,7 +51,7 @@ export const encodeImageSliceView = (sliceName: string): string => {
  * Returns null if the view is not an image slice.
  */
 export const decodeImageSliceView = (
-  view: SidePanelViewType
+  view: SidePanelViewType,
 ): string | null => {
   if (!isImageSliceView(view)) {
     return null;
@@ -60,7 +64,7 @@ export const decodeImageSliceView = (
  */
 const isImageSliceAvailable = (
   view: SidePanelViewType,
-  availableSlices: string[]
+  availableSlices: string[],
 ): boolean => {
   const sliceName = decodeImageSliceView(view);
   if (!sliceName) {
@@ -84,6 +88,8 @@ export interface ImageSlicePanelProps {
   imageSlices: string[];
   isLoadingImageSlices: boolean;
   resolveUrlForImageSlice: (sliceName: string) => string | null;
+  resolveLabelsForImageSlice: (sliceName: string) => Native2dLabel[];
+  upVector?: Vector3 | null;
 }
 
 /**
@@ -99,6 +105,8 @@ export const ImageSlicePanel = ({
   imageSlices,
   isLoadingImageSlices,
   resolveUrlForImageSlice,
+  resolveLabelsForImageSlice,
+  upVector,
 }: ImageSlicePanelProps) => {
   const { data: frustumData } = useFetchFrustumParameters();
 
@@ -108,6 +116,14 @@ export const ImageSlicePanel = ({
     if (!sliceName) return null;
     return frustumData.find((f) => f.sliceName === sliceName) ?? null;
   }, [frustumData, view]);
+
+  // Stored 2D labels for this slice, filtered to what the sidebar would show.
+  const allNative2dLabels = useMemo(() => {
+    const sliceName = decodeImageSliceView(view);
+    if (!sliceName) return [];
+    return resolveLabelsForImageSlice(sliceName);
+  }, [view, resolveLabelsForImageSlice]);
+  const native2dLabels = useVisibleNative2dLabels(allNative2dLabels);
 
   /**
    * Validation effect: restore view to a cardinal view only if absolutely certain
@@ -131,7 +147,7 @@ export const ImageSlicePanel = ({
         const defaultView = getDefaultViewForPanel(panelId);
         console.warn(
           `Image slice view "${view}" is no longer available. Falling back to "${defaultView}" view.`,
-          { view, availableSlices: imageSlices }
+          { view, availableSlices: imageSlices },
         );
         setView(defaultView);
         return;
@@ -152,8 +168,13 @@ export const ImageSlicePanel = ({
   return (
     <ImageSliceContainer>
       <ImageSliceImg src={imageUrl} />
+      <Native2dAnnotations labels={native2dLabels} imageUrl={imageUrl} />
       {activeFrustum && (
-        <Projected3dOverlays frustumData={activeFrustum} panelId={panelId} />
+        <Projected3dOverlays
+          frustumData={activeFrustum}
+          panelId={panelId}
+          upVector={upVector}
+        />
       )}
     </ImageSliceContainer>
   );

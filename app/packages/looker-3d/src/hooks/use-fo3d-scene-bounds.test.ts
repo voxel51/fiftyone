@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useFo3dSceneBounds } from "./use-fo3d-scene-bounds";
 
@@ -32,7 +32,7 @@ describe("useFo3dSceneBounds", () => {
         }),
       {
         initialProps: { isThreeJsLoading: true },
-      }
+      },
     );
 
     expect(useFo3dBoundsMock.mock.calls[0][1]).toBe(false);

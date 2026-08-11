@@ -45,7 +45,7 @@ $desktop: 991.98px;
 
 // Fonts
 $font-family-base: "Geist", "Geist Fallback", sans-serif;
-$font-family-monospace: "Geist Mono", monospace;
+$font-family-monospace: "Geist Mono", "Geist Mono Fallback", monospace;
 
 :root {
   --pst-font-family-base: #{$font-family-base};
@@ -101,8 +101,12 @@ html[data-theme="light"] {
   --pst-color-table-outer-border: #{$table-border};
   --pst-color-table-inner-border: #{$table-border-internal};
   --bs-table-color: #181a1b99;
+
+  --enterprise-badge-bg: #{$surface-background};
 }
 
 /* Dark theme variables */
 html[data-theme="dark"] {
+  // Lighter than the dark-mode page background so the badge stays visible
+  --enterprise-badge-bg: #3a3d42;
 }

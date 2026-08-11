@@ -1,7 +1,6 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
@@ -14,13 +13,8 @@ import { KeypointDetails } from "./KeypointDetails";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
-import {
-  currentData,
-  currentField,
-  currentFieldIsReadOnlyAtom,
-  currentOverlay,
-  currentType,
-} from "./state";
+import TemporalDetectionDetails from "./TemporalDetectionDetails";
+import { useAnnotationContext } from "./useAnnotationContext";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
@@ -49,13 +43,22 @@ const Content = styled.div`
 `;
 
 export default function Edit() {
-  const field = useAtomValue(currentField);
-  const overlay = useAtomValue(currentOverlay);
-  const type = useAtomValue(currentType);
-  const data = useAtomValue(currentData);
-  const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const { selected } = useAnnotationContext();
+  const field = selected?.field ?? null;
+  const overlay = selected?.overlay;
+  const type = selected?.type ?? null;
+  const data = selected?.data;
+  const isReadOnly = selected?.isFieldReadOnly ?? false;
   const { isEditingMask } = useSegmentationMode();
-  const isMaskDetection = !!(data?.mask || data?.mask_path || isEditingMask);
+  // `mask` and `mask_path` exist only on DetectionLabel; the union narrows
+  // them out. Cast at the access site rather than type-guarding the whole
+  // expression.
+  const maskFields = data as { mask?: unknown; mask_path?: unknown } | null;
+  const isMaskDetection = !!(
+    maskFields?.mask ||
+    maskFields?.mask_path ||
+    isEditingMask
+  );
   const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();
@@ -90,6 +93,8 @@ export default function Edit() {
 
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
+  const isTemporalDetection =
+    (data as { _cls?: string } | null)?._cls === "TemporalDetection";
   const primitiveEditingActive = activePrimitivePath !== null;
 
   return (
@@ -107,6 +112,9 @@ export default function Edit() {
         )}
         {type === POLYLINE && <PolylineDetails />}
         {type === KEYPOINT && <KeypointDetails />}
+        {isTemporalDetection && (
+          <TemporalDetectionDetails readOnly={isReadOnly} />
+        )}
         {field && <AnnotationSchema readOnly={isReadOnly} />}
         {isMaskDetection && <MaskPreview />}
       </Content>

@@ -27,7 +27,7 @@ export function resolveVisualProps(
   labelColor: string | undefined,
   isSelected: boolean,
   isHovered: boolean,
-  isAnyLabelSelected: boolean
+  isAnyLabelSelected: boolean,
 ): { color: string; opacity: number; strokeDasharray?: string } {
   const color = labelColor ?? FALLBACK_COLOR;
 

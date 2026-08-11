@@ -1,14 +1,18 @@
 import * as fos from "@fiftyone/state";
 import { Line as LineDrei } from "@react-three/drei";
-import { useAtomValue } from "jotai";
-import { useEffect, useMemo, useRef } from "react";
+import type { ThreeEvent } from "@react-three/fiber";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useTransientPolyline } from "../annotation/store";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
-import { FO_USER_DATA } from "../constants";
+import { FO_USER_DATA, PANEL_ID_MAIN } from "../constants";
 import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
-import { useSetCurrent3dAnnotationMode } from "../state/accessors";
+import type { HoveredLabelSource } from "../types";
+import {
+  useIsCurrentlyTransforming,
+  useSetCurrent3dAnnotationMode,
+} from "../state/accessors";
 import {
   isValidPoint3d,
   validatePoints3d,
@@ -17,6 +21,7 @@ import {
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
+import { shouldSuppressHoverOnPointer } from "./shared/shouldSuppressHoverOnPointer";
 import { Transformable } from "./shared/TransformControls";
 
 export interface PolyLineProps extends OverlayProps {
@@ -25,6 +30,7 @@ export interface PolyLineProps extends OverlayProps {
   filled: boolean;
   lineWidth?: number;
   closed?: boolean;
+  hoverSource?: HoveredLabelSource;
 }
 
 export const Polyline = ({
@@ -38,18 +44,49 @@ export const Polyline = ({
   closed,
   onClick,
   label,
+  hoverSource = PANEL_ID_MAIN,
 }: PolyLineProps) => {
   const meshesRef = useRef<THREE.Mesh[]>([]);
 
   useHoverState();
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
-  const { onPointerOver, onPointerOut, ...restEventHandlers } =
-    useEventHandlers(label);
+  const isCurrentlyTransforming = useIsCurrentlyTransforming();
+  const {
+    onPointerOver: onPointerOverForLabel,
+    onPointerOut: onPointerOutForLabel,
+    onPointerMove: onPointerMoveForLabel,
+    onPointerMissed,
+  } = useEventHandlers();
+
+  // `useEventHandlers()` takes the label as a call-time argument so it can be
+  // shared across an instanced batch; curry our own label once here so the
+  // rest of this component can call these exactly as before.
+  const onPointerOver = useCallback(
+    (e?: ThreeEvent<PointerEvent>) => onPointerOverForLabel(label, e),
+    [onPointerOverForLabel, label],
+  );
+  const onPointerOut = useCallback(
+    () => onPointerOutForLabel(label),
+    [onPointerOutForLabel, label],
+  );
+  // Destructuring `onPointerMissed` directly (rather than rest-spreading the
+  // remainder of `useEventHandlers()`'s return value) keeps it a stable
+  // reference across renders, so this `useMemo` actually memoizes instead of
+  // rebuilding every render (a plain object rest-spread always allocates a
+  // new object, which would otherwise poison the dependency array below).
+  const restEventHandlers = useMemo(
+    () => ({
+      onPointerMissed,
+      onPointerMove: (e: ThreeEvent<PointerEvent>) =>
+        onPointerMoveForLabel(label, e),
+    }),
+    [onPointerMissed, onPointerMoveForLabel, label],
+  );
 
   const isHovered = hoveredLabel?.id === label._id;
 
-  const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
+  const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
@@ -64,7 +101,7 @@ export const Polyline = ({
     { selected, color },
     isHovered,
     label,
-    isSelectedForAnnotation
+    isSelectedForAnnotation,
   );
 
   const {
@@ -88,6 +125,7 @@ export const Polyline = ({
     strokeAndFillColor,
     isAnnotateMode,
     isSelectedForAnnotation,
+    hoverSource,
   });
 
   const lines = useMemo(() => {
@@ -243,7 +281,7 @@ export const Polyline = ({
   const transientPolyline = useTransientPolyline(label._id);
   const centroidDragPosition = useMemo<THREE.Vector3Tuple>(
     () => transientPolyline?.positionDelta ?? [0, 0, 0],
-    [transientPolyline]
+    [transientPolyline],
   );
 
   const content = (
@@ -273,10 +311,20 @@ export const Polyline = ({
         {previewLines}
         <group
           {...restEventHandlers}
-          onPointerOver={() => {
-            setHoveredLabel({ id: label._id });
+          onPointerOver={(e) => {
+            if (
+              shouldSuppressHoverOnPointer(
+                hoverSource,
+                isCurrentlyTransforming,
+                e.nativeEvent.buttons,
+              )
+            ) {
+              return;
+            }
+
+            setHoveredLabel({ id: label._id, source: hoverSource });
             handleAnnotationPointerOver();
-            onPointerOver();
+            onPointerOver(e);
           }}
           onPointerOut={() => {
             setHoveredLabel(null);

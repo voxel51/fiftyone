@@ -38,8 +38,8 @@ self.onmessage = async (event) => {
 
     self.postMessage(
       { bufferDestructurables, buffers, header: result.header },
-      // @ts-ignore: self is WorkerGlobalScope
-      transferables
+      // @ts-expect-error self is WorkerGlobalScope, postMessage accepts transferables
+      transferables,
     );
   } catch (error) {
     self.postMessage({

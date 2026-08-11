@@ -146,6 +146,10 @@ to the above command.
 Restricting the App address
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
+
 By default, the App will listen on `localhost`. However, you can provide the
 optional `address` parameter to
 :meth:`launch_app() <fiftyone.core.session.launch_app>` to specify a particular
@@ -186,6 +190,33 @@ or by setting the following environment variable:
 .. code-block:: shell
 
     export FIFTYONE_DEFAULT_APP_ADDRESS='0.0.0.0'
+
+.. _cross-origin-app-access:
+
+Cross-origin App access
+~~~~~~~~~~~~~~~~~~~~~~~
+
+By default the App server only accepts same-origin requests, which covers
+local desktop usage and the supported notebook integrations, since each of
+those serves the App through a same-origin proxy or iframe. Most users do
+not need to change this.
+
+If a trusted origin must access the App server, you can add it to the
+`allowed_origins` configuration:
+
+.. code-block:: shell
+
+    export FIFTYONE_ALLOWED_ORIGINS='https://trusted.example.com'
+
+The list is comma-separated, and each entry must be an explicit origin that
+you control and trust.
+
+.. warning::
+
+    Do not set `allowed_origins` to `*`. The wildcard allows any website
+    your browser visits to make cross-origin requests to your running App
+    server and read the responses, which can expose your datasets and local
+    files to a malicious page. Always list specific, trusted origins instead.
 
 .. _notebooks:
 
@@ -321,6 +352,10 @@ call :meth:`session.open_tab() <fiftyone.core.session.Session.open_tab>`:
 
 Remote notebooks
 ~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.7.2
+    :enterprise_version: 1.0
 
 You can also work in a Jupyter notebook in your local browser that is
 `served from a remote machine <https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_

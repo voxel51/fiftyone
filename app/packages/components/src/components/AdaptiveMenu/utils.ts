@@ -60,10 +60,10 @@ export const hideOverflowingNodes = throttle(
     onHide(hiddenItems, lastVisibleItemId);
   },
   ADAPT_THROTTLE,
-  { trailing: true }
+  { trailing: true },
 );
 
 type HideOverflowingNodesCallback = (
   hiddenItemsCount: number,
-  lastVisibleItemId: string
+  lastVisibleItemId: string,
 ) => void;

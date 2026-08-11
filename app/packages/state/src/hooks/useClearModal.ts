@@ -30,14 +30,14 @@ export default () => {
         }
 
         const currentOptions = await snapshot.getPromise(
-          fos.savedLookerOptions
+          fos.savedLookerOptions,
         );
         set(fos.savedLookerOptions, { ...currentOptions, showJSON: false });
         reset(fos.hiddenLabels);
         fos.modalNavigation.set(null);
         return true;
       },
-    []
+    [],
   );
 
   return useCallback(() => {

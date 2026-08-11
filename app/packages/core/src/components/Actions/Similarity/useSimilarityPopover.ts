@@ -7,7 +7,6 @@ import {
   PANEL_NAME,
   QUERY_TYPE_IMAGE,
   QUERY_TYPE_TEXT,
-  SCOPE_VIEW,
   SEARCH_OPERATOR_URI,
 } from "./constants";
 import {
@@ -37,7 +36,7 @@ export default function useSimilarityPopover({
   const [textQuery, setTextQuery] = useState("");
 
   const keys = useRecoilValue(
-    availableSimilarityKeys({ modal, isImageSearch })
+    availableSimilarityKeys({ modal, isImageSearch }),
   );
   const hasSimilarityKeys = keys.length > 0;
   const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
@@ -74,11 +73,11 @@ export default function useSimilarityPopover({
       async (brainKey: string) => {
         const methods = await snapshot.getPromise(fos.similarityMethods);
         const match = methods.patches.find(
-          ([method]) => method.key === brainKey
+          ([method]) => method.key === brainKey,
         );
         return match ? match[1] : undefined;
       },
-    []
+    [],
   );
 
   const openPanel = useCallback(() => {
@@ -121,7 +120,7 @@ export default function useSimilarityPopover({
           reverse: false,
           k: DEFAULT_K,
           run_name: runName,
-          search_scope: SCOPE_VIEW,
+          view_target: "CURRENT_VIEW",
         };
         if (patchesField) {
           params.patches_field = patchesField;
@@ -173,7 +172,7 @@ export default function useSimilarityPopover({
                     },
                   ],
                 },
-                { callback: () => openPanel() }
+                { callback: () => openPanel() },
               );
             } else {
               openPanel();
@@ -194,7 +193,7 @@ export default function useSimilarityPopover({
       datasetId,
       onSearchStart,
       onSearchEnd,
-    ]
+    ],
   );
 
   const handleOpenPanel = useRecoilCallback(
@@ -211,7 +210,7 @@ export default function useSimilarityPopover({
           data: { view: { page: "new_search" } },
         });
       },
-    [close, modal]
+    [close, modal],
   );
 
   const searchButtonText =

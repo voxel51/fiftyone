@@ -26,7 +26,7 @@ export default function createScrollReader(
   element: HTMLElement,
   render: (zooming: boolean, dispatchOffset?: boolean) => void,
   getScrollSpeedThreshold: () => number,
-  horizontal?: boolean
+  horizontal?: boolean,
 ) {
   const axis = createAxis(horizontal);
   let animationFrame: ReturnType<typeof requestAnimationFrame>;

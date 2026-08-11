@@ -4,8 +4,6 @@ on:
     branches:
       - docs-*
       - github-actions-*
-      - rel-*
-      - release-*
       - release/*
     tags:
       - dev-docs-publish
@@ -22,23 +20,27 @@ on:
   pull_request:
     branches:
       - develop
-      - feat/*
-      - main
-      - rel-*
-      - release-*
       - release/*
     paths:
       - .github/workflows/build-docs.yml
       - docs/**
       - examples/**
       - fiftyone/**
+      - plugins/**
       - requirements/**
-      - "**.py"
-      - "**.md"
-      - "**.rst"
+      - setup.py
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    # Fork PRs cannot access the secrets this job requires (RO_FOT_FG_PAT,
+    # FIFTYONE_GITHUB_TOKEN), so the build is guaranteed to fail; skip it
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     env:
       FIFTYONE_DO_NOT_TRACK: true
@@ -47,25 +49,36 @@ jobs:
     steps:
       - name: Clone fiftyone for tag builds
         if: github.ref_type == 'tag'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Fetch full history for rev-parse to work
           fetch-depth: 0
       - name: Clone fiftyone for branch builds
         if: github.ref_type == 'branch'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Get Branch Name
         id: get_branch
+        env:
+          RO_FOT_FG_PAT: ${{ secrets.RO_FOT_FG_PAT }}
         run: |
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAG_SHA=$(git rev-parse ${{ github.ref }})
             case "${{ github.ref_name }}" in
               docs-publish|v*)
-                MAIN_SHA=$(git rev-parse origin/main)
-                if [[ "${MAIN_SHA}" == "${TAG_SHA}" ]]; then
+                # Published docs must match the latest released product: the
+                # tag must be the newest final release tag, or sit on top of
+                # it (a docs/v* line carrying doc cherry-picks). Enterprise
+                # docs content builds from the latest teams-v* release tag;
+                # branch_name=main is only the eta clone ref below (eta's
+                # current branch, not a release pointer).
+                LATEST=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+                if git merge-base --is-ancestor "$(git rev-parse ${LATEST}^{commit})" "${TAG_SHA}"; then
                   echo "branch_name=main" >> "${GITHUB_OUTPUT}"
+                  TEAMS_TAG=$(git ls-remote --tags "https://x-access-token:${RO_FOT_FG_PAT}@github.com/voxel51/fiftyone-teams.git" 'refs/tags/teams-v*' \
+                    | awk -F/ '{print $NF}' | grep -E '^teams-v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+                  echo "teams_ref=${TEAMS_TAG}" >> "${GITHUB_OUTPUT}"
                 else
-                  echo "docs-publish should only be performed on 'main'"
+                  echo "docs publish only from the latest release (${LATEST}) or a docs/v* line on it"
                   exit 1
                 fi
                 ;;
@@ -91,20 +104,22 @@ jobs:
             esac
           fi
       - name: Checkout fiftyone-teams
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
           token: ${{ secrets.RO_FOT_FG_PAT }}
-          ref: ${{ steps.get_branch.outputs.branch_name }}
-      - name: Set up Python 3.11
+          ref: ${{ steps.get_branch.outputs.teams_ref || steps.get_branch.outputs.branch_name }}
+      - name: Set up Python 3.13
         uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements/docs.txt
+            setup.py
       - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false # e2e test failed when `true`
+        uses: ./.github/actions/free-disk-space
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip setuptools wheel build
@@ -115,6 +130,7 @@ jobs:
           python -Im build
           pip install ./dist/*.whl
       - name: Install
+        id: install-docs-dependencies
         run: |
           echo "Installing system dependencies"
           sudo apt-get install pandoc
@@ -124,31 +140,33 @@ jobs:
           pip install fiftyone-brain fiftyone-db
           echo "Installing fiftyone"
           pip install .
+        background: true
 
       - name: Setup node 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
-      - name: Enable corepack
-        run: corepack enable
-      - name: Prepare yarn 4
-        run: corepack prepare yarn@4.12.0 --activate
+      - name: Prepare yarn
+        uses: ./.github/actions/setup-yarn
 
       - name: Cache Node Modules
         id: node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             app/node_modules
             app/.yarn/cache
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
       - name: Install app
-        if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
+      - name: Wait for docs dependencies
+        wait: install-docs-dependencies
       - name: Build docs
+        # PR builds skip the markdown mirror pass; it is only needed for
+        # the published site
         run: |
-          ./docs/generate_docs.bash -t fiftyone-teams
+          ./docs/generate_docs.bash -t fiftyone-teams ${{ github.event_name == 'pull_request' && '-m' || '' }}
       - name: Upload docs
         uses: actions/upload-artifact@v7
         with:
@@ -165,16 +183,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download docs
+        id: download-docs
         uses: actions/download-artifact@v8
         with:
           name: docs
           path: docs-download/
+        background: true
       - name: Authorize gcloud
         uses: google-github-actions/auth@v3
         with:
           credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v3
+      - name: Wait for docs
+        wait: download-docs
       - name: publish
         run: gsutil -m rsync -dR -x '^SBOMs/.*' docs-download gs://docs.voxel51.com
 
@@ -186,15 +208,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download docs
+        id: download-docs
         uses: actions/download-artifact@v8
         with:
           name: docs
           path: docs-download/
+        background: true
       - name: Authorize gcloud
         uses: google-github-actions/auth@v3
         with:
           credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v3
+      - name: Wait for docs
+        wait: download-docs
       - name: publish
         run: gsutil -m rsync -dR -x '^robots.txt' docs-download gs://docs.dev.voxel51.com

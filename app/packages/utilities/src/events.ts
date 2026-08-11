@@ -14,7 +14,7 @@ export type ClickEventModifiers = {
  * @param event Event from which to extract click modifiers
  */
 export const getClickModifiers = (
-  event: PointerEvent
+  event: PointerEvent,
 ): ClickEventModifiers => ({
   shiftKey: event.shiftKey,
   altKey: event.altKey,

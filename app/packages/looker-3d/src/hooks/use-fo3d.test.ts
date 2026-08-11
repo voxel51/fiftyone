@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import type { ModalSample } from "@fiftyone/state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FiftyoneSceneRawJson } from "../utils";
@@ -25,7 +25,7 @@ const mockState = vi.hoisted(() => ({
   getSampleSrc: vi.fn((path: string) => `src:${path}`),
   buildFoScene: vi.fn((rawData: FiftyoneSceneRawJson) => rawData),
   getRootAssetCount: vi.fn(
-    (scene: FiftyoneSceneRawJson | null) => scene?.children?.length ?? 0
+    (scene: FiftyoneSceneRawJson | null) => scene?.children?.length ?? 0,
   ),
 }));
 
@@ -221,7 +221,7 @@ describe("useFo3d", () => {
 
     expect(mockState.fetchFo3d).toHaveBeenCalledWith(
       "src:/tmp/group/scene.fo3d",
-      "/tmp/group/scene.fo3d"
+      "/tmp/group/scene.fo3d",
     );
     expect(result.current.isLoading).toBe(false);
     expect(result.current.rootAssetCount).toBe(2);
@@ -240,11 +240,11 @@ describe("useFo3d", () => {
     ];
     const firstSample = buildModalSample(
       "scene-a-id",
-      "/tmp/group/scene-a.fo3d"
+      "/tmp/group/scene-a.fo3d",
     );
     const secondSample = buildModalSample(
       "scene-b-id",
-      "/tmp/group/scene-b.fo3d"
+      "/tmp/group/scene-b.fo3d",
     );
 
     mockState.fetchFo3d
@@ -257,7 +257,7 @@ describe("useFo3d", () => {
         initialProps: {
           sample: firstSample,
         },
-      }
+      },
     );
 
     rerender({ sample: secondSample });

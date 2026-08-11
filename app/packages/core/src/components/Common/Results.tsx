@@ -1,5 +1,5 @@
 import { animated } from "@react-spring/web";
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import styled from "styled-components";
 
 import { useHighlightHover } from "../Actions/utils";
@@ -60,7 +60,7 @@ const Result = <T extends unknown>({
   const props = useHighlightHover(
     false,
     active ? active : null,
-    result === null ? highlight : null
+    result === null ? highlight : null,
   );
   const ref = useRef<HTMLDivElement>();
   const wasActive = useRef(false);

@@ -21,7 +21,7 @@ export const stringResults = selectorFamily({
 
       const isSkeletonPoints =
         VALID_KEYPOINTS.includes(
-          get(schemaAtoms.field(parent)).embeddedDocType
+          get(schemaAtoms.field(parent)).embeddedDocType,
         ) && keys.slice(-1)[0] === "points";
 
       if (isSkeletonPoints) {

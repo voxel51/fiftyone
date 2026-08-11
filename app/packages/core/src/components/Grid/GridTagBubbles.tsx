@@ -1,7 +1,7 @@
 import { computeTagData } from "@fiftyone/looker/src/elements/common/computeTagData";
 import * as fos from "@fiftyone/state";
 import { prettify } from "@fiftyone/utilities";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import styles from "./GridTagBubbles.module.css";
 
 const DEFAULT_FONT_SIZE = 14;
@@ -49,6 +49,8 @@ export default function GridTagBubbles({ sample }: GridTagBubblesProps) {
       labelTagColors: options.labelTagColors ?? {},
       sample,
       selectedLabelTags: options.selectedLabelTags,
+      showPatchLabels: options.showPatchLabels,
+      shownLabelAttributes: options.shownLabelAttributes,
       timeZone: options.timeZone ?? "UTC",
     });
   }, [
@@ -60,6 +62,8 @@ export default function GridTagBubbles({ sample }: GridTagBubblesProps) {
     options.filter,
     options.labelTagColors,
     options.selectedLabelTags,
+    options.showPatchLabels,
+    options.shownLabelAttributes,
     options.timeZone,
     sample,
   ]);

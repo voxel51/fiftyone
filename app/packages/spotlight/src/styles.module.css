@@ -28,7 +28,7 @@
   outline: none;
 }
 
-@-moz-document {
+@-moz-document url-prefix() {
   .spotlight {
     scrollbar-width: none;
   }
@@ -57,7 +57,6 @@
 .spotlightRow.spotlightRowHidden > div > div {
   display: none;
 }
-
 
 /* HORIZONTAL MODE */
 

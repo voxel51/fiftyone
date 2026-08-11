@@ -30,7 +30,7 @@ export type Hide = (ctx: { id: ID }) => void;
 
 /** Handler invoked when the user clicks an item. */
 export type ItemClick<K, V> = (
-  callbackInterface: ItemClickInterface<K, V>
+  callbackInterface: ItemClickInterface<K, V>,
 ) => void;
 
 /** Arguments passed to {@link ItemClick}. */
@@ -61,7 +61,7 @@ export interface ItemData<K, V> {
  */
 export type Measure<K, V> = (
   id: ItemData<K, V>,
-  sizeBytes: Promise<number>
+  sizeBytes: Promise<number>,
 ) => void;
 
 /** Raw page payload returned by {@link SpotlightConfig.get}. */

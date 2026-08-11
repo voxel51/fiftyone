@@ -8,7 +8,7 @@ import type { Undoable } from "./Undoable";
 
 export type UndoStateListener = (
   undoEnabled: boolean,
-  redoEnabled: boolean
+  redoEnabled: boolean,
 ) => void;
 
 export type ActionListener = (actionId: string, isUndo: boolean) => void;
@@ -80,7 +80,7 @@ export class ActionManager {
         return true;
       } catch (error) {
         console.error(
-          `An exception ocurred during undo execution for undoable ${undoable.id}`
+          `An exception ocurred during undo execution for undoable ${undoable.id}`,
         );
         console.error(error);
         this.fireUndoListeners();
@@ -105,7 +105,7 @@ export class ActionManager {
         return true;
       } catch (error) {
         console.error(
-          `An exception occurred during redo execution for undoable ${undoable.id}`
+          `An exception occurred during redo execution for undoable ${undoable.id}`,
         );
         console.error(error);
         this.fireUndoListeners();
@@ -164,6 +164,22 @@ export class ActionManager {
    */
   getUndoStackSize(): number {
     return this.undoStack.length;
+  }
+
+  /**
+   * Newest-first descriptions of the undo stack (line 1 = the next undo).
+   * Backs the undo history view.
+   */
+  describeUndoStack(): string[] {
+    return [...this.undoStack].reverse().map((u) => u.describe?.() ?? u.id);
+  }
+
+  /**
+   * Newest-first descriptions of the redo stack (line 1 = the next redo).
+   * Backs the redo history view.
+   */
+  describeRedoStack(): string[] {
+    return [...this.redoStack].reverse().map((u) => u.describe?.() ?? u.id);
   }
 
   /**

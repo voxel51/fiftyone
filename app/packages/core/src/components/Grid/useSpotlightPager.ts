@@ -31,7 +31,7 @@ const processSamplePageData = (
   // renderer reads it back to size the cover). Used by swimlanes to
   // make each row uniformly short instead of taking the cover's full
   // image height.
-  aspectRatioOverride?: number
+  aspectRatioOverride?: number,
 ) => {
   return connection.edges.flatMap((edge, i) => {
     // Filter out unknown union variants so `handleNode` only ever sees the
@@ -159,7 +159,7 @@ const useSpotlightPager = ({
         }
         let subscription: Subscription;
         const schema = await snapshot.getPromise(
-          fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+          fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
         );
 
         // Resolve the seeked-origin "is there room backward?" check up
@@ -185,7 +185,7 @@ const useSpotlightPager = ({
             {
               networkCacheConfig: { metadata: {} },
               fetchPolicy,
-            }
+            },
           ).subscribe({
             next: (data) => {
               if (!foq.isPaginateSamplesConnection(data.samples)) {
@@ -208,7 +208,7 @@ const useSpotlightPager = ({
                 schema,
                 zoom,
                 records,
-                aspectRatioOverride
+                aspectRatioOverride,
               );
               for (const item of items) keys.current.add(item.id.description);
 
@@ -220,7 +220,7 @@ const useSpotlightPager = ({
               if (connection.pageInfo.startCursor) {
                 pageStartCursors.set(
                   pageNumber,
-                  connection.pageInfo.startCursor
+                  connection.pageInfo.startCursor,
                 );
               }
 
@@ -267,7 +267,7 @@ const useSpotlightPager = ({
       pager,
       store,
       zoom,
-    ]
+    ],
   );
 
   return { page, records, store };

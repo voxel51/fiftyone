@@ -40,7 +40,7 @@ import { create } from "./utilities";
  * *when* to call it (e.g. deferred to the next rAF).
  */
 export type Renderer<K, V> = (
-  run: () => { section: Section<K, V>; offset: number }
+  run: () => { section: Section<K, V>; offset: number },
 ) => void;
 
 /**
@@ -106,7 +106,8 @@ export default class Section<K, V> {
     this.#container.classList.add(styles.spotlightContainer);
     this.#container.setAttribute(DATA_CY, DATA_CY_SECTION[this.#direction]);
     // set the fixed cross dimension once; the primary dimension is updated each render pass
-    this.#container.style[this.#axis.crossExtentAttr] = `${this.#crossExtent}px`;
+    this.#container.style[this.#axis.crossExtentAttr] =
+      `${this.#crossExtent}px`;
 
     this.#section.classList.add(styles.spotlightSection);
     this.#section.classList.add(direction);
@@ -215,8 +216,10 @@ export default class Section<K, V> {
 
     const match = closest(
       this.#rows,
-      this.#direction === DIRECTION.BACKWARD ? this.primaryExtent - target : target,
-      (row) => row.from + row.primaryExtent
+      this.#direction === DIRECTION.BACKWARD
+        ? this.primaryExtent - target
+        : target,
+      (row) => row.from + row.primaryExtent,
     );
 
     let pageRow: Row<K, V>;
@@ -226,7 +229,11 @@ export default class Section<K, V> {
       this.#direction === DIRECTION.FORWARD
         ? (row) => row.from - top + this.#config.offset
         : (row) =>
-            this.#primaryExtent - row.from - top + this.#config.offset - row.primaryExtent;
+            this.#primaryExtent -
+            row.from -
+            top +
+            this.#config.offset -
+            row.primaryExtent;
 
     if (match) {
       index = match.index;
@@ -279,7 +286,8 @@ export default class Section<K, V> {
       requestMore = true;
     }
 
-    this.#container.style[this.#axis.primaryExtentAttr] = `${this.primaryExtent}px`;
+    this.#container.style[this.#axis.primaryExtentAttr] =
+      `${this.primaryExtent}px`;
     return {
       match: pageRow ? { row: pageRow, delta } : undefined,
       more: requestMore && this.ready,
@@ -303,7 +311,7 @@ export default class Section<K, V> {
   async first(
     request: Request<K, V>,
     renderer: Renderer<K, V>,
-    sibling: Sibling<K, V>
+    sibling: Sibling<K, V>,
   ) {
     if (!this.#rows.length) {
       await this.next(request, renderer, sibling);
@@ -332,7 +340,7 @@ export default class Section<K, V> {
     id: ID,
     request: Request<K, V>,
     renderer: Renderer<K, V>,
-    sibling: Sibling<K, V>
+    sibling: Sibling<K, V>,
   ) {
     const next = this.#nextMap.get(id);
     if (next) {
@@ -363,7 +371,7 @@ export default class Section<K, V> {
     id: ID,
     request: Request<K, V>,
     renderer: Renderer<K, V>,
-    sibling: Sibling<K, V>
+    sibling: Sibling<K, V>,
   ) {
     const previous = this.#previousMap.get(id);
     if (previous) {
@@ -396,7 +404,7 @@ export default class Section<K, V> {
   async next(
     request: Request<K, V>,
     renderer: Renderer<K, V>,
-    sibling: Sibling<K, V>
+    sibling: Sibling<K, V>,
   ) {
     const end = this.#end;
     if (!end) {
@@ -414,7 +422,7 @@ export default class Section<K, V> {
     renderer(() => {
       const { rows, remainder } = this.#tile(
         [...end.remainder, ...data.items].filter(
-          (i) => !this.#itemIds.has(i.id.description)
+          (i) => !this.#itemIds.has(i.id.description),
         ),
         this.#primaryExtent,
         data.next === null,
@@ -422,7 +430,7 @@ export default class Section<K, V> {
         request,
         renderer,
         sibling,
-        data.next === null
+        data.next === null,
       );
 
       if (!this.#start) {
@@ -443,7 +451,7 @@ export default class Section<K, V> {
 
       const addedExtent = rows.reduce(
         (acc, cur) => acc + cur.primaryExtent + this.#config.spacing,
-        ZERO
+        ZERO,
       );
 
       if (this.#rows.length < this.#maxRows) {
@@ -504,7 +512,7 @@ export default class Section<K, V> {
       row.switch(
         this.#direction === DIRECTION.BACKWARD
           ? this.#axis.endAttr
-          : this.#axis.startAttr
+          : this.#axis.startAttr,
       );
     }
 
@@ -535,7 +543,7 @@ export default class Section<K, V> {
     request: Request<K, V>,
     renderer: Renderer<K, V>,
     sibling: Sibling<K, V>,
-    finished: boolean
+    finished: boolean,
   ): { rows: Row<K, V>[]; remainder: ItemData<K, V>[]; offset: number } {
     const threshold = this.#config.rowAspectRatioThreshold(this.#crossExtent);
 
@@ -545,7 +553,7 @@ export default class Section<K, V> {
         : tile(
             items.map(({ aspectRatio }) => this.#axis.tilingAR(aspectRatio)),
             threshold,
-            useRemainder
+            useRemainder,
           );
 
     let offset = this.#rows.length ? this.#config.spacing : ZERO;
@@ -555,7 +563,7 @@ export default class Section<K, V> {
     const chain = (
       first: ID | undefined,
       next: WeakMap<ID, ID>,
-      previous: WeakMap<ID, ID>
+      previous: WeakMap<ID, ID>,
     ) => {
       let last = first;
       return (id: ID) => {

@@ -1,15 +1,13 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
-import { NONFINITES } from "@fiftyone/utilities";
-
 import {
   currentModalUniqueIdJotaiAtom,
   isHoveringParticularLabelWithInstanceConfig,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
 import { INFO_COLOR } from "../constants";
-import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
+import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { RENDER_STATUS_PAINTED, RENDER_STATUS_PENDING } from "../worker/shared";
 import {
@@ -21,6 +19,7 @@ import {
 } from "./base";
 import {
   getInstanceStrokeStyles,
+  getLabelAttributesText,
   resolveLabelSelectionVisuals,
   t,
 } from "./util";
@@ -36,7 +35,7 @@ let lastModalUniqueId = "";
 
 const getIndexIdFromInstanceIdForLabel = (
   instanceId: string,
-  label: DetectionLabel
+  label: DetectionLabel,
 ) => {
   const currentModalUniqueId = jotaiStore.get(currentModalUniqueIdJotaiAtom);
 
@@ -86,7 +85,7 @@ export interface DetectionLabel extends RegularLabel {
 }
 
 export default class DetectionOverlay<
-  State extends BaseState
+  State extends BaseState,
 > extends CoordinateOverlay<State, DetectionLabel> {
   private labelBoundingBox: BoundingBox;
 
@@ -241,14 +240,21 @@ export default class DetectionOverlay<
       x,
       y,
       w * state.canvasBBox[2],
-      h * state.canvasBBox[3]
+      h * state.canvasBBox[3],
     );
     ctx.globalAlpha = tmp;
   }
 
   private getLabelText(state: Readonly<State>): string {
-    let text =
-      this.label.label && state.options.showLabel ? `${this.label.label}` : "";
+    const attributes = state.options.shownLabelAttributes?.[this.field];
+    let text = attributes
+      ? getLabelAttributesText(
+          this.label,
+          attributes.filter((name) => name !== "index"),
+        )
+      : this.label.label
+        ? `${this.label.label}`
+        : "";
 
     const hasIndex =
       (typeof this.label.index === "string" ||
@@ -257,7 +263,7 @@ export default class DetectionOverlay<
 
     const hasInstanceId = Boolean(this.label.instance?._id);
 
-    if (state.options.showIndex && (hasIndex || hasInstanceId)) {
+    if (attributes?.includes("index") && (hasIndex || hasInstanceId)) {
       if (text.length > 0) {
         text += " ";
       }
@@ -268,22 +274,9 @@ export default class DetectionOverlay<
       } else {
         text += `${getIndexIdFromInstanceIdForLabel(
           this.label.instance._id,
-          this.label
+          this.label,
         )}`;
       }
-    }
-
-    if (
-      state.options.showConfidence &&
-      (!isNaN(this.label.confidence as number) ||
-        NONFINITES.has(this.label.confidence as NONFINITE))
-    ) {
-      text.length && (text += " ");
-      text += `(${
-        typeof this.label.confidence === "number"
-          ? Number(this.label.confidence).toFixed(2)
-          : this.label.confidence
-      })`;
     }
 
     return text;
@@ -305,7 +298,7 @@ export default class DetectionOverlay<
   private fillRectFor3d(
     ctx: CanvasRenderingContext2D,
     state: Readonly<State>,
-    color: string
+    color: string,
   ) {
     const convexHull = this.label.convexHull;
 
@@ -339,7 +332,7 @@ export default class DetectionOverlay<
     ctx: CanvasRenderingContext2D,
     state: Readonly<State>,
     color: string,
-    dash?: number
+    dash?: number,
   ) {
     const [tlx, tly, w, h] = this.label.bounding_box;
     ctx.beginPath();

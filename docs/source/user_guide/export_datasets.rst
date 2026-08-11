@@ -170,6 +170,10 @@ a |DatasetView| into any format of your choice via the basic recipe below.
 Label type coercion
 -------------------
 
+.. customavailablein::
+    :oss_version: 0.9.4
+    :enterprise_version: 1.0
+
 For your convenience, the
 :meth:`export() <fiftyone.core.collections.SampleCollection.export>` method
 will automatically coerce the data to match the requested export types in a
@@ -590,6 +594,10 @@ disk as follows:
 Video Directory
 ---------------
 
+.. customavailablein::
+    :oss_version: 0.6.0
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.VideoDirectory` type represents a directory of
 videos.
 
@@ -647,6 +655,10 @@ disk as follows:
 
 Media Directory
 ---------------
+
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
 
 The :class:`fiftyone.types.MediaDirectory` type represents a directory of
 media files.
@@ -781,6 +793,10 @@ stored on disk in the above format as follows:
 
 Video Classification Dir Tree
 -----------------------------
+
+.. customavailablein::
+    :oss_version: 0.6.3
+    :enterprise_version: 1.0
 
 .. admonition:: Supported label types
     :class: note
@@ -1188,6 +1204,10 @@ format as follows:
 
 COCO
 ----
+
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
 
 .. admonition:: Supported label types
     :class: note
@@ -1688,6 +1708,10 @@ the `labels_path` parameter instead of `export_dir`:
 YOLOv4
 ------
 
+.. customavailablein::
+    :oss_version: 0.6.1
+    :enterprise_version: 1.0
+
 .. admonition:: Supported label types
     :class: note
 
@@ -1860,6 +1884,10 @@ the `labels_path` parameter instead of `export_dir`:
 
 YOLOv5
 ------
+
+.. customavailablein::
+    :oss_version: 0.11.0
+    :enterprise_version: 1.0
 
 .. admonition:: Supported label types
     :class: note
@@ -2581,6 +2609,10 @@ format as follows:
 Image Segmentation Directory
 ----------------------------
 
+.. customavailablein::
+    :oss_version: 0.11.2
+    :enterprise_version: 1.0
+
 .. admonition:: Supported label types
     :class: note
 
@@ -2701,6 +2733,10 @@ parameter instead of `export_dir`:
 
 CVAT Image
 ----------
+
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
 
 .. admonition:: Supported label types
     :class: note
@@ -2907,6 +2943,10 @@ the `labels_path` parameter instead of `export_dir`:
 
 CVAT Video
 ----------
+
+.. customavailablein::
+    :oss_version: 0.6.1
+    :enterprise_version: 1.0
 
 .. admonition:: Supported label types
     :class: note
@@ -3115,6 +3155,10 @@ the `labels_path` parameter instead of `export_dir`:
 BDD
 ---
 
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
+
 .. admonition:: Supported label types
     :class: note
 
@@ -3317,6 +3361,10 @@ the `labels_path` parameter instead of `export_dir`:
 
 CSV
 ---
+
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
 
 The :class:`fiftyone.types.CSVDataset` type is a flexible CSV format that
 represents slice(s) of field values of a dataset as columns of a CSV file.
@@ -3589,6 +3637,10 @@ providing the `labels_path` parameter instead of `export_dir`:
 FiftyOne Dataset
 ----------------
 
+.. customavailablein::
+    :oss_version: 0.5.0
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.FiftyOneDataset` provides a disk representation of
 an entire |Dataset| in a serialized JSON format along with its source media.
 
@@ -3791,6 +3843,10 @@ This will create a directory structure like the following:
 FiftyOne Image Labels
 ---------------------
 
+.. customavailablein::
+    :oss_version: 0.5.2
+    :enterprise_version: 1.0
+
 .. admonition:: Supported label types
     :class: note
 
@@ -3891,6 +3947,10 @@ format as follows:
 
 FiftyOne Video Labels
 ---------------------
+
+.. customavailablein::
+    :oss_version: 0.6.0
+    :enterprise_version: 1.0
 
 .. admonition:: Supported label types
     :class: note
@@ -4034,6 +4094,10 @@ datasets in your custom format using the following recipe:
 
 Writing a custom DatasetExporter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.6.0
+    :enterprise_version: 1.0
 
 |DatasetExporter| is an abstract interface; the concrete interface that you
 should implement is determined by the type of dataset that you are exporting.

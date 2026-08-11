@@ -65,7 +65,7 @@ export default function RunActions({
           content={tip(
             isUpload
               ? "Clone is not supported for file upload searches"
-              : "Clone search"
+              : "Clone search",
           )}
         >
           {/* span wrapper lets the tooltip still fire on hover when the

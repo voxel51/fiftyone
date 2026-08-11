@@ -60,8 +60,8 @@ export function generateSchema(value: any, options?: GenerateSchemaOptions) {
         component: readOnly
           ? "LabelValueView"
           : type === "boolean"
-          ? "CheckboxView"
-          : "FieldView",
+            ? "CheckboxView"
+            : "FieldView",
         readOnly,
       },
     };

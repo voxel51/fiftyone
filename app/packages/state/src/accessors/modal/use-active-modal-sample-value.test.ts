@@ -2,8 +2,17 @@
  * Copyright 2017-2026, Voxel51, Inc.
  * @vitest-environment jsdom
  */
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+const renderAndCatch = (hook: () => unknown) => {
+  try {
+    renderHook(hook);
+  } catch (e) {
+    return e;
+  }
+  return undefined;
+};
 
 const mockSelectors = vi.hoisted(() => ({
   activeModalSidebarSample: { key: "activeModalSidebarSample" },
@@ -23,8 +32,8 @@ const mockSidebar = vi.hoisted(() => ({
       // override the implementation if they need to assert call args directly.
       keys.reduce<unknown>(
         (acc, key) => (acc as Record<string, unknown> | undefined)?.[key],
-        contents
-      )
+        contents,
+      ),
   ),
 }));
 
@@ -45,9 +54,10 @@ vi.mock("../../recoil/sidebar", () => mockSidebar);
 vi.mock("../../recoil/modal", () => mockErrors);
 
 vi.mock("../../recoil/utils", async () => {
-  const actual = await vi.importActual<typeof import("../../recoil/utils")>(
-    "../../recoil/utils"
-  );
+  const actual =
+    await vi.importActual<typeof import("../../recoil/utils")>(
+      "../../recoil/utils",
+    );
   return {
     ...actual,
     useAssertedRecoilValue: (node: { key: string }) =>
@@ -74,7 +84,7 @@ const setSample = (
   loadable:
     | { state: "hasValue"; contents: unknown }
     | { state: "hasError"; contents: unknown }
-    | { state: "loading" }
+    | { state: "loading" },
 ) => {
   stateStore.loadables.activeModalSidebarSample = loadable;
 };
@@ -83,7 +93,7 @@ describe("useActiveModalSampleValue", () => {
   it("returns LOADING while the underlying sample is loading", () => {
     setSample({ state: "loading" });
     const { result } = renderHook(() =>
-      useActiveModalSampleValue<string>("foo")
+      useActiveModalSampleValue<string>("foo"),
     );
     expect(result.current).toBe(LOADING);
   });
@@ -94,7 +104,7 @@ describe("useActiveModalSampleValue", () => {
       contents: { foo: { bar: "baz" } },
     });
     const { result } = renderHook(() =>
-      useActiveModalSampleValue<string>("foo.bar")
+      useActiveModalSampleValue<string>("foo.bar"),
     );
     expect(result.current).toBe("baz");
   });
@@ -105,7 +115,7 @@ describe("useActiveModalSampleValue", () => {
       contents: new mockErrors.GroupSampleNotFound(),
     });
     const { result } = renderHook(() =>
-      useActiveModalSampleValue<string>("foo")
+      useActiveModalSampleValue<string>("foo"),
     );
     expect(result.current).toBe(LOADING);
   });
@@ -113,19 +123,17 @@ describe("useActiveModalSampleValue", () => {
   it("rethrows plain SampleNotFound (does not swallow it)", () => {
     const err = new mockErrors.SampleNotFound("missing");
     setSample({ state: "hasError", contents: err });
-    const { result } = renderHook(() =>
-      useActiveModalSampleValue<string>("foo")
+    expect(renderAndCatch(() => useActiveModalSampleValue<string>("foo"))).toBe(
+      err,
     );
-    expect(result.error).toBe(err);
   });
 
   it("rethrows arbitrary errors", () => {
     const err = new TypeError("boom");
     setSample({ state: "hasError", contents: err });
-    const { result } = renderHook(() =>
-      useActiveModalSampleValue<string>("foo")
+    expect(renderAndCatch(() => useActiveModalSampleValue<string>("foo"))).toBe(
+      err,
     );
-    expect(result.error).toBe(err);
   });
 
   it("calls pullSidebarValue with the split keys and isList flag", () => {
@@ -135,7 +143,7 @@ describe("useActiveModalSampleValue", () => {
     });
     stateStore.values["isOfDocumentFieldList-foo.bar"] = true;
     mockSidebar.pullSidebarValue.mockImplementationOnce(
-      (_field, keys, contents, isList) => ({ keys, contents, isList })
+      (_field, keys, contents, isList) => ({ keys, contents, isList }),
     );
 
     const { result } = renderHook(() => useActiveModalSampleValue("foo.bar"));

@@ -7,6 +7,7 @@ FiftyOne ontology data class unit tests.
 """
 
 import unittest
+from unittest import mock
 
 from fiftyone.core.annotation.attributes import (
     MAX_CONDITION_DEPTH,
@@ -1070,6 +1071,49 @@ class OntologySDKTests(unittest.TestCase):
         self.assertEqual(load_ontology("forwarded").description, "rev 2")
 
 
+class OntologyConnectionBootstrapTests(unittest.TestCase):
+    """``OntologyDocument.objects`` must bootstrap the DB connection before
+    building a queryset — the first SDK call in a cold process may be an
+    ontology call, and mongoengine's default manager does not establish the
+    default connection on its own.
+    """
+
+    def test_objects_manager_bootstraps_connection_first(self):
+        import fiftyone.core.odm.ontology as foo_odm
+
+        manager = mock.Mock()
+
+        with (
+            mock.patch.object(
+                foo_odm, "ensure_connection", manager.ensure_connection
+            ),
+            mock.patch.object(
+                foo_odm.OntologyDocument,
+                "_get_collection",
+                manager._get_collection,
+            ),
+        ):
+            foo_odm.OntologyDocument.objects
+
+        calls = [name for name, _, _ in manager.mock_calls]
+        self.assertIn("_get_collection", calls)
+        self.assertEqual(
+            calls[0],
+            "ensure_connection",
+            f"connection must be established before any query; got {calls}",
+        )
+
+    def test_ontology_document_uses_connected_manager(self):
+        import inspect
+
+        import fiftyone.core.odm.ontology as foo_odm
+
+        self.assertIsInstance(
+            inspect.getattr_static(foo_odm.OntologyDocument, "objects"),
+            foo_odm._ConnectedQuerySetManager,
+        )
+
+
 class NodeTests(unittest.TestCase):
     def test_create_leaf(self):
         n = Node(name="car")
@@ -1124,6 +1168,69 @@ class NodeTests(unittest.TestCase):
         self.assertNotIn("can_select", d)
         self.assertNotIn("deprecated", d)
         self.assertNotIn("description", d)
+
+
+class FindInDictTests(unittest.TestCase):
+    def test_returns_root_on_match(self):
+        from fiftyone.core.annotation.nodes import find_in_dict
+
+        d = {"name": "car"}
+        self.assertIs(find_in_dict(d, "car"), d)
+
+    def test_returns_descendant(self):
+        from fiftyone.core.annotation.nodes import find_in_dict
+
+        sedan = {"name": "sedan"}
+        cars = {"name": "cars", "values": [sedan]}
+        root = {"name": "root", "values": [cars]}
+        self.assertIs(find_in_dict(root, "sedan"), sedan)
+
+    def test_returns_none_when_missing(self):
+        from fiftyone.core.annotation.nodes import find_in_dict
+
+        root = {"name": "root", "values": [{"name": "car"}]}
+        self.assertIsNone(find_in_dict(root, "missing"))
+
+
+class TruncateDictTests(unittest.TestCase):
+    def test_zero_marks_branch_with_empty_values(self):
+        from fiftyone.core.annotation.nodes import truncate_dict
+
+        out = truncate_dict({"name": "cars", "values": [{"name": "sedan"}]}, 0)
+        self.assertEqual(out["values"], [])
+
+    def test_zero_real_leaf_keeps_no_values_key(self):
+        from fiftyone.core.annotation.nodes import truncate_dict
+
+        out = truncate_dict({"name": "car"}, 0)
+        self.assertNotIn("values", out)
+
+    def test_one_keeps_direct_children_only(self):
+        from fiftyone.core.annotation.nodes import truncate_dict
+
+        deep = {
+            "name": "root",
+            "values": [
+                {
+                    "name": "cars",
+                    "values": [
+                        {"name": "sedan", "values": [{"name": "camry"}]}
+                    ],
+                }
+            ],
+        }
+        out = truncate_dict(deep, 1)
+        # root has cars; cars is truncated → values=[]
+        self.assertEqual(out["values"][0]["name"], "cars")
+        self.assertEqual(out["values"][0]["values"], [])
+
+    def test_does_not_mutate_input(self):
+        from fiftyone.core.annotation.nodes import truncate_dict
+
+        original = {"name": "cars", "values": [{"name": "sedan"}]}
+        out = truncate_dict(original, 0)
+        self.assertIsNot(out, original)
+        self.assertEqual(original["values"], [{"name": "sedan"}])
 
 
 class TaxonomyTests(unittest.TestCase):

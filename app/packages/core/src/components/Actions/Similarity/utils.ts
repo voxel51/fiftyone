@@ -2,7 +2,7 @@ import type { Method } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { selectedLabels } from "@fiftyone/state";
 import type { Snapshot } from "recoil";
-import { selectorFamily } from "recoil";
+import { selectorFamily, useRecoilValueLoadable } from "recoil";
 
 export type QueryIds = {
   queryIds: string[] | string | undefined;
@@ -11,7 +11,7 @@ export type QueryIds = {
 
 export const getQueryIds = async (
   snapshot: Snapshot,
-  brainKey?: string
+  brainKey?: string,
 ): Promise<QueryIds> => {
   const isModal = await snapshot.getPromise(fos.isModalActive);
 
@@ -27,15 +27,15 @@ export const getQueryIds = async (
         .map(([_, value]) => value)[0];
 
       const matching = [...selectedLabelIds].filter(
-        (id) => selectedLabelMap[id]?.field === labels_field
+        (id) => selectedLabelMap[id]?.field === labels_field,
       );
 
       // Separate positive (default) and negative (alt) labels
       const positive = matching.filter(
-        (id) => selectedLabelMap[id]?.type !== "alt"
+        (id) => selectedLabelMap[id]?.type !== "alt",
       );
       const negative = matching.filter(
-        (id) => selectedLabelMap[id]?.type === "alt"
+        (id) => selectedLabelMap[id]?.type === "alt",
       );
 
       return {
@@ -83,7 +83,7 @@ export const availableSimilarityKeys = selectorFamily<
         (params.modal && get(fos.hasSelectedLabels))
       ) {
         return get(availablePatchesSimilarityKeys(params)).map(
-          ({ key }) => key
+          ({ key }) => key,
         );
       }
 
@@ -99,6 +99,27 @@ export const availableSimilarityKeys = selectorFamily<
         .sort();
     },
 });
+
+/**
+ * Reads {@link availableSimilarityKeys} as a loadable so a pending dependency
+ * (e.g. the modal sample in patches views) suspends neither the action row nor
+ * the global boundary. Returns `null` while pending and rethrows selector
+ * errors so they reach the error boundary.
+ */
+export const useAvailableSimilarityKeys = (
+  modal: boolean,
+  isImageSearch: boolean,
+): string[] | null => {
+  const keys = useRecoilValueLoadable(
+    availableSimilarityKeys({ modal, isImageSearch }),
+  );
+
+  if (keys.state === "hasError") {
+    throw keys.contents;
+  }
+
+  return keys.state === "hasValue" ? keys.contents : null;
+};
 
 const availablePatchesSimilarityKeys = selectorFamily<
   Method[],
@@ -118,10 +139,16 @@ const availablePatchesSimilarityKeys = selectorFamily<
       }
       patches = methods.map(([method, field]) => [method, field]);
 
+      // avoid the async modal sample dependency below when there is nothing
+      // to filter
+      if (!patches.length) {
+        return [];
+      }
+
       if (params.modal) {
         if (get(fos.hasSelectedLabels)) {
           const fields = new Set(
-            Object.values(get(selectedLabels)).map(({ field }) => field)
+            Object.values(get(selectedLabels)).map(({ field }) => field),
           );
 
           return patches
@@ -135,7 +162,7 @@ const availablePatchesSimilarityKeys = selectorFamily<
 
       return patches
         .filter(([_, field]) =>
-          get(fos.labelPaths({ expanded: false })).includes(field)
+          get(fos.labelPaths({ expanded: false })).includes(field),
         )
         .map(([key]) => key);
     },

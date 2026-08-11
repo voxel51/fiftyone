@@ -252,8 +252,8 @@ export const pageParameters = selector({
         page === 0 && scrubCursor !== null
           ? scrubCursor
           : page
-          ? String(page * pageSize - 1)
-          : null;
+            ? String(page * pageSize - 1)
+            : null;
       return {
         ...params,
         after,
@@ -322,7 +322,7 @@ export const recommendedGridZoom = atom<number | null>({
       ({ event }, { reset }, prev) =>
         event !== "modal" &&
         prev?.event !== "modal" &&
-        reset(recommendedGridZoom)
+        reset(recommendedGridZoom),
     ),
   ],
 });

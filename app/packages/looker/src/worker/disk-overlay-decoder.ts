@@ -28,7 +28,7 @@ export const decodeOverlayOnDisk = async (
   maskTargetsBuffers: ArrayBuffer[] = [],
   overlayCollectionProcessingParams:
     | { idx: number; cls: string }
-    | undefined = undefined
+    | undefined = undefined,
 ) => {
   // handle all list types here
   if (cls === DETECTIONS && label.detections) {
@@ -47,8 +47,8 @@ export const decodeOverlayOnDisk = async (
           DETECTION,
           maskPathDecodingPromises,
           maskTargetsBuffers,
-          { idx: i, cls: DETECTIONS }
-        )
+          { idx: i, cls: DETECTIONS },
+        ),
       );
     }
     maskPathDecodingPromises.push(...promises);
@@ -119,7 +119,7 @@ export const decodeOverlayOnDisk = async (
       overlayImageBlob,
       cls,
       field,
-      coloring
+      coloring,
     );
 
     if (!overlayMask) {

@@ -4,10 +4,10 @@
 
 Use "least capability" principle. Choose the simplest pattern that works:
 
--   **Local State**: UI-only, resets with component → `useState`, `useReducer`
--   **Context API**: Small bounded tree, static-ish data → `useContext` (keep
-    contexts minimal to avoid re-renders)
--   **Atoms**: Reactive global state → Jotai (preferred) or Recoil (legacy)
+- **Local State**: UI-only, resets with component → `useState`, `useReducer`
+- **Context API**: Small bounded tree, static-ish data → `useContext` (keep
+  contexts minimal to avoid re-renders)
+- **Atoms**: Reactive global state → Jotai (preferred) or Recoil (legacy)
 
 ## Atom Rules
 
@@ -17,8 +17,8 @@ Use "least capability" principle. Choose the simplest pattern that works:
 3. **Domain hook patterns**:
     - `use<Feature>()`: Read API, must be idempotent (e.g., `useLighter()`,
       `useTimeline()`)
-    - `use<Feature><Action>()` or `use<Action><Feature>()`: Commands, can have side-effects (e.g.,
-      `useCreateTimeline()`, `useLighterSetup()`)
+    - `use<Feature><Action>()` or `use<Action><Feature>()`: Commands, can have
+      side-effects (e.g., `useCreateTimeline()`, `useLighterSetup()`)
 4. **File layout**:
     - `packages/<domain>/model/atoms.ts` (not exported)
     - `packages/<domain>/model/selectors.ts` (not exported)

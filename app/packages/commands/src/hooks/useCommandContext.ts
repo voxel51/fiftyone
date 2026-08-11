@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { CommandContext, CommandContextManager } from "../context";
+import { CommandContext } from "../context";
 import { resolveContext } from "./utils";
 
 /**
@@ -11,7 +11,7 @@ import { resolveContext } from "./utils";
  */
 export const useCommandContext = (
   context?: CommandContext | string,
-  inheritCurrent?: boolean
+  inheritCurrent?: boolean,
 ): {
   context: CommandContext;
   activate: () => void;

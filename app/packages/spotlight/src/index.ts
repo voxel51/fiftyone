@@ -116,11 +116,11 @@ export default class Spotlight<K, V> extends EventTarget {
   addEventListener(type: "rejected", callback: EventCallback<Rejected>): void;
   addEventListener(
     type: "rowchange",
-    callback: EventCallback<RowChange<K>>
+    callback: EventCallback<RowChange<K>>,
   ): void;
   addEventListener(
     type: string,
-    callback: EventListenerOrEventListenerObject
+    callback: EventListenerOrEventListenerObject,
   ): void {
     super.addEventListener(type, callback, { signal: this.#aborter.signal });
   }
@@ -128,15 +128,15 @@ export default class Spotlight<K, V> extends EventTarget {
   removeEventListener(type: "load", callback: EventCallback<Load<K>>): void;
   removeEventListener(
     type: "rejected",
-    callback: EventCallback<Rejected>
+    callback: EventCallback<Rejected>,
   ): void;
   removeEventListener(
     type: "rowchange",
-    callback: EventCallback<RowChange<K>>
+    callback: EventCallback<RowChange<K>>,
   ): void;
   removeEventListener(
     type: string,
-    callback: EventListenerOrEventListenerObject
+    callback: EventListenerOrEventListenerObject,
   ): void {
     super.removeEventListener(type, callback);
   }
@@ -245,7 +245,7 @@ export default class Spotlight<K, V> extends EventTarget {
   createIter(): Iter {
     const focused = this.#focused;
     const inBackward = Boolean(
-      focused && this.#backward?.find(focused.description)
+      focused && this.#backward?.find(focused.description),
     );
     const ref = { section: inBackward ? this.#backward : this.#forward };
     return new IterImpl(
@@ -253,7 +253,7 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#createRequest(inBackward),
       this.#createRenderer(inBackward, true),
       ref.section,
-      this.#createSibling(ref)
+      this.#createSibling(ref),
     );
   }
 
@@ -407,7 +407,7 @@ export default class Spotlight<K, V> extends EventTarget {
   #handleHighMemoryUsage(
     items: ItemData<K, V>[],
     map: Map<string, number>,
-    average: number
+    average: number,
   ) {
     let bytes = ZERO;
     const threshold = this.#config.maxItemsSizeBytes;
@@ -474,7 +474,7 @@ export default class Spotlight<K, V> extends EventTarget {
       (zooming, dispatchOffset) =>
         this.#render({ dispatchOffset, zooming, ...this.#measure() }),
       () => this.#zooming(),
-      this.#config.horizontal
+      this.#config.horizontal,
     );
   }
 
@@ -640,7 +640,10 @@ export default class Spotlight<K, V> extends EventTarget {
     return (
       (this.#crossExtent /
         (this.#height *
-          Math.max(this.#config.rowAspectRatioThreshold(this.#crossExtent), ONE))) *
+          Math.max(
+            this.#config.rowAspectRatioThreshold(this.#crossExtent),
+            ONE,
+          ))) *
       ZOOMING_COEFFICIENT
     );
   }
@@ -739,7 +742,7 @@ export default class Spotlight<K, V> extends EventTarget {
     return await ref.section.next(
       this.#createRequest(false),
       this.#createRenderer(false, render),
-      this.#createSibling(ref)
+      this.#createSibling(ref),
     );
   }
 
@@ -752,7 +755,7 @@ export default class Spotlight<K, V> extends EventTarget {
     return await ref.section.next(
       this.#createRequest(true),
       this.#createRenderer(true, render),
-      this.#createSibling(ref)
+      this.#createSibling(ref),
     );
   }
 }

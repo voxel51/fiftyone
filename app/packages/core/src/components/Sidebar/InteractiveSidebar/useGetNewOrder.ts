@@ -26,7 +26,7 @@ export default function useGetNewOrder({
         items.current,
         lastOrder.current,
         direction,
-        isDisabled
+        isDisabled,
       );
 
       const currentDown = down.current;
@@ -81,6 +81,6 @@ export default function useGetNewOrder({
 
       return [...result, ...section, ...pool.slice(i)];
     },
-    [down, isDisabled, items, lastOrder, order]
+    [down, isDisabled, items, lastOrder, order],
   );
 }

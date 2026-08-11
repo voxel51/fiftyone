@@ -10,20 +10,21 @@ export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
   const datasetName = useRecoilValue(fos.datasetName);
   const extendedStagesUnsorted = fos.stringifyObj(
-    useRecoilValue(fos.extendedStagesUnsorted)
+    useRecoilValue(fos.extendedStagesUnsorted),
   );
   const fieldVisibilityStage = fos.stringifyObj(
-    useRecoilValue(fos.fieldVisibilityStage) || {}
+    useRecoilValue(fos.fieldVisibilityStage) || {},
   );
   const filters = fos.stringifyObj(useRecoilValue(fos.filters));
   const groupSlice = useRecoilValue(fos.groupSlice);
   const mediaField = useRecoilValue(fos.selectedMediaField(false));
+  const queryPerformanceSetting = useRecoilValue(fos.queryPerformanceSetting);
   const refresher = useRecoilValue(fos.refresher);
   const shouldRenderImaVidLooker = useRecoilValue(
-    fos.shouldRenderImaVidLooker(false)
+    fos.shouldRenderImaVidLooker(false),
   );
   const similarityParameters = fos.stringifyObj(
-    useRecoilValue(fos.similarityParameters) || {}
+    useRecoilValue(fos.similarityParameters) || {},
   );
   const sort = useRecoilValue(fos.gridSortBy);
   const view = fos.filterView(useRecoilValue(fos.view) ?? []);
@@ -35,9 +36,16 @@ export default function useRefreshers() {
     cropToContent;
     fieldVisibilityStage;
     mediaField;
+    queryPerformanceSetting;
     refresher;
     return uuid();
-  }, [cropToContent, fieldVisibilityStage, mediaField, refresher]);
+  }, [
+    cropToContent,
+    fieldVisibilityStage,
+    mediaField,
+    queryPerformanceSetting,
+    refresher,
+  ]);
 
   // the values reset the page, i.e. return to the top
   const pageReset = useMemoOne(() => {

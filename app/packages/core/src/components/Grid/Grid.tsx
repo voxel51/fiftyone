@@ -95,6 +95,13 @@ function Grid() {
   // Spotlight's built-in scrollbar so the two don't fight for the gutter.
   const [scrubberEnabled] = fos.useGridScrubber();
 
+  // `reset` is the grid's refresh signal. The callables below are routed
+  // through a ref so their identities are not rebuild triggers — a transient
+  // identity change from an unrelated state update must not destroy and
+  // recreate the grid
+  const refs = React.useRef({ get, page, renderer, setSample });
+  refs.current = { get, page, renderer, setSample };
+
   const spotlight = useMemoOne(() => {
     /** SPOTLIGHT REFRESHER */
     reset;
@@ -111,8 +118,11 @@ function Grid() {
     // closure is evaluated only when the user clicks, so by that time
     // `spotlight` is fully constructed.
     const spotlight = new Spotlight<number, fos.Sample>({
-      ...get(),
-      ...renderer,
+      ...refs.current.get(),
+
+      detachItem: (item) => refs.current.renderer.detachItem(item),
+      hideItem: (item) => refs.current.renderer.hideItem(item),
+      showItem: (item) => refs.current.renderer.showItem(item),
 
       maxRows: MAX_ROWS,
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
@@ -126,8 +136,9 @@ function Grid() {
       // absolute overlay with a gradient that fades over the grid's
       // top edge; without the offset, the first row collides with
       // the chrome and is hard to read through the gradient.
-      get: (next) => page(next),
-      onItemClick: (args) => setSample(args, () => spotlight.createIter()),
+      get: (next) => refs.current.page(next),
+      onItemClick: (args) =>
+        refs.current.setSample(args, () => spotlight.createIter()),
       // Swimlane mode: force one item per row so each grid row
       // becomes one swimlane (cover + divider + siblings strip).
       // Threshold 0 always breaks the row at every item; default
@@ -138,14 +149,10 @@ function Grid() {
   }, [
     cache,
     autosizing,
-    get,
     maxBytes,
-    page,
-    renderer,
     reset,
     resizing,
     scrubberEnabled,
-    setSample,
     spacing,
     useSwimlanes,
     zoom,

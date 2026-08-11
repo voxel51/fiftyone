@@ -1,10 +1,6 @@
-import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import {
-  current,
-  savedLabel,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import * as fos from "@fiftyone/state";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { type PrimitiveAtom, useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -22,24 +18,21 @@ export const currentEditingCuboidAtom =
  * Hook to set editing atom for new cuboids
  */
 export const useSetEditingToNewCuboid = () => {
-  const setEditing = useSetAtom(editingAtom);
   const resetCurrentEditing = useResetAtom(currentEditingCuboidAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
 
   const setCurrentEditing = useSetAtom(currentEditingCuboidAtom);
-  const currentAnnotationSidebar = useAtomValue(current);
+  const { clear, readEditing, select } = useAnnotationContext();
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      setEditing(null);
+      clear();
     };
-  }, [resetCurrentEditing]);
-
-  const jotaiStore = getDefaultStore();
+  }, [resetCurrentEditing, clear]);
 
   return useCallback(
     (labelId: string, transformData: CuboidTransformData, labelClass = "") => {
@@ -47,12 +40,12 @@ export const useSetEditingToNewCuboid = () => {
 
       // If what we already have in sidebar is same as the new label, don't do anything
       // Because it'll be handled by reverse sync
-      if (currentAnnotationSidebar?.data._id === labelId) {
+      if (readEditing().selected?.label.data._id === labelId) {
         return;
       }
 
       // Needs a reset...otherwise sometimes gets contaminated by the previous label
-      setEditing(null);
+      clear();
 
       const rotation: [number, number, number] = transformData.quaternion
         ? quaternionToRadians(transformData.quaternion)
@@ -73,9 +66,9 @@ export const useSetEditingToNewCuboid = () => {
         ...defaultCuboidLabelData,
       };
 
-      // Note: We use 'as any' here because the 3D cuboid overlay structure differs
-      // from the 2D DetectionOverlay class. The 3D annotation system uses a simpler
-      // object-based overlay pattern similar to polylines.
+      // The 3D cuboid overlay structure differs from the 2D DetectionOverlay
+      // class — the 3D annotation system uses a simpler object-based overlay
+      // pattern similar to polylines — so the cast goes through unknown.
       setCurrentEditing({
         isNew: true,
         data: stagedCuboidLabelData,
@@ -94,12 +87,24 @@ export const useSetEditingToNewCuboid = () => {
             }
           },
         },
-      } as any);
+      } as unknown as fos.AnnotationLabel);
 
-      setEditing(currentEditingCuboidAtom as any);
-
-      (jotaiStore as any).set(savedLabel, defaultCuboidLabelData);
+      // setCurrentEditing above populated the cuboid atom; select() snapshots
+      // its data into savedLabel — the prior explicit set(savedLabel, ...) is
+      // redundant since defaultCuboidLabelData and stagedCuboidLabelData are
+      // structurally equal.
+      select(
+        currentEditingCuboidAtom as unknown as PrimitiveAtom<fos.AnnotationLabel>,
+      );
     },
-    [currentSampleId, currentActiveField, currentAnnotationSidebar]
+    [
+      clear,
+      clearTransformState,
+      currentActiveField,
+      currentSampleId,
+      readEditing,
+      select,
+      setCurrentEditing,
+    ],
   );
 };

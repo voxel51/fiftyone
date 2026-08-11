@@ -35,6 +35,13 @@ Each guide is designed as a sequential learning experience with navigation betwe
 .. Add guide cards below
 
 .. customcarditem::
+    :header: Getting Started with Enterprise
+    :description: Create your first dataset in FiftyOne Enterprise. Learn to configure cloud credentials, install the SDK, import samples, and schedule metadata computation.
+    :link: ../enterprise/getting_started.html
+    :image: https://docs.voxel51.com/_images/getting_started_cloud_creds.gif
+    :tags: FiftyOne-Enterprise
+
+.. customcarditem::
     :header: Auto Labeling Guide
     :description: Bootstrap datasets rapidly with FiftyOne Auto Labeling. Generate auto labels with foundation models and systematically review predictions with confidence-based filtering and embeddings.
     :link: auto_labeling/index.html
@@ -129,6 +136,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
    :maxdepth: 1
    :hidden:
 
+   Getting Started with Enterprise <../enterprise/getting_started>
    Auto Labeling Guide <auto_labeling/index>
    Annotation Guide __SUB_NEW__ <annotation/index>
    Object Detection Guide <object_detection/index>

@@ -41,7 +41,7 @@ export class RowChange<K> extends Event {
   constructor(
     readonly at: ID,
     readonly page: K,
-    readonly offset: number
+    readonly offset: number,
   ) {
     super("rowchange");
   }

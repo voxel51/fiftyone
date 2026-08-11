@@ -24,12 +24,24 @@ const SidebarList: React.FC = () => {
   }
 
   const [width, setWidth] = useState(WIDTH);
+  // Temporal tags are a multimodal-only concept, so only surface the color
+  // entry for multimodal datasets (matches the sidebar filter gating).
+  const isMultimodal = useRecoilValue(fos.isMultimodalDataset);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.GLOBAL, ACTIVE_FIELD.JSON], name: "general" },
-    { paths: [{ path: "tags" }, { path: "_label_tags" }], name: "tags" },
+    {
+      paths: isMultimodal
+        ? [
+            { path: "tags" },
+            { path: "_label_tags" },
+            { path: "_temporal_tags" },
+          ]
+        : [{ path: "tags" }, { path: "_label_tags" }],
+      name: "tags",
+    },
   ];
   const fieldGroups = useRecoilValue(
-    fos.sidebarGroups({ modal: false, loading: false })
+    fos.sidebarGroups({ modal: false, loading: false }),
   )
     .filter((g) => g.name !== "tags")
     .map((group) => ({
@@ -39,7 +51,7 @@ const SidebarList: React.FC = () => {
 
   const groups = [...stableGroup, ...fieldGroups];
   const [groupOpen, setGroupOpen] = React.useState(
-    new Array(groups.length).fill(true)
+    new Array(groups.length).fill(true),
   );
   const handleGroupClick = (_, idx) => {
     setGroupOpen((prev) => ({ ...prev, [idx]: !prev[idx] }));
@@ -50,7 +62,7 @@ const SidebarList: React.FC = () => {
       async (value: ACTIVE_FIELD | { path: string }) => {
         set(activeColorEntry, value);
       },
-    []
+    [],
   );
 
   return (
@@ -68,7 +80,7 @@ const SidebarList: React.FC = () => {
         bottomLeft: false,
         topLeft: false,
       }}
-      onResizeStop={(e, direction, ref, { width: d }) => {
+      onResizeStop={(e, _direction, _ref, { width: d }) => {
         setWidth(width + d);
         // reset sidebar width on double click
         if (e.detail === 2) setWidth(WIDTH);
@@ -126,8 +138,8 @@ const SidebarList: React.FC = () => {
                           ? typeof entry === "string"
                             ? activeEntry === entry
                             : typeof activeEntry === "object"
-                            ? activeEntry.path === entry.path
-                            : false
+                              ? activeEntry.path === entry.path
+                              : false
                           : false
                       }
                       onClick={() => onSelectField(entry)}

@@ -1,6 +1,12 @@
 name: Test
 
-on: workflow_call
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: JSON array of Python versions for the Python test matrix
+        type: string
+        default: '["3.10", "3.11", "3.12", "3.13"]'
 
 jobs:
   test-app:
@@ -10,6 +16,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
           submodules: true
           sparse-checkout: |
             /*
@@ -21,10 +29,8 @@ jobs:
         with:
           node-version: 22
 
-      - name: Enable corepack
-        run: corepack enable
-      - name: Prepare yarn 4
-        run: corepack prepare yarn@4.9.1 --activate
+      - name: Prepare yarn
+        uses: ./.github/actions/setup-yarn
 
       - name: Cache
         id: node-cache
@@ -35,7 +41,6 @@ jobs:
             app/.yarn/cache
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
       - name: Install
-        if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
       - name: Run
         run: cd app && yarn test
@@ -43,6 +48,15 @@ jobs:
   test-python:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    # The prebaked image (built by build-ci-images.yml) carries the matching
+    # Python plus fiftyone's dependency tree and ffmpeg, so test jobs skip
+    # all toolchain setup.
+    container:
+      # fiftyone-teams overrides the image name via repo var (superset deps)
+      image: ${{ vars.FIFTYONE_TEST_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-test' }}:${{ matrix.python }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     env:
       FIFTYONE_DO_NOT_TRACK: true
       # Assuming no pytest should take more than 60 seconds
@@ -52,10 +66,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-        python:
-          - "3.10"
-          - "3.11"
-          - "3.12"
+        python: ${{ fromJSON(inputs.python-versions) }}
     defaults:
       run:
         shell: bash
@@ -63,50 +74,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
           sparse-checkout: |
             /*
             !/docs/**
           sparse-checkout-cone-mode: false
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Setup (UV)
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: ${{ matrix.python }}
-          # TODO: we are unsure if cache is working correctly here
-          enable-cache: true
-          cache-dependency-glob: |
-            requirements/common.txt
-            requirements/github.txt
-            requirements/test.txt
-      - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false # e2e test failed when `true`
-      - name: Install requirements
-        run: |
-          uv pip install --system -U wheel setuptools
-          uv pip install --system -r requirements/github.txt
       - name: Install fiftyone
+        # dependencies are baked into the image; this only builds fiftyone
+        # itself from the PR's source (plus any deps added since the last
+        # image build)
         run: |
-          uv pip install --system . -r requirements/github.txt
+          uv pip install --system '.[multimodal]' -r requirements/github.txt
       - name: Configure
-        id: test_config
         run: |
           python tests/utils/setup_config.py
-          python tests/utils/github_actions_flags.py
-
-      - name: Setup FFmpeg
-        uses: ./.github/actions/setup-ffmpeg
 
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in
       # this workflow
       - name: Run tests
         run: |
+          mkdir -p junit
           python tests/utils/pytest_wrapper.py tests/ --verbose \
+            --junitxml junit/main.xml \
             --cov --cov-report xml \
             --ignore tests/benchmarking/ \
             --ignore tests/isolated/ \
@@ -114,17 +105,37 @@ jobs:
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
       - name: Upload
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.11' }}
-        uses: codecov/codecov-action@v6
+        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.13' }}
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           flags: python
       - name: Run no wrapper tests
         run: |
-          pytest tests/no_wrapper --verbose
+          pytest tests/no_wrapper --verbose --junitxml junit/no-wrapper.xml
       # Intended to run even if the tests above failed
       - name: Run isolated tests
         if: success() || failure()
+        # every file runs even if one fails, matching xargs semantics, with
+        # a junit report per file
         run: |
-          find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
+          mkdir -p junit
+          fail=0
+          while IFS= read -r -d '' f; do
+            rel="${f#tests/isolated/}"
+            mkdir -p "junit/isolated/$(dirname "$rel")"
+            python tests/utils/pytest_wrapper.py "$f" --verbose \
+              --junitxml "junit/isolated/${rel%.py}.xml" || fail=1
+          done < <(find tests/isolated/ -name '*.py' -print0)
+          exit $fail
+      - name: Upload pytest results
+        # junit reports feed the python section of the authoritative CI
+        # comment (.github/scripts/python-section.mjs)
+        if: success() || failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pytest-results-${{ matrix.python }}
+          path: junit/
+          if-no-files-found: ignore
+          retention-days: 3

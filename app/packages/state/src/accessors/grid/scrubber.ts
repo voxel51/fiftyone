@@ -63,7 +63,7 @@ export const useCommitGridScrubCursor = () =>
         const id = (await snapshot.getPromise(datasetId)) ?? "";
         set(gridScrubCursor(id), cursor);
       },
-    []
+    [],
   );
 
 /**

@@ -46,11 +46,25 @@ export class GridPanelPom {
 
   async open(panelName: GridPanelName) {
     await this.newPanelBtn.click();
+    // Open full-screen (Shift+Alt) so the panel fills the view as it did
+    // before split-by-default. Keeps layout-sensitive assertions stable and
+    // independent of the default split behavior.
+    await this.getPanelOption(panelName).click({ modifiers: ["Alt", "Shift"] });
+  }
+
+  async openInSplit(panelName: GridPanelName) {
+    await this.newPanelBtn.click();
+    // a plain click opens the panel side-by-side with the current view,
+    // splitting the space layout
     await this.getPanelOption(panelName).click();
   }
 
   async close() {
     await this.closePanelBtn.click();
+  }
+
+  async closeTab(panelName: GridPanelName) {
+    await this.getTab(panelName).getByTitle("Close").click();
   }
 
   async bringPanelToForeground(panelName: GridPanelName) {

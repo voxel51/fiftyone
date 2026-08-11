@@ -148,7 +148,7 @@ export type Action<State extends BaseState> = (
   update: StateUpdate<State>,
   dispatchEvent: DispatchEvent,
   eventKey?: string,
-  shiftKey?: boolean
+  shiftKey?: boolean,
 ) => void;
 
 export enum ControlEventKeyType {
@@ -193,13 +193,12 @@ export interface BaseOptions {
   };
   selectedLabelTags?: string[];
   attributeVisibility: object;
-  showConfidence: boolean;
   showControls: boolean;
-  showIndex: boolean;
   showJSON: boolean;
   showHelp: boolean;
-  showLabel: boolean;
   showOverlays: boolean;
+  showPatchLabels: boolean;
+  shownLabelAttributes: { [path: string]: string[] };
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
@@ -462,8 +461,8 @@ export type StateUpdate<State extends BaseState> = (
   postUpdate?: (
     state: Readonly<State>,
     overlays: Readonly<Overlay<State>[]>,
-    sample: object
-  ) => void
+    sample: object,
+  ) => void,
 ) => void;
 
 export const DEFAULT_BASE_OPTIONS: BaseOptions = {
@@ -474,12 +473,11 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selectedLabelTypes: {},
   labelSelectionStyle: { default: "dashed", alt: "dashed" },
   selectedLabelTags: undefined,
-  showConfidence: false,
   showControls: false,
-  showIndex: false,
   showJSON: false,
   showHelp: false,
-  showLabel: false,
+  showPatchLabels: false,
+  shownLabelAttributes: {},
   showTooltip: false,
   onlyShowHoveredLabel: false,
   filter: null,
@@ -507,7 +505,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   skeletons: {},
   showSkeletons: true,
   showOverlays: true,
-  pointFilter: (path: string, point: Point) => true,
+  pointFilter: (_path: string, _point: Point) => true,
   attributeVisibility: {},
   mediaFallback: false,
   shouldHandleKeyEvents: true,

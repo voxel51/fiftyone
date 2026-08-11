@@ -12,7 +12,7 @@ const EXECUTION_STORE_SUBSCRIBE_PATH = "/operators/subscribe-execution-store";
 export type ExecutionStoreSubscribeCallback<T> = (
   key: string,
   value: T,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
 ) => void;
 
 /**
@@ -78,7 +78,7 @@ export const useExecutionStoreSubscribe = <T>({
     } catch (error) {
       console.error(
         "Error parsing execution store subscribe event data:",
-        error
+        error,
       );
     }
   }, []);
@@ -124,14 +124,14 @@ export const useExecutionStoreSubscribe = <T>({
               onclose: onCloseHandler,
             },
             abortControllerRef.current.signal,
-            data
+            data,
           );
           setIsSubscriptionHealthy(true);
         } catch (error) {
           console.error("Error subscribing to execution store:", error);
         }
       },
-    [operatorUri, datasetId, onMessageHandler, onErrorHandler, onCloseHandler]
+    [operatorUri, datasetId, onMessageHandler, onErrorHandler, onCloseHandler],
   );
 
   const unsubscribe = useCallback(() => {

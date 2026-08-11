@@ -36,7 +36,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           event,
           item,
         }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"],
-        getIter: () => SpotlightIter
+        getIter: () => SpotlightIter,
       ) => {
         if (event.ctrlKey || event.metaKey) {
           set(atoms.selectedSamples, (selected) => {
@@ -46,7 +46,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
             } else {
               newSelected.set(
                 item.id.description,
-                event.altKey ? "alt" : "default"
+                event.altKey ? "alt" : "default",
               );
             }
 
@@ -60,10 +60,10 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
         // invoking the click callback, so the iter inherits that focus.
         const cursor = getIter();
 
-        const hasGroupSlices = await snapshot.getPromise(
-          groupAtoms.hasGroupSlices
-        );
-        const groupField = await snapshot.getPromise(groupAtoms.groupField);
+        const [hasGroupSlices, groupField] = await Promise.all([
+          snapshot.getPromise(groupAtoms.hasGroupSlices),
+          snapshot.getPromise(groupAtoms.groupField),
+        ]);
 
         const resolve = async (request: Promise<ID | undefined>) => {
           const id = await request;
@@ -105,16 +105,35 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           };
         };
 
+        // Soft cursor walks resolve the target id (loading pages on the
+        // way) without committing focus, so peeking never navigates. The
+        // store maps ids to paginated sample nodes ({ sample, urls, ... }).
+        const peek = async (offset: number) => {
+          const id = await cursor.next(offset, true);
+          if (!id) {
+            return null;
+          }
+
+          const node = store.get(id);
+          if (!node) {
+            return null;
+          }
+
+          return { id: id.description, sample: node };
+        };
+
         const hasNext = Boolean(await cursor.next(1, true));
         const hasPrevious = Boolean(await cursor.next(-1, true));
 
-        setModalState({
+        await setModalState({
           next,
+          peek,
           previous,
-        })
-          .then(() => resolve(Promise.resolve(item.id)))
-          .then((data) => setExpandedSample({ ...data, hasNext, hasPrevious }));
+        });
+
+        const data = await resolve(Promise.resolve(item.id));
+        await setExpandedSample({ ...data, hasNext, hasPrevious });
       },
-    [setExpandedSample, setModalState]
+    [setExpandedSample, setModalState],
   );
 };

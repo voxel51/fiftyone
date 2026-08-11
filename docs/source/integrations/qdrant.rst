@@ -5,6 +5,10 @@ Qdrant Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.20.0
+    :enterprise_version: 1.2
+
 `Qdrant <https://qdrant.tech>`_ is one of the most popular vector search
 engines available, and we've made it easy to use Qdrant's vector search
 capabilities on your computer vision data directly from FiftyOne!

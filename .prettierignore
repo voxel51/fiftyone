@@ -1,7 +1,16 @@
-app/packages/app
-app/packages/spotlight
+# Generated, vendored, and cache output — never format
+node_modules
+**/dist
+**/build
+**/__generated__
+**/coverage
+**/playwright-report
+**/.pytest_cache
+**/.claude
+docs/source/_static
+docs/theme
+fiftyone/server/static
+
+# Specific files
 *.html
 voxel51-website.js
-**/__generated__
-**/dist
-docs/source/_static/css/custom.css

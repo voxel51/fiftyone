@@ -1,10 +1,18 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { Duration } from "src/oss/utils";
-import { EventUtils } from "src/shared/event-utils";
+import { ArmedEvent, EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
 import { GridTaggerPom } from "../action-row/tagger/grid-tagger";
 import { UrlPom } from "../url";
+
+/**
+ * A grid tile is either a looker or a custom renderer (e.g. multimodal).
+ * Sample-level operations address tiles; looker-specific accessors exist only
+ * for looker internals (canvas screenshots, looker checkbox markup).
+ */
+const TILE_SELECTOR = "[data-cy=looker], [data-cy=grid-custom-renderer]";
+const CUSTOM_RENDERER_TEST_ID = "grid-custom-renderer";
 
 export class GridPom {
   readonly assert: GridAsserter;
@@ -17,7 +25,7 @@ export class GridPom {
 
   constructor(
     public readonly page: Page,
-    private readonly eventUtils: EventUtils
+    private readonly eventUtils: EventUtils,
   ) {
     this.assert = new GridAsserter(this);
     this.url = new UrlPom(page, eventUtils);
@@ -36,8 +44,16 @@ export class GridPom {
     return this.locator.getByTestId("spotlight-section-forward");
   }
 
+  getNthTile(n: number) {
+    return this.locator.locator(TILE_SELECTOR).nth(n);
+  }
+
   getNthLooker(n: number) {
     return this.locator.getByTestId("looker").nth(n);
+  }
+
+  private async isCustomRendererTile(tile: Locator) {
+    return (await tile.getAttribute("data-cy")) === CUSTOM_RENDERER_TEST_ID;
   }
 
   async getNthCheckbox(n: number) {
@@ -45,7 +61,14 @@ export class GridPom {
   }
 
   async toggleSelectNthSample(n: number) {
-    await this.getNthLooker(n).click({ position: { x: 10, y: 5 } });
+    const tile = this.getNthTile(n);
+    if (await this.isCustomRendererTile(tile)) {
+      // the selection checkbox is revealed on tile hover
+      await tile.hover();
+      await tile.getByRole("checkbox").click();
+      return;
+    }
+    await tile.click({ position: { x: 10, y: 5 } });
   }
 
   async toggleSelectFirstSample() {
@@ -53,7 +76,14 @@ export class GridPom {
   }
 
   async openNthSample(n: number) {
-    await this.getNthLooker(n).click({ position: { x: 10, y: 80 } });
+    const tile = this.getNthTile(n);
+    if (await this.isCustomRendererTile(tile)) {
+      // the open button is revealed on tile hover
+      await tile.hover();
+      await tile.getByRole("button", { name: "Open sample modal" }).click();
+      return;
+    }
+    await tile.click({ position: { x: 10, y: 80 } });
   }
 
   async openFirstSample() {
@@ -90,26 +120,48 @@ export class GridPom {
   }
 
   /**
-   * @deprecated Use `getWaitForGridRefreshPromise` instead.
+   * @deprecated Use `armGridRefresh` instead.
    */
   async waitForGridToLoad() {
-    return this.page.waitForSelector("[data-cy=looker]", {
+    return this.page.waitForSelector(TILE_SELECTOR, {
       timeout: 2000,
     });
   }
 
-  async getWaitForGridRefreshPromise() {
-    const refreshStartPromise =
-      this.eventUtils.getEventReceivedPromiseForPredicate("grid-unmount");
-    const refreshEndPromise =
-      this.eventUtils.getEventReceivedPromiseForPredicate("grid-mount");
-    return Promise.all([refreshStartPromise, refreshEndPromise]);
+  /**
+   * Install counters for grid lifecycle events at document start — arm
+   * BEFORE navigating to the page. Counting from document start makes the
+   * baseline exact: initial page load contributes one mount and no unmount,
+   * and each grid refresh thereafter contributes one unmount and one mount.
+   * Arming after load instead would race the initial mount event, which
+   * dispatches from an effect and can land after the tiles are visible.
+   */
+  async armLifecycleCounters() {
+    return {
+      mounts: await this.eventUtils.initCounter("grid-mount"),
+      unmounts: await this.eventUtils.initCounter("grid-unmount"),
+    };
+  }
+
+  /**
+   * Arm listeners for a full grid refresh (unmount then remount). Await the
+   * arming BEFORE the action that refreshes the grid, then await the handle's
+   * `received` after it.
+   */
+  async armGridRefresh(): Promise<ArmedEvent> {
+    const unmount = await this.eventUtils.arm("grid-unmount");
+    const mount = await this.eventUtils.arm("grid-mount");
+    return new ArmedEvent(
+      Promise.all([unmount.received, mount.received]).then(
+        (): void => undefined,
+      ),
+    );
   }
 
   async run<T>(wrap: () => Promise<T>): Promise<T> {
-    const promise = this.getWaitForGridRefreshPromise();
+    const refresh = await this.armGridRefresh();
     const result = await wrap();
-    await promise;
+    await refresh.received;
     return result;
   }
 }
@@ -117,11 +169,9 @@ export class GridPom {
 class GridAsserter {
   constructor(private readonly gridPom: GridPom) {}
 
-  async isLookerCountEqualTo(n: number) {
-    const lookersCount = await this.gridPom.locator
-      .getByTestId("looker")
-      .count();
-    expect(lookersCount).toBe(n);
+  async isTileCountEqualTo(n: number) {
+    const tileCount = await this.gridPom.locator.locator(TILE_SELECTOR).count();
+    expect(tileCount).toBe(n);
   }
 
   async isNthSampleSelected(n: number) {
@@ -132,17 +182,15 @@ class GridAsserter {
   async nthSampleHasTagValue(
     n: number,
     tagName: string,
-    expectedTagValue: string
+    expectedTagValue: string,
   ) {
-    const tagElement = this.gridPom
-      .getNthLooker(n)
-      .getByTestId(`tag-${tagName}`);
+    const tagElement = this.gridPom.getNthTile(n).getByTestId(`tag-${tagName}`);
     await expect(tagElement).toHaveText(expectedTagValue);
   }
 
   async isSelectionCountEqualTo(n: number) {
     const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
-      "action-manage-selected"
+      "action-manage-selected",
     );
 
     if (n === 0) {

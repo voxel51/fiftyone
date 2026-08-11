@@ -61,7 +61,7 @@ export const useIsGroupDataset = () => {
   return useRecoilValue(isGroup);
 };
 
-export type GroupSliceMediaType = "video" | "3d" | "image";
+export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
 
 /**
  * Hook which provides a function to get the default keypoint skeleton for a
@@ -72,7 +72,7 @@ export const useGetKeypointSkeleton = () => {
     ({ snapshot }) =>
       (field: string) =>
         snapshot.getLoadable(skeleton(field)).getValue(),
-    []
+    [],
   );
 };
 
@@ -92,7 +92,7 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
       mediaTypes.some((type) => {
         if (type === "3d") return is3d(mediaType);
         return mediaType === type;
-      })
+      }),
     )
     .map(({ name }) => name);
 };

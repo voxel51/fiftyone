@@ -113,7 +113,7 @@ export default class Row<K, V> {
 
     this.#container.style[this.#axis.primaryExtentAttr] = pixels(extent);
     this.#container.style[this.#axis.crossExtentAttr] = pixels(
-      this.#crossExtent
+      this.#crossExtent,
     );
   }
 
@@ -312,7 +312,7 @@ export default class Row<K, V> {
    */
   get #singleAspectRatio() {
     const set = new Set(
-      this.#row.map(({ item }) => this.#axis.tilingAR(item.aspectRatio))
+      this.#row.map(({ item }) => this.#axis.tilingAR(item.aspectRatio)),
     );
     return set.size === ONE
       ? this.#axis.tilingAR(this.#row[ZERO].item.aspectRatio)

@@ -1,12 +1,14 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
+import type { TimelineMode } from "../../lib/playback/types";
 import LoopBounds from "./LoopBounds";
 
 function renderInProvider(opts: {
   duration: number;
   defaultLoopStart?: number;
   defaultLoopEnd?: number;
+  mode?: TimelineMode;
 }) {
   return render(
     <PlaybackProvider
@@ -14,9 +16,10 @@ function renderInProvider(opts: {
       stepInterval={1 / 30}
       defaultLoopStart={opts.defaultLoopStart}
       defaultLoopEnd={opts.defaultLoopEnd}
+      mode={opts.mode}
     >
       <LoopBounds />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -118,5 +121,27 @@ describe("LoopBounds", () => {
     expect(screen.getByTitle("Reset loop start to 0")).toBeTruthy();
     expect(screen.getByTitle("Reset loop end to duration")).toBeTruthy();
     expect(screen.getAllByRole("button")).toHaveLength(2);
+  });
+
+  it("renders frame numbers for loop bounds in sequence mode", () => {
+    renderInProvider({
+      duration: 1,
+      defaultLoopStart: 0.2,
+      defaultLoopEnd: 0.8,
+      mode: { kind: "sequence", fps: 10 },
+    });
+    expect(screen.getByText("#2")).toBeTruthy();
+    expect(screen.getByText("#8")).toBeTruthy();
+  });
+
+  it("renders wall-clock time for loop bounds in absolute mode", () => {
+    renderInProvider({
+      duration: 10,
+      defaultLoopStart: 1,
+      defaultLoopEnd: 9,
+      mode: { kind: "absolute", epochAnchorMs: 0 },
+    });
+    expect(screen.getByText("00:00:01.000")).toBeTruthy();
+    expect(screen.getByText("00:00:09.000")).toBeTruthy();
   });
 });

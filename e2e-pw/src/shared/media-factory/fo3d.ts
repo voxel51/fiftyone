@@ -28,11 +28,11 @@ export const createFo3d = ({
     metalness: 0,
     roughness: 1,
     opacity: 1,
-    vertexColors: true,
     wireframe: false,
   };
 
   const scene: Record<string, unknown> = {
+    __FO3D_VERSION: "0",
     _type: "Scene",
     name: "root",
     visible: true,

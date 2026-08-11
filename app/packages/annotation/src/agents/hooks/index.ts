@@ -5,6 +5,8 @@ export * from "./useAgentSelector";
 export * from "./useAIAnnotationActionGroup";
 export * from "./useAnnotationAgent";
 export * from "./useApplyInferenceResult";
+export * from "./useClearPointPrompts";
+export * from "./useEndPointSession";
 export { useInferenceStatus } from "./useInferenceStatus";
 export type {
   InferenceError,
@@ -13,5 +15,7 @@ export type {
 } from "./useInferenceStatus";
 export * from "./useRegisterAgentLifecycleEvents";
 export * from "./useSampleDescriptor";
+export * from "./useSegmentBitmapSource";
 export * from "./usePointSelection";
+export * from "./usePointSelectionSeed";
 export * from "./useToolsContext";

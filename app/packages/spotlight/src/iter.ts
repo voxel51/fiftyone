@@ -33,7 +33,7 @@ export default class IterImpl<K, V> implements Iter {
     request: Request<K, V>,
     renderer: Renderer<K, V>,
     section: Section<K, V>,
-    sibling: Sibling<K, V>
+    sibling: Sibling<K, V>,
   ) {
     this.#focus = focus;
     this.#request = request;
@@ -70,7 +70,7 @@ export default class IterImpl<K, V> implements Iter {
         result = await section.first(
           this.#request,
           this.#renderer,
-          this.#sibling
+          this.#sibling,
         );
       }
 

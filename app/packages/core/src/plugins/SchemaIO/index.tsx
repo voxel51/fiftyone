@@ -18,7 +18,7 @@ export interface SchemaIOComponentProps {
     value: unknown,
     schema?: SchemaType,
     updatedState?: unknown,
-    liteValue?: unknown
+    liteValue?: unknown,
   ) => void;
 
   // SmartForm only

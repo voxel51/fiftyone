@@ -7,6 +7,7 @@ import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { isInKeypointsField } from "../state";
 import useIncompleteResults from "../use-incomplete-results";
+import useLabelAttributeIcon from "../use-label-attribute-icon";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Checkboxes from "./Checkboxes";
@@ -46,6 +47,11 @@ interface Props {
   named?: boolean;
   resultsAtom: ResultsAtom;
   selectedAtom: RecoilState<(string | null)[]>;
+  /**
+   * Optional per-value color for the checkbox dot (e.g. temporal-tag colors),
+   * so each value shows its own color rather than the shared field color.
+   */
+  resultColor?: (value: string | null) => string;
 }
 
 const useName = (path: string) => {
@@ -53,8 +59,10 @@ const useName = (path: string) => {
   name = path.startsWith("tags")
     ? "sample tag"
     : path.startsWith("_label_tags")
-    ? "label tag"
-    : name;
+      ? "label tag"
+      : path.startsWith("_temporal_tags")
+        ? "temporal tag"
+        : name;
 
   return name;
 };
@@ -68,6 +76,7 @@ const StringFilter = ({
   path,
   resultsAtom,
   selectedAtom,
+  resultColor,
 }: Props) => {
   const name = useName(path);
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
@@ -75,7 +84,7 @@ const StringFilter = ({
   const { results, showSearch, useSearch } = useSelected(
     modal,
     path,
-    resultsAtom
+    resultsAtom,
   );
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
@@ -84,6 +93,7 @@ const StringFilter = ({
 
   const footer = useIncompleteResults(path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
+  const attributeIcon = useLabelAttributeIcon(modal, named, path, color);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
@@ -102,7 +112,10 @@ const StringFilter = ({
           template={({ label, hoverTarget }) => (
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
-              {icon}
+              <span style={{ alignItems: "center", display: "flex" }}>
+                {icon}
+                {attributeIcon}
+              </span>
             </NamedStringFilterHeader>
           )}
         />
@@ -131,6 +144,7 @@ const StringFilter = ({
         )}
         <Checkboxes
           color={color}
+          resultColor={resultColor}
           excludeAtom={excludeAtom}
           modal={modal}
           isMatchingAtom={isMatchingAtom}

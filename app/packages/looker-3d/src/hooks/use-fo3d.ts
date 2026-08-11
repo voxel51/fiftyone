@@ -38,7 +38,7 @@ const stripPreTransformedAttributes = (node: FoSceneRawNode) => {
 
 const normalizeFo3dRawData = (
   rawData: FiftyoneSceneRawJson,
-  fo3dRoot: string | null
+  fo3dRoot: string | null,
 ): FiftyoneSceneRawJson => {
   const normalizedData = cloneRawData(rawData);
 
@@ -47,13 +47,13 @@ const normalizeFo3dRawData = (
   if (fo3dRoot && normalizedData.background?.image) {
     normalizedData.background.image = getResolvedUrlForFo3dAsset(
       normalizedData.background.image,
-      fo3dRoot
+      fo3dRoot,
     );
   }
 
   if (fo3dRoot && normalizedData.background?.cube) {
     normalizedData.background.cube = normalizedData.background.cube.map(
-      (cubePath) => getResolvedUrlForFo3dAsset(cubePath, fo3dRoot)
+      (cubePath) => getResolvedUrlForFo3dAsset(cubePath, fo3dRoot),
     ) as [string, string, string, string, string, string];
   }
 
@@ -62,12 +62,12 @@ const normalizeFo3dRawData = (
 
 const getSampleMapForSlices = (
   sampleMap: Record<string, fos.ModalSample>,
-  slices: string[]
+  slices: string[],
 ) => {
   return Object.fromEntries(
     slices
       .map((slice) => [slice, sampleMap[slice]] as const)
-      .filter(([, currentSample]) => Boolean(currentSample))
+      .filter(([, currentSample]) => Boolean(currentSample)),
   );
 };
 
@@ -134,26 +134,26 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   const filepath = sample.sample.filepath;
   const mediaPath = useMemo(
     () => getMediaPathForFo3dSample(sample, mediaField),
-    [sample, mediaField]
+    [sample, mediaField],
   );
   const isRealFo3dScene = useMemo(
     () => isFo3dSamplePath(mediaPath) || isFo3dSamplePath(filepath),
-    [mediaPath, filepath]
+    [mediaPath, filepath],
   );
   const fo3dPath = useMemo(
     () => (isFo3dSamplePath(mediaPath) ? mediaPath : filepath),
-    [mediaPath, filepath]
+    [mediaPath, filepath],
   );
   const fo3dRoot = useMemo(
     () => (isRealFo3dScene ? getFo3dRoot(fo3dPath) : null),
-    [fo3dPath, isRealFo3dScene]
+    [fo3dPath, isRealFo3dScene],
   );
   const url = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
   const isWrappableDirectAsset = useMemo(
     () =>
       isWrappableDirect3dSamplePath(mediaPath) ||
       isWrappableDirect3dSamplePath(filepath),
-    [mediaPath, filepath]
+    [mediaPath, filepath],
   );
   const groupedDirectSampleMap = useMemo(() => {
     if (!isGroup) {
@@ -163,15 +163,15 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     if (group3dState.activeSlices.length) {
       return getSampleMapForSlices(
         group3dState.allSampleMap,
-        group3dState.activeDirectSlices
+        group3dState.activeDirectSlices,
       );
     }
 
     const realFo3dSliceSet = new Set(group3dState.realFo3dSlices);
     return Object.fromEntries(
       Object.entries(group3dState.allSampleMap).filter(
-        ([slice]) => !realFo3dSliceSet.has(slice)
-      )
+        ([slice]) => !realFo3dSliceSet.has(slice),
+      ),
     );
   }, [
     group3dState.activeDirectSlices,
@@ -241,7 +241,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
           console.error("Failed to fetch fo3d scene:", error);
           setRawData(null);
           setLoadError(
-            error instanceof Error ? error : new Error(String(error))
+            error instanceof Error ? error : new Error(String(error)),
           );
           setIsLoading(false);
         });

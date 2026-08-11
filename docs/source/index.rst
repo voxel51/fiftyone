@@ -92,7 +92,7 @@ FiftyOne
       <span class="quick-link-icon"></span>
       Label my data <span class="new-badge">NEW</span>
     </a>
-    <a href="user_guide/evaluation.html" class="quick-link-item">
+    <a href="user_guide/evaluation/index.html" class="quick-link-item">
       <span class="quick-link-icon"></span>
       Evaluate my model
     </a>
@@ -521,24 +521,58 @@ _________
   </script>
 
 .. toctree::
+   :caption: Get Started
    :maxdepth: 1
    :hidden:
 
    Overview <self>
-   FiftyOne Enterprise 🚀 <enterprise/index>
    Installation <installation/index>
    Getting Started <getting_started/index>
-   Tutorials <tutorials/index>
-   Recipes <recipes/index>
-   Cheat Sheets <cheat_sheets/index>
-   User Guide <user_guide/index>
+
+.. toctree::
+   :caption: Workflows
+   :maxdepth: 1
+   :hidden:
+
+   Data I/O <workflows/ingestion>
+   Curation: Pre-Annotation <workflows/curation_pre>
+   Annotation __SUB_NEW__ <workflows/annotation>
+   Curation: Post-Annotation <workflows/curation_post>
+   Model Training <workflows/training>
+   Model Inference <workflows/inference>
+   Model Evaluation <workflows/evaluation>
+
+.. toctree::
+   :caption: Fundamentals
+   :maxdepth: 1
+   :hidden:
+
+   FiftyOne Concepts <user_guide/index>
+   FiftyOne Datasets <user_guide/using_datasets>
+   FiftyOne App <user_guide/app>
+   FiftyOne Enterprise 🚀 <enterprise/index>
+   FiftyOne Brain <brain/index>
+   FiftyOne Multimodal __SUB_NEW__ <user_guide/multimodal>
+
+.. toctree::
+   :caption: FiftyOne Ecosystem
+   :maxdepth: 1
+   :hidden:
+
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
-   FiftyOne Brain <brain>
-   FiftyOne Labs <labs/index>
    Agents <agents/index>
    Plugins <plugins/index>
    Integrations <integrations/index>
+
+.. toctree::
+   :caption: Resources
+   :maxdepth: 1
+   :hidden:
+
+   Tutorials <tutorials/index>
+   Recipes <recipes/index>
+   Cheat Sheets <cheat_sheets/index>
    CLI <cli/index>
    API Reference <api/fiftyone>
    Contribute <contribute/index>

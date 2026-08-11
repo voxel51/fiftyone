@@ -1,8 +1,16 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React, { useCallback } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
-import { useLoopEnd, useLoopStart } from "../../lib/playback/use-playback-state";
-import { fmtBound, LOOP_EDGE_EPSILON } from "../TimelineControls/timeline-controls-utils";
+import { useTimelineDisplay } from "../../lib/playback/timeline-display";
+import {
+  useLoopEnd,
+  useLoopStart,
+} from "../../lib/playback/use-playback-state";
+import {
+  fmtBound,
+  formatDisplayValue,
+  LOOP_EDGE_EPSILON,
+} from "../TimelineControls/timeline-controls-utils";
 import styles from "./LoopBounds.module.css";
 
 /**
@@ -17,6 +25,7 @@ const LoopBounds: React.FC = () => {
   const loopStart = useLoopStart();
   const loopEnd = useLoopEnd();
   const { duration, setLoop } = usePlayback();
+  const { mode, toDisplay } = useTimelineDisplay();
 
   const hasLoop = duration !== undefined;
   const atStart = hasLoop && loopStart < LOOP_EDGE_EPSILON;
@@ -29,7 +38,7 @@ const LoopBounds: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const onLoopEndReset = useCallback(
     () => setLoop(loopStart, duration),
-    [loopStart, duration]
+    [loopStart, duration],
   );
 
   const activateOnEnter =
@@ -46,10 +55,7 @@ const LoopBounds: React.FC = () => {
     <>
       <span className={styles.divider} aria-hidden />
       <span className={styles.loopBounds}>
-        <Text
-          variant={TextVariant.Xs}
-          color={TextColor.Muted}
-        >
+        <Text variant={TextVariant.Xs} color={TextColor.Muted}>
           {" ( "}
         </Text>
         <Text
@@ -62,12 +68,9 @@ const LoopBounds: React.FC = () => {
           title="Reset loop start to 0"
           role="button"
         >
-          {fmtBound(loopStart)}
+          {formatDisplayValue(toDisplay(loopStart), mode, fmtBound)}
         </Text>
-        <Text
-          variant={TextVariant.Xs}
-          color={TextColor.Muted}
-        >
+        <Text variant={TextVariant.Xs} color={TextColor.Muted}>
           {" / "}
         </Text>
         <Text
@@ -80,12 +83,9 @@ const LoopBounds: React.FC = () => {
           title="Reset loop end to duration"
           role="button"
         >
-          {fmtBound(loopEnd)}
+          {formatDisplayValue(toDisplay(loopEnd), mode, fmtBound)}
         </Text>
-        <Text
-          variant={TextVariant.Xs}
-          color={TextColor.Muted}
-        >
+        <Text variant={TextVariant.Xs} color={TextColor.Muted}>
           {" ) "}
         </Text>
       </span>

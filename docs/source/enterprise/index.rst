@@ -99,19 +99,25 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: app.html
 
 .. customcalloutitem::
-    :header: Auto-Labeling  __SUB_NEW__
+    :header: Auto-Labeling
     :description: Use FiftyOne Enterprise to annotate your data at a fraction of the cost.
     :button_text: Annotate your data at scale
     :button_link: verified_auto_labeling.html
 
 .. customcalloutitem::
-    :header: Data Lens  __SUB_NEW__
+    :header: Agentic Labeling __SUB_NEW__
+    :description: Label images with a prompt-driven vision-language model — classify, detect, caption, or label regions for review.
+    :button_text: Label with natural language
+    :button_link: agentic_labeling.html
+
+.. customcalloutitem::
+    :header: Data Lens
     :description: Use FiftyOne Enterprise to explore and import samples from external data sources.
     :button_text: Connect your data lake
     :button_link: data_lens.html
 
 .. customcalloutitem::
-    :header: Data Quality  __SUB_NEW__
+    :header: Data Quality
     :description: Automatically scan your data for quality issues and take action to resolve them.
     :button_text: Find quality issues
     :button_link: data_quality.html
@@ -123,7 +129,7 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: ../user_guide/app.html#app-model-evaluation-panel
 
 .. customcalloutitem::
-    :header: Query Performance  __SUB_NEW__
+    :header: Query Performance
     :description: Configure your massive datasets to support fast queries at scale.
     :button_text: Fast queries at scale
     :button_link: query_performance.html
@@ -133,6 +139,12 @@ pages on this site apply to Enterprise deployments as well.
     :description: Use the AI-powered FiftyOne Agent to work with your data using natural language.
     :button_text: Get started with the Agent
     :button_link: agent.html
+
+.. customcalloutitem::
+    :header: Annotation Workflows  __SUB_NEW__
+    :description: Define annotation and review workflows, run them over a dataset, and track per-sample task progress.
+    :button_text: Build your first workflow
+    :button_link: workflows.html
 
 .. customcalloutitem::
     :header: Plugins
@@ -179,19 +191,10 @@ pages on this site apply to Enterprise deployments as well.
 
     Overview <overview>
     Installation <installation>
-    Getting Started <getting_started>
     API connection <api_connection>
-    Cloud-backed media <cloud_media>
-    Roles and permissions <roles_and_permissions>
-    Dataset Versioning <dataset_versioning>
     App <app>
-    Auto-Labeling __SUB_NEW__ <verified_auto_labeling>
-    Data Lens __SUB_NEW__ <data_lens>
-    Data Quality __SUB_NEW__ <data_quality>
-    Query Performance __SUB_NEW__ <query_performance>
-    FiftyOne Agent __SUB_NEW__ <agent>
-    Plugins <plugins>
     Secrets <secrets>
     Management SDK <management_sdk>
     Migrations <migrations>
     Pluggable Auth <pluggable_auth>
+

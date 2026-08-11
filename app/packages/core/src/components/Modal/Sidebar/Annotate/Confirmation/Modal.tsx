@@ -47,7 +47,7 @@ const Modal = ({
         {children}
       </Container>
     </Background>,
-    document.body
+    document.body,
   );
 };
 

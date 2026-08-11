@@ -2,11 +2,15 @@ import { test as base } from "@playwright/test";
 import { DatasetFactory } from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
+import { reserveWorkerPort } from "src/shared/network-utils/port";
+import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
 import { AggregationWatcher } from "./aggregation-watcher";
+import { Annotate3dSDK } from "./annotate-3d-sdk";
 import { AnnotateSDK } from "./annotate-sdk";
 import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
+import { VideoAnnotateSDK } from "./video-annotate-sdk";
 
 // note: this difference between "with" and "without" is only for type safety
 
@@ -18,12 +22,21 @@ export type CustomFixturesWithoutPage = {
   mediaFactory: typeof MediaFactory;
   foWebServer: FoWebServer;
   annotateSDK: AnnotateSDK;
+  annotate3dSDK: Annotate3dSDK;
+  videoAnnotateSDK: VideoAnnotateSDK;
 };
 
 // these fixtures have access to the {page} fixture
 export type CustomFixturesWithPage = {
   eventUtils: EventUtils;
   aggregationWatcher: AggregationWatcher;
+  /**
+   * Installs a deterministic mock SAM2 worker via `page.addInitScript` so
+   * the page's `BrowserAnnotationProvider` constructs the mock instead of
+   * the real WebAssembly worker. Auto-runs when destructured; no value to
+   * use directly.
+   */
+  mockSam2Worker: void;
 };
 
 const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
@@ -40,12 +53,7 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
         return;
       }
 
-      // random number [0, 99] to avoid port collisions (rare edge case)
-      const rand = Math.floor(Math.random() * 100);
-
-      await use(
-        3050 + workerInfo.workerIndex + workerInfo.parallelIndex + rand
-      );
+      await use(await reserveWorkerPort(workerInfo.parallelIndex));
     },
     { scope: "worker" },
   ],
@@ -73,14 +81,50 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
     },
     { scope: "worker" },
   ],
+  annotate3dSDK: [
+    async ({}, use) => {
+      await use(new Annotate3dSDK());
+    },
+    { scope: "worker" },
+  ],
+  videoAnnotateSDK: [
+    async ({}, use) => {
+      await use(new VideoAnnotateSDK());
+    },
+    { scope: "worker" },
+  ],
 });
 
 export const test = customFixtures.extend<CustomFixturesWithPage>({
+  page: async ({ page }, use, testInfo) => {
+    page.on("pageerror", (e) => {
+      console.error(`[pageerror] ${testInfo.title}: ${e.message}`);
+    });
+    page.on("console", (message) => {
+      if (message.type() === "error") {
+        console.error(`[browser-error] ${testInfo.title}: ${message.text()}`);
+      }
+    });
+    await use(page);
+  },
   eventUtils: async ({ page }, use) => {
     await use(new EventUtils(page));
   },
   aggregationWatcher: async ({ page }, use) => {
     await use(new AggregationWatcher(page));
+  },
+  mockSam2Worker: async ({ page }, use) => {
+    // Must install BEFORE the page mounts BrowserAnnotationProvider. See
+    // `app/.../BrowserAnnotationProvider.ts` for the seam contract.
+    await page.addInitScript((workerSrc: string) => {
+      (
+        window as unknown as { __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker }
+      ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
+        const blob = new Blob([workerSrc], { type: "text/javascript" });
+        return new Worker(URL.createObjectURL(blob));
+      };
+    }, SAM2_MOCK_WORKER_SRC);
+    await use();
   },
   baseURL: async ({ fiftyoneServerPort }, use) => {
     if (process.env.USE_DEV_BUILD?.toLocaleLowerCase() === "true") {

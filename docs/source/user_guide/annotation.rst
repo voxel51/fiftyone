@@ -5,6 +5,17 @@ In-App Annotation
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 1.13.0
+    :enterprise_version: 2.16.0
+
+.. admonition:: Managing an annotation team?
+   :class: tip
+
+   Learn how FiftyOne Enterprise can help you organize and coordinate
+   annotation projects across your team with FiftyOne
+   :ref:`Annotation Workflows <enterprise-workflows>`!
+
 Overview
 --------
 
@@ -25,6 +36,7 @@ In-App annotation within FiftyOne supports datasets containing the following med
 * :ref:`media_type <dataset-media-type>`
 
   * ``image``
+  * ``video``
   * ``3D``
 
 * :ref:`Labels <basics-labels>`
@@ -35,6 +47,9 @@ In-App annotation within FiftyOne supports datasets containing the following med
   * ``2D Polylines and Polygons``
   * ``3D Polylines``
   * ``3D Cuboids``
+  * ``Events (Temporal Detections)``
+
+.. _annotate-tab:
 
 Annotation UI: Sample Visualizer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,6 +58,8 @@ All in-App annotation controls now live in the :ref:`expanded view for samples <
 
 .. image:: /_static/images/annotation/annotate_tab_grid.gif
    :alt: Annotate tab location
+
+.. _saving-and-reverting-changes:
 
 Saving and Reverting Changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -336,6 +353,14 @@ Labels are not the only type of metadata available for edits in FiftyOne's in-Ap
 How to: 2D Label Annotation
 ----------------------------
 
+.. admonition:: Label faster with AI
+   :class: tip
+
+   FiftyOne can help you label images with AI: prompt masks with
+   :ref:`AI-assisted segmentation <in-app-ai-segmentation>`, or auto-label a
+   whole dataset from a few examples with
+   :ref:`Agentic Labeling <agentic-labeling>`.
+
 Creating a Classification label
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -366,8 +391,17 @@ A detection label's size and shape can be adjusted directly in the annotation ca
 .. image:: /_static/images/annotation/edit_bounding_box_canvas.gif
    :alt: Editing detection on canvas
 
+.. _creating-a-segmentation-label:
+
 Creating a Segmentation label
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. admonition:: Prompt masks with AI
+   :class: tip
+
+   Rather than painting a mask by hand, you can prompt one with a model using
+   the AI assistance tool — see
+   :ref:`AI-assisted image segmentation <in-app-ai-segmentation>`.
 
 .. image:: /_static/images/annotation/create_mask_button.png
    :alt: Create new mask button
@@ -453,8 +487,236 @@ The editing panel also enables editing the label, tags, confidence, index proper
 
 ----
 
-Working with 3D
----------------
+.. _how-to-video-annotation:
+
+How to: Video Annotation
+------------------------
+
+.. admonition:: Label faster with AI
+   :class: tip
+
+   Track an object's mask across frames automatically with
+   :ref:`AI-assisted video tracking <in-app-video-tracking>`.
+
+.. |video-kf-icon| image:: https://cdn.voxel51.com/user_guide/annotation/video_toolbar_mark_keyframe_button.webp
+   :height: 1.6em
+   :alt: Mark Keyframe button
+.. |video-td-icon| image:: https://cdn.voxel51.com/user_guide/annotation/video_toolbar_new_td_button.webp
+   :height: 1.6em
+   :alt: New TD button
+.. |video-split-icon| image:: https://cdn.voxel51.com/user_guide/annotation/video_toolbar_split_button.webp
+   :height: 1.6em
+   :alt: Split button
+
+In-App video annotation lets you draw object tracks and timeline events on
+:ref:`video <dataset-media-type>` samples. The
+:ref:`Annotation Schema <annotation-schema-format>` and right-sidebar editing
+behavior on the :ref:`Annotate tab <annotate-tab>` are the same as for image
+annotation, and edits :ref:`auto-save <saving-and-reverting-changes>` through
+the database the same way. The video annotation surface adds a timeline
+below the canvas for scrubbing and to visualize tracks that maintain object
+identities and events across frames.
+
+.. raw:: html
+
+   <video autoplay controls muted loop playsinline width="100%"
+          style="max-width:720px"
+          aria-label="Drawing an object track on a video">
+     <source src="https://cdn.voxel51.com/user_guide/annotation/video_create_track.mp4"
+             type="video/mp4">
+   </video>
+
+Requirements
+~~~~~~~~~~~~
+
+Video annotation requires:
+
+* A ``video`` :ref:`type dataset <dataset-media-type>`
+* Images sampled from the video and stored on the frames (see
+  :ref:`frame views <frame-views>`)
+* Metadata computed on the samples
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("my-video-dataset")
+    assert dataset.media_type == "video"
+    dataset.compute_metadata()
+    dataset.to_frames(sample_frames=True)
+
+Creating Object Tracks
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. admonition:: Track objects with AI
+   :class: tip
+
+   Instead of annotating each frame, you can prompt an object's mask on one
+   frame and track it across the rest — see
+   :ref:`AI-assisted video tracking <in-app-video-tracking>`.
+
+To create an object track, the
+:ref:`Annotation Schema <annotation-schema-format>` needs to contain a
+compatible field. Create a new field in the
+:ref:`Schema Manager <schema-manager>` that is prefixed with ``frames.``
+indicating that the field will have frame-level labels of the object — for
+example per-frame :ref:`Detections <object-detection>` for
+the bounding box of the object per frame.
+
+.. image:: https://cdn.voxel51.com/user_guide/annotation/video_schema_create_frame_field.webp
+   :alt: Create a frame-level Detections field in the schema editor
+
+To start a new object, click the bounding box icon in the annotate actions
+toolbar and draw a box on the current frame. The first box creates a new
+:class:`Instance <fiftyone.core.labels.Instance>` and marks a keyframe for
+the object at that frame. Scrub the playhead forward and adjust the box on a
+second frame to add the next keyframe. FiftyOne linearly interpolates the
+bounding box between adjacent keyframes and updates the intermediate labels.
+:ref:`Polylines <polylines>` and mask labels are not
+interpolated, simply propagated forward.
+
+The start and end frames of an object track can be adjusted by dragging the
+handles on the ends of the track segment in the timeline. Track segments
+can also be dragged in their entirety to a new frame.
+
+Static and Dynamic Attributes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Tracks support two kinds of attributes, configured per-attribute in the
+:ref:`Annotation Schema <annotation-schema-format>`:
+
+* **Static attributes** apply to the whole track. Their value is the same on
+  every frame. Use these for properties that don't change across the track's
+  lifetime (e.g. a vehicle's ``make`` or ``color``).
+* **Dynamic attributes** can change value across a track. Use these for
+  properties that vary mid-track (e.g. ``occluded``, ``turn_signal``).
+  Each dynamic attribute has its own nested track under the parent object
+  track.
+
+.. image:: https://cdn.voxel51.com/user_guide/annotation/video_schema_dynamic_attribute_toggle.webp
+   :alt: Dynamic attribute toggle in the schema editor
+
+Static and dynamic attributes are both edited in the right sidebar. Static
+attribute updates apply to every frame in the track. Dynamic attribute
+updates propagate forward from the playhead until the next attribute value
+change. Note that dynamic attributes do not have explicit keyframes.
+
+.. image:: https://cdn.voxel51.com/user_guide/annotation/video_dynamic_attribute_sublanes.webp
+   :alt: Dynamic attribute sub-lanes on the timeline
+
+
+.. _video-keyframes:
+
+Keyframes
+~~~~~~~~~
+
+A **keyframe** is a frame at which a track's value is explicitly set, as
+opposed to interpolated from neighboring frames. Each object track row in the
+timeline shows its keyframes as diamonds.
+
+.. image:: https://cdn.voxel51.com/user_guide/annotation/video_keyframes_on_track.webp
+   :alt: Keyframe diamonds on a selected object track
+
+There are two ways a track's value can vary over time:
+
+* **Geometry keyframes** record an explicit bounding box, mask, or polyline
+  position. They are created automatically when you draw or resize an
+  object, or by pressing **K** at the playhead to commit the current
+  geometry without resizing. Between adjacent bounding box keyframes,
+  FiftyOne linearly interpolates the bounding box on edits. These
+  keyframes are indicated by diamonds.
+* **Dynamic attribute changes** are propagated forward in time rather than
+  interpolated. When you change a dynamic attribute's value from the right
+  sidebar, the new value is held forward until the next attribute change.
+  These changes are not explicit keyframes; they are indicated by
+  differently colored segments in the attribute sub-tracks.
+
+The first frame of a track is always a keyframe. Press **K** with a track
+selected, or click the |video-kf-icon| toolbar button, to manually mark a
+geometry keyframe at the playhead without resizing the box. The same action
+also removes an existing keyframe at the playhead, which triggers a new
+interpolation/propagation between the adjacent keyframes.
+
+
+Temporal Events
+~~~~~~~~~~~~~~~
+
+Sample-level events (also known as
+:ref:`Temporal Detections <temporal-detection>`) are rendered as horizontal
+bars in the **Events** lane at the bottom of the video timeline. Each event
+has a label, a ``support=[start_frame, end_frame]``, and user-defined custom
+attributes.
+
+.. image:: https://cdn.voxel51.com/user_guide/annotation/video_events_lane.webp
+   :alt: Events lane in the timeline showing a TemporalDetection bar above
+         two object tracks
+
+To create an event, click the |video-td-icon| button in the timeline
+toolbar to create a new event at the current playhead position. Drag either
+edge of an event bar in the timeline to adjust ``support``. Select an event
+to edit its label and attributes in the right sidebar.
+
+.. raw:: html
+
+   <video autoplay controls muted loop playsinline width="100%"
+          style="max-width:720px"
+          aria-label="Creating a temporal event in the Events lane">
+     <source src="https://cdn.voxel51.com/user_guide/annotation/video_create_event.mp4"
+             type="video/mp4">
+   </video>
+
+Timeline Operations
+~~~~~~~~~~~~~~~~~~~
+
+**Drag-to-retime.** Click and drag an event or object track horizontally to
+move it to a new start and end time.
+
+.. raw:: html
+
+   <video autoplay controls muted loop playsinline width="100%"
+          style="max-width:720px"
+          aria-label="Dragging an event horizontally to retime it">
+     <source src="https://cdn.voxel51.com/user_guide/annotation/video_drag_retime.mp4"
+             type="video/mp4">
+   </video>
+
+**Split.** With the playhead on the desired frame and a track selected,
+click the |video-split-icon| button in the toolbar to split the track into
+two tracks at the playhead. The segment before the playhead retains the
+original ``Instance``; the segment after the playhead is assigned a new
+``Instance``. Static attributes are copied to both tracks and dynamic
+attributes are split at the playhead.
+
+.. raw:: html
+
+   <video autoplay controls muted loop playsinline width="100%"
+          style="max-width:720px"
+          aria-label="Splitting and merging tracks">
+     <source src="https://cdn.voxel51.com/user_guide/annotation/video_split_merge.mp4"
+             type="video/mp4">
+   </video>
+
+**Merge.** Right click an object track to merge it into another track of
+the same class label. The two tracks combine into a single ``Instance``
+with the union of their keyframes. On conflict, attribute values from the
+track being merged into take priority.
+
+**Delete a track** by right clicking the track row and choosing **Delete
+track**.
+
+**Loop a track** by right clicking the track and choosing
+**Shrink window to fit**. This loops playback over the track's duration,
+letting you focus on a specific object or event.
+
+.. image:: https://cdn.voxel51.com/user_guide/annotation/video_track_context_menu.webp
+   :alt: Track right-click context menu with Move/Shrink/Delete/Split/Merge
+         options
+
+
+----
+
+How to: 3D Label Annotation
+---------------------------
 
 3D Annotation Mode
 ~~~~~~~~~~~~~~~~~~
@@ -717,3 +979,78 @@ Clicking on a primitive field in the "Annotate" tab will open the editing panel 
 
 .. image:: /_static/images/annotation/primitive_editing_panel.png
    :alt: Editing primitives in the right sidebar
+
+----
+
+.. _in-app-ai-annotation:
+
+How to: AI assisted annotation 🚀 __SUB_NEW__
+---------------------------------------------
+
+.. customavailablein::
+    :enterprise_version: 2.23.0
+
+FiftyOne can put models to work in the annotation editor so you spend less time
+labeling by hand. Prompt masks with a segmentation model, track objects across
+video frames, or auto-label a whole dataset from a few examples with Agentic
+Labeling. These features run on your own GPU infrastructure as
+:ref:`services <enterprise-services>` started by an administrator.
+
+.. _in-app-ai-segmentation:
+
+Image segmentation
+~~~~~~~~~~~~~~~~~~
+
+Instead of drawing a mask by hand, you can prompt one with a segmentation
+model. Select the AI assistance tool in the mask toolbar, then click positive
+points on the object and negative points on regions to exclude; the model
+returns a mask after each click, so you can add points to refine it before
+saving. A built-in model works out of the box, and FiftyOne Enterprise
+deployments can run larger, finetuned models as a
+:ref:`service <enterprise-services>` on their own GPUs.
+
+.. image:: https://cdn.voxel51.com/user_guide/annotation/image_segmentation.webp
+   :alt: in-app-ai-segmentation
+   :align: center
+
+See :ref:`Creating a Segmentation label <creating-a-segmentation-label>` for
+the mask toolbar and drawing basics.
+
+.. _in-app-video-tracking:
+
+Video object tracking
+~~~~~~~~~~~~~~~~~~~~~
+
+On video, prompt an object's mask on one frame and track it across the
+remaining frames automatically. Review the tracked masks and add prompts on
+any frame to correct them. Video tracking is a FiftyOne Enterprise feature
+powered by a segmentation model running as a
+:ref:`service <enterprise-services>`.
+
+.. raw:: html
+
+   <video autoplay controls muted loop playsinline width="100%"
+          style="max-width:720px"
+          aria-label="Tracking an object's mask across video frames">
+     <source src="https://cdn.voxel51.com/user_guide/annotation/video_segmentation.mp4"
+             type="video/mp4">
+   </video>
+
+See :ref:`How to: Video Annotation <how-to-video-annotation>` for the video
+annotation basics.
+
+Agentic Labeling
+~~~~~~~~~~~~~~~~~
+
+Agentic Labeling uses a prompt-driven vision-language model to label an image
+dataset from a few examples: describe what you want, optionally add positive
+and negative example samples, preview the results, then apply the agent across
+your dataset for review. It runs as a FiftyOne Enterprise
+:ref:`service <enterprise-services>` that an administrator starts.
+
+.. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_test_results.webp
+   :alt: agentic-labeling-test-results
+   :align: center
+
+See the :ref:`Agentic Labeling <agentic-labeling>` guide for the full
+workflow, supported tasks, and prompting tips.

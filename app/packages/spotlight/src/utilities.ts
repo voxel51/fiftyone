@@ -21,7 +21,7 @@ interface Matches<K, V> {
 
 /** Typed wrapper around `document.createElement`. */
 export const create = <K extends keyof HTMLElementTagNameMap>(
-  tagName: K
+  tagName: K,
 ): HTMLElementTagNameMap[K] => {
   return document.createElement(tagName);
 };
@@ -148,8 +148,7 @@ export const scrollToPosition = <K, V>({
     }
 
     row = backward.find(at.description);
-    row &&
-      scrollTo(el, backward.primaryExtent - row.from - row.primaryExtent);
+    row && scrollTo(el, backward.primaryExtent - row.from - row.primaryExtent);
     return;
   }
 

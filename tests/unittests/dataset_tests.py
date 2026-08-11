@@ -11,6 +11,7 @@ import os
 import random
 import string
 import unittest
+import warnings
 from collections import Counter
 from copy import copy, deepcopy
 from datetime import date, datetime, timedelta
@@ -29,6 +30,7 @@ import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+import fiftyone.core.media as fom
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
 from fiftyone.operators.store import ExecutionStoreService
@@ -1603,6 +1605,48 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.clone_sample_field("foo", "_private")
 
+        # "pk" is a reserved keyword (MongoEngine's alias for "id");
+        # using it warns but is not (yet) an error
+
+        with self.assertWarns(UserWarning):
+            dataset.add_sample_field("pk", fo.StringField)
+
+        self.assertIn("pk", dataset.get_field_schema())
+        dataset.delete_sample_field("pk")
+
+        with self.assertWarns(UserWarning):
+            dataset.rename_sample_field("foo", "pk")
+
+        dataset.rename_sample_field("pk", "foo")
+
+        with self.assertWarns(UserWarning):
+            dataset.clone_sample_field("foo", "pk")
+
+        dataset.delete_sample_field("pk")
+
+        dataset.add_sample_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        # The warning fires exactly once per operation
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            dataset.add_sample_field("spam.pk", fo.StringField)
+
+        self.assertEqual(
+            len([x for x in w if "reserved" in str(x.message)]), 1
+        )
+
+        # Dynamic schema expansion warns when a `pk` field enters the schema
+        embedded = fo.DynamicEmbeddedDocument()
+        embedded["pk"] = fo.DynamicEmbeddedDocument(value=51)
+        sample = fo.Sample(filepath="image.jpg", embedded=embedded)
+
+        with self.assertWarns(UserWarning):
+            dataset.add_sample(sample, dynamic=True)
+
     @drop_datasets
     def test_frame_field_names(self):
         dataset = fo.Dataset()
@@ -1612,6 +1656,13 @@ class DatasetTests(unittest.TestCase):
         # "frames" is a reserved keyword
         with self.assertRaises(ValueError):
             dataset.add_sample_field("frames", fo.StringField)
+
+        # "pk" is a reserved keyword (MongoEngine's alias for "id");
+        # using it warns but is not (yet) an error
+        with self.assertWarns(UserWarning):
+            dataset.add_frame_field("pk", fo.StringField)
+
+        dataset.delete_frame_field("pk")
 
         # Field names cannot be empty
 
@@ -4897,6 +4948,35 @@ class DatasetTests(unittest.TestCase):
             self._assert_static_transforms_equal(
                 dataset3.static_transforms, dataset.static_transforms
             )
+
+    @drop_datasets
+    def test_media_type(self):
+        dataset = fo.Dataset("test_media_type", media_type=fom.IMAGE)
+        assert dataset.media_type == fom.IMAGE
+
+        del fo.Dataset._instances["test_media_type"]
+        dataset2 = fo.load_dataset("test_media_type")
+        assert dataset2.media_type == fom.IMAGE
+
+    @drop_datasets
+    def test_media_type_side_effects(self):
+        dataset = fo.Dataset("test_media_type", media_type=fom.IMAGE)
+
+        metadata = next(
+            field
+            for field in dataset._doc.sample_fields
+            if field.name == "metadata"
+        )
+
+        assert (
+            metadata.embedded_doc_type
+            == "fiftyone.core.metadata.ImageMetadata"
+        )
+
+    @drop_datasets
+    def test_media_type_validated(self):
+        with self.assertRaises(ValueError):
+            fo.Dataset("test_media_type", media_type="not_a_valid_media_type")
 
     def _assert_camera_intrinsics_equal(self, actual, expected):
         self.assertEqual(set(actual.keys()), set(expected.keys()))

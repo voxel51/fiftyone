@@ -26,7 +26,7 @@ export const SphericalMarker = forwardRef<Mesh, SphericalMarkerProps>(
       onPointerOut,
       onClick,
     },
-    ref
+    ref,
   ) => {
     const effectiveColor = isSelected
       ? LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR
@@ -49,5 +49,5 @@ export const SphericalMarker = forwardRef<Mesh, SphericalMarkerProps>(
         />
       </mesh>
     );
-  }
+  },
 );

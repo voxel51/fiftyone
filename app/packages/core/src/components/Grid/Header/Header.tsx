@@ -21,6 +21,7 @@ import {
   SamplesHeader,
   SliderContainer,
 } from "./Containers";
+import GridHeaderSampleRendererControls from "./GridHeaderSampleRendererControls";
 import GroupSlice from "./GroupSlice";
 import Sort from "./Sort";
 
@@ -180,7 +181,7 @@ const Header = () => {
   const groupSlices = useRecoilValue(fos.groupSlices);
   const shouldShowSliceSelector = useMemo(
     () => isGroup && groupSlices.length > 1,
-    [isGroup, groupSlices]
+    [isGroup, groupSlices],
   );
 
   return (
@@ -196,6 +197,7 @@ const Header = () => {
         >
           <ResourceCount />
         </Suspense>
+        <GridHeaderSampleRendererControls />
         {shouldShowSliceSelector && (
           <RightDiv>
             <GroupSlice />

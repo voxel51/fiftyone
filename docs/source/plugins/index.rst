@@ -90,7 +90,9 @@ will transform FiftyOne into your bespoke visual AI development workbench.
    Overview <overview>
    Using plugins <using_plugins>
    Developing plugins <developing_plugins>
+   Developing plugins with Skills <../getting_started/agents/index>
    Contributing plugins <contributing_plugins>
+   Enterprise plugins 🚀 <../enterprise/plugins>
    API reference <api/plugins>
    TypeScript API reference <ts-api>
    plugins_ecosystem/*

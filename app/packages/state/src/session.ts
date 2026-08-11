@@ -110,6 +110,7 @@ export const SESSION_DEFAULT: Session = {
     colorBy: "field",
     fields: [],
     labelTags: {},
+    temporalTags: {},
     multicolorKeypoints: false,
     opacity: 0.7,
     showSkeletons: true,
@@ -161,15 +162,18 @@ export const getSessionRef = () => {
 export const useSessionSetter = () => {
   return useCallback(<K extends SetterKeys>(key: K, value: Session[K]) => {
     const setter = setters[key];
-    setter && setter(value);
-    sessionRef[key] = value;
+    if (setter) {
+      setter(value);
+    } else {
+      sessionRef[key] = value;
+    }
   }, []);
 };
 
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";
 
 export function sessionAtom<K extends keyof Session>(
-  options: SessionAtomOptions<K>
+  options: SessionAtomOptions<K>,
 ) {
   const value = atom<Session[K]>({
     ...options,
@@ -189,15 +193,16 @@ export function sessionAtom<K extends keyof Session>(
           setSelf(
             sessionRef[options.key] === undefined
               ? options.default
-              : sessionRef[options.key]
+              : sessionRef[options.key],
           );
         }
 
         // @ts-ignore
         setters[options.key] = (value: Session[K]) => {
-          setSelf(value);
+          const resolved = value === undefined ? options.default : value;
+          setSelf(resolved);
           if (!isTest) {
-            sessionRef[options.key] = value;
+            sessionRef[options.key] = resolved;
           }
         };
 
@@ -207,7 +212,7 @@ export function sessionAtom<K extends keyof Session>(
             value,
             sessionRef[options.key] === undefined
               ? options.default
-              : sessionRef[options.key]
+              : sessionRef[options.key],
           );
         });
       },
@@ -224,7 +229,7 @@ export function sessionAtom<K extends keyof Session>(
         key: `__${options.key}_selector`,
         get: ({ get }) => get(value),
       },
-      options.key
+      options.key,
     );
   }
 

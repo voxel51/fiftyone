@@ -84,7 +84,7 @@ export const gridScrubber = selector<boolean>({
     const id = get(datasetId) ?? "";
     set(
       gridScrubberStore(id),
-      value instanceof DefaultValue ? true : Boolean(value)
+      value instanceof DefaultValue ? true : Boolean(value),
     );
   },
 });
@@ -181,7 +181,7 @@ export const gridSwimlanes = selector<boolean>({
     const id = get(datasetId) ?? "";
     set(
       gridSwimlanesStore(id),
-      value instanceof DefaultValue ? true : Boolean(value)
+      value instanceof DefaultValue ? true : Boolean(value),
     );
   },
 });

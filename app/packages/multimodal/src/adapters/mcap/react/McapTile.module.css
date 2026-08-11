@@ -12,10 +12,56 @@
   width: 100%;
 }
 
+/* Generic positioned wrapper so the status badge can anchor to any
+   tile body (lidar, future panels) the way .imageStack anchors the
+   camera overlay. */
+.panelStack {
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
 .loading {
   align-items: center;
   display: flex;
   height: 100%;
   justify-content: center;
   width: 100%;
+}
+
+/* Corner status pill for tiles that have a frame but whose stream is
+   loading / has no data at the playhead / failed. Kept deliberately
+   small and translucent so it reads as a hint, not an alert. */
+.statusBadge {
+  align-items: center;
+  background: color-mix(
+    in srgb,
+    var(--color-content-bg-background) 75%,
+    transparent
+  );
+  border-radius: 10px;
+  color: var(--color-content-text-secondary);
+  display: inline-flex;
+  font-size: 11px;
+  gap: 4px;
+  line-height: 1;
+  padding: 4px 8px;
+  pointer-events: none;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 1;
+}
+
+.statusBadgeError {
+  color: var(--color-content-text-destructive);
+}
+
+.emptyText {
+  color: var(--color-content-text-secondary);
+  font-size: 12px;
+}
+
+.emptyTextError {
+  color: var(--color-content-text-destructive);
 }

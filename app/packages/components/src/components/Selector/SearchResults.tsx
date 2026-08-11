@@ -8,7 +8,7 @@ export type UseSearch<T> = {
 type Props<T> = {
   active?: number;
   cy?: string;
-  footer?: React.JSX.Element;
+  footer?: JSX.Element;
   search: string;
   useSearch: UseSearch<T>;
   onSelect: (value: T) => void;

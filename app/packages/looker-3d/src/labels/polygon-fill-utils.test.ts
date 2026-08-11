@@ -166,7 +166,9 @@ describe("polygon-fill-utils", () => {
       ];
       const material = new THREE.MeshBasicMaterial();
 
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => undefined);
 
       // Mock the crossVectors method to throw an error
       const originalCrossVectors = THREE.Vector3.prototype.crossVectors;
@@ -179,7 +181,7 @@ describe("polygon-fill-utils", () => {
       expect(mesh).toBeNull();
       expect(consoleSpy).toHaveBeenCalledWith(
         "Failed to create filled polygon mesh:",
-        expect.any(Error)
+        expect.any(Error),
       );
 
       // Restore original method

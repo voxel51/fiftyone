@@ -14,7 +14,7 @@ describe("getGradientStringForSeekbar", () => {
       [], // loadedRangesScaled
       [0, 0], // loadingRangeScaled
       0, // valueScaled
-      colorMap
+      colorMap,
     );
     expect(result).toBe("linear-gradient(to right, gray 0% 100%)");
   });
@@ -22,7 +22,7 @@ describe("getGradientStringForSeekbar", () => {
   it("should display current progress when valueScaled is greater than 0", () => {
     const result = getGradientStringForSeekbar([], [0, 0], 50, colorMap);
     expect(result).toBe(
-      "linear-gradient(to right, blue 0% 50%, gray 50% 100%)"
+      "linear-gradient(to right, blue 0% 50%, gray 50% 100%)",
     );
   });
 
@@ -31,17 +31,17 @@ describe("getGradientStringForSeekbar", () => {
       [[0, 100]],
       [0, 0],
       50,
-      colorMap
+      colorMap,
     );
     expect(result).toBe(
-      "linear-gradient(to right, blue 0% 50%, green 50% 100%)"
+      "linear-gradient(to right, blue 0% 50%, green 50% 100%)",
     );
   });
 
   it("should handle loading range overlapping with current progress", () => {
     const result = getGradientStringForSeekbar([], [40, 60], 50, colorMap);
     expect(result).toBe(
-      "linear-gradient(to right, blue 0% 50%, red 50% 60%, gray 60% 100%)"
+      "linear-gradient(to right, blue 0% 50%, red 50% 60%, gray 60% 100%)",
     );
   });
 
@@ -54,10 +54,10 @@ describe("getGradientStringForSeekbar", () => {
       ],
       [50, 60],
       70,
-      colorMap
+      colorMap,
     );
     expect(result).toBe(
-      "linear-gradient(to right, blue 0% 70%, green 70% 80%, gray 80% 100%)"
+      "linear-gradient(to right, blue 0% 70%, green 70% 80%, gray 80% 100%)",
     );
   });
 
@@ -66,17 +66,17 @@ describe("getGradientStringForSeekbar", () => {
       [[20, 80]],
       [40, 60],
       50,
-      colorMap
+      colorMap,
     );
     expect(result).toBe(
-      "linear-gradient(to right, blue 0% 50%, red 50% 60%, green 60% 80%, gray 80% 100%)"
+      "linear-gradient(to right, blue 0% 50%, red 50% 60%, green 60% 80%, gray 80% 100%)",
     );
   });
 
   it("should handle zero-length loading range", () => {
     const result = getGradientStringForSeekbar([], [50, 50], 50, colorMap);
     expect(result).toBe(
-      "linear-gradient(to right, blue 0% 50%, gray 50% 100%)"
+      "linear-gradient(to right, blue 0% 50%, gray 50% 100%)",
     );
   });
 
@@ -85,10 +85,10 @@ describe("getGradientStringForSeekbar", () => {
       [[70, 70]],
       [0, 0],
       50,
-      colorMap
+      colorMap,
     );
     expect(result).toBe(
-      "linear-gradient(to right, blue 0% 50%, gray 50% 100%)"
+      "linear-gradient(to right, blue 0% 50%, gray 50% 100%)",
     );
   });
 
@@ -97,7 +97,7 @@ describe("getGradientStringForSeekbar", () => {
       [[0, 100]],
       [0, 0],
       100,
-      colorMap
+      colorMap,
     );
     expect(result).toBe("linear-gradient(to right, blue 0% 100%)");
   });

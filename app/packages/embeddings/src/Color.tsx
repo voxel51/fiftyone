@@ -10,7 +10,11 @@ export class Color {
   getBrightness() {
     return (this.r + this.g + this.b) / 3;
   }
-  constructor(public r: number, public g: number, public b: number) {}
+  constructor(
+    public r: number,
+    public g: number,
+    public b: number,
+  ) {}
   toCSSRGBString() {
     return `rgb(${this.r * 255}, ${this.g * 255}, ${this.b * 255})`;
   }

@@ -4,7 +4,7 @@ import {
   similarityParameters,
 } from "@fiftyone/state";
 import { Icon, IconName, Select, Size, Tooltip } from "@voxel51/voodo";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { RightDiv, SliderContainer } from "./Containers";
 
@@ -31,7 +31,7 @@ export default function Sort() {
       { id: CLEAR_ID, data: { label: "Clear sort" } },
       ...fields.map((f) => ({ id: f, data: { label: f } })),
     ],
-    [fields]
+    [fields],
   );
 
   if (!fields.length || similarity) {

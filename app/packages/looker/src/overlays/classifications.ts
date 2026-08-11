@@ -26,7 +26,11 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { getLabelColor, resolveLabelSelectionVisuals } from "./util";
+import {
+  getLabelAttributesText,
+  getLabelColor,
+  resolveLabelSelectionVisuals,
+} from "./util";
 
 export type Classification = {
   _cls: "Classification";
@@ -45,9 +49,8 @@ const TEMPORAL_LABELS = new Set([TEMPORAL_DETECTION, TEMPORAL_DETECTIONS]);
 
 export class ClassificationsOverlay<
   State extends BaseState,
-  Label extends Classification = ClassificationLabel
-> implements Overlay<State>
-{
+  Label extends Classification = ClassificationLabel,
+> implements Overlay<State> {
   private labelBoundingBoxes: { [key: string]: BoundingBox };
 
   protected readonly labels: Labels<Label>;
@@ -134,8 +137,8 @@ export class ClassificationsOverlay<
     const width = Math.max(
       ...labels.map(
         ([field, label]) =>
-          ctx.measureText(this.getLabelText(field, state, label)).width
-      )
+          ctx.measureText(this.getLabelText(field, state, label)).width,
+      ),
     );
     const newBoxes = {};
     let top = state.textPad;
@@ -147,7 +150,7 @@ export class ClassificationsOverlay<
         top,
         width,
         field,
-        label
+        label,
       );
       top = result.top;
 
@@ -174,7 +177,7 @@ export class ClassificationsOverlay<
           ? labels.filter(
               (label) =>
                 MOMENT_CLASSIFICATIONS.includes(this.getCls(field, state)) &&
-                isShown(state, field, label)
+                isShown(state, field, label),
             )
           : [],
       ];
@@ -192,7 +195,7 @@ export class ClassificationsOverlay<
 
     if (sort) {
       const store = Object.fromEntries(
-        state.options.activePaths.map<[string, Label[]]>((a) => [a, []])
+        state.options.activePaths.map<[string, Label[]]>((a) => [a, []]),
       );
       result.forEach(([field, label]) => {
         store[field].push(label);
@@ -204,7 +207,7 @@ export class ClassificationsOverlay<
             ...store[field].map<[string, Label]>((label) => [field, label]),
           ];
         },
-        []
+        [],
       );
       result.sort((a, b) => {
         if (a[0] === b[0]) {
@@ -231,7 +234,7 @@ export class ClassificationsOverlay<
     top: number,
     width: number,
     field: string,
-    label: Label
+    label: Label,
   ): { top: number; box?: BoundingBox } {
     const text = this.getLabelText(field, state, label);
     if (text.length === 0) {
@@ -265,21 +268,21 @@ export class ClassificationsOverlay<
     if (this.isSelected(state, label)) {
       const labelVisuals = resolveLabelSelectionVisuals(
         label.id,
-        state.options
+        state.options,
       );
       // Override label color when selection style specifies one
       this.strokeBorder(
         ctx,
         state,
         [tlx, tly, w, h],
-        labelVisuals?.color || color
+        labelVisuals?.color || color,
       );
       this.strokeBorder(
         ctx,
         state,
         [tlx, tly, w, h],
         INFO_COLOR,
-        state.dashLength
+        state.dashLength,
       );
     } else {
       this.strokeBorder(ctx, state, [tlx, tly, w, h], color);
@@ -302,18 +305,12 @@ export class ClassificationsOverlay<
   private getLabelText(
     field: string,
     state: Readonly<State>,
-    label: Label
+    label: Label,
   ): string {
-    let text = state.options.showLabel
-      ? `${getText(this.getCls(field, state), label)}`
-      : "";
-
-    if (state.options.showConfidence && !isNaN(label.confidence as number)) {
-      text.length && (text += " ");
-      text += `(${Number(label.confidence).toFixed(2)})`;
-    }
-
-    return text;
+    const attributes = state.options.shownLabelAttributes?.[field];
+    return attributes
+      ? getLabelAttributesText(label, attributes)
+      : `${getText(this.getCls(field, state), label)}`;
   }
 
   private strokeBorder(
@@ -321,7 +318,7 @@ export class ClassificationsOverlay<
     state: Readonly<State>,
     [tlx, tly, w, h]: BoundingBox,
     color: string,
-    dash?: number
+    dash?: number,
   ) {
     ctx.beginPath();
     ctx.lineWidth = state.strokeWidth;
@@ -384,7 +381,7 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
 export const filterTemporalLabel = (
   cls: string,
   label: ClassificationLabel | TemporalDetectionLabel,
-  frameNumber: number
+  frameNumber: number,
 ) => {
   if (!TEMPORAL_LABELS.has(cls)) {
     return true;
@@ -402,7 +399,7 @@ export const filterTemporalLabel = (
 };
 
 export const getClassificationPoints = (
-  labels: ClassificationLabel[]
+  _labels: ClassificationLabel[],
 ): Coordinates[] => {
   return [];
 };

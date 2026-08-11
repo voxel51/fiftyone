@@ -1,25 +1,84 @@
 import { useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useEffect, useRef } from "react";
+import React, { type ReactNode, useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
+import { setHoverTime } from "../../lib/playback/store-access";
+import type { TimelineDisplayConversion } from "../../lib/playback/timeline-display";
+import { useTimelineDisplay } from "../../lib/playback/timeline-display";
+import type { TimelineMode } from "../../lib/playback/types";
 import {
+  useHoverTime,
   useLoopEnd,
   useLoopStart,
   usePlayhead,
   useViewEnd,
   useViewStart,
 } from "../../lib/playback/use-playback-state";
+import { clamp } from "../../lib/playback/utils";
+import { formatTimeOfDay } from "../TimelineControls/timeline-controls-utils";
+import BufferedLaneShading from "./BufferedLaneShading";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
 const CLICK_PX_THRESHOLD = 3;
-const clamp = (v: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, v));
 
-function tickLabel(t: number): string {
+// Nice tick spacings in seconds, ascending. We pick the smallest one that
+// keeps the visible tick count at or below TARGET_TICK_DIVISIONS. Without
+// this the interval capped at 1s, so a long file zoomed out crammed a label
+// into every single second.
+const TICK_INTERVALS = [
+  0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600,
+];
+// Nice tick spacings in *frames* for sequence mode — ticks should land on
+// whole frames, not arbitrary fractions of a second.
+const SEQUENCE_FRAME_INTERVALS = [
+  1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000,
+];
+const TARGET_TICK_DIVISIONS = 10;
+
+// Tick positions always stay in the engine's internal seconds domain (see
+// timeline-display.ts) — only the interval choice and the label text become
+// mode-aware.
+function chooseTickInterval(viewDuration: number, mode: TimelineMode): number {
+  if (mode.kind === "sequence") {
+    const step = 1 / mode.fps;
+    for (const frames of SEQUENCE_FRAME_INTERVALS) {
+      const interval = frames * step;
+      if (viewDuration / interval <= TARGET_TICK_DIVISIONS) return interval;
+    }
+    return SEQUENCE_FRAME_INTERVALS[SEQUENCE_FRAME_INTERVALS.length - 1] * step;
+  }
+  for (const interval of TICK_INTERVALS) {
+    if (viewDuration / interval <= TARGET_TICK_DIVISIONS) return interval;
+  }
+  return TICK_INTERVALS[TICK_INTERVALS.length - 1];
+}
+
+function durationTickLabel(t: number): string {
   const s = Math.floor(t);
   const frac = Math.round((t - s) * 10) / 10;
+  // Past a minute, seconds-only labels ("150s") get hard to read on long
+  // files; switch to m:ss. Intervals at this scale are whole seconds, so the
+  // fractional branch below only matters for sub-minute zoomed-in views.
+  if (t >= 60) {
+    const minutes = Math.floor(s / 60);
+    const seconds = s - minutes * 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  }
   return frac === 0 ? `${s}s` : `${(s + frac).toFixed(1)}s`;
+}
+
+function tickLabel(
+  t: number,
+  mode: TimelineMode,
+  conversion: TimelineDisplayConversion,
+): string {
+  if (mode.kind === "duration") return durationTickLabel(t);
+  const displayValue = conversion.toDisplay(t);
+  if (mode.kind === "sequence") return `${Math.round(displayValue as number)}`;
+  // absolute: HH:MM:SS.mmm — a full date is redundant tick-over-tick.
+  return formatTimeOfDay(displayValue as Date);
 }
 
 export interface TimelineRulerProps {
@@ -31,21 +90,77 @@ export interface TimelineRulerProps {
    */
   zoomRef?: React.RefObject<HTMLElement | null>;
   className?: string;
+  /** Optional overlay rendered inside the ruler's positioned context. */
+  overlay?: ReactNode;
 }
 
 const TimelineRuler: React.FC<TimelineRulerProps> = ({
   labelWidth = 0,
   zoomRef,
   className,
+  overlay,
 }) => {
   const playhead = usePlayhead();
   const viewStart = useViewStart();
   const viewEnd = useViewEnd();
   const loopStart = useLoopStart();
   const loopEnd = useLoopEnd();
-  const { duration, seek, setView, setLoop } = usePlayback();
+  const { duration, seekSnapped, setView, setLoop, snapPlayheadToFrame } =
+    usePlayback();
+  const { mode, ...displayConversion } = useTimelineDisplay();
+  const hoverTime = useHoverTime();
+  const store = usePlaybackStore();
+
+  // Sequence mode has no such thing as frame 2.5 — `quantizeDuringScrub`
+  // (see timeline-display.ts) says the display conversion should round
+  // mid-drag positions onto whole frames. This is mode-intrinsic and
+  // independent of `snapToFrameOnSettle` (a separate, provider-level
+  // opt-in for snapping only at drag-end), so it's applied here before
+  // handing the value to `seekSnapped` rather than left to that setting.
+  const quantizeForScrub = (seconds: number): number =>
+    displayConversion.quantizeDuringScrub
+      ? displayConversion.fromDisplay(displayConversion.toDisplay(seconds))
+      : seconds;
 
   const rulerRef = useRef<HTMLDivElement>(null);
+
+  // Publish the timeline time under the pointer so every hover-capable
+  // surface (plot panels, this ruler) can render one shared caret.
+  const publishHover = (clientX: number) => {
+    const el = rulerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const laneWidth = rect.width - labelWidth;
+    const laneX = clientX - rect.left - labelWidth;
+    // The NaN guard matters: a pointer event without coordinates must
+    // clear rather than publish NaN.
+    if (
+      !Number.isFinite(laneX) ||
+      laneWidth <= 0 ||
+      laneX < 0 ||
+      laneX > laneWidth
+    ) {
+      setHoverTime(store, null);
+      return;
+    }
+    setHoverTime(
+      store,
+      clamp(
+        viewStart + (laneX / laneWidth) * (viewEnd - viewStart),
+        0,
+        duration,
+      ),
+    );
+  };
+
+  // This effect clears a hover this ruler may still be publishing when it
+  // unmounts, so no stale caret survives in sibling surfaces.
+  useEffect(
+    () => () => {
+      setHoverTime(store, null);
+    },
+    [store],
+  );
 
   // Capture state at drag-start so onDelta can compute against it without
   // racing with state updates during the drag.
@@ -81,10 +196,24 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const vd = startVe - startVs;
       dragRef.current.maxAbsDelta = Math.max(
         dragRef.current.maxAbsDelta,
-        Math.abs(delta)
+        Math.abs(delta),
       );
-      seek(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
+      // `seekSnapped` quantizes to the displayed-frame start when the
+      // provider opted into snap-to-frame; otherwise it's a plain seek. The
+      // playhead now tracks discrete frame numbers continuously during the
+      // drag, matching the frame-indexed mental model the annotation surface
+      // uses elsewhere.
+      seekSnapped(
+        quantizeForScrub(
+          clamp(startValue + (delta / laneWidth) * vd, 0, duration),
+        ),
+      );
     },
+    // Redundant when `seekSnapped` already landed each mid-drag tick on a
+    // frame boundary — kept as a belt-and-suspenders settle (cheap no-op
+    // when the playhead is already aligned, thanks to the equality guard
+    // inside `snapPlayheadToFrame`).
+    onDragEnd: () => snapPlayheadToFrame(),
   });
 
   const loopStartDrag = useDragDelta({
@@ -99,7 +228,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const t = clamp(
         startValue + (delta / laneWidth) * vd,
         0,
-        loopEnd - 1 / 60
+        loopEnd - 1 / 60,
       );
       setLoop(t, loopEnd);
     },
@@ -117,7 +246,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const t = clamp(
         startValue + (delta / laneWidth) * vd,
         loopStart + 1 / 60,
-        duration
+        duration,
       );
       setLoop(loopStart, t);
     },
@@ -134,7 +263,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const { startVs, startVe, laneWidth } = dragRef.current;
       dragRef.current.maxAbsDelta = Math.max(
         dragRef.current.maxAbsDelta,
-        Math.abs(delta)
+        Math.abs(delta),
       );
       const vd = startVe - startVs;
       const dt = (delta / laneWidth) * vd;
@@ -154,7 +283,13 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       if (laneX < 0 || laneX > laneWidth) return;
       const vs = dragRef.current.startVs;
       const ve = dragRef.current.startVe;
-      seek(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
+      // `seekSnapped` lands the click on a frame boundary in one step when
+      // snapping is enabled; falls back to a continuous seek otherwise.
+      seekSnapped(
+        quantizeForScrub(
+          clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration),
+        ),
+      );
     },
   });
 
@@ -188,7 +323,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         const ratio = clamp(
           (e.clientX - rect.left - labelWidth) / laneWidth,
           0,
-          1
+          1,
         );
         const pivotTime = vs + ratio * (ve - vs);
         const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
@@ -196,7 +331,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         const newStart = clamp(
           pivotTime - ratio * newDuration,
           0,
-          duration - newDuration
+          duration - newDuration,
         );
         setViewRef.current(newStart, newStart + newDuration);
       } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
@@ -217,14 +352,18 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const loopStartRatio = clamp((loopStart - viewStart) / viewDuration, 0, 1);
   const loopEndRatio = clamp((loopEnd - viewStart) / viewDuration, 0, 1);
 
-  const tickInterval =
-    viewDuration <= 1 ? 0.1 : viewDuration <= 3 ? 0.5 : 1;
+  const tickInterval = chooseTickInterval(viewDuration, mode);
   const ticks: number[] = [];
-  const firstTick =
-    Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
+  const firstTick = Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
+  // `chooseTickInterval` targets ~TARGET_TICK_DIVISIONS ticks per view, but
+  // it can't fully protect against a corrupt/mismeasured duration (e.g. a
+  // scene whose streams disagree on epoch vs. elapsed time) blowing the
+  // view out to years. This cap is the last line of defense against
+  // rendering millions of tick nodes and hanging the tab.
+  const MAX_TICKS = 500;
   for (
     let t = Math.round(firstTick * 1e4) / 1e4;
-    t <= viewEnd + 1e-9;
+    t <= viewEnd + 1e-9 && ticks.length < MAX_TICKS;
     t = Math.round((t + tickInterval) * 1e4) / 1e4
   ) {
     ticks.push(t);
@@ -243,7 +382,11 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
     },
     onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
       dragRef.current.lastPointerX = e.clientX;
+      publishHover(e.clientX);
       laneDrag.handleProps.onPointerMove(e);
+    },
+    onPointerLeave: () => {
+      setHoverTime(store, null);
     },
   };
 
@@ -270,6 +413,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       )}
 
       <div className={styles.lane}>
+        <BufferedLaneShading />
         {ticks.map((t) => (
           <span
             key={t}
@@ -278,7 +422,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
               left: `${((t - viewStart) / viewDuration) * 100}%`,
             }}
           >
-            {tickLabel(t)}
+            {tickLabel(t, mode, displayConversion)}
           </span>
         ))}
       </div>
@@ -314,6 +458,18 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         }}
       />
 
+      {hoverTime !== null &&
+      hoverTime >= viewStart - 1e-9 &&
+      hoverTime <= viewEnd + 1e-9 ? (
+        <div
+          className={styles.hoverCaret}
+          data-testid="timeline-hover-caret"
+          style={{
+            left: laneLeft(clamp((hoverTime - viewStart) / viewDuration, 0, 1)),
+          }}
+        />
+      ) : null}
+
       {/* Playhead handle + line share one translated wrapper. translate3d
           on the wrapper is composited (no layout on every tick); the
           handle and line stay anchored to the wrapper's left edge. */}
@@ -341,6 +497,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
           <div className={styles.playheadTriangle} />
         </div>
       </div>
+
+      {overlay}
     </div>
   );
 };

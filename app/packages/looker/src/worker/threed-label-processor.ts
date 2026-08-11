@@ -28,7 +28,7 @@ const inferredParamsCache: Record<
  */
 const getInferredParamsForUndefinedProjection = (
   schema: Schema,
-  sample: Readonly<Sample>
+  sample: Readonly<Sample>,
 ) => {
   if (inferredParamsCache[sample.id]) {
     return inferredParamsCache[sample.id];
@@ -98,14 +98,14 @@ const getInferredParamsForUndefinedProjection = (
 };
 
 const PainterFactory3D = (
-  orthographicProjectionParams: OrthogrpahicProjectionMetadata
+  orthographicProjectionParams: OrthogrpahicProjectionMetadata,
 ) => ({
   /**
    * Map over each detection label in the list impute bounding boxes parameters.
    */
   Detections: (label: DetectionsLabel) => {
     label.detections.map((label) =>
-      PainterFactory3D(orthographicProjectionParams).Detection(label)
+      PainterFactory3D(orthographicProjectionParams).Detection(label),
     );
   },
   /**
@@ -181,14 +181,14 @@ const VALID_THREE_D_LABELS = new Set(["Detections", "Detection"]);
 export const process3DLabels = async (schema: Schema, sample: Sample) => {
   const orthographicProjectionField = Object.entries(schema)
     .find(([_, d]) =>
-      d.embeddedDocType?.endsWith(".OrthographicProjectionMetadata")
+      d.embeddedDocType?.endsWith(".OrthographicProjectionMetadata"),
     )
     ?.at(0) as string;
 
   const painterFactory = PainterFactory3D(
     orthographicProjectionField
       ? (sample[orthographicProjectionField] as OrthogrpahicProjectionMetadata)
-      : getInferredParamsForUndefinedProjection(schema, sample)
+      : getInferredParamsForUndefinedProjection(schema, sample),
   );
 
   const paintJobPromises = [];
@@ -212,12 +212,12 @@ export const process3DLabels = async (schema: Schema, sample: Sample) => {
     switch (cls) {
       case "Detections":
         paintJobPromises.push(
-          painterFactory.Detections(label as DetectionsLabel)
+          painterFactory.Detections(label as DetectionsLabel),
         );
         break;
       case "Detection":
         paintJobPromises.push(
-          painterFactory.Detection(label as DetectionLabel)
+          painterFactory.Detection(label as DetectionLabel),
         );
         break;
       default:
