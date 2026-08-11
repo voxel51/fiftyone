@@ -29,6 +29,7 @@ const results = await eslint.lintFiles([
 const census = new Map();
 const directoryTotals = new Map();
 const areaTotals = new Map();
+const subareaTotals = new Map();
 const ruleTotals = new Map();
 let total = 0;
 
@@ -45,6 +46,13 @@ for (const result of results) {
       : `${directory}/${
           secondSlash === -1 ? "(root)" : remainder.slice(0, secondSlash)
         }`;
+  const directoryParts = sourcePath.split("/").slice(0, -1);
+  const subarea =
+    directoryParts.length === 0
+      ? "(root)"
+      : `${directoryParts.slice(0, 3).join("/")}${
+          directoryParts.length < 3 ? "/(root)" : ""
+        }`;
 
   for (const message of result.messages) {
     if (!message.ruleId || !(message.ruleId in typeAwareRules)) continue;
@@ -54,6 +62,7 @@ for (const result of results) {
     census.set(key, (census.get(key) ?? 0) + 1);
     directoryTotals.set(directory, (directoryTotals.get(directory) ?? 0) + 1);
     areaTotals.set(area, (areaTotals.get(area) ?? 0) + 1);
+    subareaTotals.set(subarea, (subareaTotals.get(subarea) ?? 0) + 1);
     ruleTotals.set(message.ruleId, (ruleTotals.get(message.ruleId) ?? 0) + 1);
   }
 }
@@ -79,5 +88,11 @@ for (const [area, count] of [...areaTotals].sort(([a], [b]) =>
   a.localeCompare(b),
 )) {
   console.log(`${area}\t${count}`);
+}
+console.log("\nBY THIRD-LEVEL SOURCE AREA");
+for (const [subarea, count] of [...subareaTotals].sort(([a], [b]) =>
+  a.localeCompare(b),
+)) {
+  console.log(`${subarea}\t${count}`);
 }
 console.log(`\nTOTAL\t${total}`);
