@@ -96,6 +96,7 @@ interface ResourceClient {
   readonly cancelIdleReads?: () => void;
   readonly cancelRunwayReads?: () => void;
   readDecodedMessages(
+    this: void,
     request: {
       readonly activeTimeline?: "log";
       readonly endTimeNs?: bigint;
@@ -106,6 +107,7 @@ interface ResourceClient {
     options?: { readonly priority?: "bulk" | "current" | "idle" | "playback" },
   ): AsyncGenerator<DecodedMessage, void, void>;
   readSynchronizedMessageBatch(
+    this: void,
     request: {
       readonly activeTimeline?: "log";
       readonly source: ByteSourceDescriptor;
@@ -115,28 +117,99 @@ interface ResourceClient {
     },
     options?: { readonly priority?: "bulk" | "current" | "idle" | "playback" },
   ): Promise<readonly SynchronizedMessageWindow[]>;
-  readSynchronizedMessages(request: {
-    readonly activeTimeline?: "log";
-    readonly source: ByteSourceDescriptor;
-    readonly streamPolicies?: StreamSyncPolicies;
-    readonly timeNs: bigint;
-    readonly topics: readonly string[];
-  }): Promise<SynchronizedMessageWindow>;
-  readTimelineRange(request: {
-    readonly activeTimeline?: "log";
-    readonly source: ByteSourceDescriptor;
-  }): Promise<TimelineRange>;
-  readTopicTimeBounds(request: {
-    readonly activeTimeline?: "log";
-    readonly source: ByteSourceDescriptor;
-    readonly topics: readonly string[];
-  }): Promise<
+  readSynchronizedMessages(
+    this: void,
+    request: {
+      readonly activeTimeline?: "log";
+      readonly source: ByteSourceDescriptor;
+      readonly streamPolicies?: StreamSyncPolicies;
+      readonly timeNs: bigint;
+      readonly topics: readonly string[];
+    },
+  ): Promise<SynchronizedMessageWindow>;
+  readTimelineRange(
+    this: void,
+    request: {
+      readonly activeTimeline?: "log";
+      readonly source: ByteSourceDescriptor;
+    },
+  ): Promise<TimelineRange>;
+  readTopicTimeBounds(
+    this: void,
+    request: {
+      readonly activeTimeline?: "log";
+      readonly source: ByteSourceDescriptor;
+      readonly topics: readonly string[];
+    },
+  ): Promise<
     readonly {
       readonly firstMessageTimeNs: bigint | null;
       readonly lastMessageTimeNs: bigint | null;
       readonly topic: string;
     }[]
   >;
+}
+
+function mockReadDecodedMessages(
+  implementation: (
+    ...args: Parameters<ResourceClient["readDecodedMessages"]>
+  ) => Iterable<DecodedMessage> | AsyncIterable<DecodedMessage>,
+) {
+  return vi.fn<ResourceClient["readDecodedMessages"]>(async function* (
+    ...args
+  ) {
+    for await (const message of implementation(...args)) {
+      yield message;
+    }
+  });
+}
+
+function mockReadSynchronizedMessageBatch(
+  implementation: (
+    ...args: Parameters<ResourceClient["readSynchronizedMessageBatch"]>
+  ) =>
+    | Awaited<ReturnType<ResourceClient["readSynchronizedMessageBatch"]>>
+    | ReturnType<ResourceClient["readSynchronizedMessageBatch"]>,
+) {
+  return vi.fn<ResourceClient["readSynchronizedMessageBatch"]>((...args) =>
+    Promise.resolve().then(() => implementation(...args)),
+  );
+}
+
+function mockReadSynchronizedMessages(
+  implementation: (
+    ...args: Parameters<ResourceClient["readSynchronizedMessages"]>
+  ) =>
+    | Awaited<ReturnType<ResourceClient["readSynchronizedMessages"]>>
+    | ReturnType<ResourceClient["readSynchronizedMessages"]>,
+) {
+  return vi.fn<ResourceClient["readSynchronizedMessages"]>((...args) =>
+    Promise.resolve().then(() => implementation(...args)),
+  );
+}
+
+function mockReadTimelineRange(
+  implementation: (
+    ...args: Parameters<ResourceClient["readTimelineRange"]>
+  ) =>
+    | Awaited<ReturnType<ResourceClient["readTimelineRange"]>>
+    | ReturnType<ResourceClient["readTimelineRange"]>,
+) {
+  return vi.fn<ResourceClient["readTimelineRange"]>((...args) =>
+    Promise.resolve().then(() => implementation(...args)),
+  );
+}
+
+function mockReadTopicTimeBounds(
+  implementation: (
+    ...args: Parameters<ResourceClient["readTopicTimeBounds"]>
+  ) =>
+    | Awaited<ReturnType<ResourceClient["readTopicTimeBounds"]>>
+    | ReturnType<ResourceClient["readTopicTimeBounds"]>,
+) {
+  return vi.fn<ResourceClient["readTopicTimeBounds"]>((...args) =>
+    Promise.resolve().then(() => implementation(...args)),
+  );
 }
 
 afterEach(() => {
@@ -153,8 +226,8 @@ describe("useRegisterDataStream", () => {
     const local = createSource("local-policy", BYTE_SOURCE_READ_PROFILE.LOCAL);
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     const { rerender, unmount } = render(
@@ -183,8 +256,8 @@ describe("useRegisterDataStream", () => {
     const transferredBuffer = new ArrayBuffer(1024);
     let dataStream: DataStream | null = null;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createWindow({
           resourceHints: {
             sizeBytes: transferredBuffer.byteLength,
@@ -197,7 +270,7 @@ describe("useRegisterDataStream", () => {
           },
         }),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     const { unmount } = render(
@@ -237,8 +310,8 @@ describe("useRegisterDataStream", () => {
     let dataStream: DataStream | null = null;
     let api: ReturnType<typeof usePlayback> | null = null;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     const { rerender } = render(
@@ -289,7 +362,7 @@ describe("useRegisterDataStream", () => {
   it("renders through mandatory session reads without playback acceleration", async () => {
     const source = createSource("mandatory-read");
     const storeCapture = capturePlaybackStore();
-    const readDecodedMessages = vi.fn(async function* (
+    const readDecodedMessages = mockReadDecodedMessages(function* (
       request: Parameters<ResourceClient["readDecodedMessages"]>[0],
     ) {
       yield createDecodedMessage({
@@ -301,17 +374,19 @@ describe("useRegisterDataStream", () => {
         },
       });
     });
-    const readSynchronizedMessageBatch = vi.fn(async () => {
-      throw new Error("Playback acceleration must not be required");
-    });
-    const readSynchronizedMessages = vi.fn(async () => {
+    const readSynchronizedMessageBatch = mockReadSynchronizedMessageBatch(
+      () => {
+        throw new Error("Playback acceleration must not be required");
+      },
+    );
+    const readSynchronizedMessages = mockReadSynchronizedMessages(() => {
       throw new Error("Playback acceleration must not be required");
     });
     const client = createClient({
       readDecodedMessages,
       readSynchronizedMessageBatch,
       readSynchronizedMessages,
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -342,15 +417,15 @@ describe("useRegisterDataStream", () => {
       api = value;
     };
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
         () =>
           new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
       ),
-      readSynchronizedMessages: vi.fn(
+      readSynchronizedMessages: mockReadSynchronizedMessages(
         () => new Promise<SynchronizedMessageWindow>(() => undefined),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
-      readTopicTimeBounds: vi.fn(async ({ source }) => [
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
+      readTopicTimeBounds: mockReadTopicTimeBounds(({ source }) => [
         {
           firstMessageTimeNs:
             source.sourceId === sourceB.sourceId ? 10_000_000n : 0n,
@@ -416,10 +491,10 @@ describe("useRegisterDataStream", () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const streams = [STREAM, LIDAR_STREAM, MAP_STREAM, RADAR_STREAM] as const;
-    const readDecodedMessages = vi.fn(async function* () {
+    const readDecodedMessages = mockReadDecodedMessages(function* () {
       for (const item of [] as never[]) yield item;
     });
-    const readTopicTimeBounds = vi.fn(async () => [
+    const readTopicTimeBounds = mockReadTopicTimeBounds(() => [
       {
         firstMessageTimeNs: 0n,
         lastMessageTimeNs: 1_000_000_000n,
@@ -443,14 +518,14 @@ describe("useRegisterDataStream", () => {
     ]);
     const client = createClient({
       readDecodedMessages,
-      readSynchronizedMessageBatch: vi.fn(
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
         () =>
           new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
       ),
-      readSynchronizedMessages: vi.fn(
+      readSynchronizedMessages: mockReadSynchronizedMessages(
         () => new Promise<SynchronizedMessageWindow>(() => undefined),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
       readTopicTimeBounds,
     });
 
@@ -487,15 +562,15 @@ describe("useRegisterDataStream", () => {
     const source = createSource("threshold-start");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
         () =>
           new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
       ),
-      readSynchronizedMessages: vi.fn(
+      readSynchronizedMessages: mockReadSynchronizedMessages(
         () => new Promise<SynchronizedMessageWindow>(() => undefined),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
-      readTopicTimeBounds: vi.fn(async () => [
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
+      readTopicTimeBounds: mockReadTopicTimeBounds(() => [
         {
           firstMessageTimeNs: 500_000_000n,
           lastMessageTimeNs: 1_000_000_000n,
@@ -521,7 +596,7 @@ describe("useRegisterDataStream", () => {
   it("leaves a start beyond 500ms at the recording origin", async () => {
     const source = createSource("long-gap");
     const storeCapture = capturePlaybackStore();
-    const readTopicTimeBounds = vi.fn(async () => [
+    const readTopicTimeBounds = mockReadTopicTimeBounds(() => [
       {
         firstMessageTimeNs: 500_000_001n,
         lastMessageTimeNs: 1_000_000_000n,
@@ -529,14 +604,14 @@ describe("useRegisterDataStream", () => {
       },
     ]);
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
         () =>
           new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
       ),
-      readSynchronizedMessages: vi.fn(
+      readSynchronizedMessages: mockReadSynchronizedMessages(
         () => new Promise<SynchronizedMessageWindow>(() => undefined),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
       readTopicTimeBounds,
     });
 
@@ -583,16 +658,16 @@ describe("useRegisterDataStream", () => {
         }[]
       >();
       let api: ReturnType<typeof usePlayback> | undefined;
-      const readTopicTimeBounds = vi.fn(() => bounds.promise);
+      const readTopicTimeBounds = mockReadTopicTimeBounds(() => bounds.promise);
       const client = createClient({
-        readSynchronizedMessageBatch: vi.fn(
+        readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
           () =>
             new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
         ),
-        readSynchronizedMessages: vi.fn(
+        readSynchronizedMessages: mockReadSynchronizedMessages(
           () => new Promise<SynchronizedMessageWindow>(() => undefined),
         ),
-        readTimelineRange: vi.fn(async () => createTimelineRange()),
+        readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
         readTopicTimeBounds,
       });
 
@@ -638,11 +713,11 @@ describe("useRegisterDataStream", () => {
     const storeCapture = capturePlaybackStore();
     let batchReadCount = 0;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(() => {
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => {
         batchReadCount += 1;
         return batchReadCount === 1 ? oldBatch.promise : Promise.resolve([]);
       }),
-      readTimelineRange: vi.fn((request) =>
+      readTimelineRange: mockReadTimelineRange((request) =>
         request.source.sourceId === sourceB.sourceId
           ? sourceBTimeline.promise
           : Promise.resolve(createTimelineRange()),
@@ -743,15 +818,17 @@ describe("useRegisterDataStream", () => {
     let api: ReturnType<typeof usePlayback> | undefined;
     const storeCapture = capturePlaybackStore();
     const cancelRunway = vi.fn();
-    const readSynchronizedMessageBatch = vi.fn(async () => []);
-    const readSynchronizedMessages = vi.fn(async (request) =>
+    const readSynchronizedMessageBatch = mockReadSynchronizedMessageBatch(
+      () => [],
+    );
+    const readSynchronizedMessages = mockReadSynchronizedMessages((request) =>
       createEmptyWindow(request.timeNs),
     );
     const client = createClient({
       cancelRunwayReads: cancelRunway,
       readSynchronizedMessageBatch,
       readSynchronizedMessages,
-      readTimelineRange: vi.fn(async () =>
+      readTimelineRange: mockReadTimelineRange(() =>
         createTimelineRange(60_000_000_000n),
       ),
     });
@@ -804,8 +881,10 @@ describe("useRegisterDataStream", () => {
     const cancelRunwayReads = vi.fn();
     const client = createClient({
       cancelRunwayReads,
-      readSynchronizedMessageBatch: vi.fn(() => oldBatch.promise),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        () => oldBatch.promise,
+      ),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     const { rerender } = render(
@@ -854,8 +933,8 @@ describe("stream status + buffering feedback", () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -885,8 +964,8 @@ describe("stream status + buffering feedback", () => {
     const source = createSource("local-source", "local");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -912,11 +991,11 @@ describe("stream status + buffering feedback", () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readSynchronizedMessages: vi.fn(
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readSynchronizedMessages: mockReadSynchronizedMessages(
         () => new Promise<SynchronizedMessageWindow>(() => undefined),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -961,11 +1040,11 @@ describe("stream status + buffering feedback", () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readSynchronizedMessages: vi.fn(
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readSynchronizedMessages: mockReadSynchronizedMessages(
         () => new Promise<SynchronizedMessageWindow>(() => undefined),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -994,8 +1073,10 @@ describe("stream status + buffering feedback", () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(() => startupBatch.promise),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        () => startupBatch.promise,
+      ),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -1037,14 +1118,16 @@ describe("stream status + buffering feedback", () => {
       | Parameters<ResourceClient["readSynchronizedMessageBatch"]>[0]
       | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn((request) => {
-        startupRequest ??= request;
-        return startupBatch.promise;
-      }),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        (request) => {
+          startupRequest ??= request;
+          return startupBatch.promise;
+        },
+      ),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createEmptyWindow(request.timeNs),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -1092,8 +1175,8 @@ describe("stream status + buffering feedback", () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -1135,16 +1218,20 @@ describe("stream status + buffering feedback", () => {
       | Parameters<ResourceClient["readSynchronizedMessageBatch"]>[0]
       | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn((request) => {
-        startupRequest ??= request;
-        return startupRequest === request
-          ? startupBatch.promise
-          : Promise.resolve(request.timeNs.map(createEmptyWindow));
-      }),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        (request) => {
+          startupRequest ??= request;
+          return startupRequest === request
+            ? startupBatch.promise
+            : Promise.resolve(request.timeNs.map(createEmptyWindow));
+        },
+      ),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createEmptyWindow(request.timeNs),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange(5_000_000_000n)),
+      readTimelineRange: mockReadTimelineRange(() =>
+        createTimelineRange(5_000_000_000n),
+      ),
     });
 
     render(
@@ -1193,13 +1280,13 @@ describe("stream status + buffering feedback", () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async (request) =>
-        request.timeNs.map(createEmptyWindow),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        (request) => request.timeNs.map(createEmptyWindow),
       ),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createEmptyWindow(request.timeNs),
       ),
-      readTimelineRange: vi.fn(async () =>
+      readTimelineRange: mockReadTimelineRange(() =>
         createTimelineRange(10_000_000_000n),
       ),
     });
@@ -1275,16 +1362,18 @@ describe("stream status + buffering feedback", () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn((request) => {
-        const batch = deferred<readonly SynchronizedMessageWindow[]>();
-        batches.push({
-          promise: batch.promise,
-          request,
-          resolve: batch.resolve,
-        });
-        return batch.promise;
-      }),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        (request) => {
+          const batch = deferred<readonly SynchronizedMessageWindow[]>();
+          batches.push({
+            promise: batch.promise,
+            request,
+            resolve: batch.resolve,
+          });
+          return batch.promise;
+        },
+      ),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -1328,9 +1417,11 @@ describe("stream status + buffering feedback", () => {
     const current = deferred<SynchronizedMessageWindow>();
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readSynchronizedMessages: vi.fn(() => current.promise),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readSynchronizedMessages: mockReadSynchronizedMessages(
+        () => current.promise,
+      ),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -1383,11 +1474,11 @@ describe("stream status + buffering feedback", () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createEmptyWindow(request.timeNs),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -1416,8 +1507,8 @@ describe("stream status + buffering feedback", () => {
     const client = createClient({
       cancelIdleReads,
       cancelRunwayReads,
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -1470,8 +1561,8 @@ describe("stream status + buffering feedback", () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         request.timeNs === 0n
           ? createWindow({
               timeNs: 0n,
@@ -1489,8 +1580,8 @@ describe("stream status + buffering feedback", () => {
               },
             }),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
-      readTopicTimeBounds: vi.fn(async () => [
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
+      readTopicTimeBounds: mockReadTopicTimeBounds(() => [
         {
           firstMessageTimeNs: 0n,
           lastMessageTimeNs: 0n,
@@ -1513,7 +1604,7 @@ describe("stream status + buffering feedback", () => {
     const store = storeCapture.store();
 
     await waitFor(() => {
-      const value = getStreamValue(store, STREAM) as StreamPlaybackFrame | null;
+      const value = getStreamValue<StreamPlaybackFrame<unknown>>(store, STREAM);
       expect(value?.contentTimeNs).toBe(0n);
       expect(getStreamStatus(store, STREAM)).toBe("ready");
     });
@@ -1524,7 +1615,7 @@ describe("stream status + buffering feedback", () => {
     });
 
     await waitFor(() => {
-      const value = getStreamValue(store, STREAM) as StreamPlaybackFrame | null;
+      const value = getStreamValue<StreamPlaybackFrame<unknown>>(store, STREAM);
       expect(value).not.toBeNull();
       expect(value?.contentTimeNs).toBe(0n);
       expect(value?.requestedTimeNs).toBeGreaterThan(500_000_000n);
@@ -1538,8 +1629,8 @@ describe("stream status + buffering feedback", () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         request.timeNs === 0n
           ? createWindow({
               timeNs: 0n,
@@ -1563,8 +1654,8 @@ describe("stream status + buffering feedback", () => {
               },
             }),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
-      readTopicTimeBounds: vi.fn(async () => [
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
+      readTopicTimeBounds: mockReadTopicTimeBounds(() => [
         {
           firstMessageTimeNs: 0n,
           lastMessageTimeNs: 0n,
@@ -1600,10 +1691,10 @@ describe("stream status + buffering feedback", () => {
     });
 
     await waitFor(() => {
-      const value = getStreamValue(
+      const value = getStreamValue<StreamPlaybackFrame<unknown>>(
         store,
         IMAGE_ANNOTATION_STREAM,
-      ) as StreamPlaybackFrame | null;
+      );
       expect(value).not.toBeNull();
       expect(value?.contentTimeNs).toBe(0n);
       expect(value?.requestedTimeNs).toBeGreaterThan(500_000_000n);
@@ -1618,13 +1709,13 @@ describe("stream status + buffering feedback", () => {
       const storeCapture = capturePlaybackStore();
       let api: ReturnType<typeof usePlayback> | undefined;
       const client = createClient({
-        readSynchronizedMessageBatch: vi.fn(() =>
+        readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() =>
           Promise.reject(new Error("decode failed")),
         ),
-        readSynchronizedMessages: vi.fn(() =>
+        readSynchronizedMessages: mockReadSynchronizedMessages(() =>
           Promise.reject(new Error("decode failed")),
         ),
-        readTimelineRange: vi.fn(async () => createTimelineRange()),
+        readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
       });
 
       render(
@@ -1666,13 +1757,13 @@ describe("stream status + buffering feedback", () => {
       const storeCapture = capturePlaybackStore();
       let api: ReturnType<typeof usePlayback> | undefined;
       const client = createClient({
-        readSynchronizedMessageBatch: vi.fn(async (request) =>
-          request.timeNs.map(createPartialDecodeWindow),
+        readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+          (request) => request.timeNs.map(createPartialDecodeWindow),
         ),
-        readSynchronizedMessages: vi.fn(async (request) =>
+        readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
           createPartialDecodeWindow(request.timeNs),
         ),
-        readTimelineRange: vi.fn(async () => createTimelineRange()),
+        readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
       });
 
       render(
@@ -1730,17 +1821,17 @@ describe("stream status + buffering feedback", () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
         () =>
           new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
       ),
-      readSynchronizedMessages: vi.fn((request) => {
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) => {
         const handle = deferred<SynchronizedMessageWindow>();
         currentCalls.push({ timeNs: request.timeNs, handle });
         return handle.promise;
       }),
       // 60s file so the seek target sits far beyond the mount lookahead.
-      readTimelineRange: vi.fn(async () =>
+      readTimelineRange: mockReadTimelineRange(() =>
         createTimelineRange(60_000_000_000n),
       ),
     });
@@ -1803,19 +1894,19 @@ describe("stream status + buffering feedback", () => {
     );
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
-    const readSynchronizedMessageBatch = vi.fn(
+    const readSynchronizedMessageBatch = mockReadSynchronizedMessageBatch(
       (
         _request: Parameters<ResourceClient["readSynchronizedMessageBatch"]>[0],
       ) => new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
     );
-    const readSynchronizedMessages = vi.fn(
+    const readSynchronizedMessages = mockReadSynchronizedMessages(
       (_request: Parameters<ResourceClient["readSynchronizedMessages"]>[0]) =>
         new Promise<SynchronizedMessageWindow>(() => undefined),
     );
     const client = createClient({
       readSynchronizedMessageBatch,
       readSynchronizedMessages,
-      readTimelineRange: vi.fn(async () =>
+      readTimelineRange: mockReadTimelineRange(() =>
         createTimelineRange(60_000_000_000n),
       ),
     });
@@ -1876,7 +1967,7 @@ describe("stream status + buffering feedback", () => {
           readonly reject: (reason?: unknown) => void;
         }
       | undefined;
-    const readSynchronizedMessageBatch = vi.fn(
+    const readSynchronizedMessageBatch = mockReadSynchronizedMessageBatch(
       (
         request: Parameters<ResourceClient["readSynchronizedMessageBatch"]>[0],
         options?: Parameters<ResourceClient["readSynchronizedMessageBatch"]>[1],
@@ -1891,14 +1982,14 @@ describe("stream status + buffering feedback", () => {
     const cancelIdleReads = vi.fn(() => {
       idleRead?.reject(new EpisodeReadCancelledError());
     });
-    const readSynchronizedMessages = vi.fn(async (request) =>
+    const readSynchronizedMessages = mockReadSynchronizedMessages((request) =>
       createEmptyWindow(request.timeNs),
     );
     const client = createClient({
       cancelIdleReads,
       readSynchronizedMessageBatch,
       readSynchronizedMessages,
-      readTimelineRange: vi.fn(async () =>
+      readTimelineRange: mockReadTimelineRange(() =>
         createTimelineRange(60_000_000_000n),
       ),
     });
@@ -1966,15 +2057,17 @@ describe("stream status + buffering feedback", () => {
     const batchTicks: bigint[] = [];
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async (request) => {
-        batchTicks.push(...request.timeNs);
-        return [];
-      }),
-      readSynchronizedMessages: vi.fn(async (request) => {
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        (request) => {
+          batchTicks.push(...request.timeNs);
+          return [];
+        },
+      ),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) => {
         currentFrameTicks.push(request.timeNs);
         return createEmptyWindow(request.timeNs);
       }),
-      readTimelineRange: vi.fn(async () =>
+      readTimelineRange: mockReadTimelineRange(() =>
         createTimelineRange(7_200_000_000_000n),
       ),
     });
@@ -2016,11 +2109,11 @@ describe("stream status + buffering feedback", () => {
     const sourceB = createSource("source-b");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
         () =>
           new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     const { rerender } = render(
@@ -2059,15 +2152,15 @@ describe("stream status + buffering feedback", () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
         () =>
           new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
       ),
-      readSynchronizedMessages: vi.fn(
+      readSynchronizedMessages: mockReadSynchronizedMessages(
         () => new Promise<SynchronizedMessageWindow>(() => undefined),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
-      readTopicTimeBounds: vi.fn(async () => [
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
+      readTopicTimeBounds: mockReadTopicTimeBounds(() => [
         {
           firstMessageTimeNs: 10_000_000n,
           lastMessageTimeNs: 1_000_000_000n,
@@ -2107,8 +2200,8 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
       // Batches seed nothing: the only real frame arrives through the
       // current-frame lane at tick 0, so the held-value transitions stay
       // deterministic.
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readSynchronizedMessages: vi.fn((request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(() => []),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         request.timeNs === 0n
           ? Promise.resolve(
               createWindow({
@@ -2118,7 +2211,7 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
             )
           : new Promise<SynchronizedMessageWindow>(() => undefined),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -2159,22 +2252,24 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     const client = createClient({
       // The static startup floor fills immediately; fills past it (the
       // bandwidth cushion) are held until the test releases them.
-      readSynchronizedMessageBatch: vi.fn(async (request) => {
-        const windows = request.timeNs.map((tick: bigint) =>
-          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
-        );
-        if ((request.timeNs[0] ?? 0n) > 500_000_000n) {
-          await cushionFill.promise;
-        }
-        return windows;
-      }),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        async (request) => {
+          const windows = request.timeNs.map((tick: bigint) =>
+            createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+          );
+          if ((request.timeNs[0] ?? 0n) > 500_000_000n) {
+            await cushionFill.promise;
+          }
+          return windows;
+        },
+      ),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createWindow({
           timeNs: request.timeNs,
           visualization: IMAGE_VISUALIZATION,
         }),
       ),
-      readTimelineRange: vi.fn(async () => ({
+      readTimelineRange: mockReadTimelineRange(() => ({
         ...createTimelineRange(),
         // 100 bytes over one second, uniform.
         byteTimeline: [
@@ -2250,18 +2345,19 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async (request) =>
-        request.timeNs.map((tick: bigint) =>
-          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
-        ),
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        (request) =>
+          request.timeNs.map((tick: bigint) =>
+            createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+          ),
       ),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createWindow({
           timeNs: request.timeNs,
           visualization: IMAGE_VISUALIZATION,
         }),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTimelineRange: mockReadTimelineRange(() => createTimelineRange()),
     });
 
     render(
@@ -2310,23 +2406,25 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     let api: ReturnType<typeof usePlayback> | undefined;
     const uncoveredFill = deferred<void>();
     const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async (request) => {
-        const windows = request.timeNs.map((tick: bigint) =>
-          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
-        );
-        const firstSec = Number(request.timeNs[0] ?? 0n) / 1_000_000_000;
-        if (firstSec > 1.5) {
-          await uncoveredFill.promise;
-        }
-        return windows;
-      }),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        async (request) => {
+          const windows = request.timeNs.map((tick: bigint) =>
+            createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+          );
+          const firstSec = Number(request.timeNs[0] ?? 0n) / 1_000_000_000;
+          if (firstSec > 1.5) {
+            await uncoveredFill.promise;
+          }
+          return windows;
+        },
+      ),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createWindow({
           timeNs: request.timeNs,
           visualization: IMAGE_VISUALIZATION,
         }),
       ),
-      readTimelineRange: vi.fn(async () => ({
+      readTimelineRange: mockReadTimelineRange(() => ({
         ...createTimelineRange(8_000_000_000n),
         byteTimeline: Array.from({ length: 8 }, (_, i) => ({
           cumulativeCompressedBytes: (i + 1) * 100,
@@ -2393,24 +2491,26 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     const client = createClient({
       // The static floor fills immediately; cushion fills park until the
       // test releases them one at a time to drive status publishes.
-      readSynchronizedMessageBatch: vi.fn(async (request) => {
-        const windows = request.timeNs.map((tick: bigint) =>
-          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
-        );
-        if ((request.timeNs[0] ?? 0n) > 500_000_000n) {
-          await new Promise<void>((resolve) => {
-            gatedFills.push(resolve);
-          });
-        }
-        return windows;
-      }),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        async (request) => {
+          const windows = request.timeNs.map((tick: bigint) =>
+            createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+          );
+          if ((request.timeNs[0] ?? 0n) > 500_000_000n) {
+            await new Promise<void>((resolve) => {
+              gatedFills.push(resolve);
+            });
+          }
+          return windows;
+        },
+      ),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createWindow({
           timeNs: request.timeNs,
           visualization: IMAGE_VISUALIZATION,
         }),
       ),
-      readTimelineRange: vi.fn(async () => ({
+      readTimelineRange: mockReadTimelineRange(() => ({
         ...createTimelineRange(8_000_000_000n),
         // Uniform 100 bytes per content second across 8 seconds.
         byteTimeline: Array.from({ length: 8 }, (_, i) => ({
@@ -2493,22 +2593,24 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     const client = createClient({
       // The static floor fills immediately; everything past it (the held
       // press's pending prefetch) stays in flight until released.
-      readSynchronizedMessageBatch: vi.fn(async (request) => {
-        const windows = request.timeNs.map((tick: bigint) =>
-          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
-        );
-        if ((request.timeNs[0] ?? 0n) > 500_000_000n) {
-          await gateFill.promise;
-        }
-        return windows;
-      }),
-      readSynchronizedMessages: vi.fn(async (request) =>
+      readSynchronizedMessageBatch: mockReadSynchronizedMessageBatch(
+        async (request) => {
+          const windows = request.timeNs.map((tick: bigint) =>
+            createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+          );
+          if ((request.timeNs[0] ?? 0n) > 500_000_000n) {
+            await gateFill.promise;
+          }
+          return windows;
+        },
+      ),
+      readSynchronizedMessages: mockReadSynchronizedMessages((request) =>
         createWindow({
           timeNs: request.timeNs,
           visualization: IMAGE_VISUALIZATION,
         }),
       ),
-      readTimelineRange: vi.fn(async () => ({
+      readTimelineRange: mockReadTimelineRange(() => ({
         ...createTimelineRange(8_000_000_000n),
         byteTimeline: [
           {
@@ -2852,18 +2954,16 @@ function capturePlaybackStore() {
 function createClient({
   cancelIdleReads,
   cancelRunwayReads,
-  readDecodedMessages = vi.fn(async function* () {
-    for (const item of [] as never[]) yield item;
-  }),
+  readDecodedMessages = mockReadDecodedMessages(() => []),
   readSynchronizedMessageBatch,
   readTimelineRange,
   // The priority current-frame lane fires on mount/seek; default to a
   // never-settling promise so tests that only exercise the batch lane
   // aren't affected by it.
-  readSynchronizedMessages = vi.fn(
+  readSynchronizedMessages = mockReadSynchronizedMessages(
     () => new Promise<SynchronizedMessageWindow>(() => undefined),
   ),
-  readTopicTimeBounds = vi.fn(async () => []),
+  readTopicTimeBounds = mockReadTopicTimeBounds(() => []),
 }: {
   readonly cancelIdleReads?: ResourceClient["cancelIdleReads"];
   readonly cancelRunwayReads?: ResourceClient["cancelRunwayReads"];

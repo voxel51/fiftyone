@@ -73,8 +73,9 @@ export function resetDataStreamFetchState(state: DataStreamFetchState): void {
 /** Imperative foreground/background fetch surface consumed by the hook. */
 export interface DataStreamPrefetcher {
   /** Aborts every fallback/accelerated read owned by this source epoch. */
-  cancel(): void;
+  cancel(this: void): void;
   collectMissingTicksForStreams(
+    this: void,
     startSec: number,
     endSec: number,
     maxTicks: number,
@@ -82,12 +83,13 @@ export interface DataStreamPrefetcher {
     options?: { readonly endExclusive?: boolean },
   ): bigint[];
   fetchBatch(
+    this: void,
     ticks: bigint[],
     activeStreams: string[],
     operation: DataOperation,
   ): boolean;
-  fetchCurrentFrame(tick: bigint, activeStreams: string[]): boolean;
-  isStreamPending(tickKey: string, stream: string): boolean;
+  fetchCurrentFrame(this: void, tick: bigint, activeStreams: string[]): boolean;
+  isStreamPending(this: void, tickKey: string, stream: string): boolean;
 }
 
 /**

@@ -21,7 +21,7 @@ export function evictOldestPointCloudChannels<Value>(
   cache: Map<string, Value>,
 ): void {
   while (cache.size > POINT_CLOUD_CHANNEL_CACHE_LIMIT) {
-    const oldest = cache.keys().next().value;
+    const [oldest] = cache.keys();
     if (oldest === undefined) return;
     cache.delete(oldest);
   }

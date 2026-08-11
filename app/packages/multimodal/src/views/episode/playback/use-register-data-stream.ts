@@ -893,7 +893,8 @@ export function useRegisterDataStream({
       const colorBy = options?.pointCloudColorBy;
       if (colorBy) {
         const subscriptions =
-          pointCloudColorSubscriptionsRef.current.get(stream) ?? new Map();
+          pointCloudColorSubscriptionsRef.current.get(stream) ??
+          new Map<string, number>();
         subscriptions.set(colorBy, (subscriptions.get(colorBy) ?? 0) + 1);
         pointCloudColorSubscriptionsRef.current.set(stream, subscriptions);
         activePointCloudColorByRef.current.set(

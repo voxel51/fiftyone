@@ -174,8 +174,10 @@ function getTimeZoneTree(ns: bigint): TimeZoneTreeRoot {
 
   TIME_ZONE_TREE_CACHE.set(bucket, root);
   if (TIME_ZONE_TREE_CACHE.size > TIME_ZONE_TREE_CACHE_LIMIT) {
-    const oldestKey = TIME_ZONE_TREE_CACHE.keys().next().value;
-    TIME_ZONE_TREE_CACHE.delete(oldestKey);
+    const [oldestKey] = TIME_ZONE_TREE_CACHE.keys();
+    if (oldestKey !== undefined) {
+      TIME_ZONE_TREE_CACHE.delete(oldestKey);
+    }
   }
 
   return root;

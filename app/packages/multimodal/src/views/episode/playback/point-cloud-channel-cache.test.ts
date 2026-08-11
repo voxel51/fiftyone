@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { PointCloudRenderChannelPayload } from "../../../ir";
 import {
   evictOldestPointCloudChannels,
   POINT_CLOUD_CHANNEL_CACHE_LIMIT,
@@ -25,7 +26,7 @@ describe("point-cloud channel cache policy", () => {
   });
 
   it("does not coalesce reads owned by different caller signals", async () => {
-    const cache = new Map();
+    const cache = new Map<string, Promise<PointCloudRenderChannelPayload>>();
     const firstController = new AbortController();
     const secondController = new AbortController();
     const read = vi.fn(
@@ -68,11 +69,10 @@ describe("point-cloud channel cache policy", () => {
   });
 
   it("still coalesces unsigned cache-owned reads", () => {
-    const cache = new Map();
-    const read = vi.fn(async () => ({
-      kind: "none" as const,
-      samplePlanKey: "plan",
-    }));
+    const cache = new Map<string, Promise<PointCloudRenderChannelPayload>>();
+    const read = vi.fn(() =>
+      Promise.resolve({ kind: "none" as const, samplePlanKey: "plan" }),
+    );
 
     const first = readPointCloudChannelWithCache(
       cache,

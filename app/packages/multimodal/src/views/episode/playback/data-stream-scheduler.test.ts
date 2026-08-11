@@ -161,15 +161,11 @@ describe("DataStreamScheduler", () => {
 
     playbackState.isPlayPending = false;
     playbackState.pendingListener?.();
-    expect(
-      harness.startupCushionPlanner.resetPendingPlan,
-    ).toHaveBeenCalledOnce();
+    expect(harness.resetPendingPlan).toHaveBeenCalledOnce();
 
     playbackState.isPlaying = true;
     commitTime(0.5);
-    expect(
-      harness.startupCushionPlanner.resetPendingPlan,
-    ).toHaveBeenCalledTimes(2);
+    expect(harness.resetPendingPlan).toHaveBeenCalledTimes(2);
 
     cleanup();
     expect(harness.unregisterStream).toHaveBeenCalledOnce();
@@ -546,8 +542,9 @@ function createSchedulerHarness({
     fetchCurrentFrame: vi.fn(() => false),
     isStreamPending: vi.fn(() => false),
   } satisfies DataStreamPrefetcher;
+  const resetPendingPlan = vi.fn();
   const startupCushionPlanner = {
-    resetPendingPlan: vi.fn(),
+    resetPendingPlan,
   } as unknown as StartupCushionPlanner;
   const unregisterStream = vi.fn();
   const unsubscribeStream = vi.fn();
@@ -577,7 +574,7 @@ function createSchedulerHarness({
       estimatedWaitSeconds: 0,
     }),
     startupCushionPlanner,
-    store: createStore() as PlaybackStore,
+    store: createStore(),
   });
 
   return {
@@ -593,6 +590,7 @@ function createSchedulerHarness({
         () => unsubscribeStream,
       ),
     scheduler,
+    resetPendingPlan,
     startupCushionPlanner,
     stream: () => {
       if (!registeredStream) throw new Error("stream is not registered");

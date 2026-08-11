@@ -1,4 +1,3 @@
-import type { PlaybackStore } from "@fiftyone/playback";
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 import { BYTE_SOURCE_READ_PROFILE, type ByteTimelinePoint } from "../../../ir";
@@ -174,7 +173,7 @@ describe("computeStartupCushion", () => {
 describe("StartupCushionPlanner", () => {
   it("keeps an unmeasured remote press held until its one-shot plan resets", () => {
     const planner = new StartupCushionPlanner();
-    const store = createStore() as PlaybackStore;
+    const store = createStore();
     const index = createTimelineIndex({
       endNs: 20n * SECOND_NS,
       startNs: 0n,
@@ -217,7 +216,7 @@ describe("StartupCushionPlanner", () => {
 
   it("keeps the slower press-time throughput until pause/resume resets it", () => {
     const planner = new StartupCushionPlanner();
-    const store = createStore() as PlaybackStore;
+    const store = createStore();
     const inputs = {
       activeBlockingStreams: ["/camera"],
       byteTimeline: uniformByteTimeline(27, 20),

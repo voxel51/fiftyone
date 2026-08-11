@@ -22,9 +22,9 @@ describe("readStreamFramesWithinBudget", () => {
     const frames = Array.from({ length: 4_097 }, (_, index) =>
       decodedFrame(BigInt(index), { resourceHints: { sizeBytes: 1 } }),
     );
-    const session = sessionFromRead(async function* (request) {
+    const session = sessionFromRead((request) => {
       readSignal = request.signal;
-      yield { frames, stream: STREAM };
+      return asyncValues([{ frames, stream: STREAM }]);
     });
 
     const result = await readStreamFramesWithinBudget(
@@ -42,9 +42,9 @@ describe("readStreamFramesWithinBudget", () => {
     const frames = Array.from({ length: 4_096 }, (_, index) =>
       decodedFrame(BigInt(index), { resourceHints: { sizeBytes: 0 } }),
     );
-    const session = sessionFromRead(async function* () {
-      yield { frames, stream: STREAM };
-    });
+    const session = sessionFromRead(() =>
+      asyncValues([{ frames, stream: STREAM }]),
+    );
 
     const result = await readStreamFramesWithinBudget(
       session,
@@ -63,12 +63,12 @@ describe("readStreamFramesWithinBudget", () => {
     const firstByteBeyond = decodedFrame(2n, {
       resourceHints: { sizeBytes: 1 },
     });
-    const exactSession = sessionFromRead(async function* () {
-      yield { frames: [exact], stream: STREAM };
-    });
-    const overflowSession = sessionFromRead(async function* () {
-      yield { frames: [exact, firstByteBeyond], stream: STREAM };
-    });
+    const exactSession = sessionFromRead(() =>
+      asyncValues([{ frames: [exact], stream: STREAM }]),
+    );
+    const overflowSession = sessionFromRead(() =>
+      asyncValues([{ frames: [exact, firstByteBeyond], stream: STREAM }]),
+    );
 
     const exactResult = await readStreamFramesWithinBudget(
       exactSession,
@@ -95,9 +95,9 @@ describe("readStreamFramesWithinBudget", () => {
     const oversized = decodedFrame(1n, {
       resourceHints: { sizeBytes: OBSERVED_BYTE_CEILING + 1 },
     });
-    const session = sessionFromRead(async function* () {
-      yield { frames: [oversized], stream: STREAM };
-    });
+    const session = sessionFromRead(() =>
+      asyncValues([{ frames: [oversized], stream: STREAM }]),
+    );
 
     const result = await readStreamFramesWithinBudget(session, request());
 
@@ -122,9 +122,9 @@ describe("readStreamFramesWithinBudget", () => {
       },
     });
     const unknown = decodedFrame(2n);
-    const session = sessionFromRead(async function* () {
-      yield { frames: [encoded, unknown], stream: STREAM };
-    });
+    const session = sessionFromRead(() =>
+      asyncValues([{ frames: [encoded, unknown], stream: STREAM }]),
+    );
 
     const result = await readStreamFramesWithinBudget(session, request());
 
@@ -211,6 +211,10 @@ function sessionFromRead(
   }>,
 ): Pick<EpisodeSession, "read"> {
   return { read };
+}
+
+async function* asyncValues<Value>(values: Iterable<Value>) {
+  for await (const value of values) yield value;
 }
 
 function decodedFrame(

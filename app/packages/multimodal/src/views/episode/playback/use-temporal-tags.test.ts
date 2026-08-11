@@ -23,11 +23,21 @@ const mockResult = vi.hoisted(
     status: "ready",
     error: null,
     temporalTags: [],
-    create: vi.fn(async () => []),
-    delete: vi.fn(async () => 0),
-    update: vi.fn(async () => makeTag({ id: "updated" })),
-    clear: vi.fn(async () => 0),
-    reload: vi.fn(async () => []),
+    create: vi.fn<UseSampleTemporalTagsResult["create"]>(() =>
+      Promise.resolve([]),
+    ),
+    delete: vi.fn<UseSampleTemporalTagsResult["delete"]>(() =>
+      Promise.resolve(0),
+    ),
+    update: vi.fn<UseSampleTemporalTagsResult["update"]>(() =>
+      Promise.resolve(makeTag({ id: "updated" })),
+    ),
+    clear: vi.fn<UseSampleTemporalTagsResult["clear"]>(() =>
+      Promise.resolve(0),
+    ),
+    reload: vi.fn<UseSampleTemporalTagsResult["reload"]>(() =>
+      Promise.resolve([]),
+    ),
   }),
 );
 const colorForTag = vi.hoisted(() => vi.fn(() => "#123456"));
@@ -187,8 +197,7 @@ describe("useTemporalTags", () => {
           tag: "t",
         });
       });
-      const [created] = (mockResult.create as ReturnType<typeof vi.fn>).mock
-        .calls[0][0];
+      const [created] = vi.mocked(mockResult.create).mock.calls[0][0];
       expect(Number.isInteger(created.start)).toBe(true);
       expect(Number.isInteger(created.end)).toBe(true);
     });

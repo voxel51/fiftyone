@@ -1,8 +1,4 @@
-import {
-  getStreamValue,
-  setIsBuffering,
-  type PlaybackStore,
-} from "@fiftyone/playback";
+import { getStreamValue, setIsBuffering } from "@fiftyone/playback";
 import { playheadAtom } from "@fiftyone/playback/runtime";
 import { createStore } from "jotai";
 import { describe, expect, it, vi } from "vitest";
@@ -108,8 +104,12 @@ describe("data stream prefetcher", () => {
       const harness = createHarness({
         isStreamTimeAvailable: (stream, timeNs) =>
           stream !== IMAGE || timeNs <= 400_000_000n,
-        readSynchronized: vi.fn(async () => window),
-        readSynchronizedBatch: vi.fn(async () => [window]),
+        readSynchronized: vi.fn<PlaybackReadCapability["readSynchronized"]>(
+          () => Promise.resolve(window),
+        ),
+        readSynchronizedBatch: vi.fn<
+          PlaybackReadCapability["readSynchronizedBatch"]
+        >(() => Promise.resolve([window])),
       });
       harness.caches.get(IMAGE)?.subscribe();
 
@@ -127,8 +127,12 @@ describe("data stream prefetcher", () => {
     async (lane) => {
       const window = windowAt(0n, [frame(LIDAR, 0n)], [IMAGE]);
       const harness = createHarness({
-        readSynchronized: vi.fn(async () => window),
-        readSynchronizedBatch: vi.fn(async () => [window]),
+        readSynchronized: vi.fn<PlaybackReadCapability["readSynchronized"]>(
+          () => Promise.resolve(window),
+        ),
+        readSynchronizedBatch: vi.fn<
+          PlaybackReadCapability["readSynchronizedBatch"]
+        >(() => Promise.resolve([window])),
       });
       harness.caches.get(IMAGE)?.subscribe();
       harness.caches.get(LIDAR)?.subscribe();
@@ -194,7 +198,7 @@ describe("data stream prefetcher", () => {
   it("deduplicates pending ticks and assigns foreground and idle priorities", async () => {
     const firstRead = deferred<readonly SynchronizedFrameWindow[]>();
     const readSynchronizedBatch = vi
-      .fn()
+      .fn<PlaybackReadCapability["readSynchronizedBatch"]>()
       .mockImplementationOnce(() => firstRead.promise)
       .mockResolvedValue([]);
     const harness = createHarness({ readSynchronizedBatch });
@@ -209,25 +213,25 @@ describe("data stream prefetcher", () => {
     expect(
       harness.prefetcher.collectMissingTicksForStreams(0, 0, 1, [IMAGE]),
     ).toEqual([]);
-    expect(readSynchronizedBatch.mock.calls[0]?.[1]).toEqual({
-      priority: "playback",
-      signal: expect.any(AbortSignal),
-    });
+    const playbackOptions = readSynchronizedBatch.mock.calls[0]?.[1];
+    expect(playbackOptions?.priority).toBe("playback");
+    expect(playbackOptions?.signal).toBeInstanceOf(AbortSignal);
 
     firstRead.resolve([]);
     await settle();
     expect(
       harness.prefetcher.fetchBatch([0n], [IMAGE], "background-lookahead"),
     ).toBe(true);
-    expect(readSynchronizedBatch.mock.calls[1]?.[1]).toEqual({
-      priority: "idle",
-      signal: expect.any(AbortSignal),
-    });
+    const idleOptions = readSynchronizedBatch.mock.calls[1]?.[1];
+    expect(idleOptions?.priority).toBe("idle");
+    expect(idleOptions?.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("leaves refused batch ticks available for a later admission pass", async () => {
+  it("leaves refused batch ticks available for a later admission pass", () => {
     let admitBatch = false;
-    const readSynchronizedBatch = vi.fn(async () => []);
+    const readSynchronizedBatch = vi.fn<
+      PlaybackReadCapability["readSynchronizedBatch"]
+    >(() => Promise.resolve([]));
     const harness = createHarness({
       readSynchronizedBatch,
       shouldAdmitBatch: () => admitBatch,
@@ -277,12 +281,17 @@ describe("data stream prefetcher", () => {
       .spyOn(console, "warn")
       .mockImplementation(() => undefined);
     const harness = createHarness({
-      readSynchronized: vi.fn(async (request) =>
-        windowAt(
-          request.timeNs,
-          request.streams.includes(LIDAR) ? [frame(LIDAR, request.timeNs)] : [],
-          request.streams.includes(IMAGE) ? [IMAGE] : [],
-        ),
+      readSynchronized: vi.fn<PlaybackReadCapability["readSynchronized"]>(
+        (request) =>
+          Promise.resolve(
+            windowAt(
+              request.timeNs,
+              request.streams.includes(LIDAR)
+                ? [frame(LIDAR, request.timeNs)]
+                : [],
+              request.streams.includes(IMAGE) ? [IMAGE] : [],
+            ),
+          ),
       ),
     });
     harness.caches.get(IMAGE)?.subscribe();
@@ -358,11 +367,11 @@ describe("data stream prefetcher", () => {
 function createHarness({
   isStreamTimeAvailable,
   readSynchronized = vi.fn<PlaybackReadCapability["readSynchronized"]>(
-    async (request) => windowAt(request.timeNs, []),
+    (request) => Promise.resolve(windowAt(request.timeNs, [])),
   ),
   readSynchronizedBatch = vi.fn<
     PlaybackReadCapability["readSynchronizedBatch"]
-  >(async () => []),
+  >(() => Promise.resolve([])),
   shouldAdmitBatch,
 }: {
   readonly isStreamTimeAvailable?: Parameters<
@@ -374,7 +383,7 @@ function createHarness({
     typeof createDataStreamPrefetcher
   >[0]["shouldAdmitBatch"];
 } = {}) {
-  const store = createStore() as PlaybackStore;
+  const store = createStore();
   const caches = new Map([
     [IMAGE, new EpisodeStreamCache()],
     [LIDAR, new EpisodeStreamCache()],

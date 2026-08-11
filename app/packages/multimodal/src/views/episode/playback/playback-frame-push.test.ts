@@ -14,7 +14,7 @@ const STREAM = "/LIDAR_TOP";
 const NO_FAILED = new Set<string>();
 
 function createHarness() {
-  const store = createStore() as PlaybackStore;
+  const store = createStore();
   const cache = new EpisodeStreamCache();
   const caches = new Map([[STREAM, cache]]);
   const lastFrame = new Map<string, StreamPlaybackFrame<unknown>>();

@@ -3,7 +3,6 @@ import {
   getBufferingStreams,
   getIsBuffering,
   setIsBuffering,
-  type PlaybackStore,
 } from "@fiftyone/playback";
 import { createStore } from "jotai";
 import { describe, expect, it, vi } from "vitest";
@@ -28,7 +27,7 @@ const LIDAR_NAME = "/sensors/roof_lidar/points";
 
 describe("publishDataStreamStatuses", () => {
   it("publishes partial readiness and clears a covered paused-seek stall", () => {
-    const store = createStore() as PlaybackStore;
+    const store = createStore();
     const camera = new EpisodeStreamCache();
     const lidar = new EpisodeStreamCache();
     camera.set(0n, frame(CAMERA));

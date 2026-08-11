@@ -467,7 +467,7 @@ function playbackStore(
   loopStart = 0,
   loopEnd = 0,
 ): PlaybackStore {
-  const store = createStore() as PlaybackStore;
+  const store = createStore();
   store.set(playheadAtom, playhead);
   store.set(loopStartAtom, loopStart);
   store.set(loopEndAtom, loopEnd);

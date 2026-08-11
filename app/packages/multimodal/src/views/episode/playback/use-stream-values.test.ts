@@ -142,7 +142,9 @@ describe("point cloud projection lifecycle", () => {
     hookHarness.dataStream = {
       getStreamCache: () => undefined,
       getTimelineIndex: () => undefined,
-      readPointCloudChannel: vi.fn((request) => {
+      readPointCloudChannel: vi.fn<
+        NonNullable<DataStream["readPointCloudChannel"]>
+      >((request) => {
         requests.push(request);
         return request.stream === "/lidar" ? lidar.promise : radar.promise;
       }),
@@ -185,7 +187,9 @@ describe("point cloud projection lifecycle", () => {
     hookHarness.dataStream = {
       getStreamCache: () => undefined,
       getTimelineIndex: () => undefined,
-      readPointCloudChannel: vi.fn((request) => {
+      readPointCloudChannel: vi.fn<
+        NonNullable<DataStream["readPointCloudChannel"]>
+      >((request) => {
         requests.push(request);
         return new Promise(() => undefined);
       }),
@@ -220,7 +224,9 @@ describe("point cloud projection lifecycle", () => {
     hookHarness.dataStream = {
       getStreamCache: () => undefined,
       getTimelineIndex: () => undefined,
-      readPointCloudChannel: vi.fn((request) => {
+      readPointCloudChannel: vi.fn<
+        NonNullable<DataStream["readPointCloudChannel"]>
+      >((request) => {
         requests.push(request);
         return new Promise(() => undefined);
       }),

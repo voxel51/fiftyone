@@ -11,15 +11,19 @@ interface TestHistory {
   readonly status: "loading" | "ready";
 }
 
+type LoadStream = (
+  loader: DemandDrivenHistoryLoader<TestHistory>,
+) => Promise<void>;
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
 
 describe("useDemandDrivenHistory", () => {
-  it("starts only demanded streams and cancels unfinished work at zero demand", async () => {
+  it("starts only demanded streams and cancels unfinished work at zero demand", () => {
     const controls: DemandDrivenHistoryLoader<TestHistory>[] = [];
-    const loadStream = vi.fn(async (loader) => {
+    const loadStream = vi.fn<LoadStream>(async (loader) => {
       controls.push(loader);
       loader.commit({ status: "loading" });
       await new Promise<void>(() => undefined);
@@ -44,8 +48,9 @@ describe("useDemandDrivenHistory", () => {
 
   it("shares a retained result across a reopen and expires it after the TTL", async () => {
     vi.useFakeTimers();
-    const loadStream = vi.fn(async ({ commit }) => {
+    const loadStream = vi.fn<LoadStream>(({ commit }) => {
       commit({ status: "ready" });
+      return Promise.resolve();
     });
     const view = render(
       <Harness loadStream={loadStream} sourceKey="source" streams={["/gps"]} />,
@@ -74,9 +79,10 @@ describe("useDemandDrivenHistory", () => {
 
   it("releases retained values immediately when the source changes", () => {
     const controls: DemandDrivenHistoryLoader<TestHistory>[] = [];
-    const loadStream = vi.fn(async (loader) => {
+    const loadStream = vi.fn<LoadStream>((loader) => {
       controls.push(loader);
       loader.commit({ status: "ready" });
+      return Promise.resolve();
     });
     const view = render(
       <Harness

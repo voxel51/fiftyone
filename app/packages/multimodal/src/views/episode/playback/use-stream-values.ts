@@ -364,7 +364,7 @@ export function pointCloudFramesAtTime(
     }
     return {
       contentTimeNs: message.timestampNs,
-      frame: visualization as PointCloudVisualization,
+      frame: visualization,
     };
   });
 }

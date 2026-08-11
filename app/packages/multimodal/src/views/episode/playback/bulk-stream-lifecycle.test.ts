@@ -55,7 +55,7 @@ describe("startBulkStreamLifecycle", () => {
     cancel();
   });
 
-  it("aborts active stream work when the lifecycle is cancelled", async () => {
+  it("aborts active stream work when the lifecycle is cancelled", () => {
     let control: BulkStreamControl | undefined;
     const runStream = vi.fn(
       async (_stream: string, nextControl: BulkStreamControl) => {
