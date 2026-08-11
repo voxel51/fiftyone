@@ -329,7 +329,7 @@ function appendCoverageBand(
  * acquired data from unread and hard-unavailable spans. Touch gestures or
  * controls pin a viewport whose range and pixel width drive acquisition.
  */
-export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
+const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   data,
   durationSec,
   followWindowQuantumSeconds,

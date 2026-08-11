@@ -23,7 +23,7 @@ import {
 const NS_PER_SECOND = 1_000_000_000n;
 const MAX_DIRECT_FORWARD_GAP_NS = 500_000_000n;
 export const MAX_H264_GOP_ACCESS_UNITS = 4_096;
-export const VIDEO_SEEK_READ_POLICY = {
+const VIDEO_SEEK_READ_POLICY = {
   initialLookbackNs: 15n * NS_PER_SECOND,
   maxLookbackNs: 120n * NS_PER_SECOND,
   maxMessages: MAX_H264_GOP_ACCESS_UNITS,

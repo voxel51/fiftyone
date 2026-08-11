@@ -1,7 +1,7 @@
 import type { AdapterDescriptor, SampleDescriptor } from "../../ports";
 
 /** Returns whether lightweight sample facts identify an MCAP episode. */
-export function detectMcapSample(sample: SampleDescriptor): boolean {
+function detectMcapSample(sample: SampleDescriptor): boolean {
   return (
     sample.mediaType === "multimodal" &&
     (sample.path === undefined || /\.mcap(?:$|[?#])/i.test(sample.path))

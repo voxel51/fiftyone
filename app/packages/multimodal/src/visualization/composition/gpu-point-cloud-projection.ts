@@ -3,7 +3,6 @@ import * as THREE from "three";
 export {
   imagePlaneSize as gpuProjectionImagePlaneSize,
   imagePlaneViewportRect as gpuProjectionViewportRect,
-  type ImagePlaneViewportRect as GpuProjectionViewportRect,
 } from "../media-2d/image-plane-viewport";
 
 const QUATERNION_EPSILON = 1e-9;

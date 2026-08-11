@@ -108,7 +108,7 @@ export function isLabelEcho(
  * the first Escape dismisses the selection instead of (e.g.) closing
  * the modal; with nothing selected the event passes through untouched.
  */
-export function useClearSelectionOnEscape(): void {
+function useClearSelectionOnEscape(): void {
   const store = useStore();
   // This effect binds a capture-phase Escape listener for the lifetime
   // of the modal shell.

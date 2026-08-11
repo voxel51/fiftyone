@@ -261,7 +261,7 @@ function boundsForScenePoints(
  * bounding box for geometry and future fit calculations. Exported for the
  * snapshot renderer, whose auto-fit must match the live panel's fit math.
  */
-export function worldBoundsForLayer(
+function worldBoundsForLayer(
   bounds: THREE.Box3,
   frameTransform: PointCloudFrameTransform | undefined,
 ): THREE.Box3 {

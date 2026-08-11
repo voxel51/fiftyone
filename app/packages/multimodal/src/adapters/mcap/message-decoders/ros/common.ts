@@ -51,9 +51,7 @@ export function decodeRosMessage(
 /**
  * Returns schema bytes from a decoder context when present.
  */
-export function schemaDataFromContext(
-  context: DecodeContext,
-): Uint8Array | undefined {
+function schemaDataFromContext(context: DecodeContext): Uint8Array | undefined {
   const schemaData = context.schemaData;
   if (schemaData === undefined || schemaData === null) {
     return undefined;
@@ -118,7 +116,7 @@ export function arrayRecords(
 /**
  * Type guard for plain record-shaped values.
  */
-export function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 

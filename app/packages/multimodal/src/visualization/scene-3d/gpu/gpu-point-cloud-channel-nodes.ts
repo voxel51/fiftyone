@@ -5,7 +5,7 @@ import type {
   PointCloudChannelArray,
   PointCloudChannelEncoding,
 } from "../../../ir";
-import { pointCloudChannelEncodingKey } from "../../../ir";
+import { pointCloudChannelEncodingKey } from "../../../runtime/point-cloud-channel-encoding";
 import type {
   PointCloudChannelNode,
   PointCloudChannelTslFacade,

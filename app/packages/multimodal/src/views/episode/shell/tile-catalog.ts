@@ -18,7 +18,6 @@ import {
   type TileType,
 } from "../tiles/tile-types";
 
-export { TILE_TYPE } from "../tiles/tile-types";
 export type { EpisodeTileProps, TileType } from "../tiles/tile-types";
 export type { EpisodeTileAvailability } from "../../../extensions/tiles/types";
 

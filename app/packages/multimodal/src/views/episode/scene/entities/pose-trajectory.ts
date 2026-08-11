@@ -29,7 +29,7 @@ export interface PoseTrajectoryPoint {
  * minutes) decimates to this bound; the last sample always survives so
  * the path reaches the newest pose.
  */
-export const TRAJECTORY_MAX_POINTS = 5_000;
+const TRAJECTORY_MAX_POINTS = 5_000;
 
 // Amber, matching the camera-frustum accent so ego artifacts read as one
 // family; distinct from the cyan annotation default.

@@ -21,7 +21,7 @@ import type { PointCloudPanelLayer } from "./types";
 export const POINT_PICK_RADIUS_PX = 6;
 
 /** userData key marking objects whose hits suppress point picking. */
-export const POINT_PICK_BLOCKING_KEY = "episodeBlocksPointPick";
+const POINT_PICK_BLOCKING_KEY = "episodeBlocksPointPick";
 
 /** userData value for tagging pick-blocking objects declaratively. */
 export const POINT_PICK_BLOCKING_USER_DATA = {

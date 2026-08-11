@@ -44,7 +44,7 @@ export const foxglovePoseInFrameCdrDecoders = rosDecodersForPayloads({
   payloads: FOXGLOVE_POSE_IN_FRAME_CDR_PAYLOADS,
 });
 
-export function decodeFoxglovePoseInFrameRecord(
+function decodeFoxglovePoseInFrameRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
 ): DecodedOutput {

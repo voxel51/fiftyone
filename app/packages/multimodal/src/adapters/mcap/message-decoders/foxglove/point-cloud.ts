@@ -16,17 +16,19 @@ import type {
 import { resourceHintsForArrayBufferViews } from "../../../../decoders/index";
 import {
   createPointCloudChannelArray,
-  isFinitePointCloudPosition,
-  MAX_POINT_CLOUD_RENDER_POINTS,
   POINT_CLOUD_FLOAT32_SCALAR_ENCODING,
   POINT_CLOUD_RGB_ENCODING,
   pointCloudNativeIntegerScalarEncoding,
+} from "../../../../runtime/point-cloud-channel-encoding";
+import {
+  isFinitePointCloudPosition,
+  MAX_POINT_CLOUD_RENDER_POINTS,
   pointCloudSampleDomainSize,
   pointCloudSamplePlanKey,
   pointCloudRenderCapacity,
   progressivePointCloudSourceIndex,
-  VISUALIZATION_KIND,
-} from "../../../../ir/index";
+} from "../../../../runtime/point-cloud-render-payload";
+import { VISUALIZATION_KIND } from "../../../../ir/index";
 import { throwIfAborted } from "../../../../utils/cancellation";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf/index";
@@ -72,7 +74,7 @@ const FLOAT32_BYTE_WIDTH = 4;
 /**
  * Number of float components stored per decoded point position.
  */
-export const POINT_COMPONENT_COUNT = 3;
+const POINT_COMPONENT_COUNT = 3;
 const COLOR_COMPONENT_COUNT = 3;
 
 const CANONICAL_SCALAR_FIELDS = Object.freeze([
@@ -140,7 +142,7 @@ export const foxglovePointCloudCdrDecoders = rosDecodersForPayloads({
   projectPointCloudChannel: projectFoxglovePointCloudChannelRecord,
 });
 
-export function decodeFoxglovePointCloudRecord(
+function decodeFoxglovePointCloudRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
 ): DecodedOutput {

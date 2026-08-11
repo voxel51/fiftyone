@@ -4,10 +4,8 @@ import type {
   DecodedOutput,
 } from "../../../../ir/index";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders/index";
-import {
-  buildPointCloudRenderPayload,
-  VISUALIZATION_KIND,
-} from "../../../../ir/index";
+import { VISUALIZATION_KIND } from "../../../../ir/index";
+import { buildPointCloudRenderPayload } from "../../../../runtime/point-cloud-render-payload";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf/index";
 import {
@@ -29,7 +27,7 @@ import { timingFromContext, timestampNs } from "./protobuf/timing";
 /**
  * Number of float components stored per decoded scan point.
  */
-export const LASER_SCAN_POINT_COMPONENT_COUNT = 3;
+const LASER_SCAN_POINT_COMPONENT_COUNT = 3;
 
 // Canonical scalar-channel name shared with the point-cloud decoder so
 // auto-coloring and future color-by-field pick up scan intensities.
@@ -66,7 +64,7 @@ export const foxgloveLaserScanCdrDecoders = rosDecodersForPayloads({
   payloads: FOXGLOVE_LASER_SCAN_CDR_PAYLOADS,
 });
 
-export function decodeFoxgloveLaserScanRecord(
+function decodeFoxgloveLaserScanRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
 ): DecodedOutput {

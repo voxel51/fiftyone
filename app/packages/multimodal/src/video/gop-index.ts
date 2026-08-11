@@ -1,7 +1,7 @@
 import type { H264AccessUnit } from "./types";
 
 export const VIDEO_ENCODED_ACCESS_UNIT_BYTE_CAP = 128 * 1024 * 1024;
-export const VIDEO_GOP_INDEX_KEYFRAME_CAP = 8_192;
+const VIDEO_GOP_INDEX_KEYFRAME_CAP = 8_192;
 
 interface KeyframeEntry {
   readonly configSignature: string;

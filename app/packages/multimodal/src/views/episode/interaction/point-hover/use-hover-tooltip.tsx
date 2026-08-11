@@ -635,7 +635,7 @@ function PointTooltipContent({
 }
 
 /** Compact numeric readout: up to 4 significant digits, no exponent noise. */
-export function formatPointTooltipValue(value: number): string {
+function formatPointTooltipValue(value: number): string {
   if (!Number.isFinite(value)) {
     return String(value);
   }

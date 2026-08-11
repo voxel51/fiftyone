@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildPointCloudRenderPayload } from "../../../ir";
+import { buildPointCloudRenderPayload } from "../../../runtime/point-cloud-render-payload";
 import {
   buildPointCloudRenderData,
   type PointCloudColorOptions,

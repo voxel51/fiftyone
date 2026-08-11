@@ -85,14 +85,14 @@ function writeStoredSelection(datasetName: string, stream: string): void {
 /**
  * Reads all mounted episode grid preview streams grouped by dataset and sample.
  */
-export function useStreams() {
+function useStreams() {
   return useAtomValue(streamsByDatasetAtom);
 }
 
 /**
  * Returns the aggregate preview-stream set for mounted episode grid tiles.
  */
-export function useStreamSnapshot(datasetName?: string) {
+function useStreamSnapshot(datasetName?: string) {
   const streamsByDataset = useStreams();
 
   return useMemo(() => {
@@ -162,7 +162,7 @@ export function useGridStreams(datasetName?: string) {
 /**
  * Reads and updates the per-dataset episode grid preview stream override.
  */
-export function useSelectedStream(datasetName?: string) {
+function useSelectedStream(datasetName?: string) {
   const selectedStreamByDataset = useAtomValue(selectedStreamByDatasetAtom);
   const setSelectedStreamByDataset = useSetAtom(selectedStreamByDatasetAtom);
   const storedSelection = useMemo(

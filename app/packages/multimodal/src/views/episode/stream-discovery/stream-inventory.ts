@@ -211,7 +211,7 @@ export function filterStreamInventoryRows(
   );
 }
 
-export function messageCountLabel(recordCount: number | undefined): string {
+function messageCountLabel(recordCount: number | undefined): string {
   const count = recordCountFor(recordCount);
   if (count === null) {
     return "unknown msgs";

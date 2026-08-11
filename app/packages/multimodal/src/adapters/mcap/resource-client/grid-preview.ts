@@ -1,7 +1,5 @@
-import {
-  buildPointCloudRenderPayload,
-  createPointCloudChannelArray,
-} from "../../../ir/index";
+import { createPointCloudChannelArray } from "../../../runtime/point-cloud-channel-encoding";
+import { buildPointCloudRenderPayload } from "../../../runtime/point-cloud-render-payload";
 import type {
   EpisodeRecordingFacts,
   PointCloudRenderPayload,
@@ -26,9 +24,6 @@ const COLOR_COMPONENT_COUNT = 3;
 
 /** Maximum point count retained by one MCAP grid preview frame. */
 export const MCAP_GRID_PREVIEW_MAX_POINTS = 120_000;
-
-/** Re-exported stream classifier used by MCAP preview consumers. */
-export { streamTopics } from "./stream-topics";
 
 /** Maximum rendered frame rate for local and remote MCAP grid previews. */
 export const MCAP_GRID_PREVIEW_MAX_FPS = 12;

@@ -499,5 +499,3 @@ function validPickRequest({
     Number.isFinite(targetV)
   );
 }
-
-export default GpuPointCloudProjectionPicker;

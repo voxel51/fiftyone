@@ -52,7 +52,7 @@ export const foxgloveCameraCalibrationCdrDecoders = rosDecodersForPayloads({
   payloads: FOXGLOVE_CAMERA_CALIBRATION_CDR_PAYLOADS,
 });
 
-export function decodeFoxgloveCameraCalibrationRecord(
+function decodeFoxgloveCameraCalibrationRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
 ): DecodedOutput {

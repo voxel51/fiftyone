@@ -465,7 +465,7 @@ export function useScene3dFrameSelection({
 }
 
 /** Returns whether a carried user frame is available in the current inventory. */
-export function scene3dUserFrameRestoreApplies(
+function scene3dUserFrameRestoreApplies(
   frameId: string | null,
   frameIds: readonly string[],
 ): frameId is string {

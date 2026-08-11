@@ -4,7 +4,6 @@ import type { DecodedLogRow, LogDetail } from "../../../ir/index";
 export {
   LOG_ATTRIBUTE_ROWS,
   LOG_LEVEL,
-  LOG_LEVELS,
   type DecodedLogRow,
   type LogDetail,
   type LogLevel,
@@ -16,7 +15,7 @@ export function logRowsAttribute(
   return rows.map(logRowAttribute);
 }
 
-export function logRowAttribute(
+function logRowAttribute(
   row: DecodedLogRow,
 ): Record<string, DecodedAttributeValue> {
   const attributes: Record<string, DecodedAttributeValue> = {

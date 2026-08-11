@@ -30,7 +30,7 @@ import { yieldToTask } from "../../../../utils/task-yield";
  * Default post-decimation point budget per field — roughly 2× the
  * pixel width of a wide tile, so min-max buckets stay sub-pixel.
  */
-export const DEFAULT_NUMERIC_SERIES_MAX_POINTS = 4_000;
+const DEFAULT_NUMERIC_SERIES_MAX_POINTS = 4_000;
 
 /**
  * Hard cap on messages decoded per extraction. Beyond this a stride

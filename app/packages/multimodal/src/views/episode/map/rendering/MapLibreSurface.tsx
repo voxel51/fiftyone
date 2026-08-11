@@ -1085,5 +1085,3 @@ function ensureMapLibreStylesheet(href: string) {
   link.rel = "stylesheet";
   document.head.appendChild(link);
 }
-
-export default MapLibreSurface;

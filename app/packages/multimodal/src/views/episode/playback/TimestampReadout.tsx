@@ -87,7 +87,7 @@ export function formatTimeZoneOption(timeZone: string, ns: bigint): string {
   return `${timeZone} (${formatTimeZoneOffset(timeZone, ns)})`;
 }
 
-export function formatTimeZoneOffset(timeZone: string, ns: bigint): string {
+function formatTimeZoneOffset(timeZone: string, ns: bigint): string {
   return format(nsToDate(ns), "OOOO", { in: tz(timeZone) });
 }
 

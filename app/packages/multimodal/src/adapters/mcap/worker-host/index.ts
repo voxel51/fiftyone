@@ -11,10 +11,7 @@ export type { CreateWorkerMcapResourceClientOptions } from "./worker-client";
 /**
  * Shared bounded worker pool for MCAP grid previews.
  */
-export {
-  getMcapGridPreviewPool,
-  resetMcapGridPreviewPoolForTests,
-} from "./grid-preview-pool";
+export { getMcapGridPreviewPool } from "./grid-preview-pool";
 export type {
   CreateMcapGridPreviewPoolOptions,
   McapGridPreviewPoolRequestOptions,

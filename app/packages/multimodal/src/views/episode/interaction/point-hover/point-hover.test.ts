@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { PointCloudVisualization } from "../../../../ir";
-import { pointCloudNativeIntegerScalarEncoding } from "../../../../ir";
+import { pointCloudNativeIntegerScalarEncoding } from "../../../../runtime/point-cloud-channel-encoding";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { hoveredPointForFrame } from "./point-hover";
 

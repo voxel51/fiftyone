@@ -362,7 +362,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
   }
 }
 
-export function browserWebCodecsEnvironment(): WebCodecsDecoderEnvironment {
+function browserWebCodecsEnvironment(): WebCodecsDecoderEnvironment {
   if (
     typeof VideoDecoder === "undefined" ||
     typeof EncodedVideoChunk === "undefined"

@@ -2,7 +2,7 @@ import type { ImageTextureHandle } from "./Base2dScene";
 import type { ImageTextureLease } from "./image-texture-cache";
 
 /** Browser decode concurrency shared by compressed still-image consumers. */
-export const MAX_CONCURRENT_STILL_IMAGE_DECODES = 4;
+const MAX_CONCURRENT_STILL_IMAGE_DECODES = 4;
 
 class StillImageDecodeCancelledError extends Error {
   constructor() {

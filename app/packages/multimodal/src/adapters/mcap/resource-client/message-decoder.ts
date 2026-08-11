@@ -131,7 +131,7 @@ export async function decodeMcapMessage({
 /**
  * Builds a stable per-message identity for decoded-output cache keys.
  */
-export function mcapMessageRecordId(
+function mcapMessageRecordId(
   message: McapTypes.TypedMcapRecords["Message"],
 ): string {
   // Channel/time/sequence are the intended identity, but malformed or merged

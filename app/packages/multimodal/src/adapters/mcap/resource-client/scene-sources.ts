@@ -140,7 +140,7 @@ export function mcapStreamPolicies(
   return policies;
 }
 
-export function mcapSourceTypeForTopic(
+function mcapSourceTypeForTopic(
   topic: StreamInventory,
 ): SceneSourceType | null {
   if (isImageStream(topic)) {

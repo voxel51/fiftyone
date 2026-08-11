@@ -11,7 +11,7 @@ import type { PointCloudColorWriter } from "../../../visualization/scene-3d";
  */
 
 /** Projection budget: dense lidar frames are stride-sampled beyond this. */
-export const PROJECTION_MAX_POINTS = 150_000;
+const PROJECTION_MAX_POINTS = 150_000;
 
 const POINT_COMPONENT_COUNT = 3;
 const UV_COMPONENT_COUNT = 2;

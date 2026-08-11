@@ -6,10 +6,8 @@ import type {
   DecodedAttributeValue,
   DecodedOutput,
 } from "../../../../ir/index";
-import {
-  buildPointCloudRenderPayload,
-  VISUALIZATION_KIND,
-} from "../../../../ir/index";
+import { VISUALIZATION_KIND } from "../../../../ir/index";
+import { buildPointCloudRenderPayload } from "../../../../runtime/point-cloud-render-payload";
 import { scanToPoints } from "../foxglove/laser-scan";
 import {
   IDENTITY_QUATERNION,

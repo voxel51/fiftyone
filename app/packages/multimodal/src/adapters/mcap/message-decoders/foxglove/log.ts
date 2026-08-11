@@ -42,7 +42,7 @@ export const foxgloveLogCdrDecoders = rosDecodersForPayloads({
   payloads: FOXGLOVE_LOG_CDR_PAYLOADS,
 });
 
-export function decodeFoxgloveLogRecord(
+function decodeFoxgloveLogRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
 ): DecodedOutput {

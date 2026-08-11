@@ -1,10 +1,8 @@
 import * as THREE from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  buildPointCloudRenderPayload,
-  type PointCloudRenderPayload,
-} from "../ir";
+import { buildPointCloudRenderPayload } from "../runtime/point-cloud-render-payload";
+import type { PointCloudRenderPayload } from "../ir";
 import {
   getGpuPointCloudProjectionResource,
   resetGpuPointCloudProjectionResourcesForTests,

@@ -53,7 +53,7 @@ export const foxgloveCompressedImageCdrDecoders = rosDecodersForPayloads({
   payloads: FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS,
 });
 
-export function decodeFoxgloveCompressedImageRecord(
+function decodeFoxgloveCompressedImageRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
 ): DecodedOutput {

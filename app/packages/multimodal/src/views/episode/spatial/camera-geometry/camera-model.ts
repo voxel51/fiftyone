@@ -429,7 +429,7 @@ export function suggestImageGeometry(
 }
 
 /** Resolution-aware threshold below which two image models are equivalent. */
-export function equivalentPixelTolerance(
+function equivalentPixelTolerance(
   calibration: Pick<EffectiveCameraCalibration, "height" | "width">,
 ): number {
   return Math.min(
@@ -439,7 +439,7 @@ export function equivalentPixelTolerance(
 }
 
 /** Maximum sampled pixel displacement between two camera models. */
-export function maxModelDisplacement(
+function maxModelDisplacement(
   original: CameraModel,
   candidate: CameraModel,
 ): number {
