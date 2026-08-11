@@ -97,6 +97,16 @@ export class EpisodePom {
     }
   }
 
+  async addTile(type: string, title: string): Promise<void> {
+    await this.shell
+      .getByRole("button", { name: "Layout", exact: true })
+      .click();
+    await this.page.locator(`[data-testid="episode-add-tile-${type}"]`).click();
+    await expect(
+      this.tileTitles.filter({ hasText: title }).first(),
+    ).toBeVisible({ timeout: READY_TIMEOUT });
+  }
+
   tile(title: string): Locator {
     return this.shell.locator(".mosaic-window").filter({
       has: this.page
@@ -364,8 +374,24 @@ export class EpisodePom {
     present: readonly string[],
     absent: readonly string[] = [],
   ): Promise<void> {
+    await this.expectConsoleRows("Logs", present, absent);
+  }
+
+  async expectDiagnostics(
+    present: readonly string[],
+    absent: readonly string[] = [],
+  ): Promise<void> {
+    await this.expectConsoleRows("Diagnostics", present, absent);
+  }
+
+  private async expectConsoleRows(
+    view: "Diagnostics" | "Logs",
+    present: readonly string[],
+    absent: readonly string[],
+  ): Promise<void> {
     const logs = this.tile("Logs");
     await logs.getByRole("button", { name: "Fullscreen", exact: true }).click();
+    await logs.getByRole("button", { name: view, exact: true }).click();
     for (const text of present) {
       await expect(logs.getByText(text, { exact: true })).toBeVisible({
         timeout: READY_TIMEOUT,

@@ -115,7 +115,6 @@ if fo.dataset_exists("${datasetName}"):
     page,
   }) => {
     const tile = grid.getNthTile(0);
-    await expect(tile.locator("[data-cy=mcap-grid-renderer]")).toBeVisible();
     await expect(tile.locator("canvas")).toBeVisible();
     await expect(
       page.getByTestId("selector-episode-grid-stream"),
@@ -123,7 +122,7 @@ if fo.dataset_exists("${datasetName}"):
 
     await openMcapModal(grid, modal);
     await modal.episode.waitForReady("tiny-episode-a.mcap");
-    await modal.episode.expectTileTitles(["camera/front", "points", "Logs"]);
+    await modal.episode.expectTileTitles(["camera/front", "points"], ["Logs"]);
     await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
     await modal.episode.expectPlayhead(
       "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000",
@@ -137,6 +136,7 @@ if fo.dataset_exists("${datasetName}"):
   }) => {
     await openMcapModal(grid, modal);
     await modal.episode.waitForReady("tiny-episode-a.mcap");
+    await modal.episode.addTile("log", "Logs");
     await modal.episode.setSamplingRate(1);
     await modal.episode.inspectStream("/pose");
     await modal.episode.expectRawField("position.x", 0);
@@ -168,6 +168,7 @@ if fo.dataset_exists("${datasetName}"):
   }) => {
     await openMcapModal(grid, modal);
     await modal.episode.waitForReady("tiny-episode-a.mcap");
+    await modal.episode.expectTileTitles(["camera/front", "points"], ["Logs"]);
     await modal.episode.expectStreams([
       "/camera/front",
       "/points",
@@ -203,8 +204,8 @@ if fo.dataset_exists("${datasetName}"):
       "tiny-episode-a.mcap",
     );
     await modal.episode.expectTileTitles(
-      ["camera/front", "points", "Logs"],
-      ["camera/rear", "camera/side"],
+      ["camera/front", "points"],
+      ["camera/rear", "camera/side", "Logs"],
     );
     await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
     await modal.episode.expectPlayhead(
@@ -365,8 +366,8 @@ if fo.dataset_exists("${datasetName}"):
       ["/camera/rear", "/odometry", "/status", "/diagnostics"],
     );
     await modal.episode.expectTileTitles(
-      ["camera/front", "points", "Logs"],
-      ["camera/rear", "/status"],
+      ["camera/front", "points"],
+      ["camera/rear", "/status", "Logs"],
     );
     await modal.episode.expectRawSelectionCleared();
     await modal.episode.inspectStream("/pose");
@@ -423,6 +424,7 @@ if fo.dataset_exists("${datasetName}"):
   }) => {
     await openMcapModal(grid, modal, 3);
     await modal.episode.waitForReady("long-mixed-episode.mcap");
+    await modal.episode.addTile("log", "Logs");
     await modal.episode.setSamplingRate(2);
 
     await modal.episode.seekToFraction(1_799.5 / 3_600);
@@ -453,10 +455,8 @@ if fo.dataset_exists("${datasetName}"):
     await modal.episode.useRawStream("/rosout");
     await modal.episode.expectRawMeta("t=+1800.000s");
     await modal.episode.expectRawField("msg", "LONG midpoint warning");
-    await modal.episode.expectLogs([
-      "LONG midpoint warning",
-      "midpoint warning",
-    ]);
+    await modal.episode.expectLogs(["LONG midpoint warning"]);
+    await modal.episode.expectDiagnostics(["midpoint warning"]);
     await expectDominantColor(
       modal.episode.image("camera/front"),
       [60, 174, 163],
