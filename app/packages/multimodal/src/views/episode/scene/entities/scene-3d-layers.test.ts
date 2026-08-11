@@ -280,6 +280,7 @@ describe("build3dLayers", () => {
   it("drops and reports a cloud that is genuinely missing a path to the world frame", () => {
     const { pointCloudLayers, unresolvedPoseUsages } = build3dLayers({
       frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        missingReason: "disconnected",
         sourceFrameId,
         status: "missing",
         targetFrameId,
@@ -291,6 +292,7 @@ describe("build3dLayers", () => {
 
     expect(unresolvedPoseUsages).toEqual([
       {
+        missingReason: "disconnected",
         sourceFrameId: "lidar",
         sourceId: "lidar-stream",
         targetFrameId: "map",

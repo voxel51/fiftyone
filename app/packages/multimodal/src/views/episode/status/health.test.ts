@@ -121,13 +121,14 @@ describe("buildScene3dTransformNotices", () => {
     ).toEqual([]);
   });
 
-  it("reports unplaceable content by its friendly source label", () => {
+  it("reports disconnected topology by frame with source context", () => {
     const notices = buildScene3dTransformNotices({
       frameTransformsError: null,
       sourceLabelsById: new Map([["/radar", "Front radar"]]),
       stalePoseUsages: [],
       unresolvedPoseUsages: [
         {
+          missingReason: "disconnected",
           sourceFrameId: "radar_front",
           sourceId: "/radar",
           targetFrameId: "map",
@@ -138,13 +139,37 @@ describe("buildScene3dTransformNotices", () => {
 
     expect(notices).toEqual([
       {
-        detail: "No pose connects radar_front to map at this time.",
+        detail:
+          "Source: Front radar. No transform path connects radar_front to reference frame map.",
         id: "transform:missing:/radar",
-        message: "Cannot place Front radar in the scene",
+        message: "Cannot place frame radar_front",
         scope: "scene",
         severity: "warning",
       },
     ]);
+  });
+
+  it("distinguishes a playhead pose gap on connected topology", () => {
+    const notices = buildScene3dTransformNotices({
+      frameTransformsError: null,
+      sourceLabelsById: new Map([["/camera/info", "Center camera"]]),
+      stalePoseUsages: [],
+      unresolvedPoseUsages: [
+        {
+          missingReason: "unavailable-at-time",
+          sourceFrameId: "center_camera",
+          sourceId: "/camera/info",
+          targetFrameId: "map",
+        },
+      ],
+      worldFrameId: "map",
+    });
+
+    expect(notices[0]).toMatchObject({
+      detail:
+        "Source: Center camera. A transform path connects center_camera to reference frame map, but no pose is available at the playhead.",
+      message: "Cannot place frame center_camera",
+    });
   });
 
   it("does not expose a canonical id when a source label is unavailable", () => {
@@ -161,9 +186,7 @@ describe("buildScene3dTransformNotices", () => {
       worldFrameId: "map",
     });
 
-    expect(notices[0]?.message).toBe(
-      "Cannot place Unknown source in the scene",
-    );
+    expect(notices[0]?.message).toBe("Cannot place frame radar_front");
     expect(notices[0]?.message).not.toContain("17");
   });
 

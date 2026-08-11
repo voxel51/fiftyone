@@ -285,6 +285,7 @@ export class EpisodeFrameTransformStore {
     const target = normalizeFrameId(targetFrameId);
     if (!source || !target) {
       return {
+        missingReason: "invalid-frame",
         sourceFrameId,
         status: "missing",
         targetFrameId,
@@ -349,6 +350,13 @@ export class EpisodeFrameTransformStore {
     }
 
     return {
+      missingReason:
+        this.dynamicChildFrameIdsForPlacement({
+          frameIds: [source],
+          targetFrameId: target,
+        }) === null
+          ? "disconnected"
+          : "unavailable-at-time",
       sourceFrameId: source,
       status: "missing",
       targetFrameId: target,

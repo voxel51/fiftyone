@@ -296,6 +296,7 @@ describe("episode frame transform store", () => {
         timeNs: 250n,
       }),
     ).toMatchObject({
+      missingReason: "unavailable-at-time",
       status: "missing",
     });
   });
@@ -688,6 +689,7 @@ describe("episode frame transform store", () => {
         timeNs: 10n,
       }),
     ).toEqual({
+      missingReason: "disconnected",
       sourceFrameId: "lidar",
       status: "missing",
       targetFrameId: "map",

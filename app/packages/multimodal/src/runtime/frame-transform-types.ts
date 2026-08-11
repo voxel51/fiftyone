@@ -12,6 +12,12 @@ export type EpisodeFrameTransformResolutionKind =
   | "held"
   | "clamped";
 
+/** Why a requested frame transform could not be resolved. */
+export type EpisodeFrameTransformMissingReason =
+  | "disconnected"
+  | "invalid-frame"
+  | "unavailable-at-time";
+
 /** Why a dynamic edge is holding its latest recorded pose. */
 export type EpisodeHeldFrameTransformReason =
   | "after-last-sample"
@@ -139,8 +145,10 @@ export type EpisodeFrameTransformResolution = {
       readonly status: "resolved";
       readonly transform: EpisodeComposedFrameTransform;
     }
+  | { readonly status: "pending"; readonly transform?: undefined }
   | {
-      readonly status: "pending" | "missing";
+      readonly missingReason?: EpisodeFrameTransformMissingReason;
+      readonly status: "missing";
       readonly transform?: undefined;
     }
 );

@@ -14,7 +14,10 @@ import type {
   PointCloudPanelLayer,
   SceneAnnotationPanelLayer,
 } from "../../../../visualization/scene-3d/index";
-import type { EpisodeHeldFrameTransform } from "../../../../runtime/frame-transform-types";
+import type {
+  EpisodeFrameTransformMissingReason,
+  EpisodeHeldFrameTransform,
+} from "../../../../runtime/frame-transform-types";
 import type {
   StreamContentFrame,
   StreamPlaybackFrame,
@@ -26,7 +29,8 @@ import type { StalePoseUsage, UnresolvedPoseUsage } from "../../status/health";
  * Resolution of one source frame into the world frame for placement.
  * `pending` means "not resolvable yet" (frames/time/window still loading) and
  * the layer can still render in its source frame; `missing` means the data is
- * loaded but no path exists and the cloud should be dropped with a warning.
+ * loaded but no usable pose exists and the cloud should be dropped with a
+ * warning.
  */
 type FrameTransformResolution =
   | {
@@ -36,7 +40,10 @@ type FrameTransformResolution =
       readonly transform: PointCloudFrameTransform;
     }
   | { readonly status: "pending" }
-  | { readonly status: "missing" };
+  | {
+      readonly missingReason?: EpisodeFrameTransformMissingReason;
+      readonly status: "missing";
+    };
 
 export interface Scene3dLayerBuildResult {
   readonly cameraFrustumLayers: readonly CameraFrustumPanelLayer[];
@@ -147,6 +154,9 @@ export function build3dLayers({
     // sensors in their own frames.
     if (resolution.status === "missing") {
       recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+        ...(resolution.missingReason
+          ? { missingReason: resolution.missingReason }
+          : {}),
         sourceFrameId: frame.coordinateFrameId,
         sourceId: stream,
         targetFrameId: worldFrameId,
@@ -203,6 +213,9 @@ export function build3dLayers({
     );
     if (resolution.status === "missing") {
       recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+        ...(resolution.missingReason
+          ? { missingReason: resolution.missingReason }
+          : {}),
         sourceFrameId: frame.coordinateFrameId,
         sourceId: stream,
         targetFrameId: worldFrameId,
@@ -262,6 +275,9 @@ export function build3dLayers({
     );
     if (resolution.status === "missing") {
       recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+        ...(resolution.missingReason
+          ? { missingReason: resolution.missingReason }
+          : {}),
         sourceFrameId: frame.coordinateFrameId,
         sourceId: stream,
         targetFrameId: worldFrameId,
@@ -389,6 +405,9 @@ function buildSceneAnnotationLayer({
   );
   if (resolution.status === "missing") {
     recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+      ...(resolution.missingReason
+        ? { missingReason: resolution.missingReason }
+        : {}),
       sourceFrameId: entity.frameId,
       sourceId: stream,
       targetFrameId: worldFrameId,
@@ -481,9 +500,15 @@ function resolveFrameTransform({
     return { status: "pending" };
   }
 
-  // The transform window is loaded but no path connects this frame to the world
-  // frame. Surface it; the caller drops the cloud rather than draw it wrong.
-  return { status: "missing" };
+  // The transform window is loaded but no pose can place this frame in the
+  // world frame. Surface it; the caller drops the cloud rather than draw it
+  // wrong.
+  return {
+    ...(resolution.missingReason
+      ? { missingReason: resolution.missingReason }
+      : {}),
+    status: "missing",
+  };
 }
 
 function recordStalePoseUsage(

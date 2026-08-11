@@ -13,7 +13,7 @@
  * | `placement:pending-grids`      | info     | scene | map/grid layers hidden while their transforms load |
  * | `placement:pending-frustums`   | info     | scene | camera frustums hidden while their transforms load |
  * | `transform:failed`             | error    | scene | frame-transform window fetch failed |
- * | `transform:missing:<source>`   | warning  | scene | no transform path to the world frame; affected source hidden |
+ * | `transform:missing:<source>`   | warning  | scene | disconnected topology or no pose at the playhead; affected source hidden |
  * | `transform:stale`              | warning  | scene | latest recorded pose held past its freshness threshold |
  * | `camera:target-unavailable`    | warning  | scene | follow tracking enabled but the target transform is missing |
  * | `render:sampled`               | warning  | scene | point clouds exceed the display cap and render sampled |
@@ -27,6 +27,7 @@
 
 import { useEffect, useReducer, useRef } from "react";
 import type { DecodedDiagnostic } from "../../../ir";
+import type { EpisodeFrameTransformMissingReason } from "../../../runtime/frame-transform-types";
 import { INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS } from "../playback/playback-buffering";
 import type { ReferenceSelectionSource } from "../contracts/reference-selection";
 import type { StreamStatus } from "../playback/stream-status-state";
@@ -41,8 +42,9 @@ export interface StalePoseUsage {
   readonly targetFrameId: string;
 }
 
-/** One visible source that has no resolvable path into the scene frame. */
+/** One visible source that has no usable pose in the scene frame. */
 export interface UnresolvedPoseUsage {
+  readonly missingReason?: EpisodeFrameTransformMissingReason;
   readonly sourceFrameId: string;
   readonly sourceId: string;
   readonly targetFrameId: string;
@@ -220,10 +222,24 @@ export function buildScene3dTransformNotices({
   for (const unresolved of unresolvedPoseUsages) {
     const sourceLabel =
       sourceLabelsById?.get(unresolved.sourceId) ?? "Unknown source";
+    const sourceDetail =
+      sourceLabel === "Unknown source" ? "" : `Source: ${sourceLabel}. `;
+    const placementDetail = (() => {
+      switch (unresolved.missingReason) {
+        case "disconnected":
+          return `No transform path connects ${unresolved.sourceFrameId} to reference frame ${unresolved.targetFrameId}.`;
+        case "unavailable-at-time":
+          return `A transform path connects ${unresolved.sourceFrameId} to reference frame ${unresolved.targetFrameId}, but no pose is available at the playhead.`;
+        case "invalid-frame":
+          return "The source or reference frame identifier is empty or invalid.";
+        default:
+          return `No transform connects ${unresolved.sourceFrameId} to reference frame ${unresolved.targetFrameId} at the playhead.`;
+      }
+    })();
     notices.push({
-      detail: `No pose connects ${unresolved.sourceFrameId} to ${unresolved.targetFrameId} at this time.`,
+      detail: `${sourceDetail}${placementDetail}`,
       id: `transform:missing:${unresolved.sourceId}`,
-      message: `Cannot place ${sourceLabel} in the scene`,
+      message: `Cannot place frame ${unresolved.sourceFrameId}`,
       scope: "scene",
       severity: "warning",
     });
