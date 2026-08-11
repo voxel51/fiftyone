@@ -23,22 +23,27 @@ export const RightDiv = styled.div`
   justify-content: center;
   align-content: center;
   flex-direction: column;
-  border-color: ${({ theme }) => theme.primary.plainBorder};
-  border-right-style: solid;
-  border-right-width: 1px;
   margin: 0 0.25rem;
-  padding-right: 1rem;
+  padding-right: 0.5rem;
   font-weight: bold;
 `;
 
 export const RightContainer = styled.div`
   display: flex;
+  /* Vertically center each control (slider, toggle, divider, etc.) so
+     the toggle+icon pair lines up with the spacing/zoom sliders and the
+     sort arrow regardless of their differing intrinsic heights. */
+  align-items: center;
   color: ${({ theme }) => theme.text.secondary};
 `;
 
 export const SliderContainer = styled.div`
   display: flex;
   align-items: center;
-  width: 7.375rem;
+  /* Snug width — wide enough to manipulate, narrow enough that the
+     header doesn't dedicate disproportionate horizontal real estate to
+     two sliders. */
+  width: 5.5rem;
+  gap: 0.5rem;
   padding-right: 0.375rem;
 `;

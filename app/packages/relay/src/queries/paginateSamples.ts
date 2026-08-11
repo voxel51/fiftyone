@@ -40,6 +40,7 @@ export default r(graphql`
   query paginateSamplesQuery(
     $count: Int = 20
     $after: String = null
+    $before: String = null
     $dataset: String!
     $view: BSONArray!
     $filter: SampleFilter!
@@ -51,12 +52,14 @@ export default r(graphql`
     $hint: String
     $dynamicGroup: BSON = null
     $maxQueryTime: Int
+    $cursorPagination: Boolean = false
   ) {
     samples(
       dataset: $dataset
       view: $view
       first: $count
       after: $after
+      before: $before
       filter: $filter
       filters: $filters
       extendedStages: $extendedStages
@@ -66,6 +69,7 @@ export default r(graphql`
       hint: $hint
       dynamicGroup: $dynamicGroup
       maxQueryTime: $maxQueryTime
+      cursorPagination: $cursorPagination
     ) {
       __typename
       ... on QueryTimeout {
@@ -74,6 +78,9 @@ export default r(graphql`
       ... on SampleItemStrConnection {
         pageInfo {
           hasNextPage
+          hasPreviousPage
+          endCursor
+          startCursor
         }
         edges {
           cursor

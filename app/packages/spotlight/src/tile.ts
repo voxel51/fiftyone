@@ -4,7 +4,26 @@
 
 import { ONE, THREE, ZERO } from "./constants";
 
-// adapted from https://medium.com/google-design/google-photos-45b714dfbed1
+/**
+ * Groups a list of items into rows whose combined aspect ratio is as close as
+ * possible to `threshold`, minimising `(1 + |delta|)³` across all rows.
+ *
+ * Two strategies are used:
+ * - **Uniform aspect ratios** (all items identical): fixed-count grouping — each
+ *   row gets exactly the number of items needed to meet the threshold.
+ * - **Mixed aspect ratios**: dynamic programming over the item list, building a
+ *   DAG of candidate break-points and picking the path with the lowest total score.
+ *
+ * Adapted from https://medium.com/google-design/google-photos-45b714dfbed1
+ *
+ * @param items - Aspect ratios of items to tile, in order.
+ * @param threshold - Target combined aspect ratio per row (must be ≥ 1).
+ * @param useRemainder - When `true`, always include a final partial row for any
+ *   leftover items; when `false`, partial rows are omitted.
+ * @returns An array of end-exclusive breakpoint indices into `items`. Each value
+ *   is the index after the last item in that row.
+ * @throws {@link TilingException} if `threshold` is less than 1.
+ */
 export default (
   items: number[],
   threshold: number,
@@ -158,4 +177,5 @@ export default (
   return result;
 };
 
+/** Thrown when `tile` receives an invalid `threshold` argument. */
 export class TilingException extends Error {}

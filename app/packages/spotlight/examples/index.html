@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spotlight Examples</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: #1a1a1a;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+      }
+      #toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 16px;
+        background: #111;
+        border-bottom: 1px solid #333;
+        flex-shrink: 0;
+      }
+      #toolbar-top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      #toolbar h1 {
+        font-size: 14px;
+        font-weight: 600;
+        margin-right: 4px;
+      }
+      button {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        color: #ccc;
+        padding: 4px 14px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      button:hover {
+        background: #383838;
+      }
+      button.active {
+        background: #1e3a5f;
+        border-color: #4a7fc1;
+        color: #fff;
+      }
+      #description {
+        font-size: 12px;
+        color: #666;
+        white-space: nowrap;
+      }
+      #container {
+        flex: 1;
+        min-height: 0;
+        --fo-palette-background-level1: #2a2a2a;
+        --fo-palette-text-tertiary: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toolbar">
+      <div id="toolbar-top">
+        <h1>@fiftyone/spotlight ✨</h1>
+        <button type="button" id="btn-vertical" class="active">Vertical</button>
+        <button type="button" id="btn-horizontal">Horizontal</button>
+        <button type="button" id="btn-swimlanes">Swimlanes</button>
+      </div>
+      <span id="description">Items tiled into rows by aspect ratio.</span>
+    </div>
+    <div id="container"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
