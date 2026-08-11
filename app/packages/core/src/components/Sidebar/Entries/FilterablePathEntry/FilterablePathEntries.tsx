@@ -18,9 +18,9 @@ const FilterablePathEntries = ({
   const color = useRecoilValue(fos.pathColor(path));
 
   // Label fields carry a handful of well-known attributes and stay open.
-  // Anything else is an open-ended container whose width nothing bounds — a
-  // dynamic embedded document can carry hundreds of fields — so its fields
-  // collapse to a browsable list instead.
+  // Every other embedded document collapses, declared or not: nothing bounds
+  // how many fields one holds, and collapsing costs a click rather than
+  // reachability.
   const isLabel = fos.useIsLabelPath(path);
 
   return (
