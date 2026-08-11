@@ -28,6 +28,7 @@ const results = await eslint.lintFiles([
 ]);
 const census = new Map();
 const directoryTotals = new Map();
+const areaTotals = new Map();
 const ruleTotals = new Map();
 let total = 0;
 
@@ -36,6 +37,14 @@ for (const result of results) {
   const sourcePath = relativePath.replace(/^src\//, "");
   const slash = sourcePath.indexOf("/");
   const directory = slash === -1 ? "(root)" : sourcePath.slice(0, slash);
+  const remainder = slash === -1 ? "" : sourcePath.slice(slash + 1);
+  const secondSlash = remainder.indexOf("/");
+  const area =
+    slash === -1
+      ? "(root)"
+      : `${directory}/${
+          secondSlash === -1 ? "(root)" : remainder.slice(0, secondSlash)
+        }`;
 
   for (const message of result.messages) {
     if (!message.ruleId || !(message.ruleId in typeAwareRules)) continue;
@@ -44,6 +53,7 @@ for (const result of results) {
     const key = `${message.ruleId}\t${directory}`;
     census.set(key, (census.get(key) ?? 0) + 1);
     directoryTotals.set(directory, (directoryTotals.get(directory) ?? 0) + 1);
+    areaTotals.set(area, (areaTotals.get(area) ?? 0) + 1);
     ruleTotals.set(message.ruleId, (ruleTotals.get(message.ruleId) ?? 0) + 1);
   }
 }
@@ -63,5 +73,11 @@ for (const [directory, count] of [...directoryTotals].sort(([a], [b]) =>
 console.log("\nBY RULE AND TOP-LEVEL SOURCE DIRECTORY");
 for (const [key, count] of [...census].sort(([a], [b]) => a.localeCompare(b))) {
   console.log(`${key}\t${count}`);
+}
+console.log("\nBY SECOND-LEVEL SOURCE AREA");
+for (const [area, count] of [...areaTotals].sort(([a], [b]) =>
+  a.localeCompare(b),
+)) {
+  console.log(`${area}\t${count}`);
 }
 console.log(`\nTOTAL\t${total}`);
