@@ -1,4 +1,4 @@
-import type { RawImageVisualization } from "./frames";
+import type { RawImageVisualization } from "../../ir";
 
 const RGBA_CHANNEL_COUNT = 4;
 const UINT8_MAX = 255;
@@ -8,8 +8,8 @@ const materializedDepthRgba = new WeakMap<RawImageVisualization, Uint8Array>();
  * Returns display-ready RGBA for a raw image.
  *
  * Native depth frames deliberately omit their eager RGBA backing store. This
- * helper is the bitmap/non-WebGPU fallback and preserves the decoder's exact
- * invalid-value transparency, per-frame range, and byte quantization rules.
+ * helper is the bitmap fallback and preserves the decoder's exact invalid-
+ * value transparency, per-frame range, and byte quantization rules.
  */
 export function rawImageRgba(frame: RawImageVisualization): Uint8Array {
   const expectedByteLength = frame.width * frame.height * RGBA_CHANNEL_COUNT;

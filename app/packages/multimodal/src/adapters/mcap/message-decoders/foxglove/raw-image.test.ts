@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { rawImageRgba, VISUALIZATION_KIND } from "../../../../ir/index";
+import { VISUALIZATION_KIND } from "../../../../ir/index";
 import type { RawImageVisualization } from "../../../../ir/index";
 import { decodeProtobufMessage } from "./protobuf/index";
 import {
@@ -81,9 +81,6 @@ describe("foxgloveRawImageDecoder", () => {
     const image = expectRawImage(visualization);
 
     expect(image.rgba).toHaveLength(0);
-    expect(Array.from(rawImageRgba(image))).toEqual([
-      0, 0, 0, 255, 255, 255, 255, 255,
-    ]);
     expect(image.depth?.metersPerUnit).toBe(0.001);
     expect(image.depth).toMatchObject({ maxValue: 2_000, minValue: 1_000 });
     expect(image.depth?.values).toBeInstanceOf(Uint16Array);

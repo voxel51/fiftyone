@@ -137,9 +137,6 @@ describe("ROS image and camera decoders", () => {
       { schemaData: schemaData(ROS2_IMAGE_SCHEMA) },
     );
 
-    expect(rawRgba(depth16)).toEqual([
-      0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 255,
-    ]);
     expect(depth16.attributes).toMatchObject({
       depthMax: 2000,
       depthMin: 1000,
@@ -160,9 +157,6 @@ describe("ROS image and camera decoders", () => {
     expect(depth16.resourceHints?.transferables).toContain(
       depth16.visualization.depth?.values.buffer,
     );
-    expect(rawRgba(depth32)).toEqual([
-      0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255,
-    ]);
     expect(depth32.attributes).toMatchObject({
       depthMax: 3,
       depthMin: 1.5,

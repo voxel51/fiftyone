@@ -32,7 +32,6 @@ import {
 } from "react";
 
 import {
-  rawImageRgba,
   type CameraVisualization,
   type EncodedVideoVisualization,
   type RawImageVisualization,
@@ -45,6 +44,7 @@ import {
 } from "../../video/react";
 import { useLatestRef } from "./use-latest-ref";
 import { fittedImageSize } from "./image-fit";
+import { rawImageRgba } from "./raw-image-rgba";
 
 const DEFAULT_MIME_TYPE = "image/jpeg";
 /** Trailing coalescing window for compressed grid-preview resize decodes. */

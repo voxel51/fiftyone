@@ -5,7 +5,6 @@ import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serializat
 import { expect } from "vitest";
 import type { Decoder } from "../../../decoders/index";
 import {
-  rawImageRgba,
   VISUALIZATION_KIND,
   type DecodedOutput,
   type PayloadDescriptor,
@@ -638,7 +637,7 @@ export function rawRgba(output: DecodedOutput): readonly number[] {
     throw new Error("Expected raw image visualization");
   }
 
-  return Array.from(rawImageRgba(output.visualization));
+  return Array.from(output.visualization.rgba);
 }
 
 export function ros1Header({

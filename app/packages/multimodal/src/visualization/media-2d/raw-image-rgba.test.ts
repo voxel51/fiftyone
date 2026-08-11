@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { VISUALIZATION_KIND } from "../../ir";
 import { rawImageRgba } from "./raw-image-rgba";
-import { VISUALIZATION_KIND } from "./visualization-kinds";
 
 describe("rawImageRgba", () => {
   it("lazily preserves depth invalid alpha and byte-exact range grayscale", () => {

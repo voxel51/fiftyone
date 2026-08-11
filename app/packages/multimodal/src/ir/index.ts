@@ -2,7 +2,6 @@
 export * from "./bytes";
 /** Public frame intermediate representation. */
 export * from "./frames";
-export * from "./raw-image-rgba";
 /** Public episode and stream intermediate representation. */
 export * from "./manifest";
 /** Public normalized log records. */
