@@ -84,9 +84,29 @@ export function clampToHome(rect: Rect, home: Rect): Rect {
 }
 
 /**
+ * The camera's world: the view at minimum zoom, home scaled about its
+ * center by 1/minZoom. Every zoom level is a window into this fixed
+ * rect and the single camera rule is "the window stays inside the
+ * world" — so pan already works at the default fit view (the window is
+ * smaller than the world), zooming out grows the window toward the
+ * world, and the view is never more lost than reset can recover.
+ */
+export function worldRect(home: Rect, minZoom: number): Rect {
+  const gx = ((home.x1 - home.x0) * (1 / minZoom - 1)) / 2;
+  const gy = ((home.y1 - home.y0) * (1 / minZoom - 1)) / 2;
+  return {
+    x0: home.x0 - gx,
+    x1: home.x1 + gx,
+    y0: home.y0 - gy,
+    y1: home.y1 + gy,
+  };
+}
+
+/**
  * Zoom by `factor` (>1 = in) keeping the data point under `focus`
- * stationary, clamped to [1, maxZoom] relative to home and panned back
- * inside home's bounds.
+ * stationary. The zoom level is measured against `home` (1 = fit),
+ * capped at maxZoom; the floor falls out of `world` — the window can
+ * grow no larger than the world it must stay inside.
  */
 export function zoomRect(
   rect: Rect,
@@ -94,8 +114,10 @@ export function zoomRect(
   focus: [number, number],
   factor: number,
   maxZoom: number,
+  world = home,
 ): Rect {
-  const k = Math.min(Math.max(zoomOf(rect, home) * factor, 1), maxZoom);
+  const minZoom = (home.x1 - home.x0) / (world.x1 - world.x0);
+  const k = Math.min(Math.max(zoomOf(rect, home) * factor, minZoom), maxZoom);
   const w = (home.x1 - home.x0) / k;
   const h = (home.y1 - home.y0) / k;
   const [fx, fy] = focus;
@@ -109,15 +131,21 @@ export function zoomRect(
       y0: fy - ry * h,
       y1: fy + (1 - ry) * h,
     },
-    home,
+    world,
   );
 }
 
-/** Pan by a data-space delta, clamped inside home */
-export function panRect(rect: Rect, home: Rect, dx: number, dy: number): Rect {
+/** Pan by a data-space delta, clamped inside `bounds` (the camera
+ * passes its world, so panning works at any zoom above the floor) */
+export function panRect(
+  rect: Rect,
+  bounds: Rect,
+  dx: number,
+  dy: number,
+): Rect {
   return clampToHome(
     { x0: rect.x0 + dx, x1: rect.x1 + dx, y0: rect.y0 + dy, y1: rect.y1 + dy },
-    home,
+    bounds,
   );
 }
 

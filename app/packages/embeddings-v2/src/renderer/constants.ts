@@ -42,6 +42,14 @@ export const MARGIN = 24;
 /** Max planar zoom-in factor relative to the home view */
 export const MAX_ZOOM = 50;
 
+/** Min planar zoom-out factor relative to the home view: 0.5 = the
+ * data can shrink to half the viewport. This also defines the camera's
+ * world (see worldRect) — the fixed pannable space every zoom level
+ * is a window into — so the default fit view can pan about half a
+ * viewport in each direction, and lassoing around the entire cloud
+ * has breathing room (FOEPD user asks, 08-11) */
+export const MIN_ZOOM = 0.5;
+
 /** Pointer must sit still this long before a hover hit-test runs */
 export const HOVER_DEBOUNCE_MS = 120;
 

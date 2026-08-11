@@ -53,6 +53,39 @@ describe("PlanarCamera.toDataPolygon", () => {
   });
 });
 
+describe("PlanarCamera pan", () => {
+  // The world model's headline: panning works at the default fit view
+  // (the window is smaller than the world), and reset recovers
+  it("pans at the fit view, and reset recenters", () => {
+    const element = document.createElement("div");
+    // jsdom has no pointer capture; the pan handlers call it
+    element.setPointerCapture = vi.fn();
+    const camera = new PlanarCamera(element, vi.fn());
+    camera.setBounds(BOUNDS, 100, 100);
+    camera.setMode("explore");
+
+    const pointer = (type: string, init: Record<string, unknown>) =>
+      element.dispatchEvent(Object.assign(new Event(type), init));
+
+    pointer("pointerdown", {
+      pointerId: 1,
+      button: 0,
+      offsetX: 80,
+      offsetY: 50,
+    });
+    pointer("pointermove", { pointerId: 1, offsetX: 40, offsetY: 50 });
+    pointer("pointerup", { pointerId: 1 });
+
+    const panned = (camera.camera.left + camera.camera.right) / 2;
+    expect(panned).toBeGreaterThan(5);
+
+    camera.reset();
+    expect((camera.camera.left + camera.camera.right) / 2).toBeCloseTo(5);
+
+    camera.destroy();
+  });
+});
+
 describe("PlanarCamera focus", () => {
   const center = (camera: PlanarCamera["camera"]) => [
     (camera.left + camera.right) / 2,

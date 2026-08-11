@@ -1,10 +1,11 @@
 import { OrthographicCamera } from "three";
-import { MARGIN, MAX_ZOOM } from "../constants";
+import { MARGIN, MAX_ZOOM, MIN_ZOOM } from "../constants";
 import {
   clampToHome,
   fitRect,
   panRect,
   pxToData,
+  worldRect,
   zoomOf,
   zoomRect,
   type Rect,
@@ -28,6 +29,9 @@ export class PlanarCamera implements CameraAdapter {
   private bounds: Bounds | null = null;
   private focus: Bounds | null = null;
   private home: Rect = { x0: -1, y0: -1, x1: 1, y1: 1 };
+  // The pannable space (see worldRect): every zoom level is a window
+  // that must stay inside it
+  private world: Rect = this.home;
   private rect: Rect = this.home;
   private width = 1;
   private height = 1;
@@ -86,6 +90,7 @@ export class PlanarCamera implements CameraAdapter {
     this.width = width;
     this.height = height;
     this.home = fitRect(bounds, width, height, MARGIN);
+    this.world = worldRect(this.home, MIN_ZOOM);
     this.rect = this.home;
     this.apply();
   }
@@ -104,11 +109,12 @@ export class PlanarCamera implements CameraAdapter {
     const cx = (this.rect.x0 + this.rect.x1) / 2;
     const cy = (this.rect.y0 + this.rect.y1) / 2;
     this.home = fitRect(this.bounds, width, height, MARGIN);
+    this.world = worldRect(this.home, MIN_ZOOM);
     const w = (this.home.x1 - this.home.x0) / k;
     const h = (this.home.y1 - this.home.y0) / k;
     this.rect = clampToHome(
       { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2 },
-      this.home,
+      this.world,
     );
     this.apply();
   }
@@ -133,7 +139,7 @@ export class PlanarCamera implements CameraAdapter {
     const cy = (focus.yMin + focus.yMax) / 2;
     return clampToHome(
       { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2 },
-      this.home,
+      this.world,
     );
   }
 
@@ -165,7 +171,14 @@ export class PlanarCamera implements CameraAdapter {
       event.offsetX,
       event.offsetY,
     );
-    this.rect = zoomRect(this.rect, this.home, focus, factor, MAX_ZOOM);
+    this.rect = zoomRect(
+      this.rect,
+      this.home,
+      focus,
+      factor,
+      MAX_ZOOM,
+      this.world,
+    );
     this.apply();
   }
 
@@ -190,7 +203,7 @@ export class PlanarCamera implements CameraAdapter {
     const perPxY = (this.rect.y1 - this.rect.y0) / this.height;
     this.rect = panRect(
       this.rect,
-      this.home,
+      this.world,
       -(event.offsetX - lastX) * perPxX,
       (event.offsetY - lastY) * perPxY,
     );
