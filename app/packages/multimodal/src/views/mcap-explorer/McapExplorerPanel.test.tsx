@@ -206,7 +206,7 @@ describe("McapExplorerPanel", () => {
     );
   });
 
-  it("opens an Enterprise cloud path through its registered resolver", async () => {
+  it("opens a cloud path through its registered resolver", async () => {
     const resolver = vi.fn(
       async () => "https://signed.example.com/recording.mcap?token=secret",
     );
@@ -216,9 +216,7 @@ describe("McapExplorerPanel", () => {
       render(<McapExplorerPanel />);
 
       expect(
-        screen.getByText(
-          "HTTP(S), s3://, gs://, and configured Enterprise cloud paths.",
-        ),
+        screen.getByText("HTTP(S) and configured cloud paths."),
       ).toBeTruthy();
       fireEvent.change(screen.getByLabelText("Remote MCAP URL"), {
         target: { value: "s3://bucket/run.mcap" },

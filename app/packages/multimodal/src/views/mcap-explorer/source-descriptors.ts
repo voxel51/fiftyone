@@ -45,8 +45,8 @@ export function createRemoteMcapSourceDescriptor(
 /**
  * Resolves user input into a browser-readable MCAP source.
  *
- * HTTP(S) URLs pass through. Other ``scheme://`` paths require an
- * edition-provided cloud resolver, which is registered only by Enterprise.
+ * HTTP(S) URLs pass through. Other ``scheme://`` paths require a
+ * product-provided cloud resolver.
  */
 export async function resolveRemoteMcapSourceDescriptor(
   value: string,

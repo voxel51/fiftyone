@@ -62,7 +62,7 @@ describe("any MCAP source descriptors", () => {
     );
   });
 
-  it("keeps cloud paths Enterprise-only when no resolver is registered", async () => {
+  it("rejects cloud paths when no resolver is registered", async () => {
     await expect(
       resolveRemoteMcapSourceDescriptor("s3://bucket/file.mcap"),
     ).rejects.toThrow("Only HTTP(S) MCAP URLs are supported");

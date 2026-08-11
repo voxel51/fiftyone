@@ -316,7 +316,7 @@ const McapExplorerPanel: React.FC = () => {
               color={TextColor.Secondary}
             >
               {supportsCloudPaths
-                ? "HTTP(S), s3://, gs://, and configured Enterprise cloud paths."
+                ? "HTTP(S) and configured cloud paths."
                 : "HTTP(S) sources must support CORS and byte-range reads."}
             </Text>
           )}
