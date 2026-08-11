@@ -118,10 +118,13 @@ export class OssLoader extends AbstractFiftyoneLoader {
       document.addEventListener("pointerdown", handleCursorChange);
       document.addEventListener("pointerup", handleCursorChange);
 
-      window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT = 0;
+      // log-visibility watchdog for every spec; specs asserting on loading
+      // screen counts arm an EventUtils.initCounter for
+      // "global-loading-screen" instead
+      let loadingScreens = 0;
       document.addEventListener("global-loading-screen", () => {
-        window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT += 1;
-        if (window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT > 1) {
+        loadingScreens += 1;
+        if (loadingScreens > 1) {
           throw new Error(
             "Global loading screen fired more than once — top-level Suspense boundary re-activated after initial page load",
           );

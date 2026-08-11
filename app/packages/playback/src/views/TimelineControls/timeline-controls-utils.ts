@@ -34,9 +34,15 @@ export function formatTimeOfDay(d: Date): string {
   return iso.slice(iso.indexOf("T") + 1, -1);
 }
 
+/** Formats an `absolute`-mode display `Date` as `YYYY-MM-DD HH:MM:SS.mmm`. */
+function formatDateTime(d: Date): string {
+  if (!Number.isFinite(d.getTime())) return "---- -- -- --:--:--.---";
+  return d.toISOString().slice(0, -1).replace("T", " ");
+}
+
 /**
  * Formats a `TimelineDisplayConversion.toDisplay()` result according to
- * `mode`: a frame index for `sequence`, a time-of-day for `absolute`, or (for
+ * `mode`: a frame index for `sequence`, a date and time for `absolute`, or (for
  * `duration`) `formatSeconds` — callers keep their own seconds formatting
  * (`formatTime`'s `m:ss.cs` for the playhead readout, `fmtBound`'s `X.XXs`
  * for loop bounds) since those predate this mode-aware layer and have their
@@ -53,7 +59,7 @@ export function formatDisplayValue(
     case "sequence":
       return `#${Math.round(value as number)}`;
     case "absolute":
-      return formatTimeOfDay(value as Date);
+      return formatDateTime(value as Date);
     case "duration":
     default:
       return formatSeconds(value as number);

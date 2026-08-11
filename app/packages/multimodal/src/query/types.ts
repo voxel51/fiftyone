@@ -4,7 +4,7 @@ import type {
   DecodedOutputCache,
   DecodeExecutor,
   DecodeClient,
-} from "./decode";
+} from "./decoding";
 
 /**
  * Cache layers used by query clients.

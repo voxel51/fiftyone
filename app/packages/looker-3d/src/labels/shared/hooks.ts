@@ -71,7 +71,7 @@ export const useHoverState = (): HoverState => {
 const useMeshTooltipProps = () => {
   const onPointerOver = useRecoilCallback(
     ({ snapshot, set }) =>
-      (label: any, e?: ThreeEvent<PointerEvent>) => {
+      (label: OverlayLabel, e?: ThreeEvent<PointerEvent>) => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
@@ -111,7 +111,7 @@ const useMeshTooltipProps = () => {
 
   const onPointerOut = useRecoilCallback(
     ({ snapshot, set }) =>
-      (label: any) => {
+      (label: OverlayLabel) => {
         const isTooltipLocked = snapshot
           .getLoadable(fos.isTooltipLocked)
           .getValue();
@@ -143,7 +143,7 @@ const useMeshTooltipProps = () => {
 
   const onPointerMove = useRecoilCallback(
     ({ snapshot, set }) =>
-      (label: any, e: ThreeEvent<PointerEvent>) => {
+      (label: OverlayLabel, e: ThreeEvent<PointerEvent>) => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
@@ -213,7 +213,7 @@ export const useEventHandlers = (): InstancedEventHandlers => {
   // handler runs first so it is never coupled to annotation state.
   return {
     onPointerOver: useCallback(
-      (label: any, e?: ThreeEvent<PointerEvent>) => {
+      (label: OverlayLabel, e?: ThreeEvent<PointerEvent>) => {
         _onPointerOver(label, e);
 
         if (!isAnnotateMode) {
@@ -232,7 +232,7 @@ export const useEventHandlers = (): InstancedEventHandlers => {
       [isAnnotateMode, engine, sample, _onPointerOver],
     ),
     onPointerOut: useCallback(
-      (label: any) => {
+      (label: OverlayLabel) => {
         _onPointerOut(label);
 
         if (!isAnnotateMode) {

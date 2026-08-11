@@ -3,6 +3,7 @@
  */
 import { createImage } from "./image";
 import { createFo3d } from "./fo3d";
+import { createMcapFixture } from "./mcap";
 import { createPcd } from "./pcd";
 import { createPly } from "./ply";
 import { createVideo } from "./video";
@@ -21,6 +22,8 @@ import { createVideo } from "./video";
  * MediaFactory.createPcd({ outputPath: "/tmp/scene.pcd", numPoints: 10, shape: "diagonal" });
  */
 export const MediaFactory = {
+  /** Creates a deterministic indexed MCAP recording. See {@link createMcapFixture}. */
+  createMcapFixture,
   /** Creates a solid-color video (VP8/`.webm` or VP9/`.mp4`), optionally with a sine audio track. See {@link createVideo}. */
   createVideo,
   /** Creates a PNG image with an optional fill color and watermark. See {@link createImage}. */

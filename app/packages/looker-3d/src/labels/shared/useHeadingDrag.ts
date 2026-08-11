@@ -7,13 +7,13 @@ import {
   type MutableRefObject,
   type RefObject,
 } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import type { CuboidResizeFace } from "../../annotation/cuboid-face-resize";
 import { computeCuboidHeadingRelabel } from "../../annotation/cuboid-heading-relabel";
 import {
-  hoveredHeadingTargetFaceAtom,
-  isCurrentlyTransformingAtom,
+  useHoveredHeadingTargetFace,
+  useSetHoveredHeadingTargetFace,
+  useSetIsCurrentlyTransforming,
 } from "../../state";
 import type { HoveredLabelSource } from "../../types";
 import { toNDC, toNDCForElement } from "../../utils";
@@ -118,11 +118,9 @@ export function useHeadingDrag({
   suppressNextClickRef,
 }: UseHeadingDragOptions): UseHeadingDragResult {
   const { camera, gl } = useThree();
-  const setIsCurrentlyTransforming = useSetRecoilState(
-    isCurrentlyTransformingAtom,
-  );
-  const targetFaceState = useRecoilValue(hoveredHeadingTargetFaceAtom);
-  const setTargetFaceState = useSetRecoilState(hoveredHeadingTargetFaceAtom);
+  const setIsCurrentlyTransforming = useSetIsCurrentlyTransforming();
+  const targetFaceState = useHoveredHeadingTargetFace();
+  const setTargetFaceState = useSetHoveredHeadingTargetFace();
 
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);

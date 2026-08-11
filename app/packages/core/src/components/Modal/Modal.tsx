@@ -335,7 +335,7 @@ const Modal = () => {
           </Suspense>
         )}
         <TooltipInfo />
-        <ModalContainer style={{ ...screenParams }}>
+        <ModalContainer data-cy="modal-content" style={{ ...screenParams }}>
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}
             resetKeys={[modalSelector?.id, modalSelector?.groupId]}

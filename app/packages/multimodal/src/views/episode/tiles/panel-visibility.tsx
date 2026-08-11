@@ -1,0 +1,677 @@
+import { useTileId } from "@fiftyone/tiling";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { sanitizeBoundedStringList } from "../../../utils/bounded-string-list";
+import { createTimestampLruScopedStore } from "../../../utils/scoped-store";
+import {
+  DEFAULT_PROJECTION_POINT_SIZE,
+  normalizePointSize,
+} from "../presentation/point-size-policy";
+
+/** Persisted source visibility for one episode 3D tile. */
+export interface Scene3dTileVisibility {
+  /** Whether camera visibility no longer follows the open image panes. */
+  readonly cameraSelectionCustomized: boolean;
+  readonly enabledSourceIds: readonly string[];
+  /** `null` records that the user deliberately left no primary geometry. */
+  readonly primarySourceId: string | null;
+}
+
+type ImageLabelStreamsByImage = Readonly<Record<string, readonly string[]>>;
+
+/** 3D-label overlay preferences owned by one image tile. */
+export interface ImageTile3dLabelProjection {
+  readonly enabled: boolean;
+  /** Whether compatible tracked entities are interpolated at image time. */
+  readonly interpolate: boolean;
+  /** Explicit scene-annotation streams to project; null projects every one. */
+  readonly streams: readonly string[] | null;
+}
+
+type Image3dLabelProjectionsByImage = Readonly<
+  Record<string, ImageTile3dLabelProjection>
+>;
+
+/** Point-cloud overlay preferences owned by one image tile. */
+export interface ImageTilePointCloudProjection {
+  readonly enabled: boolean;
+  readonly pointSize: number;
+  /** Explicit cloud streams to project; null projects every cloud. */
+  readonly streams: readonly string[] | null;
+}
+
+type ImagePointCloudProjectionsByImage = Readonly<
+  Record<string, ImageTilePointCloudProjection>
+>;
+
+interface PersistedTileVisibility {
+  readonly imageLabelStreams?: ImageLabelStreamsByImage;
+  readonly threeD?: Scene3dTileVisibility;
+}
+
+interface SessionTileProjections {
+  readonly image3dLabelProjections?: Image3dLabelProjectionsByImage;
+  readonly imagePointCloudProjections?: ImagePointCloudProjectionsByImage;
+}
+
+interface PersistedVisibilityScope {
+  readonly tiles: Readonly<Record<string, PersistedTileVisibility>>;
+}
+
+interface SessionProjectionScope {
+  readonly tiles: Readonly<Record<string, SessionTileProjections>>;
+}
+
+const PanelVisibilityScopeContext = createContext<string | null>(null);
+
+const STORAGE_KEY = "fiftyone.episode.panel-visibility.v2";
+const STORAGE_VERSION = 2;
+const PROJECTION_STORAGE_KEY = "fiftyone.episode.projections.v1";
+const PROJECTION_STORAGE_VERSION = 1;
+const MAX_SCOPES = 20;
+const MAX_TILES_PER_SCOPE = 64;
+const MAX_STREAMS_PER_TILE = 128;
+const MAX_STREAM_LENGTH = 512;
+const MAX_SCOPE_LENGTH = 1024;
+const MAX_TILE_ID_LENGTH = 256;
+
+const DEFAULT_IMAGE_POINT_CLOUD_PROJECTION: ImageTilePointCloudProjection =
+  Object.freeze({
+    enabled: false,
+    pointSize: DEFAULT_PROJECTION_POINT_SIZE,
+    streams: [],
+  });
+const DEFAULT_IMAGE_3D_LABEL_PROJECTION: ImageTile3dLabelProjection =
+  Object.freeze({
+    enabled: false,
+    interpolate: false,
+    streams: [],
+  });
+const EMPTY_IMAGE_LABEL_STREAMS: readonly string[] = Object.freeze([]);
+const EMPTY_IMAGE_LABEL_STREAMS_BY_IMAGE: ImageLabelStreamsByImage =
+  Object.freeze({});
+const EMPTY_IMAGE_3D_LABEL_PROJECTIONS_BY_IMAGE: Image3dLabelProjectionsByImage =
+  Object.freeze({});
+const EMPTY_IMAGE_POINT_CLOUD_PROJECTIONS_BY_IMAGE: ImagePointCloudProjectionsByImage =
+  Object.freeze({});
+
+const visibilityStore = createTimestampLruScopedStore<PersistedVisibilityScope>(
+  {
+    key: STORAGE_KEY,
+    maxScopes: MAX_SCOPES,
+    normalizeScopeKey: normalizeScopeKey,
+    sanitizeScope: sanitizeVisibilityScope,
+    scopeField: "byScope",
+    serializeScope: (scope) => ({ ...scope }),
+    storage: () => globalThis.localStorage,
+    version: STORAGE_VERSION,
+  },
+);
+
+const projectionStore = createTimestampLruScopedStore<SessionProjectionScope>({
+  key: PROJECTION_STORAGE_KEY,
+  maxScopes: MAX_SCOPES,
+  normalizeScopeKey: normalizeScopeKey,
+  sanitizeScope: sanitizeProjectionScope,
+  scopeField: "byScope",
+  serializeScope: (scope) => ({ ...scope }),
+  storage: () => globalThis.sessionStorage,
+  version: PROJECTION_STORAGE_VERSION,
+});
+
+/**
+ * Scopes panel visibility to one dataset/source and media field. The scope is
+ * deliberately separate from browser-wide visual styling: stream names and
+ * panel intent are meaningful only within the recording family that owns
+ * them.
+ */
+export const PanelVisibilityProvider: React.FC<{
+  readonly children: React.ReactNode;
+  readonly scopeKey?: string;
+}> = ({ children, scopeKey }) => (
+  <PanelVisibilityScopeContext.Provider value={scopeKey?.trim() || null}>
+    {children}
+  </PanelVisibilityScopeContext.Provider>
+);
+
+/** Returns the recording-specific scope used for panel visibility. */
+export function usePanelVisibilityScope(): string | null {
+  return useContext(PanelVisibilityScopeContext);
+}
+
+/** Reads one 3D tile's durable visibility before it creates stream demand. */
+export function readScene3dTileVisibility(
+  scopeKey: string | null,
+  tileId: string | null,
+): Scene3dTileVisibility | null {
+  return readTileVisibility(scopeKey, tileId)?.threeD ?? null;
+}
+
+/** Writes one 3D tile's visibility without disturbing its image settings. */
+export function writeScene3dTileVisibility(
+  scopeKey: string | null,
+  tileId: string | null,
+  visibility: Scene3dTileVisibility,
+): void {
+  writeTileVisibility(scopeKey, tileId, { threeD: visibility });
+}
+
+/**
+ * Per-image-panel label visibility. A missing entry and an explicit empty
+ * entry both render no labels; retaining the empty entry remembers an
+ * intentional "all off" choice when label streams later change.
+ */
+export function useImageTileLabelStreams(imageStream: string): {
+  readonly labelStreams: readonly string[];
+  readonly setLabelStreams: (streams: readonly string[]) => void;
+} {
+  const scopeKey = usePanelVisibilityScope();
+  const tileId = useTileId();
+  const [streamsByImage, updateStreamsByImage] = useScopedTileState({
+    emptyValue: EMPTY_IMAGE_LABEL_STREAMS_BY_IMAGE,
+    read: readImageLabelStreams,
+    scopeKey,
+    tileId,
+    write: writeImageLabelStreams,
+  });
+
+  const setLabelStreams = useCallback(
+    (streams: readonly string[]) => {
+      if (!imageStream) return;
+      updateStreamsByImage((current) => ({
+        ...current,
+        [imageStream]: sanitizeStreamList(streams),
+      }));
+    },
+    [imageStream, updateStreamsByImage],
+  );
+
+  return {
+    labelStreams: imageStream
+      ? (streamsByImage[imageStream] ?? EMPTY_IMAGE_LABEL_STREAMS)
+      : EMPTY_IMAGE_LABEL_STREAMS,
+    setLabelStreams,
+  };
+}
+
+/**
+ * Per-image-panel 3D-label projection state. Projections are opt-in and the
+ * explicit choices remain scoped to this image tile for this browser session.
+ */
+export function useImageTile3dLabelProjection(imageStream: string): {
+  readonly projection: ImageTile3dLabelProjection;
+  readonly setProjection: (
+    settings: Partial<ImageTile3dLabelProjection>,
+  ) => void;
+} {
+  const scopeKey = usePanelVisibilityScope();
+  const tileId = useTileId();
+  const [projectionsByImage, updateProjectionsByImage] = useScopedTileState({
+    emptyValue: EMPTY_IMAGE_3D_LABEL_PROJECTIONS_BY_IMAGE,
+    read: readImage3dLabelProjections,
+    scopeKey,
+    tileId,
+    write: writeImage3dLabelProjections,
+  });
+
+  const setProjection = useCallback(
+    (settings: Partial<ImageTile3dLabelProjection>) => {
+      if (!imageStream) return;
+      updateProjectionsByImage((current) => ({
+        ...current,
+        [imageStream]: normalizeImage3dLabelProjectionUpdate(
+          current[imageStream] ?? DEFAULT_IMAGE_3D_LABEL_PROJECTION,
+          settings,
+        ),
+      }));
+    },
+    [imageStream, updateProjectionsByImage],
+  );
+
+  return {
+    projection: imageStream
+      ? (projectionsByImage[imageStream] ?? DEFAULT_IMAGE_3D_LABEL_PROJECTION)
+      : DEFAULT_IMAGE_3D_LABEL_PROJECTION,
+    setProjection,
+  };
+}
+
+/**
+ * Per-image-panel point-cloud overlay state. Camera calibration and geometry
+ * remain source-scoped because 3D frustums consume them; overlay visibility,
+ * stream selection, and point size belong to the individual image tile for
+ * this browser session.
+ */
+export function useImageTilePointCloudProjection(imageStream: string): {
+  readonly projection: ImageTilePointCloudProjection;
+  readonly setProjection: (
+    settings: Partial<ImageTilePointCloudProjection>,
+  ) => void;
+} {
+  const scopeKey = usePanelVisibilityScope();
+  const tileId = useTileId();
+  const [projectionsByImage, updateProjectionsByImage] = useScopedTileState({
+    emptyValue: EMPTY_IMAGE_POINT_CLOUD_PROJECTIONS_BY_IMAGE,
+    read: readImagePointCloudProjections,
+    scopeKey,
+    tileId,
+    write: writeImagePointCloudProjections,
+  });
+
+  const setProjection = useCallback(
+    (settings: Partial<ImageTilePointCloudProjection>) => {
+      if (!imageStream) return;
+      updateProjectionsByImage((current) => ({
+        ...current,
+        [imageStream]: normalizeImagePointCloudProjectionUpdate(
+          current[imageStream] ?? DEFAULT_IMAGE_POINT_CLOUD_PROJECTION,
+          settings,
+        ),
+      }));
+    },
+    [imageStream, updateProjectionsByImage],
+  );
+
+  return {
+    projection: imageStream
+      ? (projectionsByImage[imageStream] ??
+        DEFAULT_IMAGE_POINT_CLOUD_PROJECTION)
+      : DEFAULT_IMAGE_POINT_CLOUD_PROJECTION,
+    setProjection,
+  };
+}
+
+/**
+ * Keeps one tile-scoped value synchronized across mount and in-place scope
+ * changes. Domain hooks provide their own read, write, and normalization.
+ */
+function useScopedTileState<Value>({
+  emptyValue,
+  read,
+  scopeKey,
+  tileId,
+  write,
+}: {
+  readonly emptyValue: Value;
+  readonly read: (
+    scopeKey: string | null,
+    tileId: string | null,
+  ) => Value | null;
+  readonly scopeKey: string | null;
+  readonly tileId: string | null;
+  readonly write: (
+    scopeKey: string | null,
+    tileId: string | null,
+    value: Value,
+  ) => void;
+}): readonly [Value, (resolver: (current: Value) => Value) => void] {
+  const [value, setValue] = useState<Value>(
+    () => read(scopeKey, tileId) ?? emptyValue,
+  );
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
+  useLayoutEffect(() => {
+    const next = read(scopeKey, tileId) ?? emptyValue;
+    valueRef.current = next;
+    setValue(next);
+  }, [emptyValue, read, scopeKey, tileId]);
+
+  const update = useCallback(
+    (resolver: (current: Value) => Value) => {
+      const next = resolver(valueRef.current);
+      valueRef.current = next;
+      setValue(next);
+      write(scopeKey, tileId, next);
+    },
+    [scopeKey, tileId, write],
+  );
+  return [value, update];
+}
+
+function readImageLabelStreams(
+  scopeKey: string | null,
+  tileId: string | null,
+): ImageLabelStreamsByImage | null {
+  return readTileVisibility(scopeKey, tileId)?.imageLabelStreams ?? null;
+}
+
+function writeImageLabelStreams(
+  scopeKey: string | null,
+  tileId: string | null,
+  value: ImageLabelStreamsByImage,
+): void {
+  writeTileVisibility(scopeKey, tileId, { imageLabelStreams: value });
+}
+
+function readImage3dLabelProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+): Image3dLabelProjectionsByImage | null {
+  return readTileProjections(scopeKey, tileId)?.image3dLabelProjections ?? null;
+}
+
+function writeImage3dLabelProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+  value: Image3dLabelProjectionsByImage,
+): void {
+  writeTileProjections(scopeKey, tileId, { image3dLabelProjections: value });
+}
+
+function readImagePointCloudProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+): ImagePointCloudProjectionsByImage | null {
+  return (
+    readTileProjections(scopeKey, tileId)?.imagePointCloudProjections ?? null
+  );
+}
+
+function writeImagePointCloudProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+  value: ImagePointCloudProjectionsByImage,
+): void {
+  writeTileProjections(scopeKey, tileId, { imagePointCloudProjections: value });
+}
+
+function readTileVisibility(
+  scopeKey: string | null,
+  tileId: string | null,
+): PersistedTileVisibility | null {
+  if (!scopeKey || !tileId) return null;
+  return visibilityStore.readScope(scopeKey)?.tiles[tileId] ?? null;
+}
+
+function writeTileVisibility(
+  scopeKey: string | null,
+  tileId: string | null,
+  patch: Partial<PersistedTileVisibility>,
+): void {
+  if (!isBoundedString(scopeKey, MAX_SCOPE_LENGTH)) return;
+  if (!isBoundedString(tileId, MAX_TILE_ID_LENGTH)) return;
+
+  visibilityStore.updateScope(scopeKey, (currentScope) => {
+    const tiles = { ...currentScope?.tiles };
+    tiles[tileId] = { ...tiles[tileId], ...patch };
+    return { tiles };
+  });
+}
+
+function readTileProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+): SessionTileProjections | null {
+  if (!scopeKey || !tileId) return null;
+  return projectionStore.readScope(scopeKey)?.tiles[tileId] ?? null;
+}
+
+function writeTileProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+  patch: Partial<SessionTileProjections>,
+): void {
+  if (!isBoundedString(scopeKey, MAX_SCOPE_LENGTH)) return;
+  if (!isBoundedString(tileId, MAX_TILE_ID_LENGTH)) return;
+
+  projectionStore.updateScope(scopeKey, (currentScope) => {
+    const tiles = { ...currentScope?.tiles };
+    tiles[tileId] = { ...tiles[tileId], ...patch };
+    return { tiles };
+  });
+}
+
+function sanitizeVisibilityScope(
+  raw: unknown,
+): PersistedVisibilityScope | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
+    return null;
+  return { tiles: sanitizeTiles((raw as Record<string, unknown>).tiles) };
+}
+
+function sanitizeProjectionScope(raw: unknown): SessionProjectionScope | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
+    return null;
+  return {
+    tiles: sanitizeProjectionTiles((raw as Record<string, unknown>).tiles),
+  };
+}
+
+function sanitizeTiles(raw: unknown): Record<string, PersistedTileVisibility> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  const result: Record<string, PersistedTileVisibility> = {};
+  for (const [tileId, rawTile] of Object.entries(raw)) {
+    if (Object.keys(result).length >= MAX_TILES_PER_SCOPE) break;
+    if (!isBoundedString(tileId, MAX_TILE_ID_LENGTH)) continue;
+    if (typeof rawTile !== "object" || rawTile === null) continue;
+    const tile = rawTile as Record<string, unknown>;
+    const threeD = sanitize3dVisibility(tile.threeD);
+    const imageLabelStreams = sanitizeImageLabelStreams(tile.imageLabelStreams);
+    if (threeD || imageLabelStreams) {
+      result[tileId] = {
+        ...(imageLabelStreams ? { imageLabelStreams } : {}),
+        ...(threeD ? { threeD } : {}),
+      };
+    }
+  }
+  return result;
+}
+
+function sanitizeProjectionTiles(
+  raw: unknown,
+): Record<string, SessionTileProjections> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  const result: Record<string, SessionTileProjections> = {};
+  for (const [tileId, rawTile] of Object.entries(raw)) {
+    if (Object.keys(result).length >= MAX_TILES_PER_SCOPE) break;
+    if (!isBoundedString(tileId, MAX_TILE_ID_LENGTH)) continue;
+    if (typeof rawTile !== "object" || rawTile === null) continue;
+    const tile = rawTile as Record<string, unknown>;
+    const image3dLabelProjections = sanitizeImage3dLabelProjections(
+      tile.image3dLabelProjections,
+    );
+    const imagePointCloudProjections = sanitizeImagePointCloudProjections(
+      tile.imagePointCloudProjections,
+    );
+    if (image3dLabelProjections || imagePointCloudProjections) {
+      result[tileId] = {
+        ...(image3dLabelProjections ? { image3dLabelProjections } : {}),
+        ...(imagePointCloudProjections ? { imagePointCloudProjections } : {}),
+      };
+    }
+  }
+  return result;
+}
+
+function sanitize3dVisibility(raw: unknown): Scene3dTileVisibility | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+  const candidate = raw as Record<string, unknown>;
+  if (!Array.isArray(candidate.enabledSourceIds)) return null;
+  const cameraSelectionCustomized = candidate.cameraSelectionCustomized;
+  if (
+    cameraSelectionCustomized !== undefined &&
+    typeof cameraSelectionCustomized !== "boolean"
+  ) {
+    return null;
+  }
+  const primarySourceId = candidate.primarySourceId;
+  if (
+    primarySourceId !== null &&
+    !isBoundedString(primarySourceId, MAX_STREAM_LENGTH)
+  ) {
+    return null;
+  }
+  return {
+    // Records written before camera intent was stored used one global manual
+    // mode. Preserve those selections rather than silently removing cameras.
+    cameraSelectionCustomized: cameraSelectionCustomized ?? true,
+    enabledSourceIds: sanitizeStreamList(candidate.enabledSourceIds),
+    primarySourceId,
+  };
+}
+
+function sanitizeImageLabelStreams(
+  raw: unknown,
+): Record<string, readonly string[]> | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+  const result: Record<string, readonly string[]> = {};
+  for (const [imageStream, labelStreams] of Object.entries(raw)) {
+    if (Object.keys(result).length >= MAX_STREAMS_PER_TILE) break;
+    if (!isBoundedString(imageStream, MAX_STREAM_LENGTH)) continue;
+    if (!Array.isArray(labelStreams)) continue;
+    result[imageStream] = sanitizeStreamList(labelStreams);
+  }
+  return result;
+}
+
+function sanitizeImage3dLabelProjections(
+  raw: unknown,
+): Record<string, ImageTile3dLabelProjection> | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+  const result: Record<string, ImageTile3dLabelProjection> = {};
+  for (const [imageStream, projection] of Object.entries(raw)) {
+    if (Object.keys(result).length >= MAX_STREAMS_PER_TILE) break;
+    if (!isBoundedString(imageStream, MAX_STREAM_LENGTH)) continue;
+    result[imageStream] = normalizeImage3dLabelProjection(projection);
+  }
+  return result;
+}
+
+function sanitizeImagePointCloudProjections(
+  raw: unknown,
+): Record<string, ImageTilePointCloudProjection> | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+  const result: Record<string, ImageTilePointCloudProjection> = {};
+  for (const [imageStream, projection] of Object.entries(raw)) {
+    if (Object.keys(result).length >= MAX_STREAMS_PER_TILE) break;
+    if (!isBoundedString(imageStream, MAX_STREAM_LENGTH)) continue;
+    result[imageStream] = normalizeImagePointCloudProjection(projection);
+  }
+  return result;
+}
+
+function normalizeImage3dLabelProjectionUpdate(
+  previous: ImageTile3dLabelProjection,
+  settings: Partial<ImageTile3dLabelProjection>,
+): ImageTile3dLabelProjection {
+  let streams =
+    settings.streams !== undefined ? settings.streams : previous.streams;
+  if (settings.enabled === false) {
+    streams = [];
+  } else if (
+    settings.enabled === true &&
+    settings.streams === undefined &&
+    !previous.enabled
+  ) {
+    streams = null;
+  }
+  return normalizeImage3dLabelProjection({
+    ...previous,
+    ...settings,
+    streams,
+  });
+}
+
+function normalizeImage3dLabelProjection(
+  raw: unknown,
+): ImageTile3dLabelProjection {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return DEFAULT_IMAGE_3D_LABEL_PROJECTION;
+  }
+  const candidate = raw as Partial<ImageTile3dLabelProjection>;
+  const rawStreams = candidate.streams;
+  const streams =
+    rawStreams === null
+      ? null
+      : Array.isArray(rawStreams)
+        ? sanitizeStreamList(rawStreams)
+        : [];
+  const enabled =
+    candidate.enabled === true && (streams === null || streams.length > 0);
+  return {
+    enabled,
+    interpolate: candidate.interpolate === true,
+    streams: enabled ? streams : [],
+  };
+}
+
+function normalizeImagePointCloudProjectionUpdate(
+  previous: ImageTilePointCloudProjection,
+  settings: Partial<ImageTilePointCloudProjection>,
+): ImageTilePointCloudProjection {
+  let streams =
+    settings.streams !== undefined ? settings.streams : previous.streams;
+  if (settings.enabled === false) {
+    streams = [];
+  } else if (
+    settings.enabled === true &&
+    settings.streams === undefined &&
+    !previous.enabled
+  ) {
+    streams = null;
+  }
+  return normalizeImagePointCloudProjection({
+    ...previous,
+    ...settings,
+    streams,
+  });
+}
+
+function normalizeImagePointCloudProjection(
+  raw: unknown,
+): ImageTilePointCloudProjection {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return DEFAULT_IMAGE_POINT_CLOUD_PROJECTION;
+  }
+  const candidate = raw as Partial<ImageTilePointCloudProjection>;
+  const rawStreams = candidate.streams;
+  const streams =
+    rawStreams === null
+      ? null
+      : Array.isArray(rawStreams)
+        ? sanitizeStreamList(rawStreams)
+        : [];
+  const enabled =
+    candidate.enabled === true && (streams === null || streams.length > 0);
+  return {
+    enabled,
+    pointSize: normalizePointSize(
+      candidate.pointSize,
+      DEFAULT_PROJECTION_POINT_SIZE,
+    ),
+    streams: enabled ? streams : [],
+  };
+}
+
+function sanitizeStreamList(raw: readonly unknown[]): readonly string[] {
+  return sanitizeBoundedStringList(
+    raw,
+    MAX_STREAMS_PER_TILE,
+    MAX_STREAM_LENGTH,
+  );
+}
+
+function isBoundedString(value: unknown, maxLength: number): value is string {
+  return (
+    typeof value === "string" && value.length > 0 && value.length <= maxLength
+  );
+}
+
+function normalizeScopeKey(value: string): string | null {
+  return isBoundedString(value, MAX_SCOPE_LENGTH) ? value : null;
+}

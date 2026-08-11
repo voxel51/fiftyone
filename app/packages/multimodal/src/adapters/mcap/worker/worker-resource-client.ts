@@ -1,15 +1,36 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { createMultimodalQueryClient } from "../../../query";
 import type { ByteFillSlotClass, ByteReadDebugLog } from "../../../query/bytes";
-import type { DecodedOutputCache } from "../../../query/decode";
+import type { DecodedOutputCache } from "../../../query/decoding";
 import {
   createDecodeClient,
   inlineDecodeExecutor,
-} from "../../../query/decode";
-import { createMcapDecoderRegistry } from "../decoders";
-import { createInlineMcapResourceClient } from "../resources";
-import type { McapResourceClient } from "../types";
-import type { McapPlaybackWorkerFetchParameters } from "./playback-worker-types";
+} from "../../../query/decoding";
+import { createMcapDecoderRegistry } from "../message-decoders/index";
+import { createInlineMcapResourceClient } from "../resource-client/inline-client";
+import type { McapIndexedMessageReuse } from "../resource-client/operations/read-synchronized-message-batch";
+import type {
+  McapReadSynchronizedMessageBatchRequest,
+  McapReadSynchronizedMessagesRequest,
+  McapResourceClient,
+} from "../contracts/index";
+import type {
+  McapPlaybackWorkerFetchParameters,
+  McapPlaybackWorkerSynchronizedWindow,
+  McapRetainedDecodedMessageReference,
+} from "./playback-worker-types";
+
+export type McapPlaybackWorkerResourceClient = Omit<
+  McapResourceClient,
+  "readSynchronizedMessageBatch" | "readSynchronizedMessages"
+> & {
+  readSynchronizedMessageBatch(
+    request: McapReadSynchronizedMessageBatchRequest,
+  ): Promise<readonly McapPlaybackWorkerSynchronizedWindow[]>;
+  readSynchronizedMessages(
+    request: McapReadSynchronizedMessagesRequest,
+  ): Promise<McapPlaybackWorkerSynchronizedWindow>;
+};
 
 const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {
   // A declared-noop cache lets decode callers skip building cache identity
@@ -31,16 +52,30 @@ export interface CreateWorkerResourceClientOptions {
   readonly fillSlotClass?: ByteFillSlotClass;
   readonly onByteRead?: (entry: ByteReadDebugLog) => void;
   readonly readSignal?: { readonly current: AbortSignal | null };
+  readonly retainedDecodedRecordIds?: {
+    readonly current: ReadonlySet<string> | null;
+  };
 }
 
 /**
  * Creates an inline MCAP resource client for code running inside a worker.
  */
+export function createWorkerResourceClient(
+  options: CreateWorkerResourceClientOptions & {
+    readonly retainedDecodedRecordIds: {
+      readonly current: ReadonlySet<string> | null;
+    };
+  },
+): McapPlaybackWorkerResourceClient;
+export function createWorkerResourceClient(
+  options?: CreateWorkerResourceClientOptions,
+): McapResourceClient;
 export function createWorkerResourceClient({
   fillSlotClass,
   onByteRead,
   readSignal,
-}: CreateWorkerResourceClientOptions = {}): McapResourceClient {
+  retainedDecodedRecordIds,
+}: CreateWorkerResourceClientOptions = {}): McapPlaybackWorkerResourceClient {
   const query = createMultimodalQueryClient({
     caches: {
       bytes: {
@@ -50,7 +85,7 @@ export function createWorkerResourceClient({
     },
   });
 
-  return createInlineMcapResourceClient({
+  const client = createInlineMcapResourceClient({
     byteClient: query.bytes,
     readSignal,
     decodeClient: createDecodeClient({
@@ -63,6 +98,41 @@ export function createWorkerResourceClient({
       registry: createMcapDecoderRegistry(),
     }),
   });
+  const reuseRetainedDecodedMessage = retainedDecodedMessageReuse(
+    retainedDecodedRecordIds,
+  );
+
+  return {
+    ...client,
+    readSynchronizedMessageBatch: (request) =>
+      client.readSynchronizedMessageBatchWithReuse(
+        request,
+        reuseRetainedDecodedMessage,
+      ),
+    readSynchronizedMessages: (request) =>
+      client.readSynchronizedMessagesWithReuse(
+        request,
+        reuseRetainedDecodedMessage,
+      ),
+  };
+}
+
+function retainedDecodedMessageReuse(
+  retainedDecodedRecordIds:
+    | { readonly current: ReadonlySet<string> | null }
+    | undefined,
+): McapIndexedMessageReuse<McapRetainedDecodedMessageReference> {
+  return ({ recordId, timelineTimeNs, topic }) => {
+    if (!retainedDecodedRecordIds?.current?.has(recordId)) {
+      return undefined;
+    }
+    return {
+      kind: "retained-decoded-message",
+      recordId,
+      timelineTimeNs,
+      topic,
+    };
+  };
 }
 
 /**
