@@ -47,12 +47,12 @@ vi.mock("@fiftyone/state", () => ({
   isDynamicGroup: { key: "isDynamicGroup" },
   isNestedDynamicGroup: { key: "isNestedDynamicGroup" },
   isOrderedDynamicGroup: { key: "isOrderedDynamicGroup" },
-  modalSample: { key: "modalSample" },
   only3d: { key: "only3d" },
   useIs3dVisible: () => mockState.group3dState.is3dVisible,
   useIs3dVisibleSetting: () => mockState.group3dState.is3dVisibleSetting,
   useIs3dPinned: () => mockState.group3dState.isPinned,
   useIsImageDynamicGroupVideo: () => mockState.values.isImageDynamicGroupVideo,
+  useModalSample: () => mockState.values.modalSample,
   useRenderConfig3dActions: () => ({
     setPinned: mockState.setPinned,
   }),
@@ -101,6 +101,12 @@ vi.mock("./DynamicGroup", () => ({
 
 vi.mock("./GroupView", () => ({
   GroupView: () => <div>group-view</div>,
+}));
+
+vi.mock("@fiftyone/components", () => ({
+  Loading: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 vi.mock("./GroupSample3d", () => ({
@@ -162,6 +168,18 @@ describe("Group", () => {
 
     expect(queryByText("video-annotation-surface")).toBeTruthy();
     expect(queryByText("dynamic-group")).toBeNull();
+  });
+
+  it("renders a placeholder while the annotate video surface sample loads", () => {
+    mockState.modalMode = "ANNOTATE";
+    mockState.values.isImageDynamicGroupVideo = true;
+    mockState.values.isDynamicGroup = true;
+    mockState.values.modalSample = undefined;
+
+    const { queryByText } = render(<Group />);
+
+    expect(queryByText("video-annotation-surface")).toBeNull();
+    expect(queryByText("Pixelating...")).toBeTruthy();
   });
 
   it("renders the normal group view for an image dynamic-group video in explore mode", () => {
