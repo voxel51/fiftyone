@@ -236,6 +236,8 @@ export interface TransformTopologyScanResult {
 /** One deliberately incomplete point-in-time topology sample. */
 export interface TransformTopologySampleRequest {
   readonly signal?: AbortSignal;
+  /** Episode timeline time captured when the user requested the sample. */
+  readonly timeNs: bigint;
 }
 
 /** Minimal transform evidence for rendering a graph without a recording scan. */

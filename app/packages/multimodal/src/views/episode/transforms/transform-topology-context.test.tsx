@@ -56,63 +56,26 @@ describe("TransformTopologyProvider", () => {
     expect(capability.scan).toHaveBeenCalledOnce();
   });
 
-  it("continues only after explicit user action and merges usage", async () => {
-    const continuation = { cursor: 1 } as ReadContinuation;
-    const scan = vi
-      .fn<TransformTopologyCapability["scan"]>()
-      .mockResolvedValueOnce(
-        result({
-          continuation,
-          frameUses: [frameUse("map", "odom")],
-          stopReason: "budget-exhausted",
-          usage: { ...usage(), messagesDecoded: 7 },
-        }),
-      )
-      .mockResolvedValueOnce(
-        result({
-          frameUses: [frameUse("lidar", "points")],
-          stopReason: "source-exhausted",
-          usage: { ...usage(), messagesDecoded: 5 },
-        }),
-      );
-
-    renderHarness({ scan });
-    await screen.findByText("partial");
-    fireEvent.click(screen.getByRole("button", { name: "continue" }));
-
-    await waitFor(() => expect(scan).toHaveBeenCalledTimes(2));
-    expect(scan.mock.calls[1]?.[0].continuation).toBe(continuation);
-    expect(await screen.findByText("complete:12")).toBeTruthy();
-    expect(screen.getByTestId("frame-uses").textContent).toBe(
-      "lidar:points,map:odom",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "continue" }));
-    expect(scan).toHaveBeenCalledTimes(2);
-  });
-
-  it("uses a targeted sample only after an explicit fallback action", async () => {
+  it("merges only new current-time evidence into partial scan topology", async () => {
     let completedScanSignal: AbortSignal | undefined;
     const scan = vi.fn<TransformTopologyCapability["scan"]>(async (request) => {
       completedScanSignal = request.signal;
       return result({
-        frameUses: [frameUse("stale", "camera")],
-        stopReason: "oversized-source-unit",
+        continuation: { cursor: 1 } as ReadContinuation,
+        edges: [edge("map", "base_link", "temporal", "/tf", 7)],
+        frameUses: [frameUse("map", "odom")],
+        stopReason: "budget-exhausted",
       });
     });
     const sample = vi.fn<NonNullable<TransformTopologyCapability["sample"]>>(
-      async () => ({
+      async (request) => ({
         edges: [
-          {
-            childFrameId: "base_link",
-            kind: "temporal",
-            occurrenceCount: 1,
-            parentFrameId: "map",
-            sourceName: "/tf",
-            sourceStreamId: "tf",
-          },
+          edge("map", "base_link", "temporal", "/tf"),
+          edge("map", "base_link", "static", "/tf_static"),
+          edge("base_link", "lidar", "temporal", "/tf"),
         ],
-        frameUses: [],
-        sampledAtNs: 5n,
+        frameUses: [frameUse("lidar", "points")],
+        sampledAtNs: request.timeNs,
       }),
     );
 
@@ -121,13 +84,68 @@ describe("TransformTopologyProvider", () => {
     expect(sample).not.toHaveBeenCalled();
     expect(scan).toHaveBeenCalledOnce();
 
-    fireEvent.click(screen.getByRole("button", { name: "continue anyway" }));
+    fireEvent.click(screen.getByRole("button", { name: "sample at 5" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("edges").textContent).toBe(
+        "map>base_link:temporal:/tf:7,map>base_link:static:/tf_static:1,base_link>lidar:temporal:/tf:1",
+      ),
+    );
+    expect(screen.getByText("partial")).toBeTruthy();
+    expect(completedScanSignal?.aborted).toBe(false);
+    expect(sample).toHaveBeenCalledWith({
+      signal: expect.any(AbortSignal),
+      timeNs: 5n,
+    });
+    expect(scan).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("frame-uses").textContent).toBe(
+      "lidar:points,map:odom",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "sample at 9" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("sample-loading").textContent).toBe("idle"),
+    );
+    expect(sample).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("edges").textContent).toBe(
+      "map>base_link:temporal:/tf:7,map>base_link:static:/tf_static:1,base_link>lidar:temporal:/tf:1",
+    );
+  });
+
+  it("keeps earlier point-in-time topology when sampling again", async () => {
+    const scan = vi.fn<TransformTopologyCapability["scan"]>(async () =>
+      result({ stopReason: "oversized-source-unit" }),
+    );
+    const sample = vi.fn<NonNullable<TransformTopologyCapability["sample"]>>(
+      async (request) => ({
+        edges:
+          request.timeNs === 5n
+            ? [edge("map", "base_link", "temporal", "/tf")]
+            : [edge("world", "camera", "static", "/tf_static")],
+        frameUses:
+          request.timeNs === 5n ? [] : [frameUse("camera", "front-camera")],
+        sampledAtNs: request.timeNs,
+      }),
+    );
+
+    renderHarness({ sample, scan });
+    await screen.findByText("partial");
+    fireEvent.click(screen.getByRole("button", { name: "sample at 5" }));
 
     expect(await screen.findByText("sampled")).toBeTruthy();
-    expect(completedScanSignal?.aborted).toBe(false);
-    expect(sample).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
-    expect(scan).toHaveBeenCalledOnce();
-    expect(screen.getByTestId("frame-uses").textContent).toBe("");
+    expect(screen.getByTestId("edges").textContent).toBe(
+      "map>base_link:temporal:/tf:1",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "sample at 9" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("edges").textContent).toBe(
+        "map>base_link:temporal:/tf:1,world>camera:static:/tf_static:1",
+      ),
+    );
+    expect(screen.getByTestId("frame-uses").textContent).toBe(
+      "camera:front-camera",
+    );
   });
 
   it("stays partial when a source-exhausted scan skipped source spans", async () => {
@@ -141,27 +159,6 @@ describe("TransformTopologyProvider", () => {
 
     renderHarness(capability);
 
-    expect(await screen.findByText("partial")).toBeTruthy();
-  });
-
-  it("retains unavailable spans from an earlier continuation", async () => {
-    const continuation = { cursor: 2 } as ReadContinuation;
-    const scan = vi
-      .fn<TransformTopologyCapability["scan"]>()
-      .mockResolvedValueOnce(
-        result({
-          continuation,
-          stopReason: "budget-exhausted",
-          unavailableByStream: new Map([["tf", [{ endNs: 2n, startNs: 1n }]]]),
-        }),
-      )
-      .mockResolvedValueOnce(result({ stopReason: "source-exhausted" }));
-
-    renderHarness({ scan });
-    await screen.findByText("partial");
-    fireEvent.click(screen.getByRole("button", { name: "continue" }));
-
-    await waitFor(() => expect(scan).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("partial")).toBeTruthy();
   });
 
@@ -216,11 +213,22 @@ function Probe() {
           .map((use) => `${use.frameId}:${use.streamId}`)
           .join(",")}
       </span>
-      <button onClick={state.continueAnalysis} type="button">
-        continue
+      <span data-testid="edges">
+        {state.edges
+          .map(
+            (edge) =>
+              `${edge.parentFrameId}>${edge.childFrameId}:${edge.kind}:${edge.sourceName}:${edge.occurrenceCount}`,
+          )
+          .join(",")}
+      </span>
+      <span data-testid="sample-loading">
+        {state.loading ? "loading" : "idle"}
+      </span>
+      <button onClick={() => state.sampleCurrentTime(5n)} type="button">
+        sample at 5
       </button>
-      <button onClick={state.continueAnyway} type="button">
-        continue anyway
+      <button onClick={() => state.sampleCurrentTime(9n)} type="button">
+        sample at 9
       </button>
     </div>
   );
@@ -257,6 +265,23 @@ function result(
 
 function frameUse(frameId: string, streamId: string) {
   return { frameId, sourceName: `/${streamId}`, streamId };
+}
+
+function edge(
+  parentFrameId: string,
+  childFrameId: string,
+  kind: "static" | "temporal",
+  sourceName: string,
+  occurrenceCount = 1,
+) {
+  return {
+    childFrameId,
+    kind,
+    occurrenceCount,
+    parentFrameId,
+    sourceName,
+    sourceStreamId: sourceName,
+  } as const;
 }
 
 function usage() {

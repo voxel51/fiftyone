@@ -1376,9 +1376,7 @@ class McapEpisodeSession implements EpisodeSession {
   ): Promise<TransformTopologySampleResult> {
     this.ensureOpen();
     throwIfAborted(request.signal);
-    const sampledAtNs =
-      this.manifest.timeRange.startNs +
-      (this.manifest.timeRange.endNs - this.manifest.timeRange.startNs) / 2n;
+    const sampledAtNs = request.timeNs;
 
     try {
       // Reuse the normal playback primitives: small static bootstrap plus one

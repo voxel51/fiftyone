@@ -496,6 +496,7 @@ describe("MCAP format adapter", () => {
     try {
       const result = await session.transformTopology?.sample?.({
         signal: controller.signal,
+        timeNs: 175n,
       });
 
       expect(client.readTransformTopology).not.toHaveBeenCalled();
@@ -504,7 +505,7 @@ describe("MCAP format adapter", () => {
         { signal: controller.signal },
       );
       expect(client.readFrameTransformWindow).toHaveBeenCalledWith(
-        expect.objectContaining({ endTimeNs: 150n, startTimeNs: 150n }),
+        expect.objectContaining({ endTimeNs: 175n, startTimeNs: 175n }),
         { priority: "current", signal: controller.signal },
       );
       expect(result).toMatchObject({
@@ -524,7 +525,7 @@ describe("MCAP format adapter", () => {
             sourceStreamId: "tf-static",
           },
         ],
-        sampledAtNs: 150n,
+        sampledAtNs: 175n,
       });
     } finally {
       session.dispose();

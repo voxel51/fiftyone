@@ -3,7 +3,7 @@ import {
   subscribePlayhead,
   usePlaybackStore,
 } from "@fiftyone/playback";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { type DataStream, useDataStream } from "./data-stream-context";
 
 /**
@@ -31,6 +31,16 @@ export function usePlaybackTimeNs(): bigint | undefined {
   }, [dataStream, store]);
 
   return timeNs;
+}
+
+/** Reads the nearest episode tick on demand without following the playhead. */
+export function useReadPlaybackTimeNs(): () => bigint | undefined {
+  const dataStream = useDataStream();
+  const store = usePlaybackStore();
+  return useCallback(
+    () => currentTimeNs(dataStream, getPlayhead(store)),
+    [dataStream, store],
+  );
 }
 
 function currentTimeNs(

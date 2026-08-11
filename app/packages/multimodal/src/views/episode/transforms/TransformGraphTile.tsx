@@ -24,6 +24,7 @@ import React, {
   useState,
 } from "react";
 import type { EpisodeTileProps } from "../tiles/tile-types";
+import { useReadPlaybackTimeNs } from "../playback/use-playback-time-ns";
 import {
   analyzeTransformTopology,
   type TransformTopologyAnalysis,
@@ -60,8 +61,14 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
   const setTileTitle = useSetTileTitle();
   const capability = useTransformTopologyCapability();
   const scan = useTransformTopologyScan();
+  const readPlaybackTimeNs = useReadPlaybackTimeNs();
+  const requestCurrentTimeSample = scan.sampleCurrentTime;
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState<Selection | null>(null);
+  const sampleCurrentTime = useCallback(() => {
+    const timeNs = readPlaybackTimeNs();
+    if (timeNs !== undefined) requestCurrentTimeSample(timeNs);
+  }, [readPlaybackTimeNs, requestCurrentTimeSample]);
 
   // This effect keeps the surrounding tile header aligned with this view.
   useEffect(() => {
@@ -151,24 +158,15 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
               : "No transform topology observed"
           }
         />
-        {scan.continuation ? (
+        {!scan.error && scan.canSample ? (
           <Button
-            leadingIcon={IconName.ArrowRight}
-            onClick={scan.continueAnalysis}
+            disabled={scan.loading}
+            leadingIcon={scan.loading ? IconName.Spinner : IconName.Refresh}
+            onClick={sampleCurrentTime}
             size={Size.Sm}
             variant={Variant.Secondary}
           >
-            Continue analysis
-          </Button>
-        ) : null}
-        {scan.canSample ? (
-          <Button
-            leadingIcon={IconName.ArrowRight}
-            onClick={scan.continueAnyway}
-            size={Size.Sm}
-            variant={Variant.Secondary}
-          >
-            Continue anyway
+            {scan.loading ? "Sampling…" : "Sample current time"}
           </Button>
         ) : null}
       </TileState>
@@ -178,7 +176,7 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
   return (
     <div className={styles.root} data-testid="transform-graph-tile">
       <SummaryHeader analysis={analysis} scan={scan} />
-      <CoverageNotice scan={scan} />
+      <CoverageNotice onSampleCurrentTime={sampleCurrentTime} scan={scan} />
       <div className={styles.workspace}>
         <section className={styles.graphColumn} aria-label="Transform graph">
           <div className={styles.graphToolbar}>
@@ -292,8 +290,10 @@ function SummaryMetric({
 }
 
 function CoverageNotice({
+  onSampleCurrentTime,
   scan,
 }: {
+  readonly onSampleCurrentTime: () => void;
   readonly scan: ReturnType<typeof useTransformTopologyScan>;
 }) {
   if (scan.complete && !scan.error) return null;
@@ -327,15 +327,15 @@ function CoverageNotice({
             Retry
           </Button>
         ) : null}
-        {scan.continuation ? (
+        {!scan.error && scan.canSample ? (
           <Button
             disabled={scan.loading}
-            leadingIcon={scan.loading ? IconName.Spinner : IconName.ArrowRight}
-            onClick={scan.continueAnalysis}
+            leadingIcon={scan.loading ? IconName.Spinner : IconName.Refresh}
+            onClick={onSampleCurrentTime}
             size={Size.Xs}
             variant={Variant.Secondary}
           >
-            {scan.loading ? "Reading slice" : "Continue analysis"}
+            {scan.loading ? "Sampling…" : "Sample current time"}
           </Button>
         ) : null}
       </div>

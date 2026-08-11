@@ -79,9 +79,13 @@ export interface TransformTopologyScanState {
 
 interface TransformTopologyScanController extends TransformTopologyScanState {
   readonly canSample: boolean;
-  readonly continueAnalysis: () => void;
-  readonly continueAnyway: () => void;
   readonly retry: () => void;
+  readonly sampleCurrentTime: (timeNs: bigint) => void;
+}
+
+interface TransformTopologyEvidence {
+  readonly edges: readonly EpisodeTransformTopologyEdgeObservation[];
+  readonly frameUses: readonly EpisodeTransformTopologyFrameUse[];
 }
 
 const INITIAL_STATE: TransformTopologyScanState = {
@@ -96,6 +100,11 @@ const INITIAL_STATE: TransformTopologyScanState = {
   usage: emptyReadWorkUsage(),
 };
 
+const EMPTY_EVIDENCE: TransformTopologyEvidence = {
+  edges: [],
+  frameUses: [],
+};
+
 /** Demand-driven scan state owned by a mounted Transforms tile. */
 export function useTransformTopologyScan(): TransformTopologyScanController {
   const { capability, sourceKey } = useContext(TransformTopologyContext);
@@ -103,29 +112,90 @@ export function useTransformTopologyScan(): TransformTopologyScanController {
   const stateRef = useRef(state);
   const requestRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
+  const scanEvidenceRef = useRef<TransformTopologyEvidence>(EMPTY_EVIDENCE);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
-  const run = useCallback(
-    (continuation?: ReadContinuation, replace = false) => {
-      if (!capability || !sourceKey) return;
+  const run = useCallback(() => {
+    if (!capability || !sourceKey) return;
+    scanEvidenceRef.current = EMPTY_EVIDENCE;
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    const requestId = ++requestRef.current;
+    setState({
+      ...INITIAL_STATE,
+      error: null,
+      loading: true,
+    });
+    void capability
+      .scan({
+        budget: TRANSFORM_TOPOLOGY_GRANT_BUDGET,
+        continuation: undefined,
+        signal: controller.signal,
+      })
+      .then((result) => {
+        if (controller.signal.aborted || requestRef.current !== requestId) {
+          return;
+        }
+        if (controllerRef.current === controller) {
+          controllerRef.current = null;
+        }
+        const unavailableSpanCount = result.unavailableByStream
+          ? [...result.unavailableByStream.values()].reduce(
+              (count, windows) => count + windows.length,
+              0,
+            )
+          : 0;
+        const complete =
+          result.stopReason === "source-exhausted" &&
+          result.continuation === undefined &&
+          unavailableSpanCount === 0;
+        scanEvidenceRef.current = {
+          edges: result.edges,
+          frameUses: result.frameUses,
+        };
+        setState({
+          complete,
+          continuation: result.continuation,
+          edges: result.edges,
+          error: null,
+          frameUses: result.frameUses,
+          loading: false,
+          partial: !complete,
+          sampled: false,
+          stopReason: result.stopReason,
+          unavailableSpanCount,
+          usage: result.usage,
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted || requestRef.current !== requestId) {
+          return;
+        }
+        if (controllerRef.current === controller) {
+          controllerRef.current = null;
+        }
+        setState((current) => ({
+          ...current,
+          error: errorMessage(error),
+          loading: false,
+        }));
+      });
+  }, [capability, sourceKey]);
+
+  const runSample = useCallback(
+    (timeNs: bigint) => {
+      if (!capability?.sample || !sourceKey) return;
       controllerRef.current?.abort();
       const controller = new AbortController();
       controllerRef.current = controller;
       const requestId = ++requestRef.current;
-      setState((current) => ({
-        ...(replace ? INITIAL_STATE : current),
-        error: null,
-        loading: true,
-      }));
+      setState((current) => ({ ...current, error: null, loading: true }));
       void capability
-        .scan({
-          budget: TRANSFORM_TOPOLOGY_GRANT_BUDGET,
-          continuation,
-          signal: controller.signal,
-        })
+        .sample({ signal: controller.signal, timeNs })
         .then((result) => {
           if (controller.signal.aborted || requestRef.current !== requestId) {
             return;
@@ -133,41 +203,17 @@ export function useTransformTopologyScan(): TransformTopologyScanController {
           if (controllerRef.current === controller) {
             controllerRef.current = null;
           }
-          const unavailableSpanCount = result.unavailableByStream
-            ? [...result.unavailableByStream.values()].reduce(
-                (count, windows) => count + windows.length,
-                0,
-              )
-            : 0;
-          setState((current) => {
-            const totalUnavailableSpanCount =
-              (replace ? 0 : current.unavailableSpanCount) +
-              unavailableSpanCount;
-            const complete =
-              result.stopReason === "source-exhausted" &&
-              result.continuation === undefined &&
-              totalUnavailableSpanCount === 0;
-            return {
-              complete,
-              continuation: result.continuation,
-              edges: replace
-                ? result.edges
-                : [...current.edges, ...result.edges],
-              error: null,
-              frameUses: replace
-                ? result.frameUses
-                : mergeFrameUses(current.frameUses, result.frameUses),
-              loading: false,
-              partial: !complete,
-              sampled: false,
-              stopReason: result.stopReason,
-              unavailableSpanCount: totalUnavailableSpanCount,
-              usage: addUsage(
-                replace ? emptyReadWorkUsage() : current.usage,
-                result.usage,
-              ),
-            };
-          });
+          const hasScanTopology = hasTopology(scanEvidenceRef.current);
+          setState((current) => ({
+            ...current,
+            continuation: hasScanTopology ? current.continuation : undefined,
+            edges: mergeSampleEdges(current.edges, result.edges),
+            error: null,
+            frameUses: mergeFrameUses(current.frameUses, result.frameUses),
+            loading: false,
+            partial: true,
+            sampled: !hasScanTopology,
+          }));
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted || requestRef.current !== requestId) {
@@ -186,52 +232,11 @@ export function useTransformTopologyScan(): TransformTopologyScanController {
     [capability, sourceKey],
   );
 
-  const runSample = useCallback(() => {
-    if (!capability?.sample || !sourceKey) return;
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    const requestId = ++requestRef.current;
-    setState((current) => ({ ...current, error: null, loading: true }));
-    void capability
-      .sample({ signal: controller.signal })
-      .then((result) => {
-        if (controller.signal.aborted || requestRef.current !== requestId) {
-          return;
-        }
-        if (controllerRef.current === controller) {
-          controllerRef.current = null;
-        }
-        setState((current) => ({
-          ...current,
-          continuation: undefined,
-          edges: result.edges,
-          error: null,
-          frameUses: result.frameUses,
-          loading: false,
-          partial: true,
-          sampled: true,
-        }));
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted || requestRef.current !== requestId) {
-          return;
-        }
-        if (controllerRef.current === controller) {
-          controllerRef.current = null;
-        }
-        setState((current) => ({
-          ...current,
-          error: errorMessage(error),
-          loading: false,
-        }));
-      });
-  }, [capability, sourceKey]);
-
   // Mounting the tile authorizes exactly one bounded grant for this source.
   useEffect(() => {
+    scanEvidenceRef.current = EMPTY_EVIDENCE;
     setState(INITIAL_STATE);
-    if (capability && sourceKey) run(undefined, true);
+    if (capability && sourceKey) run();
     return () => {
       requestRef.current += 1;
       controllerRef.current?.abort();
@@ -239,22 +244,22 @@ export function useTransformTopologyScan(): TransformTopologyScanController {
     };
   }, [capability, run, sourceKey]);
 
-  const continueAnalysis = useCallback(() => {
-    const continuation = stateRef.current.continuation;
-    if (continuation && !stateRef.current.loading) run(continuation);
-  }, [run]);
-  const continueAnyway = useCallback(() => {
-    const current = stateRef.current;
-    if (canSampleFrom(capability, current)) runSample();
-  }, [capability, runSample]);
-  const retry = useCallback(() => run(undefined, true), [run]);
+  const sampleCurrentTime = useCallback(
+    (timeNs: bigint) => {
+      const current = stateRef.current;
+      if (canSampleFrom(capability, current) && !current.loading) {
+        runSample(timeNs);
+      }
+    },
+    [capability, runSample],
+  );
+  const retry = useCallback(() => run(), [run]);
 
   return {
     ...state,
     canSample: canSampleFrom(capability, state),
-    continueAnalysis,
-    continueAnyway,
     retry,
+    sampleCurrentTime,
   };
 }
 
@@ -262,14 +267,38 @@ function canSampleFrom(
   capability: TransformTopologyCapability | null,
   state: TransformTopologyScanState,
 ): boolean {
-  return (
-    capability?.sample !== undefined &&
-    state.partial &&
-    !state.loading &&
-    !state.sampled &&
-    state.continuation === undefined &&
-    state.edges.length === 0
-  );
+  return capability?.sample !== undefined && state.partial;
+}
+
+function hasTopology(evidence: TransformTopologyEvidence): boolean {
+  return evidence.edges.length > 0 || evidence.frameUses.length > 0;
+}
+
+/** Adds only topology identities not already represented by scan or samples. */
+function mergeSampleEdges(
+  left: readonly EpisodeTransformTopologyEdgeObservation[],
+  right: readonly EpisodeTransformTopologyEdgeObservation[],
+): readonly EpisodeTransformTopologyEdgeObservation[] {
+  const seen = new Set(left.map(transformObservationIdentity));
+  const additions = right.filter((edge) => {
+    const identity = transformObservationIdentity(edge);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+  return additions.length > 0 ? [...left, ...additions] : left;
+}
+
+function transformObservationIdentity(
+  edge: EpisodeTransformTopologyEdgeObservation,
+): string {
+  return [
+    edge.parentFrameId,
+    edge.childFrameId,
+    edge.kind,
+    edge.sourceName,
+    edge.sourceStreamId,
+  ].join("\0");
 }
 
 function mergeFrameUses(
@@ -285,19 +314,4 @@ function mergeFrameUses(
     const rightKey = `${rightUse.frameId}\0${rightUse.streamId}`;
     return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
   });
-}
-
-function addUsage(left: ReadWorkUsage, right: ReadWorkUsage): ReadWorkUsage {
-  return {
-    chunksOpened: left.chunksOpened + right.chunksOpened,
-    decompressedBytes: left.decompressedBytes + right.decompressedBytes,
-    decompressionCacheHits:
-      left.decompressionCacheHits + right.decompressionCacheHits,
-    elapsedMs: left.elapsedMs + right.elapsedMs,
-    logicalSourceBytes: left.logicalSourceBytes + right.logicalSourceBytes,
-    logicalUncompressedBytes:
-      left.logicalUncompressedBytes + right.logicalUncompressedBytes,
-    messagesDecoded: left.messagesDecoded + right.messagesDecoded,
-    transferredBytes: left.transferredBytes + right.transferredBytes,
-  };
 }

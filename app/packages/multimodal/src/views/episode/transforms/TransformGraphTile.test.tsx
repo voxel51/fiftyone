@@ -11,17 +11,21 @@ import type { TransformTopologyScanState } from "./transform-topology-context";
 import TransformGraphTile from "./TransformGraphTile";
 
 const mocks = vi.hoisted(() => ({
-  canSample: false,
+  canSample: true,
   capability: true,
-  continueAnalysis: vi.fn(),
-  continueAnyway: vi.fn(),
+  readPlaybackTimeNs: vi.fn<() => bigint | undefined>(),
   retry: vi.fn(),
+  sampleCurrentTime: vi.fn(),
   setTileTitle: vi.fn(),
   state: {} as TransformTopologyScanState,
 }));
 
 vi.mock("@fiftyone/tiling", () => ({
   useSetTileTitle: () => mocks.setTileTitle,
+}));
+
+vi.mock("../playback/use-playback-time-ns", () => ({
+  useReadPlaybackTimeNs: () => mocks.readPlaybackTimeNs,
 }));
 
 vi.mock("./transform-topology-context", async (importOriginal) => {
@@ -33,19 +37,19 @@ vi.mock("./transform-topology-context", async (importOriginal) => {
     useTransformTopologyScan: () => ({
       ...mocks.state,
       canSample: mocks.canSample,
-      continueAnalysis: mocks.continueAnalysis,
-      continueAnyway: mocks.continueAnyway,
       retry: mocks.retry,
+      sampleCurrentTime: mocks.sampleCurrentTime,
     }),
   };
 });
 
 beforeEach(() => {
-  mocks.canSample = false;
+  mocks.canSample = true;
   mocks.capability = true;
-  mocks.continueAnalysis.mockReset();
-  mocks.continueAnyway.mockReset();
+  mocks.readPlaybackTimeNs.mockReset();
+  mocks.readPlaybackTimeNs.mockReturnValue(123n);
   mocks.retry.mockReset();
+  mocks.sampleCurrentTime.mockReset();
   mocks.setTileTitle.mockReset();
   mocks.state = partialState();
 });
@@ -78,8 +82,11 @@ describe("TransformGraphTile", () => {
     expect(screen.getByText("Partial analysis")).toBeTruthy();
     expect(screen.queryByText(/108 messages/)).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue analysis" }));
-    expect(mocks.continueAnalysis).toHaveBeenCalledOnce();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sample current time" }),
+    );
+    expect(mocks.readPlaybackTimeNs).toHaveBeenCalledOnce();
+    expect(mocks.sampleCurrentTime).toHaveBeenCalledWith(123n);
   });
 
   it("filters frames and exposes accessible frame and edge selection details", () => {
@@ -131,7 +138,6 @@ describe("TransformGraphTile", () => {
     const { rerender } = render(<TransformGraphTile />);
     expect(screen.getByText("Reading transforms")).toBeTruthy();
 
-    mocks.canSample = true;
     mocks.state = {
       ...emptyState(),
       partial: true,
@@ -149,8 +155,10 @@ describe("TransformGraphTile", () => {
     expect(
       screen.queryByRole("button", { name: "Continue analysis" }),
     ).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Continue anyway" }));
-    expect(mocks.continueAnyway).toHaveBeenCalledOnce();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sample current time" }),
+    );
+    expect(mocks.sampleCurrentTime).toHaveBeenCalledWith(123n);
 
     mocks.canSample = false;
     mocks.state = { ...emptyState(), complete: true };
@@ -203,6 +211,18 @@ describe("TransformGraphTile", () => {
     expect(screen.queryByText("Sampled", { exact: true })).toBeNull();
     expect(screen.getByText("Sampled analysis")).toBeTruthy();
     expect(screen.queryByText(/99,999|4,489|oversized/i)).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sample current time" }),
+    );
+    expect(mocks.sampleCurrentTime).toHaveBeenCalledWith(123n);
+  });
+
+  it("keeps the current-time action visible and disabled while sampling", () => {
+    mocks.state = { ...partialState(), loading: true };
+    render(<TransformGraphTile />);
+
+    const button = screen.getByRole("button", { name: "Sampling…" });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
