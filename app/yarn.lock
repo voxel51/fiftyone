@@ -2489,7 +2489,7 @@ __metadata:
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
     "@testing-library/react": "npm:^16.2.0"
-    "@voxel51/voodo": "npm:^0.0.39"
+    "@voxel51/voodo": "catalog:"
     vite: "npm:^7.3.2"
   peerDependencies:
     react: "*"

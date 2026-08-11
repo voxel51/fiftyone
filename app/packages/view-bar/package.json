@@ -14,7 +14,7 @@
         "@fiftyone/components": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",
-        "@voxel51/voodo": "^0.0.39"
+        "@voxel51/voodo": "catalog:"
     },
     "devDependencies": {
         "@testing-library/react": "^16.2.0",
