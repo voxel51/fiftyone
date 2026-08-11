@@ -277,25 +277,27 @@ describe("MCAP format adapter", () => {
   it("exposes demand-driven bounded transform topology and maps topic identities", async () => {
     const client = createClient();
     const continuation = { cursor: 1 } as ReadContinuation;
-    vi.mocked(client.readTopics).mockResolvedValue([
-      create(StreamInventorySchema, {
-        displayName: "/tf",
-        metadata: { "mcap.topic": "/tf" },
-        payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
-        recordCount: "10",
-        streamId: "tf",
-      }),
-      create(StreamInventorySchema, {
-        displayName: "/points",
-        metadata: { "mcap.topic": "/points" },
-        payload: {
-          encoding: "ros2",
-          schema: "sensor_msgs/msg/PointCloud2",
-        },
-        recordCount: "10",
-        streamId: "points",
-      }),
-    ]);
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/tf",
+          metadata: { "mcap.topic": "/tf" },
+          payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
+          recordCount: "10",
+          streamId: "tf",
+        }),
+        create(StreamInventorySchema, {
+          displayName: "/points",
+          metadata: { "mcap.topic": "/points" },
+          payload: {
+            encoding: "ros2",
+            schema: "sensor_msgs/msg/PointCloud2",
+          },
+          recordCount: "10",
+          streamId: "points",
+        }),
+      ]),
+    );
     const topologyUsage = {
       chunksOpened: 1,
       decompressedBytes: 1_024,
@@ -403,14 +405,16 @@ describe("MCAP format adapter", () => {
 
   it("charges failed topology grants conservatively", async () => {
     const client = createClient();
-    vi.mocked(client.readTopics).mockResolvedValue([
-      create(StreamInventorySchema, {
-        displayName: "/tf",
-        metadata: { "mcap.topic": "/tf" },
-        payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
-        streamId: "tf",
-      }),
-    ]);
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/tf",
+          metadata: { "mcap.topic": "/tf" },
+          payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
+          streamId: "tf",
+        }),
+      ]),
+    );
     client.readTransformTopology = vi.fn(async () => {
       throw new Error("transform decode failed");
     });
@@ -446,20 +450,22 @@ describe("MCAP format adapter", () => {
       endTimeNs: 200n,
       startTimeNs: 100n,
     });
-    vi.mocked(client.readTopics).mockResolvedValue([
-      create(StreamInventorySchema, {
-        displayName: "/tf",
-        metadata: { "mcap.topic": "/tf" },
-        payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
-        streamId: "tf",
-      }),
-      create(StreamInventorySchema, {
-        displayName: "/tf_static",
-        metadata: { "mcap.topic": "/tf_static" },
-        payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
-        streamId: "tf-static",
-      }),
-    ]);
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/tf",
+          metadata: { "mcap.topic": "/tf" },
+          payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
+          streamId: "tf",
+        }),
+        create(StreamInventorySchema, {
+          displayName: "/tf_static",
+          metadata: { "mcap.topic": "/tf_static" },
+          payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
+          streamId: "tf-static",
+        }),
+      ]),
+    );
     vi.mocked(client.readFrameTransformBootstrap).mockResolvedValue({
       samples: [
         {
@@ -528,18 +534,20 @@ describe("MCAP format adapter", () => {
   it("recognizes Foxglove frame-transform schemas as topology-capable", async () => {
     const client = createClient();
     client.readTransformTopology = vi.fn();
-    vi.mocked(client.readTopics).mockResolvedValue([
-      create(StreamInventorySchema, {
-        displayName: "/tf",
-        metadata: { "mcap.topic": "/tf" },
-        payload: {
-          encoding: "protobuf",
-          schema: "foxglove.FrameTransform",
-        },
-        recordCount: "3",
-        streamId: "tf",
-      }),
-    ]);
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/tf",
+          metadata: { "mcap.topic": "/tf" },
+          payload: {
+            encoding: "protobuf",
+            schema: "foxglove.FrameTransform",
+          },
+          recordCount: "3",
+          streamId: "tf",
+        }),
+      ]),
+    );
 
     const session = await createMcapFormatAdapter({
       createClient: () => client,
