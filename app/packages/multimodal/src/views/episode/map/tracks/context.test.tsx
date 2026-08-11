@@ -62,11 +62,13 @@ describe("LocationTracksBridge", () => {
   it("starts full-track reads immediately, uses the bulk lane, and publishes no-fix gaps", async () => {
     const source = createSource("drive");
     const locationSources = [locationSource("/gps")];
-    const session = createSession(async function* () {
-      yield locationMessage(1_000_000_000n, 37, -122, 0);
-      yield locationMessage(2_000_000_000n, 37.001, -122.001, -1);
-      yield locationMessage(3_000_000_000n, 37.002, -122.002, 0);
-    });
+    const session = createSession(() =>
+      asyncValues([
+        locationMessage(1_000_000_000n, 37, -122, 0),
+        locationMessage(2_000_000_000n, 37.001, -122.001, -1),
+        locationMessage(3_000_000_000n, 37.002, -122.002, 0),
+      ]),
+    );
 
     render(
       <Harness
@@ -76,13 +78,14 @@ describe("LocationTracksBridge", () => {
       />,
     );
 
-    expect(session.read).toHaveBeenCalledWith({
+    const request = vi.mocked(session.read).mock.calls[0]?.[0];
+    expect(request).toMatchObject({
       limit: 25_000,
       priority: "bulk",
-      signal: expect.any(AbortSignal),
       streams: ["/gps"],
       window: session.manifest.timeRange,
     });
+    expect(request?.signal).toBeInstanceOf(AbortSignal);
     await waitFor(() => {
       expect(screen.getByTestId("location-tracks").textContent).toBe(
         "/gps:ready:2:2:full",
@@ -163,12 +166,13 @@ describe("LocationTracksBridge", () => {
     });
     expect(read).toHaveBeenCalledTimes(2);
     expect(read.mock.calls[0]?.[0]).not.toHaveProperty("continuation");
-    expect(read.mock.calls[1]?.[0]).toMatchObject({
+    const resumedRequest = read.mock.calls[1]?.[0];
+    expect(resumedRequest).toMatchObject({
       continuation,
-      signal: expect.any(AbortSignal),
       streams: ["/gps"],
       window: session.manifest.timeRange,
     });
+    expect(resumedRequest?.signal).toBeInstanceOf(AbortSignal);
     expect(session.read).not.toHaveBeenCalled();
   });
 
@@ -543,10 +547,12 @@ describe("LocationTracksBridge", () => {
       ...createSource("local-drive"),
       readProfile: "local" as const,
     };
-    const session = createSession(async function* () {
-      yield locationMessage(1_000_000_000n, 37, -122, 0);
-      yield locationMessage(2_000_000_000n, 37.001, -122.001, 0);
-    });
+    const session = createSession(() =>
+      asyncValues([
+        locationMessage(1_000_000_000n, 37, -122, 0),
+        locationMessage(2_000_000_000n, 37.001, -122.001, 0),
+      ]),
+    );
     const read = vi.fn<BudgetedReadJob["read"]>().mockResolvedValue(
       boundedResult({
         frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
@@ -846,7 +852,7 @@ describe("LocationTracksBridge", () => {
     const continuation = {};
     const read = vi
       .fn<BudgetedReadJob["read"]>()
-      .mockImplementationOnce(async () => {
+      .mockImplementationOnce(() => {
         store.set(isPlayingAtom, true);
         setNetworkHealth(store, {
           busyFraction: 1,
@@ -856,11 +862,13 @@ describe("LocationTracksBridge", () => {
           throughputPlannable: true,
           updatedAtMs: 0,
         });
-        return boundedResult({
-          continuation,
-          frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
-          stopReason: "budget-exhausted",
-        });
+        return Promise.resolve(
+          boundedResult({
+            continuation,
+            frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
+            stopReason: "budget-exhausted",
+          }),
+        );
       })
       .mockResolvedValueOnce(
         boundedResult({
@@ -905,10 +913,11 @@ describe("LocationTracksBridge", () => {
     const source = createSource("drive");
     const locationSources = [locationSource("/gps")];
     let attempt = 0;
-    const session = createSession(async function* () {
+    const session = createSession(() => {
       attempt += 1;
-      if (attempt === 1) throw new Error("boom");
-      yield locationMessage(1_000_000_000n, 37, -122, 0);
+      return attempt === 1
+        ? rejectedAsyncValues(new Error("boom"))
+        : asyncValues([locationMessage(1_000_000_000n, 37, -122, 0)]);
     });
 
     const view = render(
@@ -961,9 +970,9 @@ describe("LocationTracksBridge", () => {
       throughputPlannable: true,
       updatedAtMs: 0,
     });
-    const session = createSession(async function* () {
-      yield locationMessage(1_000_000_000n, 37, -122, 0);
-    });
+    const session = createSession(() =>
+      asyncValues([locationMessage(1_000_000_000n, 37, -122, 0)]),
+    );
 
     render(
       <Harness
@@ -989,11 +998,13 @@ describe("LocationTracksBridge", () => {
 
   it("marks the track truncated when the read limit is reached before usable fixes", async () => {
     const source = createSource("drive");
-    const session = createSession(async function* () {
-      for (let index = 0; index < 25_000; index += 1) {
-        yield nonLocationMessage(BigInt(index));
-      }
-    });
+    const session = createSession(() =>
+      asyncValues(
+        Array.from({ length: 25_000 }, (_, index) =>
+          nonLocationMessage(BigInt(index)),
+        ),
+      ),
+    );
 
     render(
       <Harness
@@ -1162,7 +1173,7 @@ function LocationTracksProbe({
 }
 
 function createSession(
-  messages: () => AsyncGenerator<DecodedFrame, void, void> = emptyMessages,
+  messages: () => AsyncIterable<DecodedFrame> = () => asyncValues([]),
 ): EpisodeSession {
   const manifest = {
     episodeId: "test",
@@ -1173,23 +1184,28 @@ function createSession(
   return {
     dispose: vi.fn(),
     manifest,
-    read: vi.fn(async function* (request) {
-      for await (const frame of messages()) {
-        yield {
-          frames: [
-            { ...frame, streamId: request.streams[0] ?? frame.streamId },
-          ],
-          stream: request.streams[0] ?? frame.streamId,
-        };
-      }
-    }),
+    read: vi.fn<EpisodeSession["read"]>((request) =>
+      mapMessagesToBatches(request.streams[0], messages()),
+    ),
   };
 }
 
-async function* emptyMessages(): AsyncGenerator<DecodedFrame, void, void> {
-  for (const message of [] as DecodedFrame[]) {
-    yield message;
+async function* mapMessagesToBatches(
+  requestedStream: string | undefined,
+  messages: AsyncIterable<DecodedFrame>,
+) {
+  for await (const frame of messages) {
+    const stream = requestedStream ?? frame.streamId;
+    yield { frames: [{ ...frame, streamId: stream }], stream };
   }
+}
+
+async function* asyncValues<Value>(values: Iterable<Value>) {
+  for await (const value of values) yield value;
+}
+
+async function* rejectedAsyncValues(error: Error) {
+  yield await Promise.reject<never>(error);
 }
 
 function locationMessage(

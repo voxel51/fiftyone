@@ -23,7 +23,8 @@ describe("map route layers", () => {
 
   it("adds and removes the complete layer family as membership changes", () => {
     const addSource = vi.fn();
-    const addLayer = vi.fn();
+    const addLayer =
+      vi.fn<(layer: import("maplibre-gl").LayerSpecification) => void>();
     const removeLayer = vi.fn();
     const removeSource = vi.fn();
     const map = {

@@ -101,13 +101,15 @@ const mapLibre = vi.hoisted(() => {
 });
 
 const basemap = vi.hoisted(() => ({
-  loadStyle: vi.fn(async () => ({
-    layers: [],
-    sources: {
-      provider: { type: "vector", url: "https://tiles.example.test" },
-    },
-    version: 8 as const,
-  })),
+  loadStyle: vi.fn(() =>
+    Promise.resolve({
+      layers: [],
+      sources: {
+        provider: { type: "vector", url: "https://tiles.example.test" },
+      },
+      version: 8 as const,
+    }),
+  ),
 }));
 
 vi.mock("../basemap", async (importOriginal) => ({

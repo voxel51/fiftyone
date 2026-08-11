@@ -281,9 +281,9 @@ function readonlyArrayView<Value>(
   return new Proxy(target, {
     get: (array, property, receiver) => {
       const index = arrayIndex(property);
-      return index === null
-        ? Reflect.get(array, property, receiver)
-        : valueAt(index);
+      if (index !== null) return valueAt(index);
+      const reflected: unknown = Reflect.get(array, property, receiver);
+      return reflected;
     },
     getOwnPropertyDescriptor: (array, property) => {
       const index = arrayIndex(property);

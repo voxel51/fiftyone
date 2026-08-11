@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { LocationTrackState } from "../tracks/location-track";
+import type {
+  LocationTrackCursor,
+  LocationTrackState,
+} from "../tracks/location-track";
 import {
   invalidatePlaybackStyleState,
   mapPlaybackFrameAt,
@@ -12,7 +15,7 @@ import { createIndexedMapTrack } from "./route-layers";
 describe("map playback paint", () => {
   it("resolves forward and backward seeks with the reusable track cursor", () => {
     const indexed = createIndexedMapTrack(createTrack());
-    const cursors = new Map();
+    const cursors = new Map<string, LocationTrackCursor>();
 
     const forward = mapPlaybackFrameAt([indexed], 8n, cursors);
     const backward = mapPlaybackFrameAt([indexed], 2n, cursors);
