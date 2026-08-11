@@ -708,18 +708,19 @@ describe("isHiddenCheckboxPath", () => {
   });
 
   it("hides the checkbox on a static embedded document with no labels", () => {
+    // Static as opposed to dynamic — both container ftypes reach the walk.
     setMockAtoms({
       field: () => ({
         ftype: "fiftyone.core.fields.EmbeddedDocumentField",
-        embeddedDocType: "fiftyone.core.metadata.Metadata",
+        embeddedDocType: "mymodule.CameraInfo",
         fields: {
-          size_bytes: { ftype: "fiftyone.core.fields.IntField" },
-          mime_type: { ftype: "fiftyone.core.fields.StringField" },
+          focal_length: { ftype: "fiftyone.core.fields.FloatField" },
+          model: { ftype: "fiftyone.core.fields.StringField" },
         },
       }),
     });
 
-    expect(resolve("metadata")()).toBe(true);
+    expect(resolve("camera")()).toBe(true);
   });
 
   it("leaves primitives alone — their active state drives the modal", () => {
@@ -740,8 +741,8 @@ describe("isHiddenCheckboxPath", () => {
   });
 });
 
-describe("childMatchesTextFilter", () => {
-  const match = sidebar.childMatchesTextFilter;
+describe("matchesSidebarSearch", () => {
+  const match = sidebar.matchesSidebarSearch;
 
   it("keeps everything when the search is empty", () => {
     expect(match("signals.imu", "speed", "")).toBe(true);
@@ -757,5 +758,44 @@ describe("childMatchesTextFilter", () => {
 
   it("drops a child when neither it nor the entry matches", () => {
     expect(match("signals.imu", "speed", "zzz")).toBe(false);
+  });
+});
+
+describe("entryMatchesTextFilter", () => {
+  const resolve = (path: string, text: string) =>
+    <TestSelectorFamily<typeof sidebar.entryMatchesTextFilter>>(
+      (<unknown>sidebar.entryMatchesTextFilter({ path, text }))
+    );
+
+  // A label list's searchable fields sit under its expanded path, not under
+  // the field itself — reading the unexpanded children finds only the list.
+  const labelList = {
+    expandPath: () => "ground_truth.detections",
+    field: () => ({ fields: { detections: {} } }),
+    fields: () => [{ name: "label" }, { name: "confidence" }],
+  };
+
+  it("matches a child of the expanded path", () => {
+    setMockAtoms(labelList);
+
+    expect(resolve("ground_truth", "confidence")()).toBe(true);
+  });
+
+  it("does not match a child of neither the path nor its expansion", () => {
+    setMockAtoms(labelList);
+
+    expect(resolve("ground_truth", "zzz")()).toBe(false);
+  });
+
+  it("matches the entry path itself", () => {
+    setMockAtoms(labelList);
+
+    expect(resolve("ground_truth", "ground")()).toBe(true);
+  });
+
+  it("keeps everything when the search is empty", () => {
+    setMockAtoms(labelList);
+
+    expect(resolve("ground_truth", "")()).toBe(true);
   });
 });

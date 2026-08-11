@@ -36,10 +36,10 @@ const Right = styled.div`
  * One field of an expanded sidebar entry, collapsed to its name until
  * clicked.
  *
- * A wide container — a projection table can carry hundreds of columns —
- * is unreadable as a wall of open filters, and mounting them all pays for
- * every column's aggregation just to look at the list. Collapsed, the row
- * costs a name; the filter and its aggregation wait for intent.
+ * A wide container — a dynamic embedded document can carry hundreds of
+ * fields — is unreadable as a wall of open filters, and mounting them all
+ * pays for every field's aggregation just to look at the list. Collapsed,
+ * the row costs a name; the filter and its aggregation wait for intent.
  *
  * Expansion is keyed by the field's own path in the shared sidebar-expanded
  * store, so it survives collapsing and reopening the parent and never
@@ -72,9 +72,8 @@ const CollapsibleFilterItem = ({
           )}
         />
         <Right>
-          {/* `showEntryCounts` already gates on this path's expanded state, so
-              the count appears once the field is opened and the aggregation it
-              needs has been paid for — collapsed rows stay free. */}
+          {/* In the grid this is gated on the path's expanded state, so a
+              collapsed row pays for no aggregation. */}
           <Suspense>
             <PathEntryCounts modal={modal} path={path} />
           </Suspense>

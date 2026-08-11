@@ -59,7 +59,10 @@ const FilterableEntry = ({
     path: expandedPath,
   });
   const onClick = useOnClick({ modal, path });
-  const hideCheckbox = useRecoilValue(fos.isHiddenCheckboxPath(path));
+  // A path that draws no overlays has nothing for the checkbox to toggle.
+  const hideCheckbox = fos.useIsHiddenCheckboxPath(path);
+  const showCheckbox =
+    !disabled && !hideCheckbox && !(modal && path === fos.LABEL_TAGS_FIELD);
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
 
@@ -76,23 +79,21 @@ const FilterableEntry = ({
       onHeaderClick={!disabled ? () => setExpanded((v) => !v) : undefined}
       heading={
         <>
-          {!disabled &&
-            !hideCheckbox &&
-            !(modal && path === fos.LABEL_TAGS_FIELD) && (
-              <Checkbox
-                key="checkbox"
-                checked={active}
-                title={`Show ${path}`}
-                style={{
-                  color: active ? color : theme.text.secondary,
-                  marginLeft: 2,
-                  padding: 0,
-                }}
-                data-cy={`checkbox-${path}`}
-                onClick={onClick}
-                onMouseUp={(e) => e.stopPropagation()}
-              />
-            )}
+          {showCheckbox && (
+            <Checkbox
+              key="checkbox"
+              checked={active}
+              title={`Show ${path}`}
+              style={{
+                color: active ? color : theme.text.secondary,
+                marginLeft: 2,
+                padding: 0,
+              }}
+              data-cy={`checkbox-${path}`}
+              onClick={onClick}
+              onMouseUp={(e) => e.stopPropagation()}
+            />
+          )}
           {
             <FieldLabelAndInfo
               key={"info"}

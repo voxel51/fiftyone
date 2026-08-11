@@ -67,6 +67,7 @@ import {
 } from "./renderConfig3d.atoms";
 import {
   buildSchema,
+  expandPath,
   field,
   fieldPaths,
   fields,
@@ -512,6 +513,19 @@ export const sidebarGroupsDefinition = (() => {
 })();
 
 /**
+ * Whether a search keeps one of an entry's child fields on screen.
+ *
+ * A match on the entry keeps all of its children, so searching a container
+ * shows everything inside it. Shared with the child list the entry renders,
+ * so the two can't drift into listing an entry whose every child filters out.
+ */
+export const matchesSidebarSearch = (
+  entryPath: string,
+  childName: string,
+  text: string,
+): boolean => !text || entryPath.includes(text) || childName.includes(text);
+
+/**
  * Whether a path survives the sidebar's text filter.
  *
  * Matches the path itself or any of its immediate children, because an
@@ -519,24 +533,14 @@ export const sidebarGroupsDefinition = (() => {
  * entries of their own — matching only the path would hide the one row
  * that can surface a searched-for child.
  */
-/**
- * Whether a sidebar entry's child field survives the text filter.
- *
- * Shared with the child list an entry renders, so a row and its rows agree on
- * what a search means; they would otherwise drift into showing an entry whose
- * every child filters out, or the reverse.
- */
-export const childMatchesTextFilter = (
-  entryPath: string,
-  childName: string,
-  text: string,
-): boolean => !text || entryPath.includes(text) || childName.includes(text);
-
-export const matchesTextFilter = selectorFamily<
+export const entryMatchesTextFilter = selectorFamily<
   boolean,
   { path: string; text: string }
 >({
-  key: "matchesTextFilter",
+  key: "entryMatchesTextFilter",
+  // Keystrokes make a new key each time; without eviction the family retains
+  // one node per path per prefix typed.
+  cachePolicy_UNSTABLE: { eviction: "most-recent" },
   get:
     ({ path, text }) =>
     ({ get }) => {
@@ -544,9 +548,15 @@ export const matchesTextFilter = selectorFamily<
         return true;
       }
 
-      return Object.keys(get(field(path))?.fields || {}).some((name) =>
-        childMatchesTextFilter(path, name, text),
-      );
+      // Must read the same children the entry actually renders — the expanded
+      // path's primitives — or a search matches an entry whose every row then
+      // filters out, and misses entries whose matching row sits below a list.
+      return get(
+        fields({
+          path: get(expandPath(path)),
+          ftype: VALID_PRIMITIVE_TYPES,
+        }),
+      ).some(({ name }) => matchesSidebarSearch(path, name, text));
     },
 });
 
@@ -568,7 +578,7 @@ export const sidebarGroups = selectorFamily<
             ? paths.filter(
                 (path) =>
                   get(pathIsShown(path)) &&
-                  get(matchesTextFilter({ path, text: f })),
+                  get(entryMatchesTextFilter({ path, text: f })),
               )
             : paths,
         }))
@@ -860,13 +870,16 @@ export const isHiddenCheckboxPath = selectorFamily<boolean, string>({
   get:
     (path) =>
     ({ get }) => {
-      const f = get(field(path));
+      const sidebarField = get(field(path));
 
-      if (!f || LABELS.includes(f.embeddedDocType)) {
+      if (!sidebarField || LABELS.includes(sidebarField.embeddedDocType)) {
         return false;
       }
 
-      const ftype = f.ftype === LIST_FIELD ? f.subfield : f.ftype;
+      const ftype =
+        sidebarField.ftype === LIST_FIELD
+          ? sidebarField.subfield
+          : sidebarField.ftype;
 
       if (
         ftype !== EMBEDDED_DOCUMENT_FIELD &&
@@ -875,7 +888,7 @@ export const isHiddenCheckboxPath = selectorFamily<boolean, string>({
         return false;
       }
 
-      return !hasLabelDescendant(f);
+      return !hasLabelDescendant(sidebarField);
     },
 });
 

@@ -26,14 +26,14 @@ const PATH_OVERRIDES = {
  * header directly above it already renders it, so repeating it costs width
  * and buries the part that distinguishes one entry from the next.
  */
-export const toTitle = (path: string, group?: string): string => {
-  if (PATH_OVERRIDES[path]) {
+export const sidebarEntryTitle = (path: string, group?: string): string => {
+  if (Object.hasOwn(PATH_OVERRIDES, path)) {
     return PATH_OVERRIDES[path];
   }
 
-  const prefix = group ? `${group}.` : undefined;
-
-  return prefix && path.startsWith(prefix) ? path.slice(prefix.length) : path;
+  return group && path.startsWith(`${group}.`)
+    ? path.slice(group.length + 1)
+    : path;
 };
 
 const hiddenPathLabels = selectorFamily<string[], string>({
@@ -159,7 +159,7 @@ const useTitleTemplate = ({
           hoverTarget={hoverTarget}
           modal={modal}
           path={path}
-          title={toTitle(path, group)}
+          title={sidebarEntryTitle(path, group)}
         />
         {modal && (
           <Suspense>
