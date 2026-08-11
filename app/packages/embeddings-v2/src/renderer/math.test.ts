@@ -135,6 +135,27 @@ describe("zoomRect / panRect / clampToHome", () => {
     });
   });
 
+  // Zooming from an overpanned view must not yank the view back to
+  // the data — the give bounds zoom exactly as they bound pan
+  it("zoom preserves an overpanned offset within the give", () => {
+    const offset: Rect = { x0: 3, y0: 0, x1: 13, y1: 10 };
+
+    // Zoom in around (8, 5): focus keeps its relative spot, no slide
+    expect(zoomRect(offset, home, [8, 5], 2, 50, 0.5)).toEqual({
+      x0: 5.5,
+      y0: 2.5,
+      x1: 10.5,
+      y1: 7.5,
+    });
+    // Without give, the strict clamp slides the same zoom back inside
+    expect(zoomRect(offset, home, [8, 5], 2, 50)).toEqual({
+      x0: 5,
+      y0: 2.5,
+      x1: 10,
+      y1: 7.5,
+    });
+  });
+
   // FOEPD-4318: with no give, panning at full zoom-out is a no-op —
   // the drag feels dead. Give lets the view slide, bounded so the
   // data's edge stops at the viewport's center (give 0.5)

@@ -165,7 +165,14 @@ export class PlanarCamera implements CameraAdapter {
       event.offsetX,
       event.offsetY,
     );
-    this.rect = zoomRect(this.rect, this.home, focus, factor, MAX_ZOOM);
+    this.rect = zoomRect(
+      this.rect,
+      this.home,
+      focus,
+      factor,
+      MAX_ZOOM,
+      PAN_GIVE,
+    );
     this.apply();
   }
 
