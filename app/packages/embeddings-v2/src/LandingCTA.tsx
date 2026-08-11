@@ -9,25 +9,30 @@
  * until that package is deleted.
  */
 import { PanelCTA } from "@fiftyone/components";
+import "./panel.css";
 
 const TRY_LINK = "http://voxel51.com/try-embeddings";
 
 export function LandingCTA() {
   return (
-    <PanelCTA
-      label="Embeddings help you explore and understand your dataset"
-      demoLabel="Upgrade to FiftyOne Enterprise to Create Embeddings"
-      description="You can compute and visualize embeddings for your dataset using a selection of pre-trained models or your own embeddings"
-      docLink="https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
-      docCaption="Learn how to create embeddings visualizations via code."
-      demoDocCaption="Not ready to upgrade yet? Learn how to create embeddings visualizations via code."
-      icon="workspaces"
-      name="Embeddings"
-      mode="onboarding"
-      // Onboarding mode renders no back affordance; the prop is only
-      // required by the shared component's type
-      onBack={() => undefined}
-      tryLink={TRY_LINK}
-    />
+    // The wrapper class flattens PanelCTA's hardcoded Card chrome —
+    // see .emb-landing in panel.css
+    <div className="emb-landing">
+      <PanelCTA
+        label="Embeddings help you explore and understand your dataset"
+        demoLabel="Upgrade to FiftyOne Enterprise to Create Embeddings"
+        description="You can compute and visualize embeddings for your dataset using a selection of pre-trained models or your own embeddings"
+        docLink="https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
+        docCaption="Learn how to create embeddings visualizations via code."
+        demoDocCaption="Not ready to upgrade yet? Learn how to create embeddings visualizations via code."
+        icon="workspaces"
+        name="Embeddings"
+        mode="onboarding"
+        // Onboarding mode renders no back affordance; the prop is only
+        // required by the shared component's type
+        onBack={() => undefined}
+        tryLink={TRY_LINK}
+      />
+    </div>
   );
 }
