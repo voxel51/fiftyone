@@ -224,6 +224,10 @@ export default function RunsList({
                 }
                 meta={[
                   run.method,
+                  // Same brain key semantics, very different plots —
+                  // which granularity a run embeds must be readable
+                  // from the card (FOEPD-4407)
+                  run.patchesField ? `${run.patchesField} patches` : "samples",
                   run.model,
                   formatTimestamp(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}

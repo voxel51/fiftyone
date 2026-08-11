@@ -23,6 +23,22 @@ const run = (
 afterEach(cleanup);
 
 describe("RunsList", () => {
+  // A patches run and a samples run on the same field look identical
+  // by title; the card's meta line must say which one it is
+  it("labels each card with its embedding granularity", () => {
+    render(
+      <RunsList
+        runs={[run("viz_a"), run("viz_b", { patchesField: "ground_truth" })]}
+        error={null}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("samples")).toBeDefined();
+    expect(screen.getByText("ground_truth patches")).toBeDefined();
+  });
+
   // Runs with 3D points are listed and open in the 2D plot; guards
   // against filtering them out of the list
   it("lists 3D runs and opens runs on click", () => {
