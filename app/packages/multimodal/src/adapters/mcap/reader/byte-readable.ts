@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import type {
   ByteClient,
   ByteRange,
@@ -9,6 +8,7 @@ import type {
 import { byteSourceAccessKey, parseByteSize } from "../../../query/bytes";
 import { createAbortError } from "../../../utils/cancellation";
 import { chunkMessageIndexRange } from "./chunk-index-ranges";
+import type { McapChunkIndex, McapReadable } from "./types";
 
 export interface McapChunkReadDebugLog {
   readonly cacheResult: "coalesced" | "fetched";
@@ -57,9 +57,8 @@ interface ReadBufferAnchor {
 /**
  * Adapts the generic byte query client to the seekable MCAP readable API.
  */
-export class ByteClientReadable implements McapTypes.IReadable {
-  private chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
-    [];
+export class ByteClientReadable implements McapReadable {
+  private chunkIndexes: readonly McapChunkIndex[] = [];
   private readonly inFlightReads = new Map<
     string,
     Promise<ByteRangeReadResult>
@@ -80,9 +79,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
     this.source = source;
   }
 
-  setChunkIndexes(
-    chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
-  ): void {
+  setChunkIndexes(chunkIndexes: readonly McapChunkIndex[]): void {
     this.chunkIndexes = chunkIndexes;
   }
 
@@ -418,7 +415,7 @@ function chunkReadDebugEntries({
   size,
 }: {
   readonly cacheResult: McapChunkReadDebugLog["cacheResult"];
-  readonly chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
+  readonly chunkIndexes: readonly McapChunkIndex[];
   readonly fetchedBytes: number;
   readonly offset: bigint;
   readonly size: bigint;
@@ -500,7 +497,7 @@ function chunkReadDebugLog({
   size,
 }: {
   readonly cacheResult: McapChunkReadDebugLog["cacheResult"];
-  readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
+  readonly chunkIndex: McapChunkIndex;
   readonly fetchedBytes: number;
   readonly kind: McapChunkReadDebugLog["kind"];
   readonly offset: bigint;
