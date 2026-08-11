@@ -64,6 +64,7 @@ import type {
   McapReadRawMessageAtCursorRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
+  McapRecordingInventory,
   McapResourceReadOptions,
   McapReadTopicsRequest,
   McapReadTopicTimeBoundsRequest,
@@ -74,7 +75,6 @@ import type {
   McapTopicNumericFields,
   McapTopicTimeBounds,
 } from "../contracts/index";
-import type { StreamInventory } from "../../../schemas/v1";
 import {
   haveMcapSupersessionKeyOverlap,
   mcapForegroundSupersessionKeys,
@@ -291,7 +291,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
   readTopics(
     request: McapReadTopicsRequest,
     options?: McapResourceReadOptions,
-  ): Promise<readonly StreamInventory[]> {
+  ): Promise<McapRecordingInventory> {
     return this.request(
       "readTopics",
       request,

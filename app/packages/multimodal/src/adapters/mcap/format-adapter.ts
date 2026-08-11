@@ -1,10 +1,12 @@
 import {
   SCENE_SOURCE_METADATA,
+  STREAM_METADATA,
   STREAM_SYNC_MODE,
   STREAM_KIND,
   type ByteSourceDescriptor,
   type DecodedFrame,
   type EpisodeManifest,
+  type EpisodeRecordingSupportFacts,
   type EpisodePreviewReadResult,
   type StreamDescriptor,
   type StreamKind,
@@ -60,6 +62,7 @@ import {
   type McapDecodedMessage,
   type McapResourceClient,
   type McapRawMessageRecordResult,
+  type McapRecordingInventory,
   type McapStreamSyncPolicies,
   type McapStreamSyncPolicy,
   type McapTimelineRange,
@@ -134,7 +137,7 @@ export function createMcapFormatAdapter(
             hintedRange ?? mcapTimelineRangeFromManifest(source.manifestHint);
           manifest = source.manifestHint;
         } else {
-          const [loadedRange, topics] = await Promise.all([
+          const [loadedRange, inventory] = await Promise.all([
             hintedRange
               ? Promise.resolve(hintedRange)
               : client.readTimelineRange(
@@ -150,7 +153,12 @@ export function createMcapFormatAdapter(
             ),
           ]);
           range = loadedRange;
-          manifest = createMcapManifest(source.episodeId, range, topics);
+          manifest = createMcapManifest(
+            source.episodeId,
+            range,
+            inventory,
+            asset,
+          );
         }
         if (openOptions?.signal?.aborted) {
           throw new EpisodeReadCancelledError();
@@ -256,7 +264,13 @@ class McapEpisodePreviewSession implements EpisodePreviewSession {
         ? createMcapManifest(
             this.episodeId,
             timelineRange,
-            result.bootstrapTopics,
+            {
+              recordingFacts: result.bootstrapRecordingFacts ?? {
+                format: "mcap",
+              },
+              streams: result.bootstrapTopics,
+            },
+            this.source,
           )
         : undefined;
     const streamIdFor = (sourceName: string) =>
@@ -482,13 +496,13 @@ export function createMcapRawRecordCapability({
         { signal: options?.signal },
       );
       const topicCounts = new Map<string, number>();
-      for (const entry of inventory) {
+      for (const entry of inventory.streams) {
         const topic =
           entry.metadata["mcap.topic"] ?? entry.displayName ?? entry.streamId;
         topicCounts.set(topic, (topicCounts.get(topic) ?? 0) + 1);
       }
       rawTargetsByStreamId.clear();
-      return inventory.map((entry) => {
+      return inventory.streams.map((entry) => {
         const sourceName =
           entry.metadata["mcap.topic"] ?? entry.displayName ?? entry.streamId;
         const channelId = parseMcapChannelId(entry);
@@ -668,50 +682,88 @@ function throwIfMcapOpenAborted(signal?: AbortSignal): void {
 export function createMcapManifest(
   episodeId: string,
   range: { readonly endTimeNs: bigint; readonly startTimeNs: bigint },
-  topics: Awaited<ReturnType<McapResourceClient["readTopics"]>>,
+  inventory: McapRecordingInventory,
+  source?: Pick<ByteSourceDescriptor, "readProfile" | "sizeBytes">,
 ): EpisodeManifest {
+  const topics = inventory.streams;
   const timeRange = { endNs: range.endTimeNs, startNs: range.startTimeNs };
   const durationSeconds = Number(range.endTimeNs - range.startTimeNs) / 1e9;
   const streamIdsBySourceName = new Map(
     topics.map((topic) => [mcapSourceName(topic), topic.streamId]),
   );
+  const streams = topics.map((topic): StreamDescriptor => {
+    const count = parseRecordCount(topic.recordCount);
+    const rateCount = topic.recordCount?.trim() ? count : undefined;
+    const sourceName = mcapSourceName(topic);
+    const calibrationSourceName =
+      topic.metadata[SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID];
+    return {
+      approxRateHz:
+        rateCount !== undefined && durationSeconds > 0
+          ? rateCount / durationSeconds
+          : undefined,
+      count,
+      id: topic.streamId,
+      kind: streamKindForPayload(topic.payload),
+      metadata: {
+        ...topic.metadata,
+        ...(calibrationSourceName
+          ? {
+              [SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID]:
+                streamIdsBySourceName.get(calibrationSourceName) ??
+                calibrationSourceName,
+            }
+          : {}),
+      },
+      payload: {
+        encoding: topic.payload?.encoding ?? "unknown",
+        schema: topic.payload?.schema,
+        schemaEncoding: topic.payload?.schemaEncoding,
+      },
+      sourceName,
+      timeRange,
+    };
+  });
   return {
     episodeId,
-    streams: topics.map((topic): StreamDescriptor => {
-      const count = parseRecordCount(topic.recordCount);
-      const rateCount = topic.recordCount?.trim() ? count : undefined;
-      const sourceName = mcapSourceName(topic);
-      const calibrationSourceName =
-        topic.metadata[SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID];
-      return {
-        approxRateHz:
-          rateCount !== undefined && durationSeconds > 0
-            ? rateCount / durationSeconds
-            : undefined,
-        count,
-        id: topic.streamId,
-        kind: streamKindForPayload(topic.payload),
-        metadata: {
-          ...topic.metadata,
-          ...(calibrationSourceName
-            ? {
-                [SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID]:
-                  streamIdsBySourceName.get(calibrationSourceName) ??
-                  calibrationSourceName,
-              }
-            : {}),
-        },
-        payload: {
-          encoding: topic.payload?.encoding ?? "unknown",
-          schema: topic.payload?.schema,
-          schemaEncoding: topic.payload?.schemaEncoding,
-        },
-        sourceName,
-        timeRange,
-      };
-    }),
+    recordingFacts: {
+      ...inventory.recordingFacts,
+      applicationSupport: recordingSupportFacts(streams),
+      durationNs: (range.endTimeNs - range.startTimeNs).toString(),
+      endTimeNs: range.endTimeNs.toString(),
+      ...(source?.readProfile ? { readProfile: source.readProfile } : {}),
+      ...(source?.sizeBytes && /^\d+$/.test(source.sizeBytes)
+        ? { sizeBytes: source.sizeBytes }
+        : {}),
+      startTimeNs: range.startTimeNs.toString(),
+    },
+    streams,
     timeDomain: { id: MCAP_ACTIVE_TIMELINE.LOG, kind: "timestamp" },
     timeRange,
+  };
+}
+
+function recordingSupportFacts(
+  streams: readonly StreamDescriptor[],
+): EpisodeRecordingSupportFacts {
+  let inspectableStreamCount = 0;
+  let renderableStreamCount = 0;
+  let unavailableStreamCount = 0;
+  for (const stream of streams) {
+    if (stream.kind !== STREAM_KIND.UNKNOWN) {
+      renderableStreamCount++;
+    } else if (
+      stream.metadata?.[STREAM_METADATA.DECODE_STATUS] === "decodable"
+    ) {
+      inspectableStreamCount++;
+    } else {
+      unavailableStreamCount++;
+    }
+  }
+  return {
+    inspectableStreamCount,
+    renderableStreamCount,
+    unavailableStreamCount,
   };
 }
 

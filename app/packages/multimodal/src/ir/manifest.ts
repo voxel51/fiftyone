@@ -2,6 +2,7 @@ import type {
   CameraCalibrationVisualization,
   PayloadDescriptor,
 } from "./frames";
+import type { ByteSourceReadProfile } from "./bytes";
 import type { TimeDomain, TimeWindow } from "./time";
 
 /** Stable identity of a stream within an episode. */
@@ -105,11 +106,81 @@ export interface StreamCalibration {
   readonly streamId: StreamId;
 }
 
+/** Aggregate application support for every stream in one recording. */
+export interface EpisodeRecordingSupportFacts {
+  readonly inspectableStreamCount: number;
+  readonly renderableStreamCount: number;
+  readonly unavailableStreamCount: number;
+}
+
+/** Coverage of embedded schemas across a recording's channels. */
+export interface EpisodeRecordingSchemaCoverage {
+  readonly embeddedSchemaChannelCount: number;
+  readonly missingSchemaChannelCount: number;
+}
+
+/** Aggregate storage facts for one MCAP compression codec. */
+export interface McapCompressionFacts {
+  readonly chunkCount: number;
+  readonly codec: string;
+  readonly compressedBytes: string;
+  readonly uncompressedBytes: string;
+}
+
+/** Attachment identity retained by the MCAP summary index. */
+export interface McapAttachmentFacts {
+  readonly dataSizeBytes: string;
+  readonly mediaType: string;
+  readonly name: string;
+}
+
+/** Message-index coverage across the MCAP's non-empty chunks. */
+export type McapMessageIndexStatus =
+  | "absent"
+  | "complete"
+  | "partial"
+  | "unknown";
+
+/** MCAP-specific facts computed only from the initialized reader summary. */
+export interface McapRecordingFacts {
+  readonly attachmentCount?: number;
+  readonly attachments?: readonly McapAttachmentFacts[];
+  readonly chunkCount?: number;
+  readonly compression?: readonly McapCompressionFacts[];
+  readonly compressionRatio?: number;
+  readonly library?: string;
+  readonly medianChannelsPerChunk?: number;
+  readonly medianChunkSizeBytes?: string;
+  readonly medianChunkSpanNs?: string;
+  readonly messageIndexStatus?: McapMessageIndexStatus;
+  readonly metadataRecordCount?: number;
+  readonly metadataRecordNames?: readonly string[];
+  readonly profile?: string;
+}
+
+/** Immutable episode-wide recording facts safe to clone across workers. */
+export interface EpisodeRecordingFacts {
+  readonly applicationSupport?: EpisodeRecordingSupportFacts;
+  readonly channelCount?: number;
+  readonly durationNs?: string;
+  readonly endTimeNs?: string;
+  readonly format: string;
+  readonly mcap?: McapRecordingFacts;
+  readonly messageCount?: string;
+  readonly readProfile?: ByteSourceReadProfile;
+  readonly schemaCount?: number;
+  readonly schemaCoverage?: EpisodeRecordingSchemaCoverage;
+  readonly sizeBytes?: string;
+  readonly startTimeNs?: string;
+  readonly topicCount?: number;
+}
+
 /** Cloneable inventory returned when an episode session opens. */
 export interface EpisodeManifest {
   readonly calibrations?: readonly StreamCalibration[];
   readonly episodeId: string;
   readonly metadata?: Readonly<Record<string, string>>;
+  readonly recordingFacts?: EpisodeRecordingFacts;
   readonly streams: readonly StreamDescriptor[];
   readonly timeDomain: TimeDomain;
   readonly timeRange: TimeWindow;

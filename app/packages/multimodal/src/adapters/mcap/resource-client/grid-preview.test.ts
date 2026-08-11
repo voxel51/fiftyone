@@ -21,6 +21,7 @@ import { chooseAnnotationStream } from "../../../stream-selection/index";
 import { streamTopics } from "./stream-topics";
 import type {
   McapDecodedMessage,
+  McapRecordingInventory,
   McapResourceClient,
 } from "../contracts/index";
 
@@ -56,7 +57,7 @@ describe("MCAP grid preview playback cadence", () => {
 describe("MCAP grid preview", () => {
   it("returns an empty no-stream state and caches the missing selection", async () => {
     const client = createClient({
-      readTopics: vi.fn(async () => []),
+      readTopics: vi.fn(async () => recordingInventory([])),
     });
     const entry = { client };
 
@@ -87,7 +88,7 @@ describe("MCAP grid preview", () => {
     const client = createClient({
       readDecodedMessages,
       readTimelineRange: vi.fn(async () => timelineRange),
-      readTopics: vi.fn(async () => inventory),
+      readTopics: vi.fn(async () => recordingInventory(inventory)),
     });
     const entry = { client };
 
@@ -98,8 +99,10 @@ describe("MCAP grid preview", () => {
     });
 
     expect(first.state.status).toBe("ready");
+    expect(first.bootstrapRecordingFacts).toEqual({ format: "mcap" });
     expect(first.bootstrapTimelineRange).toBe(timelineRange);
     expect(first.bootstrapTopics).toBe(inventory);
+    expect(second.bootstrapRecordingFacts).toBeUndefined();
     expect(second.bootstrapTimelineRange).toBeUndefined();
     expect(second.bootstrapTopics).toBeUndefined();
     expect(firstImageByte(first.state.frame)).toBe(1);
@@ -121,9 +124,16 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic("/camera/image", "sensor_msgs/msg/Image", "cdr", "ros2msg"),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic(
+            "/camera/image",
+            "sensor_msgs/msg/Image",
+            "cdr",
+            "ros2msg",
+          ),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -148,14 +158,16 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic(
-          "/camera/video",
-          "sensor_msgs/msg/CompressedImage",
-          "cdr",
-          "ros2msg",
-        ),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic(
+            "/camera/video",
+            "sensor_msgs/msg/CompressedImage",
+            "cdr",
+            "ros2msg",
+          ),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -183,10 +195,12 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic("/CAM_FRONT/image_rect_compressed"),
-        createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic("/CAM_FRONT/image_rect_compressed"),
+          createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -212,7 +226,9 @@ describe("MCAP grid preview", () => {
           yield item;
         }
       }),
-      readTopics: vi.fn(async () => [createTopic("/camera/front")]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([createTopic("/camera/front")]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -236,10 +252,12 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic("/camera/front"),
-        createTopic("/camera/back"),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic("/camera/front"),
+          createTopic("/camera/back"),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -269,10 +287,12 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic("/camera/front/image"),
-        createTopic("/camera/front/image_downsampled"),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic("/camera/front/image"),
+          createTopic("/camera/front/image_downsampled"),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -300,10 +320,12 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic("/camera/front/image"),
-        createTopic("/camera/front/image_downsampled"),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic("/camera/front/image"),
+          createTopic("/camera/front/image_downsampled"),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -332,7 +354,9 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [createTopic("/camera/front")]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([createTopic("/camera/front")]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -366,9 +390,11 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic("/lidar/points", "foxglove.PointCloud"),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic("/lidar/points", "foxglove.PointCloud"),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -401,10 +427,12 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic("/lidar/points", "foxglove.PointCloud"),
-        createTopic("/lidar/points_downsampled", "foxglove.PointCloud"),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic("/lidar/points", "foxglove.PointCloud"),
+          createTopic("/lidar/points_downsampled", "foxglove.PointCloud"),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -434,10 +462,12 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic("/camera/front"),
-        createTopic("/lidar/rear", "foxglove.PointCloud"),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic("/camera/front"),
+          createTopic("/lidar/rear", "foxglove.PointCloud"),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -469,9 +499,11 @@ describe("MCAP grid preview", () => {
     });
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [
-        createTopic("/lidar/points", "foxglove.PointCloud"),
-      ]),
+      readTopics: vi.fn(async () =>
+        recordingInventory([
+          createTopic("/lidar/points", "foxglove.PointCloud"),
+        ]),
+      ),
     });
 
     const result = await decodeGridPreview(
@@ -598,7 +630,7 @@ function createClient(
     readRawMessageRecord: vi.fn(),
     readSynchronizedMessages: vi.fn(),
     readTimelineRange: vi.fn(async () => createTimelineRange()),
-    readTopics: vi.fn(async () => []),
+    readTopics: vi.fn(async () => recordingInventory([])),
     readTopicTimeBounds: vi.fn(async () => []),
     enumerateNumericFields: vi.fn(async () => []),
     readNumericSeries: vi.fn(async () => ({
@@ -610,6 +642,12 @@ function createClient(
     })),
     ...overrides,
   };
+}
+
+function recordingInventory(
+  streams: readonly StreamInventory[],
+): McapRecordingInventory {
+  return { recordingFacts: { format: "mcap" }, streams };
 }
 
 function createTimelineRange() {

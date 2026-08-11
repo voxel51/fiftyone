@@ -3,6 +3,7 @@ import {
   createPointCloudChannelArray,
 } from "../../../ir/index";
 import type {
+  EpisodeRecordingFacts,
   PointCloudRenderPayload,
   CameraVisualization,
   PointCloudVisualization,
@@ -152,6 +153,8 @@ export interface McapGridPreviewSnapshot {
  * Result returned by the grid preview worker for one high-level request.
  */
 export interface McapGridPreviewResult {
+  /** Recording facts paired with the bootstrap inventory. */
+  readonly bootstrapRecordingFacts?: EpisodeRecordingFacts;
   /** Full recording bounds, handed off on initial grid reads for overlays. */
   readonly bootstrapTimelineRange?: McapTimelineRange;
   /** Full source inventory, handed off on initial grid reads for modal reuse. */
@@ -169,6 +172,7 @@ export interface McapGridPreviewEntry {
   readonly client: McapResourceClient;
   autoSelection?: McapGridPreviewSelection | null;
   inventory?: readonly StreamInventory[];
+  recordingFacts?: EpisodeRecordingFacts;
   timelineRange?: McapTimelineRange | null;
   topics?: McapGridTopics;
 }
@@ -190,11 +194,12 @@ export async function decodeGridPreview(
   { selectedStreamTopic, source, startTimeNs }: McapGridPreviewDecodeRequest,
 ): Promise<McapGridPreviewResult> {
   if (entry.topics === undefined) {
-    const [inventory, timelineRange] = await Promise.all([
+    const [recordingInventory, timelineRange] = await Promise.all([
       entry.client.readTopics({ source }),
       readGridTimelineRange(entry.client, source),
     ]);
-    entry.inventory = inventory;
+    entry.inventory = recordingInventory.streams;
+    entry.recordingFacts = recordingInventory.recordingFacts;
     entry.timelineRange = timelineRange;
     entry.topics = streamTopics(entry.inventory);
   } else if (entry.timelineRange === undefined) {
@@ -206,11 +211,14 @@ export async function decodeGridPreview(
     startTimeNs === undefined ? (entry.timelineRange ?? undefined) : undefined;
   const bootstrapTopics =
     startTimeNs === undefined ? entry.inventory : undefined;
+  const bootstrapRecordingFacts =
+    startTimeNs === undefined ? entry.recordingFacts : undefined;
   const previewTopics = topics.previewable;
   const selection = chooseSelection(entry, topics, selectedStreamTopic);
 
   if (selectedStreamTopic && !selection) {
     return {
+      bootstrapRecordingFacts,
       bootstrapTimelineRange,
       bootstrapTopics,
       state: {
@@ -226,6 +234,7 @@ export async function decodeGridPreview(
 
   if (!selection) {
     return {
+      bootstrapRecordingFacts,
       bootstrapTimelineRange,
       bootstrapTopics,
       state: {
@@ -248,6 +257,7 @@ export async function decodeGridPreview(
 
   if (!result) {
     return {
+      bootstrapRecordingFacts,
       bootstrapTimelineRange,
       bootstrapTopics,
       state: {
@@ -262,6 +272,7 @@ export async function decodeGridPreview(
   }
 
   return {
+    bootstrapRecordingFacts,
     bootstrapTimelineRange,
     bootstrapTopics,
     frameTimeNs: result.frameTimeNs,

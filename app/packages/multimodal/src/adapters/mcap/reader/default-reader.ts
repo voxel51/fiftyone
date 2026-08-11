@@ -88,9 +88,12 @@ export async function createDefaultMcapReader(
         (chunk.messageIndexLength > 0n && chunk.messageIndexOffsets.size > 0),
     );
   const adapterReader: McapIndexedReaderLike = {
+    attachmentIndexes: reader.attachmentIndexes,
     channelsById: reader.channelsById,
     chunkIndexes: reader.chunkIndexes,
     dispose: () => decompressedChunkCache.dispose(),
+    header: reader.header,
+    metadataIndexes: reader.metadataIndexes,
     prefetchChunkData: (request: McapPrefetchChunkDataRequest) =>
       prefetchMcapByteRanges(
         readable,

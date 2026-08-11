@@ -61,6 +61,7 @@ import {
   type McapReadFrameTransformBootstrapRequest,
   type McapReadFrameTransformWindowRequest,
   type McapRawMessageRecordResult,
+  type McapRecordingInventory,
   type McapMessageIndexWindowResult,
   type McapPointCloudChannelResult,
   type McapReadNumericSeriesRequest,
@@ -81,7 +82,6 @@ import {
   type McapTopicNumericFields,
   type McapTopicTimeBounds,
 } from "../contracts/index";
-import type { StreamInventory } from "../../../schemas/v1/index";
 import { memoizedRead } from "./memoized-read";
 import { createAbortError, throwIfAborted } from "../../../utils/cancellation";
 
@@ -158,7 +158,7 @@ export function createInlineMcapResourceClient(
     memoizedReadCaches.push(cache);
     return cache;
   };
-  const topicReads = createReadCache<readonly StreamInventory[]>();
+  const topicReads = createReadCache<McapRecordingInventory>();
   const numericFieldReads =
     createReadCache<readonly McapTopicNumericFields[]>();
   const topicTimeBoundsReads =
@@ -297,13 +297,10 @@ export function createInlineMcapResourceClient(
           readMcapTopics,
         );
       }
-      return memoizedRead<readonly StreamInventory[]>(
-        topicReads,
-        sourceKey,
-        () =>
-          readerStore
-            .get(request.source)
-            .then((reader) => readMcapTopics(reader)),
+      return memoizedRead<McapRecordingInventory>(topicReads, sourceKey, () =>
+        readerStore
+          .get(request.source)
+          .then((reader) => readMcapTopics(reader)),
       );
     },
 

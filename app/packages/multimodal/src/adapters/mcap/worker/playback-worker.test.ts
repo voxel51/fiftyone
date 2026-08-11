@@ -17,7 +17,10 @@ vi.mock("./worker-resource-client", () => ({
   createWorkerResourceClient: vi.fn(() => {
     const client: WorkerClientMock = {
       dispose: vi.fn(),
-      readTopics: vi.fn(async () => []),
+      readTopics: vi.fn(async () => ({
+        recordingFacts: { format: "mcap" },
+        streams: [],
+      })),
     };
     workerResourceClientMock.clients.push(client);
     return client;

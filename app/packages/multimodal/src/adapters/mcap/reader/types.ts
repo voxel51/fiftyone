@@ -213,6 +213,9 @@ export interface McapIndexedReaderLike {
   /** Releases all source-bound caches owned by this reader. */
   dispose?(): void;
 
+  /** Attachment summary indexes retained during reader initialization. */
+  readonly attachmentIndexes?: McapIndexedReader["attachmentIndexes"];
+
   /**
    * Summary channels keyed by numeric channel id.
    */
@@ -222,6 +225,12 @@ export interface McapIndexedReaderLike {
    * Indexed chunk metadata used for timeline bounds and message-index scans.
    */
   readonly chunkIndexes: McapIndexedReader["chunkIndexes"];
+
+  /** MCAP header retained during reader initialization. */
+  readonly header?: McapIndexedReader["header"];
+
+  /** Metadata summary indexes retained during reader initialization. */
+  readonly metadataIndexes?: McapIndexedReader["metadataIndexes"];
 
   /**
    * Summary schemas keyed by numeric schema id.

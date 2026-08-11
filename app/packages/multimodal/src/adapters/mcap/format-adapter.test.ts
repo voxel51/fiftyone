@@ -1,7 +1,16 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it, vi } from "vitest";
-import { PlaybackSyncMode, StreamInventorySchema } from "../../schemas/v1";
-import { SCENE_SOURCE_METADATA } from "../../ir";
+import {
+  PlaybackSyncMode,
+  StreamInventorySchema,
+  type StreamInventory,
+} from "../../schemas/v1";
+import {
+  BYTE_SOURCE_READ_PROFILE,
+  SCENE_SOURCE_METADATA,
+  STREAM_METADATA,
+  type EpisodeRecordingFacts,
+} from "../../ir";
 import type { ByteResources, EpisodeSource } from "../../ports";
 import {
   defineEpisodeSessionContractTests,
@@ -21,6 +30,7 @@ import {
   MCAP_ACTIVE_TIMELINE,
   type McapDecodedMessage,
   type McapRawMessageRecordResult,
+  type McapRecordingInventory,
   type McapReadSynchronizedMessageBatchRequest,
   type McapResourceClient,
   type McapSynchronizedMessageWindow,
@@ -43,6 +53,13 @@ const source: EpisodeSource = {
   episodeId: "mcap-contract",
 };
 
+function recordingInventory(
+  streams: readonly StreamInventory[],
+  recordingFacts: EpisodeRecordingFacts = { format: "mcap" },
+): McapRecordingInventory {
+  return { recordingFacts, streams };
+}
+
 const io: ByteResources = {
   readBytes: vi.fn(),
 };
@@ -54,6 +71,70 @@ defineEpisodeSessionContractTests({
 });
 
 describe("MCAP format adapter", () => {
+  it("assembles source-consistent common and application support facts", () => {
+    const manifest = createMcapManifest(
+      "episode",
+      { endTimeNs: 40_000_000_000n, startTimeNs: 10_000_000_000n },
+      recordingInventory(
+        [
+          create(StreamInventorySchema, {
+            metadata: { "mcap.topic": "/camera" },
+            payload: {
+              encoding: "cdr",
+              schema: "sensor_msgs/msg/Image",
+            },
+            streamId: "1",
+          }),
+          create(StreamInventorySchema, {
+            metadata: {
+              "mcap.topic": "/state",
+              [STREAM_METADATA.DECODE_STATUS]: "decodable",
+            },
+            payload: { encoding: "json", schema: "example.State" },
+            streamId: "2",
+          }),
+          create(StreamInventorySchema, {
+            metadata: {
+              "mcap.topic": "/opaque",
+              [STREAM_METADATA.DECODE_STATUS]: "schema-unavailable",
+            },
+            payload: { encoding: "cdr" },
+            streamId: "3",
+          }),
+        ],
+        {
+          channelCount: 3,
+          format: "mcap",
+          messageCount: "9007199254740993123",
+          schemaCount: 2,
+          topicCount: 3,
+        },
+      ),
+      {
+        readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
+        sizeBytes: "2845415834",
+      },
+    );
+
+    expect(manifest.recordingFacts).toEqual({
+      applicationSupport: {
+        inspectableStreamCount: 1,
+        renderableStreamCount: 1,
+        unavailableStreamCount: 1,
+      },
+      channelCount: 3,
+      durationNs: "30000000000",
+      endTimeNs: "40000000000",
+      format: "mcap",
+      messageCount: "9007199254740993123",
+      readProfile: "remote",
+      schemaCount: 2,
+      sizeBytes: "2845415834",
+      startTimeNs: "10000000000",
+      topicCount: 3,
+    });
+  });
+
   it("activates the source before uncached bootstrap reads", async () => {
     const calls: string[] = [];
     const client = createClient();
@@ -68,7 +149,7 @@ describe("MCAP format adapter", () => {
     });
     vi.mocked(client.readTopics).mockImplementation(async () => {
       calls.push("topics");
-      return [];
+      return recordingInventory([]);
     });
 
     const session = await createMcapFormatAdapter({
@@ -195,8 +276,11 @@ describe("MCAP format adapter", () => {
       range: { readonly endTimeNs: bigint; readonly startTimeNs: bigint },
       recordCount?: string,
     ) =>
-      createMcapManifest("episode", range, [topic(recordCount)]).streams[0]
-        ?.approxRateHz;
+      createMcapManifest(
+        "episode",
+        range,
+        recordingInventory([topic(recordCount)]),
+      ).streams[0]?.approxRateHz;
 
     expect(
       rateFor({ endTimeNs: 10_000_000_000n, startTimeNs: 0n }, "300"),
@@ -594,7 +678,7 @@ describe("MCAP format adapter", () => {
     const manifest = createMcapManifest(
       "episode",
       { endTimeNs: 2n, startTimeNs: 1n },
-      [
+      recordingInventory([
         create(StreamInventorySchema, {
           displayName: "/camera/image",
           metadata: {
@@ -608,7 +692,7 @@ describe("MCAP format adapter", () => {
           metadata: { "mcap.topic": "/camera/info" },
           streamId: "8",
         }),
-      ],
+      ]),
     );
 
     expect(manifest.streams[0]).toMatchObject({
@@ -756,28 +840,30 @@ describe("MCAP format adapter", () => {
 
   it("preserves channel identity when two schemas share one topic", async () => {
     const client = createClient();
-    vi.mocked(client.readTopics).mockResolvedValue([
-      create(StreamInventorySchema, {
-        displayName: "/shared",
-        metadata: {
-          "mcap.channel_id": "1",
-          "mcap.message_encoding": "json",
-          "mcap.schema_name": "SchemaA",
-          "mcap.topic": "/shared",
-        },
-        streamId: "1",
-      }),
-      create(StreamInventorySchema, {
-        displayName: "/shared",
-        metadata: {
-          "mcap.channel_id": "2",
-          "mcap.message_encoding": "protobuf",
-          "mcap.schema_name": "SchemaB",
-          "mcap.topic": "/shared",
-        },
-        streamId: "2",
-      }),
-    ]);
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/shared",
+          metadata: {
+            "mcap.channel_id": "1",
+            "mcap.message_encoding": "json",
+            "mcap.schema_name": "SchemaA",
+            "mcap.topic": "/shared",
+          },
+          streamId: "1",
+        }),
+        create(StreamInventorySchema, {
+          displayName: "/shared",
+          metadata: {
+            "mcap.channel_id": "2",
+            "mcap.message_encoding": "protobuf",
+            "mcap.schema_name": "SchemaB",
+            "mcap.topic": "/shared",
+          },
+          streamId: "2",
+        }),
+      ]),
+    );
     vi.mocked(client.readRawMessageRecord).mockImplementation(
       async (request) => ({
         messageEncoding: request.channelId === 2 ? "protobuf" : "json",
@@ -817,18 +903,20 @@ describe("MCAP format adapter", () => {
 
   it("falls back from malformed channel metadata to a numeric inventory id", async () => {
     const client = createClient();
-    vi.mocked(client.readTopics).mockResolvedValue([
-      create(StreamInventorySchema, {
-        displayName: "/shared",
-        metadata: { "mcap.channel_id": " ", "mcap.topic": "/shared" },
-        streamId: "1",
-      }),
-      create(StreamInventorySchema, {
-        displayName: "/shared",
-        metadata: { "mcap.channel_id": "2", "mcap.topic": "/shared" },
-        streamId: "2",
-      }),
-    ]);
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/shared",
+          metadata: { "mcap.channel_id": " ", "mcap.topic": "/shared" },
+          streamId: "1",
+        }),
+        create(StreamInventorySchema, {
+          displayName: "/shared",
+          metadata: { "mcap.channel_id": "2", "mcap.topic": "/shared" },
+          streamId: "2",
+        }),
+      ]),
+    );
     vi.mocked(client.readRawMessageRecord).mockResolvedValue({
       messageEncoding: "json",
       schemaName: null,
@@ -890,17 +978,19 @@ describe("MCAP format adapter", () => {
 
   it("adapts indexed topic browsing onto explicit interactive reads", async () => {
     const client = createClient();
-    client.readTopics = vi.fn(async () => [
-      create(StreamInventorySchema, {
-        displayName: "Camera",
-        metadata: {
-          "mcap.exact_browsing": "true",
-          "mcap.topic": "/camera",
-        },
-        recordCount: "3",
-        streamId: "camera",
-      }),
-    ]);
+    client.readTopics = vi.fn(async () =>
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "Camera",
+          metadata: {
+            "mcap.exact_browsing": "true",
+            "mcap.topic": "/camera",
+          },
+          recordCount: "3",
+          streamId: "camera",
+        }),
+      ]),
+    );
     client.readRawMessageAtCursor = vi.fn(async () => ({
       cursor: "cursor-2",
       logTimeNs: 2n,
@@ -974,16 +1064,18 @@ describe("MCAP format adapter", () => {
   it("preserves exact channel identity and bulk copy attribution", async () => {
     const client = createClient();
     client.readTopics = vi.fn(async () =>
-      [1, 2].map((channelId) =>
-        create(StreamInventorySchema, {
-          displayName: "/shared",
-          metadata: {
-            "mcap.channel_id": String(channelId),
-            "mcap.exact_browsing": "true",
-            "mcap.topic": "/shared",
-          },
-          streamId: String(channelId),
-        }),
+      recordingInventory(
+        [1, 2].map((channelId) =>
+          create(StreamInventorySchema, {
+            displayName: "/shared",
+            metadata: {
+              "mcap.channel_id": String(channelId),
+              "mcap.exact_browsing": "true",
+              "mcap.topic": "/shared",
+            },
+            streamId: String(channelId),
+          }),
+        ),
       ),
     );
     client.readRawMessageAtCursor = vi.fn(async () => ({
@@ -1035,15 +1127,17 @@ describe("MCAP format adapter", () => {
 
   it("requires both authoritative metadata and exact client methods", async () => {
     const metadataOnlyClient = createClient();
-    metadataOnlyClient.readTopics = vi.fn(async () => [
-      create(StreamInventorySchema, {
-        metadata: {
-          "mcap.exact_browsing": "true",
-          "mcap.topic": "/camera",
-        },
-        streamId: "camera",
-      }),
-    ]);
+    metadataOnlyClient.readTopics = vi.fn(async () =>
+      recordingInventory([
+        create(StreamInventorySchema, {
+          metadata: {
+            "mcap.exact_browsing": "true",
+            "mcap.topic": "/camera",
+          },
+          streamId: "camera",
+        }),
+      ]),
+    );
     const metadataOnly = createMcapRawRecordCapability({
       client: metadataOnlyClient,
       source: sourceDescriptor,
@@ -1202,15 +1296,17 @@ function createClient(): McapResourceClient {
         topic: "/camera",
       },
     ]),
-    readTopics: vi.fn(async () => [
-      create(StreamInventorySchema, {
-        displayName: "Camera",
-        metadata: { "mcap.topic": "/camera" },
-        payload: { encoding: "ros2", schema: "sensor_msgs/msg/Image" },
-        recordCount: "1",
-        streamId: "camera",
-      }),
-    ]),
+    readTopics: vi.fn(async () =>
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "Camera",
+          metadata: { "mcap.topic": "/camera" },
+          payload: { encoding: "ros2", schema: "sensor_msgs/msg/Image" },
+          recordCount: "1",
+          streamId: "camera",
+        }),
+      ]),
+    ),
     readNumericSeries: vi.fn(async () => ({
       baseTimeNs: 1n,
       fields: [

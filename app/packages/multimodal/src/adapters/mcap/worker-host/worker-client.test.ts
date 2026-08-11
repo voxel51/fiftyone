@@ -239,7 +239,10 @@ describe("worker-backed MCAP resource client", () => {
     const request = {
       source: createSource("source:1"),
     };
-    const result = [createTopic("/camera")];
+    const result = {
+      recordingFacts: { format: "mcap" },
+      streams: [createTopic("/camera")],
+    };
 
     const topics = client.readTopics(request);
     const worker = workers[0];

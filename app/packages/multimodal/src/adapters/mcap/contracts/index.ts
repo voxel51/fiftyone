@@ -8,7 +8,7 @@ import type {
   ReadWorkBudget,
   ReadWorkUsage,
 } from "../../../ports";
-import type { TimeWindow } from "../../../ir";
+import type { EpisodeRecordingFacts, TimeWindow } from "../../../ir";
 import type { DecodeResult } from "../../../query/decoding/index";
 import type {
   PlaybackSyncMode,
@@ -29,6 +29,12 @@ export const MCAP_ACTIVE_TIMELINE = Object.freeze({
  */
 export type McapActiveTimeline =
   (typeof MCAP_ACTIVE_TIMELINE)[keyof typeof MCAP_ACTIVE_TIMELINE];
+
+/** Source inventory and immutable recording facts resolved in one reader pass. */
+export interface McapRecordingInventory {
+  readonly recordingFacts: EpisodeRecordingFacts;
+  readonly streams: readonly StreamInventory[];
+}
 
 /**
  * Stream-local playback sync policy. The mode comes from playback.proto; the
@@ -1052,7 +1058,7 @@ export interface McapResourceClient {
   readTopics(
     request: McapReadTopicsRequest,
     options?: McapResourceReadOptions,
-  ): Promise<readonly StreamInventory[]>;
+  ): Promise<McapRecordingInventory>;
 
   /**
    * Reads per-topic first/last message times from summary indexes.

@@ -72,7 +72,7 @@ describe("MCAP topic metadata", () => {
       ),
     });
 
-    const topics = await client.readTopics({ source });
+    const { streams: topics } = await client.readTopics({ source });
 
     expect(topics.map((topic) => topic.streamId)).toEqual(["7", "8", "9"]);
     expect(topics.map((topic) => topic.recordCount)).toEqual(["2", "3", "5"]);
@@ -138,7 +138,7 @@ describe("MCAP topic metadata", () => {
       ),
     });
 
-    const topics = await client.readTopics({
+    const { streams: topics } = await client.readTopics({
       source: createMcapSourceDescriptor(),
     });
 
@@ -199,7 +199,7 @@ describe("MCAP topic metadata", () => {
       ),
     });
 
-    const topics = await client.readTopics({
+    const { streams: topics } = await client.readTopics({
       source: createMcapSourceDescriptor(),
     });
 
@@ -320,7 +320,7 @@ describe("MCAP topic metadata", () => {
       ),
     });
 
-    const topics = await client.readTopics({
+    const { streams: topics } = await client.readTopics({
       source: createMcapSourceDescriptor(),
     });
 

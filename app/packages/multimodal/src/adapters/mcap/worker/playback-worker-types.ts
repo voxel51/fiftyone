@@ -8,6 +8,7 @@ import type {
   McapMessageIndexWindowResult,
   McapPointCloudChannelResult,
   McapRawMessageRecordResult,
+  McapRecordingInventory,
   McapReadBoundedMessagesRequest,
   McapReadBoundedMessagesResult,
   McapReadDecodedMessagesRequest,
@@ -29,7 +30,6 @@ import type {
   McapTopicTimeBounds,
 } from "../contracts/index";
 import type { McapBoundedReadCancellation } from "../reader";
-import type { StreamInventory } from "../../../schemas/v1";
 import type { McapSynchronizedMessageWindowWithMessages } from "../resource-client/operations/read-synchronized-message-batch";
 
 /**
@@ -144,7 +144,7 @@ export type McapPlaybackWorkerResultByType = {
   readonly readSynchronizedMessageBatch: readonly McapPlaybackWorkerSynchronizedWindow[];
   readonly readSynchronizedMessages: McapPlaybackWorkerSynchronizedWindow;
   readonly readTimelineRange: McapTimelineRange;
-  readonly readTopics: readonly StreamInventory[];
+  readonly readTopics: McapRecordingInventory;
   readonly readTopicTimeBounds: readonly McapTopicTimeBounds[];
 };
 
