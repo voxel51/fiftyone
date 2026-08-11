@@ -179,10 +179,7 @@ test.describe("view bar keyboard", () => {
   // Tab walks the bar in reading order and Shift+Tab walks back: the first
   // insert slot is the entry point, Apply is the exit.
   //
-  test("Tab and Shift+Tab traverse the bar", async ({
-    viewBar,
-    page,
-  }) => {
+  test("Tab and Shift+Tab traverse the bar", async ({ viewBar, page }) => {
     await viewBar.addStage("Limit");
     await viewBar.fill("limit", "3");
     await page.keyboard.press("Enter");
@@ -205,7 +202,9 @@ test.describe("view bar keyboard", () => {
             "",
         ),
       );
-      if (await viewBar.applyBtn.evaluate((el) => el === document.activeElement))
+      if (
+        await viewBar.applyBtn.evaluate((el) => el === document.activeElement)
+      )
         break;
     }
     expect(forward).toContain("Edit stage");

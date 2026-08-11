@@ -89,8 +89,7 @@ test.describe("view bar", () => {
       return {
         barHeight: element.getBoundingClientRect().height,
         pillsOverflow: scroller.scrollWidth > scroller.clientWidth,
-        pageOverflow:
-          document.documentElement.scrollWidth > window.innerWidth,
+        pageOverflow: document.documentElement.scrollWidth > window.innerWidth,
       };
     });
 
