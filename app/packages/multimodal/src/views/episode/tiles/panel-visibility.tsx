@@ -16,6 +16,8 @@ import {
 
 /** Persisted source visibility for one episode 3D tile. */
 export interface Scene3dTileVisibility {
+  /** Whether camera visibility no longer follows the open image panes. */
+  readonly cameraSelectionCustomized: boolean;
   readonly enabledSourceIds: readonly string[];
   /** `null` records that the user deliberately left no primary geometry. */
   readonly primarySourceId: string | null;
@@ -494,6 +496,13 @@ function sanitize3dVisibility(raw: unknown): Scene3dTileVisibility | null {
   }
   const candidate = raw as Record<string, unknown>;
   if (!Array.isArray(candidate.enabledSourceIds)) return null;
+  const cameraSelectionCustomized = candidate.cameraSelectionCustomized;
+  if (
+    cameraSelectionCustomized !== undefined &&
+    typeof cameraSelectionCustomized !== "boolean"
+  ) {
+    return null;
+  }
   const primarySourceId = candidate.primarySourceId;
   if (
     primarySourceId !== null &&
@@ -502,6 +511,9 @@ function sanitize3dVisibility(raw: unknown): Scene3dTileVisibility | null {
     return null;
   }
   return {
+    // Records written before camera intent was stored used one global manual
+    // mode. Preserve those selections rather than silently removing cameras.
+    cameraSelectionCustomized: cameraSelectionCustomized ?? true,
     enabledSourceIds: sanitizeStreamList(candidate.enabledSourceIds),
     primarySourceId,
   };

@@ -22,11 +22,13 @@ afterEach(() => {
 describe("episode panel visibility persistence", () => {
   it("isolates 3D visibility by inspection scope and tile", () => {
     writeScene3dTileVisibility("dataset-a:field-a", "3d-1", {
+      cameraSelectionCustomized: false,
       enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
       primarySourceId: "/lidar/top",
     });
 
     expect(readScene3dTileVisibility("dataset-a:field-a", "3d-1")).toEqual({
+      cameraSelectionCustomized: false,
       enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
       primarySourceId: "/lidar/top",
     });
@@ -262,6 +264,34 @@ describe("episode panel visibility persistence", () => {
     expect(readScene3dTileVisibility("dataset-a", "3d-1")).toBeNull();
   });
 
+  it("preserves legacy 3D visibility as a manual camera selection", () => {
+    localStorage.setItem(
+      "fiftyone.episode.panel-visibility.v2",
+      JSON.stringify({
+        byScope: {
+          "dataset-a:field-a": {
+            tiles: {
+              "3d-1": {
+                threeD: {
+                  enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
+                  primarySourceId: "/lidar/top",
+                },
+              },
+            },
+            updatedAtMs: 1,
+          },
+        },
+        version: 2,
+      }),
+    );
+
+    expect(readScene3dTileVisibility("dataset-a:field-a", "3d-1")).toEqual({
+      cameraSelectionCustomized: true,
+      enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
+      primarySourceId: "/lidar/top",
+    });
+  });
+
   it("fails closed on malformed projection session storage", () => {
     sessionStorage.setItem("fiftyone.episode.projections.v1", "{not-json");
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -288,6 +318,7 @@ describe("episode panel visibility persistence", () => {
     vi.spyOn(Date, "now").mockImplementation(() => now++);
     for (let index = 0; index < 20; index++) {
       writeScene3dTileVisibility(`dataset-${index}`, "3d-1", {
+        cameraSelectionCustomized: false,
         enabledSourceIds: [`/lidar/${index}`],
         primarySourceId: `/lidar/${index}`,
       });
@@ -295,10 +326,12 @@ describe("episode panel visibility persistence", () => {
 
     now = 5_000;
     writeScene3dTileVisibility("dataset-0", "3d-1", {
+      cameraSelectionCustomized: false,
       enabledSourceIds: ["/lidar/touched"],
       primarySourceId: "/lidar/touched",
     });
     writeScene3dTileVisibility("dataset-20", "3d-1", {
+      cameraSelectionCustomized: false,
       enabledSourceIds: ["/lidar/20"],
       primarySourceId: "/lidar/20",
     });

@@ -248,6 +248,41 @@ describe("useScene3dSelection", () => {
     expect(result.current.cameraStreams).toEqual([frontCalibration.id]);
   });
 
+  it("keeps cameras automatic when the user enables an unrelated 3D source", () => {
+    imageTileBindingsMock.mockReturnValue({ "image-1": frontImage.id });
+    const { rerender, result } = renderSelection([
+      frontCalibration,
+      frontImage,
+      lidarTop,
+      boxes,
+    ]);
+    expect(result.current.cameraStreams).toEqual([frontCalibration.id]);
+
+    act(() => result.current.toggleSource(boxes.id, true));
+    imageTileBindingsMock.mockReturnValue({});
+    rerender();
+
+    expect(result.current.cameraStreams).toEqual([]);
+    expect(result.current.sceneAnnotationStreams).toEqual([boxes.id]);
+  });
+
+  it("keeps the camera master choice after image panes reopen", () => {
+    imageTileBindingsMock.mockReturnValue({ "image-1": frontImage.id });
+    const { rerender, result } = renderSelection([
+      frontCalibration,
+      frontImage,
+      lidarTop,
+    ]);
+
+    act(() => result.current.setSourcesEnabled([frontCalibration.id], false));
+    imageTileBindingsMock.mockReturnValue({});
+    rerender();
+    imageTileBindingsMock.mockReturnValue({ "image-1": frontImage.id });
+    rerender();
+
+    expect(result.current.cameraStreams).toEqual([]);
+  });
+
   it("pairs camera frustums with preferred image equivalents", () => {
     const calibration = source(
       "30",
@@ -480,6 +515,49 @@ describe("useScene3dSelection", () => {
     expect(restored.result.current.enabled).toEqual(
       new Set([lidarTop.id, lidarFront.id, boxes.id]),
     );
+  });
+
+  it("restores label-only edits without freezing automatic cameras", () => {
+    imageTileBindingsMock.mockReturnValue({ "image-1": frontImage.id });
+    const first = renderSelection([
+      frontCalibration,
+      frontImage,
+      lidarTop,
+      boxes,
+    ]);
+    act(() => first.result.current.toggleSource(boxes.id, true));
+    imageTileBindingsMock.mockReturnValue({});
+    first.rerender();
+    expect(first.result.current.cameraStreams).toEqual([]);
+    first.unmount();
+
+    viewStateStore = createScene3dViewStateStore();
+    imageTileBindingsMock.mockReturnValue({ "image-1": frontImage.id });
+    const restored = renderSelection([
+      frontCalibration,
+      frontImage,
+      lidarTop,
+      boxes,
+    ]);
+
+    expect(restored.result.current.cameraStreams).toEqual([
+      frontCalibration.id,
+    ]);
+    expect(restored.result.current.sceneAnnotationStreams).toEqual([boxes.id]);
+  });
+
+  it("restores explicit camera edits as manual visibility", () => {
+    const first = renderSelection([frontCalibration, frontImage, lidarTop]);
+    act(() => first.result.current.toggleSource(frontCalibration.id, true));
+    expect(first.result.current.cameraStreams).toEqual([frontCalibration.id]);
+    first.unmount();
+
+    viewStateStore = createScene3dViewStateStore();
+    const restored = renderSelection([frontCalibration, frontImage, lidarTop]);
+
+    expect(restored.result.current.cameraStreams).toEqual([
+      frontCalibration.id,
+    ]);
   });
 });
 

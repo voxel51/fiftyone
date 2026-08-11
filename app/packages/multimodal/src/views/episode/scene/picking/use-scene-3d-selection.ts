@@ -53,6 +53,7 @@ const PROVISIONAL_STREAM_PENALTIES: readonly {
 }[] = [{ score: -50, value: "radar" }];
 
 interface Scene3dSelectionState {
+  readonly cameraSelectionCustomized: boolean;
   readonly customized: boolean;
   readonly enabled: ReadonlySet<string>;
   readonly primarySourceId: string | null;
@@ -202,17 +203,26 @@ export function useScene3dSelection({
       cameraAssociations.openCalibrationStreams,
     );
   });
-  const { customized, enabled, primarySourceId } = selection;
+  const { cameraSelectionCustomized, customized, enabled, primarySourceId } =
+    selection;
 
   // This effect writes panel-local visibility to durable storage before a
   // later modal open can recreate stream demand.
   useEffect(() => {
-    if (!customized) return;
+    if (!customized && !cameraSelectionCustomized) return;
     writeScene3dTileVisibility(visibilityScope, tileId ?? null, {
+      cameraSelectionCustomized,
       enabledSourceIds: [...enabled],
       primarySourceId,
     });
-  }, [customized, enabled, primarySourceId, tileId, visibilityScope]);
+  }, [
+    cameraSelectionCustomized,
+    customized,
+    enabled,
+    primarySourceId,
+    tileId,
+    visibilityScope,
+  ]);
 
   // This effect retains the memory bridge for navigation compatibility while
   // durable per-tile visibility remains the source of truth. During modal
@@ -227,11 +237,12 @@ export function useScene3dSelection({
     });
   }, [enabled, selectableRenderableSourceIds, sourceKey, viewStateStore]);
 
-  // This effect keeps untouched camera defaults aligned with the image panes
-  // currently open. The first sidebar edit freezes the explicit selection.
+  // This effect keeps automatic camera defaults aligned with the image panes
+  // currently open. Only a camera edit freezes that selection; unrelated 3D
+  // source edits continue to release textures for image panes that close.
   useEffect(() => {
     setSelection((current) => {
-      if (current.customized) return current;
+      if (current.cameraSelectionCustomized) return current;
       const defaults = default3dSelection(
         defaultRenderableSources,
         cameraAssociations.openCalibrationStreams,
@@ -395,10 +406,17 @@ export function useScene3dSelection({
         ) {
           return current;
         }
-        return { customized: true, enabled: nextEnabled, primarySourceId };
+        return {
+          cameraSelectionCustomized:
+            current.cameraSelectionCustomized ||
+            cameraCalibrationStreams.has(id),
+          customized: true,
+          enabled: nextEnabled,
+          primarySourceId,
+        };
       });
     },
-    [selectableRenderableSources],
+    [cameraCalibrationStreams, selectableRenderableSources],
   );
 
   const setSourcesEnabled = useCallback(
@@ -418,6 +436,9 @@ export function useScene3dSelection({
         }
         if (!changed) return current;
         return {
+          cameraSelectionCustomized:
+            current.cameraSelectionCustomized ||
+            ids.some((id) => cameraCalibrationStreams.has(id)),
           customized: true,
           enabled: nextEnabled,
           primarySourceId: nextPrimarySourceId(
@@ -429,7 +450,7 @@ export function useScene3dSelection({
         };
       });
     },
-    [selectableRenderableSources],
+    [cameraCalibrationStreams, selectableRenderableSources],
   );
 
   return {
@@ -476,6 +497,7 @@ function default3dSelection(
   );
   if (primary) enabled.add(primary.id);
   return {
+    cameraSelectionCustomized: false,
     customized: false,
     enabled,
     primarySourceId: primary?.id ?? null,
@@ -568,7 +590,12 @@ function reconcilePersistedSelection(
     primarySourceId = replacement?.id ?? null;
     if (replacement) enabled.add(replacement.id);
   }
-  return { customized: true, enabled, primarySourceId };
+  return {
+    cameraSelectionCustomized: persisted.cameraSelectionCustomized,
+    customized: true,
+    enabled,
+    primarySourceId,
+  };
 }
 
 function selectionFromEnabledIds(
@@ -578,6 +605,7 @@ function selectionFromEnabledIds(
   const currentIds = new Set(renderableSources.map((source) => source.id));
   const enabled = new Set(enabledSourceIds.filter((id) => currentIds.has(id)));
   return {
+    cameraSelectionCustomized: false,
     customized: false,
     enabled,
     primarySourceId: bestEnabledPrimarySourceId(enabled, renderableSources),
