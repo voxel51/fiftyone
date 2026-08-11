@@ -135,6 +135,27 @@ describe("zoomRect / panRect / clampToHome", () => {
     });
   });
 
+  // FOEPD-4318: with no give, panning at full zoom-out is a no-op —
+  // the drag feels dead. Give lets the view slide, bounded so the
+  // data's edge stops at the viewport's center (give 0.5)
+  it("pans at full zoom-out within the give", () => {
+    expect(panRect(home, home, 3, 0)).toEqual(home);
+
+    expect(panRect(home, home, 3, 0, 0.5)).toEqual({
+      x0: 3,
+      y0: 0,
+      x1: 13,
+      y1: 10,
+    });
+    // The give is the cap: a huge delta stops half a viewport out
+    expect(panRect(home, home, 100, 0, 0.5)).toEqual({
+      x0: 5,
+      y0: 0,
+      x1: 15,
+      y1: 10,
+    });
+  });
+
   it("slides an out-of-bounds rect back inside home", () => {
     expect(clampToHome({ x0: -1, y0: 3, x1: 1, y1: 5 }, home)).toEqual({
       x0: 0,

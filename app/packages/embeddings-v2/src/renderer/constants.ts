@@ -42,6 +42,12 @@ export const MARGIN = 24;
 /** Max planar zoom-in factor relative to the home view */
 export const MAX_ZOOM = 50;
 
+/** Pan clamp give, as a fraction of the viewport per side: how far the
+ * data may be pushed off-frame by panning. Nonzero so dragging still
+ * responds at full zoom-out (FOEPD-4318); 0.5 = the data's edge can
+ * reach the viewport's center, no further */
+export const PAN_GIVE = 0.5;
+
 /** Pointer must sit still this long before a hover hit-test runs */
 export const HOVER_DEBOUNCE_MS = 120;
 
