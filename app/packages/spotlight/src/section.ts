@@ -64,7 +64,8 @@ export default class Section<K, V> {
   readonly #config: SpotlightConfig<K, V>;
   readonly #container = create(DIV);
   readonly #section = create(DIV);
-  readonly #crossExtent: number;
+
+  #crossExtent: number;
 
   #direction: DIRECTION;
   /** Cursor and remainder items at the leading edge; `undefined` while a fetch is in-flight. */
@@ -297,6 +298,40 @@ export default class Section<K, V> {
   /** Calls `updater` for every item in the currently visible rows. */
   updateItems(updater: (id: ID) => void) {
     for (const row of this.#shown) row.updateItems(updater);
+  }
+
+  /**
+   * Applies a new cross extent to the section's existing layout in place.
+   *
+   * Row membership is untouched — no re-tiling, no element churn. Every row's
+   * geometry is a pure function of the cross extent, so this is a style-write
+   * pass over cached elements plus a cumulative recompute of row offsets.
+   * Rows keep their justified layout at any extent; only their distance from
+   * the target row aspect ratio drifts until the next natural rebuild.
+   *
+   * @param crossExtent - The new container size (px) along the cross axis.
+   */
+  rescale(crossExtent: number) {
+    this.#crossExtent = crossExtent;
+    this.#container.style[this.#axis.crossExtentAttr] = `${crossExtent}px`;
+
+    let from = ZERO;
+    for (const row of this.#rows) {
+      row.from = from;
+      row.layout(crossExtent);
+      from += row.primaryExtent + this.#config.spacing;
+    }
+
+    const attr =
+      this.#direction === DIRECTION.FORWARD
+        ? this.#axis.startAttr
+        : this.#axis.endAttr;
+    for (const row of this.#shown) {
+      row.switch(attr);
+    }
+
+    this.#container.style[this.#axis.primaryExtentAttr] =
+      `${this.primaryExtent}px`;
   }
 
   /**

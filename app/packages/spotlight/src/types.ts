@@ -94,6 +94,17 @@ export type Show<K, V> = (ctx: {
   zooming: boolean;
 }) => Promise<number>;
 
+/**
+ * Applies new `dimensions` to an already-rendered item during an in-place
+ * container rescale. Called only for items in currently attached rows;
+ * hidden items receive their dimensions through {@link Show} when re-shown.
+ */
+export type Resize = (ctx: {
+  id: ID;
+  dimensions: [number, number];
+  element: HTMLDivElement;
+}) => void;
+
 /** Configuration passed to the {@link Spotlight} constructor. */
 export interface SpotlightConfig<K, V> {
   /** Item or offset to scroll to on initial render. */
@@ -135,6 +146,8 @@ export interface SpotlightConfig<K, V> {
   hideItem: Hide;
   /** Called when the user clicks an item (not fired when Meta/Shift/Ctrl is held). */
   onItemClick?: ItemClick<K, V>;
+  /** Called for visible items when the container's cross extent changes; applies new dimensions in place. */
+  resizeItem?: Resize;
   /** Returns the target row aspect ratio for the given cross extent (viewport width in vertical mode, height in horizontal); drives the tiling algorithm. */
   rowAspectRatioThreshold: (crossExtent: number) => number;
   /** Called when an item enters the render buffer; must resolve with the item's byte size. */

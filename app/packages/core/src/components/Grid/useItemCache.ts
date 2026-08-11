@@ -2,7 +2,7 @@ import { createCache } from "@fiftyone/looker";
 import { useEffect } from "react";
 import { useMemoOne } from "use-memo-one";
 
-export default function useLookerCache({
+export default function useItemCache({
   maxHiddenItems,
   maxHiddenItemsSizeBytes,
   onDispose,

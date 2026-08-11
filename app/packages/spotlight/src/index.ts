@@ -75,12 +75,16 @@ export default class Spotlight<K, V> extends EventTarget {
   readonly #element = create(DIV);
   readonly #keys = new WeakMap<ID, K>();
 
+  /** Scroll anchor from the most recent `rowchange`; keeps position stable through a rescale. */
+  #at?: At;
   #backward: Section<K, V>;
   #focused?: ID;
   #forward: Section<K, V>;
   #loaded = false;
   #rect?: DOMRect;
   #rejected = false;
+  /** Cross extent both sections are currently laid out at. */
+  #scaledCrossExtent?: number;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
   #validate?: (key: string, add: number) => void;
@@ -158,11 +162,20 @@ export default class Spotlight<K, V> extends EventTarget {
     element.appendChild(this.#element);
 
     const observer = new ResizeObserver(([el]) => {
-      if (this.attached && this.#loaded) {
-        // update rect for height
-        this.#rect = el.contentRect;
-        this.#render({ ...this.#measure() });
+      if (!this.attached || !this.#loaded) {
+        return;
       }
+
+      this.#rect = el.contentRect;
+
+      if (this.#crossExtent !== this.#scaledCrossExtent) {
+        // a cross-extent change invalidates row geometry; rescale in place
+        this.#rescale();
+        return;
+      }
+
+      // primary-extent changes only require a render pass
+      this.#render({ ...this.#measure() });
     });
     observer.observe(this.#element);
     // Run in the next animation frame for a correct measurement;
@@ -614,6 +627,10 @@ export default class Spotlight<K, V> extends EventTarget {
     });
 
     if (rowChange) {
+      this.#at = {
+        description: rowChange.at.description,
+        offset: rowChange.offset,
+      };
       this.dispatchEvent(rowChange);
     }
 
@@ -648,7 +665,27 @@ export default class Spotlight<K, V> extends EventTarget {
     );
   }
 
+  /**
+   * Applies the current cross extent to both sections' existing layouts —
+   * a style-write pass over cached elements, no re-tiling and no fetches —
+   * then re-renders at the last known scroll anchor. Runs on every
+   * cross-extent resize observation, so the grid tracks a live drag.
+   */
+  #rescale() {
+    this.#scaledCrossExtent = this.#crossExtent;
+    this.#backward.rescale(this.#crossExtent);
+    this.#forward.rescale(this.#crossExtent);
+
+    this.#render({
+      at: this.#at,
+      offset: ZERO,
+      zooming: false,
+      ...this.#measure(),
+    });
+  }
+
   async #fill() {
+    this.#scaledCrossExtent = this.#crossExtent;
     this.#forward = new Section({
       at: this.#config.at?.description,
       config: this.#config,

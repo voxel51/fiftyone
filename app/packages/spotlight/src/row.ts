@@ -29,7 +29,8 @@ export default class Row<K, V> {
   readonly #dangle?: boolean;
   readonly #container: HTMLDivElement = create(DIV);
   readonly #row: { item: ItemData<K, V>; element: HTMLDivElement }[];
-  readonly #crossExtent: number;
+
+  #crossExtent: number;
 
   /**
    * @param config - Shared grid configuration.
@@ -95,26 +96,7 @@ export default class Row<K, V> {
       return { element, item };
     });
 
-    const extent = this.primaryExtent;
-    let crossOffset = ZERO;
-
-    for (const {
-      element,
-      item: { aspectRatio },
-    } of this.#row) {
-      const itemCross = this.#axis.itemCrossExtent(extent, aspectRatio);
-
-      element.style[this.#axis.primaryExtentAttr] = pixels(extent);
-      element.style[this.#axis.crossExtentAttr] = pixels(itemCross);
-      element.style[this.#axis.itemCrossAttr] = pixels(crossOffset);
-
-      crossOffset += itemCross + config.spacing;
-    }
-
-    this.#container.style[this.#axis.primaryExtentAttr] = pixels(extent);
-    this.#container.style[this.#axis.crossExtentAttr] = pixels(
-      this.#crossExtent,
-    );
+    this.layout(crossExtent);
   }
 
   /** True when the row container is currently in the DOM. */
@@ -160,6 +142,49 @@ export default class Row<K, V> {
       this.#config.detachItem(item.id);
     }
     this.#aborter.abort();
+  }
+
+  /**
+   * Applies the row's geometry to its elements at the given cross extent.
+   * Item ↔ row membership never changes here — the same cached elements are
+   * restyled in place. For attached rows, `resizeItem` propagates the new
+   * dimensions to each rendered item.
+   *
+   * @param crossExtent - Container size (px) along the cross axis.
+   */
+  layout(crossExtent: number) {
+    this.#crossExtent = crossExtent;
+
+    const extent = this.primaryExtent;
+    let crossOffset = ZERO;
+
+    for (const {
+      element,
+      item: { aspectRatio },
+    } of this.#row) {
+      const itemCross = this.#axis.itemCrossExtent(extent, aspectRatio);
+
+      element.style[this.#axis.primaryExtentAttr] = pixels(extent);
+      element.style[this.#axis.crossExtentAttr] = pixels(itemCross);
+      element.style[this.#axis.itemCrossAttr] = pixels(crossOffset);
+
+      crossOffset += itemCross + this.#config.spacing;
+    }
+
+    this.#container.style[this.#axis.primaryExtentAttr] = pixels(extent);
+    this.#container.style[this.#axis.crossExtentAttr] = pixels(
+      this.#crossExtent,
+    );
+
+    if (this.attached && this.#config.resizeItem) {
+      for (const { element, item } of this.#row) {
+        this.#config.resizeItem({
+          id: item.id,
+          dimensions: this.#axis.showDimensions(extent, item.aspectRatio),
+          element,
+        });
+      }
+    }
   }
 
   /** Returns `true` if the item with the given description string is in this row. */
@@ -303,7 +328,10 @@ export default class Row<K, V> {
       result += ar;
     }
 
-    return count;
+    // the row can hold more items than the current threshold's virtual
+    // count after a rescale shrinks the cross extent; sizing below the
+    // actual item count would overflow the container
+    return Math.max(count, this.#row.length);
   }
 
   /**

@@ -7,7 +7,7 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
-import type { LookerCache } from "./types";
+import type { ItemCache } from "./types";
 
 export const getOverlays = (entry: fos.Lookers) => {
   // todo: there should be consistency here between video looker and other looker
@@ -67,7 +67,7 @@ export const handlePotentiallyStillPendingOverlays = (entry: fos.Lookers) => {
 };
 
 const useItemUpdater = (
-  cache: LookerCache,
+  cache: ItemCache,
   options: ReturnType<typeof fos.useLookerOptions>,
 ) => {
   const { getNewFields, removeField } = useDetectNewActiveLabelFields({
@@ -155,7 +155,7 @@ export default function useUpdates({
   options,
   spotlight,
 }: {
-  cache: LookerCache;
+  cache: ItemCache;
   getFontSize: () => number;
   options: ReturnType<typeof fos.useLookerOptions>;
   spotlight?: Spotlight<number, fos.Sample>;

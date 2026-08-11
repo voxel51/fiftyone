@@ -460,6 +460,15 @@ export class GridCustomRendererItem {
     this.dispatchEvent("load");
   }
 
+  resize(dimensions: GridItemDimensions) {
+    if (this.destroyed || !this.mountedElement) {
+      return;
+    }
+
+    this.dimensions = dimensions;
+    this.renderPluginRenderer();
+  }
+
   detach() {
     this.hostElement.remove();
   }

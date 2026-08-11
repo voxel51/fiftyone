@@ -1,7 +1,7 @@
-import type { Hide, ID, Show } from "@fiftyone/spotlight";
+import type { Hide, ID, Resize, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef } from "react";
-import type { LookerCache } from "./types";
+import type { ItemCache } from "./types";
 import useFontSize from "./useFontSize";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 import useSelectSample from "./useSelectSample";
@@ -13,7 +13,7 @@ export default function useRenderer({
   records,
   store,
 }: {
-  cache: LookerCache;
+  cache: ItemCache;
   id: string;
   records: Map<string, number>;
   store: SampleStore;
@@ -35,6 +35,18 @@ export default function useRenderer({
 
   const hideItem = useCallback<Hide>(
     ({ id }) => cache.hide(id.description),
+    [cache],
+  );
+
+  const resizeItem = useCallback<Resize>(
+    ({ id, dimensions }) => {
+      const key = id.description;
+      if (!cache.isShown(key)) {
+        return;
+      }
+
+      cache.get(key)?.resize(dimensions);
+    },
     [cache],
   );
 
@@ -97,9 +109,10 @@ export default function useRenderer({
       () => ({
         detachItem,
         hideItem,
+        resizeItem,
         showItem,
       }),
-      [detachItem, hideItem, showItem],
+      [detachItem, hideItem, resizeItem, showItem],
     ),
   };
 }

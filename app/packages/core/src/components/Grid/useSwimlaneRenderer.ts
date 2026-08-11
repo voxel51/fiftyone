@@ -29,7 +29,7 @@ import type { VariablesOf } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styles from "./Grid.module.css";
 import { gridSpacing, groupSiblingsPageParameters } from "./recoil";
-import type { LookerCache } from "./types";
+import type { ItemCache } from "./types";
 import useRenderer from "./useRenderer";
 import type { SampleStore } from "./useSpotlightPager";
 import { handleNode } from "./utils";
@@ -42,7 +42,7 @@ export default function useSwimlaneRenderer({
   records,
   store,
 }: {
-  cache: LookerCache;
+  cache: ItemCache;
   id: string;
   records: Map<string, number>;
   store: SampleStore;
@@ -341,6 +341,9 @@ export default function useSwimlaneRenderer({
       () => ({
         detachItem,
         hideItem,
+        // inner Spotlights track lane size with their own ResizeObservers;
+        // no per-item resize propagation is needed
+        resizeItem: undefined,
         showItem,
       }),
       [detachItem, hideItem, showItem],

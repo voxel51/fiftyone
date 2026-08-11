@@ -1,10 +1,10 @@
-import useLookerCache from "./useLookerCache";
+import useItemCache from "./useItemCache";
 
 const CACHE = () =>
-  useLookerCache({
+  useItemCache({
     reset: "",
     maxHiddenItems: 0,
     maxHiddenItemsSizeBytes: 0,
   });
 
-export type LookerCache = ReturnType<typeof CACHE>;
+export type ItemCache = ReturnType<typeof CACHE>;

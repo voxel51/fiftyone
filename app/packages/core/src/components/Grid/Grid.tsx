@@ -2,7 +2,7 @@ import styles from "./Grid.module.css";
 
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import React, { useState } from "react";
+import React from "react";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
@@ -18,12 +18,11 @@ import {
 } from "./recoil";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
+import useItemCache from "./useItemCache";
 import useLabelVisibility from "./useLabelVisibility";
-import useLookerCache from "./useLookerCache";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
-import useResize from "./useResize";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
 import useSwimlaneRenderer from "./useSwimlaneRenderer";
@@ -39,7 +38,6 @@ function Grid() {
   const spacing = useRecoilValue(gridSpacing);
 
   const { pageReset, reset } = useRefreshers();
-  const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();
 
   useSyncLabelsRenderingStatus();
@@ -48,7 +46,7 @@ function Grid() {
 
   // divide by two, half for the hidden cache and half for max shown
   const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
-  const cache = useLookerCache({
+  const cache = useItemCache({
     maxHiddenItems: MAX_INSTANCES,
     maxHiddenItemsSizeBytes: maxBytes,
     reset,
@@ -107,10 +105,6 @@ function Grid() {
     reset;
     /** SPOTLIGHT REFRESHER */
 
-    if (resizing) {
-      return undefined;
-    }
-
     cache.freeze();
 
     // `spotlight` is captured by `onItemClick` so the click handler can
@@ -122,6 +116,7 @@ function Grid() {
 
       detachItem: (item) => refs.current.renderer.detachItem(item),
       hideItem: (item) => refs.current.renderer.hideItem(item),
+      resizeItem: (item) => refs.current.renderer.resizeItem?.(item),
       showItem: (item) => refs.current.renderer.showItem(item),
 
       maxRows: MAX_ROWS,
@@ -151,7 +146,6 @@ function Grid() {
     autosizing,
     maxBytes,
     reset,
-    resizing,
     scrubberEnabled,
     spacing,
     useSwimlanes,
@@ -159,9 +153,8 @@ function Grid() {
   ]);
 
   useEscape();
-  useEvents({ id, cache, pixels, resizing, set, spotlight });
+  useEvents({ id, cache, pixels, set, spotlight });
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
-  useResize(id, setResizing);
 
   return (
     <div className={styles.gridContainer}>
