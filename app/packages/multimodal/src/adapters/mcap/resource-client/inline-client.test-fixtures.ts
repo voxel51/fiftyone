@@ -595,6 +595,20 @@ export async function* asyncValues<Value>(
   for await (const value of values) yield value;
 }
 
+export function promiseMock<Args extends unknown[], Result>(
+  implementation: (...args: Args) => Result,
+) {
+  return vi.fn((...args: Args) =>
+    Promise.resolve().then(() => implementation(...args)),
+  );
+}
+
+export function asyncGeneratorMock<Args extends unknown[], Value>(
+  implementation: (...args: Args) => Generator<Value, void, void>,
+) {
+  return vi.fn((...args: Args) => asyncValues(implementation(...args)));
+}
+
 function bytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 }

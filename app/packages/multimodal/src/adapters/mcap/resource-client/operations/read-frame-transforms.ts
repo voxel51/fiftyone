@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import {
   EpisodeReadCancelledError,
   isEpisodeReadCancelledError,
@@ -6,8 +5,10 @@ import {
 import {
   materializeIndexedEntries,
   type McapBoundedMessageReadResult,
+  type McapChunkIndex,
   type McapIndexedMessageTime,
   type McapIndexedReaderLike,
+  type McapMessage,
   type McapReadContinuation,
 } from "../../reader/index";
 import type { McapTimelineStrategy } from "../timeline";
@@ -57,9 +58,6 @@ const BOOTSTRAP_FALLBACK_MAX_MESSAGES = 1_024;
 const BOOTSTRAP_FALLBACK_MAX_ENCODED_BYTES = 64 * 1024 * 1024;
 const FRAME_TRANSFORM_BOOTSTRAP_ABORT_MESSAGE =
   "MCAP frame transform bootstrap aborted";
-type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
-type McapMessage = McapTypes.TypedMcapRecords["Message"];
-
 interface FrameTransformReadStats {
   encodedPayloadBytes: number;
   messageCount: number;
@@ -300,7 +298,7 @@ async function readBoundedFrameTransformChannel(
   entry: FrameTransformChannel,
   signal?: AbortSignal,
 ): Promise<BoundedFrameTransformChannelRead> {
-  const readBoundedMessages = reader.readBoundedMessages;
+  const readBoundedMessages = reader.readBoundedMessages?.bind(reader);
   if (!readBoundedMessages || reader.chunkIndexes.length === 0) {
     return { kind: "fallback" };
   }
@@ -656,8 +654,9 @@ async function readIndexedTransformPlacement({
   readonly timeNs: bigint;
   readonly topics: readonly string[];
 }): Promise<IndexedTransformPlacementResult> {
-  const indexedMessageTimeNs = timeline.indexedMessageTimeNs;
-  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  const indexedMessageTimeNs = timeline.indexedMessageTimeNs?.bind(timeline);
+  const indexedMessageTimesRequest =
+    timeline.indexedMessageTimesRequest?.bind(timeline);
   const readIndexedMessages = reader.readIndexedMessages?.bind(reader);
   const readLatestIndexedMessageTimes =
     reader.readLatestIndexedMessageTimes?.bind(reader);
@@ -835,8 +834,9 @@ async function* readFrameTransformWindowMessages({
 }): AsyncGenerator<McapMessage, void, void> {
   const readIndexedMessages = reader.readIndexedMessages?.bind(reader);
   const readIndexedMessageTimes = reader.readIndexedMessageTimes?.bind(reader);
-  const indexedMessageTimeNs = timeline.indexedMessageTimeNs;
-  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  const indexedMessageTimeNs = timeline.indexedMessageTimeNs?.bind(timeline);
+  const indexedMessageTimesRequest =
+    timeline.indexedMessageTimesRequest?.bind(timeline);
   if (
     readIndexedMessages &&
     readIndexedMessageTimes &&
@@ -930,8 +930,9 @@ async function readIndexedTransformPredecessorAnchors({
   readonly timeNs: bigint;
   readonly topics: readonly string[];
 }): Promise<readonly McapFrameTransformSample[]> {
-  const indexedMessageTimeNs = timeline.indexedMessageTimeNs;
-  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  const indexedMessageTimeNs = timeline.indexedMessageTimeNs?.bind(timeline);
+  const indexedMessageTimesRequest =
+    timeline.indexedMessageTimesRequest?.bind(timeline);
   if (
     !reader.readLatestIndexedMessageTimes ||
     !indexedMessageTimeNs ||
@@ -1096,7 +1097,7 @@ function createFrameTransformReadStats(
 function recordFrameTransformMessage(
   stats: FrameTransformReadStats,
   topic: string,
-  message: McapTypes.TypedMcapRecords["Message"],
+  message: McapMessage,
 ): void {
   stats.encodedPayloadBytes += message.data.byteLength;
   stats.messageCount += 1;

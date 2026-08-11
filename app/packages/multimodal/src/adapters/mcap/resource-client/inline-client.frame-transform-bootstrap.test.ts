@@ -1,6 +1,5 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
-import type { McapIndexedReaderLike } from "../reader/index";
+import type { McapIndexedReaderLike, McapMessage } from "../reader/index";
 import { createInlineMcapResourceClient } from "./inline-client";
 import {
   CUSTOM_TRANSFORM_BUNDLE_MESSAGE,
@@ -11,6 +10,7 @@ import {
   FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP,
   FRAME_TRANSFORM_SCHEMA_DATA,
   ROS1_TF_MESSAGE_SCHEMA,
+  asyncGeneratorMock,
   createBoundedReadResult,
   createChannel,
   createChunkIndex,
@@ -23,19 +23,21 @@ import {
   createTestDecodeClient,
   ros1TfMessage,
   ros1TransformStamped,
+  promiseMock,
+  mockReaderFactory,
 } from "./inline-client.test-fixtures";
 
 describe("MCAP frame transform bootstrap", () => {
   it("returns an empty frame transform bootstrap when no transform-schema channels exist", async () => {
-    const readMessages = vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+    const readMessages = asyncGeneratorMock(function* () {
+      for (const message of [] as McapMessage[]) {
         yield message;
       }
     });
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           readMessages,
         }),
@@ -51,7 +53,7 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("skips non-static transform topics during bootstrap", async () => {
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE, {
         channelId: 10,
       });
@@ -59,7 +61,56 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/sensor_calibration",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 2n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledOnce();
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/sensor_calibration"],
+    });
+    expect(set.samples).toEqual([]);
+  });
+
+  it("bootstraps ambiguous transform topics when the first decoded message is static", async () => {
+    const readMessages = asyncGeneratorMock(function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -93,55 +144,6 @@ describe("MCAP frame transform bootstrap", () => {
     });
 
     expect(readMessages).toHaveBeenCalledOnce();
-    expect(readMessages).toHaveBeenCalledWith({
-      topics: ["/sensor_calibration"],
-    });
-    expect(set.samples).toEqual([]);
-  });
-
-  it("bootstraps ambiguous transform topics when the first decoded message is static", async () => {
-    const readMessages = vi.fn(async function* () {
-      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
-        channelId: 10,
-      });
-    });
-    const client = createInlineMcapResourceClient({
-      byteClient: { readBytes: vi.fn() },
-      decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
-        createReader({
-          channelsById: new Map([
-            [
-              10,
-              createChannel({
-                id: 10,
-                schemaId: 10,
-                topic: "/sensor_calibration",
-              }),
-            ],
-          ]),
-          readMessages,
-          schemasById: new Map([
-            [
-              10,
-              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
-                id: 10,
-                name: "foxglove.FrameTransform",
-              }),
-            ],
-          ]),
-          statistics: createStatistics({
-            channelMessageCounts: new Map([[10, 1n]]),
-          }),
-        }),
-      ),
-    });
-
-    const set = await client.readFrameTransformBootstrap({
-      source: createMcapSourceDescriptor(),
-    });
-
-    expect(readMessages).toHaveBeenCalledTimes(2);
     expect(readMessages).toHaveBeenLastCalledWith({
       topics: ["/sensor_calibration"],
     });
@@ -154,7 +156,7 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("discovers static foxglove.FrameTransform channels by schema", async () => {
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
         channelId: 10,
       });
@@ -162,7 +164,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -209,12 +211,12 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("uses bounded indexed reads for static transform bootstrap", async () => {
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
         channelId: 10,
       });
     });
-    const readBoundedMessages = vi.fn(async () =>
+    const readBoundedMessages = promiseMock(() =>
       createBoundedReadResult([
         createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
           channelId: 10,
@@ -224,7 +226,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -297,16 +299,16 @@ describe("MCAP frame transform bootstrap", () => {
         channelId: 10,
         logTime: timeNs,
       });
-      const readBoundedMessages = vi.fn(async () =>
+      const readBoundedMessages = promiseMock(() =>
         createBoundedReadResult([message]),
       );
-      const readMessages = vi.fn(async function* () {
+      const readMessages = asyncGeneratorMock(function* () {
         yield message;
       });
       const client = createInlineMcapResourceClient({
         byteClient: { readBytes: vi.fn() },
         decodeClient: createTestDecodeClient(),
-        readerFactory: vi.fn(async () =>
+        readerFactory: mockReaderFactory(() =>
           createReader({
             channelsById: new Map([
               [
@@ -353,15 +355,15 @@ describe("MCAP frame transform bootstrap", () => {
         startTimeNs: timeNs,
       });
 
-      expect(bootstrap.samples).toEqual([]);
-      expect(window.samples).toHaveLength(1);
-      expect(window.samples[0]).toMatchObject({
+      expect(bootstrap.samples).toHaveLength(1);
+      expect(bootstrap.samples[0]).toMatchObject({
         childFrameId: "lidar",
         parentFrameId: "map",
-        timeNs,
       });
+      expect(bootstrap.samples[0]?.timeNs).toBeUndefined();
+      expect(window.samples).toEqual([]);
       expect(readBoundedMessages).toHaveBeenCalledTimes(bounded ? 1 : 0);
-      expect(readMessages).toHaveBeenCalledTimes(bounded ? 1 : 2);
+      expect(readMessages).toHaveBeenCalledTimes(bounded ? 0 : 1);
     },
   );
 
@@ -370,7 +372,7 @@ describe("MCAP frame transform bootstrap", () => {
       channelId: 10,
     });
     let bootstrapYields = 0;
-    const readMessages = vi.fn(async function* (
+    const readMessages = asyncGeneratorMock(function* (
       request: { readonly startTime?: bigint } = {},
     ) {
       if (request.startTime !== undefined) {
@@ -385,7 +387,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -427,7 +429,7 @@ describe("MCAP frame transform bootstrap", () => {
 
   it("caps ambiguous-topic classification across sibling-channel messages", async () => {
     let yielded = 0;
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       for (let index = 0; index < 258; index += 1) {
         yielded += 1;
         yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
@@ -442,7 +444,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -476,7 +478,7 @@ describe("MCAP frame transform bootstrap", () => {
     });
 
     expect(bootstrap.samples).toEqual([]);
-    expect(yielded).toBe(258);
+    expect(yielded).toBe(257);
     expect(readMessages).toHaveBeenCalledOnce();
   });
 
@@ -485,7 +487,7 @@ describe("MCAP frame transform bootstrap", () => {
     const message = createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
       channelId: 10,
     });
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield message;
       controller.abort();
       yield message;
@@ -493,7 +495,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -554,14 +556,14 @@ describe("MCAP frame transform bootstrap", () => {
         }),
       )
       .mockResolvedValueOnce(createBoundedReadResult([secondMessage]));
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield firstMessage;
       yield secondMessage;
     });
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -620,16 +622,16 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("defers missing-stat static channels that span more chunks than the cap", async () => {
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
         channelId: 10,
       });
     });
-    const readBoundedMessages = vi.fn(async () => createBoundedReadResult([]));
+    const readBoundedMessages = promiseMock(() => createBoundedReadResult([]));
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -675,7 +677,7 @@ describe("MCAP frame transform bootstrap", () => {
 
   it("defers missing-stat static channels whose indexed messages exceed the cap", async () => {
     const controller = new AbortController();
-    const readIndexedMessageTimes = vi.fn(async function* () {
+    const readIndexedMessageTimes = asyncGeneratorMock(function* () {
       for (let index = 0; index < 257; index += 1) {
         yield createIndexedMessageTime(
           "/tf_static",
@@ -685,16 +687,16 @@ describe("MCAP frame transform bootstrap", () => {
         );
       }
     });
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
         channelId: 10,
       });
     });
-    const readBoundedMessages = vi.fn(async () => createBoundedReadResult([]));
+    const readBoundedMessages = promiseMock(() => createBoundedReadResult([]));
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -743,7 +745,7 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("discovers transform-like protobuf schemas without Foxglove schema names", async () => {
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield createMessage(CUSTOM_TRANSFORM_BUNDLE_MESSAGE, {
         channelId: 10,
       });
@@ -751,7 +753,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -797,7 +799,7 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("includes bootstrap transform channels when summary stats are unavailable", async () => {
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
         channelId: 10,
       });
@@ -805,7 +807,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -847,7 +849,7 @@ describe("MCAP frame transform bootstrap", () => {
 
   it("flattens foxglove.FrameTransforms bootstrap messages and caches reads", async () => {
     const source = createMcapSourceDescriptor();
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield createMessage(FRAME_TRANSFORMS_MESSAGE_WITHOUT_TIMESTAMP, {
         channelId: 10,
       });
@@ -855,7 +857,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -904,7 +906,7 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("bootstraps ros1 /tf_static messages as whole-file static transforms", async () => {
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield createMessage(
         ros1TfMessage({
           transforms: [
@@ -941,7 +943,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -1006,7 +1008,7 @@ describe("MCAP frame transform bootstrap", () => {
       channelId: 10,
       logTime: 7_000_000_020n,
     });
-    const readMessages = vi.fn(async function* ({
+    const readMessages = asyncGeneratorMock(function* ({
       topics,
     }: {
       readonly topics?: readonly string[];
@@ -1057,7 +1059,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () => reader),
+      readerFactory: mockReaderFactory(() => reader),
     });
     const source = createMcapSourceDescriptor();
 
@@ -1088,7 +1090,7 @@ describe("MCAP frame transform bootstrap", () => {
         logTime: 7_000_000_020n,
       },
     );
-    const readMessages = vi.fn(async function* () {
+    const readMessages = asyncGeneratorMock(function* () {
       yield staticMessage;
     });
     const reader = createReader({
@@ -1119,7 +1121,7 @@ describe("MCAP frame transform bootstrap", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () => reader),
+      readerFactory: mockReaderFactory(() => reader),
     });
     const source = createMcapSourceDescriptor();
 
@@ -1140,15 +1142,15 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("skips channels whose schema is not a Foxglove frame transform", async () => {
-    const readMessages = vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+    const readMessages = asyncGeneratorMock(function* () {
+      for (const message of [] as McapMessage[]) {
         yield message;
       }
     });
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -1186,15 +1188,15 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("defers bootstrap scans of static channels with message counts above the cap", async () => {
-    const readMessages = vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+    const readMessages = asyncGeneratorMock(function* () {
+      for (const message of [] as McapMessage[]) {
         yield message;
       }
     });
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
