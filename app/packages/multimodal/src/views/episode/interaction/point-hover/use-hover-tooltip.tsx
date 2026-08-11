@@ -36,6 +36,8 @@ export interface Scene3dHoveredEntity {
   readonly stream: string;
   readonly entityId: string;
   readonly label: string | null;
+  /** Collision-safe presentation label for the source, when resolved. */
+  readonly sourceLabel?: string;
   readonly metadata: Readonly<Record<string, string>>;
   readonly texts: readonly string[];
 }
@@ -502,8 +504,10 @@ function EntityTooltipContent({
 }: {
   readonly tooltip: Scene3dHoveredEntity;
 }) {
-  const title = tooltip.label ?? tooltip.entityId;
-  const showId = tooltip.label !== null && tooltip.label !== tooltip.entityId;
+  const entityLabel =
+    tooltip.label && tooltip.label !== tooltip.entityId ? tooltip.label : null;
+  const title = entityLabel ?? tooltip.sourceLabel ?? tooltip.entityId;
+  const showId = title !== tooltip.entityId;
   const metadataEntries = Object.entries(tooltip.metadata);
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>

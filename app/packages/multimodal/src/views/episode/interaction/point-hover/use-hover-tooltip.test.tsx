@@ -37,6 +37,7 @@ const HOVERED: Scene3dHoveredEntity = {
   kind: "entity",
   label: "car",
   metadata: {},
+  sourceLabel: "markers",
   stream: "/markers",
   texts: [],
 };
@@ -270,6 +271,24 @@ describe("useScene3dHoverTooltip", () => {
     expect(screen.getByText("lidar/top")).toBeTruthy();
     expect(screen.getByText("/lidar/top/points")).toBeTruthy();
     expect(screen.queryByText("21")).toBeNull();
+  });
+
+  it("falls back to the canonical source label instead of an entity id", () => {
+    render(
+      <Scene3dHoverTooltip
+        tooltip={{
+          ...HOVERED,
+          entityId: "92",
+          label: "92",
+          sourceLabel: "road boundaries",
+          x: 0,
+          y: 0,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("road boundaries")).toBeTruthy();
+    expect(screen.getByText("92")).toBeTruthy();
   });
 
   it("renders every scene text and metadata value for an entity", () => {

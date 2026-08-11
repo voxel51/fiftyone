@@ -36,11 +36,13 @@ export function useScene3dPickingLayers({
   pointCloudLayers,
   pointCloudSources,
   sceneAnnotationLayers,
+  sourceLabelsById,
   worldFrameId,
 }: {
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
   readonly pointCloudSources: readonly SceneSource[];
   readonly sceneAnnotationLayers: readonly SceneAnnotationPanelLayer[];
+  readonly sourceLabelsById: ReadonlyMap<string, string>;
   readonly worldFrameId: string;
 }) {
   const jotaiStore = useStore();
@@ -68,6 +70,7 @@ export function useScene3dPickingLayers({
       const entity = layer.frame.entities[0];
       if (!entity) return layer;
       const stream = layer.sourceId ?? "";
+      const sourceLabel = sourceLabelsById.get(stream);
       const entityId = entity.id || layer.id;
       const label = entityLabel(entity);
       const hoveredEntity = {
@@ -75,6 +78,7 @@ export function useScene3dPickingLayers({
         kind: "entity" as const,
         label,
         metadata: entity.metadata,
+        ...(sourceLabel ? { sourceLabel } : {}),
         stream,
         texts: entity.texts
           .map((textPrimitive) => textPrimitive.text)
@@ -134,6 +138,7 @@ export function useScene3dPickingLayers({
         hoverMatchesSceneEntity(hoverEcho, stream, entityId),
         entityHoverPublisher,
         onHoverEntity,
+        sourceLabelsById.get(stream) ?? "",
         setSelectedObject,
       ];
     },

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { createStore, Provider } from "jotai";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import type {
@@ -21,7 +21,11 @@ const POINT_SOURCE = {
   type: "point-cloud",
 } as const;
 
+const SOURCE_LABELS_BY_ID = new Map([["/detections_3d", "detections/3d"]]);
+
 describe("scene 3D picking layers", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("toggles instance selection and widens it to label scope", () => {
     const entity = {
       frameId: "ego",
@@ -150,6 +154,7 @@ describe("scene 3D picking layers", () => {
   });
 
   it("publishes and consumes scene-entity hover correspondence", () => {
+    vi.useFakeTimers();
     const store = createStore();
     const layer = sceneAnnotationLayer();
     const wrapper = ({ children }: { readonly children: ReactNode }) =>
@@ -160,6 +165,7 @@ describe("scene 3D picking layers", () => {
           pointCloudLayers: [],
           pointCloudSources: [],
           sceneAnnotationLayers: [layer],
+          sourceLabelsById: SOURCE_LABELS_BY_ID,
           worldFrameId: "map",
         }),
       { wrapper },
@@ -168,6 +174,10 @@ describe("scene 3D picking layers", () => {
     expect(result.current.annotationLayers[0]?.hovered).toBe(false);
     act(() => {
       result.current.annotationLayers[0]?.onHoverEntity?.("car-1");
+      vi.advanceTimersByTime(120);
+    });
+    expect(result.current.hoverTooltips[0]).toMatchObject({
+      sourceLabel: "detections/3d",
     });
     expect(store.get(hoverEchoAtom)).toEqual({
       entityId: "car-1",
@@ -202,6 +212,7 @@ describe("scene 3D picking layers", () => {
           pointCloudLayers: [],
           pointCloudSources: [],
           sceneAnnotationLayers: [layer],
+          sourceLabelsById: SOURCE_LABELS_BY_ID,
           worldFrameId: "map",
         }),
       { wrapper },
@@ -236,6 +247,7 @@ function renderPickingLayers(
         pointCloudLayers: [pointLayer],
         pointCloudSources: [POINT_SOURCE],
         sceneAnnotationLayers: [],
+        sourceLabelsById: new Map(),
         worldFrameId: "map",
       }),
     { initialProps: { pointLayer: layer }, wrapper },
