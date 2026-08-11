@@ -50,6 +50,7 @@ import { ContinuousLegend } from "./ContinuousLegend";
 import { categoryHex, MISSING_CATEGORY } from "./colors";
 import { gridFilterPath } from "./filterPath";
 import HoverCard from "./HoverCard";
+import { legendCounts } from "./legendCounts";
 import {
   legendLabels,
   soloLabel,
@@ -183,6 +184,7 @@ export default function PlotView({
   const {
     visibleMask,
     visibleCount,
+    scopeMask,
     error: masksError,
   } = useMasks(
     datasetName,
@@ -246,6 +248,21 @@ export default function PlotView({
     [colorMeta, legendFilter],
   );
 
+  // Focus (selection) wins over scope (view + filters); null means
+  // nothing to scope by, and the legend shows the run's full counts
+  const scopedCounts = useMemo(
+    () =>
+      colorValues?.style === "categorical" && colorMeta?.classes?.length
+        ? legendCounts(
+            colorValues.indices,
+            colorMeta.classes.length,
+            selectedIndices,
+            scopeMask,
+          )
+        : null,
+    [colorValues, colorMeta, selectedIndices, scopeMask],
+  );
+
   // Writes read the filter from a fresh snapshot, not the render-time
   // value — rapid clicks must each transform the latest state, or a
   // click can silently compute from a stale base and drop its
@@ -297,14 +314,16 @@ export default function PlotView({
     [choices, run.pointsField],
   );
 
-  // A completed lasso returns gestures to the camera, so the
-  // selection can be explored immediately without switching modes
+  // A completed 3D lasso returns gestures to the camera — orbiting to
+  // inspect the selection is the natural next step. 2D stays in select
+  // mode so lassos can be redrawn without re-arming the tool
+  // (FOEPD-4319); each new lasso replaces the previous selection
   const handleLasso = (
     indices: number[],
     polygon?: Array<[number, number]> | null,
   ) => {
     handleSelection(indices, polygon);
-    if (indices.length) setMode("explore");
+    if (indices.length && run.dims === 3) setMode("explore");
   };
 
   const chipCount = selectionCount ?? (selectedSamples.size || null);
@@ -468,6 +487,7 @@ export default function PlotView({
             field={colorField}
             meta={colorMeta}
             offLabels={legend?.off ?? null}
+            scopedCounts={scopedCounts}
             onToggle={handleLegendToggle}
             onSolo={handleLegendSolo}
           />
