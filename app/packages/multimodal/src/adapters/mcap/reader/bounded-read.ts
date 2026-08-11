@@ -1,8 +1,3 @@
-import {
-  McapRecordBuilder,
-  McapStreamReader,
-  type McapTypes,
-} from "@mcap/core";
 import type { ByteRange } from "../../../ir";
 import type { ReadWorkBudget, ReadWorkUsage } from "../../../ports";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
@@ -14,6 +9,7 @@ import {
   mcapDecompressedChunkKeyForIndex,
 } from "./chunk-records";
 import { type McapDecompressedChunkCache } from "./decompressed-chunk-cache";
+import type { McapDecompressHandlers } from "./decompress-cache";
 import { parseMcapIndexedMessage } from "./indexed-message-reader";
 import {
   channelIdsForTopics,
@@ -25,14 +21,17 @@ import { MCAP_BOUNDED_GRANT_YIELD_INTERVAL } from "./consume-bounded-grant";
 import type {
   McapBoundedMessageReadRequest,
   McapBoundedMessageReadResult,
+  McapChunkIndex,
   McapIndexedMessageTime,
   McapIndexedReaderLike,
+  McapMessage,
   McapReadContinuation,
 } from "./types";
 
-type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
-type McapMessage = McapTypes.TypedMcapRecords["Message"];
 const MCAP_BOUNDED_READ_ABORT_MESSAGE = "MCAP bounded read aborted";
+const MCAP_MESSAGE_OPCODE = 0x05;
+const MCAP_RECORD_HEADER_BYTES = 9;
+const MCAP_MESSAGE_PREFIX_BYTES = 2 + 4 + 8 + 8;
 
 interface OrderedMessage {
   readonly chunkStartOffset: bigint;
@@ -56,7 +55,7 @@ interface ChunkMessageSelection {
 export interface CreateMcapBoundedReaderOptions {
   /** Caller-owned and disposed with the containing reader. */
   readonly decompressedChunkCache: McapDecompressedChunkCache;
-  readonly decompressHandlers: McapTypes.DecompressHandlers;
+  readonly decompressHandlers: McapDecompressHandlers;
   readonly nowMs?: () => number;
   readonly readable: ByteClientReadable;
   readonly reader: McapIndexedReaderLike;
@@ -79,8 +78,6 @@ export function createMcapBoundedReader({
 }: CreateMcapBoundedReaderOptions): (
   request: McapBoundedMessageReadRequest,
 ) => Promise<McapBoundedMessageReadResult> {
-  const channelPreamble = serializeChannelPreamble(reader.channelsById);
-
   return async (request) => {
     validateRequest(request);
     const startedAtMs = nowMs();
@@ -392,7 +389,6 @@ export function createMcapBoundedReader({
           const fallback = await parseChunkMessagesFallback({
             bytes: decompressed.bytes,
             channelIds,
-            channelPreamble,
             chunkStartOffset: chunk.chunkStartOffset,
             endTimeNs: request.endTimeNs,
             maxSelectedMessages,
@@ -647,7 +643,6 @@ async function readSelectedIndexedMessageEntries({
 async function parseChunkMessagesFallback({
   bytes,
   channelIds,
-  channelPreamble,
   chunkStartOffset,
   endTimeNs,
   maxSelectedMessages,
@@ -657,7 +652,6 @@ async function parseChunkMessagesFallback({
 }: {
   readonly bytes: Uint8Array;
   readonly channelIds: ReadonlySet<number>;
-  readonly channelPreamble: Uint8Array;
   readonly chunkStartOffset: bigint;
   readonly endTimeNs: bigint | undefined;
   readonly maxSelectedMessages: number;
@@ -668,22 +662,31 @@ async function parseChunkMessagesFallback({
   readonly complete: boolean;
   readonly messages: readonly OrderedMessage[];
 }> {
-  const stream = new McapStreamReader({
-    noMagicPrefix: true,
-    validateCrcs: true,
-  });
-  stream.append(channelPreamble);
-  while (stream.nextRecord()) {
-    // Prime channel identity before the standalone Chunk record.
-  }
-  stream.append(bytes);
   const messages: OrderedMessage[] = [];
   let recordOrder = 0;
+  let offset = 0;
   throwIfAborted(signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
-  let record = stream.nextRecord();
-  while (record) {
+  while (offset < bytes.byteLength) {
+    if (offset + MCAP_RECORD_HEADER_BYTES > bytes.byteLength) {
+      throw new Error("MCAP bounded chunk ended inside a record header");
+    }
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const opcode = view.getUint8(offset);
+    const recordLength = view.getBigUint64(offset + 1, true);
+    if (recordLength > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new Error("MCAP bounded chunk record exceeds safe number range");
+    }
+    const contentOffset = offset + MCAP_RECORD_HEADER_BYTES;
+    const recordEnd = contentOffset + Number(recordLength);
+    if (recordEnd > bytes.byteLength) {
+      throw new Error("MCAP bounded chunk ended inside a record");
+    }
+    const record =
+      opcode === MCAP_MESSAGE_OPCODE
+        ? parseMessageRecord(bytes, contentOffset, recordEnd)
+        : undefined;
     if (
-      record.type === "Message" &&
+      record &&
       channelIds.has(record.channelId) &&
       isWithinWindow(record.logTime, startTimeNs, endTimeNs)
     ) {
@@ -701,26 +704,28 @@ async function parseChunkMessagesFallback({
       await taskYield();
     }
     throwIfAborted(signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
-    record = stream.nextRecord();
-  }
-  if (stream.bytesRemaining() !== 0) {
-    throw new Error(
-      `MCAP bounded chunk parser retained ${stream.bytesRemaining()} bytes`,
-    );
+    offset = recordEnd;
   }
   return { complete: true, messages };
 }
 
-function serializeChannelPreamble(
-  channelsById: McapIndexedReaderLike["channelsById"],
-): Uint8Array {
-  const builder = new McapRecordBuilder();
-  for (const channel of [...channelsById.values()].sort(
-    (left, right) => left.id - right.id,
-  )) {
-    builder.writeChannel(channel);
+function parseMessageRecord(
+  bytes: Uint8Array,
+  contentOffset: number,
+  recordEnd: number,
+): McapMessage {
+  if (contentOffset + MCAP_MESSAGE_PREFIX_BYTES > recordEnd) {
+    throw new Error("MCAP bounded chunk contains a truncated Message record");
   }
-  return builder.buffer.slice();
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return {
+    channelId: view.getUint16(contentOffset, true),
+    data: bytes.slice(contentOffset + MCAP_MESSAGE_PREFIX_BYTES, recordEnd),
+    logTime: view.getBigUint64(contentOffset + 6, true),
+    publishTime: view.getBigUint64(contentOffset + 14, true),
+    sequence: view.getUint32(contentOffset + 2, true),
+    type: "Message",
+  };
 }
 
 function resolveContinuationIndex({

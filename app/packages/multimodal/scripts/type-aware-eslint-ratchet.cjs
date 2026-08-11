@@ -21,6 +21,7 @@ const migratedPaths = [
   "packages/multimodal/src/adapters/mcap/reader/message-index.ts",
   "packages/multimodal/src/adapters/mcap/reader/main-reader-decompression-cache.test.ts",
   "packages/multimodal/src/adapters/mcap/reader/default-reader.ts",
+  "packages/multimodal/src/adapters/mcap/reader/bounded-read*.ts",
   "packages/multimodal/src/adapters/fixture/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",
