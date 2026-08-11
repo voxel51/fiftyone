@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, type Mock } from "vitest";
 import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
 import { isMcapBoundedReadCancelledError } from "../reader";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
@@ -384,10 +384,14 @@ describe("MCAP playback worker transport", () => {
   });
 });
 
-function createWorker(): Worker {
+type TestWorker = Worker & {
+  readonly postMessage: Mock<(message: unknown) => void>;
+};
+
+function createWorker(): TestWorker {
   return {
     postMessage: vi.fn(),
-  } as unknown as Worker;
+  } as unknown as TestWorker;
 }
 
 function createSource() {

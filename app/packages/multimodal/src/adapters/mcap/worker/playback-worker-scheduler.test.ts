@@ -20,40 +20,45 @@ describe("MCAP playback worker scheduler", () => {
     scheduler.enqueue({
       id: 2,
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
-      run: async () => {
+      run: () => {
         ran.push("batch-2");
+        return Promise.resolve();
       },
       sourceKey: "source",
     });
     scheduler.enqueue({
       id: 3,
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-      run: async () => {
+      run: () => {
         ran.push("current");
+        return Promise.resolve();
       },
       sourceKey: "source",
     });
     scheduler.enqueue({
       id: 4,
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
-      run: async () => {
+      run: () => {
         ran.push("placement");
+        return Promise.resolve();
       },
       sourceKey: "source",
     });
     scheduler.enqueue({
       id: 5,
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
-      run: async () => {
+      run: () => {
         ran.push("idle");
+        return Promise.resolve();
       },
       sourceKey: "source",
     });
     scheduler.enqueue({
       id: 6,
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.PAUSED_INSPECTION,
-      run: async () => {
+      run: () => {
         ran.push("inspection");
+        return Promise.resolve();
       },
       sourceKey: "source",
     });
@@ -92,8 +97,9 @@ describe("MCAP playback worker scheduler", () => {
       id: 2,
       operation: "readBoundedMessages",
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-      run: async () => {
+      run: () => {
         ran.push("cancelled");
+        return Promise.resolve();
       },
       sourceKey: "source",
     });
@@ -116,9 +122,9 @@ describe("MCAP playback worker scheduler", () => {
     scheduler.enqueue({
       id: 7,
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
-      run: async (context) => {
+      run: (context) => {
         signals.push(context.signal);
-        await gate.promise;
+        return gate.promise;
       },
       sourceKey: "source",
     });
@@ -135,8 +141,9 @@ describe("MCAP playback worker scheduler", () => {
     scheduler.enqueue({
       id: 8,
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
-      run: async (context) => {
+      run: (context) => {
         signals.push(context.signal);
+        return Promise.resolve();
       },
       sourceKey: "source",
     });
@@ -156,7 +163,7 @@ describe("MCAP playback worker scheduler", () => {
         id: 1,
         operation: "readSynchronizedMessages",
         priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-        run: async () => undefined,
+        run: () => Promise.resolve(),
         sourceKey: "source",
       });
 
@@ -169,7 +176,6 @@ describe("MCAP playback worker scheduler", () => {
           jobId: 1,
           operation: "readSynchronizedMessages",
           priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-          queueWaitMs: expect.any(Number),
           sourceKey: "source",
         }),
       );
@@ -179,10 +185,16 @@ describe("MCAP playback worker scheduler", () => {
           event: "finished",
           jobId: 1,
           operation: "readSynchronizedMessages",
-          runMs: expect.any(Number),
           sourceKey: "source",
         }),
       );
+      const startedDetails: unknown = consoleLog.mock.calls[0]?.[1];
+      const finishedDetails: unknown = consoleLog.mock.calls[1]?.[1];
+      if (!isRecord(startedDetails) || !isRecord(finishedDetails)) {
+        throw new Error("Expected structured scheduler debug details");
+      }
+      expect(typeof startedDetails.queueWaitMs).toBe("number");
+      expect(typeof finishedDetails.runMs).toBe("number");
     } finally {
       consoleLog.mockRestore();
     }
@@ -199,17 +211,18 @@ describe("MCAP playback worker scheduler", () => {
       scheduler.enqueue({
         id: 1,
         priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-        run: async () => {
+        run: () => {
           ran.push("failed");
-          throw new Error("boom");
+          return Promise.reject(new Error("boom"));
         },
         sourceKey: "source",
       });
       scheduler.enqueue({
         id: 2,
         priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-        run: async () => {
+        run: () => {
           ran.push("next");
+          return Promise.resolve();
         },
         sourceKey: "source",
       });
@@ -229,6 +242,10 @@ describe("MCAP playback worker scheduler", () => {
     }
   });
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object";
+}
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;

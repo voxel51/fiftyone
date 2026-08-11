@@ -30,8 +30,8 @@ describe("exact-message playback worker RPC", () => {
       validFromNs: 2n,
       validUntilNs: 3n,
     };
-    const readMessageIndexWindow = vi.fn(async () => indexResult);
-    const readRawMessageAtCursor = vi.fn(async () => exactResult);
+    const readMessageIndexWindow = vi.fn(() => Promise.resolve(indexResult));
+    const readRawMessageAtCursor = vi.fn(() => Promise.resolve(exactResult));
     const client = {
       readMessageIndexWindow,
       readRawMessageAtCursor,

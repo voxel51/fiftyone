@@ -302,7 +302,7 @@ function ensureActiveSource(sourceKey: string) {
 
   mcap = createMcapClient();
   while (parkedClients.size > MAX_PARKED_SOURCE_CLIENTS) {
-    const oldest = parkedClients.keys().next().value;
+    const [oldest] = parkedClients.keys();
     if (oldest === undefined) break;
     parkedClients.get(oldest)?.dispose();
     parkedClients.delete(oldest);

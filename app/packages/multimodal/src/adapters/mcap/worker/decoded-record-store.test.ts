@@ -98,7 +98,14 @@ describe("decoded MCAP record store", () => {
 
   it("skips records without a trustworthy decoded-size bound", () => {
     const store = new DecodedRecordStore();
-    const message = createMessage("one", "/camera", 1n, 0);
+    const base = createMessage("one", "/camera", 1n, 0);
+    const message: McapDecodedMessage = {
+      ...base,
+      decoded: {
+        ...base.decoded,
+        output: { attributes: {} },
+      },
+    };
 
     expect(store.canonicalize(message)).toBe(message);
     expect(store.size).toBe(0);

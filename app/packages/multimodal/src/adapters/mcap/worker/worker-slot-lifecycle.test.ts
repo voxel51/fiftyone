@@ -6,8 +6,9 @@ describe("MCAP worker slot lifecycle", () => {
   it("wires handlers before init and resets through one disposal path", () => {
     const worker = new MockWorker();
     const slot: { worker?: Worker } = {};
-    const handleResponse = vi.fn();
-    const rejectAll = vi.fn();
+    const handleResponse =
+      vi.fn<(response: { readonly ok: boolean }) => void>();
+    const rejectAll = vi.fn<(reason: string) => void>();
     const lifecycle = createMcapWorkerSlotLifecycle({
       createWorker: () => worker as unknown as Worker,
       disposeRequest: { type: "dispose" },
