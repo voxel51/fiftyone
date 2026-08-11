@@ -583,18 +583,17 @@ describe("Scene3dTileSettings", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(storedPointCloudColor(LIDAR.id)).toEqual({
-      colorBy: "auto",
-      colormap: expect.objectContaining({
-        list: expect.arrayContaining([
-          expect.objectContaining({ color: "#123456" }),
-        ]),
-        name: "Turbo custom",
-      }),
-      rangeMax: null,
-      rangeMin: null,
-      uniformColor: "#b8c2d1",
-    });
+    const stored = storedPointCloudColor(LIDAR.id);
+    expect(stored?.colorBy).toBe("auto");
+    expect(stored?.rangeMax).toBeNull();
+    expect(stored?.rangeMin).toBeNull();
+    expect(stored?.uniformColor).toBe("#b8c2d1");
+    const colormap = stored?.colormap;
+    if (typeof colormap === "string" || colormap === undefined) {
+      throw new Error("expected a custom colormap");
+    }
+    expect(colormap.name).toBe("Turbo custom");
+    expect(colormap.list.some((stop) => stop.color === "#123456")).toBe(true);
   });
 
   it("clears a fixed range end back to auto", () => {

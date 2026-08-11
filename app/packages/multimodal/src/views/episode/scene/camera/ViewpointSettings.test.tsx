@@ -144,7 +144,11 @@ describe("ViewpointSettings", () => {
 });
 
 function inputValue(label: string): string {
-  return (screen.getByLabelText(label) as HTMLInputElement).value;
+  const input = screen.getByLabelText(label);
+  if (!(input instanceof HTMLInputElement)) {
+    throw new Error(`expected ${label} to be an input`);
+  }
+  return input.value;
 }
 
 function commitNumber(label: string, value: string): void {
@@ -181,10 +185,14 @@ function createController(): Scene3dViewpointController {
   });
   return {
     ...store,
-    setCameraNavigationMode: vi.fn((cameraNavigationMode) =>
-      store.publish({ cameraNavigationMode }),
+    setCameraNavigationMode: vi.fn<
+      Scene3dViewpointController["setCameraNavigationMode"]
+    >((cameraNavigationMode) => store.publish({ cameraNavigationMode })),
+    setPose: vi.fn<Scene3dViewpointController["setPose"]>((pose) =>
+      store.publish({ pose }),
     ),
-    setPose: vi.fn((pose) => store.publish({ pose })),
-    setProjection: vi.fn((projection) => store.publish({ projection })),
+    setProjection: vi.fn<Scene3dViewpointController["setProjection"]>(
+      (projection) => store.publish({ projection }),
+    ),
   };
 }

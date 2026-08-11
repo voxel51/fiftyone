@@ -38,22 +38,21 @@ describe("SceneUpdateHistoryBridge", () => {
   it("delays full-history reads, uses the bulk lane, and publishes deltas", async () => {
     vi.useFakeTimers();
     const source = createSource("markers");
-    const session = createSession(async function* () {
-      yield sceneUpdateMessage(10n);
-    });
+    const session = createSession(() => asyncValues([sceneUpdateMessage(10n)]));
 
     render(<Harness session={session} source={source} />);
 
     await advanceTimers(1_499);
     expect(session.read).not.toHaveBeenCalled();
     await advanceTimers(1);
-    expect(session.read).toHaveBeenCalledWith({
+    const request = vi.mocked(session.read).mock.calls[0]?.[0];
+    expect(request).toMatchObject({
       limit: 50_000,
       priority: "bulk",
-      signal: expect.any(AbortSignal),
       streams: ["/markers"],
       window: session.manifest.timeRange,
     });
+    expect(request?.signal).toBeInstanceOf(AbortSignal);
     expect(screen.getByTestId("scene-history").textContent).toBe(
       "/markers:ready:1:full:100",
     );
@@ -94,10 +93,9 @@ describe("SceneUpdateHistoryBridge", () => {
 
   it("publishes an error without retaining partial deltas", async () => {
     vi.useFakeTimers();
-    const session = createSession(async function* () {
-      yield sceneUpdateMessage(10n);
-      throw new Error("read failed");
-    });
+    const session = createSession(() =>
+      valuesThenReject([sceneUpdateMessage(10n)], new Error("read failed")),
+    );
 
     render(<Harness session={session} source={createSource("markers")} />);
     await advanceTimers(1_500);
@@ -200,15 +198,9 @@ function HistoryProbe() {
       {[...history.entries()]
         .map(
           ([stream, state]) =>
-            stream +
-            ":" +
-            state.status +
-            ":" +
-            state.deltas.length +
-            ":" +
-            (state.truncated ? "truncated" : "full") +
-            ":" +
-            (state.loadedThroughNs?.toString() ?? "none"),
+            `${stream}:${state.status}:${state.deltas.length}:` +
+            `${state.truncated ? "truncated" : "full"}:` +
+            `${state.loadedThroughNs?.toString() ?? "none"}`,
         )
         .join("|")}
     </div>
@@ -216,7 +208,7 @@ function HistoryProbe() {
 }
 
 function createSession(
-  messages: () => AsyncGenerator<DecodedFrame, void, void> = emptyMessages,
+  messages: () => AsyncIterable<DecodedFrame> = () => asyncValues([]),
 ): EpisodeSession {
   const manifest = {
     episodeId: "test",
@@ -227,21 +219,29 @@ function createSession(
   return {
     dispose: vi.fn(),
     manifest,
-    read: vi.fn(async function* (request) {
-      for await (const frame of messages()) {
-        yield {
-          frames: [
-            { ...frame, streamId: request.streams[0] ?? frame.streamId },
-          ],
-          stream: request.streams[0] ?? frame.streamId,
-        };
-      }
-    }),
+    read: vi.fn<EpisodeSession["read"]>((request) =>
+      mapMessagesToBatches(request.streams[0], messages()),
+    ),
   };
 }
 
-async function* emptyMessages(): AsyncGenerator<DecodedFrame, void, void> {
-  for (const message of [] as DecodedFrame[]) yield message;
+async function* mapMessagesToBatches(
+  requestedStream: string | undefined,
+  messages: AsyncIterable<DecodedFrame>,
+) {
+  for await (const frame of messages) {
+    const stream = requestedStream ?? frame.streamId;
+    yield { frames: [{ ...frame, streamId: stream }], stream };
+  }
+}
+
+async function* asyncValues<Value>(values: Iterable<Value>) {
+  for await (const value of values) yield value;
+}
+
+async function* valuesThenReject<Value>(values: Iterable<Value>, error: Error) {
+  yield* asyncValues(values);
+  yield await Promise.reject<never>(error);
 }
 
 function sceneUpdateMessage(timelineTimeNs: bigint): DecodedFrame {

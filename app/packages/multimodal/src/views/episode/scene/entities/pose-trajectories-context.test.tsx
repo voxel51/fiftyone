@@ -71,13 +71,14 @@ describe("PoseTrajectoriesBridge", () => {
     expect(session.read).not.toHaveBeenCalled();
 
     await advanceTimers(1);
-    expect(session.read).toHaveBeenCalledWith({
+    const request = vi.mocked(session.read).mock.calls[0]?.[0];
+    expect(request).toMatchObject({
       limit: 25_000,
       priority: "bulk",
-      signal: expect.any(AbortSignal),
       streams: ["/pose"],
       window: session.manifest.timeRange,
     });
+    expect(request?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("cancels a pending start when disabled before the delay fires", async () => {
@@ -122,11 +123,13 @@ describe("PoseTrajectoriesBridge", () => {
   it("publishes decimated points, the stream frame, and error status", async () => {
     vi.useFakeTimers();
     const source = createSource("pose");
-    const session = createSession(async function* () {
-      yield poseMessage(10n, [1, 2, 0], "map");
-      yield { output: {}, streamId: "/pose", timestampNs: 15n };
-      yield poseMessage(20n, [3, 4, 0]);
-    });
+    const session = createSession(() =>
+      asyncValues([
+        poseMessage(10n, [1, 2, 0], "map"),
+        { output: {}, streamId: "/pose", timestampNs: 15n },
+        poseMessage(20n, [3, 4, 0]),
+      ]),
+    );
 
     render(<Harness session={session} enabled source={source} />);
     await advanceTimers(1_500);
@@ -136,10 +139,9 @@ describe("PoseTrajectoriesBridge", () => {
     );
 
     cleanup();
-    const failingClient = createSession(async function* () {
-      yield poseMessage(10n, [1, 2, 0]);
-      throw new Error("read failed");
-    });
+    const failingClient = createSession(() =>
+      valuesThenReject([poseMessage(10n, [1, 2, 0])], new Error("read failed")),
+    );
     render(<Harness session={failingClient} enabled source={source} />);
     await advanceTimers(1_500);
 
@@ -158,13 +160,13 @@ describe("PoseTrajectoriesStartupGate", () => {
     render(<GateHarness session={session} source={source} />);
 
     // Transforms still loading: the delay elapsing must not start reads.
-    await act(async () => {
+    act(() => {
       screen.getByTestId("set-loading").click();
     });
     await advanceTimers(5_000);
     expect(session.read).not.toHaveBeenCalled();
 
-    await act(async () => {
+    act(() => {
       screen.getByTestId("set-ready").click();
     });
     await advanceTimers(1_499);
@@ -180,7 +182,7 @@ describe("PoseTrajectoriesStartupGate", () => {
 
     render(<GateHarness session={session} source={source} />);
 
-    await act(async () => {
+    act(() => {
       screen.getByTestId("set-error").click();
     });
     await advanceTimers(1_500);
@@ -420,7 +422,7 @@ function TrajectoriesProbe() {
 }
 
 function createSession(
-  messages: () => AsyncGenerator<DecodedFrame, void, void> = emptyMessages,
+  messages: () => AsyncIterable<DecodedFrame> = () => asyncValues([]),
 ): EpisodeSession {
   const manifest = {
     episodeId: "test",
@@ -431,23 +433,29 @@ function createSession(
   return {
     dispose: vi.fn(),
     manifest,
-    read: vi.fn(async function* (request) {
-      for await (const frame of messages()) {
-        yield {
-          frames: [
-            { ...frame, streamId: request.streams[0] ?? frame.streamId },
-          ],
-          stream: request.streams[0] ?? frame.streamId,
-        };
-      }
-    }),
+    read: vi.fn<EpisodeSession["read"]>((request) =>
+      mapMessagesToBatches(request.streams[0], messages()),
+    ),
   };
 }
 
-async function* emptyMessages(): AsyncGenerator<DecodedFrame, void, void> {
-  for (const message of [] as DecodedFrame[]) {
-    yield message;
+async function* mapMessagesToBatches(
+  requestedStream: string | undefined,
+  messages: AsyncIterable<DecodedFrame>,
+) {
+  for await (const frame of messages) {
+    const stream = requestedStream ?? frame.streamId;
+    yield { frames: [{ ...frame, streamId: stream }], stream };
   }
+}
+
+async function* asyncValues<Value>(values: Iterable<Value>) {
+  for await (const value of values) yield value;
+}
+
+async function* valuesThenReject<Value>(values: Iterable<Value>, error: Error) {
+  yield* asyncValues(values);
+  yield await Promise.reject<never>(error);
 }
 
 function poseMessage(

@@ -13,9 +13,9 @@ import { createTileRegistry } from "../../interaction/registry";
 
 /** Live viewpoint store plus commands accepted by a mounted 3D tile. */
 export interface Scene3dViewpointController extends Scene3dViewpointStore {
-  setCameraNavigationMode(mode: Scene3dCameraNavigationMode): void;
-  setPose(pose: PointCloudCameraPose): void;
-  setProjection(projection: PointCloudCameraProjection): void;
+  setCameraNavigationMode(this: void, mode: Scene3dCameraNavigationMode): void;
+  setPose(this: void, pose: PointCloudCameraPose): void;
+  setProjection(this: void, projection: PointCloudCameraProjection): void;
 }
 
 const registry =

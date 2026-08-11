@@ -156,7 +156,8 @@ describe("topViewCameraPose", () => {
 
 describe("useScene3dViewShortcuts", () => {
   it("exposes the same camera presets for on-screen controls", () => {
-    const onApplyCameraPose = vi.fn();
+    const onApplyCameraPose =
+      vi.fn<Scene3dViewShortcutsOptions["onApplyCameraPose"]>();
     const { result } = renderHook(useScene3dViewShortcuts, {
       initialProps: shortcutOptions({
         isActive: false,
@@ -175,7 +176,8 @@ describe("useScene3dViewShortcuts", () => {
   });
 
   it("applies the ego view on E and the top view on T through the focus channel", () => {
-    const onApplyCameraPose = vi.fn();
+    const onApplyCameraPose =
+      vi.fn<Scene3dViewShortcutsOptions["onApplyCameraPose"]>();
     renderHook(useScene3dViewShortcuts, {
       initialProps: shortcutOptions({ onApplyCameraPose }),
     });
@@ -200,7 +202,8 @@ describe("useScene3dViewShortcuts", () => {
   });
 
   it("ignores modified keys, other keys, and typing targets", () => {
-    const onApplyCameraPose = vi.fn();
+    const onApplyCameraPose =
+      vi.fn<Scene3dViewShortcutsOptions["onApplyCameraPose"]>();
     renderHook(useScene3dViewShortcuts, {
       initialProps: shortcutOptions({ onApplyCameraPose }),
     });
@@ -216,7 +219,8 @@ describe("useScene3dViewShortcuts", () => {
   });
 
   it("leaves E and T available to other handlers when the tile is inactive", () => {
-    const onApplyCameraPose = vi.fn();
+    const onApplyCameraPose =
+      vi.fn<Scene3dViewShortcutsOptions["onApplyCameraPose"]>();
     const fallbackHandler = vi.fn((event: KeyboardEvent) => {
       expect(event.defaultPrevented).toBe(false);
     });
@@ -237,7 +241,8 @@ describe("useScene3dViewShortcuts", () => {
   });
 
   it("no-ops when neither an ego pose nor a displayed pose resolves", () => {
-    const onApplyCameraPose = vi.fn();
+    const onApplyCameraPose =
+      vi.fn<Scene3dViewShortcutsOptions["onApplyCameraPose"]>();
     renderHook(useScene3dViewShortcuts, {
       initialProps: shortcutOptions({
         frameTransforms: missingTransforms(),
@@ -253,7 +258,8 @@ describe("useScene3dViewShortcuts", () => {
   });
 
   it("anchors the top view on the current orbit target without an ego", () => {
-    const onApplyCameraPose = vi.fn();
+    const onApplyCameraPose =
+      vi.fn<Scene3dViewShortcutsOptions["onApplyCameraPose"]>();
     renderHook(useScene3dViewShortcuts, {
       initialProps: shortcutOptions({
         frameTransforms: missingTransforms(),
@@ -269,7 +275,8 @@ describe("useScene3dViewShortcuts", () => {
   });
 
   it("applies shortcuts using the configured up axis", () => {
-    const onApplyCameraPose = vi.fn();
+    const onApplyCameraPose =
+      vi.fn<Scene3dViewShortcutsOptions["onApplyCameraPose"]>();
     renderHook(useScene3dViewShortcuts, {
       initialProps: shortcutOptions({
         onApplyCameraPose,
@@ -293,7 +300,8 @@ describe("useScene3dViewShortcuts", () => {
   });
 
   it("unbinds the listener on unmount", () => {
-    const onApplyCameraPose = vi.fn();
+    const onApplyCameraPose =
+      vi.fn<Scene3dViewShortcutsOptions["onApplyCameraPose"]>();
     const { unmount } = renderHook(useScene3dViewShortcuts, {
       initialProps: shortcutOptions({ onApplyCameraPose }),
     });

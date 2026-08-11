@@ -279,12 +279,18 @@ export function useScene3dFrameSelection({
   // bounded inventory; ordinary content gaps keep the intent pending.
   useEffect(() => {
     const pendingWorld = pendingUserWorldFrameIdRef.current;
-    if (scene3dUserFrameRestoreApplies(pendingWorld, localFrameIds)) {
+    if (
+      pendingWorld !== null &&
+      scene3dUserFrameRestoreApplies(pendingWorld, localFrameIds)
+    ) {
       pendingUserWorldFrameIdRef.current = null;
       dispatch({ frameId: pendingWorld, type: "userReferenceSelected" });
     }
     const pendingTarget = pendingUserCameraTargetFrameIdRef.current;
-    if (scene3dUserFrameRestoreApplies(pendingTarget, frameIds)) {
+    if (
+      pendingTarget !== null &&
+      scene3dUserFrameRestoreApplies(pendingTarget, frameIds)
+    ) {
       pendingUserCameraTargetFrameIdRef.current = null;
       setUserCameraTargetFrameId(pendingTarget);
     }

@@ -37,9 +37,9 @@ export interface Scene3dViewpointSnapshot {
 
 /** External store that publishes live camera values without tile rerenders. */
 export interface Scene3dViewpointStore {
-  getSnapshot(): Scene3dViewpointSnapshot;
-  publish(patch: Partial<Scene3dViewpointSnapshot>): void;
-  subscribe(listener: () => void): () => void;
+  getSnapshot(this: void): Scene3dViewpointSnapshot;
+  publish(this: void, patch: Partial<Scene3dViewpointSnapshot>): void;
+  subscribe(this: void, listener: () => void): () => void;
 }
 
 /** Converts a Cartesian camera pose into target, distance, and orbit angles. */

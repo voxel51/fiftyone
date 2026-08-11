@@ -285,5 +285,5 @@ function cachedSceneUpdateDeltas(
 function sceneUpdateOf(msg: DecodedFrame): SceneUpdateVisualization | null {
   const v = msg.output.visualization;
   if (!v || v.kind !== "scene-update") return null;
-  return v as SceneUpdateVisualization;
+  return v;
 }
