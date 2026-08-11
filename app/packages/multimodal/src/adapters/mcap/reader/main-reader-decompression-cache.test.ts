@@ -59,11 +59,7 @@ interface WriterConstructor {
 
 function indexedReaderConstructor(): IndexedReaderConstructor {
   const candidate: unknown = McapIndexedReader;
-  if (
-    typeof candidate !== "function" ||
-    !("Initialize" in candidate) ||
-    typeof candidate.Initialize !== "function"
-  ) {
+  if (!isIndexedReaderConstructor(candidate)) {
     throw new Error("@mcap/core did not expose McapIndexedReader.Initialize");
   }
   return candidate;
@@ -71,10 +67,24 @@ function indexedReaderConstructor(): IndexedReaderConstructor {
 
 function mcapWriterConstructor(): WriterConstructor {
   const candidate: unknown = McapWriter;
-  if (typeof candidate !== "function") {
+  if (!isWriterConstructor(candidate)) {
     throw new Error("@mcap/core did not expose McapWriter");
   }
   return candidate;
+}
+
+function isIndexedReaderConstructor(
+  value: unknown,
+): value is IndexedReaderConstructor {
+  return (
+    typeof value === "function" &&
+    "Initialize" in value &&
+    typeof value.Initialize === "function"
+  );
+}
+
+function isWriterConstructor(value: unknown): value is WriterConstructor {
+  return typeof value === "function";
 }
 
 describe("McapIndexedReader decompression cache integration", () => {

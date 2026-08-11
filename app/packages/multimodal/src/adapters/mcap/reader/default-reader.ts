@@ -1,9 +1,5 @@
 import "../compatibility/browser-node-globals";
-import {
-  McapIndexedReader,
-  McapStreamReader,
-  type McapTypes,
-} from "@mcap/core";
+import { McapIndexedReader, McapStreamReader } from "@mcap/core";
 import {
   byteSourceAccessKey,
   type ByteSourceDescriptor,
@@ -20,7 +16,10 @@ import type {
   McapPrefetchChunkDataRequest,
   McapPrefetchWindowRequest,
 } from "./prefetch-types";
-import { createCachedMcapDecompressHandlers } from "./decompress-cache";
+import {
+  createCachedMcapDecompressHandlers,
+  type McapDecompressHandlers,
+} from "./decompress-cache";
 import { createMcapDecompressedChunkCache } from "./decompressed-chunk-cache";
 import { createMcapIndexedMessageReader } from "./indexed-message-reader";
 import { readLatestIndexedMessageTimesForReader } from "./latest-before";
@@ -28,6 +27,8 @@ import { readIndexedMessageTimesForReader } from "./message-index";
 import { readTopicIndexedTimeBoundsForReader } from "./topic-time-bounds";
 import type {
   McapIndexedReaderLike,
+  McapMessage,
+  McapReadable,
   McapReadIndexedMessageTimesRequest,
   McapReadLatestIndexedMessageTimesRequest,
   McapReadTopicIndexedTimeBoundsRequest,
@@ -43,12 +44,65 @@ type McapReadMessagesArgs = {
   readonly validateCrcs?: boolean;
 };
 
+interface IndexedReaderConstructor {
+  Initialize(options: {
+    readonly decompressHandlers: McapDecompressHandlers;
+    readonly messageIndexCacheSizeBytes: number;
+    readonly readable: McapReadable;
+  }): Promise<McapIndexedReaderLike>;
+}
+
+interface StreamReader {
+  append(bytes: Uint8Array): void;
+  done(): boolean;
+  nextRecord(): unknown;
+}
+
+interface StreamReaderConstructor {
+  new (options: {
+    readonly decompressHandlers: McapDecompressHandlers;
+    readonly validateCrcs?: boolean;
+  }): StreamReader;
+}
+
+function indexedReaderConstructor(): IndexedReaderConstructor {
+  const candidate: unknown = McapIndexedReader;
+  if (!isIndexedReaderConstructor(candidate)) {
+    throw new Error("@mcap/core did not expose McapIndexedReader.Initialize");
+  }
+  return candidate;
+}
+
+function streamReaderConstructor(): StreamReaderConstructor {
+  const candidate: unknown = McapStreamReader;
+  if (!isStreamReaderConstructor(candidate)) {
+    throw new Error("@mcap/core did not expose McapStreamReader");
+  }
+  return candidate;
+}
+
+function isIndexedReaderConstructor(
+  value: unknown,
+): value is IndexedReaderConstructor {
+  return (
+    typeof value === "function" &&
+    "Initialize" in value &&
+    typeof value.Initialize === "function"
+  );
+}
+
+function isStreamReaderConstructor(
+  value: unknown,
+): value is StreamReaderConstructor {
+  return typeof value === "function";
+}
+
 /**
  * Creates the default indexed MCAP reader with supported chunk decompressors.
  */
 export async function createDefaultMcapReader(
   source: ByteSourceDescriptor,
-  readable: McapTypes.IReadable,
+  readable: McapReadable,
 ): Promise<McapIndexedReaderLike> {
   const wasmDecompressHandlers = await loadDecompressHandlers();
   const decompressedChunkCache = createMcapDecompressedChunkCache();
@@ -61,9 +115,9 @@ export async function createDefaultMcapReader(
         : { fallbackSourceKey: byteSourceAccessKey(source) }),
     },
   );
-  let reader: McapIndexedReader;
+  let reader: McapIndexedReaderLike;
   try {
-    reader = await McapIndexedReader.Initialize({
+    reader = await indexedReaderConstructor().Initialize({
       decompressHandlers,
       messageIndexCacheSizeBytes: DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES,
       readable,
@@ -83,7 +137,7 @@ export async function createDefaultMcapReader(
   const hasMessageIndexes =
     reader.chunkIndexes.length > 0 &&
     reader.chunkIndexes.every(
-      (chunk: McapTypes.TypedMcapRecords["ChunkIndex"]) =>
+      (chunk) =>
         (chunk.messageStartTime === 0n && chunk.messageEndTime === 0n) ||
         (chunk.messageIndexLength > 0n && chunk.messageIndexOffsets.size > 0),
     );
@@ -114,7 +168,7 @@ export async function createDefaultMcapReader(
         request.maxConcurrentReads,
       ),
     readMessages: hasMessageIndexes
-      ? reader.readMessages.bind(reader)
+      ? (args?: McapReadMessagesArgs) => reader.readMessages(args)
       : (args?: McapReadMessagesArgs) =>
           readNonIndexedMessages({
             args,
@@ -170,10 +224,10 @@ async function* readNonIndexedMessages({
   readable,
 }: {
   readonly args?: McapReadMessagesArgs;
-  readonly channelsById: McapIndexedReader["channelsById"];
-  readonly decompressHandlers: McapTypes.DecompressHandlers;
-  readonly readable: McapTypes.IReadable;
-}): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+  readonly channelsById: McapIndexedReaderLike["channelsById"];
+  readonly decompressHandlers: McapDecompressHandlers;
+  readonly readable: McapReadable;
+}): AsyncGenerator<McapMessage, void, void> {
   const selectedChannelIds = args.topics
     ? new Set(
         [...channelsById.values()]
@@ -181,8 +235,8 @@ async function* readNonIndexedMessages({
           .map((channel) => channel.id),
       )
     : undefined;
-  const messages: McapTypes.TypedMcapRecords["Message"][] = [];
-  const stream = new McapStreamReader({
+  const messages: McapMessage[] = [];
+  const stream = new (streamReaderConstructor())({
     decompressHandlers,
     ...(args.validateCrcs !== undefined
       ? { validateCrcs: args.validateCrcs }
@@ -199,7 +253,7 @@ async function* readNonIndexedMessages({
       record = stream.nextRecord()
     ) {
       if (
-        record.type === "Message" &&
+        isMcapMessage(record) &&
         (selectedChannelIds?.has(record.channelId) ?? true) &&
         (args.startTime === undefined || record.logTime >= args.startTime) &&
         (args.endTime === undefined || record.logTime <= args.endTime)
@@ -222,9 +276,10 @@ async function* readNonIndexedMessages({
   }
 }
 
-function compressedChunkTypes(reader: McapIndexedReader): ReadonlySet<string> {
-  const chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
-    reader.chunkIndexes;
+function compressedChunkTypes(
+  reader: McapIndexedReaderLike,
+): ReadonlySet<string> {
+  const chunkIndexes = reader.chunkIndexes;
 
   return new Set(
     chunkIndexes
@@ -233,9 +288,26 @@ function compressedChunkTypes(reader: McapIndexedReader): ReadonlySet<string> {
   );
 }
 
+function isMcapMessage(record: unknown): record is McapMessage {
+  if (typeof record !== "object" || record === null) return false;
+  if (!("type" in record) || record.type !== "Message") return false;
+  return (
+    "channelId" in record &&
+    typeof record.channelId === "number" &&
+    "data" in record &&
+    record.data instanceof Uint8Array &&
+    "logTime" in record &&
+    typeof record.logTime === "bigint" &&
+    "publishTime" in record &&
+    typeof record.publishTime === "bigint" &&
+    "sequence" in record &&
+    typeof record.sequence === "number"
+  );
+}
+
 function assertSupportedChunkCompressions(
   compressions: ReadonlySet<string>,
-  decompressHandlers: McapTypes.DecompressHandlers,
+  decompressHandlers: McapDecompressHandlers,
 ) {
   const supported = new Set(Object.keys(decompressHandlers));
   const unsupported = [...compressions]
