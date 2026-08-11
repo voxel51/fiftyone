@@ -14,7 +14,6 @@ import {
   LabelType,
   LIST_LABEL_CHILD,
 } from "./labels";
-import { equalsNormalized } from "./normalize";
 import { getNestedField } from "./pointer";
 import { reconcilePersisted } from "./reconcile";
 

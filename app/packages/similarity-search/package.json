@@ -17,10 +17,24 @@
         "@fiftyone/plugins": "*",
         "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
-        "@voxel51/voodo": "^0.1.0"
+        "@voxel51/voodo": "catalog:"
     },
     "devDependencies": {
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
+        "@react-spring/web": "catalog:",
+        "@types/react": "catalog:",
         "@vitejs/plugin-react": "catalog:",
+        "jotai": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-error-boundary": "catalog:",
+        "react-is": "catalog:",
+        "react-relay": "catalog:",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "catalog:",
+        "styled-components": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },
@@ -29,7 +43,16 @@
     },
     "peerDependencies": {
         "@mui/icons-material": "*",
+        "@mui/material": "*",
+        "@react-spring/web": "*",
         "jotai": "*",
-        "recoil": "*"
+        "react": "*",
+        "react-dom": "*",
+        "react-error-boundary": "*",
+        "react-is": "*",
+        "react-relay": "*",
+        "recoil": "*",
+        "recoil-relay": "*",
+        "styled-components": "*"
     }
 }

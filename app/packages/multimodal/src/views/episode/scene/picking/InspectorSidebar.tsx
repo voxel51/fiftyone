@@ -49,7 +49,7 @@ const InspectorSidebar: React.FC = () => {
         </span>
       ) : (
         <div
-          className={settingsStyles.root}
+          className={`${settingsStyles.root} ${settingsStyles.inspectorBody}`}
           data-testid="episode-inspector-body"
         >
           {selected.kind === "scene-annotation" ? (
@@ -125,11 +125,11 @@ function ImageObjectFields({
       <Field label="Object" value={selected.label ?? selected.primitiveKind} />
       <Field label="Kind" value={selected.primitiveKind} />
       <Field label="Stream" value={sourceName} />
-      <div className={settingsStyles.field}>
+      <div className={`${settingsStyles.field} ${settingsStyles.growField}`}>
         <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
           Geometry
         </Text>
-        <pre className={settingsStyles.metaText} style={preStyle}>
+        <pre className={`${settingsStyles.metaText} ${settingsStyles.growPre}`}>
           {safeJson(selected.data)}
         </pre>
       </div>
@@ -155,14 +155,6 @@ function Field({
     </div>
   );
 }
-
-const preStyle: React.CSSProperties = {
-  margin: 0,
-  maxHeight: 240,
-  overflow: "auto",
-  whiteSpace: "pre-wrap",
-  wordBreak: "break-word",
-};
 
 function safeJson(value: unknown): string {
   try {

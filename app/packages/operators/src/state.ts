@@ -37,7 +37,11 @@ import {
   resolveOperatorURI,
 } from "./operators";
 import { OperatorPromptType, Places } from "./types";
-import { OperatorExecutorOptions } from "./ts";
+import {
+  ExecutionCallback,
+  ExecutionCallbackOptions,
+  OperatorExecutorOptions,
+} from "./ts";
 import { generateOperatorSessionId, optimizeCtx } from "./utils";
 import { ValidationContext } from "./validation";
 
@@ -215,6 +219,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     hooks,
     viewName,
     currentSample,
+    extendedSelection,
+    analyticsInfo,
     groupSlice,
     queryPerformance,
     spaces,
@@ -230,25 +236,28 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
   const [isLoading, setIsLoading] = useState(true);
   const [executionOptions, setExecutionOptions] = useState(null);
 
-  const fetch = useCallback(
-    debounce(async (ctxOverride = null) => {
-      if (!isRemote) {
-        setExecutionOptions({ allowImmediateExecution: true });
-        return;
-      }
-      if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
-      const options = await resolveExecutionOptions(
-        operatorURI,
-        ctxOverride || ctx,
-      );
-      setExecutionOptions(options);
-      setIsLoading(false);
-    }),
+  const fetch = useMemo(
+    () =>
+      debounce(async (ctxOverride = null) => {
+        if (!isRemote) {
+          setExecutionOptions({ allowImmediateExecution: true });
+          return;
+        }
+        if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
+        const options = await resolveExecutionOptions(
+          operatorURI,
+          ctxOverride || ctx,
+        );
+        setExecutionOptions(options);
+        setIsLoading(false);
+      }),
     [operatorURI, ctx, isRemote],
   );
 
   useEffect(() => {
     fetch();
+    // fetch once on mount; refetches happen explicitly via the returned fetch
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { isLoading, executionOptions, fetch };
@@ -277,127 +286,136 @@ export const useOperatorPromptSubmitOptions = (
   execute: (options?: OperatorExecutorOptions) => void,
   promptView?: OperatorPromptType["promptView"],
 ) => {
-  const options: OperatorExecutionOption[] = [];
   const persistUnderKey = `operator-prompt-${operatorURI}`;
-  const availableOrchestrators =
-    execDetails.executionOptions?.availableOrchestrators || [];
-  const hasAvailableOrchestrators = availableOrchestrators.length > 0;
   const executionOptions = execDetails.executionOptions || {};
-  const defaultToExecute = executionOptions.allowDelegatedExecution
-    ? !executionOptions.defaultChoiceToDelegated
-    : true;
-  const defaultToSchedule = executionOptions.allowDelegatedExecution
-    ? executionOptions.defaultChoiceToDelegated
-    : false;
-  if (executionOptions.allowImmediateExecution) {
-    options.push({
-      label:
-        promptView?.submitButtonLabel ||
-        promptView?.submit_button_label ||
-        "Execute",
-      id: "execute",
-      tag: "FOR TESTING",
-      default: defaultToExecute,
-      description:
-        "Run this operation synchronously. Only suitable for small datasets",
-      onSelect() {
-        setSelectedID("execute");
-      },
-      onClick() {
-        execute();
-      },
-      isDelegated: false,
-    });
-  }
-  if (
-    executionOptions.allowDelegatedExecution &&
-    !executionOptions.orchestratorRegistrationEnabled
-  ) {
-    options.push({
-      label: "Schedule",
-      id: "schedule",
-      default: defaultToSchedule,
-      description: "Run this operation in the background",
-      onSelect() {
-        setSelectedID("schedule");
-      },
-      onClick() {
-        execute({ requestDelegation: true });
-      },
-      isDelegated: true,
-    });
-  }
+  const hasAvailableOrchestrators =
+    (executionOptions.availableOrchestrators || []).length > 0;
+  const [selectedID, setSelectedID] = fos.useBrowserStorage(
+    persistUnderKey,
+    executionOptions.allowImmediateExecution ? "execute" : "schedule",
+  );
 
-  if (
-    executionOptions.allowDelegatedExecution &&
-    hasAvailableOrchestrators &&
-    executionOptions.orchestratorRegistrationEnabled
-  ) {
-    for (let [
-      index,
-      orc,
-    ] of execDetails.executionOptions.availableOrchestrators.entries()) {
+  const options: OperatorExecutionOption[] = useMemo(() => {
+    const options: OperatorExecutionOption[] = [];
+    const availableOrchestrators =
+      execDetails.executionOptions?.availableOrchestrators || [];
+    const hasAvailableOrchestrators = availableOrchestrators.length > 0;
+    const executionOptions = execDetails.executionOptions || {};
+    const defaultToExecute = executionOptions.allowDelegatedExecution
+      ? !executionOptions.defaultChoiceToDelegated
+      : true;
+    const defaultToSchedule = executionOptions.allowDelegatedExecution
+      ? executionOptions.defaultChoiceToDelegated
+      : false;
+    if (executionOptions.allowImmediateExecution) {
       options.push({
-        label: "Schedule",
-        choiceLabel: `Schedule on ${orc.instanceID}`,
-        id: orc.id,
-        default: defaultToSchedule && index === 0,
-        description: `Run this operation on ${orc.instanceID}`,
+        label:
+          promptView?.submitButtonLabel ||
+          promptView?.submit_button_label ||
+          "Execute",
+        id: "execute",
+        tag: "FOR TESTING",
+        default: defaultToExecute,
+        description:
+          "Run this operation synchronously. Only suitable for small datasets",
         onSelect() {
-          setSelectedID(orc.id);
+          setSelectedID("execute");
         },
         onClick() {
-          execute({
-            delegationTarget: orc.instanceID,
-            requestDelegation: true,
-          });
+          execute();
+        },
+        isDelegated: false,
+      });
+    }
+    if (
+      executionOptions.allowDelegatedExecution &&
+      !executionOptions.orchestratorRegistrationEnabled
+    ) {
+      options.push({
+        label: "Schedule",
+        id: "schedule",
+        default: defaultToSchedule,
+        description: "Run this operation in the background",
+        onSelect() {
+          setSelectedID("schedule");
+        },
+        onClick() {
+          execute({ requestDelegation: true });
         },
         isDelegated: true,
       });
     }
-  } else if (
-    executionOptions.allowDelegatedExecution &&
-    executionOptions.allowImmediateExecution &&
-    executionOptions.orchestratorRegistrationEnabled &&
-    !hasAvailableOrchestrators
-  ) {
-    const markdownDesc = React.createElement(
-      Markdown,
-      null,
-      "[Learn how](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations) to run this operation in the background",
-    );
-    options.push({
-      label: "Schedule",
-      choiceLabel: `Schedule`,
-      tag: "NOT AVAILABLE",
-      id: "disabled-schedule",
-      description: markdownDesc,
-      isDelegated: true,
-      isDisabledSchedule: true,
+
+    if (
+      executionOptions.allowDelegatedExecution &&
+      hasAvailableOrchestrators &&
+      executionOptions.orchestratorRegistrationEnabled
+    ) {
+      for (const [
+        index,
+        orc,
+      ] of execDetails.executionOptions.availableOrchestrators.entries()) {
+        options.push({
+          label: "Schedule",
+          choiceLabel: `Schedule on ${orc.instanceID}`,
+          id: orc.id,
+          default: defaultToSchedule && index === 0,
+          description: `Run this operation on ${orc.instanceID}`,
+          onSelect() {
+            setSelectedID(orc.id);
+          },
+          onClick() {
+            execute({
+              delegationTarget: orc.instanceID,
+              requestDelegation: true,
+            });
+          },
+          isDelegated: true,
+        });
+      }
+    } else if (
+      executionOptions.allowDelegatedExecution &&
+      executionOptions.allowImmediateExecution &&
+      executionOptions.orchestratorRegistrationEnabled &&
+      !hasAvailableOrchestrators
+    ) {
+      const markdownDesc = React.createElement(
+        Markdown,
+        null,
+        "[Learn how](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations) to run this operation in the background",
+      );
+      options.push({
+        label: "Schedule",
+        choiceLabel: `Schedule`,
+        tag: "NOT AVAILABLE",
+        id: "disabled-schedule",
+        description: markdownDesc,
+        isDelegated: true,
+        isDisabledSchedule: true,
+      });
+    }
+
+    // sort options so that the default is always the first in the list
+    options.sort((a, b) => {
+      if (a.default) return -1;
+      if (b.default) return 1;
+      return 0;
     });
-  }
 
-  // sort options so that the default is always the first in the list
-  options.sort((a, b) => {
-    if (a.default) return -1;
-    if (b.default) return 1;
-    return 0;
-  });
+    for (const option of options) {
+      if (option.id === selectedID) {
+        option.selected = true;
+      }
+    }
 
-  const fallbackId = executionOptions.allowImmediateExecution
-    ? "execute"
-    : "schedule";
-
-  const defaultID =
-    options.find((option) => option.default)?.id ||
-    options[0]?.id ||
-    fallbackId;
-
-  let [selectedID, setSelectedID] = fos.useBrowserStorage(
-    persistUnderKey,
-    defaultID,
-  );
-  const selectedOption = options.find((option) => option.id === selectedID);
+    return options;
+  }, [
+    execDetails.executionOptions,
+    execute,
+    promptView,
+    selectedID,
+    setSelectedID,
+  ]);
 
   useEffect(() => {
     const selectedOptionExists = !!options.find((o) => o.id === selectedID);
@@ -408,7 +426,7 @@ export const useOperatorPromptSubmitOptions = (
         options.find((option) => option.default)?.id || options[0]?.id;
       setSelectedID(nextSelectedID);
     }
-  }, [options]);
+  }, [options, selectedID, setSelectedID]);
 
   const handleSubmit = useCallback(() => {
     const selectedOption = options.find((option) => option.id === selectedID);
@@ -417,7 +435,6 @@ export const useOperatorPromptSubmitOptions = (
     }
   }, [options, selectedID]);
 
-  if (selectedOption) selectedOption.selected = true;
   const requiresOrchestratorSetup =
     executionOptions.orchestratorRegistrationEnabled &&
     !hasAvailableOrchestrators &&
@@ -494,6 +511,9 @@ export const useOperatorPrompt = () => {
   const liteValuesRef = useRef({});
   const promptId = promptingOperator.id;
 
+  // the debounced resolver must keep its identity across renders so the
+  // debounce window survives; deps are intentionally narrow
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const resolveInput = useCallback(
     debounce(
       async (ctx) => {
@@ -527,30 +547,36 @@ export const useOperatorPrompt = () => {
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
     resolveInput(ctx);
-  }, [ctx, operatorName, hooks, serializedParams]);
+  }, [ctx, hooks, resolveInput]);
 
-  const validate = useCallback((ctx, resolved) => {
-    return new Promise<{
-      invalid: boolean;
-      errors: any;
-      validationContext: any;
-    }>((resolve) => {
-      setTimeout(() => {
-        const validationContext = new ValidationContext(
-          ctx,
-          resolved,
-          operator,
-        );
-        const validationErrors = validationContext.toProps().errors;
-        setValidationErrors(validationErrors);
-        resolve({
-          invalid: validationContext.invalid,
-          errors: validationErrors,
-          validationContext,
-        });
-      }, 0);
-    });
-  }, []);
+  const validate = useCallback(
+    (ctx, resolved) => {
+      return new Promise<{
+        invalid: boolean;
+        errors: unknown[];
+        validationContext: ValidationContext;
+      }>((resolve) => {
+        setTimeout(() => {
+          const validationContext = new ValidationContext(
+            ctx,
+            resolved,
+            operator,
+          );
+          const validationErrors = validationContext.toProps().errors;
+          setValidationErrors(validationErrors);
+          resolve({
+            invalid: validationContext.invalid,
+            errors: validationErrors,
+            validationContext,
+          });
+        }, 0);
+      });
+    },
+    [operator],
+  );
+  // the throttled validator must keep its identity so the throttle window
+  // survives across renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const validateThrottled = useCallback(
     debounce(validate, RESOLVE_INPUT_VALIDATION_TTL, { leading: true }),
     [],
@@ -559,6 +585,9 @@ export const useOperatorPrompt = () => {
   useEffect(() => {
     if (executor.isExecuting || executor.hasExecuted) return;
     resolveInputFields();
+    // re-resolve inputs only when params change; keying on the resolver would
+    // re-fire every render because hooks is rebuilt each time
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serializedParams, executor.isExecuting]);
   const resolveOutputFields = useCallback(async () => {
     ctx.hooks = hooks;
@@ -570,12 +599,15 @@ export const useOperatorPrompt = () => {
     } else {
       setOutputFields(null);
     }
-  }, [ctx, operatorName, hooks, JSON.stringify(executor.result)]);
+  }, [ctx, hooks, operator, executor.result]);
 
   useEffect(() => {
     if (executor.result) {
       resolveOutputFields();
     }
+    // resolve outputs once per result; keying on the resolver would re-fire
+    // every render because hooks is rebuilt each time
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [executor.result]);
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
@@ -612,14 +644,22 @@ export const useOperatorPrompt = () => {
         ...promptingOperator.options,
       });
     },
-    [operator, promptingOperator, cachedResolvedInput, params],
+    [
+      operator,
+      promptingOperator,
+      cachedResolvedInput,
+      params,
+      ctx,
+      executor,
+      validate,
+    ],
   );
-  const close = () => {
+  const close = useCallback(() => {
     setPromptingOperator(null);
     setInputFields(null);
     setOutputFields(null);
     executor.clear();
-  };
+  }, [executor, setPromptingOperator]);
 
   const autoExec = async () => {
     const needsInput = operator && (await operator.needsUserInput(ctx));
@@ -631,6 +671,9 @@ export const useOperatorPrompt = () => {
 
   useEffect(() => {
     autoExec();
+    // auto-execute exactly once per operator; keying on autoExec/ctx would
+    // re-execute the operator whenever the context changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operator]);
 
   const isExecuting = executor && executor.isExecuting;
@@ -667,12 +710,13 @@ export const useOperatorPrompt = () => {
     promptView,
   );
 
+  const { handleSubmit } = submitOptions;
   const onSubmit = useCallback(
     (e) => {
       if (e) e.preventDefault();
-      submitOptions.handleSubmit();
+      handleSubmit();
     },
-    [submitOptions?.handleSubmit],
+    [handleSubmit],
   );
 
   const computedValidationErrors = useMemo(() => {
@@ -988,12 +1032,13 @@ export function useOperatorBrowser() {
       close,
       setIsVisible,
       isOperatorPaletteOpened,
+      editingField,
     ],
   );
 
   const toggle = useCallback(() => {
     setIsVisible((isVisible) => !isVisible);
-  }, []);
+  }, [setIsVisible]);
 
   useEffect(() => {
     document.addEventListener("keydown", onKeyDown);
@@ -1081,7 +1126,16 @@ export enum OperatorLoadResult {
  * }, [executor]);
  * ```
  */
-export function useOperatorExecutor(uri, handlers: any = {}) {
+export function useOperatorExecutor(
+  uri,
+  handlers: {
+    onSuccess?: ExecutionCallback;
+    onError?: (
+      result: OperatorResult,
+      options?: ExecutionCallbackOptions,
+    ) => void;
+  } = {},
+) {
   uri = resolveOperatorURI(uri, { keepMethod: true });
 
   let operator;

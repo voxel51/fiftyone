@@ -8,18 +8,26 @@
         "eslint-plugin-react-hooks": "rc",
         "globals": "catalog:",
         "prettier": "catalog:",
-        "typescript-eslint": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-is": "catalog:",
+        "typescript": "catalog:",
+        "typescript-eslint": "catalog:eslint9",
         "vite": "catalog:"
     },
     "dependencies": {
         "@fiftyone/commands": "workspace:^",
         "@fiftyone/tiling": "*",
-        "@voxel51/voodo": "^0.1.0",
+        "@voxel51/voodo": "catalog:",
         "jotai": "catalog:",
         "jotai-optics": "^0.4.0",
+        "optics-ts": "^2.4.1",
         "vite-plugin-svgr": "catalog:"
     },
     "peerDependencies": {
-        "@fiftyone/spaces": "*"
+        "@fiftyone/spaces": "*",
+        "react": "*",
+        "react-dom": "*",
+        "react-is": "*"
     }
 }

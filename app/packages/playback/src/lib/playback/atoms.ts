@@ -20,7 +20,11 @@
 // ---------------------------------------------------------------------------
 
 import { atom, type PrimitiveAtom } from "jotai/vanilla";
-import { atomFamily } from "jotai/vanilla/utils";
+import {
+  atomFamily,
+  atomWithStorage,
+  createJSONStorage,
+} from "jotai/vanilla/utils";
 import type {
   BufferedRanges,
   BufferingStream,
@@ -169,6 +173,63 @@ export const speedAtom = atom(1.0);
 export const achievedSpeedAtom = atom<number | null>(null) as PrimitiveAtom<
   number | null
 >;
+
+/** Volume restored by unmute when the user has never set a level. */
+export const DEFAULT_AUDIO_VOLUME = 0.7;
+
+// SSR (the teams app evaluates this module during Next.js prerender) has
+// no `window`, and restricted browsers (sandboxed iframes, blocked
+// cookies) throw on the storage accessor itself; `undefined` keeps the
+// atom in-memory in both cases.
+const guardedStorage = (
+  kind: "localStorage" | "sessionStorage",
+): Storage | undefined => {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  try {
+    return window[kind];
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Audio volume in [0, 1]. Independent of `audioMutedAtom` so unmute
+ * restores the prior level. Persisted per user across sessions.
+ */
+export const audioVolumeAtom = atomWithStorage(
+  "fo-playback-audio-volume",
+  DEFAULT_AUDIO_VOLUME,
+  // explicit sync storage keeps the value type `number`
+  createJSONStorage<number>(() => guardedStorage("localStorage")),
+  // the persisted value must be readable at first store.get
+  { getOnInit: true },
+);
+
+/**
+ * Whether timeline audio is muted. Session-scoped: every session starts
+ * muted (browsers reject unmuted autoplay before a user gesture), but an
+ * unmute survives sample changes — each sample mounts a fresh provider
+ * store, which would otherwise re-mute. While muted, an audio stream goes
+ * dormant (unsubscribed) so it never gates the engine's barrier.
+ */
+export const audioMutedAtom = atomWithStorage(
+  "fo-playback-audio-muted",
+  true,
+  createJSONStorage<boolean>(() => guardedStorage("sessionStorage")),
+  { getOnInit: true },
+);
+
+/**
+ * Audio status for the volume UI: "unavailable" renders no control,
+ * "available" renders it, "error" (a fatal `MediaError` on the source)
+ * renders it disabled with an explanatory tooltip. Audio integrations
+ * write it.
+ */
+export type AudioAvailability = "unavailable" | "available" | "error";
+
+export const audioAvailableAtom = atom<AudioAvailability>("unavailable");
 
 /**
  * Fired on discontinuous playhead jumps: user seek, step forward/back,

@@ -79,13 +79,15 @@ const StreamsSettings: React.FC<{
   );
 
   return (
-    <div className={`${styles.root} ${styles.tabContent}`}>
+    <div
+      className={`${styles.root} ${styles.tabContent} ${styles.streamsTabContent}`}
+    >
       {rows.length === 0 ? (
         <span className={styles.streamEmpty}>No {plural} found</span>
       ) : (
         <>
           {showSearch ? (
-            <div className={styles.stickyStreamSearch}>
+            <div className={styles.streamSearchBar}>
               <Input
                 aria-label={`Search ${plural}`}
                 className={styles.streamSearchInput}

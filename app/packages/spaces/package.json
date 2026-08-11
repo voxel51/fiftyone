@@ -18,6 +18,8 @@
     "devDependencies": {
         "@types/sortablejs": "^1.15.0",
         "@vitejs/plugin-react": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "vite": "catalog:"
     },
     "dependencies": {
@@ -30,6 +32,7 @@
         "@mui/material": "*",
         "@react-spring/web": "*",
         "react": "*",
+        "react-dom": "*",
         "recoil": "*"
     }
 }

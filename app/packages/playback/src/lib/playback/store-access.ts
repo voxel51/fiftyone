@@ -13,6 +13,10 @@
 // ---------------------------------------------------------------------------
 
 import {
+  type AudioAvailability,
+  audioAvailableAtom,
+  audioMutedAtom,
+  audioVolumeAtom,
   bufferedRangesAtom,
   bufferingDetailAtom,
   bufferingStreamsAtom,
@@ -242,6 +246,43 @@ export function setBufferedRanges(
  */
 export function bumpStreamRangesVersion(store: PlaybackStore): void {
   store.set(streamRangesVersionAtom, store.get(streamRangesVersionAtom) + 1);
+}
+
+/** Non-reactive read of the audio volume in [0, 1]. */
+export function getAudioVolume(store: PlaybackStore): number {
+  return store.get(audioVolumeAtom);
+}
+
+/** Set the audio volume. Clamped to [0, 1]; non-finite values are ignored. */
+export function setAudioVolume(store: PlaybackStore, volume: number): void {
+  if (!Number.isFinite(volume)) return;
+  store.set(audioVolumeAtom, Math.min(1, Math.max(0, volume)));
+}
+
+/** Non-reactive read of the audio muted flag. */
+export function getAudioMuted(store: PlaybackStore): boolean {
+  return store.get(audioMutedAtom);
+}
+
+/**
+ * Mute / unmute timeline audio. Muting sends any registered audio stream
+ * dormant, so a muted timeline never waits on audio buffering.
+ */
+export function setAudioMuted(store: PlaybackStore, muted: boolean): void {
+  store.set(audioMutedAtom, muted);
+}
+
+/** Non-reactive read of the timeline's audio status. */
+export function getAudioAvailable(store: PlaybackStore): AudioAvailability {
+  return store.get(audioAvailableAtom);
+}
+
+/** Publish the timeline's audio status; see `audioAvailableAtom`. */
+export function setAudioAvailable(
+  store: PlaybackStore,
+  availability: AudioAvailability,
+): void {
+  store.set(audioAvailableAtom, availability);
 }
 
 /** Non-reactive read of a stream's current committed value. */

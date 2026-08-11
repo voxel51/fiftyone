@@ -78,16 +78,17 @@ test("does not show when opening or navigating the modal in a patches view", asy
   page,
   pagePom,
 }) => {
+  const loadingScreens = await pagePom.armGlobalLoadingScreenCounter();
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ view: "patches" }),
   });
-  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen();
+  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await grid.openFirstSample();
   await modal.waitForSampleLoadDomAttribute();
-  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen();
+  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await modal.navigateNextSample();
   await modal.waitForSampleLoadDomAttribute();
-  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen();
+  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 });

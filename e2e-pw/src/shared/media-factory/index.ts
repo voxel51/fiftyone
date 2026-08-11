@@ -24,7 +24,7 @@ import { createVideo } from "./video";
 export const MediaFactory = {
   /** Creates a deterministic indexed MCAP recording. See {@link createMcapFixture}. */
   createMcapFixture,
-  /** Creates a solid-color WebM video encoded with the libvpx VP8 codec. See {@link createVideo}. */
+  /** Creates a solid-color video (VP8/`.webm` or VP9/`.mp4`), optionally with a sine audio track. See {@link createVideo}. */
   createVideo,
   /** Creates a PNG image with an optional fill color and watermark. See {@link createImage}. */
   createImage,

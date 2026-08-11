@@ -97,7 +97,7 @@ jobs:
           heavy=false
           if [ "$run_ci" = "true" ]; then
             case "$BASE_REF" in
-              develop|main|release/*|community) heavy=true ;;
+              develop|release/*|community) heavy=true ;;
             esac
           fi
           echo "run-ci=$run_ci" >> "$GITHUB_OUTPUT"
@@ -298,12 +298,43 @@ jobs:
                   per_page: 100,
                 },
               );
-              const live = runs.filter(
+              const candidates = runs.filter(
                 (r) =>
                   r.workflow_id === self.workflow_id &&
                   r.id !== context.runId &&
                   r.status !== 'completed',
               );
+              // A fellow no-op mirror is not testing this SHA. Without this
+              // check, concurrent no-op runs (an event burst on one commit)
+              // wait on each other until the deadline and conclude red. A run
+              // counts as a mirror only when its gate passed and every suite
+              // job it spawned was skipped; anything ambiguous (gate still
+              // running, jobs not yet listed) stays blocking.
+              const SUITE = /^(build|lint|test|test-windows|e2e)\b/;
+              const live = [];
+              for (const r of candidates) {
+                const jobs = await github.paginate(
+                  github.rest.actions.listJobsForWorkflowRun,
+                  {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: r.id,
+                    per_page: 100,
+                  },
+                );
+                const gate = jobs.find((j) => j.name === 'modified-files');
+                const suite = jobs.filter((j) => SUITE.test(j.name));
+                const isMirror =
+                  gate?.status === 'completed' &&
+                  gate?.conclusion === 'success' &&
+                  suite.length > 0 &&
+                  suite.every(
+                    (j) => j.status === 'completed' && j.conclusion === 'skipped',
+                  );
+                if (!isMirror) {
+                  live.push(r);
+                }
+              }
               const finished = new Set(
                 runs
                   .filter((r) => r.status === 'completed' && r.conclusion !== 'cancelled')

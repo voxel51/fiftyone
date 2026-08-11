@@ -7,12 +7,9 @@ import {
   usePlayhead,
 } from "../../lib/playback/use-playback-state";
 import PlayheadTime from "../Playhead/PlayheadTime";
-import {
-  PauseIcon,
-  PlayIcon,
-} from "../TimelineControls/timeline-controls-icons";
 import { clamp } from "../../lib/playback/utils";
 import styles from "./SimplePlaybackBar.module.css";
+import { PauseIcon, PlayIcon } from "../stableIcons";
 
 /**
  * Click-or-drag scrub track. Subscribes to playheadAtom (re-renders on
@@ -116,9 +113,7 @@ const SimplePlaybackBar: React.FC = () => {
         variant={Variant.Borderless}
         size={Size.Xs}
         data-testid="simple-playback-bar-play-pause"
-        // React 18/19 type mismatch on FC<{}>.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        leadingIcon={(hasPlayIntent ? PauseIcon : PlayIcon) as any}
+        leadingIcon={hasPlayIntent ? PauseIcon : PlayIcon}
         onClick={hasPlayIntent ? pause : play}
         aria-label={hasPlayIntent ? "Pause" : "Play"}
         aria-pressed={hasPlayIntent}

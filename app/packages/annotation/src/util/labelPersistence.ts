@@ -38,6 +38,37 @@ export type DoPatchSampleArgs = {
  * @param labelPath Path to the label field (if applicable)
  * @param opType Operation type (mutate/delete)
  */
+/**
+ * Observers of persisted sample patches. A listener receives the patch
+ * exactly as it landed: the deltas, the pre-patch sample, the server's
+ * post-patch sample, and the field-level metadata when the caller used
+ * that fast path. Registered by downstream consumers (e.g. activity
+ * analytics); failures never interfere with persistence.
+ */
+export interface PatchPersistedInfo {
+  deltas: JSONDeltas;
+  preSample: unknown;
+  postSample: unknown;
+  isGenerated: boolean;
+  labelId?: string;
+  labelPath?: string;
+  opType?: OpType;
+}
+
+type PatchPersistedListener = (
+  info: PatchPersistedInfo,
+) => void | Promise<void>;
+
+const patchListeners = new Set<PatchPersistedListener>();
+
+/** Returns an unsubscribe function. */
+export const addPatchPersistedListener = (
+  listener: PatchPersistedListener,
+): (() => void) => {
+  patchListeners.add(listener);
+  return () => patchListeners.delete(listener);
+};
+
 export const doPatchSample = async ({
   sample,
   datasetId,
@@ -58,6 +89,10 @@ export const doPatchSample = async ({
   }
 
   let caughtErr: Error;
+  // The server's post-patch sample, for the persisted-patch listeners: a
+  // new single-label field can arrive as ops whose values carry no label
+  // id, so only the post state can say what was created.
+  let postSample: unknown = null;
 
   if (sampleDeltas.length > 0) {
     try {
@@ -97,6 +132,7 @@ export const doPatchSample = async ({
       if (updatedSample) {
         // transform response data to match the graphql sample format
         const cleanedSample = transformSampleData(updatedSample);
+        postSample = cleanedSample;
         if (isSampleIsh(cleanedSample)) {
           refreshSample(cleanedSample as Sample);
         } else {
@@ -130,6 +166,29 @@ export const doPatchSample = async ({
   // raise HTTP errors to the caller
   if (caughtErr) {
     throw caughtErr;
+  }
+
+  if (sampleDeltas.length > 0) {
+    const info: PatchPersistedInfo = {
+      deltas: sampleDeltas,
+      preSample: sample,
+      postSample,
+      isGenerated: Boolean(isGenerated),
+      labelId,
+      labelPath,
+      opType,
+    };
+    for (const listener of patchListeners) {
+      try {
+        // Async listeners are not awaited — persistence never blocks on
+        // observers — but their rejections must not surface as unhandled.
+        Promise.resolve(listener(info)).catch((err) => {
+          console.debug("patch listener failed", err);
+        });
+      } catch (err) {
+        console.debug("patch listener failed", err);
+      }
+    }
   }
 
   return true;

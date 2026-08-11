@@ -152,7 +152,7 @@ export default function RunsList({
   }
 
   return (
-    <div className="emb-runs-page">
+    <div className="emb-runs-page" data-cy="embeddings-runs-page">
       {runs.length > 0 && (
         <div className="emb-runs-header">
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>

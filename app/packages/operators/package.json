@@ -20,13 +20,17 @@
     ],
     "devDependencies": {
         "@fiftyone/utilities": "workspace:^",
-        "@testing-library/react": "^14.0.0",
+        "@testing-library/dom": "catalog:",
+        "@testing-library/react": "catalog:",
         "prettier": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "vite": "catalog:",
         "vitest": "catalog:"
     },
     "peerDependencies": {
         "@mui/icons-material": "*",
-        "@mui/material": "*"
+        "@mui/material": "*",
+        "react": "*"
     }
 }

@@ -10,7 +10,7 @@ import { extractNative2dLabels } from "./native2d/parse";
 import type { Native2dLabel } from "./native2d/types";
 
 type GroupResponse = {
-  group: Record<string, any>;
+  group: Record<string, { filepath?: string }>;
   urls?: Record<string, string>;
 };
 
