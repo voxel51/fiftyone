@@ -6,3 +6,8 @@ remote MCAP recording and presenting it as an episode.
 The format name describes the product surface, not an implementation boundary.
 The explorer validates user input and composes neutral episode capabilities; it
 does not parse MCAP, consume generated schemas, or import adapter internals.
+
+HTTP(S) sources are supported by the shared product surface. Enterprise also
+registers a cloud-source resolver through its injection entrypoint, allowing
+raw storage paths such as `s3://` and `gs://` to be exchanged for signed URLs
+by the server before browser byte reads begin.

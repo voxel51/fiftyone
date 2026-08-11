@@ -1,5 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { registerMcapCloudSourceResolver } from "../../extensions/mcap-explorer";
 import { BYTE_SOURCE_READ_PROFILE } from "../../query/bytes/index";
 import type { SourcePlaybackProps } from "../episode/index";
 import McapExplorerPanel from "./McapExplorerPanel";
@@ -53,7 +60,7 @@ describe("McapExplorerPanel", () => {
     expect(screen.queryByTestId("mcap-source-playback")).toBeNull();
   });
 
-  it("opens a direct HTTP(S) MCAP URL", () => {
+  it("opens a direct HTTP(S) MCAP URL", async () => {
     render(<McapExplorerPanel />);
 
     fireEvent.change(screen.getByLabelText("Remote MCAP URL"), {
@@ -63,9 +70,11 @@ describe("McapExplorerPanel", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Open URL" }));
 
-    expect(screen.getByTestId("mcap-source-file-name").textContent).toBe(
-      "recording.mcap",
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("mcap-source-file-name").textContent).toBe(
+        "recording.mcap",
+      );
+    });
     expect(viewerHarness.lastPlaybackProps?.source).toEqual({
       readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
       sourceId:
@@ -150,13 +159,14 @@ describe("McapExplorerPanel", () => {
     );
   });
 
-  it("unmounts the active source and restores the picker", () => {
+  it("unmounts the active source and restores the picker", async () => {
     render(<McapExplorerPanel />);
 
     fireEvent.change(screen.getByLabelText("Remote MCAP URL"), {
       target: { value: "https://example.com/run.mcap" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Open URL" }));
+    await screen.findByTestId("mcap-source-playback");
     fireEvent.click(screen.getByRole("button", { name: "Unmount recording" }));
 
     expect(screen.getByText("Drag & drop an MCAP file")).toBeTruthy();
@@ -196,7 +206,39 @@ describe("McapExplorerPanel", () => {
     );
   });
 
-  it("shows invalid URL and file errors", () => {
+  it("opens an Enterprise cloud path through its registered resolver", async () => {
+    const resolver = vi.fn(
+      async () => "https://signed.example.com/recording.mcap?token=secret",
+    );
+    const unregister = registerMcapCloudSourceResolver(resolver);
+
+    try {
+      render(<McapExplorerPanel />);
+
+      expect(
+        screen.getByText(
+          "HTTP(S), s3://, gs://, and configured Enterprise cloud paths.",
+        ),
+      ).toBeTruthy();
+      fireEvent.change(screen.getByLabelText("Remote MCAP URL"), {
+        target: { value: "s3://bucket/run.mcap" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Open URL" }));
+
+      await waitFor(() => {
+        expect(viewerHarness.lastPlaybackProps?.source).toEqual({
+          readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
+          sourceId: "remote-url:s3://bucket/run.mcap",
+          url: "https://signed.example.com/recording.mcap?token=secret",
+        });
+      });
+      expect(resolver).toHaveBeenCalledWith("s3://bucket/run.mcap");
+    } finally {
+      unregister();
+    }
+  });
+
+  it("shows invalid URL and file errors", async () => {
     render(<McapExplorerPanel />);
 
     fireEvent.change(screen.getByLabelText("Remote MCAP URL"), {
@@ -204,7 +246,7 @@ describe("McapExplorerPanel", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Open URL" }));
     expect(
-      screen.getByText("Only HTTP(S) MCAP URLs are supported"),
+      await screen.findByText("Only HTTP(S) MCAP URLs are supported"),
     ).toBeTruthy();
 
     fireEvent.change(screen.getByTestId("local-mcap-input"), {
