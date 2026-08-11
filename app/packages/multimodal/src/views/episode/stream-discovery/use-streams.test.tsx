@@ -57,8 +57,10 @@ function testSession(): EpisodeSession {
       timeDomain: { id: "time", kind: "timestamp" },
       timeRange: { endNs: 1n, startNs: 0n },
     },
-    async *read() {
-      yield* [];
-    },
+    read: () => asyncValues([]),
   };
+}
+
+async function* asyncValues<Value>(values: readonly Value[]) {
+  for await (const value of values) yield value;
 }

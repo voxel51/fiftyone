@@ -54,7 +54,7 @@ export function registerEpisodeViews(): void {
     label: "Episode Renderer",
     component: ModalRenderer,
     type: PluginComponentType.SampleRenderer,
-    activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
+    activator: isMultimodalDatasetContext,
     sampleRendererOptions: {
       supports: { extensions: ["mcap"] },
       modal: { persistAcrossSamples: true },
@@ -75,7 +75,24 @@ export function registerEpisodeViews(): void {
     Icon: McapExplorerIcon,
     component: McapExplorer,
     type: PluginComponentType.Panel,
-    activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
+    activator: isMultimodalDatasetContext,
     panelOptions: { allowDuplicates: true, surfaces: "grid" },
   });
+}
+
+function isMultimodalDatasetContext(context: unknown): boolean {
+  if (
+    context === null ||
+    typeof context !== "object" ||
+    !("dataset" in context)
+  ) {
+    return false;
+  }
+  const dataset: unknown = context.dataset;
+  return (
+    dataset !== null &&
+    typeof dataset === "object" &&
+    "mediaType" in dataset &&
+    dataset.mediaType === "multimodal"
+  );
 }

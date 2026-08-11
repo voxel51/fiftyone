@@ -845,10 +845,7 @@ function useSeedPersistedTileAtom<TileValue>({
     if (persisted) {
       store.set(atom, (previous) => {
         const next = { ...previous };
-        for (const [tileId, value] of Object.entries(persisted) as [
-          string,
-          TileValue,
-        ][]) {
+        for (const [tileId, value] of Object.entries(persisted)) {
           if (!(tileId in tilesRef.current) || next[tileId]) continue;
           next[tileId] = value;
         }

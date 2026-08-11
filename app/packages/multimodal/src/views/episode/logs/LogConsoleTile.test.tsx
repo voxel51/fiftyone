@@ -43,8 +43,8 @@ const mocks = vi.hoisted(() => {
     nsToSec: (timeNs: bigint) => Number(timeNs) / 1_000_000_000,
     startTimeNs: 0n,
   };
-  const readSynchronized = vi.fn(
-    async (request: { readonly timeNs: bigint }) => ({
+  const readSynchronized = vi.fn((request: { readonly timeNs: bigint }) =>
+    Promise.resolve({
       endNs: request.timeNs,
       frames: seedFrames,
       framesByStream: {},
@@ -55,7 +55,10 @@ const mocks = vi.hoisted(() => {
   );
   let session: {
     readonly manifest: {
-      readonly streams: readonly [];
+      readonly streams: readonly {
+        readonly id: string;
+        readonly payload: { readonly schema: string };
+      }[];
       readonly timeRange: { readonly endNs: bigint; readonly startNs: bigint };
     };
     readonly playback?: {
@@ -108,16 +111,19 @@ const mocks = vi.hoisted(() => {
       },
       diagnostics: boolean | string | readonly string[] = false,
     ) => {
-      const diagnosticStreams = Array.isArray(diagnostics)
-        ? diagnostics
-        : [typeof diagnostics === "string" ? diagnostics : "/diagnostics"];
+      const diagnosticStreams: readonly string[] =
+        typeof diagnostics === "boolean"
+          ? ["/diagnostics"]
+          : typeof diagnostics === "string"
+            ? [diagnostics]
+            : diagnostics;
       session = {
         manifest: {
           streams: diagnostics
-            ? (diagnosticStreams.map((id) => ({
+            ? diagnosticStreams.map((id) => ({
                 id,
                 payload: { schema: "diagnostic_msgs/msg/DiagnosticArray" },
-              })) as never)
+              }))
             : [],
           timeRange: timeRange ?? {
             endNs: 100_000_000_000n,

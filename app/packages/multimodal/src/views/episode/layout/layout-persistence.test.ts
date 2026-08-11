@@ -329,7 +329,18 @@ describe("layout-persistence", () => {
       vi.setSystemTime(5_001);
       writeModalLayout({ layout: "image-20" }, "dataset-20");
 
-      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+      const raw: unknown = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) ?? "null",
+      );
+      if (
+        raw === null ||
+        typeof raw !== "object" ||
+        !("byDataset" in raw) ||
+        raw.byDataset === null ||
+        typeof raw.byDataset !== "object"
+      ) {
+        throw new Error("Expected persisted layouts by dataset");
+      }
       const keys = Object.keys(raw.byDataset);
       expect(keys).toHaveLength(20);
       expect(keys).not.toContain("dataset-1");

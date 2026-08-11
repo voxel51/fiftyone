@@ -43,7 +43,7 @@ export function selectBoundedLogRows(
   const newestFirst: EpisodeLogConsoleRow[] = [];
   let truncated = false;
   for (let index = endIndex - 1; index >= startIndex; index -= 1) {
-    const row = orderedRows[index] as EpisodeLogConsoleRow;
+    const row = orderedRows[index];
     // DiagnosticArray messages share the history pipeline for Diagnostics,
     // but they are never ordinary log rows. Keep that invariant here as a
     // final projection guard even if source metadata is incomplete.
@@ -257,7 +257,7 @@ function lowerTimelineBound(
   let high = rows.length;
   while (low < high) {
     const middle = low + Math.floor((high - low) / 2);
-    if ((rows[middle] as EpisodeLogConsoleRow).timelineTimeNs < timeNs) {
+    if (rows[middle].timelineTimeNs < timeNs) {
       low = middle + 1;
     } else {
       high = middle;
@@ -274,7 +274,7 @@ function upperTimelineBound(
   let high = rows.length;
   while (low < high) {
     const middle = low + Math.floor((high - low) / 2);
-    if ((rows[middle] as EpisodeLogConsoleRow).timelineTimeNs <= timeNs) {
+    if (rows[middle].timelineTimeNs <= timeNs) {
       low = middle + 1;
     } else {
       high = middle;

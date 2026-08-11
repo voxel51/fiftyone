@@ -37,6 +37,11 @@ const migratedPaths = [
   "packages/multimodal/src/utils/**/*.{ts,tsx}",
   "packages/multimodal/src/video/**/*.{ts,tsx}",
   "packages/multimodal/src/visualization/**/*.{ts,tsx}",
+  "packages/multimodal/src/views/*.{ts,tsx}",
+  "packages/multimodal/src/views/episode/layout/**/*.{ts,tsx}",
+  "packages/multimodal/src/views/episode/logs/**/*.{ts,tsx}",
+  "packages/multimodal/src/views/episode/observability/**/*.{ts,tsx}",
+  "packages/multimodal/src/views/episode/stream-discovery/**/*.{ts,tsx}",
 ];
 
 module.exports = { migratedPaths, typeAwareRules };

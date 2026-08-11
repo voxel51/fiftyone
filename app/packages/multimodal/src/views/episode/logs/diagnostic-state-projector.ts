@@ -73,7 +73,7 @@ export class DiagnosticStateProjector {
     startIndex: number,
   ): void {
     for (let index = startIndex; index < rows.length; index += 1) {
-      const row = rows[index] as EpisodeLogConsoleRow;
+      const row = rows[index];
       if (row.timelineTimeNs > playheadTimeNs) break;
       if (row.kind !== "diagnostic" || !row.diagnosticId) continue;
 
@@ -183,7 +183,7 @@ function upperTimelineBound(
   let high = rows.length;
   while (low < high) {
     const middle = low + Math.floor((high - low) / 2);
-    if ((rows[middle] as EpisodeLogConsoleRow).timelineTimeNs <= timeNs) {
+    if (rows[middle].timelineTimeNs <= timeNs) {
       low = middle + 1;
     } else {
       high = middle;
