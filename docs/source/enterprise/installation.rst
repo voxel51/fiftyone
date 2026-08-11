@@ -637,7 +637,7 @@ A managed credential can optionally be restricted to a specific list of bucket(s
     another default credential for the same provider at the same scope
     **replaces** the existing one.
 
-    To use multiple credentials for the same provider — for example, two
+    To use multiple credentials for the same provider and scope — for example, two
     Azure storage accounts, or two AWS accounts — each credential must be
     made bucket-specific by listing its buckets/containers. In particular,
     for Azure the storage account name embedded in the credential is **not**
