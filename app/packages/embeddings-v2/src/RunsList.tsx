@@ -226,7 +226,7 @@ export default function RunsList({
                   run.method,
                   // Same brain key semantics, very different plots —
                   // which granularity a run embeds must be readable
-                  // from the card (FOEPD-4407)
+                  // from the card
                   run.patchesField ? `${run.patchesField} patches` : "samples",
                   run.model,
                   formatTimestamp(run.timestamp),
