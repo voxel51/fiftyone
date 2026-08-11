@@ -1,18 +1,17 @@
 import { crc32 } from "@foxglove/crc";
-import type { McapTypes } from "@mcap/core";
 import { safeNumber } from "../../../query/bytes/bigint-utils";
 import type {
   McapDecompressedChunkKey,
   McapDecompressedChunkLoad,
 } from "./decompressed-chunk-cache";
+import type { McapDecompressHandlers } from "./decompress-cache";
+import type { McapChunkIndex } from "./types";
 
 const MCAP_CHUNK_OPCODE = 0x06;
 const MCAP_RECORD_HEADER_BYTES = 9;
 const MIN_CHUNK_RECORD_BYTES = MCAP_RECORD_HEADER_BYTES + 8 + 8 + 8 + 4 + 4 + 8;
 const textDecoder = new TextDecoder();
 const textEncoder = new TextEncoder();
-
-type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 
 export function mcapDecompressedChunkKeyForIndex(
   sourceKey: string,
@@ -36,7 +35,7 @@ export function mcapDecompressedChunkKeyForIndex(
 export function decompressMcapChunkRecord(
   bytes: Uint8Array,
   chunk: McapChunkIndex,
-  handlers: McapTypes.DecompressHandlers,
+  handlers: McapDecompressHandlers,
 ): McapDecompressedChunkLoad {
   const expectedChunkLength = safeNumber(chunk.chunkLength);
   if (

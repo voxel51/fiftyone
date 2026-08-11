@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { safeNumber } from "../../../query/bytes/bigint-utils";
 import { throwIfAborted } from "../../../utils/cancellation";
 import { yieldToTask } from "../../../utils/task-yield";
@@ -8,10 +7,13 @@ import {
   mcapDecompressedChunkKeyForIndex,
 } from "./chunk-records";
 import { type McapDecompressedChunkCache } from "./decompressed-chunk-cache";
+import type { McapDecompressHandlers } from "./decompress-cache";
 import { MCAP_BOUNDED_GRANT_YIELD_INTERVAL } from "./consume-bounded-grant";
 import type {
+  McapChunkIndex,
   McapIndexedMessageTime,
   McapIndexedReaderLike,
+  McapMessage,
   McapReadIndexedMessagesRequest,
 } from "./types";
 
@@ -20,18 +22,17 @@ const MCAP_RECORD_HEADER_BYTES = 9;
 const MCAP_MESSAGE_PREFIX_BYTES = 2 + 4 + 8 + 8;
 const MCAP_INDEXED_READ_ABORT_MESSAGE = "MCAP indexed message read aborted";
 
-type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
-type McapMessage = McapTypes.TypedMcapRecords["Message"];
 type McapIndexedMessageReader = (
   request: McapReadIndexedMessagesRequest,
 ) => Promise<readonly McapMessage[]>;
+type McapContainedReadable = Pick<ByteClientReadable, "readContained">;
 
 /** Dependencies for one source-bound exact indexed-message reader. */
 export interface CreateMcapIndexedMessageReaderOptions {
   /** Caller-owned and disposed with the containing reader. */
   readonly decompressedChunkCache: McapDecompressedChunkCache;
-  readonly decompressHandlers: McapTypes.DecompressHandlers;
-  readonly readable: ByteClientReadable;
+  readonly decompressHandlers: McapDecompressHandlers;
+  readonly readable: McapContainedReadable;
   readonly reader: McapIndexedReaderLike;
   readonly sourceKey: string | (() => string);
   readonly taskYield?: () => Promise<void>;
@@ -126,8 +127,8 @@ async function loadChunkRecords({
   readonly chunk: McapChunkIndex;
   readonly currentSourceKey: () => string;
   readonly decompressedChunkCache: McapDecompressedChunkCache;
-  readonly decompressHandlers: McapTypes.DecompressHandlers;
-  readonly readable: ByteClientReadable;
+  readonly decompressHandlers: McapDecompressHandlers;
+  readonly readable: McapContainedReadable;
   readonly signal?: AbortSignal;
 }): Promise<Uint8Array> {
   throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);

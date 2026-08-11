@@ -1,11 +1,13 @@
-import { McapRecordBuilder, type McapTypes } from "@mcap/core";
 import { crc32 } from "@foxglove/crc";
 import { describe, expect, it, vi } from "vitest";
 import type { McapContainedByteRead } from "./byte-readable";
-import { ByteClientReadable } from "./byte-readable";
 import { createMcapDecompressedChunkCache } from "./decompressed-chunk-cache";
 import { createMcapIndexedMessageReader } from "./indexed-message-reader";
-import type { McapIndexedMessageTime, McapIndexedReaderLike } from "./types";
+import type {
+  McapChunkIndex,
+  McapIndexedMessageTime,
+  McapIndexedReaderLike,
+} from "./types";
 
 interface FixtureMessage {
   readonly channelId: number;
@@ -17,7 +19,7 @@ interface FixtureMessage {
 
 interface ChunkFixture {
   readonly chunkBytes: Uint8Array;
-  readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
+  readonly chunkIndex: McapChunkIndex;
   readonly entries: readonly McapIndexedMessageTime[];
   readonly marker: number;
   readonly records: Uint8Array;
@@ -343,10 +345,11 @@ describe("indexed MCAP message reader", () => {
     let cancellationArmed = false;
     let armedYieldCount = 0;
     const harness = createHarness([fixture], {
-      taskYield: async () => {
+      taskYield: () => {
         if (cancellationArmed && ++armedYieldCount === 1) {
           controller.abort();
         }
+        return Promise.resolve();
       },
     });
     await harness.read({ entries: fixture.entries });
@@ -391,15 +394,16 @@ function createHarness(
   );
   const readContained = vi.fn(
     options.readContained ??
-      (async (offset: bigint) => {
-        const fixture =
-          options.fixtureForRead?.(offset) ?? byOffset.get(offset);
-        if (!fixture) {
-          throw new Error(`Missing chunk fixture at ${offset.toString()}`);
-        }
-        options.onRead?.();
-        return containedRead(fixture);
-      }),
+      ((offset: bigint) =>
+        Promise.resolve().then(() => {
+          const fixture =
+            options.fixtureForRead?.(offset) ?? byOffset.get(offset);
+          if (!fixture) {
+            throw new Error(`Missing chunk fixture at ${offset.toString()}`);
+          }
+          options.onRead?.();
+          return containedRead(fixture);
+        })),
   );
   const decompress = vi.fn((encoded: Uint8Array) => {
     const marker = encoded[0] ?? -1;
@@ -415,7 +419,7 @@ function createHarness(
       options.maxCacheSizeBytes,
     ),
     decompressHandlers: { fake: decompress },
-    readable: { readContained } as unknown as ByteClientReadable,
+    readable: { readContained },
     reader: createReader(fixtures.map((fixture) => fixture.chunkIndex)),
     sourceKey: options.sourceKey ?? "source:etag-a",
     ...(options.taskYield ? { taskYield: options.taskYield } : {}),
@@ -444,17 +448,14 @@ function buildChunkFixture({
   readonly marker: number;
   readonly messages: readonly FixtureMessage[];
 }): ChunkFixture {
-  const recordsBuilder = new McapRecordBuilder();
+  const recordParts: Uint8Array[] = [];
+  let recordsLength = 0;
   const entries: McapIndexedMessageTime[] = [];
   for (const message of messages) {
-    const messageOffset = BigInt(recordsBuilder.length);
-    recordsBuilder.writeMessage({
-      channelId: message.channelId,
-      data: new Uint8Array([message.data]),
-      logTime: message.logTimeNs,
-      publishTime: message.logTimeNs + 1n,
-      sequence: message.sequence,
-    });
+    const messageOffset = BigInt(recordsLength);
+    const record = encodeMessageRecord(message);
+    recordParts.push(record);
+    recordsLength += record.byteLength;
     entries.push({
       channelId: message.channelId,
       chunkStartOffset,
@@ -463,7 +464,7 @@ function buildChunkFixture({
       topic: message.topic,
     });
   }
-  const records = recordsBuilder.buffer.slice();
+  const records = concatenateBytes(recordParts);
   const messageTimes = messages.map((message) => message.logTimeNs);
   const messageStartTime = messageTimes.reduce((min, value) =>
     value < min ? value : min,
@@ -472,8 +473,7 @@ function buildChunkFixture({
     value > max ? value : max,
   );
   const encoded = new Uint8Array([marker]);
-  const chunkBuilder = new McapRecordBuilder();
-  chunkBuilder.writeChunk({
+  const chunkBytes = encodeChunkRecord({
     compression: "fake",
     messageEndTime,
     messageStartTime,
@@ -481,7 +481,6 @@ function buildChunkFixture({
     uncompressedCrc: crc32(records),
     uncompressedSize: BigInt(records.byteLength),
   });
-  const chunkBytes = chunkBuilder.buffer.slice();
 
   return {
     chunkBytes,
@@ -504,16 +503,81 @@ function buildChunkFixture({
 }
 
 function createReader(
-  chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
+  chunkIndexes: readonly McapChunkIndex[],
 ): McapIndexedReaderLike {
   return {
     channelsById: new Map(),
     chunkIndexes,
-    readMessages: vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
-        yield message;
-      }
-    }),
+    readMessages: vi.fn(() => asyncValues([])),
     schemasById: new Map(),
   };
+}
+
+function encodeMessageRecord(message: FixtureMessage): Uint8Array {
+  const data = new Uint8Array([message.data]);
+  const contentLength = 2 + 4 + 8 + 8 + data.byteLength;
+  const record = new Uint8Array(9 + contentLength);
+  const view = new DataView(record.buffer);
+  view.setUint8(0, 0x05);
+  view.setBigUint64(1, BigInt(contentLength), true);
+  view.setUint16(9, message.channelId, true);
+  view.setUint32(11, message.sequence, true);
+  view.setBigUint64(15, message.logTimeNs, true);
+  view.setBigUint64(23, message.logTimeNs + 1n, true);
+  record.set(data, 31);
+  return record;
+}
+
+function encodeChunkRecord({
+  compression,
+  messageEndTime,
+  messageStartTime,
+  records,
+  uncompressedCrc,
+  uncompressedSize,
+}: {
+  readonly compression: string;
+  readonly messageEndTime: bigint;
+  readonly messageStartTime: bigint;
+  readonly records: Uint8Array;
+  readonly uncompressedCrc: number;
+  readonly uncompressedSize: bigint;
+}): Uint8Array {
+  const compressionBytes = new TextEncoder().encode(compression);
+  const contentLength =
+    8 + 8 + 8 + 4 + 4 + compressionBytes.byteLength + 8 + records.byteLength;
+  const chunk = new Uint8Array(9 + contentLength);
+  const view = new DataView(chunk.buffer);
+  view.setUint8(0, 0x06);
+  view.setBigUint64(1, BigInt(contentLength), true);
+  view.setBigUint64(9, messageStartTime, true);
+  view.setBigUint64(17, messageEndTime, true);
+  view.setBigUint64(25, uncompressedSize, true);
+  view.setUint32(33, uncompressedCrc, true);
+  view.setUint32(37, compressionBytes.byteLength, true);
+  chunk.set(compressionBytes, 41);
+  const recordsLengthOffset = 41 + compressionBytes.byteLength;
+  view.setBigUint64(recordsLengthOffset, BigInt(records.byteLength), true);
+  chunk.set(records, recordsLengthOffset + 8);
+  return chunk;
+}
+
+function concatenateBytes(parts: readonly Uint8Array[]): Uint8Array {
+  const bytes = new Uint8Array(
+    parts.reduce((total, part) => total + part.byteLength, 0),
+  );
+  let offset = 0;
+  for (const part of parts) {
+    bytes.set(part, offset);
+    offset += part.byteLength;
+  }
+  return bytes;
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncGenerator<Value, void, void> {
+  for await (const value of values) {
+    yield value;
+  }
 }
