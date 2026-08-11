@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import CollapsibleFilterItem from "./CollapsibleFilterItem";
 import FilterItem from "./FilterItem";
@@ -15,22 +14,7 @@ const FilterablePathEntries = ({
   onFocus?: () => void;
   path: string;
 }) => {
-  const textFilter = fos.useTextFilter(modal);
-
-  // Children are the only place a nested field is named, so the sidebar's
-  // search narrows them too. Shares its rule with the one deciding whether
-  // this entry is listed at all, so the two can't disagree.
-  const childIsSearchMatch = useCallback(
-    (childPath: string) =>
-      fos.matchesSidebarSearch(
-        path,
-        childPath.split(".").pop() || "",
-        textFilter,
-      ),
-    [path, textFilter],
-  );
-
-  const { data } = useFilterData(modal, path, childIsSearchMatch);
+  const { data } = useFilterData(modal, path);
   const color = useRecoilValue(fos.pathColor(path));
 
   // Label fields carry a handful of well-known attributes and stay open.

@@ -34,7 +34,6 @@ import type {
 } from "@fiftyone/utilities";
 import {
   DICT_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_DOC_TYPES,
@@ -67,7 +66,6 @@ import {
 } from "./renderConfig3d.atoms";
 import {
   buildSchema,
-  expandPath,
   field,
   fieldPaths,
   fields,
@@ -512,54 +510,6 @@ export const sidebarGroupsDefinition = (() => {
   );
 })();
 
-/**
- * Whether a search keeps one of an entry's child fields on screen.
- *
- * A match on the entry keeps all of its children, so searching a container
- * shows everything inside it. Shared with the child list the entry renders,
- * so the two can't drift into listing an entry whose every child filters out.
- */
-export const matchesSidebarSearch = (
-  entryPath: string,
-  childName: string,
-  text: string,
-): boolean => !text || entryPath.includes(text) || childName.includes(text);
-
-/**
- * Whether a path survives the sidebar's text filter.
- *
- * Matches the path itself or any of its immediate children, because an
- * entry renders its children as nested filter widgets rather than as
- * entries of their own — matching only the path would hide the one row
- * that can surface a searched-for child.
- */
-export const entryMatchesTextFilter = selectorFamily<
-  boolean,
-  { path: string; text: string }
->({
-  key: "entryMatchesTextFilter",
-  // Keystrokes make a new key each time; without eviction the family retains
-  // one node per path per prefix typed.
-  cachePolicy_UNSTABLE: { eviction: "most-recent" },
-  get:
-    ({ path, text }) =>
-    ({ get }) => {
-      if (!text || path.includes(text)) {
-        return true;
-      }
-
-      // Must read the same children the entry actually renders — the expanded
-      // path's primitives — or a search matches an entry whose every row then
-      // filters out, and misses entries whose matching row sits below a list.
-      return get(
-        fields({
-          path: get(expandPath(path)),
-          ftype: VALID_PRIMITIVE_TYPES,
-        }),
-      ).some(({ name }) => matchesSidebarSearch(path, name, text));
-    },
-});
-
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
   { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
@@ -575,11 +525,7 @@ export const sidebarGroups = selectorFamily<
           ...rest,
 
           paths: filtered
-            ? paths.filter(
-                (path) =>
-                  get(pathIsShown(path)) &&
-                  get(entryMatchesTextFilter({ path, text: f })),
-              )
+            ? paths.filter((path) => get(pathIsShown(path)) && path.includes(f))
             : paths,
         }))
         .filter(
@@ -839,58 +785,6 @@ export const disabledCheckboxPaths = selector<Set<string>>({
   get: ({ get }) => {
     return new Set(get(fullyDisabledPaths));
   },
-});
-
-const hasLabelDescendant = (parent: Field): boolean => {
-  for (const child of Object.values(parent.fields || {})) {
-    if (LABELS.includes(child.embeddedDocType) || hasLabelDescendant(child)) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-/**
- * Whether a path's sidebar checkbox should be hidden rather than rendered.
- *
- * The checkbox toggles a path's membership in the active fields, which is
- * what the grid draws overlays from. On an embedded document with no label
- * anywhere beneath it there is nothing to draw, so the control can only
- * mislead. Primitives are left alone — their active state still drives the
- * modal sidebar.
- *
- * Deliberately not folded into `disabledCheckboxPaths`: that set also
- * disables the entry's filter dropdown and blocks it from expanding, and
- * these paths are filterable — their columns are the filter widgets nested
- * inside them.
- */
-export const isHiddenCheckboxPath = selectorFamily<boolean, string>({
-  key: "isHiddenCheckboxPath",
-  get:
-    (path) =>
-    ({ get }) => {
-      const sidebarField = get(field(path));
-
-      if (!sidebarField || LABELS.includes(sidebarField.embeddedDocType)) {
-        return false;
-      }
-
-      const ftype =
-        sidebarField.ftype === LIST_FIELD
-          ? sidebarField.subfield
-          : sidebarField.ftype;
-
-      // Only open-schema containers. A declared embedded document keeps its
-      // checkbox: it may draw nothing today, but the path is a stable thing a
-      // user can reasonably expect to toggle, and narrowing here avoids
-      // changing that meaning before there is something better to mean.
-      if (ftype !== DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {
-        return false;
-      }
-
-      return !hasLabelDescendant(sidebarField);
-    },
 });
 
 /**

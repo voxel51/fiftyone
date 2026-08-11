@@ -59,10 +59,6 @@ const FilterableEntry = ({
     path: expandedPath,
   });
   const onClick = useOnClick({ modal, path });
-  // A path that draws no overlays has nothing for the checkbox to toggle.
-  const hideCheckbox = fos.useIsHiddenCheckboxPath(path);
-  const showCheckbox =
-    !disabled && !hideCheckbox && !(modal && path === fos.LABEL_TAGS_FIELD);
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
 
@@ -79,7 +75,7 @@ const FilterableEntry = ({
       onHeaderClick={!disabled ? () => setExpanded((v) => !v) : undefined}
       heading={
         <>
-          {showCheckbox && (
+          {!disabled && !(modal && path === fos.LABEL_TAGS_FIELD) && (
             <Checkbox
               key="checkbox"
               checked={active}

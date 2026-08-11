@@ -1,9 +1,5 @@
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import {
-  disabledCheckboxPaths,
-  isHiddenCheckboxPath,
-  textFilter,
-} from "../recoil/sidebar";
+import { disabledCheckboxPaths } from "../recoil/sidebar";
 import { sidebarExpanded } from "../recoil/sidebarExpanded";
 
 /**
@@ -12,20 +8,6 @@ import { sidebarExpanded } from "../recoil/sidebarExpanded";
  */
 export const useDisabledCheckboxPaths = (): Set<string> =>
   useRecoilValue(disabledCheckboxPaths);
-
-/**
- * Returns whether the given path's checkbox should be hidden rather than
- * rendered. Distinct from {@link useDisabledCheckboxPaths}, which also
- * disables the path's filter dropdown and expansion.
- */
-export const useIsHiddenCheckboxPath = (path: string): boolean =>
-  useRecoilValue(isHiddenCheckboxPath(path));
-
-/**
- * Returns the sidebar's current search text.
- */
-export const useTextFilter = (modal: boolean): string =>
-  useRecoilValue(textFilter(modal));
 
 interface SidebarExpandedParams {
   /** The dot-notation field path, e.g. `"ground_truth"` or `"ground_truth.label"`. */
