@@ -21,10 +21,10 @@ import {
 } from "./point-cloud-crop";
 
 const buildDetection = (
-  overrides: Partial<ReconciledDetection3D["label"]> = {},
+  overrides: Partial<ReconciledDetection3D["data"]> = {},
 ): ReconciledDetection3D =>
   ({
-    label: {
+    data: {
       _cls: "Detection",
       _id: "detection-1",
       label: "car",
@@ -78,7 +78,7 @@ describe("point-cloud crop", () => {
       detections: [buildDetection()],
       polylines: [
         {
-          label: {
+          data: {
             _cls: "Polyline",
             _id: "polyline-1",
             points3d: [[[0, 0, 0]]],
@@ -278,12 +278,12 @@ describe("point-cloud crop", () => {
       dimensions: [2, 2, 2],
     });
     const workingDoc: WorkingDoc = {
-      labelsById: { [detection.label._id]: detection },
+      labelsById: { [detection.data._id]: detection },
       deletedIds: new Set(),
     };
     const transient: TransientStore = {
       cuboids: {
-        [detection.label._id]: {
+        [detection.data._id]: {
           positionDelta: [1, 0, 0],
           dimensionsDelta: [1, 2, 3],
           quaternionOverride: [
@@ -295,12 +295,12 @@ describe("point-cloud crop", () => {
         },
       },
       polylines: {},
-      activeDragLabel: detection.label._id,
+      activeDragLabel: detection.data._id,
     };
 
     const crop = getSelectedCuboidPointCloudCrop({
       renderModel: deriveRenderModel(workingDoc, transient),
-      selectedLabelId: detection.label._id,
+      selectedLabelId: detection.data._id,
       margin: 0,
     });
 
@@ -318,13 +318,13 @@ describe("point-cloud crop", () => {
     const detection = buildDetection();
     const crop = getCuboidPointCloudCrop({
       renderModel: { detections: [detection], polylines: [] },
-      labelId: detection.label._id,
+      labelId: detection.data._id,
       margin: 1,
       source: "raycast-hover",
       visibleWorldHeightAtCenter: 4,
     });
 
-    expect(crop?.labelId).toBe(detection.label._id);
+    expect(crop?.labelId).toBe(detection.data._id);
     expect(crop?.source).toBe("raycast-hover");
     expect(crop?.visibleWorldHeightAtCenter).toBe(4);
     expect(crop?.halfSize.toArray()).toEqual([2, 3, 4]);
@@ -335,7 +335,7 @@ describe("point-cloud crop", () => {
       detections: [],
       polylines: [
         {
-          label: {
+          data: {
             _cls: "Polyline",
             _id: "polyline-1",
             points3d: [[[0, 0, 0]]],

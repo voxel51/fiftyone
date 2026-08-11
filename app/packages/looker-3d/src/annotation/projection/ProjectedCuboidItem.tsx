@@ -28,7 +28,7 @@ export function ProjectedCuboidItem({
   showOrientation,
   upVector,
 }: ProjectedCuboidItemProps) {
-  const projection = useProjectedCuboid(detection.label, frustumData, upVector);
+  const projection = useProjectedCuboid(detection.data, frustumData, upVector);
 
   if (!projection) return null;
 

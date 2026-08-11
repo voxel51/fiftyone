@@ -45,11 +45,11 @@ export interface Overlay3DUiState {
 
 /**
  * A loaded 3D overlay: the label document plus addressing and view state,
- * mirroring the sidebar's `AnnotationLabel` and Lighter's `overlay.label`
- * pattern — the document nests under `label`, everything else wraps it.
+ * mirroring the sidebar's `AnnotationLabel` pattern — the document nests
+ * under `data`, everything else wraps it.
  */
 export type OverlayLabel = {
-  label: Overlay3DDocument;
+  data: Overlay3DDocument;
   path: string;
   sampleId: string;
   ui: Overlay3DUiState;
@@ -82,7 +82,7 @@ export const load3dOverlayForSample = (
 
     if (RENDERABLE.includes(cls)) {
       overlays.push({
-        label: label as Overlay3DDocument,
+        data: label as Overlay3DDocument,
         sampleId,
         path,
         ui: { selected: label._id in selectedLabels },

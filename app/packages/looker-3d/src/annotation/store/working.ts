@@ -139,17 +139,17 @@ function mapOverlaysToLabelId(
 
   for (const overlay of overlays) {
     if (isDetection3dOverlay(overlay)) {
-      labelsById[overlay.label._id] = roundDetection({ ...overlay });
+      labelsById[overlay.data._id] = roundDetection({ ...overlay });
     } else if (isPolyline3dOverlay(overlay)) {
       const polyline: ReconciledPolyline3D = {
         ...overlay,
-        label: {
-          ...overlay.label,
-          filled: !!overlay.label.filled,
-          closed: !!overlay.label.closed,
+        data: {
+          ...overlay.data,
+          filled: !!overlay.data.filled,
+          closed: !!overlay.data.closed,
         },
       };
-      labelsById[overlay.label._id] = roundPolyline(polyline);
+      labelsById[overlay.data._id] = roundPolyline(polyline);
     }
   }
 
@@ -209,7 +209,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
         const rawById = new Map<string, OverlayLabel>();
 
         for (const o of overlays) {
-          rawById.set(o.label._id, o);
+          rawById.set(o.data._id, o);
         }
 
         const prev = state.doc.labelsById;
@@ -251,21 +251,21 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
         // that wasn't there at init time.
         for (const overlay of overlays) {
           // Already in working — handled above
-          if (prev[overlay.label._id]) continue;
+          if (prev[overlay.data._id]) continue;
 
           if (!next) next = { ...prev };
 
           if (isDetection3dOverlay(overlay)) {
-            next[overlay.label._id] = roundDetection({
+            next[overlay.data._id] = roundDetection({
               ...overlay,
             });
           } else if (isPolyline3dOverlay(overlay)) {
-            next[overlay.label._id] = roundPolyline({
+            next[overlay.data._id] = roundPolyline({
               ...overlay,
-              label: {
-                ...overlay.label,
-                filled: !!overlay.label.filled,
-                closed: !!overlay.label.closed,
+              data: {
+                ...overlay.data,
+                filled: !!overlay.data.filled,
+                closed: !!overlay.data.closed,
               },
             });
           }
@@ -403,7 +403,7 @@ export function useUpdateWorkingLabel() {
 
           const updatedLabel = {
             ...existingLabel,
-            label: { ...existingLabel.label, ...roundedUpdates },
+            data: { ...existingLabel.data, ...roundedUpdates },
           } as ReconciledDetection3D | ReconciledPolyline3D;
 
           return {
@@ -440,7 +440,7 @@ export function useAddWorkingLabel() {
               ...prev.doc,
               labelsById: {
                 ...prev.doc.labelsById,
-                [roundedLabel.label._id]: roundedLabel,
+                [roundedLabel.data._id]: roundedLabel,
               },
             },
           };

@@ -56,7 +56,7 @@ const buildIntent = () => ({
 const buildSelectionCrop = (): PointCloudCrop => {
   return createPointCloudCropFromDetection(
     {
-      label: {
+      data: {
         _cls: "Detection",
         _id: "detection-1",
         location: [0, 0, 0],
@@ -342,7 +342,7 @@ describe("side panel camera sync", () => {
       doesPointCloudCropFitCamera(
         createPointCloudCropFromDetection(
           {
-            label: {
+            data: {
               _cls: "Detection",
               _id: "detection-2",
               location: [20, 0, 0],
@@ -363,7 +363,7 @@ describe("side panel camera sync", () => {
       doesPointCloudCropFitCamera(
         createPointCloudCropFromDetection(
           {
-            label: {
+            data: {
               _cls: "Detection",
               _id: "detection-behind",
               location: [0, 0, 20],

@@ -17,8 +17,8 @@ export function reconcileDetection(
 ): ReconciledDetection3D {
   return {
     ...overlay,
-    label: {
-      ...overlay.label,
+    data: {
+      ...overlay.data,
       ...(stagedTransform ?? {}),
     },
   } as ReconciledDetection3D;
@@ -30,14 +30,14 @@ export function reconcileDetection(
  */
 export function reconcilePolyline(
   overlay: OverlayLabel & {
-    label: { points3d: [number, number, number][][] };
+    data: { points3d: [number, number, number][][] };
   },
   stagedTransform?: PolylinePointTransformData,
 ): ReconciledPolyline3D {
   // Staged segments take precedence over original points3d
   let finalPoints3d = stagedTransform?.segments
     ? stagedTransform.segments.map((seg) => seg.points)
-    : overlay.label.points3d;
+    : overlay.data.points3d;
 
   // Filter out invalid segments
   if (finalPoints3d) {
@@ -46,12 +46,12 @@ export function reconcilePolyline(
 
   return {
     ...overlay,
-    label: {
-      ...overlay.label,
+    data: {
+      ...overlay.data,
       ...(stagedTransform?.misc ?? {}),
       // structural fields are never `misc`'s to write
-      _id: overlay.label._id,
-      _cls: overlay.label._cls,
+      _id: overlay.data._id,
+      _cls: overlay.data._cls,
       points3d: finalPoints3d,
     },
   } as ReconciledPolyline3D;
@@ -68,7 +68,7 @@ export function createNewDetection(
   path: string,
 ): ReconciledDetection3D {
   return {
-    label: {
+    data: {
       _id: labelId,
       _cls: "Detection",
       ...(transformData ?? {}),
@@ -106,7 +106,7 @@ export function createNewPolyline(
   }
 
   return {
-    label: {
+    data: {
       // `misc` first: extras (closed/filled/…) apply, but the structural and
       // validated fields below are never `misc`'s to write
       ...(transformData.misc ?? {}),

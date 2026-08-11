@@ -22,7 +22,7 @@ export function ProjectedPolylineItem({
   isHovered,
   isAnyLabelSelected,
 }: ProjectedPolylineItemProps) {
-  const projection = useProjectedPolyline(polyline.label, frustumData);
+  const projection = useProjectedPolyline(polyline.data, frustumData);
 
   if (!projection) return null;
 

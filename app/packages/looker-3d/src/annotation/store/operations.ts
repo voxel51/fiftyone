@@ -70,9 +70,9 @@ export function useCuboidOperations() {
         for (const key of Object.keys(updates) as Array<
           keyof Detection3DDocument
         >) {
-          if (key in existingLabel.label) {
+          if (key in existingLabel.data) {
             (previousState as Record<string, unknown>)[key] =
-              existingLabel.label[key];
+              existingLabel.data[key];
           }
         }
 
@@ -92,7 +92,7 @@ export function useCuboidOperations() {
 
         const nextLabel = {
           ...existingLabel,
-          label: { ...existingLabel.label, ...roundedUpdates },
+          data: { ...existingLabel.data, ...roundedUpdates },
         };
 
         const execFn = () => {
@@ -133,7 +133,7 @@ export function useCuboidOperations() {
         }
 
         const newState: Partial<Detection3DDocument> = {};
-        const doc = existingLabel.label;
+        const doc = existingLabel.data;
 
         if (transient.positionDelta) {
           newState.location = [
@@ -175,7 +175,7 @@ export function useCuboidOperations() {
       if (!currentSampleId) return;
 
       const newLabel: ReconciledDetection3D = {
-        label: {
+        data: {
           _id: labelId,
           _cls: DETECTION,
           location: roundTuple(data.location),
@@ -284,9 +284,9 @@ export function usePolylineOperations() {
         for (const key of Object.keys(updates) as Array<
           keyof Polyline3DDocument
         >) {
-          if (key in existingLabel.label) {
+          if (key in existingLabel.data) {
             (previousState as Record<string, unknown>)[key] =
-              existingLabel.label[key];
+              existingLabel.data[key];
           }
         }
 
@@ -301,7 +301,7 @@ export function usePolylineOperations() {
 
         const nextLabel = {
           ...existingLabel,
-          label: { ...existingLabel.label, ...roundedUpdates },
+          data: { ...existingLabel.data, ...roundedUpdates },
         };
 
         const execFn = () => {
@@ -342,7 +342,7 @@ export function usePolylineOperations() {
         }
 
         // Compute new points3d from working + transient deltas
-        let newPoints3d = existingLabel.label.points3d;
+        let newPoints3d = existingLabel.data.points3d;
 
         if (transient.positionDelta) {
           const delta = transient.positionDelta;
@@ -403,7 +403,7 @@ export function usePolylineOperations() {
       );
 
       const newLabel: ReconciledPolyline3D = {
-        label: {
+        data: {
           _id: labelId,
           _cls: POLYLINE,
           label: data.label ?? "",

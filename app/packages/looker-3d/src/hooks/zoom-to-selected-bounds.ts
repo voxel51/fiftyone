@@ -316,12 +316,12 @@ export const resolveAnnotationLabelBoundingBox = ({
   const labelId = getLabelId(selectedLabel);
   const renderLabel = labelId
     ? [...renderModel.detections, ...renderModel.polylines].find(
-        (label) => label.label._id === labelId,
+        (label) => label.data._id === labelId,
       )
     : null;
 
   return createLabelBoundingBox(
-    renderLabel ? renderLabel.label : selectedLabel,
+    renderLabel ? renderLabel.data : selectedLabel,
     {
       useLegacyCoordinates,
     },

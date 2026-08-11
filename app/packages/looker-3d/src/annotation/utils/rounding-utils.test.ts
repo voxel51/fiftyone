@@ -14,10 +14,10 @@ import {
 
 function createDetection(
   id: string,
-  overrides: Partial<ReconciledDetection3D["label"]> = {},
+  overrides: Partial<ReconciledDetection3D["data"]> = {},
 ): ReconciledDetection3D {
   return {
-    label: {
+    data: {
       _id: id,
       _cls: "Detection",
       location: [0, 0, 0],
@@ -35,10 +35,10 @@ function createDetection(
 
 function createPolyline(
   id: string,
-  overrides: Partial<ReconciledPolyline3D["label"]> = {},
+  overrides: Partial<ReconciledPolyline3D["data"]> = {},
 ): ReconciledPolyline3D {
   return {
-    label: {
+    data: {
       _id: id,
       _cls: "Polyline",
       points3d: [
@@ -140,7 +140,7 @@ describe("roundDetection", () => {
 
     const result = roundDetection(detection);
 
-    expect(result.label.location).toEqual([1.123457, 2.234568, 3.345679]);
+    expect(result.data.location).toEqual([1.123457, 2.234568, 3.345679]);
   });
 
   it("rounds dimensions to PRECISION decimal places", () => {
@@ -150,7 +150,7 @@ describe("roundDetection", () => {
 
     const result = roundDetection(detection);
 
-    expect(result.label.dimensions).toEqual([1.123457, 2.234568, 3.345679]);
+    expect(result.data.dimensions).toEqual([1.123457, 2.234568, 3.345679]);
   });
 
   it("rounds rotation when present", () => {
@@ -160,7 +160,7 @@ describe("roundDetection", () => {
 
     const result = roundDetection(detection);
 
-    expect(result.label.rotation).toEqual([0.123457, 0.234568, 0.345679]);
+    expect(result.data.rotation).toEqual([0.123457, 0.234568, 0.345679]);
   });
 
   it("rounds quaternion when present", () => {
@@ -170,7 +170,7 @@ describe("roundDetection", () => {
 
     const result = roundDetection(detection);
 
-    expect(result.label.quaternion).toEqual([
+    expect(result.data.quaternion).toEqual([
       0.123457, 0.234568, 0.345679, 0.912346,
     ]);
   });
@@ -182,7 +182,7 @@ describe("roundDetection", () => {
 
     const result = roundDetection(detection);
 
-    expect(result.label.rotation).toBeUndefined();
+    expect(result.data.rotation).toBeUndefined();
   });
 
   it("handles undefined quaternion", () => {
@@ -192,7 +192,7 @@ describe("roundDetection", () => {
 
     const result = roundDetection(detection);
 
-    expect(result.label.quaternion).toBeUndefined();
+    expect(result.data.quaternion).toBeUndefined();
   });
 
   it("preserves other properties", () => {
@@ -202,10 +202,10 @@ describe("roundDetection", () => {
 
     const result = roundDetection(detection);
 
-    expect(result.label._id).toBe("det1");
+    expect(result.data._id).toBe("det1");
     expect(result.path).toBe("custom_path");
     expect(result.ui.selected).toBe(true);
-    expect(result.label.tags).toEqual(["tag1", "tag2"]);
+    expect(result.data.tags).toEqual(["tag1", "tag2"]);
   });
 
   it("does not mutate original detection", () => {
@@ -215,7 +215,7 @@ describe("roundDetection", () => {
 
     roundDetection(detection);
 
-    expect(detection.label.location).toEqual([1.1234567, 2.2345678, 3.3456789]);
+    expect(detection.data.location).toEqual([1.1234567, 2.2345678, 3.3456789]);
   });
 });
 
@@ -233,7 +233,7 @@ describe("roundPolyline", () => {
 
     const result = roundPolyline(polyline);
 
-    expect(result.label.points3d).toEqual([
+    expect(result.data.points3d).toEqual([
       [
         [1.123457, 2.234568, 3.345679],
         [4.456789, 5.567891, 6.678912],
@@ -249,7 +249,7 @@ describe("roundPolyline", () => {
 
     const result = roundPolyline(polyline);
 
-    expect(result.label.points3d).toEqual([]);
+    expect(result.data.points3d).toEqual([]);
   });
 
   it("handles single point segment", () => {
@@ -259,7 +259,7 @@ describe("roundPolyline", () => {
 
     const result = roundPolyline(polyline);
 
-    expect(result.label.points3d).toEqual([[[1.123457, 2.234568, 3.345679]]]);
+    expect(result.data.points3d).toEqual([[[1.123457, 2.234568, 3.345679]]]);
   });
 
   it("preserves other properties", () => {
@@ -273,12 +273,12 @@ describe("roundPolyline", () => {
 
     const result = roundPolyline(polyline);
 
-    expect(result.label._id).toBe("poly1");
+    expect(result.data._id).toBe("poly1");
     expect(result.path).toBe("custom_path");
     expect(result.ui.selected).toBe(true);
-    expect(result.label.tags).toEqual(["tag1"]);
-    expect(result.label.filled).toBe(true);
-    expect(result.label.closed).toBe(true);
+    expect(result.data.tags).toEqual(["tag1"]);
+    expect(result.data.filled).toBe(true);
+    expect(result.data.closed).toBe(true);
   });
 
   it("does not mutate original polyline", () => {
@@ -288,7 +288,7 @@ describe("roundPolyline", () => {
 
     roundPolyline(polyline);
 
-    expect(polyline.label.points3d[0][0]).toEqual([
+    expect(polyline.data.points3d[0][0]).toEqual([
       1.1234567, 2.2345678, 3.3456789,
     ]);
   });

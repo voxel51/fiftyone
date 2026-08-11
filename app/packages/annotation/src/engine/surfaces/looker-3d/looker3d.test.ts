@@ -12,7 +12,7 @@ import { createLooker3dBridge, type WorkingStore3d } from "./looker3dBridge";
 
 const cuboid = (id: string, label = "car"): Working3dLabel =>
   ({
-    label: {
+    data: {
       _id: id,
       _cls: "Detection",
       label,
@@ -32,14 +32,14 @@ const makeFakeStore = () => {
   const store: WorkingStore3d = {
     get: (id) => map.get(id),
     add: (label) => {
-      map.set(label.label._id, label);
+      map.set(label.data._id, label);
     },
     update: (id, partial) => {
       const prev = map.get(id);
       if (prev) {
         map.set(id, {
           ...prev,
-          label: { ...prev.label, ...partial },
+          data: { ...prev.data, ...partial },
         } as Working3dLabel);
       }
     },
@@ -95,21 +95,21 @@ describe("looker-3d adapters", () => {
       } as never,
     );
 
-    expect(descriptor.label.label._id).toBe("c1");
-    expect(descriptor.label.path).toBe("ground_truth");
-    expect(descriptor.label.ui.isNew).toBe(false);
+    expect(descriptor.entry.data._id).toBe("c1");
+    expect(descriptor.entry.path).toBe("ground_truth");
+    expect(descriptor.entry.ui.isNew).toBe(false);
     // bookkeeping never enters the document namespace
-    expect(descriptor.label.label).not.toHaveProperty("type");
-    expect(descriptor.label.label).not.toHaveProperty("path");
-    expect(descriptor.label.label).not.toHaveProperty("isNew");
+    expect(descriptor.entry.data).not.toHaveProperty("type");
+    expect(descriptor.entry.data).not.toHaveProperty("path");
+    expect(descriptor.entry.data).not.toHaveProperty("isNew");
   });
 
   describe("toLabel", () => {
     it("returns the document verbatim minus _id — user attributes with formerly-reserved names survive", () => {
       const entry = cuboid("c1");
       // user attributes whose names collide with the old reserved set
-      (entry.label as Record<string, unknown>).type = "sedan";
-      (entry.label as Record<string, unknown>).color = "red";
+      (entry.data as Record<string, unknown>).type = "sedan";
+      (entry.data as Record<string, unknown>).color = "red";
 
       const handle: Looker3dHandle = {
         instanceId: "c1",
@@ -156,7 +156,7 @@ describe("createLooker3dBridge", () => {
 
     const base = cuboid("c1");
     const handle = bridge.mount({
-      label: {
+      entry: {
         ...base,
         ui: { ...base.ui, color: undefined },
       } as Working3dLabel,
@@ -164,14 +164,14 @@ describe("createLooker3dBridge", () => {
 
     expect(handle?.instanceId).toBe("c1");
     expect(map.get("c1")?.ui.color).toBe("#resolved");
-    expect(handle?.read()?.label.label).toBe("car");
+    expect(handle?.read()?.data.label).toBe("car");
   });
 
   it("mount falls back to the descriptor color when no resolver is given", () => {
     const { store, map } = makeFakeStore();
     const bridge = createLooker3dBridge({ sample: "sample-1", store });
 
-    bridge.mount({ label: cuboid("c1") });
+    bridge.mount({ entry: cuboid("c1") });
 
     expect(map.get("c1")?.ui.color).toBe("#seed");
   });
@@ -197,14 +197,14 @@ describe("createLooker3dBridge", () => {
   it("updateHandle merge-writes through the store; unmount removes", () => {
     const { store, map } = makeFakeStore();
     const bridge = createLooker3dBridge({ sample: "sample-1", store });
-    const handle = bridge.mount({ label: cuboid("c1") })!;
+    const handle = bridge.mount({ entry: cuboid("c1") })!;
 
     detection3dAdapter.updateHandle(handle, {
       label: "truck",
       location: [9, 9, 9],
     } as never);
-    expect(map.get("c1")?.label.label).toBe("truck");
-    expect(map.get("c1")?.label.location).toEqual([9, 9, 9]);
+    expect(map.get("c1")?.data.label).toBe("truck");
+    expect(map.get("c1")?.data.location).toEqual([9, 9, 9]);
 
     bridge.unmount(handle);
     expect(store.get("c1")).toBeUndefined();
@@ -215,7 +215,7 @@ describe("createLooker3dBridge", () => {
     store.add(cuboid("foreign")); // present but never touched by the bridge
     const bridge = createLooker3dBridge({ sample: "sample-1", store });
 
-    bridge.mount({ label: cuboid("mine") });
+    bridge.mount({ entry: cuboid("mine") });
     bridge.clear();
 
     expect(store.get("mine")).toBeUndefined();
@@ -254,7 +254,7 @@ describe("looker-3d bridge driven by the engine read-half", () => {
   });
 
   it("mounts present 3D labels into the working store on registration", () => {
-    expect(fake.map.get("c1")?.label.label).toBe("car");
+    expect(fake.map.get("c1")?.data.label).toBe("car");
     expect(fake.map.get("c1")?.ui.color).toBe("#engine");
   });
 
@@ -267,7 +267,7 @@ describe("looker-3d bridge driven by the engine read-half", () => {
       dimensions: [4, 5, 6],
     });
 
-    expect(fake.map.get("c1")?.label.label).toBe("truck");
+    expect(fake.map.get("c1")?.data.label).toBe("truck");
   });
 
   it("unmounts a working entry when its Sample label is deleted", () => {
@@ -285,6 +285,6 @@ describe("looker-3d bridge driven by the engine read-half", () => {
       dimensions: [4, 5, 6],
     });
 
-    expect(fake.map.get("c1")?.label.label).toBe("car");
+    expect(fake.map.get("c1")?.data.label).toBe("car");
   });
 });

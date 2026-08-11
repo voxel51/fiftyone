@@ -26,7 +26,7 @@ export function applyTransientToCuboid(
     return detection;
   }
 
-  const doc = { ...detection.label };
+  const doc = { ...detection.data };
 
   if (transient.positionDelta) {
     doc.location = [
@@ -48,7 +48,7 @@ export function applyTransientToCuboid(
     doc.quaternion = transient.quaternionOverride;
   }
 
-  return { ...detection, label: doc };
+  return { ...detection, data: doc };
 }
 
 /**
@@ -63,7 +63,7 @@ export function applyTransientToPolyline(
     return polyline;
   }
 
-  let newPoints3d = polyline.label.points3d;
+  let newPoints3d = polyline.data.points3d;
 
   // Apply position delta to all vertices
   if (transient.positionDelta) {
@@ -97,7 +97,7 @@ export function applyTransientToPolyline(
 
   return {
     ...polyline,
-    label: { ...polyline.label, points3d: newPoints3d },
+    data: { ...polyline.data, points3d: newPoints3d },
   };
 }
 
@@ -188,7 +188,7 @@ export function useRenderDetection(
   const renderModel = useRenderModel();
 
   return useMemo(
-    () => renderModel.detections.find((d) => d.label._id === labelId),
+    () => renderModel.detections.find((d) => d.data._id === labelId),
     [renderModel.detections, labelId],
   );
 }
@@ -202,7 +202,7 @@ export function useRenderPolyline(
   const renderModel = useRenderModel();
 
   return useMemo(
-    () => renderModel.polylines.find((p) => p.label._id === labelId),
+    () => renderModel.polylines.find((p) => p.data._id === labelId),
     [renderModel.polylines, labelId],
   );
 }

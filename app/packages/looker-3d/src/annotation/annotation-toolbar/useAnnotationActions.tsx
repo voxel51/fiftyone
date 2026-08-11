@@ -305,7 +305,7 @@ export const useAnnotationActions = () => {
     const workingLabel = workingDoc.labelsById[labelId];
     if (!workingLabel || !isPolyline3dOverlay(workingLabel)) return;
 
-    const points3d = workingLabel.label.points3d;
+    const points3d = workingLabel.data.points3d;
     if (!points3d) return;
 
     // If the segment doesn't exist or the point doesn't exist, return

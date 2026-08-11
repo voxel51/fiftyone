@@ -30,7 +30,7 @@ export type Working3dLabel = ReconciledDetection3D | ReconciledPolyline3D;
  * from the coloring scheme at mount.
  */
 export interface Looker3dDescriptor {
-  label: Working3dLabel;
+  entry: Working3dLabel;
 }
 
 /**
@@ -61,7 +61,7 @@ const toPersistable = (handle: Looker3dHandle): Partial<LabelData> | null => {
     return null;
   }
 
-  const { _id: _ignored, ...rest } = entry.label as Record<string, unknown>;
+  const { _id: _ignored, ...rest } = entry.data as Record<string, unknown>;
   return rest as Partial<LabelData>;
 };
 
@@ -76,9 +76,9 @@ export const detection3dAdapter: Looker3dAdapter = {
     (label.dimensions as unknown[]).length === 3,
 
   buildHandle: (ref, label) => ({
-    label: {
-      label: {
-        ...(label as unknown as ReconciledDetection3D["label"]),
+    entry: {
+      data: {
+        ...(label as unknown as ReconciledDetection3D["data"]),
         _id: ref.instanceId,
         _cls: "Detection",
       },
@@ -104,9 +104,9 @@ export const polyline3dAdapter: Looker3dAdapter = {
   buildHandle: (ref, label) => {
     const raw = label as Record<string, unknown>;
     return {
-      label: {
-        label: {
-          ...(label as unknown as ReconciledPolyline3D["label"]),
+      entry: {
+        data: {
+          ...(label as unknown as ReconciledPolyline3D["data"]),
           _id: ref.instanceId,
           _cls: "Polyline",
           closed: !!raw.closed,

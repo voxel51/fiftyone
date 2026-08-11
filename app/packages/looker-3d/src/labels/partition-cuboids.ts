@@ -13,7 +13,7 @@
  * flicker or jump.
  */
 export function partitionCuboidsByEditedLabel<
-  T extends { label: { _id: string } },
+  T extends { data: { _id: string } },
 >(
   detections: readonly T[],
   editedLabelId: string | undefined,
@@ -25,9 +25,7 @@ export function partitionCuboidsByEditedLabel<
   const standalone: T[] = [];
   const instanced: T[] = [];
   for (const overlay of detections) {
-    (overlay.label._id === editedLabelId ? standalone : instanced).push(
-      overlay,
-    );
+    (overlay.data._id === editedLabelId ? standalone : instanced).push(overlay);
   }
   return { standaloneDetections: standalone, instancedDetections: instanced };
 }

@@ -7,8 +7,8 @@ import type {
 } from "../annotation/types";
 
 function computeBoundsForDetection(detection: ReconciledDetection3D): Box3 {
-  const [cx, cy, cz] = detection.label.location;
-  const [dx, dy, dz] = detection.label.dimensions;
+  const [cx, cy, cz] = detection.data.location;
+  const [dx, dy, dz] = detection.data.dimensions;
   return new Box3(
     new Vector3(cx - dx / 2, cy - dy / 2, cz - dz / 2),
     new Vector3(cx + dx / 2, cy + dy / 2, cz + dz / 2),
@@ -17,7 +17,7 @@ function computeBoundsForDetection(detection: ReconciledDetection3D): Box3 {
 
 function computeBoundsForPolyline(polyline: ReconciledPolyline3D): Box3 {
   const box = new Box3();
-  for (const segment of polyline.label.points3d) {
+  for (const segment of polyline.data.points3d) {
     for (const [x, y, z] of segment) {
       box.expandByPoint(new Vector3(x, y, z));
     }

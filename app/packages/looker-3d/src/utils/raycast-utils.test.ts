@@ -27,7 +27,7 @@ import {
 const buildPointCloudCrop = () => {
   return createPointCloudCropFromDetection(
     {
-      label: {
+      data: {
         _cls: "Detection",
         _id: "detection-1",
         location: [0, 0, 0],

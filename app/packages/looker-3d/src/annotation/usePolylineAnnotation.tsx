@@ -46,7 +46,7 @@ export const usePolylineAnnotation = ({
   isSelectedForAnnotation,
   hoverSource,
 }: UsePolylineAnnotationProps) => {
-  const labelId = label.label._id;
+  const labelId = label.data._id;
 
   const workingLabel = useWorkingLabel(labelId);
   const { updatePolyline } = useUpdateTransient();
@@ -65,8 +65,8 @@ export const usePolylineAnnotation = ({
 
   // Compute effective points3d from working store (or fallback to props)
   const effectivePoints3d = useMemo(() => {
-    if (workingLabel && workingLabel.label._cls === POLYLINE) {
-      return workingLabel.label.points3d;
+    if (workingLabel && workingLabel.data._cls === POLYLINE) {
+      return workingLabel.data.points3d;
     }
     return points3d;
   }, [workingLabel, points3d]);

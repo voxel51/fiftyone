@@ -185,7 +185,7 @@ export const CuboidInstances = ({
   // array upstream (see `ThreeDLabels`), so membership changes are rare,
   // user-driven events (select/deselect/create/delete).
   const membershipKey = useMemo(
-    () => detections.map((label) => label.label._id).join("|"),
+    () => detections.map((label) => label.data._id).join("|"),
     [detections],
   );
 
@@ -456,7 +456,7 @@ export const CuboidInstances = ({
       if (!label) return;
 
       hoverTrackerRef.current.setHovered(e.instanceId ?? null);
-      setHoveredLabel({ id: label.label._id, source: hoverSource });
+      setHoveredLabel({ id: label.data._id, source: hoverSource });
       onPointerOverForLabel(label, e);
     },
     [
@@ -516,7 +516,7 @@ export const CuboidInstances = ({
   // overlay) doesn't need instancing — just one conditionally-mounted mesh
   // for whichever label currently matches `hoveredLabelAtom`.
   const hoveredBatchLabel = hoveredLabel
-    ? (labelsByIndex.find((label) => label.label._id === hoveredLabel.id) ??
+    ? (labelsByIndex.find((label) => label.data._id === hoveredLabel.id) ??
       null)
     : null;
 
@@ -573,7 +573,7 @@ export const CuboidInstances = ({
       {outlineGeometry &&
         labelsByIndex.map((label, index) => (
           <CuboidColorSync
-            key={label.label._id}
+            key={label.data._id}
             label={label}
             index={index}
             baseColor={getColor(label)}
@@ -686,10 +686,10 @@ const CuboidColorSync = ({
   showOrientation,
 }: CuboidColorSyncProps) => {
   const hoveredLabel = useHoveredLabel3d();
-  const isHovered = hoveredLabel?.id === label.label._id;
+  const isHovered = hoveredLabel?.id === label.data._id;
   const isSimilarLabelHovered = useSimilarLabels3d(label);
   const isSelectedForAnnotation =
-    useCurrentSelected3dAnnotationLabel()?._id === label.label._id;
+    useCurrentSelected3dAnnotationLabel()?._id === label.data._id;
   const selected = label.ui.selected;
 
   const strokeAndFillColor = use3dLabelColor({

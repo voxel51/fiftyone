@@ -12,10 +12,10 @@ import { DETECTION } from "@fiftyone/utilities";
 
 function makeDetection(
   id: string,
-  overrides: Partial<ReconciledDetection3D["label"]> = {},
+  overrides: Partial<ReconciledDetection3D["data"]> = {},
 ): ReconciledDetection3D {
   return {
-    label: {
+    data: {
       _id: id,
       _cls: DETECTION,
       location: [0, 0, 0],
@@ -32,7 +32,7 @@ function makeDetection(
 
 function makeDoc(labels: ReconciledDetection3D[]): WorkingDoc {
   const labelsById: WorkingDoc["labelsById"] = {};
-  for (const l of labels) labelsById[l.label._id] = l;
+  for (const l of labels) labelsById[l.data._id] = l;
   return { labelsById };
 }
 

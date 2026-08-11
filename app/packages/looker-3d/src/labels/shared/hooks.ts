@@ -27,8 +27,8 @@ import type {
 const getDetailsFromLabel = (overlay: OverlayLabel) => {
   return {
     field: overlay.path,
-    label: overlay.label,
-    type: overlay.label._cls,
+    label: overlay.data,
+    type: overlay.data._cls,
     color: overlay.ui.color,
     sampleId: overlay.sampleId,
   };
@@ -71,7 +71,7 @@ const useMeshTooltipProps = () => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
-        if (selectedLabel?._id === label.label._id) return;
+        if (selectedLabel?._id === label.data._id) return;
 
         const isCurrentlyTransforming = Boolean(
           snapshot.getLoadable(isCurrentlyTransformingAtom).getValue(),
@@ -90,15 +90,15 @@ const useMeshTooltipProps = () => {
           }
         }
 
-        if (!label.label.instance || !label.sampleId) return;
+        if (!label.data.instance || !label.sampleId) return;
 
         selectiveRenderingEventBus.emit(
           new LabelHoveredEvent({
             sampleId: label.sampleId,
-            labelId: label.label._id,
-            instanceId: label.label.instance._id,
+            labelId: label.data._id,
+            instanceId: label.data.instance._id,
             field: label.path,
-            frameNumber: label.label.frame_number as number | undefined,
+            frameNumber: label.data.frame_number as number | undefined,
           }),
         );
       },
@@ -116,7 +116,7 @@ const useMeshTooltipProps = () => {
           set(fos.tooltipDetail, null);
         }
 
-        if (!label.label.instance) return;
+        if (!label.data.instance) return;
 
         selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
       },
@@ -143,7 +143,7 @@ const useMeshTooltipProps = () => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
-        if (selectedLabel?._id === label.label._id) return;
+        if (selectedLabel?._id === label.data._id) return;
 
         const isCurrentlyTransforming = Boolean(
           snapshot.getLoadable(isCurrentlyTransformingAtom).getValue(),
@@ -216,7 +216,7 @@ export const useEventHandlers = (): InstancedEventHandlers => {
           return;
         }
 
-        const id = label.label._id;
+        const id = label.data._id;
         const path = label.path;
 
         if (id && path && sample) {
@@ -235,7 +235,7 @@ export const useEventHandlers = (): InstancedEventHandlers => {
 
         // resolve from the hovered set itself, so hover-off works even after
         // the label has been deleted or replaced
-        const id = label.label._id;
+        const id = label.data._id;
         const ref = engine.interaction
           .getHovered()
           .find((hovered) => hovered.instanceId === id);

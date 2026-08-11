@@ -99,19 +99,19 @@ export type Polyline3DDocument = Overlay3DDocument &
 /**
  * A reconciled detection that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D detection that will be rendered.
- * Shape follows {@link OverlayLabel}: document under `label`, view state under `ui`.
+ * Shape follows {@link OverlayLabel}: document under `data`, view state under `ui`.
  */
-export type ReconciledDetection3D = Omit<OverlayLabel, "label"> & {
-  label: Detection3DDocument;
+export type ReconciledDetection3D = Omit<OverlayLabel, "data"> & {
+  data: Detection3DDocument;
 };
 
 /**
  * A reconciled polyline that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D polyline that will be rendered.
- * Shape follows {@link OverlayLabel}: document under `label`, view state under `ui`.
+ * Shape follows {@link OverlayLabel}: document under `data`, view state under `ui`.
  */
-export type ReconciledPolyline3D = Omit<OverlayLabel, "label"> & {
-  label: Polyline3DDocument;
+export type ReconciledPolyline3D = Omit<OverlayLabel, "data"> & {
+  data: Polyline3DDocument;
 };
 
 /**

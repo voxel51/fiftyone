@@ -218,7 +218,7 @@ describe("zoom-to-selected bounds", () => {
     const renderModel: RenderModel = {
       detections: [
         {
-          label: {
+          data: {
             _id: "moving-box",
             _cls: "Detection",
             location: [5, 0, 0],

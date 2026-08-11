@@ -62,14 +62,14 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
       if (isCuboid && isDetection3dOverlay(workingLabel)) {
         effectiveLabel = {
           ...label,
-          location: workingLabel.label.location,
-          dimensions: workingLabel.label.dimensions,
-          rotation: workingLabel.label.rotation,
+          location: workingLabel.data.location,
+          dimensions: workingLabel.data.dimensions,
+          rotation: workingLabel.data.rotation,
         };
       } else if (!isCuboid && isPolyline3dOverlay(workingLabel)) {
         effectiveLabel = {
-          ...label,
-          points3d: workingLabel.label.points3d,
+          ...(label as PolylineLabelData),
+          points3d: workingLabel.data.points3d,
         };
       }
 

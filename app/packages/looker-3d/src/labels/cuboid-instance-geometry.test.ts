@@ -14,10 +14,10 @@ import {
 } from "./cuboid-instance-geometry";
 
 function createLabel(
-  overrides: Partial<ReconciledDetection3D["label"]> = {},
+  overrides: Partial<ReconciledDetection3D["data"]> = {},
 ): ReconciledDetection3D {
   return {
-    label: {
+    data: {
       _id: "label-1",
       _cls: "Detection",
       location: [1, 2, 3],

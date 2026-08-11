@@ -141,7 +141,7 @@ export const ThreeDLabels = ({
       if (isSegmenting) return;
       if (mode === fos.ModalMode.ANNOTATE) {
         select3DLabelForAnnotation(
-          { _id: label.label._id, path: label.path },
+          { _id: label.data._id, path: label.path },
           archetype,
         );
         return;
@@ -149,10 +149,10 @@ export const ThreeDLabels = ({
 
       onSelectLabel({
         detail: {
-          id: label.label._id,
+          id: label.data._id,
           field: label.path,
           sampleId: label.sampleId,
-          instanceId: label.label.instance?._id,
+          instanceId: label.data.instance?._id,
           isShiftPressed: e.shiftKey,
         },
       });
@@ -201,21 +201,21 @@ export const ThreeDLabels = ({
       (load3dOverlays(sampleMap, selectedLabels, [], schema) ?? [])
         .map((l) => {
           const path = l.path;
-          const isTagged = shouldShowLabelTag(selectedLabelTags, l.label.tags);
+          const isTagged = shouldShowLabelTag(selectedLabelTags, l.data.tags);
           const color = getLabelColor({
             coloring,
             path,
             isTagged,
             labelTagColors,
             customizeColorSetting,
-            label: l.label,
-            embeddedDocType: l.label._cls,
+            label: l.data,
+            embeddedDocType: l.data._cls,
           });
 
           return { ...l, ui: { ...l.ui, color } };
         })
         .filter((l) => {
-          if (!pathFilter(l.path, l.label)) {
+          if (!pathFilter(l.path, l.data)) {
             return false;
           }
 
@@ -291,8 +291,8 @@ export const ThreeDLabels = ({
           isTagged: false,
           labelTagColors,
           customizeColorSetting,
-          label: overlay.label,
-          embeddedDocType: overlay.label._cls,
+          label: overlay.data,
+          embeddedDocType: overlay.data._cls,
         });
       }
 
@@ -367,7 +367,7 @@ export const ThreeDLabels = ({
         return (
           <DragGate3D
             key={`cuboid-${overlay.ui.isNew ? "new-" : ""}${
-              overlay.label._id
+              overlay.data._id
             }-${overlay.sampleId}`}
             dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
             onClick={(e) => handleSelect(overlay, ANNOTATION_CUBOID, e)}
@@ -375,14 +375,14 @@ export const ThreeDLabels = ({
             <Cuboid
               lineWidth={cuboidLineWidth}
               rotation={
-                (overlay.label.rotation as [number, number, number]) ??
+                (overlay.data.rotation as [number, number, number]) ??
                 overlayRotation
               }
-              itemRotation={overlay.label.rotation ?? itemRotation}
-              location={overlay.label.location}
-              dimensions={overlay.label.dimensions}
+              itemRotation={overlay.data.rotation ?? itemRotation}
+              location={overlay.data.location}
+              dimensions={overlay.data.dimensions}
               selected={overlay.ui.selected}
-              opacity={getOverlayOpacity(overlay.label._id)}
+              opacity={getOverlayOpacity(overlay.data._id)}
               label={overlay}
               useLegacyCoordinates={settings.useLegacyCoordinates}
               color={getOverlayColor(overlay)}
@@ -439,7 +439,7 @@ export const ThreeDLabels = ({
       return (
         <DragGate3D
           key={`polyline-draggate-${overlay.ui.isNew ? "new-" : ""}${
-            overlay.label._id
+            overlay.data._id
           }-${overlay.sampleId}`}
           dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
           onClick={(e) => handleSelect(overlay, ANNOTATION_POLYLINE, e)}
@@ -447,11 +447,11 @@ export const ThreeDLabels = ({
           <Polyline
             rotation={overlayRotation}
             lineWidth={polylineWidth}
-            points3d={overlay.label.points3d}
-            filled={!!overlay.label.filled}
-            closed={!!overlay.label.closed}
+            points3d={overlay.data.points3d}
+            filled={!!overlay.data.filled}
+            closed={!!overlay.data.closed}
             selected={overlay.ui.selected}
-            opacity={getOverlayOpacity(overlay.label._id)}
+            opacity={getOverlayOpacity(overlay.data._id)}
             label={overlay}
             color={getOverlayColor(overlay)}
             hoverSource={hoverSource}

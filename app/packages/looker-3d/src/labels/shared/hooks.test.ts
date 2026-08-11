@@ -97,7 +97,7 @@ import type { OverlayLabel } from "../loader";
 
 function makeLabel(id: string): OverlayLabel {
   return {
-    label: {
+    data: {
       _id: id,
       _cls: "Detection",
       instance: { _cls: "Instance", _id: `instance-${id}` },
@@ -130,7 +130,7 @@ describe("useEventHandlers", () => {
     });
     expect(mocks.setSpy).toHaveBeenLastCalledWith(
       mocks.fosAtoms.tooltipDetail,
-      expect.objectContaining({ label: labelA.label }),
+      expect.objectContaining({ label: labelA.data }),
     );
 
     act(() => {
@@ -138,7 +138,7 @@ describe("useEventHandlers", () => {
     });
     expect(mocks.setSpy).toHaveBeenLastCalledWith(
       mocks.fosAtoms.tooltipDetail,
-      expect.objectContaining({ label: labelB.label }),
+      expect.objectContaining({ label: labelB.data }),
     );
   });
 
@@ -164,7 +164,7 @@ describe("useEventHandlers", () => {
     const base = makeLabel("b");
     const withoutInstance = {
       ...base,
-      label: { ...base.label, instance: undefined },
+      data: { ...base.data, instance: undefined },
     };
 
     const { result } = renderHook(() => useEventHandlers());

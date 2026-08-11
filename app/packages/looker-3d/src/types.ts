@@ -173,7 +173,7 @@ export interface EventHandlers {
 
 /**
  * The label shape `useEventHandlers()`'s public contract takes. Reconciled
- * labels follow `OverlayLabel` (document under `label`, view state under
+ * labels follow `OverlayLabel` (document under `data`, view state under
  * `ui`), so the alias is exact for every label the batch or the standalone
  * path can pass.
  */
@@ -259,10 +259,10 @@ export interface CuboidCreationState {
 export function isDetection3dOverlay(
   overlay: unknown,
 ): overlay is ReconciledDetection3D {
-  if (!overlay || typeof overlay !== "object" || !("label" in overlay)) {
+  if (!overlay || typeof overlay !== "object" || !("data" in overlay)) {
     return false;
   }
-  const doc = (overlay as OverlayLabel).label;
+  const doc = (overlay as OverlayLabel).data;
   return (
     !!doc &&
     typeof doc === "object" &&
@@ -280,10 +280,10 @@ export function isDetection3dOverlay(
 export function isPolyline3dOverlay(
   overlay: unknown,
 ): overlay is ReconciledPolyline3D {
-  if (!overlay || typeof overlay !== "object" || !("label" in overlay)) {
+  if (!overlay || typeof overlay !== "object" || !("data" in overlay)) {
     return false;
   }
-  const doc = (overlay as OverlayLabel).label;
+  const doc = (overlay as OverlayLabel).data;
   return (
     !!doc &&
     typeof doc === "object" &&
@@ -299,7 +299,7 @@ export function isPolyline3dOverlay(
  */
 export function isDetection3dDocument(
   doc: unknown,
-): doc is ReconciledDetection3D["label"] {
+): doc is ReconciledDetection3D["data"] {
   return (
     !!doc &&
     typeof doc === "object" &&
@@ -316,7 +316,7 @@ export function isDetection3dDocument(
  */
 export function isPolyline3dDocument(
   doc: unknown,
-): doc is ReconciledPolyline3D["label"] {
+): doc is ReconciledPolyline3D["data"] {
   return (
     !!doc &&
     typeof doc === "object" &&
@@ -332,7 +332,7 @@ export function isPolyline3dDocument(
 export function isDetection(
   entry: ReconciledDetection3D | ReconciledPolyline3D,
 ): entry is ReconciledDetection3D {
-  return entry.label._cls === "Detection";
+  return entry.data._cls === "Detection";
 }
 
 /**
@@ -341,5 +341,5 @@ export function isDetection(
 export function isPolyline(
   entry: ReconciledDetection3D | ReconciledPolyline3D,
 ): entry is ReconciledPolyline3D {
-  return entry.label._cls === "Polyline";
+  return entry.data._cls === "Polyline";
 }
