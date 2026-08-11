@@ -46,14 +46,16 @@ export function GridStreamSelector() {
       }}
       cy="episode-grid-stream"
       inputStyle={{ height: 28 }}
-      onSelect={async (stream, value) => {
+      onSelect={(stream, value) => {
         const nextStream = value ?? stream;
         if (!options.includes(nextStream)) {
           throw new SelectorValidationError();
         }
 
         setSelectedStream(nextStream);
-        return nextStream === GRID_STREAM_AUTO ? "" : nextStream;
+        return Promise.resolve(
+          nextStream === GRID_STREAM_AUTO ? "" : nextStream,
+        );
       }}
       overflow
       placeholder={AUTO_PLACEHOLDER}

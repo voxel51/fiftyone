@@ -36,8 +36,8 @@ export interface GridPreviewSnapshot {
  */
 export interface GridPreviewState extends GridPreviewSnapshot {
   readonly isBuffering: boolean;
-  pause(): void;
-  play(): void;
+  pause(this: void): void;
+  play(this: void): void;
 }
 
 /**

@@ -21,8 +21,8 @@ import {
 
 const sessionHarness = vi.hoisted(() => ({
   session: {
-    dispose: vi.fn(),
-    read: vi.fn(),
+    dispose: vi.fn<EpisodePreviewSession["dispose"]>(),
+    read: vi.fn<EpisodePreviewSession["read"]>(),
   },
 }));
 
@@ -53,12 +53,10 @@ describe("useGridPreview", () => {
       );
     });
 
-    expect(sessionHarness.session.read).toHaveBeenCalledWith(
-      {},
-      {
-        priority: "idle",
-        signal: expect.any(AbortSignal),
-      },
+    expect(sessionHarness.session.read).toHaveBeenCalledOnce();
+    expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({});
+    expect(sessionHarness.session.read.mock.calls[0]?.[1]?.priority).toBe(
+      "idle",
     );
     expect(
       firstImageByte(
@@ -66,8 +64,8 @@ describe("useGridPreview", () => {
       ),
     ).toBe(1);
 
-    const signal = sessionHarness.session.read.mock.calls[0]?.[1]
-      ?.signal as AbortSignal;
+    const signal = sessionHarness.session.read.mock.calls[0]?.[1]?.signal;
+    if (!signal) throw new Error("Expected initial preview signal");
     unmount();
 
     expect(signal.aborted).toBe(true);
@@ -83,8 +81,9 @@ describe("useGridPreview", () => {
     const { rerender } = render(
       <PreviewHarness id="hover-priority" source={source} />,
     );
-    const backgroundSignal = sessionHarness.session.read.mock.calls[0]?.[1]
-      ?.signal as AbortSignal;
+    const backgroundSignal =
+      sessionHarness.session.read.mock.calls[0]?.[1]?.signal;
+    if (!backgroundSignal) throw new Error("Expected background signal");
 
     rerender(<PreviewHarness hovered id="hover-priority" source={source} />);
 
@@ -112,8 +111,8 @@ describe("useGridPreview", () => {
     const { rerender } = render(
       <PreviewHarness id="source" source={sourceForId("first")} />,
     );
-    const firstSignal = sessionHarness.session.read.mock.calls[0]?.[1]
-      ?.signal as AbortSignal;
+    const firstSignal = sessionHarness.session.read.mock.calls[0]?.[1]?.signal;
+    if (!firstSignal) throw new Error("Expected stale-source signal");
 
     rerender(<PreviewHarness id="source" source={sourceForId("second")} />);
 
@@ -271,7 +270,7 @@ describe("useGridPreview", () => {
         source={sourceForId("dependencies")}
       />,
     );
-    await act(async () => undefined);
+    await act(() => Promise.resolve());
     expect(onReadResult).toHaveBeenCalledTimes(1);
 
     act(() => latestState.current?.play());
@@ -349,10 +348,10 @@ describe("useGridPreview", () => {
         source={sourceForId("buffering")}
       />,
     );
-    await act(async () => undefined);
+    await act(() => Promise.resolve());
 
     act(() => latestState.current?.play());
-    await act(async () => undefined);
+    await act(() => Promise.resolve());
     expect(latestState.current?.isBuffering).toBe(false);
 
     act(() => {
@@ -399,11 +398,11 @@ describe("useGridPreview", () => {
         source={sourceForId("paced")}
       />,
     );
-    await act(async () => undefined);
+    await act(() => Promise.resolve());
     expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
 
     act(() => latestState.current?.play());
-    await act(async () => undefined);
+    await act(() => Promise.resolve());
     expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
 
     await act(() => vi.advanceTimersByTimeAsync(499));
@@ -433,10 +432,10 @@ describe("useGridPreview", () => {
         source={sourceForId("missing-frame")}
       />,
     );
-    await act(async () => undefined);
+    await act(() => Promise.resolve());
 
     act(() => latestState.current?.play());
-    await act(async () => undefined);
+    await act(() => Promise.resolve());
     expect(sessionHarness.session.read).toHaveBeenCalledTimes(2);
 
     await act(() => vi.advanceTimersByTimeAsync(82));
@@ -528,7 +527,7 @@ describe("useGridPreview", () => {
     await waitFor(() => {
       expect(sessionHarness.session.read).toHaveBeenCalledTimes(2);
     });
-    await act(async () => undefined);
+    await act(() => Promise.resolve());
     expect(sessionHarness.session.read).toHaveBeenCalledTimes(2);
 
     reload.resolve(readyResult({ bytes: [2], streamId: "/camera/back" }));

@@ -425,8 +425,9 @@ describe("GridRenderer", () => {
 
     render(<GridRenderer ctx={rendererCtx()} />);
     const bitmap = fakeSnapshotBitmap();
-    await act(async () => {
+    await act(() => {
       snapshotHarness.requests[0].resolve(bitmap);
+      return Promise.resolve();
     });
     expect(bitmapHostHarness.lastBitmap).toBe(bitmap);
 
@@ -461,8 +462,9 @@ describe("GridRenderer", () => {
     expect(snapshotHarness.requests.length).toBe(2);
 
     const fresh = fakeSnapshotBitmap();
-    await act(async () => {
+    await act(() => {
       snapshotHarness.requests[1].resolve(fresh);
+      return Promise.resolve();
     });
     expect(bitmapHostHarness.lastBitmap).toBe(fresh);
   });

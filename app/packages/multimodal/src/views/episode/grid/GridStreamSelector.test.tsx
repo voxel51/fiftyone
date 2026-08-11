@@ -8,8 +8,9 @@ import {
 } from "./grid-stream-state";
 
 const { storedValues, useCurrentDataset } = vi.hoisted(() => ({
-  storedValues: new Map<string, string>(),
-  useCurrentDataset: vi.fn(),
+  storedValues: new Map<string, unknown>(),
+  useCurrentDataset:
+    vi.fn<() => { readonly mediaType: string; readonly name: string }>(),
 }));
 
 vi.mock("@fiftyone/state", async () => {
@@ -19,7 +20,9 @@ vi.mock("@fiftyone/state", async () => {
     useBrowserStorage: <T,>(key: string, initialValue: T) => {
       const [value, setValue] = React.useState<T>(() => {
         const stored = storedValues.get(key);
-        return stored ? JSON.parse(stored) : initialValue;
+        // Mirrors useBrowserStorage's generic trust boundary for values this
+        // harness itself stored under the same key.
+        return stored === undefined ? initialValue : (stored as T);
       });
 
       return [
@@ -30,17 +33,17 @@ vi.mock("@fiftyone/state", async () => {
               nextValue instanceof Function
                 ? nextValue(previousValue)
                 : nextValue;
-            storedValues.set(key, JSON.stringify(resolvedValue));
+            storedValues.set(key, resolvedValue);
             return resolvedValue;
           });
         },
       ] as const;
     },
-    useCurrentDataset: (...args: unknown[]) => useCurrentDataset(...args),
+    useCurrentDataset,
   };
 });
 
-vi.mock("@fiftyone/components", async () => {
+vi.mock("@fiftyone/components", () => {
   class SelectorValidationError extends Error {}
 
   return {
@@ -81,7 +84,7 @@ describe("GridStreamSelector", () => {
     __resetGridStreamStateForTests();
   });
 
-  it("shows auto and mounted episode streams", async () => {
+  it("shows auto and mounted episode streams", () => {
     render(<RegisteredSelector />);
 
     expect(screen.getByTestId("selected-stream").textContent).toBe("");
