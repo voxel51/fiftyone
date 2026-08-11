@@ -30,6 +30,7 @@ const census = new Map();
 const directoryTotals = new Map();
 const areaTotals = new Map();
 const subareaTotals = new Map();
+const fileTotals = new Map();
 const ruleTotals = new Map();
 let total = 0;
 
@@ -63,6 +64,7 @@ for (const result of results) {
     directoryTotals.set(directory, (directoryTotals.get(directory) ?? 0) + 1);
     areaTotals.set(area, (areaTotals.get(area) ?? 0) + 1);
     subareaTotals.set(subarea, (subareaTotals.get(subarea) ?? 0) + 1);
+    fileTotals.set(sourcePath, (fileTotals.get(sourcePath) ?? 0) + 1);
     ruleTotals.set(message.ruleId, (ruleTotals.get(message.ruleId) ?? 0) + 1);
   }
 }
@@ -94,5 +96,12 @@ for (const [subarea, count] of [...subareaTotals].sort(([a], [b]) =>
   a.localeCompare(b),
 )) {
   console.log(`${subarea}\t${count}`);
+}
+console.log("\nBY SOURCE FILE");
+for (const [file, count] of [...fileTotals].sort(
+  ([leftFile, leftCount], [rightFile, rightCount]) =>
+    rightCount - leftCount || leftFile.localeCompare(rightFile),
+)) {
+  console.log(`${file}\t${count}`);
 }
 console.log(`\nTOTAL\t${total}`);
