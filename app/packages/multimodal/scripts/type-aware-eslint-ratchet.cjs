@@ -8,6 +8,7 @@ const typeAwareRules = require("@typescript-eslint/eslint-plugin").configs[
 const migratedDirectories = [
   "packages/multimodal/src/codecs/**/*.{ts,tsx}",
   "packages/multimodal/src/decoders/**/*.{ts,tsx}",
+  "packages/multimodal/src/extensions/**/*.{ts,tsx}",
   "packages/multimodal/src/inject/**/*.{ts,tsx}",
   "packages/multimodal/src/ir/**/*.{ts,tsx}",
   "packages/multimodal/src/observability/**/*.{ts,tsx}",

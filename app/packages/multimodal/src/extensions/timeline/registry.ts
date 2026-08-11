@@ -9,6 +9,8 @@ const registry = createExtensionRegistry<TimelineExtension>(
   REGISTRY_KEY,
   "timeline extension",
 );
+const getSnapshot = () => registry.getSnapshot();
+const subscribe = (listener: () => void) => registry.subscribe(listener);
 
 /**
  * Registers one product-neutral timeline extension.
@@ -30,11 +32,7 @@ export function registerTimelineExtension(
 
 /** Returns the registered extensions in deterministic product-policy order. */
 export function useTimelineExtensions(): readonly TimelineExtension[] {
-  return useSyncExternalStore(
-    registry.subscribe,
-    registry.getSnapshot,
-    registry.getSnapshot,
-  );
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 /** Test-only reset kept out of the public package barrel. */

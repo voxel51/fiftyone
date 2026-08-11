@@ -75,11 +75,11 @@ describe("useTimelineSections", () => {
     expect(result.current.decorateTrack(header, false).expanded).toBe(false);
     const unpinned = result.current.decorateTrack(EVENT_TRACK, false);
     expect(unpinned).toMatchObject({
-      className: expect.stringContaining("source-row"),
       depth: 2,
       eventMenuItems: [],
       expansionGutter: true,
     });
+    expect(unpinned.className).toContain("source-row");
     expect(unpinned.className).toMatch(/hiddenTrack/);
     expect(result.current.decorateTrack(EVENT_TRACK, true)).toEqual({
       className: "source-row",

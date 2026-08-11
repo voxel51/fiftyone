@@ -18,7 +18,7 @@ const registry = createExtensionRegistry<EpisodeTileExtension>(
 export function registerEpisodeTileExtension(
   extension: EpisodeTileExtension,
 ): () => void {
-  if (!isEpisodeTileExtensionId(extension.id)) {
+  if (!hasEpisodeTileExtensionIdShape(extension.id)) {
     throw new Error(
       `Episode tile extension ids must be namespaced: ${extension.id}`,
     );
@@ -42,6 +42,10 @@ export function getEpisodeTileExtension(
 export function isEpisodeTileExtensionId(
   value: string,
 ): value is EpisodeTileExtensionId {
+  return hasEpisodeTileExtensionIdShape(value);
+}
+
+function hasEpisodeTileExtensionIdShape(value: string): boolean {
   const separator = value.indexOf(":");
   return separator > 0 && separator < value.length - 1;
 }
