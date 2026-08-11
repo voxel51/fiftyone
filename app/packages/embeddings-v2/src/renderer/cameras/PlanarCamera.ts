@@ -1,5 +1,5 @@
 import { OrthographicCamera } from "three";
-import { MARGIN, MAX_ZOOM, MIN_ZOOM } from "../constants";
+import { DEFAULT_ZOOM, MARGIN, MAX_ZOOM, MIN_ZOOM } from "../constants";
 import {
   clampToHome,
   fitRect,
@@ -32,6 +32,8 @@ export class PlanarCamera implements CameraAdapter {
   // The pannable space (see worldRect): every zoom level is a window
   // that must stay inside it
   private world: Rect = this.home;
+  // Where first load and reset land: the view at DEFAULT_ZOOM
+  private defaultView: Rect = this.home;
   private rect: Rect = this.home;
   private width = 1;
   private height = 1;
@@ -91,7 +93,8 @@ export class PlanarCamera implements CameraAdapter {
     this.height = height;
     this.home = fitRect(bounds, width, height, MARGIN);
     this.world = worldRect(this.home, MIN_ZOOM);
-    this.rect = this.home;
+    this.defaultView = worldRect(this.home, DEFAULT_ZOOM);
+    this.rect = this.defaultView;
     this.apply();
   }
 
@@ -110,6 +113,7 @@ export class PlanarCamera implements CameraAdapter {
     const cy = (this.rect.y0 + this.rect.y1) / 2;
     this.home = fitRect(this.bounds, width, height, MARGIN);
     this.world = worldRect(this.home, MIN_ZOOM);
+    this.defaultView = worldRect(this.home, DEFAULT_ZOOM);
     const w = (this.home.x1 - this.home.x0) / k;
     const h = (this.home.y1 - this.home.y0) / k;
     this.rect = clampToHome(
@@ -120,7 +124,7 @@ export class PlanarCamera implements CameraAdapter {
   }
 
   reset(): void {
-    this.rect = this.focus ? this.frameFocus(this.focus) : this.home;
+    this.rect = this.focus ? this.frameFocus(this.focus) : this.defaultView;
     this.apply();
   }
 

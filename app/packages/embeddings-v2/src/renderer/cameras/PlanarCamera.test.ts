@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_ZOOM, MARGIN } from "../constants";
+import { fitRect } from "../math";
 import { PlanarCamera } from "./PlanarCamera";
 
 const BOUNDS = {
@@ -53,10 +55,27 @@ describe("PlanarCamera.toDataPolygon", () => {
   });
 });
 
+describe("PlanarCamera default view", () => {
+  // Load and reset land at DEFAULT_ZOOM, not fit: the cloud gets
+  // breathing room around it and pan works immediately
+  it("starts slightly zoomed out of fit", () => {
+    const element = document.createElement("div");
+    const camera = new PlanarCamera(element, vi.fn());
+    camera.setBounds(BOUNDS, 100, 100);
+
+    const home = fitRect(BOUNDS, 100, 100, MARGIN);
+    expect(camera.camera.right - camera.camera.left).toBeCloseTo(
+      (home.x1 - home.x0) / DEFAULT_ZOOM,
+    );
+
+    camera.destroy();
+  });
+});
+
 describe("PlanarCamera pan", () => {
-  // The world model's headline: panning works at the default fit view
+  // The world model's headline: panning works at the default view
   // (the window is smaller than the world), and reset recovers
-  it("pans at the fit view, and reset recenters", () => {
+  it("pans at the default view, and reset recenters", () => {
     const element = document.createElement("div");
     // jsdom has no pointer capture; the pan handlers call it
     element.setPointerCapture = vi.fn();
@@ -92,32 +111,38 @@ describe("PlanarCamera focus", () => {
     (camera.bottom + camera.top) / 2,
   ];
 
+  const expectCentered = (camera: PlanarCamera["camera"]) => {
+    const [cx, cy] = center(camera);
+    expect(cx).toBeCloseTo(5);
+    expect(cy).toBeCloseTo(5);
+  };
+
   // Legend/filter hides move the interesting region; reset must follow
   // it — and forget it again when everything is visible or data changes
   it("reset frames the focus, and setBounds clears it", () => {
     const element = document.createElement("div");
     const camera = new PlanarCamera(element, vi.fn());
     camera.setBounds(BOUNDS, 100, 100);
-    const homeWidth = camera.camera.right - camera.camera.left;
+    const defaultWidth = camera.camera.right - camera.camera.left;
 
     camera.setFocus({ xMin: 7, xMax: 9, yMin: 1, yMax: 3, zMin: 0, zMax: 0 });
     // No immediate movement — focus only steers the next reset
-    expect(center(camera.camera)).toEqual([5, 5]);
+    expectCentered(camera.camera);
 
     camera.reset();
     const [cx, cy] = center(camera.camera);
     expect(cx).toBeCloseTo(8);
     expect(cy).toBeCloseTo(2);
-    expect(camera.camera.right - camera.camera.left).toBeLessThan(homeWidth);
+    expect(camera.camera.right - camera.camera.left).toBeLessThan(defaultWidth);
 
     camera.setFocus(null);
     camera.reset();
-    expect(center(camera.camera)).toEqual([5, 5]);
+    expectCentered(camera.camera);
 
     camera.setFocus({ xMin: 7, xMax: 9, yMin: 1, yMax: 3, zMin: 0, zMax: 0 });
     camera.setBounds(BOUNDS, 100, 100);
     camera.reset();
-    expect(center(camera.camera)).toEqual([5, 5]);
+    expectCentered(camera.camera);
 
     camera.destroy();
   });

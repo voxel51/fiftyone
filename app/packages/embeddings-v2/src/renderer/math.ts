@@ -84,16 +84,18 @@ export function clampToHome(rect: Rect, home: Rect): Rect {
 }
 
 /**
- * The camera's world: the view at minimum zoom, home scaled about its
- * center by 1/minZoom. Every zoom level is a window into this fixed
- * rect and the single camera rule is "the window stays inside the
- * world" — so pan already works at the default fit view (the window is
- * smaller than the world), zooming out grows the window toward the
- * world, and the view is never more lost than reset can recover.
+ * The centered view at `zoom` (<1 = zoomed out): home scaled about its
+ * center by 1/zoom. The camera builds two fixed rects with this. The
+ * world — the view at MIN_ZOOM — is the pannable space, and the single
+ * camera rule is "every window stays inside the world": so any view
+ * above the floor has pan room, zooming out grows the window toward
+ * the world, and the view is never more lost than reset can recover.
+ * The default view — DEFAULT_ZOOM, where load and reset land — is the
+ * same scaling, slightly out of fit.
  */
-export function worldRect(home: Rect, minZoom: number): Rect {
-  const gx = ((home.x1 - home.x0) * (1 / minZoom - 1)) / 2;
-  const gy = ((home.y1 - home.y0) * (1 / minZoom - 1)) / 2;
+export function worldRect(home: Rect, zoom: number): Rect {
+  const gx = ((home.x1 - home.x0) * (1 / zoom - 1)) / 2;
+  const gy = ((home.y1 - home.y0) * (1 / zoom - 1)) / 2;
   return {
     x0: home.x0 - gx,
     x1: home.x1 + gx,
