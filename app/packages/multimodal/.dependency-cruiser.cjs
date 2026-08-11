@@ -20,6 +20,8 @@ const OBSERVABILITY = `${SRC}observability/`;
 const PORTS = `${SRC}ports/`;
 const QUERY = `${SRC}query/`;
 const RUNTIME = `${SRC}runtime/`;
+const POINT_CLOUD_RUNTIME_LEAVES =
+  `${RUNTIME}point-cloud-(channel-encoding|render-payload)\\.ts$`;
 const SCENE_INVENTORY = `${SRC}scene-inventory/`;
 const SCHEMAS = `${SRC}schemas/`;
 const STREAM_SELECTION = `${SRC}stream-selection/`;
@@ -232,7 +234,7 @@ module.exports = {
       from: { path: ADAPTERS, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(adapters|codecs|decoders|ir|observability|ports|query|schemas|stream-selection|utils)/`,
+        pathNot: `${SRC}(adapters|codecs|decoders|ir|observability|ports|query|schemas|stream-selection|utils)/|${POINT_CLOUD_RUNTIME_LEAVES}`,
       },
     },
     {
@@ -378,7 +380,7 @@ module.exports = {
       from: { path: VISUALIZATION, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(visualization|video|observability|ir|codecs|utils)/`,
+        pathNot: `${SRC}(visualization|video|observability|ir|codecs|utils)/|${POINT_CLOUD_RUNTIME_LEAVES}`,
       },
     },
     {

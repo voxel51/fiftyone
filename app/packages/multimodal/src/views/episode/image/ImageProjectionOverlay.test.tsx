@@ -9,7 +9,7 @@ import {
   vi,
 } from "vitest";
 
-import { buildPointCloudRenderPayload } from "../../../ir";
+import { buildPointCloudRenderPayload } from "../../../runtime/point-cloud-render-payload";
 import type { PointCloudVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization/visualization-registry";
 import type { PointerDwellOptions } from "../../../visualization/interaction/pointer-dwell";

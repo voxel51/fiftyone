@@ -1,7 +1,5 @@
 /** Public cloneable byte-source values. */
 export * from "./bytes";
-export * from "./point-cloud-render-payload";
-export * from "./point-cloud-channel-encoding";
 /** Public frame intermediate representation. */
 export * from "./frames";
 export * from "./raw-image-rgba";

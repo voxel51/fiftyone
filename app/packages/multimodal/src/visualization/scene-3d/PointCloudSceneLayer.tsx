@@ -13,7 +13,7 @@ import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
 import type { PointCloudRenderPayload } from "../../ir";
-import { pointCloudChannelEncodingKey } from "../../ir";
+import { pointCloudChannelEncodingKey } from "../../runtime/point-cloud-channel-encoding";
 import {
   createGpuPointCloudColorNode,
   createGpuPointCloudColorUniforms,

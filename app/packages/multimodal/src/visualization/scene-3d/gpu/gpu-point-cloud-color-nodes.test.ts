@@ -2,10 +2,8 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  buildPointCloudRenderPayload,
-  pointCloudNativeIntegerScalarEncoding,
-} from "../../../ir";
+import { buildPointCloudRenderPayload } from "../../../runtime/point-cloud-render-payload";
+import { pointCloudNativeIntegerScalarEncoding } from "../../../runtime/point-cloud-channel-encoding";
 import {
   createGpuPointCloudChannelResource,
   gpuPointCloudChannelValueNode,

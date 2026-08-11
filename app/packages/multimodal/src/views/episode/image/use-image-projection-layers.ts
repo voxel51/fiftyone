@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Quaternion, Vector3 } from "three";
 
-import { buildPointCloudRenderPayload } from "../../../ir";
+import { buildPointCloudRenderPayload } from "../../../runtime/point-cloud-render-payload";
 import type {
   PointCloudRenderPayload,
   PointCloudVisualization,

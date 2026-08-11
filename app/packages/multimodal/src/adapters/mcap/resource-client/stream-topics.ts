@@ -28,10 +28,6 @@ import {
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
   FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS,
   FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD,
-  FOXGLOVE_FRAME_TRANSFORM_CDR_PAYLOADS,
-  FOXGLOVE_FRAME_TRANSFORM_PAYLOAD,
-  FOXGLOVE_FRAME_TRANSFORMS_CDR_PAYLOADS,
-  FOXGLOVE_FRAME_TRANSFORMS_PAYLOAD,
   FOXGLOVE_GRID_CDR_PAYLOADS,
   FOXGLOVE_GRID_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS,
@@ -71,8 +67,6 @@ import {
   ROS_POSE_STAMPED_PAYLOADS,
   ROS_RCL_LOG_PAYLOADS,
   ROS_ROSGRAPH_LOG_PAYLOADS,
-  ROS_TF_MESSAGE_PAYLOADS,
-  ROS_TRANSFORM_STAMPED_PAYLOADS,
 } from "../message-decoders/ros/payloads";
 
 /**
@@ -286,25 +280,9 @@ export function isLogStream(topic: StreamInventory): boolean {
 }
 
 /**
- * Returns whether a stream inventory item can feed the 3D frame-transform
- * resolver. Transform topics are not scene sources themselves; they support
- * placement of renderable streams discovered elsewhere.
- */
-export function isFrameTransformStream(topic: StreamInventory): boolean {
-  return (
-    hasPayload(topic, FOXGLOVE_FRAME_TRANSFORM_PAYLOAD) ||
-    hasPayload(topic, FOXGLOVE_FRAME_TRANSFORMS_PAYLOAD) ||
-    hasAnyPayload(topic, FOXGLOVE_FRAME_TRANSFORM_CDR_PAYLOADS) ||
-    hasAnyPayload(topic, FOXGLOVE_FRAME_TRANSFORMS_CDR_PAYLOADS) ||
-    hasAnyPayload(topic, ROS_TF_MESSAGE_PAYLOADS) ||
-    hasAnyPayload(topic, ROS_TRANSFORM_STAMPED_PAYLOADS)
-  );
-}
-
-/**
  * Returns whether a stream inventory item exactly matches a payload descriptor.
  */
-export function hasPayload(
+function hasPayload(
   topic: StreamInventory,
   payload: PayloadDescriptor,
 ): boolean {

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   POINT_CLOUD_RGB_ENCODING,
   pointCloudNativeIntegerScalarEncoding,
-} from "../../../ir";
+} from "../../../runtime/point-cloud-channel-encoding";
 import {
   createGpuPointCloudChannelResource,
   gpuPointCloudChannelResourceBytes,

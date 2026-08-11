@@ -3,7 +3,7 @@ import type {
   PointCloudRenderPayload,
   PointCloudRenderScalarField,
 } from "../../../ir";
-import { decodePointCloudChannelValue } from "../../../ir";
+import { decodePointCloudChannelValue } from "../../../runtime/point-cloud-channel-encoding";
 import {
   createPointCloudColormapLookup,
   pointCloudColormapKey,

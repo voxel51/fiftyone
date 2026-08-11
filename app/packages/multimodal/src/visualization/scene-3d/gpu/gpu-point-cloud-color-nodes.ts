@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import * as TSL from "three/tsl";
 
-import { pointCloudChannelEncodingKey } from "../../../ir";
+import { pointCloudChannelEncodingKey } from "../../../runtime/point-cloud-channel-encoding";
 import type {
   PointCloudColorNode,
   PointCloudColorTslFacade,

@@ -8,8 +8,8 @@ import type {
 import {
   POINT_CLOUD_RGB_ENCODING,
   pointCloudNativeIntegerScalarEncoding,
-  VISUALIZATION_KIND,
-} from "../../../ir";
+} from "../../../runtime/point-cloud-channel-encoding";
+import { VISUALIZATION_KIND } from "../../../ir";
 import type { DataStream } from "./data-stream-context";
 import {
   applyPointCloudRenderChannel,

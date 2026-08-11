@@ -7,7 +7,7 @@ import {
   type PointCloudChannelProjectionRequest,
 } from "../../../../decoders";
 import type { PointCloudRenderChannelPayload } from "../../../../ir";
-import { POINT_CLOUD_FLOAT32_SCALAR_ENCODING } from "../../../../ir";
+import { POINT_CLOUD_FLOAT32_SCALAR_ENCODING } from "../../../../runtime/point-cloud-channel-encoding";
 import type { McapIndexedReaderLike } from "../../reader";
 import { MCAP_ACTIVE_TIMELINE } from "../../contracts";
 import { resolveMcapTimelineStrategy } from "../timeline";

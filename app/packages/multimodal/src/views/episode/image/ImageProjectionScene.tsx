@@ -1,7 +1,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 
-import { buildPointCloudRenderPayload } from "../../../ir";
+import { buildPointCloudRenderPayload } from "../../../runtime/point-cloud-render-payload";
 import type { ImageViewTransform } from "../../../visualization/media-2d/Base2dScene";
 import GpuPointCloudProjectionLayer from "../../../visualization/composition/GpuPointCloudProjectionLayer";
 import {
@@ -64,7 +64,7 @@ const HOVER_ECHO_MIN_SCREEN_PX = 8;
 const HOVER_ECHO_RENDER_ORDER = 9_000;
 
 /** GPU scene content and on-demand picker for one camera tile. */
-export const ImageProjectionScene = forwardRef<
+const ImageProjectionScene = forwardRef<
   GpuPointCloudProjectionPickerHandle,
   ImageProjectionSceneProps
 >(function ImageProjectionScene(

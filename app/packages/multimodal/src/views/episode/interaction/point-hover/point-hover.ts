@@ -1,5 +1,5 @@
 import type { PointCloudVisualization } from "../../../../ir";
-import { decodePointCloudChannelValue } from "../../../../ir";
+import { decodePointCloudChannelValue } from "../../../../runtime/point-cloud-channel-encoding";
 import type { Scene3dHoveredPoint } from "./use-hover-tooltip";
 
 const POINT_COMPONENT_COUNT = 3;

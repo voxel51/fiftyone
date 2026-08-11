@@ -1,9 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  buildPointCloudRenderPayload,
-  pointCloudNativeIntegerScalarEncoding,
-} from "../../ir";
+import { buildPointCloudRenderPayload } from "../../runtime/point-cloud-render-payload";
+import { pointCloudNativeIntegerScalarEncoding } from "../../runtime/point-cloud-channel-encoding";
 import {
   getGpuPointCloudProjectionResource,
   GPU_PROJECTION_RESOURCE_RETENTION_CAP,

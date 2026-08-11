@@ -1,9 +1,7 @@
 import { useStreamValues } from "@fiftyone/playback";
 import React, { useMemo } from "react";
-import {
-  MAX_POINT_CLOUD_RENDER_POINTS,
-  type PointCloudVisualization,
-} from "../../../../ir";
+import type { PointCloudVisualization } from "../../../../ir";
+import { MAX_POINT_CLOUD_RENDER_POINTS } from "../../../../runtime/point-cloud-render-payload";
 import { useSceneSourcesByType } from "../../../../scene-inventory/react";
 import { SCENE_SOURCE_TYPE } from "../../../../ir";
 import {
