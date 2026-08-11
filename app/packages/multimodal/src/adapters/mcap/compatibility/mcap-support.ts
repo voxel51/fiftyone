@@ -1,23 +1,26 @@
-import type { McapTypes } from "@mcap/core";
 import * as mcapSupport from "@mcap/support";
 import type { Root } from "protobufjs";
+
+type DecompressHandler = (
+  buffer: Uint8Array,
+  decompressedSize: bigint,
+) => Uint8Array;
+type DecompressHandlers = Record<string, DecompressHandler>;
 
 // @mcap/support@1.1.0 exports these at runtime, but its declaration barrel
 // re-exports .ts paths from dist. Keep the typing workaround at this boundary.
 const typedMcapSupport = mcapSupport as unknown as {
-  loadDecompressHandlers: () => Promise<McapTypes.DecompressHandlers>;
+  loadDecompressHandlers: () => Promise<DecompressHandlers>;
   protobufFromBinaryDescriptor: (schemaData: Uint8Array) => Root;
 };
 
-let loadedDecompressHandlers: McapTypes.DecompressHandlers | undefined;
-let decompressHandlersPromise:
-  | Promise<McapTypes.DecompressHandlers>
-  | undefined;
+let loadedDecompressHandlers: DecompressHandlers | undefined;
+let decompressHandlersPromise: Promise<DecompressHandlers> | undefined;
 
 /**
  * Loads MCAP decompression handlers through the typed support shim.
  */
-export async function loadDecompressHandlers(): Promise<McapTypes.DecompressHandlers> {
+export async function loadDecompressHandlers(): Promise<DecompressHandlers> {
   const handlers = await (decompressHandlersPromise ??=
     typedMcapSupport.loadDecompressHandlers());
   loadedDecompressHandlers = handlers;
@@ -29,7 +32,7 @@ export async function loadDecompressHandlers(): Promise<McapTypes.DecompressHand
  */
 export function loadedMcapDecompressHandler(
   compression: string,
-): McapTypes.DecompressHandlers[string] {
+): DecompressHandler {
   const handler = loadedDecompressHandlers?.[compression];
   if (!handler) {
     throw new Error(`MCAP ${compression} decompression is not initialized`);

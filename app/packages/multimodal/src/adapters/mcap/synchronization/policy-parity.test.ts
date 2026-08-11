@@ -170,10 +170,12 @@ function session(frames: readonly DecodedFrame[]): EpisodeSession {
       timeDomain: { id: "time", kind: "timestamp" },
       timeRange: { endNs: 200n, startNs: 0n },
     },
-    async *read() {
-      yield { frames, stream: STREAM };
-    },
+    read: () => asyncValues([{ frames, stream: STREAM }]),
   };
+}
+
+async function* asyncValues<Value>(values: readonly Value[]) {
+  for await (const value of values) yield value;
 }
 
 function frame(timestampNs: bigint, sequence = 0): DecodedFrame {

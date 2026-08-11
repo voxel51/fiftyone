@@ -19,7 +19,10 @@ vi.mock("@fiftyone/utilities", () => ({
     pathPrefix: "/proxy",
   }),
   mergeHeaders: (...headers: readonly Record<string, string>[]) =>
-    Object.assign({}, ...headers),
+    headers.reduce<Record<string, string>>(
+      (merged, header) => ({ ...merged, ...header }),
+      {},
+    ),
 }));
 
 describe("worker-backed MCAP resource client", () => {
@@ -366,18 +369,19 @@ describe("worker-backed MCAP resource client", () => {
     const worker = workers[0];
 
     await expect(stale).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
-    expect(worker.messages.slice(1)).toEqual([
+    expect(worker.messages.slice(1, 3)).toEqual([
       expect.objectContaining({
         id: 1,
         type: "readFrameTransformWindow",
       }),
       { id: 1, type: "cancel" },
-      expect.objectContaining({
-        id: 2,
-        payload: expect.objectContaining({ endTimeNs: 40n }),
-        type: "readFrameTransformWindow",
-      }),
     ]);
+    const latestRequest = worker.messages[3];
+    if (latestRequest?.type !== "readFrameTransformWindow") {
+      throw new Error("Expected latest frame-transform request");
+    }
+    expect(latestRequest.id).toBe(2);
+    expect(latestRequest.payload.endTimeNs).toBe(40n);
 
     worker.respond({
       id: 2,
@@ -849,26 +853,21 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     expect(workers).toHaveLength(2);
-    expect(workers[0].messages).toEqual([
-      expect.objectContaining({
-        payload: expect.objectContaining({
-          fillSlotClass: "priority",
-        }),
-        type: "init",
-      }),
+    const playbackInit = workers[0].messages[0];
+    const currentInit = workers[1].messages[0];
+    if (playbackInit?.type !== "init" || currentInit?.type !== "init") {
+      throw new Error("Expected both workers to be initialized");
+    }
+    expect(playbackInit.payload.fillSlotClass).toBe("priority");
+    expect(currentInit.payload.fillSlotClass).toBe("priority");
+    expect(workers[0].messages.slice(1)).toEqual([
       expect.objectContaining({
         id: 1,
         priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
         type: "readSynchronizedMessageBatch",
       }),
     ]);
-    expect(workers[1].messages).toEqual([
-      expect.objectContaining({
-        payload: expect.objectContaining({
-          fillSlotClass: "priority",
-        }),
-        type: "init",
-      }),
+    expect(workers[1].messages.slice(1)).toEqual([
       expect.objectContaining({
         id: 1,
         priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
@@ -900,18 +899,19 @@ describe("worker-backed MCAP resource client", () => {
     const worker = workers[0];
 
     await expect(stale).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
-    expect(worker.messages.slice(1)).toEqual([
+    expect(worker.messages.slice(1, 3)).toEqual([
       expect.objectContaining({
         id: 1,
         type: "readSynchronizedMessages",
       }),
       { id: 1, type: "cancel" },
-      expect.objectContaining({
-        id: 2,
-        payload: expect.objectContaining({ timeNs: 2n }),
-        type: "readSynchronizedMessages",
-      }),
     ]);
+    const latestRequest = worker.messages[3];
+    if (latestRequest?.type !== "readSynchronizedMessages") {
+      throw new Error("Expected latest synchronized-message request");
+    }
+    expect(latestRequest.id).toBe(2);
+    expect(latestRequest.payload.timeNs).toBe(2n);
 
     const window = createSynchronizedWindow(2n);
     worker.respond({ id: 2, ok: true, result: window });
@@ -1282,7 +1282,7 @@ describe("worker-backed MCAP resource client", () => {
     await expect(range).rejects.toThrow("disposed");
   });
 
-  it("rejects worker startup errors", async () => {
+  it("rejects worker startup errors", () => {
     const client = createWorkerMcapResourceClient({
       workerFactory: () => {
         throw new Error("worker blocked");
@@ -1294,7 +1294,7 @@ describe("worker-backed MCAP resource client", () => {
     );
   });
 
-  it("tears down partial workers when init postMessage throws", async () => {
+  it("tears down partial workers when init postMessage throws", () => {
     const worker = new MockWorker({ throwOnMessageType: "init" });
     const client = createWorkerMcapResourceClient({
       workerFactory: () => worker as unknown as Worker,

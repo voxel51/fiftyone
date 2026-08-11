@@ -370,7 +370,7 @@ function normalizePlaybackSyncMode(
     return mode;
   }
 
-  throw new Error(`Unsupported playback sync mode ${mode}`);
+  throw new Error("Unsupported playback sync mode");
 }
 
 function assertNonNegativeTolerance(

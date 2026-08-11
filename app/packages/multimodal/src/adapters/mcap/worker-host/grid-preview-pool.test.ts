@@ -16,7 +16,10 @@ vi.mock("@fiftyone/utilities", () => ({
     pathPrefix: "/proxy",
   }),
   mergeHeaders: (...headers: readonly Record<string, string>[]) =>
-    Object.assign({}, ...headers),
+    headers.reduce<Record<string, string>>(
+      (merged, header) => ({ ...merged, ...header }),
+      {},
+    ),
 }));
 
 afterEach(() => {

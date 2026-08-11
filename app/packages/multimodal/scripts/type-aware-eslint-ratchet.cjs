@@ -8,6 +8,10 @@ const typeAwareRules = require("@typescript-eslint/eslint-plugin").configs[
 const migratedDirectories = [
   "packages/multimodal/src/adapters/fixture/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
+  "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",
+  "packages/multimodal/src/adapters/mcap/instrumentation/**/*.{ts,tsx}",
+  "packages/multimodal/src/adapters/mcap/synchronization/**/*.{ts,tsx}",
+  "packages/multimodal/src/adapters/mcap/worker-host/**/*.{ts,tsx}",
   "packages/multimodal/src/codecs/**/*.{ts,tsx}",
   "packages/multimodal/src/decoders/**/*.{ts,tsx}",
   "packages/multimodal/src/extensions/**/*.{ts,tsx}",
