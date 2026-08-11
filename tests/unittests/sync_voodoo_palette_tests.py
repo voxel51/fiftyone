@@ -9,6 +9,7 @@ Unit tests for the Voodo palette sync tool.
 import importlib.util
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -34,167 +35,130 @@ def _load_tool():
 
 fosvp = _load_tool()
 
+POOL = ["#FF6D04", "#2563EB", "#6F42C1"]
 
-def _tokens(palette=None, primitives=None):
-    """Builds a minimal Voodo tokens payload."""
-    if palette is None:
-        palette = {str(i): "#00000%d" % (i % 10) for i in range(1, 13)}
+PRIMITIVES = {
+    "orange": {"500": "#FF6D04"},
+    "blue": {"500": "#2563EB"},
+    "purple": {"500": "#8B5CF6", "600": "#6F42C1"},
+}
+
+
+def _install_fixture(tmpdir, pool=None, primitives=None):
+    """Writes a stand-in ``@voxel51/voodo`` into ``tmpdir/node_modules``.
+
+    Lets the tests drive the real ``node`` path the tool uses, rather than
+    mocking out the subprocess and asserting nothing about resolution.
+
+    Args:
+        tmpdir: the directory to treat as ``app/``
+        pool (None): the palette pool the fixture exports
+        primitives (None): the primitive scales the fixture exports
+    """
+    if pool is None:
+        pool = POOL
 
     if primitives is None:
-        primitives = {}
+        primitives = PRIMITIVES
 
-    return {
-        "primitives": primitives,
-        "colors": {"dark": {"content": {"palette": palette}}},
-    }
+    package = os.path.join(tmpdir, "node_modules", "@voxel51", "voodo")
+    os.makedirs(os.path.join(package, "dist"))
 
-
-def _write_tokens(tmpdir, tokens):
-    path = os.path.join(tmpdir, "tokens.json")
-    with open(path, "wt") as f:
-        json.dump(tokens, f)
-
-    return path
-
-
-class LoadPaletteTests(unittest.TestCase):
-    def test_returns_slots_in_pool_order(self):
-        palette = {str(i): "#%06d" % i for i in range(1, 13)}
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(tmpdir, _tokens(palette=palette))
-            pool = fosvp._load_palette(path)
-
-        self.assertEqual(len(pool), 12)
-        self.assertEqual([color for color, _ in pool], list(palette.values()))
-
-    def test_labels_from_primitives(self):
-        palette = dict(
-            {str(i): "#00000%d" % (i % 10) for i in range(2, 13)},
-            **{"1": "#6F42C1"},
+    with open(os.path.join(package, "package.json"), "wt") as f:
+        json.dump(
+            {
+                "name": "@voxel51/voodo",
+                "version": "0.2.0",
+                "type": "module",
+                "exports": {"./tokens": "./dist/tokens.js"},
+            },
+            f,
         )
-        primitives = {"purple": {"500": "#8B5CF6", "600": "#6F42C1"}}
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(
-                tmpdir, _tokens(palette=palette, primitives=primitives)
+
+    with open(os.path.join(package, "dist", "tokens.js"), "wt") as f:
+        f.write(
+            "export const palettePool = %s;\nexport const primitives = %s;\n"
+            % (
+                json.dumps({"dark": pool, "light": pool}),
+                json.dumps(primitives),
             )
-            pool = fosvp._load_palette(path)
+        )
 
-        self.assertEqual(pool[0], ("#6F42C1", "purple 600"))
 
-    def test_unmapped_color_is_labeled(self):
+@unittest.skipIf(shutil.which("node") is None, "node is required")
+class ReadTokensTests(unittest.TestCase):
+    def test_reads_the_dark_pool_from_the_dependency(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(tmpdir, _tokens())
-            pool = fosvp._load_palette(path)
+            _install_fixture(tmpdir)
+            with patch.object(fosvp, "APP_DIR", tmpdir):
+                pool, primitives = fosvp._read_tokens()
 
-        self.assertEqual(pool[0][1], "unmapped")
+        self.assertEqual(pool, POOL)
+        self.assertEqual(primitives, PRIMITIVES)
 
-    def test_length_follows_the_tokens(self):
+    def test_pool_length_follows_the_dependency(self):
         # A palette is N colors, not a fixed count
         for count in (3, 12, 17):
-            palette = {str(i): "#%06d" % i for i in range(1, count + 1)}
+            pool = ["#%06d" % i for i in range(count)]
             with tempfile.TemporaryDirectory() as tmpdir:
-                path = _write_tokens(tmpdir, _tokens(palette=palette))
-                pool = fosvp._load_palette(path)
+                _install_fixture(tmpdir, pool=pool)
+                with patch.object(fosvp, "APP_DIR", tmpdir):
+                    read, _ = fosvp._read_tokens()
 
-            self.assertEqual(len(pool), count)
+            self.assertEqual(read, pool)
 
-    def test_slots_are_ordered_numerically(self):
-        # Lexicographic ordering would put "10" before "2"
-        palette = {str(i): "#%06d" % i for i in range(1, 13)}
+    def test_missing_dependency_raises(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(tmpdir, _tokens(palette=palette))
-            pool = fosvp._load_palette(path)
+            with patch.object(fosvp, "APP_DIR", tmpdir):
+                with self.assertRaises(SystemExit) as ctx:
+                    fosvp._read_tokens()
 
-        self.assertEqual(
-            [color for color, _ in pool],
-            ["#%06d" % i for i in range(1, 13)],
-        )
+        self.assertIn("yarn install", str(ctx.exception))
 
-    def test_named_aliases_are_excluded(self):
-        palette = {"1": "#AAAAAA", "2": "#BBBBBB", "orange": "#AAAAAA"}
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(tmpdir, _tokens(palette=palette))
-            pool = fosvp._load_palette(path)
+    def test_missing_node_raises(self):
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            with self.assertRaises(SystemExit) as ctx:
+                fosvp._read_tokens()
 
-        self.assertEqual([color for color, _ in pool], ["#AAAAAA", "#BBBBBB"])
-
-    def test_no_numbered_slots_raises(self):
-        palette = {"orange": "#AAAAAA", "teal": "#BBBBBB"}
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(tmpdir, _tokens(palette=palette))
-            with self.assertRaises(SystemExit):
-                fosvp._load_palette(path)
-
-    def test_restructured_tokens_raise(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(tmpdir, {"colors": {}})
-            with self.assertRaises(SystemExit):
-                fosvp._load_palette(path)
+        self.assertIn("node is required", str(ctx.exception))
 
 
-class RenderPythonTests(unittest.TestCase):
+class RenderTests(unittest.TestCase):
     def test_emits_an_importable_module(self):
-        module = fosvp._render_python(
-            [("#AAAAAA", "red 500"), ("#BBBBBB", "blue 500")]
-        )
+        module = fosvp._render(POOL, PRIMITIVES)
 
-        # The generated module is imported by constants.py, so it has to be
-        # valid Python exposing COLOR_POOL -- exec it and check the binding
+        # constants.py imports this, so it has to be valid Python exposing
+        # COLOR_POOL -- exec it and check the binding
         namespace = {}
         exec(compile(module, "_voodoo_palette.py", "exec"), namespace)
 
-        self.assertEqual(namespace["COLOR_POOL"], ["#AAAAAA", "#BBBBBB"])
+        self.assertEqual(namespace["COLOR_POOL"], POOL)
 
-    def test_labels_each_entry(self):
-        module = fosvp._render_python([("#AAAAAA", "red 500")])
+    def test_labels_each_color_with_its_scale_step(self):
+        module = fosvp._render(POOL, PRIMITIVES)
 
-        self.assertIn('    "#AAAAAA",  # 1: red 500', module)
+        self.assertIn('    "#FF6D04",  # 1: orange 500', module)
+        self.assertIn('    "#6F42C1",  # 3: purple 600', module)
+
+    def test_unknown_color_is_labeled_unmapped(self):
+        module = fosvp._render(["#ABCDEF"], PRIMITIVES)
+
+        self.assertIn('    "#ABCDEF",  # 1: unmapped', module)
 
     def test_warns_against_hand_editing(self):
-        module = fosvp._render_python([("#AAAAAA", "red 500")])
-
-        self.assertIn("AUTO-GENERATED", module)
+        self.assertIn("AUTO-GENERATED", fosvp._render(POOL, PRIMITIVES))
 
     def test_fits_black_line_length(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(tmpdir, _tokens())
-            module = fosvp._render_python(fosvp._load_palette(path))
+        module = fosvp._render(POOL, PRIMITIVES)
 
         for line in module.split("\n"):
             self.assertLessEqual(len(line), 79)
 
 
-class FindTokensTests(unittest.TestCase):
-    def test_explicit_path_wins(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(tmpdir, _tokens())
-            self.assertEqual(fosvp._find_tokens(path), path)
-
-    def test_missing_explicit_path_raises(self):
-        with self.assertRaises(SystemExit):
-            fosvp._find_tokens("/nonexistent/tokens.json")
-
-    def test_env_var_is_honored(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _write_tokens(tmpdir, _tokens())
-            with patch.dict(os.environ, {"VOODO_TOKENS": path}):
-                self.assertEqual(fosvp._find_tokens(), path)
-
-    def test_missing_tokens_raise(self):
-        with patch.dict(os.environ, {}, clear=True):
-            with patch.object(fosvp, "TOKENS_CANDIDATES", []):
-                with self.assertRaises(SystemExit):
-                    fosvp._find_tokens()
-
-    def test_skip_if_missing_returns_none(self):
-        with patch.dict(os.environ, {}, clear=True):
-            with patch.object(fosvp, "TOKENS_CANDIDATES", []):
-                self.assertIsNone(fosvp._find_tokens(skip_if_missing=True))
-
-
+@unittest.skipIf(shutil.which("node") is None, "node is required")
 class MainTests(unittest.TestCase):
     def _run(self, argv, body=None):
-        """Runs ``main()`` against a throwaway output file.
+        """Runs ``main()`` against a fixture dependency and a temp target.
 
         Args:
             argv: extra command-line arguments
@@ -205,68 +169,55 @@ class MainTests(unittest.TestCase):
             nothing was written
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tokens = _write_tokens(tmpdir, _tokens())
-            path = os.path.join(tmpdir, "_voodoo_palette.py")
+            _install_fixture(tmpdir)
+            target = os.path.join(tmpdir, "_voodoo_palette.py")
 
             if body is not None:
-                with open(path, "wt") as f:
+                with open(target, "wt") as f:
                     f.write(body)
 
-            argv = ["sync_voodoo_palette.py", "--tokens", tokens] + argv
-            with patch.object(fosvp, "PYTHON_TARGET", path):
-                with patch("sys.argv", argv):
-                    code = fosvp.main()
+            argv = ["sync_voodoo_palette.py"] + argv
+            with patch.object(fosvp, "APP_DIR", tmpdir):
+                with patch.object(fosvp, "TARGET", target):
+                    with patch("sys.argv", argv):
+                        code = fosvp.main()
 
-            if not os.path.isfile(path):
+            if not os.path.isfile(target):
                 return code, None
 
-            with open(path, "rt") as f:
+            with open(target, "rt") as f:
                 return code, f.read()
 
     def test_write_creates_the_module(self):
         code, contents = self._run([])
 
         self.assertEqual(code, 0)
-        self.assertIn("COLOR_POOL = [", contents)
+        self.assertIn('"#FF6D04",  # 1: orange 500', contents)
 
-    def test_check_fails_when_out_of_date(self):
+    def test_write_is_idempotent(self):
+        module = fosvp._render(POOL, PRIMITIVES)
+
+        code, contents = self._run([], body=module)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(contents, module)
+
+    def test_check_fails_when_stale(self):
         code, contents = self._run(["--check"], body="stale\n")
 
         self.assertEqual(code, 1)
         self.assertEqual(contents, "stale\n", "--check must not write")
 
-    def test_check_fails_when_the_module_is_missing(self):
-        code, _ = self._run(["--check"])
+    def test_check_fails_when_missing(self):
+        code, contents = self._run(["--check"])
 
         self.assertEqual(code, 1)
-
-    def test_check_passes_when_in_sync(self):
-        pool = [("#00000%d" % (i % 10), "unmapped") for i in range(1, 13)]
-
-        code, _ = self._run(["--check"], body=fosvp._render_python(pool))
-
-        self.assertEqual(code, 0)
-
-    def test_print_does_not_write(self):
-        code, contents = self._run(["--print"])
-
-        self.assertEqual(code, 0)
         self.assertIsNone(contents)
 
-    def test_skip_if_missing_is_a_noop(self):
-        # The CI drift check depends on this branch: with no tokens installed
-        # it must succeed and write nothing, rather than failing the job
-        with tempfile.TemporaryDirectory() as tmpdir:
-            py_path = os.path.join(tmpdir, "_voodoo_palette.py")
-            argv = ["sync_voodoo_palette.py", "--check", "--skip-if-missing"]
+    def test_check_passes_when_current(self):
+        code, _ = self._run(["--check"], body=fosvp._render(POOL, PRIMITIVES))
 
-            with patch.dict(os.environ, {}, clear=True):
-                with patch.object(fosvp, "TOKENS_CANDIDATES", []):
-                    with patch.object(fosvp, "PYTHON_TARGET", py_path):
-                        with patch("sys.argv", argv):
-                            self.assertEqual(fosvp.main(), 0)
-
-            self.assertFalse(os.path.exists(py_path))
+        self.assertEqual(code, 0)
 
 
 if __name__ == "__main__":
