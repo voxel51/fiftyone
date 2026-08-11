@@ -64,21 +64,22 @@ DEV_INSTALL = os.path.isdir(
 RC_INSTALL = "rc" in VERSION
 
 # App configuration
+# BEGIN generated palette -- run tools/sync_voodoo_palette.py to update
 DEFAULT_APP_COLOR_POOL = [
-    "#ee0000",
-    "#ee6600",
-    "#993300",
-    "#996633",
-    "#999900",
-    "#009900",
-    "#003300",
-    "#009999",
-    "#000099",
-    "#0066ff",
-    "#6600ff",
-    "#cc33cc",
-    "#777799",
+    "#FF6D04",  # 1: orange 500
+    "#2563EB",  # 2: blue 500
+    "#1E7D45",  # 3: green 500
+    "#8B5CF6",  # 4: purple 500
+    "#DB2777",  # 5: pink 500
+    "#D97706",  # 6: yellow 500
+    "#0D9488",  # 7: teal 500
+    "#6F42C1",  # 8: purple 600
+    "#532E91",  # 9: purple 700
+    "#C33636",  # 10: red 500
+    "#B26003",  # 11: yellow 600
+    "#166638",  # 12: green 600
 ]
+# END generated palette
 
 DEFAULT_COLOR_SCHEME = {
     "color_pool": DEFAULT_APP_COLOR_POOL,
