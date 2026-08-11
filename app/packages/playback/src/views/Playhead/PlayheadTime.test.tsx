@@ -74,8 +74,10 @@ describe("PlayheadTime", () => {
     expect(screen.getByText("#5 / #10")).toBeTruthy();
   });
 
-  it("renders wall-clock time in absolute mode", () => {
+  it("renders date-qualified wall-clock time in absolute mode", () => {
     renderTime(2, 1, { kind: "absolute", epochAnchorMs: 10_000 });
-    expect(screen.getByText("00:00:11.000 / 00:00:12.000")).toBeTruthy();
+    expect(
+      screen.getByText("1970-01-01 00:00:11.000 / 1970-01-01 00:00:12.000"),
+    ).toBeTruthy();
   });
 });

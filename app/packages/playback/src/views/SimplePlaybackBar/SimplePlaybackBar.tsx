@@ -19,7 +19,7 @@ import { PauseIcon, PlayIcon } from "../stableIcons";
  */
 const ProgressBar: React.FC = () => {
   const playhead = usePlayhead();
-  const { duration, seek } = usePlayback();
+  const { duration, seek, settleSeek } = usePlayback();
 
   const ratio = duration > 0 ? clamp(playhead / duration, 0, 1) : 0;
 
@@ -87,6 +87,8 @@ const ProgressBar: React.FC = () => {
         if (e.buttons === 0) return;
         seekFromPointer(e);
       }}
+      onPointerUp={settleSeek}
+      onPointerCancel={settleSeek}
     >
       <div className={styles.rail} />
       <div className={styles.fill} style={{ width: `${ratio * 100}%` }} />

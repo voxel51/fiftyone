@@ -1,6 +1,14 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
+import {
+  setBufferingDetail,
+  setBufferingStreams,
+  setIsBuffering,
+} from "../../lib/playback/store-access";
+import type { BufferingStream } from "../../lib/playback/types";
 import TimelineControls from "./TimelineControls";
 import styles from "./TimelineControls.module.css";
 
@@ -23,6 +31,22 @@ function renderControls(opts: RenderOpts = {}) {
       <TimelineControls onToggle={onToggle} />
     </PlaybackProvider>,
   );
+}
+
+function BufferingFixture({
+  streams,
+}: {
+  readonly streams: readonly BufferingStream[];
+}) {
+  const store = usePlaybackStore();
+  // This effect publishes the buffering snapshot exercised by the controls.
+  useEffect(() => {
+    const ready = streams.filter((stream) => stream.state === "ready").length;
+    setBufferingDetail(store, `${ready}/${streams.length} streams`);
+    setBufferingStreams(store, streams);
+    setIsBuffering(store, true);
+  }, [store, streams]);
+  return null;
 }
 
 describe("TimelineControls", () => {
@@ -161,22 +185,41 @@ describe("TimelineControls", () => {
       expect(screen.getByText("0:00.00 / 0:10.00")).toBeTruthy();
     });
 
-    it("space on the focused controls row toggles playback, not the drawer", async () => {
+    it("space over the controls row toggles playback, not the drawer", async () => {
       const onToggle = vi.fn();
       renderControls({ onToggle });
       const row = screen.getByTestId("timeline-controls-root");
-      row.focus();
       fireEvent.keyDown(row, { key: " " });
       expect(await screen.findByRole("button", { name: "Pause" })).toBeTruthy();
       expect(onToggle).not.toHaveBeenCalled();
     });
 
-    it("enter on the focused controls row still toggles the drawer", () => {
+    it("the controls row is not a tab stop", () => {
       const onToggle = vi.fn();
       renderControls({ onToggle });
       const row = screen.getByTestId("timeline-controls-root");
-      row.focus();
-      fireEvent.keyDown(row, { key: "Enter" });
+      // A focusable row drew a focus ring around the entire bar. Toggling by
+      // keyboard goes through the chevron button instead.
+      expect(row.getAttribute("tabindex")).toBeNull();
+      expect(row.getAttribute("role")).toBeNull();
+    });
+
+    it("exposes the toggle as a real button, so Enter/Space activate it", () => {
+      const onToggle = vi.fn();
+      renderControls({ onToggle });
+      const toggle = screen.getByTestId("timeline-controls-toggle");
+
+      // Keyboard activation is the browser's, not ours: a <button> gets
+      // Enter/Space for free, which is the whole reason the row itself no
+      // longer needs to be a tab stop. jsdom does not implement that
+      // activation behavior (a synthetic Enter keydown fires no click), so
+      // asserting the element type is what actually guards the contract —
+      // swapping in a <div role="button"> would silently lose the keyboard
+      // path. The e2e suite drives the real activation in a browser.
+      expect(toggle.tagName).toBe("BUTTON");
+      expect((toggle as HTMLButtonElement).disabled).toBe(false);
+
+      fireEvent.click(toggle);
       expect(onToggle).toHaveBeenCalledTimes(1);
     });
 
@@ -199,6 +242,38 @@ describe("TimelineControls", () => {
     it("is hidden while no stream is buffering", () => {
       renderControls();
       expect(screen.queryByTestId("timeline-controls-buffering")).toBeNull();
+    });
+
+    it("shows blocking stream readiness on hover", () => {
+      const streams: readonly BufferingStream[] = [
+        {
+          id: "channel-26",
+          label: "/camera/front/image",
+          state: "ready",
+        },
+        { id: "channel-35", label: "/lidar/points", state: "waiting" },
+      ];
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <BufferingFixture streams={streams} />
+          <TimelineControls />
+        </PlaybackProvider>,
+      );
+
+      const indicator = screen.getByTestId("timeline-controls-buffering");
+      expect(indicator.textContent).toContain("Buffering 1/2 streams");
+      expect(screen.queryByText("Playback streams")).toBeNull();
+
+      fireEvent.mouseEnter(indicator.parentElement as HTMLElement);
+
+      expect(screen.getByText("Playback streams")).toBeTruthy();
+      expect(screen.getByText("1 waiting · 1 ready")).toBeTruthy();
+      expect(screen.getByText("/lidar/points")).toBeTruthy();
+      expect(screen.getByText("/camera/front/image")).toBeTruthy();
+      expect(screen.queryByText("channel-26")).toBeNull();
+      expect(screen.queryByText("channel-35")).toBeNull();
+      expect(screen.getByText("Waiting")).toBeTruthy();
+      expect(screen.getByText("Ready")).toBeTruthy();
     });
   });
 
@@ -256,6 +331,113 @@ describe("TimelineControls", () => {
       // extraActions renders far-right, preceded by a second divider.
       const dividers = screen.getAllByTestId("timeline-controls-divider");
       expect(dividers).toHaveLength(2);
+    });
+
+    it("stays inline rather than moving to the right edge", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls
+            onToggle={vi.fn()}
+            extraActions={<span data-testid="slot">clock</span>}
+          />
+        </PlaybackProvider>,
+      );
+      // Readouts (e.g. the multimodal absolute-timestamp) belong with the
+      // other controls on the left, NOT in the right-edge trailing group.
+      expect(
+        screen.queryByTestId("timeline-controls-trailing-actions"),
+      ).toBeNull();
+      expect(screen.getByTestId("slot")).toBeTruthy();
+    });
+  });
+
+  describe("trailingActions", () => {
+    it("renders slotted content pinned to the right, behind a divider", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls
+            trailingActions={<button>Trailing Action</button>}
+          />
+        </PlaybackProvider>,
+      );
+      expect(
+        screen.getByRole("button", { name: "Trailing Action" }),
+      ).toBeTruthy();
+      expect(screen.getAllByTestId("timeline-controls-divider")).toHaveLength(
+        2,
+      );
+    });
+
+    it("groups the buttons ahead of the toggle chevron", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls
+            onToggle={vi.fn()}
+            trailingActions={<button>Trailing Action</button>}
+          />
+        </PlaybackProvider>,
+      );
+
+      const actions = screen.getByTestId("timeline-controls-trailing-actions");
+      const toggle = screen.getByTestId("timeline-controls-toggle");
+      // The chevron always sits last so its position doesn't shift as
+      // callers add or remove actions.
+      expect(
+        actions.compareDocumentPosition(toggle) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+  });
+
+  describe("drawer toggle chevron", () => {
+    it("renders only when onToggle is provided", () => {
+      renderControls({});
+      expect(screen.queryByTestId("timeline-controls-toggle")).toBeNull();
+
+      cleanup();
+      renderControls({ onToggle: vi.fn() });
+      expect(screen.getByTestId("timeline-controls-toggle")).toBeTruthy();
+    });
+
+    it("reports the collapsed state via aria-expanded and its label", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls onToggle={vi.fn()} expanded={false} />
+        </PlaybackProvider>,
+      );
+
+      const toggle = screen.getByTestId("timeline-controls-toggle");
+      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      expect(screen.getByRole("button", { name: "Show tracks" })).toBeTruthy();
+    });
+
+    it("reports the expanded state and rotates the chevron", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls onToggle={vi.fn()} expanded />
+        </PlaybackProvider>,
+      );
+
+      const toggle = screen.getByTestId("timeline-controls-toggle");
+      expect(toggle.getAttribute("aria-expanded")).toBe("true");
+      expect(screen.getByRole("button", { name: "Hide tracks" })).toBeTruthy();
+      // One rotated icon rather than two swapped ones, so the change animates.
+      expect(toggle.classList.contains(styles.toggleExpanded)).toBe(true);
+    });
+
+    it("fires onToggle exactly once when the chevron is clicked", () => {
+      const onToggle = vi.fn();
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls onToggle={onToggle} />
+        </PlaybackProvider>,
+      );
+
+      fireEvent.click(screen.getByTestId("timeline-controls-toggle"));
+
+      // The row's own handler ignores clicks on buttons, so the chevron's
+      // handler is the only one that runs — no double toggle.
+      expect(onToggle).toHaveBeenCalledOnce();
     });
   });
 });

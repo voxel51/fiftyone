@@ -1,7 +1,12 @@
 import type { McapTypes } from "@mcap/core";
-import { compareBigInt } from "../bigint";
+import { compareBigInt } from "../../../ir";
 import { chunkMessageIndexRange } from "./chunk-index-ranges";
 import { channelIdsForTopics } from "./message-index";
+import type {
+  McapPrefetchByteRange,
+  McapPrefetchChunkDataRequest,
+  McapPrefetchWindowRequest,
+} from "./prefetch-types";
 
 /**
  * Remote-transport pipelining for indexed MCAP reads.
@@ -33,75 +38,6 @@ const DEFAULT_PREFETCH_CONCURRENCY = 6;
 
 type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 type McapChannel = McapTypes.TypedMcapRecords["Channel"];
-
-/**
- * One byte range a prefetch pass should warm.
- */
-export interface McapPrefetchByteRange {
-  readonly length: bigint;
-  readonly offset: bigint;
-}
-
-/**
- * Log-time window prefetch request for an upcoming indexed read.
- */
-export interface McapPrefetchWindowRequest {
-  /**
-   * Inclusive maximum log timestamp, in nanoseconds.
-   */
-  readonly endTimeNs?: bigint;
-
-  /**
-   * Warm chunk record data for the window. Defaults to true.
-   */
-  readonly includeChunkData?: boolean;
-
-  /**
-   * Warm chunk message-index regions for the window. Defaults to true.
-   */
-  readonly includeMessageIndexes?: boolean;
-
-  /**
-   * Cap on chunks warmed by this pass; earliest chunks win.
-   */
-  readonly maxChunks?: number;
-
-  /**
-   * Cap on concurrently in-flight prefetch reads.
-   */
-  readonly maxConcurrentReads?: number;
-
-  /**
-   * Inclusive minimum log timestamp, in nanoseconds.
-   */
-  readonly startTimeNs?: bigint;
-
-  /**
-   * Topics whose chunks should be warmed; omitting warms all topics.
-   */
-  readonly topics?: readonly string[];
-}
-
-/**
- * Exact chunk-set prefetch request for messages already resolved from
- * message indexes (candidates carry their chunk start offsets).
- */
-export interface McapPrefetchChunkDataRequest {
-  /**
-   * Absolute file offsets of the chunks about to be read.
-   */
-  readonly chunkStartOffsets: Iterable<bigint>;
-
-  /**
-   * Cap on chunks warmed by this pass; earliest chunks win.
-   */
-  readonly maxChunks?: number;
-
-  /**
-   * Cap on concurrently in-flight prefetch reads.
-   */
-  readonly maxConcurrentReads?: number;
-}
 
 /**
  * Resolves the byte ranges an indexed read over a log-time window will

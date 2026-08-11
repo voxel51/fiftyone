@@ -1,26 +1,38 @@
-import type { McapFrameTransformSetWire } from "../frame-transform-types";
+import type { McapFrameTransformSetWire } from "../transforms/types";
 import type { McapTransportSnapshot } from "./transport-meter";
 import type {
   McapDecodedMessage,
   McapEnumerateNumericFieldsRequest,
   McapNumericSeriesResult,
+  McapNumericSeriesSliceResult,
+  McapMessageIndexWindowResult,
+  McapPointCloudChannelResult,
   McapRawMessageRecordResult,
+  McapRecordingInventory,
+  McapReadBoundedMessagesRequest,
+  McapReadBoundedMessagesResult,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
   McapReadNumericSeriesRequest,
+  McapReadNumericSeriesSliceRequest,
+  McapReadPointCloudChannelRequest,
   McapReadRawMessageRecordRequest,
+  McapReadRawMessageAtCursorRequest,
+  McapReadMessageIndexWindowRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
   McapReadTopicTimeBoundsRequest,
   McapReadTimelineRangeRequest,
-  McapSynchronizedMessageWindow,
+  McapReadTransformTopologyRequest,
+  McapTransformTopologyResult,
   McapTimelineRange,
   McapTopicNumericFields,
   McapTopicTimeBounds,
-} from "../types";
-import type { StreamInventory } from "../../../schemas/v1";
+} from "../contracts/index";
+import type { McapBoundedReadCancellation } from "../reader";
+import type { McapSynchronizedMessageWindowWithMessages } from "../resource-client/operations/read-synchronized-message-batch";
 
 /**
  * Priority levels used by the MCAP playback worker scheduler.
@@ -44,14 +56,19 @@ export const MCAP_PLAYBACK_WORKER_PRIORITY = Object.freeze({
    */
   PLAYBACK_BATCH: 2,
   /**
+   * Explicit paused inspection work. It owns a background-admission worker,
+   * so a large inspector decode cannot head-of-line block playback lanes.
+   */
+  PAUSED_INSPECTION: 3,
+  /**
    * Opportunistic background work that can wait behind interactive playback.
    */
-  IDLE_PREFETCH: 3,
+  IDLE_PREFETCH: 4,
   /**
    * Bulk history reads for optional context, such as full pose trajectories.
    * These should not serialize playback or placement work on the same queue.
    */
-  BULK_HISTORY: 4,
+  BULK_HISTORY: 5,
 } as const);
 
 /**
@@ -65,9 +82,9 @@ export type McapPlaybackWorkerPriority =
  */
 export type McapPlaybackWorkerFetchParameters = {
   /**
-   * Fill-slot class for this worker's remote block fills: the foreground
-   * playback lane declares "priority" (reserved slot access), idle and
-   * bulk lanes declare "background".
+   * Fill-slot class for this worker's remote block fills: interactive and
+   * foreground playback lanes declare "priority" (reserved slot access);
+   * idle and bulk lanes declare "background".
    */
   readonly fillSlotClass?: "background" | "priority";
   readonly headers: Record<string, string>;
@@ -80,31 +97,58 @@ export type McapPlaybackWorkerFetchParameters = {
  */
 export type McapPlaybackWorkerRequestPayloadByType = {
   readonly enumerateNumericFields: McapEnumerateNumericFieldsRequest;
+  readonly readBoundedMessages: McapReadBoundedMessagesRequest;
   readonly readDecodedMessages: McapReadDecodedMessagesRequest;
   readonly readFrameTransformBootstrap: McapReadFrameTransformBootstrapRequest;
   readonly readFrameTransformWindow: McapReadFrameTransformWindowRequest;
   readonly readNumericSeries: McapReadNumericSeriesRequest;
+  readonly readNumericSeriesSlice: McapReadNumericSeriesSliceRequest;
+  readonly readPointCloudChannel: McapReadPointCloudChannelRequest;
+  readonly readMessageIndexWindow: McapReadMessageIndexWindowRequest;
+  readonly readRawMessageAtCursor: McapReadRawMessageAtCursorRequest;
   readonly readRawMessageRecord: McapReadRawMessageRecordRequest;
   readonly readSynchronizedMessageBatch: McapReadSynchronizedMessageBatchRequest;
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
   readonly readTimelineRange: McapReadTimelineRangeRequest;
+  readonly readTransformTopology: McapReadTransformTopologyRequest;
   readonly readTopics: McapReadTopicsRequest;
   readonly readTopicTimeBounds: McapReadTopicTimeBoundsRequest;
 };
+
+/** A decoded record that the requesting main thread has pinned for this RPC. */
+export interface McapRetainedDecodedMessageReference {
+  readonly kind: "retained-decoded-message";
+  readonly recordId: string;
+  readonly timelineTimeNs: bigint;
+  readonly topic: string;
+}
+
+export type McapPlaybackWorkerSynchronizedMessage =
+  | McapDecodedMessage
+  | McapRetainedDecodedMessageReference;
+
+export type McapPlaybackWorkerSynchronizedWindow =
+  McapSynchronizedMessageWindowWithMessages<McapPlaybackWorkerSynchronizedMessage>;
 
 /**
  * Unary result payloads returned by worker RPC calls.
  */
 export type McapPlaybackWorkerResultByType = {
   readonly enumerateNumericFields: readonly McapTopicNumericFields[];
+  readonly readBoundedMessages: McapReadBoundedMessagesResult;
   readonly readFrameTransformBootstrap: McapFrameTransformSetWire;
   readonly readFrameTransformWindow: McapFrameTransformSetWire;
   readonly readNumericSeries: McapNumericSeriesResult;
+  readonly readNumericSeriesSlice: McapNumericSeriesSliceResult;
+  readonly readPointCloudChannel: McapPointCloudChannelResult;
+  readonly readMessageIndexWindow: McapMessageIndexWindowResult;
+  readonly readRawMessageAtCursor: McapRawMessageRecordResult;
   readonly readRawMessageRecord: McapRawMessageRecordResult;
-  readonly readSynchronizedMessageBatch: readonly McapSynchronizedMessageWindow[];
-  readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
+  readonly readSynchronizedMessageBatch: readonly McapPlaybackWorkerSynchronizedWindow[];
+  readonly readSynchronizedMessages: McapPlaybackWorkerSynchronizedWindow;
   readonly readTimelineRange: McapTimelineRange;
-  readonly readTopics: readonly StreamInventory[];
+  readonly readTransformTopology: McapTransformTopologyResult;
+  readonly readTopics: McapRecordingInventory;
   readonly readTopicTimeBounds: readonly McapTopicTimeBounds[];
 };
 
@@ -142,6 +186,8 @@ export type McapPlaybackWorkerRpcRequest<
       readonly id: number;
       readonly payload: McapPlaybackWorkerRequestPayloadByType[Type];
       readonly priority: McapPlaybackWorkerPriority;
+      /** Exact records pinned by the main thread until this request settles. */
+      readonly retainedDecodedRecordIds?: readonly string[];
       readonly sourceKey: string;
       readonly type: Type;
     }
@@ -158,6 +204,9 @@ export type McapPlaybackWorkerControlRequest =
   | {
       readonly id: number;
       readonly type: "cancel";
+    }
+  | {
+      readonly type: "releaseRetainedResources";
     }
   | {
       readonly type: "dispose";
@@ -212,6 +261,7 @@ export type McapPlaybackWorkerStreamResponse =
  * Failure response for any worker RPC.
  */
 export type McapPlaybackWorkerErrorResponse = {
+  readonly boundedReadCancellation?: McapBoundedReadCancellation;
   readonly error: string;
   readonly id: number;
   readonly ok: false;
