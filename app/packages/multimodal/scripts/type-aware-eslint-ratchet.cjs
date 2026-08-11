@@ -18,6 +18,7 @@ const migratedPaths = [
   "packages/multimodal/src/adapters/mcap/reader/chunk-records.ts",
   "packages/multimodal/src/adapters/mcap/reader/chunk-prefetch*.ts",
   "packages/multimodal/src/adapters/mcap/reader/byte-readable.ts",
+  "packages/multimodal/src/adapters/mcap/reader/message-index.ts",
   "packages/multimodal/src/adapters/fixture/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",
