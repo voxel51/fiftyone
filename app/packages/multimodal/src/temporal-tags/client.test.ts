@@ -255,10 +255,18 @@ describe("createTemporalTagsClient", () => {
 });
 
 function createFetch(response: unknown | ((config: FetchConfig) => unknown)) {
-  return vi.fn(async (config: FetchConfig) => ({
-    headers: new Headers(),
-    response: typeof response === "function" ? response(config) : response,
-  }));
+  return vi.fn((config: FetchConfig) =>
+    Promise.resolve({
+      headers: new Headers(),
+      response: isResponseFactory(response) ? response(config) : response,
+    }),
+  );
+}
+
+function isResponseFactory(
+  value: unknown,
+): value is (config: FetchConfig) => unknown {
+  return typeof value === "function";
 }
 
 function responseForRoute(config: FetchConfig) {

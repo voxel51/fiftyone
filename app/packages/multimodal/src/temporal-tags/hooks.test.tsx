@@ -31,7 +31,9 @@ describe("useSampleTemporalTags", () => {
 
   it("loads sample temporal tags", async () => {
     const client = createTemporalTagsClient({
-      listSampleTemporalTags: vi.fn(async () => [createTemporalTag("tag-a")]),
+      listSampleTemporalTags: vi.fn<
+        TemporalTagsClient["listSampleTemporalTags"]
+      >(() => Promise.resolve([createTemporalTag("tag-a")])),
     });
 
     render(
@@ -58,9 +60,13 @@ describe("useSampleTemporalTags", () => {
 
   it("refetches when the sample id or filter changes", async () => {
     const client = createTemporalTagsClient({
-      listSampleTemporalTags: vi.fn(async ({ filter, sampleId }) => [
-        createTemporalTag(`${sampleId}-${filter?.start ?? 0}`),
-      ]),
+      listSampleTemporalTags: vi.fn<
+        TemporalTagsClient["listSampleTemporalTags"]
+      >(({ filter, sampleId }) =>
+        Promise.resolve([
+          createTemporalTag(`${sampleId}-${filter?.start ?? 0}`),
+        ]),
+      ),
     });
 
     const { rerender } = render(
@@ -223,9 +229,9 @@ describe("useSampleTemporalTags", () => {
 
   it("surfaces client errors", async () => {
     const client = createTemporalTagsClient({
-      listSampleTemporalTags: vi.fn(async () => {
-        throw new Error("boom");
-      }),
+      listSampleTemporalTags: vi.fn<
+        TemporalTagsClient["listSampleTemporalTags"]
+      >(() => Promise.reject(new Error("boom"))),
     });
 
     render(
@@ -303,13 +309,27 @@ function createTemporalTagsClient(
   overrides: Partial<TemporalTagsClient> = {},
 ): TemporalTagsClient {
   return {
-    clearSampleTemporalTags: vi.fn(async () => 1),
-    countDatasetTemporalTags: vi.fn(async () => ({})),
-    createSampleTemporalTags: vi.fn(async () => [createTemporalTag("created")]),
-    deleteSampleTemporalTags: vi.fn(async () => 1),
-    listDatasetTemporalTags: vi.fn(async () => []),
-    listSampleTemporalTags: vi.fn(async () => []),
-    updateSampleTemporalTag: vi.fn(async () => createTemporalTag("updated")),
+    clearSampleTemporalTags: vi.fn<
+      TemporalTagsClient["clearSampleTemporalTags"]
+    >(() => Promise.resolve(1)),
+    countDatasetTemporalTags: vi.fn<
+      TemporalTagsClient["countDatasetTemporalTags"]
+    >(() => Promise.resolve({})),
+    createSampleTemporalTags: vi.fn<
+      TemporalTagsClient["createSampleTemporalTags"]
+    >(() => Promise.resolve([createTemporalTag("created")])),
+    deleteSampleTemporalTags: vi.fn<
+      TemporalTagsClient["deleteSampleTemporalTags"]
+    >(() => Promise.resolve(1)),
+    listDatasetTemporalTags: vi.fn<
+      TemporalTagsClient["listDatasetTemporalTags"]
+    >(() => Promise.resolve([])),
+    listSampleTemporalTags: vi.fn<TemporalTagsClient["listSampleTemporalTags"]>(
+      () => Promise.resolve([]),
+    ),
+    updateSampleTemporalTag: vi.fn<
+      TemporalTagsClient["updateSampleTemporalTag"]
+    >(() => Promise.resolve(createTemporalTag("updated"))),
     ...overrides,
   };
 }

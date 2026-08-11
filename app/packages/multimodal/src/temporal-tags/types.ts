@@ -94,27 +94,27 @@ export interface CountDatasetTemporalTagsRequest {
  * Client for the multimodal tag route surface.
  */
 export interface TemporalTagsClient {
-  createSampleTemporalTags(
+  readonly createSampleTemporalTags: (
     request: CreateSampleTemporalTagsRequest,
-  ): Promise<readonly TemporalTag[]>;
-  clearSampleTemporalTags(
+  ) => Promise<readonly TemporalTag[]>;
+  readonly clearSampleTemporalTags: (
     request: ClearSampleTemporalTagsRequest,
-  ): Promise<number>;
-  countDatasetTemporalTags(
+  ) => Promise<number>;
+  readonly countDatasetTemporalTags: (
     request: CountDatasetTemporalTagsRequest,
-  ): Promise<Readonly<Record<string, number>>>;
-  deleteSampleTemporalTags(
+  ) => Promise<Readonly<Record<string, number>>>;
+  readonly deleteSampleTemporalTags: (
     request: DeleteSampleTemporalTagsRequest,
-  ): Promise<number>;
-  listDatasetTemporalTags(
+  ) => Promise<number>;
+  readonly listDatasetTemporalTags: (
     request: ListDatasetTemporalTagsRequest,
-  ): Promise<readonly TemporalTag[]>;
-  listSampleTemporalTags(
+  ) => Promise<readonly TemporalTag[]>;
+  readonly listSampleTemporalTags: (
     request: ListSampleTemporalTagsRequest,
-  ): Promise<readonly TemporalTag[]>;
-  updateSampleTemporalTag(
+  ) => Promise<readonly TemporalTag[]>;
+  readonly updateSampleTemporalTag: (
     request: UpdateSampleTemporalTagRequest,
-  ): Promise<TemporalTag>;
+  ) => Promise<TemporalTag>;
 }
 
 /**
