@@ -294,6 +294,7 @@ beforeEach(() => {
 afterEach(() => {
   mocks.releaseRead();
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -547,6 +548,23 @@ describe("LogConsoleTile", () => {
     act(() => mocks.releaseRead());
     await waitFor(() => expect(screen.queryByText(/loading/)).toBeNull());
     expect(mocks.nearestTick).toHaveBeenCalledTimes(1);
+  });
+
+  it("publishes the latest playhead after a throttled discrete step", () => {
+    vi.useFakeTimers();
+    let now = 1_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    render(<LogConsoleTile />);
+    expect(mocks.nearestTick).toHaveBeenLastCalledWith(1);
+
+    now = 1_100;
+    mocks.getPlayhead.mockReturnValue(2);
+    act(() => mocks.runPlayheadSubscriber());
+    expect(mocks.nearestTick).toHaveBeenCalledTimes(1);
+
+    now = 1_500;
+    act(() => vi.advanceTimersByTime(400));
+    expect(mocks.nearestTick).toHaveBeenLastCalledWith(2);
   });
 
   it("moves the fetched tail forward as playback advances", async () => {

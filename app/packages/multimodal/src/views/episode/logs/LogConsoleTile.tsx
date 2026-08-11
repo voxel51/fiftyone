@@ -177,16 +177,28 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   useEffect(() => {
     if (!followPlayhead || !timelineIndex) return undefined;
 
+    let trailingPublish: ReturnType<typeof setTimeout> | undefined;
     const publish = () => {
       const now = Date.now();
-      if (now - lastPlayheadPublishMsRef.current < PLAYHEAD_REFRESH_MS) return;
+      const elapsed = now - lastPlayheadPublishMsRef.current;
+      if (elapsed < PLAYHEAD_REFRESH_MS) {
+        trailingPublish ??= setTimeout(() => {
+          trailingPublish = undefined;
+          publish();
+        }, PLAYHEAD_REFRESH_MS - elapsed);
+        return;
+      }
       lastPlayheadPublishMsRef.current = now;
       const playheadTimeNs = timelineIndex.nearestTick(getPlayhead(store));
       if (playheadTimeNs !== undefined) moveHorizon(playheadTimeNs);
     };
 
     publish();
-    return subscribePlayhead(store, publish);
+    const unsubscribe = subscribePlayhead(store, publish);
+    return () => {
+      unsubscribe();
+      if (trailingPublish !== undefined) clearTimeout(trailingPublish);
+    };
   }, [followPlayhead, moveHorizon, store, timelineIndex]);
 
   // A non-following tile still opens around the current visible playhead. In

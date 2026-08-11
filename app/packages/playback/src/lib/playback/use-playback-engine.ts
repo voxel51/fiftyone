@@ -835,10 +835,14 @@ export function usePlaybackEngine({
       },
       stepForward: () => {
         const step = store.get(stepIntervalAtom);
+        const duration = store.get(durationAtom);
         const next = clamp(
           frameBoundaryStep(store.get(playheadAtom), step, "forward"),
           0,
-          lastFrameStart(store.get(durationAtom), step),
+          // Duration-based media treats `duration` as the exclusive end of
+          // its final frame. Absolute timelines can instead have a real
+          // observation exactly at their inclusive endpoint.
+          mode.kind === "absolute" ? duration : lastFrameStart(duration, step),
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next);
@@ -937,6 +941,7 @@ export function usePlaybackEngine({
     recomputeStepInterval,
     requestOrStartPlayback,
     tryStartPendingPlayback,
+    mode.kind,
   ]);
 
   const contextValue = useMemo<PlaybackContextValue>(

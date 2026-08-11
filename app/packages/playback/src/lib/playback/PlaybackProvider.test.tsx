@@ -37,6 +37,7 @@ interface RenderOpts {
   defaultLoopEnd?: number;
   snapToFrameOnSettle?: boolean;
   seekFetchDebounceMs?: number;
+  mode?: TimelineMode;
 }
 
 function renderEngine(opts: RenderOpts = {}) {
@@ -46,6 +47,7 @@ function renderEngine(opts: RenderOpts = {}) {
     defaultLoopEnd,
     snapToFrameOnSettle,
     seekFetchDebounceMs,
+    mode,
   } = opts;
   return renderHook(
     () => {
@@ -72,6 +74,7 @@ function renderEngine(opts: RenderOpts = {}) {
           defaultLoopEnd={defaultLoopEnd}
           snapToFrameOnSettle={snapToFrameOnSettle}
           seekFetchDebounceMs={seekFetchDebounceMs}
+          mode={mode}
         >
           {children}
         </PlaybackProvider>
@@ -296,6 +299,16 @@ describe("PlaybackProvider engine actions", () => {
       act(() => result.current.api.seek(10));
       act(() => result.current.api.stepForward());
       expect(result.current.playhead).toBeCloseTo(299 / 30, 5);
+    });
+
+    it("stepForward preserves the inclusive endpoint of an absolute timeline", () => {
+      const { result } = renderEngine({
+        duration: 10,
+        mode: { kind: "absolute", epochAnchorMs: 0 },
+      });
+      act(() => result.current.api.seek(10));
+      act(() => result.current.api.stepForward());
+      expect(result.current.playhead).toBe(10);
     });
 
     it("stepForward can enter a partial trailing frame", () => {
