@@ -107,6 +107,11 @@
   text-align: right;
 }
 
+.recordingActions {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .streamRow {
   border-left: 1px solid var(--color-border);
   display: flex;

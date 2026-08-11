@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import {
   TilingProvider,
@@ -21,6 +22,7 @@ import {
   SCENE_SOURCE_METADATA,
   SCENE_SOURCE_TYPE,
   STREAM_METADATA,
+  type EpisodeRecordingFacts,
   type StreamDescriptor,
 } from "../../../../ir";
 import type { EpisodeTerminology } from "../../../../ports";
@@ -165,6 +167,7 @@ const TilingStateProbe: React.FC<{
 function renderSidebar({
   onTimelineSamplingRateChange = vi.fn(),
   registeredStreamStreams,
+  recordingFacts,
   sources = SOURCES,
   streams = [],
   terminology,
@@ -173,6 +176,7 @@ function renderSidebar({
   readonly onTimelineSamplingRateChange?: (rateHz: number) => void;
   /** Stream streams declared by the registered tiles' registrations. */
   readonly registeredStreamStreams?: readonly string[];
+  readonly recordingFacts?: EpisodeRecordingFacts;
   readonly sources?: readonly SceneSource[];
   readonly streams?: readonly StreamDescriptor[];
   readonly terminology?: EpisodeTerminology;
@@ -200,6 +204,7 @@ function renderSidebar({
             <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
             <SettingsSidebar
               onTimelineSamplingRateChange={onTimelineSamplingRateChange}
+              recordingFacts={recordingFacts}
               streams={streams}
               terminology={terminology}
               timelineSamplingRateHz={timelineSamplingRateHz}
@@ -215,7 +220,7 @@ function renderSidebar({
 describe("SettingsSidebar", () => {
   beforeEach(() => {
     playbackFrames.current = [];
-    localStorage.clear();
+    window.localStorage?.clear();
     __resetModalSettingsForTests();
   });
 
@@ -229,6 +234,77 @@ describe("SettingsSidebar", () => {
     expect(screen.queryByRole("tab", { name: "Camera" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
     expect(screen.getByRole("button", { name: "Stats" })).toBeTruthy();
+  });
+
+  it("renders collapsed recording facts and copies the immutable diagnostics", async () => {
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(
+      navigator,
+      "clipboard",
+    );
+    const writeText = vi.fn(async (_value: string) => undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    try {
+      renderSidebar({ recordingFacts: exampleRecordingFacts() });
+
+      const recording = screen.getByRole("button", {
+        name: /Recording MCAP · 2.65 GiB · 30.0 s/,
+      });
+      expect(recording.getAttribute("aria-expanded")).toBe("false");
+      expect(screen.queryByText("Schema coverage")).toBeNull();
+
+      fireEvent.click(recording);
+      expect(screen.getByText("Topics")).toBeTruthy();
+      expect(screen.getByText("85")).toBeTruthy();
+      expect(screen.getByText("Channels")).toBeTruthy();
+      expect(screen.getByText("86")).toBeTruthy();
+      expect(screen.getByText("61 embedded · 25 missing")).toBeTruthy();
+      expect(
+        screen.getByText("13 renderable · 48 inspectable · 25 unavailable"),
+      ).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: /MCAP details/ }));
+      expect(screen.getByText("1,243")).toBeTruthy();
+      expect(screen.getByText("none · 1,243 chunks")).toBeTruthy();
+      expect(screen.getByText("42")).toBeTruthy();
+      expect(screen.getByText("libmcap 0.8.0")).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Copy diagnostics" }));
+      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+      expect(writeText.mock.calls[0]?.[0]).toContain('"topicCount": 85');
+    } finally {
+      if (clipboardDescriptor) {
+        Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+      } else {
+        Reflect.deleteProperty(navigator, "clipboard");
+      }
+    }
+  });
+
+  it("surfaces actionable recording conditions as scene notices", () => {
+    vi.useFakeTimers();
+    try {
+      renderSidebar({ recordingFacts: exampleRecordingFacts() });
+
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
+
+      expect(
+        screen.getByText("25 of 86 channels cannot be decoded"),
+      ).toBeTruthy();
+      expect(screen.getByText("Random access degraded")).toBeTruthy();
+      expect(screen.getByText("Uncompressed remote recording")).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Playback may use high bandwidth because every indexed chunk is uncompressed.",
+        ),
+      ).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("uses format-selected terminology for the stream catalog", () => {
@@ -688,6 +764,51 @@ function stream(
     },
     sourceName: name,
     timeRange: { endNs: 1n, startNs: 0n },
+  };
+}
+
+function exampleRecordingFacts(): EpisodeRecordingFacts {
+  return {
+    applicationSupport: {
+      inspectableStreamCount: 48,
+      renderableStreamCount: 13,
+      unavailableStreamCount: 25,
+    },
+    channelCount: 86,
+    durationNs: "30000000000",
+    endTimeNs: "1700000030000000000",
+    format: "mcap",
+    mcap: {
+      attachmentCount: 0,
+      chunkCount: 1243,
+      compression: [
+        {
+          chunkCount: 1243,
+          codec: "none",
+          compressedBytes: "2845415834",
+          uncompressedBytes: "2845415834",
+        },
+      ],
+      compressionRatio: 1,
+      library: "libmcap 0.8.0",
+      medianChannelsPerChunk: 42,
+      medianChunkSizeBytes: "2289152",
+      medianChunkSpanNs: "24000000",
+      messageIndexStatus: "partial",
+      metadataRecordCount: 1,
+      metadataRecordNames: ["rosbag2"],
+      profile: "ros2",
+    },
+    messageCount: "158185",
+    readProfile: "remote",
+    schemaCount: 38,
+    schemaCoverage: {
+      embeddedSchemaChannelCount: 61,
+      missingSchemaChannelCount: 25,
+    },
+    sizeBytes: "2845415834",
+    startTimeNs: "1700000000000000000",
+    topicCount: 85,
   };
 }
 

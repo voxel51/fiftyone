@@ -26,7 +26,11 @@
  */
 
 import { useEffect, useReducer, useRef } from "react";
-import type { DecodedDiagnostic } from "../../../ir";
+import {
+  BYTE_SOURCE_READ_PROFILE,
+  type DecodedDiagnostic,
+  type EpisodeRecordingFacts,
+} from "../../../ir";
 import type { EpisodeFrameTransformMissingReason } from "../../../runtime/frame-transform-types";
 import { INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS } from "../playback/playback-buffering";
 import type { ReferenceSelectionSource } from "../contracts/reference-selection";
@@ -352,6 +356,60 @@ export function buildPointCloudSamplingNotice(
     scope: "scene",
     severity: "warning",
   };
+}
+
+/** Static recording conditions that explain unavailable data or costly reads. */
+export function buildRecordingNotices(
+  facts: EpisodeRecordingFacts | undefined,
+): HealthNotice[] {
+  if (!facts) return [];
+  const notices: HealthNotice[] = [];
+  const missingSchemas = facts.schemaCoverage?.missingSchemaChannelCount ?? 0;
+  if (missingSchemas > 0) {
+    const total = facts.channelCount;
+    notices.push({
+      detail: `No embedded schema is available for ${missingSchemas.toLocaleString()} ${
+        missingSchemas === 1 ? "channel" : "channels"
+      }.`,
+      id: "recording:missing-schemas",
+      message: `${missingSchemas.toLocaleString()}${
+        total === undefined ? "" : ` of ${total.toLocaleString()}`
+      } ${missingSchemas === 1 ? "channel" : "channels"} cannot be decoded`,
+      scope: "scene",
+      severity: "info",
+    });
+  }
+
+  const indexStatus = facts.mcap?.messageIndexStatus;
+  if (indexStatus === "absent" || indexStatus === "partial") {
+    notices.push({
+      detail: `Message indexes are ${
+        indexStatus === "absent" ? "missing" : "incomplete"
+      }; exact topic browsing may be unavailable.`,
+      id: "recording:message-indexes",
+      message: "Random access degraded",
+      scope: "scene",
+      severity: "info",
+    });
+  }
+
+  const compression = facts.mcap?.compression;
+  if (
+    facts.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE &&
+    compression &&
+    compression.length > 0 &&
+    compression.every((entry) => entry.codec === "none")
+  ) {
+    notices.push({
+      detail:
+        "Playback may use high bandwidth because every indexed chunk is uncompressed.",
+      id: "recording:uncompressed-remote",
+      message: "Uncompressed remote recording",
+      scope: "scene",
+      severity: "info",
+    });
+  }
+  return notices;
 }
 
 function compareStalePoseSeverity(left: StalePoseUsage, right: StalePoseUsage) {

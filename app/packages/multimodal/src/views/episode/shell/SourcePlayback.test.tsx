@@ -7,7 +7,7 @@ import {
   type ByteSourceDescriptor,
 } from "../../../query/bytes";
 import type { EpisodeSession } from "../../../ports";
-import type { StreamDescriptor } from "../../../ir";
+import type { EpisodeRecordingFacts, StreamDescriptor } from "../../../ir";
 import { SourcePlayback } from "./SourcePlayback";
 
 const playbackHarness = vi.hoisted(() => {
@@ -104,13 +104,22 @@ vi.mock("./NetworkStatus", () => ({
 }));
 vi.mock("../settings/modal/SettingsSidebar", () => ({
   default: ({
+    recordingFacts,
     terminology,
   }: {
+    recordingFacts?: EpisodeRecordingFacts;
     terminology?: { stream?: { plural: string } };
   }) => (
-    <span data-testid="settings-stream-term">
-      {terminology?.stream?.plural}
-    </span>
+    <>
+      <span data-testid="settings-stream-term">
+        {terminology?.stream?.plural}
+      </span>
+      <span data-testid="settings-recording-facts">
+        {recordingFacts
+          ? `${recordingFacts.topicCount}:${recordingFacts.sizeBytes}`
+          : "none"}
+      </span>
+    </>
   ),
 }));
 vi.mock("../interaction/selection/selected-object", () => ({
@@ -215,6 +224,63 @@ describe("SourcePlayback", () => {
 
     expect(screen.getByTestId("settings-stream-term").textContent).toBe(
       "topics",
+    );
+  });
+
+  it("retains recording facts with their source inventory during navigation", () => {
+    const firstSource = createSource("sample-a");
+    const secondSource = createSource("sample-b");
+    const firstSession = sessionWithRecordingFacts({
+      format: "mcap",
+      sizeBytes: "100",
+      topicCount: 1,
+    });
+    const secondSession = sessionWithRecordingFacts({
+      format: "mcap",
+      sizeBytes: "200",
+      topicCount: 2,
+    });
+    playbackHarness.sceneInventory = readyInventory("/camera/a");
+
+    const view = render(
+      <SourcePlayback
+        session={firstSession}
+        fileName="sample-a.mcap"
+        source={firstSource}
+      />,
+    );
+    expect(screen.getByTestId("settings-recording-facts").textContent).toBe(
+      "1:100",
+    );
+
+    playbackHarness.sceneInventory = {
+      error: null,
+      sources: [],
+      status: "loading",
+      streams: [],
+      streamCount: 0,
+    };
+    view.rerender(
+      <SourcePlayback
+        session={secondSession}
+        fileName="sample-b.mcap"
+        source={secondSource}
+      />,
+    );
+    expect(screen.getByTestId("settings-recording-facts").textContent).toBe(
+      "1:100",
+    );
+
+    playbackHarness.sceneInventory = readyInventory("/camera/b");
+    view.rerender(
+      <SourcePlayback
+        session={secondSession}
+        fileName="sample-b.mcap"
+        source={secondSource}
+      />,
+    );
+    expect(screen.getByTestId("settings-recording-facts").textContent).toBe(
+      "2:200",
     );
   });
 
@@ -453,6 +519,15 @@ describe("SourcePlayback", () => {
 
 function createSource(sourceId: string, etag?: string): ByteSourceDescriptor {
   return { sourceId, url: `memory://${sourceId}.mcap`, etag };
+}
+
+function sessionWithRecordingFacts(
+  recordingFacts: EpisodeRecordingFacts,
+): EpisodeSession {
+  return {
+    activate: vi.fn(),
+    manifest: { recordingFacts },
+  } as unknown as EpisodeSession;
 }
 
 function timelineModeStream(

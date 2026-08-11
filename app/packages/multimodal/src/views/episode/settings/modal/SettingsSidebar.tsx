@@ -8,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { StreamDescriptor } from "../../../../ir";
+import type { EpisodeRecordingFacts, StreamDescriptor } from "../../../../ir";
 import type { EpisodeTerminology } from "../../../../ports";
 import {
   useTileSettings,
@@ -21,6 +21,7 @@ import styles from "./SettingsSidebar.module.css";
 import { TileStreamNoticeStrip } from "../../tiles/TileStreamState";
 import StreamsSettings from "./StreamsSettings";
 import TimelinePlaybackSettings from "./TimelinePlaybackSettings";
+import RecordingSettings from "./RecordingSettings";
 
 type ActiveSettingsTab = "panel" | "scene" | "streams";
 type StreamTerminology = NonNullable<EpisodeTerminology["stream"]>;
@@ -45,11 +46,13 @@ const DEFAULT_STREAM_TERMINOLOGY: StreamTerminology = {
  */
 const SettingsSidebar: React.FC<{
   readonly onTimelineSamplingRateChange: (rateHz: number) => void;
+  readonly recordingFacts?: EpisodeRecordingFacts;
   readonly streams?: readonly StreamDescriptor[];
   readonly terminology?: EpisodeTerminology;
   readonly timelineSamplingRateHz: number;
 }> = ({
   onTimelineSamplingRateChange,
+  recordingFacts,
   streams = [],
   terminology,
   timelineSamplingRateHz,
@@ -92,6 +95,7 @@ const SettingsSidebar: React.FC<{
           content: (
             <GlobalSceneSettings
               onTimelineSamplingRateChange={onTimelineSamplingRateChange}
+              recordingFacts={recordingFacts}
               timelineSamplingRateHz={timelineSamplingRateHz}
             />
           ),
@@ -136,6 +140,7 @@ const SettingsSidebar: React.FC<{
     suppressNextPanelAutoSwitch,
     streams,
     onTimelineSamplingRateChange,
+    recordingFacts,
     timelineSamplingRateHz,
   ]);
   const selectedTab =
@@ -211,16 +216,19 @@ function PanelSettingsContent({
  */
 function GlobalSceneSettings({
   onTimelineSamplingRateChange,
+  recordingFacts,
   timelineSamplingRateHz,
 }: {
   readonly onTimelineSamplingRateChange: (rateHz: number) => void;
+  readonly recordingFacts?: EpisodeRecordingFacts;
   readonly timelineSamplingRateHz: number;
 }) {
   const sampling = usePointCloudSamplingSummary();
 
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
-      <SceneStatusStrip sampling={sampling} />
+      <SceneStatusStrip recordingFacts={recordingFacts} sampling={sampling} />
+      <RecordingSettings facts={recordingFacts} />
       <SceneWorldSettings />
       <TimelinePlaybackSettings
         onRateChange={onTimelineSamplingRateChange}

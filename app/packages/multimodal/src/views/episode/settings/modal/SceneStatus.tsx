@@ -2,12 +2,14 @@ import { useStreamValues } from "@fiftyone/playback";
 import React, { useMemo } from "react";
 import {
   MAX_POINT_CLOUD_RENDER_POINTS,
+  type EpisodeRecordingFacts,
   type PointCloudVisualization,
 } from "../../../../ir";
 import { useSceneSourcesByType } from "../../../../scene-inventory/react";
 import { SCENE_SOURCE_TYPE } from "../../../../ir";
 import {
   buildPointCloudSamplingNotice,
+  buildRecordingNotices,
   useStabilizedNotices,
   type PointCloudSamplingSummary,
 } from "../../status/health";
@@ -61,16 +63,20 @@ export function usePointCloudSamplingSummary(): PointCloudSamplingSummary | null
  * the same appearance/disappearance discipline.
  */
 export const SceneStatusStrip: React.FC<{
+  readonly recordingFacts?: EpisodeRecordingFacts;
   readonly sampling: PointCloudSamplingSummary | null;
-}> = ({ sampling }) => {
+}> = ({ recordingFacts, sampling }) => {
   const publishedNotices = useSceneNotices();
   const producedLocally = useMemo(() => {
     const samplingNotice = buildPointCloudSamplingNotice(
       sampling,
       MAX_POINT_CLOUD_RENDER_POINTS,
     );
-    return samplingNotice ? [samplingNotice] : [];
-  }, [sampling]);
+    return [
+      ...buildRecordingNotices(recordingFacts),
+      ...(samplingNotice ? [samplingNotice] : []),
+    ];
+  }, [recordingFacts, sampling]);
   const localNotices = useStabilizedNotices(producedLocally);
   const notices = useMemo(
     () => [...localNotices, ...publishedNotices],

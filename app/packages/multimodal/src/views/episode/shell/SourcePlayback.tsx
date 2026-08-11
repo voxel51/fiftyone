@@ -16,7 +16,11 @@ import React, {
   useState,
 } from "react";
 import PlaybackShell from "./PlaybackShell";
-import type { ByteSourceDescriptor, StreamDescriptor } from "../../../ir";
+import type {
+  ByteSourceDescriptor,
+  EpisodeRecordingFacts,
+  StreamDescriptor,
+} from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import {
   createScheduledSourceReadBudgetAccount,
@@ -89,6 +93,7 @@ const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 interface ReadyInventory {
   readonly hasNumericSeries: boolean;
   readonly hasRawRecords: boolean;
+  readonly recordingFacts?: EpisodeRecordingFacts;
   readonly sources: readonly SceneSource[];
   readonly streamCount: number;
   readonly streams: readonly StreamDescriptor[];
@@ -227,6 +232,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
         ? {
             hasNumericSeries: session?.numericSeries !== undefined,
             hasRawRecords: session?.rawRecords !== undefined,
+            recordingFacts: session?.manifest?.recordingFacts,
             sources,
             streamCount,
             streams,
@@ -236,6 +242,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     [
       session?.numericSeries,
       session?.rawRecords,
+      session?.manifest?.recordingFacts,
       session?.terminology,
       sources,
       status,
@@ -453,6 +460,9 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                   <SettingsSidebar
                                     onTimelineSamplingRateChange={
                                       onTimelineSamplingRateChange
+                                    }
+                                    recordingFacts={
+                                      shellInventory?.recordingFacts
                                     }
                                     streams={shellStreams}
                                     terminology={shellInventory?.terminology}
