@@ -200,15 +200,19 @@ export interface SynchronizedReadAcceleration {
 
 /** Optional fast path for transform-window assembly. */
 export interface TransformReadAcceleration {
-  readBootstrap?(options?: {
-    readonly signal?: AbortSignal;
-  }): Promise<readonly TransformSample[]>;
+  readBootstrap?(
+    this: void,
+    options?: {
+      readonly signal?: AbortSignal;
+    },
+  ): Promise<readonly TransformSample[]>;
   /**
    * Reads an edge-complete held placement at one timeline time. A null result
    * means completeness could not be proven within the adapter's bounded
    * lookup policy; callers must retain their normal window fallback.
    */
   readPlacement?(
+    this: void,
     request: TransformPlacementReadRequest,
   ): Promise<TransformPlacementReadResult | null>;
   readTransforms(
@@ -257,9 +261,11 @@ export interface TransformTopologySampleResult {
 export interface TransformTopologyCapability {
   /** Uses the adapter's targeted playback path; never resumes an aggregate scan. */
   sample?(
+    this: void,
     request: TransformTopologySampleRequest,
   ): Promise<TransformTopologySampleResult>;
   scan(
+    this: void,
     request: TransformTopologyScanRequest,
   ): Promise<TransformTopologyScanResult>;
 }

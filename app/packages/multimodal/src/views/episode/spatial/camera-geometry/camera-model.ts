@@ -384,7 +384,7 @@ function cachedCameraModels(
   };
   cameraModelCache.set(key, pair);
   if (cameraModelCache.size > CAMERA_MODEL_CACHE_LIMIT) {
-    const oldestKey = cameraModelCache.keys().next().value;
+    const [oldestKey] = cameraModelCache.keys();
     if (oldestKey !== undefined) {
       cameraModelCache.delete(oldestKey);
     }
@@ -603,11 +603,11 @@ function buildOriginalCameraModel(
   const normalizedModel = normalizedDistortionModel(
     calibration.distortionModel,
   );
-  const hasDeclaredModel = Boolean(calibration.distortionModel?.trim());
-  if (hasDeclaredModel && !normalizedModel) {
+  const declaredModel = calibration.distortionModel?.trim();
+  if (declaredModel && !normalizedModel) {
     return failure(
       "unsupported",
-      `Unsupported distortion model '${calibration.distortionModel}'`,
+      `Unsupported distortion model '${declaredModel}'`,
     );
   }
 
@@ -633,7 +633,7 @@ function buildOriginalCameraModel(
     if (!coefficients) {
       return failure(
         "unsupported",
-        `Distortion model '${calibration.distortionModel}' has an unsupported coefficient layout`,
+        `Distortion model '${declaredModel ?? "unspecified"}' has an unsupported coefficient layout`,
       );
     }
     if (coefficients.every((coefficient) => coefficient === 0)) {

@@ -27,7 +27,7 @@ afterEach(() => {
 
 describe("useFrameTransforms", () => {
   it("keeps resolver identity stable for semantically equal policies", async () => {
-    const onState = vi.fn();
+    const onState = vi.fn<(state: FrameTransformsState) => void>();
     const props = {
       client: createFrameTransformClient(),
       label: "frames",
@@ -61,7 +61,7 @@ describe("useFrameTransforms", () => {
     const client = createFrameTransformClient({
       bootstrapSamples: [sample("base_link", "lidar")],
     });
-    const onState = vi.fn();
+    const onState = vi.fn<(state: FrameTransformsState) => void>();
 
     render(
       <FrameTransformsHarness
@@ -82,10 +82,10 @@ describe("useFrameTransforms", () => {
         }),
       );
     });
-    expect(client.readFrameTransformBootstrap).toHaveBeenCalledWith(
-      { source },
-      { signal: expect.any(AbortSignal) },
-    );
+    const bootstrapCall = vi.mocked(client.readFrameTransformBootstrap).mock
+      .calls[0];
+    expect(bootstrapCall?.[0]).toEqual({ source });
+    expect(bootstrapCall?.[1]?.signal).toBeInstanceOf(AbortSignal);
     expect(client.readFrameTransformWindow).not.toHaveBeenCalled();
   });
 
@@ -106,15 +106,15 @@ describe("useFrameTransforms", () => {
     );
 
     await waitFor(() => {
-      expect(client.readFrameTransformWindow).toHaveBeenCalledWith(
-        {
-          activeTimeline: undefined,
-          endTimeNs: 1_000_000_100n,
-          source,
-          startTimeNs: 0n,
-        },
-        { priority: undefined, signal: expect.any(AbortSignal) },
-      );
+      const call = vi.mocked(client.readFrameTransformWindow).mock.calls[0];
+      expect(call?.[0]).toEqual({
+        activeTimeline: undefined,
+        endTimeNs: 1_000_000_100n,
+        source,
+        startTimeNs: 0n,
+      });
+      expect(call?.[1]?.priority).toBeUndefined();
+      expect(call?.[1]?.signal).toBeInstanceOf(AbortSignal);
     });
     await waitFor(() => {
       expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
@@ -141,27 +141,28 @@ describe("useFrameTransforms", () => {
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalled();
     });
-    expect(vi.mocked(client.readFrameTransformWindow).mock.calls[0]).toEqual([
-      {
-        activeTimeline: undefined,
-        endTimeNs: 1_000_000_100n,
-        source,
-        startTimeNs: 0n,
-      },
-      { priority: undefined, signal: expect.any(AbortSignal) },
-    ]);
+    const currentCall = vi.mocked(client.readFrameTransformWindow).mock
+      .calls[0];
+    expect(currentCall?.[0]).toEqual({
+      activeTimeline: undefined,
+      endTimeNs: 1_000_000_100n,
+      source,
+      startTimeNs: 0n,
+    });
+    expect(currentCall?.[1]?.priority).toBeUndefined();
+    expect(currentCall?.[1]?.signal).toBeInstanceOf(AbortSignal);
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
     });
-    expect(vi.mocked(client.readFrameTransformWindow).mock.calls[1]).toEqual([
-      {
-        activeTimeline: undefined,
-        endTimeNs: 2_400_000_100n,
-        source,
-        startTimeNs: 900_000_100n,
-      },
-      { priority: "idle", signal: expect.any(AbortSignal) },
-    ]);
+    const idleCall = vi.mocked(client.readFrameTransformWindow).mock.calls[1];
+    expect(idleCall?.[0]).toEqual({
+      activeTimeline: undefined,
+      endTimeNs: 2_400_000_100n,
+      source,
+      startTimeNs: 900_000_100n,
+    });
+    expect(idleCall?.[1]?.priority).toBe("idle");
+    expect(idleCall?.[1]?.signal).toBeInstanceOf(AbortSignal);
     await waitFor(() => {
       expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
     });
@@ -191,26 +192,26 @@ describe("useFrameTransforms", () => {
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(3);
     });
-    expect(vi.mocked(client.readFrameTransformWindow).mock.calls[2]).toEqual([
-      {
-        activeTimeline: undefined,
-        endTimeNs: 3_800_000_100n,
-        source,
-        startTimeNs: 2_300_000_100n,
-      },
-      { priority: "idle", signal: expect.any(AbortSignal) },
-    ]);
+    const nextIdleCall = vi.mocked(client.readFrameTransformWindow).mock
+      .calls[2];
+    expect(nextIdleCall?.[0]).toEqual({
+      activeTimeline: undefined,
+      endTimeNs: 3_800_000_100n,
+      source,
+      startTimeNs: 2_300_000_100n,
+    });
+    expect(nextIdleCall?.[1]?.priority).toBe("idle");
+    expect(nextIdleCall?.[1]?.signal).toBeInstanceOf(AbortSignal);
     expect(
-      vi.mocked(client.readFrameTransformWindow).mock.calls,
-    ).not.toContainEqual([
-      {
-        activeTimeline: undefined,
-        endTimeNs: 10_000_000_000n,
-        source,
-        startTimeNs: 0n,
-      },
-      { priority: "idle", signal: expect.any(AbortSignal) },
-    ]);
+      vi
+        .mocked(client.readFrameTransformWindow)
+        .mock.calls.some(
+          ([request, options]) =>
+            request.endTimeNs === 10_000_000_000n &&
+            request.startTimeNs === 0n &&
+            options?.priority === "idle",
+        ),
+    ).toBe(false);
   });
 
   it("rebuilds transform cache when the active timeline changes", async () => {
@@ -252,15 +253,16 @@ describe("useFrameTransforms", () => {
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
     });
-    expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith(
-      {
-        activeTimeline: "log",
-        endTimeNs: 1_000_000_100n,
-        source,
-        startTimeNs: 0n,
-      },
-      { priority: undefined, signal: expect.any(AbortSignal) },
-    );
+    const timelineCall = vi.mocked(client.readFrameTransformWindow).mock
+      .lastCall;
+    expect(timelineCall?.[0]).toEqual({
+      activeTimeline: "log",
+      endTimeNs: 1_000_000_100n,
+      source,
+      startTimeNs: 0n,
+    });
+    expect(timelineCall?.[1]?.priority).toBeUndefined();
+    expect(timelineCall?.[1]?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("keeps one in-flight dynamic window when playback advances inside it", async () => {
@@ -417,9 +419,9 @@ describe("useFrameTransforms", () => {
     vi.useFakeTimers();
     const source = createSource("retry");
     const client = createFrameTransformClient({
-      readFrameTransformWindow: vi.fn(async () => {
-        throw new Error("temporary tf failure");
-      }),
+      readFrameTransformWindow: vi.fn<
+        FrameTransformClient["readFrameTransformWindow"]
+      >(() => Promise.reject(new Error("temporary tf failure"))),
     });
     const latestState: { current: FrameTransformsState | null } = {
       current: null,
@@ -491,9 +493,9 @@ describe("useFrameTransforms", () => {
     vi.useFakeTimers();
     const source = createSource("retry-cleanup");
     const client = createFrameTransformClient({
-      readFrameTransformWindow: vi.fn(async () => {
-        throw new Error("temporary tf failure");
-      }),
+      readFrameTransformWindow: vi.fn<
+        FrameTransformClient["readFrameTransformWindow"]
+      >(() => Promise.reject(new Error("temporary tf failure"))),
     });
 
     const { rerender } = render(
@@ -556,7 +558,7 @@ describe("useFrameTransforms", () => {
     const latestRead = deferred<EpisodeFrameTransformSet>();
     const client = createFrameTransformClient({
       readFrameTransformWindow: vi
-        .fn()
+        .fn<FrameTransformClient["readFrameTransformWindow"]>()
         .mockImplementationOnce(() => staleRead.promise)
         .mockImplementationOnce(() => latestRead.promise),
     });
@@ -597,9 +599,9 @@ describe("useFrameTransforms", () => {
     vi.useFakeTimers();
     const source = createSource("retry-seek");
     const client = createFrameTransformClient({
-      readFrameTransformWindow: vi.fn(async () => {
-        throw new Error("temporary tf failure");
-      }),
+      readFrameTransformWindow: vi.fn<
+        FrameTransformClient["readFrameTransformWindow"]
+      >(() => Promise.reject(new Error("temporary tf failure"))),
     });
     const latestState: { current: FrameTransformsState | null } = {
       current: null,
@@ -650,8 +652,10 @@ describe("useFrameTransforms", () => {
     const source = createSource("paused-point-placement");
     const dynamicSample = sample("map", "lidar", { x: 1, y: 0, z: 0 }, 100n);
     const unrelatedSample = sample("odom", "other", { x: 0, y: 1, z: 0 }, 100n);
-    const readFrameTransformPlacement = vi.fn(
-      async ({ timeNs }: { readonly timeNs: bigint }) => ({
+    const readFrameTransformPlacement = vi.fn<
+      NonNullable<FrameTransformClient["readFrameTransformPlacement"]>
+    >(({ timeNs }) =>
+      Promise.resolve({
         indexedWindow: { endNs: timeNs, startNs: timeNs - 10n },
         samples: [sample("map", "lidar", { x: 1, y: 0, z: 0 }, timeNs)],
       }),
@@ -704,11 +708,12 @@ describe("useFrameTransforms", () => {
     );
 
     await waitFor(() => {
-      expect(readFrameTransformPlacement).toHaveBeenCalledExactlyOnceWith({
+      const request = readFrameTransformPlacement.mock.calls[0]?.[0];
+      expect(request).toMatchObject({
         requiredDynamicChildFrameIds: ["lidar"],
-        signal: expect.any(AbortSignal),
         timeNs: 2_000_000_000n,
       });
+      expect(request?.signal).toBeInstanceOf(AbortSignal);
     });
     await flushReactWork();
     expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
@@ -719,16 +724,16 @@ describe("useFrameTransforms", () => {
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
     });
-    expect(client.readFrameTransformWindow).toHaveBeenNthCalledWith(
-      2,
-      {
-        activeTimeline: undefined,
-        endTimeNs: 3_400_000_000n,
-        source,
-        startTimeNs: 1_900_000_000n,
-      },
-      { priority: "playback", signal: expect.any(AbortSignal) },
-    );
+    const playbackCall = vi.mocked(client.readFrameTransformWindow).mock
+      .calls[1];
+    expect(playbackCall?.[0]).toEqual({
+      activeTimeline: undefined,
+      endTimeNs: 3_400_000_000n,
+      source,
+      startTimeNs: 1_900_000_000n,
+    });
+    expect(playbackCall?.[1]?.priority).toBe("playback");
+    expect(playbackCall?.[1]?.signal).toBeInstanceOf(AbortSignal);
 
     rerender(
       <PlaybackFrameTransformsHarness
@@ -745,21 +750,26 @@ describe("useFrameTransforms", () => {
       />,
     );
     await waitFor(() => {
-      expect(readFrameTransformPlacement).toHaveBeenNthCalledWith(2, {
+      const request = readFrameTransformPlacement.mock.calls[1]?.[0];
+      expect(request).toMatchObject({
         requiredDynamicChildFrameIds: ["lidar"],
-        signal: expect.any(AbortSignal),
         timeNs: 5_000_000_000n,
       });
+      expect(request?.signal).toBeInstanceOf(AbortSignal);
     });
   });
 
   it("uses one window instead of probing a path without cadence evidence", async () => {
     const source = createSource("paused-window-placement");
     const dynamicSample = sample("map", "lidar", undefined, 100n);
-    const readFrameTransformPlacement = vi.fn(async () => ({
-      indexedWindow: { endNs: 2_000_000_000n, startNs: 1_999_999_990n },
-      samples: [dynamicSample],
-    }));
+    const readFrameTransformPlacement = vi.fn<
+      NonNullable<FrameTransformClient["readFrameTransformPlacement"]>
+    >(() =>
+      Promise.resolve({
+        indexedWindow: { endNs: 2_000_000_000n, startNs: 1_999_999_990n },
+        samples: [dynamicSample],
+      }),
+    );
     const client = createFrameTransformClient({
       readFrameTransformPlacement,
       windowSamples: [dynamicSample],
@@ -803,15 +813,19 @@ describe("useFrameTransforms", () => {
       sample("map", "lidar", undefined, timeNs),
     );
     const targetTimeNs = 2_000_000_000n;
-    const readFrameTransformPlacement = vi.fn(async () => ({
-      indexedWindow: {
-        endNs: targetTimeNs,
-        startNs: targetTimeNs - 10n,
-      },
-      samples: [sample("odom", "lidar", undefined, targetTimeNs - 1n)],
-    }));
+    const readFrameTransformPlacement = vi.fn<
+      NonNullable<FrameTransformClient["readFrameTransformPlacement"]>
+    >(() =>
+      Promise.resolve({
+        indexedWindow: {
+          endNs: targetTimeNs,
+          startNs: targetTimeNs - 10n,
+        },
+        samples: [sample("odom", "lidar", undefined, targetTimeNs - 1n)],
+      }),
+    );
     const readFrameTransformWindow = vi
-      .fn()
+      .fn<FrameTransformClient["readFrameTransformWindow"]>()
       .mockResolvedValueOnce({
         samples: [...initialCadenceSamples, initialSample],
       })
@@ -859,7 +873,9 @@ describe("useFrameTransforms", () => {
   it("falls back to the full placement window when point closure is incomplete", async () => {
     const source = createSource("incomplete-point-placement");
     const dynamicSample = sample("map", "lidar", { x: 1, y: 0, z: 0 }, 100n);
-    const readFrameTransformPlacement = vi.fn(async () => null);
+    const readFrameTransformPlacement = vi.fn<
+      NonNullable<FrameTransformClient["readFrameTransformPlacement"]>
+    >(() => Promise.resolve(null));
     const client = createFrameTransformClient({
       readFrameTransformPlacement,
       windowSamples: [
@@ -900,15 +916,16 @@ describe("useFrameTransforms", () => {
       expect(readFrameTransformPlacement).toHaveBeenCalledOnce();
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
     });
-    expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith(
-      {
-        activeTimeline: undefined,
-        endTimeNs: 2_250_000_000n,
-        source,
-        startTimeNs: 1_500_000_000n,
-      },
-      { priority: undefined, signal: expect.any(AbortSignal) },
-    );
+    const fallbackCall = vi.mocked(client.readFrameTransformWindow).mock
+      .lastCall;
+    expect(fallbackCall?.[0]).toEqual({
+      activeTimeline: undefined,
+      endTimeNs: 2_250_000_000n,
+      source,
+      startTimeNs: 1_500_000_000n,
+    });
+    expect(fallbackCall?.[1]?.priority).toBeUndefined();
+    expect(fallbackCall?.[1]?.signal).toBeInstanceOf(AbortSignal);
   });
 });
 
@@ -1112,30 +1129,34 @@ function createFrameTransformClient({
   readonly windowSamples?: readonly EpisodeFrameTransformSample[];
 } = {}): FrameTransformClient {
   return {
-    readFrameTransformBootstrap: vi.fn(async () => ({
-      samples: bootstrapSamples,
-    })),
+    readFrameTransformBootstrap: vi.fn<
+      FrameTransformClient["readFrameTransformBootstrap"]
+    >(() => Promise.resolve({ samples: bootstrapSamples })),
     ...(readFrameTransformPlacement ? { readFrameTransformPlacement } : {}),
     readFrameTransformWindow:
       readFrameTransformWindow ??
-      vi.fn(async () => ({
-        samples: windowSamples,
-      })),
+      vi.fn<FrameTransformClient["readFrameTransformWindow"]>(() =>
+        Promise.resolve({ samples: windowSamples }),
+      ),
   };
 }
 
 interface FrameTransformClient {
   readFrameTransformBootstrap(
+    this: void,
     request: {
       readonly source: ByteSourceDescriptor;
     },
     options?: { readonly signal?: AbortSignal },
   ): Promise<EpisodeFrameTransformSet>;
-  readFrameTransformPlacement?(request: {
-    readonly requiredDynamicChildFrameIds: readonly string[];
-    readonly signal?: AbortSignal;
-    readonly timeNs: bigint;
-  }): Promise<{
+  readFrameTransformPlacement?(
+    this: void,
+    request: {
+      readonly requiredDynamicChildFrameIds: readonly string[];
+      readonly signal?: AbortSignal;
+      readonly timeNs: bigint;
+    },
+  ): Promise<{
     readonly indexedWindow: {
       readonly endNs: bigint;
       readonly startNs: bigint;
@@ -1143,6 +1164,7 @@ interface FrameTransformClient {
     readonly samples: readonly EpisodeFrameTransformSample[];
   } | null>;
   readFrameTransformWindow(
+    this: void,
     request: {
       readonly activeTimeline?: "log";
       readonly endTimeNs: bigint;

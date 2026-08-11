@@ -140,7 +140,7 @@ export function createEpisodeTransformReadRuntime(
   session: EpisodeSession,
 ): TransformReadAcceleration {
   const acceleration = session.transformRead;
-  const readPlacement = acceleration?.readPlacement?.bind(acceleration);
+  const readPlacement = acceleration?.readPlacement;
   return {
     readBootstrap: (options) =>
       acceleration?.readBootstrap?.(options) ??
