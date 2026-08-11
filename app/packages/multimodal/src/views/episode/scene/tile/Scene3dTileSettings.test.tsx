@@ -151,9 +151,7 @@ describe("Scene3dTileSettings", () => {
       enabled: new Set([CAM_FRONT.id, CAM_BACK.id]),
     });
 
-    expect(
-      screen.getByRole("checkbox", { name: "CAM_FRONT/camera_info" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "CAM_FRONT" })).toBeTruthy();
     expect(screen.queryByText(/\(233\)/)).toBeNull();
   });
 
@@ -164,9 +162,7 @@ describe("Scene3dTileSettings", () => {
       enabled: new Set([CAM_FRONT.id, CAM_BACK.id]),
     });
 
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: "CAM_FRONT/camera_info" }),
-    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "CAM_FRONT" }));
 
     expect(props.toggleSource).toHaveBeenCalledWith(CAM_FRONT.id, false);
   });
@@ -187,13 +183,10 @@ describe("Scene3dTileSettings", () => {
       ]),
     });
 
+    expect(screen.queryByText(/Calibration available/)).toBeNull();
+    expect(screen.queryByText(/Image paired/)).toBeNull();
     expect(
-      screen.getByText("Calibration available · Image paired: CAM/image_raw"),
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        "No transform path connects camera frame camera_front to reference frame velodyne.",
-      ),
+      screen.getByText("Not placed — no transform to velodyne"),
     ).toBeTruthy();
   });
 
@@ -212,15 +205,13 @@ describe("Scene3dTileSettings", () => {
     });
 
     const unavailable = screen.getByRole("checkbox", {
-      name: `${CAM_FRONT.label} (frustum unavailable)`,
+      name: "CAM_FRONT",
     });
     expect(unavailable.hasAttribute("disabled")).toBe(false);
-    expect(screen.getByText("No usable camera calibration")).toBeTruthy();
     expect(
-      screen.getByText(
-        "Frustum unavailable because camera calibration is required.",
-      ),
+      screen.getByText("No calibration — frustum unavailable"),
     ).toBeTruthy();
+    expect(screen.queryByText("No usable camera calibration")).toBeNull();
 
     fireEvent.click(unavailable);
     expect(props.toggleSource).toHaveBeenCalledWith(CAM_FRONT.id, false);
@@ -269,9 +260,7 @@ describe("Scene3dTileSettings", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Cameras/ }));
 
-    expect(
-      screen.queryByRole("checkbox", { name: "CAM_FRONT/camera_info" }),
-    ).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "CAM_FRONT" })).toBeNull();
     expect(screen.getByText("1 of 2 on")).toBeTruthy();
     // The master switch stays reachable while collapsed.
     expect(screen.getByRole("switch", { name: "Toggle cameras" })).toBeTruthy();
@@ -297,18 +286,24 @@ describe("Scene3dTileSettings", () => {
     expect(readModalSettings().referenceGrid.enabled).toBe(false);
   });
 
-  it("wires the pinhole controls to the settings updater", () => {
+  it("keeps compact frustum controls inside the camera section", () => {
     renderSettings();
-    expandPinhole();
 
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Depth (m)" }), {
-      target: { value: "4.5" },
-    });
+    expect(screen.queryByText("Pinhole")).toBeNull();
+    fireEvent.change(
+      screen.getByRole("spinbutton", { name: "Frustum depth (m)" }),
+      {
+        target: { value: "4.5" },
+      },
+    );
     expect(readModalSettings().pinholeCamera.imagePlaneDepthM).toBe(4.5);
 
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Opacity (%)" }), {
-      target: { value: "40" },
-    });
+    fireEvent.change(
+      screen.getByRole("spinbutton", { name: "Frustum opacity (%)" }),
+      {
+        target: { value: "40" },
+      },
+    );
     expect(readModalSettings().pinholeCamera.opacityPercent).toBe(40);
   });
 
@@ -319,10 +314,9 @@ describe("Scene3dTileSettings", () => {
       cameraStreams: [CAM_FRONT.id],
       enabled: new Set([CAM_FRONT.id]),
     });
-    expandPinhole();
 
-    const geometry = getVoodooCombobox(/^Geometry \(CAM_FRONT\/camera_info\)/);
-    selectVoodooOption(geometry, "Original camera");
+    const geometry = getVoodooCombobox(/^Image geometry \(CAM_FRONT\)/);
+    selectVoodooOption(geometry, "Raw");
 
     expect(
       readModalSettings().imageProjection["CAM_FRONT/image_raw"]?.geometry,
@@ -805,10 +799,6 @@ describe("Scene3dTileSettings", () => {
 
 function expandAppearance() {
   fireEvent.click(screen.getByRole("button", { name: /Appearance/ }));
-}
-
-function expandPinhole() {
-  fireEvent.click(screen.getByRole("button", { name: /Pinhole/ }));
 }
 
 function ensurePointCloudStyleExpanded() {

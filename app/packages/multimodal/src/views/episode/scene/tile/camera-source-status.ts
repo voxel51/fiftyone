@@ -129,43 +129,45 @@ export function buildCameraSourceStatuses({
 export function cameraSourceStatusDetails(
   status: CameraSourceStatus,
 ): readonly string[] {
-  const calibrationDetail =
-    status.calibration === "available"
-      ? "Calibration available"
-      : status.calibration === "loading"
-        ? "Calibration loading"
-        : "Calibration unavailable";
-  const imageDetail = status.imageStream
-    ? `Image paired: ${status.imageStream}`
-    : "No image stream paired";
-  const placementDetail = (() => {
+  const details: string[] = [];
+  if (status.calibration === "unavailable") {
+    details.push("No calibration — frustum unavailable");
+  } else if (status.calibration === "loading") {
+    details.push("Calibration loading…");
+  } else {
+    details.push(...status.diagnostics);
+    if (!status.imageStream) {
+      details.push("No paired image");
+    }
+  }
+
+  const placementIssue = (() => {
     switch (status.placement.kind) {
       case "calibration-unavailable":
-        return "Frustum unavailable because camera calibration is required.";
+        return null;
       case "calibration-loading":
-        return "Waiting for calibration before placing the camera frustum.";
+        return null;
       case "frame-missing":
-        return "CameraInfo declares no camera frame; showing the frustum at the scene origin.";
+        return "No camera frame — shown at scene origin";
       case "reference-loading":
-        return `Waiting for a reference frame before placing camera frame ${status.placement.frameId}.`;
+        return "Waiting for reference frame…";
       case "placed":
-        return `Placed camera frame ${status.placement.frameId} in reference frame ${status.placement.targetFrameId}.`;
+        return null;
       case "loading":
-        return `Transform loading for camera frame ${status.placement.frameId} to reference frame ${status.placement.targetFrameId}.`;
+        return "Placing camera…";
       case "disconnected":
-        return `No transform path connects camera frame ${status.placement.frameId} to reference frame ${status.placement.targetFrameId}.`;
+        return `Not placed — no transform to ${status.placement.targetFrameId}`;
       case "unavailable-at-time":
-        return `A transform path connects camera frame ${status.placement.frameId} to reference frame ${status.placement.targetFrameId}, but no pose is available at the playhead.`;
+        return "Not placed at playhead — pose unavailable";
       case "invalid-frame":
-        return "The camera or reference frame identifier is invalid.";
+        return "Not placed — invalid frame";
       case "unknown":
-        return `No transform connects camera frame ${status.placement.frameId} to reference frame ${status.placement.targetFrameId} at the playhead.`;
+        return "Not placed at playhead";
     }
   })();
+  if (placementIssue) {
+    details.push(placementIssue);
+  }
 
-  return [
-    `${calibrationDetail} · ${imageDetail}`,
-    ...status.diagnostics,
-    placementDetail,
-  ];
+  return details;
 }

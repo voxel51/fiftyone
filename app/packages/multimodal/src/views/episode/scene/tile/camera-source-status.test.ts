@@ -8,6 +8,21 @@ import {
 } from "./camera-source-status";
 
 describe("camera source status", () => {
+  it("keeps healthy cameras quiet", () => {
+    expect(
+      cameraSourceStatusDetails({
+        calibration: "available",
+        diagnostics: [],
+        imageStream: "/camera/image",
+        placement: {
+          frameId: "camera",
+          kind: "placed",
+          targetFrameId: "map",
+        },
+      }),
+    ).toEqual([]);
+  });
+
   it("combines calibration, image pairing, and disconnected placement", () => {
     const statuses = buildCameraSourceStatuses({
       calibrationDiagnostics: [[]],
@@ -37,9 +52,9 @@ describe("camera source status", () => {
         targetFrameId: "velodyne",
       },
     });
-    expect(status && cameraSourceStatusDetails(status)).toContain(
-      "No transform path connects camera frame center_camera to reference frame velodyne.",
-    );
+    expect(status && cameraSourceStatusDetails(status)).toEqual([
+      "Not placed — no transform to velodyne",
+    ]);
   });
 
   it("marks unusable calibration as non-renderable while preserving diagnostics", () => {
@@ -69,6 +84,10 @@ describe("camera source status", () => {
       imageStream: "/left_ir/rotated/image_raw",
       placement: { kind: "calibration-unavailable" },
     });
+    const status = statuses.get("/left_ir/camera_info");
+    expect(status && cameraSourceStatusDetails(status)).toEqual([
+      "No calibration — frustum unavailable",
+    ]);
   });
 
   it("distinguishes a temporal pose gap from disconnected topology", () => {
@@ -94,9 +113,9 @@ describe("camera source status", () => {
     expect(status?.placement).toMatchObject({
       kind: "unavailable-at-time",
     });
-    expect(status && cameraSourceStatusDetails(status)).toContain(
-      "A transform path connects camera frame camera to reference frame map, but no pose is available at the playhead.",
-    );
+    expect(status && cameraSourceStatusDetails(status)).toEqual([
+      "Not placed at playhead — pose unavailable",
+    ]);
   });
 });
 

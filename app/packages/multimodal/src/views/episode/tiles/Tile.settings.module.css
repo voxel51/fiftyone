@@ -264,6 +264,19 @@
   min-width: 0;
 }
 
+.cameraDisplayControls {
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-bottom: 10px;
+}
+
+.cameraGeometryControl {
+  flex: 0 0 104px;
+  min-width: 0;
+}
+
 .filterInput {
   background: transparent;
   border: 1px solid var(--color-content-border-default, #383835);

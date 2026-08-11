@@ -1,15 +1,4 @@
-import {
-  Checkbox,
-  FormField,
-  Select,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  Toggle,
-  ZIndex,
-} from "@voxel51/voodo";
-import type { Descriptor } from "@voxel51/voodo";
+import { Checkbox, Size, Toggle } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import type { SceneSource } from "../../../../scene-inventory/index";
 import {
@@ -202,6 +191,49 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
       ),
     [cameraInputs.statusBySourceId],
   );
+  const cameraLabelsBySourceId = useMemo(
+    () =>
+      new Map(
+        cameraSources.map((source) => [
+          source.id,
+          cameraDisplayLabel(source.label),
+        ]),
+      ),
+    [cameraSources],
+  );
+  const cameraGeometryControlsBySourceId = new Map(
+    cameraStreams.flatMap((cameraStream, index) => {
+      if (unavailableCameraSourceIds.has(cameraStream)) return [];
+      const imageStream = cameraInputs.imageStreams[index];
+      if (!imageStream) return [];
+      const cameraLabel =
+        cameraLabelsBySourceId.get(cameraStream) ?? "Unknown camera";
+      const geometry =
+        imageProjectionSettings[imageStream]?.geometry ??
+        DEFAULT_IMAGE_PROJECTION.geometry;
+      return [
+        [
+          cameraStream,
+          <label
+            className={settingsStyles.cameraGeometryControl}
+            key={cameraStream}
+            title="How the recorded image maps onto the camera frustum"
+          >
+            <SettingsSelect
+              ariaLabel={`Image geometry (${cameraLabel})`}
+              onChange={(value) => {
+                if (isImageGeometryMode(value)) {
+                  setImageProjection(imageStream, { geometry: value });
+                }
+              }}
+              options={IMAGE_GEOMETRY_OPTIONS}
+              value={geometry}
+            />
+          </label>,
+        ] as const,
+      ];
+    }),
+  );
   const sceneAnnotationSources = sourceGroups.sceneAnnotation.sources;
   const sceneAnnotationStreams = sourceGroups.sceneAnnotation.streams;
   const poseSources = sourceGroups.pose.sources;
@@ -272,8 +304,36 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
       ) : null}
 
       <SourceGroup
+        beforeSources={
+          <div className={settingsStyles.cameraDisplayControls}>
+            <SettingsNumberInput
+              label="Frustum depth (m)"
+              max={100}
+              min={0.05}
+              onChange={(imagePlaneDepthM) =>
+                setPinholeCamera({ imagePlaneDepthM })
+              }
+              step={0.25}
+              tooltip="Distance from the camera center to its image plane. Larger values draw a larger frustum."
+              value={pinholeCamera.imagePlaneDepthM}
+            />
+            <SettingsNumberInput
+              label="Frustum opacity (%)"
+              max={100}
+              min={0}
+              onChange={(opacityPercent) =>
+                setPinholeCamera({ opacityPercent })
+              }
+              step={1}
+              tooltip="Opacity of camera frustums and image planes. Hovered and focused cameras remain fully opaque."
+              value={pinholeCamera.opacityPercent}
+            />
+          </div>
+        }
+        controlsBySourceId={cameraGeometryControlsBySourceId}
         detailsBySourceId={cameraDetailsBySourceId}
         enabled={enabled}
+        labelsBySourceId={cameraLabelsBySourceId}
         selectedCount={cameraStreams.length}
         setSourcesEnabled={setSourcesEnabled}
         sources={cameraSources}
@@ -282,74 +342,6 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
         toggleSource={toggleSource}
         unavailableSourceIds={unavailableCameraSourceIds}
       />
-
-      {cameraSources.some(
-        (source) => !unavailableCameraSourceIds.has(source.id),
-      ) ? (
-        <SidebarGroup
-          defaultExpanded={false}
-          summary={`${pinholeCamera.imagePlaneDepthM} m · ${pinholeCamera.opacityPercent}%`}
-          title="Pinhole"
-        >
-          <SettingsNumberInput
-            label="Depth (m)"
-            max={100}
-            min={0.05}
-            onChange={(imagePlaneDepthM) =>
-              setPinholeCamera({ imagePlaneDepthM })
-            }
-            step={0.25}
-            tooltip="Distance from the optical center to the image plane. Larger depths render bigger camera frustums."
-            value={pinholeCamera.imagePlaneDepthM}
-          />
-          <SettingsNumberInput
-            label="Opacity (%)"
-            max={100}
-            min={0}
-            onChange={(opacityPercent) => setPinholeCamera({ opacityPercent })}
-            step={1}
-            tooltip="Normal frustum and image-plane opacity. Hovered and focused frustums render fully opaque."
-            value={pinholeCamera.opacityPercent}
-          />
-          {cameraStreams.map((cameraStream, index) => {
-            if (unavailableCameraSourceIds.has(cameraStream)) return null;
-            const imageStream = cameraInputs.imageStreams[index];
-            if (!imageStream) return null;
-            const cameraLabel =
-              cameraSources.find((source) => source.id === cameraStream)
-                ?.label ?? "Unknown camera source";
-            const geometry =
-              imageProjectionSettings[imageStream]?.geometry ??
-              DEFAULT_IMAGE_PROJECTION.geometry;
-            return (
-              <FormField
-                key={cameraStream}
-                label={
-                  <SettingsLabel
-                    label={`Geometry (${cameraLabel})`}
-                    tooltip="Whether the recorded image uses the original distorted camera model or the rectified projection. This also controls the 3D frustum texture."
-                  />
-                }
-                control={
-                  <Select
-                    aria-label={`Recorded image geometry (${cameraLabel})`}
-                    exclusive
-                    onChange={(value) => {
-                      if (isImageGeometryMode(value)) {
-                        setImageProjection(imageStream, { geometry: value });
-                      }
-                    }}
-                    options={IMAGE_GEOMETRY_OPTIONS}
-                    portal
-                    zIndex={ZIndex.AboveModal}
-                    value={geometry}
-                  />
-                }
-              />
-            );
-          })}
-        </SidebarGroup>
-      ) : null}
 
       <SourceGroup
         beforeSources={
@@ -495,10 +487,10 @@ const SCENE_BACKGROUND_OPTIONS = [
   { label: "Studio", value: "studio" },
 ];
 
-const IMAGE_GEOMETRY_OPTIONS: Descriptor<{ label: string }>[] = [
-  { data: { label: "Auto (recommended)" }, id: "auto" },
-  { data: { label: "Original camera" }, id: "original" },
-  { data: { label: "Rectified" }, id: "rectified" },
+const IMAGE_GEOMETRY_OPTIONS = [
+  { label: "Auto", value: "auto" },
+  { label: "Raw", value: "original" },
+  { label: "Rectified", value: "rectified" },
 ];
 
 function isImageGeometryMode(value: unknown): value is ImageGeometryMode {
@@ -508,8 +500,10 @@ function isImageGeometryMode(value: unknown): value is ImageGeometryMode {
 function SourceGroup({
   beforeSources,
   children,
+  controlsBySourceId,
   detailsBySourceId,
   enabled,
+  labelsBySourceId,
   selectedCount,
   setSourcesEnabled,
   sources,
@@ -520,8 +514,10 @@ function SourceGroup({
 }: {
   readonly beforeSources?: React.ReactNode;
   readonly children?: React.ReactNode;
+  readonly controlsBySourceId?: ReadonlyMap<string, React.ReactNode>;
   readonly detailsBySourceId?: ReadonlyMap<string, readonly string[]>;
   readonly enabled: ReadonlySet<string>;
+  readonly labelsBySourceId?: ReadonlyMap<string, string>;
   readonly selectedCount: number;
   readonly setSourcesEnabled: (
     ids: readonly string[],
@@ -539,14 +535,22 @@ function SourceGroup({
   const unavailableCount = sources.filter((source) =>
     unavailableSourceIds.has(source.id),
   ).length;
+  const issueCount = sources.filter(
+    (source) => (detailsBySourceId?.get(source.id)?.length ?? 0) > 0,
+  ).length;
+  const summary = (() => {
+    if (unavailableCount > 0) {
+      return `${selectedCount} on · ${unavailableCount} unavailable`;
+    }
+    if (issueCount > 0) {
+      return `${selectedCount} of ${sources.length} on · ${issueCount} ${issueCount === 1 ? "issue" : "issues"}`;
+    }
+    return `${selectedCount} of ${sources.length} on`;
+  })();
 
   return (
     <SidebarGroup
-      summary={
-        unavailableCount > 0
-          ? `${selectedCount} on · ${unavailableCount} unavailable`
-          : `${selectedCount} of ${sources.length} on`
-      }
+      summary={summary}
       title={title}
       toggle={{
         ariaLabel: toggleAriaLabel,
@@ -562,25 +566,24 @@ function SourceGroup({
       <div className={settingsStyles.optionStack}>
         {sources.map((s) => {
           const details = detailsBySourceId?.get(s.id) ?? [];
-          const unavailable = unavailableSourceIds.has(s.id);
           return (
             <div key={s.id}>
-              <Checkbox
-                label={
-                  unavailable ? `${s.label} (frustum unavailable)` : s.label
-                }
-                checked={enabled.has(s.id)}
-                onChange={(checked) => toggleSource(s.id, checked)}
-                {...settingsBooleanNoSpaceToggleProps}
-              />
+              <div className={settingsStyles.fieldRow}>
+                <Checkbox
+                  label={labelsBySourceId?.get(s.id) ?? s.label}
+                  checked={enabled.has(s.id)}
+                  onChange={(checked) => toggleSource(s.id, checked)}
+                  {...settingsBooleanNoSpaceToggleProps}
+                />
+                {controlsBySourceId?.get(s.id)}
+              </div>
               {details.map((detail, index) => (
-                <Text
-                  color={TextColor.Muted}
+                <div
+                  className={settingsStyles.metaText}
                   key={`${index}:${detail}`}
-                  variant={TextVariant.Xs}
                 >
                   {detail}
-                </Text>
+                </div>
               ))}
             </div>
           );
@@ -592,6 +595,10 @@ function SourceGroup({
 }
 
 const EMPTY_SOURCE_IDS: ReadonlySet<string> = new Set();
+
+function cameraDisplayLabel(label: string): string {
+  return label.replace(/^\//, "").replace(/\/camera_info$/i, "");
+}
 
 function TrackingModeSelect({
   onChange,
