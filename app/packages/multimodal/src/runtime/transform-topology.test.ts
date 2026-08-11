@@ -111,6 +111,25 @@ describe("transform topology model", () => {
       "a-leaf",
     ]);
     expect(analysis.components[0]?.dataBearingFrameCount).toBe(1);
+    expect(
+      analysis.issues.find((issue) => issue.kind === "disconnected-components"),
+    ).toMatchObject({ severity: "warning" });
+  });
+
+  it("warns when transform-only components are disconnected", () => {
+    const analysis = analyzeTransformTopology(
+      [observation("map", "oxts"), observation("odom", "base_link")],
+      [],
+    );
+
+    expect(analysis.issues).toEqual([
+      expect.objectContaining({
+        affectedFrameIds: ["base_link", "map", "odom", "oxts"],
+        kind: "disconnected-components",
+        severity: "warning",
+        title: "Transform graph is disconnected",
+      }),
+    ]);
   });
 
   it("reports data-bearing streams split across disconnected components", () => {
@@ -122,6 +141,9 @@ describe("transform topology model", () => {
     expect(
       analysis.issues.find((issue) => issue.kind === "disconnected-data"),
     ).toMatchObject({ severity: "error" });
+    expect(
+      analysis.issues.some((issue) => issue.kind === "disconnected-components"),
+    ).toBe(false);
   });
 
   it("retains cycles and conflicting relationships as actionable issues", () => {

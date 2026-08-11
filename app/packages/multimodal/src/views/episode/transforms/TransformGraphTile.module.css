@@ -124,21 +124,9 @@
 
 .canvasControls {
   align-items: center;
-  background: color-mix(
-    in srgb,
-    var(--fo-palette-background-level2, #15171b) 92%,
-    transparent
-  );
-  border: 1px solid var(--color-content-border-default, #383835);
-  border-radius: 7px;
-  box-shadow: 0 4px 14px rgb(0 0 0 / 24%);
   display: flex;
   gap: 2px;
-  padding: 3px;
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  z-index: 2;
+  margin-left: auto;
 }
 
 .svg {
@@ -177,6 +165,16 @@
   fill: none;
   stroke: var(--color-content-text-muted, #8d929d);
   stroke-width: 1.6;
+}
+
+.edgeGroup {
+  outline: none;
+}
+
+.edgeGroup:focus-visible .edge {
+  filter: drop-shadow(0 0 3px var(--color-content-border-focus, #7ca9ff));
+  stroke: var(--color-content-border-focus, #7ca9ff);
+  stroke-width: 2.5;
 }
 
 .edge_static {
@@ -236,7 +234,7 @@
   stroke: var(--fo-palette-info-main, #4ca3ff);
 }
 
-.issueNode {
+.isolatedNode {
   stroke: var(--fo-palette-error-main, #ff665d);
 }
 
@@ -315,13 +313,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-}
-
-.sampleNote {
-  color: var(--color-content-text-muted);
-  font-size: 10px;
-  line-height: 1.35;
-  margin-top: 3px;
 }
 
 .healthy {
@@ -444,10 +435,5 @@
   .searchField {
     max-width: none;
     width: 100%;
-  }
-
-  .canvasControls {
-    right: 6px;
-    top: 6px;
   }
 }

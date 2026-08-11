@@ -53,7 +53,6 @@ interface Viewport {
 
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 2.5;
-const MIN_READABLE_FIT_SCALE = 0.65;
 const GRAPH_INSET = 28;
 
 /** Static, demand-driven transform topology diagnostic tile. */
@@ -62,13 +61,12 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
   const capability = useTransformTopologyCapability();
   const scan = useTransformTopologyScan();
   const readPlaybackTimeNs = useReadPlaybackTimeNs();
-  const requestCurrentTimeSample = scan.sampleCurrentTime;
+  const requestAnalyzeMore = scan.analyzeMore;
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState<Selection | null>(null);
-  const sampleCurrentTime = useCallback(() => {
-    const timeNs = readPlaybackTimeNs();
-    if (timeNs !== undefined) requestCurrentTimeSample(timeNs);
-  }, [readPlaybackTimeNs, requestCurrentTimeSample]);
+  const analyzeMore = useCallback(() => {
+    requestAnalyzeMore(readPlaybackTimeNs());
+  }, [readPlaybackTimeNs, requestAnalyzeMore]);
 
   // This effect keeps the surrounding tile header aligned with this view.
   useEffect(() => {
@@ -110,7 +108,12 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
       </TileState>
     );
   }
-  if (scan.loading && analysis.frames.length === 0 && !scan.error) {
+  if (
+    scan.loading &&
+    scan.operation === "scan" &&
+    analysis.frames.length === 0 &&
+    !scan.error
+  ) {
     return (
       <TileState status="Reading transforms">
         <Spinner size={Size.Lg} />
@@ -136,9 +139,10 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
       </TileState>
     );
   }
-  if (!scan.loading && analysis.frames.length === 0) {
-    const emptyAnalysisIsPartial = !scan.complete;
-    const emptyTitle = scan.sampled
+  if (analysis.frames.length === 0) {
+    const emptyAnalysisIsPartial = scan.status !== "complete" || scan.loading;
+    const hasTimeSamples = scan.sampledTimesNs.length > 0;
+    const emptyTitle = hasTimeSamples
       ? "No transform sample found"
       : "More data needed";
     return (
@@ -146,9 +150,9 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
         <EmptyState
           description={
             emptyAnalysisIsPartial
-              ? scan.sampled
+              ? hasTimeSamples
                 ? "The targeted read did not return a usable transform graph."
-                : "We scanned a tiny bit of your episode but looks like we need to sample more transform data to build this view"
+                : "The initial bounded scan did not find enough transform data. Analyze more to continue the scan and include the current time."
               : "The complete analysis contained no frame-transform relationships or renderable frame IDs."
           }
           icon={emptyAnalysisIsPartial ? IconName.Warning : IconName.Workspaces}
@@ -158,16 +162,24 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
               : "No transform topology observed"
           }
         />
-        {!scan.error && scan.canSample ? (
-          <Button
-            disabled={scan.loading}
-            leadingIcon={scan.loading ? IconName.Spinner : IconName.Refresh}
-            onClick={sampleCurrentTime}
-            size={Size.Sm}
-            variant={Variant.Secondary}
-          >
-            {scan.loading ? "Sampling…" : "Sample current time"}
-          </Button>
+        {!scan.error ? (
+          <div className={styles.coverageActions}>
+            {scan.canAnalyzeMore ? (
+              <Button
+                disabled={scan.loading}
+                leadingIcon={
+                  scan.operation === "analyze"
+                    ? IconName.Spinner
+                    : IconName.Refresh
+                }
+                onClick={analyzeMore}
+                size={Size.Sm}
+                variant={Variant.Secondary}
+              >
+                {scan.operation === "analyze" ? "Analyzing…" : "Analyze more"}
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </TileState>
     );
@@ -176,35 +188,16 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
   return (
     <div className={styles.root} data-testid="transform-graph-tile">
       <SummaryHeader analysis={analysis} scan={scan} />
-      <CoverageNotice onSampleCurrentTime={sampleCurrentTime} scan={scan} />
+      <CoverageNotice onAnalyzeMore={analyzeMore} scan={scan} />
       <div className={styles.workspace}>
         <section className={styles.graphColumn} aria-label="Transform graph">
-          <div className={styles.graphToolbar}>
-            <FormField
-              className={styles.searchField}
-              control={
-                <Input
-                  aria-label="Filter transform frames"
-                  icon={IconName.Search}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Frame name"
-                  size={Size.Sm}
-                  type={InputType.Search}
-                  value={query}
-                />
-              }
-            />
-            {normalizedQuery ? (
-              <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
-                {matchingFrameIds.size} of {analysis.frames.length}
-              </Text>
-            ) : null}
-          </div>
           <TopologyCanvas
             analysis={analysis}
             layout={layout}
             matchingFrameIds={matchingFrameIds}
+            onQueryChange={setQuery}
             onSelect={setSelection}
+            query={query}
             queryActive={normalizedQuery.length > 0}
             selection={selection}
           />
@@ -226,9 +219,11 @@ function SummaryHeader({
   readonly scan: ReturnType<typeof useTransformTopologyScan>;
 }) {
   const hasErrors = analysis.issues.some((issue) => issue.severity === "error");
-  const dataBearingComponents = analysis.components.filter(
-    (component) => component.dataBearingFrameCount > 0,
-  ).length;
+  const hasWarnings = analysis.issues.some(
+    (issue) => issue.severity === "warning",
+  );
+  const issueCount = analysis.issues.length;
+  const componentCount = analysis.summary.componentCount;
   return (
     <header className={styles.summary}>
       <div className={styles.summaryMetrics}>
@@ -239,25 +234,32 @@ function SummaryHeader({
         <SummaryMetric label="Frames" value={analysis.summary.frameCount} />
         <SummaryMetric label="Edges" value={analysis.summary.edgeCount} />
         <SummaryMetric
-          emphasis={hasErrors}
           label="Health"
-          value={hasErrors ? `${analysis.issues.length} issues` : "Connected"}
+          severity={hasErrors ? "error" : hasWarnings ? "warning" : undefined}
+          value={
+            issueCount === 0
+              ? "Connected"
+              : `${issueCount} ${issueCount === 1 ? "issue" : "issues"}`
+          }
         />
       </div>
       <div className={styles.summaryStatus}>
-        {dataBearingComponents > 1 ? (
-          <Text color={TextColor.Destructive} variant={TextVariant.Xs}>
-            Data spans {dataBearingComponents} disconnected components
+        {componentCount > 1 ? (
+          <Text
+            color={hasErrors ? TextColor.Destructive : TextColor.Warning}
+            variant={TextVariant.Xs}
+          >
+            {componentCount} disconnected components
           </Text>
         ) : null}
-        {scan.complete ? (
+        {scan.status === "complete" ? (
           <Pill
             backgroundColor={BackgroundColor.Secondary}
             color={TextColor.Primary}
             isStatus
             size={Size.Xs}
           >
-            Complete
+            Transform scan complete
           </Pill>
         ) : null}
       </div>
@@ -266,12 +268,12 @@ function SummaryHeader({
 }
 
 function SummaryMetric({
-  emphasis = false,
   label,
+  severity,
   value,
 }: {
-  readonly emphasis?: boolean;
   readonly label: string;
+  readonly severity?: TransformTopologyIssue["severity"];
   readonly value: number | string;
 }) {
   return (
@@ -280,7 +282,13 @@ function SummaryMetric({
         {label}
       </Text>
       <Text
-        color={emphasis ? TextColor.Destructive : TextColor.Primary}
+        color={
+          severity === "error"
+            ? TextColor.Destructive
+            : severity === "warning"
+              ? TextColor.Warning
+              : TextColor.Primary
+        }
         variant={TextVariant.Sm}
       >
         {value}
@@ -290,18 +298,16 @@ function SummaryMetric({
 }
 
 function CoverageNotice({
-  onSampleCurrentTime,
+  onAnalyzeMore,
   scan,
 }: {
-  readonly onSampleCurrentTime: () => void;
+  readonly onAnalyzeMore: () => void;
   readonly scan: ReturnType<typeof useTransformTopologyScan>;
 }) {
-  if (scan.complete && !scan.error) return null;
+  if (scan.status === "complete" && !scan.error && !scan.loading) return null;
   const coverageSummary = scan.error
     ? "Analysis interrupted"
-    : scan.sampled
-      ? "Sampled analysis"
-      : "Partial analysis";
+    : "Partial analysis";
   return (
     <div
       className={styles.coverageNotice}
@@ -327,15 +333,17 @@ function CoverageNotice({
             Retry
           </Button>
         ) : null}
-        {!scan.error && scan.canSample ? (
+        {!scan.error && scan.canAnalyzeMore ? (
           <Button
             disabled={scan.loading}
-            leadingIcon={scan.loading ? IconName.Spinner : IconName.Refresh}
-            onClick={onSampleCurrentTime}
+            leadingIcon={
+              scan.operation === "analyze" ? IconName.Spinner : IconName.Refresh
+            }
+            onClick={onAnalyzeMore}
             size={Size.Xs}
             variant={Variant.Secondary}
           >
-            {scan.loading ? "Sampling…" : "Sample current time"}
+            {scan.operation === "analyze" ? "Analyzing…" : "Analyze more"}
           </Button>
         ) : null}
       </div>
@@ -347,14 +355,18 @@ function TopologyCanvas({
   analysis,
   layout,
   matchingFrameIds,
+  onQueryChange,
   onSelect,
+  query,
   queryActive,
   selection,
 }: {
   readonly analysis: TransformTopologyAnalysis;
   readonly layout: ReturnType<typeof layoutTransformTopology>;
   readonly matchingFrameIds: ReadonlySet<string>;
+  readonly onQueryChange: (query: string) => void;
   readonly onSelect: (selection: Selection) => void;
+  readonly query: string;
   readonly queryActive: boolean;
   readonly selection: Selection | null;
 }) {
@@ -375,17 +387,16 @@ function TopologyCanvas({
     () => new Map(analysis.frames.map((frame) => [frame.id, frame])),
     [analysis.frames],
   );
-  const issuesByFrame = useMemo(() => {
-    const map = new Map<string, TransformTopologyIssue[]>();
-    for (const issue of analysis.issues) {
-      for (const frameId of issue.affectedFrameIds) {
-        const issues = map.get(frameId) ?? [];
-        issues.push(issue);
-        map.set(frameId, issues);
-      }
-    }
-    return map;
-  }, [analysis.issues]);
+  const connectedFrameIds = useMemo(
+    () =>
+      new Set(
+        analysis.edges.flatMap((edge) => [
+          edge.parentFrameId,
+          edge.childFrameId,
+        ]),
+      ),
+    [analysis.edges],
+  );
   const componentRects = useMemo(
     () => componentBounds(analysis.components, layout.nodes),
     [analysis.components, layout.nodes],
@@ -393,37 +404,36 @@ function TopologyCanvas({
 
   const fit = useCallback(() => {
     const element = containerRef.current;
-    if (!element) return;
-    const fittedScale = Math.min(
-      (element.clientWidth - GRAPH_INSET * 2) / layout.bounds.width,
-      (element.clientHeight - GRAPH_INSET * 2) / layout.bounds.height,
+    if (
+      !element ||
+      element.clientWidth <= 0 ||
+      element.clientHeight <= 0 ||
+      componentRects.length === 0
+    ) {
+      return;
+    }
+    const left = Math.min(...componentRects.map((component) => component.x));
+    const top = Math.min(...componentRects.map((component) => component.y));
+    const right = Math.max(
+      ...componentRects.map((component) => component.x + component.width),
     );
-    const scale = clamp(fittedScale, MIN_READABLE_FIT_SCALE, MAX_SCALE);
-    const largestComponent = [...componentRects].sort(
-      (left, right) =>
-        right.frameCount - left.frameCount ||
-        right.dataBearingFrameCount - left.dataBearingFrameCount ||
-        left.id.localeCompare(right.id),
-    )[0];
-    const focusBounds =
-      fittedScale < MIN_READABLE_FIT_SCALE && largestComponent
-        ? largestComponent
-        : {
-            height: layout.bounds.height,
-            width: layout.bounds.width,
-            x: 0,
-            y: 0,
-          };
+    const bottom = Math.max(
+      ...componentRects.map((component) => component.y + component.height),
+    );
+    const width = right - left;
+    const height = bottom - top;
+    // Fit may go below the manual zoom floor so every component stays visible.
+    const scale = Math.min(
+      Math.max(1, element.clientWidth - GRAPH_INSET * 2) / width,
+      Math.max(1, element.clientHeight - GRAPH_INSET * 2) / height,
+      MAX_SCALE,
+    );
     setViewport({
       scale,
-      x:
-        (element.clientWidth - focusBounds.width * scale) / 2 -
-        focusBounds.x * scale,
-      y:
-        (element.clientHeight - focusBounds.height * scale) / 2 -
-        focusBounds.y * scale,
+      x: (element.clientWidth - width * scale) / 2 - left * scale,
+      y: (element.clientHeight - height * scale) / 2 - top * scale,
     });
-  }, [componentRects, layout.bounds.height, layout.bounds.width]);
+  }, [componentRects]);
 
   // This effect fits the graph initially and after its tile changes size.
   useEffect(() => {
@@ -451,6 +461,7 @@ function TopologyCanvas({
     });
   }, []);
 
+  // This effect routes non-passive wheel input into centered graph zoom.
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
@@ -463,201 +474,221 @@ function TopologyCanvas({
   }, [zoom]);
 
   return (
-    <div
-      className={styles.canvas}
-      data-testid="transform-topology-canvas"
-      onPointerDown={(event) => {
-        if (event.button !== 0 || event.target !== event.currentTarget) return;
-        event.currentTarget.setPointerCapture(event.pointerId);
-        dragRef.current = {
-          pointerId: event.pointerId,
-          startX: event.clientX,
-          startY: event.clientY,
-          viewport,
-        };
-      }}
-      onPointerMove={(event) => {
-        const drag = dragRef.current;
-        if (!drag || drag.pointerId !== event.pointerId) return;
-        setViewport({
-          ...drag.viewport,
-          x: drag.viewport.x + event.clientX - drag.startX,
-          y: drag.viewport.y + event.clientY - drag.startY,
-        });
-      }}
-      onPointerUp={(event) => {
-        if (dragRef.current?.pointerId === event.pointerId)
-          dragRef.current = null;
-      }}
-      onPointerCancel={(event) => {
-        if (dragRef.current?.pointerId === event.pointerId)
-          dragRef.current = null;
-      }}
-      onLostPointerCapture={(event) => {
-        if (dragRef.current?.pointerId === event.pointerId)
-          dragRef.current = null;
-      }}
-      ref={containerRef}
-    >
-      <div className={styles.canvasControls}>
-        <Button
-          aria-label="Zoom out"
-          borderless
-          leadingIcon={IconName.Remove}
-          onClick={() => zoom(1 / 1.2)}
-          size={Size.Xs}
-          variant={Variant.Icon}
-        />
-        <Button
-          aria-label="Zoom in"
-          borderless
-          leadingIcon={IconName.Add}
-          onClick={() => zoom(1.2)}
-          size={Size.Xs}
-          variant={Variant.Icon}
-        />
-        <Button
-          aria-label="Fit transform graph"
-          borderless
-          leadingIcon={IconName.Fullscreen}
-          onClick={fit}
-          size={Size.Xs}
-          title="Fit at a readable scale"
-          variant={Variant.Icon}
-        />
-        <Button
-          aria-label="Reset transform graph view"
-          borderless
-          leadingIcon={IconName.Undo}
-          onClick={() => setViewport({ scale: 1, x: 0, y: 0 })}
-          size={Size.Xs}
-          title="Reset graph view"
-          variant={Variant.Icon}
-        />
-      </div>
-      <svg
-        aria-label="Static transform topology"
-        className={styles.svg}
-        role="group"
+    <>
+      <div
+        aria-label="Transform graph controls"
+        className={styles.graphToolbar}
       >
-        <defs>
-          <marker
-            id={arrowMarkerId}
-            markerHeight="7"
-            markerUnits="strokeWidth"
-            markerWidth="7"
-            orient="auto"
-            refX="6"
-            refY="3.5"
-          >
-            <path className={styles.arrowHead} d="M 0 0 L 7 3.5 L 0 7 z" />
-          </marker>
-        </defs>
-        <g
-          transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.scale})`}
+        <FormField
+          className={styles.searchField}
+          control={
+            <Input
+              aria-label="Filter transform frames"
+              icon={IconName.Search}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Frame name"
+              size={Size.Sm}
+              type={InputType.Search}
+              value={query}
+            />
+          }
+        />
+        {queryActive ? (
+          <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
+            {matchingFrameIds.size} of {analysis.frames.length}
+          </Text>
+        ) : null}
+        <div className={styles.canvasControls}>
+          <Button
+            aria-label="Zoom out"
+            borderless
+            leadingIcon={IconName.Remove}
+            onClick={() => zoom(1 / 1.2)}
+            size={Size.Xs}
+            variant={Variant.Icon}
+          />
+          <Button
+            aria-label="Zoom in"
+            borderless
+            leadingIcon={IconName.Add}
+            onClick={() => zoom(1.2)}
+            size={Size.Xs}
+            variant={Variant.Icon}
+          />
+          <Button
+            aria-label="Fit transform graph"
+            borderless
+            leadingIcon={IconName.Fullscreen}
+            onClick={fit}
+            size={Size.Xs}
+            title="Fit"
+            variant={Variant.Icon}
+          />
+        </div>
+      </div>
+      <div
+        className={styles.canvas}
+        data-testid="transform-topology-canvas"
+        onPointerDown={(event) => {
+          if (event.button !== 0 || event.target !== event.currentTarget)
+            return;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          dragRef.current = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            viewport,
+          };
+        }}
+        onPointerMove={(event) => {
+          const drag = dragRef.current;
+          if (!drag || drag.pointerId !== event.pointerId) return;
+          setViewport({
+            ...drag.viewport,
+            x: drag.viewport.x + event.clientX - drag.startX,
+            y: drag.viewport.y + event.clientY - drag.startY,
+          });
+        }}
+        onPointerUp={(event) => {
+          if (dragRef.current?.pointerId === event.pointerId)
+            dragRef.current = null;
+        }}
+        onPointerCancel={(event) => {
+          if (dragRef.current?.pointerId === event.pointerId)
+            dragRef.current = null;
+        }}
+        onLostPointerCapture={(event) => {
+          if (dragRef.current?.pointerId === event.pointerId)
+            dragRef.current = null;
+        }}
+        ref={containerRef}
+      >
+        <svg
+          aria-label="Static transform topology"
+          className={styles.svg}
+          role="group"
         >
-          {componentRects.map((component, index) => (
-            <g key={component.id}>
-              <rect
-                className={styles.componentBox}
-                height={component.height}
-                rx="12"
-                width={component.width}
-                x={component.x}
-                y={component.y}
-              />
-              <text
-                className={styles.componentLabel}
-                x={component.x + 12}
-                y={component.y + 19}
-              >
-                {`Component ${index + 1} · ${component.dataBearingFrameCount} data frame${component.dataBearingFrameCount === 1 ? "" : "s"}`}
-              </text>
-            </g>
-          ))}
-          {layout.edges.map((layoutEdge) => {
-            const edge = edgeById.get(layoutEdge.edgeId);
-            if (!edge) return null;
-            const matched =
-              !queryActive ||
-              matchingFrameIds.has(edge.parentFrameId) ||
-              matchingFrameIds.has(edge.childFrameId);
-            const selected =
-              selection?.kind === "edge" && selection.id === edge.id;
-            const path = edgePath(layoutEdge.source, layoutEdge.target);
-            const edgeVariant = styles[`edge_${edge.kind}`] ?? "";
-            return (
-              <g
-                aria-label={`Transform edge ${edge.parentFrameId} to ${edge.childFrameId}`}
-                aria-hidden={!matched || undefined}
-                className={!matched ? styles.filtered : undefined}
-                key={edge.id}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onSelect({ id: edge.id, kind: "edge" });
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter" && event.key !== " ") return;
-                  event.preventDefault();
-                  onSelect({ id: edge.id, kind: "edge" });
-                }}
-                role="button"
-                tabIndex={matched ? 0 : -1}
-              >
-                <path
-                  className={`${styles.edge} ${edgeVariant} ${selected ? styles.selectedEdge : ""}`}
-                  d={path}
-                  markerEnd={`url(#${arrowMarkerId})`}
-                />
-                <path className={styles.edgeHitTarget} d={path} />
-              </g>
-            );
-          })}
-          {layout.nodes.map((node) => {
-            const frame = frameById.get(node.frameId);
-            if (!frame) return null;
-            const matched = !queryActive || matchingFrameIds.has(frame.id);
-            const selected =
-              selection?.kind === "frame" && selection.id === frame.id;
-            const frameIssues = issuesByFrame.get(frame.id) ?? [];
-            return (
-              <g
-                aria-label={`Frame ${frame.id}`}
-                aria-hidden={!matched || undefined}
-                className={`${styles.node} ${!matched ? styles.filtered : ""}`}
-                key={frame.id}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onSelect({ id: frame.id, kind: "frame" });
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter" && event.key !== " ") return;
-                  event.preventDefault();
-                  onSelect({ id: frame.id, kind: "frame" });
-                }}
-                role="button"
-                tabIndex={matched ? 0 : -1}
-                transform={`translate(${node.x} ${node.y})`}
-              >
+          <defs>
+            <marker
+              id={arrowMarkerId}
+              markerHeight="7"
+              markerUnits="strokeWidth"
+              markerWidth="7"
+              orient="auto"
+              refX="6"
+              refY="3.5"
+            >
+              <path className={styles.arrowHead} d="M 0 0 L 7 3.5 L 0 7 z" />
+            </marker>
+          </defs>
+          <g
+            transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.scale})`}
+          >
+            {componentRects.map((component, index) => (
+              <g key={component.id}>
                 <rect
-                  className={`${styles.nodeBox} ${frame.dataBearing ? styles.dataNode : ""} ${frameIssues.length > 0 ? styles.issueNode : ""} ${selected ? styles.selectedNode : ""}`}
-                  height={node.height}
-                  rx="7"
-                  width={node.width}
+                  className={styles.componentBox}
+                  height={component.height}
+                  rx="12"
+                  width={component.width}
+                  x={component.x}
+                  y={component.y}
                 />
-                <title>{`${frame.id} — ${fullTransformSourceSummary(frame.transformSources)}`}</title>
-                <text className={styles.nodeLabel} x="12" y="18">
-                  {shortFrameLabel(frame.id)}
-                </text>
-                <text className={styles.nodeMeta} x="12" y="34">
-                  {shortTransformSourceSummary(frame.transformSources)}
-                </text>
+                {componentRects.length > 1 ? (
+                  <text
+                    className={styles.componentLabel}
+                    x={component.x + 12}
+                    y={component.y + 19}
+                  >
+                    {`Component ${index + 1}`}
+                  </text>
+                ) : null}
               </g>
-            );
-          })}
-        </g>
-      </svg>
-    </div>
+            ))}
+            {layout.edges.map((layoutEdge) => {
+              const edge = edgeById.get(layoutEdge.edgeId);
+              if (!edge) return null;
+              const matched =
+                !queryActive ||
+                matchingFrameIds.has(edge.parentFrameId) ||
+                matchingFrameIds.has(edge.childFrameId);
+              const selected =
+                selection?.kind === "edge" && selection.id === edge.id;
+              const path = edgePath(layoutEdge.source, layoutEdge.target);
+              const edgeVariant = styles[`edge_${edge.kind}`] ?? "";
+              // These are independent buttons, so each match stays tabbable.
+              return (
+                <g
+                  aria-label={`Transform edge ${edge.parentFrameId} to ${edge.childFrameId}`}
+                  className={`${styles.edgeGroup} ${!matched ? styles.filtered : ""}`}
+                  key={edge.id}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSelect({ id: edge.id, kind: "edge" });
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    onSelect({ id: edge.id, kind: "edge" });
+                  }}
+                  role="button"
+                  tabIndex={matched ? 0 : -1}
+                >
+                  <path
+                    className={`${styles.edge} ${edgeVariant} ${selected ? styles.selectedEdge : ""}`}
+                    d={path}
+                    markerEnd={`url(#${arrowMarkerId})`}
+                  />
+                  <path className={styles.edgeHitTarget} d={path} />
+                </g>
+              );
+            })}
+            {layout.nodes.map((node) => {
+              const frame = frameById.get(node.frameId);
+              if (!frame) return null;
+              const matched = !queryActive || matchingFrameIds.has(frame.id);
+              const selected =
+                selection?.kind === "frame" && selection.id === frame.id;
+              const isolated = !connectedFrameIds.has(frame.id);
+              return (
+                <g
+                  aria-label={`Frame ${frame.id}`}
+                  className={`${styles.node} ${!matched ? styles.filtered : ""}`}
+                  data-isolated={isolated || undefined}
+                  key={frame.id}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSelect({ id: frame.id, kind: "frame" });
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    onSelect({ id: frame.id, kind: "frame" });
+                  }}
+                  role="button"
+                  tabIndex={matched ? 0 : -1}
+                  transform={`translate(${node.x} ${node.y})`}
+                >
+                  <rect
+                    className={`${styles.nodeBox} ${frame.dataBearing ? styles.dataNode : ""} ${isolated ? styles.isolatedNode : ""} ${selected ? styles.selectedNode : ""}`}
+                    height={node.height}
+                    rx="7"
+                    width={node.width}
+                  />
+                  <title>{`${frame.id} — ${fullTransformSourceSummary(frame.transformSources)}`}</title>
+                  <text className={styles.nodeLabel} x="12" y="18">
+                    {shortFrameLabel(frame.id)}
+                  </text>
+                  <text className={styles.nodeMeta} x="12" y="34">
+                    {shortTransformSourceSummary(frame.transformSources)}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+      </div>
+    </>
   );
 }
 
@@ -681,7 +712,7 @@ function SelectionDetails({
       <section className={styles.detailSection}>
         <SectionTitle>Selection</SectionTitle>
         <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
-          Select a frame or edge for provenance and stream usage.
+          Select a frame or edge for details.
         </Text>
       </section>
     );
@@ -719,11 +750,11 @@ function FrameDetails({
         label="Relationships"
         value={relatedEdges.length.toLocaleString()}
       />
-      <div className={styles.detailRow}>
-        <dt>Transform sources</dt>
-        <dd className={styles.sourcePills}>
-          {frame.transformSources.length > 0 ? (
-            frame.transformSources.map((source) => (
+      {frame.transformSources.length > 0 ? (
+        <div className={styles.detailRow}>
+          <dt>Transform sources</dt>
+          <dd className={styles.sourcePills}>
+            {frame.transformSources.map((source) => (
               <Pill
                 backgroundColor={BackgroundColor.Secondary}
                 color={transformSourceColor(source.kind)}
@@ -733,26 +764,8 @@ function FrameDetails({
               >
                 {`${capitalize(source.kind)} · ${source.sourceName}`}
               </Pill>
-            ))
-          ) : (
-            <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
-              None observed
-            </Text>
-          )}
-        </dd>
-      </div>
-      <Detail
-        label="Renderable streams"
-        value={
-          frame.sourceNames.length > 0
-            ? frame.sourceNames.join(", ")
-            : "None observed"
-        }
-      />
-      {frame.dataBearing ? (
-        <div className={styles.sampleNote}>
-          Stream frame IDs are sampled only from messages admitted by the
-          bounded topology slices.
+            ))}
+          </dd>
         </div>
       ) : null}
     </dl>
@@ -905,7 +918,8 @@ function componentBounds(
     });
     if (componentNodes.length === 0) return [];
     const x = Math.min(...componentNodes.map((node) => node.x)) - 12;
-    const y = Math.min(...componentNodes.map((node) => node.y)) - 32;
+    const topInset = components.length > 1 ? 32 : 12;
+    const y = Math.min(...componentNodes.map((node) => node.y)) - topInset;
     const right = Math.max(
       ...componentNodes.map((node) => node.x + node.width),
     );

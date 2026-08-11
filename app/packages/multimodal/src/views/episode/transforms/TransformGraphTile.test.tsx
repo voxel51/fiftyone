@@ -11,11 +11,11 @@ import type { TransformTopologyScanState } from "./transform-topology-context";
 import TransformGraphTile from "./TransformGraphTile";
 
 const mocks = vi.hoisted(() => ({
-  canSample: true,
+  analyzeMore: vi.fn(),
+  canAnalyzeMore: true,
   capability: true,
   readPlaybackTimeNs: vi.fn<() => bigint | undefined>(),
   retry: vi.fn(),
-  sampleCurrentTime: vi.fn(),
   setTileTitle: vi.fn(),
   state: {} as TransformTopologyScanState,
 }));
@@ -36,20 +36,20 @@ vi.mock("./transform-topology-context", async (importOriginal) => {
     useTransformTopologyCapability: () => mocks.capability,
     useTransformTopologyScan: () => ({
       ...mocks.state,
-      canSample: mocks.canSample,
+      analyzeMore: mocks.analyzeMore,
+      canAnalyzeMore: mocks.canAnalyzeMore,
       retry: mocks.retry,
-      sampleCurrentTime: mocks.sampleCurrentTime,
     }),
   };
 });
 
 beforeEach(() => {
-  mocks.canSample = true;
+  mocks.analyzeMore.mockReset();
+  mocks.canAnalyzeMore = true;
   mocks.capability = true;
   mocks.readPlaybackTimeNs.mockReset();
   mocks.readPlaybackTimeNs.mockReturnValue(123n);
   mocks.retry.mockReset();
-  mocks.sampleCurrentTime.mockReset();
   mocks.setTileTitle.mockReset();
   mocks.state = partialState();
 });
@@ -69,9 +69,7 @@ describe("TransformGraphTile", () => {
     );
     expect(screen.getByText("2 issues")).toBeTruthy();
     expect(screen.queryByText("Partial", { exact: true })).toBeNull();
-    expect(
-      screen.getByText(/Data spans 2 disconnected components/),
-    ).toBeTruthy();
+    expect(screen.getByText("3 disconnected components")).toBeTruthy();
     expect(
       screen.getByText("Renderable streams are disconnected"),
     ).toBeTruthy();
@@ -81,16 +79,63 @@ describe("TransformGraphTile", () => {
     ).toBeTruthy();
     expect(screen.getByText("Partial analysis")).toBeTruthy();
     expect(screen.queryByText(/108 messages/)).toBeNull();
+    expect(mocks.readPlaybackTimeNs).not.toHaveBeenCalled();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Sample current time" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Analyze more" }));
     expect(mocks.readPlaybackTimeNs).toHaveBeenCalledOnce();
-    expect(mocks.sampleCurrentTime).toHaveBeenCalledWith(123n);
+    expect(mocks.analyzeMore).toHaveBeenCalledWith(123n);
+    expect(
+      screen.queryByRole("button", { name: "Continue analysis" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Add current time" }),
+    ).toBeNull();
   });
 
   it("filters frames and exposes accessible frame and edge selection details", () => {
     render(<TransformGraphTile />);
+
+    const toolbar = screen.getByLabelText("Transform graph controls");
+    expect(
+      within(toolbar).getByRole("searchbox", {
+        name: "Filter transform frames",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(toolbar).getByRole("button", { name: "Zoom out" }),
+    ).toBeTruthy();
+    expect(
+      within(toolbar).getByRole("button", { name: "Zoom in" }),
+    ).toBeTruthy();
+    expect(
+      within(toolbar)
+        .getByRole("button", { name: "Fit transform graph" })
+        .getAttribute("title"),
+    ).toBe("Fit");
+    expect(
+      within(toolbar).queryByRole("button", {
+        name: "Reset transform graph view",
+      }),
+    ).toBeNull();
+    expect(
+      within(screen.getByTestId("transform-topology-canvas")).queryByRole(
+        "button",
+        { name: "Zoom in" },
+      ),
+    ).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Frame lucid_cam/front_center" })
+        .getAttribute("data-isolated"),
+    ).toBe("true");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Frame lucid_cam/front_center" }),
+    );
+    expect(
+      within(screen.getByTestId("transform-selection-details")).queryByText(
+        "None observed",
+      ),
+    ).toBeNull();
 
     fireEvent.change(
       screen.getByRole("searchbox", { name: "Filter transform frames" }),
@@ -99,7 +144,11 @@ describe("TransformGraphTile", () => {
       },
     );
     expect(screen.getByText("1 of 6")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Frame map" })).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Frame map" })
+        .getAttribute("tabindex"),
+    ).toBe("-1");
 
     fireEvent.change(
       screen.getByRole("searchbox", { name: "Filter transform frames" }),
@@ -117,7 +166,8 @@ describe("TransformGraphTile", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Frame map" }));
     const frameDetails = screen.getByTestId("transform-selection-details");
-    expect(within(frameDetails).getByText("/oxts/odometry")).toBeTruthy();
+    expect(within(frameDetails).queryByText("Renderable streams")).toBeNull();
+    expect(within(frameDetails).queryByText("/oxts/odometry")).toBeNull();
     expect(within(frameDetails).getByText("Static · /tf_static")).toBeTruthy();
     expect(
       within(frameDetails).getByText("Component").parentElement?.textContent,
@@ -134,13 +184,13 @@ describe("TransformGraphTile", () => {
   });
 
   it("renders loading, empty, error, and unavailable states honestly", () => {
-    mocks.state = { ...emptyState(), loading: true };
+    mocks.state = { ...emptyState(), loading: true, operation: "scan" };
     const { rerender } = render(<TransformGraphTile />);
     expect(screen.getByText("Reading transforms")).toBeTruthy();
 
     mocks.state = {
       ...emptyState(),
-      partial: true,
+      status: "partial",
       stopReason: "oversized-source-unit",
       unavailableSpanCount: 4_489,
     };
@@ -148,20 +198,18 @@ describe("TransformGraphTile", () => {
     expect(screen.getByText("More data needed")).toBeTruthy();
     expect(
       screen.getByText(
-        "We scanned a tiny bit of your episode but looks like we need to sample more transform data to build this view",
+        "The initial bounded scan did not find enough transform data. Analyze more to continue the scan and include the current time.",
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/4,489/)).toBeNull();
     expect(
-      screen.queryByRole("button", { name: "Continue analysis" }),
+      screen.queryByRole("button", { name: "Add current time" }),
     ).toBeNull();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Sample current time" }),
-    );
-    expect(mocks.sampleCurrentTime).toHaveBeenCalledWith(123n);
+    fireEvent.click(screen.getByRole("button", { name: "Analyze more" }));
+    expect(mocks.analyzeMore).toHaveBeenCalledWith(123n);
 
-    mocks.canSample = false;
-    mocks.state = { ...emptyState(), complete: true };
+    mocks.canAnalyzeMore = false;
+    mocks.state = { ...emptyState(), status: "complete" };
     rerender(<TransformGraphTile />);
     expect(screen.getByText("No transform topology observed")).toBeTruthy();
 
@@ -183,46 +231,87 @@ describe("TransformGraphTile", () => {
   it("marks fully covered healthy topology complete", () => {
     mocks.state = {
       ...emptyState(),
-      complete: true,
       edges: [edge("map", "base_link", "static", "/tf_static")],
       frameUses: [{ frameId: "map", sourceName: "/odom", streamId: "odom" }],
+      status: "complete",
       stopReason: "source-exhausted",
     };
     render(<TransformGraphTile />);
 
-    expect(screen.getByText("Complete")).toBeTruthy();
+    expect(screen.getByText("Transform scan complete")).toBeTruthy();
     expect(screen.getByText("Connected")).toBeTruthy();
     expect(screen.getByText("No structural issues observed")).toBeTruthy();
+    expect(screen.queryByText("Component 1")).toBeNull();
     expect(screen.queryByTestId("transform-topology-partial")).toBeNull();
   });
 
-  it("labels an explicitly sampled graph without exposing read details", () => {
+  it("warns when the observed transform graph has multiple components", () => {
+    mocks.state = {
+      ...emptyState(),
+      edges: [
+        edge("map", "oxts", "static", "/tf_static"),
+        edge("odom", "base_link", "temporal", "/tf"),
+      ],
+      status: "complete",
+      stopReason: "source-exhausted",
+    };
+    render(<TransformGraphTile />);
+
+    expect(screen.getByText("1 issue")).toBeTruthy();
+    expect(screen.queryByText("Connected")).toBeNull();
+    expect(screen.getByText("Transform graph is disconnected")).toBeTruthy();
+    expect(screen.getByText("2 disconnected components")).toBeTruthy();
+    expect(screen.getByText("Component 1")).toBeTruthy();
+    expect(screen.getByText("Component 2")).toBeTruthy();
+    expect(screen.queryByText(/data frames?/i)).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Frame map" })
+        .getAttribute("data-isolated"),
+    ).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Frame base_link" })
+        .getAttribute("data-isolated"),
+    ).toBeNull();
+    expect(
+      screen.getByText(/2 disconnected transform components were observed/),
+    ).toBeTruthy();
+    expect(screen.queryByText("No structural issues observed")).toBeNull();
+  });
+
+  it("keeps one partial-analysis label after adding time evidence", () => {
     mocks.state = {
       ...emptyState(),
       edges: [edge("map", "base_link", "temporal", "/tf")],
-      partial: true,
-      sampled: true,
-      stopReason: "oversized-source-unit",
+      sampledTimesNs: [123n],
+      status: "partial",
+      stopReason: "account-exhausted",
       unavailableSpanCount: 4_489,
       usage: { ...usage(), chunksOpened: 32, messagesDecoded: 99_999 },
     };
     render(<TransformGraphTile />);
 
     expect(screen.queryByText("Sampled", { exact: true })).toBeNull();
-    expect(screen.getByText("Sampled analysis")).toBeTruthy();
+    expect(screen.queryByText("Sampled analysis")).toBeNull();
+    expect(screen.getByText("Partial analysis")).toBeTruthy();
+    expect(screen.queryByText(/budget limit reached/i)).toBeNull();
     expect(screen.queryByText(/99,999|4,489|oversized/i)).toBeNull();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Sample current time" }),
-    );
-    expect(mocks.sampleCurrentTime).toHaveBeenCalledWith(123n);
+    fireEvent.click(screen.getByRole("button", { name: "Analyze more" }));
+    expect(mocks.analyzeMore).toHaveBeenCalledWith(123n);
   });
 
-  it("keeps the current-time action visible and disabled while sampling", () => {
-    mocks.state = { ...partialState(), loading: true };
+  it("keeps the combined action visible and disabled while analyzing", () => {
+    mocks.state = {
+      ...partialState(),
+      loading: true,
+      operation: "analyze",
+    };
     render(<TransformGraphTile />);
 
-    const button = screen.getByRole("button", { name: "Sampling…" });
+    const button = screen.getByRole("button", { name: "Analyzing…" });
     expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Partial analysis")).toBeTruthy();
   });
 });
 
@@ -244,7 +333,7 @@ function partialState(): TransformTopologyScanState {
         streamId: "camera",
       },
     ],
-    partial: true,
+    status: "partial",
     stopReason: "budget-exhausted",
     usage: { ...usage(), chunksOpened: 2, messagesDecoded: 108 },
   };
@@ -252,13 +341,16 @@ function partialState(): TransformTopologyScanState {
 
 function emptyState(): TransformTopologyScanState {
   return {
-    complete: false,
+    continuation: undefined,
     edges: [],
     error: null,
     frameUses: [],
     loading: false,
-    partial: false,
-    sampled: false,
+    operation: undefined,
+    sampledTimesNs: [],
+    scanCanProgress: true,
+    status: "idle",
+    stopReason: undefined,
     unavailableSpanCount: 0,
     usage: usage(),
   };
