@@ -1,9 +1,13 @@
-import type { McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes/index";
-import type { DecodeClient } from "../../../query/decoding/index";
+import type { DecodeClient, DecodeResult } from "../../../query/decoding/index";
 import { isEpisodeReadCancelledError } from "../../../ports/index";
 import { McapTopicDecodeError } from "../normalization/errors";
-import type { McapIndexedReaderLike } from "../reader/index";
+import type {
+  McapChannel,
+  McapIndexedReaderLike,
+  McapMessage,
+  McapSchema,
+} from "../reader/index";
 import type { McapTimelineStrategy } from "./timeline";
 import type { McapDecodedMessage } from "../contracts/index";
 import { fnv1aBytesHex } from "../../../utils/fnv1a";
@@ -12,9 +16,9 @@ import { fnv1aBytesHex } from "../../../utils/fnv1a";
  * Inputs needed to decode one MCAP message into the adapter's playback shape.
  */
 export interface DecodeMcapMessageRequest {
-  readonly channel?: McapTypes.TypedMcapRecords["Channel"];
+  readonly channel?: McapChannel;
   readonly decodeClient: DecodeClient;
-  readonly message: McapTypes.TypedMcapRecords["Message"];
+  readonly message: McapMessage;
   /**
    * Exact indexed identity of the physical MCAP record, when available.
    * Supplying it avoids hashing the full payload solely to mint a cache key.
@@ -22,7 +26,7 @@ export interface DecodeMcapMessageRequest {
   readonly physicalRecordId?: string;
   readonly pointCloudColorBy?: string;
   readonly reader?: McapIndexedReaderLike;
-  readonly schema?: McapTypes.TypedMcapRecords["Schema"];
+  readonly schema?: McapSchema;
   readonly signal?: AbortSignal;
   readonly source: ByteSourceDescriptor;
   readonly timeline: McapTimelineStrategy;
@@ -58,7 +62,7 @@ export async function decodeMcapMessage({
     schema: resolvedSchema?.name,
     schemaEncoding: resolvedSchema?.encoding,
   };
-  let decoded;
+  let decoded: DecodeResult;
   try {
     decoded = await decodeClient.decode({
       bytes: message.data,
@@ -125,9 +129,7 @@ export async function decodeMcapMessage({
 /**
  * Builds a stable per-message identity for decoded-output cache keys.
  */
-function mcapMessageRecordId(
-  message: McapTypes.TypedMcapRecords["Message"],
-): string {
+function mcapMessageRecordId(message: McapMessage): string {
   // Channel/time/sequence are the intended identity, but malformed or merged
   // streams can reuse them. Include payload shape so decode caches stay honest.
   return [
