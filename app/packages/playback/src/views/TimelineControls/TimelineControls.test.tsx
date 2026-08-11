@@ -1,6 +1,14 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
+import {
+  setBufferingDetail,
+  setBufferingStreams,
+  setIsBuffering,
+} from "../../lib/playback/store-access";
+import type { BufferingStream } from "../../lib/playback/types";
 import TimelineControls from "./TimelineControls";
 import styles from "./TimelineControls.module.css";
 
@@ -23,6 +31,22 @@ function renderControls(opts: RenderOpts = {}) {
       <TimelineControls onToggle={onToggle} />
     </PlaybackProvider>,
   );
+}
+
+function BufferingFixture({
+  streams,
+}: {
+  readonly streams: readonly BufferingStream[];
+}) {
+  const store = usePlaybackStore();
+  // This effect publishes the buffering snapshot exercised by the controls.
+  useEffect(() => {
+    const ready = streams.filter((stream) => stream.state === "ready").length;
+    setBufferingDetail(store, `${ready}/${streams.length} streams`);
+    setBufferingStreams(store, streams);
+    setIsBuffering(store, true);
+  }, [store, streams]);
+  return null;
 }
 
 describe("TimelineControls", () => {
@@ -199,6 +223,38 @@ describe("TimelineControls", () => {
     it("is hidden while no stream is buffering", () => {
       renderControls();
       expect(screen.queryByTestId("timeline-controls-buffering")).toBeNull();
+    });
+
+    it("shows blocking stream readiness on hover", () => {
+      const streams: readonly BufferingStream[] = [
+        {
+          id: "channel-26",
+          label: "/camera/front/image",
+          state: "ready",
+        },
+        { id: "channel-35", label: "/lidar/points", state: "waiting" },
+      ];
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <BufferingFixture streams={streams} />
+          <TimelineControls />
+        </PlaybackProvider>,
+      );
+
+      const indicator = screen.getByTestId("timeline-controls-buffering");
+      expect(indicator.textContent).toContain("Buffering 1/2 streams");
+      expect(screen.queryByText("Playback streams")).toBeNull();
+
+      fireEvent.mouseEnter(indicator.parentElement as HTMLElement);
+
+      expect(screen.getByText("Playback streams")).toBeTruthy();
+      expect(screen.getByText("1 waiting · 1 ready")).toBeTruthy();
+      expect(screen.getByText("/lidar/points")).toBeTruthy();
+      expect(screen.getByText("/camera/front/image")).toBeTruthy();
+      expect(screen.queryByText("channel-26")).toBeNull();
+      expect(screen.queryByText("channel-35")).toBeNull();
+      expect(screen.getByText("Waiting")).toBeTruthy();
+      expect(screen.getByText("Ready")).toBeTruthy();
     });
   });
 

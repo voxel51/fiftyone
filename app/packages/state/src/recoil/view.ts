@@ -1,5 +1,8 @@
 import {
   datasetFragment,
+  expressionCatalogFragment,
+  expressionCatalogFragment$data,
+  expressionCatalogFragment$key,
   graphQLSyncFragmentAtom,
   stageDefinitionsFragment,
   stageDefinitionsFragment$data,
@@ -22,6 +25,23 @@ export const stageDefinitions = graphQLSyncFragmentAtom<
     default: [],
   },
   { key: "stageDefinitions" },
+);
+
+/**
+ * The server's description of view expressions: every operator with its
+ * kinds and docstring summary, the kind of value each field type holds, and
+ * the AST version both sides must agree on to exchange an envelope.
+ */
+export const expressionCatalog = graphQLSyncFragmentAtom<
+  expressionCatalogFragment$key,
+  expressionCatalogFragment$data | null
+>(
+  {
+    fragments: [expressionCatalogFragment],
+    read: (data) => data,
+    default: null,
+  },
+  { key: "expressionCatalog" },
 );
 
 export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(

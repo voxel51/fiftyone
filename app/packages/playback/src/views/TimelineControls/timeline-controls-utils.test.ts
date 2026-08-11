@@ -56,13 +56,22 @@ describe("formatDisplayValue", () => {
     expect(formatDisplayValue(5.9, { kind: "sequence", fps: 12 })).toBe("#6");
   });
 
-  it("formats absolute mode as a wall-clock time", () => {
+  it("formats absolute mode as a date-qualified wall-clock time", () => {
     expect(
       formatDisplayValue(new Date("1970-01-01T00:00:10.000Z"), {
         kind: "absolute",
         epochAnchorMs: 0,
       }),
-    ).toBe("00:00:10.000");
+    ).toBe("1970-01-01 00:00:10.000");
+  });
+
+  it("renders a date-qualified sentinel for an out-of-range absolute date", () => {
+    expect(
+      formatDisplayValue(new Date(1e17), {
+        kind: "absolute",
+        epochAnchorMs: 0,
+      }),
+    ).toBe("---- -- -- --:--:--.---");
   });
 
   it("defaults duration mode to formatTime (m:ss.cs)", () => {

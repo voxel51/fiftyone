@@ -44,6 +44,11 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
+from fiftyone.server.expressions import (
+    view_expression_ast_version,
+    view_expression_field_kinds,
+    view_expression_operators,
+)
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.exceptions import QueryTimeout
@@ -572,6 +577,10 @@ class Query(fosa.AggregateQuery):
                 field_schema=[],
                 frame_field_schema=[],
             )
+
+    view_expression_operators = gql.field(view_expression_operators)
+    view_expression_field_kinds = gql.field(view_expression_field_kinds)
+    view_expression_ast_version = gql.field(view_expression_ast_version)
 
 
 def _flatten_fields(
