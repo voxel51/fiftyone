@@ -106,6 +106,7 @@
         "check:bounded-reads": "node ./scripts/check-bounded-reads.mjs",
         "check:types": "node ./scripts/check-types.mjs",
         "check:lint": "node ./scripts/check-lint.mjs",
+        "check:lint:type-aware-census": "node ./scripts/census-type-aware-lint.mjs",
         "check:deps": "node ./scripts/check-deps.mjs"
     },
     "dependencies": {

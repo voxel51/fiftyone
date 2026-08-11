@@ -1,9 +1,26 @@
+const {
+  migratedDirectories,
+  typeAwareRules,
+} = require("./scripts/type-aware-eslint-ratchet.cjs");
+
 module.exports = {
   env: {
     browser: true,
     es6: true,
   },
   overrides: [
+    ...(migratedDirectories.length
+      ? [
+          {
+            files: migratedDirectories,
+            parserOptions: {
+              project: "./tsconfig.json",
+              tsconfigRootDir: __dirname,
+            },
+            rules: typeAwareRules,
+          },
+        ]
+      : []),
     {
       files: ["src/worker/**/*.ts", "src/mcap/worker/**/*.ts"],
       env: {
