@@ -38,19 +38,22 @@ describe("TransformTopologyProvider", () => {
   it("starts exactly one modest grant and never auto-continues", async () => {
     const continuation = { cursor: 1 } as ReadContinuation;
     const capability = createCapability(
-      vi.fn(async () =>
-        result({ continuation, stopReason: "budget-exhausted" }),
+      vi.fn<TransformTopologyCapability["scan"]>(() =>
+        Promise.resolve(
+          result({ continuation, stopReason: "budget-exhausted" }),
+        ),
       ),
     );
 
     renderHarness(capability);
 
     await waitFor(() => expect(capability.scan).toHaveBeenCalledOnce());
-    expect(capability.scan).toHaveBeenCalledWith({
+    const request = vi.mocked(capability.scan).mock.calls[0]?.[0];
+    expect(request).toMatchObject({
       budget: TRANSFORM_TOPOLOGY_GRANT_BUDGET,
       continuation: undefined,
-      signal: expect.any(AbortSignal),
     });
+    expect(request?.signal).toBeInstanceOf(AbortSignal);
     expect(await screen.findByText("partial")).toBeTruthy();
     await act(async () => Promise.resolve());
     expect(capability.scan).toHaveBeenCalledOnce();
@@ -58,25 +61,28 @@ describe("TransformTopologyProvider", () => {
 
   it("merges only new current-time evidence into partial scan topology", async () => {
     let completedScanSignal: AbortSignal | undefined;
-    const scan = vi.fn<TransformTopologyCapability["scan"]>(async (request) => {
+    const scan = vi.fn<TransformTopologyCapability["scan"]>((request) => {
       completedScanSignal = request.signal;
-      return result({
-        continuation: { cursor: 1 } as ReadContinuation,
-        edges: [edge("map", "base_link", "temporal", "/tf", 7)],
-        frameUses: [frameUse("map", "odom")],
-        stopReason: "budget-exhausted",
-      });
+      return Promise.resolve(
+        result({
+          continuation: { cursor: 1 } as ReadContinuation,
+          edges: [edge("map", "base_link", "temporal", "/tf", 7)],
+          frameUses: [frameUse("map", "odom")],
+          stopReason: "budget-exhausted",
+        }),
+      );
     });
     const sample = vi.fn<NonNullable<TransformTopologyCapability["sample"]>>(
-      async (request) => ({
-        edges: [
-          edge("map", "base_link", "temporal", "/tf"),
-          edge("map", "base_link", "static", "/tf_static"),
-          edge("base_link", "lidar", "temporal", "/tf"),
-        ],
-        frameUses: [frameUse("lidar", "points")],
-        sampledAtNs: request.timeNs,
-      }),
+      (request) =>
+        Promise.resolve({
+          edges: [
+            edge("map", "base_link", "temporal", "/tf"),
+            edge("map", "base_link", "static", "/tf_static"),
+            edge("base_link", "lidar", "temporal", "/tf"),
+          ],
+          frameUses: [frameUse("lidar", "points")],
+          sampledAtNs: request.timeNs,
+        }),
     );
 
     renderHarness({ sample, scan });
@@ -93,10 +99,11 @@ describe("TransformTopologyProvider", () => {
     );
     expect(screen.getByText("partial")).toBeTruthy();
     expect(completedScanSignal?.aborted).toBe(false);
-    expect(sample).toHaveBeenCalledWith({
-      signal: expect.any(AbortSignal),
+    const sampleRequest = sample.mock.calls[0]?.[0];
+    expect(sampleRequest).toMatchObject({
       timeNs: 5n,
     });
+    expect(sampleRequest?.signal).toBeInstanceOf(AbortSignal);
     expect(scan).toHaveBeenCalledOnce();
     expect(screen.getByTestId("frame-uses").textContent).toBe(
       "lidar:points,map:odom",
@@ -113,19 +120,20 @@ describe("TransformTopologyProvider", () => {
   });
 
   it("keeps earlier point-in-time topology when sampling again", async () => {
-    const scan = vi.fn<TransformTopologyCapability["scan"]>(async () =>
-      result({ stopReason: "oversized-source-unit" }),
+    const scan = vi.fn<TransformTopologyCapability["scan"]>(() =>
+      Promise.resolve(result({ stopReason: "oversized-source-unit" })),
     );
     const sample = vi.fn<NonNullable<TransformTopologyCapability["sample"]>>(
-      async (request) => ({
-        edges:
-          request.timeNs === 5n
-            ? [edge("map", "base_link", "temporal", "/tf")]
-            : [edge("world", "camera", "static", "/tf_static")],
-        frameUses:
-          request.timeNs === 5n ? [] : [frameUse("camera", "front-camera")],
-        sampledAtNs: request.timeNs,
-      }),
+      (request) =>
+        Promise.resolve({
+          edges:
+            request.timeNs === 5n
+              ? [edge("map", "base_link", "temporal", "/tf")]
+              : [edge("world", "camera", "static", "/tf_static")],
+          frameUses:
+            request.timeNs === 5n ? [] : [frameUse("camera", "front-camera")],
+          sampledAtNs: request.timeNs,
+        }),
     );
 
     renderHarness({ sample, scan });
@@ -150,10 +158,14 @@ describe("TransformTopologyProvider", () => {
 
   it("stays partial when a source-exhausted scan skipped source spans", async () => {
     const capability = createCapability(
-      vi.fn(async () =>
-        result({
-          unavailableByStream: new Map([["tf", [{ endNs: 2n, startNs: 1n }]]]),
-        }),
+      vi.fn<TransformTopologyCapability["scan"]>(() =>
+        Promise.resolve(
+          result({
+            unavailableByStream: new Map([
+              ["tf", [{ endNs: 2n, startNs: 1n }]],
+            ]),
+          }),
+        ),
       ),
     );
 
@@ -243,9 +255,9 @@ function renderHarness(capability: TransformTopologyCapability) {
 }
 
 function createCapability(
-  scan: TransformTopologyCapability["scan"] = vi.fn(async () =>
-    result({ stopReason: "source-exhausted" }),
-  ),
+  scan: TransformTopologyCapability["scan"] = vi.fn<
+    TransformTopologyCapability["scan"]
+  >(() => Promise.resolve(result({ stopReason: "source-exhausted" }))),
 ): TransformTopologyCapability {
   return { scan };
 }
