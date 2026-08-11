@@ -95,7 +95,7 @@ describe("worker-backed MCAP resource client", () => {
 
     expect(workers).toHaveLength(2);
     expect(workers[0].messages[0]).toMatchObject({
-      payload: { fillSlotClass: "background", lane: "inspection" },
+      payload: { fillSlotClass: "background" },
       type: "init",
     });
     expect(workers[0].messages[1]).toMatchObject({
@@ -103,7 +103,7 @@ describe("worker-backed MCAP resource client", () => {
       type: "readRawMessageRecord",
     });
     expect(workers[1].messages[0]).toMatchObject({
-      payload: { fillSlotClass: "priority", lane: "foreground" },
+      payload: { fillSlotClass: "priority" },
       type: "init",
     });
     expect(workers[1].messages[1]).toMatchObject({

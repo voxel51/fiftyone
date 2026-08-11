@@ -116,15 +116,43 @@ function estimateFieldSize(
   return ESTIMATED_UNKNOWN_FIELD_SIZE_BYTES;
 }
 
+function measuredBackingStoreBytes(
+  value: unknown,
+  visited = new WeakSet<object>(),
+): number {
+  if (value === undefined || value === null) return 0;
+  if (value instanceof ArrayBuffer) {
+    if (visited.has(value)) return 0;
+    visited.add(value);
+    return value.byteLength;
+  }
+  if (ArrayBuffer.isView(value)) {
+    if (visited.has(value.buffer)) return 0;
+    visited.add(value.buffer);
+    return value.byteLength;
+  }
+  if (typeof value !== "object" || visited.has(value)) return 0;
+  visited.add(value);
+  return Object.values(value).reduce(
+    (size, item) => size + measuredBackingStoreBytes(item, visited),
+    0,
+  );
+}
+
 /** Estimates one decoded output for every cache and retention byte ledger. */
 export function decodedOutputSizeBytes(output: DecodedOutput): number {
   const hintedBytes = output.resourceHints?.sizeBytes;
   const bytes =
     hintedBytes === undefined
       ? estimateFieldSize(output)
-      : hintedBytes +
-        estimateFieldSize(output.attributes) +
-        estimateFieldSize(output.timing);
+      : Number.isSafeInteger(hintedBytes) && hintedBytes >= 0
+        ? Math.min(
+            Number.MAX_SAFE_INTEGER,
+            hintedBytes +
+              estimateFieldSize(output.attributes) +
+              estimateFieldSize(output.timing),
+          )
+        : measuredBackingStoreBytes(output);
   return Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0;
 }
 

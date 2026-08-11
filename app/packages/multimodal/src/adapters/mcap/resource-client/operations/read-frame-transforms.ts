@@ -30,6 +30,7 @@ import { throwIfAborted } from "../../../../utils/cancellation";
 import {
   discoverFrameTransformChannels,
   isStaticFrameTransformChannel,
+  isStaticTransformBootstrapTopic,
   normalizeFrameTransformMessage,
   type FrameTransformChannel,
 } from "./frame-transform-candidates";
@@ -110,7 +111,7 @@ export async function readMcapFrameTransformBootstrap(
     if (bounded.kind === "deferred") {
       continue;
     }
-    if (isStaticFrameTransformChannel(entry)) {
+    if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
       if (bounded.kind === "complete") {
         boundedMessages.push(...bounded.messages);
         completedStaticChannelIds.add(entry.channel.id);
@@ -394,9 +395,10 @@ function firstMessageHasStaticSample(
     return false;
   }
   try {
-    return normalizeFrameTransformMessage({ entry, message }).some(
-      (sample) => sample.timeNs === undefined,
-    );
+    return normalizeFrameTransformMessage({
+      entry: { ...entry, messageCount: undefined },
+      message,
+    }).some((sample) => sample.timeNs === undefined);
   } catch {
     return false;
   }
@@ -427,7 +429,7 @@ async function firstTransformMessageHasStaticSample(
     }
     try {
       return normalizeFrameTransformMessage({
-        entry,
+        entry: { ...entry, messageCount: undefined },
         message,
       }).some((sample) => sample.timeNs === undefined);
     } catch {
@@ -573,6 +575,7 @@ async function readMcapFrameTransformWindowImpl({
       for (const sample of normalizeFrameTransformMessage({
         entry,
         message,
+        treatSingleMessageChannelAsStatic: false,
       })) {
         if (sample.timeNs === undefined) {
           samples.push(sample);
@@ -753,6 +756,7 @@ async function readIndexedTransformPlacement({
         for (const sample of normalizeFrameTransformMessage({
           entry: channel,
           message,
+          treatSingleMessageChannelAsStatic: false,
         })) {
           if (sample.timeNs === undefined || sample.timeNs > timeNs) {
             continue;
@@ -1044,6 +1048,7 @@ function recordNewestFrameTransformSamples({
     for (const sample of normalizeFrameTransformMessage({
       entry: channel,
       message,
+      treatSingleMessageChannelAsStatic: false,
     })) {
       if (sample.timeNs === undefined || sample.timeNs > timeNs) {
         continue;

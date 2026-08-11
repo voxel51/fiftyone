@@ -113,12 +113,20 @@ export function isStaticFrameTransformChannel(
 export function normalizeFrameTransformMessage({
   entry,
   message,
+  treatSingleMessageChannelAsStatic = true,
 }: {
   readonly entry: FrameTransformChannel;
   readonly message: McapMessage;
+  readonly treatSingleMessageChannelAsStatic?: boolean;
 }): readonly McapFrameTransformSample[] {
   const record = entry.decodeRecord(message);
-  const staticTopic = isStaticFrameTransformChannel(entry);
+  const staticTopic =
+    entry.match.format === "foxglove"
+      ? treatSingleMessageChannelAsStatic &&
+        entry.messageCount === 1n &&
+        !isStaticTransformBootstrapTopic(entry.channel.topic)
+      : isStaticTransformBootstrapTopic(entry.channel.topic) ||
+        (treatSingleMessageChannelAsStatic && entry.messageCount === 1n);
 
   if (entry.match.kind === "batch") {
     return requiredArray(record, entry.match.repeatedFieldName).map(
@@ -211,7 +219,9 @@ function normalizeFrameTransformRecord(
   const childFrameId = optionalString(record, "childFrameId", "child_frame_id");
   const translation = optionalRecord(record, "translation");
   const rotation = optionalRecord(record, "rotation");
-  const transformTimeNs = timestampNs(optionalRecord(record, "timestamp"));
+  const transformTimeNs = staticTopic
+    ? undefined
+    : timestampNs(optionalRecord(record, "timestamp"));
 
   if (!parentFrameId) {
     throw new Error("FrameTransform parent_frame_id is missing");

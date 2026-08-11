@@ -14,7 +14,7 @@ describe("decodedOutputSizeBytes", () => {
     ).toBe(139);
   });
 
-  it("falls back to structural sizing and rejects invalid totals", () => {
+  it("falls back to structural sizing and saturates oversized totals", () => {
     expect(decodedOutputSizeBytes({ attributes: { x: 1 } })).toBe(8);
     expect(
       decodedOutputSizeBytes({
@@ -26,6 +26,6 @@ describe("decodedOutputSizeBytes", () => {
         resourceHints: { sizeBytes: Number.MAX_SAFE_INTEGER },
         timing: { decodeMs: 1 },
       } as DecodedOutput),
-    ).toBe(0);
+    ).toBe(Number.MAX_SAFE_INTEGER);
   });
 });
