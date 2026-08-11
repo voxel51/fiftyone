@@ -14,6 +14,7 @@ const migratedDirectories = [
   "packages/multimodal/src/ports/**/*.{ts,tsx}",
   "packages/multimodal/src/scene-inventory/**/*.{ts,tsx}",
   "packages/multimodal/src/stream-selection/**/*.{ts,tsx}",
+  "packages/multimodal/src/utils/**/*.{ts,tsx}",
 ];
 
 module.exports = { migratedDirectories, typeAwareRules };

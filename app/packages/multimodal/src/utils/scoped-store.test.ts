@@ -18,9 +18,10 @@ describe("timestamp-LRU scoped store", () => {
     store.updateScope("scope-a", () => ({ name: "a" }));
     store.updateScope("scope-b", () => ({ name: "b" }));
     now = 5_000;
-    store.updateScope("scope-a", (current) => ({
-      name: `${current?.name}-touched`,
-    }));
+    store.updateScope("scope-a", (current) => {
+      if (!current) throw new Error("expected scope-a to exist");
+      return { name: `${current.name}-touched` };
+    });
     store.updateScope("scope-c", () => ({ name: "c" }));
 
     expect(store.readFallback()).toEqual({ name: "fallback" });
