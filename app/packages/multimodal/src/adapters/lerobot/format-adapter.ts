@@ -1,4 +1,4 @@
-import { parquetReadObjects, type AsyncBuffer } from "hyparquet";
+import { parquetReadObjects } from "hyparquet";
 import { createFile, MP4BoxBuffer, type Sample, type Track } from "mp4box";
 
 import {
@@ -32,6 +32,14 @@ const EPISODE_INDEX_ROLE = "episode-index";
 const DATA_ROLE = "data";
 const VIDEO_ROLE = "video";
 const NS_PER_SECOND = 1_000_000_000;
+
+// hyparquet's published AsyncBuffer alias resolves through a `.d.ts` import
+// that TypeScript 4.9 treats as `any`. Keep the small structural contract local
+// until multimodal's TypeScript version can consume that declaration directly.
+interface AsyncBuffer {
+  readonly byteLength: number;
+  slice(start: number, end?: number): ArrayBuffer | Promise<ArrayBuffer>;
+}
 
 interface ParquetReaderOptions {
   readonly columns?: string[];
@@ -486,7 +494,7 @@ function asyncBufferForSource(
       return result.bytes.buffer.slice(
         result.bytes.byteOffset,
         result.bytes.byteOffset + result.bytes.byteLength,
-      ) as ArrayBuffer;
+      );
     },
   };
 }

@@ -142,14 +142,14 @@ const dataRows = [
 
 const source: EpisodeSource = {
   assets: {
-    list: async () => assets,
-    resolve: async (assetId) => descriptor(assetId),
+    list: () => Promise.resolve(assets),
+    resolve: (assetId) => Promise.resolve(descriptor(assetId)),
   },
   episodeId: "episode-0",
 };
 
 const io: ByteResources = {
-  readBytes: async ({ range, source: byteSource }) => {
+  readBytes: ({ range, source: byteSource }) => {
     const start = Number(range.offset);
     const end = start + Number(range.length);
     const bytes =
@@ -158,7 +158,7 @@ const io: ByteResources = {
         : byteSource.sourceId === "video"
           ? tinyMp4Bytes.slice(start, end)
           : new Uint8Array(Number(range.length));
-    return { bytes, range, source: byteSource };
+    return Promise.resolve({ bytes, range, source: byteSource });
   },
 };
 
@@ -172,8 +172,8 @@ function descriptor(assetId: string): ByteSourceDescriptor {
   };
 }
 
-const readParquetObjects = vi.fn(async (options: { columns?: string[] }) =>
-  options.columns ? dataRows : [episodeRow],
+const readParquetObjects = vi.fn((options: { columns?: string[] }) =>
+  Promise.resolve(options.columns ? dataRows : [episodeRow]),
 );
 
 defineEpisodeSessionContractTests({
@@ -460,11 +460,13 @@ async function realSource(root: string): Promise<{
       requiredValue(sizeById, "wrist"),
     ),
   ];
-  const resolve = async (id: string): Promise<ByteSourceDescriptor> => {
+  const resolve = (id: string): Promise<ByteSourceDescriptor> => {
     const path = pathById.get(id);
     const sizeBytes = sizeById.get(id);
-    if (!path || !sizeBytes) throw new Error(`Unknown real asset ${id}`);
-    return { sizeBytes, sourceId: id, url: path };
+    if (!path || !sizeBytes) {
+      return Promise.reject(new Error(`Unknown real asset ${id}`));
+    }
+    return Promise.resolve({ sizeBytes, sourceId: id, url: path });
   };
   return {
     close: async () => {
@@ -495,7 +497,7 @@ async function realSource(root: string): Promise<{
       },
     },
     source: {
-      assets: { list: async () => realAssets, resolve },
+      assets: { list: () => Promise.resolve(realAssets), resolve },
       episodeId: "episode-0",
     },
   };

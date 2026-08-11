@@ -9,18 +9,18 @@ import { createFixtureFormatAdapter } from "./fixture-adapter";
 
 const source: EpisodeSource = {
   assets: {
-    list: async () => [],
-    resolve: async () => {
-      throw new Error("Fixture adapter must not resolve physical assets");
-    },
+    list: () => Promise.resolve([]),
+    resolve: () =>
+      Promise.reject(
+        new Error("Fixture adapter must not resolve physical assets"),
+      ),
   },
   episodeId: "fixture-episode",
 };
 
 const io: ByteResources = {
-  readBytes: async () => {
-    throw new Error("Fixture adapter must not read physical bytes");
-  },
+  readBytes: () =>
+    Promise.reject(new Error("Fixture adapter must not read physical bytes")),
 };
 
 defineEpisodeSessionContractTests({
@@ -49,10 +49,10 @@ defineEpisodeSessionContractTests({
 describe("fixture adapter pressure controls", () => {
   it("forwards open cancellation to asset inventory and stops before session creation", async () => {
     const controller = new AbortController();
-    const list = vi.fn(async (options?: { readonly signal?: AbortSignal }) => {
+    const list = vi.fn((options?: { readonly signal?: AbortSignal }) => {
       expect(options?.signal).toBe(controller.signal);
       controller.abort();
-      return [];
+      return Promise.resolve([]);
     });
     const cancellableSource: EpisodeSource = {
       assets: { list, resolve: vi.fn() },
