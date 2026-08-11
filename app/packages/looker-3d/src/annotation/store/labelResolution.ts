@@ -65,7 +65,7 @@ export function getDefaultLabel(field: string, workingDoc: WorkingDoc): string {
   for (const l of Object.values(workingDoc.labelsById)) {
     if (l.path !== field) continue;
 
-    const lbl = l.label;
+    const lbl = l.data.label;
 
     if (lbl) {
       labelCounts[lbl] = (labelCounts[lbl] ?? 0) + 1;

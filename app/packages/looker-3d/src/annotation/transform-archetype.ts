@@ -1,5 +1,5 @@
 import type { Archetype3d } from "../types";
-import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
+import { isDetection3dDocument, isPolyline3dDocument } from "../types";
 import type { SelectedPoint, TransformMode } from "./types";
 
 type GetSelectedTransformArchetypeOptions = {
@@ -12,11 +12,11 @@ type GetSelectedTransformArchetypeOptions = {
 export const getSelectedLabelTransformArchetype = (
   selectedLabelForAnnotation: unknown,
 ): Archetype3d | null => {
-  if (isDetection3dOverlay(selectedLabelForAnnotation)) {
+  if (isDetection3dDocument(selectedLabelForAnnotation)) {
     return "cuboid";
   }
 
-  if (isPolyline3dOverlay(selectedLabelForAnnotation)) {
+  if (isPolyline3dDocument(selectedLabelForAnnotation)) {
     return "polyline";
   }
 
