@@ -42,6 +42,19 @@ export interface SeedAnnotate3dOptions {
    * `polylineClasses` is set; defaults to `[0]` then.
    */
   polylineSampleIndices?: number[];
+  /**
+   * Extra attributes appended to the `detections` annotation schema, e.g.
+   * `{ name: "type", type: "str", component: "text" }`. Use to declare
+   * user attributes whose names collide with UI bookkeeping (`type`,
+   * `color`, `isNew`, ...).
+   */
+  detectionAttributes?: { name: string; type: string; component?: string }[];
+  /**
+   * Initial attribute values stamped on every pre-seeded cuboid as dynamic
+   * `Detection` fields (declared on the dataset via
+   * `add_dynamic_sample_fields()` so the modal query returns them).
+   */
+  cuboidAttributeValues?: Record<string, string>;
 }
 
 /**
@@ -69,6 +82,8 @@ export class Annotate3dSDK {
       cuboidSampleIndices = [0],
       polylineClasses,
       polylineSampleIndices = [0],
+      detectionAttributes = [],
+      cuboidAttributeValues = {},
     } = options;
 
     const seedPolylines = Array.isArray(polylineClasses);
@@ -80,6 +95,10 @@ export class Annotate3dSDK {
       seedPolylines ? polylineSampleIndices : [],
     );
     const pySeedPolylines = seedPolylines ? "True" : "False";
+    const pyDetAttrs = JSON.stringify(
+      detectionAttributes.map((a) => ({ component: "text", ...a })),
+    );
+    const pyAttrValues = JSON.stringify(cuboidAttributeValues);
 
     return this.loader.executePythonCode(`
 import fiftyone as fo
@@ -91,6 +110,8 @@ CUBOIDS = set(${pyCuboids})
 POLYLINE_CLASSES = ${pyPolylineClasses}
 POLYLINES = set(${pyPolylines})
 SEED_POLYLINES = ${pySeedPolylines}
+DET_ATTRS = ${pyDetAttrs}
+ATTR_VALUES = ${pyAttrValues}
 DETECTIONS_FIELD = "detections"
 POLYLINES_FIELD = "polylines"
 
@@ -143,6 +164,7 @@ for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)
                     location=[0.0, 0.0, 0.0],
                     dimensions=[2.0, 2.0, 2.0],
                     rotation=[0.0, 0.0, 0.0],
+                    **ATTR_VALUES,
                 )
             ]
         )
@@ -176,10 +198,16 @@ det_schema = {
     "attributes": [
         {"name": "id", "type": "id", "component": "text", "read_only": True},
         {"name": "tags", "type": "list<str>", "component": "text"},
+        *DET_ATTRS,
     ],
     "classes": CLASSES,
 }
 dataset.update_label_schema(DETECTIONS_FIELD, det_schema, allow_new_attrs=True)
+
+# Dynamic Detection attrs (e.g. an initial \`type\` value) must be declared on
+# the dataset schema so the modal sample query returns them.
+if ATTR_VALUES:
+    dataset.add_dynamic_sample_fields()
 
 active_schemas = []
 # Keep detections active when a cuboid is requested OR when no polyline schema
@@ -318,6 +346,59 @@ with open("${resultFile}", "w") as f:
       dimensions: number[] | null;
       rotation: number[] | null;
     };
+  }
+
+  /**
+   * Reads back the full persisted document of the first cuboid `Detection` on
+   * a sample as a plain dict (private keys stripped except `_cls`). Use to
+   * verify user attributes — including ones whose names collide with UI
+   * bookkeeping (`type`, `color`, `isNew`) — round-trip to the DB, and that no
+   * view-state bookkeeping leaked into the document.
+   *
+   * @param dataset The dataset name
+   * @param options.field The Detections field (default "detections")
+   * @param options.sampleIndex Index into the dataset's sample order (default 0)
+   */
+  async getCuboidDocument(
+    dataset: string,
+    options: { field?: string; sampleIndex?: number } = {},
+  ): Promise<Record<string, unknown> | null> {
+    const field = options.field ?? "detections";
+    const sampleIndex = options.sampleIndex ?? 0;
+    const resultFile = path.join(
+      os.tmpdir(),
+      `cuboid-doc-${dataset}-${field}-${sampleIndex}.json`,
+    );
+
+    await this.loader.executePythonCode(`
+import json
+import fiftyone as fo
+
+dataset = fo.load_dataset("${dataset}")
+view = dataset.skip(${sampleIndex})
+sample = view.first() if len(view) > 0 else None
+
+doc = None
+if sample is not None:
+    try:
+        field = sample.get_field("${field}")
+    except Exception:
+        field = None
+    if field is not None and getattr(field, "detections", None):
+        raw = field.detections[0].to_dict()
+        doc = {
+            k: v
+            for k, v in raw.items()
+            if k == "_cls" or not k.startswith("_")
+        }
+
+with open("${resultFile}", "w") as f:
+    json.dump(doc, f, default=str)
+`);
+
+    const raw = fs.readFileSync(resultFile, "utf-8");
+    fs.unlinkSync(resultFile);
+    return JSON.parse(raw) as Record<string, unknown> | null;
   }
 
   /**
