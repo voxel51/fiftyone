@@ -229,7 +229,7 @@ class TestMuseGlimmerDetectionParsing:
             '[{"label": "cat", "bbox_2d": [NaN, 0, 500, 500]}]',
             '[{"label": "cat", "bbox_2d": [0, Infinity, 500, 500]}]',
             '[{"label": "cat", "bbox_2d": [0, -Infinity, 500, 500]}]',
-            '[{"label": "cat", "bbox_2d": [%s, 0, 500, 500]}]' % big_int,
+            f'[{{"label": "cat", "bbox_2d": [{big_int}, 0, 500, 500]}}]',
         ):
             detections = processor._parse_detections(raw, (1000, 1000))
             assert len(detections) == 0, f"Expected empty for: {raw[:60]}"
