@@ -221,6 +221,11 @@ def _edit_field_values_inputs(ctx, inputs):
         ctx,
         name="target",
         action_description="Edit field values for",
+        dataset_description="Edit field values for the entire dataset",
+        current_view_description="Edit field values for the current view",
+        selected_samples_description=(
+            "Edit field values for the selected samples"
+        ),
         require_flat=True,
     )
     target_view = ctx.target_view(param_name="target", require_flat=True)
@@ -410,6 +415,11 @@ def _clone_sample_field_inputs(ctx, inputs):
         ctx,
         name="target",
         action_description="Clone sample field for",
+        dataset_description="Clone sample field for the entire dataset",
+        current_view_description="Clone sample field for the current view",
+        selected_samples_description=(
+            "Clone sample field for the selected samples"
+        ),
         require_flat=True,
     )
     target_view = ctx.target_view(param_name="target", require_flat=True)
@@ -501,6 +511,11 @@ def _clone_frame_field_inputs(ctx, inputs):
         ctx,
         name="target",
         action_description="Clone frame field for",
+        dataset_description="Clone frame field for the entire dataset",
+        current_view_description="Clone frame field for the current view",
+        selected_samples_description=(
+            "Clone frame field for the selected samples"
+        ),
         require_flat=True,
     )
     target_view = ctx.target_view(param_name="target", require_flat=True)
@@ -765,6 +780,11 @@ def _clear_sample_field_inputs(ctx, inputs):
         ctx,
         name="target",
         action_description="Clear sample field(s) for",
+        dataset_description="Clear sample field(s) for the entire dataset",
+        current_view_description="Clear sample field(s) for the current view",
+        selected_samples_description=(
+            "Clear sample field(s) for the selected samples"
+        ),
         require_flat=True,
     )
     target_view = ctx.target_view(param_name="target", require_flat=True)
@@ -846,6 +866,11 @@ def _clear_frame_field_inputs(ctx, inputs):
         ctx,
         name="target",
         action_description="Clear frame field(s) for",
+        dataset_description="Clear frame field(s) for the entire dataset",
+        current_view_description="Clear frame field(s) for the current view",
+        selected_samples_description=(
+            "Clear frame field(s) for the selected samples"
+        ),
         require_flat=True,
     )
     target_view = ctx.target_view(param_name="target", require_flat=True)

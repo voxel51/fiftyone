@@ -2936,12 +2936,12 @@ class ViewTargetOptions(object):
         )
         selected_samples_description = _append_scope(
             selected_samples_description
-            or f"{action_description} the selected samples",
+            or f"{action_description} only the selected samples",
             scope_description,
         )
         selected_labels_description = _append_scope(
             selected_labels_description
-            or f"{action_description} the selected labels",
+            or f"{action_description} only the selected labels",
             scope_description,
         )
 
