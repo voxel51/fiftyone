@@ -1,11 +1,13 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import { rawNodeToJson } from "../../../../ir";
 import { throwIfAborted } from "../../../../utils/cancellation";
 import type { McapReadMessageIndexWindowRequest } from "../../contracts";
 import type {
+  McapChannel,
+  McapChunkIndex,
   McapIndexedMessageTime,
   McapIndexedReaderLike,
+  McapMessage,
   McapReadIndexedMessageTimesRequest,
   McapReadLatestIndexedMessageTimesRequest,
 } from "../../reader";
@@ -271,8 +273,7 @@ describe("exact MCAP message browsing", () => {
       entry({ logTimeNs: 2n, messageOffset: 2n }),
       entry({ logTimeNs: 3n, messageOffset: 3n }),
     ]);
-    const read = reader.readIndexedMessageTimes;
-    if (!read) throw new Error("Expected indexed times reader");
+    const read = reader.readIndexedMessageTimes.bind(reader);
     let yielded = 0;
     reader.readIndexedMessageTimes = async function* (request = {}) {
       expect(request.signal).toBe(controller.signal);
@@ -382,7 +383,7 @@ function createReader(
     readonly unorderedChunks?: boolean;
     readonly valuesByOffset?: ReadonlyMap<bigint, unknown>;
   } = {},
-): McapIndexedReaderLike {
+) {
   const entries = [...unorderedEntries].sort(compareIndexedMessageTimes);
   const chunkOffsets = [
     ...new Set(entries.map((value) => value.chunkStartOffset)),
@@ -424,7 +425,7 @@ function createReader(
       ? new Set(request.channelIds)
       : null;
     let count = 0;
-    for (const value of entries) {
+    for await (const value of asyncValues(entries)) {
       throwIfAborted(request.signal);
       if (chunkFilter && !chunkFilter.has(value.chunkStartOffset)) continue;
       if (channelFilter && !channelFilter.has(value.channelId)) continue;
@@ -444,8 +445,10 @@ function createReader(
       if (request.limit !== undefined && count >= request.limit) return;
     }
   };
-  const readLatestIndexedMessageTimes = vi.fn(
-    async (request: McapReadLatestIndexedMessageTimesRequest) =>
+  const readLatestIndexedMessageTimes = vi.fn<
+    NonNullable<McapIndexedReaderLike["readLatestIndexedMessageTimes"]>
+  >((request: McapReadLatestIndexedMessageTimesRequest) =>
+    Promise.resolve(
       new Map(
         request.topics.map((topic) => [
           topic,
@@ -460,6 +463,7 @@ function createReader(
             .slice(-(request.limitPerTopic ?? 1)),
         ]),
       ),
+    ),
   );
   return {
     channelsById: new Map([
@@ -467,25 +471,27 @@ function createReader(
       [2, channel(2)],
     ]),
     chunkIndexes: chunks,
-    readIndexedMessages: vi.fn(
-      async (
+    readIndexedMessages: vi.fn<
+      NonNullable<McapIndexedReaderLike["readIndexedMessages"]>
+    >(
+      (
         request: Parameters<
           NonNullable<McapIndexedReaderLike["readIndexedMessages"]>
         >[0],
       ) =>
-        request.entries.map((value) => {
-          const selected = messages.get(identity(value));
-          if (!selected) throw new Error("Missing indexed test message");
-          return selected;
-        }),
+        Promise.resolve(
+          request.entries.map((value) => {
+            const selected = messages.get(identity(value));
+            if (!selected) throw new Error("Missing indexed test message");
+            return selected;
+          }),
+        ),
     ),
     readIndexedMessageTimes,
     readLatestIndexedMessageTimes,
-    readMessages: vi.fn(async function* () {
-      for (const value of messages.values()) yield value;
-    }),
+    readMessages: vi.fn(() => asyncValues(messages.values())),
     schemasById: new Map(),
-  };
+  } satisfies McapIndexedReaderLike;
 }
 
 function entry(
@@ -508,7 +514,7 @@ function identity(value: McapIndexedMessageTime): string {
   return `${value.chunkStartOffset}:${value.messageOffset}:${value.channelId}`;
 }
 
-function channel(id: number): McapTypes.TypedMcapRecords["Channel"] {
+function channel(id: number): McapChannel {
   return {
     id,
     messageEncoding: "json",
@@ -529,7 +535,7 @@ function chunk({
   readonly chunkStartOffset: bigint;
   readonly messageEndTime: bigint;
   readonly messageStartTime: bigint;
-}): McapTypes.TypedMcapRecords["ChunkIndex"] {
+}): McapChunkIndex {
   return {
     chunkLength: 1_000n,
     chunkStartOffset,
@@ -544,10 +550,7 @@ function chunk({
   };
 }
 
-function message(
-  value: McapIndexedMessageTime,
-  payload: unknown,
-): McapTypes.TypedMcapRecords["Message"] {
+function message(value: McapIndexedMessageTime, payload: unknown): McapMessage {
   return {
     channelId: value.channelId,
     data: new TextEncoder().encode(JSON.stringify(payload)),
@@ -556,4 +559,10 @@ function message(
     sequence: 0,
     type: "Message",
   };
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncGenerator<Value, void, void> {
+  for await (const value of values) yield value;
 }

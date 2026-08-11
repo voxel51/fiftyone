@@ -12,6 +12,7 @@ import type {
   McapChunkIndex,
   McapIndexedReaderLike,
   McapMessage,
+  McapReaderFactory,
   McapSchema,
   McapStatistics,
 } from "../reader/index";
@@ -477,7 +478,7 @@ export function createIndexedMessageTime(
   };
 }
 
-export function createTestDecodeClient(): DecodeClient {
+export function createTestDecodeClient() {
   return {
     decode: vi.fn<DecodeClient["decode"]>((request) =>
       Promise.resolve({
@@ -488,7 +489,17 @@ export function createTestDecodeClient(): DecodeClient {
         payload: request.payload,
       }),
     ),
-  };
+  } satisfies DecodeClient;
+}
+
+export function mockReaderFactory(
+  implementation: (
+    ...args: Parameters<McapReaderFactory>
+  ) => McapIndexedReaderLike | Promise<McapIndexedReaderLike>,
+) {
+  return vi.fn<McapReaderFactory>((...args) =>
+    Promise.resolve().then(() => implementation(...args)),
+  );
 }
 
 export function createTestDecodedOutput(
@@ -578,7 +589,7 @@ export function createMessage(
   };
 }
 
-async function* asyncValues<Value>(
+export async function* asyncValues<Value>(
   values: Iterable<Value>,
 ): AsyncGenerator<Value, void, void> {
   for await (const value of values) yield value;

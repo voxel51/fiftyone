@@ -12,7 +12,7 @@ describe("indexed predecessor probe protocol", () => {
     const ninetyB = entry(90n, 2n);
     const seventy = entry(70n, 3n);
     const readLatestIndexedMessageTimes = vi
-      .fn()
+      .fn<NonNullable<McapIndexedReaderLike["readLatestIndexedMessageTimes"]>>()
       .mockResolvedValueOnce(new Map([["/topic", [ninetyA, ninetyB]]]))
       .mockResolvedValueOnce(new Map([["/topic", [seventy]]]))
       .mockResolvedValueOnce(new Map([["/topic", [ninetyA, ninetyB]]]));
@@ -58,9 +58,9 @@ describe("indexed predecessor probe protocol", () => {
   });
 
   it("checks cancellation on both sides of an indexed probe", async () => {
-    const readLatestIndexedMessageTimes = vi.fn(
-      async () => new Map([["/topic", [entry(90n, 1n)]]]),
-    );
+    const readLatestIndexedMessageTimes = vi.fn<
+      NonNullable<McapIndexedReaderLike["readLatestIndexedMessageTimes"]>
+    >(() => Promise.resolve(new Map([["/topic", [entry(90n, 1n)]]])));
     const reader = createReader(readLatestIndexedMessageTimes);
     let checks = 0;
 
@@ -84,9 +84,9 @@ describe("indexed predecessor probe protocol", () => {
 
   it("does not swallow indexed probe failures", async () => {
     const reader = createReader(
-      vi.fn(async () => {
-        throw new Error("index probe failed");
-      }),
+      vi.fn<
+        NonNullable<McapIndexedReaderLike["readLatestIndexedMessageTimes"]>
+      >(() => Promise.reject(new Error("index probe failed"))),
     );
 
     await expect(
@@ -125,9 +125,13 @@ function createReader(
     channelsById: new Map(),
     chunkIndexes: [],
     readLatestIndexedMessageTimes,
-    async *readMessages() {
-      // The shared predecessor protocol never materializes payloads.
-    },
+    readMessages: () => asyncValues([]),
     schemasById: new Map(),
   };
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncGenerator<Value, void, void> {
+  for await (const value of values) yield value;
 }

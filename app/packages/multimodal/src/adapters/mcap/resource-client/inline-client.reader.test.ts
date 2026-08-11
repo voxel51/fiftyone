@@ -1,15 +1,16 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import { createInlineMcapResourceClient } from "./inline-client";
 import { MCAP_ACTIVE_TIMELINE } from "../contracts/index";
 import {
   collect,
+  asyncValues,
   createChannel,
   createChunkIndex,
   createMcapSourceDescriptor,
   createMessage,
   createReader,
   createTestDecodeClient,
+  mockReaderFactory,
 } from "./inline-client.test-fixtures";
 import { RAW_RECORD_MAX_WALL_TIME_MS } from "./operations/read-raw-message-record";
 import { mcapMessageCursorForEntry } from "./operations/message-cursor";
@@ -17,24 +18,22 @@ import { mcapMessageCursorForEntry } from "./operations/message-cursor";
 describe("MCAP reader lifecycle", () => {
   it("reads log timeline range from chunk indexes without scanning messages", async () => {
     const source = createMcapSourceDescriptor();
-    const readMessages = vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
-        yield message;
-      }
-    });
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      yield {
-        channelId: 7,
-        chunkStartOffset: 10n,
-        logTimeNs: 100n,
-        messageOffset: 8n,
-        topic: "/camera",
-      };
-    });
+    const readMessages = vi.fn(() => asyncValues([]));
+    const readIndexedMessageTimes = vi.fn(() =>
+      asyncValues([
+        {
+          channelId: 7,
+          chunkStartOffset: 10n,
+          logTimeNs: 100n,
+          messageOffset: 8n,
+          topic: "/camera",
+        },
+      ]),
+    );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           chunkIndexes: [
             createChunkIndex({
@@ -83,7 +82,7 @@ describe("MCAP reader lifecycle", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async (_source, readable) => {
+      readerFactory: mockReaderFactory(async (_source, readable) => {
         await readable.read(128n, 1n);
         return createReader();
       }),
@@ -155,7 +154,7 @@ describe("MCAP reader lifecycle", () => {
     );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes },
-      readerFactory: vi.fn(async (_source, readable) => {
+      readerFactory: mockReaderFactory(async (_source, readable) => {
         await readable.read(0n, 1n);
         return createReader();
       }),
@@ -189,7 +188,7 @@ describe("MCAP reader lifecycle", () => {
       );
       const client = createInlineMcapResourceClient({
         byteClient: { readBytes },
-        readerFactory: vi.fn(async (_source, readable) => {
+        readerFactory: mockReaderFactory(async (_source, readable) => {
           await readable.read(0n, 1n);
           return createReader();
         }),
@@ -228,8 +227,8 @@ describe("MCAP reader lifecycle", () => {
       new TextEncoder().encode(JSON.stringify({ exact: true })),
       { channelId: 7, logTime: 100n },
     );
-    const readIndexedMessages = vi.fn(async () => [message]);
-    const readerFactory = vi.fn(async () =>
+    const readIndexedMessages = vi.fn(() => Promise.resolve([message]));
+    const readerFactory = mockReaderFactory(() =>
       createReader({
         channelsById: new Map([
           [
@@ -272,7 +271,7 @@ describe("MCAP reader lifecycle", () => {
 
   it("stops waiting for cached-reader initialization when cancelled", async () => {
     let resolveReader!: (reader: ReturnType<typeof createReader>) => void;
-    const readerFactory = vi.fn(
+    const readerFactory = mockReaderFactory(
       () =>
         new Promise<ReturnType<typeof createReader>>((resolve) => {
           resolveReader = resolve;

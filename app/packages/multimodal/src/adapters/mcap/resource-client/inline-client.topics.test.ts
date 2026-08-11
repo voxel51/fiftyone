@@ -1,7 +1,7 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import { createInlineMcapResourceClient } from "./inline-client";
 import {
+  asyncValues,
   createChannel,
   createChunkIndex,
   createMcapSourceDescriptor,
@@ -10,21 +10,18 @@ import {
   createSchema,
   createStatistics,
   createTestDecodeClient,
+  mockReaderFactory,
 } from "./inline-client.test-fixtures";
 
 describe("MCAP topic metadata", () => {
   it("reads topic inventory from summary channels without scanning messages", async () => {
     const source = createMcapSourceDescriptor();
-    const readMessages = vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
-        yield message;
-      }
-    });
+    const readMessages = vi.fn(() => asyncValues([]));
     const decodeClient = createTestDecodeClient();
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -114,7 +111,7 @@ describe("MCAP topic metadata", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -154,7 +151,7 @@ describe("MCAP topic metadata", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -213,7 +210,7 @@ describe("MCAP topic metadata", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [7, createChannel({ id: 7, topic: "/camera" })],
@@ -230,25 +227,32 @@ describe("MCAP topic metadata", () => {
 
   it("caches schema and bounded numeric enumeration phases separately", async () => {
     const source = createMcapSourceDescriptor();
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      yield {
-        channelId: 7,
-        chunkStartOffset: 1_000n,
-        logTimeNs: 10n,
-        messageOffset: 0n,
-        topic: "/state",
-      };
-    });
-    const readIndexedMessages = vi.fn(async () => [
-      createMessage(new TextEncoder().encode(JSON.stringify({ speed: 3.2 })), {
-        channelId: 7,
-        logTime: 10n,
-      }),
-    ]);
+    const readIndexedMessageTimes = vi.fn(() =>
+      asyncValues([
+        {
+          channelId: 7,
+          chunkStartOffset: 1_000n,
+          logTimeNs: 10n,
+          messageOffset: 0n,
+          topic: "/state",
+        },
+      ]),
+    );
+    const readIndexedMessages = vi.fn(() =>
+      Promise.resolve([
+        createMessage(
+          new TextEncoder().encode(JSON.stringify({ speed: 3.2 })),
+          {
+            channelId: 7,
+            logTime: 10n,
+          },
+        ),
+      ]),
+    );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -294,7 +298,7 @@ describe("MCAP topic metadata", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [
@@ -358,7 +362,7 @@ describe("MCAP topic metadata", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () => createReader()),
+      readerFactory: mockReaderFactory(() => createReader()),
     });
 
     await expect(
@@ -373,15 +377,15 @@ describe("MCAP topic metadata", () => {
   });
 
   it("caches topic time bounds per source and topic set", async () => {
-    const readTopicIndexedTimeBounds = vi.fn(async () => {
-      return new Map([
-        ["/camera", { firstLogTimeNs: 10n, lastLogTimeNs: 90n }],
-      ]);
-    });
+    const readTopicIndexedTimeBounds = vi.fn(() =>
+      Promise.resolve(
+        new Map([["/camera", { firstLogTimeNs: 10n, lastLogTimeNs: 90n }]]),
+      ),
+    );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         Object.assign(createReader({ chunkIndexes: [createChunkIndex()] }), {
           readTopicIndexedTimeBounds,
         }),

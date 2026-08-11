@@ -10,6 +10,7 @@ import {
   createReader,
   createSchema,
   createTestDecodeClient,
+  mockReaderFactory,
 } from "./inline-client.test-fixtures";
 
 describe("MCAP decoded messages", () => {
@@ -22,7 +23,7 @@ describe("MCAP decoded messages", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([[7, createChannel()]]),
           messages: [message],
@@ -49,11 +50,16 @@ describe("MCAP decoded messages", () => {
       timelineTimeNs: 100n,
       topic: "/topic",
     });
-    expect(decodeClient.decode).toHaveBeenCalledWith({
+    const [decodeRequest] = decodeClient.decode.mock.calls[0] ?? [];
+    if (!decodeRequest) throw new Error("Expected a decode request");
+    expect(decodeRequest.cache?.recordId).toMatch(
+      /^7:100:101:2:3:[0-9a-f]{8}$/,
+    );
+    expect(decodeRequest).toEqual({
       bytes: messageBytes,
       cache: {
         decoderOptionsKey: "activeTimeline=log",
-        recordId: expect.stringMatching(/^7:100:101:2:3:[0-9a-f]{8}$/),
+        recordId: decodeRequest.cache?.recordId,
         source,
         streamId: "/topic",
         timeNs: 100n,
@@ -80,7 +86,7 @@ describe("MCAP decoded messages", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           messages: [createMessage(new Uint8Array([1]))],
         }),
@@ -102,7 +108,7 @@ describe("MCAP decoded messages", () => {
   it("aborts before opening a reader or yielding a message", async () => {
     const controller = new AbortController();
     controller.abort();
-    const readerFactory = vi.fn(async () => createReader());
+    const readerFactory = mockReaderFactory(() => createReader());
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       readerFactory,
@@ -133,7 +139,7 @@ describe("MCAP decoded messages", () => {
     );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes },
-      readerFactory: vi.fn(async (_source, readable) => {
+      readerFactory: mockReaderFactory(async (_source, readable) => {
         await readable.read(0n, 1n);
         return createReader();
       }),
@@ -159,7 +165,7 @@ describe("MCAP decoded messages", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () => {
+      readerFactory: mockReaderFactory(() => {
         const dispose = vi.fn();
         disposals.push(dispose);
         return Object.assign(

@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { compareBigInt } from "../../../../ir";
 import { EpisodeReadUnsupportedError } from "../../../../ports";
 import { throwIfAborted } from "../../../../utils/cancellation";
@@ -7,6 +6,7 @@ import type {
   McapReadMessageIndexWindowRequest,
 } from "../../contracts";
 import type {
+  McapChunkIndex,
   McapIndexedMessageTime,
   McapIndexedReaderLike,
 } from "../../reader";
@@ -22,8 +22,6 @@ const RAW_RECORD_INDEX_WINDOW_MAX_SIDE = 200;
 
 /** Maximum message-index chunks inspected for one side of a window. */
 const RAW_RECORD_INDEX_WINDOW_MAX_CHUNK_PROBES = 64;
-
-type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 
 /** Reads a bounded, exact-order message-index window without decoding payloads. */
 export async function readMcapMessageIndexWindow({
@@ -142,15 +140,16 @@ async function assertIndexedEntryExists(
   expected: McapIndexedMessageTime,
   signal?: AbortSignal,
 ): Promise<void> {
-  const read = reader.readIndexedMessageTimes;
-  if (!read) throw new Error("MCAP message indexes are unavailable");
+  if (!reader.readIndexedMessageTimes) {
+    throw new Error("MCAP message indexes are unavailable");
+  }
   const chunk = reader.chunkIndexes.find(
     (candidate: McapChunkIndex) =>
       candidate.chunkStartOffset === expected.chunkStartOffset,
   );
   if (!chunk) throw new Error("MCAP message cursor is stale or invalid");
   assertRawRecordSourceWorkBound(1, chunk.messageIndexLength, 0n);
-  for await (const entry of read({
+  for await (const entry of reader.readIndexedMessageTimes({
     channelIds: [expected.channelId],
     chunkStartOffsets: [expected.chunkStartOffset],
     endTimeNs: expected.logTimeNs,
@@ -180,8 +179,9 @@ async function readSide({
   readonly signal?: AbortSignal;
 }): Promise<McapIndexedMessageTime[]> {
   if (limit <= 0) return [];
-  const read = reader.readIndexedMessageTimes;
-  if (!read) throw new Error("MCAP message indexes are unavailable");
+  if (!reader.readIndexedMessageTimes) {
+    throw new Error("MCAP message indexes are unavailable");
+  }
   const chunks = reader.chunkIndexes
     .filter((chunk: McapChunkIndex) => chunkHasTopicIndex(chunk, channelIds))
     .filter((chunk: McapChunkIndex) =>
@@ -211,7 +211,7 @@ async function readSide({
       probed.reduce((sum, entry) => sum + entry.messageIndexLength, 0n),
       0n,
     );
-    for await (const entry of read({
+    for await (const entry of reader.readIndexedMessageTimes({
       channelIds: [...channelIds],
       chunkStartOffsets: [chunk.chunkStartOffset],
       ...(direction === "previous"
