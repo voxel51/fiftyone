@@ -424,19 +424,51 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         self.assertEqual(target.media_type, "point-cloud")
         self.assertEqual(len(target), 2)
 
+    def _ctx_with_two_image_slices(self, **request_params):
+        # a second dataset with two same-media-type slices ("left", "right"),
+        # so a multi-slice selection can be flattened without also mixing
+        # media types (this class's shared dataset only has one image slice)
+        dataset = fo.Dataset()
+        self.addCleanup(dataset.delete)
+
+        group1 = fo.Group()
+        dataset.add_group_field("group", default="left")
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/left3.jpg",
+                    group=group1.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/right3.jpg",
+                    group=group1.element("right"),
+                ),
+            ]
+        )
+
+        ctx = foo.ExecutionContext(
+            operator_uri="test_operator",
+            request_params=dict(
+                dataset_name=dataset.name,
+                dataset_id=dataset._doc.id,
+                **request_params,
+            ),
+        )
+        return ctx, dataset
+
     def test_non_flat_slice_selection_is_flattened(self):
         # the view already selects slices, so it defines its own scope, but
         # require_flat=True still means the result must not be grouped
         stage = fo.SelectGroupSlices(["left", "right"], flat=False)
-        ctx = self._ctx(group_slice="left", view=[stage._serialize()])
+        ctx, dataset = self._ctx_with_two_image_slices(
+            group_slice="left", view=[stage._serialize()]
+        )
 
         target = ctx.target_view(require_flat=True)
         self.assertEqual(target.media_type, "image")
         self.assertListEqual(
             target.values("filepath"),
-            self.dataset.select_group_slices(["left", "right"]).values(
-                "filepath"
-            ),
+            dataset.select_group_slices(["left", "right"]).values("filepath"),
         )
 
     def test_non_flat_slice_selection_keeps_the_property_valid(self):
@@ -450,8 +482,10 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
 
     def test_selected_samples_resolve_when_the_view_selects_slices(self):
         # selections are made against the view, so its ids are in scope
-        stage = fo.SelectGroupSlices(["left", "lidar"], flat=False)
-        ctx = self._ctx(group_slice="left", view=[stage._serialize()])
+        stage = fo.SelectGroupSlices(["left", "right"], flat=False)
+        ctx, _ = self._ctx_with_two_image_slices(
+            group_slice="left", view=[stage._serialize()]
+        )
         selected = ctx.view.values("id")[:1]
 
         ctx.request_params["selected"] = selected
