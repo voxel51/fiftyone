@@ -1,11 +1,22 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from "vitest";
 
 import type { EpisodeSession, EpisodeSource } from "../../ports";
 import { useEpisodeSession } from "./use-episode-session";
 
+type OpenEpisodeSession =
+  (typeof import("../../runtime"))["openEpisodeSession"];
+
 const sessionHarness = vi.hoisted(() => ({
-  openEpisodeSession: vi.fn(),
+  openEpisodeSession: vi.fn<OpenEpisodeSession>(),
 }));
 
 vi.mock("../../runtime", () => ({
@@ -38,7 +49,10 @@ describe("useEpisodeSession", () => {
     const { rerender, result, unmount } = renderHook(
       ({ source }: { source: EpisodeSource | null }) => {
         const state = useEpisodeSession(
-          { mediaType: "group", path: `${source?.episodeId}.mcap` },
+          {
+            mediaType: "group",
+            path: source ? `${source.episodeId}.mcap` : "",
+          },
           source,
         );
         renders.push({ session: state.session, source, status: state.status });
@@ -93,11 +107,14 @@ describe("useEpisodeSession", () => {
     );
     const firstOpenOptions =
       sessionHarness.openEpisodeSession.mock.calls[0]?.[2];
-    expect(firstOpenOptions?.signal.aborted).toBe(false);
+    if (!firstOpenOptions?.signal) {
+      throw new Error("Expected the session open signal");
+    }
+    expect(firstOpenOptions.signal.aborted).toBe(false);
 
     rerender({ source: secondSource });
 
-    expect(firstOpenOptions?.signal.aborted).toBe(true);
+    expect(firstOpenOptions.signal.aborted).toBe(true);
     await waitFor(() => expect(result.current.session).toBe(secondSession));
     unmount();
   });
@@ -162,18 +179,32 @@ describe("useEpisodeSession", () => {
 function createSource(episodeId: string): EpisodeSource {
   return {
     assets: {
-      list: vi.fn(async () => []),
+      list: vi.fn(() => Promise.resolve([])),
       resolve: vi.fn(),
     },
     episodeId,
   };
 }
 
-function createSession(): EpisodeSession {
+function createSession(): EpisodeSession & {
+  readonly activate: Mock<() => void>;
+  readonly dispose: Mock<() => void>;
+} {
   return {
     activate: vi.fn(),
     dispose: vi.fn(),
-  } as unknown as EpisodeSession;
+    manifest: {
+      episodeId: "test",
+      streams: [],
+      timeDomain: { id: "time", kind: "timestamp" },
+      timeRange: { endNs: 1n, startNs: 0n },
+    },
+    read: () => asyncValues([]),
+  };
+}
+
+async function* asyncValues<Value>(values: readonly Value[]) {
+  for await (const value of values) yield value;
 }
 
 function deferred<T>(): {

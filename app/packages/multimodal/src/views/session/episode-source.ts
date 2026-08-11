@@ -52,17 +52,18 @@ export function episodeSourceFromByteSource(
   const bootstrap = getSourceBootstrap(source);
   return {
     assets: {
-      list: async () => [
-        {
-          id: source.sourceId,
-          role: "recording",
-        },
-      ],
-      resolve: async (assetId) => {
+      list: () =>
+        Promise.resolve([
+          {
+            id: source.sourceId,
+            role: "recording",
+          },
+        ]),
+      resolve: (assetId) => {
         if (assetId !== source.sourceId) {
-          throw new Error(`Unknown episode asset: ${assetId}`);
+          return Promise.reject(new Error(`Unknown episode asset: ${assetId}`));
         }
-        return source;
+        return Promise.resolve(source);
       },
     },
     episodeId: source.sourceId,

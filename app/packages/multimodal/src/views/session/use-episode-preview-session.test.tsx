@@ -1,11 +1,14 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import type { EpisodePreviewSession, EpisodeSource } from "../../ports";
 import { useEpisodePreviewSession } from "./use-episode-preview-session";
 
+type OpenEpisodePreviewSession =
+  (typeof import("../../runtime"))["openEpisodePreviewSession"];
+
 const previewHarness = vi.hoisted(() => ({
-  openEpisodePreviewSession: vi.fn(),
+  openEpisodePreviewSession: vi.fn<OpenEpisodePreviewSession>(),
 }));
 
 vi.mock("../../runtime", () => ({
@@ -92,11 +95,14 @@ describe("useEpisodePreviewSession", () => {
     );
     const firstOpenOptions =
       previewHarness.openEpisodePreviewSession.mock.calls[0]?.[2];
-    expect(firstOpenOptions?.signal.aborted).toBe(false);
+    if (!firstOpenOptions?.signal) {
+      throw new Error("Expected the preview open signal");
+    }
+    expect(firstOpenOptions.signal.aborted).toBe(false);
 
     rerender({ source: secondSource });
 
-    expect(firstOpenOptions?.signal.aborted).toBe(true);
+    expect(firstOpenOptions.signal.aborted).toBe(true);
     await waitFor(() => expect(result.current.session).toBe(secondSession));
     unmount();
   });
@@ -154,17 +160,28 @@ describe("useEpisodePreviewSession", () => {
 function createSource(episodeId: string): EpisodeSource {
   return {
     assets: {
-      list: vi.fn(async () => []),
+      list: vi.fn(() => Promise.resolve([])),
       resolve: vi.fn(),
     },
     episodeId,
   };
 }
 
-function createPreviewSession(): EpisodePreviewSession {
+function createPreviewSession(): EpisodePreviewSession & {
+  readonly dispose: Mock<() => void>;
+} {
   return {
     dispose: vi.fn(),
-  } as unknown as EpisodePreviewSession;
+    read: vi.fn(() =>
+      Promise.resolve({
+        frame: null,
+        status: "empty" as const,
+        streamId: null,
+        streamSourceName: null,
+        streamSourceNames: [],
+      }),
+    ),
+  };
 }
 
 function deferred<T>(): {
