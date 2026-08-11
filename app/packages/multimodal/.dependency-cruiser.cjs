@@ -125,6 +125,14 @@ module.exports = {
       to: { path: FORMAT_VENDORS },
     },
     {
+      // Views emit format-neutral observations and consume runtime ports;
+      // adapter-specific translation belongs at the injection boundary.
+      name: "views-do-not-import-adapters",
+      severity: "error",
+      from: { path: VIEWS, pathNot: TEST_MODULE },
+      to: { path: ADAPTERS },
+    },
+    {
       // Keep each format adapter independent so adding one format cannot
       // create an implicit runtime dependency on another implementation.
       name: "adapters-do-not-import-other-adapters",
