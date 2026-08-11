@@ -156,7 +156,9 @@ function LivePerformanceStats({
             Performance diagnostics
           </Text>
           <Button
-            onClick={copySnapshot}
+            onClick={() => {
+              void copySnapshot();
+            }}
             size={Size.Xs}
             variant={Variant.Secondary}
           >
