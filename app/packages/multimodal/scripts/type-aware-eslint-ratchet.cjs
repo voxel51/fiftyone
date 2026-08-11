@@ -25,6 +25,7 @@ const migratedDirectories = [
   "packages/multimodal/src/visualization/*.{ts,tsx}",
   "packages/multimodal/src/visualization/composition/**/*.{ts,tsx}",
   "packages/multimodal/src/visualization/media-2d/**/*.{ts,tsx}",
+  "packages/multimodal/src/visualization/message/**/*.{ts,tsx}",
   "packages/multimodal/src/visualization/panel-ui/**/*.{ts,tsx}",
   "packages/multimodal/src/visualization/plot/**/*.{ts,tsx}",
   "packages/multimodal/src/visualization/scene-3d/**/*.{ts,tsx}",

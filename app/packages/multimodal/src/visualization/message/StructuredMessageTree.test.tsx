@@ -10,8 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RawObjectNode } from "../../ir";
 import StructuredMessageTree from "./StructuredMessageTree";
 
-const writeText = vi.fn<(text: string) => Promise<void>>(
-  async (_text: string) => undefined,
+const writeText = vi.fn<(text: string) => Promise<void>>((_text: string) =>
+  Promise.resolve(),
 );
 const addToPlot = vi.fn();
 
@@ -168,10 +168,16 @@ describe("StructuredMessageTree", () => {
 
     fireEvent.click(screen.getByTestId("episode-raw-copy-data"));
     fireEvent.click(screen.getByTestId("episode-raw-copy-speed"));
-    await act(async () => resolveSecond());
+    await act(async () => {
+      resolveSecond();
+      await Promise.resolve();
+    });
     expect(screen.getByRole("button", { name: "speed copied" })).toBeTruthy();
 
-    await act(async () => resolveFirst());
+    await act(async () => {
+      resolveFirst();
+      await Promise.resolve();
+    });
     expect(screen.getByTestId("episode-raw-copy-data").textContent).toBe(
       "copy",
     );
