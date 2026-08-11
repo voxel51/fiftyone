@@ -33,10 +33,22 @@ const subareaTotals = new Map();
 const fileTotals = new Map();
 const ruleTotals = new Map();
 let total = 0;
+let hasFatalErrors = false;
 
 for (const result of results) {
   const relativePath = relative(packageRoot, result.filePath);
   const sourcePath = relativePath.replace(/^src\//, "");
+  if (result.fatalErrorCount > 0) {
+    hasFatalErrors = true;
+    for (const message of result.messages) {
+      if (!message.fatal) continue;
+      console.error(
+        `${relativePath}:${message.line ?? 0}:${message.column ?? 0} ${message.message}`,
+      );
+    }
+    continue;
+  }
+
   const slash = sourcePath.indexOf("/");
   const directory = slash === -1 ? "(root)" : sourcePath.slice(0, slash);
   const remainder = slash === -1 ? "" : sourcePath.slice(slash + 1);
@@ -69,39 +81,45 @@ for (const result of results) {
   }
 }
 
-console.log("BY RULE");
-for (const [rule, count] of [...ruleTotals].sort(([a], [b]) =>
-  a.localeCompare(b),
-)) {
-  console.log(`${rule}\t${count}`);
+if (hasFatalErrors) {
+  process.exitCode = 1;
+} else {
+  console.log("BY RULE");
+  for (const [rule, count] of [...ruleTotals].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    console.log(`${rule}\t${count}`);
+  }
+  console.log("\nBY TOP-LEVEL SOURCE DIRECTORY");
+  for (const [directory, count] of [...directoryTotals].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    console.log(`${directory}\t${count}`);
+  }
+  console.log("\nBY RULE AND TOP-LEVEL SOURCE DIRECTORY");
+  for (const [key, count] of [...census].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    console.log(`${key}\t${count}`);
+  }
+  console.log("\nBY SECOND-LEVEL SOURCE AREA");
+  for (const [area, count] of [...areaTotals].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    console.log(`${area}\t${count}`);
+  }
+  console.log("\nBY THIRD-LEVEL SOURCE AREA");
+  for (const [subarea, count] of [...subareaTotals].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    console.log(`${subarea}\t${count}`);
+  }
+  console.log("\nBY SOURCE FILE");
+  for (const [file, count] of [...fileTotals].sort(
+    ([leftFile, leftCount], [rightFile, rightCount]) =>
+      rightCount - leftCount || leftFile.localeCompare(rightFile),
+  )) {
+    console.log(`${file}\t${count}`);
+  }
+  console.log(`\nTOTAL\t${total}`);
 }
-console.log("\nBY TOP-LEVEL SOURCE DIRECTORY");
-for (const [directory, count] of [...directoryTotals].sort(([a], [b]) =>
-  a.localeCompare(b),
-)) {
-  console.log(`${directory}\t${count}`);
-}
-console.log("\nBY RULE AND TOP-LEVEL SOURCE DIRECTORY");
-for (const [key, count] of [...census].sort(([a], [b]) => a.localeCompare(b))) {
-  console.log(`${key}\t${count}`);
-}
-console.log("\nBY SECOND-LEVEL SOURCE AREA");
-for (const [area, count] of [...areaTotals].sort(([a], [b]) =>
-  a.localeCompare(b),
-)) {
-  console.log(`${area}\t${count}`);
-}
-console.log("\nBY THIRD-LEVEL SOURCE AREA");
-for (const [subarea, count] of [...subareaTotals].sort(([a], [b]) =>
-  a.localeCompare(b),
-)) {
-  console.log(`${subarea}\t${count}`);
-}
-console.log("\nBY SOURCE FILE");
-for (const [file, count] of [...fileTotals].sort(
-  ([leftFile, leftCount], [rightFile, rightCount]) =>
-    rightCount - leftCount || leftFile.localeCompare(rightFile),
-)) {
-  console.log(`${file}\t${count}`);
-}
-console.log(`\nTOTAL\t${total}`);
