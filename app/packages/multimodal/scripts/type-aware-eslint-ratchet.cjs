@@ -2,16 +2,19 @@ const typeAwareRules = require("@typescript-eslint/eslint-plugin").configs[
   "recommended-requiring-type-checking"
 ].rules;
 
-// Add directories here only after their type-aware lint findings are resolved.
+// Add paths here only after their type-aware lint findings are resolved.
 // Paths are relative to the app workspace, where check-lint.mjs invokes ESLint,
 // and intentionally explicit so that the migration state is visible in review.
-const migratedDirectories = [
+const migratedPaths = [
   "packages/multimodal/src/adapters/fixture/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/instrumentation/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/message-decoders/**/*.{ts,tsx}",
+  "packages/multimodal/src/adapters/mcap/format-adapter.ts",
+  "packages/multimodal/src/adapters/mcap/resource-client-factory.test.ts",
   "packages/multimodal/src/adapters/mcap/synchronization/**/*.{ts,tsx}",
+  "packages/multimodal/src/adapters/mcap/transform-topology.real.test.ts",
   "packages/multimodal/src/adapters/mcap/worker/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/worker-host/**/*.{ts,tsx}",
   "packages/multimodal/src/codecs/**/*.{ts,tsx}",
@@ -33,4 +36,4 @@ const migratedDirectories = [
   "packages/multimodal/src/visualization/**/*.{ts,tsx}",
 ];
 
-module.exports = { migratedDirectories, typeAwareRules };
+module.exports = { migratedPaths, typeAwareRules };

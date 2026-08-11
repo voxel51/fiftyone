@@ -1,5 +1,5 @@
 const {
-  migratedDirectories,
+  migratedPaths,
   typeAwareRules,
 } = require("./scripts/type-aware-eslint-ratchet.cjs");
 
@@ -9,10 +9,10 @@ module.exports = {
     es6: true,
   },
   overrides: [
-    ...(migratedDirectories.length
+    ...(migratedPaths.length
       ? [
           {
-            files: migratedDirectories,
+            files: migratedPaths,
             parserOptions: {
               project: "./tsconfig.json",
               tsconfigRootDir: __dirname,

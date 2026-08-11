@@ -53,14 +53,15 @@ describe.skipIf(!REAL_MCAP_PATH)("real MCAP transform topology smoke", () => {
     };
     const source: EpisodeSource = {
       assets: {
-        list: async () => [
-          {
-            id: "recording",
-            mediaType: "application/x-mcap",
-            role: "recording",
-          },
-        ],
-        resolve: async () => descriptor,
+        list: () =>
+          Promise.resolve([
+            {
+              id: "recording",
+              mediaType: "application/x-mcap",
+              role: "recording",
+            },
+          ]),
+        resolve: () => Promise.resolve(descriptor),
       },
       episodeId: "real-transform-topology-smoke",
     };

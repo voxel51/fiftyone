@@ -936,9 +936,7 @@ class McapEpisodeSession implements EpisodeSession {
       streams: manifest.streams,
     });
     this.playback = this.createPlaybackCapability(timelineRange);
-    const readPointCloudChannel = this.client.readPointCloudChannel?.bind(
-      this.client,
-    );
+    const readPointCloudChannel = this.client.readPointCloudChannel;
     if (readPointCloudChannel) {
       this.pointCloudProjection = {
         readChannel: (request) => {
@@ -1430,8 +1428,7 @@ class McapEpisodeSession implements EpisodeSession {
       if (!readTransformTopology) {
         throw new Error("MCAP transform topology reads are unavailable");
       }
-      const result = await readTransformTopology.call(
-        this.client,
+      const result = await readTransformTopology(
         {
           absoluteBudget,
           absoluteMaxChunks: this.boundedPolicy.maxChunksPerGrant,

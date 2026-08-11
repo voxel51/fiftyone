@@ -10,7 +10,7 @@ const workerHarness = vi.hoisted(() => {
     dispose: vi.fn(),
     releaseRetainedResources: vi.fn(),
     readDecodedMessages: vi.fn(async function* () {
-      for (const item of [] as never[]) {
+      for await (const item of [] as never[]) {
         yield item;
       }
     }),

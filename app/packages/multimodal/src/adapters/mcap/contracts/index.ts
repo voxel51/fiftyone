@@ -1015,14 +1015,14 @@ export interface McapResourceClient {
   /**
    * Releases adapter-owned caches/readers/workers.
    */
-  dispose(): void;
+  dispose(this: void): void;
 
   /**
    * Releases heavyweight decoded resources and source-bound reader state when
    * no renderer currently owns the client, while allowing workers to remain
    * warm and restart their readers lazily.
    */
-  releaseRetainedResources?(): void;
+  releaseRetainedResources?(this: void): void;
 
   /**
    * Declares which source the owning renderer is presenting. Worker-backed
@@ -1031,7 +1031,7 @@ export interface McapResourceClient {
    * sources then fail fast with the cancelled error. Callers that never
    * activate keep request-driven switching.
    */
-  activateSource?(source: ByteSourceDescriptor): void;
+  activateSource?(this: void, source: ByteSourceDescriptor): void;
 
   /**
    * Cancels queued and in-flight speculative idle-lane reads (background
@@ -1040,13 +1040,13 @@ export interface McapResourceClient {
    * transfers nobody needs. Cancelled reads reject with the canonical
    * cancelled error; consumers treat those as benign.
    */
-  cancelIdleReads?(): void;
+  cancelIdleReads?(this: void): void;
 
   /**
    * Cancels queued and in-flight foreground playback batches made obsolete
    * by a discontinuous seek. Current-frame and placement reads are preserved.
    */
-  cancelRunwayReads?(): void;
+  cancelRunwayReads?(this: void): void;
 
   /**
    * Subscribes to cumulative network-transport snapshots from worker-backed
@@ -1054,6 +1054,7 @@ export interface McapResourceClient {
    * optional.
    */
   subscribeTransport?(
+    this: void,
     listener: (sample: LaneTransportSnapshot) => void,
   ): () => void;
 
@@ -1063,12 +1064,14 @@ export interface McapResourceClient {
    * so they never serialize current-frame, playback, or placement work.
    */
   readDecodedMessages(
+    this: void,
     request: McapReadDecodedMessagesRequest,
     options?: McapResourceReadOptions,
   ): AsyncGenerator<McapDecodedMessage, void, void>;
 
   /** Executes one admitted, resumable MCAP chunk grant. */
   readBoundedMessages(
+    this: void,
     request: McapReadBoundedMessagesRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapReadBoundedMessagesResult>;
@@ -1077,6 +1080,7 @@ export interface McapResourceClient {
    * Returns the playable time range for the active timeline.
    */
   readTimelineRange(
+    this: void,
     request: McapReadTimelineRangeRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapTimelineRange>;
@@ -1085,6 +1089,7 @@ export interface McapResourceClient {
    * Reads stream inventory entries from MCAP summary channel metadata.
    */
   readTopics(
+    this: void,
     request: McapReadTopicsRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapRecordingInventory>;
@@ -1094,6 +1099,7 @@ export interface McapResourceClient {
    * Auxiliary data: soft-fails to null bounds when indexes are absent.
    */
   readTopicTimeBounds(
+    this: void,
     request: McapReadTopicTimeBoundsRequest,
   ): Promise<readonly McapTopicTimeBounds[]>;
 
@@ -1103,6 +1109,7 @@ export interface McapResourceClient {
    * decoder registry — covers telemetry topics with no visualization.
    */
   enumerateNumericFields(
+    this: void,
     request: McapEnumerateNumericFieldsRequest,
   ): Promise<readonly McapTopicNumericFields[]>;
 
@@ -1112,6 +1119,7 @@ export interface McapResourceClient {
    * current-frame, playback, or placement work.
    */
   readNumericSeries(
+    this: void,
     request: McapReadNumericSeriesRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapNumericSeriesResult>;
@@ -1121,6 +1129,7 @@ export interface McapResourceClient {
    * topics in a single bounded chunk traversal.
    */
   readNumericSeriesSlice?(
+    this: void,
     request: McapReadNumericSeriesSliceRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapNumericSeriesSliceResult>;
@@ -1131,24 +1140,28 @@ export interface McapResourceClient {
    * decode never stalls current-frame or playback reads.
    */
   readRawMessageRecord(
+    this: void,
     request: McapReadRawMessageRecordRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapRawMessageRecordResult>;
 
   /** Reads one exact indexed message on the interactive inspection lane. */
   readRawMessageAtCursor?(
+    this: void,
     request: McapReadRawMessageAtCursorRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapRawMessageRecordResult>;
 
   /** Reads a bounded index-only window for interactive inspection. */
   readMessageIndexWindow?(
+    this: void,
     request: McapReadMessageIndexWindowRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapMessageIndexWindowResult>;
 
   /** Projects one replacement point-cloud channel without rebuilding XYZ. */
   readPointCloudChannel?(
+    this: void,
     request: McapReadPointCloudChannelRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapPointCloudChannelResult>;
@@ -1157,6 +1170,7 @@ export interface McapResourceClient {
    * Reads eager frame transforms needed for initial 3D placement.
    */
   readFrameTransformBootstrap(
+    this: void,
     request: McapReadFrameTransformBootstrapRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapFrameTransformSet>;
@@ -1165,12 +1179,14 @@ export interface McapResourceClient {
    * Reads dynamic frame transforms in a playback timeline window.
    */
   readFrameTransformWindow(
+    this: void,
     request: McapReadFrameTransformWindowRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapFrameTransformSet>;
 
   /** Reads one explicit bounded grant of recording-wide transform topology. */
   readTransformTopology?(
+    this: void,
     request: McapReadTransformTopologyRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapTransformTopologyResult>;
@@ -1179,6 +1195,7 @@ export interface McapResourceClient {
    * Reads one synchronized decoded message window around a playback time.
    */
   readSynchronizedMessages(
+    this: void,
     request: McapReadSynchronizedMessagesRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapSynchronizedMessageWindow>;
@@ -1187,6 +1204,7 @@ export interface McapResourceClient {
    * Reads multiple synchronized windows for playback lookahead/prefetch.
    */
   readSynchronizedMessageBatch(
+    this: void,
     request: McapReadSynchronizedMessageBatchRequest,
     options?: McapResourceReadOptions,
   ): Promise<readonly McapSynchronizedMessageWindow[]>;
