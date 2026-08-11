@@ -57,6 +57,7 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
         ctx={ctx}
         layoutScopeKey={datasetId}
         navigationPending={ctx.transitioning === true}
+        session={sessionState.session}
         timeRange={timeRange}
       >
         {({

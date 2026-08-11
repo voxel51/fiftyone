@@ -40,7 +40,12 @@ describe("timeline extension host", () => {
     const extension: TimelineExtension = {
       id: "test:events",
       order: 10,
-      Component: ({ children, selectedAnnotationStreams, timeRange }) => (
+      Component: ({
+        children,
+        selectedAnnotationStreams,
+        session,
+        timeRange,
+      }) => (
         <>
           {children({
             sections: [
@@ -60,7 +65,7 @@ describe("timeline extension host", () => {
             runtime: <span data-testid="runtime">runtime</span>,
           })}
           <span data-testid="context">
-            {JSON.stringify({ selectedAnnotationStreams, timeRange })}
+            {JSON.stringify({ selectedAnnotationStreams, session, timeRange })}
           </span>
         </>
       ),
@@ -81,7 +86,7 @@ describe("timeline extension host", () => {
     expect(screen.getByTestId("search-enabled").textContent).toBe("true");
     expect(screen.getByTestId("runtime").textContent).toBe("runtime");
     expect(screen.getByTestId("context").textContent).toBe(
-      '{"selectedAnnotationStreams":[],"timeRange":null}',
+      '{"selectedAnnotationStreams":[],"session":null,"timeRange":null}',
     );
   });
 
@@ -122,6 +127,7 @@ function hostElement() {
       ctx={CTX}
       layoutScopeKey="dataset"
       navigationPending={false}
+      session={null}
       timeRange={null}
     >
       {({ preferences, runtime, tracks }) => (

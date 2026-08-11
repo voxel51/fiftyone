@@ -47,7 +47,7 @@ export interface TimelineExtensionContext {
   readonly layoutScopeKey: string;
   readonly navigationPending: boolean;
   readonly selectedAnnotationStreams: readonly string[];
-  readonly session?: EpisodeSession | null;
+  readonly session: EpisodeSession | null;
   readonly timeRange: TimeWindow | null;
 }
 
