@@ -17,7 +17,7 @@ import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useEffect, useRef, useState } from "react";
 import PlotView from "./PlotView";
-import { fetchRunsStatus } from "./protocol";
+import { fetchRunsStatus, type RunStatus } from "./protocol";
 import RunsList from "./RunsList";
 import { useVisualizationRuns } from "./useVisualizationRuns";
 
@@ -32,6 +32,15 @@ const PENDING_POLL_MS = 5_000;
 // distinguishes "first mount after a page load" (reset to the runs
 // list) from "remount mid-session" (preserve the open run).
 const mountedPanels = new Set<string>();
+
+/** `key:ready:error` per run, order-independent: the basis for deciding
+ * whether the dataset the page loaded still matches the server's runs */
+function statusSignature(runs: RunStatus[]): string {
+  return runs
+    .map((run) => `${run.brainKey}:${run.ready ? 1 : 0}:${run.error ? 1 : 0}`)
+    .sort()
+    .join(",");
+}
 
 export default function EmbeddingsV2Panel() {
   const datasetName = fos.useCurrentDatasetName() ?? null;
@@ -87,35 +96,37 @@ export default function EmbeddingsV2Panel() {
   const openRun =
     runs?.find((r) => r.brainKey === openKey && r.ready && !r.error) ?? null;
 
-  // Polling has no reason to run against the plot (nothing there can
-  // become ready), a fully-ready list, or a backgrounded tab — so it's
-  // gated on all three.
-  const pendingKeys = (runs ?? [])
-    .filter((run) => !run.ready && !run.error)
-    .map((r) => r.brainKey);
-  const pendingSignature = pendingKeys.join(",");
+  // The list always checks the server once when it appears: a run
+  // computed from the SDK after the page loaded its dataset is absent
+  // from `runs` entirely, so waiting for a pending run to flip would
+  // never surface it. Repeat polling is what's conditional — it only
+  // earns its cost while a run can still finish — and neither the check
+  // nor the interval has any reason to run against the plot (nothing
+  // there can change) or a backgrounded tab.
+  const knownSignature = runs === null ? null : statusSignature(runs);
+  const hasPending = (runs ?? []).some((run) => !run.ready && !run.error);
 
   useEffect(() => {
-    if (openRun || !datasetId || pendingKeys.length === 0) return undefined;
+    if (openRun || !datasetId || knownSignature === null) return undefined;
 
     // `active` guards against a straggling response outliving this effect
     // (e.g. the user opens a plot while a request is in flight) — without
-    // it, a late `changed` result would still fire the heavy refresh
-    // against a dataset/view the effect no longer applies to. `inFlight`
-    // just skips overlapping ticks if a response is slow
+    // it, a late mismatch would still fire the heavy refresh against a
+    // dataset/view the effect no longer applies to. `inFlight` just skips
+    // overlapping ticks if a response is slow
     let active = true;
     let inFlight = false;
 
-    const check = () => {
-      if (document.hidden || inFlight) return;
+    // The hidden-tab gate belongs to the repeat ticks; the one check the
+    // list owes itself still runs, so a panel opened in a background tab
+    // isn't stuck showing a stale list once it is looked at
+    const check = (force = false) => {
+      if ((!force && document.hidden) || inFlight) return;
       inFlight = true;
       fetchRunsStatus(datasetId)
         .then((statuses) => {
           if (!active) return;
-          const changed = statuses.some(
-            (s) => pendingKeys.includes(s.brainKey) && (s.ready || s.error),
-          );
-          if (changed) refresh();
+          if (statusSignature(statuses) !== knownSignature) refresh();
         })
         .catch(() => undefined)
         .finally(() => {
@@ -123,18 +134,23 @@ export default function EmbeddingsV2Panel() {
         });
     };
 
-    check();
+    check(true);
+    if (!hasPending) {
+      return () => {
+        active = false;
+      };
+    }
+
     const id = window.setInterval(check, PENDING_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(id);
     };
-    // openRun/pendingKeys are summarized as Boolean(openRun)/pendingSignature
-    // on purpose: both are new references most renders, and depending on
-    // them directly would restart the interval far more often than the
-    // plot-opened/pending-set-changed transitions this actually needs
+    // openRun is summarized as Boolean(openRun) on purpose: it is a new
+    // reference most renders, and depending on it directly would restart
+    // the interval far more often than the plot-opened transition needs
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(openRun), pendingSignature, datasetId, refresh]);
+  }, [Boolean(openRun), knownSignature, hasPending, datasetId, refresh]);
 
   const handleOpen = (brainKey: string) => {
     // every run opens uncolored: a carried-over choice can be invalid
