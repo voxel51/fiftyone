@@ -1,5 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { errorMessage } from "../utils/errors";
 import { createTemporalTagsClient } from "./client";
 import type {
   TemporalTag,
@@ -201,14 +202,6 @@ function temporalTagFilterKey(filter: TemporalTagFilter | undefined) {
   }
 
   return JSON.stringify(filter);
-}
-
-function errorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }
 
 function getDefaultTemporalTagsClient() {

@@ -2,6 +2,7 @@ import * as fos from "@fiftyone/state";
 import { Suspense } from "react";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import useLabelAttributeIcon from "../use-label-attribute-icon";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import { useRecoilValue } from "recoil";
@@ -46,6 +47,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   useRecoilValue(state.numericFilterPrefetch({ path, modal }));
   const show = useShow(modal, named, path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
+  const attributeIcon = useLabelAttributeIcon(modal, named, path, color);
   if (!show) {
     return null;
   }
@@ -63,7 +65,10 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
           template={({ label, hoverTarget }) => (
             <Header>
               <span ref={hoverTarget}>{label}</span>
-              {icon}
+              <span style={{ alignItems: "center", display: "flex" }}>
+                {icon}
+                {attributeIcon}
+              </span>
             </Header>
           )}
         />

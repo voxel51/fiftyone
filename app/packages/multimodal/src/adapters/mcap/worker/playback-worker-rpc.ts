@@ -8,8 +8,9 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
-import { dehydrateMcapFrameTransformSet } from "../frame-transforms";
-import type { McapResourceClient } from "../types";
+import { dehydrateMcapFrameTransformSet } from "../transforms/wire";
+import type { McapResourceClient } from "../contracts/index";
+import type { McapPlaybackWorkerResourceClient } from "./worker-resource-client";
 
 /**
  * Worker operation descriptor for one unary MCAP RPC.
@@ -46,13 +47,20 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
   },
+  readBoundedMessages: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
+  },
   readDecodedMessages: {
     kind: "stream",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
   },
   readFrameTransformBootstrap: {
     kind: "unary",
-    priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
+    // Static graph enrichment must not occupy the serial foreground lane in
+    // front of image playback batches. Current-time placement remains at
+    // PLACEMENT_FRAME through readFrameTransformWindow.
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
   },
   readFrameTransformWindow: {
     kind: "unary",
@@ -62,9 +70,27 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
   },
-  // Idle lane on purpose: a raw read may decode one multi-megabyte
-  // message, and the foreground lane is serial with current-frame and
-  // playback reads. Inspection latency loses to playback smoothness.
+  readNumericSeriesSlice: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
+  },
+  readPointCloudChannel: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
+  // Explicit Browse actions stay on the interactive lane and bypass the
+  // starved-link/idle demand gate used by Follow mode.
+  readMessageIndexWindow: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
+  readRawMessageAtCursor: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
+  // Idle by default: active-playback inspection must not occupy a user-visible
+  // playback lane. Explicit paused inspection can opt into its own isolated
+  // background-admission worker; whole-message export is explicitly bulk.
   readRawMessageRecord: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
@@ -80,6 +106,10 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
   readTimelineRange: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
+  readTransformTopology: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
   },
   readTopics: {
     kind: "unary",
@@ -113,12 +143,14 @@ export function isMcapPlaybackWorkerStreamRequest(
  * Runs one unary MCAP worker request against a resource client.
  */
 export function runMcapPlaybackWorkerUnaryRequest(
-  client: McapResourceClient,
+  client: McapPlaybackWorkerResourceClient,
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>,
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
   switch (message.type) {
     case "enumerateNumericFields":
       return client.enumerateNumericFields(message.payload);
+    case "readBoundedMessages":
+      return client.readBoundedMessages(message.payload);
     case "readFrameTransformBootstrap":
       return client
         .readFrameTransformBootstrap(message.payload)
@@ -129,14 +161,49 @@ export function runMcapPlaybackWorkerUnaryRequest(
         .then(dehydrateMcapFrameTransformSet);
     case "readNumericSeries":
       return client.readNumericSeries(message.payload);
+    case "readNumericSeriesSlice":
+      if (!client.readNumericSeriesSlice) {
+        return Promise.reject(
+          new Error("Bounded numeric series reads are unavailable"),
+        );
+      }
+      return client.readNumericSeriesSlice(message.payload);
+    case "readPointCloudChannel":
+      if (!client.readPointCloudChannel) {
+        return Promise.reject(
+          new Error("Point-cloud channel projection is unavailable"),
+        );
+      }
+      return client.readPointCloudChannel(message.payload);
     case "readRawMessageRecord":
       return client.readRawMessageRecord(message.payload);
+    case "readRawMessageAtCursor":
+      if (!client.readRawMessageAtCursor) {
+        return Promise.reject(
+          new Error("Exact MCAP message reads are unavailable"),
+        );
+      }
+      return client.readRawMessageAtCursor(message.payload);
+    case "readMessageIndexWindow":
+      if (!client.readMessageIndexWindow) {
+        return Promise.reject(
+          new Error("Exact MCAP message indexes are unavailable"),
+        );
+      }
+      return client.readMessageIndexWindow(message.payload);
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":
       return client.readSynchronizedMessages(message.payload);
     case "readTimelineRange":
       return client.readTimelineRange(message.payload);
+    case "readTransformTopology":
+      if (!client.readTransformTopology) {
+        return Promise.reject(
+          new Error("Transform topology reads are unavailable"),
+        );
+      }
+      return client.readTransformTopology(message.payload);
     case "readTopics":
       return client.readTopics(message.payload);
     case "readTopicTimeBounds":
@@ -148,7 +215,7 @@ export function runMcapPlaybackWorkerUnaryRequest(
  * Streams results for one streaming MCAP worker request.
  */
 export async function* runMcapPlaybackWorkerStreamRequest(
-  client: McapResourceClient,
+  client: Pick<McapResourceClient, "readDecodedMessages">,
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
 ): AsyncGenerator<
   McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType],

@@ -497,6 +497,19 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_LABEL",
             default=True,
         )
+        for key, env_var in (
+            ("show_confidence", "FIFTYONE_APP_SHOW_CONFIDENCE"),
+            ("show_index", "FIFTYONE_APP_SHOW_INDEX"),
+            ("show_label", "FIFTYONE_APP_SHOW_LABEL"),
+        ):
+            if key in d or env_var in os.environ:
+                logger.warning(
+                    "The `%s` App config option has been removed and no "
+                    "longer has any effect. Label attribute visibility is "
+                    "controlled per attribute in the App's sidebar",
+                    key,
+                )
+
         self.show_skeletons = self.parse_bool(
             d,
             "show_skeletons",

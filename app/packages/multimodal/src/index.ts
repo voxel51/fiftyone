@@ -7,8 +7,8 @@ export {
   payloadDescriptorKey,
   resourceHintsForArrayBufferViews,
 } from "./decoders";
+export type { DecodeContext, Decoder } from "./decoders";
 export type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
   DecodedResourceHints,
@@ -16,7 +16,7 @@ export type {
   DecodedTimeRange,
   DecodedTiming,
   DecodedVisualization,
-  Decoder,
+  CameraVisualization,
   EncodedH264VideoVisualization,
   EncodedImageVisualization,
   EncodedVideoVisualization,
@@ -35,23 +35,23 @@ export type {
   SceneLinePrimitive,
   SceneLinePrimitiveKind,
   SceneModelPrimitive,
-  ScenePoint3D,
-  ScenePose3D,
+  ScenePoint3d,
+  ScenePose3d,
   SceneSpherePrimitive,
   SceneTextPrimitive,
   SceneTrianglePrimitive,
   SceneUpdateVisualization,
-} from "./decoders";
+} from "./ir";
 
 /**
  * Public visualization registry values shared by decoders and panels.
  */
 export {
-  PANEL_TYPE,
+  RENDERER_FAMILY,
   VISUALIZATION_KIND,
-  VISUALIZATION_PANEL_REGISTRY,
+  VISUALIZATION_RENDERER_REGISTRY,
 } from "./visualization";
-export type { PanelType, VisualizationKind } from "./visualization";
+export type { RendererFamily, VisualizationKind } from "./visualization";
 
 /**
  * Scene inventory — discoverable data sources for the current scene.
@@ -60,8 +60,6 @@ export {
   SceneInventoryProvider,
   useSceneInventory,
   useSceneSourcesByType,
-} from "./scene-inventory";
-export type {
-  SceneInventoryProviderProps,
-  SceneSource,
-} from "./scene-inventory";
+} from "./scene-inventory/react";
+export type { SceneInventoryProviderProps } from "./scene-inventory/react";
+export type { SceneSource } from "./scene-inventory";

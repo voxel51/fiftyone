@@ -159,6 +159,19 @@ export class ModalSidebarPom {
     return absPath;
   }
 
+  async hide() {
+    const toggle = this.page
+      .getByTestId("modal")
+      .getByTestId("action-toggle-sidebar");
+    await toggle.waitFor({ state: "visible" });
+
+    if (await this.locator.isVisible()) {
+      await toggle.click();
+    }
+
+    await expect(this.locator).toBeHidden();
+  }
+
   /**
    * Hovers over a sidebar field and clicks the quick edit button to open
    * inline editing

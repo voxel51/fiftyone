@@ -422,6 +422,12 @@ export abstract class AbstractLooker<
           this.state.options.attributeVisibility = {};
         }
 
+        // replace wholesale so fields removed from the map reset to default
+        if (updates.options?.shownLabelAttributes) {
+          this.state.options.shownLabelAttributes =
+            updates.options.shownLabelAttributes;
+        }
+
         if (!this.state.loaded && this.sample) {
           this.lookerElement.render(this.state, this.sample);
           return;

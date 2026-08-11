@@ -1,4 +1,10 @@
 export { createDefaultMcapReader } from "./default-reader";
+export type { CreateMcapBoundedReaderOptions } from "./bounded-read";
+export {
+  isMcapBoundedReadCancelledError,
+  McapBoundedReadCancelledError,
+  type McapBoundedReadCancellation,
+} from "./bounded-read-cancellation";
 export {
   type CreateMcapReaderStoreOptions,
   createMcapReaderStore,
@@ -6,30 +12,27 @@ export {
 } from "./reader-store";
 export type { McapChunkReadDebugLog } from "./byte-readable";
 export {
-  collectChunkDataPrefetchRanges,
   collectWindowPrefetchRanges,
   prefetchMcapByteRanges,
-  type McapPrefetchByteRange,
-  type McapPrefetchChunkDataRequest,
-  type McapPrefetchWindowRequest,
 } from "./chunk-prefetch";
+export type {
+  McapPrefetchByteRange,
+  McapPrefetchChunkDataRequest,
+  McapPrefetchWindowRequest,
+} from "./prefetch-types";
 export { createCachedMcapDecompressHandlers } from "./decompress-cache";
 export {
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
 } from "./message-index";
-export {
-  DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES,
-  readLatestIndexedMessageTimesForReader,
-} from "./latest-before";
-export {
-  MAX_TOPIC_TIME_BOUNDS_TOPICS,
-  readTopicIndexedTimeBoundsForReader,
-} from "./topic-time-bounds";
+export { materializeIndexedEntries } from "./materialize-indexed-entries";
 
 export type {
   McapIndexedMessageTime,
+  McapBoundedMessageReadRequest,
+  McapBoundedMessageReadResult,
   McapIndexedReaderLike,
+  McapReadContinuation,
   McapReaderFactory,
   McapReadIndexedMessageTimesRequest,
   McapReadLatestIndexedMessageTimesRequest,

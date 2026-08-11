@@ -387,6 +387,7 @@ export const ThreeDLabels = ({
               useLegacyCoordinates={settings.useLegacyCoordinates}
               color={getOverlayColor(overlay)}
               enableFaceResize
+              enableHeadingEdit
               hoverSource={hoverSource}
               showOrientation={showCuboidOrientation}
             />
