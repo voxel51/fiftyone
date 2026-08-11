@@ -889,7 +889,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
                 collection, scoped = self._get_target_collection(target)
                 if scoped:
                     collection = self._get_active_view(
-                        collection, require_flat=require_flat, probe=True
+                        collection, require_flat=True, probe=True
                     )
             except ValueError as e:
                 unavailable[target] = str(e)

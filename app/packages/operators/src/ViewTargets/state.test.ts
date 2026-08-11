@@ -185,6 +185,11 @@ describe("currentViewSampleCount", () => {
     vi.mocked(fos.groupStatistics).mockReturnValue(GROUP_STATISTICS as never);
 
     const get = selectorGetters.get("viewTargetCurrentViewSampleCount");
+    if (!get) {
+      throw new Error(
+        "viewTargetCurrentViewSampleCount selector not registered",
+      );
+    }
     return get({ get: (atom: { key: string }) => values[atom.key] });
   };
 
