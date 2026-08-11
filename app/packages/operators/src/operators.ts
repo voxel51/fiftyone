@@ -93,10 +93,12 @@ export type RawContext = {
   selectedLabels: State.SelectedLabel[];
   currentSample: string;
   viewName: string;
-  delegationTarget: string;
-  requestDelegation: boolean;
-  state: CallbackInterface;
-  analyticsInfo: AnalyticsInfo;
+  // Only a context built for the real invocation flow has these; a
+  // context assembled elsewhere has none of them.
+  delegationTarget?: string;
+  requestDelegation?: boolean;
+  state?: CallbackInterface;
+  analyticsInfo?: AnalyticsInfo;
   extendedSelection: {
     selection: string[] | null;
     scope: string;
@@ -105,7 +107,7 @@ export type RawContext = {
   queryPerformance?: boolean;
   spaces: SpaceNodeJSON;
   workspaceName: string;
-  promptId: string | null;
+  promptId?: string | null;
   activeFields: string[];
 };
 

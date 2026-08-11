@@ -153,7 +153,9 @@ export const useViewTargets = (): {
           ? undefined
           : viewSelectsSlices
             ? "in the group slices this view selects"
-            : `in the current slice (${slice})`;
+            : slice
+              ? `in the current slice (${slice})`
+              : "in the current group slice";
 
       // the subtext states the slice scope the target resolves to, plus the
       // reason it cannot be used when it is disabled

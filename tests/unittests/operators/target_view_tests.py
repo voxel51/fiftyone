@@ -424,15 +424,20 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         self.assertEqual(target.media_type, "point-cloud")
         self.assertEqual(len(target), 2)
 
-    def test_non_flat_slice_selection_is_used_as_is(self):
-        # the view already selects slices, so it defines its own scope and the
-        # active slice is not appended
-        stage = fo.SelectGroupSlices(["left", "lidar"], flat=False)
+    def test_non_flat_slice_selection_is_flattened(self):
+        # the view already selects slices, so it defines its own scope, but
+        # require_flat=True still means the result must not be grouped
+        stage = fo.SelectGroupSlices(["left", "right"], flat=False)
         ctx = self._ctx(group_slice="left", view=[stage._serialize()])
 
         target = ctx.target_view(require_flat=True)
-        self.assertEqual(target.media_type, "group")
-        self.assertEqual(len(target), len(ctx.view))
+        self.assertEqual(target.media_type, "image")
+        self.assertListEqual(
+            target.values("filepath"),
+            self.dataset.select_group_slices(["left", "right"]).values(
+                "filepath"
+            ),
+        )
 
     def test_non_flat_slice_selection_keeps_the_property_valid(self):
         stage = fo.SelectGroupSlices(["left", "lidar"], flat=False)

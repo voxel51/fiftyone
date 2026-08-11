@@ -803,12 +803,12 @@ class ExecutionContext(contextlib.AbstractContextManager):
             case constants.ViewTarget.DATASET:
                 return self.dataset, False
             case constants.ViewTarget.BASE_VIEW:
-                # pylint: disable-next-line=protected-access
+                # pylint: disable-next=protected-access
                 return self.view._base_view, False
             case constants.ViewTarget.CUSTOM_VIEW_TARGET if (
                 view_stages := self.params.get("custom_view_target")
             ) is not None:
-                # pylint: disable-next-line=protected-access
+                # pylint: disable-next=protected-access
                 return (
                     fov.DatasetView._build(self.dataset, view_stages),
                     False,
@@ -891,7 +891,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
                     collection = self._get_active_view(
                         collection, require_flat=True, probe=True
                     )
-            except ValueError as e:
+            except Exception as e:
                 unavailable[target] = str(e)
                 continue
 
@@ -958,8 +958,19 @@ class ExecutionContext(contextlib.AbstractContextManager):
             return sample_collection
 
         stages = getattr(sample_collection, "_stages", None) or []
-        if any(isinstance(s, fosg.SelectGroupSlices) for s in stages):
-            return sample_collection
+        select_slices_stage = next(
+            (s for s in stages if isinstance(s, fosg.SelectGroupSlices)),
+            None,
+        )
+        if select_slices_stage is not None:
+            if not require_flat or select_slices_stage.flat:
+                return sample_collection
+
+            # honor the slices already chosen, rather than the active slice
+            return sample_collection.select_group_slices(
+                slices=select_slices_stage.slices,
+                media_type=select_slices_stage.media_type,
+            )
 
         if slices or media_type:
             return sample_collection.select_group_slices(
@@ -980,12 +991,25 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
         return sample_collection.select_group_slices(group_slice)
 
-    def _get_group_slice_scopes(
+    def get_group_slice_scopes(
         self, sample_collection=None, require_flat=False
     ):
-        # short descriptions of the slice(s) that view-based targets and the
-        # dataset target resolve to, so that operator forms and panels can
-        # surface the default behavior for grouped datasets
+        """Returns short descriptions of the slice(s) that view-based
+        targets and the dataset target resolve to, so that operator forms
+        and panels can surface the default behavior for grouped datasets.
+
+        Args:
+            sample_collection (None): the
+                :class:`fiftyone.core.collections.SampleCollection` to
+                describe. By default, the current view is used
+            require_flat (False): whether the operation requires a
+                flattened (non-grouped) collection
+
+        Returns:
+            a ``(view_scope, dataset_scope)`` tuple of descriptions, or
+            ``(None, None)`` if the collection is not grouped or already
+            selects its own slices
+        """
         if sample_collection is None:
             sample_collection = self.view
 

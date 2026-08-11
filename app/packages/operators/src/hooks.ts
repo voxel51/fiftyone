@@ -12,9 +12,9 @@ import {
   type RawContext,
 } from "./operators";
 import {
+  __unsafeOperatorThrottledContext,
   activePanelsEventCountAtom,
   operatorPlacementsAtom,
-  operatorThrottledContext,
   operatorsInitializedAtom,
   useCurrentSample,
 } from "./state";
@@ -30,9 +30,12 @@ function useOperatorThrottledContextSetter() {
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const groupSlice = useRecoilValue(fos.groupSlice);
   const currentSample = useCurrentSample();
-  const setContext = useSetRecoilState(operatorThrottledContext);
+  const setContext = useSetRecoilState(__unsafeOperatorThrottledContext);
   const spaces = useRecoilValue(fos.sessionSpaces);
   const workspaceName = spaces._name;
+  const modal = !!useRecoilValue(fos.modal);
+  const extendedSelection = useRecoilValue(fos.extendedSelection);
+  const activeFields = useRecoilValue(fos.activeFields({ modal }));
   const setThrottledContext = useMemo(() => {
     return debounce(
       (context) => {
@@ -57,6 +60,8 @@ function useOperatorThrottledContextSetter() {
       groupSlice,
       spaces,
       workspaceName,
+      extendedSelection,
+      activeFields,
     });
   }, [
     setThrottledContext,
@@ -72,12 +77,20 @@ function useOperatorThrottledContextSetter() {
     groupSlice,
     spaces,
     workspaceName,
+    extendedSelection,
+    activeFields,
   ]);
+}
+
+function isCompleteThrottledContext(
+  context: Partial<RawContext>,
+): context is RawContext {
+  return Boolean(context.datasetName);
 }
 
 export function useOperatorPlacementsResolver() {
   useOperatorThrottledContextSetter();
-  const context = useRecoilValue(operatorThrottledContext);
+  const context = useRecoilValue(__unsafeOperatorThrottledContext);
   const operatorsInitialized = useRecoilValue(operatorsInitializedAtom);
   const pluginsLoaderState = useRecoilValue(pluginsLoaderAtom);
   const setOperatorPlacementsAtom = useSetRecoilState(operatorPlacementsAtom);
@@ -86,12 +99,13 @@ export function useOperatorPlacementsResolver() {
   const lastContext = useRef(null);
 
   useEffect(() => {
-    async function updateOperatorPlacementsAtom() {
+    async function updateOperatorPlacementsAtom(completeContext: RawContext) {
       setResolving(true);
       try {
-        // placements resolve from the throttled context, which carries only
-        // the subset the setter above publishes
-        const ctx = new ExecutionContext({}, context as RawContext);
+        // this context only has the fields the setter above publishes, not
+        // everything a live invocation context would — that's enough for
+        // resolving placements
+        const ctx = new ExecutionContext({}, completeContext);
         const remotePlacements = await fetchRemotePlacements(ctx);
         const localPlacements = await resolveLocalPlacements(ctx);
         const placements = [...remotePlacements, ...localPlacements];
@@ -104,12 +118,12 @@ export function useOperatorPlacementsResolver() {
     }
     if (
       !isEqual(lastContext.current, context) &&
-      context?.datasetName &&
+      isCompleteThrottledContext(context) &&
       operatorsInitialized &&
       pluginsLoaderState === "ready"
     ) {
       lastContext.current = context;
-      updateOperatorPlacementsAtom();
+      updateOperatorPlacementsAtom(context);
     }
   }, [
     context,

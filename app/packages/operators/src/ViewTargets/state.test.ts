@@ -87,6 +87,24 @@ describe("useViewTargets", () => {
     expect(result.current.defaultTarget).toBe("CURRENT_VIEW");
   });
 
+  it("falls back to generic wording when the active slice is unset", async () => {
+    await mockState({
+      isGroup: true,
+      viewSelectsGroupSlices: false,
+      groupSlice: null,
+    });
+
+    const { result } = renderHook(() => useViewTargets());
+    const [, currentView, selected] = result.current.targets;
+
+    expect(currentView.description).toBe(
+      "Samples matching filters in the current group slice",
+    );
+    expect(selected.description).toBe(
+      "Selected samples in the current group slice",
+    );
+  });
+
   it("does not scope views that select their own slices", async () => {
     await mockState({
       isGroup: false,

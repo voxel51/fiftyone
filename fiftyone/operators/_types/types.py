@@ -3168,8 +3168,7 @@ class ViewTargetProperty(Property):
                 selects slices
         """
         # grouped datasets surface the slice scope each target resolves to
-        # pylint: disable-next-line=protected-access
-        scope, dataset_scope = ctx._get_group_slice_scopes(
+        scope, dataset_scope = ctx.get_group_slice_scopes(
             require_flat=require_flat
         )
         unavailable = ctx.get_unavailable_view_targets(

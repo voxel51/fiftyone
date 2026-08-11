@@ -1317,7 +1317,7 @@ export function useInvocationRequestExecutor({
 // typed so that consumers building request payloads from it, in particular
 // the `Map` selection, are checked rather than silently shipping the wrong
 // shape to the backend
-export const operatorThrottledContext = atom<Partial<RawContext>>({
+export const __unsafeOperatorThrottledContext = atom<Partial<RawContext>>({
   key: "operatorThrottledContext",
   default: {},
 });
