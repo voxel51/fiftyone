@@ -37,8 +37,8 @@ const ToggleSidebar = React.forwardRef<
       ? IconName.ChevronRight
       : IconName.ChevronLeft
     : modal
-    ? IconName.ChevronLeft
-    : IconName.ChevronRight;
+      ? IconName.ChevronLeft
+      : IconName.ChevronRight;
 
   return (
     <Tooltip

@@ -7,12 +7,18 @@ const TOTAL = 510;
 type Cursor = number;
 type Data = { color: string; index: number; row?: number };
 
-const ITEMS: ItemData<Cursor, Data>[] = Array.from({ length: TOTAL }, (_, i) => ({
-  id: { description: `item-${i}` },
-  aspectRatio: 0.5 + Math.random() * 4.5,
-  key: Math.floor(i / PAGE_SIZE) * PAGE_SIZE,
-  data: { color: `hsl(${Math.floor(Math.random() * 360)}, 80%, 40%)`, index: i + 1 },
-}));
+const ITEMS: ItemData<Cursor, Data>[] = Array.from(
+  { length: TOTAL },
+  (_, i) => ({
+    id: { description: `item-${i}` },
+    aspectRatio: 0.5 + Math.random() * 4.5,
+    key: Math.floor(i / PAGE_SIZE) * PAGE_SIZE,
+    data: {
+      color: `hsl(${Math.floor(Math.random() * 360)}, 80%, 40%)`,
+      index: i + 1,
+    },
+  }),
+);
 
 const ITEM_INDEX = new Map(ITEMS.map((item) => [item.id.description, item]));
 
@@ -34,12 +40,15 @@ const LANE_TOTAL = 51;
 const laneData = Array.from({ length: LANE_COUNT }, (_, li) => {
   const hue = Math.floor(Math.random() * 360);
   const color = `hsl(${hue}, 75%, 40%)`;
-  const items: ItemData<Cursor, Data>[] = Array.from({ length: LANE_TOTAL }, (_, i) => ({
-    id: { description: `lane-${li}-item-${i}` },
-    aspectRatio: i + 1,
-    key: Math.floor(i / LANE_PAGE_SIZE) * LANE_PAGE_SIZE,
-    data: { color, index: i + 1, row: (li + 1) * 10 },
-  }));
+  const items: ItemData<Cursor, Data>[] = Array.from(
+    { length: LANE_TOTAL },
+    (_, i) => ({
+      id: { description: `lane-${li}-item-${i}` },
+      aspectRatio: i + 1,
+      key: Math.floor(i / LANE_PAGE_SIZE) * LANE_PAGE_SIZE,
+      data: { color, index: i + 1, row: (li + 1) * 10 },
+    }),
+  );
   return { items, index: new Map(items.map((it) => [it.id.description, it])) };
 });
 
@@ -50,7 +59,11 @@ function destroyAll() {
   spotlight = null;
 }
 
-function renderItem(index: Map<string, ItemData<Cursor, Data>>, id: ID, element: HTMLDivElement) {
+function renderItem(
+  index: Map<string, ItemData<Cursor, Data>>,
+  id: ID,
+  element: HTMLDivElement,
+) {
   const item = index.get(id.description)!;
   element.style.background = item.data.color;
   element.style.display = "flex";
@@ -113,11 +126,17 @@ function mount(mode: Mode) {
             if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
               (element.firstElementChild as HTMLElement)?.scrollBy(e.deltaX, 0);
             } else {
-              (container.firstElementChild as HTMLElement)?.scrollBy(0, e.deltaY);
+              (container.firstElementChild as HTMLElement)?.scrollBy(
+                0,
+                e.deltaY,
+              );
             }
           };
           element.addEventListener("wheel", wheelHandler, { passive: false });
-          laneWheelBindings.set(id.description, { element, handler: wheelHandler });
+          laneWheelBindings.set(id.description, {
+            element,
+            handler: wheelHandler,
+          });
 
           const li = parseInt(id.description.split("-")[1]);
           const { items, index } = laneData[li];
@@ -134,7 +153,10 @@ function mount(mode: Mode) {
               const page = items.slice(cursor, cursor + LANE_PAGE_SIZE);
               return {
                 items: page,
-                next: cursor + LANE_PAGE_SIZE < LANE_TOTAL ? cursor + LANE_PAGE_SIZE : null,
+                next:
+                  cursor + LANE_PAGE_SIZE < LANE_TOTAL
+                    ? cursor + LANE_PAGE_SIZE
+                    : null,
                 previous: cursor > 0 ? cursor - LANE_PAGE_SIZE : null,
               };
             },
@@ -142,8 +164,8 @@ function mount(mode: Mode) {
               renderItem(index, id, element);
               return Promise.resolve(0);
             },
-            hideItem() {},
-            detachItem() {},
+            hideItem: () => undefined,
+            detachItem: () => undefined,
           });
 
           innerSpotlights.set(id.description, s);
@@ -151,7 +173,7 @@ function mount(mode: Mode) {
         }
         return Promise.resolve(0);
       },
-      hideItem() {},
+      hideItem: () => undefined,
       detachItem(id) {
         const binding = laneWheelBindings.get(id.description);
         if (binding) {
@@ -179,17 +201,20 @@ function mount(mode: Mode) {
       renderItem(ITEM_INDEX, id, element);
       return Promise.resolve(0);
     },
-    hideItem() {},
-    detachItem() {},
+    hideItem: () => undefined,
+    detachItem: () => undefined,
   });
 
   spotlight.attach(container);
 }
 
 const DESCRIPTIONS: Record<string, string> = {
-  "btn-vertical": "510 items with randomized aspect ratios tiled into rows, with bidirectional infinite scrolling and a virtualized render buffer that loads pages on demand in both directions.",
-  "btn-horizontal": "510 items with randomized aspect ratios in a horizontally-scrolling strip, with bidirectional infinite scrolling and on-demand page loading.",
-  "btn-swimlanes": "51 horizontal lanes managed by a single outer vertical spotlight; each lane independently infinite-scrolls through 51 items of increasing aspect ratio, with both axes virtualized and scroll-isolated.",
+  "btn-vertical":
+    "510 items with randomized aspect ratios tiled into rows, with bidirectional infinite scrolling and a virtualized render buffer that loads pages on demand in both directions.",
+  "btn-horizontal":
+    "510 items with randomized aspect ratios in a horizontally-scrolling strip, with bidirectional infinite scrolling and on-demand page loading.",
+  "btn-swimlanes":
+    "51 horizontal lanes managed by a single outer vertical spotlight; each lane independently infinite-scrolls through 51 items of increasing aspect ratio, with both axes virtualized and scroll-isolated.",
 };
 
 function setActive(id: string) {

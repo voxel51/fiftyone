@@ -1786,6 +1786,7 @@ __metadata:
     "@xstate/react": "npm:1.3.3"
     babel-plugin-relay: "catalog:"
     classnames: "npm:^2.2.6"
+    clsx: "npm:^2.1.1"
     color: "npm:^4.2.3"
     color-string: "npm:^1.9.1"
     fast-json-patch: "catalog:"

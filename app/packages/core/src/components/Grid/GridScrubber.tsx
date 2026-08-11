@@ -19,7 +19,8 @@
  */
 
 import * as fos from "@fiftyone/state";
-import { Orientation, Scrubber } from "@voxel51/voodo";
+import { Orientation } from "@voxel51/voodo";
+import { Scrubber } from "./Scrubber";
 import React, { useCallback, useEffect, useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styles from "./Grid.module.css";
