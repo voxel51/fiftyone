@@ -598,7 +598,7 @@ export const Cuboid = ({
   // Set while a face button in the "Edit heading/up vector" sidebar section
   // is hovered — previews the ghost arrow/face highlight below.
   const headingUpPreview = useHeadingUpPreview();
-  const isHeadingUpPreviewActive = headingUpPreview?.labelId === label._id;
+  const isHeadingUpPreviewActive = headingUpPreview?.labelId === label.data._id;
 
   // Local axis (in the box's own frame) currently closest to world "up" —
   // fills in the "up" side of the preview below when only heading is being
@@ -673,7 +673,8 @@ export const Cuboid = ({
   // and would otherwise flicker those controls back on as the pointer
   // crosses them.
   const headingUpEditorHover = useHeadingUpEditorHover();
-  const isHeadingUpEditorHovered = headingUpEditorHover?.labelId === label._id;
+  const isHeadingUpEditorHovered =
+    headingUpEditorHover?.labelId === label.data._id;
 
   const isFaceResizeControlActive =
     Boolean(hoveredResizeFace) || isFaceResizeDragging;
@@ -708,7 +709,7 @@ export const Cuboid = ({
     isValidCuboidResizeDimensions(displayDimensions);
 
   const headingDrag = useHeadingDrag({
-    labelId: label._id,
+    labelId: label.data._id,
     hoverSource,
     enabled: canEditHeading,
     dimensions: displayDimensions,

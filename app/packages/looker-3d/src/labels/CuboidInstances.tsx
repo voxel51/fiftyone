@@ -557,7 +557,6 @@ export const CuboidInstances = ({
         onClick={handleClick}
       />
       {outlineGeometry && (
-        // @ts-expect-error — registered via ./shared/registerLineElements
         <lineSegments2
           geometry={outlineGeometry}
           material={outlineMaterial}
@@ -573,7 +572,6 @@ export const CuboidInstances = ({
         />
       )}
       {shaftGeometry && (
-        // @ts-expect-error — registered via ./shared/registerLineElements
         <lineSegments2
           geometry={shaftGeometry}
           material={shaftMaterial}
@@ -584,7 +582,6 @@ export const CuboidInstances = ({
         />
       )}
       {axesGeometry && (
-        // @ts-expect-error — registered via ./shared/registerLineElements
         <lineSegments2
           geometry={axesGeometry}
           material={axesMaterial}
