@@ -442,7 +442,7 @@ async function selectMessageAtOrBefore({
       );
     }
   } finally {
-    if (iterator.return) void iterator.return().catch(() => undefined);
+    closeRawMessageIterator(iterator);
   }
 
   return newest ? { message: newest } : null;
@@ -609,9 +609,20 @@ async function selectMessageForIndexedEntries({
       );
     }
   } finally {
-    if (iterator.return) void iterator.return().catch(() => undefined);
+    closeRawMessageIterator(iterator);
   }
   return selected ? { message: selected } : null;
+}
+
+function closeRawMessageIterator(
+  iterator: AsyncIterator<McapRawMessage>,
+): void {
+  if (!iterator.return) return;
+  try {
+    void Promise.resolve(iterator.return()).catch(() => undefined);
+  } catch {
+    // Cleanup is best-effort and must not replace the read outcome.
+  }
 }
 
 function isPreferredSameTimeMessage(

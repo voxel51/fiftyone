@@ -256,10 +256,10 @@ describe("createTemporalTagsClient", () => {
 
 function createFetch(response: unknown | ((config: FetchConfig) => unknown)) {
   return vi.fn((config: FetchConfig) =>
-    Promise.resolve({
+    Promise.resolve().then(() => ({
       headers: new Headers(),
       response: isResponseFactory(response) ? response(config) : response,
-    }),
+    })),
   );
 }
 

@@ -32,9 +32,12 @@ export function createMemoryByteRangeCache(
   const cache = createByteBoundedCache<ByteRangeReadResult>(options);
 
   return {
-    clear: () => Promise.resolve().then(() => cache.clear()),
+    clear: () =>
+      promiseFromSynchronous(() => {
+        cache.clear();
+      }),
     get: (request) =>
-      Promise.resolve().then(() => {
+      promiseFromSynchronous(() => {
         const exactHit = cache.get(byteRangeCacheKey(request));
         if (exactHit) {
           return exactHit;
@@ -73,7 +76,7 @@ export function createMemoryByteRangeCache(
         };
       }),
     put: (result) =>
-      Promise.resolve().then(() =>
+      promiseFromSynchronous(() =>
         setByteBoundedEntry(
           cache,
           options,
@@ -83,6 +86,16 @@ export function createMemoryByteRangeCache(
         ),
       ),
   };
+}
+
+function promiseFromSynchronous<Result>(
+  operation: () => Result,
+): Promise<Result> {
+  try {
+    return Promise.resolve(operation());
+  } catch (error) {
+    return Promise.reject(error);
+  }
 }
 
 /**

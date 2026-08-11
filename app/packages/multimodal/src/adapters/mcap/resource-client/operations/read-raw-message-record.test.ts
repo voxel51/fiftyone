@@ -970,6 +970,37 @@ describe("readMcapRawMessageRecord", () => {
     expect(yielded).toBe(1);
   });
 
+  it.each(["throws", "rejects"] as const)(
+    "preserves cancellation when iterator cleanup %s",
+    async (failureMode) => {
+      const controller = new AbortController();
+      const reader = createReader({
+        channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      });
+      const iterator = (async function* () {
+        await Promise.resolve();
+        controller.abort();
+        yield jsonMessage({ v: 1 }, 1n);
+      })();
+      iterator.return =
+        failureMode === "throws"
+          ? vi.fn(() => {
+              throw new Error("cleanup failed");
+            })
+          : vi.fn(() => Promise.reject(new Error("cleanup failed")));
+      reader.readMessages = vi.fn(() => iterator);
+
+      await expect(
+        readMcapRawMessageRecord({
+          reader,
+          request: { source: createSource(), timeNs: 1n, topic: "/state" },
+          signal: controller.signal,
+          timeline,
+        }),
+      ).rejects.toMatchObject({ name: "AbortError" });
+    },
+  );
+
   it("fails the wall-time bound when the fallback iterator never yields", async () => {
     vi.useFakeTimers();
     try {

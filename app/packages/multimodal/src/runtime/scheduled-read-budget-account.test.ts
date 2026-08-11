@@ -57,7 +57,7 @@ describe("createScheduledSourceReadBudgetAccount", () => {
         await gate.promise;
         return result();
       }),
-      vi.fn(() => Promise.resolve(result())),
+      vi.fn(() => Promise.resolve().then(() => result())),
     ];
     let jobIndex = 0;
     const source = {

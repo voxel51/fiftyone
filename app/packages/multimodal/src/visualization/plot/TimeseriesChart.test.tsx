@@ -3,6 +3,7 @@ import type { AlignedData } from "uplot";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import TimeseriesChart from "./TimeseriesChart";
+import styles from "./TimeseriesChart.module.css";
 
 interface MockHookPlugin {
   readonly hooks: {
@@ -411,8 +412,10 @@ describe("TimeseriesChart interactions", () => {
       y: false,
     });
     expect(chart.options.scales?.x?.range).toBeUndefined();
-    expect(chart.options.series?.[0]).toMatchObject({ label: "Time" });
-    expect(typeof chart.options.series?.[0]?.class).toBe("string");
+    expect(chart.options.series?.[0]).toMatchObject({
+      class: styles.timeLegendRow,
+      label: "Time",
+    });
 
     const size = chart.options.axes?.[1]?.size;
     if (typeof size !== "function") {

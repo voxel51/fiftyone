@@ -118,7 +118,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
   }: Parameters<
     VideoAccessUnitReader["read"]
   >[0]): Promise<VideoAccessUnitReadResult> {
-    return Promise.resolve().then(() => {
+    try {
       if (signal.aborted) throw new VideoIntentCancelledError();
       const history = this.streams.get(stream);
       const retainedStart = history?.sortedTimes[0];
@@ -128,7 +128,11 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
         retainedStart === undefined ||
         retainedEnd === undefined
       ) {
-        return { complete: false, stopReason: "push-history", units: [] };
+        return Promise.resolve({
+          complete: false,
+          stopReason: "push-history",
+          units: [],
+        });
       }
 
       const units: H264AccessUnit[] = [];
@@ -157,14 +161,16 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
         !budgetStopped &&
         startTimeNs >= retainedStart &&
         endTimeNs <= retainedEnd;
-      return {
+      return Promise.resolve({
         complete,
         ...(complete
           ? {}
           : { stopReason: budgetStopped ? "push-budget" : "push-history" }),
         units,
-      };
-    });
+      });
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   clear(): void {

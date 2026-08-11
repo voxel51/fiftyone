@@ -83,12 +83,6 @@ export interface McapStatistics {
   readonly type: "Statistics";
 }
 
-export interface McapReadable {
-  read(offset: bigint, size: bigint): Promise<Uint8Array>;
-  size(): Promise<bigint>;
-  sourceIdentityForBytes?(bytes: Uint8Array): string | undefined;
-}
-
 /**
  * One timestamp and byte offset entry from an MCAP message index.
  */
@@ -396,4 +390,5 @@ export interface McapReadable {
     signal?: AbortSignal,
   ): Promise<Uint8Array>;
   size(): Promise<bigint>;
+  sourceIdentityForBytes?(bytes: Uint8Array): string | undefined;
 }

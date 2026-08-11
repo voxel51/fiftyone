@@ -87,6 +87,9 @@ describe("ROS point and range decoders", () => {
       range: { max: 40, min: 10 },
     });
     expect(renderPayload.scalarFields[0].encoding.storage).toBe("float32");
+    expect(
+      Array.from(renderPayload.scalarFields[0].values.slice(0, 3)),
+    ).toEqual([10, 40, 20]);
     expect(output.resourceHints?.transferables).toEqual(
       expect.arrayContaining([
         renderPayload.positions.buffer,

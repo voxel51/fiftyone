@@ -356,11 +356,11 @@ function createFakeBackend() {
   const handles: Array<{ dispose: ReturnType<typeof vi.fn> }> = [];
   let failNext: Error | null = null;
 
-  const createRenderer = vi.fn<WebGpuSnapshotBackend["createRenderer"]>(() =>
-    Promise.resolve().then(() => {
-      if (failNext) {
-        const error = failNext;
-        failNext = null;
+  const createRenderer = vi.fn<WebGpuSnapshotBackend["createRenderer"]>(() => {
+    const error = failNext;
+    failNext = null;
+    return Promise.resolve().then(() => {
+      if (error) {
         throw error;
       }
 
@@ -378,8 +378,8 @@ function createFakeBackend() {
       };
       handles.push(handle);
       return handle;
-    }),
-  );
+    });
+  });
 
   const backend: WebGpuSnapshotBackend = { createRenderer };
 

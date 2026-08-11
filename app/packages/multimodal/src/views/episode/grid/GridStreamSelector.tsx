@@ -49,7 +49,7 @@ export function GridStreamSelector() {
       onSelect={(stream, value) => {
         const nextStream = value ?? stream;
         if (!options.includes(nextStream)) {
-          throw new SelectorValidationError();
+          return Promise.reject(new SelectorValidationError());
         }
 
         setSelectedStream(nextStream);

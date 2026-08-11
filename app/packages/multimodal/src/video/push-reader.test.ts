@@ -72,6 +72,25 @@ describe("PushVideoAccessUnitReader", () => {
     ).rejects.toBeInstanceOf(VideoIntentCancelledError);
   });
 
+  it("captures retained data when the read is requested", async () => {
+    const reader = new PushVideoAccessUnitReader();
+    reader.push("camera", unit(0, true));
+
+    const read = reader.read({
+      budget,
+      endTimeNs: 0n,
+      signal: new AbortController().signal,
+      startTimeNs: 0n,
+      stream: "camera",
+    });
+    reader.clear();
+
+    await expect(read).resolves.toMatchObject({
+      complete: true,
+      units: [unit(0, true)],
+    });
+  });
+
   it("reports whether a retained keyframe can bootstrap a target", () => {
     const reader = new PushVideoAccessUnitReader();
     reader.push("camera", unit(2));
