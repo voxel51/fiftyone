@@ -32,3 +32,4 @@ export * from "./types";
 export * from "./utils";
 export * from "./view";
 export * from "./permission";
+export * from "./plugins";

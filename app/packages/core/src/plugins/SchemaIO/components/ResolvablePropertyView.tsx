@@ -3,6 +3,7 @@ import {
   executeOperator,
   types,
   validate as validateProperty,
+  operatorToIOSchema,
 } from "@fiftyone/operators";
 import { useUnboundStateRef } from "@fiftyone/state";
 import { KeyboardArrowDown, Refresh } from "@mui/icons-material";
@@ -25,7 +26,6 @@ import {
 } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
-import { operatorToIOSchema } from "../../OperatorIO/utils";
 import { getComponentProps } from "../utils";
 import DynamicIO from "./DynamicIO";
 import HeaderView from "./HeaderView";

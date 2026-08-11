@@ -6,9 +6,12 @@ FiftyOne operator config tests.
 |
 """
 
+# pylint: disable=no-member,no-name-in-module
+
 import unittest
 
 from fiftyone.operators.operator import OperatorConfig
+from fiftyone.plugins import PluginScope
 from fiftyone.operators.types import RiskLevel
 
 
@@ -165,6 +168,105 @@ class TestOperatorConfigRiskLevel(unittest.TestCase):
             config.risk_level = RiskLevel.HIGH
 
 
+class TestOperatorConfigScopes(unittest.TestCase):
+    def test_scope_profiles_determine_dataset_requirement(self):
+        self.assertFalse(OperatorConfig("my_op").requires_dataset)
+        self.assertTrue(
+            OperatorConfig(
+                "my_op", scopes=[PluginScope.DATASET_SAMPLE_MODAL]
+            ).requires_dataset
+        )
+        self.assertFalse(
+            OperatorConfig(
+                "my_op", scopes=[PluginScope.FIFTYONE_LANDING_PAGE]
+            ).requires_dataset
+        )
+        self.assertFalse(
+            OperatorConfig("my_op", scopes=[PluginScope.ALL]).requires_dataset
+        )
+
+    def test_landing_page_scope(self):
+        config = OperatorConfig(
+            "my_op", scopes=[PluginScope.FIFTYONE_LANDING_PAGE]
+        )
+
+        self.assertEqual(config.scopes, [PluginScope.FIFTYONE_LANDING_PAGE])
+        self.assertEqual(config.to_json()["scopes"], ["fiftyone_landing_page"])
+
+    def test_default_scopes_are_all_scopes(self):
+        config = OperatorConfig("my_op")
+        self.assertEqual(
+            config.scopes,
+            [
+                PluginScope.DATASET_SAMPLES_GRID,
+                PluginScope.DATASET_SAMPLE_MODAL,
+                PluginScope.FIFTYONE_LANDING_PAGE,
+            ],
+        )
+
+    def test_none_scopes_normalized_to_all_scopes(self):
+        config = OperatorConfig("my_op", scopes=None)
+        self.assertEqual(
+            config.scopes,
+            [
+                PluginScope.DATASET_SAMPLES_GRID,
+                PluginScope.DATASET_SAMPLE_MODAL,
+                PluginScope.FIFTYONE_LANDING_PAGE,
+            ],
+        )
+
+    def test_empty_scopes_are_preserved(self):
+        config = OperatorConfig("my_op", scopes=[])
+        self.assertEqual(config.scopes, [])
+
+    def test_scopes_enum(self):
+        for scope in PluginScope:
+            config = OperatorConfig("my_op", scopes=[scope])
+            self.assertEqual(config.scopes, [scope])
+
+    def test_scopes_from_string_lowercase(self):
+        config = OperatorConfig("my_op", scopes=["dataset_samples_grid"])
+        self.assertEqual(config.scopes, [PluginScope.DATASET_SAMPLES_GRID])
+
+    def test_scopes_from_string_uppercase(self):
+        config = OperatorConfig("my_op", scopes=["DATASET_SAMPLE_MODAL"])
+        self.assertEqual(config.scopes, [PluginScope.DATASET_SAMPLE_MODAL])
+
+    def test_scopes_mixed_strings_and_enums(self):
+        config = OperatorConfig(
+            "my_op",
+            scopes=[
+                "dataset_samples_grid",
+                PluginScope.DATASET_SAMPLE_MODAL,
+            ],
+        )
+        self.assertEqual(
+            config.scopes,
+            [
+                PluginScope.DATASET_SAMPLES_GRID,
+                PluginScope.DATASET_SAMPLE_MODAL,
+            ],
+        )
+
+    def test_invalid_scope_string_raises(self):
+        with self.assertRaises(ValueError):
+            OperatorConfig("my_op", scopes=["bogus"])
+
+    def test_invalid_scope_type_raises(self):
+        with self.assertRaises(ValueError):
+            OperatorConfig("my_op", scopes=[123])
+
+    def test_to_json_scopes_are_string_values(self):
+        config = OperatorConfig("my_op", scopes=["dataset_samples_grid"])
+        self.assertEqual(config.to_json()["scopes"], ["dataset_samples_grid"])
+
+    def test_to_json_scopes_from_enums(self):
+        config = OperatorConfig(
+            "my_op", scopes=[PluginScope.DATASET_SAMPLE_MODAL]
+        )
+        self.assertEqual(config.to_json()["scopes"], ["dataset_sample_modal"])
+
+
 class TestOperatorConfigKwargs(unittest.TestCase):
     def test_extra_kwargs_stored(self):
         config = OperatorConfig("my_op", foo="bar", baz=42)
@@ -199,6 +301,11 @@ class TestOperatorConfigToJson(unittest.TestCase):
             "resolve_execution_options_on_change": False,
             "allow_distributed_execution": False,
             "risk_level": "dangerous",
+            "scopes": [
+                "dataset_samples_grid",
+                "dataset_sample_modal",
+                "fiftyone_landing_page",
+            ],
         }
         self.assertEqual(config.to_json(), expected)
 

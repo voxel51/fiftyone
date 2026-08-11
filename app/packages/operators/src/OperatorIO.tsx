@@ -1,11 +1,7 @@
-import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import OperatorIOComponent from "./OperatorIOComponent";
 
 export default function OperatorIO(props) {
   const { schema } = props;
-  const componentPlugins = useActivePlugins(PluginComponentType.Component, {});
-  const OperatorIOComponent = componentPlugins.find(
-    ({ name }) => name === "OperatorIOComponent",
-  ).component;
   const schemaView = schema?.view;
   const schemaWithoutTitle = schemaView
     ? { ...schema, view: { ...schemaView, label: undefined } }

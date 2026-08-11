@@ -18,4 +18,5 @@ export const COLOR_BLIND_FRIENDLY_PALETTE = [
 export enum PANEL_SURFACE {
   GRID = "grid",
   MODAL = "modal",
+  SIDEBAR_RIGHT = "sidebar_right",
 }

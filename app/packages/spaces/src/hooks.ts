@@ -4,8 +4,8 @@ import {
   type PlotRegistration,
   subscribeToRegistry,
   useActivePlugins,
+  useSpacesContext,
 } from "@fiftyone/plugins";
-import * as fos from "@fiftyone/state";
 import {
   useCallback,
   useContext,
@@ -24,8 +24,11 @@ import {
 } from "recoil";
 import SpaceTree from "./SpaceTree";
 import { PanelContext } from "./contexts";
+import { PANEL_AREA } from "./enums";
 import {
+  activePanelForAreaAtom,
   currentPanelAreasRenderer,
+  panelAreaVisibleAtom,
   panelAreaRenderers,
   panelIdToScopeAtom,
   panelLoadingSelector,
@@ -133,11 +136,8 @@ export function useSpaceNodes(spaceId: string) {
 export function usePanels(
   predicate?: (panel: SpacePanelRegistration) => boolean,
 ) {
-  const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
-  );
-  const dataset = useRecoilValue(fos.dataset);
-  const ctx = useMemo(() => ({ schema, dataset }), [schema, dataset]);
+  const useContext = useSpacesContext();
+  const ctx = useContext() as Record<string, unknown>;
   const plots = useActivePlugins(PluginComponentType.Plot, ctx);
   const panels = useActivePlugins(PluginComponentType.Panel, ctx);
 
@@ -502,7 +502,17 @@ function useScope(scope?: string) {
   return panelContext?.scope;
 }
 
-export function usePanelAreaRenderer(areaId: string) {
+export const legacyPanelAreaTabId = (rendererId: string) =>
+  `legacy:${rendererId}`;
+
+/**
+ * State and actions for a static tabbed panel area.
+ */
+export function usePanelArea(areaId: string) {
+  const [activePanel, setActivePanel] = useRecoilState(
+    activePanelForAreaAtom(areaId),
+  );
+  const [isVisible, setVisible] = useRecoilState(panelAreaVisibleAtom(areaId));
   const [currentRenderers, setCurrentRenderers] = useRecoilState(
     currentPanelAreasRenderer,
   );
@@ -512,19 +522,38 @@ export function usePanelAreaRenderer(areaId: string) {
     panelAreaRenderers.getSnapshot,
   );
 
-  const setRenderer = useCallback(
+  const openPanel = useCallback(
+    (panelName: string, isActive = true) => {
+      if (isActive) setActivePanel(panelName);
+      setVisible(true);
+      setCurrentRenderers((renderers) => {
+        const updatedRenderers = new Map(renderers);
+        updatedRenderers.delete(areaId);
+        return updatedRenderers;
+      });
+    },
+    [areaId, setActivePanel, setCurrentRenderers, setVisible],
+  );
+
+  const selectLegacyRenderer = useCallback(
     (rendererId: string) => {
+      if (areaId !== PANEL_AREA.SIDEBAR_RIGHT || !renderers.has(rendererId)) {
+        return;
+      }
+      setActivePanel(legacyPanelAreaTabId(rendererId));
+      setVisible(true);
       setCurrentRenderers((renderers) => {
         const updatedRenderers = new Map(renderers);
         updatedRenderers.set(areaId, rendererId);
         return updatedRenderers;
       });
     },
-    [areaId, setCurrentRenderers],
+    [areaId, renderers, setActivePanel, setCurrentRenderers, setVisible],
   );
 
-  const unsetRenderer = useCallback(
-    (rendererId: string) => {
+  const unsetLegacyRenderer = useCallback(
+    (rendererId?: string) => {
+      if (areaId !== PANEL_AREA.SIDEBAR_RIGHT) return;
       setCurrentRenderers((renderers) => {
         const updatedRenderers = new Map(renderers);
         if (!rendererId || updatedRenderers.get(areaId) === rendererId) {
@@ -532,8 +561,11 @@ export function usePanelAreaRenderer(areaId: string) {
         }
         return updatedRenderers;
       });
+      if (!rendererId || currentRenderers.get(areaId) === rendererId) {
+        setVisible(false);
+      }
     },
-    [areaId, setCurrentRenderers],
+    [areaId, currentRenderers, setCurrentRenderers, setVisible],
   );
 
   const currentRendererId = currentRenderers.get(areaId);
@@ -541,7 +573,43 @@ export function usePanelAreaRenderer(areaId: string) {
     ? renderers.get(currentRendererId)
     : undefined;
 
-  return { setRenderer, unsetRenderer, currentRendererId, CurrentRenderer };
+  return {
+    activePanel,
+    close: () => setVisible(false),
+    currentRendererId,
+    CurrentRenderer,
+    isVisible,
+    legacyRenderers: renderers,
+    openPanel,
+    renderers,
+    selectLegacyRenderer,
+    setActivePanel,
+    setVisible,
+    toggle: () => setVisible((visible) => !visible),
+    unsetLegacyRenderer,
+  };
+}
+
+/**
+ * @deprecated Register a panel with a placement and use `usePanelArea()`.
+ * Legacy renderer support remains only for the right sidebar.
+ */
+export function usePanelAreaRenderer(areaId: string) {
+  const {
+    CurrentRenderer,
+    currentRendererId,
+    renderers,
+    selectLegacyRenderer,
+    unsetLegacyRenderer,
+  } = usePanelArea(areaId);
+
+  return {
+    setRenderer: selectLegacyRenderer,
+    unsetRenderer: unsetLegacyRenderer,
+    currentRendererId,
+    CurrentRenderer,
+    renderers,
+  };
 }
 
 export function useInitializePanel() {

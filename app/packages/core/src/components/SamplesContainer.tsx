@@ -1,7 +1,5 @@
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
-import { PANEL_AREA, PanelArea } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
-import { constants } from "@fiftyone/utilities";
 import type { Controller } from "@react-spring/web";
 import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
@@ -13,8 +11,6 @@ import { Filter } from "./Sidebar/Entries";
 import { createExploreIsDisabled } from "./Sidebar/InteractiveSidebar";
 import SidebarContainer from "./Sidebar/SidebarContainer";
 import ViewSelection from "./Sidebar/ViewSelection";
-
-const { IS_APP_MODE_FIFTYONE } = constants;
 
 const Container = styled.div`
   display: flex;
@@ -150,12 +146,6 @@ function SamplesContainer() {
       <MainSpace />
       {!isModalOpen && (
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
-      )}
-      {IS_APP_MODE_FIFTYONE && (
-        <PanelArea
-          id={PANEL_AREA.GRID_SIDEBAR_RIGHT}
-          resize={{ direction: "left" }}
-        />
       )}
     </Container>
   );
