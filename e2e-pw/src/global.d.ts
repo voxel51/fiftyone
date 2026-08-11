@@ -14,13 +14,6 @@ interface Window {
   /** Tracks the most recently observed CSS cursor value for cursor-change events. */
   __FO_PLAYWRIGHT_CURRENT_CURSOR: string;
 
-  /**
-   * Counts how many times the `GlobalLoadingScreenEvent` has fired.
-   * Should be exactly 1 after initial page load; more than 1 indicates
-   * a top-level Suspense regression.
-   */
-  __FO_PLAYWRIGHT_LOADING_SCREEN_COUNT: number;
-
   /** Disables analytics and QA performance toast banners during test runs. */
   IS_PLAYWRIGHT: boolean;
 }

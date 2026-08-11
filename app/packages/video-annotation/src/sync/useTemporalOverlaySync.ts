@@ -14,16 +14,14 @@ import {
   type TemporalOptions,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import { useModalSample } from "@fiftyone/state";
 import { isTemporalDetectionsField } from "@fiftyone/utilities";
 import { type MutableRefObject, useEffect, useRef } from "react";
-import { frameAt, usePlayhead } from "@fiftyone/playback";
 import {
   useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
+import { useCurrentFrame } from "../state/useCurrentFrame";
 import type { FrameLabelReader } from "../tracks/frameTracks";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
  * Minimal scene surface the diff needs — typed against the lighter
@@ -190,18 +188,13 @@ export const useEngineTemporalSample = (): Record<string, unknown> => {
 };
 
 /**
- * Current playhead frame, held in a ref. fps comes from the sample metadata;
- * the ref lets the diff effect seed overlays without re-running per tick.
+ * Current playhead frame, held in a ref. Reads the surface's clamped
+ * frame source ({@link useCurrentFrame}); the ref lets the diff effect
+ * seed overlays without re-running per tick.
  */
 const useCurrentFrameRef = (): MutableRefObject<number | null> => {
-  const modalSample = useModalSample();
-  const playheadSec = usePlayhead();
-  const frameRate = getModalSampleFrameRate(modalSample);
-
-  const currentFrame =
-    frameRate && Number.isFinite(frameRate) && frameRate > 0
-      ? frameAt(playheadSec, frameRate)
-      : null;
+  const frame = useCurrentFrame();
+  const currentFrame = frame > 0 ? frame : null;
 
   const currentFrameRef = useRef(currentFrame);
   currentFrameRef.current = currentFrame;

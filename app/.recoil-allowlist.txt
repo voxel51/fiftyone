@@ -370,7 +370,9 @@ packages/spaces/src/components/Workspaces/WorkspaceEditor.tsx
 packages/spaces/src/components/Workspaces/Workspace.tsx
 packages/spaces/src/hooks.ts
 packages/spaces/src/state.ts
+packages/state/src/accessors/coloring.ts
 packages/state/src/accessors/dataset.ts
+packages/state/src/accessors/fields.ts
 packages/state/src/accessors/modal/3d.ts
 packages/state/src/accessors/modal/dynamicGroups.ts
 packages/state/src/accessors/modal/index.ts

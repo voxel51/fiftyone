@@ -9,7 +9,7 @@
  */
 import { Text, TextBadge, TextColor, TextVariant } from "@voxel51/voodo";
 import { useEffect, useRef } from "react";
-import { categoryHex } from "./colors";
+import { categoryCss, type PlotPalette } from "./colors";
 import { FloatingPanel } from "./FloatingPanel";
 import "./panel.css";
 import type { ColorMeta } from "./protocol";
@@ -24,12 +24,14 @@ const DOUBLE_CLICK_DELAY_MS = 300;
 export function ColorLegend({
   field,
   meta,
+  palette,
   offLabels,
   onToggle,
   onSolo,
 }: {
   field: string;
   meta: ColorMeta;
+  palette: PlotPalette;
   /** Classes the field's filter hides; null = filtering unavailable */
   offLabels: ReadonlySet<string> | null;
   onToggle: (label: string) => void;
@@ -106,7 +108,7 @@ export function ColorLegend({
               >
                 <span
                   className="emb-legend-swatch"
-                  style={{ background: categoryHex(index) }}
+                  style={{ background: categoryCss(palette, index) }}
                 />
                 <span className="emb-legend-label">
                   <Text variant={TextVariant.Md} color={TextColor.Secondary}>
