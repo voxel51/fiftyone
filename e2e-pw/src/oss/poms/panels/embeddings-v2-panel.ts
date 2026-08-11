@@ -22,8 +22,12 @@ class EmbeddingsV2Asserter {
 
   async verifyPanelLoaded() {
     await expect(this.pom.runsPage).toBeVisible();
+    // OSS builds run in the fiftyone app mode, so a dataset with no
+    // runs lands on the enterprise landing page
     await expect(
-      this.pom.page.getByText("Visualize your embeddings"),
+      this.pom.page.getByText(
+        "Upgrade to FiftyOne Enterprise to Create Embeddings",
+      ),
     ).toBeVisible();
     await expect(this.pom.gridPanel.errorBoundary).toBeHidden();
   }
