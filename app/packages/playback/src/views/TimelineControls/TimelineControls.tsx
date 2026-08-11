@@ -7,6 +7,7 @@ import {
   Align,
   Anchor,
   Button,
+  IconName,
   Justify,
   Orientation,
   Size,
