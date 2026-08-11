@@ -86,14 +86,15 @@ describe("useSelectionBridge", () => {
 
     expect(result.current.lassoIndices).toBeNull();
     act(() => result.current.handleSelection([0, 1]));
-    // Available before the stage round trip resolves
-    expect(result.current.lassoIndices).toEqual([0, 1]);
+    // Available before the stage round trip resolves; typed array
+    // because a lasso can enclose millions of points
+    expect(Array.from(result.current.lassoIndices ?? [])).toEqual([0, 1]);
 
     act(() => result.current.handleSelection([]));
     expect(result.current.lassoIndices).toBeNull();
 
     act(() => result.current.handleSelection([1]));
-    expect(result.current.lassoIndices).toEqual([1]);
+    expect(Array.from(result.current.lassoIndices ?? [])).toEqual([1]);
     act(() => result.current.clearAll());
     expect(result.current.lassoIndices).toBeNull();
   });

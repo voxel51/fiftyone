@@ -52,8 +52,10 @@ export function useSelectionBridge({
   selectedIndices: number[] | null;
   /** The live lasso's enclosed wire indices (null = no lasso). Kept
    * client-side for focus-scoped chrome like legend counts; the grid
-   * itself is driven by the server-resolved stage, never these */
-  lassoIndices: number[] | null;
+   * itself is driven by the server-resolved stage, never these. Typed
+   * array on purpose: a lasso can enclose millions of points, and this
+   * is retained until the selection clears */
+  lassoIndices: Uint32Array | null;
   /** Points in the last lasso selection, for chrome (null = none) */
   selectionCount: number | null;
   handleSelection: (
@@ -66,7 +68,7 @@ export function useSelectionBridge({
 } {
   const [error, setError] = useState<string | null>(null);
   const [selectionCount, setSelectionCount] = useState<number | null>(null);
-  const [lassoIndices, setLassoIndices] = useState<number[] | null>(null);
+  const [lassoIndices, setLassoIndices] = useState<Uint32Array | null>(null);
   // Monotonic lasso-request id: a slow older response must not
   // overwrite a newer selection (or resurrect one that was cleared)
   const lassoSeq = useRef(0);
@@ -139,7 +141,7 @@ export function useSelectionBridge({
     }
     // Synchronous, unlike the stage round trip below: focus chrome
     // (legend counts) follows the gesture, not the network
-    setLassoIndices(indices);
+    setLassoIndices(Uint32Array.from(indices));
     const selection = polygon?.length ? { polygon } : { indices };
     fetchLassoStage(datasetName, brainKey, view, selection)
       .then((stage) => {

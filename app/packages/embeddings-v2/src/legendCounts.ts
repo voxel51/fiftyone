@@ -16,15 +16,17 @@ import { MISSING_CATEGORY } from "./colors";
 export function legendCounts(
   column: Uint16Array,
   classCount: number,
-  selectedIndices: readonly number[] | null,
+  // ArrayLike: the lasso keeps its (potentially huge) index list as a
+  // typed array; grid selections arrive as plain arrays
+  selectedIndices: ArrayLike<number> | null,
   scopeMask: Uint8Array | null,
 ): number[] | null {
   if (classCount <= 0) return null;
 
-  if (selectedIndices?.length) {
+  if (selectedIndices && selectedIndices.length) {
     const counts = new Array<number>(classCount).fill(0);
-    for (const index of selectedIndices) {
-      const cls = column[index];
+    for (let i = 0; i < selectedIndices.length; i++) {
+      const cls = column[selectedIndices[i]];
       // Missing values have no legend row; indices past the legend's
       // class list (a truncated top-N legend) have no row either
       if (cls !== undefined && cls !== MISSING_CATEGORY && cls < classCount) {
