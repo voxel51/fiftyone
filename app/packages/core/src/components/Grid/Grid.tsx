@@ -2,7 +2,7 @@ import styles from "./Grid.module.css";
 
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import React, { useState } from "react";
+import React from "react";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
@@ -21,7 +21,6 @@ import useLookerCache from "./useLookerCache";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
-import useResize from "./useResize";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
@@ -35,7 +34,6 @@ function Grid() {
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
   const { pageReset, reset } = useRefreshers();
-  const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();
 
   useSyncLabelsRenderingStatus();
@@ -81,10 +79,6 @@ function Grid() {
     reset;
     /** SPOTLIGHT REFRESHER */
 
-    if (resizing) {
-      return undefined;
-    }
-
     cache.freeze();
 
     return new Spotlight<number, fos.Sample>({
@@ -103,12 +97,11 @@ function Grid() {
       onItemClick: (item) => refs.current.setSample(item),
       rowAspectRatioThreshold: zoom,
     });
-  }, [cache, autosizing, maxBytes, reset, resizing, spacing, zoom]);
+  }, [cache, autosizing, maxBytes, reset, spacing, zoom]);
 
   useEscape();
-  useEvents({ id, cache, pixels, resizing, set, spotlight });
+  useEvents({ id, cache, pixels, set, spotlight });
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
-  useResize(id, setResizing);
 
   return (
     <div className={styles.gridContainer}>

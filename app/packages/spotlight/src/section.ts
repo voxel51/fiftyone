@@ -43,7 +43,8 @@ export default class Section<K, V> {
   readonly #config: SpotlightConfig<K, V>;
   readonly #container = create(DIV);
   readonly #section = create(DIV);
-  readonly #width: number;
+
+  #width: number;
 
   #direction: DIRECTION;
   #end: Edge<K, V>;
@@ -123,6 +124,21 @@ export default class Section<K, V> {
     }
 
     return null;
+  }
+
+  resize(width: number) {
+    this.#width = width;
+    const attr = this.#direction === DIRECTION.BACKWARD ? BOTTOM : TOP;
+
+    let from = ZERO;
+    for (const row of this.#rows) {
+      row.resize(width);
+      row.from = from;
+      row.switch(attr);
+      from += row.height + this.#config.spacing;
+    }
+
+    this.#container.style.height = `${this.height}px`;
   }
 
   render({
