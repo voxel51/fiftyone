@@ -293,7 +293,7 @@ export function nowMs(): number {
 
 /** One-shot inventory lifecycle with retry-after-error semantics. */
 export interface DemandInventoryMachine {
-  ensure(): void;
+  ensure(this: void): void;
 }
 
 /** Configuration for a source-epoch inventory machine. */

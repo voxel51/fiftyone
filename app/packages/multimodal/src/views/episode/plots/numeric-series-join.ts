@@ -20,8 +20,9 @@ export function joinNumericSeries(
   const xs = mergeSortedTimestamps(series.map((entry) => entry.timesSec));
 
   const ys = series.map((entry) => {
-    const column: (number | null | undefined)[] = new Array(xs.length).fill(
-      undefined,
+    const column = Array.from<unknown, number | null | undefined>(
+      { length: xs.length },
+      () => undefined,
     );
     let cursor = 0;
     for (let i = 0; i < entry.timesSec.length; i += 1) {

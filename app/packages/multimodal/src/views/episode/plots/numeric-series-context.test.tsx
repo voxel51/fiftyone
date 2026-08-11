@@ -100,8 +100,8 @@ describe("NumericSeriesBridge (no playback store: unbounded fallback)", () => {
       readNumericSeries: vi
         .fn<NumericSeriesCapability["readNumericSeries"]>()
         .mockRejectedValueOnce(new Error("boom"))
-        .mockImplementation(async (request) =>
-          seriesResult(request.stream, request.fields),
+        .mockImplementation((request) =>
+          Promise.resolve(seriesResult(request.stream, request.fields)),
         ),
     });
     const context = createContextRef();
@@ -200,8 +200,12 @@ describe("NumericSeriesBridge (no playback store: unbounded fallback)", () => {
       resolveFallback = resolve;
     });
     const client = createClient({
-      enumerateNumericFields: vi.fn(async (_streams, options) =>
-        options?.includeDataFallback === false ? [schemaStream] : fallback,
+      enumerateNumericFields: vi.fn<
+        NumericSeriesCapability["enumerateNumericFields"]
+      >((_streams, options) =>
+        options?.includeDataFallback === false
+          ? Promise.resolve([schemaStream])
+          : fallback,
       ),
     });
     const context = createContextRef();
@@ -315,7 +319,9 @@ describe("NumericSeriesBridge active-field demand", () => {
     const source = createSource();
     const stream = createNumericStream("/imu", 10);
     const client = createClient({
-      enumerateNumericFields: vi.fn(async () => [stream]),
+      enumerateNumericFields: vi.fn<
+        NumericSeriesCapability["enumerateNumericFields"]
+      >(() => Promise.resolve([stream])),
     });
     const context = createContextRef();
 
@@ -388,7 +394,9 @@ describe("NumericSeriesBridge active-field demand", () => {
     const source = createSource();
     const stream = createNumericStream("/wide", 33);
     const client = createClient({
-      enumerateNumericFields: vi.fn(async () => [stream]),
+      enumerateNumericFields: vi.fn<
+        NumericSeriesCapability["enumerateNumericFields"]
+      >(() => Promise.resolve([stream])),
     });
     const context = createContextRef();
 
@@ -416,7 +424,9 @@ describe("NumericSeriesBridge active-field demand", () => {
       createNumericStream("/stream4", 10),
     ];
     const client = createClient({
-      enumerateNumericFields: vi.fn(async () => streams),
+      enumerateNumericFields: vi.fn<
+        NumericSeriesCapability["enumerateNumericFields"]
+      >(() => Promise.resolve(streams)),
     });
     const context = createContextRef();
 
@@ -442,12 +452,14 @@ describe("NumericSeriesBridge active-field demand", () => {
     const source = createSource();
     const stream = createNumericStream("/imu", 2);
     const client = createClient({
-      enumerateNumericFields: vi.fn(async () => [stream]),
+      enumerateNumericFields: vi.fn<
+        NumericSeriesCapability["enumerateNumericFields"]
+      >(() => Promise.resolve([stream])),
       readNumericSeries: vi
         .fn<NumericSeriesCapability["readNumericSeries"]>()
         .mockRejectedValueOnce(new Error("boom"))
-        .mockImplementation(async (request) =>
-          seriesResult(request.stream, request.fields),
+        .mockImplementation((request) =>
+          Promise.resolve(seriesResult(request.stream, request.fields)),
         ),
     });
     const context = createContextRef();
@@ -484,7 +496,9 @@ describe("NumericSeriesBridge active-field demand", () => {
   it("resets selected-field coverage when the episode source changes", async () => {
     const stream = createNumericStream("/imu", 10);
     const client = createClient({
-      enumerateNumericFields: vi.fn(async () => [stream]),
+      enumerateNumericFields: vi.fn<
+        NumericSeriesCapability["enumerateNumericFields"]
+      >(() => Promise.resolve([stream])),
     });
     const context = createContextRef();
     const { rerender } = render(
@@ -570,12 +584,14 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     });
     const readNumericSeriesSlice = vi
       .fn<NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>>()
-      .mockImplementationOnce(async (request) =>
-        sliceResult(request, {
-          continuation,
-          coverage: [{ endNs: 61_000_000_000n, startNs: 59_000_000_000n }],
-          stopReason: "budget-exhausted",
-        }),
+      .mockImplementationOnce((request) =>
+        Promise.resolve(
+          sliceResult(request, {
+            continuation,
+            coverage: [{ endNs: 61_000_000_000n, startNs: 59_000_000_000n }],
+            stopReason: "budget-exhausted",
+          }),
+        ),
       )
       .mockImplementationOnce(() => second);
     const client = createClient({ readNumericSeriesSlice });
@@ -623,19 +639,23 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     const continuation = {} as ReadContinuation;
     const readNumericSeriesSlice = vi
       .fn<NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>>()
-      .mockImplementationOnce(async (request) =>
-        sliceResult(request, {
-          continuation,
-          coverage: [{ endNs: 39_999_999_999n, startNs: 30_000_000_000n }],
-          stopReason: "oversized-source-unit",
-          unavailable: [{ endNs: 49_999_999_999n, startNs: 40_000_000_000n }],
-        }),
+      .mockImplementationOnce((request) =>
+        Promise.resolve(
+          sliceResult(request, {
+            continuation,
+            coverage: [{ endNs: 39_999_999_999n, startNs: 30_000_000_000n }],
+            stopReason: "oversized-source-unit",
+            unavailable: [{ endNs: 49_999_999_999n, startNs: 40_000_000_000n }],
+          }),
+        ),
       )
-      .mockImplementationOnce(async (request) =>
-        sliceResult(request, {
-          coverage: [{ endNs: 89_999_999_999n, startNs: 50_000_000_000n }],
-          stopReason: "source-exhausted",
-        }),
+      .mockImplementationOnce((request) =>
+        Promise.resolve(
+          sliceResult(request, {
+            coverage: [{ endNs: 89_999_999_999n, startNs: 50_000_000_000n }],
+            stopReason: "source-exhausted",
+          }),
+        ),
       );
     const client = createClient({ readNumericSeriesSlice });
     const context = createContextRef();
@@ -674,13 +694,17 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
 
   it("backs off an empty continuation instead of spinning", async () => {
     const continuation = {} as ReadContinuation;
-    const readNumericSeriesSlice = vi.fn(async (request) =>
-      sliceResult(request, {
-        continuation,
-        coverage: [],
-        stopReason: "budget-exhausted",
-        usage: emptyReadUsage({ chunksOpened: 0, messagesDecoded: 0 }),
-      }),
+    const readNumericSeriesSlice = vi.fn<
+      NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>
+    >((request) =>
+      Promise.resolve(
+        sliceResult(request, {
+          continuation,
+          coverage: [],
+          stopReason: "budget-exhausted",
+          usage: emptyReadUsage({ chunksOpened: 0, messagesDecoded: 0 }),
+        }),
+      ),
     );
     const client = createClient({ readNumericSeriesSlice });
     const context = createContextRef();
@@ -719,19 +743,23 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
   it("yields a bounded acquisition epoch and resumes its continuation", async () => {
     const continuation = {} as ReadContinuation;
     let page = 0n;
-    const readNumericSeriesSlice = vi.fn(async (request) => {
+    const readNumericSeriesSlice = vi.fn<
+      NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>
+    >((request) => {
       const point = request.window.startNs + page;
       page += 1n;
-      return sliceResult(request, {
-        continuation,
-        coverage: [
-          {
-            endNs: point,
-            startNs: point,
-          },
-        ],
-        stopReason: "budget-exhausted",
-      });
+      return Promise.resolve(
+        sliceResult(request, {
+          continuation,
+          coverage: [
+            {
+              endNs: point,
+              startNs: point,
+            },
+          ],
+          stopReason: "budget-exhausted",
+        }),
+      );
     });
     const client = createClient({ readNumericSeriesSlice });
     const context = createContextRef();
@@ -1033,20 +1061,21 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
   it("publishes only the current viewport after disjoint fills", async () => {
     const source = createSource();
     const client = createClient({
-      readNumericSeries: vi.fn(
-        async (
-          request: Parameters<NumericSeriesCapability["readNumericSeries"]>[0],
-        ) => ({
-          baseTimeNs: 0n,
-          fields: request.fields.map((path) => ({
-            path,
-            timesSec: Float64Array.from([Number(request.window.startNs) / 1e9]),
-            values: Float64Array.from([1]),
-          })),
-          sampleCount: 1,
-          streamId: request.stream,
-          truncated: false,
-        }),
+      readNumericSeries: vi.fn<NumericSeriesCapability["readNumericSeries"]>(
+        (request) =>
+          Promise.resolve({
+            baseTimeNs: 0n,
+            fields: request.fields.map((path) => ({
+              path,
+              timesSec: Float64Array.from([
+                Number(request.window.startNs) / 1e9,
+              ]),
+              values: Float64Array.from([1]),
+            })),
+            sampleCount: 1,
+            streamId: request.stream,
+            truncated: false,
+          }),
       ),
     });
     const context = createContextRef();
@@ -1191,17 +1220,22 @@ function createClient(
   overrides: Partial<NumericSeriesCapability> = {},
 ): NumericSeriesCapability {
   return {
-    enumerateNumericFields: vi.fn(async () => [
-      {
-        availability: "ready" as const,
-        encoding: "protobuf",
-        fields: [{ path: "speed", valueType: "double" }],
-        sourceName: "/odom",
-        streamId: "/odom",
-      },
-    ]),
-    readNumericSeries: vi.fn(async (request) =>
-      seriesResult(request.stream, request.fields),
+    enumerateNumericFields: vi.fn<
+      NumericSeriesCapability["enumerateNumericFields"]
+    >(() =>
+      Promise.resolve([
+        {
+          availability: "ready" as const,
+          encoding: "protobuf",
+          fields: [{ path: "speed", valueType: "double" }],
+          sourceName: "/odom",
+          streamId: "/odom",
+        },
+      ]),
+    ),
+    readNumericSeries: vi.fn<NumericSeriesCapability["readNumericSeries"]>(
+      (request) =>
+        Promise.resolve(seriesResult(request.stream, request.fields)),
     ),
     ...overrides,
   };
@@ -1209,8 +1243,10 @@ function createClient(
 
 function createSlicedClient(): NumericSeriesCapability {
   return createClient({
-    readNumericSeriesSlice: vi.fn(async (request) =>
-      sliceResult(request, { stopReason: "source-exhausted" }),
+    readNumericSeriesSlice: vi.fn<
+      NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>
+    >((request) =>
+      Promise.resolve(sliceResult(request, { stopReason: "source-exhausted" })),
     ),
   });
 }

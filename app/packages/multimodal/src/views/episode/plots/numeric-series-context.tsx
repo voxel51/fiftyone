@@ -160,17 +160,18 @@ export interface NumericSeriesContextValue {
    * Idempotently kicks the plottable-field enumeration for the current
    * source.
    */
-  ensureEnumeration(): void;
+  ensureEnumeration(this: void): void;
 
   /**
    * Declares interest in one signal while the returned unsubscribe is
    * outstanding. Interested signals are fetched for follow/pinned viewports;
    * dropping interest leaves retained tiles subject to the cache budget.
    */
-  subscribeSeries(stream: string, fieldPath: string): () => void;
+  subscribeSeries(this: void, stream: string, fieldPath: string): () => void;
 
   /** Updates one plot tile's follow/pinned visible-range demand. */
   setViewportDemand(
+    this: void,
     demandId: string,
     demand: NumericSeriesViewportDemand | null,
   ): void;

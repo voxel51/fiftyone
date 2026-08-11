@@ -160,7 +160,7 @@ function renderProbe({
   );
 }
 
-function probeState(): {
+interface ProbeState {
   readonly focusedTileId: string | null;
   readonly resetZoomRevisions: Record<string, number>;
   readonly series: Record<
@@ -168,9 +168,57 @@ function probeState(): {
     readonly { readonly fieldPath: string; readonly stream: string }[]
   >;
   readonly types: Record<string, string>;
-} {
+}
+
+function probeState(): ProbeState {
   const probe = screen.getByTestId("probe");
-  return JSON.parse(probe.textContent ?? "{}");
+  const parsed: unknown = JSON.parse(probe.textContent ?? "{}");
+  if (!isProbeState(parsed)) {
+    throw new Error("probe rendered an invalid state payload");
+  }
+  return parsed;
+}
+
+function isProbeState(value: unknown): value is ProbeState {
+  return (
+    isUnknownRecord(value) &&
+    (typeof value.focusedTileId === "string" || value.focusedTileId === null) &&
+    isNumberRecord(value.resetZoomRevisions) &&
+    isSeriesRecord(value.series) &&
+    isStringRecord(value.types)
+  );
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNumberRecord(value: unknown): value is Record<string, number> {
+  return (
+    isUnknownRecord(value) &&
+    Object.values(value).every((entry) => typeof entry === "number")
+  );
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return (
+    isUnknownRecord(value) &&
+    Object.values(value).every((entry) => typeof entry === "string")
+  );
+}
+
+function isSeriesRecord(value: unknown): value is ProbeState["series"] {
+  if (!isUnknownRecord(value)) return false;
+  return Object.values(value).every((candidate) => {
+    if (!Array.isArray(candidate)) return false;
+    const entries: unknown[] = candidate;
+    return entries.every(
+      (entry) =>
+        isUnknownRecord(entry) &&
+        typeof entry.fieldPath === "string" &&
+        typeof entry.stream === "string",
+    );
+  });
 }
 
 function tile(type: string): TilingTile {

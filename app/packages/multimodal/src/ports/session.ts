@@ -343,16 +343,20 @@ export interface NumericFieldEnumerationOptions {
 /** Optional semantic capability for plottable scalar fields. */
 export interface NumericSeriesCapability {
   enumerateNumericFields(
+    this: void,
     streams?: readonly StreamId[],
     options?: NumericFieldEnumerationOptions,
   ): Promise<readonly NumericStreamFields[]>;
-  readNumericSeries(request: {
-    readonly fields: readonly string[];
-    readonly maxPointsPerField?: number;
-    readonly signal?: AbortSignal;
-    readonly stream: StreamId;
-    readonly window: TimeWindow;
-  }): Promise<NumericSeriesResult>;
+  readNumericSeries(
+    this: void,
+    request: {
+      readonly fields: readonly string[];
+      readonly maxPointsPerField?: number;
+      readonly signal?: AbortSignal;
+      readonly stream: StreamId;
+      readonly window: TimeWindow;
+    },
+  ): Promise<NumericSeriesResult>;
 
   /**
    * Reads one exact, source-bounded numeric slice for every selected stream in
@@ -360,6 +364,7 @@ export interface NumericSeriesCapability {
    * omit this and keep the legacy single-stream read above.
    */
   readNumericSeriesSlice?(
+    this: void,
     request: NumericSeriesSliceRequest,
   ): Promise<NumericSeriesSliceResult>;
 }
