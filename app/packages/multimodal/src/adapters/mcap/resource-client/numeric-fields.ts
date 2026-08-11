@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import { Enum, Type } from "protobufjs";
 import {
   isRosMessageEncoding,
@@ -9,6 +8,8 @@ import {
 import { protobufFromBinaryDescriptor } from "../compatibility/mcap-support";
 import {
   materializeIndexedEntries,
+  type McapChannel,
+  type McapChunkIndex,
   type McapIndexedMessageTime,
   type McapIndexedReaderLike,
 } from "../reader/index";
@@ -46,10 +47,7 @@ interface NumericFieldWalkResult {
   needsSampling: boolean;
 }
 
-type NumericChannel = Pick<
-  McapTypes.TypedMcapRecords["Channel"],
-  "id" | "messageEncoding" | "schemaId"
->;
+type NumericChannel = Pick<McapChannel, "id" | "messageEncoding" | "schemaId">;
 
 interface NumericTopicPlan {
   readonly channel: NumericChannel;
@@ -300,7 +298,7 @@ export async function enumerateMcapNumericFields(
 
   const sampledFieldsByTopic =
     request?.includeDataFallback === false
-      ? new Map()
+      ? new Map<string, readonly McapNumericFieldDescriptor[]>()
       : await sampleNumericFieldsForTopics(
           reader,
           plans.filter((plan) => plan.needsSampling),
@@ -570,8 +568,6 @@ async function sampleNumericFieldsForTopics(
   );
 }
 
-type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
-
 /**
  * Chooses one fallback chunk for a set of channels without racing duplicate
  * reads. Callers use one selection per dynamic channel and deduplicate shared
@@ -670,7 +666,10 @@ function sampledArray(
   value: object,
 ): { readonly [index: number]: unknown; readonly length: number } | undefined {
   if (Array.isArray(value)) {
-    return value;
+    return value as unknown as {
+      readonly [index: number]: unknown;
+      readonly length: number;
+    };
   }
   if (
     ArrayBuffer.isView(value) &&

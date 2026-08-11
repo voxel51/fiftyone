@@ -1,11 +1,18 @@
 import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
 import { MessageWriter as Ros1MessageWriter } from "@foxglove/rosmsg-serialization";
 import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serialization";
-import type { McapTypes } from "@mcap/core";
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
-import type { McapIndexedReaderLike, McapReadContinuation } from "../../reader";
+import type {
+  McapChannel,
+  McapChunkIndex,
+  McapIndexedReaderLike,
+  McapMessage,
+  McapReadContinuation,
+  McapSchema,
+  McapStatistics,
+} from "../../reader";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import {
   numericSeriesSlicePointBudget,
@@ -14,6 +21,7 @@ import {
   readMcapNumericSeriesSlice,
 } from "./read-numeric-series";
 import type { ReadWorkBudget, ReadWorkUsage } from "../../../../ports";
+import { asyncValues } from "../inline-client.test-fixtures";
 
 const TELEMETRY_ROOT = Root.fromJSON({
   nested: {
@@ -394,7 +402,7 @@ describe("readMcapNumericSeries", () => {
     const reader = {
       ...base,
       readMessages: vi.fn(async function* () {
-        for (const [index, message] of messages.entries()) {
+        for await (const [index, message] of asyncValues(messages.entries())) {
           if (index === 64) controller.abort();
           yield message;
         }
@@ -556,9 +564,13 @@ describe("readMcapNumericSeriesSlice", () => {
     });
 
     expect(readBoundedMessages).toHaveBeenCalledTimes(2);
+    const escalatedBudget: ReadWorkBudget = {
+      ...budget,
+      maxMessages: 250_000,
+    };
     expect(readBoundedMessages.mock.calls[1][0]).toEqual(
       expect.objectContaining({
-        budget: expect.objectContaining({ maxMessages: 250_000 }),
+        budget: escalatedBudget,
         continuation: undefined,
         maxChunks: 4,
         maxGroups: 1,
@@ -588,23 +600,27 @@ describe("readMcapNumericSeriesSlice", () => {
         [1, jsonChannel],
         [2, protobufChannel],
       ]),
-      readBoundedMessages: vi.fn(async () => ({
-        coverageByTopic: new Map([
-          ["/shared", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
-        ]),
-        messages: [
-          createMessage(new TextEncoder().encode('{"jsonValue":7}'), {
-            channelId: 1,
-            logTime: 1_000_000_000n,
-          }),
-          createMessage(
-            TELEMETRY_TYPE.encode(TELEMETRY_TYPE.create({ speed: 9 })).finish(),
-            { channelId: 2, logTime: 2_000_000_000n },
-          ),
-        ],
-        stopReason: "source-exhausted" as const,
-        usage: createUsage({ chunksOpened: 1, messagesDecoded: 2 }),
-      })),
+      readBoundedMessages: vi.fn(() =>
+        Promise.resolve({
+          coverageByTopic: new Map([
+            ["/shared", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
+          ]),
+          messages: [
+            createMessage(new TextEncoder().encode('{"jsonValue":7}'), {
+              channelId: 1,
+              logTime: 1_000_000_000n,
+            }),
+            createMessage(
+              TELEMETRY_TYPE.encode(
+                TELEMETRY_TYPE.create({ speed: 9 }),
+              ).finish(),
+              { channelId: 2, logTime: 2_000_000_000n },
+            ),
+          ],
+          stopReason: "source-exhausted" as const,
+          usage: createUsage({ chunksOpened: 1, messagesDecoded: 2 }),
+        }),
+      ),
     };
 
     const result = await readMcapNumericSeriesSlice({
@@ -641,24 +657,26 @@ describe("readMcapNumericSeriesSlice", () => {
       schemaId: 0,
       topic: "/pose",
     });
-    const readBoundedMessages = vi.fn(async () => ({
-      coverageByTopic: new Map([
-        ["/state", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
-        ["/pose", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
-      ]),
-      messages: [
-        createMessage(
-          new TextEncoder().encode(JSON.stringify({ speed: 3, armed: true })),
-          { channelId: 1, logTime: 1_000_000_000n },
-        ),
-        createMessage(new TextEncoder().encode(JSON.stringify({ x: 9 })), {
-          channelId: 2,
-          logTime: 2_000_000_000n,
-        }),
-      ],
-      stopReason: "source-exhausted" as const,
-      usage: createUsage({ chunksOpened: 1, messagesDecoded: 2 }),
-    }));
+    const readBoundedMessages = vi.fn(() =>
+      Promise.resolve({
+        coverageByTopic: new Map([
+          ["/state", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
+          ["/pose", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
+        ]),
+        messages: [
+          createMessage(
+            new TextEncoder().encode(JSON.stringify({ speed: 3, armed: true })),
+            { channelId: 1, logTime: 1_000_000_000n },
+          ),
+          createMessage(new TextEncoder().encode(JSON.stringify({ x: 9 })), {
+            channelId: 2,
+            logTime: 2_000_000_000n,
+          }),
+        ],
+        stopReason: "source-exhausted" as const,
+        usage: createUsage({ chunksOpened: 1, messagesDecoded: 2 }),
+      }),
+    );
     const base = createReader({
       channel: stateChannel,
       messages: [],
@@ -784,7 +802,7 @@ describe("readMcapNumericSeriesSlice", () => {
 function telemetryMessage(
   record: Record<string, unknown>,
   logTime: bigint,
-): McapTypes.TypedMcapRecords["Message"] {
+): McapMessage {
   return createMessage(
     TELEMETRY_TYPE.encode(TELEMETRY_TYPE.create(record)).finish(),
     { logTime },
@@ -808,7 +826,7 @@ function ros2TelemetryMessage(record: Record<string, unknown>): Uint8Array {
 function jsonMessage(
   record: Record<string, unknown>,
   logTime: bigint,
-): McapTypes.TypedMcapRecords["Message"] {
+): McapMessage {
   return createMessage(new TextEncoder().encode(JSON.stringify(record)), {
     logTime,
   });
@@ -820,31 +838,25 @@ function createReader({
   schema = createSchema(TELEMETRY_SCHEMA_DATA),
   statistics,
 }: {
-  readonly channel?: McapTypes.TypedMcapRecords["Channel"];
-  readonly messages?: readonly McapTypes.TypedMcapRecords["Message"][];
-  readonly schema?: McapTypes.TypedMcapRecords["Schema"];
-  readonly statistics?: McapTypes.TypedMcapRecords["Statistics"];
+  readonly channel?: McapChannel;
+  readonly messages?: readonly McapMessage[];
+  readonly schema?: McapSchema;
+  readonly statistics?: McapStatistics;
 }) {
   return {
     channelsById: new Map([[channel.id, channel]]),
     chunkIndexes: [createChunkIndex()],
-    readMessages: vi.fn(async function* () {
-      for (const message of messages) {
-        yield message;
-      }
-    }),
+    readMessages: vi.fn(() => asyncValues(messages)),
     schemasById: new Map([[schema.id, schema]]),
     statistics,
   };
 }
 
-function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
-): McapTypes.TypedMcapRecords["Channel"] {
+function createChannel(options: Partial<McapChannel> = {}): McapChannel {
   return {
     id: options.id ?? 1,
     messageEncoding: options.messageEncoding ?? "protobuf",
-    metadata: options.metadata ?? new Map(),
+    metadata: options.metadata ?? new Map<string, string>(),
     schemaId: options.schemaId ?? 3,
     topic: options.topic ?? "/telemetry",
     type: "Channel",
@@ -853,8 +865,8 @@ function createChannel(
 
 function createSchema(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {},
-): McapTypes.TypedMcapRecords["Schema"] {
+  options: Partial<McapSchema> = {},
+): McapSchema {
   return {
     data,
     encoding: options.encoding ?? "protobuf",
@@ -866,8 +878,8 @@ function createSchema(
 
 function createMessage(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Message"]> = {},
-): McapTypes.TypedMcapRecords["Message"] {
+  options: Partial<McapMessage> = {},
+): McapMessage {
   return {
     channelId: options.channelId ?? 1,
     data,
@@ -878,7 +890,7 @@ function createMessage(
   };
 }
 
-function createChunkIndex(): McapTypes.TypedMcapRecords["ChunkIndex"] {
+function createChunkIndex(): McapChunkIndex {
   return {
     chunkLength: 256n,
     chunkStartOffset: 1_000n,
@@ -889,16 +901,18 @@ function createChunkIndex(): McapTypes.TypedMcapRecords["ChunkIndex"] {
     messageIndexOffsets: new Map(),
     messageStartTime: 1_000_000_000n,
     type: "ChunkIndex",
+    uncompressedSize: 0n,
   };
 }
 
 function createStatistics(
-  options: Partial<McapTypes.TypedMcapRecords["Statistics"]> = {},
-): McapTypes.TypedMcapRecords["Statistics"] {
+  options: Partial<McapStatistics> = {},
+): McapStatistics {
   return {
     attachmentCount: 0,
     channelCount: 1,
-    channelMessageCounts: options.channelMessageCounts ?? new Map(),
+    channelMessageCounts:
+      options.channelMessageCounts ?? new Map<number, bigint>(),
     chunkCount: 1,
     messageCount: 0n,
     messageEndTime: 0n,

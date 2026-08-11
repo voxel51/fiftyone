@@ -1,7 +1,13 @@
-import type { McapTypes } from "@mcap/core";
 import { Root, type INamespace } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
+import type {
+  McapChannel,
+  McapChunkIndex,
+  McapMessage,
+  McapSchema,
+} from "../reader";
+import { asyncValues } from "./inline-client.test-fixtures";
 import {
   enumerateMcapNumericFields,
   numericFieldsFromSamples,
@@ -304,30 +310,37 @@ describe("enumerateMcapNumericFields", () => {
       [2_000n, createMessage(jsonBytes({ right: 2 }), { channelId: 2 })],
     ]);
     const base = createReader({ channelsById, schemasById: new Map() });
-    const readIndexedMessageTimes = vi.fn(async function* (args?: {
-      readonly chunkStartOffsets?: readonly bigint[];
-    }) {
-      const chunkStartOffset = args?.chunkStartOffsets?.[0];
-      const message = chunkStartOffset && messages.get(chunkStartOffset);
-      if (!chunkStartOffset || !message) return;
-      yield {
-        channelId: message.channelId,
-        chunkStartOffset,
-        logTimeNs: message.logTime,
-        messageOffset: 0n,
-        topic: "/shared",
-      };
-    });
+    const readIndexedMessageTimes = vi.fn(
+      (args?: { readonly chunkStartOffsets?: readonly bigint[] }) => {
+        const chunkStartOffset = args?.chunkStartOffsets?.[0];
+        const message = chunkStartOffset && messages.get(chunkStartOffset);
+        return asyncValues(
+          chunkStartOffset && message
+            ? [
+                {
+                  channelId: message.channelId,
+                  chunkStartOffset,
+                  logTimeNs: message.logTime,
+                  messageOffset: 0n,
+                  topic: "/shared",
+                },
+              ]
+            : [],
+        );
+      },
+    );
     const readIndexedMessages = vi.fn(
-      async (request: {
+      (request: {
         readonly entries: readonly {
           readonly chunkStartOffset: bigint;
         }[];
       }) =>
-        request.entries.flatMap((entry) => {
-          const message = messages.get(entry.chunkStartOffset);
-          return message ? [message] : [];
-        }),
+        Promise.resolve(
+          request.entries.flatMap((entry) => {
+            const message = messages.get(entry.chunkStartOffset);
+            return message ? [message] : [];
+          }),
+        ),
     );
     const reader = Object.assign(base, {
       chunkIndexes: [
@@ -580,7 +593,7 @@ describe("enumerateMcapNumericFields", () => {
 
   it("walks ROS schemas and samples declared arrays", async () => {
     const readMessages = vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+      for await (const message of asyncValues<McapMessage>([])) {
         yield message;
       }
     });
@@ -819,7 +832,9 @@ describe("enumerateMcapNumericFields", () => {
         chunkStartOffsets: [2_000n],
         topics: ["/telemetry"],
       });
-      for (const [index, message] of sampledMessages.entries()) {
+      for await (const [index, message] of asyncValues(
+        sampledMessages.entries(),
+      )) {
         yield {
           channelId: 1,
           chunkStartOffset: 2_000n,
@@ -830,11 +845,13 @@ describe("enumerateMcapNumericFields", () => {
       }
     });
     const readIndexedMessages = vi.fn(
-      async (request: {
+      (request: {
         readonly entries: readonly { readonly messageOffset: bigint }[];
       }) =>
-        request.entries.map(
-          (entry) => sampledMessages[Number(entry.messageOffset)],
+        Promise.resolve(
+          request.entries.map(
+            (entry) => sampledMessages[Number(entry.messageOffset)],
+          ),
         ),
     );
     const reader = Object.assign(
@@ -968,13 +985,15 @@ describe("enumerateMcapNumericFields", () => {
       readonly chunkStartOffsets?: readonly bigint[];
     }) {
       expect(args?.chunkStartOffsets).toEqual([1_000n]);
-      for (const entry of [] as Array<{
-        readonly channelId: number;
-        readonly chunkStartOffset: bigint;
-        readonly logTimeNs: bigint;
-        readonly messageOffset: bigint;
-        readonly topic: string;
-      }>) {
+      for await (const entry of asyncValues<
+        Array<{
+          readonly channelId: number;
+          readonly chunkStartOffset: bigint;
+          readonly logTimeNs: bigint;
+          readonly messageOffset: bigint;
+          readonly topic: string;
+        }>
+      >([])) {
         yield entry;
       }
     });
@@ -1019,7 +1038,7 @@ describe("enumerateMcapNumericFields", () => {
 
   it("does not fall back to an unbounded scan when indexes are unavailable", async () => {
     const readMessages = vi.fn(async function* () {
-      yield createMessage(jsonBytes({ speed: 3.2 }));
+      yield* asyncValues([createMessage(jsonBytes({ speed: 3.2 }))]);
     });
     const reader = createReader({
       channelsById: new Map([
@@ -1110,20 +1129,14 @@ function createReader({
   readMessages,
   schemasById,
 }: {
-  readonly channelsById: ReadonlyMap<
-    number,
-    McapTypes.TypedMcapRecords["Channel"]
-  >;
-  readonly indexedMessages?: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly channelsById: ReadonlyMap<number, McapChannel>;
+  readonly indexedMessages?: readonly McapMessage[];
   readonly readMessages?: (args?: {
     readonly endTime?: bigint;
     readonly startTime?: bigint;
     readonly topics?: readonly string[];
-  }) => AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void>;
-  readonly schemasById: ReadonlyMap<
-    number,
-    McapTypes.TypedMcapRecords["Schema"]
-  >;
+  }) => AsyncGenerator<McapMessage, void, void>;
+  readonly schemasById: ReadonlyMap<number, McapSchema>;
 }) {
   const chunkStartOffset = 1_000n;
   const messageIndexOffsets = new Map(
@@ -1147,7 +1160,9 @@ function createReader({
     readonly topics?: readonly string[];
   }) {
     let yielded = 0;
-    for (const [index, message] of (indexedMessages ?? []).entries()) {
+    for await (const [index, message] of asyncValues(
+      (indexedMessages ?? []).entries(),
+    )) {
       const topic = channelsById.get(message.channelId)?.topic;
       if (
         !topic ||
@@ -1171,33 +1186,29 @@ function createReader({
     }
   });
   const readIndexedMessages = vi.fn(
-    async (request: {
+    (request: {
       readonly entries: readonly { readonly messageOffset: bigint }[];
     }) =>
-      request.entries.flatMap((entry) => {
-        const message = indexedMessages?.[Number(entry.messageOffset)];
-        return message ? [message] : [];
-      }),
+      Promise.resolve(
+        request.entries.flatMap((entry) => {
+          const message = indexedMessages?.[Number(entry.messageOffset)];
+          return message ? [message] : [];
+        }),
+      ),
   );
   return {
     channelsById,
     chunkIndexes,
     readIndexedMessages,
     readIndexedMessageTimes,
-    readMessages:
-      readMessages ??
-      vi.fn(async function* () {
-        for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
-          yield message;
-        }
-      }),
+    readMessages: readMessages ?? vi.fn(() => asyncValues<McapMessage>([])),
     schemasById,
   };
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
-): McapTypes.TypedMcapRecords["ChunkIndex"] {
+  options: Partial<McapChunkIndex> = {},
+): McapChunkIndex {
   return {
     chunkLength: options.chunkLength ?? 256n,
     chunkStartOffset: options.chunkStartOffset ?? 1_000n,
@@ -1205,20 +1216,19 @@ function createChunkIndex(
     compression: options.compression ?? "",
     messageEndTime: options.messageEndTime ?? 20n,
     messageIndexLength: options.messageIndexLength ?? 0n,
-    messageIndexOffsets: options.messageIndexOffsets ?? new Map(),
+    messageIndexOffsets:
+      options.messageIndexOffsets ?? new Map<number, bigint>(),
     messageStartTime: options.messageStartTime ?? 10n,
     type: "ChunkIndex",
     uncompressedSize: options.uncompressedSize ?? 0n,
   };
 }
 
-function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
-): McapTypes.TypedMcapRecords["Channel"] {
+function createChannel(options: Partial<McapChannel> = {}): McapChannel {
   return {
     id: options.id ?? 1,
     messageEncoding: options.messageEncoding ?? "protobuf",
-    metadata: options.metadata ?? new Map(),
+    metadata: options.metadata ?? new Map<string, string>(),
     schemaId: options.schemaId ?? 3,
     topic: options.topic ?? "/topic",
     type: "Channel",
@@ -1227,8 +1237,8 @@ function createChannel(
 
 function createSchema(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {},
-): McapTypes.TypedMcapRecords["Schema"] {
+  options: Partial<McapSchema> = {},
+): McapSchema {
   return {
     data,
     encoding: options.encoding ?? "protobuf",
@@ -1240,8 +1250,8 @@ function createSchema(
 
 function createMessage(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Message"]> = {},
-): McapTypes.TypedMcapRecords["Message"] {
+  options: Partial<McapMessage> = {},
+): McapMessage {
   return {
     channelId: options.channelId ?? 1,
     data,
