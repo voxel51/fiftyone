@@ -20,6 +20,7 @@ import {
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { RegisterImaVidImage } from "./RegisterImaVidImage";
+import { RegisterTimelineAudio } from "./RegisterTimelineAudio";
 import {
   RegisterSyntheticLabels,
   SyntheticTrackTimeline,
@@ -250,6 +251,10 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     // Scrubbing stays continuous — only the settle position snaps.
     <PlaybackProvider snapToFrameOnSettle>
       <VideoAnnotationHandlerRegistration />
+      <RegisterTimelineAudio
+        videoSrc={videoSrc}
+        hasAudio={resolution.hasAudio}
+      />
       {registered}
     </PlaybackProvider>
   );

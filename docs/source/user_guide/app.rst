@@ -3844,8 +3844,8 @@ You can also customize the global App config on a per-session basis:
 
     # Create a custom App config
     app_config = fo.app_config.copy()
-    app_config.show_confidence = False
-    app_config.show_label = True
+    app_config.show_skeletons = False
+    app_config.loop_videos = True
     print(app_config)
 
     # Launch App with custom config
@@ -3866,8 +3866,8 @@ apply the changes:
     print(session.config)
 
     # Customize the config of a live session
-    session.config.show_confidence = True
-    session.config.show_label = True
+    session.config.show_skeletons = True
+    session.config.loop_videos = False
     session.refresh()  # must refresh after edits
 
 Dataset App config

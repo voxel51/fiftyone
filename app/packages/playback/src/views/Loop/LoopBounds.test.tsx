@@ -134,14 +134,14 @@ describe("LoopBounds", () => {
     expect(screen.getByText("#8")).toBeTruthy();
   });
 
-  it("renders wall-clock time for loop bounds in absolute mode", () => {
+  it("renders date-qualified wall-clock time for loop bounds in absolute mode", () => {
     renderInProvider({
       duration: 10,
       defaultLoopStart: 1,
       defaultLoopEnd: 9,
       mode: { kind: "absolute", epochAnchorMs: 0 },
     });
-    expect(screen.getByText("00:00:01.000")).toBeTruthy();
-    expect(screen.getByText("00:00:09.000")).toBeTruthy();
+    expect(screen.getByText("1970-01-01 00:00:01.000")).toBeTruthy();
+    expect(screen.getByText("1970-01-01 00:00:09.000")).toBeTruthy();
   });
 });

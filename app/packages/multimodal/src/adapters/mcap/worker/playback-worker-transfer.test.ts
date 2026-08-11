@@ -4,7 +4,7 @@ import type {
   McapDecodedMessage,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
-} from "../types";
+} from "../contracts/index";
 
 describe("MCAP playback worker transfer collection", () => {
   it("collects encoded image and point-cloud buffers", () => {
@@ -21,6 +21,70 @@ describe("MCAP playback worker transfer collection", () => {
     ]);
   });
 
+  it("collects native-width point-cloud channel replacements", () => {
+    const rgb = new Uint8Array([255, 128, 0]);
+    const scalar = new Uint16Array([1_000, 65_000]);
+
+    expect(
+      transferablesForMcapResult({
+        kind: "rgb",
+        rgb: {
+          encoding: {
+            componentCount: 3,
+            invalidValue: null,
+            origin: 0,
+            scale: 1 / 255,
+            storage: "uint8",
+          },
+          values: rgb,
+        },
+        samplePlanKey: "rgb-plan",
+      }),
+    ).toEqual([rgb.buffer]);
+    expect(
+      transferablesForMcapResult({
+        kind: "scalar",
+        samplePlanKey: "scalar-plan",
+        scalarField: {
+          encoding: {
+            componentCount: 1,
+            invalidValue: null,
+            origin: 0,
+            scale: 1,
+            storage: "uint16",
+          },
+          finiteValueCount: 2,
+          name: "ring",
+          range: { max: 65_000, min: 1_000 },
+          values: scalar,
+        },
+      }),
+    ).toEqual([scalar.buffer]);
+  });
+
+  it("transfers numeric bucket gap metadata with its plotted arrays", () => {
+    const bucketGapMask = Uint8Array.of(2);
+    const timesSec = Float64Array.from([0, 1, 2]);
+    const values = Float64Array.from([1, Number.NaN, 2]);
+
+    expect(
+      transferablesForMcapResult({
+        baseTimeNs: 0n,
+        fields: [
+          {
+            bucketGapMask,
+            path: "speed",
+            timesSec,
+            values,
+          },
+        ],
+        messageCount: 3,
+        topic: "/telemetry",
+        truncated: false,
+      }),
+    ).toEqual([bucketGapMask.buffer, timesSec.buffer, values.buffer]);
+  });
+
   it("keeps timeline ranges cloneable without transferables", () => {
     expect(transferablesForMcapResult(createTimelineRange())).toEqual([]);
   });
@@ -35,6 +99,38 @@ describe("MCAP playback worker transfer collection", () => {
         },
       ]),
     ).toEqual([]);
+  });
+
+  it("does not transfer buffers for retained decoded-record references", () => {
+    expect(
+      transferablesForMcapResult({
+        messages: [
+          {
+            kind: "retained-decoded-message",
+            recordId: "record",
+            timelineTimeNs: 1n,
+            topic: "/camera",
+          },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it("filters retained references from an array of mixed windows", () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const retained = {
+      kind: "retained-decoded-message" as const,
+      recordId: "record",
+      timelineTimeNs: 1n,
+      topic: "/camera",
+    };
+    const fresh = createMessage([bytes.buffer]);
+
+    expect(
+      transferablesForMcapResult([
+        { ...createWindow([fresh]), messages: [retained, fresh] },
+      ]),
+    ).toEqual([bytes.buffer]);
   });
 
   it("ignores decoded-message-shaped values with invalid resource hints", () => {

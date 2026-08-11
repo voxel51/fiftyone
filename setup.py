@@ -98,7 +98,7 @@ setup(
         # internal packages
         "fiftyone-brain>=0.23.0,<0.24",
         "fiftyone-db>=0.4,<2.0",
-        "voxel51-eta>=0.16.0,<0.17",
+        "voxel51-eta>=0.17,<0.18",
     ],
     include_package_data=True,
     classifiers=[

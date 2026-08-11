@@ -3,7 +3,29 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { Button, IconName, Size, Spinner, Variant } from "@voxel51/voodo";
+import {
+  Align,
+  Anchor,
+  Button,
+  Justify,
+  Orientation,
+  Size,
+  Spacing,
+  Spinner,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+  Tooltip,
+  Variant,
+} from "@voxel51/voodo";
+import {
+  ChevronBottomIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PauseIcon,
+  PlayIcon,
+} from "../stableIcons";
 import clsx from "clsx";
 import React, { type ReactNode } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
@@ -14,14 +36,16 @@ import {
 } from "../../lib/playback/store-access";
 import {
   useBufferingDetail,
+  useBufferingStreams,
   useIsBuffering,
   useIsPlayPending,
   useIsPlaying,
 } from "../../lib/playback/use-playback-state";
+import type { BufferingStream } from "../../lib/playback/types";
 import LoopBounds from "../Loop/LoopBounds";
 import PlayheadTime from "../Playhead/PlayheadTime";
 import SpeedControl from "./SpeedControl";
-import { PauseIcon, PlayIcon } from "./timeline-controls-icons";
+import VolumeControl from "./VolumeControl";
 import styles from "./TimelineControls.module.css";
 
 export interface TimelineControlsProps {
@@ -38,17 +62,33 @@ export interface TimelineControlsProps {
    */
   extraControls?: ReactNode;
   /**
-   * Optional content rendered far-right, after the playhead time / loop
-   * bounds, preceded by its own divider. Use for trailing actions that read
-   * as a separate group — e.g. the temporal tag-mode button.
+   * Optional content rendered inline after the playhead time / loop bounds,
+   * preceded by its own divider — still part of the left-hand run of
+   * controls. Readouts belong here (the multimodal surface's absolute
+   * timestamp, the temporal tag-mode button). For buttons that should sit
+   * against the right edge instead, use {@link trailingActions}.
    */
   extraActions?: ReactNode;
+  /**
+   * Optional buttons pinned to the right edge of the row, preceded by their
+   * own divider and followed by the drawer chevron. Unlike
+   * {@link extraActions} these never mingle with the time readouts — this is
+   * the bring-your-own-buttons slot.
+   */
+  trailingActions?: ReactNode;
+  /**
+   * Current open state of the surface {@link onToggle} controls. Drives the
+   * trailing chevron's rotation, so it only matters when `onToggle` is set.
+   */
+  expanded?: boolean;
 }
 
 const TimelineControls: React.FC<TimelineControlsProps> = ({
   onToggle,
   extraControls,
   extraActions,
+  trailingActions,
+  expanded = false,
 }) => {
   const isPlaying = useIsPlaying();
   const isPlayPending = useIsPlayPending();
@@ -101,33 +141,23 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       }
     : undefined;
 
-  const handleKeyDown = onToggle
-    ? (e: React.KeyboardEvent<HTMLDivElement>) => {
-        // Only respond if focus is on the row itself, not a nested control.
-        if (e.target !== e.currentTarget) return;
-        // Enter only — Space is reserved for the global play/pause
-        // shortcut and must never expand/collapse the tracks drawer.
-        if (e.key === "Enter") {
-          e.preventDefault();
-          onToggle();
-        }
-      }
-    : undefined;
-
   return (
+    // Deliberately not focusable and not `role="button"`. As a tab stop the
+    // row drew a focus ring around the whole bar, which read as everything
+    // lighting up rather than one control being selected. Keyboard access to
+    // the drawer lives on the trailing chevron — a real button, which takes
+    // Enter/Space natively — so nothing is lost by dropping the tab stop.
+    // Click-anywhere-to-toggle still works for pointer users.
     <div
       className={clsx(styles.root, { [styles.clickable]: !!onToggle })}
       data-testid="timeline-controls-root"
       onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      role={onToggle ? "button" : undefined}
-      tabIndex={onToggle ? 0 : undefined}
     >
       <Button
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-step-back"
-        leadingIcon={IconName.ChevronLeft}
+        leadingIcon={ChevronLeftIcon}
         aria-label="Step back"
         onClick={stepBack}
       />
@@ -144,11 +174,12 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-step-forward"
-        leadingIcon={IconName.ChevronRight}
+        leadingIcon={ChevronRightIcon}
         aria-label="Step forward"
         onClick={stepForward}
       />
       <SpeedControl />
+      <VolumeControl />
 
       {extraControls}
 
@@ -170,6 +201,41 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
           {extraActions}
         </>
       ) : null}
+      {(trailingActions || onToggle) && (
+        <div className={styles.trailing}>
+          {trailingActions ? (
+            <>
+              <span
+                className={styles.divider}
+                data-testid="timeline-controls-divider"
+                aria-hidden
+              />
+              <div
+                className={styles.trailingActions}
+                data-testid="timeline-controls-trailing-actions"
+              >
+                {trailingActions}
+              </div>
+            </>
+          ) : null}
+          {onToggle ? (
+            <Button
+              variant={Variant.Icon}
+              size={Size.Xs}
+              data-testid="timeline-controls-toggle"
+              leadingIcon={ChevronBottomIcon}
+              aria-label={expanded ? "Hide tracks" : "Show tracks"}
+              aria-expanded={expanded}
+              className={clsx(styles.toggle, {
+                [styles.toggleExpanded]: expanded,
+              })}
+              // The row's own click handler ignores clicks that land on a
+              // button, so the chevron must drive the toggle itself.
+              onClick={onToggle}
+            />
+          ) : null}
+        </div>
+      )}
     </div>
   );
 };
@@ -184,10 +250,11 @@ function BufferingIndicator() {
   const isBuffering = useIsBuffering();
   const isPlayPending = useIsPlayPending();
   const detail = useBufferingDetail();
+  const streams = useBufferingStreams();
 
   if (!isBuffering && !isPlayPending) return null;
 
-  return (
+  const indicator = (
     <span
       className={styles.buffering}
       data-testid="timeline-controls-buffering"
@@ -196,6 +263,87 @@ function BufferingIndicator() {
       <Spinner size={Size.Xs} />
       {detail ? `Buffering ${detail}` : "Buffering"}
     </span>
+  );
+
+  if (streams.length === 0) return indicator;
+
+  return (
+    <Tooltip
+      anchor={Anchor.Top}
+      className={styles.bufferingTooltip}
+      content={<BufferingStreamDetails streams={streams} />}
+      portal
+      wrapperClassName={styles.bufferingTooltipTrigger}
+    >
+      {indicator}
+    </Tooltip>
+  );
+}
+
+function BufferingStreamDetails({
+  streams,
+}: {
+  readonly streams: readonly BufferingStream[];
+}) {
+  const waiting = streams.filter((stream) => stream.state === "waiting");
+  const ready = streams.filter((stream) => stream.state === "ready");
+
+  return (
+    <Stack
+      className={styles.bufferingDetails}
+      orientation={Orientation.Column}
+      spacing={Spacing.Sm}
+    >
+      <Stack
+        align={Align.Center}
+        justify={Justify.Between}
+        orientation={Orientation.Row}
+        spacing={Spacing.Lg}
+      >
+        <Text color={TextColor.Primary} variant={TextVariant.Label}>
+          Playback streams
+        </Text>
+        <Text
+          className={styles.bufferingSummary}
+          color={TextColor.Secondary}
+          variant={TextVariant.Caption}
+        >
+          {waiting.length} waiting · {ready.length} ready
+        </Text>
+      </Stack>
+      <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+        {[...waiting, ...ready].map((stream) => (
+          <Stack
+            align={Align.Center}
+            className={styles.bufferingStreamRow}
+            justify={Justify.Between}
+            key={stream.id}
+            orientation={Orientation.Row}
+            spacing={Spacing.Lg}
+          >
+            <Text
+              className={styles.bufferingStreamName}
+              color={TextColor.Primary}
+              title={stream.label}
+              variant={TextVariant.Xs}
+            >
+              {stream.label}
+            </Text>
+            <Text
+              className={styles.bufferingStreamState}
+              color={
+                stream.state === "waiting"
+                  ? TextColor.Warning
+                  : TextColor.Success
+              }
+              variant={TextVariant.Caption}
+            >
+              {stream.state === "waiting" ? "Waiting" : "Ready"}
+            </Text>
+          </Stack>
+        ))}
+      </Stack>
+    </Stack>
   );
 }
 

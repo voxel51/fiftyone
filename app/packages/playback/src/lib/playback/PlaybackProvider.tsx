@@ -90,6 +90,7 @@ export function PlaybackProvider({
   defaultSpeed = 1.0,
   snapToFrameOnSettle,
   mode,
+  seekFetchDebounceMs,
 }: PlaybackConfig & { children: React.ReactNode }) {
   // Frozen at mount to match `usePlaybackEngine`'s mount-scoped store: that
   // store's `resolvedStepInterval` (derived from `mode`) is captured once in
@@ -111,6 +112,7 @@ export function PlaybackProvider({
     defaultSpeed,
     snapToFrameOnSettle,
     mode: resolvedMode,
+    seekFetchDebounceMs,
   });
 
   // We deliberately do NOT mount a Jotai `<Provider>` here. Every reactive

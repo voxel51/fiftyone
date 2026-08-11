@@ -3,7 +3,8 @@ import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { frameAt, usePlayhead } from "@fiftyone/playback";
+import { usePlayhead } from "@fiftyone/playback";
+import { resolveFrameCount } from "../utils/frameCount";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import {
   labelSchemaData,
@@ -16,6 +17,7 @@ import {
   useSelectionIsInstanceTrack,
   useSelectionIsKeyframeable,
 } from "../state/useVideoInteraction";
+import { useCurrentFrame } from "../state/useCurrentFrame";
 import { useFrameKeyframeState } from "./useFrameKeyframeState";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 import { AiTrackUpsellButton } from "../components/AiTrackUpsellButton";
@@ -66,6 +68,7 @@ const DiamondIcon = ({ filled }: { filled: boolean }) => (
 export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const actions = useVideoSurfaceActions();
   const playhead = usePlayhead();
+  const playheadFrame = useCurrentFrame();
   const selected = useSelectedTrackIds();
   const modalSample = useModalSample();
 
@@ -145,9 +148,13 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             isDisabled: !canCreateTd,
             onClick: () => {
               if (!canCreateTd || !tdFieldPath || !fps) return;
-              // Default: 1-second window starting at the playhead frame.
-              const startFrame = frameAt(playhead, fps);
-              const endFrame = startFrame + Math.round(fps);
+              // Default: 1-second window starting at the playhead frame,
+              // capped at the video's last frame.
+              const startFrame = playheadFrame;
+              const endFrame = Math.min(
+                startFrame + Math.round(fps),
+                resolveFrameCount(modalSample, fps) ?? Infinity,
+              );
               actions.createTemporalDetection(
                 tdFieldPath,
                 [startFrame, endFrame],
@@ -186,7 +193,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
                 return;
               }
 
-              actions.splitTrack(selectedIds[0], frameAt(playhead, fps));
+              actions.splitTrack(selectedIds[0], playheadFrame);
             },
           },
           {
@@ -213,7 +220,9 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       fps,
       hasSelection,
       isKeyframeAtPlayhead,
+      modalSample,
       playhead,
+      playheadFrame,
       selectedIds,
       selectionIsInstanceTrack,
       selectionIsKeyframeable,
