@@ -9,6 +9,7 @@ import {
   type McapIndexedReaderLike,
 } from "./reader";
 import { ByteClientReadable } from "./reader/byte-readable";
+import { createMcapDecompressedChunkCache } from "./reader/decompressed-chunk-cache";
 
 const MCAP_CHUNK_OPCODE = 0x06;
 const MCAP_MESSAGE_INDEX_OPCODE = 0x07;
@@ -57,6 +58,158 @@ describe("MCAP indexed message times", () => {
       },
     ]);
     expect(exactReads).toEqual(reads);
+  });
+
+  it("restricts index reads to exact requested chunk offsets", async () => {
+    const firstIndex = createMessageIndexRecord(7, [[10n, 1n]]);
+    const secondIndex = createMessageIndexRecord(7, [[110n, 2n]]);
+    const firstOffset = 64n;
+    const secondOffset = 256n;
+    const { exactReads, readable } = createReadable([
+      { bytes: firstIndex, offset: firstOffset },
+      { bytes: secondIndex, offset: secondOffset },
+    ]);
+    const reader = createReader({
+      chunkIndexes: [
+        createChunkIndex({
+          chunkStartOffset: 1_000n,
+          messageEndTime: 20n,
+          messageIndexLength: BigInt(firstIndex.byteLength),
+          messageIndexOffsets: new Map([[7, firstOffset]]),
+          messageStartTime: 10n,
+        }),
+        createChunkIndex({
+          chunkStartOffset: 2_000n,
+          messageEndTime: 120n,
+          messageIndexLength: BigInt(secondIndex.byteLength),
+          messageIndexOffsets: new Map([[7, secondOffset]]),
+          messageStartTime: 110n,
+        }),
+      ],
+    });
+
+    const entries = await collect(
+      readIndexedMessageTimesForReader(reader, readable, {
+        chunkStartOffsets: [2_000n],
+        topics: ["/camera"],
+      }),
+    );
+
+    expect(entries.map((entry) => entry.logTimeNs)).toEqual([110n]);
+    expect(exactReads).toEqual([
+      { offset: secondOffset, size: BigInt(secondIndex.byteLength) },
+    ]);
+  });
+
+  it("batches nearby requested ranges across an unselected index", async () => {
+    const cameraIndex = createMessageIndexRecord(7, [[10n, 1n]]);
+    const skippedIndex = createMessageIndexRecord(9, [[10n, 9n]]);
+    const lidarIndex = createMessageIndexRecord(8, [[11n, 2n]]);
+    const cameraOffset = 64n;
+    const skippedOffset = cameraOffset + BigInt(cameraIndex.byteLength);
+    const lidarOffset = skippedOffset + BigInt(skippedIndex.byteLength);
+    const { exactReads, readable } = createReadable([
+      { bytes: cameraIndex, offset: cameraOffset },
+      { bytes: skippedIndex, offset: skippedOffset },
+      { bytes: lidarIndex, offset: lidarOffset },
+    ]);
+    const reader = createReader({
+      chunkIndexes: [
+        createChunkIndex({
+          messageEndTime: 11n,
+          messageIndexLength: BigInt(
+            cameraIndex.byteLength +
+              skippedIndex.byteLength +
+              lidarIndex.byteLength,
+          ),
+          messageIndexOffsets: new Map([
+            [7, cameraOffset],
+            [9, skippedOffset],
+            [8, lidarOffset],
+          ]),
+          messageStartTime: 10n,
+        }),
+      ],
+    });
+
+    const entries = await collect(
+      readIndexedMessageTimesForReader(reader, readable, {
+        topics: ["/camera", "/lidar"],
+      }),
+    );
+
+    expect(
+      entries.map(({ logTimeNs, topic }) => ({ logTimeNs, topic })),
+    ).toEqual([
+      { logTimeNs: 10n, topic: "/camera" },
+      { logTimeNs: 11n, topic: "/lidar" },
+    ]);
+    expect(exactReads).toEqual([
+      {
+        offset: cameraOffset,
+        size: BigInt(
+          cameraIndex.byteLength +
+            skippedIndex.byteLength +
+            lidarIndex.byteLength,
+        ),
+      },
+    ]);
+  });
+
+  it("keeps sparse requested message index ranges in bounded reads", async () => {
+    const cameraIndex = createMessageIndexRecord(7, [[10n, 1n]]);
+    const skippedIndex = createMessageIndexRecord(
+      9,
+      Array.from(
+        { length: 4_096 },
+        (_, index) => [BigInt(index), BigInt(index)] as const,
+      ),
+    );
+    const lidarIndex = createMessageIndexRecord(8, [[11n, 2n]]);
+    const cameraOffset = 64n;
+    const skippedOffset = cameraOffset + BigInt(cameraIndex.byteLength);
+    const lidarOffset = skippedOffset + BigInt(skippedIndex.byteLength);
+    const { exactReads, readable } = createReadable([
+      { bytes: cameraIndex, offset: cameraOffset },
+      { bytes: skippedIndex, offset: skippedOffset },
+      { bytes: lidarIndex, offset: lidarOffset },
+    ]);
+    const reader = createReader({
+      chunkIndexes: [
+        createChunkIndex({
+          messageEndTime: 11n,
+          messageIndexLength: BigInt(
+            cameraIndex.byteLength +
+              skippedIndex.byteLength +
+              lidarIndex.byteLength,
+          ),
+          messageIndexOffsets: new Map([
+            [7, cameraOffset],
+            [9, skippedOffset],
+            [8, lidarOffset],
+          ]),
+          messageStartTime: 10n,
+        }),
+      ],
+    });
+
+    const entries = await collect(
+      readIndexedMessageTimesForReader(reader, readable, {
+        topics: ["/camera", "/lidar"],
+      }),
+    );
+
+    expect(entries.map((entry) => entry.topic)).toEqual(["/camera", "/lidar"]);
+    expect(exactReads).toEqual([
+      {
+        offset: cameraOffset,
+        size: BigInt(cameraIndex.byteLength),
+      },
+      {
+        offset: lidarOffset,
+        size: BigInt(lidarIndex.byteLength),
+      },
+    ]);
   });
 
   it("stops after the limit for ordered chunks", async () => {
@@ -266,6 +419,33 @@ describe("MCAP indexed message times", () => {
     expect(readerFactory).toHaveBeenCalledTimes(1);
   });
 
+  it("disposes resolved and in-flight readers at store teardown", async () => {
+    const dispose = vi.fn();
+    let resolveReader!: (reader: McapIndexedReaderLike) => void;
+    const pendingReader = new Promise<McapIndexedReaderLike>((resolve) => {
+      resolveReader = resolve;
+    });
+    const readerStore = createMcapReaderStore({
+      byteClient: { readBytes: vi.fn() },
+      readerFactory: vi.fn(() => pendingReader),
+    });
+    const source = createSource({
+      sourceId: "source:dispose",
+      url: "bytes://dispose",
+    });
+    const read = readerStore.get(source);
+
+    readerStore.dispose();
+    resolveReader({
+      ...createReader({ chunkIndexes: [] }),
+      dispose,
+    });
+    await read;
+
+    expect(dispose).toHaveBeenCalledOnce();
+    await expect(readerStore.get(source)).rejects.toThrow("disposed");
+  });
+
   it("uses descriptor size without waiting on byte clients", async () => {
     // Stat never settles: size() must resolve from the descriptor anyway,
     // proving validator discovery stays off the critical path.
@@ -467,16 +647,65 @@ describe("MCAP indexed message times", () => {
     );
   });
 
-  it("caches decompressed chunk buffers by compressed byte identity", () => {
-    const decompress = vi.fn(
-      (buffer: Uint8Array, decompressedSize: bigint) =>
-        new Uint8Array([buffer[0] ?? 0, Number(decompressedSize)]),
+  it("isolates cancellation for concurrent signal-bound exact reads", async () => {
+    type ReadResult = Awaited<ReturnType<ByteClient["readBytes"]>>;
+    const pendingReads = [deferred<ReadResult>(), deferred<ReadResult>()];
+    let nextRead = 0;
+    const readBytes = vi.fn(
+      (request: Parameters<ByteClient["readBytes"]>[0]) => {
+        const pending = pendingReads[nextRead++];
+        if (!pending) throw new Error("Unexpected exact read");
+        request.signal?.addEventListener(
+          "abort",
+          () => pending.reject(request.signal?.reason),
+          { once: true },
+        );
+        return pending.promise;
+      },
     );
+    const source = {
+      sizeBytes: "1024",
+      sourceId: "source:1",
+      url: "mcap-source://sample",
+    };
+    const readable = new ByteClientReadable(source, { readBytes });
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+
+    const first = readable.readExact(128n, 16n, firstController.signal);
+    const second = readable.readExact(128n, 16n, secondController.signal);
+
+    expect(readBytes).toHaveBeenCalledTimes(2);
+    const firstRejection = expect(first).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    firstController.abort();
+    await firstRejection;
+
+    pendingReads[1]?.resolve({
+      bytes: new Uint8Array(16),
+      range: { length: 16n, offset: 128n },
+      source,
+    });
+    await expect(second).resolves.toEqual(new Uint8Array(16));
+    expect(readBytes.mock.calls[0]?.[0].signal).toBe(firstController.signal);
+    expect(readBytes.mock.calls[1]?.[0].signal).toBe(secondController.signal);
+  });
+
+  it("does not cache copied decompressor inputs without stable context", () => {
+    const decompress = vi.fn((buffer: Uint8Array, decompressedSize: bigint) => {
+      const output = new Uint8Array(Number(decompressedSize));
+      output[0] = buffer[0] ?? 0;
+      return output;
+    });
     const handlers = createCachedMcapDecompressHandlers(
       {
         lz4: decompress,
       },
-      1024,
+      {
+        cache: createMcapDecompressedChunkCache(1024),
+        fallbackSourceKey: "source:version-1",
+      },
     );
     const compressed = new Uint8Array([7, 8, 9]);
     const sameBytes = new Uint8Array(
@@ -488,8 +717,120 @@ describe("MCAP indexed message times", () => {
     const first = handlers.lz4(compressed, 3n);
     const second = handlers.lz4(sameBytes, 3n);
 
-    expect(second).toBe(first);
-    expect(decompress).toHaveBeenCalledTimes(1);
+    expect(second).not.toBe(first);
+    expect(decompress).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls back to uncached decompression for inconsistent context", () => {
+    const decompress = vi.fn(
+      (_buffer: Uint8Array, decompressedSize: bigint) =>
+        new Uint8Array(Number(decompressedSize)),
+    );
+    const handlers = createCachedMcapDecompressHandlers(
+      { lz4: decompress },
+      {
+        cache: createMcapDecompressedChunkCache(1024),
+      },
+    );
+    const compressed = new Uint8Array([7, 8, 9]);
+    const inconsistentContext: McapTypes.ChunkDecompressionContext = {
+      chunkLength: 64n,
+      chunkStartOffset: 128n,
+      compressedDataLength: 4n,
+      compressedDataStartOffset: 188n,
+      compression: "lz4",
+      sourceIdentity: "source:version-1",
+      uncompressedSize: 3n,
+    };
+
+    handlers.lz4(compressed, 3n, inconsistentContext);
+    handlers.lz4(compressed, 3n, inconsistentContext);
+
+    expect(decompress).toHaveBeenCalledTimes(2);
+  });
+
+  it("resolves sliced read buffers to stable source ranges", async () => {
+    const backing = new Uint8Array(96);
+    const readable = new ByteClientReadable(
+      {
+        etag: '"version-1"',
+        sizeBytes: "1024",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      {
+        readBytes: async (request) => ({
+          bytes: backing.subarray(16, 80),
+          range: request.range,
+          source: request.source,
+        }),
+      },
+    );
+    const bytes = await readable.read(128n, 64n);
+
+    const range = readable.sourceRangeForBytes(bytes.subarray(8, 56));
+    expect(range).toMatchObject({
+      length: 48n,
+      offset: 136n,
+    });
+    expect(range?.sourceKey).toContain("version-1");
+  });
+
+  it("binds source identity to each read result instead of current state", async () => {
+    let version = 0;
+    const readable = new ByteClientReadable(
+      {
+        sizeBytes: "1024",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      {
+        readBytes: async (request) => {
+          version += 1;
+          return {
+            bytes: new Uint8Array(Number(request.range.length)),
+            range: request.range,
+            source: { ...request.source, etag: `"version-${version}"` },
+          };
+        },
+      },
+    );
+
+    const first = await readable.read(100n, 8n);
+    const second = await readable.read(200n, 8n);
+
+    expect(readable.sourceIdentityForBytes(first)).toContain("version-1");
+    expect(readable.sourceIdentityForBytes(second)).toContain("version-2");
+    expect(readable.sourceAccessKey()).toContain("version-2");
+  });
+
+  it("rejects ambiguous identities for a reused mutable read buffer", async () => {
+    const shared = new Uint8Array(8);
+    let version = 0;
+    const readable = new ByteClientReadable(
+      {
+        sizeBytes: "1024",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      {
+        readBytes: async (request) => {
+          version += 1;
+          return {
+            bytes: shared,
+            range: request.range,
+            source: { ...request.source, etag: `"version-${version}"` },
+          };
+        },
+      },
+    );
+
+    const first = await readable.read(100n, 8n);
+    expect(readable.sourceIdentityForBytes(first)).toBeDefined();
+    const reused = await readable.read(100n, 8n);
+
+    expect(readable.sourceIdentityForBytes(reused)).toBeUndefined();
+    expect(readable.sourceIdentityForBytes(first)).toBeUndefined();
   });
 
   it("logs debug chunk reads with chunk ids and byte counts", async () => {

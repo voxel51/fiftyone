@@ -5,6 +5,10 @@ Model Zoo
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.7.0
+    :enterprise_version: 1.0
+
 Welcome to the FiftyOne Model Zoo! 🚀
 
 Here you'll discover state-of-the-art computer vision models, pre-trained on

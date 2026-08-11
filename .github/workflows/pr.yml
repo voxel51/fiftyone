@@ -54,6 +54,7 @@ jobs:
               - '.github/workflows/build.yml'
             e2e-pw:
               - 'e2e-pw/**'
+              - '.github/scripts/**'
               - '.github/workflows/e2e.yml'
             fiftyone:
               - 'fiftyone/**'
@@ -96,7 +97,7 @@ jobs:
           heavy=false
           if [ "$run_ci" = "true" ]; then
             case "$BASE_REF" in
-              develop|main|release/*) heavy=true ;;
+              develop|release/*|community) heavy=true ;;
             esac
           fi
           echo "run-ci=$run_ci" >> "$GITHUB_OUTPUT"
@@ -129,7 +130,7 @@ jobs:
       actions: read
       # job containers pull the prebaked CI images (private in fiftyone-teams)
       packages: read
-      # the e2e verdict job upserts the authoritative e2e results comment
+      # the e2e verdict job upserts the authoritative CI results comment
       pull-requests: write
 
   lint:
@@ -166,16 +167,20 @@ jobs:
         startsWith(github.base_ref, 'feat/'))
         && '["3.10", "3.13"]' || '["3.10", "3.11", "3.12", "3.13"]' }}
 
-  e2e-comment-suites:
-    # The authoritative e2e comment freezes its sibling-suite rows when the
-    # e2e verdict posts it, so suites that outlast e2e (test-windows) show ⏳
-    # forever; re-render the rows once every suite has concluded.
+  ci-comment:
+    # Every PR gets an authoritative CI comment. When the e2e pipeline ran,
+    # it posted the comment — this job re-renders its sibling-suite rows
+    # once every suite has concluded (suites that outlast e2e, like
+    # test-windows, would freeze at ⏳) and settles the python section. When
+    # e2e was skipped (drafts, docs-only changes, stacked PRs), this job
+    # creates a suites-only comment instead; the e2e pipeline upgrades it in
+    # place if it runs later.
     runs-on: ubuntu-latest
     needs: [modified-files, build, lint, test, test-windows, e2e]
     if: >-
       always() &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      contains(fromJSON('["success", "failure"]'), needs.e2e.result)
+      needs.modified-files.outputs.run-ci == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: read
       # reads the run's jobs; implicit on public repos, required on private
@@ -185,11 +190,31 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - uses: actions/checkout@v6
         with:
-          sparse-checkout: e2e-pw/scripts
-      - name: Refresh suite rows on the e2e comment
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Download pytest results
+        # junit reports for the comment's python section; empty when the
+        # python matrix was skipped or died before uploading
+        run: |
+          mkdir -p pytest-junit
+          gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | startswith("pytest-results-")) | [.id, .name] | @tsv' |
+          while IFS=$'\t' read -r id name; do
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$name.zip"
+            # -o: reruns list every attempt's artifact under the same name;
+            # an interactive replace prompt would fail the job
+            unzip -o -q -d "pytest-junit/$name" "$name.zip"
+            printf '%s\t%s\n' "$name" \
+              "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts/$id" \
+              >> pytest-junit/artifact-urls.tsv
+          done
+      - name: Refresh suite rows on the CI comment
         run: |
           case "$GITHUB_REPOSITORY" in
             */fiftyone-teams) FLAVOR=FOE ;;
@@ -197,17 +222,21 @@ jobs:
           esac
           CID=$(gh api --paginate \
             "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" \
-            --jq ".[] | select(.body | contains(\"e2e-authoritative-report:$FLAVOR\")) | .id" \
+            --jq ".[] | select(.body | contains(\"ci-report:$FLAVOR\")) | .id" \
             | head -1)
-          if [ -z "$CID" ]; then
-            echo "no authoritative e2e comment to refresh"
-            exit 0
-          fi
           gh api \
             "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
             > run-jobs.json
+          if [ -z "$CID" ]; then
+            # e2e never posted one (skipped pipeline); every PR still gets a
+            # suites-only comment
+            node .github/scripts/refresh-suite-rows.mjs run-jobs.json --new pytest-junit > new-body.md
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+              -F body=@new-body.md
+            exit 0
+          fi
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CID" --jq .body > body.md
-          node e2e-pw/scripts/refresh-suite-rows.mjs run-jobs.json body.md > new-body.md
+          node .github/scripts/refresh-suite-rows.mjs run-jobs.json body.md pytest-junit > new-body.md
           if cmp -s body.md new-body.md; then
             echo "suite rows already final"
             exit 0
@@ -269,12 +298,43 @@ jobs:
                   per_page: 100,
                 },
               );
-              const live = runs.filter(
+              const candidates = runs.filter(
                 (r) =>
                   r.workflow_id === self.workflow_id &&
                   r.id !== context.runId &&
                   r.status !== 'completed',
               );
+              // A fellow no-op mirror is not testing this SHA. Without this
+              // check, concurrent no-op runs (an event burst on one commit)
+              // wait on each other until the deadline and conclude red. A run
+              // counts as a mirror only when its gate passed and every suite
+              // job it spawned was skipped; anything ambiguous (gate still
+              // running, jobs not yet listed) stays blocking.
+              const SUITE = /^(build|lint|test|test-windows|e2e)\b/;
+              const live = [];
+              for (const r of candidates) {
+                const jobs = await github.paginate(
+                  github.rest.actions.listJobsForWorkflowRun,
+                  {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: r.id,
+                    per_page: 100,
+                  },
+                );
+                const gate = jobs.find((j) => j.name === 'modified-files');
+                const suite = jobs.filter((j) => SUITE.test(j.name));
+                const isMirror =
+                  gate?.status === 'completed' &&
+                  gate?.conclusion === 'success' &&
+                  suite.length > 0 &&
+                  suite.every(
+                    (j) => j.status === 'completed' && j.conclusion === 'skipped',
+                  );
+                if (!isMirror) {
+                  live.push(r);
+                }
+              }
               const finished = new Set(
                 runs
                   .filter((r) => r.status === 'completed' && r.conclusion !== 'cancelled')

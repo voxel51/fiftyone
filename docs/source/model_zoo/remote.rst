@@ -5,6 +5,10 @@ Remotely-Sourced Zoo Models
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 1.0.0
+    :enterprise_version: 2.1.0
+
 This page describes how to work with and create zoo models whose definitions
 are hosted via GitHub repositories or public URLs.
 

@@ -231,6 +231,20 @@ describe("SpaceTree", () => {
     tree.splitLayout(tree.root, Layout.Horizontal, nodeA);
     expect(nodeC.isActive()).toBe(true);
   });
+
+  it("finds nodes by id anywhere in the tree", () => {
+    const tree = new SpaceTree();
+    const nodeA = new SpaceNode();
+    nodeA.type = "panel_a";
+    tree.addNodeAfter(tree.root, nodeA);
+    const nodeB = new SpaceNode();
+    nodeB.type = "panel_b";
+    tree.addNodeAfter(tree.root, nodeB);
+    tree.splitLayout(tree.root, Layout.Horizontal);
+    expect(tree.findNodeById(nodeA.id)?.id).toBe(nodeA.id);
+    expect(tree.findNodeById(nodeB.id)?.id).toBe(nodeB.id);
+    expect(tree.findNodeById("absent")).toBeUndefined();
+  });
 });
 
 const samplesAndEmbeddings = {

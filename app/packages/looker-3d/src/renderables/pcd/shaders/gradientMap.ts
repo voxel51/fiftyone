@@ -81,7 +81,7 @@ export const getGradientFromSchemeName = (
 
 const useGradientMap = (
   colorMap: Readonly<ColorscaleInput["list"]>,
-  flipY: boolean = false,
+  flipY = false,
 ) => {
   const texture = useMemo(() => {
     const gradients = colorMap.map((item) => [item.value, item.color] as const);

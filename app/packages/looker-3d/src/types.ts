@@ -146,7 +146,7 @@ export interface BaseOverlayProps {
   opacity: number;
   rotation: THREE.Vector3Tuple;
   selected: boolean;
-  onClick: (e: any) => void;
+  onClick: (e: ThreeEvent<MouseEvent>) => void;
   label: OverlayLabel;
   color: string;
 }
@@ -156,7 +156,7 @@ export interface TransformProps extends TransformControlsProps {
   onTransformStart?: () => void;
   onTransformEnd?: () => void;
   onTransformChange?: () => void;
-  transformControlsRef?: RefObject<any>;
+  transformControlsRef?: RefObject<THREE.Object3D>;
 }
 
 export interface HoverState {
@@ -169,6 +169,33 @@ export interface EventHandlers {
   onPointerOut: () => void;
   onPointerMissed: () => void;
   onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
+}
+
+/**
+ * The minimal shape `useEventHandlers()`'s public contract needs (`_id`,
+ * `path`) — kept structural rather than `OverlayLabel` itself because the
+ * instanced batch's `ReconciledDetection3D`/`ReconciledPolyline3D` labels
+ * omit `selected` (see `ReconciledDetection3D`), so they aren't assignable
+ * to `OverlayLabel` even though every label type used here is a strict
+ * superset of this. No index signature needed — structural typing already
+ * lets every concrete label type (with its extra fields) satisfy this.
+ */
+export type InstancedLabel = {
+  _id: string;
+  path: string | string[];
+};
+
+/**
+ * `useEventHandlers()`'s raw shape — `label` is a call-time argument rather
+ * than curried in, so one set of handlers can be shared across every label
+ * in an instanced batch. `Cuboid` curries its own label once into the
+ * `EventHandlers` shape above for the standalone path.
+ */
+export interface InstancedEventHandlers {
+  onPointerOver: (label: InstancedLabel, e?: ThreeEvent<PointerEvent>) => void;
+  onPointerOut: (label: InstancedLabel) => void;
+  onPointerMissed: () => void;
+  onPointerMove: (label: InstancedLabel, e: ThreeEvent<PointerEvent>) => void;
 }
 
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";

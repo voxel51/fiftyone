@@ -7,11 +7,14 @@ jobs:
     timeout-minutes: 45
     runs-on: ubuntu-latest
     name: Prepare e2e assets
+    outputs:
+      burn-in-count: ${{ steps.burn-in-specs.outputs.count }}
+      burn-in-specs: ${{ steps.burn-in-specs.outputs.specs }}
     defaults:
       run:
         shell: bash
     steps:
-      - name: Mark the e2e comment in progress
+      - name: Mark the CI comment in progress
         # keeps the authoritative comment honest while a newer run is
         # executing; the verdict job's rewrite clears the banner (or the
         # e2e-aborted job flips it when the pipeline dies before the verdict)
@@ -27,7 +30,7 @@ jobs:
             )
               ? 'FOE'
               : 'OSS';
-            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const marker = `<!-- ci-report:${flavor} -->`;
             const sha = context.payload.pull_request.head.sha.slice(0, 10);
             const runUrl = `${context.serverUrl}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
             const comments = await github.paginate(
@@ -81,11 +84,32 @@ jobs:
         with:
           node-version: 22
 
-      - name: Enable corepack
-        run: corepack enable
+      - name: Prepare yarn
+        uses: ./.github/actions/setup-yarn
 
-      - name: Prepare yarn 4
-        run: corepack prepare yarn@4.9.1 --activate
+      - name: Detect tests to burn in
+        # New and modified tests must pass a burn-in (repeated runs, retries
+        # disabled) before joining the suite; the burn-in job below runs
+        # them and the verdict job enforces the result. Targets are
+        # file:line tests, or whole spec files when shared code changed.
+        id: burn-in-specs
+        working-directory: e2e-pw
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          SPECS=$(node ../.github/scripts/burn-in-specs.mjs)
+          COUNT=0
+          if [ -n "$SPECS" ]; then
+            COUNT=$(printf '%s\n' "$SPECS" | wc -l | tr -d ' ')
+          fi
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          {
+            echo "specs<<BURN_IN_EOF"
+            printf '%s\n' "$SPECS"
+            echo "BURN_IN_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "burn-in: $COUNT target(s)"
 
       - name: Compute app tree hash
         id: app-tree-hash
@@ -168,7 +192,6 @@ jobs:
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
-      VFF_EXP_ANNOTATION: true
     defaults:
       run:
         shell: bash
@@ -247,10 +270,10 @@ jobs:
         # Report-only: failed specs are surfaced by the e2e verdict job from
         # the merged blob reports. A red shard means infra death (timeout,
         # lost runner), not a test failure. Specs are assigned to shards by
-        # duration (scripts/pack-shards.mjs), not Playwright's count-based
+        # duration (.github/scripts/pack-shards.mjs), not Playwright's count-based
         # sharding, so no shard is bottlenecked by the heavy spec families.
         run: |
-          FILES=$(node scripts/pack-shards.mjs ${{ matrix.shard }} 8)
+          FILES=$(node ../.github/scripts/pack-shards.mjs ${{ matrix.shard }} 8)
           if [ -z "$FILES" ]; then
             echo "no specs assigned to shard ${{ matrix.shard }}"
           else
@@ -272,13 +295,134 @@ jobs:
           # 3 days so reports from Friday/weekend runs survive into Monday.
           retention-days: 3
 
+  burn-in:
+    needs: prepare-e2e
+    # New and modified tests must pass 10 runs with retries disabled before
+    # joining the suite — flaky-on-arrival tests fail here instead of landing
+    # and flaking later. Targets are individual tests where the diff maps to
+    # them, whole spec files when shared code changed (see
+    # .github/scripts/burn-in-specs.mjs). Report-only like the shards: the verdict
+    # job enforces the outcome, so a red burn-in job means infra death, not
+    # a failing spec.
+    if: needs.prepare-e2e.outputs.burn-in-count != '0'
+    # 10 repeats of several typical spec files fit this budget; a PR that
+    # adds more should land them in pieces.
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    container:
+      # fiftyone-teams overrides the image name via repo var (superset deps)
+      image: ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      # Chromium needs more than Docker's default 64MB /dev/shm
+      options: --shm-size=2gb
+    name: Burn in new e2e specs (report-only)
+    env:
+      FIFTYONE_DO_NOT_TRACK: true
+      FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
+      # Job containers reach service containers by service name, not localhost
+      FIFTYONE_DATABASE_URI: mongodb://mongo:27017
+      FIFTYONE_DATABASE_NAME: playwright
+      ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
+    defaults:
+      run:
+        shell: bash
+    services:
+      mongo:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
+          submodules: true
+          sparse-checkout: |
+            /*
+            !/docs/**
+          sparse-checkout-cone-mode: false
+
+      - name: Download built app static assets
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-app-static
+
+      - name: Restore built app static assets
+        run: tar -xzf e2e-app-static.tgz -C .
+
+      - name: Install fiftyone
+        # dependencies are baked into the image; this only builds fiftyone
+        # itself from the PR's source (plus any deps added since the last
+        # image build)
+        run: |
+          uv pip install --system '.[multimodal]' -r requirements/e2e.txt
+
+      - name: Configure
+        id: test_config
+        run: |
+          python tests/utils/setup_config.py
+
+      - name: Cache E2E Node Modules
+        id: e2e-node-cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            e2e-pw/node_modules
+          key: node-modules-${{ hashFiles('e2e-pw/yarn.lock') }}
+
+      - name: Install E2E dependencies
+        run: yarn install
+        working-directory: e2e-pw
+
+      - name: Install Chromium if the lockfile moved past the baked browser
+        # no-op when the image's browser matches; lets Playwright-upgrade
+        # PRs validate themselves before the image rebuilds
+        run: yarn playwright install chromium
+        working-directory: e2e-pw
+
+      - name: Burn in new and modified tests
+        # --retries=0 because retries mask exactly the flakiness this gate
+        # screens for; --trace so the rare burn-in failure is debuggable
+        # (retries never happen here, so the config's on-all-retries mode
+        # would capture nothing). --workers=50% (1 worker per 2 vCPUs)
+        # overrides the config's 1-worker CI default: the parallelism both
+        # shortens the burn-in and adds contention pressure a spec must
+        # tolerate before joining the suite.
+        env:
+          TARGETS: ${{ needs.prepare-e2e.outputs.burn-in-specs }}
+        run: |
+          printf 'burning in:\n%s\n' "$TARGETS"
+          yarn e2e $TARGETS --repeat-each=10 --retries=0 --workers=50% --trace=retain-on-failure ||
+            echo "::warning::burn-in had failing runs; see the e2e verdict job"
+        working-directory: e2e-pw
+
+      - name: Upload blob report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-blob-burn-in
+          path: e2e-pw/blob-report/
+          # 3 days so reports from Friday/weekend runs survive into Monday.
+          retention-days: 3
+
   e2e-verdict:
-    needs: test-e2e
-    # The single authoritative e2e check: shard jobs are report-only, so
-    # this job alone decides pass/fail from the merged shard reports. Runs
-    # on 'cancelled' too — timeout-minutes kills report as cancelled, and
-    # those runs still need a comment and a red verdict. A run-level
-    # cancellation force-cancels this job anyway.
+    needs: [prepare-e2e, test-e2e, burn-in]
+    # The single authoritative e2e check: shard and burn-in jobs are
+    # report-only, so this job alone decides pass/fail from the merged
+    # reports. Runs on 'cancelled' too — timeout-minutes kills report as
+    # cancelled, and those runs still need a comment and a red verdict. A
+    # run-level cancellation force-cancels this job anyway. (burn-in being
+    # skipped is the normal no-new-specs case, so it must not gate here.)
     if: always() && needs.test-e2e.result != 'skipped'
     timeout-minutes: 15
     # gates the merge, so it follows the shards' runner rather than
@@ -302,6 +446,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             /e2e-pw/**
+            /.github/scripts/**
           sparse-checkout-cone-mode: false
 
       - name: Download blob reports
@@ -310,6 +455,16 @@ jobs:
           pattern: e2e-blob-shard-*
           path: e2e-pw/all-blob-reports
           merge-multiple: true
+
+      - name: Download burn-in blob report
+        if: needs.prepare-e2e.outputs.burn-in-count != '0'
+        # a burn-in job that died before uploading has no artifact; the
+        # enforce step fails on its job result, so don't fail the download
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-blob-burn-in
+          path: e2e-pw/burn-in-blob-report
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
@@ -338,6 +493,34 @@ jobs:
           # 3 days so reports from Friday/weekend runs survive into Monday.
           retention-days: 3
 
+      - name: Merge burn-in report
+        # kept separate from the shard merge so 10x-repeated specs don't
+        # inflate the suite's counts; reuses the default report dir now that
+        # the shard report has been uploaded
+        if: needs.prepare-e2e.outputs.burn-in-count != '0'
+        working-directory: e2e-pw
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: burn-in-results.json
+        run: |
+          # always cleared: a missing blob report must not re-upload the
+          # already-uploaded shard report under the burn-in name
+          rm -rf playwright-report
+          if ls burn-in-blob-report/*.zip >/dev/null 2>&1; then
+            yarn playwright merge-reports --reporter html,json ./burn-in-blob-report
+          else
+            echo "no burn-in blob report; the enforce step fails on the job result"
+          fi
+
+      - name: Upload burn-in report
+        id: upload-burn-in
+        if: needs.prepare-e2e.outputs.burn-in-count != '0'
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-burn-in
+          path: e2e-pw/playwright-report/
+          retention-days: 3
+          if-no-files-found: ignore
+
       - name: Summarize
         working-directory: e2e-pw
         env:
@@ -345,6 +528,9 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
           EXPECTED_SHARDS: "8"
+          BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
+          BURN_IN_RESULT: ${{ needs.burn-in.result }}
+          BURN_IN_REPORT_URL: ${{ steps.upload-burn-in.outputs.artifact-url }}
           REPORT_URL: ${{ steps.upload-merged.outputs.artifact-url }}
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -354,7 +540,7 @@ jobs:
             > run-jobs.json || echo '{}' > run-jobs.json
           RUN_STARTED_AT=$(node -e "const j=require('./run-jobs.json').jobs??[];const p=j.find((x)=>x.name.endsWith('Prepare e2e assets'));console.log(p?.started_at??'')")
           export RUN_STARTED_AT
-          node scripts/report-summary.mjs merged-results.json all-blob-reports run-jobs.json > e2e-summary.md
+          node ../.github/scripts/report-summary.mjs merged-results.json all-blob-reports run-jobs.json burn-in-results.json > e2e-summary.md
           cat e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post authoritative PR comment
@@ -373,7 +559,7 @@ jobs:
             )
               ? 'FOE'
               : 'OSS';
-            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const marker = `<!-- ci-report:${flavor} -->`;
             const comments = await github.paginate(
               github.rest.issues.listComments,
               {
@@ -405,7 +591,9 @@ jobs:
         env:
           EXPECTED_SHARDS: "8"
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
-        run: node scripts/enforce-verdict.mjs merged-results.json all-blob-reports
+          BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
+          BURN_IN_RESULT: ${{ needs.burn-in.result }}
+        run: node ../.github/scripts/enforce-verdict.mjs merged-results.json all-blob-reports burn-in-results.json
 
   e2e-aborted:
     needs: [prepare-e2e, test-e2e]
@@ -419,7 +607,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    name: Mark the e2e comment failed
+    name: Mark the CI comment failed
     steps:
       - uses: actions/github-script@v9
         with:
@@ -429,7 +617,7 @@ jobs:
             )
               ? 'FOE'
               : 'OSS';
-            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const marker = `<!-- ci-report:${flavor} -->`;
             const sha = context.payload.pull_request.head.sha.slice(0, 10);
             const runUrl = `${context.serverUrl}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
             const comments = await github.paginate(

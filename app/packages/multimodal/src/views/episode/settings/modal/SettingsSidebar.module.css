@@ -1,0 +1,219 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebarRoot {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 12px 16px;
+}
+
+.toggleSwitchRoot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tabPanelGroup {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Fills the active tab panel (rendered by ToggleSwitch) so tab content
+   can opt into its own internal scroll region instead of the outer
+   sidebar scrolling as one unit. */
+.tabPanelGroup > * {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.stickyTabList {
+  isolation: isolate;
+  position: sticky;
+  top: 8px;
+  z-index: 2;
+}
+
+.stickyTabList::before {
+  background: var(--color-content-bg-background);
+  content: "";
+  inset: -20px -16px -8px;
+  position: absolute;
+  z-index: -1;
+}
+
+.tabContent {
+  margin-top: 12px;
+}
+
+.streamList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.streamGroups {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.streamsTabContent {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.streamSearchInput {
+  min-width: 0;
+  width: 100%;
+}
+
+.streamSearchBar {
+  flex: 0 0 auto;
+}
+
+.statsDisclosure {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statsDisclosure > button {
+  align-self: flex-start;
+}
+
+.statsHeader {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.statsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statsRows {
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.statsRow {
+  color: var(--color-content-text-muted);
+  display: grid;
+  font-size: 10px;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  line-height: 1.35;
+  padding: 3px 0;
+}
+
+.statsValue {
+  color: var(--color-content-text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.recordingActions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.streamRow {
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-left: 8px;
+}
+
+.streamRowHeader {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.streamName {
+  color: var(--color-content-text);
+  flex: 1 1 auto;
+  font-size: 11px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.streamMetaLine {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.streamActions {
+  align-items: baseline;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.streamMeta {
+  color: var(--color-content-text-muted);
+  flex: 1 1 auto;
+  font-size: 11px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.streamStatus {
+  flex: 0 0 auto;
+  color: var(--color-content-text-muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.streamActionButton {
+  background: transparent;
+  border: 0;
+  color: var(--color-content-text-muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 0;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.streamActionButton:focus-visible {
+  outline: 1px solid var(--color-border);
+  outline-offset: 2px;
+}
+
+.streamEmpty {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}

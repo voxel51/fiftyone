@@ -158,6 +158,8 @@ workflows.
    :hidden:
 
    Creating views <creating_views.ipynb>
+   Adding classifier predictions <adding_classifications.ipynb>
+   Adding object detections <adding_detections.ipynb>
    Draw labels on samples <draw_labels.ipynb>
    Convert dataset formats <convert_datasets.ipynb>
    Merging datasets <merge_datasets.ipynb>

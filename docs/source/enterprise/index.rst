@@ -105,6 +105,12 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: verified_auto_labeling.html
 
 .. customcalloutitem::
+    :header: Agentic Labeling __SUB_NEW__
+    :description: Label images with a prompt-driven vision-language model — classify, detect, caption, or label regions for review.
+    :button_text: Label with natural language
+    :button_link: agentic_labeling.html
+
+.. customcalloutitem::
     :header: Data Lens
     :description: Use FiftyOne Enterprise to explore and import samples from external data sources.
     :button_text: Connect your data lake
@@ -185,7 +191,6 @@ pages on this site apply to Enterprise deployments as well.
 
     Overview <overview>
     Installation <installation>
-    Getting Started <getting_started>
     API connection <api_connection>
     App <app>
     Secrets <secrets>

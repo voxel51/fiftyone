@@ -5,7 +5,11 @@ LanceDB Integration
 
 .. default-role:: code
 
-`LanceDB <https://www.lancedb.com>`_ is a serverless vector database with deep 
+.. customavailablein::
+    :oss_version: 0.21.3
+    :enterprise_version: 1.3.3
+
+`LanceDB <https://www.lancedb.com>`_ is a serverless vector database with deep
 integrations with the Python ecosystem. It requires no setup and is free to
 use.
 

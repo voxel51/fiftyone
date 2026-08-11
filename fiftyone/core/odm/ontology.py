@@ -12,6 +12,8 @@ from enum import Enum
 from datetime import datetime, timezone
 from typing import Any
 
+from mongoengine.queryset import QuerySetManager
+
 import fiftyone.core.utils as fou
 from fiftyone.core.fields import (
     DateTimeField,
@@ -20,7 +22,22 @@ from fiftyone.core.fields import (
     StringField,
 )
 
+from .database import ensure_connection
 from .document import Document
+
+
+class _ConnectedQuerySetManager(QuerySetManager):
+    """Queryset manager that establishes the database connection before
+    building querysets.
+
+    Ontology entry points query via ``OntologyDocument.objects`` directly,
+    so an ontology call may be the first database access in a process (e.g.
+    in API mode) and cannot rely on another SDK call having connected first.
+    """
+
+    def __get__(self, instance, owner):
+        ensure_connection()
+        return super().__get__(instance, owner)
 
 
 class OntologyType(str, Enum):  # TODO - update to StrEnum
@@ -74,6 +91,8 @@ class OntologyDocument(Document):
             "type",
         ],
     }
+
+    objects = _ConnectedQuerySetManager()
 
     name = StringField(required=True)
     slug = StringField(required=True)

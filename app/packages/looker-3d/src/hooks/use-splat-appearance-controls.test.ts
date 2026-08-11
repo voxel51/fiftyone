@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Fo3dSplatSettings } from "../fo3d/splat/settings";
 import { useSplatAppearanceControls } from "./use-splat-appearance-controls";

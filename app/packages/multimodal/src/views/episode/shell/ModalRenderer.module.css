@@ -1,0 +1,177 @@
+/* Full-modal placeholder shown while the stream inventory loads (or when
+   it fails / contains nothing previewable). */
+
+.state {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}
+
+.stateText {
+  color: var(--color-content-text-secondary);
+  font-size: 12px;
+}
+
+.stateError {
+  color: var(--color-content-text-destructive);
+}
+
+.captionText {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+}
+
+.playbackRoot {
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
+/* WebGPU/canvas cleanup lands in effects, one paint after a source boundary.
+   Hide every media surface synchronously while the target source is pending so
+   compositor-retained pixels from the outgoing sample cannot leak. Window
+   chrome, sidebars, layout splits, and textual loading states stay visible. */
+/* stylelint-disable selector-pseudo-class-no-unknown */
+.playbackRoot[data-episode-source-transitioning="true"] :global(canvas),
+.playbackRoot[data-episode-source-transitioning="true"] :global(img),
+.playbackRoot[data-episode-source-transitioning="true"] :global(video) {
+  visibility: hidden;
+}
+
+/* Grid entry intentionally carries its target poster through this interval. */
+.playbackRoot[data-episode-source-transitioning="true"]
+  .posterOverlay
+  :global(canvas),
+.playbackRoot[data-episode-source-transitioning="true"]
+  .posterOverlay
+  :global(img) {
+  visibility: visible;
+}
+/* stylelint-enable selector-pseudo-class-no-unknown */
+
+.preparing {
+  background: var(--fo-palette-background-level1);
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr) 64px;
+  height: 100%;
+  overflow: hidden;
+  width: 100%;
+}
+
+.preparingHeader {
+  align-items: center;
+  border-bottom: 1px solid var(--fo-palette-divider);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 14px;
+}
+
+.preparingFileName {
+  color: var(--color-content-text-primary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preparingStatus,
+.posterCaption {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+}
+
+.preparingTiles {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  min-height: 0;
+  padding: 6px;
+}
+
+.preparingTile,
+.posterCard {
+  background: var(--fo-palette-background-level2);
+  border: 1px solid var(--fo-palette-divider);
+  border-radius: 2px;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.preparingTile::after {
+  background: var(--fo-palette-background-level3);
+  content: "";
+  height: 5px;
+  left: 12px;
+  opacity: 0.55;
+  position: absolute;
+  top: 12px;
+  width: 72px;
+}
+
+.posterCard {
+  align-items: center;
+  display: flex;
+  grid-row: 1 / span 2;
+  justify-content: center;
+}
+
+.posterImage {
+  height: 100%;
+  inset: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.posterCaption {
+  align-items: center;
+  background: linear-gradient(transparent, rgb(0 0 0 / 74%));
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  left: 0;
+  padding: 24px 10px 8px;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
+.preparingTimeline {
+  border-top: 1px solid var(--fo-palette-divider);
+  position: relative;
+}
+
+.preparingTimeline::before {
+  background: var(--fo-palette-divider);
+  content: "";
+  height: 2px;
+  left: 16px;
+  position: absolute;
+  right: 16px;
+  top: 30px;
+}
+
+.posterOverlay {
+  display: grid;
+  grid-template-columns: minmax(280px, 2fr) minmax(160px, 1fr);
+  inset: 6px;
+  pointer-events: none;
+  position: absolute;
+  z-index: 5;
+}
+
+@media (max-width: 760px) {
+  .preparingTiles,
+  .posterOverlay {
+    grid-template-columns: 1fr;
+  }
+
+  .preparingTile {
+    display: none;
+  }
+}

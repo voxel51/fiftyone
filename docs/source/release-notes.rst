@@ -3,6 +3,162 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.23.1
+--------------------------
+*Released August 5, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.20.1 <release-notes-v1.20.1>`, plus:
+
+- Fixed a bug that prevented users with the Labeler role from submitting
+  annotation tasks
+- Fixed an error when deleting brain runs from the Embeddings panel
+
+.. _release-notes-v1.20.1:
+
+FiftyOne 1.20.1
+---------------
+*Released August 5, 2026*
+
+App
+^^^
+- Fixed a crash that occurred when opening the Embeddings panel
+  `#8181 <https://github.com/voxel51/fiftyone/pull/8181>`_
+
+FiftyOne Enterprise 2.23.0
+--------------------------
+*Released July 31, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
+
+- **Agentic Labeling**: a new panel for labeling image datasets with
+  vision-language models — teach an agent with a prompt and a few labeled
+  examples, preview its predictions live, and save agents as reusable
+  snapshots. Supports classification and detection labels, region/patch
+  labeling, and grouped datasets
+- **AI-powered video annotation**: click to segment objects with SAM2 and
+  track them automatically through the clip — start from a point, box, or
+  existing mask on any frame and track in both directions
+- **3D Embeddings**: Visualize and explore embeddings in a 3D plot,
+  and update an existing embedding visualization without a full recompute
+- Annotation AI features ship as a single `annotation-ai` service — one
+  image to deploy — and the Services page and annotation AI panel are
+  always visible
+- Check service health at a glance from the new status popover, and review
+  your runs and jump to service logs from the new Personal > Runs settings
+  page
+- Service orchestrators: start GPU-backed services for powerful
+  new features like agentic labeling and video tracking. Learn more
+  about setting up services
+  `here <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-service-orchestrator.md>`_
+- Delegated operation run logs persist reliably — including very large
+  logs — progress logs capture more output, and run metrics report GPU
+  usage correctly, including for delegated executor services
+- Fixes: the datasets listing page shows the multimodal dataset type,
+  multimodal writes honor your FiftyOne Enterprise cloud credentials,
+  workflow canvas connections render after page reloads, the schedule
+  dropdown no longer lists named delegation targets, and datasets no
+  longer incorrectly appear locked
+- Upgraded `protobufjs`, `torch`, `torchvision`, and `transformers`
+  dependencies to mitigate CVEs and fix `timm` model support
+
+.. _release-notes-v1.20.0:
+
+FiftyOne 1.20.0
+---------------
+*Released July 31, 2026*
+
+App
+^^^
+- **Rebuilt Embeddings panel**: smooth and interactive into the millions of
+  points, with a runs list, categorical and continuous color-by legends,
+  two-way lasso selection synced with the sample grid, and media previews
+  on hover. Works with existing visualization results — no recompute
+  required — and requires `fiftyone-brain>=0.23`
+  `#8042 <https://github.com/voxel51/fiftyone/pull/8042>`_,
+  `#8073 <https://github.com/voxel51/fiftyone/pull/8073>`_,
+  `#8076 <https://github.com/voxel51/fiftyone/pull/8076>`_
+- Updated the annotation sidebar UX, including a save indicator that shows
+  pending and saved edits
+  `#7970 <https://github.com/voxel51/fiftyone/pull/7970>`_
+- Added dismissible callouts in the annotation surface highlighting more
+  capable annotation models
+  `#8087 <https://github.com/voxel51/fiftyone/pull/8087>`_
+- Improved track deletion behavior in the video annotation timeline
+  `#8047 <https://github.com/voxel51/fiftyone/pull/8047>`_
+- Shift-drag now pans the canvas while in overlay-creation modes
+  `#8050 <https://github.com/voxel51/fiftyone/pull/8050>`_
+- Fixed polyline and keypoint point editing in video annotation
+  `#8048 <https://github.com/voxel51/fiftyone/pull/8048>`_
+- Fixed video annotation tracks being incorrectly merged
+  `#8046 <https://github.com/voxel51/fiftyone/pull/8046>`_
+- Fixed segmentation mask edits not persisting while annotating with
+  autosave enabled
+  `#8028 <https://github.com/voxel51/fiftyone/pull/8028>`_
+- Fixed "session already started" errors when adding segmentation points
+  in quick succession
+  `#8101 <https://github.com/voxel51/fiftyone/pull/8101>`_
+- Fixed opening a dropdown locking page scroll and flashing the grid
+  `#8125 <https://github.com/voxel51/fiftyone/pull/8125>`_
+- Polyline labels are now anchored at the centroid of their points
+  `#7719 <https://github.com/voxel51/fiftyone/pull/7719>`_
+- Temporal tags are now available in every App configuration
+  `#8072 <https://github.com/voxel51/fiftyone/pull/8072>`_
+- Fixed similarity search on grouped datasets
+  `#8049 <https://github.com/voxel51/fiftyone/pull/8049>`_
+- Fixed sidebar search inputs losing in-progress text
+  `#8029 <https://github.com/voxel51/fiftyone/pull/8029>`_
+
+Performance
+^^^^^^^^^^^
+- Smoother rendering of mask-heavy samples
+  `#7859 <https://github.com/voxel51/fiftyone/pull/7859>`_,
+  `#7861 <https://github.com/voxel51/fiftyone/pull/7861>`_
+- Smoother video annotation playback, with no mask flicker
+  `#8131 <https://github.com/voxel51/fiftyone/pull/8131>`_
+- Fixed App memory leaks in the annotation renderer, undo history, and
+  sidebar, reducing memory growth during long annotation sessions
+  `#8015 <https://github.com/voxel51/fiftyone/pull/8015>`_
+- Faster dataset loads
+  `#7841 <https://github.com/voxel51/fiftyone/pull/7841>`_
+
+Core
+^^^^
+- Added Python 3.13 support
+  `#7728 <https://github.com/voxel51/fiftyone/pull/7728>`_
+- Upgraded `starlette` to `>=1.3.1` to mitigate CVEs
+  `#7925 <https://github.com/voxel51/fiftyone/pull/7925>`_
+
+Models
+^^^^^^
+- Added OneFormer models to the model zoo via the Hugging Face integration
+  `#7955 <https://github.com/voxel51/fiftyone/pull/7955>`_
+- Added PP-OCRv6 (PaddleOCR) text detection and OCR models to the model zoo
+  `#8010 <https://github.com/voxel51/fiftyone/pull/8010>`_
+- SAM3 video now accepts a single concept prompt combining text and
+  exemplar prompts
+  `#7987 <https://github.com/voxel51/fiftyone/pull/7987>`_
+- Fixes and updates for FC-CLIP zero-shot segmentation models
+  `#7981 <https://github.com/voxel51/fiftyone/pull/7981>`_
+
+Brain
+^^^^^
+- Add new samples to an existing embeddings visualization without
+  recomputing it from scratch
+  `#289 <https://github.com/voxel51/fiftyone-brain/pull/289>`_
+- Visualization results load dramatically faster for large runs
+  `#295 <https://github.com/voxel51/fiftyone-brain/pull/295>`_
+- Visualization results saved with `fiftyone-brain` 0.23 cannot be loaded
+  by earlier versions. If you connect to your deployment with the SDK, be
+  sure to upgrade your local `fiftyone-brain` as well
+- Upgraded the Databricks vector search integration
+  `#294 <https://github.com/voxel51/fiftyone-brain/pull/294>`_
+
+Documentation
+^^^^^^^^^^^^^
+- Docs pages now display Open Source / Enterprise availability badges, with
+  reorganized guide pages for easier navigation
+  `#8108 <https://github.com/voxel51/fiftyone/pull/8108>`_
+
 FiftyOne Enterprise 2.22.1
 --------------------------
 *Released July 22, 2026*
@@ -10,6 +166,8 @@ FiftyOne Enterprise 2.22.1
 App
 
 - Fixed a bug that caused the App to crash for users with the Guest role
+
+.. _release-notes-enterprise-v2.22.0:
 
 FiftyOne Enterprise 2.22.0
 --------------------------
@@ -347,6 +505,8 @@ General
   `#7585 <https://github.com/voxel51/fiftyone/pull/7585>`_
 
 
+.. _release-notes-enterprise-v2.19.0:
+
 FiftyOne Enterprise 2.19.0
 --------------------------
 *Released May 28, 2026*
@@ -528,6 +688,8 @@ Security
 - Updated a number of dependencies in the FiftyOne Enterprise API in order to
   resolve security vulnerabilities: `ujson` and `pyjwt`
 
+.. _release-notes-enterprise-v2.18.0:
+
 FiftyOne Enterprise 2.18.0
 --------------------------
 *Released May 1, 2026*
@@ -637,6 +799,8 @@ FiftyOne 1.14.1
   an :ref:`Orchestrator <enterprise-delegated-orchestrator>`.
   `#7285 <https://github.com/voxel51/fiftyone/pull/7285>`_
 
+
+.. _release-notes-enterprise-v2.17.0:
 
 FiftyOne Enterprise 2.17.0
 --------------------------
@@ -1041,6 +1205,8 @@ App
    `#7001 <https://github.com/voxel51/fiftyone/pull/7001>`_
 
 
+.. _release-notes-enterprise-v2.16.0:
+
 FiftyOne Enterprise 2.16.0
 --------------------------
 *Released February 12, 2026*
@@ -1134,6 +1300,8 @@ CLI
   developing plugins. `#6848 <https://github.com/voxel51/fiftyone/pull/6848>`_
 
 
+
+.. _release-notes-enterprise-v2.15.0:
 
 FiftyOne Enterprise 2.15.0
 --------------------------
@@ -1323,6 +1491,8 @@ Security
   `#6726 <https://github.com/voxel51/fiftyone/pull/6726>`_,
   `eta#683 <https://github.com/voxel51/eta/pull/683>`_
 
+
+.. _release-notes-enterprise-v2.14.0:
 
 FiftyOne Enterprise 2.14.0
 --------------------------
@@ -1747,6 +1917,8 @@ FiftyOne Enterprise 2.11.1
 - Fixed a permissioning edge case that could cause users to view the names of
   datasets they didn't have access to.
 
+.. _release-notes-enterprise-v2.11.0:
+
 FiftyOne Enterprise 2.11.0
 --------------------------
 *Released September 3, 2025*
@@ -2090,6 +2262,8 @@ Zoo
   transformer models with preprocessing disabled
   `#6122 <https://github.com/voxel51/fiftyone/pull/6122>`_
 
+.. _release-notes-enterprise-v2.10.0:
+
 FiftyOne Enterprise 2.10.0
 --------------------------
 *Released July 1, 2025*
@@ -2247,6 +2421,8 @@ Zoo
   `#5919 <https://github.com/voxel51/fiftyone/pull/5919>`_,
   `#5950 <https://github.com/voxel51/fiftyone/pull/5950>`_,
   `#5898 <https://github.com/voxel51/fiftyone/pull/5898>`_
+
+.. _release-notes-enterprise-v2.9.1:
 
 FiftyOne Enterprise 2.9.1
 -------------------------
@@ -2542,6 +2718,8 @@ Docs
   :ref:`CVAT integration <cvat-integration>` with a CVAT server > 2.30
   `#5857 <https://github.com/voxel51/fiftyone/pull/5857>`_
 
+.. _release-notes-enterprise-v2.8.0:
+
 FiftyOne Enterprise 2.8.0
 -------------------------
 *Released May 2, 2025*
@@ -2778,6 +2956,8 @@ FiftyOne Enterprise 2.7.1
 - Fixed the 
   `CVE-2025-29927 <https://github.com/advisories/GHSA-f82v-jwr5-mffw>`_
   vulnerability related to next.js
+
+.. _release-notes-enterprise-v2.7.0:
 
 FiftyOne Enterprise 2.7.0
 -------------------------
@@ -3068,6 +3248,8 @@ FiftyOne Enterprise 2.5.1
 
 - Fixed a bug where we displayed a session error before initial user login
 
+.. _release-notes-enterprise-v2.5.0:
+
 FiftyOne Enterprise 2.5.0
 -------------------------
 *Released January 24, 2025*
@@ -3234,6 +3416,8 @@ FiftyOne Enterprise 2.4.0
 
 - Added ability to set a user-specific auth header when making media queries.
 
+.. _release-notes-enterprise-v2.3.0:
+
 FiftyOne Enterprise 2.3.0
 -------------------------
 *Released December 20, 2024*
@@ -3328,6 +3512,8 @@ Zoo
   :ref:`rtdetr-l-coco-torch <model-zoo-rtdetr-l-coco-torch>` and
   :ref:`rtdetr-x-coco-torch <model-zoo-rtdetr-x-coco-torch>` zoo models
   `#5220 <https://github.com/voxel51/fiftyone/pull/5220>`_
+
+.. _release-notes-enterprise-v2.2.0:
 
 FiftyOne Enterprise 2.2.0
 -------------------------
@@ -3558,6 +3744,8 @@ Core
   :ref:`COCO format <COCODetectionDataset-import>`
   `#4884 <https://github.com/voxel51/fiftyone/pull/4884>`_
 
+.. _release-notes-enterprise-v2.1.0:
+
 FiftyOne Enterprise 2.1.0
 -------------------------
 *Released October 1, 2024*
@@ -3743,6 +3931,8 @@ Plugins
 - Fixed a spurious warning that would appear for delegated operations that
   don't return outputs
   `#4715 <https://github.com/voxel51/fiftyone/pull/4715>`_
+
+.. _release-notes-enterprise-v2.0.0:
 
 FiftyOne Enterprise 2.0.0
 -------------------------
@@ -3981,6 +4171,8 @@ Annotation
 - Added support loading annotations for large CVAT tasks with many jobs
   `#4392 <https://github.com/voxel51/fiftyone/pull/4392>`_
 
+.. _release-notes-enterprise-v1.7.0:
+
 FiftyOne Enterprise 1.7.0
 -------------------------
 *Released May 29, 2024*
@@ -4127,6 +4319,8 @@ FiftyOne Enterprise 1.5.10
 
 - Fixed an issue where video datasets were not loading due to ffmpeg dependency
 
+.. _release-notes-enterprise-v1.5.9:
+
 FiftyOne Enterprise 1.5.9
 -------------------------
 *Released April 15, 2024*
@@ -4258,6 +4452,8 @@ Zoo
   frames of video datasets
   `#4229 <https://github.com/voxel51/fiftyone/pull/4229>`_
 
+.. _release-notes-enterprise-v1.5.8:
+
 FiftyOne Enterprise 1.5.8
 -------------------------
 *Released March 21, 2024*
@@ -4365,6 +4561,8 @@ Core
 - Cloning a dataset or view now includes any custom MongoDB indexes
   `#4115 <https://github.com/voxel51/fiftyone/pull/4115>`_
 
+.. _release-notes-enterprise-v1.5.7:
+
 FiftyOne Enterprise 1.5.7
 -------------------------
 *Released March 6, 2024*
@@ -4470,6 +4668,8 @@ Bugs
   `#4048 <https://github.com/voxel51/fiftyone/pull/4048>`_
 
 
+.. _release-notes-enterprise-v1.5.5:
+
 FiftyOne Enterprise 1.5.5
 -------------------------
 *Released January 25, 2024*
@@ -4496,6 +4696,8 @@ Brain
 - Added support for registering
   :ref:`custom visualization methods <brain-visualization-api>`
   `#4038 <https://github.com/voxel51/fiftyone/pull/4038>`_
+
+.. _release-notes-enterprise-v1.5.4:
 
 FiftyOne Enterprise 1.5.4
 -------------------------
@@ -8547,6 +8749,8 @@ Docs
 - Removed legacy `--index` flags from the install instructions from the
   :ref:`troubleshooting page <troubleshooting>` which prevented a valid
   installation
+
+.. _release-notes-v0.7.2:
 
 FiftyOne 0.7.2
 --------------

@@ -340,6 +340,9 @@ By default GCP sets the max-age=0 seconds meaning no caching will occur.
 Microsoft Azure
 _______________
 
+.. customavailablein::
+    :enterprise_version: 1.2.1
+
 To work with FiftyOne datasets whose media are stored in Azure Storage, you
 simply need to provide
 `Azure credentials <https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli>`_
@@ -628,6 +631,18 @@ A managed credential can optionally be restricted to a specific list of bucket(s
     ``s3://my-bucket`` and
     ``https://voxel51.blob.core.windows.net/my-container``.
 
+.. note::
+
+    Only one **default credential** can exist per provider and scope. Adding
+    another default credential for the same provider at the same scope
+    **replaces** the existing one.
+
+    To use multiple credentials for the same provider and scope — for example, two
+    Azure storage accounts, or two AWS accounts — each credential must be
+    made bucket-specific by listing its buckets/containers. In particular,
+    for Azure the storage account name embedded in the credential is **not**
+    used to route requests; provide fully-qualified containers instead, e.g.
+    ``https://account1.blob.core.windows.net/container1``.
 
 Managed credentials are considered unique based on the scope (user, group,
 or global), cloud provider, and the optional bucket(s) they are associated
@@ -736,6 +751,9 @@ downloading of credentials to machines, set the environment variable
 
 AI model weights
 ----------------
+
+.. customavailablein::
+    :enterprise_version: 2.19.0
 
 The FiftyOne Enterprise App ships with AI-assisted mask segmentation for annotation
 workflows. By default, the required model weights are served from Voxel51's

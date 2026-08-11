@@ -58,13 +58,42 @@ describe("NativeDecodeCache — sample verdicts", () => {
     expect(cache.getSampleVerdict("other", "s1")).toBeUndefined();
   });
 
+  it("round-trips a verdict carrying audio presence", () => {
+    cache.setSampleVerdict("ds", "s1", {
+      codec: "avc1.64000d",
+      decodable: true,
+      hasAudio: true,
+    });
+    expect(cache.getSampleVerdict("ds", "s1")).toEqual({
+      codec: "avc1.64000d",
+      decodable: true,
+      hasAudio: true,
+    });
+  });
+
   it("ignores corrupt persisted JSON", () => {
-    store.setItem("fo:nd:v1:sample:ds:s1", "{not json");
+    store.setItem("fo:nd:v2:sample:ds:s1", "{not json");
     expect(cache.getSampleVerdict("ds", "s1")).toBeUndefined();
   });
 
   it("ignores a persisted value with the wrong shape", () => {
-    store.setItem("fo:nd:v1:sample:ds:s1", JSON.stringify({ codec: 5 }));
+    store.setItem("fo:nd:v2:sample:ds:s1", JSON.stringify({ codec: 5 }));
+    expect(cache.getSampleVerdict("ds", "s1")).toBeUndefined();
+  });
+
+  it("ignores a persisted value with a malformed hasAudio", () => {
+    store.setItem(
+      "fo:nd:v2:sample:ds:s1",
+      JSON.stringify({ codec: "avc1", decodable: true, hasAudio: "yes" }),
+    );
+    expect(cache.getSampleVerdict("ds", "s1")).toBeUndefined();
+  });
+
+  it("does not read entries persisted under an older version", () => {
+    store.setItem(
+      "fo:nd:v1:sample:ds:s1",
+      JSON.stringify({ codec: "avc1", decodable: true }),
+    );
     expect(cache.getSampleVerdict("ds", "s1")).toBeUndefined();
   });
 });

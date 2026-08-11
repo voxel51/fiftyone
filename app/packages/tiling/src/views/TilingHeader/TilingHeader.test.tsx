@@ -34,11 +34,9 @@ const RegisterTiles: React.FC<{ entries: RegisteredTile[] }> = ({
 describe("TilingHeader", () => {
   beforeEach(() => {
     // voodo's Dropdown (headlessui Menu) uses ResizeObserver internally.
-    global.ResizeObserver = vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      disconnect: vi.fn(),
-    }));
+    global.ResizeObserver = vi.fn().mockImplementation(function () {
+      return { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
+    });
   });
 
   afterEach(() => {
@@ -154,8 +152,8 @@ describe("TilingHeader", () => {
     );
     const button = screen.getByTestId("tiling-header-add-tile");
     expect(button).toBeTruthy();
-    expect(button.getAttribute("aria-label")).toBe("Add Tile");
-    expect(button.textContent).toBe("Add Tile");
+    expect(button.getAttribute("aria-label")).toBe("Layout");
+    expect(button.textContent).toBe("Layout");
     expect(button.className).toContain("border-1");
   });
 

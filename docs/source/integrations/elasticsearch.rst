@@ -5,6 +5,10 @@ Elasticsearch Vector Search Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.25.0
+    :enterprise_version: 2.0.0
+
 `Elasticsearch <https://www.elastic.co/enterprise-search/vector-search>`_ is
 one of the most popular search platforms available, and we've made it easy to
 use Elasticsearch's vector search capabilities on your computer vision data

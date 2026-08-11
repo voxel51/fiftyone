@@ -1,5 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from "vitest";
 import { HOVER_DEBOUNCE_MS } from "../constants";
 import type { HoverHit } from "../types";
 import { HoverPicker } from "./HoverPicker";
@@ -26,8 +34,8 @@ const HIT: HoverHit = { index: 3, id: "abc", label: "cat", x: 10, y: 10 };
 
 describe("HoverPicker", () => {
   let container: HTMLDivElement;
-  let pick: ReturnType<typeof vi.fn>;
-  let onHover: ReturnType<typeof vi.fn>;
+  let pick: Mock<(x: number, y: number) => HoverHit | null>;
+  let onHover: Mock<(hit: HoverHit | null) => void>;
   let blocked: boolean;
   let picker: HoverPicker;
 
@@ -36,7 +44,7 @@ describe("HoverPicker", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     blocked = false;
-    pick = vi.fn(() => HIT);
+    pick = vi.fn((_x: number, _y: number) => HIT as HoverHit | null);
     onHover = vi.fn();
     picker = new HoverPicker(container, {
       isBlocked: () => blocked,

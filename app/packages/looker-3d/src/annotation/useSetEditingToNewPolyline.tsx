@@ -33,7 +33,7 @@ export const useSetEditingToNewPolyline = () => {
       resetCurrentEditing();
       clear();
     };
-  }, [resetCurrentEditing]);
+  }, [resetCurrentEditing, clear]);
 
   return useCallback(
     (labelId: string, transformData: PolylinePointTransformData) => {

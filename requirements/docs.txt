@@ -3,11 +3,11 @@ pycocotools
 tensorflow
 torch
 torchvision
-typing_extensions==4.15.0
+typing_extensions==4.16.0
 
 # precommit requirements
-pre-commit==4.6.0
-pylint==4.0.5
+pre-commit==4.6.1
+pylint==4.0.6
 jupyter-client==8.9.1
 
 # docs requirements

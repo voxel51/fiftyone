@@ -2,7 +2,7 @@ import { AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
 import SpaceNode from "@fiftyone/spaces/src/SpaceNode";
 import { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
 import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
-import type { SelectionStyle, SelectionType } from "@fiftyone/state";
+import type { SelectionStyle, SelectionType, State } from "@fiftyone/state";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import { QueueItemStatus, RiskLevel } from "./constants";
@@ -60,7 +60,9 @@ export class Executor {
   }
   static fromJSON(json: { requests: RawInvocationRequest[]; logs: string[] }) {
     return new Executor(
-      json.requests.map((r: any) => InvocationRequest.fromJSON(r)),
+      json.requests.map((r: RawInvocationRequest) =>
+        InvocationRequest.fromJSON(r),
+      ),
       json.logs,
     );
   }
@@ -75,7 +77,7 @@ export class Executor {
 
 class Panel {
   constructor(public id: string) {}
-  static fromJSON(json: any) {
+  static fromJSON(json: { id: string }) {
     return new Panel(json.id);
   }
 }
@@ -87,7 +89,7 @@ export type RawContext = {
   filters: object;
   selectedSamples: Map<string, SelectionType>;
   sampleSelectionStyle: SelectionStyle;
-  selectedLabels: any[];
+  selectedLabels: State.SelectedLabel[];
   currentSample: string;
   viewName: string;
   delegationTarget: string;
@@ -128,25 +130,25 @@ export class ExecutionContext {
   public get extended(): boolean {
     return this._currentContext.extended;
   }
-  public get filters(): any {
+  public get filters(): object {
     return this._currentContext.filters;
   }
-  public get selectedSamples(): any {
+  public get selectedSamples(): Map<string, SelectionType> {
     return this._currentContext.selectedSamples;
   }
-  public get selectedLabels(): any {
+  public get selectedLabels(): State.SelectedLabel[] {
     return this._currentContext.selectedLabels;
   }
-  public get currentSample(): any {
+  public get currentSample(): string {
     return this._currentContext.currentSample;
   }
-  public get viewName(): any {
+  public get viewName(): string {
     return this._currentContext.viewName;
   }
-  public get extendedSelection(): any {
+  public get extendedSelection(): RawContext["extendedSelection"] {
     return this._currentContext.extendedSelection;
   }
-  public get groupSlice(): any {
+  public get groupSlice(): string {
     return this._currentContext.groupSlice;
   }
   public get queryPerformance(): boolean {
@@ -191,7 +193,7 @@ export class ExecutionContext {
   }
 }
 
-function isObjWithContent(obj: any) {
+function isObjWithContent(obj: unknown) {
   if (obj === null) return false;
   return typeof obj === "object" && Object.keys(obj).length > 0;
 }
@@ -453,7 +455,7 @@ export async function loadOperatorsFromServer(datasetName: string) {
       "/operators",
       { dataset_name: datasetName },
     );
-    const operatorInstances = operators.map((d: any) =>
+    const operatorInstances = operators.map((d: object) =>
       Operator.fromRemoteJSON(d),
     );
     for (const operator of operatorInstances) {
@@ -471,7 +473,9 @@ export async function loadOperatorsFromServer(datasetName: string) {
       }
     }
 
-    return operators.filter((d: any) => d.panel).map((d: any) => d.panel);
+    return operators
+      .filter((d: { panel?: { panel_name?: string } }) => d.panel)
+      .map((d: { panel?: { panel_name?: string } }) => d.panel);
   } catch (e) {
     initializationErrors.push({
       reason: "Error loading operators from server",
@@ -551,7 +555,7 @@ class GeneratedMessage {
   }
   public type: MessageType;
   public cls: typeof InvocationRequest | typeof ExecutionResult;
-  public body: any;
+  public body: { operator_uri?: string; params?: object };
   static fromJSON(json) {
     let cls = null;
     switch (json.cls) {
@@ -853,24 +857,6 @@ export async function executeOperatorWithContext(
   );
 }
 
-type CurrentContext = {
-  datasetName: string;
-  view: any;
-  extended: any;
-  filters: any;
-  selectedSamples: Map<string, SelectionType>;
-  selectedLabels: any;
-  currentSample: string;
-  viewName: string;
-  extendedSelection: {
-    selection: string[] | null;
-    scope: string;
-  };
-  state: any;
-  delegationTarget?: string;
-  activeFields: string[];
-};
-
 export async function resolveRemoteType(
   operatorURI,
   ctx: ExecutionContext,
@@ -929,7 +915,15 @@ class Orchestrator {
     public updatedAt: Date = null,
     public deactivatedAt: Date = null,
   ) {}
-  static fromJSON(raw: any) {
+  static fromJSON(raw: {
+    id: string;
+    instance_id: string;
+    description?: string;
+    available_operators: string[];
+    created_at?: { $date: string };
+    updated_at?: { $date: string };
+    deactivated_at?: { $date: string };
+  }) {
     return new Orchestrator(
       raw.id,
       raw.instance_id,
@@ -1157,8 +1151,8 @@ export function getInvocationRequestQueue() {
 class AbortableOperation {
   constructor(
     public id: string,
-    public params: any,
-    public parser: any,
+    public params: unknown,
+    public parser: { abort: () => void },
   ) {}
   abort() {
     return this.parser.abort();

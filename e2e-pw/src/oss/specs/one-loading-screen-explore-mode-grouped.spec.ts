@@ -55,26 +55,27 @@ test("does not show when opening or navigating the modal for a group dataset", a
   page,
   pagePom,
 }) => {
+  const loadingScreens = await pagePom.armGlobalLoadingScreenCounter();
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen();
+  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await grid.openFirstSample();
   await modal.waitForSampleLoadDomAttribute();
-  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen();
+  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await modal.navigateNextSample();
   await modal.waitForSampleLoadDomAttribute();
-  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen();
+  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await modal.navigateNextSample();
   await modal.waitForSampleLoadDomAttribute();
-  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen();
+  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await modal.clickOnLooker3d();
   await modal.looker3dControls.waitForAllAssetsLoaded();
-  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen();
+  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await modal.navigatePreviousSample();
   await modal.waitForSampleLoadDomAttribute(true);
-  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen();
+  await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 });

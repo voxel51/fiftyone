@@ -11,6 +11,7 @@ import math
 import unittest
 
 import eta.core.utils as etau
+import numpy as np
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -269,6 +270,30 @@ class ServerViewTests(unittest.TestCase):
         }
         view = fosv.get_view("test", filters=filters)
         self.assertEqual(len(view), 0)
+
+    @drop_datasets
+    def test_pagination_data_excludes_exact_paths(self):
+        dataset = fo.Dataset("test")
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                clip=np.array([1.0, 2.0]),
+                **{"clip-pred-test": fo.Classification(label="cat")},
+            )
+        )
+
+        view = fosv.get_view("test", pagination_data=True)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+
+        # the vector field is excluded; a sibling field sharing its name
+        # prefix is not
+        self.assertNotIn("clip", sample)
+        self.assertIn("clip-pred-test", sample)
 
     @drop_datasets
     def test_extended_frame_sample(self):
