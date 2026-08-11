@@ -18,15 +18,19 @@ import { gpuPointCloudProjectionResourceKey } from "../../../visualization/compo
 import ImageProjectionOverlay from "./ImageProjectionOverlay";
 import type { ImageProjectionLayer } from "./use-image-projection-layers";
 import type { CameraModel } from "../spatial/camera-geometry/camera-model";
+import type {
+  HoverEcho,
+  OwnedHoverEchoPublisher,
+} from "../interaction/point-hover/hover-echo";
 
 const mocks = vi.hoisted(() => ({
   dwell: null as PointerDwellOptions | null,
-  owned: new Map<string, unknown>(),
+  owned: new Map<string, HoverEcho>(),
   publisher: {
-    disownAll: vi.fn(),
-    publish: vi.fn(),
-    retract: vi.fn(),
-    retire: vi.fn(),
+    disownAll: vi.fn<OwnedHoverEchoPublisher<string>["disownAll"]>(),
+    publish: vi.fn<OwnedHoverEchoPublisher<string>["publish"]>(),
+    retract: vi.fn<OwnedHoverEchoPublisher<string>["retract"]>(),
+    retire: vi.fn<OwnedHoverEchoPublisher<string>["retire"]>(),
   },
 }));
 

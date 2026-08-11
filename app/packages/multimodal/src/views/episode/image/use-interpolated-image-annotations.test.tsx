@@ -53,8 +53,7 @@ function absBig(n: bigint): bigint {
 
 function makeTimeline(ticks: readonly bigint[]): TimelineIndex {
   const startTimeNs = ticks[0] ?? 0n;
-  const stepNs =
-    ticks.length > 1 ? (ticks[1] as bigint) - startTimeNs : 1_000_000n;
+  const stepNs = ticks.length > 1 ? ticks[1] - startTimeNs : 1_000_000n;
   const toNs = (sec: number) =>
     startTimeNs + BigInt(Math.round((Number.isFinite(sec) ? sec : 0) * 1e9));
   const lowerBound = (target: bigint): number => {
@@ -62,7 +61,7 @@ function makeTimeline(ticks: readonly bigint[]): TimelineIndex {
     let hi = ticks.length;
     while (lo < hi) {
       const mid = (lo + hi) >> 1;
-      if ((ticks[mid] as bigint) < target) lo = mid + 1;
+      if (ticks[mid] < target) lo = mid + 1;
       else hi = mid;
     }
     return lo;

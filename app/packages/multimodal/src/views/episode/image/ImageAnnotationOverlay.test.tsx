@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import type { GpuImageAnnotationPickerHandle } from "../../../visualization/media-2d/GpuImageAnnotationPicker";
 import type { PreparedImageAnnotations } from "../../../visualization/media-2d/gpu-image-annotation-preparation";
@@ -131,7 +131,9 @@ function renderOverlay(
 
 function pickerHandle(
   result: Awaited<ReturnType<GpuImageAnnotationPickerHandle["pick"]>>,
-): GpuImageAnnotationPickerHandle {
+): GpuImageAnnotationPickerHandle & {
+  readonly pick: Mock<GpuImageAnnotationPickerHandle["pick"]>;
+} {
   const pick = vi.fn<GpuImageAnnotationPickerHandle["pick"]>();
   pick.mockResolvedValue(result);
   return {

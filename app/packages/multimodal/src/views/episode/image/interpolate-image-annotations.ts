@@ -31,7 +31,7 @@ import type {
 function vizOf(msg: DecodedFrame): ImageAnnotationsVisualization | null {
   const v = msg.output.visualization;
   if (!v || v.kind !== "image-annotations") return null;
-  return v as ImageAnnotationsVisualization;
+  return v;
 }
 
 // ---------------------------------------------------------------------------

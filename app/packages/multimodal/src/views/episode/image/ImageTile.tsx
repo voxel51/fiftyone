@@ -413,7 +413,9 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const imageAnnotations = useImageAnnotationLayer({
     additionalSets: projectedSceneAnnotations.sets,
     pixelTransform: annotationPixelTransform,
-    resourceKey: `${sourceKey || "episode-session"}\n${tileId}\n${stream}`,
+    resourceKey: `${sourceKey || "episode-session"}\n${
+      tileId ?? "unscoped-tile"
+    }\n${stream ?? "no-stream"}`,
     streams: selectedLabelStreams,
   });
   const activeImageAnnotations = Boolean(
@@ -534,7 +536,9 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         ? "crosshair"
         : undefined,
     imageSize: effectiveImageDims,
-    resetKey: `${stream}\n${cameraProjection.display}\n${rectifiedViewActive}`,
+    resetKey: `${stream ?? "no-stream"}\n${cameraProjection.display}\n${
+      rectifiedViewActive ? "rectified" : "raw"
+    }`,
   });
   const toggleLabelStream = useCallback(
     (labelStream: string, checked: boolean) => {

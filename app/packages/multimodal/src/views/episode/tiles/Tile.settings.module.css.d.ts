@@ -1,0 +1,37 @@
+declare const styles: {
+  readonly cameraGeometryControl: string;
+  readonly colorPreview: string;
+  readonly colorPreviewLarge: string;
+  readonly colorSourceEditor: string;
+  readonly colorStopHeader: string;
+  readonly colorStopRow: string;
+  readonly colorSwatchInput: string;
+  readonly colormapEditor: string;
+  readonly emptyText: string;
+  readonly field: string;
+  readonly fieldRow: string;
+  readonly filterInput: string;
+  readonly labelGroups: string;
+  readonly labelWithTooltip: string;
+  readonly metaText: string;
+  readonly numberField: string;
+  readonly numberFieldUnit: string;
+  readonly numberFieldWrap: string;
+  readonly optionStack: string;
+  readonly pointCloudStyleButton: string;
+  readonly pointCloudStyleButtonCustomized: string;
+  readonly pointCloudStyleChevron: string;
+  readonly pointCloudStyleModePreview: string;
+  readonly pointCloudStylePreview: string;
+  readonly projectionGroups: string;
+  readonly radioRow: string;
+  readonly radioRowLabel: string;
+  readonly recommendButton: string;
+  readonly root: string;
+  readonly sectionHeader: string;
+  readonly select: string;
+  readonly sharedDisplayControls: string;
+  readonly tooltipIcon: string;
+};
+
+export default styles;
