@@ -98,7 +98,10 @@ describe("useViewTargets", () => {
     const { result } = renderHook(() => useViewTargets());
     const [dataset, currentView] = result.current.targets;
 
-    expect(currentView.description).toBe("Samples matching filters");
+    // scoped to the slices the view selects, not to the active slice
+    expect(currentView.description).toBe(
+      "Samples matching filters in the group slices this view selects",
+    );
     // the dataset itself remains grouped
     expect(dataset.unavailableReason).toBe(GROUPED_DATASET_TARGET_REASON);
   });
