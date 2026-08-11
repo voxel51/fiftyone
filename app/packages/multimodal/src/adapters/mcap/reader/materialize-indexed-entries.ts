@@ -1,8 +1,8 @@
-import type { McapTypes } from "@mcap/core";
-
-import type { McapIndexedMessageTime, McapIndexedReaderLike } from "./types";
-
-type McapMessage = McapTypes.TypedMcapRecords["Message"];
+import type {
+  McapIndexedMessageTime,
+  McapIndexedReaderLike,
+  McapMessage,
+} from "./types";
 
 /** Materializes indexed entries while enforcing the reader's positional contract. */
 export async function materializeIndexedEntries(

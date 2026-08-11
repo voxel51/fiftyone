@@ -1,6 +1,4 @@
-import type { McapTypes } from "@mcap/core";
-
-type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
+import type { McapChunkIndex } from "./types";
 
 /** Byte range covering all message-index records associated with one MCAP chunk. */
 export interface McapChunkMessageIndexRange {

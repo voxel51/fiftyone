@@ -14,6 +14,8 @@ const migratedPaths = [
   "packages/multimodal/src/adapters/mcap/prewarm-mcap-source.{ts,test.ts}",
   "packages/multimodal/src/adapters/mcap/format-adapter.ts",
   "packages/multimodal/src/adapters/mcap/resource-client-factory.test.ts",
+  "packages/multimodal/src/adapters/mcap/reader/chunk-index-ranges.ts",
+  "packages/multimodal/src/adapters/mcap/reader/materialize-indexed-entries.{ts,test.ts}",
   "packages/multimodal/src/adapters/mcap/synchronization/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/transform-topology.real.test.ts",
   "packages/multimodal/src/adapters/mcap/worker/**/*.{ts,tsx}",
