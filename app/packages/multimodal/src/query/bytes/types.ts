@@ -1,64 +1,14 @@
-import type { BYTE_SOURCE_READ_PROFILE } from "./constants";
+import type {
+  ByteRange,
+  ByteSourceDescriptor,
+  ByteSourceReadProfile,
+} from "../../ir";
 
-/**
- * Byte-source locality hint used to choose cache fill behavior.
- */
-export type ByteSourceReadProfile =
-  (typeof BYTE_SOURCE_READ_PROFILE)[keyof typeof BYTE_SOURCE_READ_PROFILE];
-
-/**
- * Half-open byte range to read from a source.
- */
-export interface ByteRange {
-  /**
-   * Zero-based byte offset where the read starts.
-   */
-  readonly offset: bigint;
-
-  /**
-   * Number of bytes to read from offset; the end is exclusive.
-   */
-  readonly length: bigint;
-}
-
-/**
- * Frontend-readable source identity for adapter byte readers.
- */
-export interface ByteSourceDescriptor {
-  /**
-   * Transport-discovered content validator (HTTP ETag from HEAD or ranged
-   * GET responses). Not part of source identity — persistent caches use it
-   * to detect content rewrites hiding behind an unchanged id and size.
-   */
-  readonly etag?: string;
-
-  /**
-   * Browser-owned local file backing this source. Structured-cloneable, so it
-   * can cross to playback workers; intentionally ignored by cache keys.
-   */
-  readonly localFile?: File;
-
-  /**
-   * Optional source locality hint used to choose default cache fill size.
-   */
-  readonly readProfile?: ByteSourceReadProfile;
-
-  /**
-   * Stable source identity used in cache keys, independent of transient URLs.
-   */
-  readonly sourceId: string;
-
-  /**
-   * Frontend-readable URL or route path used by byte readers.
-   */
-  readonly url: string;
-
-  /**
-   * Decimal source size in bytes when known. This may come from sample
-   * metadata, HEAD, or Content-Range, and is not part of source identity.
-   */
-  readonly sizeBytes?: string;
-}
+export type {
+  ByteRange,
+  ByteSourceDescriptor,
+  ByteSourceReadProfile,
+} from "../../ir";
 
 /**
  * Request for reading one source byte range.
@@ -72,6 +22,12 @@ export interface ByteRangeReadRequest {
      * Whether cache wrappers may widen this read to a configured block fill.
      */
     readonly blockFill?: boolean;
+
+    /**
+     * Whether a cache wrapper may queue autonomous successor-block readahead.
+     * Bounded grants disable this so no unadmitted range outlives the grant.
+     */
+    readonly readahead?: boolean;
   };
 
   /**
@@ -118,16 +74,21 @@ export interface ByteRangeReadResult {
    * Raw bytes for range.
    */
   readonly bytes: Uint8Array;
+
+  /** Cache/fill attribution for this logical read when the client provides it. */
+  readonly readUsage?: ByteRangeReadUsage;
+}
+
+/** Physical cache-fill outcome behind one logical byte-range result. */
+export interface ByteRangeReadUsage {
+  readonly cacheResult: ByteCacheReadResult;
+  readonly fillRange: ByteRange;
+  readonly transferredBytes: number;
 }
 
 export interface ByteReadDebugLog {
   readonly blockFill: boolean;
-  readonly cacheResult:
-    | "coalesced"
-    | "fill-hit"
-    | "fetched"
-    | "persistent-hit"
-    | "request-hit";
+  readonly cacheResult: ByteCacheReadResult;
   readonly durationMs: number;
   readonly fetchedBytes: number;
   readonly fillLength: string;
@@ -138,6 +99,13 @@ export interface ByteReadDebugLog {
   readonly returnedBytes: number;
   readonly sourceId: string;
 }
+
+type ByteCacheReadResult =
+  | "coalesced"
+  | "fill-hit"
+  | "fetched"
+  | "persistent-hit"
+  | "request-hit";
 
 export interface ByteReadDebugOptions {
   readonly enabled?: boolean;
@@ -154,6 +122,12 @@ export interface ByteClient {
   stat?(
     source: ByteSourceDescriptor,
   ): Promise<ByteSourceDescriptor | undefined>;
+
+  /**
+   * Resolves the physical cache-fill range a read would admit without reading
+   * bytes. Bounded adapters use this pure plan as their byte-budget authority.
+   */
+  planRead?(request: ByteRangeReadRequest): ByteRangeReadRequest;
 
   /**
    * Reads the requested source byte range and returns exactly that range.

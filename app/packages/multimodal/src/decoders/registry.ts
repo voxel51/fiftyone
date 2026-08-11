@@ -1,4 +1,5 @@
-import type { Decoder, PayloadDescriptor } from "./types";
+import type { PayloadDescriptor } from "../ir";
+import type { Decoder } from "./types";
 
 /**
  * Stable string key for one encoded payload descriptor.
@@ -38,13 +39,6 @@ export class DecoderRegistry {
    */
   find(payload: PayloadDescriptor): Decoder | undefined {
     return this.decodersByPayloadKey.get(payloadDescriptorKey(payload));
-  }
-
-  /**
-   * Lists registered decoders.
-   */
-  list(): readonly Decoder[] {
-    return [...this.decodersByPayloadKey.values()];
   }
 }
 

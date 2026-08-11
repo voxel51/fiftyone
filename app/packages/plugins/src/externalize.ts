@@ -56,7 +56,11 @@ if (typeof window !== "undefined") {
   window.__foo__ = foo;
   window.__fosp__ = fosp;
   window.__mui__ = mui;
-  window.__fop__ = fop;
+  // Keep the circular namespace live until Rolldown initializes it.
+  Object.defineProperty(window, "__fop__", {
+    configurable: true,
+    get: () => fop,
+  });
   window.__foa__ = foa;
   window.__fol__ = fol;
   window.__fopb__ = fopb;

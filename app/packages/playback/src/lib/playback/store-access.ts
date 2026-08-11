@@ -19,18 +19,21 @@ import {
   audioVolumeAtom,
   bufferedRangesAtom,
   bufferingDetailAtom,
+  bufferingStreamsAtom,
   currentTimeAtom,
   hoverTimeAtom,
+  inspectionMarkerAtom,
   isBufferingAtom,
   isPlayPendingAtom,
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
   playheadAtom,
+  seekFetchDebounceMsAtom,
   streamRangesVersionAtom,
   streamValueAtom,
 } from "./atoms";
-import type { BufferedRanges, PlaybackStore } from "./types";
+import type { BufferedRanges, BufferingStream, PlaybackStore } from "./types";
 
 /** Non-reactive read of the visual playhead position, in seconds. */
 export function getPlayhead(store: PlaybackStore): number {
@@ -71,6 +74,25 @@ export function subscribePlayhead(
   return store.sub(playheadAtom, callback);
 }
 
+/** Current trailing delay for missing-data fetches after a seek. */
+export function getSeekFetchDebounceMs(store: PlaybackStore): number {
+  return store.get(seekFetchDebounceMsAtom);
+}
+
+/**
+ * Updates the missing-data seek debounce for a long-lived playback store.
+ * Invalid and negative values restore immediate fetch admission.
+ */
+export function setSeekFetchDebounceMs(
+  store: PlaybackStore,
+  debounceMs: number,
+): void {
+  store.set(
+    seekFetchDebounceMsAtom,
+    Number.isFinite(debounceMs) && debounceMs > 0 ? debounceMs : 0,
+  );
+}
+
 /** Non-reactive read of the hovered timeline time, in seconds (or null). */
 export function getHoverTime(store: PlaybackStore): number | null {
   return store.get(hoverTimeAtom);
@@ -90,6 +112,26 @@ export function subscribeHoverTime(
   callback: () => void,
 ): () => void {
   return store.sub(hoverTimeAtom, callback);
+}
+
+/** Publishes or moves one owner's persistent visual inspection marker. */
+export function publishInspectionMarker(
+  store: PlaybackStore,
+  ownerId: string,
+  timeSec: number,
+): void {
+  if (!ownerId || !Number.isFinite(timeSec)) return;
+  store.set(inspectionMarkerAtom, { ownerId, timeSec });
+}
+
+/** Clears the marker only when it is still owned by the caller. */
+export function clearInspectionMarker(
+  store: PlaybackStore,
+  ownerId: string,
+): void {
+  store.set(inspectionMarkerAtom, (current) =>
+    current?.ownerId === ownerId ? null : current,
+  );
 }
 
 /**
@@ -153,6 +195,36 @@ export function setBufferingDetail(
   detail: string | null,
 ): void {
   store.set(bufferingDetailAtom, detail);
+}
+
+/** Non-reactive read of the streams behind the buffering indicator. */
+export function getBufferingStreams(
+  store: PlaybackStore,
+): readonly BufferingStream[] {
+  return store.get(bufferingStreamsAtom);
+}
+
+/**
+ * Publish blocking stream readiness for buffering UI. Equal snapshots are
+ * ignored because data streams may report status on every fetched tick.
+ */
+export function setBufferingStreams(
+  store: PlaybackStore,
+  streams: readonly BufferingStream[],
+): void {
+  const current = store.get(bufferingStreamsAtom);
+  if (
+    current.length === streams.length &&
+    current.every(
+      (stream, index) =>
+        stream.id === streams[index]?.id &&
+        stream.label === streams[index]?.label &&
+        stream.state === streams[index]?.state,
+    )
+  ) {
+    return;
+  }
+  store.set(bufferingStreamsAtom, [...streams]);
 }
 
 /** Non-reactive read of the published buffered time ranges. */

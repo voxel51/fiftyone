@@ -101,3 +101,33 @@
   margin-left: 6px;
   white-space: nowrap;
 }
+
+.bufferingTooltipTrigger {
+  display: inline-flex;
+}
+
+.bufferingTooltip {
+  max-width: min(440px, calc(100vw - 24px));
+}
+
+.bufferingDetails {
+  min-width: 260px;
+}
+
+.bufferingSummary,
+.bufferingStreamState {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.bufferingStreamRow {
+  min-width: 0;
+}
+
+.bufferingStreamName {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

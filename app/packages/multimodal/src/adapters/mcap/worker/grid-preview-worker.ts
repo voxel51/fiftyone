@@ -1,7 +1,10 @@
 import { setFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
-import { mcapErrorMessage } from "../errors";
-import { decodeGridPreview, type McapGridPreviewEntry } from "../grid-preview";
+import { errorMessage } from "../../../utils/errors";
+import {
+  decodeGridPreview,
+  type McapGridPreviewEntry,
+} from "../resource-client/grid-preview";
 import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
 import { createWorkerResourceClient } from "./worker-resource-client";
 import type {
@@ -85,7 +88,7 @@ async function runAndRespond(message: McapGridPreviewWorkerRpcRequest) {
     });
   } catch (error) {
     postResponse({
-      error: mcapErrorMessage(error),
+      error: errorMessage(error),
       id: message.id,
       ok: false,
     });
@@ -120,7 +123,9 @@ function transferablesForResponse(
   const frame = response.result.state.frame;
   if (frame?.kind === "image") {
     return transferableBuffers(
-      frame.image.kind === "raw-image" ? frame.image.rgba : frame.image.bytes,
+      frame.image.kind === "raw-image"
+        ? (frame.image.depth?.values ?? frame.image.rgba)
+        : frame.image.bytes,
     );
   }
 
@@ -130,7 +135,7 @@ function transferablesForResponse(
       frame.pointCloud.colors,
       ...(frame.pointCloud.scalarFields?.map((field) => field.values) ?? []),
       frame.pointCloud.renderPayload?.positions,
-      frame.pointCloud.renderPayload?.colors,
+      frame.pointCloud.renderPayload?.rgb?.values,
       frame.pointCloud.renderPayload?.sourceIndices,
       ...(frame.pointCloud.renderPayload?.scalarFields.map(
         (field) => field.values,

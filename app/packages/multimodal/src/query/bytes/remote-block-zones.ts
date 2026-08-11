@@ -7,7 +7,7 @@ import type { ByteCacheBlockSizeBytes, ByteRangeReadRequest } from "./types";
  *
  * Big blocks win during sustained sequential playback (fewer requests, the
  * link stays in transfer instead of turnaround), but the latency-critical
- * cold reads live at the file's edges: the MCAP summary/footer scan at the
+ * cold reads live at the file's edges: indexed-container metadata at the
  * tail and the first playback window at the head each sit behind a single
  * fill, so a 32 MiB fill there multiplies time-to-timeline. Zone the file
  * by offset instead of adapting over time: edges fill small, the body
@@ -29,8 +29,8 @@ const SMALL_ZONE_BLOCK_SIZE_BYTES = 8 * 1024 * 1024;
 const HEAD_SMALL_ZONE_BYTES = 64n * 1024n * 1024n;
 
 /**
- * Tail region served with small blocks: covers the MCAP summary section,
- * message-index tails, and footer.
+ * Tail region served with small blocks: covers container summaries, indexes,
+ * and footers.
  */
 const TAIL_SMALL_ZONE_BYTES = 64n * 1024n * 1024n;
 
