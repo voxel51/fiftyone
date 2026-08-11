@@ -55,7 +55,7 @@ vi.mock("../../views/episode/shell/PlaybackShell", () => ({
 vi.mock("../../views/episode/shell/AddTileMenu", () => ({
   default: () => null,
 }));
-vi.mock("../../views/episode/scene/picking/InspectorSidebar", () => ({
+vi.mock("../../views/episode/shell/RightSidebar", () => ({
   default: () => null,
 }));
 vi.mock("../../views/episode/shell/NetworkStatus", () => ({

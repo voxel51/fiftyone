@@ -64,7 +64,7 @@ import { SceneUpdateHistoryProvider } from "../scene/entities/scene-update-histo
 import { SelectionHotkeys } from "../interaction/selection/selected-object";
 import AddTileMenu from "./AddTileMenu";
 import { tileTypesFor, getTileDefinition } from "./tile-catalog";
-import InspectorSidebar from "../scene/picking/InspectorSidebar";
+import RightSidebar from "./RightSidebar";
 import styles from "./ModalRenderer.module.css";
 import { NetworkHealthTracker, NetworkStatusPill } from "./NetworkStatus";
 import { FullHistoryInterestsProvider } from "../playback/full-history-interests";
@@ -493,7 +493,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                     />
                                   ) : null
                                 }
-                                rightSidebar={<InspectorSidebar />}
+                                rightSidebar={<RightSidebar />}
                                 sharedImageWebGpuViews
                                 defaultRightOpen={false}
                                 defaultLeftOpen={defaultLeftOpen}
