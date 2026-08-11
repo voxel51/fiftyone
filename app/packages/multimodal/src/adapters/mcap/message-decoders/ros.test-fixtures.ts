@@ -44,7 +44,7 @@ export function detection3DRecord({
   };
 }
 
-export function detectionResult(classId: string, score: number) {
+function detectionResult(classId: string, score: number) {
   return {
     hypothesis: {
       class_id: classId,

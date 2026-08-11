@@ -22,7 +22,7 @@ type PendingRequest = {
 /**
  * Error used when a grid preview request is cancelled before completion.
  */
-export class McapGridPreviewRequestCancelledError extends Error {
+class McapGridPreviewRequestCancelledError extends Error {
   constructor() {
     super(CANCELLED_ERROR_MESSAGE);
     this.name = "McapGridPreviewRequestCancelledError";

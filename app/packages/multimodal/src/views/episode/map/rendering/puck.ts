@@ -101,10 +101,7 @@ export function ensurePuckImages(
   }
 }
 
-export function drawPuckImage(
-  variant: PuckVariant,
-  color: string,
-): ImageData | null {
+function drawPuckImage(variant: PuckVariant, color: string): ImageData | null {
   // Partial canvas implementations (jsdom, test stubs) surface as thrown
   // TypeErrors mid-draw; a puck that cannot draw degrades to no icon.
   try {

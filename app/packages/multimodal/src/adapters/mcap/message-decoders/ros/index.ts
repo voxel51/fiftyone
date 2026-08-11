@@ -22,7 +22,6 @@ import {
 
 export { rosCameraInfoDecoders } from "./camera-info";
 export { rosCompressedImageDecoders } from "./compressed-image";
-export { rosCompressedPointCloud2Decoders } from "./compressed-point-cloud2";
 export { rosImageDecoders } from "./image";
 export { rosLaserScanDecoders } from "./laser-scan";
 export {
@@ -30,7 +29,7 @@ export {
   rosRclLogDecoders,
   rosRosgraphLogDecoders,
 } from "./log";
-export { rosMarkerArrayDecoders, rosMarkerDecoders } from "./marker";
+export { rosMarkerArrayDecoders } from "./marker";
 export { rosNavSatFixDecoders } from "./nav-sat-fix";
 export { rosOccupancyGridDecoders } from "./occupancy-grid";
 export { rosOdometryDecoders, rosPoseStampedDecoders } from "./pose";

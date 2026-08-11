@@ -181,7 +181,7 @@ export function streamPrefix(stream: string): string {
 }
 
 /** Normalized tokens used for fuzzy semantic stream pairing. */
-export function streamTokens(stream: string): Set<string> {
+function streamTokens(stream: string): Set<string> {
   return new Set(
     splitTokens(stream).filter((token) => !IGNORED_PAIRING_TOKENS.has(token)),
   );

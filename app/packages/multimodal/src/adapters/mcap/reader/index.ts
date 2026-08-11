@@ -1,10 +1,6 @@
 export { createDefaultMcapReader } from "./default-reader";
+export type { CreateMcapBoundedReaderOptions } from "./bounded-read";
 export {
-  createMcapBoundedReader,
-  type CreateMcapBoundedReaderOptions,
-} from "./bounded-read";
-export {
-  emptyMcapBoundedReadUsage,
   isMcapBoundedReadCancelledError,
   McapBoundedReadCancelledError,
   type McapBoundedReadCancellation,
@@ -16,7 +12,6 @@ export {
 } from "./reader-store";
 export type { McapChunkReadDebugLog } from "./byte-readable";
 export {
-  collectChunkDataPrefetchRanges,
   collectWindowPrefetchRanges,
   prefetchMcapByteRanges,
 } from "./chunk-prefetch";
@@ -27,19 +22,10 @@ export type {
 } from "./prefetch-types";
 export { createCachedMcapDecompressHandlers } from "./decompress-cache";
 export {
-  collectChunkMessageIndexReadRanges,
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
 } from "./message-index";
 export { materializeIndexedEntries } from "./materialize-indexed-entries";
-export {
-  DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES,
-  readLatestIndexedMessageTimesForReader,
-} from "./latest-before";
-export {
-  MAX_TOPIC_TIME_BOUNDS_TOPICS,
-  readTopicIndexedTimeBoundsForReader,
-} from "./topic-time-bounds";
 
 export type {
   McapIndexedMessageTime,

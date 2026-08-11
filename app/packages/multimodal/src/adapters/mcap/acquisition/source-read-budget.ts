@@ -111,7 +111,7 @@ export function createSourceReadBudgetLedger(
 }
 
 /** Validates finite, non-negative hard work limits. */
-export function assertReadWorkBudget(
+function assertReadWorkBudget(
   budget: ReadWorkBudget,
   label = "read budget",
 ): void {

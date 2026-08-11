@@ -138,7 +138,7 @@ export function hexToRgbUnit(value: string): readonly [number, number, number] {
 }
 
 /** Convert a hex color string to integer RGB channels in `[0, 255]`. */
-export function hexToRgb255(value: string): readonly [number, number, number] {
+function hexToRgb255(value: string): readonly [number, number, number] {
   const normalized = normalizeHexColor(value) ?? "#000000";
   return [
     parseInt(normalized.slice(1, 3), 16),
@@ -148,7 +148,7 @@ export function hexToRgb255(value: string): readonly [number, number, number] {
 }
 
 /** Convert integer RGB channels to a clamped lowercase `#rrggbb` color. */
-export function rgbToHex(color: readonly [number, number, number]): string {
+function rgbToHex(color: readonly [number, number, number]): string {
   return `#${color
     .map((component) =>
       Math.max(0, Math.min(RGB_MAX, component)).toString(16).padStart(2, "0"),

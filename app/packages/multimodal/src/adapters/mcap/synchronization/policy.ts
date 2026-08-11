@@ -12,7 +12,7 @@ import type {
 /**
  * Default tolerance for NEAREST-mode synchronized MCAP playback windows.
  */
-export const DEFAULT_MCAP_SYNC_TOLERANCE_NS = 50_000_000n;
+const DEFAULT_MCAP_SYNC_TOLERANCE_NS = 50_000_000n;
 
 export { maxBigInt, minBigInt } from "../../../utils/bigint";
 
@@ -226,7 +226,7 @@ export function createCandidateSelector<Candidate extends SyncCandidate>(
 /**
  * Orders decoded MCAP messages by playback timeline time.
  */
-export function compareByTimelineTime(
+function compareByTimelineTime(
   left: McapDecodedMessage,
   right: McapDecodedMessage,
 ) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Default time a copied-state affordance remains visible after copy. */
-export const COPY_FEEDBACK_MS = 1200;
+const COPY_FEEDBACK_MS = 1200;
 
 /**
  * Tracks transient copy feedback, resetting to `resetValue` after the delay.

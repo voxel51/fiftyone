@@ -63,7 +63,7 @@ export const foxgloveImageAnnotationsCdrDecoders = rosDecodersForPayloads({
   payloads: FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS,
 });
 
-export function decodeFoxgloveImageAnnotationsRecord(
+function decodeFoxgloveImageAnnotationsRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
   bytes?: Uint8Array,

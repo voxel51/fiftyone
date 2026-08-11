@@ -6,7 +6,7 @@ import type {
 } from "./types";
 import { VideoIntentCancelledError } from "./types";
 
-export const PUSH_VIDEO_ACCESS_UNIT_CAP = 4_096;
+const PUSH_VIDEO_ACCESS_UNIT_CAP = 4_096;
 
 interface StoredAccessUnit {
   readonly token: number;

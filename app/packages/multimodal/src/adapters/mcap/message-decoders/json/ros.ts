@@ -112,7 +112,7 @@ export const jsonRosDiagnosticArrayDecoders = jsonDecodersForPayloads({
 /**
  * JSON-schema decoders for ROS Marker records.
  */
-export const jsonRosMarkerDecoders = jsonDecodersForPayloads({
+const jsonRosMarkerDecoders = jsonDecodersForPayloads({
   id: "json.ros.marker",
   map: decodeRosMarkerRecord,
   payloads: JSON_ROS_MARKER_PAYLOADS,
@@ -121,7 +121,7 @@ export const jsonRosMarkerDecoders = jsonDecodersForPayloads({
 /**
  * JSON-schema decoders for ROS MarkerArray records.
  */
-export const jsonRosMarkerArrayDecoders = jsonDecodersForPayloads({
+const jsonRosMarkerArrayDecoders = jsonDecodersForPayloads({
   id: "json.ros.marker-array",
   map: decodeRosMarkerArrayRecord,
   payloads: JSON_ROS_MARKER_ARRAY_PAYLOADS,

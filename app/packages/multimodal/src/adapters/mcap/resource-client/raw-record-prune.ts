@@ -23,7 +23,7 @@ const BYTES_PREVIEW_LENGTH = 16;
 const BOXED_BIGINT_PROTOTYPE = Object.getPrototypeOf(Object(0n)) as object;
 
 /** Maximum UTF-16 code units returned by one whole-message JSON export. */
-export const RAW_RECORD_FULL_JSON_MAX_CODE_UNITS = 8 * 1024 * 1024;
+const RAW_RECORD_FULL_JSON_MAX_CODE_UNITS = 8 * 1024 * 1024;
 
 interface PruneWalkState {
   readonly budgets: Required<McapRawPruneBudgets>;

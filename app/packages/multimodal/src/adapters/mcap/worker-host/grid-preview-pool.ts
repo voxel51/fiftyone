@@ -172,7 +172,7 @@ export function resetMcapGridPreviewPoolForTests(
 /**
  * Hashes a source key (FNV-1a) for deterministic worker affinity.
  */
-export function hashSourceKey(sourceKey: string): number {
+function hashSourceKey(sourceKey: string): number {
   return fnv1aString(sourceKey);
 }
 

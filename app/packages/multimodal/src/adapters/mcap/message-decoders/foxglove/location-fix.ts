@@ -48,7 +48,7 @@ export const foxgloveLocationFixCdrDecoders = rosDecodersForPayloads({
   payloads: FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS,
 });
 
-export function decodeFoxgloveLocationFixRecord(
+function decodeFoxgloveLocationFixRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
 ): DecodedOutput {

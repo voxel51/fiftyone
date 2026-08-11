@@ -23,8 +23,8 @@ export function locationTrackColor(index: number): string {
   return colors[index % colors.length];
 }
 
-export const MAX_LOCATION_TRACK_RENDER_POINTS = 10_000;
-export const LOCATION_TRACK_SEGMENT_CHUNK_SIZE = 256;
+const MAX_LOCATION_TRACK_RENDER_POINTS = 10_000;
+const LOCATION_TRACK_SEGMENT_CHUNK_SIZE = 256;
 
 const NO_FIX_STATUS = -1;
 const MAX_FORWARD_CURSOR_STEPS = 64;
@@ -437,7 +437,7 @@ export function decimateLocationTrackSegments(
   return { pointCount, segments: decimated, stride, truncated: true };
 }
 
-export function countLocationTrackPoints(
+function countLocationTrackPoints(
   segments: readonly LocationTrackSegment[],
 ): number {
   return segments.reduce((count, segment) => count + segment.points.length, 0);

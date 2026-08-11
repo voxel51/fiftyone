@@ -182,7 +182,7 @@ function trackingRotation(
  * should follow heading but stay level (heading tracking, ego/top view
  * presets).
  */
-export function headingRotation(
+function headingRotation(
   rotation: Quaternion,
   sceneUpAxis: Scene3dUpAxis = DEFAULT_SCENE_3D_UP_AXIS,
 ): Quaternion {

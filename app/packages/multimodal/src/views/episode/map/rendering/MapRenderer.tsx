@@ -247,5 +247,3 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
     </div>
   );
 };
-
-export default MapRenderer;

@@ -15,7 +15,7 @@ import { TILE_TYPE, type TileType } from "../tiles/tile-types";
  * to read and the decode worker spends more time context-switching than
  * rendering; extra sources stay one "Add tile" away.
  */
-export const MAX_DEFAULT_IMAGE_TILES = 6;
+const MAX_DEFAULT_IMAGE_TILES = 6;
 
 // Smallest tile footprint that still reads as a useful video feed.
 const MIN_IMAGE_TILE_WIDTH_PX = 400;

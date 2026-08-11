@@ -407,5 +407,3 @@ function validPickRequest(
     request.targetV < imageHeight
   );
 }
-
-export default GpuImageAnnotationPicker;

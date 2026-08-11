@@ -50,7 +50,7 @@ export const MAX_STARTUP_CUSHION_WAIT_SECONDS = 8;
  * samples within a fetch round-trip, after which the plan (and the chip
  * copy) re-resolve from measured throughput.
  */
-export const UNMEASURED_LINK_NOMINAL_WAIT_SECONDS = 3;
+const UNMEASURED_LINK_NOMINAL_WAIT_SECONDS = 3;
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
 const PROVISIONAL_REMOTE_START_COVERAGE_SECONDS = 1.5;

@@ -27,7 +27,6 @@ import {
   numericSeriesRangeDurationSeconds,
   numericSeriesRangesOverlap,
   numericSeriesWindowPointBudget,
-  PLOT_WINDOW_SECONDS,
   createPlotPublicationStore,
   type PlotPublicationStore,
   quantizedNumericSeriesWindow,
@@ -65,7 +64,7 @@ import { shouldDeferIdleWorkForStore } from "../playback/network-health";
  * cache), so the marginal cost over playback is roughly this window
  * minus the lookahead, once per region.
  */
-export { numericSeriesKey, PLOT_WINDOW_SECONDS };
+export { numericSeriesKey };
 
 /** Playhead-driven fills run at most this often; fetch latency dominates. */
 const PLAYHEAD_FILL_THROTTLE_MS = 500;

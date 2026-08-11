@@ -486,7 +486,7 @@ export function rawRecordWallTimeError(): EpisodeReadUnsupportedError {
   );
 }
 
-export function assertRawRecordChunksWithinBound(
+function assertRawRecordChunksWithinBound(
   chunks: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
   include: (chunk: McapTypes.TypedMcapRecords["ChunkIndex"]) => boolean,
 ): void {

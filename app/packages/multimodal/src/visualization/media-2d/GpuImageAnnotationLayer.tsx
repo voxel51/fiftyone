@@ -57,7 +57,7 @@ export interface GpuImageAnnotationLayerProps {
  * Two instanced draws render every visible 2D annotation: one sprite batch for
  * points/circles and one capsule batch for all line work.
  */
-export function GpuImageAnnotationLayer({
+function GpuImageAnnotationLayer({
   fit,
   imageHeight,
   imageWidth,

@@ -83,7 +83,7 @@ export const foxgloveSceneUpdateCdrDecoders = rosDecodersForPayloads({
   payloads: FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS,
 });
 
-export function decodeFoxgloveSceneUpdateRecord(
+function decodeFoxgloveSceneUpdateRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
   bytes?: Uint8Array,

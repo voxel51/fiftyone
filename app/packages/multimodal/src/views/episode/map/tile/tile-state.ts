@@ -3,12 +3,7 @@ import { atom, useAtomValue, useStore } from "jotai";
 import { useCallback, useMemo } from "react";
 import { MAP_BASE_LAYER, type MapBaseLayer } from "../rendering/types";
 
-export {
-  MAP_BASE_LAYER,
-  OPENFREEMAP_LIBERTY_STYLE_URL,
-  OPENFREEMAP_PROVIDER_NAME,
-  type MapBaseLayer,
-} from "../rendering/types";
+export { MAP_BASE_LAYER, type MapBaseLayer } from "../rendering/types";
 
 export interface MapTileSettings {
   /**

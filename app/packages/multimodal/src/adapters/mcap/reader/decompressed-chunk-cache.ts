@@ -7,7 +7,7 @@ import {
   type McapDecompressionCacheSample,
 } from "../instrumentation/meters/decompression-cache";
 
-export const DEFAULT_MCAP_DECOMPRESSED_CHUNK_CACHE_BYTES = 128 * 1024 * 1024;
+const DEFAULT_MCAP_DECOMPRESSED_CHUNK_CACHE_BYTES = 128 * 1024 * 1024;
 
 export interface McapDecompressedChunkKey {
   readonly compressedLength: bigint;

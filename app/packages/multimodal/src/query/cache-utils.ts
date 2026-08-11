@@ -68,7 +68,7 @@ export function serializeCacheKey(parts: readonly (string | null)[]): string {
 /**
  * Estimates nested decoded payload size for cache eviction.
  */
-export function estimateFieldSize(
+function estimateFieldSize(
   value: unknown,
   visited = new WeakSet<object>(),
 ): number {

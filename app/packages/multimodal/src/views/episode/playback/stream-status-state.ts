@@ -201,7 +201,7 @@ export function setStreamStatus(
 }
 
 /** Non-reactive read for the data stream and tests. */
-export function getStreamStaleAgeNs(
+function getStreamStaleAgeNs(
   store: PlaybackStore,
   stream: string,
 ): bigint | null {

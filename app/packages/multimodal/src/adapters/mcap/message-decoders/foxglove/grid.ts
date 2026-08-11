@@ -71,7 +71,7 @@ export const foxgloveGridCdrDecoders = rosDecodersForPayloads({
   payloads: FOXGLOVE_GRID_CDR_PAYLOADS,
 });
 
-export function decodeFoxgloveGridRecord(
+function decodeFoxgloveGridRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
 ): DecodedOutput {
