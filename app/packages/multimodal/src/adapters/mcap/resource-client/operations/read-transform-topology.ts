@@ -62,8 +62,7 @@ export async function readMcapTransformTopology({
   readonly signal?: AbortSignal;
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapTransformTopologyResult> {
-  const readBoundedMessages = reader.readBoundedMessages?.bind(reader);
-  if (!readBoundedMessages) {
+  if (!reader.readBoundedMessages) {
     throw new Error("MCAP bounded transform topology reads are unavailable");
   }
   const channels = discoverFrameTransformChannels(reader);
@@ -95,7 +94,7 @@ export async function readMcapTransformTopology({
     endTimeNs: request.endTimeNs,
     startTimeNs: request.startTimeNs,
   });
-  const result = await readBoundedMessages({
+  const result = await reader.readBoundedMessages({
     absoluteBudget: request.absoluteBudget,
     absoluteMaxChunks: request.absoluteMaxChunks,
     budget: request.budget,

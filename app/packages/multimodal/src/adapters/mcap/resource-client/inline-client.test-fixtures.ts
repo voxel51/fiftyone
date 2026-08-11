@@ -2,14 +2,18 @@ import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
 import { parseRos2idl } from "@foxglove/ros2idl-parser";
 import { MessageWriter as Ros1MessageWriter } from "@foxglove/rosmsg-serialization";
 import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serialization";
-import type { McapTypes } from "@mcap/core";
 import { vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes/index";
 import type { DecodeClient } from "../../../query/decoding/index";
 import { VISUALIZATION_KIND, type DecodedOutput } from "../../../ir/index";
 import type {
   McapBoundedMessageReadResult,
+  McapChannel,
+  McapChunkIndex,
   McapIndexedReaderLike,
+  McapMessage,
+  McapSchema,
+  McapStatistics,
 } from "../reader/index";
 
 export const FRAME_TRANSFORM_SCHEMA_DATA = bytes(
@@ -319,12 +323,9 @@ export function createReader({
   schemasById = new Map([[3, createSchema(new Uint8Array([9]))]]),
   statistics,
 }: {
-  readonly channelsById?: ReadonlyMap<
-    number,
-    McapTypes.TypedMcapRecords["Channel"]
-  >;
-  readonly chunkIndexes?: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
-  readonly messages?: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly channelsById?: ReadonlyMap<number, McapChannel>;
+  readonly chunkIndexes?: readonly McapChunkIndex[];
+  readonly messages?: readonly McapMessage[];
   readonly prefetchChunkData?: NonNullable<
     McapIndexedReaderLike["prefetchChunkData"]
   >;
@@ -368,12 +369,9 @@ export function createReader({
     readonly endTime?: bigint;
     readonly startTime?: bigint;
     readonly topics?: readonly string[];
-  }) => AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void>;
-  readonly schemasById?: ReadonlyMap<
-    number,
-    McapTypes.TypedMcapRecords["Schema"]
-  >;
-  readonly statistics?: McapTypes.TypedMcapRecords["Statistics"];
+  }) => AsyncGenerator<McapMessage, void, void>;
+  readonly schemasById?: ReadonlyMap<number, McapSchema>;
+  readonly statistics?: McapStatistics;
 } = {}) {
   return {
     channelsById,
@@ -384,13 +382,7 @@ export function createReader({
     readIndexedMessageTimes,
     readLatestIndexedMessageTimes,
     readBoundedMessages,
-    readMessages:
-      readMessages ??
-      vi.fn(async function* () {
-        for (const message of messages) {
-          yield message;
-        }
-      }),
+    readMessages: readMessages ?? vi.fn(() => asyncValues(messages)),
     schemasById,
     statistics,
   };
@@ -449,7 +441,7 @@ export function replaceAscii(
 }
 
 export function createBoundedReadResult(
-  messages: readonly McapTypes.TypedMcapRecords["Message"][],
+  messages: readonly McapMessage[],
   overrides: Partial<McapBoundedMessageReadResult> = {},
 ): McapBoundedMessageReadResult {
   return {
@@ -487,13 +479,15 @@ export function createIndexedMessageTime(
 
 export function createTestDecodeClient(): DecodeClient {
   return {
-    decode: vi.fn(async (request) => ({
-      context: request.context,
-      decoderId: "test-decoder",
-      decoderVersion: "1",
-      output: createTestDecodedOutput(),
-      payload: request.payload,
-    })),
+    decode: vi.fn<DecodeClient["decode"]>((request) =>
+      Promise.resolve({
+        context: request.context,
+        decoderId: "test-decoder",
+        decoderVersion: "1",
+        output: createTestDecodedOutput(),
+        payload: request.payload,
+      }),
+    ),
   };
 }
 
@@ -510,13 +504,11 @@ export function createTestDecodedOutput(
   };
 }
 
-export function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
-): McapTypes.TypedMcapRecords["Channel"] {
+export function createChannel(options: Partial<McapChannel> = {}): McapChannel {
   return {
     id: options.id ?? 7,
     messageEncoding: options.messageEncoding ?? "protobuf",
-    metadata: options.metadata ?? new Map(),
+    metadata: options.metadata ?? new Map<string, string>(),
     schemaId: options.schemaId ?? 3,
     topic: options.topic ?? "/topic",
     type: "Channel",
@@ -525,8 +517,8 @@ export function createChannel(
 
 export function createSchema(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {},
-): McapTypes.TypedMcapRecords["Schema"] {
+  options: Partial<McapSchema> = {},
+): McapSchema {
   return {
     data,
     encoding: options.encoding ?? "protobuf",
@@ -537,12 +529,13 @@ export function createSchema(
 }
 
 export function createStatistics(
-  options: Partial<McapTypes.TypedMcapRecords["Statistics"]> = {},
-): McapTypes.TypedMcapRecords["Statistics"] {
+  options: Partial<McapStatistics> = {},
+): McapStatistics {
   return {
     attachmentCount: options.attachmentCount ?? 0,
     channelCount: options.channelCount ?? 0,
-    channelMessageCounts: options.channelMessageCounts ?? new Map(),
+    channelMessageCounts:
+      options.channelMessageCounts ?? new Map<number, bigint>(),
     chunkCount: options.chunkCount ?? 0,
     messageCount: options.messageCount ?? 0n,
     messageEndTime: options.messageEndTime ?? 0n,
@@ -554,8 +547,8 @@ export function createStatistics(
 }
 
 export function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
-): McapTypes.TypedMcapRecords["ChunkIndex"] {
+  options: Partial<McapChunkIndex> = {},
+): McapChunkIndex {
   return {
     chunkLength: options.chunkLength ?? 256n,
     chunkStartOffset: options.chunkStartOffset ?? 1_000n,
@@ -563,7 +556,8 @@ export function createChunkIndex(
     compression: options.compression ?? "",
     messageEndTime: options.messageEndTime ?? 20n,
     messageIndexLength: options.messageIndexLength ?? 0n,
-    messageIndexOffsets: options.messageIndexOffsets ?? new Map(),
+    messageIndexOffsets:
+      options.messageIndexOffsets ?? new Map<number, bigint>(),
     messageStartTime: options.messageStartTime ?? 10n,
     type: "ChunkIndex",
     uncompressedSize: options.uncompressedSize ?? 0n,
@@ -572,8 +566,8 @@ export function createChunkIndex(
 
 export function createMessage(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Message"]> = {},
-): McapTypes.TypedMcapRecords["Message"] {
+  options: Partial<McapMessage> = {},
+): McapMessage {
   return {
     channelId: options.channelId ?? 7,
     data,
@@ -582,6 +576,12 @@ export function createMessage(
     sequence: options.sequence ?? 2,
     type: "Message",
   };
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncGenerator<Value, void, void> {
+  for await (const value of values) yield value;
 }
 
 function bytes(base64: string): Uint8Array {

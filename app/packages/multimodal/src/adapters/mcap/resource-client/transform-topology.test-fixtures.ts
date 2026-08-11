@@ -1,11 +1,56 @@
-import { McapWriter, type McapTypes } from "@mcap/core";
+import { McapWriter } from "@mcap/core";
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
+import type { McapReadable } from "../reader";
 
 export interface TransformTopologyFixture {
   readonly frameUseTopics: readonly string[];
-  readonly readable: McapTypes.IReadable;
+  readonly readable: McapReadable;
   readonly sizeBytes: string;
+}
+
+interface FixtureWriter {
+  addMessage(message: {
+    readonly channelId: number;
+    readonly data: Uint8Array;
+    readonly logTime: bigint;
+    readonly publishTime: bigint;
+    readonly sequence: number;
+  }): Promise<void>;
+  end(): Promise<void>;
+  registerChannel(channel: {
+    readonly messageEncoding: string;
+    readonly metadata: ReadonlyMap<string, string>;
+    readonly schemaId: number;
+    readonly topic: string;
+  }): Promise<number>;
+  registerSchema(schema: {
+    readonly data: Uint8Array;
+    readonly encoding: string;
+    readonly name: string;
+  }): Promise<number>;
+  start(header: {
+    readonly library: string;
+    readonly profile: string;
+  }): Promise<void>;
+}
+
+interface FixtureWriterConstructor {
+  new (options: { readonly writable: MemoryMcapBuffer }): FixtureWriter;
+}
+
+function mcapWriterConstructor(): FixtureWriterConstructor {
+  const candidate: unknown = McapWriter;
+  if (!isWriterConstructor(candidate)) {
+    throw new Error("@mcap/core did not expose McapWriter");
+  }
+  return candidate;
+}
+
+function isWriterConstructor(
+  value: unknown,
+): value is FixtureWriterConstructor {
+  return typeof value === "function";
 }
 
 /** Small connected MCAP with static and temporal evidence. */
@@ -24,7 +69,7 @@ async function buildTransformTopologyMcap({
   readonly disconnected: boolean;
 }): Promise<TransformTopologyFixture> {
   const buffer = new MemoryMcapBuffer();
-  const writer = new McapWriter({ writable: buffer });
+  const writer = new (mcapWriterConstructor())({ writable: buffer });
   await writer.start({
     library: "multimodal-transform-topology-test",
     profile: "",
@@ -137,26 +182,29 @@ function encodePose(frameId: string): Uint8Array {
   return POSE_IN_FRAME_TYPE.encode({ frameId }).finish();
 }
 
-class MemoryMcapBuffer implements McapTypes.IReadable, McapTypes.IWritable {
+class MemoryMcapBuffer implements McapReadable {
   private bytes = new Uint8Array();
 
   position(): bigint {
     return BigInt(this.bytes.byteLength);
   }
 
-  async read(offset: bigint, size: bigint): Promise<Uint8Array> {
-    return this.bytes.subarray(Number(offset), Number(offset + size));
+  read(offset: bigint, size: bigint): Promise<Uint8Array> {
+    return Promise.resolve(
+      this.bytes.subarray(Number(offset), Number(offset + size)),
+    );
   }
 
-  async size(): Promise<bigint> {
-    return BigInt(this.bytes.byteLength);
+  size(): Promise<bigint> {
+    return Promise.resolve(BigInt(this.bytes.byteLength));
   }
 
-  async write(data: Uint8Array): Promise<void> {
+  write(data: Uint8Array): Promise<void> {
     const combined = new Uint8Array(this.bytes.byteLength + data.byteLength);
     combined.set(this.bytes);
     combined.set(data, this.bytes.byteLength);
     this.bytes = combined;
+    return Promise.resolve();
   }
 }
 

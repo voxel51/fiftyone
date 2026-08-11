@@ -109,9 +109,13 @@ describe("MCAP transform topology acquisition", () => {
     const controller = new AbortController();
     controller.abort();
 
-    await expect(
-      readFixture(fixture, GENEROUS_BUDGET, controller.signal),
-    ).rejects.toMatchObject({ name: expect.stringMatching(/Abort|Cancel/) });
+    try {
+      await readFixture(fixture, GENEROUS_BUDGET, controller.signal);
+      throw new Error("Expected transform topology cancellation");
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      expect(error.name).toMatch(/Abort|Cancel/);
+    }
   });
 });
 
@@ -173,19 +177,22 @@ async function readFixture(
 
 const POSE_DECODE_CLIENT: DecodeClient = {
   cachesDecodedOutput: false,
-  decode: async (request) => ({
-    decoderId: "topology-test-pose",
-    decoderVersion: "1",
-    output: {
-      visualization: {
-        // The fixture writes a short PoseInFrame.frameId, whose one-byte field
-        // tag and length prefix occupy the first two bytes.
-        coordinateFrameId: new TextDecoder().decode(request.bytes.subarray(2)),
-        kind: VISUALIZATION_KIND.POSE,
-        position: [0, 0, 0],
-        quaternion: [0, 0, 0, 1],
+  decode: (request) =>
+    Promise.resolve({
+      decoderId: "topology-test-pose",
+      decoderVersion: "1",
+      output: {
+        visualization: {
+          // The fixture writes a short PoseInFrame.frameId, whose one-byte field
+          // tag and length prefix occupy the first two bytes.
+          coordinateFrameId: new TextDecoder().decode(
+            request.bytes.subarray(2),
+          ),
+          kind: VISUALIZATION_KIND.POSE,
+          position: [0, 0, 0],
+          quaternion: [0, 0, 0, 1],
+        },
       },
-    },
-    payload: request.payload,
-  }),
+      payload: request.payload,
+    }),
 };

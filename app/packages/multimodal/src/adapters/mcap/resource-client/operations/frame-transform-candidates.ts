@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import type { Type } from "protobufjs";
 import { Quaternion, Vector3 } from "three";
 import { protobufFromBinaryDescriptor } from "../../compatibility/mcap-support";
@@ -18,7 +17,12 @@ import {
   rootRosMessageDefinition,
   type RosMessageDefinition,
 } from "../../message-decoders/ros/wire";
-import type { McapIndexedReaderLike } from "../../reader/index";
+import type {
+  McapChannel,
+  McapIndexedReaderLike,
+  McapMessage,
+  McapSchema,
+} from "../../reader/index";
 import type { McapFrameTransformSample } from "../../transforms/types";
 
 const PROTOBUF_ENCODING = "protobuf";
@@ -46,10 +50,6 @@ const FOXGLOVE_CDR_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
 const FOXGLOVE_CDR_TRANSFORMS_SCHEMAS: ReadonlySet<string> = new Set([
   FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA,
 ]);
-type McapChannel = McapTypes.TypedMcapRecords["Channel"];
-type McapMessage = McapTypes.TypedMcapRecords["Message"];
-type McapSchema = McapTypes.TypedMcapRecords["Schema"];
-
 type FrameTransformSchemaMatch =
   | {
       readonly format: "foxglove";
