@@ -25,18 +25,16 @@ vi.mock("../../visualization/composition", () => ({
 
 const source: EpisodeSource = {
   assets: {
-    list: async () => [],
-    resolve: async () => {
-      throw new Error("Fixture adapter has no physical assets");
-    },
+    list: () => Promise.resolve([]),
+    resolve: () =>
+      Promise.reject(new Error("Fixture adapter has no physical assets")),
   },
   episodeId: "fixture-episode",
 };
 
 const io: ByteResources = {
-  readBytes: async () => {
-    throw new Error("Fixture adapter has no physical bytes");
-  },
+  readBytes: () =>
+    Promise.reject(new Error("Fixture adapter has no physical bytes")),
 };
 
 afterEach(() => {

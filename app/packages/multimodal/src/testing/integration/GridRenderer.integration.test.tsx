@@ -56,23 +56,21 @@ vi.mock("../../visualization/composition", async (importOriginal) => ({
 }));
 
 vi.mock("../../visualization/scene-3d/gpu/webgpu-snapshot-renderer", () => ({
-  renderPointCloudSnapshot: vi.fn(async () => null),
+  renderPointCloudSnapshot: vi.fn(() => Promise.resolve(null)),
 }));
 
 const episodeSource: EpisodeSource = {
   assets: {
-    list: async () => [],
-    resolve: async () => {
-      throw new Error("Fixture adapter has no physical assets");
-    },
+    list: () => Promise.resolve([]),
+    resolve: () =>
+      Promise.reject(new Error("Fixture adapter has no physical assets")),
   },
   episodeId: "fixture-grid",
 };
 
 const io: ByteResources = {
-  readBytes: async () => {
-    throw new Error("Fixture adapter has no physical bytes");
-  },
+  readBytes: () =>
+    Promise.reject(new Error("Fixture adapter has no physical bytes")),
 };
 
 afterEach(() => {

@@ -16,6 +16,7 @@ const migratedDirectories = [
   "packages/multimodal/src/scene-inventory/**/*.{ts,tsx}",
   "packages/multimodal/src/schemas/**/*.{ts,tsx}",
   "packages/multimodal/src/stream-selection/**/*.{ts,tsx}",
+  "packages/multimodal/src/testing/**/*.{ts,tsx}",
   "packages/multimodal/src/utils/**/*.{ts,tsx}",
   "packages/multimodal/src/video/**/*.{ts,tsx}",
 ];
