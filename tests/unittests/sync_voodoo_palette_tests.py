@@ -88,8 +88,38 @@ class LoadPaletteTests(unittest.TestCase):
 
         self.assertEqual(pool[0][1], "unmapped")
 
-    def test_missing_slot_raises(self):
-        palette = {str(i): "#000000" for i in range(1, 12)}
+    def test_length_follows_the_tokens(self):
+        # A palette is N colors, not a fixed count
+        for count in (3, 12, 17):
+            palette = {str(i): "#%06d" % i for i in range(1, count + 1)}
+            with tempfile.TemporaryDirectory() as tmpdir:
+                path = _write_tokens(tmpdir, _tokens(palette=palette))
+                pool = fosvp._load_palette(path)
+
+            self.assertEqual(len(pool), count)
+
+    def test_slots_are_ordered_numerically(self):
+        # Lexicographic ordering would put "10" before "2"
+        palette = {str(i): "#%06d" % i for i in range(1, 13)}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = _write_tokens(tmpdir, _tokens(palette=palette))
+            pool = fosvp._load_palette(path)
+
+        self.assertEqual(
+            [color for color, _ in pool],
+            ["#%06d" % i for i in range(1, 13)],
+        )
+
+    def test_named_aliases_are_excluded(self):
+        palette = {"1": "#AAAAAA", "2": "#BBBBBB", "orange": "#AAAAAA"}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = _write_tokens(tmpdir, _tokens(palette=palette))
+            pool = fosvp._load_palette(path)
+
+        self.assertEqual([color for color, _ in pool], ["#AAAAAA", "#BBBBBB"])
+
+    def test_no_numbered_slots_raises(self):
+        palette = {"orange": "#AAAAAA", "teal": "#BBBBBB"}
         with tempfile.TemporaryDirectory() as tmpdir:
             path = _write_tokens(tmpdir, _tokens(palette=palette))
             with self.assertRaises(SystemExit):
@@ -134,36 +164,6 @@ class RenderPythonTests(unittest.TestCase):
             self.assertLessEqual(len(line), 79)
 
 
-class RenderTypeScriptTests(unittest.TestCase):
-    def test_exports_a_typed_readonly_array(self):
-        module = fosvp._render_typescript([("#AAAAAA", "red 500")])
-
-        self.assertIn(
-            "export const VOODOO_COLOR_POOL: readonly string[] = [", module
-        )
-
-    def test_labels_each_entry(self):
-        module = fosvp._render_typescript(
-            [("#AAAAAA", "red 500"), ("#BBBBBB", "blue 500")]
-        )
-
-        self.assertIn('  "#AAAAAA", // 1: red 500', module)
-        self.assertIn('  "#BBBBBB", // 2: blue 500', module)
-
-    def test_warns_against_hand_editing(self):
-        module = fosvp._render_typescript([("#AAAAAA", "red 500")])
-
-        self.assertIn("AUTO-GENERATED", module)
-
-
-class TargetsTests(unittest.TestCase):
-    def test_covers_both_consumers(self):
-        targets = fosvp._targets([("#AAAAAA", "red 500")])
-        paths = [path for path, _ in targets]
-
-        self.assertEqual(paths, [fosvp.PYTHON_TARGET, fosvp.TYPESCRIPT_TARGET])
-
-
 class FindTokensTests(unittest.TestCase):
     def test_explicit_path_wins(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -193,84 +193,65 @@ class FindTokensTests(unittest.TestCase):
 
 
 class MainTests(unittest.TestCase):
-    def _run(self, argv, python_body=None, typescript_body=None):
-        """Runs ``main()`` against throwaway output files.
+    def _run(self, argv, body=None):
+        """Runs ``main()`` against a throwaway output file.
 
         Args:
             argv: extra command-line arguments
-            python_body (None): initial contents of the Python target
-            typescript_body (None): initial contents of the TypeScript target
+            body (None): initial contents of the generated module
 
         Returns:
-            an ``(exit_code, python_contents, typescript_contents)`` tuple
+            an ``(exit_code, contents)`` tuple; contents is ``None`` when
+            nothing was written
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             tokens = _write_tokens(tmpdir, _tokens())
-            py_path = os.path.join(tmpdir, "_voodoo_palette.py")
-            ts_path = os.path.join(tmpdir, "voodooPalette.ts")
+            path = os.path.join(tmpdir, "_voodoo_palette.py")
 
-            for path, body in (
-                (py_path, python_body),
-                (ts_path, typescript_body),
-            ):
-                if body is not None:
-                    with open(path, "wt") as f:
-                        f.write(body)
+            if body is not None:
+                with open(path, "wt") as f:
+                    f.write(body)
 
             argv = ["sync_voodoo_palette.py", "--tokens", tokens] + argv
-            with patch.object(fosvp, "PYTHON_TARGET", py_path):
-                with patch.object(fosvp, "TYPESCRIPT_TARGET", ts_path):
-                    with patch("sys.argv", argv):
-                        code = fosvp.main()
+            with patch.object(fosvp, "PYTHON_TARGET", path):
+                with patch("sys.argv", argv):
+                    code = fosvp.main()
 
-            return (
-                code,
-                self._read(py_path),
-                self._read(ts_path),
-            )
+            if not os.path.isfile(path):
+                return code, None
 
-    def _read(self, path):
-        if not os.path.isfile(path):
-            return None
+            with open(path, "rt") as f:
+                return code, f.read()
 
-        with open(path, "rt") as f:
-            return f.read()
-
-    def test_write_creates_both_modules(self):
-        code, python, typescript = self._run([])
+    def test_write_creates_the_module(self):
+        code, contents = self._run([])
 
         self.assertEqual(code, 0)
-        self.assertIn("COLOR_POOL = [", python)
-        self.assertIn("VOODOO_COLOR_POOL", typescript)
+        self.assertIn("COLOR_POOL = [", contents)
 
     def test_check_fails_when_out_of_date(self):
-        code, python, _ = self._run(["--check"], python_body="stale\n")
+        code, contents = self._run(["--check"], body="stale\n")
 
         self.assertEqual(code, 1)
-        self.assertEqual(python, "stale\n", "--check must not write")
+        self.assertEqual(contents, "stale\n", "--check must not write")
 
-    def test_check_fails_when_a_module_is_missing(self):
-        code, _, _ = self._run(["--check"])
+    def test_check_fails_when_the_module_is_missing(self):
+        code, _ = self._run(["--check"])
 
         self.assertEqual(code, 1)
 
-    def test_check_passes_when_both_are_in_sync(self):
+    def test_check_passes_when_in_sync(self):
         pool = [("#00000%d" % (i % 10), "unmapped") for i in range(1, 13)]
 
-        code, _, _ = self._run(
-            ["--check"],
-            python_body=fosvp._render_python(pool),
-            typescript_body=fosvp._render_typescript(pool),
-        )
+        code, _ = self._run(["--check"], body=fosvp._render_python(pool))
 
         self.assertEqual(code, 0)
 
     def test_print_does_not_write(self):
-        code, python, typescript = self._run(["--print"])
+        code, contents = self._run(["--print"])
 
         self.assertEqual(code, 0)
-        self.assertIsNone(python)
-        self.assertIsNone(typescript)
+        self.assertIsNone(contents)
 
     def test_skip_if_missing_is_a_noop(self):
         # The CI drift check depends on this branch: with no tokens installed
