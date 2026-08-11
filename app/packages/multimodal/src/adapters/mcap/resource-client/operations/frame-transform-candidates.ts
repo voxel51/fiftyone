@@ -46,13 +46,6 @@ const FOXGLOVE_CDR_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
 const FOXGLOVE_CDR_TRANSFORMS_SCHEMAS: ReadonlySet<string> = new Set([
   FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA,
 ]);
-const STATIC_TRANSFORM_TOPIC_SEGMENTS: ReadonlySet<string> = new Set([
-  "static_tf",
-  "static_transform",
-  "static_transforms",
-  "tf_static",
-]);
-
 type McapChannel = McapTypes.TypedMcapRecords["Channel"];
 type McapMessage = McapTypes.TypedMcapRecords["Message"];
 type McapSchema = McapTypes.TypedMcapRecords["Schema"];
@@ -101,28 +94,19 @@ export function discoverFrameTransformChannels(
   return channels;
 }
 
-/** Classifies conventional static-transform topic spellings. */
+/** Classifies transform topics that explicitly identify themselves as static. */
 export function isStaticTransformBootstrapTopic(topic: string): boolean {
-  const segments = topic
-    .toLowerCase()
-    .split(/[/.:-]+/)
-    .filter(Boolean);
-  if (
-    segments.some((segment) => STATIC_TRANSFORM_TOPIC_SEGMENTS.has(segment))
-  ) {
-    return true;
-  }
+  return topic.toLocaleLowerCase().includes("static");
+}
 
-  return segments.some((segment, index) => {
-    const nextSegment = segments[index + 1];
-    return (
-      (segment === "tf" && nextSegment === "static") ||
-      (segment === "static" &&
-        (nextSegment === "tf" ||
-          nextSegment === "transform" ||
-          nextSegment === "transforms"))
-    );
-  });
+/** Treats a schema-qualified one-message channel as static evidence. */
+export function isStaticFrameTransformChannel(
+  entry: Pick<FrameTransformChannel, "channel" | "messageCount">,
+): boolean {
+  return (
+    isStaticTransformBootstrapTopic(entry.channel.topic) ||
+    entry.messageCount === 1n
+  );
 }
 
 /** Decodes and normalizes one qualified channel message into transform samples. */
@@ -134,7 +118,7 @@ export function normalizeFrameTransformMessage({
   readonly message: McapMessage;
 }): readonly McapFrameTransformSample[] {
   const record = entry.decodeRecord(message);
-  const staticTopic = isStaticTransformBootstrapTopic(entry.channel.topic);
+  const staticTopic = isStaticFrameTransformChannel(entry);
 
   if (entry.match.kind === "batch") {
     return requiredArray(record, entry.match.repeatedFieldName).map(

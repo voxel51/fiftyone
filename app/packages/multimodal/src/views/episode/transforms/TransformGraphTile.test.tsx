@@ -96,6 +96,12 @@ describe("TransformGraphTile", () => {
 
     fireEvent.change(
       screen.getByRole("searchbox", { name: "Filter transform frames" }),
+      { target: { value: "/tf_static" } },
+    );
+    expect(screen.getByText("4 of 6")).toBeTruthy();
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "Filter transform frames" }),
       { target: { value: "" } },
     );
     expect(
@@ -105,6 +111,7 @@ describe("TransformGraphTile", () => {
     fireEvent.click(screen.getByRole("button", { name: "Frame map" }));
     const frameDetails = screen.getByTestId("transform-selection-details");
     expect(within(frameDetails).getByText("/oxts/odometry")).toBeTruthy();
+    expect(within(frameDetails).getByText("Static · /tf_static")).toBeTruthy();
     expect(
       within(frameDetails).getByText("Component").parentElement?.textContent,
     ).toBe("Component1");

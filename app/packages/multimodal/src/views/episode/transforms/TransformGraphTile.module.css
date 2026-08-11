@@ -310,6 +310,13 @@
   overflow-wrap: anywhere;
 }
 
+.detailRow dd.sourcePills {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
 .sampleNote {
   color: var(--color-content-text-muted);
   font-size: 10px;

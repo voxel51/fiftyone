@@ -57,6 +57,40 @@ describe("transform topology model", () => {
         lastObservedTimeNs: 30n,
         occurrenceCount: 6,
         sourceNames: ["/tf", "/tf_static"],
+        sources: [
+          {
+            kind: "temporal",
+            sourceName: "/tf",
+            sourceStreamIds: ["tf"],
+          },
+          {
+            kind: "static",
+            sourceName: "/tf_static",
+            sourceStreamIds: ["static"],
+          },
+        ],
+      }),
+    ]);
+    expect(analysis.frames).toEqual([
+      expect.objectContaining({
+        id: "base",
+        transformSources: [
+          expect.objectContaining({ kind: "temporal", sourceName: "/tf" }),
+          expect.objectContaining({
+            kind: "static",
+            sourceName: "/tf_static",
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        id: "map",
+        transformSources: [
+          expect.objectContaining({ kind: "temporal", sourceName: "/tf" }),
+          expect.objectContaining({
+            kind: "static",
+            sourceName: "/tf_static",
+          }),
+        ],
       }),
     ]);
     expect(analysis.summary).toEqual({

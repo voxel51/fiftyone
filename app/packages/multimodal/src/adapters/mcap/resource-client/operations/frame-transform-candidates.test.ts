@@ -8,9 +8,11 @@ import {
   createMessage,
   createReader,
   createSchema,
+  createStatistics,
 } from "../inline-client.test-fixtures";
 import {
   discoverFrameTransformChannels,
+  isStaticFrameTransformChannel,
   isStaticTransformBootstrapTopic,
   normalizeFrameTransformMessage,
   type FrameTransformChannel,
@@ -139,6 +141,53 @@ describe("frame transform candidates", () => {
     expect(isStaticTransformBootstrapTopic("/sensors/static/transforms")).toBe(
       true,
     );
+    expect(isStaticTransformBootstrapTopic("/robot/StaticTransformsV2")).toBe(
+      true,
+    );
     expect(isStaticTransformBootstrapTopic("/sensors/tf")).toBe(false);
+  });
+
+  it("treats a schema-qualified one-message channel as static", () => {
+    expect(
+      isStaticFrameTransformChannel({
+        channel: createChannel({ topic: "/calibration" }),
+        messageCount: 1n,
+      }),
+    ).toBe(true);
+    expect(
+      isStaticFrameTransformChannel({
+        channel: createChannel({ topic: "/calibration" }),
+        messageCount: 2n,
+      }),
+    ).toBe(false);
+  });
+
+  it("normalizes a timestamped one-message transform channel as static", () => {
+    const reader = createReader({
+      channelsById: new Map([
+        [7, createChannel({ id: 7, schemaId: 3, topic: "/calibration" })],
+      ]),
+      schemasById: new Map([
+        [
+          3,
+          createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+            id: 3,
+            name: "foxglove.FrameTransform",
+          }),
+        ],
+      ]),
+      statistics: createStatistics({
+        channelMessageCounts: new Map([[7, 1n]]),
+      }),
+    });
+
+    const [entry] = discoverFrameTransformChannels(reader);
+    if (!entry) throw new Error("Expected a transform candidate");
+    const [sample] = normalizeFrameTransformMessage({
+      entry,
+      message: createMessage(FRAME_TRANSFORM_MESSAGE),
+    });
+    expect(sample?.sourceName).toBe("/calibration");
+    expect(sample?.timeNs).toBeUndefined();
   });
 });

@@ -6,6 +6,13 @@ import { compareFrameIds, normalizeFrameId } from "./frame-transform-graph";
 
 type TransformTopologyEdgeKind = "mixed" | "static" | "temporal";
 
+/** One transform topic that contributed relationships to an edge or frame. */
+export interface TransformTopologySource {
+  readonly kind: TransformTopologyEdgeKind;
+  readonly sourceName: string;
+  readonly sourceStreamIds: readonly string[];
+}
+
 /** One aggregate parent-child relationship presented by the debugger. */
 export interface TransformTopologyEdge {
   readonly childFrameId: string;
@@ -16,6 +23,7 @@ export interface TransformTopologyEdge {
   readonly occurrenceCount: number;
   readonly parentFrameId: string;
   readonly sourceNames: readonly string[];
+  readonly sources: readonly TransformTopologySource[];
   readonly sourceStreamIds: readonly string[];
 }
 
@@ -23,8 +31,10 @@ export interface TransformTopologyEdge {
 export interface TransformTopologyFrame {
   readonly dataBearing: boolean;
   readonly id: string;
+  /** Renderable, non-transform topics observed using this frame. */
   readonly sourceNames: readonly string[];
   readonly streamIds: readonly string[];
+  readonly transformSources: readonly TransformTopologySource[];
 }
 
 type TransformTopologyIssueKind =
@@ -75,7 +85,13 @@ interface MutableEdge {
   lastObservedTimeNs?: bigint;
   occurrenceCount: number;
   parentFrameId: string;
-  sourceNames: Set<string>;
+  sourcesByName: Map<string, MutableTransformSource>;
+  sourceStreamIds: Set<string>;
+}
+
+interface MutableTransformSource {
+  hasStatic: boolean;
+  hasTemporal: boolean;
   sourceStreamIds: Set<string>;
 }
 
@@ -134,13 +150,18 @@ function aggregateEdges(
       hasTemporal: false,
       occurrenceCount: 0,
       parentFrameId,
-      sourceNames: new Set<string>(),
+      sourcesByName: new Map<string, MutableTransformSource>(),
       sourceStreamIds: new Set<string>(),
     };
     edge.hasStatic ||= observation.kind === "static";
     edge.hasTemporal ||= observation.kind === "temporal";
     edge.occurrenceCount += Math.max(0, observation.occurrenceCount);
-    edge.sourceNames.add(observation.sourceName);
+    mergeTransformSource(
+      edge.sourcesByName,
+      observation.sourceName,
+      observation.sourceStreamId,
+      observation.kind,
+    );
     edge.sourceStreamIds.add(observation.sourceStreamId);
     edge.firstObservedTimeNs = minDefined(
       edge.firstObservedTimeNs,
@@ -154,8 +175,9 @@ function aggregateEdges(
   }
 
   return [...byRelationship.entries()]
-    .map(
-      ([id, edge]): TransformTopologyEdge => ({
+    .map(([id, edge]): TransformTopologyEdge => {
+      const sources = finalizeTransformSources(edge.sourcesByName);
+      return {
         childFrameId: edge.childFrameId,
         ...(edge.firstObservedTimeNs !== undefined
           ? { firstObservedTimeNs: edge.firstObservedTimeNs }
@@ -172,10 +194,11 @@ function aggregateEdges(
           : {}),
         occurrenceCount: edge.occurrenceCount,
         parentFrameId: edge.parentFrameId,
-        sourceNames: [...edge.sourceNames].sort(compareFrameIds),
+        sourceNames: sources.map((source) => source.sourceName),
+        sources,
         sourceStreamIds: [...edge.sourceStreamIds].sort(compareFrameIds),
-      }),
-    )
+      };
+    })
     .sort(compareTopologyEdges);
 }
 
@@ -187,10 +210,30 @@ function aggregateFrames(
     string,
     { sourceNames: Set<string>; streamIds: Set<string> }
   >();
+  const transformSourcesByFrame = new Map<
+    string,
+    Map<string, MutableTransformSource>
+  >();
   const frameIds = new Set<string>();
   for (const edge of edges) {
     frameIds.add(edge.parentFrameId);
     frameIds.add(edge.childFrameId);
+    for (const frameId of [edge.parentFrameId, edge.childFrameId]) {
+      const sources =
+        transformSourcesByFrame.get(frameId) ??
+        new Map<string, MutableTransformSource>();
+      for (const source of edge.sources) {
+        for (const sourceStreamId of source.sourceStreamIds) {
+          mergeTransformSource(
+            sources,
+            source.sourceName,
+            sourceStreamId,
+            source.kind,
+          );
+        }
+      }
+      transformSourcesByFrame.set(frameId, sources);
+    }
   }
   for (const use of frameUses) {
     const frameId = normalizeFrameId(use.frameId);
@@ -211,8 +254,45 @@ function aggregateFrames(
       id,
       sourceNames: [...(uses?.sourceNames ?? [])].sort(compareFrameIds),
       streamIds: [...(uses?.streamIds ?? [])].sort(compareFrameIds),
+      transformSources: finalizeTransformSources(
+        transformSourcesByFrame.get(id) ?? new Map(),
+      ),
     };
   });
+}
+
+function mergeTransformSource(
+  sources: Map<string, MutableTransformSource>,
+  sourceName: string,
+  sourceStreamId: string,
+  kind: TransformTopologyEdgeKind,
+): void {
+  const source = sources.get(sourceName) ?? {
+    hasStatic: false,
+    hasTemporal: false,
+    sourceStreamIds: new Set<string>(),
+  };
+  source.hasStatic ||= kind === "static" || kind === "mixed";
+  source.hasTemporal ||= kind === "temporal" || kind === "mixed";
+  source.sourceStreamIds.add(sourceStreamId);
+  sources.set(sourceName, source);
+}
+
+function finalizeTransformSources(
+  sources: ReadonlyMap<string, MutableTransformSource>,
+): readonly TransformTopologySource[] {
+  return [...sources]
+    .sort(([left], [right]) => compareFrameIds(left, right))
+    .map(([sourceName, source]) => ({
+      kind:
+        source.hasStatic && source.hasTemporal
+          ? "mixed"
+          : source.hasStatic
+            ? "static"
+            : "temporal",
+      sourceName,
+      sourceStreamIds: [...source.sourceStreamIds].sort(compareFrameIds),
+    }));
 }
 
 function connectedComponents(

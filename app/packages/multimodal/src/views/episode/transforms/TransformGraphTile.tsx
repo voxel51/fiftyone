@@ -31,6 +31,7 @@ import {
   type TransformTopologyEdge,
   type TransformTopologyFrame,
   type TransformTopologyIssue,
+  type TransformTopologySource,
 } from "../../../runtime";
 import { layoutTransformTopology } from "../../../runtime/transform-topology-layout";
 import {
@@ -78,7 +79,13 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
       new Set(
         analysis.frames
           .filter((frame) =>
-            frame.id.toLocaleLowerCase().includes(normalizedQuery),
+            [
+              frame.id,
+              ...frame.sourceNames,
+              ...frame.transformSources.map((source) => source.sourceName),
+            ].some((value) =>
+              value.toLocaleLowerCase().includes(normalizedQuery),
+            ),
           )
           .map((frame) => frame.id),
       ),
@@ -638,16 +645,12 @@ function TopologyCanvas({
                   rx="7"
                   width={node.width}
                 />
-                <title>{frame.id}</title>
+                <title>{`${frame.id} — ${fullTransformSourceSummary(frame.transformSources)}`}</title>
                 <text className={styles.nodeLabel} x="12" y="18">
                   {shortFrameLabel(frame.id)}
                 </text>
                 <text className={styles.nodeMeta} x="12" y="34">
-                  {frame.dataBearing
-                    ? `${frame.streamIds.length} renderable stream${frame.streamIds.length === 1 ? "" : "s"}`
-                    : frameIssues.length > 0
-                      ? `${frameIssues.length} structural issue${frameIssues.length === 1 ? "" : "s"}`
-                      : "transform frame"}
+                  {shortTransformSourceSummary(frame.transformSources)}
                 </text>
               </g>
             );
@@ -716,6 +719,28 @@ function FrameDetails({
         label="Relationships"
         value={relatedEdges.length.toLocaleString()}
       />
+      <div className={styles.detailRow}>
+        <dt>Transform sources</dt>
+        <dd className={styles.sourcePills}>
+          {frame.transformSources.length > 0 ? (
+            frame.transformSources.map((source) => (
+              <Pill
+                backgroundColor={BackgroundColor.Secondary}
+                color={transformSourceColor(source.kind)}
+                isStatus
+                key={`${source.kind}:${source.sourceName}`}
+                size={Size.Xs}
+              >
+                {`${capitalize(source.kind)} · ${source.sourceName}`}
+              </Pill>
+            ))
+          ) : (
+            <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
+              None observed
+            </Text>
+          )}
+        </dd>
+      </div>
       <Detail
         label="Renderable streams"
         value={
@@ -912,6 +937,36 @@ function edgePath(
 
 function shortFrameLabel(frameId: string): string {
   return frameId.length <= 24 ? frameId : `${frameId.slice(0, 21)}…`;
+}
+
+function shortTransformSourceSummary(
+  sources: readonly TransformTopologySource[],
+): string {
+  if (sources.length === 0) return "transform source unknown";
+  const visible = sources
+    .slice(0, 2)
+    .map((source) => source.sourceName.replace(/^\/+/, ""));
+  const suffix =
+    sources.length > visible.length ? ` +${sources.length - 2}` : "";
+  const summary = `${visible.join(" + ")}${suffix}`;
+  return summary.length <= 28 ? summary : `${summary.slice(0, 25)}…`;
+}
+
+function fullTransformSourceSummary(
+  sources: readonly TransformTopologySource[],
+): string {
+  if (sources.length === 0) return "no transform source observed";
+  return sources
+    .map((source) => `${source.sourceName} (${source.kind})`)
+    .join(", ");
+}
+
+function transformSourceColor(
+  kind: TransformTopologySource["kind"],
+): TextColor {
+  if (kind === "static") return TextColor.Info;
+  if (kind === "temporal") return TextColor.Warning;
+  return TextColor.Primary;
 }
 
 function formatNanoseconds(value: bigint): string {

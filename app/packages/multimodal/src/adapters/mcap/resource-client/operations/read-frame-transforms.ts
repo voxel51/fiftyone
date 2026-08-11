@@ -29,7 +29,7 @@ import { maxBigInt, minBigInt } from "../../../../utils/bigint";
 import { throwIfAborted } from "../../../../utils/cancellation";
 import {
   discoverFrameTransformChannels,
-  isStaticTransformBootstrapTopic,
+  isStaticFrameTransformChannel,
   normalizeFrameTransformMessage,
   type FrameTransformChannel,
 } from "./frame-transform-candidates";
@@ -110,7 +110,7 @@ export async function readMcapFrameTransformBootstrap(
     if (bounded.kind === "deferred") {
       continue;
     }
-    if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
+    if (isStaticFrameTransformChannel(entry)) {
       if (bounded.kind === "complete") {
         boundedMessages.push(...bounded.messages);
         completedStaticChannelIds.add(entry.channel.id);
@@ -188,7 +188,7 @@ export async function readMcapFrameTransformBootstrap(
     }
     if (fallbackReadComplete) {
       for (const entry of fallbackChannels) {
-        if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
+        if (isStaticFrameTransformChannel(entry)) {
           completedStaticChannelIds.add(entry.channel.id);
         }
       }
