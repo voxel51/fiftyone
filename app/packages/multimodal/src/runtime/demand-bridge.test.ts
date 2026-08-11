@@ -263,7 +263,7 @@ describe("demand bridge", () => {
     const load = vi
       .fn<(publish: (state: string) => void) => Promise<void>>()
       .mockRejectedValueOnce(new Error("failed"))
-      .mockImplementationOnce(async (publish) => publish("ready"));
+      .mockImplementationOnce((publish) => Promise.resolve(publish("ready")));
     const machine = createDemandInventoryMachine({
       error: "error",
       isCancelled: () => false,

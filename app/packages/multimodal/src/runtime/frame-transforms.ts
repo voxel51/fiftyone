@@ -481,7 +481,7 @@ export class EpisodeFrameTransformStore {
     this.topologyPathCache.delete(key);
     this.topologyPathCache.set(key, path);
     if (this.topologyPathCache.size > MAX_TOPOLOGY_PATH_CACHE_ENTRIES) {
-      const oldestKey = this.topologyPathCache.keys().next().value;
+      const [oldestKey] = this.topologyPathCache.keys();
       if (oldestKey !== undefined) this.topologyPathCache.delete(oldestKey);
     }
   }

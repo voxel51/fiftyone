@@ -50,11 +50,11 @@ export function recentMedianCadenceNs(
 
   intervals.sort(compareBigInts);
   const middle = Math.floor(intervals.length / 2);
-  const upper = intervals[middle] as bigint;
+  const upper = intervals[middle];
   if (intervals.length % 2 === 1) {
     return upper;
   }
-  const lower = intervals[middle - 1] as bigint;
+  const lower = intervals[middle - 1];
   return (lower + upper) / 2n;
 }
 
@@ -140,7 +140,7 @@ function lowerBound(values: readonly bigint[], target: bigint): number {
   let high = values.length;
   while (low < high) {
     const middle = low + Math.floor((high - low) / 2);
-    const value = values[middle] as bigint;
+    const value = values[middle];
     if (value < target) {
       low = middle + 1;
     } else {

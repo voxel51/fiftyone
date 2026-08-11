@@ -192,7 +192,10 @@ export interface SourceStats {
 
 /** Optional fast path for synchronized stream windows. */
 export interface SynchronizedReadAcceleration {
-  readSynchronized(request: ReadRequest): Promise<readonly FrameBatch[]>;
+  readSynchronized(
+    this: void,
+    request: ReadRequest,
+  ): Promise<readonly FrameBatch[]>;
 }
 
 /** Optional fast path for transform-window assembly. */
@@ -208,7 +211,10 @@ export interface TransformReadAcceleration {
   readPlacement?(
     request: TransformPlacementReadRequest,
   ): Promise<TransformPlacementReadResult | null>;
-  readTransforms(request: ReadRequest): Promise<readonly TransformSample[]>;
+  readTransforms(
+    this: void,
+    request: ReadRequest,
+  ): Promise<readonly TransformSample[]>;
 }
 
 /** One cancellable, resumable grant toward a recording-wide topology scan. */
@@ -466,6 +472,6 @@ export interface EpisodeSession {
   /** Cancels lookahead runway made obsolete by a discontinuous seek. */
   cancelRunway?(): void;
   dispose(): void;
-  read(request: ReadRequest): AsyncIterable<FrameBatch>;
+  read(this: void, request: ReadRequest): AsyncIterable<FrameBatch>;
   stats?(): SourceStats;
 }

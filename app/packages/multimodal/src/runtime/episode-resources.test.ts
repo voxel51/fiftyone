@@ -54,7 +54,7 @@ describe("episode resources", () => {
 function createSource(): EpisodeSource {
   return {
     assets: {
-      list: vi.fn(async () => []),
+      list: vi.fn(() => Promise.resolve([])),
       resolve: vi.fn(),
     },
     episodeId: "sample-a",

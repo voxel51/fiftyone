@@ -277,10 +277,9 @@ describe("ProgressiveHistoryHub", () => {
   });
 
   it("marks a capped generic tile unavailable instead of complete", async () => {
-    const read = vi.fn(async function* () {
-      yield batch("dense", 1n);
-      yield batch("dense", 2n);
-    });
+    const read = vi.fn<EpisodeSession["read"]>(() =>
+      asyncValues([batch("dense", 1n), batch("dense", 2n)]),
+    );
     const hub = new ProgressiveHistoryHub(session(read), null);
     const job = hub.get(
       config({
@@ -304,7 +303,7 @@ describe("ProgressiveHistoryHub", () => {
 
   it("aborts only the incomplete generic tile and resumes it on renewed demand", async () => {
     let calls = 0;
-    const read = vi.fn(async function* (request) {
+    const read = vi.fn<EpisodeSession["read"]>(async function* (request) {
       calls += 1;
       if (calls === 1) {
         await new Promise<void>((resolve) =>
@@ -335,7 +334,7 @@ describe("ProgressiveHistoryHub", () => {
 
   it("resumes when an aborted generic tile rejects with AbortError", async () => {
     let calls = 0;
-    const read = vi.fn(async function* (request) {
+    const read = vi.fn<EpisodeSession["read"]>(async function* (request) {
       calls += 1;
       if (calls === 1) {
         await new Promise<void>((_resolve, reject) =>
@@ -367,14 +366,13 @@ describe("ProgressiveHistoryHub", () => {
   });
 
   it("loads a quiet generic stream after a noisy sibling exhausts its cap", async () => {
-    const read = vi.fn(async function* (request) {
+    const read = vi.fn<EpisodeSession["read"]>((request) => {
       const stream = request.streams[0];
-      if (stream === "noisy") {
-        yield batch("noisy", 1n);
-        yield batch("noisy", 2n);
-        return;
-      }
-      yield batch("quiet", 3n);
+      return asyncValues(
+        stream === "noisy"
+          ? [batch("noisy", 1n), batch("noisy", 2n)]
+          : [batch("quiet", 3n)],
+      );
     });
     const hub = new ProgressiveHistoryHub(session(read), null);
     const job = hub.get(
@@ -399,11 +397,13 @@ describe("ProgressiveHistoryHub", () => {
 
   it("completes histories larger than the former pose cap across drained tiles", async () => {
     const messagesPerTile = 12_501;
-    const read = vi.fn(async function* (request) {
-      for (let index = 0; index < messagesPerTile; index += 1) {
-        yield batch("pose", request.window.startNs + BigInt(index));
-      }
-    });
+    const read = vi.fn<EpisodeSession["read"]>((request) =>
+      asyncValues(
+        Array.from({ length: messagesPerTile }, (_, index) =>
+          batch("pose", request.window.startNs + BigInt(index)),
+        ),
+      ),
+    );
     const hub = new ProgressiveHistoryHub(
       session(read, { endNs: 1_999n, startNs: 0n }),
       null,
@@ -486,9 +486,7 @@ function accountFor(read: BudgetedReadJob["read"]): SourceReadBudgetAccount {
 }
 
 function session(
-  read: EpisodeSession["read"] = vi.fn(async function* () {
-    yield* [];
-  }),
+  read: EpisodeSession["read"] = vi.fn(() => asyncValues([])),
   timeRange = { endNs: 99n, startNs: 0n },
 ): EpisodeSession {
   return {
@@ -501,6 +499,12 @@ function session(
     },
     read,
   };
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncIterableIterator<Value> {
+  for await (const value of values) yield value;
 }
 
 function batch(stream: string, timestampNs: bigint): FrameBatch {

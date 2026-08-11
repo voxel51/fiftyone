@@ -13,7 +13,7 @@ afterEach(resetFormatAdapterRegistryForTests);
 describe("format adapter registry", () => {
   it("detects cheaply and does not load until requested", async () => {
     const adapter = { id: "fixture", open: vi.fn() };
-    const load = vi.fn(async () => adapter);
+    const load = vi.fn(() => Promise.resolve(adapter));
     const descriptor: AdapterDescriptor = {
       detect: (sample) => sample.path?.endsWith(".fixture") ?? false,
       id: "fixture",
@@ -36,8 +36,8 @@ describe("format adapter registry", () => {
   it("forwards one lifecycle signal through detection and loading", async () => {
     const controller = new AbortController();
     const adapter = { id: "fixture", open: vi.fn() };
-    const detect = vi.fn(async () => true);
-    const load = vi.fn(async () => adapter);
+    const detect = vi.fn(() => Promise.resolve(true));
+    const load = vi.fn(() => Promise.resolve(adapter));
     registerFormatAdapter({ detect, id: "fixture", load });
 
     await expect(
@@ -57,9 +57,9 @@ describe("format adapter registry", () => {
     const controller = new AbortController();
     const secondDetect = vi.fn(() => true);
     registerFormatAdapter({
-      detect: async () => {
+      detect: () => {
         controller.abort();
-        return false;
+        return Promise.resolve(false);
       },
       id: "first",
       load: vi.fn(),

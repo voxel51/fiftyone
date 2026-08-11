@@ -70,9 +70,9 @@ describe("session read policy", () => {
   });
 
   it("builds a complete playback runtime over mandatory reads", async () => {
-    const read = vi.fn(async function* () {
-      yield batchWithTimes([1n, 5n, 9n]);
-    });
+    const read = vi.fn<EpisodeSession["read"]>(() =>
+      asyncValues([batchWithTimes([1n, 5n, 9n])]),
+    );
     const session = sessionWithBatches([], {}, read);
     const playback = createEpisodePlaybackRuntime(session);
 
@@ -292,7 +292,7 @@ describe("session read policy", () => {
 });
 
 function longHistorySession(timestamps: readonly bigint[]): EpisodeSession {
-  const read = vi.fn(async function* (readRequest: ReadRequest) {
+  const read = vi.fn<EpisodeSession["read"]>((readRequest: ReadRequest) => {
     const frames = timestamps
       .filter(
         (timestampNs) =>
@@ -306,7 +306,7 @@ function longHistorySession(timestamps: readonly bigint[]): EpisodeSession {
         streamId: "stream",
         timestampNs,
       }));
-    if (frames.length > 0) yield { frames, stream: "stream" };
+    return asyncValues(frames.length > 0 ? [{ frames, stream: "stream" }] : []);
   });
   return {
     dispose: vi.fn(),
@@ -335,7 +335,7 @@ function transformHistorySession(messageCount: number): EpisodeSession {
   const base = longHistorySession(timestamps);
   return {
     ...base,
-    read: vi.fn(async function* (readRequest) {
+    read: vi.fn<EpisodeSession["read"]>((readRequest) => {
       const frames = timestamps
         .slice(0, readRequest.limit)
         .map((timestampNs) => ({
@@ -345,7 +345,9 @@ function transformHistorySession(messageCount: number): EpisodeSession {
           streamId: "stream",
           timestampNs,
         }));
-      if (frames.length > 0) yield { frames, stream: "stream" };
+      return asyncValues(
+        frames.length > 0 ? [{ frames, stream: "stream" }] : [],
+      );
     }),
   };
 }
@@ -356,9 +358,7 @@ function sessionWithBatches(
     EpisodeSession,
     "playback" | "synchronizedRead" | "transformRead"
   > = {},
-  read: EpisodeSession["read"] = async function* () {
-    for (const value of batches) yield value;
-  },
+  read: EpisodeSession["read"] = () => asyncValues(batches),
 ): EpisodeSession {
   return {
     ...accelerations,
@@ -379,6 +379,12 @@ function sessionWithBatches(
     },
     read,
   };
+}
+
+async function* asyncValues<Value>(
+  values: Iterable<Value>,
+): AsyncIterableIterator<Value> {
+  for await (const value of values) yield value;
 }
 
 function batchWithTimes(timestamps: readonly bigint[]): FrameBatch {
