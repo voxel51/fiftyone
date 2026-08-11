@@ -19,14 +19,13 @@ describe("ROS CameraInfo classification", () => {
       height: 0,
       width: 0,
     });
-    expect(output.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "camera-calibration-unavailable",
-        message: expect.stringMatching(
-          /CameraInfo has zero calibration dimensions.*image stream may still be available/i,
-        ),
-      }),
-    ]);
+    expect(output.diagnostics).toHaveLength(1);
+    expect(output.diagnostics?.[0]?.code).toBe(
+      "camera-calibration-unavailable",
+    );
+    expect(output.diagnostics?.[0]?.message).toMatch(
+      /CameraInfo has zero calibration dimensions.*image stream may still be available/i,
+    );
   });
 
   it("reports P-only calibration as unsupported without throwing", () => {
@@ -48,12 +47,11 @@ describe("ROS CameraInfo classification", () => {
     expect(output.visualization).toMatchObject({ K: USABLE_K });
     expect(output.visualization).not.toHaveProperty("P");
     expect(output.visualization).not.toHaveProperty("R");
-    expect(output.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "camera-rectification-unavailable",
-        message: expect.stringContaining("P and R"),
-      }),
-    ]);
+    expect(output.diagnostics).toHaveLength(1);
+    expect(output.diagnostics?.[0]?.code).toBe(
+      "camera-rectification-unavailable",
+    );
+    expect(output.diagnostics?.[0]?.message).toContain("P and R");
   });
 
   it("rejects contradictory zero dimensions with usable intrinsics", () => {

@@ -2,15 +2,22 @@ import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
 import { parseRos2idl } from "@foxglove/ros2idl-parser";
 import { MessageReader as Ros1MessageReader } from "@foxglove/rosmsg-serialization";
 import { MessageReader as Ros2MessageReader } from "@foxglove/rosmsg2-serialization";
-import type { McapTypes } from "@mcap/core";
 import type { PayloadDescriptor } from "../../../../ir/index";
 import { fnv1aBytesHex } from "../../../../utils/fnv1a";
 
 const TEXT_DECODER = new TextDecoder();
 const MAX_PARSED_SCHEMA_CACHE_ENTRIES = 256;
 
-type McapChannel = McapTypes.TypedMcapRecords["Channel"];
-type McapSchema = McapTypes.TypedMcapRecords["Schema"];
+interface McapChannel {
+  readonly messageEncoding: string;
+  readonly schemaId: number;
+}
+
+interface McapSchema {
+  readonly data: Uint8Array;
+  readonly encoding: string;
+  readonly name: string;
+}
 type RosSchemaLike = Pick<McapSchema, "data" | "encoding" | "name">;
 
 /**
@@ -165,7 +172,7 @@ function parsedRosSchema(
 
   parsedSchemaCache.set(cacheKey, parsed);
   if (parsedSchemaCache.size > MAX_PARSED_SCHEMA_CACHE_ENTRIES) {
-    const oldestKey = parsedSchemaCache.keys().next().value;
+    const [oldestKey] = parsedSchemaCache.keys();
     if (oldestKey !== undefined) {
       parsedSchemaCache.delete(oldestKey);
     }

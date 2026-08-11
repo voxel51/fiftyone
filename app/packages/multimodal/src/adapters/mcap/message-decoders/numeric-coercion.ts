@@ -30,7 +30,8 @@ export function coerceDecodedNumber(
     "toNumber" in value &&
     typeof value.toNumber === "function"
   ) {
-    return value.toNumber();
+    const converted: unknown = value.toNumber();
+    return typeof converted === "number" ? converted : undefined;
   }
 
   return undefined;

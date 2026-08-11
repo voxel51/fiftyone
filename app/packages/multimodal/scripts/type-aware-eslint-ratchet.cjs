@@ -10,6 +10,7 @@ const migratedDirectories = [
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/instrumentation/**/*.{ts,tsx}",
+  "packages/multimodal/src/adapters/mcap/message-decoders/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/synchronization/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/worker-host/**/*.{ts,tsx}",
   "packages/multimodal/src/codecs/**/*.{ts,tsx}",

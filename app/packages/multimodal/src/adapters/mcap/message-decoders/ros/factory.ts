@@ -37,7 +37,7 @@ export function rosDecodersForPayloads({
   readonly projectPointCloudChannel?: RosPointCloudChannelProjector;
 }): readonly Decoder[] {
   return payloads.map((payload) => ({
-    id: `${id}.${payload.schemaEncoding}`,
+    id: `${id}.${payload.schemaEncoding ?? "unknown"}`,
     payload,
     version: "1",
     decode(bytes, context) {
