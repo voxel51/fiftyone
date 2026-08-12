@@ -23,6 +23,7 @@ const run = (
   pointsField: null,
   model: "clip-vit-base32-torch",
   ready: true,
+  error: null,
   timestamp: null,
   ...extra,
 });
@@ -37,7 +38,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[run("viz_a"), run("viz_b", { patchesField: "ground_truth" })]}
-        error={null}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
       />,
@@ -54,7 +54,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[run("clip_umap"), run("viz3d", { dims: 3 })]}
-        error={null}
         onOpen={onOpen}
         onDelete={vi.fn()}
       />,
@@ -73,7 +72,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[run("cooking", { ready: false })]}
-        error={null}
         onOpen={onOpen}
         onDelete={vi.fn()}
       />,
@@ -87,9 +85,7 @@ describe("RunsList", () => {
   // FOEPD-4369: upselling builds land on the enterprise CTA, not the
   // neutral empty state; hosts that can compute keep the empty state
   it("shows the landing CTA for the upselling no-runs state", () => {
-    render(
-      <RunsList runs={[]} error={null} onOpen={vi.fn()} onDelete={vi.fn()} />,
-    );
+    render(<RunsList runs={[]} onOpen={vi.fn()} onDelete={vi.fn()} />);
 
     expect(
       screen.getByText(
@@ -103,7 +99,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[]}
-        error={null}
         showUpsell={false}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
@@ -116,9 +111,7 @@ describe("RunsList", () => {
   // FOEPD-4401: the 3D banner earns its slot only once a run exists —
   // the no-runs state already carries the landing CTA
   it("holds the 3D upsell banner until a first run exists", () => {
-    render(
-      <RunsList runs={[]} error={null} onOpen={vi.fn()} onDelete={vi.fn()} />,
-    );
+    render(<RunsList runs={[]} onOpen={vi.fn()} onDelete={vi.fn()} />);
 
     expect(
       screen.queryByText("Explore clusters in three dimensions"),
@@ -129,7 +122,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[run("clip_umap")]}
-        error={null}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
       />,
@@ -151,7 +143,6 @@ describe("RunsList", () => {
     const { rerender } = render(
       <RunsList
         runs={[run("clip_umap")]}
-        error={null}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
       />,
@@ -162,7 +153,6 @@ describe("RunsList", () => {
     rerender(
       <RunsList
         runs={[run("clip_umap")]}
-        error={null}
         onCreate={onCreate}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
@@ -178,7 +168,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[run("clip_umap")]}
-        error={null}
         onOpen={onOpen}
         onDelete={onDelete}
       />,

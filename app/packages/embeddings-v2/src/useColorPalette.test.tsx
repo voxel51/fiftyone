@@ -169,6 +169,7 @@ const RUN: VisualizationRun = {
   pointsField: null,
   model: null,
   ready: true,
+  error: null,
   timestamp: null,
 };
 

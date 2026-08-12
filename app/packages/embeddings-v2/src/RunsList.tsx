@@ -43,7 +43,6 @@ const formatTimestamp = (timestamp: string | null): string | null => {
 
 export default function RunsList({
   runs,
-  error,
   actionError = null,
   showUpsell = true,
   onCreate,
@@ -51,7 +50,6 @@ export default function RunsList({
   onDelete,
 }: {
   runs: VisualizationRun[] | null;
-  error: string | null;
   /** A failed mutation (e.g. delete); shown without replacing the list */
   actionError?: string | null;
   /** Advertise capabilities this build lacks; off where they exist */
@@ -76,21 +74,24 @@ export default function RunsList({
     anchor: HTMLElement;
   } | null>(null);
 
-  // Polling can delete a run or flip its readiness under an open menu or
-  // an armed confirmation; both must not outlive the ready card they
-  // belong to (a recreated same-name run must not inherit them)
+  // A refreshed run list can delete a run or flip its readiness under an
+  // open menu or an armed confirmation; both must not outlive the ready
+  // card they belong to (a recreated same-name run must not inherit them)
   useEffect(() => {
-    const isReady = (key: string | null) =>
-      Boolean(key && runs?.some((r) => r.brainKey === key && r.ready));
-    if (menu && !isReady(menu.key)) setMenu(null);
-    if (confirmKey && !isReady(confirmKey)) setConfirmKey(null);
+    const isActionable = (key: string | null) =>
+      Boolean(
+        key && runs?.some((r) => r.brainKey === key && (r.ready || r.error)),
+      );
+    if (menu && !isActionable(menu.key)) setMenu(null);
+    if (confirmKey && !isActionable(confirmKey)) setConfirmKey(null);
   }, [runs, menu, confirmKey]);
 
   const runActions = (run: VisualizationRun) => {
     // No actions on pending runs: Refresh needs results, and Delete
     // would remove the run record without stopping the computation
-    // writing it (manage those from the Runs page)
-    if (!run.ready) return undefined;
+    // writing it (manage those from the Runs page). An ERRORED run is
+    // not pending — Delete is its recovery path
+    if (!run.ready && !run.error) return undefined;
     if (confirmKey === run.brainKey) {
       return (
         <>
@@ -129,18 +130,6 @@ export default function RunsList({
       </IconButton>
     );
   };
-
-  if (error) {
-    return (
-      <div className="emb-runs-page">
-        <div className="emb-runs-center">
-          <Text variant={TextVariant.Md} color={TextColor.Destructive}>
-            {error}
-          </Text>
-        </div>
-      </div>
-    );
-  }
 
   if (!runs) {
     return (
@@ -223,16 +212,21 @@ export default function RunsList({
                 badge={run.dims ? `${run.dims}D` : undefined}
                 badgeAccent={run.dims === 3}
                 status={
-                  run.ready
-                    ? // Icon-tier success: the soft sage the design
-                      // reference uses, not the saturated text green
-                      { label: "Ready", color: IconColor.Success }
-                    : // Deliberately status-agnostic: without run-status
-                      // bookkeeping, "no results yet" cannot distinguish
-                      // still-computing from failed
-                      { label: "Pending", color: TextColor.Secondary }
+                  run.error
+                    ? // Structurally unusable (see BrainRun.error): opening
+                      // it could only fail, but Delete stays available
+                      { label: "Error", color: TextColor.Destructive }
+                    : run.ready
+                      ? // Icon-tier success: the soft sage the design
+                        // reference uses, not the saturated text green
+                        { label: "Ready", color: IconColor.Success }
+                      : // Deliberately status-agnostic: without run-status
+                        // bookkeeping, "no results yet" cannot distinguish
+                        // still-computing from failed
+                        { label: "Pending", color: TextColor.Secondary }
                 }
                 meta={[
+                  run.error,
                   run.method,
                   // Same brain key semantics, very different plots —
                   // which granularity a run embeds must be readable
@@ -241,7 +235,11 @@ export default function RunsList({
                   run.model,
                   formatTimestamp(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}
-                onClick={run.ready ? () => onOpen(run.brainKey) : undefined}
+                onClick={
+                  run.ready && !run.error
+                    ? () => onOpen(run.brainKey)
+                    : undefined
+                }
                 actions={runActions(run)}
               />
             ))}
