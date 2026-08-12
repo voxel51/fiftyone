@@ -89,9 +89,26 @@
 
 .emb-run-card-meta {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.625rem;
+  min-width: 0;
+}
+
+/* Segments wrap as units; only a segment longer than the whole card
+   ellipsizes */
+.emb-run-card-meta-item {
+  display: inline-flex;
   align-items: center;
   gap: 0.625rem;
+  max-width: 100%;
   min-width: 0;
+  white-space: nowrap;
+}
+
+.emb-run-card-meta-item > :last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .emb-run-card-meta-dot {

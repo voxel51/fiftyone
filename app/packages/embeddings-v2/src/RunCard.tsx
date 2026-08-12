@@ -20,7 +20,7 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import { Fragment, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import "./panel.css";
 
 export interface RunCardStatus {
@@ -129,12 +129,14 @@ export function RunCard({
       {meta && meta.length > 0 && (
         <div className="emb-run-card-meta">
           {meta.map((item, index) => (
-            <Fragment key={index}>
+            // The dot travels with its segment: a narrow card wraps
+            // between segments, never inside one
+            <span className="emb-run-card-meta-item" key={index}>
               {index > 0 && <span className="emb-run-card-meta-dot" />}
               <Text variant={TextVariant.Md} color={TextColor.Tertiary}>
                 {item}
               </Text>
-            </Fragment>
+            </span>
           ))}
         </div>
       )}
