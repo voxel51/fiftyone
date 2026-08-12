@@ -40,8 +40,12 @@ const DEFAULT_TARGETS = [
  * Hook which provides the number of samples each view target processes.
  */
 export const useViewTargetCounts = (): Record<ViewTarget, number> => {
-  const { datasetSampleCount, viewSampleCount, selectionSampleCount } =
-    useViewTargetSampleCounts();
+  const {
+    datasetSampleCount,
+    viewSampleCount,
+    selectionSampleCount,
+    selectionLabelCount,
+  } = useViewTargetSampleCounts();
 
   return useMemo(
     () => ({
@@ -50,10 +54,15 @@ export const useViewTargetCounts = (): Record<ViewTarget, number> => {
       [ViewTarget.BASE_VIEW]: viewSampleCount,
       [ViewTarget.CURRENT_VIEW]: viewSampleCount,
       [ViewTarget.CUSTOM_VIEW_TARGET]: viewSampleCount,
-      [ViewTarget.SELECTED_LABELS]: viewSampleCount,
+      [ViewTarget.SELECTED_LABELS]: selectionLabelCount,
       [ViewTarget.SELECTED_SAMPLES]: selectionSampleCount,
     }),
-    [datasetSampleCount, viewSampleCount, selectionSampleCount],
+    [
+      datasetSampleCount,
+      viewSampleCount,
+      selectionSampleCount,
+      selectionLabelCount,
+    ],
   );
 };
 

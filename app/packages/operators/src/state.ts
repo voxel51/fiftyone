@@ -1373,6 +1373,7 @@ export const useViewTargetSampleCounts = () => {
     datasetSampleCount: useRecoilValue(fos.datasetSampleCount) ?? 0,
     viewSampleCount,
     selectionSampleCount: useRecoilValue(fos.selectedSamples)?.size ?? 0,
+    selectionLabelCount: useRecoilValue(fos.selectedLabels)?.length ?? 0,
   };
 };
 

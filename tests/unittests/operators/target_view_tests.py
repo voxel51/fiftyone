@@ -78,20 +78,20 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
             self.assertListEqual(
                 [choice.label for choice in prop.view.choices],
                 [
-                    "Entire dataset",
+                    "All samples",
                     "Dataset",
                     "Current view",
-                    "Selected samples",
+                    "Current selection",
                     "Selected labels",
                 ],
             )
             self.assertListEqual(
                 [choice.description for choice in prop.view.choices],
                 [
-                    "Borks the entire dataset",
+                    "Borks full dataset",
                     "Borks the dataset view",
-                    "Borks the current view",
-                    "Borks the selected samples",
+                    "Samples matching filters",
+                    "Selected samples",
                     "Borks only the selected labels",
                 ],
             )
@@ -670,7 +670,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
             descriptions,
             [
                 GROUPED_TARGET_ERROR_MESSAGE,
-                "Process the current view in the current slice (left)",
+                "Samples matching filters in the current slice (left)",
             ],
         )
 
@@ -701,7 +701,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         self.assertFalse(prop.invalid)
         self.assertEqual(
             descriptions[-1],
-            "Process the current view in the current slice "
+            "Samples matching filters in the current slice "
             f"({self.dataset.default_group_slice})",
         )
 
@@ -721,7 +721,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
             descriptions,
             [
                 GROUPED_TARGET_ERROR_MESSAGE,
-                "Process the current view in the current slice (left)",
+                "Samples matching filters in the current slice (left)",
             ],
         )
 
@@ -743,7 +743,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         # dataset itself remains grouped
         self.assertListEqual(
             descriptions,
-            [GROUPED_TARGET_ERROR_MESSAGE, "Process the current view"],
+            [GROUPED_TARGET_ERROR_MESSAGE, "Samples matching filters"],
         )
         self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
 
@@ -761,7 +761,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         )
         self.assertEqual(
             descriptions[-1],
-            "Process the selected samples in the current slice (left)",
+            "Selected samples in the current slice (left)",
         )
 
     def test_no_scope_for_ungrouped_datasets(self):
@@ -775,7 +775,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
             )
             prop, descriptions = self._descriptions(ctx, require_flat=True)
             self.assertIsInstance(prop.view, types.HiddenView)
-            self.assertListEqual(descriptions, ["Process the entire dataset"])
+            self.assertListEqual(descriptions, ["Process full dataset"])
         finally:
             ds.delete()
 
@@ -824,6 +824,54 @@ class TestSelectedSamplesTargetView(unittest.TestCase):
     def test_empty_selection_selects_nothing(self):
         view = self._target_view([])
         self.assertListEqual(view.values("id"), [])
+
+
+class TestSelectedLabelsTargetView(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dataset = fo.Dataset()
+        cls.dataset.persistent = False
+        cls.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/one.jpg",
+                    ground_truth=fo.Classification(label="cat"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/two.jpg",
+                    ground_truth=fo.Classification(label="dog"),
+                ),
+            ]
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dataset.delete()
+
+    def test_selected_labels_target_selects_the_labels(self):
+        sample = self.dataset.first()
+        ctx = foo.ExecutionContext(
+            operator_uri="test_operator",
+            request_params=dict(
+                dataset_name=self.dataset.name,
+                dataset_id=self.dataset._doc.id,
+                selected_labels=[
+                    {
+                        "label_id": sample.ground_truth.id,
+                        "sample_id": sample.id,
+                        "field": "ground_truth",
+                    }
+                ],
+                params=dict(view_target="SELECTED_LABELS"),
+            ),
+        )
+
+        view = ctx.target_view()
+
+        self.assertListEqual(view.values("id"), [sample.id])
+        self.assertListEqual(
+            view.values("ground_truth.label", unwind=True), ["cat"]
+        )
 
 
 class _FormOperator(foo.Operator):

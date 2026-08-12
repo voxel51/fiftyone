@@ -123,11 +123,13 @@ describe("useViewTargetCounts", () => {
     datasetSampleCount?: number;
     viewSampleCount?: number;
     selectionSampleCount?: number;
+    selectionLabelCount?: number;
   }) =>
     vi.mocked(useViewTargetSampleCounts).mockReturnValue({
       datasetSampleCount: 0,
       viewSampleCount: 0,
       selectionSampleCount: 0,
+      selectionLabelCount: 0,
       ...values,
     });
 
@@ -146,6 +148,14 @@ describe("useViewTargetCounts", () => {
     const { result } = renderHook(() => useViewTargetCounts());
 
     expect(result.current[ViewTarget.SELECTED_SAMPLES]).toBe(3);
+  });
+
+  it("counts the selected labels for the selected labels target", () => {
+    mockCounts({ viewSampleCount: 10, selectionLabelCount: 4 });
+
+    const { result } = renderHook(() => useViewTargetCounts());
+
+    expect(result.current[ViewTarget.SELECTED_LABELS]).toBe(4);
   });
 
   it("counts the current view for every other target", () => {

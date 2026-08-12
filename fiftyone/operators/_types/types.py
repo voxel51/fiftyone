@@ -743,11 +743,11 @@ class Object(BaseType):
         base_view_description=None,
         current_view_label="Current view",
         current_view_description=None,
-        dataset_label="Entire dataset",
+        dataset_label="All samples",
         dataset_description=None,
         dataset_view_label="Dataset",
         dataset_view_description=None,
-        selected_samples_label="Selected samples",
+        selected_samples_label="Current selection",
         selected_samples_description=None,
         selected_labels_label="Selected labels",
         selected_labels_description=None,
@@ -762,7 +762,7 @@ class Object(BaseType):
 
         The choices include:
 
-        - Entire dataset (if the current view is not a generated view)
+        - All samples (if the current view is not a generated view)
         - Base view (if the current view is a generated view such as
           :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`,
           or :class:`fiftyone.core.patches.PatchesView`), which is the semantic
@@ -772,7 +772,7 @@ class Object(BaseType):
           view of ``dataset.limit(51).to_frames("ground_truth")``
         - Dataset view (if ``allow_dataset_view`` is ``True``)
         - Current view (if the current view is different from the dataset view)
-        - Selected samples (if ``allow_selected_samples`` is ``True`` and there are
+        - Current selection (if ``allow_selected_samples`` is ``True`` and there are
           selected samples)
         - Selected labels (if ``allow_selected_labels`` is ``True`` and there are
           selected labels)
@@ -789,7 +789,7 @@ class Object(BaseType):
         description parameter is not ``None``, it will be used as the
         description for the corresponding target view choice. Otherwise, a
         default description will be generated such as
-        ``f"{action_description} the entire dataset"``.
+        ``f"{action_description} full dataset"``.
 
 
         Examples::
@@ -846,7 +846,7 @@ class Object(BaseType):
                 current_view_description (None): the description for the "current
                     view" target view. If ``None``, a default description is
                     generated
-                dataset_label (Entire dataset): the label for the "entire dataset"
+                dataset_label (All samples): the label for the "entire dataset"
                     target view
                 dataset_description (None): the description for the "entire
                     dataset" target view. If ``None``, a default description is
@@ -856,7 +856,7 @@ class Object(BaseType):
                 dataset_view_description (None): the description for the "dataset
                     view" target view. If ``None``, a default description is
                     generated
-                selected_samples_label (Selected samples): the label for the
+                selected_samples_label (Current selection): the label for the
                     "selected samples" target view
                 selected_samples_description (None): the description for the
                     "selected samples" target view. If ``None``, a default
@@ -2837,7 +2837,7 @@ class ViewTargetOptions(object):
         include_dataset_view=False,
         include_selected_labels=False,
         include_selected_samples=False,
-        dataset_label="Entire dataset",
+        dataset_label="All samples",
         dataset_description=None,
         base_view_label="Base view",
         base_view_description=None,
@@ -2845,7 +2845,7 @@ class ViewTargetOptions(object):
         current_view_description=None,
         dataset_view_label="Dataset",
         dataset_view_description=None,
-        selected_samples_label="Selected samples",
+        selected_samples_label="Current selection",
         selected_samples_description=None,
         selected_labels_label="Selected labels",
         selected_labels_description=None,
@@ -2917,7 +2917,7 @@ class ViewTargetOptions(object):
         # scope each target resolves to appended for grouped datasets
         action_description = action_description or "Process"
         dataset_description = _append_scope(
-            dataset_description or f"{action_description} the entire dataset",
+            dataset_description or f"{action_description} full dataset",
             dataset_scope_description,
         )
         base_view_description = _append_scope(
@@ -2925,8 +2925,7 @@ class ViewTargetOptions(object):
             scope_description,
         )
         current_view_description = _append_scope(
-            current_view_description
-            or f"{action_description} the current view",
+            current_view_description or "Samples matching filters",
             scope_description,
         )
         dataset_view_description = _append_scope(
@@ -2935,8 +2934,7 @@ class ViewTargetOptions(object):
             scope_description,
         )
         selected_samples_description = _append_scope(
-            selected_samples_description
-            or f"{action_description} the selected samples",
+            selected_samples_description or "Selected samples",
             scope_description,
         )
         selected_labels_description = _append_scope(
@@ -3029,7 +3027,7 @@ class ViewTargetProperty(Property):
 
     The choices include:
 
-    - Entire dataset (if the current view is not a generated view)
+    - All samples (if the current view is not a generated view)
     - Base view (if the current view is a generated view such as
       :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`,
       or :class:`fiftyone.core.patches.PatchesView`), which is the semantic
@@ -3039,7 +3037,7 @@ class ViewTargetProperty(Property):
       view of ``dataset.limit(51).to_frames("ground_truth")``
     - Dataset view (if ``allow_dataset_view`` is ``True``)
     - Current view (if the current view is different from the dataset view)
-    - Selected samples (if ``allow_selected_samples`` is ``True`` and there are
+    - Current selection (if ``allow_selected_samples`` is ``True`` and there are
       selected samples)
     - Selected labels (if ``allow_selected_labels`` is ``True`` and there are
       selected labels)
@@ -3099,7 +3097,7 @@ class ViewTargetProperty(Property):
         allow_selected_labels=False,
         allow_dataset_view=False,
         default_target=None,
-        dataset_label="Entire dataset",
+        dataset_label="All samples",
         dataset_description=None,
         base_view_label="Base view",
         base_view_description=None,
@@ -3107,7 +3105,7 @@ class ViewTargetProperty(Property):
         current_view_description=None,
         dataset_view_label="Dataset",
         dataset_view_description=None,
-        selected_samples_label="Selected samples",
+        selected_samples_label="Current selection",
         selected_samples_description=None,
         selected_labels_label="Selected labels",
         selected_labels_description=None,
