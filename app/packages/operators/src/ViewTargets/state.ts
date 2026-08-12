@@ -22,8 +22,8 @@ export type ViewTargetMeta = {
 const DEFAULT_TARGETS = [
   {
     target: ViewTarget.DATASET,
-    label: "All samples",
-    description: "Process full dataset",
+    label: "Dataset",
+    description: "All samples in the dataset",
   },
   {
     target: ViewTarget.CURRENT_VIEW,

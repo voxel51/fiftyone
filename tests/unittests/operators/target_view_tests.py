@@ -78,7 +78,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
             self.assertListEqual(
                 [choice.label for choice in prop.view.choices],
                 [
-                    "All samples",
+                    "Dataset",
                     "Dataset",
                     "Current view",
                     "Current selection",
@@ -88,7 +88,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
             self.assertListEqual(
                 [choice.description for choice in prop.view.choices],
                 [
-                    "Borks full dataset",
+                    "All samples in the dataset",
                     "Borks the dataset view",
                     "Samples matching filters",
                     "Selected samples",
@@ -775,7 +775,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
             )
             prop, descriptions = self._descriptions(ctx, require_flat=True)
             self.assertIsInstance(prop.view, types.HiddenView)
-            self.assertListEqual(descriptions, ["Process full dataset"])
+            self.assertListEqual(descriptions, ["All samples in the dataset"])
         finally:
             ds.delete()
 

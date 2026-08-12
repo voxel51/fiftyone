@@ -743,7 +743,7 @@ class Object(BaseType):
         base_view_description=None,
         current_view_label="Current view",
         current_view_description=None,
-        dataset_label="All samples",
+        dataset_label="Dataset",
         dataset_description=None,
         dataset_view_label="Dataset",
         dataset_view_description=None,
@@ -762,7 +762,7 @@ class Object(BaseType):
 
         The choices include:
 
-        - All samples (if the current view is not a generated view)
+        - Dataset (if the current view is not a generated view)
         - Base view (if the current view is a generated view such as
           :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`,
           or :class:`fiftyone.core.patches.PatchesView`), which is the semantic
@@ -789,7 +789,7 @@ class Object(BaseType):
         description parameter is not ``None``, it will be used as the
         description for the corresponding target view choice. Otherwise, a
         default description will be generated such as
-        ``f"{action_description} full dataset"``.
+        ``f"{action_description} the base view"``.
 
 
         Examples::
@@ -846,7 +846,7 @@ class Object(BaseType):
                 current_view_description (None): the description for the "current
                     view" target view. If ``None``, a default description is
                     generated
-                dataset_label (All samples): the label for the "entire dataset"
+                dataset_label (Dataset): the label for the "entire dataset"
                     target view
                 dataset_description (None): the description for the "entire
                     dataset" target view. If ``None``, a default description is
@@ -2837,7 +2837,7 @@ class ViewTargetOptions(object):
         include_dataset_view=False,
         include_selected_labels=False,
         include_selected_samples=False,
-        dataset_label="All samples",
+        dataset_label="Dataset",
         dataset_description=None,
         base_view_label="Base view",
         base_view_description=None,
@@ -2917,7 +2917,7 @@ class ViewTargetOptions(object):
         # scope each target resolves to appended for grouped datasets
         action_description = action_description or "Process"
         dataset_description = _append_scope(
-            dataset_description or f"{action_description} full dataset",
+            dataset_description or "All samples in the dataset",
             dataset_scope_description,
         )
         base_view_description = _append_scope(
@@ -3097,7 +3097,7 @@ class ViewTargetProperty(Property):
         allow_selected_labels=False,
         allow_dataset_view=False,
         default_target=None,
-        dataset_label="All samples",
+        dataset_label="Dataset",
         dataset_description=None,
         base_view_label="Base view",
         base_view_description=None,
