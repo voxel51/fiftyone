@@ -36,6 +36,7 @@ const VISUALIZATION = `${SRC}visualization/`;
 
 const ENTERPRISE_SHARED_FACADES =
   `${SRC}(extensions/(timeline|tiles)/(index|runtime)\\.ts$|` +
+  `extensions/mcap-explorer/index\\.ts$|` +
   `query/bytes/index\\.ts$|visualization/index\\.ts$)`;
 const FORMAT_VENDORS =
   "(^|/)node_modules/(@mcap|@foxglove|hyparquet|mp4box)(/|$)|" +

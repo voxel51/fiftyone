@@ -12,6 +12,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback, useMemo, useRef, useState } from "react";
+import { hasMcapCloudSourceResolver } from "../../extensions/mcap-explorer";
 import type { ByteSourceDescriptor } from "../../ir/index";
 import { diagnosticMessage } from "../../utils/errors";
 import { episodeSourceFromByteSource } from "../session/episode-source";
@@ -19,7 +20,7 @@ import { useEpisodeSession } from "../session/use-episode-session";
 import { SourcePlayback } from "../episode/index";
 import {
   createLocalMcapSourceDescriptor,
-  createRemoteMcapSourceDescriptor,
+  resolveRemoteMcapSourceDescriptor,
 } from "./source-descriptors";
 import styles from "./McapExplorerPanel.module.css";
 
@@ -38,6 +39,7 @@ const McapExplorerPanel: React.FC = () => {
   const [active, setActive] = useState<ActiveAnyMcapSource | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<ViewerError | null>(null);
+  const [openingUrl, setOpeningUrl] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const dragDepthRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,9 +80,11 @@ const McapExplorerPanel: React.FC = () => {
     }
   }, []);
 
-  const openUrl = useCallback(() => {
+  const openUrl = useCallback(async () => {
+    setOpeningUrl(true);
+    setError(null);
     try {
-      const descriptor = createRemoteMcapSourceDescriptor(urlInput);
+      const descriptor = await resolveRemoteMcapSourceDescriptor(urlInput);
       setActive({
         fileName: descriptor.fileName,
         kind: "url",
@@ -92,8 +96,12 @@ const McapExplorerPanel: React.FC = () => {
         message: diagnosticMessage(caught, "Could not open MCAP"),
         target: "url",
       });
+    } finally {
+      setOpeningUrl(false);
     }
   }, [urlInput]);
+
+  const supportsCloudPaths = hasMcapCloudSourceResolver();
 
   const handleDragEnter = useCallback(
     (event: React.DragEvent) => {
@@ -272,23 +280,28 @@ const McapExplorerPanel: React.FC = () => {
               aria-label="Remote MCAP URL"
               error={error?.target === "url"}
               icon={IconName.ExternalLink}
+              disabled={openingUrl}
               onChange={(event) => {
                 setUrlInput(event.target.value);
                 if (error?.target === "url") {
                   setError(null);
                 }
               }}
-              placeholder="https://example.com/recording.mcap"
+              placeholder={
+                supportsCloudPaths
+                  ? "https://example.com/recording.mcap or s3://bucket/recording.mcap"
+                  : "https://example.com/recording.mcap"
+              }
               size={Size.Sm}
-              type={InputType.Url}
+              type={InputType.Text}
               value={urlInput}
             />
             <Button
-              disabled={urlInput.trim().length === 0}
+              disabled={openingUrl || urlInput.trim().length === 0}
               size={Size.Sm}
               type="submit"
             >
-              Open URL
+              {openingUrl ? "Opening..." : "Open URL"}
             </Button>
           </form>
 
@@ -302,7 +315,9 @@ const McapExplorerPanel: React.FC = () => {
               variant={TextVariant.Xs}
               color={TextColor.Secondary}
             >
-              HTTP(S) sources must support CORS and byte-range reads.
+              {supportsCloudPaths
+                ? "HTTP(S) and configured cloud paths."
+                : "HTTP(S) sources must support CORS and byte-range reads."}
             </Text>
           )}
         </div>

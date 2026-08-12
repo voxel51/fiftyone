@@ -26,6 +26,7 @@ export function ColorLegend({
   meta,
   palette,
   offLabels,
+  scopedCounts,
   onToggle,
   onSolo,
 }: {
@@ -34,6 +35,10 @@ export function ColorLegend({
   palette: PlotPalette;
   /** Classes the field's filter hides; null = filtering unavailable */
   offLabels: ReadonlySet<string> | null;
+  /** Per-class counts for the current selection/scope, aligned with
+   * `meta.classes`; rows then render "scoped / total". Null = no
+   * scope, rows show the run's full counts alone */
+  scopedCounts?: readonly number[] | null;
   onToggle: (label: string) => void;
   onSolo: (label: string) => void;
 }) {
@@ -120,7 +125,9 @@ export function ColorLegend({
                   variant={TextVariant.Md}
                   color={TextColor.Tertiary}
                 >
-                  {cls.count.toLocaleString()}
+                  {scopedCounts
+                    ? `${scopedCounts[index]?.toLocaleString() ?? 0} / ${cls.count.toLocaleString()}`
+                    : cls.count.toLocaleString()}
                 </Text>
               </button>
             );

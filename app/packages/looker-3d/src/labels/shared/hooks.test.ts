@@ -93,17 +93,19 @@ vi.mock("recoil", () => ({
 }));
 
 import { useEventHandlers } from "./hooks";
+import type { OverlayLabel } from "../loader";
 
-function makeLabel(id: string) {
+function makeLabel(id: string): OverlayLabel {
   return {
-    _id: id,
-    id,
+    data: {
+      _id: id,
+      _cls: "Detection",
+      instance: { _cls: "Instance", _id: `instance-${id}` },
+    },
     path: "ground_truth",
-    color: "#fff",
     sampleId: "sample-1",
-    type: "Detection",
-    instance: { _id: `instance-${id}` },
-  };
+    ui: { selected: false, color: "#fff" },
+  } as unknown as OverlayLabel;
 }
 
 describe("useEventHandlers", () => {
@@ -128,7 +130,7 @@ describe("useEventHandlers", () => {
     });
     expect(mocks.setSpy).toHaveBeenLastCalledWith(
       mocks.fosAtoms.tooltipDetail,
-      expect.objectContaining({ label: labelA }),
+      expect.objectContaining({ label: labelA.data }),
     );
 
     act(() => {
@@ -136,7 +138,7 @@ describe("useEventHandlers", () => {
     });
     expect(mocks.setSpy).toHaveBeenLastCalledWith(
       mocks.fosAtoms.tooltipDetail,
-      expect.objectContaining({ label: labelB }),
+      expect.objectContaining({ label: labelB.data }),
     );
   });
 
@@ -159,7 +161,11 @@ describe("useEventHandlers", () => {
 
   it("emits a hover event only for labels with an instance", () => {
     const withInstance = makeLabel("a");
-    const withoutInstance = { ...makeLabel("b"), instance: undefined };
+    const base = makeLabel("b");
+    const withoutInstance = {
+      ...base,
+      data: { ...base.data, instance: undefined },
+    };
 
     const { result } = renderHook(() => useEventHandlers());
 

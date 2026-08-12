@@ -1,5 +1,5 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { DETECTION, objectId } from "@fiftyone/utilities";
+import { objectId } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
@@ -207,11 +207,6 @@ export const CreateCuboidRenderer = ({
         selectForAnnotation({
           _id: labelId,
           path: currentActiveField,
-          selected: true,
-          _cls: DETECTION,
-          location: transformData.location,
-          dimensions: transformData.dimensions,
-          quaternion: transformData.quaternion,
         });
         selectNewCuboidForTransform();
         setTransformMode("scale");

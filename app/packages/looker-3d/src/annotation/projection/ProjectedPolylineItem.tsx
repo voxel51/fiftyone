@@ -5,7 +5,7 @@ import { SvgPolylineProjection } from "./SvgPolylineProjection";
 import { useProjectedPolyline } from "./useProjectedPolyline";
 
 interface ProjectedPolylineItemProps {
-  polyline: ReconciledPolyline3D & { color?: string };
+  polyline: ReconciledPolyline3D;
   frustumData: FrustumData;
   isSelected: boolean;
   isHovered: boolean;
@@ -22,12 +22,12 @@ export function ProjectedPolylineItem({
   isHovered,
   isAnyLabelSelected,
 }: ProjectedPolylineItemProps) {
-  const projection = useProjectedPolyline(polyline, frustumData);
+  const projection = useProjectedPolyline(polyline.data, frustumData);
 
   if (!projection) return null;
 
   const { color, opacity, strokeDasharray } = resolveVisualProps(
-    polyline.color,
+    polyline.ui.color,
     isSelected,
     isHovered,
     isAnyLabelSelected,
