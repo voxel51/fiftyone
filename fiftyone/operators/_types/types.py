@@ -2917,7 +2917,7 @@ class ViewTargetOptions(object):
         # scope each target resolves to appended for grouped datasets
         action_description = action_description or "Process"
         dataset_description = _append_scope(
-            dataset_description or "All samples in the dataset",
+            dataset_description or "Entire dataset",
             dataset_scope_description,
         )
         base_view_description = _append_scope(
@@ -2929,8 +2929,7 @@ class ViewTargetOptions(object):
             scope_description,
         )
         dataset_view_description = _append_scope(
-            dataset_view_description
-            or f"{action_description} the dataset view",
+            dataset_view_description or "All samples in the dataset",
             scope_description,
         )
         selected_samples_description = _append_scope(

@@ -61,9 +61,7 @@ describe("useViewTargets", () => {
     expect(
       result.current.targets.every((t) => t.unavailableReason === undefined),
     ).toBe(true);
-    expect(result.current.targets[0].description).toBe(
-      "All samples in the dataset",
-    );
+    expect(result.current.targets[0].description).toBe("Entire dataset");
     expect(result.current.targets[1].description).toBe(
       "Samples matching filters",
     );

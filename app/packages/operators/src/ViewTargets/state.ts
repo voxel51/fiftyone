@@ -23,7 +23,7 @@ const DEFAULT_TARGETS = [
   {
     target: ViewTarget.DATASET,
     label: "Dataset",
-    description: "All samples in the dataset",
+    description: "Entire dataset",
   },
   {
     target: ViewTarget.CURRENT_VIEW,
