@@ -4,7 +4,6 @@
     "dependencyDashboard": false,
     "baseBranches": ["develop"],
     "gitAuthor": "voxel51-bot <bot@voxel51.com>",
-    "rangeStrategy": "widen",
     "schedule": ["* * * * 3"],
     "labels": ["dependencies"],
     "enabledManagers": [
@@ -42,6 +41,16 @@
             "matchManagers": ["npm"],
             "groupName": "app-dependencies",
             "addLabels": ["app"]
+        },
+        {
+            "matchManagers": ["github-actions"],
+            "matchDepNames": ["python"],
+            "enabled": false
+        },
+        {
+            "matchManagers": ["npm"],
+            "matchDepNames": ["minimatch", "brace-expansion"],
+            "enabled": false
         }
     ],
     "vulnerabilityAlerts": {
