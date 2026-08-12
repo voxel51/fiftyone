@@ -1015,7 +1015,7 @@ class StringField(mongoengine.fields.StringField, Field):
 
 
 class ColorField(StringField):
-    """A string field that holds a hex color string like '#FF6D04'.
+    """A string field that holds a hex color string like '#FA5300'.
 
     Args:
         description (None): an optional description
@@ -1704,7 +1704,7 @@ def is_rgb_target(target):
 
 
 def hex_to_int(hex_str):
-    """Converts a hex string like `"#ff6d04"` to a hex integer.
+    """Converts a hex string like `"#fa5300"` to a hex integer.
 
     Args:
         hex_str: a hex string
@@ -1719,7 +1719,7 @@ def hex_to_int(hex_str):
 
 
 def int_to_hex(value):
-    """Converts an RRGGBB integer value to hex string like `"#ff6d04"`.
+    """Converts an RRGGBB integer value to hex string like `"#fa5300"`.
 
     Args:
         value: an integer value

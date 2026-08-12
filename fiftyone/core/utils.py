@@ -3475,7 +3475,7 @@ def validate_hex_color(value):
         r"^#(?:[0-9a-fA-F]{3}){1,2}$", value
     ):
         raise ValueError(
-            "%s is not a valid hex color string (eg: '#FF6D04')" % value
+            "%s is not a valid hex color string (eg: '#FA5300')" % value
         )
 
 

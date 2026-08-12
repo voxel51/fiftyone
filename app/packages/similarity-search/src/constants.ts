@@ -36,7 +36,7 @@ export const STATUS_LABELS: Record<RunStatus, string> = {
 // Run list styles
 export const POINTER_STYLE = { cursor: "pointer" } as const;
 export const HIGHLIGHT_STYLE = {
-  boxShadow: "0 0 8px 2px rgba(255, 109, 4, 0.4)",
+  boxShadow: "0 0 8px 2px rgba(250, 83, 0, 0.4)",
   borderRadius: 6,
 } as const;
 

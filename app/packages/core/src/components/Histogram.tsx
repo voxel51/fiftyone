@@ -246,12 +246,12 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
             }}
             contentStyle={{
               background: "hsl(210, 20%, 23%)",
-              borderColor: "rgb(255, 109, 4)",
+              borderColor: "rgb(250, 83, 0)",
             }}
           />
           <Bar
             dataKey="count"
-            fill="rgb(255, 109, 4)"
+            fill="rgb(250, 83, 0)"
             barCategoryGap={0}
             barSize={barWidth}
             isAnimationActive={false}

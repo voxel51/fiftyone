@@ -1,7 +1,7 @@
 /* Make react-grid-layout resize handles more visible */
 .react-resizable-handle {
-  background-color: rgba(255, 109, 4, 0.3) !important;
-  border: 2px solid #ff6d04 !important;
+  background-color: rgba(250, 83, 0, 0.3) !important;
+  border: 2px solid #fa5300 !important;
   border-radius: 2px !important;
   transition: all 0.2s ease !important;
   opacity: 0 !important;
@@ -21,7 +21,7 @@
 }
 
 .react-resizable-handle:hover {
-  background-color: rgba(255, 109, 4, 0.5) !important;
+  background-color: rgba(250, 83, 0, 0.5) !important;
 }
 
 /* Show handles only for selected items */
@@ -40,7 +40,7 @@
 .react-resizable-handle.react-resizable-handle-sw,
 .react-resizable-handle.react-resizable-handle-ne,
 .react-resizable-handle.react-resizable-handle-nw {
-  background-color: #ff6d04 !important;
+  background-color: #fa5300 !important;
   border-radius: 50% !important;
   width: 12px !important;
   height: 12px !important;

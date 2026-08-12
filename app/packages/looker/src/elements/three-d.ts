@@ -173,7 +173,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
     this.ctx.lineTo(cubeX - half, cubeY - quarter); // left
     this.ctx.closePath();
     // one of primary voxel51 colors
-    this.ctx.fillStyle = "#FF6D04";
+    this.ctx.fillStyle = "#FA5300";
     this.ctx.fill();
 
     // left face

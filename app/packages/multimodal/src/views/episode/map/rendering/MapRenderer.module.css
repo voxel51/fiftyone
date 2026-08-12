@@ -7,7 +7,7 @@
  */
 .body {
   --map-surface: #06101a;
-  --map-accent: var(--fo-palette-primary-plainColor, #ff6d04);
+  --map-accent: var(--fo-palette-primary-plainColor, #fa5300);
   --map-chrome-bg: rgb(4 12 22 / 76%);
   --map-chrome-border: rgb(148 163 184 / 28%);
   --map-chrome-border-subtle: rgb(148 163 184 / 22%);

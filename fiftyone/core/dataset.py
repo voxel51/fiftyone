@@ -981,12 +981,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset.mask_targets = {
                 "ground_truth": {"#499CEF": "cat", "#6D04FF": "dog"},
                 "predictions": {
-                    "#499CEF": "cat", "#6D04FF": "dog", "#FF6D04": "person"
+                    "#499CEF": "cat", "#6D04FF": "dog", "#FA5300": "person"
                 },
             }
 
             # Edit an existing mask target
-            dataset.mask_targets["ground_truth"]["#FF6D04"] = "person"
+            dataset.mask_targets["ground_truth"]["#FA5300"] = "person"
             dataset.save()  # must save after edits
         """
         return self._doc.mask_targets
@@ -1034,7 +1034,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset.default_mask_targets = {"#499CEF": "cat", "#6D04FF": "dog"}
 
             # Edit the default mask targets
-            dataset.default_mask_targets["#FF6D04"] = "person"
+            dataset.default_mask_targets["#FA5300"] = "person"
             dataset.save()  # must save after edits
         """
         return self._doc.default_mask_targets
@@ -5360,7 +5360,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name: a name for the saved view
             view: a :class:`fiftyone.core.view.DatasetView`
             description (None): an optional string description
-            color (None): an optional RGB hex string like ``'#FF6D04'``
+            color (None): an optional RGB hex string like ``'#FA5300'``
             overwrite (False): whether to overwrite an existing saved view with
                 the same name
         """
@@ -5705,7 +5705,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name: a name for the saved workspace
             workspace: a :class:`fiftyone.core.odm.workspace.Space`
             description (None): an optional string description
-            color (None): an optional RGB hex string like ``'#FF6D04'``
+            color (None): an optional RGB hex string like ``'#FA5300'``
             overwrite (False): whether to overwrite an existing workspace with
                 the same name
 
@@ -5825,7 +5825,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Update the workspace's name and add a description, color
             info = dict(
                 name="a new name",
-                color="#FF6D04",
+                color="#FA5300",
                 description="a description",
             )
             dataset.update_workspace_info("test", info)

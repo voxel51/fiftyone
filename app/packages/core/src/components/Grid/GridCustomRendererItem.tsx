@@ -116,7 +116,7 @@ const SELECT_SAMPLE_BUTTON_STYLES: React.CSSProperties = {
   position: "absolute",
   top: 0,
   left: 0,
-  color: "hsl(25, 100%, 51%)",
+  color: "hsl(20, 100%, 49%)",
   cursor: "pointer",
   zIndex: 20,
 };

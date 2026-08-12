@@ -11,7 +11,7 @@ import "./panel.css";
 
 // Scatter-class colors and cluster layout for the synthetic scene
 const PALETTE = [
-  "#FF6D04",
+  "#FA5300",
   "#86B5F6",
   "#7AB87C",
   "#CBA6FF",

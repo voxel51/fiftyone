@@ -535,7 +535,7 @@ const initKapaAI = () => {
     handoffButtonText: "Get enterprise",
     handoffTriggers: "conversation-length",
     handoffConversationLengthThreshold: "1",
-    handoffButtonBackgroundColor: "#ff6d04",
+    handoffButtonBackgroundColor: "#fa5300",
     handoffButtonHoverBackgroundColor: "#e85a00",
     handoffButtonColor: "#ffffff",
     handoffButtonHoverColor: "#ffffff",

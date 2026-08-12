@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 _DEFAULT_STYLE = "default"
-_DEFAULT_LINE_COLOR = "#FF6D04"
+_DEFAULT_LINE_COLOR = "#FA5300"
 _DEFAULT_CONTINUOUS_COLORSCALE = "viridis"
 
 

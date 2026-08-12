@@ -21,7 +21,7 @@ const ENTERPRISE_BUTTON_ID = "fo-cta-enterprise-button";
 const DARK_BG_COLOR = "#333333";
 const LIGHT_BG_COLOR = "#FFFFFF";
 
-const GRADIENT_START_COLOR = "#FF6D04";
+const GRADIENT_START_COLOR = "#FA5300";
 const GRADIENT_END_COLOR = "#B681FF";
 
 // subtle pulse animation for the sparkles icon
@@ -102,7 +102,7 @@ const BaseEnterpriseButton = styled(Button)<{
   $borderColor: string;
   $isLightMode?: boolean;
 }>`
-  background: linear-gradient(45deg, #ff6d04 0%, #b681ff 100%);
+  background: linear-gradient(45deg, #fa5300 0%, #b681ff 100%);
   background-clip: text;
   -webkit-background-clip: text;
   text-fill-color: transparent;
@@ -161,7 +161,7 @@ const BaseEnterpriseButton = styled(Button)<{
     outline: none;
     box-shadow: none;
 
-    background: linear-gradient(45deg, #ff6d04 0%, #b681ff 100%) !important;
+    background: linear-gradient(45deg, #fa5300 0%, #b681ff 100%) !important;
     background-clip: text !important;
     -webkit-background-clip: text !important;
     text-fill-color: transparent !important;

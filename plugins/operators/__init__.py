@@ -2656,7 +2656,7 @@ class SaveView(foo.Operator):
             required=False,
             label="Color",
             description=(
-                "An optional RGB color string like `#FF6D04` for the view"
+                "An optional RGB color string like `#FA5300` for the view"
             ),
         )
 
@@ -2779,7 +2779,7 @@ def _edit_saved_view_info_inputs(ctx, inputs):
         required=False,
         label="Color",
         description=(
-            "An optional RGB color string like `#FF6D04` for the saved view"
+            "An optional RGB color string like `#FA5300` for the saved view"
         ),
     )
 
@@ -2935,7 +2935,7 @@ class SaveWorkspace(foo.Operator):
             required=False,
             label="Color",
             description=(
-                "An optional RGB color string like `#FF6D04` for the workspace"
+                "An optional RGB color string like `#FA5300` for the workspace"
             ),
         )
 
@@ -3077,7 +3077,7 @@ def _edit_workspace_info_inputs(ctx, inputs):
         required=False,
         label="Color",
         description=(
-            "An optional RGB color string like `#FF6D04` for the workspace"
+            "An optional RGB color string like `#FA5300` for the workspace"
         ),
     )
 

@@ -1527,7 +1527,7 @@ export default function DashboardView(props: ViewPropsType) {
                     ...baseItemProps.sx,
                     border:
                       selectedItemIds.has(id) && isEditMode
-                        ? "3px solid #ff6d04"
+                        ? "3px solid #fa5300"
                         : "2px solid transparent",
                     borderRadius:
                       selectedItemIds.has(id) && isEditMode ? "6px" : "0px",

@@ -25,7 +25,7 @@ _DEFAULT_LAYOUT = dict(
     template="ggplot2", margin={"r": 0, "t": 30, "l": 0, "b": 0}
 )
 
-_DEFAULT_MARKER_COLOR = "#FF6D04"
+_DEFAULT_MARKER_COLOR = "#FA5300"
 
 
 class PlotlyViewPlot(PlotlyWidgetMixin, ViewPlot):

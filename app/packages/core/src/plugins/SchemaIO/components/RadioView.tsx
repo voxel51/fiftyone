@@ -86,21 +86,21 @@ export default function RadioView(props: RadioGroupProps) {
                               background: "none",
                               justifyContent: "flex-start",
                               color:
-                                data === value ? "#FF6D04" : "text.secondary",
+                                data === value ? "#FA5300" : "text.secondary",
                               border:
                                 data === value
-                                  ? "1px solid #FF6D04"
+                                  ? "1px solid #FA5300"
                                   : "1px solid #333",
                               boxShadow: "none",
                               "&:hover": {
                                 background: "none",
                                 boxShadow: "none",
-                                borderColor: "rgba(255, 109, 4, 0.50)",
+                                borderColor: "rgba(250, 83, 0, 0.50)",
                               },
                             },
                           },
                           icon: {
-                            sx: { color: data === value ? "#FF6D04" : "" },
+                            sx: { color: data === value ? "#FA5300" : "" },
                           },
                         },
                       },

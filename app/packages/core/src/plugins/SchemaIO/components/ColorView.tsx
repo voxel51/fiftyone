@@ -96,7 +96,7 @@ function formatColor(color: ColorType) {
   return { ...color, bgColor, hexColor };
 }
 
-const fallbackColor: ColorType = { hex: "#FF6D05" };
+const fallbackColor: ColorType = { hex: "#FA5300" };
 
 type ColorType = {
   hex: string;

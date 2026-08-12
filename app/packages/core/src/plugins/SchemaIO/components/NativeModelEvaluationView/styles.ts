@@ -119,7 +119,7 @@ export const scenarioCardStyles = {
   createButton: {
     px: 2,
     py: "6px",
-    background: "#FF6D04",
+    background: "#FA5300",
     borderRadius: "4px",
     fontSize: 13,
     fontFamily: "Palanquin",
@@ -128,7 +128,7 @@ export const scenarioCardStyles = {
     color: "white",
     textTransform: "none",
     "&:hover": {
-      background: "#FF6D04",
+      background: "#FA5300",
     },
   },
 };

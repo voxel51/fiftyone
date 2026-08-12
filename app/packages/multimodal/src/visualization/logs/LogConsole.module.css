@@ -87,7 +87,7 @@
 .tabActive {
   background: color-mix(
     in srgb,
-    var(--color-primary-plain-color, #ff6d04) 18%,
+    var(--color-primary-plain-color, #fa5300) 18%,
     var(--plot-surface, #050b12)
   );
   color: var(--color-content-text-primary);

@@ -3,7 +3,7 @@ import fiftyone.core.fields as fof
 from enum import Enum
 
 # NOTE: copied from NativeModelEval
-KEY_COLOR = "#ff6d04"
+KEY_COLOR = "#fa5300"
 COMPARE_KEY_COLOR = "#03a9f4"
 
 MAX_CATEGORIES = 12  # This was discussed thoroughly.

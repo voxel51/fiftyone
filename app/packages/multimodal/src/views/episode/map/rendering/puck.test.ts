@@ -13,8 +13,8 @@ afterEach(() => {
 
 describe("mcap map puck", () => {
   it("produces stable per-variant, per-color sprite ids", () => {
-    expect(puckImageId(PUCK_VARIANT.NAV, "#ff6d04")).toBe(
-      "episode-puck-nav-#ff6d04",
+    expect(puckImageId(PUCK_VARIANT.NAV, "#fa5300")).toBe(
+      "episode-puck-nav-#fa5300",
     );
     expect(puckImageId(PUCK_VARIANT.DOT, "#3b82f6")).toBe(
       "episode-puck-dot-#3b82f6",
@@ -30,7 +30,7 @@ describe("mcap map puck", () => {
         },
         hasImage: () => true,
       },
-      ["#ff6d04", "#3b82f6"],
+      ["#fa5300", "#3b82f6"],
     );
     expect(added).toEqual([]);
   });
@@ -45,7 +45,7 @@ describe("mcap map puck", () => {
         },
         hasImage: () => false,
       },
-      ["#ff6d04", "#ff6d04"],
+      ["#fa5300", "#fa5300"],
     );
     expect(added).toEqual([]);
   });
@@ -61,23 +61,23 @@ describe("mcap map puck", () => {
         },
         hasImage: () => false,
       },
-      ["#ff6d04", "#ff6d04"],
+      ["#fa5300", "#fa5300"],
     );
 
     expect(added).toEqual([
-      puckImageId(PUCK_VARIANT.DOT, "#ff6d04"),
-      puckImageId(PUCK_VARIANT.NAV, "#ff6d04"),
+      puckImageId(PUCK_VARIANT.DOT, "#fa5300"),
+      puckImageId(PUCK_VARIANT.NAV, "#fa5300"),
     ]);
   });
 
   it("falls back to brand orange when the theme variable is absent", () => {
-    expect(voxel51PrimaryColor()).toBe("#ff6d04");
+    expect(voxel51PrimaryColor()).toBe("#fa5300");
   });
 
   it("applies alpha to hex colors and passes through unparseable ones", () => {
-    expect(hexColorWithAlpha("#ff6d04", 0)).toBe("rgba(255, 109, 4, 0)");
-    expect(hexColorWithAlpha("hsl(25, 100%, 51%)", 0.5)).toBe(
-      "hsl(25, 100%, 51%)",
+    expect(hexColorWithAlpha("#fa5300", 0)).toBe("rgba(250, 83, 0, 0)");
+    expect(hexColorWithAlpha("hsl(20, 100%, 49%)", 0.5)).toBe(
+      "hsl(20, 100%, 49%)",
     );
   });
 });

@@ -68,10 +68,10 @@ let theme = extendMuiTheme({
           softBorder: "hsl(200, 0%, 75%)",
         },
         primary: {
-          main: "hsl(25, 100%, 51%)",
+          main: "hsl(20, 100%, 49%)",
           mainChannel: "0 0 0",
           plainBorder: "hsl(200, 0%, 90%)",
-          plainColor: "hsl(25, 100%, 51%)",
+          plainColor: "hsl(20, 100%, 49%)",
           softBg: "hsl(200, 0%, 85%, 0.7)",
           softBorder: "hsl(200, 0%, 80%)",
         },
@@ -93,13 +93,13 @@ let theme = extendMuiTheme({
         custom: {
           shadow: "hsl(200, 0%, 90%)",
           shadowDark: "hsl(200, 0%, 70%)",
-          lightning: "hsl(25, 100%, 51%)",
+          lightning: "hsl(20, 100%, 49%)",
           toastBackgroundColor: "#FFFFFF",
-          primarySoft: "hsl(25, 100%, 51%)",
+          primarySoft: "hsl(20, 100%, 49%)",
         },
         voxel: {
-          500: "#FF6D04",
-          600: "#D54B00", // Not in the design. Darker shade of 500 of is used
+          500: "#FA5300",
+          600: "#C74200", // Brand hover shade
         },
         error: {
           main: "hsl(0, 87%, 53%)",
@@ -152,9 +152,9 @@ let theme = extendMuiTheme({
           plainColor: "hsl(213, 100%, 53%)",
         },
         primary: {
-          main: "hsl(25, 100%, 51%)",
+          main: "hsl(20, 100%, 49%)",
           mainChannel: "0 0 0",
-          plainColor: "hsl(25, 100%, 51%)",
+          plainColor: "hsl(20, 100%, 49%)",
           plainBorder: "hsl(200, 0%, 5%)",
           softBg: "hsl(200, 0%, 25%)",
           softBorder: "hsl(200, 0%, 20%)",
@@ -179,12 +179,12 @@ let theme = extendMuiTheme({
           shadowDark: "hsl(200, 0%, 0%)",
           lightning: "#f5b700",
           toastBackgroundColor: "#333",
-          primarySoft: "hsl(25, 100%, 80%)",
-          primaryMedium: "hsl(25, 100%, 71%)",
+          primarySoft: "hsl(20, 100%, 80%)",
+          primaryMedium: "hsl(20, 100%, 71%)",
         },
         voxel: {
-          500: "#FF6D04",
-          600: "#D54B00", // Not in the design. Darker shade of 500 of is used
+          500: "#FA5300",
+          600: "#C74200", // Brand hover shade
         },
         error: {
           main: "hsl(0, 87%, 53%)",

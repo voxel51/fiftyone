@@ -39,9 +39,9 @@ let theme = extendMuiTheme({
           softBorder: "hsl(200, 0%, 75%)",
         },
         primary: {
-          main: "hsl(25, 100%, 51%)",
+          main: "hsl(20, 100%, 49%)",
           plainBorder: "hsl(200, 0%, 90%)",
-          plainColor: "hsl(25, 100%, 51%)",
+          plainColor: "hsl(20, 100%, 49%)",
           softBg: "hsl(200, 0%, 85%, 0.7)",
           softBorder: "hsl(200, 0%, 80%)",
         },
@@ -90,8 +90,8 @@ let theme = extendMuiTheme({
           plainColor: "hsl(213, 100%, 53%)",
         },
         primary: {
-          main: "hsl(25, 100%, 51%)",
-          plainColor: "hsl(25, 100%, 51%)",
+          main: "hsl(20, 100%, 49%)",
+          plainColor: "hsl(20, 100%, 49%)",
           plainBorder: "hsl(200, 0%, 5%)",
           softBg: "hsl(200, 0%, 25%)",
           softBorder: "hsl(200, 0%, 20%)",

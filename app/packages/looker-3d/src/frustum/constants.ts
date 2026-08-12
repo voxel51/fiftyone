@@ -28,7 +28,7 @@ export const FRUSTUM_DEFAULT_ASPECT_RATIO = 16 / 9;
 export const FRUSTUM_COLOR = "#888888";
 
 /** Highlight color when frustum is hovered (Voxel51 orange) */
-export const FRUSTUM_HOVER_COLOR = "#FF6D04";
+export const FRUSTUM_HOVER_COLOR = "#FA5300";
 
 /** X-axis color (red) */
 export const FRUSTUM_AXIS_X_COLOR = "#ff0000";
