@@ -98,9 +98,11 @@ export function ColorByMenu({
     setActiveIndex(next);
     const option = filtered[next];
     if (option) {
+      // Optional call: jsdom has no scrollIntoView, and scrolling is an
+      // enhancement — the active option is still correct without it
       document
         .getElementById(`${listId}-${option.id}`)
-        ?.scrollIntoView({ block: "nearest" });
+        ?.scrollIntoView?.({ block: "nearest" });
     }
   };
 
