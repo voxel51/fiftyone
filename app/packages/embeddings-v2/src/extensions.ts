@@ -53,6 +53,12 @@ export interface ColorColumnSource {
     field: string,
     onPartial: (partial: ColorResponse) => void,
   ) => Promise<ColorResponse>;
+  /** Changes whenever the source's SEMANTICS change (its choices or what
+   * `resolve` would answer) under the same dataset and run — e.g. a run
+   * recomputed in place. Consumers re-resolve on it instead of on object
+   * identity, which extension hooks may recreate every render. Optional:
+   * omitted means identity-stable semantics per (dataset, brainKey). */
+  revision?: string | number;
 }
 
 /** What the extension's early per-run hook owns. */

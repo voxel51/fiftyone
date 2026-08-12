@@ -7,9 +7,11 @@ import type {
 } from "../ir";
 import {
   getSourceBootstrap,
+  getSourceBootstrapSnapshot,
   peekSourceBootstrap,
   publishSourceBootstrap,
   resetSourceBootstrapCacheForTests,
+  subscribeSourceBootstrap,
 } from "./source-bootstrap-cache";
 
 describe("source bootstrap cache", () => {
@@ -49,6 +51,29 @@ describe("source bootstrap cache", () => {
     expect(getSourceBootstrap(createSource("source-32"))?.manifest).toEqual(
       createManifest("topic-32"),
     );
+  });
+
+  it("notifies a subscriber whose entry another source's publish evicts", () => {
+    resetSourceBootstrapCacheForTests();
+    const first = createSource("source-0");
+    publishSourceBootstrap(first, { manifest: createManifest("first") });
+
+    let notified = 0;
+    const unsubscribe = subscribeSourceBootstrap(first, () => {
+      notified++;
+    });
+
+    for (let index = 1; index <= 32; index++) {
+      publishSourceBootstrap(createSource(`source-${index}`), {
+        manifest: createManifest(`topic-${index}`),
+      });
+    }
+
+    // The eviction is a change to THIS source's snapshot: the subscriber
+    // re-reads and sees the removal, instead of rendering stale facts
+    expect(notified).toBeGreaterThan(0);
+    expect(getSourceBootstrapSnapshot(first)).toBeNull();
+    unsubscribe();
   });
 
   it("clears a stale poster topic when replacing the poster without one", () => {

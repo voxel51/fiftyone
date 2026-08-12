@@ -46,6 +46,10 @@ export function useColorColumn(
   const sourceRef = useRef(source);
   sourceRef.current = source;
   const hasSource = Boolean(source);
+  // Semantic key, not identity: a recreated-but-equivalent source must not
+  // restart resolution, while a source whose answers changed (see
+  // ColorColumnSource.revision) must
+  const sourceRevision = source?.revision;
 
   // Color-by field choices depend on the run (patches vs samples)
   useEffect(() => {
@@ -105,7 +109,7 @@ export function useColorColumn(
     return () => {
       stale = true;
     };
-  }, [datasetName, brainKey, colorField, hasSource]);
+  }, [datasetName, brainKey, colorField, hasSource, sourceRevision]);
 
   return { choices, values, meta, loading, error };
 }

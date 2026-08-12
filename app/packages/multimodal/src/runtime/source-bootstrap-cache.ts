@@ -65,8 +65,15 @@ export function publishSourceBootstrap(
   };
   entries.set(key, next);
   retainedPosterBytes += next.posterBytes;
-  evictBootstrapEntries();
+  const evicted = evictBootstrapEntries();
   notifySourceListeners(key);
+  // An eviction is a change too: a subscriber holding the evicted source's
+  // snapshot must re-read (and see null), not keep rendering stale facts
+  for (const evictedKey of evicted) {
+    if (evictedKey !== key) {
+      notifySourceListeners(evictedKey);
+    }
+  }
 }
 
 /** Returns the current source bootstrap without changing its LRU position. */
@@ -139,7 +146,8 @@ export function resetSourceBootstrapCacheForTests(): void {
   }
 }
 
-function evictBootstrapEntries(): void {
+function evictBootstrapEntries(): string[] {
+  const evicted: string[] = [];
   while (
     entries.size > MAX_SOURCE_ENTRIES ||
     retainedPosterBytes > MAX_POSTER_BYTES
@@ -147,10 +155,12 @@ function evictBootstrapEntries(): void {
     const oldest = entries.entries().next().value as
       | [string, CacheEntry]
       | undefined;
-    if (!oldest) return;
+    if (!oldest) break;
     entries.delete(oldest[0]);
     retainedPosterBytes -= oldest[1].posterBytes;
+    evicted.push(oldest[0]);
   }
+  return evicted;
 }
 
 /** Counts unique retained binary allocations in an arbitrary poster graph. */

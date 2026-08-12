@@ -88,13 +88,29 @@ export function ColorByMenu({
     close();
   };
 
+  // Arrowing moves the active option and keeps it visible — a long field
+  // list scrolls, and an active option below the fold reads as a dead key
+  const moveActive = (delta: number) => {
+    const next = Math.min(
+      filtered.length - 1,
+      Math.max(0, activeIndex + delta),
+    );
+    setActiveIndex(next);
+    const option = filtered[next];
+    if (option) {
+      document
+        .getElementById(`${listId}-${option.id}`)
+        ?.scrollIntoView({ block: "nearest" });
+    }
+  };
+
   const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setActiveIndex((i) => Math.min(filtered.length - 1, i + 1));
+      moveActive(1);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      setActiveIndex((i) => Math.max(0, i - 1));
+      moveActive(-1);
     } else if (event.key === "Enter") {
       event.preventDefault();
       if (activeOption) commit(activeOption.id);
@@ -179,7 +195,7 @@ export function ColorByMenu({
               id={`${listId}-${o.id}`}
               type="button"
               role="option"
-              aria-selected={index === activeIndex}
+              aria-selected={o.id === value}
               data-selected={o.id === value}
               className="emb-facet-row"
               onMouseEnter={() => setActiveIndex(index)}

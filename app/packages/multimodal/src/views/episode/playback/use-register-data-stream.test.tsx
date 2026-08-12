@@ -570,6 +570,11 @@ describe("useRegisterDataStream", () => {
       (api: ReturnType<typeof usePlayback>) => api.play(),
       0,
     ] as const,
+    [
+      "the viewer has seeked to zero",
+      (api: ReturnType<typeof usePlayback>) => api.seek(0),
+      0,
+    ] as const,
   ])(
     "does not auto-seek after %s",
     async (_condition, beforeBounds, expected) => {

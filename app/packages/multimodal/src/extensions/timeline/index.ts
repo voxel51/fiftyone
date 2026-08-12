@@ -34,11 +34,10 @@ export {
   useMcapGridOverlays,
   type McapGridOverlayComponent,
 } from "./grid-overlay-registry";
-// Shared episode-source plumbing an edition overlay renders through; an
-// edition reaches shared runtime/view modules only via this facade
+// Shared episode-source plumbing an edition overlay renders through.
+// (Only runtime/ re-exports belong here — the extensions layer may not
+// reach views/ or temporal-tags/; editions import those directly.)
 export {
   getSourceBootstrapSnapshot,
   subscribeSourceBootstrap,
 } from "../../runtime/source-bootstrap-cache";
-export { useStableEpisodeSource } from "../../views/session/use-stable-episode-source";
-export { default as timeLaneOverlayStyles } from "../../temporal-tags/grid-overlay.module.css";

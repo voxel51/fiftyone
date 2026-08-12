@@ -400,6 +400,12 @@ export function useRegisterDataStream({
     if (getPlayhead(store) !== 0) {
       return trace("playhead-moved", { playhead: getPlayhead(store) });
     }
+    // A user seek to 0 leaves the playhead where the check above cannot see
+    // it — any recorded (non-lifecycle) seek means the viewer placed the
+    // playhead deliberately, and the opening seek must not move it
+    if (lastSeekAtMsRef.current !== null) {
+      return trace("user-seeked");
+    }
     if (getIsPlaying(store) || getIsPlayPending(store)) {
       return trace("already-playing");
     }

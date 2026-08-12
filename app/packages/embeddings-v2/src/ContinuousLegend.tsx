@@ -56,7 +56,10 @@ export function ContinuousLegend({
   if (meta.style !== "continuous" || min == null || max == null) return null;
 
   const [lo, hi] = domain ?? [min, max];
-  const zeroCentered = domain != null && lo < 0 && hi > 0;
+  // The "0" anchor renders mid-bar, so it may only appear when zero IS the
+  // middle: a symmetric domain. A non-symmetric zero-crossing range like
+  // [-4, 10] would label the midpoint (3) as zero.
+  const zeroCentered = domain != null && lo < 0 && hi > 0 && -lo === hi;
 
   return (
     <FloatingPanel

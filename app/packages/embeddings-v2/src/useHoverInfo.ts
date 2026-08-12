@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { HoverContent } from "./HoverCard";
 import { fetchSampleInfo, type SampleInfo } from "./protocol";
 import type { HoverHit } from "./renderer";
@@ -33,12 +33,14 @@ export function useHoverInfo(
   // The card doesn't vanish the instant the pointer leaves a point: a short
   // grace lets the pointer cross the gap onto the card to click an action
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelClear = () => {
+  // Stable identity: consumers hand this to the hover card as keepHover,
+  // and an every-render identity would re-bind listeners for no reason
+  const cancelClear = useCallback(() => {
     if (clearTimer.current) {
       clearTimeout(clearTimer.current);
       clearTimer.current = null;
     }
-  };
+  }, []);
   useEffect(() => () => cancelClear(), []);
   const hoverKeyRef = useRef<string | null>(null);
   const infoCache = useRef(new Map<string, SampleInfo>());

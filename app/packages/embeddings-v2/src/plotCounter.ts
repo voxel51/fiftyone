@@ -29,10 +29,11 @@ export function counterLabel({
   selected,
   inView,
 }: CounterParts): string {
+  const noun = loaded === 1 ? "point" : "points";
   const size =
     loaded < total
-      ? `${loaded.toLocaleString("en-US")} / ${total.toLocaleString("en-US")} points`
-      : `${loaded.toLocaleString("en-US")} points`;
+      ? `${loaded.toLocaleString("en-US")} / ${total.toLocaleString("en-US")} ${noun}`
+      : `${loaded.toLocaleString("en-US")} ${noun}`;
 
   if (selected) {
     return `${selected.toLocaleString("en-US")} selected · ${size}`;

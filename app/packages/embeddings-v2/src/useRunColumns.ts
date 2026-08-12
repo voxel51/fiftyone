@@ -50,8 +50,9 @@ export function useRunColumns(
     if (!datasetName || !brainKey) return undefined;
     if (ownsGeometry && !loadGeometryRef.current) {
       // The previous run's points must not linger while this run waits on
-      // its loader
+      // its loader — nor its failure banner
       setLoaded(null);
+      setError(null);
       return undefined;
     }
     const loadKey = `${datasetName}::${brainKey}`;
