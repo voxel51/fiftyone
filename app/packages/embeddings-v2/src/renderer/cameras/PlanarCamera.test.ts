@@ -89,3 +89,36 @@ describe("PlanarCamera focus", () => {
     camera.destroy();
   });
 });
+
+describe("PlanarCamera cursor", () => {
+  // A drag shows the closed hand, then gives back the resting cursor,
+  // which the chart owns (crosshair in select, grab in explore)
+  it("borrows the cursor for the duration of a drag", () => {
+    const element = document.createElement("div");
+    // jsdom has no pointer capture; the pan handlers call it
+    element.setPointerCapture = vi.fn();
+    const camera = new PlanarCamera(element, vi.fn());
+    camera.setBounds(BOUNDS, 100, 100);
+    camera.setMode("explore");
+    element.style.cursor = "grab";
+
+    const pointer = (type: string, init: Record<string, unknown>) =>
+      element.dispatchEvent(Object.assign(new Event(type), init));
+
+    pointer("pointerdown", {
+      pointerId: 1,
+      button: 0,
+      offsetX: 50,
+      offsetY: 50,
+    });
+    expect(element.style.cursor).toBe("grabbing");
+
+    pointer("pointermove", { pointerId: 1, offsetX: 60, offsetY: 50 });
+    expect(element.style.cursor).toBe("grabbing");
+
+    pointer("pointerup", { pointerId: 1 });
+    expect(element.style.cursor).toBe("grab");
+
+    camera.destroy();
+  });
+});

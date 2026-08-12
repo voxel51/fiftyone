@@ -33,6 +33,8 @@ export class PlanarCamera implements CameraAdapter {
   private height = 1;
   private panPointer: number | null = null;
   private panLast: [number, number] = [0, 0];
+  // The chart owns the resting cursor; a drag only borrows it
+  private cursorBefore = "";
   private mode: InteractionMode = "select";
 
   constructor(element: HTMLElement, onChange: () => void) {
@@ -184,6 +186,8 @@ export class PlanarCamera implements CameraAdapter {
     event.preventDefault();
     this.panPointer = event.pointerId;
     this.panLast = [event.offsetX, event.offsetY];
+    this.cursorBefore = this.element.style.cursor;
+    this.element.style.cursor = "grabbing";
     this.element.setPointerCapture(event.pointerId);
   }
 
@@ -208,5 +212,6 @@ export class PlanarCamera implements CameraAdapter {
   private handlePanEnd(event: PointerEvent): void {
     if (this.panPointer !== event.pointerId) return;
     this.panPointer = null;
+    this.element.style.cursor = this.cursorBefore;
   }
 }
