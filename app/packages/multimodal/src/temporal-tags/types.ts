@@ -1,4 +1,4 @@
-import type { LoadStatus } from "../load-status";
+import type { LoadStatus } from "../runtime";
 
 /** Load state for tag React hooks. */
 export type TemporalTagsStatus = LoadStatus;

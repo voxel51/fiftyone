@@ -12,6 +12,7 @@ import { attributeVisibility } from "./attributeVisibility";
 import * as colorAtoms from "./color";
 import { dataset } from "./dataset";
 import { filters, modalFilters } from "./filters";
+import { resolvedShownLabelAttributes } from "./labelAttributes";
 import { pathFilter } from "./pathFilters";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
@@ -66,20 +67,11 @@ export const lookerOptions = selectorFamily<
       if (modal) {
         const panels = get(atoms.lookerPanels);
         extra = {
-          showConfidence: get(
-            selectors.appConfigOption({ modal: true, key: "showConfidence" }),
-          ),
           showTooltip: get(
             selectors.appConfigOption({ modal: true, key: "showTooltip" }),
           ),
           showHelp: panels.help.isOpen,
-          showIndex: get(
-            selectors.appConfigOption({ modal: true, key: "showIndex" }),
-          ),
           showJSON: panels.json.isOpen,
-          showLabel: get(
-            selectors.appConfigOption({ modal: true, key: "showLabel" }),
-          ),
           useFrameNumber: get(
             selectors.appConfigOption({ modal: true, key: "useFrameNumber" }),
           ),
@@ -106,6 +98,8 @@ export const lookerOptions = selectorFamily<
         ),
         filter: withFilter ? get(pathFilter(modal)) : undefined,
         zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(modal)),
+        showPatchLabels: get(viewAtoms.isPatchesView),
+        shownLabelAttributes: get(resolvedShownLabelAttributes),
         timeZone: get(selectors.timeZone),
         showOverlays: modal ? get(atoms.showOverlays) : true,
         alpha: get(atoms.colorScheme).opacity,

@@ -1,10 +1,9 @@
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { getCuboidResizeQuaternion } from "../../annotation/cuboid-face-resize";
 import { useTransientCuboid } from "../../annotation/store";
 import type { LabelId } from "../../annotation/store/types";
-import { transformModeAtom } from "../../state";
+import { useTransformMode } from "../../state";
 
 export interface UseDisplayCuboidTransformArgs {
   labelId: LabelId;
@@ -49,7 +48,7 @@ export function useDisplayCuboidTransform({
   useLegacyCoordinates,
 }: UseDisplayCuboidTransformArgs): UseDisplayCuboidTransformResult {
   const transientState = useTransientCuboid(labelId);
-  const transformMode = useRecoilValue(transformModeAtom);
+  const transformMode = useTransformMode();
 
   // Compute display dimensions: apply transient delta if present
   const displayDimensions = useMemo(() => {

@@ -5,7 +5,6 @@ import {
 } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
 import type { Native2dLabel } from "./types";
 
 /**
@@ -14,8 +13,8 @@ import type { Native2dLabel } from "./types";
  * in Explore mode.
  */
 export const useNative2dLabelColor = (): ((label: Native2dLabel) => string) => {
-  const coloring = useRecoilValue(fos.coloring);
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const coloring = fos.useColoring();
+  const colorScheme = fos.useColorScheme();
 
   return useCallback(
     (label: Native2dLabel): string =>

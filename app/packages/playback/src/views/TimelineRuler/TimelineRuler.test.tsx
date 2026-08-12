@@ -8,7 +8,10 @@ import {
   usePlaybackStore,
 } from "../../lib/playback/PlaybackProvider";
 import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
-import { setHoverTime } from "../../lib/playback/store-access";
+import {
+  publishInspectionMarker,
+  setHoverTime,
+} from "../../lib/playback/store-access";
 import type { TimelineMode } from "../../lib/playback/types";
 import {
   useHoverTime,
@@ -64,6 +67,15 @@ function ViewSetter({ start, end }: { start: number; end: number }) {
   return null;
 }
 
+function InspectionMarkerPublisher({ time }: { time: number }) {
+  const store = usePlaybackStore();
+  // This effect publishes the marker value under test into the scoped store.
+  useEffect(() => {
+    publishInspectionMarker(store, "test-owner", time);
+  }, [store, time]);
+  return null;
+}
+
 interface RenderOpts {
   duration?: number;
   labelWidth?: number;
@@ -73,6 +85,7 @@ interface RenderOpts {
   defaultLoopStart?: number;
   defaultLoopEnd?: number;
   mode?: TimelineMode;
+  markerTime?: number;
 }
 
 /** Renders the ruler inside a positioned outer so getBoundingClientRect-driven math works. */
@@ -86,6 +99,7 @@ function renderRuler(opts: RenderOpts = {}) {
     defaultLoopStart,
     defaultLoopEnd,
     mode,
+    markerTime,
   } = opts;
   return render(
     <PlaybackProvider
@@ -99,6 +113,9 @@ function renderRuler(opts: RenderOpts = {}) {
         <ViewSetter start={viewStart} end={viewEnd} />
       ) : null}
       {seekTo !== undefined ? <Seeker time={seekTo} /> : null}
+      {markerTime !== undefined ? (
+        <InspectionMarkerPublisher time={markerTime} />
+      ) : null}
       <TimelineRuler labelWidth={labelWidth} />
       <ViewReadout />
       <HoverReadout />
@@ -458,6 +475,64 @@ describe("TimelineRuler", () => {
       });
       const group = container.querySelector(`.${styles.playheadGroup}`);
       expect(inlineStyle(group!)).toContain("translate3d(25%");
+    });
+  });
+
+  describe("inspection marker", () => {
+    it("renders the exact marker inside the viewport", () => {
+      const { container } = renderRuler({
+        duration: 10,
+        markerTime: 5.123456,
+      });
+      const marker = screen.getByRole("img", {
+        name: "Inspected message time",
+      });
+      expect(
+        container.querySelector(`.${styles.inspectionCaretCap}`),
+      ).not.toBeNull();
+      expect(inlineStyle(marker)).toContain("translate3d(51.2345");
+    });
+
+    it("gates the marker outside the viewport", () => {
+      renderRuler({
+        duration: 10,
+        markerTime: 2,
+        viewEnd: 8,
+        viewStart: 4,
+      });
+      expect(screen.queryByTestId("timeline-inspection-caret")).toBeNull();
+    });
+
+    it("includes both viewport boundaries", () => {
+      const start = renderRuler({
+        duration: 10,
+        markerTime: 4,
+        viewEnd: 8,
+        viewStart: 4,
+      });
+      expect(screen.getByTestId("timeline-inspection-caret")).toBeTruthy();
+      start.unmount();
+
+      renderRuler({
+        duration: 10,
+        markerTime: 8,
+        viewEnd: 8,
+        viewStart: 4,
+      });
+      expect(screen.getByTestId("timeline-inspection-caret")).toBeTruthy();
+    });
+
+    it("coexists with hover and the real playhead", () => {
+      const { container } = renderRuler({ markerTime: 4, seekTo: 6 });
+      fireEvent(
+        screen.getByTestId("timeline-ruler"),
+        new MouseEvent("pointermove", { bubbles: true, clientX: 200 }),
+      );
+      expect(screen.getByTestId("timeline-inspection-caret")).toBeTruthy();
+      expect(screen.getByTestId("timeline-hover-caret")).toBeTruthy();
+      expect(
+        container.querySelector(`.${styles.playheadGroup}`),
+      ).not.toBeNull();
     });
   });
 

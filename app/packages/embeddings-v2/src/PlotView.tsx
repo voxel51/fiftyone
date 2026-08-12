@@ -47,8 +47,10 @@ import {
 } from "recoil";
 import { ColorLegend } from "./ColorLegend";
 import { ContinuousLegend } from "./ContinuousLegend";
-import { categoryHex, MISSING_CATEGORY } from "./colors";
+import { categoryCss, MISSING_CATEGORY } from "./colors";
+import { gridFilterPath } from "./filterPath";
 import HoverCard from "./HoverCard";
+import { legendCounts } from "./legendCounts";
 import {
   legendLabels,
   soloLabel,
@@ -65,6 +67,7 @@ import {
 } from "./renderer";
 import { clearSelectionNonceState, selectionCountState } from "./state";
 import { useColorColumn } from "./useColorColumn";
+import { useColorPalette } from "./useColorPalette";
 import { useHoverInfo } from "./useHoverInfo";
 import { useLocalColorMask } from "./useLocalColorMask";
 import { useMasks } from "./useMasks";
@@ -130,6 +133,7 @@ export default function PlotView({
 }) {
   const view = useRecoilValue(fos.view) as unknown[];
   const filters = useRecoilValue(fos.filters);
+  const isPatchesView = useRecoilValue(fos.isPatchesView);
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage,
   );
@@ -147,6 +151,13 @@ export default function PlotView({
     true,
   );
   const colorField = colorFieldState ?? null;
+  // The color-by endpoint speaks root-dataset paths, but the grid
+  // resolves filters against its CURRENT view's schema — so the filter
+  // atom is keyed by view vocabulary: the root path in a samples view,
+  // the re-rooted patch path in a patches view (see filterPath.ts)
+  const filterPath = colorField
+    ? gridFilterPath(colorField, run.patchesField ?? null, isPatchesView)
+    : null;
   const brainKey = run.brainKey;
 
   const plotRef = useRef<HTMLDivElement>(null);
@@ -155,18 +166,25 @@ export default function PlotView({
   const { loaded, error: loadError } = useRunColumns(datasetName, brainKey);
   const {
     choices,
-    colors,
     values: colorValues,
     meta: colorMeta,
     loading: colorLoading,
     error: colorError,
   } = useColorColumn(datasetName, brainKey, run, colorField);
+  // The palette lives in the App's color scheme, not in the fetched
+  // column: editing the pool (or a per-value override) recolors the plot
+  // in place, and values match their labels in the grid
+  const { palette, colorscale, colors } = useColorPalette(
+    colorField,
+    colorValues,
+    colorMeta,
+  );
   // The color-by field's filter evaluates client-side when provably
   // faithful (legend clicks never wait on the masks round trip); the
   // rest ships to the masks endpoint, identity-stable
   const { localMask, serverFilters } = useLocalColorMask(
     filters,
-    colorField,
+    filterPath,
     colorValues,
     colorMeta,
   );
@@ -174,6 +192,7 @@ export default function PlotView({
   const {
     visibleMask,
     visibleCount,
+    scopeMask,
     error: masksError,
   } = useMasks(
     datasetName,
@@ -184,11 +203,13 @@ export default function PlotView({
     localMask,
   );
   // The hover card's swatch mirrors the point's rendered color, which
-  // buildColors derives from the same class column
+  // buildColors derives from the same value column
   const pointSwatch = (index: number): string | null => {
     if (colorValues?.style !== "categorical") return null;
-    const classIndex = colorValues.indices[index];
-    return classIndex === MISSING_CATEGORY ? null : categoryHex(classIndex);
+    const valueIndex = colorValues.indices[index];
+    return valueIndex === MISSING_CATEGORY
+      ? null
+      : categoryCss(palette, valueIndex);
   };
 
   const { hover, handleHover } = useHoverInfo(
@@ -200,6 +221,7 @@ export default function PlotView({
   );
   const {
     selectedIndices,
+    lassoIndices,
     selectionCount,
     handleSelection,
     handlePointClick,
@@ -228,7 +250,7 @@ export default function PlotView({
   // only: the sidebar's numeric filters are range-shaped, not value
   // lists, so numeric-class legends render inert
   const fieldFilter = useRecoilValue(
-    fos.filter({ path: colorField ?? "", modal: false }),
+    fos.filter({ path: filterPath ?? "", modal: false }),
   );
   const legendFilter = (fieldFilter ?? null) as CategoricalFilter | null;
 
@@ -237,17 +259,35 @@ export default function PlotView({
     [colorMeta, legendFilter],
   );
 
+  // Focus (selection) wins over scope (view + filters); null means
+  // nothing to scope by, and the legend shows the run's full counts.
+  // A lasso's indices live in the bridge, never in fos.selectedSamples,
+  // so they lead and grid checkbox selections are the fallback focus
+  const focusIndices = lassoIndices ?? selectedIndices;
+  const scopedCounts = useMemo(
+    () =>
+      colorValues?.style === "categorical" && colorMeta?.classes?.length
+        ? legendCounts(
+            colorValues.indices,
+            colorMeta.classes.length,
+            focusIndices,
+            scopeMask,
+          )
+        : null,
+    [colorValues, colorMeta, focusIndices, scopeMask],
+  );
+
   // Writes read the filter from a fresh snapshot, not the render-time
   // value — rapid clicks must each transform the latest state, or a
   // click can silently compute from a stale base and drop its
-  // predecessor. A dblclick arrives as click-click-dblclick; the two
-  // toggles cancel (toggle is its own inverse), then the solo lands —
-  // no click timers
+  // predecessor. (Double-click handling lives in ColorLegend, which
+  // defers single-click toggles and cancels them when the second
+  // click arrives)
   const handleLegendClick = useRecoilCallback(
     ({ snapshot, set, reset }) =>
       (label: string, solo: boolean) => {
-        if (!colorField || !legend) return;
-        const filterState = fos.filter({ path: colorField, modal: false });
+        if (!filterPath || !legend) return;
+        const filterState = fos.filter({ path: filterPath, modal: false });
         const current = (snapshot.getLoadable(filterState).valueMaybe() ??
           null) as CategoricalFilter | null;
         const transform = solo ? soloLabel : toggleLabel;
@@ -258,7 +298,7 @@ export default function PlotView({
           reset(filterState);
         }
       },
-    [colorField, legend],
+    [filterPath, legend],
   );
   const handleLegendToggle = (label: string) => handleLegendClick(label, false);
   const handleLegendSolo = (label: string) => handleLegendClick(label, true);
@@ -266,11 +306,11 @@ export default function PlotView({
   const resetLegendFilter = useRecoilCallback(
     ({ reset }) =>
       () => {
-        if (colorField) {
-          reset(fos.filter({ path: colorField, modal: false }));
+        if (filterPath) {
+          reset(fos.filter({ path: filterPath, modal: false }));
         }
       },
-    [colorField],
+    [filterPath],
   );
 
   const error =
@@ -288,14 +328,16 @@ export default function PlotView({
     [choices, run.pointsField],
   );
 
-  // A completed lasso returns gestures to the camera, so the
-  // selection can be explored immediately without switching modes
+  // A completed 3D lasso returns gestures to the camera — orbiting to
+  // inspect the selection is the natural next step. 2D stays in select
+  // mode so lassos can be redrawn without re-arming the tool
+  // (FOEPD-4319); each new lasso replaces the previous selection
   const handleLasso = (
     indices: number[],
     polygon?: Array<[number, number]> | null,
   ) => {
     handleSelection(indices, polygon);
-    if (indices.length) setMode("explore");
+    if (indices.length && run.dims === 3) setMode("explore");
   };
 
   const chipCount = selectionCount ?? (selectedSamples.size || null);
@@ -458,13 +500,19 @@ export default function PlotView({
           <ColorLegend
             field={colorField}
             meta={colorMeta}
+            palette={palette}
             offLabels={legend?.off ?? null}
+            scopedCounts={scopedCounts}
             onToggle={handleLegendToggle}
             onSolo={handleLegendSolo}
           />
         )}
         {colorField && colorMeta && colorMeta.style === "continuous" && (
-          <ContinuousLegend field={colorField} meta={colorMeta} />
+          <ContinuousLegend
+            field={colorField}
+            meta={colorMeta}
+            colorscale={colorscale}
+          />
         )}
         {chipCount ? (
           <div className="emb-plot-overlay emb-plot-chip">

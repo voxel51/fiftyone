@@ -124,10 +124,10 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
                   size={Size.Xs}
                   data-testid="tiling-header-add-tile"
                   leadingIcon={IconName.GridView}
-                  aria-label="Add Tile"
-                  title="Add Tile"
+                  aria-label="Layout"
+                  title="Layout"
                 >
-                  Add Tile
+                  Layout
                 </Button>
               }
             >

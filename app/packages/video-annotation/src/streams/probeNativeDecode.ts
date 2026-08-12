@@ -14,6 +14,8 @@ export interface NativeDecodeProbeResult {
   codec?: string;
   /** Why not, when `decodable` is false (diagnostics). */
   reason?: string;
+  /** Audio track present in the container; undefined when unknown. */
+  hasAudio?: boolean;
 }
 
 /** Give up (report not-decodable) if the probe hasn't answered by now. */
@@ -63,6 +65,7 @@ export function probeNativeDecode(
           decodable: msg.decodable,
           codec: msg.codec,
           reason: msg.reason,
+          hasAudio: msg.hasAudio,
         });
       }
     };

@@ -31,6 +31,7 @@ const info = (n: number): RunInfo => ({
   pointsField: null,
   model: null,
   ready: true,
+  error: null,
   timestamp: null,
   n,
 });

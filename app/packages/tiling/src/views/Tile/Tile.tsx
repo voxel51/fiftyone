@@ -49,8 +49,9 @@ export interface TileHeaderProps {
  * (the toolbar is the drag source — the entire header becomes the drag
  * handle). The split actions rest as ONE direction-neutral glyph (so the
  * affordance is always advertised) and resolve into the split-right /
- * split-down pair on header hover or keyboard focus; fullscreen and
- * close stay persistent.
+ * split-down pair when the pointer is over that glyph specifically (or
+ * on keyboard focus into the pair) — not on any hover of the header;
+ * fullscreen and close stay persistent.
  */
 export const TileHeader: React.FC<TileHeaderProps> = ({
   title,
@@ -181,7 +182,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
       )}
       <div className={styles.actions}>
         {(onSplitRight || onSplitDown) && (
-          <>
+          <div className={styles.splitGroup}>
             {/* Decorative stand-in, never interactive: by the time a
                 pointer could click it, hover has already swapped in the
                 real buttons. A Button (focus-skipped) keeps its box
@@ -219,7 +220,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
                 />
               )}
             </div>
-          </>
+          </div>
         )}
         <Button
           variant={Variant.Borderless}
