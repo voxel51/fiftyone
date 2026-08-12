@@ -135,12 +135,9 @@ function normalizeColorscale(raw: unknown): Colorscale | null {
 
 /**
  * The continuous colorscale for a color-by field: a field-specific entry
- * from the scheme, then the scheme's default — the entries the grid's own
- * heatmap overlays read, so a configured field means the plot and the grid
- * agree on which colorscale describes it. NOT the app config's scale: that
- * is a synthetic default (canonical viridis), not a user's choice, and its
- * near-black low end vanishes against the plot's dark canvas — an
- * unconfigured field gets the plot's own bright default instead.
+ * from the scheme, then the scheme's default, then the app config's — the
+ * same fallback order the grid's own heatmap overlays use, so a plot and
+ * the grid agree on which colorscale describes a given field.
  *
  * Every parameter is accepted as `unknown`: the App's own Session type for
  * `fos.colorScheme` is declared against the mutation INPUT shape (which
@@ -152,37 +149,30 @@ export function resolveColorscale(
   field: string | null,
   colorscales: unknown,
   defaultColorscale: unknown,
+  /** `fos.coloring.scale` — the app config's fallback, also raw 0-255 RGB */
+  appScale: unknown,
 ): Colorscale {
   const scales = colorscales as readonly ColorscaleSetting[] | null | undefined;
-  const fieldEntry = field
-    ? scales?.find((entry) => entry.path === field)
+  const fieldRaw = field
+    ? scales?.find((entry) => entry.path === field)?.rgb
     : null;
-  const defaultEntry = defaultColorscale as ColorscaleSetting | null;
+  const defaultRaw = (defaultColorscale as ColorscaleSetting | null)?.rgb;
   const resolved =
-    normalizeColorscale(fieldEntry?.rgb) ??
-    normalizeColorscale(defaultEntry?.rgb);
+    normalizeColorscale(fieldRaw) ??
+    normalizeColorscale(defaultRaw) ??
+    normalizeColorscale(appScale);
   return resolved ?? DEFAULT_COLORSCALE;
 }
 
-/** The RGB at position t ∈ [0, 1] in a resolved colorscale, interpolated
- * between the two straddling stops. On the server's dense arrays this is
- * indistinguishable from the grid's nearest-stop reads; on a sparse entry
- * (a fresh ramp pick, the built-in default) nearest-stop would band the
- * whole plot into a handful of flat colors. */
+/** The RGB at position t ∈ [0, 1] in a resolved colorscale — nearest-stop
+ * lookup, matching how the grid's own heatmap overlays read these same
+ * server-precomputed dense arrays (not live multi-stop interpolation). */
 function colorscaleRgbAt(colorscale: Colorscale, t: number): RGB {
   if (colorscale.length === 0) colorscale = DEFAULT_COLORSCALE;
   if (colorscale.length === 1) return colorscale[0];
   const clamped = Math.min(1, Math.max(0, t));
-  const scaled = clamped * (colorscale.length - 1);
-  const i = Math.min(colorscale.length - 2, Math.floor(scaled));
-  const f = scaled - i;
-  const a = colorscale[i];
-  const b = colorscale[i + 1];
-  return [
-    a[0] + f * (b[0] - a[0]),
-    a[1] + f * (b[1] - a[1]),
-    a[2] + f * (b[2] - a[2]),
-  ];
+  const index = Math.round(clamped * (colorscale.length - 1));
+  return colorscale[index];
 }
 
 /**

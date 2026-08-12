@@ -316,19 +316,16 @@ export function useRunPlotData(
     colorMeta?.style === "continuous" ? colorField : null;
   const rampId = useMemo(() => {
     // The check mark reflects what's APPLIED: the field's entry when it has
-    // one, else the scheme default, else the built-in blue → orange (which
-    // is what resolveColorscale paints when nothing is configured)
+    // one, else the scheme default. Nothing configured means the app
+    // config's scale applies (viridis, same fallback the grid uses) — no
+    // ramp row is checked
     const entry = colorscaleTarget
       ? colorScheme.colorscales?.find(
           (setting) => setting.path === colorscaleTarget,
         )
       : undefined;
     if (entry) return rampIdForEntry(entry);
-    const fallback = colorScheme.defaultColorscale;
-    if (fallback?.name || fallback?.list?.length) {
-      return rampIdForEntry(fallback);
-    }
-    return "blueOrange";
+    return rampIdForEntry(colorScheme.defaultColorscale);
   }, [colorScheme, colorscaleTarget]);
   const setRampId = useCallback(
     (id: ContinuousRampId) => {

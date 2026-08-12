@@ -22,7 +22,8 @@ export function useColorPalette(
   values: ColorValues | null,
   meta: ColorMeta | null,
   /** Overrides the value domain continuous colors map through (a diverging
-   * ramp centers it on zero — see ramps.ts); null maps meta's min..max. */
+   * ramp centers it on zero — see `rampDomain` in `@fiftyone/utilities`);
+   * null maps meta's min..max. */
   domain: readonly [number, number] | null = null,
 ): {
   palette: PlotPalette;
@@ -31,6 +32,7 @@ export function useColorPalette(
 } {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const colorMap = useRecoilValue(fos.colorMap);
+  const appScale = useRecoilValue(fos.coloring).scale;
 
   const palette = useMemo(
     () => resolvePalette(field, meta, colorMap, colorScheme.fields),
@@ -43,8 +45,9 @@ export function useColorPalette(
         field,
         colorScheme.colorscales,
         colorScheme.defaultColorscale,
+        appScale,
       ),
-    [field, colorScheme.colorscales, colorScheme.defaultColorscale],
+    [field, colorScheme.colorscales, colorScheme.defaultColorscale, appScale],
   );
 
   const colors = useMemo(

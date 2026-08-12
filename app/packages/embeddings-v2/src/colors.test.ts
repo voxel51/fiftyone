@@ -148,6 +148,7 @@ describe("resolveColorscale", () => {
   // this down to the 0-1 floats the rest of this file works in
   const FIELD_SCALE_255 = [[10, 10, 10]];
   const DEFAULT_SCALE_255 = [[20, 20, 20]];
+  const APP_SCALE_255 = [[30, 30, 30]];
   const normalized = (rgb255: number[][]): Colorscale =>
     rgb255.map(([r, g, b]) => [r / 255, g / 255, b / 255]);
 
@@ -157,6 +158,7 @@ describe("resolveColorscale", () => {
         "uniqueness",
         [{ path: "uniqueness", rgb: FIELD_SCALE_255 }],
         { rgb: DEFAULT_SCALE_255 },
+        APP_SCALE_255,
       ),
     ).toEqual(normalized(FIELD_SCALE_255));
   });
@@ -167,14 +169,19 @@ describe("resolveColorscale", () => {
         "uniqueness",
         [{ path: "other_field", rgb: FIELD_SCALE_255 }],
         { rgb: DEFAULT_SCALE_255 },
+        APP_SCALE_255,
       ),
     ).toEqual(normalized(DEFAULT_SCALE_255));
   });
 
+  it("falls back to the app config's colorscale", () => {
+    expect(resolveColorscale("uniqueness", [], null, APP_SCALE_255)).toEqual(
+      normalized(APP_SCALE_255),
+    );
+  });
+
   it("falls back to the built-in ramp when nothing resolves", () => {
-    // NOT the app config's synthetic viridis: an unconfigured field gets
-    // the plot's own bright default (see resolveColorscale)
-    const resolved = resolveColorscale("uniqueness", null, null);
+    const resolved = resolveColorscale("uniqueness", null, null, null);
     expect(resolved.length).toBeGreaterThan(0);
   });
 });
