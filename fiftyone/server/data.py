@@ -8,7 +8,7 @@ FiftyOne Server data
 from dataclasses import dataclass
 import typing as t
 
-import motor.motor_asyncio as mtr
+from pymongo.asynchronous.database import AsyncDatabase
 import starlette.requests as strq
 import starlette.responses as strp
 import strawberry.types as gqlt
@@ -20,7 +20,7 @@ T = t.TypeVar("T")
 
 @dataclass
 class Context:
-    db: mtr.AsyncIOMotorDatabase
+    db: AsyncDatabase
     dataloaders: t.Dict[t.Type[t.Any], DataLoader[str, t.Type[t.Any]]]
     request: strq.Request
     response: strp.Response

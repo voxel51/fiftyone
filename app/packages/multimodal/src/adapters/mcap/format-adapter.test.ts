@@ -313,6 +313,16 @@ describe("MCAP format adapter", () => {
             sourceName: "/tf",
             sourceStreamId: "/tf",
           },
+          {
+            childFrameId: "base_link",
+            firstObservedTimeNs: 150n,
+            kind: "static" as const,
+            lastObservedTimeNs: 160n,
+            occurrenceCount: 4,
+            parentFrameId: "map",
+            sourceName: "/tf",
+            sourceStreamId: "/tf",
+          },
         ],
         frameUses: [
           {
@@ -342,6 +352,17 @@ describe("MCAP format adapter", () => {
         stopReason: "source-exhausted" as const,
         usage: topologyUsage,
       });
+    vi.mocked(client.readFrameTransformBootstrap).mockResolvedValue({
+      samples: [
+        {
+          childFrameId: "base_link",
+          parentFrameId: "map",
+          rotation: new Quaternion(),
+          sourceName: "/tf",
+          translation: new Vector3(),
+        },
+      ],
+    });
     const session = await createMcapFormatAdapter({
       createClient: () => client,
     }).open(source, io);
@@ -366,6 +387,17 @@ describe("MCAP format adapter", () => {
         { priority: "bulk", signal: undefined },
       );
       expect(result?.edges[0]?.sourceStreamId).toBe("tf");
+      expect(result?.edges).toContainEqual(
+        expect.objectContaining({
+          childFrameId: "base_link",
+          firstObservedTimeNs: 1n,
+          kind: "static",
+          lastObservedTimeNs: 160n,
+          occurrenceCount: 4,
+          parentFrameId: "map",
+          sourceStreamId: "tf",
+        }),
+      );
       expect(result?.continuation).toBe(continuation);
 
       const resumed = await session.transformTopology?.scan({
@@ -379,22 +411,23 @@ describe("MCAP format adapter", () => {
       );
       expect(resumed?.frameUses).toEqual([
         {
-          frameId: "camera",
-          sourceName: "/camera",
-          streamId: "/camera",
-        },
-        {
           frameId: "lidar",
           sourceName: "/points",
           streamId: "points",
         },
+        {
+          frameId: "camera",
+          sourceName: "/camera",
+          streamId: "/camera",
+        },
       ]);
+      expect(client.readFrameTransformBootstrap).toHaveBeenCalledOnce();
     } finally {
       session.dispose();
     }
   });
 
-  it("charges failed topology grants conservatively", async () => {
+  it("authorizes each explicit topology grant independently", async () => {
     const client = createClient();
     vi.mocked(client.readTopics).mockResolvedValue(
       recordingInventory([
@@ -410,10 +443,10 @@ describe("MCAP format adapter", () => {
       throw new Error("transform decode failed");
     });
     const allowance = {
-      maxMessages: 10,
-      maxSourceBytes: 1_000,
-      maxUncompressedBytes: 2_000,
-      maxWallTimeMs: 100,
+      maxMessages: 40,
+      maxSourceBytes: 4_000,
+      maxUncompressedBytes: 8_000,
+      maxWallTimeMs: 400,
     };
     const session = await createMcapFormatAdapter({
       boundedSourceAllowance: allowance,
@@ -426,7 +459,116 @@ describe("MCAP format adapter", () => {
 
       await expect(
         session.transformTopology?.scan({ budget: allowance }),
-      ).resolves.toMatchObject({ stopReason: "account-exhausted" });
+      ).rejects.toThrow("transform decode failed");
+      expect(client.readTransformTopology).toHaveBeenCalledTimes(2);
+      expect(client.readFrameTransformBootstrap).toHaveBeenCalledTimes(2);
+      expect(client.readTransformTopology).toHaveBeenCalledWith(
+        expect.objectContaining({
+          absoluteBudget: allowance,
+          budget: allowance,
+        }),
+        expect.anything(),
+      );
+      expect(session.boundedRead?.openAccount(allowance).remaining()).toEqual({
+        maxMessages: 40,
+        maxSourceBytes: 4_000,
+        maxUncompressedBytes: 8_000,
+        maxWallTimeMs: 400,
+      });
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("allows explicit topology grants after general bounded reads exhaust", async () => {
+    const client = createClient();
+    vi.mocked(client.readTopics).mockResolvedValue(
+      recordingInventory([
+        create(StreamInventorySchema, {
+          displayName: "/tf",
+          metadata: { "mcap.topic": "/tf" },
+          payload: { encoding: "ros2", schema: "tf2_msgs/msg/TFMessage" },
+          streamId: "tf",
+        }),
+        create(StreamInventorySchema, {
+          displayName: "/camera",
+          metadata: { "mcap.topic": "/camera" },
+          payload: { encoding: "ros2", schema: "sensor_msgs/msg/Image" },
+          streamId: "camera",
+        }),
+      ]),
+    );
+    vi.mocked(client.readBoundedMessages).mockResolvedValue({
+      coverageByTopic: new Map(),
+      messages: [],
+      stopReason: "source-exhausted",
+      usage: {
+        chunksOpened: 4,
+        decompressedBytes: 128 * 1024 * 1024,
+        decompressionCacheHits: 0,
+        elapsedMs: 2_000,
+        logicalSourceBytes: 64 * 1024 * 1024,
+        logicalUncompressedBytes: 128 * 1024 * 1024,
+        messagesDecoded: 40_000,
+        transferredBytes: 64 * 1024 * 1024,
+      },
+    });
+    client.readTransformTopology = vi.fn(async () => ({
+      coverageByTopic: new Map(),
+      edges: [],
+      frameUses: [],
+      stopReason: "source-exhausted" as const,
+      usage: {
+        chunksOpened: 1,
+        decompressedBytes: 32 * 1024 * 1024,
+        decompressionCacheHits: 0,
+        elapsedMs: 500,
+        logicalSourceBytes: 16 * 1024 * 1024,
+        logicalUncompressedBytes: 32 * 1024 * 1024,
+        messagesDecoded: 10_000,
+        transferredBytes: 16 * 1024 * 1024,
+      },
+    }));
+    const allowance = {
+      maxMessages: 40_000,
+      maxSourceBytes: 64 * 1024 * 1024,
+      maxUncompressedBytes: 128 * 1024 * 1024,
+      maxWallTimeMs: 2_000,
+    };
+    const session = await createMcapFormatAdapter({
+      boundedSourceAllowance: allowance,
+      createClient: () => client,
+    }).open(source, io);
+    try {
+      const account = session.boundedRead?.openAccount(allowance);
+      await account?.createJob().read({
+        budget: {
+          maxMessages: 40_000,
+          maxSourceBytes: 64 * 1024 * 1024,
+          maxUncompressedBytes: 128 * 1024 * 1024,
+          maxWallTimeMs: 2_000,
+        },
+        streams: ["camera"],
+        window: { endNs: 2n, startNs: 1n },
+      });
+      expect(account?.remaining()).toEqual({
+        maxMessages: 0,
+        maxSourceBytes: 0,
+        maxUncompressedBytes: 0,
+        maxWallTimeMs: 0,
+      });
+
+      await expect(
+        session.transformTopology?.scan({
+          budget: {
+            maxMessages: 10_000,
+            maxSourceBytes: 16 * 1024 * 1024,
+            maxUncompressedBytes: 32 * 1024 * 1024,
+            maxWallTimeMs: 500,
+          },
+        }),
+      ).resolves.toMatchObject({ stopReason: "source-exhausted" });
+      expect(client.readFrameTransformBootstrap).toHaveBeenCalledOnce();
       expect(client.readTransformTopology).toHaveBeenCalledOnce();
     } finally {
       session.dispose();

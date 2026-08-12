@@ -111,6 +111,28 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertIsNotNone(info["timestamp"])
 
     @drop_datasets
+    def test_run_info_answers_counts_from_results_meta(self):
+        # A run whose results class records its counts beside the run doc
+        # (see BaseRunResults.get_meta) answers run-info without pulling
+        # the results blob through the server
+        dataset, points = _make_samples_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+
+        run_doc = dataset._doc.brain_methods["viz"]
+        run_doc.results_meta = {"num_points": len(points), "num_dims": 2}
+        run_doc.save()
+
+        with mock.patch.object(
+            fo.Dataset,
+            "load_brain_results",
+            side_effect=AssertionError("results blob was loaded"),
+        ):
+            info = v2.EmbeddingsV2RunInfo._post_sync(None, base)
+
+        self.assertEqual(info["n"], len(points))
+        self.assertEqual(info["dims"], 2)
+
+    @drop_datasets
     def test_runs_status(self):
         # The status route peeks at run documents only, so it must agree
         # with the dataset query's own readiness/error verdicts without

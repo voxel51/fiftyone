@@ -181,9 +181,7 @@ class EditFieldValues(foo.Operator):
     def execute(self, ctx):
         path = ctx.params["path"]
         map = ctx.params["map"]
-        target = ctx.params.get("target", None)
-
-        target_view = _get_target_view(ctx, target)
+        target_view = ctx.target_view(param_name="target", require_flat=True)
 
         f = _make_parse_field_fcn(ctx, path)
 
@@ -219,42 +217,18 @@ def _make_parse_field_fcn(ctx, path):
 
 
 def _edit_field_values_inputs(ctx, inputs):
-    has_view = ctx.view != ctx.dataset.view()
-    has_selected = bool(ctx.selected)
-    default_target = None
-    if has_view or has_selected:
-        target_choices = types.RadioGroup()
-        target_choices.add_choice(
-            "DATASET",
-            label="Entire dataset",
-            description="Edit field values for the entire dataset",
-        )
-
-        if has_view:
-            target_choices.add_choice(
-                "CURRENT_VIEW",
-                label="Current view",
-                description="Edit field values for the current view",
-            )
-            default_target = "CURRENT_VIEW"
-
-        if has_selected:
-            target_choices.add_choice(
-                "SELECTED_SAMPLES",
-                label="Selected samples",
-                description="Edit field values for the selected samples",
-            )
-            default_target = "SELECTED_SAMPLES"
-
-        inputs.enum(
-            "target",
-            target_choices.values(),
-            default=default_target,
-            view=target_choices,
-        )
-
-    target = ctx.params.get("target", default_target)
-    target_view = _get_target_view(ctx, target)
+    inputs.view_target(
+        ctx,
+        name="target",
+        action_description="Edit field values for",
+        dataset_description="Edit field values for the entire dataset",
+        current_view_description="Edit field values for the current view",
+        selected_samples_description=(
+            "Edit field values for the selected samples"
+        ),
+        require_flat=True,
+    )
+    target_view = ctx.target_view(param_name="target", require_flat=True)
 
     schema = target_view.get_field_schema(flat=True)
     if target_view._has_frame_fields():
@@ -430,51 +404,25 @@ class CloneSampleField(foo.Operator):
     def execute(self, ctx):
         field_name = ctx.params["field_name"]
         new_field_name = ctx.params["new_field_name"]
-        target = ctx.params.get("target", None)
-
-        target_view = _get_target_view(ctx, target)
+        target_view = ctx.target_view(param_name="target", require_flat=True)
 
         target_view.clone_sample_field(field_name, new_field_name)
         ctx.trigger("reload_dataset")
 
 
 def _clone_sample_field_inputs(ctx, inputs):
-    has_view = ctx.view != ctx.dataset.view()
-    has_selected = bool(ctx.selected)
-    default_target = None
-    if has_view or has_selected:
-        target_choices = types.RadioGroup()
-        target_choices.add_choice(
-            "DATASET",
-            label="Entire dataset",
-            description="Clone sample field for the entire dataset",
-        )
-
-        if has_view:
-            target_choices.add_choice(
-                "CURRENT_VIEW",
-                label="Current view",
-                description="Clone sample field for the current view",
-            )
-            default_target = "CURRENT_VIEW"
-
-        if has_selected:
-            target_choices.add_choice(
-                "SELECTED_SAMPLES",
-                label="Selected samples",
-                description="Clone sample field for the selected samples",
-            )
-            default_target = "SELECTED_SAMPLES"
-
-        inputs.enum(
-            "target",
-            target_choices.values(),
-            default=default_target,
-            view=target_choices,
-        )
-
-    target = ctx.params.get("target", default_target)
-    target_view = _get_target_view(ctx, target)
+    inputs.view_target(
+        ctx,
+        name="target",
+        action_description="Clone sample field for",
+        dataset_description="Clone sample field for the entire dataset",
+        current_view_description="Clone sample field for the current view",
+        selected_samples_description=(
+            "Clone sample field for the selected samples"
+        ),
+        require_flat=True,
+    )
+    target_view = ctx.target_view(param_name="target", require_flat=True)
 
     schema = target_view.get_field_schema(flat=True)
     full_schema = ctx.dataset.get_field_schema(flat=True)
@@ -543,9 +491,7 @@ class CloneFrameField(foo.Operator):
     def execute(self, ctx):
         field_name = ctx.params["field_name"]
         new_field_name = ctx.params["new_field_name"]
-        target = ctx.params.get("target", None)
-
-        target_view = _get_target_view(ctx, target)
+        target_view = ctx.target_view(param_name="target", require_flat=True)
 
         target_view.clone_frame_field(field_name, new_field_name)
         ctx.trigger("reload_dataset")
@@ -561,42 +507,18 @@ def _clone_frame_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
-    has_view = ctx.view != ctx.dataset.view()
-    has_selected = bool(ctx.selected)
-    default_target = None
-    if has_view or has_selected:
-        target_choices = types.RadioGroup()
-        target_choices.add_choice(
-            "DATASET",
-            label="Entire dataset",
-            description="Clone frame field for the entire dataset",
-        )
-
-        if has_view:
-            target_choices.add_choice(
-                "CURRENT_VIEW",
-                label="Current view",
-                description="Clone frame field for the current view",
-            )
-            default_target = "CURRENT_VIEW"
-
-        if has_selected:
-            target_choices.add_choice(
-                "SELECTED_SAMPLES",
-                label="Selected samples",
-                description="Clone frame field for the selected samples",
-            )
-            default_target = "SELECTED_SAMPLES"
-
-        inputs.enum(
-            "target",
-            target_choices.values(),
-            default=default_target,
-            view=target_choices,
-        )
-
-    target = ctx.params.get("target", default_target)
-    target_view = _get_target_view(ctx, target)
+    inputs.view_target(
+        ctx,
+        name="target",
+        action_description="Clone frame field for",
+        dataset_description="Clone frame field for the entire dataset",
+        current_view_description="Clone frame field for the current view",
+        selected_samples_description=(
+            "Clone frame field for the selected samples"
+        ),
+        require_flat=True,
+    )
+    target_view = ctx.target_view(param_name="target", require_flat=True)
 
     schema = target_view.get_frame_field_schema(flat=True)
     full_schema = ctx.dataset.get_frame_field_schema(flat=True)
@@ -847,51 +769,25 @@ class ClearSampleField(foo.Operator):
 
     def execute(self, ctx):
         field_names = ctx.params["field_names"]
-        target = ctx.params.get("target", None)
-
-        target_view = _get_target_view(ctx, target)
+        target_view = ctx.target_view(param_name="target", require_flat=True)
 
         target_view.clear_sample_fields(field_names)
         ctx.trigger("reload_dataset")
 
 
 def _clear_sample_field_inputs(ctx, inputs):
-    has_view = ctx.view != ctx.dataset.view()
-    has_selected = bool(ctx.selected)
-    default_target = None
-    if has_view or has_selected:
-        target_choices = types.RadioGroup()
-        target_choices.add_choice(
-            "DATASET",
-            label="Entire dataset",
-            description="Clear sample field(s) for the entire dataset",
-        )
-
-        if has_view:
-            target_choices.add_choice(
-                "CURRENT_VIEW",
-                label="Current view",
-                description="Clear sample field(s) for the current view",
-            )
-            default_target = "CURRENT_VIEW"
-
-        if has_selected:
-            target_choices.add_choice(
-                "SELECTED_SAMPLES",
-                label="Selected samples",
-                description="Clear sample field(s) for the selected samples",
-            )
-            default_target = "SELECTED_SAMPLES"
-
-        inputs.enum(
-            "target",
-            target_choices.values(),
-            default=default_target,
-            view=target_choices,
-        )
-
-    target = ctx.params.get("target", default_target)
-    target_view = _get_target_view(ctx, target)
+    inputs.view_target(
+        ctx,
+        name="target",
+        action_description="Clear sample field(s) for",
+        dataset_description="Clear sample field(s) for the entire dataset",
+        current_view_description="Clear sample field(s) for the current view",
+        selected_samples_description=(
+            "Clear sample field(s) for the selected samples"
+        ),
+        require_flat=True,
+    )
+    target_view = ctx.target_view(param_name="target", require_flat=True)
 
     schema = target_view.get_field_schema(flat=True)
     schema.pop("id", None)
@@ -950,9 +846,7 @@ class ClearFrameField(foo.Operator):
 
     def execute(self, ctx):
         field_names = ctx.params["field_names"]
-        target = ctx.params.get("target", None)
-
-        target_view = _get_target_view(ctx, target)
+        target_view = ctx.target_view(param_name="target", require_flat=True)
 
         target_view.clear_frame_fields(field_names)
         ctx.trigger("reload_dataset")
@@ -968,42 +862,18 @@ def _clear_frame_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
-    has_view = ctx.view != ctx.dataset.view()
-    has_selected = bool(ctx.selected)
-    default_target = None
-    if has_view or has_selected:
-        target_choices = types.RadioGroup()
-        target_choices.add_choice(
-            "DATASET",
-            label="Entire dataset",
-            description="Clear frame field(s) for the entire dataset",
-        )
-
-        if has_view:
-            target_choices.add_choice(
-                "CURRENT_VIEW",
-                label="Current view",
-                description="Clear frame field(s) for the current view",
-            )
-            default_target = "CURRENT_VIEW"
-
-        if has_selected:
-            target_choices.add_choice(
-                "SELECTED_SAMPLES",
-                label="Selected samples",
-                description="Clear frame field(s) for the selected samples",
-            )
-            default_target = "SELECTED_SAMPLES"
-
-        inputs.enum(
-            "target",
-            target_choices.values(),
-            default=default_target,
-            view=target_choices,
-        )
-
-    target = ctx.params.get("target", default_target)
-    target_view = _get_target_view(ctx, target)
+    inputs.view_target(
+        ctx,
+        name="target",
+        action_description="Clear frame field(s) for",
+        dataset_description="Clear frame field(s) for the entire dataset",
+        current_view_description="Clear frame field(s) for the current view",
+        selected_samples_description=(
+            "Clear frame field(s) for the selected samples"
+        ),
+        require_flat=True,
+    )
+    target_view = ctx.target_view(param_name="target", require_flat=True)
 
     schema = target_view.get_frame_field_schema(flat=True)
     schema.pop("id", None)
@@ -3385,19 +3255,6 @@ def list_files(dirpath):
         for d in fos.list_files(dirpath, return_metadata=True)
     ]
     return dirs + files
-
-
-def _get_target_view(ctx, target):
-    if target == "SELECTED_LABELS":
-        return ctx.view.select_labels(labels=ctx.selected_labels)
-
-    if target == "SELECTED_SAMPLES":
-        return ctx.view.select(ctx.selected)
-
-    if target == "DATASET":
-        return ctx.dataset
-
-    return ctx.view
 
 
 def _get_non_default_sample_fields(dataset):

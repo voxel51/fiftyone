@@ -111,6 +111,25 @@ describe("transform topology model", () => {
       "a-leaf",
     ]);
     expect(analysis.components[0]?.dataBearingFrameCount).toBe(1);
+    expect(
+      analysis.issues.find((issue) => issue.kind === "disconnected-components"),
+    ).toMatchObject({ severity: "warning" });
+  });
+
+  it("warns when transform-only components are disconnected", () => {
+    const analysis = analyzeTransformTopology(
+      [observation("map", "oxts"), observation("odom", "base_link")],
+      [],
+    );
+
+    expect(analysis.issues).toEqual([
+      expect.objectContaining({
+        affectedFrameIds: ["base_link", "map", "odom", "oxts"],
+        kind: "disconnected-components",
+        severity: "warning",
+        title: "Transform graph is disconnected",
+      }),
+    ]);
   });
 
   it("reports data-bearing streams split across disconnected components", () => {
@@ -122,6 +141,9 @@ describe("transform topology model", () => {
     expect(
       analysis.issues.find((issue) => issue.kind === "disconnected-data"),
     ).toMatchObject({ severity: "error" });
+    expect(
+      analysis.issues.some((issue) => issue.kind === "disconnected-components"),
+    ).toBe(false);
   });
 
   it("retains cycles and conflicting relationships as actionable issues", () => {
@@ -173,15 +195,10 @@ describe("transform topology model", () => {
 });
 
 describe("transform topology layout", () => {
-  it("returns finite bounds for empty evidence", () => {
+  it("returns no nodes for empty evidence", () => {
     const layout = layoutTransformTopology(analyzeTransformTopology([], []));
 
     expect(layout.nodes).toEqual([]);
-    expect(layout.edges).toEqual([]);
-    expect(layout.bounds.width).toBeGreaterThan(0);
-    expect(layout.bounds.height).toBeGreaterThan(0);
-    expect(Number.isFinite(layout.bounds.width)).toBe(true);
-    expect(Number.isFinite(layout.bounds.height)).toBe(true);
   });
 
   it("is deterministic and cycle-safe", () => {
@@ -199,8 +216,5 @@ describe("transform topology layout", () => {
       "b",
       "c",
     ]);
-    expect(first.edges).toHaveLength(3);
-    expect(first.bounds.width).toBeGreaterThan(0);
-    expect(first.bounds.height).toBeGreaterThan(0);
   });
 });

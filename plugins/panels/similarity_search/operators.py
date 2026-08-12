@@ -120,7 +120,7 @@ class SimilaritySearchOperator(foo.Operator):
                 if is_snapshot or not can_edit:
                     dist_field = None
 
-            view = ctx.target_view()
+            view = ctx.target_view(require_flat=True)
 
             ctx.set_progress(0.2, label="Preparing query...")
 

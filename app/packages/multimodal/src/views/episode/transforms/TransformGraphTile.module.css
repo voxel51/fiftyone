@@ -12,7 +12,7 @@
 
 .summary {
   align-items: center;
-  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  border-bottom: 1px solid var(--color-content-border-default);
   display: flex;
   flex: none;
   gap: 16px;
@@ -35,7 +35,7 @@
 }
 
 .metric {
-  border-right: 1px solid var(--color-content-border-default, #383835);
+  border-right: 1px solid var(--color-content-border-default);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -51,11 +51,11 @@
   align-items: center;
   background: color-mix(
     in srgb,
-    var(--fo-palette-warning-main, #b58105) 12%,
+    var(--color-content-text-warning) 12%,
     transparent
   );
   border-bottom: 1px solid
-    color-mix(in srgb, var(--fo-palette-warning-main, #b58105) 35%, transparent);
+    color-mix(in srgb, var(--color-content-text-warning) 35%, transparent);
   display: flex;
   flex: none;
   gap: 12px;
@@ -85,199 +85,15 @@
   min-width: 0;
 }
 
-.graphToolbar {
-  align-items: center;
-  border-bottom: 1px solid var(--color-content-border-default, #383835);
-  display: flex;
-  flex: none;
-  gap: 10px;
-  min-height: 44px;
-  padding: 6px 10px;
-}
-
-.searchField {
-  margin: 0;
-  max-width: 260px;
-  min-width: 160px;
-}
-
-.canvas {
-  background:
-    radial-gradient(
-        circle at 1px 1px,
-        color-mix(in srgb, var(--color-content-text-muted) 14%, transparent) 1px,
-        transparent 1.2px
-      )
-      0 0 / 18px 18px,
-    var(--fo-palette-background-level1, #0b0d10);
-  cursor: grab;
-  flex: 1;
-  min-height: 180px;
-  overflow: hidden;
-  position: relative;
-  touch-action: none;
-}
-
-.canvas:active {
-  cursor: grabbing;
-}
-
-.canvasControls {
-  align-items: center;
-  background: color-mix(
-    in srgb,
-    var(--fo-palette-background-level2, #15171b) 92%,
-    transparent
-  );
-  border: 1px solid var(--color-content-border-default, #383835);
-  border-radius: 7px;
-  box-shadow: 0 4px 14px rgb(0 0 0 / 24%);
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  z-index: 2;
-}
-
-.svg {
-  height: 100%;
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-  position: absolute;
-  width: 100%;
-}
-
-.svg g[role="button"],
-.edgeHitTarget {
-  pointer-events: auto;
-}
-
-.componentBox {
-  fill: color-mix(
-    in srgb,
-    var(--fo-palette-background-level2, #15171b) 72%,
-    transparent
-  );
-  stroke: var(--color-content-border-default, #383835);
-  stroke-dasharray: 3 4;
-}
-
-.componentLabel {
-  fill: var(--color-content-text-secondary);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.edge {
-  fill: none;
-  stroke: var(--color-content-text-muted, #8d929d);
-  stroke-width: 1.6;
-}
-
-.edge_static {
-  stroke-dasharray: 5 4;
-}
-
-.edge_temporal {
-  stroke: var(--fo-palette-info-main, #4ca3ff);
-}
-
-.edge_mixed {
-  stroke: var(--color-voxel-secondary, #ff8d00);
-  stroke-width: 2.2;
-}
-
-.selectedEdge {
-  filter: drop-shadow(0 0 4px var(--color-voxel-secondary, #ff8d00));
-  stroke: var(--color-voxel-secondary, #ff8d00);
-  stroke-width: 3;
-}
-
-.arrowHead {
-  fill: var(--color-content-text-secondary, #b3b6bd);
-}
-
-.edgeHitTarget {
-  cursor: pointer;
-  fill: none;
-  stroke: transparent;
-  stroke-width: 14;
-}
-
-.node {
-  cursor: pointer;
-  outline: none;
-  pointer-events: auto;
-}
-
-.nodeBox {
-  fill: var(--fo-palette-background-level2, #15171b);
-  stroke: var(--color-content-border-default, #383835);
-  stroke-width: 1;
-}
-
-.node:hover .nodeBox,
-.node:focus-visible .nodeBox {
-  stroke: var(--color-content-border-focus, #7ca9ff);
-  stroke-width: 2;
-}
-
-.dataNode {
-  fill: color-mix(
-    in srgb,
-    var(--fo-palette-info-main, #4ca3ff) 11%,
-    var(--fo-palette-background-level2, #15171b)
-  );
-  stroke: var(--fo-palette-info-main, #4ca3ff);
-}
-
-.issueNode {
-  stroke: var(--fo-palette-error-main, #ff665d);
-}
-
-.selectedNode {
-  fill: color-mix(
-    in srgb,
-    var(--color-voxel-secondary, #ff8d00) 18%,
-    var(--fo-palette-background-level2, #15171b)
-  );
-  stroke: var(--color-voxel-secondary, #ff8d00);
-  stroke-width: 2.5;
-}
-
-.nodeLabel {
-  fill: var(--color-content-text-primary, #f1f2f4);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 600;
-  pointer-events: none;
-}
-
-.nodeMeta {
-  fill: var(--color-content-text-muted, #8d929d);
-  font-size: 10px;
-  pointer-events: none;
-}
-
-.filtered {
-  opacity: 0.11;
-  pointer-events: none;
-}
-
 .details {
-  background: var(--fo-palette-background-level1, #0b0d10);
-  border-left: 1px solid var(--color-content-border-default, #383835);
+  background: var(--color-content-bg-background);
+  border-left: 1px solid var(--color-content-border-default);
   min-height: 0;
   overflow: auto;
 }
 
 .detailSection {
-  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  border-bottom: 1px solid var(--color-content-border-default);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -317,13 +133,6 @@
   gap: 5px;
 }
 
-.sampleNote {
-  color: var(--color-content-text-muted);
-  font-size: 10px;
-  line-height: 1.35;
-  margin-top: 3px;
-}
-
 .healthy {
   display: flex;
 }
@@ -337,10 +146,10 @@
 .issue {
   background: color-mix(
     in srgb,
-    var(--fo-palette-background-level2, #15171b) 90%,
+    var(--color-content-bg-card-2) 90%,
     transparent
   );
-  border: 1px solid var(--color-content-border-default, #383835);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 6px;
   color: inherit;
   cursor: pointer;
@@ -353,7 +162,7 @@
 
 .issue:hover,
 .issue:focus-visible {
-  border-color: var(--color-content-border-focus, #7ca9ff);
+  border-color: var(--color-content-border-focus);
   outline: none;
 }
 
@@ -368,7 +177,7 @@
 
 .errorDot,
 .warningDot {
-  background: var(--fo-palette-error-main, #ff665d);
+  background: var(--color-content-text-destructive);
   border-radius: 50%;
   flex: none;
   height: 7px;
@@ -376,7 +185,7 @@
 }
 
 .warningDot {
-  background: var(--fo-palette-warning-main, #e3ad22);
+  background: var(--color-content-text-warning);
 }
 
 .issueDetail,
@@ -387,7 +196,7 @@
 }
 
 .suggestion {
-  color: var(--fo-palette-warning-main, #e3ad22);
+  color: var(--color-content-text-warning);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -424,7 +233,7 @@
 
   .details {
     border-left: 0;
-    border-top: 1px solid var(--color-content-border-default, #383835);
+    border-top: 1px solid var(--color-content-border-default);
   }
 }
 
@@ -439,15 +248,5 @@
   .metric {
     min-width: 0;
     padding-right: 5px;
-  }
-
-  .searchField {
-    max-width: none;
-    width: 100%;
-  }
-
-  .canvasControls {
-    right: 6px;
-    top: 6px;
   }
 }
