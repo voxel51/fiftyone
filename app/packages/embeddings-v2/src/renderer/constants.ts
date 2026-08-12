@@ -52,11 +52,15 @@ export const MAX_ZOOM = 50;
  * zoom-out still shows nearly the whole graph */
 export const PAN_GIVE = 0.1;
 
-/** Pointer must sit still this long before a hover hit-test runs */
-export const HOVER_DEBOUNCE_MS = 120;
+/** Pointer must sit still this long before a hover hit-test runs.
+ * Short enough to feel live while gliding; it still gates the host's
+ * per-hit sample-media fetches. */
+export const HOVER_DEBOUNCE_MS = 50;
 
-/** Hover pick radius around the cursor, CSS px */
-export const HOVER_RADIUS_PX = 8;
+/** Hover pick radius around the cursor, CSS px. Comfortably past the
+ * point's own 6px footprint, so hover engages on approach rather than
+ * only once the cursor covers the point. */
+export const HOVER_RADIUS_PX = 14;
 
 /** A press+release that travels no farther than this is a click, CSS px */
 export const CLICK_SLOP_PX = 4;
