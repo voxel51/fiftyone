@@ -1867,6 +1867,8 @@ class AutocompleteView(Choices):
         read_only (False): whether the view is read-only
         allow_user_input (True): when True the user can input a value that is not in the choices
         allow_duplicates (True): when True the user can select the same choice multiple times
+        filter_selected_options (False): when True a multi-select drops the
+            choices already selected from its list rather than marking them
     """
 
     def __init__(self, **kwargs):

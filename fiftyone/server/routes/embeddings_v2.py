@@ -122,14 +122,34 @@ class EmbeddingsV2RunInfo(HTTPEndpoint):
         return await run_sync_task(self._post_sync, data)
 
     def _post_sync(self, data):
-        dataset, results = _load_results(data)
-        info = dataset.get_brain_info(data["brainKey"])
-        config = results.config
+        brain_key = data["brainKey"]
+        dataset = fosu.load_and_cache_dataset(data["datasetName"])
+        info = dataset.get_brain_info(brain_key)
+        config = info.config
+
+        # Avoid loading large GridFS blob results for run-info by
+        # relying on results_meta, which some runs record. However, fallback to
+        # loading the entire results blob for compatibility.
+        run_meta = (
+            getattr(
+                dataset._doc.brain_methods.get(brain_key), "results_meta", None
+            )
+            or {}
+        )
+        n = run_meta.get("num_points")
+        dims = run_meta.get("num_dims")
+        if dims is None:
+            dims = getattr(config, "num_dims", None)
+        if n is None or dims is None:
+            _, results = _load_results(data)
+            n = len(results.points)
+            dims = int(results.points.shape[1])
+            config = results.config
 
         return {
-            "brainKey": data["brainKey"],
-            "n": len(results.points),
-            "dims": int(results.points.shape[1]),
+            "brainKey": brain_key,
+            "n": n,
+            "dims": dims,
             "patchesField": config.patches_field,
             "pointsField": config.points_field,
             "method": getattr(config, "method", None),
