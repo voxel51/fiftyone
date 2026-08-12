@@ -30,6 +30,14 @@ import {
   useSetRecoilState,
 } from "recoil";
 import {
+  CONTINUOUS_RAMPS,
+  rampDomain,
+  rampIdForEntry,
+  rampList,
+  type ContinuousRamp,
+  type ContinuousRampId,
+} from "@fiftyone/utilities";
+import {
   categoryCss,
   MISSING_CATEGORY,
   type Colorscale,
@@ -83,6 +91,20 @@ export interface RunPlotData {
    * the legend and the points read the same ones */
   palette: PlotPalette;
   colorscale: Colorscale;
+  /** The curated ramp the scheme's colorscale state matches (null = nothing
+   * set or a custom/named scale). The plot's palette picker and the color
+   * settings modal read and write the SAME scheme state, so a choice made in
+   * either shows in both — and in the grid's heatmaps. */
+  rampId: ContinuousRampId | null;
+  setRampId: (id: ContinuousRampId) => void;
+  /** The field whose scheme entry a pick edits; null targets the scheme's
+   * defaultColorscale (pickable before anything continuous is colored,
+   * exactly like the color settings modal's global section). */
+  colorscaleTarget: string | null;
+  /** The value domain continuous colors map through (the diverging ramp
+   * centers it on zero for signed data); null = meta's min..max. The legend
+   * labels its ends from here. */
+  colorDomain: readonly [number, number] | null;
   /** The per-point sensor field (patches runs), when present */
   streamField: string | null;
   coloredByStream: boolean;
@@ -198,6 +220,8 @@ export function useRunPlotData(
     true,
   );
   const colorField = colorFieldState ?? null;
+  const brainKey = run.brainKey;
+
   // The color-by endpoint speaks root-dataset paths, but the grid
   // resolves filters against its CURRENT view's schema — so the filter
   // atom is keyed by view vocabulary: the root path in a samples view,
@@ -205,7 +229,6 @@ export function useRunPlotData(
   const filterPath = colorField
     ? gridFilterPath(colorField, run.patchesField ?? null, isPatchesView)
     : null;
-  const brainKey = run.brainKey;
 
   // Everything edition-specific reaches this hook through the extension
   // seam — registered at module load, so the hook identities below are
@@ -280,6 +303,74 @@ export function useRunPlotData(
     colorField,
     source.colorSource,
   );
+  // The scheme's colorscale is the ONE continuous-color setting: the plot's
+  // picker and the color settings modal edit the same atom in the same
+  // shapes (a `{ path, list }` entry for a continuous color-by field, the
+  // scheme's `defaultColorscale` otherwise — pickable before any consumer
+  // loads, exactly like the modal), and useColorPalette resolves the plot's
+  // colors from it — so the plot, the modal and the grid's heatmaps cannot
+  // disagree.
+  const colorScheme = useRecoilValue(fos.colorScheme);
+  const setColorScheme = fos.useSetSessionColorScheme();
+  const colorscaleTarget =
+    colorMeta?.style === "continuous" ? colorField : null;
+  const rampId = useMemo(() => {
+    // The check mark reflects what's APPLIED: the field's entry when it has
+    // one, else the scheme default, else the built-in blue → orange (which
+    // is what resolveColorscale paints when nothing is configured)
+    const entry = colorscaleTarget
+      ? colorScheme.colorscales?.find(
+          (setting) => setting.path === colorscaleTarget,
+        )
+      : undefined;
+    if (entry) return rampIdForEntry(entry);
+    const fallback = colorScheme.defaultColorscale;
+    if (fallback?.name || fallback?.list?.length) {
+      return rampIdForEntry(fallback);
+    }
+    return "blueOrange";
+  }, [colorScheme, colorscaleTarget]);
+  const setRampId = useCallback(
+    (id: ContinuousRampId) => {
+      setColorScheme((current) => {
+        if (!colorscaleTarget) {
+          return {
+            ...current,
+            defaultColorscale: { name: null, list: rampList(id) },
+          };
+        }
+        const others = (current.colorscales ?? []).filter(
+          (setting) => setting.path !== colorscaleTarget,
+        );
+        return {
+          ...current,
+          colorscales: [
+            ...others,
+            { path: colorscaleTarget, name: null, list: rampList(id) },
+          ],
+        };
+      });
+    },
+    [colorscaleTarget, setColorScheme],
+  );
+
+  // The diverging ramp reads signed data through a zero-centered domain:
+  // widened to ±max(|min|, |max|) so its middle stop IS zero. Null leaves
+  // min..max untouched. (Typed as Ramp, not the literal CONTINUOUS_RAMPS member: only
+  // one member declares `diverging`, so the union hides the flag.)
+  const activeRamp: ContinuousRamp | null = rampId
+    ? CONTINUOUS_RAMPS[rampId]
+    : null;
+  const colorDomain = useMemo<readonly [number, number] | null>(() => {
+    if (!activeRamp?.diverging || colorMeta?.style !== "continuous") {
+      return null;
+    }
+    const { min, max } = colorMeta;
+    if (min == null || max == null) return null;
+    const [lo, hi] = rampDomain(min, max, activeRamp);
+    return lo === min && hi === max ? null : [lo, hi];
+  }, [activeRamp, colorMeta]);
+
   // The palette lives in the App's color scheme, not in the fetched
   // column: editing the pool (or a per-value override) recolors the plot
   // in place, and values match their labels in the grid
@@ -287,6 +378,7 @@ export function useRunPlotData(
     colorField,
     colorValues,
     colorMeta,
+    colorDomain,
   );
 
   // The legend is a view over the App's sidebar filter for the color-by
@@ -669,6 +761,10 @@ export function useRunPlotData(
     pointColors,
     palette,
     colorscale,
+    rampId,
+    setRampId,
+    colorscaleTarget,
+    colorDomain,
     streamField,
     coloredByStream,
     plotVisible,

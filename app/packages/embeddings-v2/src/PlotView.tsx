@@ -121,6 +121,10 @@ export default function PlotView({
     features,
     palette,
     colorscale,
+    rampId,
+    setRampId,
+    colorscaleTarget,
+    colorDomain,
     scopedCounts,
     legend,
     handleLegendToggle,
@@ -284,6 +288,9 @@ export default function PlotView({
           </div>
           <span className="emb-plot-divider" />
           <SettingsMenu
+            rampId={rampId}
+            colorscaleTarget={colorscaleTarget}
+            onRampChange={setRampId}
             renderBefore={features.renderSettingsBefore}
             renderAfter={features.renderSettingsAfter}
           />
@@ -384,6 +391,7 @@ export default function PlotView({
             field={colorField}
             meta={colorMeta}
             colorscale={colorscale}
+            domain={colorDomain}
           />
         )}
         {chipCount ? (
