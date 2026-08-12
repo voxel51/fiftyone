@@ -144,18 +144,14 @@ export const useViewTargets = (): {
           ? GROUPED_DATASET_TARGET_REASON
           : undefined;
 
-      // for grouped datasets the subtext names the slices the run will
-      // process: the ones the view already selects, or the active slice that
-      // select_group_slices appends. An unavailable target names none,
-      // because it processes nothing
+      // the active slice gets applied automatically and isn't shown anywhere
+      // else, so the subtext names it
       const scope =
-        !isGroupedDataset || unavailableReason
+        !isGroupedDataset || unavailableReason || viewSelectsSlices
           ? undefined
-          : viewSelectsSlices
-            ? "in the group slices this view selects"
-            : slice
-              ? `in the current slice (${slice})`
-              : "in the current group slice";
+          : slice
+            ? `in the current slice (${slice})`
+            : "in the current group slice";
 
       // the subtext states the slice scope the target resolves to, plus the
       // reason it cannot be used when it is disabled
