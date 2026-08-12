@@ -1,8 +1,16 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 import type { VisualizationRun } from "./protocol";
 import RunsList from "./RunsList";
+
+// The real PanelCTA needs the App theme (palette.custom); the stub
+// keeps these tests about RunsList's branching, not the shared
+// component (same pattern as TabIndicator.test)
+vi.mock("@fiftyone/components", () => ({
+  PanelCTA: ({ label }: { label: ReactNode }) => <div>{label}</div>,
+}));
 
 const run = (
   brainKey: string,
@@ -24,6 +32,22 @@ const run = (
 afterEach(cleanup);
 
 describe("RunsList", () => {
+  // A patches run and a samples run on the same field look identical
+  // by title; the card's meta line must say which one it is
+  it("labels each card with its embedding granularity", () => {
+    render(
+      <RunsList
+        runs={[run("viz_a"), run("viz_b", { patchesField: "ground_truth" })]}
+        error={null}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("samples")).toBeDefined();
+    expect(screen.getByText("ground_truth patches")).toBeDefined();
+  });
+
   // Runs with 3D points are listed and open in the 2D plot; guards
   // against filtering them out of the list
   it("lists 3D runs and opens runs on click", () => {
@@ -57,6 +81,47 @@ describe("RunsList", () => {
     expect(screen.getByText("Pending")).toBeDefined();
     fireEvent.click(screen.getByText("cooking"));
     expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  // FOEPD-4369: upselling builds land on the enterprise CTA, not the
+  // neutral empty state; hosts that can compute keep the empty state
+  it("shows the landing CTA for the upselling no-runs state", () => {
+    render(
+      <RunsList runs={[]} error={null} onOpen={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(
+      screen.getByText(
+        "Embeddings help you explore and understand your dataset",
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText("Visualize your embeddings")).toBeNull();
+  });
+
+  it("keeps the neutral empty state when not upselling", () => {
+    render(
+      <RunsList
+        runs={[]}
+        error={null}
+        showUpsell={false}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Visualize your embeddings")).toBeDefined();
+  });
+
+  // FOEPD-4401: the 3D banner earns its slot only once a run exists —
+  // the no-runs state already carries the landing CTA
+  it("holds the 3D upsell banner until a first run exists", () => {
+    render(
+      <RunsList runs={[]} error={null} onOpen={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(
+      screen.queryByText("Explore clusters in three dimensions"),
+    ).toBeNull();
   });
 
   it("shows the upsell until dismissed", () => {

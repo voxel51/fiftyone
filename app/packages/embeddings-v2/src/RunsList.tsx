@@ -29,6 +29,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useEffect, useState } from "react";
+import { LandingCTA } from "./LandingCTA";
 import "./panel.css";
 import type { VisualizationRun } from "./protocol";
 import { RunCard } from "./RunCard";
@@ -159,7 +160,10 @@ export default function RunsList({
         </div>
       )}
       <div className="emb-runs-scroll">
-        {showUpsell && !dismissed && (
+        {/* The 3D banner earns its slot only once a first run exists
+            (FOEPD-4401) — before that, the landing CTA below is the
+            single upsell surface */}
+        {showUpsell && !dismissed && runs.length > 0 && (
           <UpsellBanner onDismiss={() => setDismissed(true)} />
         )}
         {actionError && (
@@ -170,28 +174,34 @@ export default function RunsList({
           </div>
         )}
         {runs.length === 0 ? (
-          <div className="emb-runs-center emb-runs-overlay">
-            <EmptyState
-              icon={IconName.Embeddings}
-              title="Visualize your embeddings"
-              description="Compute a visualization to explore your dataset in a low-dimensional embedding space."
-            />
-            {onCreate ? (
-              <Button
-                size={Size.Sm}
-                leadingIcon={IconName.Add}
-                onClick={onCreate}
-              >
-                New visualization
-              </Button>
-            ) : (
-              <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-                <code>
-                  {'fob.compute_visualization(dataset, brain_key="viz")'}
-                </code>
-              </Text>
-            )}
-          </div>
+          showUpsell ? (
+            // Builds that can't compute in-app show the enterprise
+            // landing instead of a dead-end empty state (FOEPD-4369)
+            <LandingCTA />
+          ) : (
+            <div className="emb-runs-center emb-runs-overlay">
+              <EmptyState
+                icon={IconName.Embeddings}
+                title="Visualize your embeddings"
+                description="Compute a visualization to explore your dataset in a low-dimensional embedding space."
+              />
+              {onCreate ? (
+                <Button
+                  size={Size.Sm}
+                  leadingIcon={IconName.Add}
+                  onClick={onCreate}
+                >
+                  New visualization
+                </Button>
+              ) : (
+                <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+                  <code>
+                    {'fob.compute_visualization(dataset, brain_key="viz")'}
+                  </code>
+                </Text>
+              )}
+            </div>
+          )
         ) : (
           <div className="emb-runs-stack">
             {runs.map((run) => (
@@ -218,6 +228,10 @@ export default function RunsList({
                 meta={[
                   run.error,
                   run.method,
+                  // Same brain key semantics, very different plots —
+                  // which granularity a run embeds must be readable
+                  // from the card
+                  run.patchesField ? `${run.patchesField} patches` : "samples",
                   run.model,
                   formatTimestamp(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}
