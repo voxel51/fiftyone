@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { partitionCuboidsByEditedLabel } from "./partition-cuboids";
 
 function overlay(id: string) {
-  return { _id: id };
+  return { data: { _id: id } };
 }
 
 describe("partitionCuboidsByEditedLabel", () => {
@@ -36,7 +36,7 @@ describe("partitionCuboidsByEditedLabel", () => {
       "c",
     );
 
-    expect(instancedDetections.map((d) => d._id)).toEqual(["a", "b", "d"]);
+    expect(instancedDetections.map((d) => d.data._id)).toEqual(["a", "b", "d"]);
   });
 
   it("falls back to instancedDetections-only when the edited id isn't present", () => {

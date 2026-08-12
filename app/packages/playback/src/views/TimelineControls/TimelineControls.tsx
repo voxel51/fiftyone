@@ -21,6 +21,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import {
+  ChevronBottomIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   PauseIcon,
@@ -223,7 +224,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
               variant={Variant.Icon}
               size={Size.Xs}
               data-testid="timeline-controls-toggle"
-              leadingIcon={IconName.ChevronBottom}
+              leadingIcon={ChevronBottomIcon}
               aria-label={expanded ? "Hide tracks" : "Show tracks"}
               aria-expanded={expanded}
               className={clsx(styles.toggle, {

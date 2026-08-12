@@ -39,6 +39,7 @@ export interface TransformTopologyFrame {
 
 type TransformTopologyIssueKind =
   | "cycle"
+  | "disconnected-components"
   | "disconnected-data"
   | "frame-name-mismatch"
   | "multiple-parents"
@@ -399,6 +400,17 @@ function diagnoseTopology({
       kind: "disconnected-data",
       severity: "error",
       title: "Renderable streams are disconnected",
+    });
+  } else if (components.length > 1) {
+    issues.push({
+      affectedFrameIds: components
+        .flatMap((component) => component.frameIds)
+        .sort(compareFrameIds),
+      detail: `${components.length} disconnected transform components were observed. A connecting relationship may be missing or may not have been observed.`,
+      id: "disconnected-components",
+      kind: "disconnected-components",
+      severity: "warning",
+      title: "Transform graph is disconnected",
     });
   }
 

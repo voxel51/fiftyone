@@ -41,6 +41,12 @@ class Frames(HTTPEndpoint):
         dynamic_group = data.get("dynamicGroup")
 
         end_frame = min(num_frames + start_frame, frame_count)
+        if end_frame < start_frame:
+            # an empty range would produce a to_list() length < 1, which
+            # pymongo rejects
+            return JSONResponse(
+                {"frames": [], "range": [start_frame, end_frame]}
+            )
 
         if dynamic_group is not None:
             return await self._post_dynamic_group(
@@ -84,12 +90,13 @@ class Frames(HTTPEndpoint):
 
             post_pipeline = [{"$project": projection}]
 
-        frames = await foo.aggregate(
+        cursor = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(
                 frames_only=True, support=support, post_pipeline=post_pipeline
             ),
-        ).to_list(end_frame - start_frame + 1)
+        )
+        frames = await cursor.to_list(end_frame - start_frame + 1)
 
         return JSONResponse(
             {
@@ -136,10 +143,11 @@ class Frames(HTTPEndpoint):
             projection = {field: True for field in fields}
             post_pipeline = [{"$project": projection}]
 
-        samples = await foo.aggregate(
+        cursor = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(post_pipeline=post_pipeline),
-        ).to_list(count)
+        )
+        samples = await cursor.to_list(count)
 
         # The dynamic group is ordered, so the i-th sample is frame
         # `start_frame + i`. Stamp it so the client keys frames the same way as

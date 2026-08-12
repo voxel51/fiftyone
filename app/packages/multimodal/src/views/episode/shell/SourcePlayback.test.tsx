@@ -95,7 +95,7 @@ vi.mock("./PlaybackShell", () => {
 });
 
 vi.mock("./AddTileMenu", () => ({ default: () => null }));
-vi.mock("../scene/picking/InspectorSidebar", () => ({
+vi.mock("./RightSidebar", () => ({
   default: () => null,
 }));
 vi.mock("./NetworkStatus", () => ({

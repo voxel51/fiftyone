@@ -61,81 +61,97 @@ export default function RadioView(props: RadioGroupProps) {
         row={orientation !== "vertical"}
         {...getComponentProps(props, "radioGroup")}
       >
-        {choices.map(({ value, label, description, caption, icon }, i) => (
-          <FormControlLabel
-            key={value}
-            value={value}
-            control={
-              useButtons ? (
-                <ButtonView
-                  schema={{
-                    view: {
-                      label,
-                      icon,
-                      componentsProps: {
-                        container: { width: "100%" },
-                        button: {
-                          sx: {
-                            width: "100%",
-                            background: "none",
-                            justifyContent: "flex-start",
-                            color:
-                              data === value ? "#FF6D04" : "text.secondary",
-                            border:
-                              data === value
-                                ? "1px solid #FF6D04"
-                                : "1px solid #333",
-                            boxShadow: "none",
-                            "&:hover": {
+        {choices.map(
+          (
+            { value, label, description, caption, icon, disabled = false },
+            i,
+          ) => (
+            <FormControlLabel
+              key={value}
+              value={value}
+              disabled={readOnly || disabled}
+              control={
+                useButtons ? (
+                  <ButtonView
+                    schema={{
+                      view: {
+                        label,
+                        icon,
+                        disabled: readOnly || disabled,
+                        componentsProps: {
+                          container: { width: "100%" },
+                          button: {
+                            sx: {
+                              width: "100%",
                               background: "none",
+                              justifyContent: "flex-start",
+                              color:
+                                data === value ? "#FF6D04" : "text.secondary",
+                              border:
+                                data === value
+                                  ? "1px solid #FF6D04"
+                                  : "1px solid #333",
                               boxShadow: "none",
-                              borderColor: "rgba(255, 109, 4, 0.50)",
+                              "&:hover": {
+                                background: "none",
+                                boxShadow: "none",
+                                borderColor: "rgba(255, 109, 4, 0.50)",
+                              },
                             },
                           },
-                        },
-                        icon: {
-                          sx: { color: data === value ? "#FF6D04" : "" },
+                          icon: {
+                            sx: { color: data === value ? "#FF6D04" : "" },
+                          },
                         },
                       },
-                    },
-                  }}
-                  onClick={() => {
-                    onChange(path, value);
-                    setUserChanged();
-                  }}
-                />
-              ) : (
-                <Radio
-                  disabled={readOnly}
-                  autoFocus={autoFocus(props)}
-                  {...getComponentProps(props, "radio")}
-                />
-              )
-            }
-            label={
-              useButtons ? null : (
-                <HeaderView
-                  schema={{
-                    view: {
-                      label,
-                      description,
-                      caption,
-                      componentsProps: {
-                        header: getComponentProps(props, "radioHeader"),
+                    }}
+                    onClick={() => {
+                      // MUI only disables the pointer events of its own
+                      // controls, so a disabled button must reject the click
+                      if (readOnly || disabled) {
+                        return;
+                      }
+
+                      onChange(path, value);
+                      setUserChanged();
+                    }}
+                  />
+                ) : (
+                  <Radio
+                    disabled={readOnly || disabled}
+                    autoFocus={autoFocus(props)}
+                    {...getComponentProps(props, "radio")}
+                  />
+                )
+              }
+              label={
+                useButtons ? null : (
+                  <HeaderView
+                    schema={{
+                      view: {
+                        label,
+                        description,
+                        caption,
+                        componentsProps: {
+                          header: getComponentProps(props, "radioHeader"),
+                        },
                       },
-                    },
-                  }}
-                  nested
-                />
-              )
-            }
-            sx={{
-              alignItems: "center",
-              pb: i === choices.length - 1 ? 0 : 0.5,
-            }}
-            {...getComponentProps(props, "radioContainer")}
-          />
-        ))}
+                    }}
+                    nested
+                  />
+                )
+              }
+              sx={{
+                alignItems: "center",
+                pb: i === choices.length - 1 ? 0 : 0.5,
+                // the label is a custom component with its own colors, so
+                // MUI's disabled text color never reaches it
+                "&.Mui-disabled": { opacity: 0.5 },
+              }}
+              {...getComponentProps(props, "radioContainer")}
+            />
+          ),
+        )}
       </MUIRadioGroup>
     </FormControl>
   );
@@ -146,6 +162,8 @@ type Choice = {
   label: string;
   description?: string;
   caption?: string;
+  icon?: string;
+  disabled?: boolean;
 };
 
 export type RadioGroupProps = {

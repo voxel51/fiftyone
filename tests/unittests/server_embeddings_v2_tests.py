@@ -15,6 +15,7 @@ import numpy as np
 
 import fiftyone as fo
 import fiftyone.brain as fob
+from fiftyone.core.odm.runs import RunDocument
 
 from fiftyone.server.routes import embeddings_v2 as v2
 
@@ -99,19 +100,9 @@ def _make_patches_run():
 
 class ServerEmbeddingsV2Tests(unittest.TestCase):
     @drop_datasets
-    def test_runs_and_run_info(self):
+    def test_run_info(self):
         dataset, points = _make_samples_run()
         base = {"datasetName": dataset.name, "brainKey": "viz"}
-
-        runs = v2.EmbeddingsV2Runs._post_sync(
-            None, {"datasetName": dataset.name}
-        )["runs"]
-        self.assertEqual(len(runs), 1)
-        self.assertEqual(runs[0]["brainKey"], "viz")
-        self.assertEqual(runs[0]["method"], "manual")
-        self.assertEqual(runs[0]["dims"], 2)
-        self.assertTrue(runs[0]["ready"])
-        self.assertIsNotNone(runs[0]["timestamp"])
 
         info = v2.EmbeddingsV2RunInfo._post_sync(None, base)
         self.assertEqual(info["n"], len(points))
@@ -120,19 +111,134 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertIsNotNone(info["timestamp"])
 
     @drop_datasets
-    def test_runs_without_results_are_not_ready(self):
-        # A run doc exists as soon as a computation registers, but its
-        # results-blob pointer is only set when results save — clicking
-        # such a run must be preventable, so the list reports readiness
-        dataset, _ = _make_samples_run()
+    def test_run_info_answers_counts_from_results_meta(self):
+        # A run whose results class records its counts beside the run doc
+        # (see BaseRunResults.get_meta) answers run-info without pulling
+        # the results blob through the server
+        dataset, points = _make_samples_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+
         run_doc = dataset._doc.brain_methods["viz"]
-        run_doc.results = None
+        run_doc.results_meta = {"num_points": len(points), "num_dims": 2}
         run_doc.save()
 
-        runs = v2.EmbeddingsV2Runs._post_sync(
-            None, {"datasetName": dataset.name}
-        )["runs"]
-        self.assertFalse(runs[0]["ready"])
+        with mock.patch.object(
+            fo.Dataset,
+            "load_brain_results",
+            side_effect=AssertionError("results blob was loaded"),
+        ):
+            info = v2.EmbeddingsV2RunInfo._post_sync(None, base)
+
+        self.assertEqual(info["n"], len(points))
+        self.assertEqual(info["dims"], 2)
+
+    @drop_datasets
+    def test_runs_status(self):
+        # The status route peeks at run documents only, so it must agree
+        # with the dataset query's own readiness/error verdicts without
+        # loading results
+        dataset, _ = _make_samples_run()
+        viz_doc = dataset._doc.brain_methods["viz"]
+
+        pending_doc = RunDocument(
+            dataset_id=viz_doc.dataset_id,
+            key="pending",
+            version=viz_doc.version,
+            timestamp=viz_doc.timestamp,
+            config=viz_doc.config,
+        )
+        pending_doc.save()
+
+        broken_doc = RunDocument(
+            dataset_id=viz_doc.dataset_id,
+            key="broken",
+            version=viz_doc.version,
+            timestamp=viz_doc.timestamp,
+            config={"cls": "fiftyone.brain.visualization.Removed"},
+        )
+        broken_doc.save()
+
+        dataset._doc.brain_methods["pending"] = pending_doc
+        dataset._doc.brain_methods["broken"] = broken_doc
+        dataset._doc.save()
+
+        statuses = {
+            s["brainKey"]: s
+            for s in v2.EmbeddingsV2RunsStatus._post_sync(
+                None, {"datasetId": str(dataset._doc.id)}
+            )["runs"]
+        }
+        self.assertTrue(statuses["viz"]["ready"])
+        self.assertIsNone(statuses["viz"]["error"])
+        self.assertFalse(statuses["pending"]["ready"])
+        self.assertIsNone(statuses["pending"]["error"])
+        self.assertIn("not importable", statuses["broken"]["error"])
+
+    def test_dataset_query_reports_run_readiness(self):
+        # A run doc exists as soon as a computation registers, but its
+        # results-blob pointer is only set when results save — clicking
+        # such a run must be preventable, so the dataset query reports
+        # readiness on every brain run (presence of the reference, never
+        # a load of it)
+        from fiftyone.server.query import Dataset as DatasetQuery
+
+        doc = {
+            "_id": "5f99d2eb0e6c99c377f8886c",
+            "brain_methods": {
+                "done": {"key": "done", "results": "gridfs-ref"},
+                "pending": {"key": "pending", "results": None},
+            },
+        }
+        modified = DatasetQuery.modifier(doc)
+        ready = {run["key"]: run["ready"] for run in modified["brain_methods"]}
+        self.assertTrue(ready["done"])
+        self.assertFalse(ready["pending"])
+
+    def test_dataset_query_passes_run_references_through(self):
+        # Raw dataset docs (the datasets-list paginator) hold brain_methods
+        # as ObjectId REFERENCES, not dicts — only materialized run docs can
+        # be decorated; references pass through untouched, as on develop
+        from bson import ObjectId
+
+        from fiftyone.server.query import Dataset as DatasetQuery
+
+        ref = ObjectId()
+        doc = {
+            "_id": "5f99d2eb0e6c99c377f8886c",
+            "brain_methods": {"viz": ref},
+        }
+        modified = DatasetQuery.modifier(doc)
+        self.assertEqual(modified["brain_methods"], [ref])
+
+    def test_dataset_query_reports_run_errors_without_loading_results(self):
+        # A run whose stored config class no longer imports (it predates a
+        # rename) is unusable, and the list page must say so — derived from
+        # the run DOCUMENT alone, never by loading its results
+        from fiftyone.server.query import Dataset as DatasetQuery
+
+        doc = {
+            "_id": "5f99d2eb0e6c99c377f8886c",
+            "brain_methods": {
+                "ok": {
+                    "key": "ok",
+                    "results": "ref",
+                    "config": {"cls": "fiftyone.core.stages.Select"},
+                },
+                "stale": {
+                    "key": "stale",
+                    "results": "ref",
+                    "config": {"cls": "fiftyone.gone.Missing"},
+                },
+                "malformed": {"key": "malformed", "results": "ref"},
+            },
+        }
+        errors = {
+            run["key"]: run["error"]
+            for run in DatasetQuery.modifier(doc)["brain_methods"]
+        }
+        self.assertIsNone(errors["ok"])
+        self.assertIn("not importable", errors["stale"])
+        self.assertEqual(errors["malformed"], "run document has no config")
 
     @drop_datasets
     def test_geometry_columns(self):

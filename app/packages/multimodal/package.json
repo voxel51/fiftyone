@@ -19,6 +19,7 @@
         "./temporal-tags": "./src/temporal-tags/index.ts",
         "./temporal-tags/grid-overlay": "./src/temporal-tags/TemporalTagGridOverlay.tsx",
         "./inject": "./src/inject/index.ts",
+        "./extensions/mcap-explorer": "./src/extensions/mcap-explorer/index.ts",
         "./extensions/timeline": "./src/extensions/timeline/index.ts",
         "./extensions/timeline/runtime": "./src/extensions/timeline/runtime.ts",
         "./extensions/tiles": "./src/extensions/tiles/index.ts",
@@ -69,6 +70,9 @@
             ],
             "inject": [
                 "src/inject/index.ts"
+            ],
+            "extensions/mcap-explorer": [
+                "src/extensions/mcap-explorer/index.ts"
             ],
             "extensions/timeline": [
                 "src/extensions/timeline/index.ts"
@@ -128,6 +132,7 @@
         "@react-three/drei": "9.105.4",
         "@react-three/fiber": "catalog:",
         "@voxel51/voodo": "catalog:",
+        "@xyflow/react": "^12.4.4",
         "buffer": "catalog:",
         "colormap": "catalog:",
         "date-fns": "^4.1.0",

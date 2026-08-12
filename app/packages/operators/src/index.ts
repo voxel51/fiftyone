@@ -34,3 +34,10 @@ export {
   useTriggerPanelEvent,
 } from "./usePanelEvent";
 export { validate } from "./validation";
+export {
+  useViewTargetCounts,
+  useViewTargets,
+  ViewTargetSelector,
+  type ViewTargetMeta,
+} from "./ViewTargets";
+export { ViewTarget } from "./types";

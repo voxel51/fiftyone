@@ -12,12 +12,15 @@ const makeFakeStore = () => {
   const store: WorkingStore3d = {
     get: (id) => map.get(id),
     add: (label) => {
-      map.set(label._id, label);
+      map.set(label.data._id, label);
     },
     update: (id, partial) => {
       const prev = map.get(id);
       if (prev) {
-        map.set(id, { ...prev, ...partial } as Working3dLabel);
+        map.set(id, {
+          ...prev,
+          data: { ...prev.data, ...partial },
+        } as Working3dLabel);
       }
     },
     remove: (id) => {
@@ -57,8 +60,8 @@ describe("useLooker3dEngineBridge", () => {
       }),
     );
 
-    expect(map.get("c1")?.label).toBe("car");
-    expect(map.get("c1")?.color).toBe("#x");
+    expect(map.get("c1")?.data.label).toBe("car");
+    expect(map.get("c1")?.ui.color).toBe("#x");
 
     unmount();
     expect(map.get("c1")).toBeUndefined();

@@ -33,7 +33,6 @@ import fiftyone.core.view as fov
 from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
 
-
 # Synthetic instance-id prefix for an index-based track (a label with no
 # ``instance._id`` but a persisted ``index``). Must match the client's
 # ``TRACK_INDEX_PREFIX`` (``@fiftyone/annotation``) so the baseline index and
@@ -324,7 +323,8 @@ async def aggregate_index(
                 field, list_field, dynamic_attributes, dynamic_group
             ),
         )
-        groups = await foo.aggregate(collection, pipeline).to_list(None)
+        cursor = await foo.aggregate(collection, pipeline)
+        groups = await cursor.to_list(None)
         result[field] = {
             "instances": build_instance_index(groups, dynamic_attributes)
         }
@@ -474,14 +474,15 @@ async def aggregate_window(
     if not dynamic_group:
         project["frame_number"] = True
 
-    docs = await foo.aggregate(
+    cursor = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         view._pipeline(
             frames_only=not dynamic_group,
             support=None if dynamic_group else support,
             post_pipeline=[{"$project": project}],
         ),
-    ).to_list(None)
+    )
+    docs = await cursor.to_list(None)
 
     windowed: t.Dict[str, dict] = {}
     for offset, doc in enumerate(docs):

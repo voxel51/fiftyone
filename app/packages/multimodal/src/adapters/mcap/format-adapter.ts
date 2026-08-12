@@ -17,7 +17,6 @@ import {
   type SynchronizedFrameWindow,
   type TransformSample,
   type EpisodeTransformTopologyEdgeObservation,
-  type EpisodeTransformTopologyFrameUse,
 } from "../../ir";
 import {
   EpisodeReadCancelledError,
@@ -894,7 +893,6 @@ class McapEpisodeSession implements EpisodeSession {
   private returnedBatches = 0;
   private budgetAllowance?: ReadWorkBudget;
   private budgetLedger?: SourceReadBudgetLedger;
-  private topologyFrameUses?: readonly EpisodeTransformTopologyFrameUse[];
   private readonly sourceNamesById: ReadonlyMap<string, string>;
 
   constructor(
@@ -1387,7 +1385,7 @@ class McapEpisodeSession implements EpisodeSession {
           ...edge,
           sourceStreamId: this.streamIdFor(edge.sourceStreamId),
         })),
-        frameUses: this.topologyFrameUses ?? [],
+        frameUses: [],
         sampledAtNs,
       };
     } catch (error) {
@@ -1400,32 +1398,10 @@ class McapEpisodeSession implements EpisodeSession {
   ): Promise<TransformTopologyScanResult> {
     this.ensureOpen();
     throwIfAborted(request.signal);
-    // Opening is idempotent and shares the same cumulative ledger as every
-    // other background consumer for this source.
-    this.openBoundedReadAccount();
-    const ledger = this.budgetLedger;
-    const absoluteBudget = this.budgetAllowance;
-    if (!ledger || !absoluteBudget) {
-      throw new Error("MCAP source read budget account is not open");
-    }
-    const reservation = ledger.reserve(
-      request.budget,
-      this.boundedPolicy.maxChunksPerGrant,
-    );
-    if (!reservation) {
-      return {
-        ...(request.continuation ? { continuation: request.continuation } : {}),
-        coverageByStream: new Map(),
-        edges: [],
-        frameUses: this.topologyFrameUses ?? [],
-        stopReason: "account-exhausted",
-        usage: emptyReadWorkUsage(),
-      };
-    }
-
-    let completedUsage: ReadWorkUsage | undefined;
-    let reservationSettled = false;
     try {
+      const bootstrapEdges = request.continuation
+        ? []
+        : await this.readTransformTopologyBootstrap(request.signal);
       const readTransformTopology = this.client.readTransformTopology;
       if (!readTransformTopology) {
         throw new Error("MCAP transform topology reads are unavailable");
@@ -1433,10 +1409,10 @@ class McapEpisodeSession implements EpisodeSession {
       const result = await readTransformTopology.call(
         this.client,
         {
-          absoluteBudget,
+          absoluteBudget: request.budget,
           absoluteMaxChunks: this.boundedPolicy.maxChunksPerGrant,
           activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-          budget: reservation.budget,
+          budget: request.budget,
           continuation: request.continuation,
           endTimeNs: this.manifest.timeRange.endNs,
           frameUseTopics: this.manifest.streams
@@ -1444,26 +1420,22 @@ class McapEpisodeSession implements EpisodeSession {
               DATA_BEARING_TOPOLOGY_STREAM_KINDS.has(stream.kind),
             )
             .map((stream) => stream.sourceName),
-          maxChunks: reservation.maxPhysicalUnits,
+          maxChunks: this.boundedPolicy.maxChunksPerGrant,
           source: this.source,
           startTimeNs: this.manifest.timeRange.startNs,
         },
         { priority: "bulk", signal: request.signal },
       );
-      completedUsage = result.usage;
       this.ensureOpen();
       throwIfAborted(request.signal);
-      reservationSettled = true;
-      reservation.commit(result.usage, result.usage.chunksOpened, {
-        exact: true,
-      });
-      this.topologyFrameUses = mergeTransformTopologyFrameUses(
-        this.topologyFrameUses ?? [],
-        result.frameUses.map((use) => ({
-          ...use,
-          streamId: this.streamIdFor(use.streamId),
-        })),
-      );
+      const frameUses = result.frameUses.map((use) => ({
+        ...use,
+        streamId: this.streamIdFor(use.streamId),
+      }));
+      const scannedEdges = result.edges.map((edge) => ({
+        ...edge,
+        sourceStreamId: this.streamIdFor(edge.sourceStreamId),
+      }));
       return {
         ...(result.continuation ? { continuation: result.continuation } : {}),
         coverageByStream: new Map(
@@ -1472,11 +1444,8 @@ class McapEpisodeSession implements EpisodeSession {
             windows,
           ]),
         ),
-        edges: result.edges.map((edge) => ({
-          ...edge,
-          sourceStreamId: this.streamIdFor(edge.sourceStreamId),
-        })),
-        frameUses: this.topologyFrameUses ?? [],
+        edges: mergeTransformTopologyEdges(bootstrapEdges, scannedEdges),
+        frameUses,
         stopReason: result.stopReason,
         ...(result.unavailableByTopic
           ? {
@@ -1495,19 +1464,30 @@ class McapEpisodeSession implements EpisodeSession {
         isMcapBoundedReadCancelledError(error) ||
         isEpisodeReadCancelledError(error) ||
         request.signal?.aborted === true;
-      if (!reservationSettled) {
-        const usage = cancelled
-          ? boundedCancellationUsage(error, completedUsage)
-          : emptyReadWorkUsage();
-        reservationSettled = true;
-        reservation.commit(usage, usage.chunksOpened, {
-          // A thrown read cannot prove that no physical work occurred. Keep
-          // the reservation conservative so retries cannot reset the account.
-          exact: false,
-        });
-      }
       if (cancelled) throw new EpisodeReadCancelledError();
       throw error;
+    }
+  }
+
+  private async readTransformTopologyBootstrap(
+    signal: AbortSignal | undefined,
+  ): Promise<readonly EpisodeTransformTopologyEdgeObservation[]> {
+    try {
+      const result = await this.client.readFrameTransformBootstrap(
+        { source: this.source },
+        { signal },
+      );
+      this.ensureOpen();
+      throwIfAborted(signal);
+      return topologyEdgesFromTransformSamples(
+        result.samples,
+        this.manifest.timeRange.startNs,
+      ).map((edge) => ({
+        ...edge,
+        sourceStreamId: this.streamIdFor(edge.sourceStreamId),
+      }));
+    } catch (error) {
+      throw this.normalizeReadError(error);
     }
   }
 
@@ -1656,26 +1636,56 @@ function transformTopologyObservationKey(
   ].join("\0");
 }
 
-function mergeTransformTopologyFrameUses(
-  left: readonly EpisodeTransformTopologyFrameUse[],
-  right: readonly EpisodeTransformTopologyFrameUse[],
-): readonly EpisodeTransformTopologyFrameUse[] {
-  const uses = new Map<string, EpisodeTransformTopologyFrameUse>();
-  for (const use of [...left, ...right]) {
-    uses.set(transformTopologyFrameUseKey(use), use);
+/** Bootstrap comes first so scanned counts win while timestamps are merged. */
+function mergeTransformTopologyEdges(
+  bootstrap: readonly EpisodeTransformTopologyEdgeObservation[],
+  scanned: readonly EpisodeTransformTopologyEdgeObservation[],
+): readonly EpisodeTransformTopologyEdgeObservation[] {
+  const edges = new Map<string, EpisodeTransformTopologyEdgeObservation>();
+  for (const edge of [...bootstrap, ...scanned]) {
+    const key = transformTopologyObservationKey(edge);
+    const current = edges.get(key);
+    edges.set(
+      key,
+      current
+        ? {
+            ...edge,
+            firstObservedTimeNs: earliestDefined(
+              current.firstObservedTimeNs,
+              edge.firstObservedTimeNs,
+            ),
+            lastObservedTimeNs: latestDefined(
+              current.lastObservedTimeNs,
+              edge.lastObservedTimeNs,
+            ),
+          }
+        : edge,
+    );
   }
-  return [...uses.values()].sort((first, second) =>
+  return [...edges.values()].sort((first, second) =>
     compareFrameIds(
-      transformTopologyFrameUseKey(first),
-      transformTopologyFrameUseKey(second),
+      transformTopologyObservationKey(first),
+      transformTopologyObservationKey(second),
     ),
   );
 }
 
-function transformTopologyFrameUseKey(
-  use: EpisodeTransformTopologyFrameUse,
-): string {
-  return `${use.frameId}\0${use.streamId}`;
+function earliestDefined(
+  left: bigint | undefined,
+  right: bigint | undefined,
+): bigint | undefined {
+  if (left === undefined) return right;
+  if (right === undefined) return left;
+  return left < right ? left : right;
+}
+
+function latestDefined(
+  left: bigint | undefined,
+  right: bigint | undefined,
+): bigint | undefined {
+  if (left === undefined) return right;
+  if (right === undefined) return left;
+  return left > right ? left : right;
 }
 
 function sameReadWorkBudget(

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
-import * as fos from "@fiftyone/state";
+import { useViewTargets } from "@fiftyone/operators";
 import { BrainKeyConfig, CloneConfig, QueryType, ViewTarget } from "../types";
 import { UploadedImage } from "../utils";
 import { useSearchSelection } from "./useSearchSelection";
@@ -58,11 +57,12 @@ export const useNewSearchForm = (
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
     null,
   );
-  const isGroupedDataset =
-    useRecoilValue(fos.parentMediaTypeSelector) === "group";
-  const [viewTarget, setViewTarget] = useState<ViewTarget>(
-    isGroupedDataset ? "CURRENT_VIEW" : "DATASET",
+  const { targets, defaultTarget } = useViewTargets({ requireFlat: true });
+  const viewTargetOptions = useMemo(
+    () => targets.filter((meta) => meta.target !== ViewTarget.SELECTED_SAMPLES),
+    [targets],
   );
+  const [viewTarget, setViewTarget] = useState<ViewTarget>(defaultTarget);
 
   // ─── Derived config ─────────────────────────────────────────────
 
@@ -101,10 +101,13 @@ export const useNewSearchForm = (
   }, [supportsUpload, queryType]);
 
   useEffect(() => {
-    if (isGroupedDataset && viewTarget === "DATASET") {
-      setViewTarget("CURRENT_VIEW");
+    const current = viewTargetOptions.find(
+      (meta) => meta.target === viewTarget,
+    );
+    if (!current || current.unavailableReason !== undefined) {
+      setViewTarget(defaultTarget);
     }
-  }, [isGroupedDataset, viewTarget]);
+  }, [viewTargetOptions, defaultTarget, viewTarget]);
 
   // ─── Submission ─────────────────────────────────────────────────
 
@@ -163,7 +166,7 @@ export const useNewSearchForm = (
     setRunName,
     viewTarget,
     setViewTarget,
-    isGroupedDataset,
+    viewTargetOptions,
     dynamicResults,
     setDynamicResults,
     uploadedImage,
