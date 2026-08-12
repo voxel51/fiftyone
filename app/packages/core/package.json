@@ -26,7 +26,6 @@
         "@use-gesture/react": "^10.3.0",
         "@voxel51/voodo": "catalog:",
         "classnames": "^2.2.6",
-        "clsx": "^2.1.1",
         "color": "^4.2.3",
         "color-string": "^1.9.1",
         "fast-json-patch": "catalog:",

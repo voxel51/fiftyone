@@ -1786,7 +1786,6 @@ __metadata:
     "@voxel51/voodo": "catalog:"
     babel-plugin-relay: "catalog:"
     classnames: "npm:^2.2.6"
-    clsx: "npm:^2.1.1"
     color: "npm:^4.2.3"
     color-string: "npm:^1.9.1"
     fast-json-patch: "catalog:"
@@ -7277,9 +7276,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.1.0":
-  version: 0.1.0
-  resolution: "@voxel51/voodo@npm:0.1.0"
+"@voxel51/voodo@npm:0.2.0-feat.0":
+  version: 0.2.0-feat.0
+  resolution: "@voxel51/voodo@npm:0.2.0-feat.0"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7288,6 +7287,7 @@ __metadata:
     "@headlessui/react": "npm:^2.2.9"
     "@tanstack/react-virtual": "npm:^3.13.24"
     clsx: "npm:^2.1.1"
+    date-fns-tz: "npm:^3.2.0"
     lodash.debounce: "npm:^4.0.8"
     react-datepicker: "npm:^9.1.0"
     tailwind-merge: "npm:^3.4.0"
@@ -7295,7 +7295,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/fb6f49778b5ad74527b110bbd5a091c24c22dd795f6b3307ed518cbb72426d83cf9511e7f393e63d6b6827db4060085aec5de14f2af7445ef27e6d5770154bc9
+  checksum: 10/cc1aa95f56c959e0642e668a6ef4dc44e8775abe06811fd0990177d5d832dc2aa7ba3c61a5cf893eebe0e64cbb9a4d82502fd3c7ef65c60cddf44f1278ccc694
   languageName: node
   linkType: hard
 
@@ -9303,6 +9303,15 @@ __metadata:
     es-errors: "npm:^1.3.0"
     is-data-view: "npm:^1.0.1"
   checksum: 10/96f34f151bf02affb7b9f98762fb7aca1dd5f4553cb57b80bce750ca609c15d33ca659568ef1d422f7e35680736cbccb893a3d4b012760c758c1446bbdc4c6db
+  languageName: node
+  linkType: hard
+
+"date-fns-tz@npm:^3.2.0":
+  version: 3.2.0
+  resolution: "date-fns-tz@npm:3.2.0"
+  peerDependencies:
+    date-fns: ^3.0.0 || ^4.0.0
+  checksum: 10/8ab4745f00b40381220f0a7a2ec16e217cb629d4018a19047264d289dd260322baa23e19b3ed63c7e553f9ad34bea9dea105391132930a3e141e9a0a53e54af2
   languageName: node
   linkType: hard
 
