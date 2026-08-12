@@ -104,6 +104,9 @@ export interface RunFeaturesContext {
   /** The App's sidebar filters, verbatim. */
   filters: unknown;
   colorField: string | null;
+  /** The color-by field's key in the filters record — the grid-view
+   * vocabulary path (see filterPath.ts), not necessarily `colorField`. */
+  filterPath: string | null;
   colorValues: ColorValues | null;
   colorMeta: ColorMeta | null;
   /** The run's wire-order id column and how many points are loaded. */
@@ -291,8 +294,8 @@ export function useFallbackRunSource(): RunColumnSource {
  * everything else passes through to the server. */
 export function useFallbackRunFeatures(ctx: RunFeaturesContext): RunFeatures {
   const { localMask, serverFilters } = useLocalColorMask(
-    ctx.filters,
-    ctx.colorField,
+    ctx.filters as Record<string, unknown> | null | undefined,
+    ctx.filterPath,
     ctx.colorValues,
     ctx.colorMeta,
   );

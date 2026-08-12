@@ -39,7 +39,7 @@ export const useCuboidAnnotation = ({
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UseCuboidAnnotationProps) => {
-  const labelId = label._id;
+  const labelId = label.data._id;
 
   const workingLabel = useWorkingLabel(labelId);
   const { updateCuboid } = useUpdateTransient();
@@ -72,10 +72,10 @@ export const useCuboidAnnotation = ({
   >(() => {
     if (isDetection3dOverlay(workingLabel)) {
       return [
-        workingLabel.location,
-        workingLabel.dimensions,
-        workingLabel.rotation ?? rotation,
-        workingLabel.quaternion ?? null,
+        workingLabel.data.location,
+        workingLabel.data.dimensions,
+        workingLabel.data.rotation ?? rotation,
+        workingLabel.data.quaternion ?? null,
       ];
     }
     // Fallback to props if not in working store
@@ -208,6 +208,45 @@ export const useCuboidAnnotation = ({
     finalizeCuboidDrag(labelId);
   }, [labelId, finalizeCuboidDrag]);
 
+  const handleHeadingDragStart = useCallback(() => {
+    startDrag(labelId);
+  }, [startDrag, labelId]);
+
+  /**
+   * Commits a heading relabel in one shot. Unlike face-resize there is nothing
+   * continuous to preview — the arrow snaps to a face on release — so the
+   * transient write and the finalize happen together. `finalizeCuboidDrag`
+   * applies `dimensionsDelta` and `quaternionOverride` independently, so
+   * sending both is the same path scale and rotate already use, just combined.
+   *
+   * `baseDimensions` is the caller's drag-start snapshot rather than the live
+   * `effectiveDimensions`, which keeps this callback referentially stable for
+   * the duration of a drag (a changing identity would retrigger the caller's
+   * pointer-listener effect and commit mid-drag).
+   */
+  const handleHeadingRelabelCommit = useCallback(
+    (
+      baseDimensions: Vector3Tuple,
+      nextDimensions: Vector3Tuple,
+      nextQuaternion: THREE.Vector4Tuple,
+    ) => {
+      updateCuboid(labelId, {
+        dimensionsDelta: [
+          nextDimensions[0] - baseDimensions[0],
+          nextDimensions[1] - baseDimensions[1],
+          nextDimensions[2] - baseDimensions[2],
+        ],
+        quaternionOverride: nextQuaternion,
+      });
+      finalizeCuboidDrag(labelId);
+    },
+    [labelId, updateCuboid, finalizeCuboidDrag],
+  );
+
+  const handleHeadingDragCancel = useCallback(() => {
+    endDrag(labelId);
+  }, [endDrag, labelId]);
+
   // This effect clears drag state on unmount
   useEffect(() => {
     return () => endDrag(labelId);
@@ -231,5 +270,8 @@ export const useCuboidAnnotation = ({
     handleFaceResizeStart,
     handleFaceResizeChange,
     handleFaceResizeEnd,
+    handleHeadingDragStart,
+    handleHeadingRelabelCommit,
+    handleHeadingDragCancel,
   };
 };

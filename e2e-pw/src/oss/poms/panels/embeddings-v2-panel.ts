@@ -22,9 +22,10 @@ class EmbeddingsV2Asserter {
 
   async verifyPanelLoaded() {
     await expect(this.pom.runsPage).toBeVisible();
-    await expect(
-      this.pom.page.getByText("Visualize your embeddings"),
-    ).toBeVisible();
+    // No empty-state text assertion: this suite also runs against
+    // enterprise builds, and the two app modes deliberately render
+    // different no-runs states (upsell landing vs. neutral empty
+    // state). The per-mode rendering is unit-tested in RunsList.
     await expect(this.pom.gridPanel.errorBoundary).toBeHidden();
   }
 }

@@ -1,223 +1,208 @@
 /**
- * Maps v2 color columns to the renderer's flat rgb triplets. The
- * palettes are placeholders pending integration with the App's
- * configurable color scheme.
+ * Maps v2 color columns to the renderer's flat rgb triplets. Both the
+ * categorical palette and the continuous colorscale come from the App's
+ * color scheme, so neither can drift from the grid.
  */
-import { PALETTE } from "./renderer";
-import type { ColorValues } from "./protocol";
+import { getRGB, type RGB } from "@fiftyone/utilities";
+import { CSS_COLOR_NAMES } from "./cssColorNames";
+import type { ColorMeta, ColorValues } from "./protocol";
 
 export const MISSING_CATEGORY = 0xffff;
 
-const MISSING_RGB: [number, number, number] = [0.45, 0.45, 0.45];
+/** CSS color per categorical value, aligned to the field's `classes` */
+export type PlotPalette = readonly string[];
 
-type Rgb = [number, number, number];
+/** A resolved continuous colorscale: dense RGB stops, evenly spaced over
+ * [0, 1] — the same shape the App's own colorscale fields already carry
+ * (server-precomputed, not raw named stops), so no re-discretizing here. */
+export type Colorscale = readonly RGB[];
 
-/** A continuous ramp: evenly-spaced stops interpolated in rgb.
- *
- * `diverging` anchors the MIDDLE stop at zero by making the range symmetric
- * (±max(|min|, |max|)). Without it zero lands wherever it happens to fall, so
- * a left turn and a right turn of equal size read as the same colour.
- *
- * None of these clip: the ends of the ramp are the true extremes. What a ramp
- * changes is WHERE the perceptual contrast sits, which is the whole point when
- * the interesting values are the rare ones at the edges.
- */
-export interface Ramp {
-  label: string;
-  hint: string;
-  stops: Rgb[];
-  diverging?: boolean;
-}
-
-export const RAMPS = {
-  blueOrange: {
-    label: "Blue → orange",
-    hint: "Two-tone; extremes at the ends",
-    stops: [
-      [0.15, 0.4, 0.9],
-      [1.0, 0.65, 0.0],
-    ],
-  },
-  coolWarm: {
-    label: "Diverging (zero-centered)",
-    hint: "Signed data: zero is neutral, each direction its own hue",
-    diverging: true,
-    stops: [
-      [0.23, 0.3, 0.75],
-      [0.87, 0.87, 0.87],
-      [0.71, 0.02, 0.15],
-    ],
-  },
-  viridis: {
-    label: "Viridis",
-    hint: "Even contrast throughout; best when most values sit mid-range",
-    // Viridis sampled from its upper three quarters, not from zero. The canvas
-    // clears transparent, so the page shows through: canonical viridis starts
-    // at a near-black purple that is invisible against a dark theme, and the
-    // lowest values — a whole end of the range — simply would not be there.
-    stops: [
-      [0.229, 0.322, 0.545],
-      [0.147, 0.47, 0.558],
-      [0.216, 0.667, 0.5],
-      [0.612, 0.858, 0.286],
-      [0.993, 0.906, 0.144],
-    ],
-  },
-  cool: {
-    label: "Cool",
-    hint: "Cyan → magenta; saturated at both ends",
-    stops: [
-      [0.0, 0.9, 1.0],
-      [1.0, 0.2, 0.95],
-    ],
-  },
-  spring: {
-    label: "Spring",
-    hint: "Magenta → yellow; saturated at both ends",
-    stops: [
-      [1.0, 0.1, 0.85],
-      [1.0, 0.95, 0.2],
-    ],
-  },
-  rainbow: {
-    label: "Rainbow",
-    hint: "Most separation between nearby values; ranks poorly by eye",
-    // Full-hue sweep, but lifted off pure red and pure blue: those are the two
-    // dark corners of a canonical rainbow (luminance 0.21 and 0.07) and they
-    // are what makes its ends vanish on a dark canvas.
-    //
-    // Brightness does NOT track value here — it rises, falls and rises again —
-    // so this shows WHICH values differ, not which is greater. That is the
-    // trade a rainbow makes, and the reason it is not the default.
-    stops: [
-      [1.0, 0.25, 0.25],
-      [1.0, 0.85, 0.1],
-      [0.25, 0.95, 0.35],
-      [0.2, 0.85, 1.0],
-      [0.55, 0.45, 1.0],
-    ],
-  },
-} satisfies Record<string, Ramp>;
-
-export type RampId = keyof typeof RAMPS;
-
-export const DEFAULT_RAMP: RampId = "blueOrange";
-
-export const RAMP_IDS = Object.keys(RAMPS) as RampId[];
-
-/** Whether a remembered choice still names a ramp. Panel state outlives any
- * given build, so a renamed or dropped ramp comes back as a string that would
- * index RAMPS to undefined. */
-export const isRampId = (value: unknown): value is RampId =>
-  typeof value === "string" && Object.hasOwn(RAMPS, value);
-
-/** The rgb at position `t` in [0, 1] along a ramp's stops. */
-function rampAt(ramp: Ramp, t: number): Rgb {
-  if (ramp.stops.length === 1) return ramp.stops[0];
-  const clamped = Math.min(1, Math.max(0, t));
-  const span = ramp.stops.length - 1;
-  const scaled = clamped * span;
-  const i = Math.min(span - 1, Math.floor(scaled));
-  const f = scaled - i;
-  const a = ramp.stops[i];
-  const b = ramp.stops[i + 1];
-  return [
-    a[0] + f * (b[0] - a[0]),
-    a[1] + f * (b[1] - a[1]),
-    a[2] + f * (b[2] - a[2]),
-  ];
-}
-
-/** The values the ramp's two ends actually stand for.
- *
- * A diverging ramp is symmetric about zero so its middle stop IS zero, which
- * pushes one end past the data (±max(|min|, |max|)); every other ramp spans
- * min..max. A legend reads its labels from here, so it cannot name a value at
- * an end that end was never given.
- */
-export function rampDomain(
-  lo: number,
-  hi: number,
-  ramp: Ramp,
-): [number, number] {
-  if (ramp.diverging && lo < 0 && hi > 0) {
-    const m = Math.max(Math.abs(lo), Math.abs(hi)) || 1;
-    return [-m, m];
-  }
-  return [lo, hi];
-}
-
-/** Where a value sits on the ramp. Nothing clips — the extremes stay the
- * extremes; the ramp only moves where the contrast sits. */
-export function rampPosition(
-  value: number,
-  lo: number,
-  hi: number,
-  ramp: Ramp,
-): number {
-  const [min, max] = rampDomain(lo, hi, ramp);
-  const span = max - min || 1;
-  return (value - min) / span;
-}
-
-const hexToRgb = (hex: string): [number, number, number] => [
-  parseInt(hex.slice(1, 3), 16) / 255,
-  parseInt(hex.slice(3, 5), 16) / 255,
-  parseInt(hex.slice(5, 7), 16) / 255,
+const MISSING_CSS = "#737373";
+// Fallback when no colorscale resolves anywhere (cool blue -> Voxel51 orange)
+const DEFAULT_COLORSCALE: Colorscale = [
+  [0.15, 0.4, 0.9],
+  [1.0, 0.65, 0.0],
 ];
 
-const PALETTE_RGB = PALETTE.map(hexToRgb);
+/** The label attribute the grid colors by when a field configures none */
+const DEFAULT_ATTRIBUTE = "label";
+
+const toUnitRgb = (css: string | null | undefined): RGB | null => {
+  if (typeof css !== "string") return null;
+  const named = CSS_COLOR_NAMES[css.toLowerCase()];
+  const rgb = getRGB(named ?? css);
+  if (!rgb.every((channel) => Number.isFinite(channel))) return null;
+  return [rgb[0] / 255, rgb[1] / 255, rgb[2] / 255];
+};
+
+const MISSING_RGB = toUnitRgb(MISSING_CSS) as RGB;
+
+interface FieldSetting {
+  path?: string | null;
+  colorByAttribute?: string | null;
+  valueColors?: readonly { value: string; color: string }[] | null;
+}
 
 /**
- * The CSS color a categorical class index maps to. The single source
- * for legend swatches, so they cannot drift from the point colors
- * buildColors assigns.
+ * Per-value overrides that apply to a color-by path: a primitive field
+ * carries its own, a label field carries its labels' — the latter only
+ * while the grid colors by that same attribute. A patches plot's path has
+ * an extra list segment (`ground_truth.detections.label`) between the
+ * scheme's entry (`ground_truth`) and the attribute, so every dotted
+ * prefix is tried, longest first, not just the immediate parent.
  */
-export const categoryHex = (index: number): string =>
-  PALETTE[index % PALETTE.length];
+const valueColorsFor = (
+  fields: readonly FieldSetting[] | null | undefined,
+  path: string,
+): Map<string, string> => {
+  const segments = path.split(".");
+  const attribute = segments.at(-1);
+  let setting = fields?.find((field) => field.path === path);
+  for (let i = segments.length - 1; !setting && i > 0; i--) {
+    const prefix = segments.slice(0, i).join(".");
+    setting = fields?.find(
+      (field) =>
+        field.path === prefix &&
+        (field.colorByAttribute ?? DEFAULT_ATTRIBUTE) === attribute,
+    );
+  }
 
-/**
- * The CSS color at position t ∈ [0, 1] on the continuous ramp — the
- * same per-channel interpolation buildColors applies (including its
- * float32 quantization), so a legend gradient built from this cannot
- * drift from the point colors.
- */
-export const rampCss = (t: number, rampId: RampId = DEFAULT_RAMP): string => {
-  const rgb = rampAt(RAMPS[rampId], t);
-  const at = (channel: number) => Math.round(Math.fround(rgb[channel]) * 255);
-  return `rgb(${at(0)}, ${at(1)}, ${at(2)})`;
+  return new Map(
+    (setting?.valueColors ?? []).map(({ value, color }) => [
+      String(value),
+      color,
+    ]),
+  );
 };
 
 /**
- * A left-to-right CSS gradient of a whole ramp — one color stop per ramp
- * stop, which is exactly what rampAt interpolates between, so the bar a
- * legend or a menu swatch draws is the ramp the points get. Sampling only
- * the ends would flatten every ramp of three or more stops.
+ * A color for every distinct value of a color-by field. Values resolve
+ * by VALUE — a plot colored by field would be one flat color — through
+ * the same seeded pool generator and per-value overrides the grid uses,
+ * so a point matches its label in the grid whenever the grid colors by
+ * value.
  */
-export const rampGradient = (rampId: RampId = DEFAULT_RAMP): string => {
-  const count = RAMPS[rampId].stops.length;
-  const stops = Array.from({ length: count }, (_, i) =>
-    rampCss(count > 1 ? i / (count - 1) : 0, rampId),
-  );
-  return `linear-gradient(90deg, ${stops.join(", ")})`;
+export function resolvePalette(
+  field: string | null,
+  meta: ColorMeta | null,
+  /** The App's seeded pool generator (`fos.colorMap`) */
+  colorMap: (value: string) => string,
+  fields?: readonly FieldSetting[] | null,
+): PlotPalette {
+  if (meta?.style !== "categorical") return [];
+  const overrides = field ? valueColorsFor(fields, field) : new Map();
+
+  return (meta.classes ?? []).map(({ label }) => {
+    const value = String(label);
+    const custom = overrides.get(value);
+    // An override the renderer cannot parse falls back to the pool, not
+    // to gray — a bad color must not erase the value
+    return toUnitRgb(custom) ? (custom as string) : colorMap(value);
+  });
+}
+
+/**
+ * The CSS color a categorical value's index maps to. The single source
+ * for legend swatches and hover swatches, so they cannot drift from the
+ * point colors buildColors assigns.
+ */
+export const categoryCss = (palette: PlotPalette, index: number): string =>
+  palette[index] ?? MISSING_CSS;
+
+interface ColorscaleSetting {
+  path?: string | null;
+  /** Server-precomputed dense stops, 0-255 integer per channel (kept loose:
+   * callers pass the generated Relay colorscale-fragment shape, not this
+   * local type). */
+  rgb?: unknown;
+}
+
+/** Normalizes a raw 0-255 integer RGB stop list (the wire format both the
+ * scheme's colorscales and the app config's fallback use) to the 0-1 float
+ * range every other color in this file works in. Returns null for anything
+ * that isn't a non-empty array of 3-plus-number tuples. */
+function normalizeColorscale(raw: unknown): Colorscale | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const stops: RGB[] = [];
+  for (const stop of raw) {
+    if (!Array.isArray(stop) || stop.length < 3) return null;
+    const [r, g, b] = stop;
+    if (![r, g, b].every((channel) => Number.isFinite(channel))) return null;
+    stops.push([r / 255, g / 255, b / 255]);
+  }
+  return stops;
+}
+
+/**
+ * The continuous colorscale for a color-by field: a field-specific entry
+ * from the scheme, then the scheme's default, then the app config's — the
+ * same fallback order the grid's own heatmap overlays use, so a plot and
+ * the grid agree on which colorscale describes a given field.
+ *
+ * Every parameter is accepted as `unknown`: the App's own Session type for
+ * `fos.colorScheme` is declared against the mutation INPUT shape (which
+ * omits the server-computed `rgb` field), narrower than what the read
+ * fragment actually returns — so callers pass the live Recoil values
+ * straight through rather than fighting that gap here.
+ */
+export function resolveColorscale(
+  field: string | null,
+  colorscales: unknown,
+  defaultColorscale: unknown,
+  /** `fos.coloring.scale` — the app config's fallback, also raw 0-255 RGB */
+  appScale: unknown,
+): Colorscale {
+  const scales = colorscales as readonly ColorscaleSetting[] | null | undefined;
+  const fieldRaw = field
+    ? scales?.find((entry) => entry.path === field)?.rgb
+    : null;
+  const defaultRaw = (defaultColorscale as ColorscaleSetting | null)?.rgb;
+  const resolved =
+    normalizeColorscale(fieldRaw) ??
+    normalizeColorscale(defaultRaw) ??
+    normalizeColorscale(appScale);
+  return resolved ?? DEFAULT_COLORSCALE;
+}
+
+/** The RGB at position t ∈ [0, 1] in a resolved colorscale — nearest-stop
+ * lookup, matching how the grid's own heatmap overlays read these same
+ * server-precomputed dense arrays (not live multi-stop interpolation). */
+function colorscaleRgbAt(colorscale: Colorscale, t: number): RGB {
+  if (colorscale.length === 0) colorscale = DEFAULT_COLORSCALE;
+  if (colorscale.length === 1) return colorscale[0];
+  const clamped = Math.min(1, Math.max(0, t));
+  const index = Math.round(clamped * (colorscale.length - 1));
+  return colorscale[index];
+}
+
+/**
+ * The CSS color at position t ∈ [0, 1] on a resolved colorscale — the
+ * same lookup buildColors applies (including its float32 quantization),
+ * so a legend gradient built from this cannot drift from the point colors.
+ */
+export const rampCss = (
+  t: number,
+  colorscale: Colorscale = DEFAULT_COLORSCALE,
+): string => {
+  const rgb = colorscaleRgbAt(colorscale, t);
+  const at = (channel: number) => Math.round(Math.fround(rgb[channel]) * 255);
+  return `rgb(${at(0)}, ${at(1)}, ${at(2)})`;
 };
 
 /** Expands a color column into Float32Array(n*3) rgb for the renderer */
 export function buildColors(
   column: ColorValues,
+  palette: PlotPalette,
   range?: { min: number | null; max: number | null },
-  rampId: RampId = DEFAULT_RAMP,
+  colorscale: Colorscale = DEFAULT_COLORSCALE,
 ): Float32Array {
   if (column.style === "categorical") {
     const { indices } = column;
+    const rgb = palette.map((css) => toUnitRgb(css) ?? MISSING_RGB);
     const colors = new Float32Array(indices.length * 3);
     for (let i = 0; i < indices.length; i++) {
-      const index = indices[i];
-      const rgb =
-        index === MISSING_CATEGORY
-          ? MISSING_RGB
-          : PALETTE_RGB[index % PALETTE_RGB.length];
-      colors.set(rgb, i * 3);
+      // MISSING_CATEGORY indexes past every palette entry
+      colors.set(rgb[indices[i]] ?? MISSING_RGB, i * 3);
     }
     return colors;
   }
@@ -225,7 +210,7 @@ export function buildColors(
   const { values } = column;
   const lo = range?.min ?? 0;
   const hi = range?.max ?? 1;
-  const ramp = RAMPS[rampId];
+  const span = hi - lo || 1;
   const colors = new Float32Array(values.length * 3);
   for (let i = 0; i < values.length; i++) {
     const value = values[i];
@@ -233,7 +218,8 @@ export function buildColors(
       colors.set(MISSING_RGB, i * 3);
       continue;
     }
-    colors.set(rampAt(ramp, rampPosition(value, lo, hi, ramp)), i * 3);
+    const t = Math.min(1, Math.max(0, (value - lo) / span));
+    colors.set(colorscaleRgbAt(colorscale, t), i * 3);
   }
   return colors;
 }

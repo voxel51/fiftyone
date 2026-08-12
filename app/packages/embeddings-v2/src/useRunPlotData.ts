@@ -30,14 +30,14 @@ import {
   useSetRecoilState,
 } from "recoil";
 import {
-  categoryHex,
-  DEFAULT_RAMP,
-  isRampId,
+  categoryCss,
   MISSING_CATEGORY,
-  type RampId,
+  type Colorscale,
+  type PlotPalette,
 } from "./colors";
-import { useStoredRunSettings, writeRunSettings } from "./runSettings";
 import { backgroundClickAction } from "./backgroundClick";
+import { gridFilterPath } from "./filterPath";
+import { legendCounts } from "./legendCounts";
 import {
   legendLabels,
   soloLabel,
@@ -56,6 +56,7 @@ import {
   type RunFeatures,
 } from "./extensions";
 import { useColorColumn } from "./useColorColumn";
+import { useColorPalette } from "./useColorPalette";
 import { useHoverInfo } from "./useHoverInfo";
 import { useMasks } from "./useMasks";
 import { useRunColumns, type Loaded } from "./useRunColumns";
@@ -78,11 +79,10 @@ export interface RunPlotData {
   colorMeta: ColorMeta | null;
   colorLoading: boolean;
   pointColors: Float32Array | null;
-  /** Which palette continuous values map through. A few extreme values pin the
-   * ends of a two-tone ramp and flatten the middle, so the ramp is the user's
-   * choice — the legend and the points read the same one */
-  rampId: RampId;
-  setRampId: (id: RampId) => void;
+  /** The App color scheme's palette/colorscale for the color-by field —
+   * the legend and the points read the same ones */
+  palette: PlotPalette;
+  colorscale: Colorscale;
   /** The per-point sensor field (patches runs), when present */
   streamField: string | null;
   coloredByStream: boolean;
@@ -117,6 +117,9 @@ export interface RunPlotData {
   // Legend (derived from the App's sidebar filter for the color field)
   legend: ReturnType<typeof legendLabels>;
   legendFilter: CategoricalFilter | null;
+  /** Per-class counts scoped by the selection (focus) or the view +
+   * filters (scope); null when nothing narrows the plot */
+  scopedCounts: readonly number[] | null;
   handleLegendToggle: (label: string) => void;
   handleLegendSolo: (label: string) => void;
 
@@ -154,6 +157,7 @@ export function useRunPlotData(
 ): RunPlotData {
   const view = useRecoilValue(fos.view) as unknown[];
   const filters = useRecoilValue(fos.filters);
+  const isPatchesView = useRecoilValue(fos.isPatchesView);
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage,
   );
@@ -194,34 +198,14 @@ export function useRunPlotData(
     true,
   );
   const colorField = colorFieldState ?? null;
+  // The color-by endpoint speaks root-dataset paths, but the grid
+  // resolves filters against its CURRENT view's schema — so the filter
+  // atom is keyed by view vocabulary: the root path in a samples view,
+  // the re-rooted patch path in a patches view (see filterPath.ts)
+  const filterPath = colorField
+    ? gridFilterPath(colorField, run.patchesField ?? null, isPatchesView)
+    : null;
   const brainKey = run.brainKey;
-
-  // What this run was last read with. Panel state is in-memory, so a reload
-  // dropped every choice; storage supplies the fallback under it and each
-  // setter writes through. Read at render, so the remembered value is the one
-  // the plot opens with rather than a default it corrects afterwards.
-  const stored = useStoredRunSettings(datasetName, brainKey);
-
-  // Validated, not just defaulted: both panel state and storage outlive a
-  // build, so a ramp that was renamed or dropped comes back as a string that
-  // would index RAMPS to undefined and color every point NaN
-  const [rampState, setRampState] = usePanelStatePartial<string | null>(
-    "colorRamp",
-    null,
-    true,
-  );
-  const rampId = isRampId(rampState)
-    ? rampState
-    : isRampId(stored.rampId)
-      ? stored.rampId
-      : DEFAULT_RAMP;
-  const setRampId = useCallback(
-    (id: RampId) => {
-      setRampState(id);
-      writeRunSettings(datasetName, brainKey, { rampId: id });
-    },
-    [setRampState, datasetName, brainKey],
-  );
 
   // Everything edition-specific reaches this hook through the extension
   // seam — registered at module load, so the hook identities below are
@@ -285,7 +269,6 @@ export function useRunPlotData(
 
   const {
     choices,
-    colors,
     values: colorValues,
     meta: colorMeta,
     loading: colorLoading,
@@ -296,14 +279,21 @@ export function useRunPlotData(
     run,
     colorField,
     source.colorSource,
-    rampId,
+  );
+  // The palette lives in the App's color scheme, not in the fetched
+  // column: editing the pool (or a per-value override) recolors the plot
+  // in place, and values match their labels in the grid
+  const { palette, colorscale, colors } = useColorPalette(
+    colorField,
+    colorValues,
+    colorMeta,
   );
 
   // The legend is a view over the App's sidebar filter for the color-by
   // field; its on/off set drives both plot visibility and grid scope. Read
   // here (above the visibility mask) so the mask can honor it.
   const fieldFilter = useRecoilValue(
-    fos.filter({ path: colorField ?? "", modal: false }),
+    fos.filter({ path: filterPath ?? "", modal: false }),
   );
   const legendFilter = (fieldFilter ?? null) as CategoricalFilter | null;
   const legend = useMemo(
@@ -324,6 +314,7 @@ export function useRunPlotData(
     source,
     filters,
     colorField,
+    filterPath,
     colorValues,
     colorMeta,
     loadedIds: idColumn,
@@ -341,6 +332,7 @@ export function useRunPlotData(
   const {
     visibleMask,
     visibleCount,
+    scopeMask,
     error: masksError,
   } = useMasks(
     datasetName,
@@ -426,11 +418,13 @@ export function useRunPlotData(
   }, [plotVisible, visibleCount]);
 
   // The hover card's swatch mirrors the point's rendered color, which
-  // buildColors derives from the same class column
+  // buildColors derives from the same value column
   const pointSwatch = (index: number): string | null => {
     if (colorValues?.style !== "categorical") return null;
-    const classIndex = colorValues.indices[index];
-    return classIndex === MISSING_CATEGORY ? null : categoryHex(classIndex);
+    const valueIndex = colorValues.indices[index];
+    return valueIndex === MISSING_CATEGORY
+      ? null
+      : categoryCss(palette, valueIndex);
   };
 
   const { hover, handleHover, keepHover } = useHoverInfo(
@@ -468,6 +462,7 @@ export function useRunPlotData(
 
   const {
     selectedIndices,
+    lassoIndices,
     handleSelection,
     handlePointClick,
     clearAll,
@@ -489,6 +484,24 @@ export function useRunPlotData(
     publishSelection,
   });
 
+  // Focus (selection) wins over scope (view + filters); null means
+  // nothing to scope by, and the legend shows the run's full counts.
+  // A lasso's indices live in the bridge, never in fos.selectedSamples,
+  // so they lead and grid checkbox selections are the fallback focus
+  const focusIndices = lassoIndices ?? selectedIndices;
+  const scopedCounts = useMemo(
+    () =>
+      colorValues?.style === "categorical" && colorMeta?.classes?.length
+        ? legendCounts(
+            colorValues.indices,
+            colorMeta.classes.length,
+            focusIndices,
+            scopeMask,
+          )
+        : null,
+    [colorValues, colorMeta, focusIndices, scopeMask],
+  );
+
   const [mode, setMode] = useState<PanelMode>("explore");
   const [rendererError, setRendererError] = useState<string | null>(null);
   const onRendererError = useCallback(
@@ -502,9 +515,9 @@ export function useRunPlotData(
   // Writes read the filter from a fresh snapshot, not the render-time
   // value — rapid clicks must each transform the latest state, or a
   // click can silently compute from a stale base and drop its
-  // predecessor. A dblclick arrives as click-click-dblclick; the two
-  // toggles cancel (toggle is its own inverse), then the solo lands —
-  // no click timers
+  // predecessor. (Double-click handling lives in ColorLegend, which
+  // defers single-click toggles and cancels them when the second
+  // click arrives)
   // The extension syncs its own selection artifacts to the legend filter
   // (e.g. marking the shown classes on linked views). Ref so the memoized
   // recoil callback always calls the freshest closure, never a stale one
@@ -514,8 +527,8 @@ export function useRunPlotData(
   const handleLegendClick = useRecoilCallback(
     ({ snapshot, set, reset }) =>
       (label: string, solo: boolean) => {
-        if (!colorField || !legend) return;
-        const filterState = fos.filter({ path: colorField, modal: false });
+        if (!filterPath || !legend) return;
+        const filterState = fos.filter({ path: filterPath, modal: false });
         const current = (snapshot.getLoadable(filterState).valueMaybe() ??
           null) as CategoricalFilter | null;
         const transform = solo ? soloLabel : toggleLabel;
@@ -527,7 +540,7 @@ export function useRunPlotData(
         }
         onLegendFilterChangeRef.current(next);
       },
-    [colorField, legend],
+    [filterPath, legend],
   );
   const handleLegendToggle = (label: string) => handleLegendClick(label, false);
   const handleLegendSolo = (label: string) => handleLegendClick(label, true);
@@ -535,14 +548,14 @@ export function useRunPlotData(
   const resetLegendFilter = useRecoilCallback(
     ({ reset }) =>
       () => {
-        if (colorField) {
-          reset(fos.filter({ path: colorField, modal: false }));
+        if (filterPath) {
+          reset(fos.filter({ path: filterPath, modal: false }));
           // Clearing the class filter also clears anything the extension
           // derived from it (e.g. legend-driven linked-view marks)
           onLegendFilterChangeRef.current(null);
         }
       },
-    [colorField],
+    [filterPath],
   );
 
   // Clear everything the plot introduced: the selection (lasso / grid /
@@ -581,10 +594,12 @@ export function useRunPlotData(
   }, [choices, run.patchesField]);
   const coloredByStream = Boolean(streamField && colorField === streamField);
 
-  // A completed lasso returns gestures to the camera, so the selection can
-  // be explored immediately without switching modes. NOT in an extension
-  // mode: a lasso there IS that mode's input (e.g. a query), and dropping
-  // to explore would turn the mode off under the user between gestures
+  // A completed 3D lasso returns gestures to the camera — orbiting to
+  // inspect the selection is the natural next step. 2D stays in select
+  // mode so lassos can be redrawn without re-arming the tool
+  // (FOEPD-4319); each new lasso replaces the previous selection. NOT in
+  // an extension mode: a lasso there IS that mode's input (e.g. a query),
+  // and dropping to explore would turn the mode off under the user
   const extraMode = features.extraMode;
   const handleLasso = useCallback(
     (indices: number[], polygon?: Array<[number, number]> | null) => {
@@ -600,9 +615,9 @@ export function useRunPlotData(
       }
 
       handleSelection(indices, polygon);
-      setMode("explore");
+      if (run.dims === 3) setMode("explore");
     },
-    [mode, handleSelection, extraMode],
+    [mode, handleSelection, extraMode, run.dims],
   );
 
   // The published count IS the count. Every selection — lasso, grid, an
@@ -652,8 +667,8 @@ export function useRunPlotData(
     colorMeta,
     colorLoading,
     pointColors,
-    rampId,
-    setRampId,
+    palette,
+    colorscale,
     streamField,
     coloredByStream,
     plotVisible,
@@ -672,6 +687,7 @@ export function useRunPlotData(
     features,
     legend,
     legendFilter,
+    scopedCounts,
     handleLegendToggle,
     handleLegendSolo,
     resultsPartial,

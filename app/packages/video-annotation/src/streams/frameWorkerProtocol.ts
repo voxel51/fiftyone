@@ -75,6 +75,8 @@ export interface CapabilityMessage {
   codec?: string;
   /** Human-readable reason when not decodable (diagnostics). */
   reason?: string;
+  /** Audio track present in the container; absent when unknown. */
+  hasAudio?: boolean;
 }
 
 export type FrameWorkerOutbound =

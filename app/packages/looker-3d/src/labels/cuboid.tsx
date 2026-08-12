@@ -17,6 +17,10 @@ import {
   isValidCuboidResizeDimensions,
   type CuboidResizeFace,
 } from "../annotation/cuboid-face-resize";
+import {
+  computeCuboidHeadingAndUpRelabel,
+  isValidHeadingUpFacePair,
+} from "../annotation/cuboid-heading-relabel";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
 import { FO_USER_DATA, PANEL_ID_MAIN, getPanelElementId } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
@@ -31,6 +35,8 @@ import {
   transformModeAtom,
 } from "../state";
 import {
+  useHeadingUpEditorHover,
+  useHeadingUpPreview,
   useIsCurrentlyTransforming,
   useSetCurrent3dAnnotationMode,
 } from "../state/accessors";
@@ -46,12 +52,20 @@ import type { OverlayProps } from "./shared";
 import {
   CuboidAxesMarker,
   CuboidOrientationMarker,
+  HEADING_FORWARD_FACE,
   ORIENTATION_AXES_COLORS,
 } from "./shared/CuboidOrientationMarkers";
+import {
+  HEADING_GHOST_DRAG_OPACITY,
+  HEADING_GHOST_HOVER_OPACITY,
+  HeadingFaceDots,
+  HeadingGhostArrow,
+} from "./shared/HeadingArrow";
 import { useDisplayCuboidTransform } from "./shared/useDisplayCuboidTransform";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import "./shared/registerLineElements";
 import { shouldSuppressHoverOnPointer } from "./shared/shouldSuppressHoverOnPointer";
+import { useHeadingDrag } from "./shared/useHeadingDrag";
 import { Transformable } from "./shared/TransformControls";
 
 const FACE_RESIZE_EDGE_COLOR = "#ff2f2f";
@@ -62,18 +76,6 @@ const FACE_RESIZE_EDGE_LINE_WIDTH = 2;
 // dashSize is the edge length over this count (with a floor for tiny faces).
 const FACE_RESIZE_DASHED_EDGE_SEGMENTS = 22;
 const FACE_RESIZE_DASHED_EDGE_MIN_DASH = 0.01;
-const ORIENTATION_MARKER_LINE_WIDTH = 4;
-const ORIENTATION_MARKER_OPACITY = 0.95;
-// Flat triangular arrowhead, sized relative to the cuboid's heading length.
-const ORIENTATION_MARKER_EXTENSION_RATIO = 0.3;
-const ORIENTATION_MARKER_HEAD_LENGTH_RATIO = 0.16;
-const ORIENTATION_MARKER_MIN_HEAD_LENGTH = 0.08;
-const ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO = 0.1;
-// Half-width of the arrowhead base, as a fraction of its length and capped
-// against the cuboid's smaller cross-section so it never overhangs the box.
-const ORIENTATION_MARKER_HEAD_WIDTH_RATIO = 0.7;
-const ORIENTATION_MARKER_HEAD_WIDTH_CROSS_CAP = 0.4;
-const ORIENTATION_MARKER_MIN_HEAD_WIDTH = 0.03;
 
 // Face-pull scaling handles (visible only in scale mode). A small cuboid "knob"
 // of the complementary color sits at the end of a thin shaft poking straight
@@ -280,6 +282,7 @@ export interface CuboidProps extends OverlayProps {
   itemRotation: THREE.Vector3Tuple;
   lineWidth?: number;
   enableFaceResize?: boolean;
+  enableHeadingEdit?: boolean;
   hoverSource?: HoveredLabelSource;
   showOrientation?: boolean;
 }
@@ -400,6 +403,7 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
   enableFaceResize = false,
+  enableHeadingEdit = false,
   hoverSource = PANEL_ID_MAIN,
   showOrientation = false,
 }: CuboidProps) => {
@@ -422,23 +426,27 @@ export const Cuboid = ({
   // feedback (handle opacity/scale, face highlight) appears in every panel, not
   // just the one under the cursor.
   const hoveredResizeFace =
-    hoveredResizeFaceState?.labelId === label._id
+    hoveredResizeFaceState?.labelId === label.data._id
       ? hoveredResizeFaceState.face
       : null;
+  const clearHoveredResizeFace = useCallback(
+    () => setHoveredResizeFaceState(null),
+    [setHoveredResizeFaceState],
+  );
   const setHoveredResizeFace = useCallback(
     (face: CuboidResizeFace | null) => {
       setHoveredResizeFaceState((prev) => {
         if (face) {
-          return { labelId: label._id, face, source: hoverSource };
+          return { labelId: label.data._id, face, source: hoverSource };
         }
         // Only clear if this exact (label, panel) owns the current hover, so a
         // pointer-out or deselect elsewhere can't wipe another panel's hover.
-        return prev?.labelId === label._id && prev?.source === hoverSource
+        return prev?.labelId === label.data._id && prev?.source === hoverSource
           ? null
           : prev;
       });
     },
-    [label._id, hoverSource, setHoveredResizeFaceState],
+    [label.data._id, hoverSource, setHoveredResizeFaceState],
   );
   const [isFaceResizeDragging, setIsFaceResizeDragging] = useState(false);
   const faceResizeDragRef = useRef<FaceResizeDragState | null>(null);
@@ -461,11 +469,11 @@ export const Cuboid = ({
     [],
   );
 
-  const isHovered = hoveredLabel?.id === label._id;
+  const isHovered = hoveredLabel?.id === label.data._id;
 
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
   const isSelectedForAnnotation =
-    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
+    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label.data._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
     currentArchetypeSelectedForTransformAtom,
@@ -480,11 +488,11 @@ export const Cuboid = ({
   }, [isSelectedForAnnotation, setCurrent3dAnnotationMode]);
 
   const labelWoQuaternion = useMemo(() => {
-    if (!label.quaternion) {
+    if (!label.data.quaternion) {
       return label;
     }
-    const { quaternion: _quaternion, ...rest } = label;
-    return rest;
+    const { quaternion: _quaternion, ...rest } = label.data;
+    return { ...label, data: rest };
   }, [label]);
 
   const {
@@ -540,6 +548,9 @@ export const Cuboid = ({
     handleFaceResizeStart,
     handleFaceResizeChange,
     handleFaceResizeEnd,
+    handleHeadingDragStart,
+    handleHeadingRelabelCommit,
+    handleHeadingDragCancel,
   } = useCuboidAnnotation({
     label,
     location,
@@ -561,10 +572,10 @@ export const Cuboid = ({
         return false;
       }
 
-      setHoveredLabel({ id: label._id, source: hoverSource });
+      setHoveredLabel({ id: label.data._id, source: hoverSource });
       return true;
     },
-    [hoverSource, isCurrentlyTransforming, label._id, setHoveredLabel],
+    [hoverSource, isCurrentlyTransforming, label.data._id, setHoveredLabel],
   );
 
   const transformMode = useRecoilValue(transformModeAtom);
@@ -576,13 +587,94 @@ export const Cuboid = ({
     fallbackEuler,
     orientationQuaternion,
   } = useDisplayCuboidTransform({
-    labelId: label._id,
+    labelId: label.data._id,
     effectiveLocation,
     effectiveDimensions,
     effectiveRotation: effectiveRotation as THREE.Vector3Tuple,
     effectiveQuaternion,
     useLegacyCoordinates,
   });
+
+  // Set while a face button in the "Edit heading/up vector" sidebar section
+  // is hovered — previews the ghost arrow/face highlight below.
+  const headingUpPreview = useHeadingUpPreview();
+  const isHeadingUpPreviewActive = headingUpPreview?.labelId === label.data._id;
+
+  // Local axis (in the box's own frame) currently closest to world "up" —
+  // fills in the "up" side of the preview below when only heading is being
+  // hovered (and vice versa), since the sidebar hover only ever carries one
+  // face at a time.
+  const currentUpFace = useMemo(() => {
+    const effectiveUp =
+      upVector && upVector.lengthSq() > 0
+        ? upVector.clone().normalize()
+        : new THREE.Vector3(0, 0, 1);
+    const localUp = effectiveUp
+      .clone()
+      .applyQuaternion(orientationQuaternion.clone().invert());
+    return getCuboidResizeFaceFromNormal(localUp) ?? "+z";
+  }, [upVector, orientationQuaternion]);
+
+  // Full candidate orientation for the hovered heading/up combination, so the
+  // axes tripod can preview the resulting frame before committing — alongside
+  // the ghost arrow/face dots' single-face preview below.
+  const headingUpPreviewRelabel = useMemo(() => {
+    if (!isHeadingUpPreviewActive || !headingUpPreview) {
+      return null;
+    }
+
+    const nextHeadingFace =
+      headingUpPreview.role === "heading"
+        ? headingUpPreview.face
+        : HEADING_FORWARD_FACE;
+    const nextUpFace =
+      headingUpPreview.role === "up" ? headingUpPreview.face : currentUpFace;
+
+    if (!isValidHeadingUpFacePair(nextHeadingFace, nextUpFace)) {
+      return null;
+    }
+
+    return computeCuboidHeadingAndUpRelabel({
+      dimensions: effectiveDimensions,
+      quaternion: orientationQuaternion,
+      headingFace: nextHeadingFace,
+      upFace: nextUpFace,
+      upVector,
+    });
+  }, [
+    isHeadingUpPreviewActive,
+    headingUpPreview,
+    currentUpFace,
+    effectiveDimensions,
+    orientationQuaternion,
+    upVector,
+  ]);
+
+  const headingUpPreviewQuaternion = useMemo(
+    () =>
+      headingUpPreviewRelabel
+        ? new THREE.Quaternion(...headingUpPreviewRelabel.quaternion)
+        : null,
+    [headingUpPreviewRelabel],
+  );
+
+  // While hovering a heading/up face button, a second axes gizmo is drawn at
+  // the candidate orientation (see the sibling group below `content`). Hide
+  // the gizmo's current-orientation copy for that span so the box only ever
+  // shows one gizmo at a time — the preview reads as "the gizmo turning to
+  // its new orientation" rather than two overlapping tripods.
+  const isPreviewingOrientation = Boolean(
+    headingUpPreviewRelabel && headingUpPreviewQuaternion,
+  );
+
+  // Set while the pointer is anywhere over that same UI *as a whole* — used
+  // (instead of the per-face preview above) to hide the gizmo/face-resize
+  // handles, since the per-face atom goes null in the gaps between buttons
+  // and would otherwise flicker those controls back on as the pointer
+  // crosses them.
+  const headingUpEditorHover = useHeadingUpEditorHover();
+  const isHeadingUpEditorHovered =
+    headingUpEditorHover?.labelId === label.data._id;
 
   const isFaceResizeControlActive =
     Boolean(hoveredResizeFace) || isFaceResizeDragging;
@@ -593,12 +685,51 @@ export const Cuboid = ({
     transformMode === "scale" &&
     !isCreatingCuboidPointerDown &&
     !isActivelySegmenting &&
+    !isHeadingUpEditorHovered &&
     isValidCuboidResizeDimensions(displayDimensions) &&
     (!isCurrentlyTransforming || isFaceResizeControlActive);
 
+  // The heading arrow is its own handle rather than part of the gizmo, so
+  // unlike face-resize it isn't tied to a particular transform mode — it just
+  // needs the label selected in annotate mode with the arrow visible.
+  //
+  // Deliberately free of hover/`isCurrentlyTransforming` state: hovering
+  // anywhere on the box arms a resize face, which raises that flag, and a gate
+  // that reacted to it would be false at the moment the arrow is pressed (the
+  // pointer-down and the hover-driven re-render race), silently dropping the
+  // grab. Face-resize's own *drag* is excluded since that owns the pointer.
+  const canEditHeading =
+    enableHeadingEdit &&
+    showOrientation &&
+    isAnnotateMode &&
+    isSelectedForAnnotation &&
+    !isCreatingCuboidPointerDown &&
+    !isActivelySegmenting &&
+    !isFaceResizeDragging &&
+    isValidCuboidResizeDimensions(displayDimensions);
+
+  const headingDrag = useHeadingDrag({
+    labelId: label.data._id,
+    hoverSource,
+    enabled: canEditHeading,
+    dimensions: displayDimensions,
+    orientation: orientationQuaternion,
+    upVector,
+    contentRef,
+    panelElementRef,
+    onDragStart: handleHeadingDragStart,
+    onCommit: handleHeadingRelabelCommit,
+    onCancel: handleHeadingDragCancel,
+    // The arrow stands off the forward face, right where that face's own resize
+    // handle sits; clearing that hover stops the two competing for the drag.
+    onArrowEnter: clearHoveredResizeFace,
+    suppressNextClickRef,
+  });
+
   useCursor(
-    canFaceResize && isFaceResizeControlActive,
-    isFaceResizeDragging ? "grabbing" : "grab",
+    (canFaceResize && isFaceResizeControlActive) ||
+      (canEditHeading && headingDrag.isActive),
+    isFaceResizeDragging || headingDrag.isDragging ? "grabbing" : "grab",
     "auto",
   );
 
@@ -997,7 +1128,7 @@ export const Cuboid = ({
     <group
       // By default, quaternion is preferred automatically over euler
       ref={contentRef}
-      userData={{ [FO_USER_DATA.LABEL_ID]: label._id }}
+      userData={{ [FO_USER_DATA.LABEL_ID]: label.data._id }}
       rotation={combinedQuaternion ? undefined : (fallbackEuler ?? undefined)}
       quaternion={combinedQuaternion ?? undefined}
       position={displayPosition}
@@ -1018,7 +1149,7 @@ export const Cuboid = ({
             setCurrentArchetypeSelectedForTransform("cuboid");
           }
 
-          onClick(e);
+          onClick?.(e);
         }}
         onPointerOver={(e) => {
           if (!setHoveredLabelFromPointer(e)) {
@@ -1174,10 +1305,39 @@ export const Cuboid = ({
           <CuboidOrientationMarker
             dimensions={displayDimensions}
             color={complementaryColor}
-            orientation={orientationQuaternion}
-            upVector={upVector}
+            highlighted={canEditHeading && headingDrag.isActive}
+            {...(canEditHeading ? headingDrag.handlers : {})}
           />
-          <CuboidAxesMarker dimensions={displayDimensions} />
+          {!isPreviewingOrientation && (
+            <CuboidAxesMarker dimensions={displayDimensions} />
+          )}
+
+          {/* Hover/drag affordances: dots marking every face the heading can
+              attach to, plus a ghost arrow tracking the pointer. The committed
+              arrow above stays put until the drop. */}
+          {canEditHeading && headingDrag.isActive && (
+            <>
+              <HeadingFaceDots
+                dimensions={displayDimensions}
+                activeFace={
+                  headingDrag.isDragging ? headingDrag.targetFace : null
+                }
+              />
+              <HeadingGhostArrow
+                dimensions={displayDimensions}
+                // Stands on the face it would move to, perpendicular to it.
+                anchorFace={
+                  (headingDrag.isDragging ? headingDrag.targetFace : null) ??
+                  HEADING_FORWARD_FACE
+                }
+                opacity={
+                  headingDrag.isDragging
+                    ? HEADING_GHOST_DRAG_OPACITY
+                    : HEADING_GHOST_HOVER_OPACITY
+                }
+              />
+            </>
+          )}
         </>
       )}
     </group>
@@ -1187,7 +1347,9 @@ export const Cuboid = ({
     <Transformable
       archetype="cuboid"
       isSelectedForTransform={
-        isSelectedForAnnotation && transformMode !== "scale"
+        isSelectedForAnnotation &&
+        transformMode !== "scale" &&
+        !isHeadingUpEditorHovered
       }
       transformControlsRef={transformControlsRef}
       onTransformStart={handleTransformStart}
@@ -1196,6 +1358,20 @@ export const Cuboid = ({
       explicitObjectRef={contentRef}
     >
       {content}
+      {/* Sibling to `content`, not nested inside it: `headingUpPreviewRelabel`'s
+          quaternion is already expressed in the same (parent-relative) frame as
+          the box's own `combinedQuaternion`, so nesting it inside the
+          already-rotated content group would double-apply the rotation. */}
+      {showOrientation &&
+        headingUpPreviewRelabel &&
+        headingUpPreviewQuaternion && (
+          <group
+            position={displayPosition}
+            quaternion={headingUpPreviewQuaternion}
+          >
+            <CuboidAxesMarker dimensions={headingUpPreviewRelabel.dimensions} />
+          </group>
+        )}
     </Transformable>
   );
 };

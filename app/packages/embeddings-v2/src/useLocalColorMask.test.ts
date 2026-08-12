@@ -17,9 +17,11 @@ const COLUMN: ColorValues = {
   indices: new Uint16Array([0, 1, 0]),
 };
 
-const render = (filters: unknown) =>
+type Filters = Record<string, unknown>;
+
+const render = (filters: Filters) =>
   renderHook(
-    ({ f }: { f: unknown }) => useLocalColorMask(f, "cluster", COLUMN, META),
+    ({ f }: { f: Filters }) => useLocalColorMask(f, "cluster", COLUMN, META),
     { initialProps: { f: filters } },
   );
 
@@ -31,7 +33,7 @@ describe("useLocalColorMask", () => {
     });
 
     expect(result.current.localMask).not.toBeNull();
-    expect([...(result.current.localMask as Uint8Array)]).toEqual([0, 1, 0]);
+    expect(Array.from(result.current.localMask ?? [])).toEqual([0, 1, 0]);
     expect(result.current.serverFilters).toEqual({
       other: { values: ["x"], exclude: false },
     });
@@ -55,7 +57,7 @@ describe("useLocalColorMask", () => {
     });
     expect(result.current.serverFilters).toBe(before);
     // ...while the local mask did change
-    expect([...(result.current.localMask as Uint8Array)]).toEqual([1, 0, 1]);
+    expect(Array.from(result.current.localMask ?? [])).toEqual([1, 0, 1]);
 
     // A change to another field's filter must re-fire
     rerender({

@@ -4,20 +4,22 @@ import {
   useViewStart,
 } from "../../lib/playback/use-playback-state";
 import {
+  Anchor,
   Button,
   ContextMenu,
-  IconName,
   MenuSeparator,
   MenuTextItem,
   Size,
   Text,
   TextColor,
   TextVariant,
+  Tooltip,
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useRef, useState } from "react";
 import styles from "./TimelineTrack.module.css";
+import { ChevronBottomIcon, ChevronRightIcon, PinIcon } from "../stableIcons";
 
 /**
  * One event on a track. A `number` is shorthand for a point at that
@@ -255,6 +257,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
    */
   const justDraggedRef = useRef(false);
 
+  const labelText = label ?? id;
+
   const viewDuration = viewEnd - viewStart;
   // Degenerate view (zero/negative width) — would produce NaN/Infinity
   // CSS values and break layout for every bar/marker below.
@@ -383,8 +387,6 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   const clippedEnd = hasBackground ? Math.min(end, viewEnd) : 0;
   const barVisible = hasBackground && clippedStart < clippedEnd;
 
-  const labelText = label ?? id;
-
   // While moving an interval, point events (e.g. keyframe diamonds) that
   // live inside the dragged bar's *original* span should travel with it.
   // The bar follows the cursor via `dragOverride`; mirror the same offset
@@ -439,6 +441,9 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       {labelWidth > 0 && (
         <div
           className={styles.label}
+          // Marks this as a measurable label column. TimelineWithTracks reads
+          // every mounted column to work out how far the user may widen it.
+          data-track-label-column
           style={{
             width: labelWidth,
             paddingLeft: LABEL_BASE_PADDING_PX + depth * DEPTH_INDENT_PX,
@@ -451,9 +456,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                   variant={Variant.Icon}
                   size={Size.Xs}
                   data-testid={`timeline-track-expand-${id}`}
-                  leadingIcon={
-                    expanded ? IconName.ChevronBottom : IconName.ChevronRight
-                  }
+                  leadingIcon={expanded ? ChevronBottomIcon : ChevronRightIcon}
                   aria-label={
                     expanded ? "Collapse sub-tracks" : "Expand sub-tracks"
                   }
@@ -472,19 +475,34 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           ) : (
             <div className={styles.dot} style={{ background: color }} />
           )}
-          <Text
-            variant={TextVariant.Xs}
-            color={isChild ? TextColor.Secondary : TextColor.Primary}
-            className={styles.labelText}
+          {/* Unconditional: even at the column's maximum width a long enough
+              label still ellipsises, so "is it truncated right now" is the
+              wrong gate — the full text has to stay reachable at every width.
+              Anchored right because the label column hugs the left edge of
+              the viewport; voodo's Tooltip has no collision flipping, so a
+              top-anchored panel is centred on the column and runs off-screen
+              the moment it's wider than twice the column. */}
+          <Tooltip
+            anchor={Anchor.Right}
+            content={labelText}
+            portal
+            wrapperClassName={styles.labelTooltip}
           >
-            {labelText}
-          </Text>
+            <Text
+              variant={TextVariant.Xs}
+              color={isChild ? TextColor.Secondary : TextColor.Primary}
+              className={styles.labelText}
+              data-track-label
+            >
+              {labelText}
+            </Text>
+          </Tooltip>
           {onPinClick && !isChild && (
             <Button
               variant={Variant.Icon}
               size={Size.Xs}
               data-testid={`timeline-track-pin-${id}`}
-              leadingIcon={IconName.Pin}
+              leadingIcon={PinIcon}
               aria-label={pinned ? "Unpin track" : "Pin track"}
               aria-pressed={pinned}
               className={clsx(styles.pinButton, {

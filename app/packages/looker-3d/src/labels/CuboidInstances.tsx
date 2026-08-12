@@ -16,7 +16,6 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import type { ReconciledDetection3D } from "../annotation/types";
 import { PANEL_ID_MAIN } from "../constants";
-import { useFo3dContext } from "../fo3d/context";
 import { use3dLabelColor } from "../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
 import {
@@ -28,6 +27,7 @@ import {
 import type { HoveredLabelSource } from "../types";
 import { getComplementaryColor } from "../utils";
 import {
+  AXES_SEGMENTS_PER_BOX,
   EDGES_PER_BOX,
   SHAFT_SEGMENTS_PER_BOX,
   UNIT_ARROWHEAD_GEOMETRY,
@@ -37,7 +37,6 @@ import {
   computeBodyMatrix,
   computeBoxEdgePositions,
   localToWorld,
-  orientationSegmentsPerBoxFor,
   resolveCuboidGeometry,
   setSegmentColor,
 } from "./cuboid-instance-geometry";
@@ -83,6 +82,12 @@ export interface CuboidInstancesProps {
  * are rare); color updates react per-label via headless "shadow" components
  * (`CuboidColorSync`) that write directly into the shared color buffers.
  */
+const AXES_COLOR_BY_AXIS = [
+  ORIENTATION_AXES_COLORS.x,
+  ORIENTATION_AXES_COLORS.y,
+  ORIENTATION_AXES_COLORS.z,
+] as const;
+
 export const CuboidInstances = ({
   detections,
   getColor,
@@ -94,7 +99,6 @@ export const CuboidInstances = ({
   showOrientation = false,
   onClick,
 }: CuboidInstancesProps) => {
-  const { upVector } = useFo3dContext();
   const hoveredLabel = useHoveredLabel3d();
   const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const setHoveredLabel = useSetHoveredLabel3d();
@@ -108,14 +112,17 @@ export const CuboidInstances = ({
   const [outlineGeometry, setOutlineGeometry] =
     useState<LineSegmentsGeometry | null>(null);
   const previousOutlineGeometryRef = useRef<LineSegmentsGeometry | null>(null);
-  // Orientation markers (shaft + axes) live in their own merged geometry,
-  // separate from the edge outline above: they need `depthTest: false` (see
-  // `orientationMaterial` below), which would be wrong for edges.
-  const [orientationGeometry, setOrientationGeometry] =
+  // Heading shafts and the RGB axes tripods live in separate geometries from
+  // each other and from the edge outline, because all three want different
+  // depth behaviour: shafts extend past the box surface and are depth-tested,
+  // axes sit inside it and must draw on top, edges are coincident with it.
+  const [shaftGeometry, setShaftGeometry] =
     useState<LineSegmentsGeometry | null>(null);
-  const previousOrientationGeometryRef = useRef<LineSegmentsGeometry | null>(
+  const previousShaftGeometryRef = useRef<LineSegmentsGeometry | null>(null);
+  const [axesGeometry, setAxesGeometry] = useState<LineSegmentsGeometry | null>(
     null,
   );
+  const previousAxesGeometryRef = useRef<LineSegmentsGeometry | null>(null);
 
   // Deliberately no `vertexColors: true` here: these geometries (a plain
   // unit box / triangle) have no geometry `color` attribute, and setting
@@ -132,13 +139,14 @@ export const CuboidInstances = ({
       }),
     [opacity],
   );
+  // Arrowheads sit beyond the forward face, so ordinary depth testing reads
+  // correctly and occludes them when the heading points away from the camera.
   const arrowMaterial = useMemo(
     () =>
       new THREE.MeshBasicMaterial({
         transparent: true,
         opacity,
         side: THREE.DoubleSide,
-        depthTest: false,
         depthWrite: false,
       }),
     [opacity],
@@ -153,12 +161,23 @@ export const CuboidInstances = ({
       }),
     [opacity, lineWidth],
   );
-  // Mirrors the standalone `CuboidOrientationMarkers`' `depthTest={false}`
-  // Lines: the shaft + axes run from the box's *center* outward but only to
-  // `ORIENTATION_AXES_LENGTH_RATIO` (< 1) of the half-dimension, so they
-  // never reach the surface — with normal depth testing they'd always be
-  // buried behind the box's own opaque front face and never render.
-  const orientationMaterial = useMemo(
+  // Heading shafts run from the forward face outward past the surface, so they
+  // depth-test normally — matching the standalone `CuboidOrientationMarker`.
+  const shaftMaterial = useMemo(
+    () =>
+      new LineMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity,
+        linewidth: lineWidth,
+      }),
+    [opacity, lineWidth],
+  );
+  // The axes tripods, by contrast, only reach `ORIENTATION_AXES_LENGTH_RATIO`
+  // (< 1) of the half-dimension from the centroid, so they never leave the box:
+  // with normal depth testing they'd always be buried behind its front face and
+  // never render. Same override the standalone `CuboidAxesMarker` carries.
+  const axesMaterial = useMemo(
     () =>
       new LineMaterial({
         vertexColors: true,
@@ -175,9 +194,16 @@ export const CuboidInstances = ({
       bodyMaterial.dispose();
       arrowMaterial.dispose();
       outlineMaterial.dispose();
-      orientationMaterial.dispose();
+      shaftMaterial.dispose();
+      axesMaterial.dispose();
     };
-  }, [bodyMaterial, arrowMaterial, outlineMaterial, orientationMaterial]);
+  }, [
+    bodyMaterial,
+    arrowMaterial,
+    outlineMaterial,
+    shaftMaterial,
+    axesMaterial,
+  ]);
 
   // Stable index maps, rebuilt only when the *set* of labels changes (not on
   // every parent re-render, which produces a new array reference regardless
@@ -185,7 +211,7 @@ export const CuboidInstances = ({
   // array upstream (see `ThreeDLabels`), so membership changes are rare,
   // user-driven events (select/deselect/create/delete).
   const membershipKey = useMemo(
-    () => detections.map((label) => label._id).join("|"),
+    () => detections.map((label) => label.data._id).join("|"),
     [detections],
   );
 
@@ -196,9 +222,6 @@ export const CuboidInstances = ({
   );
 
   const count = labelsByIndex.length;
-  const orientationSegmentsPerBox =
-    orientationSegmentsPerBoxFor(showOrientation);
-
   // Rebuild every buffer when membership or batch-level rendering settings
   // change. Per-label *color* changes (hover/select/similar/color-by-mode)
   // are handled reactively by `CuboidColorSync` below instead of here — this
@@ -206,7 +229,8 @@ export const CuboidInstances = ({
   useLayoutEffect(() => {
     if (count === 0) {
       setOutlineGeometry(null);
-      setOrientationGeometry(null);
+      setShaftGeometry(null);
+      setAxesGeometry(null);
       return;
     }
 
@@ -241,14 +265,14 @@ export const CuboidInstances = ({
     const edgePositions = new Float32Array(count * EDGES_PER_BOX * 6);
     const edgeColors = new Float32Array(count * EDGES_PER_BOX * 6);
 
-    // Orientation markers (shaft + axes) — zero-length arrays when
-    // `showOrientation` is off.
-    const orientationPositions = new Float32Array(
-      count * orientationSegmentsPerBox * 6,
-    );
-    const orientationColors = new Float32Array(
-      count * orientationSegmentsPerBox * 6,
-    );
+    // Heading shafts and axes tripods get their own buffers so they can be drawn
+    // with different depth behaviour. Zero-length when `showOrientation` is off.
+    const shaftSegments = showOrientation ? SHAFT_SEGMENTS_PER_BOX : 0;
+    const axesSegments = showOrientation ? AXES_SEGMENTS_PER_BOX : 0;
+    const shaftPositions = new Float32Array(count * shaftSegments * 6);
+    const shaftColors = new Float32Array(count * shaftSegments * 6);
+    const axesPositions = new Float32Array(count * axesSegments * 6);
+    const axesColors = new Float32Array(count * axesSegments * 6);
 
     const arrowMatrices: THREE.Matrix4[] = [];
 
@@ -279,27 +303,24 @@ export const CuboidInstances = ({
 
       const markerGeometry = getCuboidOrientationMarkerGeometry(
         geometry.dimensions,
-        geometry.quaternion,
-        upVector,
       );
       const complementaryColor = new THREE.Color(
         getComplementaryColor(getColor(labelsByIndex[i])),
       );
 
-      const orientationFloatBase = i * orientationSegmentsPerBox * 6;
-      const shaftFloatBase = orientationFloatBase;
+      const shaftFloatBase = i * shaftSegments * 6;
       if (markerGeometry) {
         const shaftStartWorld = localToWorld(
           markerGeometry.shaftStart,
           geometry,
         );
         const shaftEndWorld = localToWorld(markerGeometry.anchor, geometry);
-        orientationPositions.set(
+        shaftPositions.set(
           [...shaftStartWorld, ...shaftEndWorld],
           shaftFloatBase,
         );
       }
-      orientationColors.set(
+      shaftColors.set(
         [
           complementaryColor.r,
           complementaryColor.g,
@@ -312,12 +333,10 @@ export const CuboidInstances = ({
       );
 
       arrowMatrices.push(
-        markerGeometry
-          ? computeArrowheadMatrix(geometry, upVector)
-          : ZERO_SCALE_MATRIX,
+        markerGeometry ? computeArrowheadMatrix(geometry) : ZERO_SCALE_MATRIX,
       );
 
-      const axesFloatBase = shaftFloatBase + SHAFT_SEGMENTS_PER_BOX * 6;
+      const axesFloatBase = i * axesSegments * 6;
       const halfExtent = (axis: 0 | 1 | 2) =>
         Math.max(
           (getFiniteMagnitude(geometry.dimensions[axis]) / 2) *
@@ -329,18 +348,13 @@ export const CuboidInstances = ({
         [0, halfExtent(1), 0],
         [0, 0, halfExtent(2)],
       ];
-      const axesColors = [
-        ORIENTATION_AXES_COLORS.x,
-        ORIENTATION_AXES_COLORS.y,
-        ORIENTATION_AXES_COLORS.z,
-      ];
       const originWorld = localToWorld([0, 0, 0], geometry);
       axesLocalEnds.forEach((localEnd, axis) => {
         const endWorld = localToWorld(localEnd, geometry);
         const o = axesFloatBase + axis * 6;
-        orientationPositions.set([...originWorld, ...endWorld], o);
-        const axisColor = new THREE.Color(axesColors[axis]);
-        orientationColors.set(
+        axesPositions.set([...originWorld, ...endWorld], o);
+        const axisColor = new THREE.Color(AXES_COLOR_BY_AXIS[axis]);
+        axesColors.set(
           [
             axisColor.r,
             axisColor.g,
@@ -362,16 +376,26 @@ export const CuboidInstances = ({
     setOutlineGeometry(nextOutlineGeometry);
 
     if (showOrientation) {
-      const nextOrientationGeometry = new LineSegmentsGeometry();
-      nextOrientationGeometry.setPositions(orientationPositions);
-      nextOrientationGeometry.setColors(orientationColors);
-      previousOrientationGeometryRef.current?.dispose();
-      previousOrientationGeometryRef.current = nextOrientationGeometry;
-      setOrientationGeometry(nextOrientationGeometry);
+      const nextShaftGeometry = new LineSegmentsGeometry();
+      nextShaftGeometry.setPositions(shaftPositions);
+      nextShaftGeometry.setColors(shaftColors);
+      previousShaftGeometryRef.current?.dispose();
+      previousShaftGeometryRef.current = nextShaftGeometry;
+      setShaftGeometry(nextShaftGeometry);
+
+      const nextAxesGeometry = new LineSegmentsGeometry();
+      nextAxesGeometry.setPositions(axesPositions);
+      nextAxesGeometry.setColors(axesColors);
+      previousAxesGeometryRef.current?.dispose();
+      previousAxesGeometryRef.current = nextAxesGeometry;
+      setAxesGeometry(nextAxesGeometry);
     } else {
-      previousOrientationGeometryRef.current?.dispose();
-      previousOrientationGeometryRef.current = null;
-      setOrientationGeometry(null);
+      previousShaftGeometryRef.current?.dispose();
+      previousShaftGeometryRef.current = null;
+      setShaftGeometry(null);
+      previousAxesGeometryRef.current?.dispose();
+      previousAxesGeometryRef.current = null;
+      setAxesGeometry(null);
     }
 
     // Arrowheads
@@ -402,18 +426,17 @@ export const CuboidInstances = ({
   }, [
     membershipKey,
     count,
-    orientationSegmentsPerBox,
     useLegacyCoordinates,
     overlayRotationFallback,
     showOrientation,
-    upVector,
   ]);
 
   // Dispose the last-built geometries on unmount.
   useEffect(() => {
     return () => {
       previousOutlineGeometryRef.current?.dispose();
-      previousOrientationGeometryRef.current?.dispose();
+      previousShaftGeometryRef.current?.dispose();
+      previousAxesGeometryRef.current?.dispose();
     };
   }, []);
 
@@ -456,7 +479,7 @@ export const CuboidInstances = ({
       if (!label) return;
 
       hoverTrackerRef.current.setHovered(e.instanceId ?? null);
-      setHoveredLabel({ id: label._id, source: hoverSource });
+      setHoveredLabel({ id: label.data._id, source: hoverSource });
       onPointerOverForLabel(label, e);
     },
     [
@@ -516,7 +539,8 @@ export const CuboidInstances = ({
   // overlay) doesn't need instancing — just one conditionally-mounted mesh
   // for whichever label currently matches `hoveredLabelAtom`.
   const hoveredBatchLabel = hoveredLabel
-    ? (labelsByIndex.find((label) => label._id === hoveredLabel.id) ?? null)
+    ? (labelsByIndex.find((label) => label.data._id === hoveredLabel.id) ??
+      null)
     : null;
 
   return (
@@ -533,7 +557,6 @@ export const CuboidInstances = ({
         onClick={handleClick}
       />
       {outlineGeometry && (
-        // @ts-ignore — registered via ./shared/registerLineElements
         <lineSegments2
           geometry={outlineGeometry}
           material={outlineMaterial}
@@ -548,15 +571,22 @@ export const CuboidInstances = ({
           raycast={() => null}
         />
       )}
-      {orientationGeometry && (
-        // @ts-ignore — registered via ./shared/registerLineElements
+      {shaftGeometry && (
         <lineSegments2
-          geometry={orientationGeometry}
-          material={orientationMaterial}
-          // Matches the standalone `CuboidOrientationMarkers`' renderOrder;
-          // `depthTest: false` on `orientationMaterial` is what actually
-          // keeps these visible through the box body, this just keeps draw
-          // order consistent with the standalone path.
+          geometry={shaftGeometry}
+          material={shaftMaterial}
+          // Matches the standalone `CuboidOrientationMarker`'s renderOrder.
+          // Depth-tested, so a heading pointing away is correctly occluded.
+          renderOrder={3}
+          raycast={() => null}
+        />
+      )}
+      {axesGeometry && (
+        <lineSegments2
+          geometry={axesGeometry}
+          material={axesMaterial}
+          // `depthTest: false` on `axesMaterial` is what keeps these visible
+          // through the box body; renderOrder just matches the standalone path.
           renderOrder={3}
           raycast={() => null}
         />
@@ -572,15 +602,14 @@ export const CuboidInstances = ({
       {outlineGeometry &&
         labelsByIndex.map((label, index) => (
           <CuboidColorSync
-            key={label._id}
+            key={label.data._id}
             label={label}
             index={index}
             baseColor={getColor(label)}
             bodyMeshRef={bodyMeshRef}
             arrowMeshRef={arrowMeshRef}
             outlineGeometry={outlineGeometry}
-            orientationGeometry={orientationGeometry}
-            orientationSegmentsPerBox={orientationSegmentsPerBox}
+            shaftGeometry={shaftGeometry}
             showOrientation={showOrientation}
           />
         ))}
@@ -660,8 +689,7 @@ interface CuboidColorSyncProps {
   bodyMeshRef: RefObject<THREE.InstancedMesh>;
   arrowMeshRef: RefObject<THREE.InstancedMesh>;
   outlineGeometry: LineSegmentsGeometry;
-  orientationGeometry: LineSegmentsGeometry | null;
-  orientationSegmentsPerBox: number;
+  shaftGeometry: LineSegmentsGeometry | null;
   showOrientation: boolean;
 }
 
@@ -680,18 +708,15 @@ const CuboidColorSync = ({
   bodyMeshRef,
   arrowMeshRef,
   outlineGeometry,
-  orientationGeometry,
-  orientationSegmentsPerBox,
+  shaftGeometry,
   showOrientation,
 }: CuboidColorSyncProps) => {
   const hoveredLabel = useHoveredLabel3d();
-  const isHovered = hoveredLabel?.id === label._id;
+  const isHovered = hoveredLabel?.id === label.data._id;
   const isSimilarLabelHovered = useSimilarLabels3d(label);
   const isSelectedForAnnotation =
-    useCurrentSelected3dAnnotationLabel()?._id === label._id;
-  // ReconciledDetection3D's index signature types `selected` as `unknown`
-  // (see the same narrowing in ThreeDLabels' cuboidOverlays memo).
-  const selected = Boolean((label as { selected?: boolean }).selected);
+    useCurrentSelected3dAnnotationLabel()?._id === label.data._id;
+  const selected = label.ui.selected;
 
   const strokeAndFillColor = use3dLabelColor({
     isSelected: selected,
@@ -716,16 +741,15 @@ const CuboidColorSync = ({
     }
     markNeedsUpdate(outlineGeometry);
 
-    if (showOrientation && orientationGeometry) {
+    if (showOrientation && shaftGeometry) {
       const complementaryColor = new THREE.Color(
         getComplementaryColor(strokeAndFillColor),
       );
-      // Shaft is always the first segment within this label's slice of the
-      // orientation buffer; the 3 axes segments after it keep their fixed
-      // R/G/B colors set at buffer-build time and don't need updating here.
-      const orientationBase = index * orientationSegmentsPerBox;
-      setSegmentColor(orientationGeometry, orientationBase, complementaryColor);
-      markNeedsUpdate(orientationGeometry);
+      // The axes tripods live in their own geometry and keep the fixed R/G/B
+      // colors set at buffer-build time, so only the shaft needs recoloring.
+      const shaftBase = index * SHAFT_SEGMENTS_PER_BOX;
+      setSegmentColor(shaftGeometry, shaftBase, complementaryColor);
+      markNeedsUpdate(shaftGeometry);
 
       const arrowMesh = arrowMeshRef.current;
       if (arrowMesh?.instanceColor) {
@@ -744,8 +768,7 @@ const CuboidColorSync = ({
     bodyMeshRef,
     arrowMeshRef,
     outlineGeometry,
-    orientationGeometry,
-    orientationSegmentsPerBox,
+    shaftGeometry,
     showOrientation,
   ]);
 

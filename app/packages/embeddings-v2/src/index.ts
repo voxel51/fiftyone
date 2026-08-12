@@ -46,7 +46,13 @@ export {
 // What an extension composes against: the wire protocol's shapes, the shared
 // color palette, hover/legend types, per-run stored settings, and the local
 // color-field filter used by runs the extension does not own
-export { categoryHex, MISSING_CATEGORY } from "./colors";
+export {
+  categoryCss,
+  MISSING_CATEGORY,
+  resolvePalette,
+  type Colorscale,
+  type PlotPalette,
+} from "./colors";
 export type { HoverContent } from "./HoverCard";
 export { legendLabels, type CategoricalFilter } from "./legendFilter";
 export {

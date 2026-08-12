@@ -13,7 +13,12 @@ import { ErrorDisplayMarkup, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { ModalMode, canAnnotate, useModalMode } from "@fiftyone/state";
+import {
+  ModalMode,
+  canAnnotate,
+  useIsMediaType,
+  useModalMode,
+} from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
@@ -40,7 +45,11 @@ import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar
 import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { TooltipInfo } from "./TooltipInfo";
-import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
+import {
+  useLookerHelpers,
+  useShowClassicSidebar,
+  useTooltipEventHandler,
+} from "./hooks";
 import { modalContext } from "./modal-context";
 
 const ModalWrapper = styled.div`
@@ -238,7 +247,8 @@ const Modal = () => {
     [is3dVisible, modalCloseHandler],
   );
 
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const showClassicSidebar = useShowClassicSidebar();
+  const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
 
   useKeyBindings(KnownContexts.Modal, [
     {
@@ -255,13 +265,19 @@ const Modal = () => {
       label: "Fullscreen",
       description: "Enter/Exit full screen mode",
     },
-    {
-      commandId: KnownCommands.ModalSidebarToggle,
-      sequence: "s",
-      handler: sidebarFn,
-      label: "Sidebar",
-      description: "Show/Hide the sidebar",
-    },
+    // multimodal has no classic sidebar to show/hide, so the shortcut would
+    // silently flip state that mounts nothing
+    ...(isMultimodal
+      ? []
+      : [
+          {
+            commandId: KnownCommands.ModalSidebarToggle,
+            sequence: "s",
+            handler: sidebarFn,
+            label: "Sidebar",
+            description: "Show/Hide the sidebar",
+          },
+        ]),
     {
       commandId: KnownCommands.ModalSelect,
       sequence: "x",
@@ -335,7 +351,7 @@ const Modal = () => {
           </Suspense>
         )}
         <TooltipInfo />
-        <ModalContainer style={{ ...screenParams }}>
+        <ModalContainer data-cy="modal-content" style={{ ...screenParams }}>
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}
             resetKeys={[modalSelector?.id, modalSelector?.groupId]}
@@ -347,7 +363,7 @@ const Modal = () => {
               <ModalSpace />
               <ModalStatusBar />
             </SpacesContainer>
-            {isSidebarVisible && <Sidebar />}
+            {showClassicSidebar && <Sidebar />}
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
             {jsonPanel.isOpen && (

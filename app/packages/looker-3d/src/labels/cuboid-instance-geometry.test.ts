@@ -14,15 +14,19 @@ import {
 } from "./cuboid-instance-geometry";
 
 function createLabel(
-  overrides: Partial<ReconciledDetection3D> = {},
+  overrides: Partial<ReconciledDetection3D["data"]> = {},
 ): ReconciledDetection3D {
   return {
-    _id: "label-1",
-    _cls: "Detection",
+    data: {
+      _id: "label-1",
+      _cls: "Detection",
+      location: [1, 2, 3],
+      dimensions: [4, 5, 6],
+      ...overrides,
+    },
     path: "ground_truth",
-    location: [1, 2, 3],
-    dimensions: [4, 5, 6],
-    ...overrides,
+    sampleId: "sample-1",
+    ui: { selected: false },
   } as unknown as ReconciledDetection3D;
 }
 
@@ -136,7 +140,7 @@ describe("computeArrowheadMatrix", () => {
       dimensions: [0, 5, 5] as THREE.Vector3Tuple,
       quaternion: new THREE.Quaternion(),
     };
-    const matrix = computeArrowheadMatrix(geometry, null);
+    const matrix = computeArrowheadMatrix(geometry);
 
     // A degenerate all-zero-scale matrix reads back as scale (1,1,1) via
     // Matrix4.decompose() (three.js falls back to 1 when a basis column has
@@ -155,7 +159,7 @@ describe("computeArrowheadMatrix", () => {
       dimensions: [4, 2, 2] as THREE.Vector3Tuple,
       quaternion: new THREE.Quaternion(),
     };
-    const matrix = computeArrowheadMatrix(geometry, null);
+    const matrix = computeArrowheadMatrix(geometry);
 
     const scale = new THREE.Vector3();
     matrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
@@ -167,14 +171,16 @@ describe("computeArrowheadMatrix", () => {
   it("translates the arrowhead matrix along with the box's own position", () => {
     const dimensions: THREE.Vector3Tuple = [4, 2, 2];
     const quaternion = new THREE.Quaternion();
-    const atOrigin = computeArrowheadMatrix(
-      { position: [0, 0, 0], dimensions, quaternion },
-      null,
-    );
-    const translated = computeArrowheadMatrix(
-      { position: [5, 0, 0], dimensions, quaternion },
-      null,
-    );
+    const atOrigin = computeArrowheadMatrix({
+      position: [0, 0, 0],
+      dimensions,
+      quaternion,
+    });
+    const translated = computeArrowheadMatrix({
+      position: [5, 0, 0],
+      dimensions,
+      quaternion,
+    });
 
     const originPos = new THREE.Vector3();
     atOrigin.decompose(originPos, new THREE.Quaternion(), new THREE.Vector3());

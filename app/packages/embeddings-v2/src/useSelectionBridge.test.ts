@@ -229,6 +229,48 @@ describe("useSelectionBridge", () => {
     expect(fetchLassoStage).toHaveBeenCalledWith("ds", "viz", [], { polygon });
   });
 
+  // The legend counts follow the gesture, not the network: the
+  // lasso's indices surface synchronously, and every clear path
+  // (empty gesture, clearAll) drops them
+  it("exposes lasso indices synchronously and clears them", () => {
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockResolvedValue({ _cls: "s", kwargs: {}, count: 2 });
+    const opts = options();
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(result.current.lassoIndices).toBeNull();
+    act(() => result.current.handleSelection([0, 1]));
+    // Available before the stage round trip resolves; typed array
+    // because a lasso can enclose millions of points
+    expect(Array.from(result.current.lassoIndices ?? [])).toEqual([0, 1]);
+
+    act(() => result.current.handleSelection([]));
+    expect(result.current.lassoIndices).toBeNull();
+
+    act(() => result.current.handleSelection([1]));
+    expect(Array.from(result.current.lassoIndices ?? [])).toEqual([1]);
+    act(() => result.current.clearAll());
+    expect(result.current.lassoIndices).toBeNull();
+  });
+
+  it("falls back to indices when no data polygon exists", async () => {
+    vi.mocked(fetchLassoStage).mockClear().mockResolvedValue({
+      _cls: "fiftyone.core.stages.Select",
+      kwargs: {},
+      count: 1,
+    });
+    const opts = options();
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([1], null));
+
+    await waitFor(() => expect(fetchLassoStage).toHaveBeenCalled());
+    expect(fetchLassoStage).toHaveBeenCalledWith("ds", "viz", [], {
+      indices: [1],
+    });
+  });
+
   it("treats an empty lasso as a selection reset", () => {
     vi.mocked(fetchLassoStage).mockClear();
     const opts = options();

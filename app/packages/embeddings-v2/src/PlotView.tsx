@@ -119,8 +119,9 @@ export default function PlotView({
     handleHover,
     keepHover,
     features,
-    rampId,
-    setRampId,
+    palette,
+    colorscale,
+    scopedCounts,
     legend,
     handleLegendToggle,
     handleLegendSolo,
@@ -283,8 +284,6 @@ export default function PlotView({
           </div>
           <span className="emb-plot-divider" />
           <SettingsMenu
-            rampId={rampId}
-            onRampChange={setRampId}
             renderBefore={features.renderSettingsBefore}
             renderAfter={features.renderSettingsAfter}
           />
@@ -373,7 +372,9 @@ export default function PlotView({
           <ColorLegend
             field={colorField}
             meta={colorMeta}
+            palette={palette}
             offLabels={legend?.off ?? null}
+            scopedCounts={scopedCounts}
             onToggle={handleLegendToggle}
             onSolo={handleLegendSolo}
           />
@@ -382,7 +383,7 @@ export default function PlotView({
           <ContinuousLegend
             field={colorField}
             meta={colorMeta}
-            rampId={rampId}
+            colorscale={colorscale}
           />
         )}
         {chipCount ? (

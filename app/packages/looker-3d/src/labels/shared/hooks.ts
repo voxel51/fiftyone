@@ -2,7 +2,6 @@ import { useAnnotationEngine } from "@fiftyone/annotation";
 import {
   LabelHoveredEvent,
   LabelUnhoveredEvent,
-  type PointInfo,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
@@ -25,16 +24,13 @@ import type {
   InstancedEventHandlers,
 } from "../../types";
 
-const getDetailsFromLabel = (label: OverlayLabel) => {
-  const field = Array.isArray(label.path)
-    ? label.path[label.path.length - 1]
-    : label.path;
+const getDetailsFromLabel = (overlay: OverlayLabel) => {
   return {
-    field,
-    label: label as unknown as PointInfo["label"],
-    type: label.type as string,
-    color: label.color,
-    sampleId: label.sampleId,
+    field: overlay.path,
+    label: overlay.data,
+    type: overlay.data._cls,
+    color: overlay.ui.color,
+    sampleId: overlay.sampleId,
   };
 };
 
@@ -71,11 +67,11 @@ export const useHoverState = (): HoverState => {
 const useMeshTooltipProps = () => {
   const onPointerOver = useRecoilCallback(
     ({ snapshot, set }) =>
-      (label: any, e?: ThreeEvent<PointerEvent>) => {
+      (label: OverlayLabel, e?: ThreeEvent<PointerEvent>) => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
-        if (selectedLabel?._id === label._id) return;
+        if (selectedLabel?._id === label.data._id) return;
 
         const isCurrentlyTransforming = Boolean(
           snapshot.getLoadable(isCurrentlyTransformingAtom).getValue(),
@@ -94,15 +90,15 @@ const useMeshTooltipProps = () => {
           }
         }
 
-        if (!label.instance || !label.sampleId) return;
+        if (!label.data.instance || !label.sampleId) return;
 
         selectiveRenderingEventBus.emit(
           new LabelHoveredEvent({
             sampleId: label.sampleId,
-            labelId: label.id as string,
-            instanceId: label.instance._id,
+            labelId: label.data._id,
+            instanceId: label.data.instance._id,
             field: label.path,
-            frameNumber: label.frame_number as number | undefined,
+            frameNumber: label.data.frame_number as number | undefined,
           }),
         );
       },
@@ -111,7 +107,7 @@ const useMeshTooltipProps = () => {
 
   const onPointerOut = useRecoilCallback(
     ({ snapshot, set }) =>
-      (label: any) => {
+      (label: OverlayLabel) => {
         const isTooltipLocked = snapshot
           .getLoadable(fos.isTooltipLocked)
           .getValue();
@@ -120,7 +116,7 @@ const useMeshTooltipProps = () => {
           set(fos.tooltipDetail, null);
         }
 
-        if (!label.instance) return;
+        if (!label.data.instance) return;
 
         selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
       },
@@ -143,11 +139,11 @@ const useMeshTooltipProps = () => {
 
   const onPointerMove = useRecoilCallback(
     ({ snapshot, set }) =>
-      (label: any, e: ThreeEvent<PointerEvent>) => {
+      (label: OverlayLabel, e: ThreeEvent<PointerEvent>) => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
-        if (selectedLabel?._id === label._id) return;
+        if (selectedLabel?._id === label.data._id) return;
 
         const isCurrentlyTransforming = Boolean(
           snapshot.getLoadable(isCurrentlyTransformingAtom).getValue(),
@@ -213,17 +209,15 @@ export const useEventHandlers = (): InstancedEventHandlers => {
   // handler runs first so it is never coupled to annotation state.
   return {
     onPointerOver: useCallback(
-      (label: any, e?: ThreeEvent<PointerEvent>) => {
+      (label: OverlayLabel, e?: ThreeEvent<PointerEvent>) => {
         _onPointerOver(label, e);
 
         if (!isAnnotateMode) {
           return;
         }
 
-        const id = (label?._id ?? label?.id) as string | undefined;
-        const path = Array.isArray(label?.path)
-          ? label.path.join(".")
-          : label?.path;
+        const id = label.data._id;
+        const path = label.path;
 
         if (id && path && sample) {
           engine.interaction.setHovered({ sample, path, instanceId: id }, true);
@@ -232,7 +226,7 @@ export const useEventHandlers = (): InstancedEventHandlers => {
       [isAnnotateMode, engine, sample, _onPointerOver],
     ),
     onPointerOut: useCallback(
-      (label: any) => {
+      (label: OverlayLabel) => {
         _onPointerOut(label);
 
         if (!isAnnotateMode) {
@@ -241,7 +235,7 @@ export const useEventHandlers = (): InstancedEventHandlers => {
 
         // resolve from the hovered set itself, so hover-off works even after
         // the label has been deleted or replaced
-        const id = label?._id ?? label?.id;
+        const id = label.data._id;
         const ref = engine.interaction
           .getHovered()
           .find((hovered) => hovered.instanceId === id);

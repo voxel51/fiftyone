@@ -4,7 +4,7 @@ import {
   getGridCustomRendererFailover,
   modalSelector,
 } from "@fiftyone/state";
-import { registerMcapGridOverlay } from "@fiftyone/multimodal/extensions/mcap";
+import { registerMcapGridOverlay } from "@fiftyone/multimodal/extensions/timeline";
 import React from "react";
 import { RecoilRoot } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

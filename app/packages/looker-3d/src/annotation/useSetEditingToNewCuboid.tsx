@@ -20,7 +20,6 @@ export const currentEditingCuboidAtom =
 export const useSetEditingToNewCuboid = () => {
   const resetCurrentEditing = useResetAtom(currentEditingCuboidAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
 
   const setCurrentEditing = useSetAtom(currentEditingCuboidAtom);
   const { clear, readEditing, select } = useAnnotationContext();
@@ -51,6 +50,9 @@ export const useSetEditingToNewCuboid = () => {
         ? quaternionToRadians(transformData.quaternion)
         : [0, 0, 0];
 
+      // Label data is the persistable document ONLY — addressing (path,
+      // sampleId) rides on the AnnotationLabel wrapper, never inside `data`,
+      // so a draft's first save cannot leak it into the sample.
       const defaultCuboidLabelData = {
         _id: labelId,
         _cls: "Detection" as const,
@@ -58,8 +60,6 @@ export const useSetEditingToNewCuboid = () => {
         dimensions: transformData.dimensions,
         rotation,
         label: labelClass,
-        path: currentActiveField,
-        sampleId: currentSampleId,
       };
 
       const stagedCuboidLabelData = {
@@ -72,14 +72,14 @@ export const useSetEditingToNewCuboid = () => {
       setCurrentEditing({
         isNew: true,
         data: stagedCuboidLabelData,
-        path: stagedCuboidLabelData.path,
+        path: currentActiveField,
         type: "Detection" as const,
         overlay: {
           id: labelId,
           getLabel: () => {
             return stagedCuboidLabelData;
           },
-          field: stagedCuboidLabelData.path,
+          field: currentActiveField,
           label: stagedCuboidLabelData,
           setSelected: (selected: boolean) => {
             if (!selected) {
@@ -101,7 +101,6 @@ export const useSetEditingToNewCuboid = () => {
       clear,
       clearTransformState,
       currentActiveField,
-      currentSampleId,
       readEditing,
       select,
       setCurrentEditing,

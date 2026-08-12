@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { ContinuousLegend, formatRampValue } from "./ContinuousLegend";
-import { buildColors, rampCss } from "./colors";
+import {
+  ContinuousLegend,
+  formatRampValue,
+  gradientCss,
+} from "./ContinuousLegend";
+import { buildColors, rampCss, type Colorscale } from "./colors";
 
 afterEach(cleanup);
 
@@ -24,7 +28,7 @@ describe("ContinuousLegend", () => {
       style: "continuous" as const,
       values: new Float32Array([0, 1]),
     };
-    const rgb = buildColors(column, { min: 0, max: 1 });
+    const rgb = buildColors(column, [], { min: 0, max: 1 });
     const css = (offset: number) =>
       `rgb(${Math.round(rgb[offset] * 255)}, ${Math.round(
         rgb[offset + 1] * 255,
@@ -34,43 +38,38 @@ describe("ContinuousLegend", () => {
     expect(rampCss(1)).toBe(css(3));
   });
 
-  it("labels the ends of the ramp it was given, not the data's bounds", () => {
-    // The zero-centered ramp widens to ±10 so its middle stop is zero; the
-    // labels have to name the values those ends actually got
-    const { getByText, queryByText } = render(
-      <ContinuousLegend
-        field="steering"
-        meta={{ style: "continuous", min: -4, max: 10 }}
-        rampId="coolWarm"
-      />,
-    );
-    getByText("-10");
-    getByText("10");
-    getByText("0");
-    expect(queryByText("-4")).toBeNull();
-  });
-
-  it("labels the data's bounds for a ramp that spans them", () => {
-    const { getByText, queryByText } = render(
-      <ContinuousLegend
-        field="steering"
-        meta={{ style: "continuous", min: -4, max: 10 }}
-        rampId="viridis"
-      />,
-    );
-    getByText("-4");
-    getByText("10");
-    // No zero anchor to point at: viridis spans min..max
-    expect(queryByText("0")).toBeNull();
-  });
-
   it("renders nothing without bounds (all values missing)", () => {
+    // Bails out before the colorscale is ever read, so its value is
+    // irrelevant here — a placeholder, not a case being covered
     const { container } = render(
       <ContinuousLegend
         field="uniqueness"
         meta={{ style: "continuous", min: null, max: null }}
+        colorscale={[[0, 0, 0]]}
       />,
     );
     expect(container.firstChild).toBeNull();
+  });
+});
+
+describe("gradientCss", () => {
+  it("bands every stop instead of just the endpoints", () => {
+    // A 3+ stop colorscale (e.g. viridis) sampled only at 0/0.5/1 would
+    // wash out its middle stops; every stop must get its own hard-edged
+    // band, at the boundaries buildColors' nearest-stop lookup uses
+    const colorscale: Colorscale = [
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+    ];
+    expect(gradientCss(colorscale)).toBe(
+      "rgb(255, 0, 0) 0%, rgb(255, 0, 0) 25%, " +
+        "rgb(0, 255, 0) 25%, rgb(0, 255, 0) 75%, " +
+        "rgb(0, 0, 255) 75%, rgb(0, 0, 255) 100%",
+    );
+  });
+
+  it("falls back to the default ramp for an empty colorscale, without crashing", () => {
+    expect(gradientCss([])).toBe(`${rampCss(0)}, ${rampCss(1)}`);
   });
 });

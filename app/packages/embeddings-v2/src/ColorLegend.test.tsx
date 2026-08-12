@@ -22,6 +22,7 @@ function renderLegend() {
     <ColorLegend
       field="label"
       meta={meta}
+      palette={[]}
       offLabels={new Set()}
       onToggle={onToggle}
       onSolo={onSolo}

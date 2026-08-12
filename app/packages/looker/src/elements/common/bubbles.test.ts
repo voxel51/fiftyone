@@ -1,11 +1,14 @@
 import type { Schema } from "@fiftyone/utilities";
 import {
   CLASSIFICATIONS,
+  DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   EMBEDDED_DOCUMENT_FIELD,
+  LABELS_PATH,
   LIST_FIELD,
   STRING_FIELD,
   TEMPORAL_DETECTIONS,
+  withPath,
 } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 import { getBubbles, getField, unwind } from "./bubbles";
@@ -228,6 +231,26 @@ describe("text bubble tests", () => {
         { temporal: temporalDetections },
       ),
     );
+  });
+
+  it("getBubbles unwraps label list fields", () => {
+    const detections = {
+      ...FIELD_DATA,
+      dbField: "ground_truth",
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      embeddedDocType: withPath(LABELS_PATH, DETECTIONS),
+      fields: {},
+    };
+
+    expect(
+      getBubbles(
+        "ground_truth",
+        {
+          ground_truth: { detections: [{ label: "cat" }, { label: "dog" }] },
+        },
+        { ground_truth: detections },
+      ),
+    ).toStrictEqual([detections, [{ label: "cat" }, { label: "dog" }]]);
   });
 
   it("getField gets field from a path keys", () => {

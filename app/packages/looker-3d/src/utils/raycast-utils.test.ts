@@ -27,12 +27,16 @@ import {
 const buildPointCloudCrop = () => {
   return createPointCloudCropFromDetection(
     {
-      _cls: "Detection",
-      _id: "detection-1",
+      data: {
+        _cls: "Detection",
+        _id: "detection-1",
+        location: [0, 0, 0],
+        dimensions: [2, 2, 2],
+        rotation: [0, 0, 0],
+      },
       path: "ground_truth",
-      location: [0, 0, 0],
-      dimensions: [2, 2, 2],
-      rotation: [0, 0, 0],
+      sampleId: "sample-1",
+      ui: { selected: false },
     } as ReconciledDetection3D,
     { margin: 0 },
   )!;

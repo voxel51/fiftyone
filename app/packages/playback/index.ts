@@ -13,7 +13,9 @@ export * from "./src/lib/playback/use-stream";
 export * from "./src/lib/playback/store-access";
 export type {
   BufferedRanges,
+  BufferingStream,
   PlaybackStore,
+  PlaybackInspectionMarker,
   PlaybackStream,
   SeekEvent,
   TimelineMode,
@@ -57,6 +59,8 @@ export type {
   TimelineDisplayValue,
 } from "./src/lib/playback/timeline-display";
 export { usePlaybackStream } from "./src/lib/playback/use-playback-stream";
+export type { AudioAvailability } from "./src/lib/playback/atoms";
+export { useAudioStream } from "./src/lib/playback/use-audio-stream";
 export {
   usePresentedMediaTime,
   useVideoStream,

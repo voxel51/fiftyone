@@ -42,6 +42,16 @@ export const MARGIN = 24;
 /** Max planar zoom-in factor relative to the home view */
 export const MAX_ZOOM = 50;
 
+/** Camera clamp give, as a fraction of the viewport per side: how far
+ * the data may sit off-frame. Nonzero so dragging still responds at
+ * full zoom-out (FOEPD-4318); pan and zoom clamp against the same
+ * inflated bounds, so zooming never yanks an offset view back —
+ * only the header's reset recenters. Tuned by feel: high enough that
+ * a full-zoom-out drag visibly responds, low enough that a zoomed-in
+ * pan can't strand the view in empty space and a give-preserving
+ * zoom-out still shows nearly the whole graph */
+export const PAN_GIVE = 0.1;
+
 /** Pointer must sit still this long before a hover hit-test runs */
 export const HOVER_DEBOUNCE_MS = 120;
 

@@ -1,19 +1,12 @@
 /**
- * Floating legend for continuous color-by fields: the selected color ramp as a
- * spectrum bar, labelled with the values its ends stand for. Purely a readout —
+ * Floating legend for continuous color-by fields: the color ramp as a
+ * spectrum bar with the field's min/max at the ends. Purely a readout —
  * which fields are continuous is the server's style decision
  * (float fields, and high-cardinality int fields), and the plot
  * already colors them; this shows what the colors mean.
  */
 import { Text, TextBadge, TextColor, TextVariant } from "@voxel51/voodo";
-import {
-  DEFAULT_RAMP,
-  rampDomain,
-  rampGradient,
-  RAMPS,
-  type Ramp,
-  type RampId,
-} from "./colors";
+import { rampCss, type Colorscale } from "./colors";
 import { FloatingPanel } from "./FloatingPanel";
 import "./panel.css";
 import type { ColorMeta } from "./protocol";
@@ -29,27 +22,34 @@ export function formatRampValue(value: number): string {
   return FLOAT_FORMAT.format(value);
 }
 
+/** A CSS gradient with one hard-edged band per colorscale stop, at the
+ * same boundaries buildColors' nearest-stop lookup uses — sampling only
+ * the endpoints would wash out any stop in between (e.g. viridis) */
+export function gradientCss(colorscale: Colorscale): string {
+  const n = colorscale.length;
+  if (n <= 1) return `${rampCss(0, colorscale)}, ${rampCss(1, colorscale)}`;
+
+  const stops: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const css = rampCss(i / (n - 1), colorscale);
+    const start = i === 0 ? 0 : ((i - 0.5) / (n - 1)) * 100;
+    const end = i === n - 1 ? 100 : ((i + 0.5) / (n - 1)) * 100;
+    stops.push(`${css} ${start}%`, `${css} ${end}%`);
+  }
+  return stops.join(", ");
+}
+
 export function ContinuousLegend({
   field,
   meta,
-  rampId = DEFAULT_RAMP,
+  colorscale,
 }: {
   field: string;
   meta: ColorMeta;
-  /** Which palette the plot is coloring with; the bar has to be that one */
-  rampId?: RampId;
+  colorscale: Colorscale;
 }) {
   const { min, max } = meta;
   if (meta.style !== "continuous" || min == null || max == null) return null;
-
-  // Typed as Ramp, not the literal RAMPS member: only one member declares
-  // `diverging`, so the union hides the flag the domain turns on
-  const ramp: Ramp = RAMPS[rampId];
-  // The ends label the RAMP's range, not the data's: a zero-centered ramp is
-  // symmetric, so one end sits past the data and labelling it with the field's
-  // min/max would point at a color nothing ever gets
-  const [lo, hi] = rampDomain(min, max, ramp);
-  const zeroCentered = lo < 0 && hi > 0 && ramp.diverging === true;
 
   return (
     <FloatingPanel
@@ -60,19 +60,16 @@ export function ContinuousLegend({
       <div className="emb-legend-ramp">
         <div
           className="emb-legend-ramp-track"
-          style={{ background: rampGradient(rampId) }}
+          style={{
+            background: `linear-gradient(90deg, ${gradientCss(colorscale)})`,
+          }}
         />
         <div className="emb-legend-ramp-labels">
           <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
-            {formatRampValue(lo)}
+            {formatRampValue(min)}
           </Text>
-          {zeroCentered && (
-            <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
-              0
-            </Text>
-          )}
           <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
-            {formatRampValue(hi)}
+            {formatRampValue(max)}
           </Text>
         </div>
       </div>

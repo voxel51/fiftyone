@@ -1,14 +1,12 @@
-import { PALETTE } from "./renderer";
 import { describe, expect, it } from "vitest";
 import {
   buildColors,
-  categoryHex,
-  isRampId,
+  categoryCss,
   MISSING_CATEGORY,
   rampCss,
-  rampDomain,
-  rampGradient,
-  RAMPS,
+  resolveColorscale,
+  resolvePalette,
+  type Colorscale,
 } from "./colors";
 
 const rgbAt = (colors: Float32Array, i: number) => [
@@ -23,50 +21,217 @@ const hexToRgb = (hex: string) => [
   parseInt(hex.slice(5, 7), 16) / 255,
 ];
 
+const POOL = ["#ff0000", "#00ff00", "#0000ff"];
+const pooled = () => POOL[0];
+
+const meta = (labels: (string | number | boolean)[]) =>
+  ({
+    style: "categorical",
+    classes: labels.map((label) => ({ label, count: 1 })),
+  }) as const;
+
+describe("resolvePalette", () => {
+  it("colors values with the App's seeded pool generator", () => {
+    // The grid hashes label values through this same generator, so a
+    // value must land on whatever color that generator gives it
+    const colorMap = (value: string) => POOL[["cat", "dog"].indexOf(value)];
+
+    expect(
+      resolvePalette("ground_truth.label", meta(["cat", "dog"]), colorMap),
+    ).toEqual([POOL[0], POOL[1]]);
+  });
+
+  it("prefers a label field's override for the attribute it colors by", () => {
+    expect(
+      resolvePalette("ground_truth.label", meta(["cat", "dog"]), pooled, [
+        {
+          path: "ground_truth",
+          valueColors: [{ value: "cat", color: "#123456" }],
+        },
+      ]),
+    ).toEqual(["#123456", POOL[0]]);
+  });
+
+  it("finds a label field's override through a list label's extra segment", () => {
+    // Patches plots color by a path under the label list root
+    // (ground_truth.detections.label) while the scheme stores the
+    // setting at the list field itself (ground_truth) — one strip lands
+    // on "ground_truth.detections", which never matches
+    expect(
+      resolvePalette(
+        "ground_truth.detections.label",
+        meta(["cat", "dog"]),
+        pooled,
+        [
+          {
+            path: "ground_truth",
+            valueColors: [{ value: "cat", color: "#123456" }],
+          },
+        ],
+      ),
+    ).toEqual(["#123456", POOL[0]]);
+  });
+
+  it("ignores overrides scoped to a different attribute", () => {
+    expect(
+      resolvePalette("ground_truth.label", meta(["cat"]), pooled, [
+        {
+          path: "ground_truth",
+          colorByAttribute: "eval",
+          valueColors: [{ value: "cat", color: "#123456" }],
+        },
+      ]),
+    ).toEqual([POOL[0]]);
+  });
+
+  it("takes a primitive field's own overrides", () => {
+    expect(
+      resolvePalette("split", meta(["train"]), pooled, [
+        { path: "split", valueColors: [{ value: "train", color: "#abcdef" }] },
+      ]),
+    ).toEqual(["#abcdef"]);
+  });
+
+  it("falls back to the pool for a color the renderer cannot parse", () => {
+    expect(
+      resolvePalette("split", meta(["train"]), pooled, [
+        { path: "split", valueColors: [{ value: "train", color: "nonsense" }] },
+      ]),
+    ).toEqual([POOL[0]]);
+  });
+
+  it("matches non-string labels against overrides by value", () => {
+    expect(
+      resolvePalette("is_cloudy", meta([true, 3]), pooled, [
+        {
+          path: "is_cloudy",
+          valueColors: [
+            { value: "true", color: "#111111" },
+            { value: "3", color: "#222222" },
+          ],
+        },
+      ]),
+    ).toEqual(["#111111", "#222222"]);
+  });
+
+  it("has no classes for a continuous field", () => {
+    expect(
+      resolvePalette("uniqueness", { style: "continuous" }, pooled),
+    ).toEqual([]);
+  });
+
+  it("accepts a named CSS color as an override", () => {
+    // Named colors never parse as hex/rgb()/hsl() — without a name lookup
+    // this silently fell back to the pool instead of honoring the override.
+    // The palette keeps the original string (like any other valid override);
+    // buildColors resolves it to RGB the same way it resolves hex entries
+    expect(
+      resolvePalette("split", meta(["train"]), pooled, [
+        { path: "split", valueColors: [{ value: "train", color: "red" }] },
+      ]),
+    ).toEqual(["red"]);
+  });
+
+  it("matches a named color case-insensitively", () => {
+    expect(
+      resolvePalette("split", meta(["train"]), pooled, [
+        { path: "split", valueColors: [{ value: "train", color: "Red" }] },
+      ]),
+    ).toEqual(["Red"]);
+  });
+});
+
+describe("resolveColorscale", () => {
+  // The server/app config wire format: 0-255 integer per channel, matching
+  // the same convention the grid's own heatmap overlays consume via
+  // get32BitColor (no /255 there either) — resolveColorscale normalizes
+  // this down to the 0-1 floats the rest of this file works in
+  const FIELD_SCALE_255 = [[10, 10, 10]];
+  const DEFAULT_SCALE_255 = [[20, 20, 20]];
+  const APP_SCALE_255 = [[30, 30, 30]];
+  const normalized = (rgb255: number[][]): Colorscale =>
+    rgb255.map(([r, g, b]) => [r / 255, g / 255, b / 255]);
+
+  it("prefers a field-specific colorscale from the scheme", () => {
+    expect(
+      resolveColorscale(
+        "uniqueness",
+        [{ path: "uniqueness", rgb: FIELD_SCALE_255 }],
+        { rgb: DEFAULT_SCALE_255 },
+        APP_SCALE_255,
+      ),
+    ).toEqual(normalized(FIELD_SCALE_255));
+  });
+
+  it("falls back to the scheme's default colorscale", () => {
+    expect(
+      resolveColorscale(
+        "uniqueness",
+        [{ path: "other_field", rgb: FIELD_SCALE_255 }],
+        { rgb: DEFAULT_SCALE_255 },
+        APP_SCALE_255,
+      ),
+    ).toEqual(normalized(DEFAULT_SCALE_255));
+  });
+
+  it("falls back to the app config's colorscale", () => {
+    expect(resolveColorscale("uniqueness", [], null, APP_SCALE_255)).toEqual(
+      normalized(APP_SCALE_255),
+    );
+  });
+
+  it("falls back to the built-in ramp when nothing resolves", () => {
+    const resolved = resolveColorscale("uniqueness", null, null, null);
+    expect(resolved.length).toBeGreaterThan(0);
+  });
+});
+
+describe("rampCss", () => {
+  it("falls back to the built-in ramp for an empty colorscale", () => {
+    // An empty array can reach here from a caller that skips
+    // resolveColorscale (which never itself produces one) — must not crash
+    expect(rampCss(0.5, [])).toBe(rampCss(0.5));
+  });
+});
+
 describe("buildColors categorical", () => {
   it("gives legend swatches the exact color the points get", () => {
-    // The drift guard: categoryHex (legend) and buildColors (points)
-    // must agree for every class index, including past the palette wrap
-    const count = PALETTE.length + 2;
-    const indices = new Uint16Array(count).map((_, i) => i);
-    const colors = buildColors({ style: "categorical", indices });
+    // The drift guard: categoryCss (legend) and buildColors (points)
+    // must agree for every palette index
+    const indices = new Uint16Array(POOL.length).map((_, i) => i);
+    const colors = buildColors({ style: "categorical", indices }, POOL);
 
-    for (let i = 0; i < count; i++) {
-      hexToRgb(categoryHex(i)).forEach((channel, c) => {
+    for (let i = 0; i < POOL.length; i++) {
+      hexToRgb(categoryCss(POOL, i)).forEach((channel, c) => {
         expect(rgbAt(colors, i)[c]).toBeCloseTo(channel, 6);
       });
     }
   });
 
-  it("maps class indices through the palette, cycling past its length", () => {
-    const count = PALETTE.length + 1;
-    const indices = new Uint16Array(count).map((_, i) => i);
-    const colors = buildColors({ style: "categorical", indices });
-
-    // Float32Array storage truncates the float64 palette math
-    hexToRgb(PALETTE[0]).forEach((channel, c) => {
-      expect(rgbAt(colors, 0)[c]).toBeCloseTo(channel, 6);
-      // One past the palette wraps to the first entry
-      expect(rgbAt(colors, PALETTE.length)[c]).toBeCloseTo(channel, 6);
-    });
-  });
-
   it("renders missing values gray", () => {
     const indices = new Uint16Array([0, MISSING_CATEGORY]);
-    const colors = buildColors({ style: "categorical", indices });
+    const colors = buildColors({ style: "categorical", indices }, POOL);
     const [r, g, b] = rgbAt(colors, 1);
     expect(r).toBe(g);
     expect(g).toBe(b);
+  });
+
+  it("resolves a named color palette entry to its actual RGB", () => {
+    const indices = new Uint16Array([0]);
+    const colors = buildColors({ style: "categorical", indices }, ["red"]);
+    hexToRgb("#ff0000").forEach((channel, c) => {
+      expect(rgbAt(colors, 0)[c]).toBeCloseTo(channel, 6);
+    });
   });
 });
 
 describe("buildColors continuous", () => {
   it("ramps between the endpoints across the range", () => {
     const values = new Float32Array([0, 10]);
-    const colors = buildColors(
-      { style: "continuous", values },
-      { min: 0, max: 10 },
-    );
+    const colors = buildColors({ style: "continuous", values }, [], {
+      min: 0,
+      max: 10,
+    });
     // Low end is bluer than the high end; high end is redder
     expect(rgbAt(colors, 0)[2]).toBeGreaterThan(rgbAt(colors, 1)[2]);
     expect(rgbAt(colors, 1)[0]).toBeGreaterThan(rgbAt(colors, 0)[0]);
@@ -76,10 +241,12 @@ describe("buildColors continuous", () => {
     const range = { min: 0, max: 10 };
     const clamped = buildColors(
       { style: "continuous", values: new Float32Array([-100, 100, NaN]) },
+      [],
       range,
     );
     const exact = buildColors(
       { style: "continuous", values: new Float32Array([0, 10]) },
+      [],
       range,
     );
     expect(rgbAt(clamped, 0)).toEqual(rgbAt(exact, 0));
@@ -91,125 +258,36 @@ describe("buildColors continuous", () => {
 
   it("survives a degenerate range (min == max)", () => {
     const values = new Float32Array([5, 5]);
-    const colors = buildColors(
-      { style: "continuous", values },
-      { min: 5, max: 5 },
-    );
+    const colors = buildColors({ style: "continuous", values }, [], {
+      min: 5,
+      max: 5,
+    });
     expect(Number.isNaN(colors[0])).toBe(false);
   });
-});
 
-describe("buildColors ramp selection", () => {
-  it("maps the same value through whichever ramp is named", () => {
-    const column = {
-      style: "continuous" as const,
-      values: new Float32Array([0.5]),
-    };
-    const range = { min: 0, max: 1 };
-    const viridis = rgbAt(buildColors(column, range, "viridis"), 0);
-
-    // The ramp's own middle stop, so the ramp is what was read — not merely
-    // "some other numbers than the default"
-    RAMPS.viridis.stops[2].forEach((channel, c) => {
-      expect(viridis[c]).toBeCloseTo(channel, 6);
-    });
-    expect(viridis).not.toEqual(rgbAt(buildColors(column, range), 0));
-  });
-
-  it("leaves categorical classes on the palette whatever the ramp", () => {
-    const indices = new Uint16Array([0, 1]);
-    expect([
-      ...buildColors({ style: "categorical", indices }, undefined, "viridis"),
-    ]).toEqual([...buildColors({ style: "categorical", indices })]);
-  });
-
-  it("puts zero on the diverging ramp's middle stop, asymmetric data or not", () => {
-    // Twice as much headroom above zero as below: an unanchored ramp would
-    // land zero a third of the way along and read as a direction
+  it("uses a resolved colorscale instead of the built-in ramp", () => {
+    const colorscale: Colorscale = [
+      [0.9, 0.1, 0.1],
+      [0.1, 0.9, 0.1],
+    ];
+    const values = new Float32Array([0, 1]);
     const colors = buildColors(
-      { style: "continuous", values: new Float32Array([0]) },
-      { min: -5, max: 10 },
-      "coolWarm",
-    );
-    RAMPS.coolWarm.stops[1].forEach((channel, c) => {
-      expect(rgbAt(colors, 0)[c]).toBeCloseTo(channel, 6);
-    });
-  });
-
-  it("reports the values a ramp's ends stand for", () => {
-    // Non-diverging ramps span the data; a diverging one is symmetric, so its
-    // low end is past the data's minimum
-    expect(rampDomain(-5, 10, RAMPS.viridis)).toEqual([-5, 10]);
-    expect(rampDomain(-5, 10, RAMPS.coolWarm)).toEqual([-10, 10]);
-    // All one sign: nothing to center on, so no widening
-    expect(rampDomain(2, 10, RAMPS.coolWarm)).toEqual([2, 10]);
-  });
-});
-
-describe("rampGradient", () => {
-  it("carries every stop, and its ends are the colors the points get", () => {
-    const gradient = rampGradient("viridis");
-    // One CSS stop per ramp stop: sampling only the ends would flatten the
-    // very ramp that was chosen for its middle
-    expect(gradient.match(/rgb\(/g)?.length).toBe(RAMPS.viridis.stops.length);
-
-    const colors = buildColors(
-      { style: "continuous", values: new Float32Array([0, 1]) },
+      { style: "continuous", values },
+      [],
       { min: 0, max: 1 },
-      "viridis",
+      colorscale,
     );
-    const css = (i: number) =>
-      `rgb(${rgbAt(colors, i)
-        .map((channel) => Math.round(channel * 255))
-        .join(", ")})`;
-    expect(gradient).toContain(css(0));
-    expect(gradient).toContain(css(1));
-    expect(rampCss(0, "viridis")).toBe(css(0));
-  });
-});
 
-describe("every ramp against the canvas", () => {
-  /** Relative luminance, the Rec. 709 weights VOODO's own contrast checks use */
-  const luma = ([r, g, b]: number[]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
-  it("keeps every stop off the dark theme's background", () => {
-    // The chart clears transparent, so points are drawn straight onto the page
-    // — a near-black stop is not a dim color, it is a missing end of the range
-    Object.entries(RAMPS).forEach(([id, ramp]) => {
-      ramp.stops.forEach((stop, i) => {
-        expect(
-          luma(stop),
-          `${id} stop ${i} disappears on a dark canvas`,
-        ).toBeGreaterThan(0.15);
-      });
+    // Float32Array quantizes these, so compare approximately, not exactly
+    rgbAt(colors, 0).forEach((channel, c) => {
+      expect(channel).toBeCloseTo(colorscale[0][c], 6);
     });
-  });
-
-  it("interpolates without dipping below its stops", () => {
-    // A ramp is only as visible as its darkest POINT, and rgb interpolation
-    // between two visible stops can still pass through a darker blend
-    Object.keys(RAMPS).forEach((id) => {
-      for (let t = 0; t <= 1; t += 1 / 64) {
-        const rgb = rgbAt(
-          buildColors(
-            { style: "continuous", values: new Float32Array([t]) },
-            { min: 0, max: 1 },
-            id as keyof typeof RAMPS,
-          ),
-          0,
-        );
-        expect(luma(rgb)).toBeGreaterThan(0.15);
-      }
+    rgbAt(colors, 1).forEach((channel, c) => {
+      expect(channel).toBeCloseTo(colorscale[1][c], 6);
     });
-  });
-});
-
-describe("isRampId", () => {
-  it("accepts a known ramp and rejects stale or malformed panel state", () => {
-    expect(isRampId("viridis")).toBe(true);
-    // Panel state outlives a build: a dropped ramp must not index RAMPS
-    expect(isRampId("magma")).toBe(false);
-    expect(isRampId(null)).toBe(false);
-    expect(isRampId(0)).toBe(false);
+    // The legend gradient must draw the exact same stops the points get
+    // (Math.fround quantizes 0.9 below its exact value, so 229 not 230)
+    expect(rampCss(0, colorscale)).toBe("rgb(229, 26, 26)");
+    expect(rampCss(1, colorscale)).toBe("rgb(26, 229, 26)");
   });
 });

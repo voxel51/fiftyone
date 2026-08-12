@@ -26,6 +26,10 @@ export function useMasks(
 ): {
   visibleMask: Uint8Array | null;
   visibleCount: number | null;
+  /** View stages ∧ sidebar filters only — no `localMask`. Legend
+   * counts scope by this so the color field's own filter never zeroes
+   * the counts of the classes it hides (see legendCounts.ts) */
+  scopeMask: Uint8Array | null;
   error: string | null;
 } {
   const [masks, setMasks] = useState<Masks | null>(null);
@@ -56,18 +60,15 @@ export function useMasks(
 
   // The endpoint early-outs each mask to null when its inputs are empty
   // (no view stages / no filters), so combining only pays when needed
-  const combined = useMemo(() => {
-    const parts = [masks?.visible, masks?.match, localMask].filter(
-      (part): part is Uint8Array => Boolean(part),
-    );
-    if (!parts.length) return null;
-    if (parts.length === 1) return parts[0];
-    const out = new Uint8Array(parts[0].length);
-    for (let i = 0; i < out.length; i++) {
-      out[i] = parts.every((part) => part[i]) ? 1 : 0;
-    }
-    return out;
-  }, [masks, localMask]);
+  const combined = useMemo(
+    () => combineMasks([masks?.visible, masks?.match, localMask]),
+    [masks, localMask],
+  );
+
+  const scopeMask = useMemo(
+    () => combineMasks([masks?.visible, masks?.match]),
+    [masks],
+  );
 
   const visibleMask = useMemo(() => {
     if (!combined || !loadedCount) return null;
@@ -85,5 +86,18 @@ export function useMasks(
     return count;
   }, [combined]);
 
-  return { visibleMask, visibleCount, error };
+  return { visibleMask, visibleCount, scopeMask, error };
+}
+
+function combineMasks(
+  candidates: Array<Uint8Array | null | undefined>,
+): Uint8Array | null {
+  const parts = candidates.filter((part): part is Uint8Array => Boolean(part));
+  if (!parts.length) return null;
+  if (parts.length === 1) return parts[0];
+  const out = new Uint8Array(parts[0].length);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parts.every((part) => part[i]) ? 1 : 0;
+  }
+  return out;
 }

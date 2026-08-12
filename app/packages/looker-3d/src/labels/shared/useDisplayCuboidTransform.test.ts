@@ -1,13 +1,11 @@
 import { renderHook } from "@testing-library/react";
-import React from "react";
-import { RecoilRoot } from "recoil";
 import * as THREE from "three";
 import { describe, expect, it, vi } from "vitest";
-import { transformModeAtom } from "../../state";
 import { useDisplayCuboidTransform } from "./useDisplayCuboidTransform";
 
-const { useTransientCuboidMock } = vi.hoisted(() => ({
+const { useTransientCuboidMock, useTransformModeMock } = vi.hoisted(() => ({
   useTransientCuboidMock: vi.fn(),
+  useTransformModeMock: vi.fn(),
 }));
 
 vi.mock("../../annotation/store", () => ({
@@ -16,30 +14,18 @@ vi.mock("../../annotation/store", () => ({
 
 // The state barrel reaches `@fiftyone/state` and its Relay fragments, which
 // need the Relay Babel transform that vitest doesn't run — importing it threw at
-// load time, so this file never executed. Stand in a real atom (the test drives
-// it through RecoilRoot) without pulling the barrel in.
-vi.mock("../../state", async () => {
-  const { atom } = await import("recoil");
-  return {
-    transformModeAtom: atom({
-      key: "test-transformMode",
-      default: "scale",
-    }),
-  };
-});
+// load time, so this file never executed. Stand in the accessor hook without
+// pulling the barrel in.
+vi.mock("../../state", () => ({
+  useTransformMode: useTransformModeMock,
+}));
 
 function renderWithMode(
   transformMode: "scale" | "rotate" | "translate",
   args: Parameters<typeof useDisplayCuboidTransform>[0],
 ) {
-  const wrapper = ({ children }: { children?: React.ReactNode }) =>
-    // `children` goes in the props object: RecoilRootProps requires it, and the
-    // third-argument form doesn't satisfy that overload.
-    React.createElement(RecoilRoot, {
-      initializeState: ({ set }) => set(transformModeAtom, transformMode),
-      children,
-    });
-  return renderHook(() => useDisplayCuboidTransform(args), { wrapper });
+  useTransformModeMock.mockReturnValue(transformMode);
+  return renderHook(() => useDisplayCuboidTransform(args));
 }
 
 describe("useDisplayCuboidTransform", () => {

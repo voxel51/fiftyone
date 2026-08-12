@@ -3,7 +3,7 @@ import type {
   CuboidTransformData,
   PolylinePointTransformData,
 } from "../annotation/types";
-import type { OverlayLabel } from "./loader";
+import type { Overlay3DDocument, OverlayLabel } from "./loader";
 import {
   createNewDetection,
   createNewPolyline,
@@ -13,52 +13,46 @@ import {
 
 // Helper to create a base overlay label for testing
 const createBaseOverlayLabel = (
-  overrides: Partial<OverlayLabel> = {},
+  doc: Partial<Overlay3DDocument> = {},
 ): OverlayLabel => ({
-  _id: "test-label-id",
-  _cls: "Detection",
+  data: {
+    _id: "test-label-id",
+    _cls: "Detection",
+    label: "test-label",
+    ...doc,
+  },
   path: "test.path",
-  selected: false,
-  color: "#ff0000",
-  label: "test-label",
   sampleId: "sample-123",
-  ...overrides,
+  ui: { selected: false, color: "#ff0000" },
 });
 
 describe("reconcileDetection", () => {
   it("returns overlay unchanged when no staged transform provided", () => {
-    const overlay = createBaseOverlayLabel({
-      _cls: "Detection",
-    });
+    const overlay = createBaseOverlayLabel({ _cls: "Detection" });
 
     const result = reconcileDetection(overlay);
 
-    expect(result._id).toBe(overlay._id);
-    expect(result._cls).toBe("Detection");
+    expect(result.data._id).toBe(overlay.data._id);
+    expect(result.data._cls).toBe("Detection");
     expect(result.path).toBe(overlay.path);
-    expect(result.color).toBe(overlay.color);
+    expect(result.ui.color).toBe(overlay.ui.color);
   });
 
   it("returns overlay unchanged when staged transform is undefined", () => {
-    const overlay = createBaseOverlayLabel({
-      _cls: "Detection",
-    });
+    const overlay = createBaseOverlayLabel({ _cls: "Detection" });
 
     const result = reconcileDetection(overlay, undefined);
 
-    expect(result._id).toBe(overlay._id);
-    expect(result._cls).toBe("Detection");
+    expect(result.data._id).toBe(overlay.data._id);
+    expect(result.data._cls).toBe("Detection");
   });
 
   it("merges staged transform with overlay, with transform taking precedence", () => {
     const overlay = createBaseOverlayLabel({
       _cls: "Detection",
-    }) as OverlayLabel & {
-      location: [number, number, number];
-      dimensions: [number, number, number];
-    };
-    overlay.location = [0, 0, 0];
-    overlay.dimensions = [1, 1, 1];
+      location: [0, 0, 0],
+      dimensions: [1, 1, 1],
+    });
 
     const stagedTransform: CuboidTransformData = {
       location: [5, 10, 15],
@@ -69,14 +63,14 @@ describe("reconcileDetection", () => {
     const result = reconcileDetection(overlay, stagedTransform);
 
     // Staged transform values should override overlay values
-    expect(result.location).toEqual([5, 10, 15]);
-    expect(result.dimensions).toEqual([2, 3, 4]);
-    expect(result.rotation).toEqual([0.1, 0.2, 0.3]);
+    expect(result.data.location).toEqual([5, 10, 15]);
+    expect(result.data.dimensions).toEqual([2, 3, 4]);
+    expect(result.data.rotation).toEqual([0.1, 0.2, 0.3]);
 
     // Original overlay properties should be preserved
-    expect(result._id).toBe(overlay._id);
+    expect(result.data._id).toBe(overlay.data._id);
     expect(result.path).toBe(overlay.path);
-    expect(result.color).toBe(overlay.color);
+    expect(result.ui.color).toBe(overlay.ui.color);
   });
 
   it("preserves quaternion from staged transform", () => {
@@ -90,17 +84,36 @@ describe("reconcileDetection", () => {
 
     const result = reconcileDetection(overlay, stagedTransform);
 
-    expect(result.quaternion).toEqual([0, 0, 0.707, 0.707]);
+    expect(result.data.quaternion).toEqual([0, 0, 0.707, 0.707]);
   });
 });
 
 describe("reconcilePolyline", () => {
   const createPolylineOverlay = (
     points3d: [number, number, number][][],
-    overrides: Partial<OverlayLabel> = {},
-  ): OverlayLabel & { points3d: [number, number, number][][] } => ({
-    ...createBaseOverlayLabel({ _cls: "Polyline", ...overrides }),
-    points3d,
+    doc: Partial<Overlay3DDocument> = {},
+  ): OverlayLabel & { data: { points3d: [number, number, number][][] } } =>
+    createBaseOverlayLabel({
+      _cls: "Polyline",
+      points3d,
+      ...doc,
+    }) as OverlayLabel & { data: { points3d: [number, number, number][][] } };
+
+  it("never lets misc overwrite structural fields on reconcile", () => {
+    const overlay = createPolylineOverlay([
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+    ]);
+
+    const result = reconcilePolyline(overlay, {
+      misc: { closed: true, _id: "forged-id", _cls: "Detection" },
+    } as unknown as PolylinePointTransformData);
+
+    expect(result.data._id).toBe(overlay.data._id);
+    expect(result.data._cls).toBe("Polyline");
+    expect(result.data.closed).toBe(true);
   });
 
   it("returns overlay with original points when no staged transform provided", () => {
@@ -114,8 +127,8 @@ describe("reconcilePolyline", () => {
 
     const result = reconcilePolyline(overlay);
 
-    expect(result.points3d).toEqual(originalPoints);
-    expect(result._id).toBe(overlay._id);
+    expect(result.data.points3d).toEqual(originalPoints);
+    expect(result.data._id).toBe(overlay.data._id);
   });
 
   it("uses staged segments when provided, overriding original points", () => {
@@ -140,7 +153,7 @@ describe("reconcilePolyline", () => {
 
     const result = reconcilePolyline(overlay, stagedTransform);
 
-    expect(result.points3d).toEqual([
+    expect(result.data.points3d).toEqual([
       [
         [10, 20, 30],
         [40, 50, 60],
@@ -175,12 +188,12 @@ describe("reconcilePolyline", () => {
 
     const result = reconcilePolyline(overlay, stagedTransform);
 
-    expect(result.points3d).toHaveLength(2);
-    expect(result.points3d[0]).toEqual([
+    expect(result.data.points3d).toHaveLength(2);
+    expect(result.data.points3d[0]).toEqual([
       [1, 1, 1],
       [2, 2, 2],
     ]);
-    expect(result.points3d[1]).toEqual([
+    expect(result.data.points3d[1]).toEqual([
       [3, 3, 3],
       [4, 4, 4],
     ]);
@@ -210,7 +223,7 @@ describe("reconcilePolyline", () => {
     const result = reconcilePolyline(overlay, stagedTransform);
 
     // Empty segment should be filtered out
-    expect(result.points3d).toHaveLength(2);
+    expect(result.data.points3d).toHaveLength(2);
   });
 
   it("preserves original overlay properties", () => {
@@ -221,16 +234,14 @@ describe("reconcilePolyline", () => {
           [4, 5, 6],
         ],
       ],
-      {
-        color: "#00ff00",
-        label: "my-polyline",
-      },
+      { label: "my-polyline" },
     );
+    overlay.ui.color = "#00ff00";
 
     const result = reconcilePolyline(overlay);
 
-    expect(result.color).toBe("#00ff00");
-    expect(result.label).toBe("my-polyline");
+    expect(result.ui.color).toBe("#00ff00");
+    expect(result.data.label).toBe("my-polyline");
   });
 
   it("applies misc properties from staged transform", () => {
@@ -251,8 +262,8 @@ describe("reconcilePolyline", () => {
 
     const result = reconcilePolyline(overlay, stagedTransform);
 
-    expect(result.filled).toBe(true);
-    expect(result.closed).toBe(false);
+    expect(result.data.filled).toBe(true);
+    expect(result.data.closed).toBe(false);
   });
 });
 
@@ -274,19 +285,21 @@ describe("createNewDetection", () => {
       path,
     );
 
-    expect(result._id).toBe(labelId);
-    expect(result._cls).toBe("Detection");
-    expect((result as unknown as Record<string, unknown>).type).toBe(
-      "Detection",
-    );
+    expect(result.data._id).toBe(labelId);
+    expect(result.data._cls).toBe("Detection");
     expect(result.path).toBe(path);
-    expect(result.location).toEqual([10, 20, 30]);
-    expect(result.dimensions).toEqual([5, 10, 15]);
-    expect(result.rotation).toEqual([0.1, 0.2, 0.3]);
+    expect(result.data.location).toEqual([10, 20, 30]);
+    expect(result.data.dimensions).toEqual([5, 10, 15]);
+    expect(result.data.rotation).toEqual([0.1, 0.2, 0.3]);
     expect(result.sampleId).toBe(currentSampleId);
-    expect(result.isNew).toBe(true);
-    expect(result.selected).toBe(false);
-    expect((result as unknown as Record<string, unknown>).tags).toEqual([]);
+    expect(result.ui.isNew).toBe(true);
+    expect(result.ui.selected).toBe(false);
+    expect(result.data.tags).toEqual([]);
+    // bookkeeping never enters the document namespace
+    expect(result.data).not.toHaveProperty("type");
+    expect(result.data).not.toHaveProperty("path");
+    expect(result.data).not.toHaveProperty("sampleId");
+    expect(result.data).not.toHaveProperty("isNew");
   });
 
   it("uses default rotation when not provided", () => {
@@ -297,7 +310,7 @@ describe("createNewDetection", () => {
 
     const result = createNewDetection("id", transformData, "sample-id", "path");
 
-    expect(result.rotation).toEqual([0, 0, 0]);
+    expect(result.data.rotation).toEqual([0, 0, 0]);
   });
 
   it("preserves quaternion when provided", () => {
@@ -309,11 +322,47 @@ describe("createNewDetection", () => {
 
     const result = createNewDetection("id", transformData, "sample-id", "path");
 
-    expect(result.quaternion).toEqual([0, 0, 0.707, 0.707]);
+    expect(result.data.quaternion).toEqual([0, 0, 0.707, 0.707]);
   });
 });
 
 describe("createNewPolyline", () => {
+  it("never lets misc overwrite structural or validated fields", () => {
+    const result = createNewPolyline(
+      "real-id",
+      {
+        segments: [
+          {
+            points: [
+              [1, 2, 3],
+              [4, 5, 6],
+            ],
+          },
+        ],
+        path: "predictions.polylines",
+        label: "my-polyline",
+        misc: {
+          closed: true,
+          _id: "forged-id",
+          _cls: "Detection",
+          points3d: [[[9, 9, 9]]],
+        },
+      },
+      "sample-789",
+    );
+
+    expect(result!.data._id).toBe("real-id");
+    expect(result!.data._cls).toBe("Polyline");
+    expect(result!.data.points3d).toEqual([
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+    ]);
+    // extras still apply
+    expect(result!.data.closed).toBe(true);
+  });
+
   it("creates a new polyline with valid segments", () => {
     const labelId = "new-polyline-123";
     const transformData: PolylinePointTransformData = {
@@ -339,18 +388,20 @@ describe("createNewPolyline", () => {
     const result = createNewPolyline(labelId, transformData, currentSampleId);
 
     expect(result).not.toBeNull();
-    expect(result!._id).toBe(labelId);
-    expect(result!._cls).toBe("Polyline");
-    expect((result as unknown as Record<string, unknown>).type).toBe(
-      "Polyline",
-    );
+    expect(result!.data._id).toBe(labelId);
+    expect(result!.data._cls).toBe("Polyline");
     expect(result!.path).toBe("predictions.polylines");
-    expect(result!.label).toBe("my-polyline");
+    expect(result!.data.label).toBe("my-polyline");
     expect(result!.sampleId).toBe(currentSampleId);
-    expect(result!.isNew).toBe(true);
-    expect(result!.selected).toBe(false);
-    expect((result as unknown as Record<string, unknown>).tags).toEqual([]);
-    expect(result!.points3d).toHaveLength(2);
+    expect(result!.ui.isNew).toBe(true);
+    expect(result!.ui.selected).toBe(false);
+    expect(result!.data.tags).toEqual([]);
+    expect(result!.data.points3d).toHaveLength(2);
+    // bookkeeping never enters the document namespace
+    expect(result!.data).not.toHaveProperty("type");
+    expect(result!.data).not.toHaveProperty("path");
+    expect(result!.data).not.toHaveProperty("sampleId");
+    expect(result!.data).not.toHaveProperty("isNew");
   });
 
   it("returns null when segments is undefined", () => {
@@ -409,8 +460,8 @@ describe("createNewPolyline", () => {
 
     const result = createNewPolyline("id", transformData, "sample-id");
 
-    expect(result!.filled).toBe(true);
-    expect(result!.closed).toBe(true);
+    expect(result!.data.filled).toBe(true);
+    expect(result!.data.closed).toBe(true);
   });
 
   it("correctly maps segment points to points3d array", () => {
@@ -434,7 +485,7 @@ describe("createNewPolyline", () => {
 
     const result = createNewPolyline("id", transformData, "sample-id");
 
-    expect(result!.points3d).toEqual([
+    expect(result!.data.points3d).toEqual([
       [
         [0, 0, 0],
         [1, 1, 1],

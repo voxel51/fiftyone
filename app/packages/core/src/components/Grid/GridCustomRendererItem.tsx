@@ -6,8 +6,8 @@ import {
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { TemporalTagGridOverlay } from "@fiftyone/multimodal/adapters/mcap/react/TemporalTagGridOverlay";
-import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/mcap";
+import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/timeline";
+import { TemporalTagGridOverlay } from "@fiftyone/multimodal/temporal-tags/grid-overlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";

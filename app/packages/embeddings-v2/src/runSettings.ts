@@ -12,8 +12,7 @@
  * Nothing here throws. Storage is unavailable in private windows and over
  * quota, and its contents outlive any build: a setting that cannot be read is
  * a default, never a broken panel. Every value is validated at the point of
- * use (see `isRampId` / `isSimilarLimit`) rather than trusted because it
- * parsed.
+ * use (see `isSimilarLimit`) rather than trusted because it parsed.
  */
 import { useMemo } from "react";
 
@@ -29,7 +28,6 @@ const MAX_RUNS = 32;
  * index carries extension-owned settings through the same store (validated at
  * their point of use, like everything here). */
 export interface RunSettings {
-  rampId?: string;
   [extensionKey: string]: unknown;
 }
 
@@ -96,8 +94,8 @@ export function writeRunSettings(
 /** A run's stored settings, read once per (dataset, run).
  *
  * Read at render rather than seeded through an effect, so the remembered
- * palette is the FIRST one the plot draws with — seeding after mount would
- * paint the default ramp and then rebuild every color to replace it.
+ * value is the FIRST one the plot draws with — seeding after mount would
+ * paint the default and then rebuild to replace it.
  */
 export function useStoredRunSettings(
   datasetName: string | null,

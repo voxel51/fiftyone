@@ -90,6 +90,7 @@ export function PlaybackProvider({
   defaultSpeed = 1.0,
   snapToFrameOnSettle,
   mode,
+  seekFetchDebounceMs,
 }: PlaybackConfig & { children: React.ReactNode }) {
   // Frozen at mount to match `usePlaybackEngine`'s mount-scoped store: that
   // store's `resolvedStepInterval` (derived from `mode`) is captured once in
@@ -97,7 +98,7 @@ export function PlaybackProvider({
   // remount would otherwise update this context while the engine's
   // mode-dependent state stays stale. A caller that needs a new mode must
   // remount the provider (e.g. keyed on the resolved mode, as
-  // `McapSourcePlayback` does).
+  // `SourcePlayback` does).
   const resolvedModeRef = useRef<TimelineMode>();
   if (resolvedModeRef.current === undefined) {
     resolvedModeRef.current = normalizeTimelineMode(mode ?? DEFAULT_MODE);
@@ -111,6 +112,7 @@ export function PlaybackProvider({
     defaultSpeed,
     snapToFrameOnSettle,
     mode: resolvedMode,
+    seekFetchDebounceMs,
   });
 
   // We deliberately do NOT mount a Jotai `<Provider>` here. Every reactive

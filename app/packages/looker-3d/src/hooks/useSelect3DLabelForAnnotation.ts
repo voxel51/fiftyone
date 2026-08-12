@@ -1,6 +1,5 @@
 import { useAnnotationEngine, useSceneSampleId } from "@fiftyone/annotation";
 import { useCallback } from "react";
-import type { OverlayLabel } from "../labels/loader";
 import type { Archetype3d } from "../types";
 
 /**
@@ -17,7 +16,7 @@ export const useSelect3DLabelForAnnotation = () => {
   const sample = useSceneSampleId();
 
   return useCallback(
-    (label: OverlayLabel, _archetype?: Archetype3d) => {
+    (label: { _id: string; path: string }, _archetype?: Archetype3d) => {
       if (!label._id || !label.path || !sample) {
         return;
       }

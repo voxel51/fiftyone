@@ -1,6 +1,5 @@
-import { dataset } from "@fiftyone/state";
+import { useCurrentDataset } from "@fiftyone/state";
 import { useEffect, useState } from "react";
-import { useRecoilValue } from "recoil";
 import type { Group, Quaternion, Vector3 } from "three";
 import type { MirisStreamAsset } from "../render-types";
 
@@ -33,7 +32,7 @@ export const MirisStream = ({
   scale: Vector3;
   children?: React.ReactNode;
 }) => {
-  const ds = useRecoilValue(dataset as never) as {
+  const ds = useCurrentDataset() as {
     info?: Record<string, unknown>;
   } | null;
   const rawDatasetViewerKey = ds?.info?.["miris_viewer_key"];

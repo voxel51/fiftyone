@@ -1,35 +1,28 @@
-// @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { RAMPS, type RampId } from "./colors";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { SettingsMenu } from "./SettingsMenu";
 
-afterEach(cleanup);
-
-/** The menu with just the palette wired; returns the palette spy, since
- * that is what these cases are about */
-function open(rampId: RampId = "blueOrange") {
-  const onRampChange = vi.fn();
-  render(<SettingsMenu rampId={rampId} onRampChange={onRampChange} />);
-  fireEvent.click(screen.getByLabelText("Plot settings"));
-  return onRampChange;
-}
-
-describe("SettingsMenu palette", () => {
-  it("offers every ramp and reports the one picked", () => {
-    const onRampChange = open();
-
-    fireEvent.click(screen.getByText(RAMPS.viridis.label));
-    expect(onRampChange).toHaveBeenCalledWith("viridis");
-    // Every ramp is reachable — a ramp with no row is a palette nobody can
-    // choose, whatever the data needs
-    Object.values(RAMPS).forEach((ramp) => screen.getByText(ramp.label));
+describe("SettingsMenu", () => {
+  it("renders nothing when no edition contributes a section", () => {
+    render(<SettingsMenu />);
+    expect(screen.queryByLabelText("Plot settings")).toBeNull();
   });
 
-  it("stays quiet when the active ramp is picked again", () => {
-    const onRampChange = open("viridis");
+  it("shows contributed sections and lets one dismiss the menu", () => {
+    render(
+      <SettingsMenu
+        renderBefore={(close) => (
+          <button type="button" onClick={close}>
+            pick me
+          </button>
+        )}
+        renderAfter={() => <span>after section</span>}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Plot settings"));
+    screen.getByText("after section");
 
-    fireEvent.click(screen.getByText(RAMPS.viridis.label));
-    expect(onRampChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("pick me"));
+    expect(screen.queryByText("after section")).toBeNull();
   });
 });

@@ -77,6 +77,12 @@ export function useSelectionBridge({
   publishSelection,
 }: SelectionBridgeOptions): {
   selectedIndices: number[] | null;
+  /** The live lasso's enclosed wire indices (null = no lasso). Kept
+   * client-side for selection-scoped UI like the legend counts; the
+   * grid itself is driven by the resolved stage, never these.
+   * Typed array on purpose: a lasso can enclose millions of points,
+   * and this is retained until the selection clears */
+  lassoIndices: Uint32Array | null;
   handleSelection: (
     indices: number[],
     polygon?: Array<[number, number]> | null,
@@ -86,6 +92,7 @@ export function useSelectionBridge({
   error: string | null;
 } {
   const [error, setError] = useState<string | null>(null);
+  const [lassoIndices, setLassoIndices] = useState<Uint32Array | null>(null);
   // Monotonic lasso-request id: a slow older response must not
   // overwrite a newer selection (or resurrect one that was cleared)
   const lassoSeq = useRef(0);
@@ -95,6 +102,7 @@ export function useSelectionBridge({
     lassoSeq.current++;
     resetExtended();
     setSelectedSamples(new Map());
+    setLassoIndices(null);
     setError(null);
     // The extension's artifacts clear in the same commit they were
     // published in; the count is what the chip and the panel tab's pill
@@ -173,6 +181,7 @@ export function useSelectionBridge({
     const kept = filtered ? indices.filter((i) => visible[i]) : indices;
     if (!kept.length) {
       resetExtended();
+      setLassoIndices(null);
       publishSelection({
         stage: null,
         count: null,
@@ -180,6 +189,9 @@ export function useSelectionBridge({
       });
       return;
     }
+    // Synchronous, unlike any stage resolution below: the legend
+    // counts follow the gesture, not the network
+    setLassoIndices(Uint32Array.from(kept));
 
     if (resolveLassoStage && loaded && loaded.points.length === loaded.total) {
       const stage = resolveLassoStage({
@@ -245,6 +257,7 @@ export function useSelectionBridge({
 
   return {
     selectedIndices,
+    lassoIndices,
     handleSelection,
     handlePointClick,
     clearAll,

@@ -1,5 +1,4 @@
 import { useTrackEvent } from "@fiftyone/analytics";
-import { Selection } from "@fiftyone/components";
 import { default as useRefetchableSavedViews } from "../../../hooks/useRefetchableSavedViews";
 import * as fos from "@fiftyone/state";
 import { Suspense, useEffect, useMemo } from "react";
@@ -11,8 +10,9 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { shouldToggleBookMarkIconOnSelector } from "../../Grid/Actions/SaveFilters";
+import SavedViewsSelection from "./SavedViewsSelection";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
-import { AddIcon, Box, LastOption, TextContainer } from "./styledComponents";
+import { Box } from "./styledComponents";
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
@@ -208,11 +208,10 @@ export default function ViewSelection() {
             );
           }}
         />
-        <Selection
-          readonly={disabled}
-          id="saved-views"
+        <SavedViewsSelection
+          items={searchData}
           selected={selected}
-          setSelected={(item: fos.DatasetViewOption) => {
+          onSelect={(item: fos.DatasetViewOption) => {
             setSelected(item);
             setViewName(item.slug);
             trackEvent("select_saved_view");
@@ -221,7 +220,6 @@ export default function ViewSelection() {
             setSelected(fos.DEFAULT_SELECTED);
             resetView();
           }}
-          items={searchData}
           onEdit={(item) => {
             setEditView({
               color: item.color || "",
@@ -231,28 +229,16 @@ export default function ViewSelection() {
             });
             setIsOpen(true);
           }}
+          onCreate={() => setIsOpen(true)}
           search={{
             value: viewSearch,
-            placeholder: "Search views...",
             onSearch: (term: string) => {
               setViewSearch(term);
             },
           }}
-          lastFixedOption={
-            <LastOption
-              data-cy={"saved-views-create-new"}
-              onClick={() => !disabled && !isEmptyView && setIsOpen(true)}
-              disabled={isEmptyView || disabled}
-              title={disabledMsg}
-            >
-              <Box style={{ width: "12%" }}>
-                <AddIcon fontSize="small" disabled={isEmptyView || disabled} />
-              </Box>
-              <TextContainer disabled={isEmptyView || disabled}>
-                Save current filters as view
-              </TextContainer>
-            </LastOption>
-          }
+          disabled={disabled}
+          disabledMsg={disabledMsg}
+          isEmptyView={isEmptyView}
         />
       </Box>
     </Suspense>
