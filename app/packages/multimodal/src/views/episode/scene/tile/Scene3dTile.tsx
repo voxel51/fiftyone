@@ -111,6 +111,7 @@ import { useScene3dPlacedLayers } from "../placement/use-scene-3d-placed-layers"
 import { useScene3dViewpointRegistration } from "../camera/use-scene-3d-viewpoint-registration";
 import { useScene3dTilePlaybackSettings } from "./scene-3d-tile-state";
 import { frameTransformIdentityInputs } from "../entities/scene-3d-layer-identity";
+import { createPointCloudCountStore } from "./point-cloud-count-store";
 
 /**
  * Named gradient backdrop profiles for the 3D scene. "Abyss" is dark
@@ -265,6 +266,17 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     pointCloudStreams,
     pointCloudColorBy,
   );
+  const [pointCloudCountStore] = useState(createPointCloudCountStore);
+  // This layout effect publishes the latest decoded counts before paint so
+  // only the subscribed labels update as playback advances.
+  useLayoutEffect(() => {
+    const pointCounts = new Map<string, number>();
+    pointCloudStreams.forEach((stream, index) => {
+      const pointCount = frames[index]?.frame.pointCount;
+      if (pointCount !== undefined) pointCounts.set(stream, pointCount);
+    });
+    pointCloudCountStore.publish(pointCounts);
+  }, [frames, pointCloudCountStore, pointCloudStreams]);
   const pointCloudColorCapabilities = usePointCloudColorCapabilities(
     pointCloudStreams,
     frames,
@@ -836,6 +848,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
           }}
           pointCloudInputs={{
             colorCapabilities: pointCloudColorCapabilities,
+            pointCountStore: pointCloudCountStore,
             selectedSources: selectedPointCloudSources,
           }}
           poseControls={{
@@ -875,6 +888,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       mapLayerSources,
       mapLayerStreams,
       pointCloudColorCapabilities,
+      pointCloudCountStore,
       pointCloudSources,
       pointCloudStreams,
       poseSources,

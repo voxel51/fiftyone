@@ -1,6 +1,12 @@
 import { PlaybackProvider } from "@fiftyone/playback";
 import { TileIdScope } from "@fiftyone/tiling";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import type { Dispatch, SetStateAction } from "react";
 import {
   afterEach,
@@ -26,6 +32,10 @@ import {
   type ReferenceGridSettings,
   type SceneBackgroundSettings,
 } from "../../settings/modal/state";
+import {
+  createPointCloudCountStore,
+  type PointCloudCountStore,
+} from "./point-cloud-count-store";
 
 const CAM_FRONT = source(
   "CAM_FRONT/camera_info",
@@ -142,6 +152,20 @@ describe("Scene3dTileSettings", () => {
       screen.getByRole("switch", { name: "Toggle point clouds" }),
     );
     expect(props.setSourcesEnabled).toHaveBeenCalledWith([LIDAR.id], false);
+  });
+
+  it("shows the current point count beside each point cloud name", () => {
+    const pointCloudCountStore = createPointCloudCountStore();
+    renderSettings({ pointCloudCountStore });
+
+    expect(screen.queryByText("(123,456)")).toBeNull();
+
+    act(() => {
+      pointCloudCountStore.publish(new Map([[LIDAR.id, 123_456]]));
+    });
+
+    expect(screen.getByText("(123,456)")).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: LIDAR.label })).toBeTruthy();
   });
 
   it("shows stream labels without message counts", () => {
@@ -911,6 +935,7 @@ interface SettingsTestProps {
     string,
     { readonly hasRgb: boolean; readonly scalarFields: readonly string[] }
   >;
+  readonly pointCloudCountStore: PointCloudCountStore;
   readonly pointCloudColors: Record<string, PersistedPointCloudColorSettings>;
   readonly pointCloudPointSize: number;
   readonly pointCloudSources: readonly SceneSource[];
@@ -973,6 +998,7 @@ function settingsProps(
     pointCloudColorCapabilities: new Map([
       [LIDAR.id, { hasRgb: false, scalarFields: ["intensity", "ring"] }],
     ]),
+    pointCloudCountStore: createPointCloudCountStore(),
     pointCloudColors: {},
     pointCloudPointSize: 2,
     pointCloudSources: [LIDAR],
@@ -1028,6 +1054,7 @@ function componentProps(props: SettingsTestProps): Scene3dTileSettingsProps {
     },
     pointCloudInputs: {
       colorCapabilities: props.pointCloudColorCapabilities,
+      pointCountStore: props.pointCloudCountStore,
       selectedSources: props.selectedPointCloudSources,
     },
     poseControls: {
