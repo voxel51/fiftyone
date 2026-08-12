@@ -61,6 +61,10 @@ export const HOVER_RADIUS_PX = 8;
 /** A press+release that travels no farther than this is a click, CSS px */
 export const CLICK_SLOP_PX = 4;
 
+/** A drag whose bounding box is smaller than this encloses nothing anyone
+ * meant to enclose: hand jitter during a click, not a lasso, CSS px */
+export const LASSO_MIN_EXTENT_PX = 12;
+
 export const DEFAULT_SETTINGS: RenderSettings = {
   mode: "density",
   gamma: 1,

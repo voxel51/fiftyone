@@ -33,6 +33,7 @@ import {
 } from "./grid-stream-state";
 import { useGridCameraPose } from "./grid-camera-state";
 import { cameraScopeKey } from "../shell/camera-scope";
+import { useSampleRendererFirstMatch } from "../../../extensions/timeline";
 import { useGridPreview, type GridPreviewStatus } from "./use-grid-preview";
 
 const IMAGE_FIT = "cover";
@@ -81,10 +82,16 @@ export function GridRenderer({
     episodeSource,
     visible,
   );
+  // A lasso/search in the embeddings panel posters this tile at its earliest
+  // matched window, so the still frame is the match rather than the recording
+  // start. Null whenever nothing matched this episode.
+  const firstMatch = useSampleRendererFirstMatch(ctx);
   const preview = useGridPreview({
     enabled: visible,
     hovered,
     onReadResult: gridVideoPlayback.onReadResult,
+    posterStartTimeNs: firstMatch?.startNs ?? null,
+    posterSourceName: firstMatch?.stream ?? null,
     previewSession: previewSession.session,
     previewSessionError: previewSession.error,
     previewSessionStatus: previewSession.status,

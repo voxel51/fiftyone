@@ -90,6 +90,7 @@ export function ColorLegend({
     <FloatingPanel
       aria-label="Color legend"
       title={<TextBadge color={TextColor.Secondary}>{field}</TextBadge>}
+      titleText={field}
       footer={
         interactive ? (
           <Text variant={TextVariant.Sm} color={TextColor.Muted}>
@@ -115,7 +116,7 @@ export function ColorLegend({
                   className="emb-legend-swatch"
                   style={{ background: categoryCss(palette, index) }}
                 />
-                <span className="emb-legend-label">
+                <span className="emb-legend-label" title={label}>
                   <Text variant={TextVariant.Md} color={TextColor.Secondary}>
                     {label}
                   </Text>

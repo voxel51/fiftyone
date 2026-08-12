@@ -21,6 +21,10 @@ export function useColorPalette(
   field: string | null,
   values: ColorValues | null,
   meta: ColorMeta | null,
+  /** Overrides the value domain continuous colors map through (a diverging
+   * ramp centers it on zero — see `rampDomain` in `@fiftyone/utilities`);
+   * null maps meta's min..max. */
+  domain: readonly [number, number] | null = null,
 ): {
   palette: PlotPalette;
   colorscale: Colorscale;
@@ -53,13 +57,13 @@ export function useColorPalette(
             values,
             palette,
             {
-              min: meta?.min ?? null,
-              max: meta?.max ?? null,
+              min: domain?.[0] ?? meta?.min ?? null,
+              max: domain?.[1] ?? meta?.max ?? null,
             },
             colorscale,
           )
         : null,
-    [values, meta, palette, colorscale],
+    [values, meta, domain, palette, colorscale],
   );
 
   return { palette, colorscale, colors };
