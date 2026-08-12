@@ -5,6 +5,7 @@ FiftyOne Zoo Datasets provided natively by the library.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 import shutil
@@ -13,6 +14,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
@@ -30,6 +32,11 @@ import fiftyone.utils.sama as fous
 import fiftyone.utils.places as foup
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
+
+hfh = fou.lazy_import(
+    "huggingface_hub",
+    callback=lambda: fou.ensure_package("huggingface_hub>=0.20.0"),
+)
 
 
 logger = logging.getLogger(__name__)
@@ -3433,16 +3440,321 @@ class UCF101Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class ABC130kDataset(FiftyOneDataset):
+    """A curated 40-episode subset of the ABC-130k bimanual robot
+    teleoperation corpus (134,806 episodes, 195 tasks, 3,553 hours).
+
+    Each sample is a native ``.mcap`` episode containing synchronized
+    multi-camera video and robot telemetry, rendered on the timeline via
+    FiftyOne's multimodal support.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("abc-130k")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        3.52 GB
+    """
+
+    _REPO_ID = "Voxel51/ABC-130k"
+
+    @property
+    def name(self):
+        return "abc-130k"
+
+    @property
+    def license(self):
+        return "Apache-2.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "video")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(self._REPO_ID, dataset_dir)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class GR00TXEmbodimentSimDataset(FiftyOneDataset):
+    """A 42-episode subset of NVIDIA's GR00T-X-Embodiment-Sim corpus, six
+    episodes from each of seven robot embodiments, as native ``.mcap``
+    episodes.
+
+    Each episode carries the camera streams as H.264 video, per-part robot
+    state and action telemetry with timeline plot channels, and the task
+    instruction.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("gr00t-x-embodiment-sim")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        1.00 GB
+    """
+
+    _REPO_ID = "Voxel51/GR00T-X-Embodiment-Sim"
+
+    @property
+    def name(self):
+        return "gr00t-x-embodiment-sim"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "simulation")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(self._REPO_ID, dataset_dir)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class RoboMINDDataset(FiftyOneDataset):
+    """A 32-episode subset of the RoboMIND manipulation benchmark, eight
+    episodes from each of four robot embodiments, as native ``.mcap``
+    episodes.
+
+    Each episode carries per-camera RGB and depth streams, joint telemetry
+    for every recorded arm with timeline plot channels, and the language
+    instruction.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("robomind")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        2.51 GB
+    """
+
+    _REPO_ID = "Voxel51/RoboMIND"
+
+    @property
+    def name(self):
+        return "robomind"
+
+    @property
+    def license(self):
+        return "Apache-2.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "manipulation")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(self._REPO_ID, dataset_dir)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class TartanGroundDataset(FiftyOneDataset):
+    """Six trajectories from the TartanGround ground-robot dataset, one per
+    simulation environment, as native ``.mcap`` episodes.
+
+    Each episode carries the front camera, its segmentation stream,
+    per-frame lidar point clouds, ego pose, and IMU plot channels on a
+    10 Hz frame clock.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("tartanground")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        6.80 GB
+    """
+
+    _REPO_ID = "Voxel51/TartanGround"
+
+    @property
+    def name(self):
+        return "tartanground"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "lidar", "simulation")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(self._REPO_ID, dataset_dir)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class CMHTAutonomousDrivingDataset(FiftyOneDataset):
+    """Autonomous driving episodes with camera, lidar, and radar streams
+    recorded via ROS2 and stored as native ``.mcap`` files, with
+    expert-generated object detection annotations.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("cmht-autonomous-driving")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        61.8 GB
+    """
+
+    _REPO_ID = "Voxel51/cmht-autonomous-driving"
+
+    @property
+    def name(self):
+        return "cmht-autonomous-driving"
+
+    @property
+    def license(self):
+        return "CC0-1.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "autonomous-driving", "lidar", "radar")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(self._REPO_ID, dataset_dir)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class TreeScopeMultimodalDataset(FiftyOneDataset):
+    """The VAT-0723 collection of the TreeScope forestry robotics dataset:
+    10 ``.mcap`` episodes of UAV-mounted lidar and odometry streams
+    recorded in agricultural and forestry environments.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("treescope-multimodal")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        41.59 GB
+    """
+
+    _REPO_ID = "Voxel51/treescope-vat0723-multimodal"
+
+    @property
+    def name(self):
+        return "treescope-multimodal"
+
+    @property
+    def license(self):
+        return "CC-BY-NC-SA-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "lidar")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(self._REPO_ID, dataset_dir)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
+    "abc-130k": ABC130kDataset,
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
     "bdd100k": BDD100KDataset,
     "caltech101": Caltech101Dataset,
     "caltech256": Caltech256Dataset,
     "cityscapes": CityscapesDataset,
+    "cmht-autonomous-driving": CMHTAutonomousDrivingDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
     "fiw": FIWDataset,
+    "gr00t-x-embodiment-sim": GR00TXEmbodimentSimDataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
     "kinetics-400": Kinetics400Dataset,
@@ -3461,9 +3773,22 @@ AVAILABLE_DATASETS = {
     "quickstart-trajectories": QuickstartTrajectoriesDataset,
     "quickstart-groups": QuickstartGroupsDataset,
     "quickstart-3d": Quickstart3DDataset,
+    "robomind": RoboMINDDataset,
     "sama-coco": SamaCOCODataset,
+    "tartanground": TartanGroundDataset,
+    "treescope-multimodal": TreeScopeMultimodalDataset,
     "ucf101": UCF101Dataset,
 }
+
+
+def _download_hub_dataset(repo_id, dataset_dir):
+    """Downloads a FiftyOne-format dataset repo from the Hugging Face Hub."""
+    logger.info("Downloading %s from the Hugging Face Hub", repo_id)
+    hfh.snapshot_download(
+        repo_id=repo_id,
+        repo_type="dataset",
+        local_dir=dataset_dir,
+    )
 
 
 def _should_patch_pcd(dataset_dir):
