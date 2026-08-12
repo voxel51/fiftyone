@@ -5,7 +5,9 @@ import {
 } from "../state";
 import { ViewTarget } from "../types";
 
-export const GROUPED_DATASET_TARGET_REASON =
+// the same message ``fiftyone.operators.executor.GROUPED_TARGET_ERROR_MESSAGE``
+// resolves into operator forms
+export const GROUPED_DATASET_DISABLED_TEXT =
   "Not available for grouped datasets";
 
 export type ViewTargetMeta = {
@@ -15,25 +17,24 @@ export type ViewTargetMeta = {
   unavailableReason?: string;
 };
 
-const TARGET_LABELS: Record<string, { label: string; description: string }> = {
-  [ViewTarget.DATASET]: {
+// the wording matches the ``ViewTargetProperty`` defaults, which own it for
+// operator forms; panels cannot fetch it, so it is repeated here
+const DEFAULT_TARGETS = [
+  {
+    target: ViewTarget.DATASET,
     label: "All samples",
     description: "Process full dataset",
   },
-  [ViewTarget.CURRENT_VIEW]: {
+  {
+    target: ViewTarget.CURRENT_VIEW,
     label: "Current view",
     description: "Samples matching filters",
   },
-  [ViewTarget.SELECTED_SAMPLES]: {
+  {
+    target: ViewTarget.SELECTED_SAMPLES,
     label: "Current selection",
     description: "Selected samples",
   },
-};
-
-const DEFAULT_TARGETS = [
-  ViewTarget.DATASET,
-  ViewTarget.CURRENT_VIEW,
-  ViewTarget.SELECTED_SAMPLES,
 ];
 
 /**
@@ -83,12 +84,10 @@ export const useViewTargets = (
     useViewTargetGroupConstraints();
 
   return useMemo(() => {
-    const resolved = DEFAULT_TARGETS.map((target) => {
-      const { label, description } = TARGET_LABELS[target];
-
+    const resolved = DEFAULT_TARGETS.map(({ target, label, description }) => {
       const unavailableReason =
         requireFlat && target === ViewTarget.DATASET && isGroupedDataset
-          ? GROUPED_DATASET_TARGET_REASON
+          ? GROUPED_DATASET_DISABLED_TEXT
           : undefined;
 
       const scope =

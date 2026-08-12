@@ -12,7 +12,7 @@ import {
 } from "../state";
 import { ViewTarget } from "../types";
 import {
-  GROUPED_DATASET_TARGET_REASON,
+  GROUPED_DATASET_DISABLED_TEXT,
   useViewTargetCounts,
   useViewTargets,
 } from "./state";
@@ -74,7 +74,7 @@ describe("useViewTargets", () => {
     const { result } = renderHook(() => useViewTargets({ requireFlat: true }));
     const [dataset, currentView, selected] = result.current.targets;
 
-    expect(dataset.unavailableReason).toBe(GROUPED_DATASET_TARGET_REASON);
+    expect(dataset.unavailableReason).toBe(GROUPED_DATASET_DISABLED_TEXT);
     expect(currentView.description).toBe(
       "Samples matching filters in the current slice (left)",
     );
@@ -110,7 +110,7 @@ describe("useViewTargets", () => {
 
     expect(currentView.description).toBe("Samples matching filters");
     expect(currentView.unavailableReason).toBeUndefined();
-    expect(dataset.unavailableReason).toBe(GROUPED_DATASET_TARGET_REASON);
+    expect(dataset.unavailableReason).toBe(GROUPED_DATASET_DISABLED_TEXT);
   });
 });
 
