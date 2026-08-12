@@ -166,6 +166,12 @@ describe("Scene3dTileSettings", () => {
 
     expect(screen.getByText("(123,456)")).toBeTruthy();
     expect(screen.getByRole("checkbox", { name: LIDAR.label })).toBeTruthy();
+
+    act(() => {
+      pointCloudCountStore.publish(new Map());
+    });
+
+    expect(screen.queryByText("(123,456)")).toBeNull();
   });
 
   it("shows stream labels without message counts", () => {
