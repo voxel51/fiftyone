@@ -163,39 +163,30 @@ export default function NewSearch({
           control={
             <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
               <RadioGroup
-                options={
-                  isPatchesView
-                    ? [
-                        {
-                          value: "DATASET",
-                          label: "All Patches",
-                          disabled: form.isGroupedDataset,
-                        },
-                        {
-                          value: "CURRENT_VIEW",
-                          label: "Current Patches View",
-                        },
-                      ]
-                    : [
-                        {
-                          value: "DATASET",
-                          label: "Full Dataset",
-                          disabled: form.isGroupedDataset,
-                        },
-                        { value: "CURRENT_VIEW", label: "Current View" },
-                      ]
-                }
+                options={form.viewTargetOptions.map((meta) => ({
+                  value: meta.target,
+                  label:
+                    meta.target === ViewTarget.DATASET
+                      ? isPatchesView
+                        ? "All Patches"
+                        : "Full Dataset"
+                      : isPatchesView
+                        ? "Current Patches View"
+                        : "Current View",
+                  disabled: meta.unavailableReason !== undefined,
+                }))}
                 value={form.viewTarget}
                 onChange={(value) => form.setViewTarget(value as ViewTarget)}
                 size={Size.Md}
                 style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
               />
-              {form.isGroupedDataset && (
-                <Markdown>
-                  {
-                    "Full-dataset search is not supported on grouped datasets. To search more than one slice, add a `SelectGroupSlices` stage to your view to flatten those slices into a single collection, then search the current view."
-                  }
-                </Markdown>
+              {form.viewTargetOptions.map(
+                (meta) =>
+                  meta.unavailableReason && (
+                    <Markdown key={meta.target}>
+                      {meta.unavailableReason}
+                    </Markdown>
+                  ),
               )}
             </Stack>
           }

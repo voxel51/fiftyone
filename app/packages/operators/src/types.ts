@@ -1512,6 +1512,46 @@ export type OperatorPromptPropsType = {
 export type ValidationErrorsType = Array<{ path: string; reason: string }>;
 
 /**
+ * Enumeration of view targets for parity with server-side logic.
+ */
+export enum ViewTarget {
+  /**
+   * Base view from which a generated view was created.
+   */
+  BASE_VIEW = "BASE_VIEW",
+
+  /**
+   * Current app view.
+   */
+  CURRENT_VIEW = "CURRENT_VIEW",
+
+  /**
+   * Entire dataset.
+   */
+  DATASET = "DATASET",
+
+  /**
+   * Entire dataset as a view.
+   */
+  DATASET_VIEW = "DATASET_VIEW",
+
+  /**
+   * Currently-selected labels.
+   */
+  SELECTED_LABELS = "SELECTED_LABELS",
+
+  /**
+   * Currently-selected samples.
+   */
+  SELECTED_SAMPLES = "SELECTED_SAMPLES",
+
+  /**
+   * Custom view.
+   */
+  CUSTOM_VIEW_TARGET = "CUSTOM_VIEW_TARGET",
+}
+
+/**
  * Response type returned from operator execution.
  */
 export type OperatorResponse<T> = {
