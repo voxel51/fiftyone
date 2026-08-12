@@ -2,6 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+// The tokens subpath is pure data — no React, no globals.css — so it is safe
+// to import here, where this module also runs inside looker's workers
+import { palettePool } from "@voxel51/voodo/tokens";
+
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
@@ -299,18 +303,10 @@ export const interpolateColorsRgb = (
   ];
 };
 
-export const default_app_color = [
-  "#ee0000",
-  "#ee6600",
-  "#993300",
-  "#996633",
-  "#999900",
-  "#009900",
-  "#003300",
-  "#009999",
-  "#000099",
-  "#0066ff",
-  "#6600ff",
-  "#cc33cc",
-  "#777799",
-];
+/**
+ * The App's default color pool, from the Voodo design system.
+ *
+ * The server has no notion of theme, and dark is the App's default, so the
+ * dark palette is used — the two are identical today.
+ */
+export const default_app_color = palettePool.dark;
