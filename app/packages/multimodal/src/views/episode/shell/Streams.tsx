@@ -35,6 +35,8 @@ const EMPTY_STREAMS: readonly string[] = [];
 export interface StreamsProps {
   /** Tile kinds supported by the current manifest, capabilities, and build. */
   availableTileTypes: readonly TileType[];
+  /** Capture time to open the recording at, ahead of the first-data tick. */
+  initialSeekTimeNs?: bigint | null;
   /** Shared format-neutral episode session owned by the modal renderer. */
   session: EpisodeSession | null;
   /** Called after every blocking stream covers the current playhead. */
@@ -56,6 +58,7 @@ export interface StreamsProps {
 export function Streams({
   availableTileTypes,
   budgetAccount,
+  initialSeekTimeNs,
   onPlayheadDataReady,
   session,
   source,
@@ -164,6 +167,7 @@ export function Streams({
   useRegisterDataStream({
     blockingStreams,
     endBoundedStreams,
+    initialSeekTimeNs,
     onPlayheadDataReady,
     session,
     source,

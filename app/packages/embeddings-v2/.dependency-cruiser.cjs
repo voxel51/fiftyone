@@ -4,6 +4,15 @@ const SRC = "^packages/embeddings-v2/src/renderer/";
 module.exports = {
   forbidden: [
     {
+      // The dependency direction is edition → this package, never back:
+      // multimodal semantics live in @fiftyone/multimodal, which imports
+      // this library — an edge the other way is a layering inversion.
+      name: "no-multimodal-imports",
+      severity: "error",
+      from: { path: PKG },
+      to: { path: "node_modules/@fiftyone/multimodal(/|$)|^packages/multimodal/" },
+    },
+    {
       // The renderer was a standalone package before it merged into the
       // panel; these three boundary rules preserve that shape. First:
       // panel code reaches the renderer only through its barrel — the

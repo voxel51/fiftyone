@@ -49,6 +49,12 @@ export interface UseGridPreviewOptions {
   readonly hovered?: boolean;
   /** Receives every adapter result, including frames skipped by UI pacing. */
   readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
+  /** Capture time the still frame should show, instead of the recording
+   * start. Set to an embeddings match so the tile posters at the match. */
+  readonly posterStartTimeNs?: bigint | null;
+  /** Stream the poster prefers once it is known previewable — a match on a
+   * fused or non-previewable stream falls back to the automatic pick. */
+  readonly posterSourceName?: string | null;
   readonly previewSession: EpisodePreviewSession | null;
   readonly previewSessionError?: string | null;
   readonly previewSessionStatus?:
@@ -82,6 +88,8 @@ export function useGridPreview({
   enabled = true,
   hovered = false,
   onReadResult,
+  posterStartTimeNs = null,
+  posterSourceName = null,
   previewSession,
   previewSessionError = null,
   previewSessionStatus = "idle",
@@ -90,12 +98,19 @@ export function useGridPreview({
 }: UseGridPreviewOptions): GridPreviewState {
   const [state, setState] = useState<GridPreviewSnapshot>(IDLE_PREVIEW_STATE);
   const [playing, setPlaying] = useState(false);
+  // Bumped whenever the still-frame load below commits a fresh result
+  // (a poster move included) — the hover loop depends on it so a poster
+  // moving out from under an in-progress loop tears the stale loop down
+  // and restarts against the new frame, rather than continuing to chain
+  // frames from the old poster's timeline
+  const [loadGeneration, setLoadGeneration] = useState(0);
   const initialLoadInFlightRef = useRef(false);
   const onReadResultRef = useRef(onReadResult);
   onReadResultRef.current = onReadResult;
   const loadedRequestRef = useRef<{
-    readonly selectedSourceName?: string | null;
+    readonly posterStartTimeNs: bigint | null;
     readonly source: ByteSourceDescriptor;
+    readonly sourceName: string | null;
   } | null>(null);
   const frameTimeNsRef = useRef<bigint | undefined>(undefined);
   const nextStartTimeNsRef = useRef<bigint | undefined>(undefined);
@@ -111,8 +126,19 @@ export function useGridPreview({
     }
   }, [enabled]);
 
-  // This effect resets only when the requested source or stream changes.
-  // Visibility changes preserve the last frame so cache re-entry is free.
+  // An explicit grid selection always wins; the poster's preferred stream
+  // applies only once this source has reported it as previewable, so an
+  // unpreviewable match never requests a source the session would refuse.
+  const effectiveSourceName =
+    selectedSourceName ??
+    (posterSourceName && state.streamSourceNames.includes(posterSourceName)
+      ? posterSourceName
+      : null);
+
+  // This effect resets only when the source or the user's stream choice
+  // changes. Visibility changes preserve the last frame so cache re-entry is
+  // free, and a moved poster swaps in place rather than flashing a spinner at
+  // every tile the next lasso touches.
   useEffect(() => {
     initialLoadInFlightRef.current = false;
     loadedRequestRef.current = null;
@@ -184,7 +210,8 @@ export function useGridPreview({
     const loadedRequest = loadedRequestRef.current;
     if (
       loadedRequest?.source === source &&
-      loadedRequest.selectedSourceName === selectedSourceName
+      loadedRequest.sourceName === effectiveSourceName &&
+      loadedRequest.posterStartTimeNs === posterStartTimeNs
     ) {
       return undefined;
     }
@@ -195,9 +222,10 @@ export function useGridPreview({
     frameTimeNsRef.current = undefined;
     nextStartTimeNsRef.current = undefined;
 
-    const request = selectedSourceName
-      ? { sourceName: selectedSourceName }
-      : {};
+    const request = {
+      ...(effectiveSourceName ? { sourceName: effectiveSourceName } : {}),
+      ...(posterStartTimeNs === null ? {} : { startTimeNs: posterStartTimeNs }),
+    };
     previewSession
       .read(request, {
         priority: hovered ? "current" : "idle",
@@ -207,10 +235,15 @@ export function useGridPreview({
         if (active) {
           notifyReadResult(onReadResultRef.current, result);
           publishGridBootstrap(source, result);
-          loadedRequestRef.current = { selectedSourceName, source };
+          loadedRequestRef.current = {
+            posterStartTimeNs,
+            source,
+            sourceName: effectiveSourceName,
+          };
           frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(snapshotFromResult(result));
+          setLoadGeneration((g) => g + 1);
         }
       })
       .catch((caughtError) => {
@@ -238,7 +271,14 @@ export function useGridPreview({
       initialLoadInFlightRef.current = false;
       controller.abort();
     };
-  }, [enabled, hovered, previewSession, selectedSourceName, source]);
+  }, [
+    enabled,
+    effectiveSourceName,
+    hovered,
+    posterStartTimeNs,
+    previewSession,
+    source,
+  ]);
 
   // This effect runs the hover playback loop: while playing, it keeps
   // requesting the next frame, wrapping back to the start when the
@@ -268,9 +308,9 @@ export function useGridPreview({
             break;
           }
 
-          const request = selectedSourceName
+          const request = effectiveSourceName
             ? {
-                sourceName: selectedSourceName,
+                sourceName: effectiveSourceName,
                 startTimeNs: nextStartTimeNsRef.current,
               }
             : {
@@ -349,11 +389,12 @@ export function useGridPreview({
       controller.abort();
     };
   }, [
+    effectiveSourceName,
     enabled,
     finishBuffering,
+    loadGeneration,
     playing,
     previewSession,
-    selectedSourceName,
     source,
     startBuffering,
     state.status,
