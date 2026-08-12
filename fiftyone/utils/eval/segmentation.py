@@ -474,7 +474,15 @@ class SimpleEvaluation(SegmentationEvaluation):
                 sample[pre_field] = spre
                 sample[rec_field] = srec
                 if compute_dice:
-                    sample[dice_field] = _compute_dice_score(sample_conf_mat)
+                    # A sample with no usable masks is skipped above, so its
+                    # confusion matrix is empty and the Dice ratio is 0/0. The
+                    # sibling metrics return None in that case, so match them
+                    # instead of storing nan.
+                    sample[dice_field] = (
+                        _compute_dice_score(sample_conf_mat)
+                        if sample_conf_mat.any()
+                        else None
+                    )
 
         if nc > 0:
             missing = classes[0] if values[0] in (0, "#000000") else None
