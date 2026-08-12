@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CONTINUOUS_RAMPS } from "@fiftyone/utilities";
 import { SettingsMenu } from "./SettingsMenu";
 
@@ -7,6 +8,8 @@ function open(props: Parameters<typeof SettingsMenu>[0] = {}) {
   render(<SettingsMenu {...props} />);
   fireEvent.click(screen.getByLabelText("Plot settings"));
 }
+
+afterEach(cleanup);
 
 describe("SettingsMenu", () => {
   it("offers every ramp and reports the one picked", () => {

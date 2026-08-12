@@ -260,7 +260,8 @@ describe("useSelectionBridge", () => {
       kwargs: {},
       count: 1,
     });
-    const opts = options();
+    // No client-side resolver: the stage must come from the server route
+    const opts = options({ resolveLassoStage: null });
     const { result } = renderHook(() => useSelectionBridge(opts));
 
     act(() => result.current.handleSelection([1], null));
