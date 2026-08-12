@@ -138,6 +138,9 @@ describe("PlanarCamera focus", () => {
     camera.setFocus(null);
     camera.reset();
     expectCentered(camera.camera);
+    // Back to the DEFAULT view, not the fit view — center alone can't
+    // tell those apart
+    expect(camera.camera.right - camera.camera.left).toBeCloseTo(defaultWidth);
 
     camera.setFocus({ xMin: 7, xMax: 9, yMin: 1, yMax: 3, zMin: 0, zMax: 0 });
     camera.setBounds(BOUNDS, 100, 100);
