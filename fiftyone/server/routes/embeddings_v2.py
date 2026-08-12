@@ -29,6 +29,7 @@ import struct
 import threading
 from collections import OrderedDict
 
+from bson import ObjectId
 import numpy as np
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
@@ -36,11 +37,13 @@ from starlette.responses import Response
 
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
 import fiftyone.core.storage as fost
 from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.decorators import route
+from fiftyone.server.query import _brain_run_error
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
@@ -75,45 +78,37 @@ def get_sample_filter(slices):
         return SampleFilter(group=GroupElementFilter(id=None, slices=slices))
 
 
-class EmbeddingsV2Runs(HTTPEndpoint):
+class EmbeddingsV2RunsStatus(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        """Lists the dataset's visualization runs (cheap; run docs only)."""
+        """Check the status of a dataset's visualization runs."""
         return await run_sync_task(self._post_sync, data)
 
     def _post_sync(self, data):
-        dataset_name = data["datasetName"]
-        dataset = fosu.load_and_cache_dataset(dataset_name)
+        db = foo.get_db_conn()
+        run_docs = db.runs.find(
+            {"_dataset_id": ObjectId(data["datasetId"])},
+            {"key": 1, "config": 1, "results": 1},
+        )
 
-        runs = []
-        for brain_key in dataset.list_brain_runs():
-            info = dataset.get_brain_info(brain_key)
-            config = info.config
-            if not config.cls.startswith(_VISUALIZATION_CLS):
+        statuses = []
+        for run_doc in run_docs:
+            config = run_doc.get("config") or {}
+            cls_path = config.get("cls")
+            if not isinstance(cls_path, str) or not cls_path.startswith(
+                _VISUALIZATION_CLS
+            ):
                 continue
 
-            # Results-blob POINTER presence, not a blob load: the run
-            # doc's GridFS reference is only set once results are saved,
-            # so a run mid-computation (or whose computation died) lists
-            # as not ready. Presence says nothing about how the run
-            # ended — status semantics beyond ready/pending need the
-            # run-status sidecar
-            ready = bool(dataset._doc.brain_methods[brain_key].results)
-
-            runs.append(
+            statuses.append(
                 {
-                    "brainKey": brain_key,
-                    "method": getattr(config, "method", None),
-                    "dims": getattr(config, "num_dims", None),
-                    "patchesField": getattr(config, "patches_field", None),
-                    "pointsField": getattr(config, "points_field", None),
-                    "model": getattr(config, "model", None),
-                    "ready": ready,
-                    "timestamp": _timestamp(info),
+                    "brainKey": run_doc.get("key"),
+                    "ready": run_doc.get("results") is not None,
+                    "error": _brain_run_error({"config": config}),
                 }
             )
 
-        return {"runs": runs}
+        return {"runs": statuses}
 
 
 class EmbeddingsV2RunInfo(HTTPEndpoint):
@@ -443,7 +438,7 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
 
 
 EmbeddingsV2Routes = [
-    ("/embeddings/v2/runs", EmbeddingsV2Runs),
+    ("/embeddings/v2/runs-status", EmbeddingsV2RunsStatus),
     ("/embeddings/v2/run-info", EmbeddingsV2RunInfo),
     ("/embeddings/v2/geometry", EmbeddingsV2Geometry),
     ("/embeddings/v2/ids", EmbeddingsV2Ids),
