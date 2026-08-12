@@ -36,9 +36,15 @@ export function useHoverInfo(
   const dwellRef = useRef<number | null>(null);
   const infoCache = useRef(new Map<string, SampleInfo>());
 
-  // A new run reorders the wire, invalidating cached indices
+  // A new run reorders the wire, invalidating cached indices — and any
+  // in-flight dwell or fetch, whose key would still match hoverKeyRef
   useEffect(() => {
     infoCache.current.clear();
+    if (dwellRef.current !== null) {
+      window.clearTimeout(dwellRef.current);
+      dwellRef.current = null;
+    }
+    hoverKeyRef.current = null;
     setHover(null);
     setHoverHit(null);
   }, [datasetName, brainKey]);

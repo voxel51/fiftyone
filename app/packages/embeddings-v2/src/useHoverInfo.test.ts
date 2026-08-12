@@ -151,6 +151,24 @@ describe("useHoverInfo", () => {
     expect(result.current.hover).toBeNull();
   });
 
+  // A run switch mid-dwell: the pending timer and request key belong
+  // to the old run and must die with it — no stale card, no fetch
+  it("cancels a pending dwell when the run changes", async () => {
+    vi.mocked(fetchSampleInfo).mockClear().mockResolvedValue(info(1));
+    const { result, rerender } = renderHook(
+      ({ brainKey }: { brainKey: string }) =>
+        useHoverInfo("ds", brainKey, null, mediaUrl),
+      { initialProps: { brainKey: "viz" } },
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+    rerender({ brainKey: "viz2" });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(fetchSampleInfo).not.toHaveBeenCalled();
+    expect(result.current.hover).toBeNull();
+  });
+
   it("clears the card when the run changes", async () => {
     vi.mocked(fetchSampleInfo).mockResolvedValue(info(1));
     const { result, rerender } = renderHook(

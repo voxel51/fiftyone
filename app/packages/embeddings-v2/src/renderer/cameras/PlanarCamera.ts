@@ -179,6 +179,9 @@ export class PlanarCamera implements CameraAdapter {
   }
 
   private handlePanStart(event: PointerEvent): void {
+    // One pan at a time: a second pointer would overwrite the borrowed
+    // cursor and orphan the first pointer's restore
+    if (this.panPointer !== null) return;
     const pan =
       event.button === 1 ||
       (event.button === 0 && (event.shiftKey || this.mode === "explore"));
