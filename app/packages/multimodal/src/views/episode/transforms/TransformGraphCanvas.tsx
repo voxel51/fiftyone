@@ -1,10 +1,23 @@
 import {
+  Align,
+  BorderColor,
+  BrandColor,
   Button,
+  Card,
+  CardBackground,
+  borderColorClass,
   FormField,
+  getColorCssVar,
+  Icon,
+  IconColor,
   IconName,
   Input,
   InputType,
+  Justify,
+  Orientation,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -33,7 +46,7 @@ import type {
   TransformTopologySource,
 } from "../../../runtime";
 import type { layoutTransformTopology } from "../../../runtime/transform-topology-layout";
-import styles from "./TransformGraphTile.module.css";
+import styles from "./TransformGraphCanvas.module.css";
 
 export type TransformGraphSelection =
   | { readonly id: string; readonly kind: "edge" }
@@ -80,6 +93,10 @@ interface ComponentRect {
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 2.5;
 const FIT_OPTIONS = { maxZoom: 1.25, padding: 0.08 } as const;
+const ACTIVE_EDGE_COLOR = `var(${getColorCssVar(BrandColor.Primary)})`;
+const GRID_DOT_COLOR = `var(${getColorCssVar(IconColor.Muted)})`;
+const STATIC_EDGE_COLOR = `var(${getColorCssVar(IconColor.Muted)})`;
+const TEMPORAL_EDGE_COLOR = `var(${getColorCssVar(IconColor.Info)})`;
 const NODE_TYPES = {
   "transform-component": TransformComponentNode,
   "transform-frame": TransformFrameNode,
@@ -245,7 +262,7 @@ function TransformGraphCanvasContent({
           id: edge.id,
           interactionWidth: matched ? 16 : 0,
           markerEnd: {
-            color: edgeMarkerColor(edge.kind, selected),
+            color: "context-stroke",
             type: MarkerType.ArrowClosed,
           },
           selectable: matched,
@@ -257,7 +274,6 @@ function TransformGraphCanvasContent({
               ? "source-left"
               : "source-right",
           style: {
-            filter: selected ? `drop-shadow(0 0 4px ${stroke})` : undefined,
             opacity: matched ? 1 : 0.11,
             stroke,
             strokeDasharray: edge.kind === "static" ? "5 4" : undefined,
@@ -329,30 +345,46 @@ function TransformGraphCanvasContent({
 
   return (
     <>
-      <div
+      <Stack
+        align={Align.Center}
         aria-label="Transform graph controls"
         className={styles.graphToolbar}
+        justify={Justify.Between}
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
       >
-        <FormField
-          className={styles.searchField}
-          control={
-            <Input
-              aria-label="Filter transform frames"
-              icon={IconName.Search}
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Frame name"
-              size={Size.Sm}
-              type={InputType.Search}
-              value={query}
-            />
-          }
-        />
-        {queryActive ? (
-          <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
-            {matchingFrameIds.size} of {analysis.frames.length}
-          </Text>
-        ) : null}
-        <div className={styles.canvasControls}>
+        <Stack
+          align={Align.Center}
+          className={styles.toolbarSearch}
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+        >
+          <FormField
+            className={styles.searchField}
+            control={
+              <Input
+                aria-label="Filter transform frames"
+                icon={IconName.Search}
+                onChange={(event) => onQueryChange(event.target.value)}
+                placeholder="Frame name"
+                size={Size.Sm}
+                type={InputType.Search}
+                value={query}
+              />
+            }
+            spacing={Spacing.None}
+          />
+          {queryActive ? (
+            <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
+              {matchingFrameIds.size} of {analysis.frames.length}
+            </Text>
+          ) : null}
+        </Stack>
+        <Stack
+          align={Align.Center}
+          orientation={Orientation.Row}
+          spacing={Spacing.Xs}
+        >
           <Button
             aria-label="Zoom out"
             borderless
@@ -378,8 +410,8 @@ function TransformGraphCanvasContent({
             title="Fit"
             variant={Variant.Icon}
           />
-        </div>
-      </div>
+        </Stack>
+      </Stack>
       <div
         className={styles.canvas}
         data-testid="transform-topology-canvas"
@@ -409,7 +441,7 @@ function TransformGraphCanvasContent({
           zoomOnDoubleClick={false}
         >
           <Background
-            color="var(--color-content-text-muted, #8d929d)"
+            color={GRID_DOT_COLOR}
             gap={18}
             size={1}
             variant={BackgroundVariant.Dots}
@@ -421,9 +453,26 @@ function TransformGraphCanvasContent({
 }
 
 function TransformFrameNode({ data, selected }: NodeProps<FrameFlowNode>) {
+  const borderColor = selected
+    ? BorderColor.Active
+    : data.isolated
+      ? BorderColor.Error
+      : data.dataBearing
+        ? BorderColor.Strong
+        : BorderColor.Default;
+  const iconColor = selected
+    ? BrandColor.Accent
+    : data.isolated
+      ? IconColor.Destructive
+      : data.dataBearing
+        ? IconColor.Info
+        : IconColor.Muted;
   return (
-    <div
-      className={`${styles.flowNodeCard} ${data.dataBearing ? styles.flowDataNode : ""} ${data.isolated ? styles.flowIsolatedNode : ""} ${selected ? styles.flowSelectedNode : ""}`}
+    <Card
+      background={selected ? CardBackground.Elevated : CardBackground.Secondary}
+      className={`${styles.flowNodeCard} ${borderColorClass(borderColor)}`}
+      compact
+      outlined
       title={data.title}
     >
       <Handle
@@ -456,14 +505,38 @@ function TransformFrameNode({ data, selected }: NodeProps<FrameFlowNode>) {
         style={{ left: "62%" }}
         type="target"
       />
-      <span aria-hidden="true" className={styles.flowNodeGlyph}>
-        TF
-      </span>
-      <span className={styles.flowNodeText}>
-        <span className={styles.flowNodeKind}>Frame</span>
-        <span className={styles.flowNodeLabel}>{data.frameId}</span>
-        <span className={styles.flowNodeMeta}>{data.sourceSummary}</span>
-      </span>
+      <Stack
+        align={Align.Center}
+        className={styles.flowNodeContent}
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+      >
+        <Icon
+          color={iconColor}
+          name={data.dataBearing ? IconName.Database : IconName.Waypoints}
+          size={Size.Md}
+        />
+        <Stack
+          className={styles.flowNodeText}
+          orientation={Orientation.Column}
+          spacing={Spacing.None}
+        >
+          <Text
+            className={styles.flowNodeLabel}
+            color={TextColor.Primary}
+            variant={TextVariant.Xs}
+          >
+            {data.frameId}
+          </Text>
+          <Text
+            className={styles.flowNodeMeta}
+            color={TextColor.Muted}
+            variant={TextVariant.Xxs}
+          >
+            {data.sourceSummary}
+          </Text>
+        </Stack>
+      </Stack>
       <Handle
         className={styles.flowHandle}
         id="target-right"
@@ -478,17 +551,24 @@ function TransformFrameNode({ data, selected }: NodeProps<FrameFlowNode>) {
         position={Position.Right}
         type="source"
       />
-    </div>
+    </Card>
   );
 }
 
 function TransformComponentNode({ data }: NodeProps<ComponentFlowNode>) {
   return (
-    <div className={styles.flowComponent}>
+    <Card
+      background={CardBackground.Primary}
+      className={styles.flowComponent}
+      compact
+      outlined
+    >
       {data.label ? (
-        <span className={styles.flowComponentLabel}>{data.label}</span>
+        <Text color={TextColor.Secondary} variant={TextVariant.Label}>
+          {data.label}
+        </Text>
       ) : null}
-    </div>
+    </Card>
   );
 }
 
@@ -597,19 +677,8 @@ function edgeStroke(
   kind: "mixed" | "static" | "temporal",
   selected: boolean,
 ): string {
-  if (selected || kind === "mixed") {
-    return "var(--color-voxel-secondary, #ff8d00)";
-  }
-  if (kind === "temporal") return "var(--fo-palette-info-main, #4ca3ff)";
-  return "var(--color-content-text-muted, #8d929d)";
-}
-
-function edgeMarkerColor(
-  kind: "mixed" | "static" | "temporal",
-  selected: boolean,
-): string {
-  if (selected || kind === "mixed") return "#ff8d00";
-  return kind === "temporal" ? "#4ca3ff" : "#8d929d";
+  if (selected || kind === "mixed") return ACTIVE_EDGE_COLOR;
+  return kind === "temporal" ? TEMPORAL_EDGE_COLOR : STATIC_EDGE_COLOR;
 }
 
 function shortTransformSourceSummary(
