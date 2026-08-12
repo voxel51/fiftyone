@@ -330,21 +330,19 @@ export function useRunPlotData(
   const setRampId = useCallback(
     (id: ContinuousRampId) => {
       setColorScheme((current) => {
-        if (!colorscaleTarget) {
-          return {
-            ...current,
-            defaultColorscale: { name: null, list: rampList(id) },
-          };
-        }
-        const others = (current.colorscales ?? []).filter(
-          (setting) => setting.path !== colorscaleTarget,
-        );
+        // The pick IS the colorscale: it lands on the scheme's DEFAULT (the
+        // section the modal opens to) and clears any per-field override for
+        // the current color-by field — so after a pick, the plot, the cog
+        // and the modal's Colorscale section cannot show different scales
+        const others = colorscaleTarget
+          ? (current.colorscales ?? []).filter(
+              (setting) => setting.path !== colorscaleTarget,
+            )
+          : (current.colorscales ?? []);
         return {
           ...current,
-          colorscales: [
-            ...others,
-            { path: colorscaleTarget, name: null, list: rampList(id) },
-          ],
+          colorscales: others,
+          defaultColorscale: { name: null, list: rampList(id) },
         };
       });
     },
@@ -647,14 +645,27 @@ export function useRunPlotData(
     [filterPath],
   );
 
-  // Clear everything the plot introduced: the selection (lasso / grid /
-  // extension actions → override stage + decorations) AND the color-by
-  // legend isolate/hide filter. Distinct from resetCameras, which only
-  // recenters.
+  // EVERY sidebar filter and the plot's published selection stage — the
+  // full set of mechanisms that can narrow the grid from here. The grid
+  // follows the same atoms, so one click restores the whole dataset view.
+  const resetAllFilters = useRecoilCallback(
+    ({ reset, set }) =>
+      () => {
+        reset(fos.filters);
+        set(fos.extendedSelectionOverrideStage, null);
+        onLegendFilterChangeRef.current(null);
+      },
+    [],
+  );
+
+  // EVERYTHING to no-selection-anywhere: lasso, grid checkboxes, extended
+  // stages, every sidebar filter. The color-by field stays — its column
+  // aggregates server-side and re-selecting it would pay that cost again.
+  // Distinct from resetCameras, which only recenters.
   const resetAll = useCallback(() => {
     clearAll();
-    resetLegendFilter();
-  }, [clearAll, resetLegendFilter]);
+    resetAllFilters();
+  }, [clearAll, resetAllFilters]);
 
   const error =
     loadError ?? rendererError ?? colorError ?? masksError ?? selectionError;
