@@ -1314,10 +1314,7 @@ export function useInvocationRequestExecutor({
   return executor;
 }
 
-// typed so that consumers building request payloads from it, in particular
-// the `Map` selection, are checked rather than silently shipping the wrong
-// shape to the backend
-export const __unsafeOperatorThrottledContext = atom<Partial<RawContext>>({
+export const operatorThrottledContext = atom({
   key: "operatorThrottledContext",
   default: {},
 });
@@ -1351,3 +1348,42 @@ export const activePanelsEventCountAtom = atom({
   key: "activePanelsEventCountAtom",
   default: new Map<string, number>(),
 });
+
+export const useViewTargetSampleCounts = () => {
+  const isGroup = useRecoilValue(fos.isGroup);
+  const aggregation = useRecoilValue(
+    fos.aggregation({ path: "", extended: true, modal: false }),
+  );
+  const count = useRecoilValue(
+    fos.count({ path: "", extended: true, modal: false }),
+  );
+  const groupStatistics = useRecoilValue(fos.groupStatistics(false));
+
+  let viewSampleCount = count ?? 0;
+  if (isGroup) {
+    viewSampleCount =
+      aggregation?.__typename === "RootAggregation"
+        ? ((groupStatistics === "group"
+            ? aggregation.slice
+            : aggregation.count) ?? 0)
+        : 0;
+  }
+
+  return {
+    datasetSampleCount: useRecoilValue(fos.datasetSampleCount) ?? 0,
+    viewSampleCount,
+    selectionSampleCount: useRecoilValue(fos.selectedSamples)?.size ?? 0,
+  };
+};
+
+export const useViewTargetGroupConstraints = () => {
+  const isGroup = useRecoilValue(fos.isGroup);
+  const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
+  const slice = useRecoilValue(fos.groupSlice);
+
+  return {
+    isGroupedDataset: isGroup || parentMediaType === "group",
+    viewIsFlattened: !isGroup && parentMediaType === "group",
+    slice,
+  };
+};

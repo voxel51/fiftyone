@@ -898,7 +898,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
             return {}
 
         unavailable = {}
-        for target in constants.VIEW_TARGETS:
+        for target in constants.ViewTarget.values():
             if (
                 target == constants.ViewTarget.CUSTOM_VIEW_TARGET
                 and self.params.get("custom_view_target") is None

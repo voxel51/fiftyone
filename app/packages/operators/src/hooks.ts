@@ -12,9 +12,9 @@ import {
   type RawContext,
 } from "./operators";
 import {
-  __unsafeOperatorThrottledContext,
   activePanelsEventCountAtom,
   operatorPlacementsAtom,
+  operatorThrottledContext,
   operatorsInitializedAtom,
   useCurrentSample,
 } from "./state";
@@ -30,7 +30,7 @@ function useOperatorThrottledContextSetter() {
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const groupSlice = useRecoilValue(fos.groupSlice);
   const currentSample = useCurrentSample();
-  const setContext = useSetRecoilState(__unsafeOperatorThrottledContext);
+  const setContext = useSetRecoilState(operatorThrottledContext);
   const spaces = useRecoilValue(fos.sessionSpaces);
   const workspaceName = spaces._name;
   const modal = !!useRecoilValue(fos.modal);
@@ -90,7 +90,7 @@ function isCompleteThrottledContext(
 
 export function useOperatorPlacementsResolver() {
   useOperatorThrottledContextSetter();
-  const context = useRecoilValue(__unsafeOperatorThrottledContext);
+  const context = useRecoilValue(operatorThrottledContext);
   const operatorsInitialized = useRecoilValue(operatorsInitializedAtom);
   const pluginsLoaderState = useRecoilValue(pluginsLoaderAtom);
   const setOperatorPlacementsAtom = useSetRecoilState(operatorPlacementsAtom);

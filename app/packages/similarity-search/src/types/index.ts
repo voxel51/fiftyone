@@ -1,7 +1,3 @@
-import { ViewTarget } from "@fiftyone/operators/src/types";
-
-export { ViewTarget };
-
 /**
  * Status of a similarity search run.
  */
@@ -20,6 +16,8 @@ export enum QueryType {
   Text = "text",
   Upload = "upload",
 }
+
+export { ViewTarget } from "@fiftyone/operators/src/types";
 
 /**
  * Configuration for a brain similarity key.

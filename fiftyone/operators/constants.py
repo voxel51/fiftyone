@@ -51,14 +51,14 @@ class ViewTarget:
     operator parameters with a list of JSON-serialized view stages to apply.
     """
 
+    @classmethod
+    def values(cls):
+        """Returns all :class:`ViewTarget` values."""
+        return _VIEW_TARGET_VALUES
 
-VIEW_TARGETS = (
-    ViewTarget.DATASET,
-    ViewTarget.BASE_VIEW,
-    ViewTarget.DATASET_VIEW,
-    ViewTarget.CURRENT_VIEW,
-    ViewTarget.SELECTED_SAMPLES,
-    ViewTarget.SELECTED_LABELS,
-    ViewTarget.CUSTOM_VIEW_TARGET,
+
+_VIEW_TARGET_VALUES = tuple(
+    value
+    for name, value in vars(ViewTarget).items()
+    if not name.startswith("_") and isinstance(value, str)
 )
-"""All :class:`ViewTarget` values."""

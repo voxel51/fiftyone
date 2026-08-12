@@ -84,7 +84,6 @@ class Panel {
 
 export type RawContext = {
   datasetName: string;
-  // the extended stages, as ``get_view(extended_stages=...)`` takes them
   extended: object;
   view: string;
   filters: object;
@@ -93,8 +92,6 @@ export type RawContext = {
   selectedLabels: State.SelectedLabel[];
   currentSample: string;
   viewName: string;
-  // Only a context built for the real invocation flow has these; a
-  // context assembled elsewhere has none of them.
   delegationTarget?: string;
   requestDelegation?: boolean;
   state?: CallbackInterface;
@@ -597,23 +594,11 @@ function formatSelectedLabels(selectedLabels) {
   return labels;
 }
 
-/**
- * The selected sample IDs, as `ctx.selected` expects them.
- *
- * The selection is a `Map<id, SelectionType>`, so `Array.from` on it yields
- * `[id, type]` pairs rather than IDs. Every payload that carries `selected`
- * must go through here, since the backend passes it straight to `Select`,
- * which requires bare ID strings.
- */
-export function formatSelectedSampleIds(
-  selectedSamples: Map<string, SelectionType> | undefined | null,
-): string[] {
-  return selectedSamples ? Array.from(selectedSamples.keys()) : [];
-}
-
 export function formatSelectionPayload(currentContext: Partial<RawContext>) {
   return {
-    selected: formatSelectedSampleIds(currentContext.selectedSamples),
+    selected: currentContext.selectedSamples
+      ? Array.from(currentContext.selectedSamples.keys())
+      : [],
     selected_samples: currentContext.selectedSamples
       ? Array.from(currentContext.selectedSamples.entries()).map(
           ([id, type]) => ({ id, type }),
@@ -622,25 +607,6 @@ export function formatSelectionPayload(currentContext: Partial<RawContext>) {
     sample_selection_style: currentContext.sampleSelectionStyle || {},
     selected_labels: formatSelectedLabels(currentContext.selectedLabels),
   };
-}
-
-/**
- * The view target is a system input carried at the request level, like the
- * view and the selection, so it is lifted out of the operator's params.
- */
-export function formatViewTargetPayload(params: unknown): {
-  params: object;
-  view_target?: string;
-} {
-  const { view_target, ...rest } = (params ?? {}) as {
-    view_target?: string;
-  };
-
-  if (view_target === undefined || view_target === null) {
-    return { params: rest };
-  }
-
-  return { params: rest, view_target };
 }
 
 async function executeOperatorAsGenerator(
@@ -659,7 +625,7 @@ async function executeOperatorAsGenerator(
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
       operator_uri: operator.uri,
-      ...formatViewTargetPayload(ctx.params),
+      params: ctx.params,
       request_delegation: ctx.requestDelegation,
       ...formatSelectionPayload(currentContext),
       view: currentContext.view,
@@ -824,7 +790,7 @@ export async function executeOperatorWithContext(
           extended_selection: currentContext.extendedSelection,
           filters: currentContext.filters,
           operator_uri: operatorURI,
-          ...formatViewTargetPayload(ctx.params),
+          params: ctx.params,
           request_delegation: ctx.requestDelegation,
           ...formatSelectionPayload(currentContext),
           view: currentContext.view,

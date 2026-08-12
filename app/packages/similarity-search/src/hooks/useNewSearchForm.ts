@@ -57,19 +57,12 @@ export const useNewSearchForm = (
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
     null,
   );
-  // which targets a search may process, and why one is unavailable, is
-  // resolved by the shared operator module; this panel offers only the
-  // whole-collection and current-view targets
   const { targets, defaultTarget } = useViewTargets();
   const viewTargetOptions = useMemo(
     () => targets.filter((meta) => meta.target !== ViewTarget.SELECTED_SAMPLES),
     [targets],
   );
   const [viewTarget, setViewTarget] = useState<ViewTarget>(defaultTarget);
-  const isGroupedDataset = Boolean(
-    viewTargetOptions.find((meta) => meta.target === ViewTarget.DATASET)
-      ?.unavailableReason,
-  );
 
   // ─── Derived config ─────────────────────────────────────────────
 
@@ -107,17 +100,11 @@ export const useNewSearchForm = (
     }
   }, [supportsUpload, queryType]);
 
-  // move off targets reported as unavailable (e.g. after a dataset change);
-  // `defaultTarget` is already the best available target, resolved centrally
   useEffect(() => {
     const current = viewTargetOptions.find(
       (meta) => meta.target === viewTarget,
     );
-    if (current && current.unavailableReason === undefined) {
-      return;
-    }
-
-    if (defaultTarget !== viewTarget) {
+    if (!current || current.unavailableReason !== undefined) {
       setViewTarget(defaultTarget);
     }
   }, [viewTargetOptions, defaultTarget, viewTarget]);
@@ -180,7 +167,6 @@ export const useNewSearchForm = (
     viewTarget,
     setViewTarget,
     viewTargetOptions,
-    isGroupedDataset,
     dynamicResults,
     setDynamicResults,
     uploadedImage,
