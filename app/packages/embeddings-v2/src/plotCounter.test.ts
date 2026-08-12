@@ -8,6 +8,16 @@ describe("counterLabel", () => {
     expect(counterLabel(RUN)).toBe("313,696 points");
   });
 
+  it("pluralizes by the total while loading, by the count once done", () => {
+    // Mid-stream the noun names the total ("of 2 points"), not the loaded 1
+    expect(
+      counterLabel({ loaded: 1, total: 2, selected: null, inView: null }),
+    ).toBe("1 / 2 points");
+    expect(
+      counterLabel({ loaded: 1, total: 1, selected: null, inView: null }),
+    ).toBe("1 point");
+  });
+
   it("leads with the selection once there is one", () => {
     // The bug this guards: a selection left the counter reading the run's
     // total, so the number on screen was the one thing the user had NOT asked
