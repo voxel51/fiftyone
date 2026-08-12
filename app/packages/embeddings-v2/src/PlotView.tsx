@@ -490,6 +490,12 @@ export default function PlotView({
           />
         )}
         {hover && (
+          <span
+            className="emb-hover-ring"
+            style={{ left: hover.hit.x, top: hover.hit.y }}
+          />
+        )}
+        {hover && (
           <HoverCard
             content={hover}
             containerWidth={plotRef.current?.clientWidth ?? 0}
