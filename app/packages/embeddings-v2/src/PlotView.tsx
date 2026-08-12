@@ -212,7 +212,7 @@ export default function PlotView({
       : categoryCss(palette, valueIndex);
   };
 
-  const { hover, handleHover } = useHoverInfo(
+  const { hover, hoverHit, handleHover } = useHoverInfo(
     datasetName,
     brainKey,
     colorField,
@@ -489,10 +489,10 @@ export default function PlotView({
             onHover={handleHover}
           />
         )}
-        {hover && (
+        {hoverHit && (
           <span
             className="emb-hover-ring"
-            style={{ left: hover.hit.x, top: hover.hit.y }}
+            style={{ left: hoverHit.x, top: hoverHit.y }}
           />
         )}
         {hover && (
