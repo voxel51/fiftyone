@@ -57,7 +57,7 @@ export const useNewSearchForm = (
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
     null,
   );
-  const { targets, defaultTarget } = useViewTargets();
+  const { targets, defaultTarget } = useViewTargets({ requireFlat: true });
   const viewTargetOptions = useMemo(
     () => targets.filter((meta) => meta.target !== ViewTarget.SELECTED_SAMPLES),
     [targets],

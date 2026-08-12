@@ -37,7 +37,7 @@ describe("useViewTargets", () => {
   it("offers every target for ungrouped datasets", () => {
     mockConstraints({});
 
-    const { result } = renderHook(() => useViewTargets());
+    const { result } = renderHook(() => useViewTargets({ requireFlat: true }));
 
     expect(result.current.targets.map((t) => t.target)).toStrictEqual([
       "DATASET",
@@ -53,10 +53,25 @@ describe("useViewTargets", () => {
     expect(result.current.defaultTarget).toBe("DATASET");
   });
 
-  it("scopes view targets to the active slice for grouped datasets", () => {
+  it("offers grouped datasets to operations that do not require flat views", () => {
     mockConstraints({ isGroupedDataset: true, slice: "left" });
 
     const { result } = renderHook(() => useViewTargets());
+
+    expect(
+      result.current.targets.every((t) => t.unavailableReason === undefined),
+    ).toBe(true);
+    expect(result.current.targets[0].description).toBe("Process full dataset");
+    expect(result.current.targets[1].description).toBe(
+      "Samples matching filters",
+    );
+    expect(result.current.defaultTarget).toBe("DATASET");
+  });
+
+  it("scopes view targets to the active slice for grouped datasets", () => {
+    mockConstraints({ isGroupedDataset: true, slice: "left" });
+
+    const { result } = renderHook(() => useViewTargets({ requireFlat: true }));
     const [dataset, currentView, selected] = result.current.targets;
 
     expect(dataset.unavailableReason).toBe(GROUPED_DATASET_TARGET_REASON);
@@ -72,7 +87,7 @@ describe("useViewTargets", () => {
   it("falls back to generic wording when the active slice is unset", () => {
     mockConstraints({ isGroupedDataset: true, slice: null });
 
-    const { result } = renderHook(() => useViewTargets());
+    const { result } = renderHook(() => useViewTargets({ requireFlat: true }));
     const [, currentView, selected] = result.current.targets;
 
     expect(currentView.description).toBe(
@@ -90,7 +105,7 @@ describe("useViewTargets", () => {
       slice: "left",
     });
 
-    const { result } = renderHook(() => useViewTargets());
+    const { result } = renderHook(() => useViewTargets({ requireFlat: true }));
     const [dataset, currentView] = result.current.targets;
 
     expect(currentView.description).toBe("Samples matching filters");

@@ -59,11 +59,17 @@ export const useViewTargetCounts = (): Record<ViewTarget, number> => {
 
 /**
  * Hook which resolves the view targets an operation may process.
+ *
+ * ``requireFlat`` mirrors ``ctx.target_view(require_flat=...)``: pass the
+ * same value the operation resolves with.
  */
-export const useViewTargets = (): {
+export const useViewTargets = (
+  options: { requireFlat?: boolean } = {},
+): {
   targets: ViewTargetMeta[];
   defaultTarget: ViewTarget;
 } => {
+  const { requireFlat = false } = options;
   const { isGroupedDataset, viewIsFlattened, slice } =
     useViewTargetGroupConstraints();
 
@@ -72,12 +78,15 @@ export const useViewTargets = (): {
       const { label, description } = TARGET_LABELS[target];
 
       const unavailableReason =
-        target === ViewTarget.DATASET && isGroupedDataset
+        requireFlat && target === ViewTarget.DATASET && isGroupedDataset
           ? GROUPED_DATASET_TARGET_REASON
           : undefined;
 
       const scope =
-        !isGroupedDataset || unavailableReason || viewIsFlattened
+        !requireFlat ||
+        !isGroupedDataset ||
+        unavailableReason ||
+        viewIsFlattened
           ? undefined
           : slice
             ? `in the current slice (${slice})`
@@ -98,5 +107,5 @@ export const useViewTargets = (): {
       ViewTarget.DATASET;
 
     return { targets: resolved, defaultTarget };
-  }, [isGroupedDataset, viewIsFlattened, slice]);
+  }, [requireFlat, isGroupedDataset, viewIsFlattened, slice]);
 };
