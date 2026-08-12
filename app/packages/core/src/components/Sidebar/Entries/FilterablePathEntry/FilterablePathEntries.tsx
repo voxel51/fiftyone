@@ -1,5 +1,5 @@
-import * as fos from "@fiftyone/state";
-import CollapsibleFilterItem from "./CollapsibleFilterItem";
+import { pathColor } from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 import FilterItem from "./FilterItem";
 import useFilterData from "./useFilterData";
 
@@ -14,24 +14,13 @@ const FilterablePathEntries = ({
   path: string;
 }) => {
   const { data } = useFilterData(modal, path);
-  const color = fos.usePathColor(path);
-
-  // Label fields carry a handful of well-known attributes and stay open.
-  // Every other embedded document collapses, declared or not: nothing bounds
-  // how many fields one holds, and collapsing costs a click rather than
-  // reachability.
-  const isLabel = fos.useIsLabelPath(path);
+  const color = useRecoilValue(pathColor(path));
 
   return (
     <>
-      {data.map(({ color: _, ...props }) => {
-        // An unnamed item is the entry's own filter rather than one of its
-        // fields, so there is nothing to collapse it under.
-        const Item =
-          props.named && !isLabel ? CollapsibleFilterItem : FilterItem;
-
-        return <Item key={props.path} color={color} {...events} {...props} />;
-      })}
+      {data.map(({ color: _, ...props }) => (
+        <FilterItem key={props.path} color={color} {...events} {...props} />
+      ))}
     </>
   );
 };
