@@ -21,7 +21,7 @@ import { emptyReadWorkUsage } from "../../../ports/read-work-usage";
 import { errorMessage } from "../../../utils/errors";
 
 const MIB = 1024 * 1024;
-const MAX_STORES_PER_CAPABILITY = 8;
+export const MAX_STORES_PER_CAPABILITY = 8;
 
 /** One bounded topology grant. Continuations are never automatic. */
 export const TRANSFORM_TOPOLOGY_GRANT_BUDGET = {
@@ -48,6 +48,7 @@ export interface TransformTopologyScanState {
   readonly frameUses: readonly EpisodeTransformTopologyFrameUse[];
   readonly loading: boolean;
   readonly operation: TransformTopologyOperation | undefined;
+  readonly sampledRequestTimesNs: readonly bigint[];
   readonly sampledTimesNs: readonly bigint[];
   readonly scanCanProgress: boolean;
   readonly status: TransformTopologyScanStatus;
@@ -83,6 +84,7 @@ const INITIAL_STATE: TransformTopologyScanState = {
   frameUses: [],
   loading: false,
   operation: undefined,
+  sampledRequestTimesNs: [],
   sampledTimesNs: [],
   scanCanProgress: true,
   status: "idle",
@@ -132,7 +134,9 @@ export function useTransformTopologyCapability(): boolean {
 }
 
 /** Demand-driven view of persistent topology analysis for this session/source. */
-export function useTransformTopologyScan(): TransformTopologyScanController {
+export function useTransformTopologyScan(
+  sampleTimeNs?: bigint,
+): TransformTopologyScanController {
   const { store } = useContext(TransformTopologyContext);
   const state = useSyncExternalStore(
     store.subscribe,
@@ -144,7 +148,10 @@ export function useTransformTopologyScan(): TransformTopologyScanController {
   const continuationAvailable =
     state.continuation !== undefined && state.scanCanProgress;
   const sampleAvailable =
-    store.capability?.sample !== undefined && state.status === "partial";
+    sampleTimeNs !== undefined &&
+    store.capability?.sample !== undefined &&
+    state.status === "partial" &&
+    !state.sampledRequestTimesNs.includes(sampleTimeNs);
   return {
     ...state,
     analyzeMore: store.analyzeMore,
@@ -339,6 +346,7 @@ function createTransformTopologyStore(
             error: failures[0] ?? null,
             loading: true,
             operation: "analyze",
+            sampledRequestTimesNs: [...sampledRequestTimes],
           });
         } catch (error: unknown) {
           failures.push(errorMessage(error));

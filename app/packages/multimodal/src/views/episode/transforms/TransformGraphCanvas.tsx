@@ -23,6 +23,7 @@ import {
   type Node,
   type NodeChange,
   type NodeProps,
+  useNodesInitialized,
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -104,6 +105,7 @@ function TransformGraphCanvasContent({
   selection,
 }: TransformGraphCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const nodesInitialized = useNodesInitialized();
   const { fitView, zoomIn, zoomOut } = useReactFlow<
     TransformFlowNode,
     TransformFlowEdge
@@ -316,13 +318,14 @@ function TransformGraphCanvasContent({
 
   // This effect keeps every component fitted after layout or tile-size changes.
   useEffect(() => {
+    if (!nodesInitialized) return;
     fit();
     const element = canvasRef.current;
     if (!element || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(fit);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [fit, layout]);
+  }, [fit, layout, nodesInitialized]);
 
   return (
     <>
@@ -400,14 +403,7 @@ function TransformGraphCanvasContent({
           nodesFocusable
           nodeTypes={NODE_TYPES}
           onEdgesChange={handleEdgeChanges}
-          onEdgeClick={(_, edge) => onSelect({ id: edge.id, kind: "edge" })}
-          onInit={fit}
           onNodesChange={handleNodeChanges}
-          onNodeClick={(_, node) => {
-            if (node.type === "transform-frame") {
-              onSelect({ id: node.data.frameId, kind: "frame" });
-            }
-          }}
           panOnDrag
           proOptions={{ hideAttribution: true }}
           zoomOnDoubleClick={false}

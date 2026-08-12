@@ -195,14 +195,10 @@ describe("transform topology model", () => {
 });
 
 describe("transform topology layout", () => {
-  it("returns finite bounds for empty evidence", () => {
+  it("returns no nodes for empty evidence", () => {
     const layout = layoutTransformTopology(analyzeTransformTopology([], []));
 
     expect(layout.nodes).toEqual([]);
-    expect(layout.bounds.width).toBeGreaterThan(0);
-    expect(layout.bounds.height).toBeGreaterThan(0);
-    expect(Number.isFinite(layout.bounds.width)).toBe(true);
-    expect(Number.isFinite(layout.bounds.height)).toBe(true);
   });
 
   it("is deterministic and cycle-safe", () => {
@@ -220,7 +216,5 @@ describe("transform topology layout", () => {
       "b",
       "c",
     ]);
-    expect(first.bounds.width).toBeGreaterThan(0);
-    expect(first.bounds.height).toBeGreaterThan(0);
   });
 });

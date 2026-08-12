@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   analyzeMore: vi.fn(),
   canAnalyzeMore: true,
   capability: true,
-  readPlaybackTimeNs: vi.fn<() => bigint | undefined>(),
+  playbackTimeNs: 123n as bigint | undefined,
   retry: vi.fn(),
   setTileTitle: vi.fn(),
   state: {} as TransformTopologyScanState,
@@ -25,7 +25,7 @@ vi.mock("@fiftyone/tiling", () => ({
 }));
 
 vi.mock("../playback/use-playback-time-ns", () => ({
-  useReadPlaybackTimeNs: () => mocks.readPlaybackTimeNs,
+  usePlaybackTimeNs: () => mocks.playbackTimeNs,
 }));
 
 vi.mock("./transform-topology-context", async (importOriginal) => {
@@ -47,8 +47,7 @@ beforeEach(() => {
   mocks.analyzeMore.mockReset();
   mocks.canAnalyzeMore = true;
   mocks.capability = true;
-  mocks.readPlaybackTimeNs.mockReset();
-  mocks.readPlaybackTimeNs.mockReturnValue(123n);
+  mocks.playbackTimeNs = 123n;
   mocks.retry.mockReset();
   mocks.setTileTitle.mockReset();
   mocks.state = partialState();
@@ -79,10 +78,9 @@ describe("TransformGraphTile", () => {
     ).toBeTruthy();
     expect(screen.getByText("Partial analysis")).toBeTruthy();
     expect(screen.queryByText(/108 messages/)).toBeNull();
-    expect(mocks.readPlaybackTimeNs).not.toHaveBeenCalled();
+    expect(mocks.analyzeMore).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Analyze more" }));
-    expect(mocks.readPlaybackTimeNs).toHaveBeenCalledOnce();
     expect(mocks.analyzeMore).toHaveBeenCalledWith(123n);
     expect(
       screen.queryByRole("button", { name: "Continue analysis" }),
@@ -360,6 +358,7 @@ function emptyState(): TransformTopologyScanState {
     frameUses: [],
     loading: false,
     operation: undefined,
+    sampledRequestTimesNs: [],
     sampledTimesNs: [],
     scanCanProgress: true,
     status: "idle",

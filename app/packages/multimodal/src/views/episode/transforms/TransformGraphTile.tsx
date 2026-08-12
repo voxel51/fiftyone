@@ -14,7 +14,7 @@ import {
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { EpisodeTileProps } from "../tiles/tile-types";
-import { useReadPlaybackTimeNs } from "../playback/use-playback-time-ns";
+import { usePlaybackTimeNs } from "../playback/use-playback-time-ns";
 import {
   analyzeTransformTopology,
   type TransformTopologyAnalysis,
@@ -40,14 +40,14 @@ type Selection = TransformGraphSelection;
 const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
   const setTileTitle = useSetTileTitle();
   const capability = useTransformTopologyCapability();
-  const scan = useTransformTopologyScan();
-  const readPlaybackTimeNs = useReadPlaybackTimeNs();
+  const playbackTimeNs = usePlaybackTimeNs();
+  const scan = useTransformTopologyScan(playbackTimeNs);
   const requestAnalyzeMore = scan.analyzeMore;
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState<Selection | null>(null);
   const analyzeMore = useCallback(() => {
-    requestAnalyzeMore(readPlaybackTimeNs());
-  }, [readPlaybackTimeNs, requestAnalyzeMore]);
+    requestAnalyzeMore(playbackTimeNs);
+  }, [playbackTimeNs, requestAnalyzeMore]);
 
   // This effect keeps the surrounding tile header aligned with this view.
   useEffect(() => {

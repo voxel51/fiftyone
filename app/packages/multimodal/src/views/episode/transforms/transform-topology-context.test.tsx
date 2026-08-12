@@ -13,12 +13,11 @@ import type {
   TransformTopologyScanResult,
 } from "../../../ports";
 import {
+  MAX_STORES_PER_CAPABILITY,
   TRANSFORM_TOPOLOGY_GRANT_BUDGET,
   TransformTopologyProvider,
   useTransformTopologyScan,
 } from "./transform-topology-context";
-
-const MAX_STORES_PER_CAPABILITY = 8;
 
 afterEach(cleanup);
 
@@ -211,6 +210,7 @@ describe("TransformTopologyProvider", () => {
 
     await waitFor(() => expect(sample).toHaveBeenCalledOnce());
     expect(scan).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("can-analyze").textContent).toBe("no");
     expect(screen.getByTestId("edges").textContent).toBe(
       "map>base_link:static:/tf_static:1",
     );
@@ -336,7 +336,7 @@ describe("TransformTopologyProvider", () => {
 });
 
 function Probe() {
-  const state = useTransformTopologyScan();
+  const state = useTransformTopologyScan(5n);
   return (
     <div>
       <span data-testid="status">

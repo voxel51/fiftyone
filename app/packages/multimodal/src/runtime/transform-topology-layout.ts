@@ -13,10 +13,6 @@ interface TransformTopologyLayoutNode {
 }
 
 interface TransformTopologyLayout {
-  readonly bounds: {
-    readonly height: number;
-    readonly width: number;
-  };
   readonly nodes: readonly TransformTopologyLayoutNode[];
 }
 
@@ -73,13 +69,7 @@ export function layoutTransformTopology(
     }
     componentTop += componentHeight + COMPONENT_GAP;
   }
-  let width = 1;
-  let height = 1;
-  for (const node of nodes) {
-    width = Math.max(width, node.x + node.width + PADDING);
-    height = Math.max(height, node.y + node.height + PADDING);
-  }
-  return { bounds: { height, width }, nodes };
+  return { nodes };
 }
 
 function componentLevels(
