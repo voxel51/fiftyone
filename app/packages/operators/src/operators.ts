@@ -84,7 +84,7 @@ class Panel {
 
 export type RawContext = {
   datasetName: string;
-  extended: boolean;
+  extended: object;
   view: string;
   filters: object;
   selectedSamples: Map<string, SelectionType>;
@@ -92,10 +92,10 @@ export type RawContext = {
   selectedLabels: State.SelectedLabel[];
   currentSample: string;
   viewName: string;
-  delegationTarget: string;
-  requestDelegation: boolean;
-  state: CallbackInterface;
-  analyticsInfo: AnalyticsInfo;
+  delegationTarget?: string;
+  requestDelegation?: boolean;
+  state?: CallbackInterface;
+  analyticsInfo?: AnalyticsInfo;
   extendedSelection: {
     selection: string[] | null;
     scope: string;
@@ -104,7 +104,7 @@ export type RawContext = {
   queryPerformance?: boolean;
   spaces: SpaceNodeJSON;
   workspaceName: string;
-  promptId: string | null;
+  promptId?: string | null;
   activeFields: string[];
 };
 
@@ -127,7 +127,7 @@ export class ExecutionContext {
   public get view(): string {
     return this._currentContext.view;
   }
-  public get extended(): boolean {
+  public get extended(): object {
     return this._currentContext.extended;
   }
   public get filters(): object {
@@ -594,7 +594,7 @@ function formatSelectedLabels(selectedLabels) {
   return labels;
 }
 
-function formatSelectionPayload(currentContext: RawContext) {
+export function formatSelectionPayload(currentContext: Partial<RawContext>) {
   return {
     selected: currentContext.selectedSamples
       ? Array.from(currentContext.selectedSamples.keys())

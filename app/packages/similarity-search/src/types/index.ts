@@ -17,10 +17,7 @@ export enum QueryType {
   Upload = "upload",
 }
 
-/**
- * Standard operator view target (current view or full dataset view).
- */
-export type ViewTarget = "CURRENT_VIEW" | "DATASET";
+export { ViewTarget } from "@fiftyone/operators/src/types";
 
 /**
  * Configuration for a brain similarity key.

@@ -52,7 +52,9 @@ class PanelConfig(OperatorConfig):
         priority=None,
         **kwargs
     ):
-        super().__init__(name)
+        # panel "inputs" carry panel state and event plumbing, not a form
+        # that processes samples, so the system view target does not apply
+        super().__init__(name, view_target=False)
         self.name = name
         self.label = label
         self.help_markdown = help_markdown
