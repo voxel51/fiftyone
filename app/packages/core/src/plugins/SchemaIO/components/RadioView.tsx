@@ -144,6 +144,9 @@ export default function RadioView(props: RadioGroupProps) {
               sx={{
                 alignItems: "center",
                 pb: i === choices.length - 1 ? 0 : 0.5,
+                // the label is a custom component with its own colors, so
+                // MUI's disabled text color never reaches it
+                "&.Mui-disabled": { opacity: 0.5 },
               }}
               {...getComponentProps(props, "radioContainer")}
             />
