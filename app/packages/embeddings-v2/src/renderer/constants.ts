@@ -52,10 +52,10 @@ export const MAX_ZOOM = 50;
  * zoom-out still shows nearly the whole graph */
 export const PAN_GIVE = 0.1;
 
-/** Pointer must sit still this long before a hover hit-test runs.
- * Short enough to feel live while gliding; it still gates the host's
- * per-hit sample-media fetches. */
-export const HOVER_DEBOUNCE_MS = 50;
+/** While the pointer moves, hover hit-tests run at most this often —
+ * a cost bound on the linear-scan pick at large point counts, and the
+ * cadence at which the host's card can change subjects. */
+export const HOVER_INTERVAL_MS = 50;
 
 /** Hover pick radius around the cursor, CSS px. Comfortably past the
  * point's own 6px footprint, so hover engages on approach rather than

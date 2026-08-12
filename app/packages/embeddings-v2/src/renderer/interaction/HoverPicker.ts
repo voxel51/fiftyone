@@ -1,4 +1,4 @@
-import { HOVER_DEBOUNCE_MS } from "../constants";
+import { HOVER_INTERVAL_MS } from "../constants";
 import type { HoverHit } from "../types";
 
 interface HoverCallbacks {
@@ -11,12 +11,14 @@ interface HoverCallbacks {
 }
 
 /**
- * Debounced hover: any movement hides the current hit immediately; the
- * hit-test runs only after the pointer sits still for HOVER_DEBOUNCE_MS.
- * Camera drags never trigger it (buttons are tracked in capture phase so
- * this stays true even when other handlers stopPropagation), and camera
- * changes without pointer movement — wheel zooms — re-test after
- * settling via viewChanged().
+ * Throttled hover: while the pointer moves, hit-tests run at most once
+ * per HOVER_INTERVAL_MS, and the callback fires only when the result
+ * CHANGES — a new point, a miss after a hit, or the same point under a
+ * moved camera. Jitter over one point is silence, so the host's card
+ * never flickers. Camera drags never trigger it (buttons are tracked
+ * in capture phase so this stays true even when other handlers
+ * stopPropagation), and camera changes without pointer movement —
+ * wheel zooms — re-test via viewChanged().
  */
 export class HoverPicker {
   private readonly callbacks: HoverCallbacks;
@@ -24,7 +26,8 @@ export class HoverPicker {
   private handle: number | null = null;
   /** Last idle pointer position (CSS px); null once the pointer leaves */
   private pointer: [number, number] | null = null;
-  private hitShown = false;
+  /** The hit the host is currently showing, for change detection */
+  private shown: HoverHit | null = null;
   private buttonsDown = false;
 
   constructor(container: HTMLElement, callbacks: HoverCallbacks) {
@@ -83,20 +86,20 @@ export class HoverPicker {
     this.listeners.abort();
   }
 
-  /** Hide any current hit now, hit-test once the pointer settles */
+  /** Throttle: an already-pending test picks up the latest pointer */
   private schedule(): void {
-    this.clear();
-    if (!this.pointer) return;
+    if (this.handle !== null || !this.pointer) return;
     this.handle = window.setTimeout(() => {
       this.handle = null;
       this.hitTest();
-    }, HOVER_DEBOUNCE_MS);
+    }, HOVER_INTERVAL_MS);
   }
 
+  /** Interactions (drag, leave, new data) drop the hover instantly */
   private clear(): void {
     this.cancel();
-    if (this.hitShown) {
-      this.hitShown = false;
+    if (this.shown) {
+      this.shown = null;
       this.callbacks.onHover(null);
     }
   }
@@ -111,8 +114,25 @@ export class HoverPicker {
   private hitTest(): void {
     if (!this.pointer || this.callbacks.isBlocked()) return;
     const hit = this.callbacks.pick(this.pointer[0], this.pointer[1]);
-    if (!hit) return;
-    this.hitShown = true;
+    if (!hit) {
+      if (this.shown) {
+        this.shown = null;
+        this.callbacks.onHover(null);
+      }
+      return;
+    }
+    // Same point at the same projected spot: nothing changed for the
+    // host, so stay silent (a re-fire would remount the hover card).
+    // A moved camera changes x/y, which must re-fire to re-anchor.
+    if (
+      this.shown &&
+      this.shown.index === hit.index &&
+      this.shown.x === hit.x &&
+      this.shown.y === hit.y
+    ) {
+      return;
+    }
+    this.shown = hit;
     this.callbacks.onHover(hit);
   }
 }
