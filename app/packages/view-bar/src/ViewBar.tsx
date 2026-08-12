@@ -614,6 +614,7 @@ const ViewBar: React.FC<{
       >
         <div
           className={SCROLLER_CLASS}
+          data-cy="view-bar-scroller"
           style={{
             display: "flex",
             alignItems: "center",

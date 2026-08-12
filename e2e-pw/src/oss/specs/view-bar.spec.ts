@@ -5,14 +5,12 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { clsOf, getSessionView, kwargsOf } from "src/shared/session-state";
 
 //
-// One dataset per test. The applied view lives in the server session, per
-// dataset, and survives page loads — a shared dataset couples every test to
-// whatever view the previous one applied.
+// A dataset per test INVOCATION. The applied view lives in the server session
+// and survives page loads until the session moves to another dataset — a
+// dataset reused across invocations (including burn-in repeats of the same
+// test) inherits whatever view the previous run applied.
 //
-const limitDataset = getUniqueDatasetNameWithPrefix("view-bar-limit");
-const exprDataset = getUniqueDatasetNameWithPrefix("view-bar-expr");
-const pythonDataset = getUniqueDatasetNameWithPrefix("view-bar-python");
-const scrollDataset = getUniqueDatasetNameWithPrefix("view-bar-scroll");
+let datasetName: string;
 
 const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
   viewBar: async ({ page }, use) => {
@@ -27,31 +25,34 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
+});
+
+test.beforeEach(async ({ fiftyoneLoader }) => {
+  datasetName = getUniqueDatasetNameWithPrefix("view-bar");
 
   await fiftyoneLoader.executePythonCode(`
     import fiftyone as fo
 
-    for name in ("${limitDataset}", "${exprDataset}", "${pythonDataset}", "${scrollDataset}"):
-        dataset = fo.Dataset(name)
-        dataset.persistent = True
-        dataset.add_samples([
-            fo.Sample(
-                filepath=f"/tmp/{name}-{i}.png",
-                index=i,
-                ground_truth=fo.Detections(
-                    detections=[
-                        fo.Detection(
-                            label="cat" if i % 2 == 0 else "dog",
-                            confidence=i / 10,
-                            bounding_box=[0, 0, 1, 1],
-                        )
-                    ]
-                ),
-            )
-            for i in range(10)
-        ])
+    dataset = fo.Dataset("${datasetName}")
+    dataset.persistent = True
+    dataset.add_samples([
+        fo.Sample(
+            filepath=f"/tmp/${datasetName}-{i}.png",
+            index=i,
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat" if i % 2 == 0 else "dog",
+                        confidence=i / 10,
+                        bounding_box=[0, 0, 1, 1],
+                    )
+                ]
+            ),
+        )
+        for i in range(10)
+    ])
   `);
 });
 
@@ -71,13 +72,13 @@ test.describe("view bar", () => {
       import fiftyone as fo
       from fiftyone import ViewField as F
 
-      dataset = fo.load_dataset("${scrollDataset}")
+      dataset = fo.load_dataset("${datasetName}")
       view = dataset
       for i in range(8):
           view = view.match(F("index") >= 0)
       dataset.save_view("long-chain", view)
     `);
-    await fiftyoneLoader.waitUntilGridVisible(page, scrollDataset, {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "long-chain" }),
     });
 
@@ -85,7 +86,12 @@ test.describe("view bar", () => {
 
     const bar = page.getByTestId("view-bar");
     const layout = await bar.evaluate((element) => {
-      const scroller = element.firstElementChild as HTMLElement;
+      // The scroller, not its gutter wrapper: the gutter's only child is the
+      // scroller's own box, which always fits, so the gutter never reports
+      // the overflow being asserted
+      const scroller = element.querySelector<HTMLElement>(
+        "[data-cy='view-bar-scroller']",
+      );
       return {
         barHeight: element.getBoundingClientRect().height,
         pillsOverflow: scroller.scrollWidth > scroller.clientWidth,
@@ -115,7 +121,7 @@ test.describe("view bar", () => {
     request,
     baseURL,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, limitDataset);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
     await viewBar.addStage("Limit");
     await viewBar.fill("limit", "3");
@@ -125,7 +131,7 @@ test.describe("view bar", () => {
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 
-    const stages = await getSessionView(request, baseURL, limitDataset);
+    const stages = await getSessionView(request, baseURL, datasetName);
     expect(stages).toHaveLength(1);
     expect(clsOf(stages[0])).toBe("Limit");
     expect(kwargsOf(stages[0])).toMatchObject({ limit: 3 });
@@ -145,7 +151,7 @@ test.describe("view bar", () => {
     request,
     baseURL,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, exprDataset);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
     await viewBar.addStage("FilterLabels");
     await viewBar.chooseField("field", "ground_truth");
@@ -153,7 +159,7 @@ test.describe("view bar", () => {
 
     await grid.run(() => viewBar.apply());
 
-    const stages = await getSessionView(request, baseURL, exprDataset);
+    const stages = await getSessionView(request, baseURL, datasetName);
     expect(stages).toHaveLength(1);
     expect(clsOf(stages[0])).toBe("FilterLabels");
 
@@ -172,11 +178,11 @@ test.describe("view bar", () => {
       import fiftyone as fo
       from fiftyone import ViewField as F
 
-      dataset = fo.load_dataset("${pythonDataset}")
+      dataset = fo.load_dataset("${datasetName}")
       dataset.save_view("built-in-python", dataset.match(F("index") > 4))
     `);
 
-    await fiftyoneLoader.waitUntilGridVisible(page, pythonDataset, {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "built-in-python" }),
     });
 

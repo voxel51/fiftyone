@@ -4,7 +4,14 @@ import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { clsOf, getSessionView, kwargsOf } from "src/shared/session-state";
 
-const datasetName = getUniqueDatasetNameWithPrefix("view-bar-keyboard");
+//
+// A dataset per test INVOCATION, not per file or even per test. The applied
+// view lives in the server session and survives page loads until the session
+// moves to another dataset — a dataset shared across invocations lets one
+// run's applied view leak into the next (including burn-in repeats of the
+// same test), shifting every pill count and sample count these specs assert.
+//
+let datasetName: string;
 
 const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
   viewBar: async ({ page }, use) => {
@@ -19,8 +26,12 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
+});
+
+test.beforeEach(async ({ page, fiftyoneLoader }) => {
+  datasetName = getUniqueDatasetNameWithPrefix("view-bar-keyboard");
 
   await fiftyoneLoader.executePythonCode(`
     import fiftyone as fo
@@ -32,9 +43,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
         for i in range(10)
     ])
   `);
-});
 
-test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
