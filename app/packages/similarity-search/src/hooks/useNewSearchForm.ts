@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
-import * as fos from "@fiftyone/state";
+import { useViewTargets } from "@fiftyone/operators";
 import { BrainKeyConfig, CloneConfig, QueryType, ViewTarget } from "../types";
 import { UploadedImage } from "../utils";
 import { useSearchSelection } from "./useSearchSelection";
@@ -58,10 +57,18 @@ export const useNewSearchForm = (
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
     null,
   );
-  const isGroupedDataset =
-    useRecoilValue(fos.parentMediaTypeSelector) === "group";
-  const [viewTarget, setViewTarget] = useState<ViewTarget>(
-    isGroupedDataset ? "CURRENT_VIEW" : "DATASET",
+  // which targets a search may process, and why one is unavailable, is
+  // resolved by the shared operator module; this panel offers only the
+  // whole-collection and current-view targets
+  const { targets, defaultTarget } = useViewTargets();
+  const viewTargetOptions = useMemo(
+    () => targets.filter((meta) => meta.target !== ViewTarget.SELECTED_SAMPLES),
+    [targets],
+  );
+  const [viewTarget, setViewTarget] = useState<ViewTarget>(defaultTarget);
+  const isGroupedDataset = Boolean(
+    viewTargetOptions.find((meta) => meta.target === ViewTarget.DATASET)
+      ?.unavailableReason,
   );
 
   // ─── Derived config ─────────────────────────────────────────────
@@ -100,11 +107,20 @@ export const useNewSearchForm = (
     }
   }, [supportsUpload, queryType]);
 
+  // move off targets reported as unavailable (e.g. after a dataset change);
+  // `defaultTarget` is already the best available target, resolved centrally
   useEffect(() => {
-    if (isGroupedDataset && viewTarget === "DATASET") {
-      setViewTarget("CURRENT_VIEW");
+    const current = viewTargetOptions.find(
+      (meta) => meta.target === viewTarget,
+    );
+    if (current && current.unavailableReason === undefined) {
+      return;
     }
-  }, [isGroupedDataset, viewTarget]);
+
+    if (defaultTarget !== viewTarget) {
+      setViewTarget(defaultTarget);
+    }
+  }, [viewTargetOptions, defaultTarget, viewTarget]);
 
   // ─── Submission ─────────────────────────────────────────────────
 
@@ -163,6 +179,7 @@ export const useNewSearchForm = (
     setRunName,
     viewTarget,
     setViewTarget,
+    viewTargetOptions,
     isGroupedDataset,
     dynamicResults,
     setDynamicResults,

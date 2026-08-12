@@ -35,8 +35,9 @@ export {
 } from "./usePanelEvent";
 export { validate } from "./validation";
 export {
-  useGetViewTargetCount,
+  useViewTargetCounts,
   useViewTargets,
   ViewTargetSelector,
   type ViewTargetMeta,
 } from "./ViewTargets";
+export { ViewTarget } from "./types";

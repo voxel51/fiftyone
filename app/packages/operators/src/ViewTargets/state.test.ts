@@ -19,6 +19,7 @@ vi.mock("@fiftyone/state", () => ({
   isGroup: { key: "isGroup" },
   parentMediaTypeSelector: { key: "parentMediaTypeSelector" },
   viewSelectsGroupSlices: { key: "viewSelectsGroupSlices" },
+  isUnflattenedGroupView: { key: "isUnflattenedGroupView" },
   groupSlice: { key: "groupSlice" },
   datasetSampleCount: { key: "datasetSampleCount" },
   selectedSamples: { key: "selectedSamples" },
@@ -31,7 +32,8 @@ vi.mock("@fiftyone/state", () => ({
 import { ViewTarget } from "../types";
 import {
   GROUPED_DATASET_TARGET_REASON,
-  useGetViewTargetCount,
+  GROUPED_VIEW_TARGET_REASON,
+  useViewTargetCounts,
   useViewTargets,
 } from "./state";
 
@@ -138,9 +140,36 @@ describe("useViewTargets", () => {
     expect(selected.unavailableReason).toBeUndefined();
     expect(result.current.defaultTarget).toBe("CURRENT_VIEW");
   });
+
+  it("leaves only the selection when the view selects slices without flattening", async () => {
+    // the backend runs a slice-selecting view as-is, so a non-flat one stays
+    // grouped and cannot be processed
+    await mockState({
+      isGroup: true,
+      viewSelectsGroupSlices: true,
+      isUnflattenedGroupView: true,
+      groupSlice: "left",
+    });
+
+    const { result } = renderHook(() => useViewTargets());
+    const [dataset, currentView, selected] = result.current.targets;
+
+    expect(dataset.unavailableReason).toBe(
+      "Not available for grouped datasets",
+    );
+    expect(currentView.unavailableReason).toBe(
+      "Not available for grouped views",
+    );
+    expect(currentView.unavailableReason).toBe(GROUPED_VIEW_TARGET_REASON);
+    // the view defines its own slice scope, so no scope text is added
+    expect(selected.unavailableReason).toBeUndefined();
+    expect(selected.description).toBe("Selected samples");
+    // find-first-available lands on the selection even when it is empty
+    expect(result.current.defaultTarget).toBe("SELECTED_SAMPLES");
+  });
 });
 
-describe("useGetViewTargetCount", () => {
+describe("useViewTargetCounts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -163,10 +192,10 @@ describe("useGetViewTargetCount", () => {
   it("counts the dataset for dataset targets", async () => {
     await mockCounts({ datasetSampleCount: 51, viewSampleCount: 10 });
 
-    const { result } = renderHook(() => useGetViewTargetCount());
+    const { result } = renderHook(() => useViewTargetCounts());
 
-    expect(result.current(ViewTarget.DATASET)).toBe(51);
-    expect(result.current(ViewTarget.DATASET_VIEW)).toBe(51);
+    expect(result.current[ViewTarget.DATASET]).toBe(51);
+    expect(result.current[ViewTarget.DATASET_VIEW]).toBe(51);
   });
 
   it("counts the selection for the selected samples target", async () => {
@@ -175,18 +204,18 @@ describe("useGetViewTargetCount", () => {
       selected: new Set(["a", "b", "c"]),
     });
 
-    const { result } = renderHook(() => useGetViewTargetCount());
+    const { result } = renderHook(() => useViewTargetCounts());
 
-    expect(result.current(ViewTarget.SELECTED_SAMPLES)).toBe(3);
+    expect(result.current[ViewTarget.SELECTED_SAMPLES]).toBe(3);
   });
 
   it("counts the current view for every other target", async () => {
     await mockCounts({ datasetSampleCount: 51, viewSampleCount: 10 });
 
-    const { result } = renderHook(() => useGetViewTargetCount());
+    const { result } = renderHook(() => useViewTargetCounts());
 
-    expect(result.current(ViewTarget.CURRENT_VIEW)).toBe(10);
-    expect(result.current(ViewTarget.BASE_VIEW)).toBe(10);
+    expect(result.current[ViewTarget.CURRENT_VIEW]).toBe(10);
+    expect(result.current[ViewTarget.BASE_VIEW]).toBe(10);
   });
 });
 
@@ -204,11 +233,6 @@ describe("currentViewSampleCount", () => {
     vi.mocked(fos.groupStatistics).mockReturnValue(GROUP_STATISTICS as never);
 
     const get = selectorGetters.get("viewTargetCurrentViewSampleCount");
-    if (!get) {
-      throw new Error(
-        "viewTargetCurrentViewSampleCount selector not registered",
-      );
-    }
     return get({ get: (atom: { key: string }) => values[atom.key] });
   };
 

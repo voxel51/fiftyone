@@ -22,7 +22,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { FileUploadOutlined } from "../../mui";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import {
   BrainKeyConfig,
@@ -69,6 +69,26 @@ export default function NewSearch({
 }: NewSearchProps) {
   const form = useNewSearchForm(brainKeys, cloneConfig, onSubmitted);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // the offered targets and their availability come from the shared operator
+  // module; only the wording is this panel's, since patches views name the
+  // patches the search actually returns
+  const targetOptions = useMemo(
+    () =>
+      form.viewTargetOptions.map((meta) => ({
+        value: meta.target,
+        label:
+          meta.target === ViewTarget.DATASET
+            ? isPatchesView
+              ? "All Patches"
+              : "Full Dataset"
+            : isPatchesView
+              ? "Current Patches View"
+              : "Current View",
+        disabled: meta.unavailableReason !== undefined,
+      })),
+    [form.viewTargetOptions, isPatchesView],
+  );
 
   // Guard against setting state after unmount — `fileToBase64` resolves
   // asynchronously and the user can navigate away mid-read.
@@ -163,28 +183,7 @@ export default function NewSearch({
           control={
             <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
               <RadioGroup
-                options={
-                  isPatchesView
-                    ? [
-                        {
-                          value: "DATASET",
-                          label: "All Patches",
-                          disabled: form.isGroupedDataset,
-                        },
-                        {
-                          value: "CURRENT_VIEW",
-                          label: "Current Patches View",
-                        },
-                      ]
-                    : [
-                        {
-                          value: "DATASET",
-                          label: "Full Dataset",
-                          disabled: form.isGroupedDataset,
-                        },
-                        { value: "CURRENT_VIEW", label: "Current View" },
-                      ]
-                }
+                options={targetOptions}
                 value={form.viewTarget}
                 onChange={(value) => form.setViewTarget(value as ViewTarget)}
                 size={Size.Md}

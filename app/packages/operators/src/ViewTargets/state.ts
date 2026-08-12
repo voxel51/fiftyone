@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { selector, useRecoilValue } from "recoil";
 import { ViewTarget } from "../types";
 
@@ -11,6 +11,11 @@ import { ViewTarget } from "../types";
  */
 export const GROUPED_DATASET_TARGET_REASON =
   "Not available for grouped datasets";
+/**
+ * Reason the current view cannot be processed: a non-flat
+ * ``select_group_slices`` view runs as-is, so it remains grouped.
+ */
+export const GROUPED_VIEW_TARGET_REASON = "Not available for grouped views";
 /**
  * A view target offered to the user.
  */
@@ -74,27 +79,25 @@ const currentViewSampleCount = selector<number>({
 });
 
 /**
- * Hook which provides a getter for the number of samples in a view target.
+ * Hook which provides the number of samples each view target processes.
  */
-export const useGetViewTargetCount = (): ((target: ViewTarget) => number) => {
-  const datasetSampleCount = useRecoilValue(fos.datasetSampleCount);
-  const viewSampleCount = useRecoilValue(currentViewSampleCount);
+export const useViewTargetCounts = (): Record<ViewTarget, number> => {
+  const datasetSampleCount = useRecoilValue(fos.datasetSampleCount) ?? 0;
+  // scoped to the active slice, which is what the run processes once
+  // select_group_slices is applied
+  const viewSampleCount = useRecoilValue(currentViewSampleCount) ?? 0;
   const selectionSampleCount = useRecoilValue(fos.selectedSamples)?.size ?? 0;
 
-  return useCallback(
-    (target: ViewTarget) => {
-      switch (target) {
-        case ViewTarget.DATASET:
-        case ViewTarget.DATASET_VIEW:
-          return datasetSampleCount ?? 0;
-        case ViewTarget.SELECTED_SAMPLES:
-          return selectionSampleCount;
-        default:
-          // scoped to the active slice, which is what the run processes once
-          // select_group_slices is applied
-          return viewSampleCount ?? 0;
-      }
-    },
+  return useMemo(
+    () => ({
+      [ViewTarget.DATASET]: datasetSampleCount,
+      [ViewTarget.DATASET_VIEW]: datasetSampleCount,
+      [ViewTarget.BASE_VIEW]: viewSampleCount,
+      [ViewTarget.CURRENT_VIEW]: viewSampleCount,
+      [ViewTarget.CUSTOM_VIEW_TARGET]: viewSampleCount,
+      [ViewTarget.SELECTED_LABELS]: viewSampleCount,
+      [ViewTarget.SELECTED_SAMPLES]: selectionSampleCount,
+    }),
     [datasetSampleCount, viewSampleCount, selectionSampleCount],
   );
 };
@@ -108,6 +111,7 @@ const useViewTargetConstraints = () => {
   const isGroup = useRecoilValue(fos.isGroup);
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
   const viewSelectsSlices = useRecoilValue(fos.viewSelectsGroupSlices);
+  const isUnflattenedView = useRecoilValue(fos.isUnflattenedGroupView);
 
   const isGroupedDataset = isGroup || parentMediaType === "group";
 
@@ -116,6 +120,9 @@ const useViewTargetConstraints = () => {
     // a view that selects its own slices is run as-is, so the active slice
     // does not scope it
     viewSelectsSlices,
+    // a non-flat slice selection keeps the run-as-is view grouped, so it
+    // cannot be flattened for the run
+    viewRemainsGrouped: isGroupedDataset && isUnflattenedView,
   };
 };
 
@@ -132,7 +139,8 @@ export const useViewTargets = (): {
   targets: ViewTargetMeta[];
   defaultTarget: ViewTarget;
 } => {
-  const { isGroupedDataset, viewSelectsSlices } = useViewTargetConstraints();
+  const { isGroupedDataset, viewSelectsSlices, viewRemainsGrouped } =
+    useViewTargetConstraints();
   const slice = useRecoilValue(fos.groupSlice);
 
   return useMemo(() => {
@@ -142,7 +150,9 @@ export const useViewTargets = (): {
       const unavailableReason =
         target === ViewTarget.DATASET && isGroupedDataset
           ? GROUPED_DATASET_TARGET_REASON
-          : undefined;
+          : target === ViewTarget.CURRENT_VIEW && viewRemainsGrouped
+            ? GROUPED_VIEW_TARGET_REASON
+            : undefined;
 
       // the active slice gets applied automatically and isn't shown anywhere
       // else, so the subtext names it
@@ -173,5 +183,5 @@ export const useViewTargets = (): {
       ViewTarget.DATASET;
 
     return { targets: resolved, defaultTarget };
-  }, [isGroupedDataset, viewSelectsSlices, slice]);
+  }, [isGroupedDataset, viewSelectsSlices, viewRemainsGrouped, slice]);
 };

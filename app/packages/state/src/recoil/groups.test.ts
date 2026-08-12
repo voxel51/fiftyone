@@ -112,18 +112,21 @@ describe("currentGroupSliceNames", () => {
   });
 });
 
+const selectGroupSlicesStage = (flat?: boolean) => ({
+  _cls: "fiftyone.core.stages.SelectGroupSlices",
+  kwargs:
+    flat === undefined
+      ? [["slices", ["left"]]]
+      : [
+          ["slices", ["left"]],
+          ["flat", flat],
+        ],
+});
+
 describe("viewSelectsGroupSlices", () => {
   const testViewSelectsGroupSlices = <
     TestSelector<typeof groups.viewSelectsGroupSlices>
   >(<unknown>groups.viewSelectsGroupSlices);
-
-  const selectGroupSlicesStage = (flat: boolean) => ({
-    _cls: "fiftyone.core.stages.SelectGroupSlices",
-    kwargs: [
-      ["slices", ["left"]],
-      ["flat", flat],
-    ],
-  });
 
   it("detects flattened slice selections", () => {
     setMockAtoms({
@@ -164,5 +167,45 @@ describe("viewSelectsGroupSlices", () => {
   it("is false for empty views", () => {
     setMockAtoms({ isGroup: true, _view__setter: [] });
     expect(testViewSelectsGroupSlices()).toBe(false);
+  });
+});
+
+describe("isUnflattenedGroupView", () => {
+  const testIsUnflattenedGroupView = <
+    TestSelector<typeof groups.isUnflattenedGroupView>
+  >(<unknown>groups.isUnflattenedGroupView);
+
+  it("is false for flattened slice selections", () => {
+    setMockAtoms({
+      isGroup: true,
+      _view__setter: [selectGroupSlicesStage(true)],
+    });
+    expect(testIsUnflattenedGroupView()).toBe(false);
+  });
+
+  it("is true for unflattened slice selections", () => {
+    setMockAtoms({
+      isGroup: true,
+      _view__setter: [selectGroupSlicesStage(false)],
+    });
+    expect(testIsUnflattenedGroupView()).toBe(true);
+  });
+
+  it("is false when the flat kwarg is absent, since flat defaults to true", () => {
+    setMockAtoms({
+      isGroup: true,
+      _view__setter: [selectGroupSlicesStage()],
+    });
+    expect(testIsUnflattenedGroupView()).toBe(false);
+  });
+
+  it("is false for views without a slice selection", () => {
+    setMockAtoms({
+      isGroup: true,
+      _view__setter: [
+        { _cls: "fiftyone.core.stages.Limit", kwargs: [["limit", 1]] },
+      ],
+    });
+    expect(testIsUnflattenedGroupView()).toBe(false);
   });
 });

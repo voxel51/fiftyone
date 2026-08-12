@@ -1,3 +1,7 @@
+import { ViewTarget } from "@fiftyone/operators/src/types";
+
+export { ViewTarget };
+
 /**
  * Status of a similarity search run.
  */
@@ -16,11 +20,6 @@ export enum QueryType {
   Text = "text",
   Upload = "upload",
 }
-
-/**
- * Standard operator view target (current view or full dataset view).
- */
-export type ViewTarget = "CURRENT_VIEW" | "DATASET";
 
 /**
  * Configuration for a brain similarity key.

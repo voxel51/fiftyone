@@ -1,6 +1,6 @@
 export { default as ViewTargetSelector } from "./ViewTargetSelector";
 export {
-  useGetViewTargetCount,
+  useViewTargetCounts,
   useViewTargets,
   type ViewTargetMeta,
 } from "./state";

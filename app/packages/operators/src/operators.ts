@@ -624,6 +624,25 @@ export function formatSelectionPayload(currentContext: Partial<RawContext>) {
   };
 }
 
+/**
+ * The view target is a system input carried at the request level, like the
+ * view and the selection, so it is lifted out of the operator's params.
+ */
+export function formatViewTargetPayload(params: unknown): {
+  params: object;
+  view_target?: string;
+} {
+  const { view_target, ...rest } = (params ?? {}) as {
+    view_target?: string;
+  };
+
+  if (view_target === undefined || view_target === null) {
+    return { params: rest };
+  }
+
+  return { params: rest, view_target };
+}
+
 async function executeOperatorAsGenerator(
   operator: Operator,
   ctx: ExecutionContext,
@@ -640,7 +659,7 @@ async function executeOperatorAsGenerator(
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
       operator_uri: operator.uri,
-      params: ctx.params,
+      ...formatViewTargetPayload(ctx.params),
       request_delegation: ctx.requestDelegation,
       ...formatSelectionPayload(currentContext),
       view: currentContext.view,
@@ -805,7 +824,7 @@ export async function executeOperatorWithContext(
           extended_selection: currentContext.extendedSelection,
           filters: currentContext.filters,
           operator_uri: operatorURI,
-          params: ctx.params,
+          ...formatViewTargetPayload(ctx.params),
           request_delegation: ctx.requestDelegation,
           ...formatSelectionPayload(currentContext),
           view: currentContext.view,

@@ -6,6 +6,7 @@ FiftyOne operator type target_view tests.
 |
 """
 
+import asyncio
 import os
 import unittest
 
@@ -13,7 +14,10 @@ import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.operators as foo
 from fiftyone.operators import types
-from fiftyone.operators.executor import UNGROUPED_TARGET_ERROR
+from fiftyone.operators.executor import (
+    GROUPED_TARGET_ERROR_MESSAGE,
+    do_execute_operator,
+)
 
 
 class TestResolveOperatorTargetViewInputs(unittest.TestCase):
@@ -87,7 +91,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
                     "Borks the entire dataset",
                     "Borks the dataset view",
                     "Borks the current view",
-                    "Borks only the selected samples",
+                    "Borks the selected samples",
                     "Borks only the selected labels",
                 ],
             )
@@ -343,23 +347,22 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         self.assertEqual(target.media_type, "point-cloud")
         self.assertEqual(len(target), 2)
 
-    def test_dataset_target_is_unavailable_when_flat_is_required(self):
+    def test_dataset_target_is_unavailable_but_passes_through(self):
         ctx = self._ctx(group_slice="left")
         ctx.params["view_target"] = foo.constants.ViewTarget.DATASET
 
-        # the whole grouped dataset cannot be scoped to a slice
-        with self.assertRaises(ValueError):
-            ctx.target_view(require_flat=True)
-
+        # the whole grouped dataset is not offered to flat-requiring forms
         self.assertIn(
             foo.constants.ViewTarget.DATASET,
             ctx.get_unavailable_view_targets(require_flat=True),
         )
 
-        # without require_flat, the grouped dataset is returned as-is
+        # but a caller that names it anyway (e.g. a custom plugin) gets the
+        # dataset as-is, never an error
+        self.assertEqual(ctx.target_view(require_flat=True), self.dataset)
         self.assertEqual(ctx.target_view(), self.dataset)
 
-    def test_base_view_target_is_unavailable_when_grouped(self):
+    def test_base_view_target_passes_through_when_grouped(self):
         ctx = self._ctx(
             group_slice="left",
             view=[
@@ -371,12 +374,12 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         )
         ctx.params["view_target"] = foo.constants.ViewTarget.BASE_VIEW
 
-        with self.assertRaises(ValueError):
-            ctx.target_view(require_flat=True)
-
-        target = ctx.target_view()
-        self.assertEqual(target.media_type, "group")
-        self.assertEqual(len(target), 2)
+        for target in (
+            ctx.target_view(require_flat=True),
+            ctx.target_view(),
+        ):
+            self.assertEqual(target.media_type, "group")
+            self.assertEqual(len(target), 2)
 
     def test_custom_view_target_is_unavailable_when_grouped(self):
         ctx = self._ctx(group_slice="left")
@@ -388,18 +391,19 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
             }
         ]
 
-        # the caller built the view, so it is not scoped on their behalf
-        with self.assertRaises(ValueError):
-            ctx.target_view(require_flat=True)
-
+        # the caller built the view, so it is not scoped on their behalf and
+        # passes through as-is
         self.assertIn(
             foo.constants.ViewTarget.CUSTOM_VIEW_TARGET,
             ctx.get_unavailable_view_targets(require_flat=True),
         )
 
-        target = ctx.target_view()
-        self.assertEqual(target.media_type, "group")
-        self.assertEqual(len(target), 1)
+        for target in (
+            ctx.target_view(require_flat=True),
+            ctx.target_view(),
+        ):
+            self.assertEqual(target.media_type, "group")
+            self.assertEqual(len(target), 1)
 
     def test_applied_view_is_scoped_to_active_slice(self):
         ctx = self._ctx(
@@ -456,19 +460,25 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         )
         return ctx, dataset
 
-    def test_non_flat_slice_selection_is_flattened(self):
-        # the view already selects slices, so it defines its own scope, but
-        # require_flat=True still means the result must not be grouped
+    def test_non_flat_slice_selection_is_not_reprocessed(self):
+        # the view already selects its slices, so it defines its own scope
+        # and is resolved as-is, even though it is still grouped
         stage = fo.SelectGroupSlices(["left", "right"], flat=False)
-        ctx, dataset = self._ctx_with_two_image_slices(
-            group_slice="left", view=[stage._serialize()]
-        )
+        ctx, _ = self._ctx_with_two_image_slices(view=[stage._serialize()])
 
         target = ctx.target_view(require_flat=True)
-        self.assertEqual(target.media_type, "image")
-        self.assertListEqual(
-            target.values("filepath"),
-            dataset.select_group_slices(["left", "right"]).values("filepath"),
+        self.assertEqual(target.media_type, "group")
+        self.assertEqual(target._serialize(), ctx.view._serialize())
+
+    def test_non_flat_slice_selection_makes_the_current_view_unavailable(self):
+        # the view is not reprocessed, so it stays grouped and an operation
+        # that requires a flat collection cannot target it
+        stage = fo.SelectGroupSlices(["left", "lidar"], flat=False)
+        ctx = self._ctx(view=[stage._serialize()])
+
+        self.assertIn(
+            foo.constants.ViewTarget.CURRENT_VIEW,
+            ctx.get_unavailable_view_targets(require_flat=True),
         )
 
     def test_non_flat_slice_selection_keeps_the_property_valid(self):
@@ -659,7 +669,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         self.assertListEqual(
             descriptions,
             [
-                UNGROUPED_TARGET_ERROR,
+                GROUPED_TARGET_ERROR_MESSAGE,
                 "Process the current view in the current slice (left)",
             ],
         )
@@ -669,12 +679,12 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         prop, _ = self._descriptions(ctx, require_flat=True)
 
         self.assertEqual(
-            prop.options.unavailable, {"DATASET": UNGROUPED_TARGET_ERROR}
+            prop.options.unavailable, {"DATASET": GROUPED_TARGET_ERROR_MESSAGE}
         )
         self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
         choices = {c.value: c for c in prop.options.choices_view.choices}
         self.assertEqual(
-            choices["DATASET"].description, UNGROUPED_TARGET_ERROR
+            choices["DATASET"].description, GROUPED_TARGET_ERROR_MESSAGE
         )
 
     def test_no_active_slice_still_offers_the_default_slice(self):
@@ -685,7 +695,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
 
         self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
         self.assertEqual(
-            prop.options.unavailable, {"DATASET": UNGROUPED_TARGET_ERROR}
+            prop.options.unavailable, {"DATASET": GROUPED_TARGET_ERROR_MESSAGE}
         )
         self.assertEqual(prop.default, "CURRENT_VIEW")
         self.assertFalse(prop.invalid)
@@ -710,7 +720,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         self.assertListEqual(
             descriptions,
             [
-                UNGROUPED_TARGET_ERROR,
+                GROUPED_TARGET_ERROR_MESSAGE,
                 "Process the current view in the current slice (left)",
             ],
         )
@@ -733,7 +743,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         # dataset itself remains grouped
         self.assertListEqual(
             descriptions,
-            [UNGROUPED_TARGET_ERROR, "Process the current view"],
+            [GROUPED_TARGET_ERROR_MESSAGE, "Process the current view"],
         )
         self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
 
@@ -751,7 +761,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         )
         self.assertEqual(
             descriptions[-1],
-            "Process only the selected samples in the current slice (left)",
+            "Process the selected samples in the current slice (left)",
         )
 
     def test_no_scope_for_ungrouped_datasets(self):
@@ -814,3 +824,330 @@ class TestSelectedSamplesTargetView(unittest.TestCase):
     def test_empty_selection_selects_nothing(self):
         view = self._target_view([])
         self.assertListEqual(view.values("id"), [])
+
+
+class _FormOperator(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(name="form_op", label="Form op")
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        inputs.str("field", label="Field")
+        return types.Property(inputs)
+
+
+class _TargetResolvingOperator(foo.Operator):
+    """An operator whose form resolves the target view it will process."""
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(name="resolving_op", label="Resolving op")
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        ctx.target_view()
+        inputs.str("field", label="Field")
+        return types.Property(inputs)
+
+
+class _DeclaredTargetOperator(_FormOperator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(name="declared_op", label="Declared op")
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        inputs.view_target(ctx, require_flat=True)
+        inputs.str("field", label="Field")
+        ctx.target_view(require_flat=True)
+        return types.Property(inputs)
+
+
+class _OptOutOperator(_TargetResolvingOperator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="opt_out_op", label="Opt out", view_target=False
+        )
+
+
+class _NoFormOperator(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(name="no_form_op", label="No form")
+
+
+class _FlatResolvingOperator(foo.Operator):
+    """An operator whose form derives from the flattened target view."""
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(name="flat_op", label="Flat op")
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        target_view = ctx.target_view(require_flat=True)
+        inputs.str("field", label=f"Field ({target_view.media_type})")
+        return types.Property(inputs)
+
+
+class _RecordingOperator(foo.Operator):
+    """An operator which records what its ``execute()`` observes."""
+
+    def __init__(self):
+        super().__init__(_builtin=True)
+        self.seen_params = None
+        self.seen_ids = None
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(name="recording_op", label="Recording op")
+
+    def execute(self, ctx):
+        self.seen_params = dict(ctx.params)
+        self.seen_ids = ctx.target_view().values("id")
+
+
+class TestAutomaticViewTargetInput(unittest.TestCase):
+    """The view target is a system input: forms whose operators resolve a
+    target receive it automatically, without declaring it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dataset = fo.Dataset()
+        cls.dataset.persistent = False
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dataset.delete()
+
+    def _ctx(self):
+        return foo.ExecutionContext(
+            operator_uri="test_operator",
+            request_params=dict(
+                dataset_name=self.dataset.name,
+                dataset_id=self.dataset._doc.id,
+                params={},
+            ),
+        )
+
+    def test_target_resolving_forms_receive_the_view_target_first(self):
+        prop = _TargetResolvingOperator(_builtin=True).resolve_type(
+            self._ctx(), "inputs"
+        )
+
+        names = list(prop.type.properties.keys())
+        self.assertEqual(names[0], "view_target")
+        self.assertIsInstance(
+            prop.type.properties["view_target"], types.ViewTargetProperty
+        )
+
+    def test_forms_that_never_resolve_a_target_are_untouched(self):
+        prop = _FormOperator(_builtin=True).resolve_type(self._ctx(), "inputs")
+
+        self.assertNotIn("view_target", prop.type.properties)
+
+    def test_declared_view_target_is_not_duplicated(self):
+        prop = _DeclaredTargetOperator(_builtin=True).resolve_type(
+            self._ctx(), "inputs"
+        )
+
+        targets = [
+            name
+            for name, p in prop.type.properties.items()
+            if isinstance(p, types.ViewTargetProperty)
+        ]
+        self.assertListEqual(targets, ["view_target"])
+
+    def test_config_can_omit_the_view_target(self):
+        prop = _OptOutOperator(_builtin=True).resolve_type(
+            self._ctx(), "inputs"
+        )
+
+        self.assertNotIn("view_target", prop.type.properties)
+
+    def test_operators_without_forms_are_unaffected(self):
+        prop = _NoFormOperator(_builtin=True).resolve_type(
+            self._ctx(), "inputs"
+        )
+
+        self.assertIsNone(prop)
+
+
+class TestAutomaticViewTargetFlatness(unittest.TestCase):
+    """An operator that resolves ``ctx.target_view(require_flat=True)`` while
+    building its form receives a target input that rejects targets it cannot
+    flatten."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dataset = fo.Dataset()
+        cls.dataset.add_group_field("group", default="left")
+
+        group = fo.Group()
+        cls.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/left.jpg",
+                    group=group.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/lidar.pcd",
+                    group=group.element("lidar"),
+                ),
+            ]
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dataset.delete()
+
+    def _ctx(self):
+        return foo.ExecutionContext(
+            operator_uri="test_operator",
+            request_params=dict(
+                dataset_name=self.dataset.name,
+                dataset_id=self.dataset._doc.id,
+                group_slice="left",
+                params={},
+            ),
+        )
+
+    def test_flat_resolution_excludes_grouped_targets(self):
+        prop = _FlatResolvingOperator(_builtin=True).resolve_type(
+            self._ctx(), "inputs"
+        )
+
+        self.assertNotIn(
+            foo.constants.ViewTarget.DATASET,
+            prop.type.properties["view_target"].type.values,
+        )
+
+    def test_grouped_targets_stay_available_without_flat_resolution(self):
+        prop = _TargetResolvingOperator(_builtin=True).resolve_type(
+            self._ctx(), "inputs"
+        )
+
+        self.assertIn(
+            foo.constants.ViewTarget.DATASET,
+            prop.type.properties["view_target"].type.values,
+        )
+
+    def test_a_stale_target_still_builds_the_form(self):
+        # a recorded whole-dataset target from a custom plugin passes
+        # through untouched, so the form builds normally
+        ctx = foo.ExecutionContext(
+            operator_uri="test_operator",
+            request_params=dict(
+                dataset_name=self.dataset.name,
+                dataset_id=self.dataset._doc.id,
+                group_slice="left",
+                view_target=foo.constants.ViewTarget.DATASET,
+                params={},
+            ),
+        )
+
+        prop = _FlatResolvingOperator(_builtin=True).resolve_type(
+            ctx, "inputs"
+        )
+
+        self.assertIn("field", prop.type.properties)
+
+
+class TestSystemViewTargetParam(unittest.TestCase):
+    """The ``view_target`` choice is a system input carried at the request
+    level; operator params never hold it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dataset = fo.Dataset()
+        cls.dataset.persistent = False
+        cls.dataset.add_samples(
+            [
+                fo.Sample(filepath="/path/to/one.jpg"),
+                fo.Sample(filepath="/path/to/two.jpg"),
+            ]
+        )
+        cls.ids = cls.dataset.values("id")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dataset.delete()
+
+    def _ctx(self, params):
+        return foo.ExecutionContext(
+            operator_uri="test_operator",
+            request_params=dict(
+                dataset_name=self.dataset.name,
+                dataset_id=self.dataset._doc.id,
+                selected=self.ids[:1],
+                params=params,
+            ),
+        )
+
+    def test_request_level_view_target_resolves_the_recorded_choice(self):
+        ctx = foo.ExecutionContext(
+            operator_uri="test_operator",
+            request_params=dict(
+                dataset_name=self.dataset.name,
+                dataset_id=self.dataset._doc.id,
+                selected=self.ids[:1],
+                view_target=foo.constants.ViewTarget.SELECTED_SAMPLES,
+                params={},
+            ),
+        )
+
+        view = ctx.target_view()
+
+        self.assertListEqual(view.values("id"), self.ids[:1])
+
+    def test_execute_receives_params_without_the_system_target(self):
+        operator = _RecordingOperator()
+        ctx = self._ctx(
+            dict(
+                view_target=foo.constants.ViewTarget.SELECTED_SAMPLES,
+                other="value",
+            )
+        )
+
+        asyncio.run(do_execute_operator(operator, ctx, exhaust=True))
+
+        self.assertEqual(operator.seen_params, {"other": "value"})
+        self.assertListEqual(operator.seen_ids, self.ids[:1])
+
+    def test_params_level_choice_wins_over_an_inherited_one(self):
+        # the params value comes from the caller, so it beats a request-level
+        # value inherited from an enclosing run
+        ctx = foo.ExecutionContext(
+            operator_uri="test_operator",
+            request_params=dict(
+                dataset_name=self.dataset.name,
+                dataset_id=self.dataset._doc.id,
+                selected=self.ids[:1],
+                view_target=foo.constants.ViewTarget.DATASET,
+                params=dict(
+                    view_target=foo.constants.ViewTarget.SELECTED_SAMPLES
+                ),
+            ),
+        )
+
+        view = ctx.target_view()
+
+        self.assertListEqual(view.values("id"), self.ids[:1])
+
+    def test_operator_owned_target_params_are_left_alone(self):
+        # operators that declare their own target property under a custom
+        # name (e.g. "target") keep owning that param
+        ctx = self._ctx(dict(target=foo.constants.ViewTarget.SELECTED_SAMPLES))
+
+        self.assertEqual(
+            ctx.params.get("target"),
+            foo.constants.ViewTarget.SELECTED_SAMPLES,
+        )
+        self.assertListEqual(
+            ctx.target_view(param_name="target").values("id"), self.ids[:1]
+        )
+        self.assertListEqual(
+            sorted(ctx.target_view().values("id")), sorted(self.ids)
+        )

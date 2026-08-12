@@ -637,7 +637,7 @@ def resolve_placement(operator, request_params):
         return ExecutionResult(error=str(e))
 
 
-UNGROUPED_TARGET_ERROR = "Not available for grouped datasets"
+GROUPED_TARGET_ERROR_MESSAGE = "Not available for grouped datasets"
 
 
 class ExecutionContext(contextlib.AbstractContextManager):
@@ -675,6 +675,17 @@ class ExecutionContext(contextlib.AbstractContextManager):
             request_params = {}
         self.request_params = request_params
         self.params = self.request_params.get("params", {})
+        self._view_target_resolved = False
+        self._view_target_require_flat = False
+
+        # the view target is a system input carried at the request level,
+        # like the view and the selection; requests recorded before that
+        # carried it in the operator's params, whose value is the caller's
+        # and so wins over one inherited from an enclosing run
+        target = self.params.pop("view_target", None)
+        if target is not None:
+            self.request_params["view_target"] = target
+
         self.executor = executor
         self.user = None
         self.pipeline = pipeline
@@ -791,9 +802,22 @@ class ExecutionContext(contextlib.AbstractContextManager):
         Returns:
             a :class:`fiftyone.core.collections.SampleCollection`
         """
-        return self._resolve_target_view(
-            self.params.get(param_name), require_flat=require_flat
-        )
+        # resolving a target during resolve_input is what opts a form into
+        # the automatically-added target input
+        self._view_target_resolved = True
+
+        # the system's automatically-added target input mirrors the
+        # flatness requirement its operator resolves with
+        if require_flat:
+            self._view_target_require_flat = True
+
+        target = self.params.get(param_name)
+        if target is None and param_name == "view_target":
+            # the choice is carried at the request level, like the view and
+            # the selection
+            target = self.request_params.get("view_target")
+
+        return self._resolve_target_view(target, require_flat=require_flat)
 
     def _get_target_collection(self, target):
         # the collection a target names, plus whether the App's active slice
@@ -840,10 +864,6 @@ class ExecutionContext(contextlib.AbstractContextManager):
             sample_collection = self._get_active_view(
                 sample_collection, require_flat=require_flat
             )
-        elif require_flat and sample_collection.media_type == fom.GROUP:
-            # an operation that cannot process groups must reject a grouped
-            # target rather than silently receive one
-            raise ValueError(UNGROUPED_TARGET_ERROR)
 
         if target == constants.ViewTarget.SELECTED_SAMPLES:
             return sample_collection.select(self.selected)
@@ -889,14 +909,14 @@ class ExecutionContext(contextlib.AbstractContextManager):
                 collection, scoped = self._get_target_collection(target)
                 if scoped:
                     collection = self._get_active_view(
-                        collection, require_flat=True, probe=True
+                        collection, require_flat=require_flat, probe=True
                     )
             except Exception as e:
                 unavailable[target] = str(e)
                 continue
 
             if collection.media_type == fom.GROUP:
-                unavailable[target] = UNGROUPED_TARGET_ERROR
+                unavailable[target] = GROUPED_TARGET_ERROR_MESSAGE
 
         return unavailable
 
@@ -910,8 +930,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         to the active group slice if none are requested.
 
         Non-grouped collections and views that already select slices are
-        returned as-is. Views that select slices without flattening them raise
-        a ``ValueError``.
+        returned as-is.
 
         Args:
             sample_collection (None): the
@@ -958,19 +977,9 @@ class ExecutionContext(contextlib.AbstractContextManager):
             return sample_collection
 
         stages = getattr(sample_collection, "_stages", None) or []
-        select_slices_stage = next(
-            (s for s in stages if isinstance(s, fosg.SelectGroupSlices)),
-            None,
-        )
-        if select_slices_stage is not None:
-            if not require_flat or select_slices_stage.flat:
-                return sample_collection
-
-            # honor the slices already chosen, rather than the active slice
-            return sample_collection.select_group_slices(
-                slices=select_slices_stage.slices,
-                media_type=select_slices_stage.media_type,
-            )
+        if any(isinstance(s, fosg.SelectGroupSlices) for s in stages):
+            # the view already selects its slices, so it is not reprocessed
+            return sample_collection
 
         if slices or media_type:
             return sample_collection.select_group_slices(
@@ -1016,9 +1025,11 @@ class ExecutionContext(contextlib.AbstractContextManager):
         if self.dataset is None or self.dataset.media_type != fom.GROUP:
             return None, None
 
-        if sample_collection.media_type != fom.GROUP:
-            # the collection already selects slices, so it defines its own
-            # scope
+        # a slice-selecting view defines its own scope, flat or not
+        if sample_collection.media_type != fom.GROUP or any(
+            isinstance(s, fosg.SelectGroupSlices)
+            for s in getattr(sample_collection, "_stages", None) or []
+        ):
             return None, None
 
         if require_flat:

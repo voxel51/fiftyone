@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import { ChangeEvent, useCallback } from "react";
 import { ViewTarget } from "../types";
-import { useGetViewTargetCount, ViewTargetMeta } from "./state";
+import { useViewTargetCounts, ViewTargetMeta } from "./state";
 
 /**
  * Component which supports `radio`-style selection of a view target, with the
@@ -35,7 +35,7 @@ export const ViewTargetSelector = ({
       onChange(e.target.value as ViewTarget),
     [onChange],
   );
-  const getCount = useGetViewTargetCount();
+  const counts = useViewTargetCounts();
 
   return (
     <FormControl>
@@ -56,7 +56,7 @@ export const ViewTargetSelector = ({
             label={
               <Stack direction="column" spacing={1}>
                 <Typography>
-                  {opt.label} ({getCount(opt.target).toLocaleString()})
+                  {opt.label} ({counts[opt.target].toLocaleString()})
                 </Typography>
                 <Typography color="secondary">
                   {opt.unavailableReason ?? opt.description}
