@@ -3208,6 +3208,65 @@ class SegmentationTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_segmentation_dice_is_none_when_sample_has_no_masks(self):
+        """A sample the evaluation skips must report None, not nan.
+
+        A sample whose ground truth or prediction mask is missing is skipped,
+        so its confusion matrix stays empty and the Dice ratio is 0/0. That
+        evaluates to nan and emits a RuntimeWarning. The three sibling metrics
+        stored on the preceding lines already return None for this case, via
+        the support == 0 branch of _compute_accuracy_precision_recall, so Dice
+        has to agree with them.
+
+        On main the skipped sample instead reports the dataset-wide
+        accumulator, which is non-empty once any sample has scored, so it
+        silently returns another sample's score: 1.0 here. That is what hid
+        the 0/0 until the per-sample fix above exposed it.
+        """
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="scorable.jpg",
+                    ground_truth=fo.Segmentation(
+                        mask=np.array([[1, 1], [1, 1]], dtype=np.uint8)
+                    ),
+                    predictions=fo.Segmentation(
+                        mask=np.array([[1, 1], [1, 1]], dtype=np.uint8)
+                    ),
+                ),
+                fo.Sample(
+                    filepath="no_prediction.jpg",
+                    ground_truth=fo.Segmentation(
+                        mask=np.array([[1, 1], [1, 1]], dtype=np.uint8)
+                    ),
+                    predictions=fo.Segmentation(),
+                ),
+            ]
+        )
+
+        dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            compute_dice=True,
+        )
+
+        by_path = {os.path.basename(s.filepath): s for s in dataset}
+        skipped = by_path["no_prediction.jpg"]
+
+        # The siblings pin the intended contract for an unscorable sample.
+        self.assertIsNone(skipped["eval_accuracy"])
+        self.assertIsNone(skipped["eval_precision"])
+        self.assertIsNone(skipped["eval_recall"])
+
+        # Dice is computed from the same empty matrix two lines below them.
+        self.assertIsNone(skipped["eval_dice"])
+
+        # The scorable sample is unaffected.
+        self.assertAlmostEqual(by_path["scorable.jpg"]["eval_dice"], 1.0)
+
+    @drop_datasets
     def test_evaluate_segmentations_simple(self):
         dataset = self._make_segmentation_dataset()
 
