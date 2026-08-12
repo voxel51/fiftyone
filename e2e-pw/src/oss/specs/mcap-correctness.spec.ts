@@ -492,7 +492,8 @@ async function openMcapModal(
   sampleIndex = 0,
 ): Promise<void> {
   await grid.openNthSample(sampleIndex);
-  await modal.sidebar.hide();
+  // multimodal never mounts the classic sidebar (it has its own right panel),
+  // so there's nothing to hide and no toggle to hide it with
   await modal.enterFullscreen();
 }
 
