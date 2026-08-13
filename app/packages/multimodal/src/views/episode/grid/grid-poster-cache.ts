@@ -1,7 +1,7 @@
 import { LRUCache } from "lru-cache";
 
 import type { ByteSourceDescriptor } from "../../../ir";
-import { episodeSourceAccessKey } from "../../../runtime";
+import { episodeSourceAccessKey } from "../../../runtime/episode-resources";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 
 const MIB = 1024 * 1024;
@@ -63,6 +63,12 @@ export interface GridPosterCache {
   peek(key: GridPosterCacheKey): GridPosterCacheEntry | null;
   put(key: GridPosterCacheKey, entry: GridPosterCacheEntry): boolean;
   stats(): GridPosterCacheStats;
+  /** Promotes an entry without changing hit/miss diagnostics. */
+  touch(key: GridPosterCacheKey): GridPosterCacheEntry | null;
+}
+
+interface GridPosterCacheInternals {
+  __increment(name: keyof MutableStats): void;
 }
 
 export interface GridPosterCacheOptions {
@@ -83,7 +89,7 @@ export type GridPosterFreshness = "fresh" | "stale-pose" | "stale-size";
 
 export function createGridPosterCache(
   options: GridPosterCacheOptions,
-): GridPosterCache {
+): GridPosterCache & GridPosterCacheInternals {
   const maxSizeBytes = normalizePositiveInteger(options.maxSizeBytes, 1);
   const maxEntries = normalizePositiveInteger(
     options.maxEntries ?? DEFAULT_MAX_ENTRIES,
@@ -99,9 +105,7 @@ export function createGridPosterCache(
     sizeCalculation: entrySizeBytes,
   });
 
-  const publicCache: GridPosterCache & {
-    __increment(name: keyof MutableStats): void;
-  } = {
+  const publicCache: GridPosterCache & GridPosterCacheInternals = {
     clear() {
       cache.clear();
     },
@@ -132,6 +136,9 @@ export function createGridPosterCache(
         entryCount: cache.size,
         retainedBytes: cache.calculatedSize,
       };
+    },
+    touch(key) {
+      return cache.get(key) ?? null;
     },
     __increment(name) {
       counters[name] += 1;
@@ -218,10 +225,11 @@ export function defaultGridPosterCacheBudgetBytes(): number {
   );
 }
 
-let singleton = createGridPosterCache({
-  maxEntries: DEFAULT_MAX_ENTRIES,
-  maxSizeBytes: defaultGridPosterCacheBudgetBytes(),
-});
+let singleton: GridPosterCache & GridPosterCacheInternals =
+  createGridPosterCache({
+    maxEntries: DEFAULT_MAX_ENTRIES,
+    maxSizeBytes: defaultGridPosterCacheBudgetBytes(),
+  });
 
 export function getGridPosterCache(): GridPosterCache {
   return singleton;
@@ -257,10 +265,7 @@ export function recordGridPosterDiagnostic(
   >,
 ): void {
   // The production singleton owns page-session diagnostics alongside entries.
-  const cache = singleton as GridPosterCache & {
-    __increment?: (name: keyof MutableStats) => void;
-  };
-  cache.__increment?.(name);
+  singleton.__increment(name);
 }
 
 function emptyCounters(): MutableStats {

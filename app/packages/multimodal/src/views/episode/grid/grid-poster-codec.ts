@@ -9,6 +9,7 @@ import {
 const WEBP_MIME_TYPE = "image/webp";
 const PNG_MIME_TYPE = "image/png";
 const WEBP_QUALITY = 0.8;
+const DEFAULT_MAX_PENDING_CAPTURES = 16;
 
 type OwnedCanvas = HTMLCanvasElement | OffscreenCanvas;
 
@@ -26,6 +27,7 @@ export interface GridPosterEncoderOptions {
     mimeType: string,
     quality?: number,
   ) => Promise<Blob | null>;
+  readonly maxPendingCaptures?: number;
 }
 
 interface EncodeJob extends Omit<GridPosterCapture, "source"> {
@@ -43,6 +45,10 @@ export function createGridPosterEncoder(
   const concurrency = Math.max(1, Math.floor(options.concurrency ?? 2));
   const cloneCanvas = options.cloneCanvas ?? cloneDisplayCanvas;
   const encode = options.encode ?? encodeCanvas;
+  const maxPendingCaptures = Math.max(
+    1,
+    Math.floor(options.maxPendingCaptures ?? DEFAULT_MAX_PENDING_CAPTURES),
+  );
   const pending = new Map<GridPosterCacheKey, EncodeJob>();
   const order: GridPosterCacheKey[] = [];
   let active = 0;
@@ -66,10 +72,12 @@ export function createGridPosterEncoder(
         .then((entry) => {
           if (!entry || jobGeneration !== generation) return;
           const cache = getGridPosterCache();
-          if (shouldReplaceGridPoster(cache.peek(job.key), entry)) {
-            cache.put(job.key, entry);
+          if (
+            shouldReplaceGridPoster(cache.peek(job.key), entry) &&
+            cache.put(job.key, entry)
+          ) {
+            recordGridPosterDiagnostic("encodesCompleted");
           }
-          recordGridPosterDiagnostic("encodesCompleted");
         })
         .catch(() => {
           recordGridPosterDiagnostic("encodesFailed");
@@ -102,6 +110,14 @@ export function createGridPosterEncoder(
           order.push(capture.key);
         }
         pending.set(capture.key, job);
+        while (order.length > maxPendingCaptures) {
+          const droppedKey = order.shift();
+          if (!droppedKey) break;
+          const droppedJob = pending.get(droppedKey);
+          if (!droppedJob) continue;
+          pending.delete(droppedKey);
+          releaseCanvas(droppedJob.canvas);
+        }
         pump();
       } catch {
         recordGridPosterDiagnostic("encodesFailed");

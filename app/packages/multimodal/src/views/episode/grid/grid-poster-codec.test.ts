@@ -68,6 +68,82 @@ describe("grid poster codec", () => {
     expect(maximum).toBe(1);
   });
 
+  it("drops the oldest queued capture when the pending queue is full", async () => {
+    resetGridPosterCacheForTests({ maxSizeBytes: 10_000 });
+    const releases: Array<(blob: Blob) => void> = [];
+    const canvases: OffscreenCanvas[] = [];
+    const encode = vi.fn(
+      () => new Promise<Blob>((resolve) => releases.push(resolve)),
+    );
+    const encoder = createGridPosterEncoder({
+      cloneCanvas: () => {
+        const canvas = ownedCanvas();
+        canvases.push(canvas);
+        return canvas;
+      },
+      concurrency: 1,
+      encode,
+      maxPendingCaptures: 2,
+    });
+
+    encoder.capture(capture("active"));
+    encoder.capture(capture("dropped"));
+    encoder.capture(capture("queued-a"));
+    encoder.capture(capture("queued-b"));
+
+    expect(canvases[1]).toMatchObject({ height: 0, width: 0 });
+    releases.shift()?.(encodedBlob([1], "image/webp"));
+    await vi.waitFor(() => expect(encode).toHaveBeenCalledTimes(2));
+    releases.shift()?.(encodedBlob([2], "image/webp"));
+    await vi.waitFor(() => expect(encode).toHaveBeenCalledTimes(3));
+    releases.shift()?.(encodedBlob([3], "image/webp"));
+    await vi.waitFor(() =>
+      expect(getGridPosterCache().peek("queued-b")).not.toBeNull(),
+    );
+
+    expect(getGridPosterCache().peek("dropped")).toBeNull();
+  });
+
+  it("does not commit an encode that completes after reset", async () => {
+    resetGridPosterCacheForTests({ maxSizeBytes: 10_000 });
+    const canvas = ownedCanvas();
+    let resolveEncode: ((blob: Blob) => void) | undefined;
+    const encoder = createGridPosterEncoder({
+      cloneCanvas: () => canvas,
+      concurrency: 1,
+      encode: () =>
+        new Promise<Blob>((resolve) => {
+          resolveEncode = resolve;
+        }),
+    });
+
+    encoder.capture(capture("reset"));
+    encoder.reset();
+    resolveEncode?.(encodedBlob([1], "image/webp"));
+    await vi.waitFor(() =>
+      expect(canvas).toMatchObject({ height: 0, width: 0 }),
+    );
+
+    expect(getGridPosterCache().peek("reset")).toBeNull();
+    expect(getGridPosterCache().stats().encodesCompleted).toBe(0);
+  });
+
+  it("records a completed encode only when the cache accepts it", async () => {
+    resetGridPosterCacheForTests({ maxSizeBytes: 257 });
+    const encoder = createGridPosterEncoder({
+      cloneCanvas: () => ownedCanvas(),
+      encode: vi.fn().mockResolvedValue(encodedBlob([1, 2], "image/webp")),
+    });
+
+    encoder.capture(capture("oversize"));
+    await vi.waitFor(() =>
+      expect(getGridPosterCache().stats().oversizeRejections).toBe(1),
+    );
+
+    expect(getGridPosterCache().stats().encodesCompleted).toBe(0);
+    expect(getGridPosterCache().peek("oversize")).toBeNull();
+  });
+
   it("treats encoder failures as cache misses", async () => {
     resetGridPosterCacheForTests({ maxSizeBytes: 10_000 });
     const encoder = createGridPosterEncoder({

@@ -131,6 +131,7 @@ export function GridRenderer({
   useEffect(() => {
     if (!cacheKey || recordedCacheLookupKeyRef.current === cacheKey) return;
     recordedCacheLookupKeyRef.current = cacheKey;
+    if (cachedPoster) getGridPosterCache().touch(cacheKey);
     recordGridPosterDiagnostic(cachedPoster ? "hits" : "misses");
   }, [cacheKey, cachedPoster]);
   const [cameraPose, setCameraPose] = useGridCameraPose(
@@ -224,17 +225,17 @@ export function GridRenderer({
   }, [cacheKey]);
   const handlePosterCanvasCommitted = useCallback(
     (
-      sourceKind: "image" | "point-cloud",
+      capturedSourceKind: "image" | "point-cloud",
       canvas: HTMLCanvasElement,
       size: BitmapDrawSize,
       snapshotPoseKey?: string,
     ) => {
       if (!cacheKey) return;
       const capturePoseKey =
-        sourceKind === "point-cloud" ? snapshotPoseKey : undefined;
-      if (sourceKind === "point-cloud" && !capturePoseKey) return;
+        capturedSourceKind === "point-cloud" ? snapshotPoseKey : undefined;
+      if (capturedSourceKind === "point-cloud" && !capturePoseKey) return;
       const token = JSON.stringify([
-        sourceKind,
+        capturedSourceKind,
         capturePoseKey ?? null,
         size.width,
         size.height,
@@ -246,7 +247,7 @@ export function GridRenderer({
           height: size.height,
           mimeType: "image/webp",
           ...(capturePoseKey ? { pointCloudPoseKey: capturePoseKey } : {}),
-          sourceKind,
+          sourceKind: capturedSourceKind,
           streamId: preview.streamId,
           streamSourceName: preview.streamSourceName,
           streamSourceNames: preview.streamSourceNames,

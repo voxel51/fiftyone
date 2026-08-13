@@ -32,6 +32,19 @@ describe("grid poster cache", () => {
     });
   });
 
+  it("touches recency without changing hit diagnostics", () => {
+    const cache = createGridPosterCache({ maxEntries: 2, maxSizeBytes: 1_000 });
+    cache.put("a", entry([1]));
+    cache.put("b", entry([2]));
+
+    expect(cache.touch("a")?.bytes[0]).toBe(1);
+    cache.put("c", entry([3]));
+
+    expect(cache.peek("a")).not.toBeNull();
+    expect(cache.peek("b")).toBeNull();
+    expect(cache.stats()).toMatchObject({ hits: 0, misses: 0 });
+  });
+
   it("replaces entries, rejects oversize values, and enforces the entry cap", () => {
     const cache = createGridPosterCache({ maxEntries: 2, maxSizeBytes: 1_000 });
     expect(cache.put("too-big", entry(new Array(745).fill(1)))).toBe(false);

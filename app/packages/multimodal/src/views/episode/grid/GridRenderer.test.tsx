@@ -304,6 +304,7 @@ describe("GridRenderer", () => {
     expect(root.classList.contains(classes.modalActivationSurface)).toBe(false);
     fireEvent.click(root);
     expect(parentClick).not.toHaveBeenCalled();
+    expect(posterCaptureHarness.capture).not.toHaveBeenCalled();
   });
 
   it("explains when the recording cannot be found", () => {
