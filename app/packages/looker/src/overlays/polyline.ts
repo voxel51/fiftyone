@@ -64,6 +64,14 @@ export default class PolylineOverlay<
       });
 
     for (const path of this.label.points || []) {
+      // A single-vertex path has no segment to stroke, but it is still a real
+      // shape the annotator drew — draw the vertex itself so it doesn't vanish
+      // in Explore (it renders in Annotate, where vertices are drawn).
+      if (path.length === 1) {
+        this.drawVertex(ctx, state, path[0], strokeColor, selected);
+        continue;
+      }
+
       if (path.length < 2) {
         continue;
       }
@@ -88,6 +96,14 @@ export default class PolylineOverlay<
     const [w, h] = state.dimensions;
     const xy = state.pixelCoordinates;
     for (const shape of this.label.points || []) {
+      // No segments to measure against for a lone vertex — measure to the point
+      // itself, otherwise a single-vertex polyline can never be hovered.
+      if (shape.length === 1) {
+        const [px, py] = t(state, shape[0][0], shape[0][1]);
+        distances.push(Math.hypot(xy[0] - px, xy[1] - py));
+        continue;
+      }
+
       for (let i = 0; i < shape.length - 1; i++) {
         distances.push(
           distanceFromLineSegment(
@@ -122,6 +138,32 @@ export default class PolylineOverlay<
 
   getPoints(): Coordinates[] {
     return getPolylinePoints([this.label]);
+  }
+
+  /**
+   * Draws a lone vertex as a filled dot, matching how `KeypointOverlay` draws
+   * points (same `state.pointRadius`, same selected-size bump) so a
+   * single-vertex polyline reads consistently with other point geometry.
+   */
+  private drawVertex(
+    ctx: CanvasRenderingContext2D,
+    state: Readonly<State>,
+    point: Coordinates,
+    color: string,
+    selected: boolean,
+  ): void {
+    const [x, y] = t(state, point[0], point[1]);
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(
+      x,
+      y,
+      selected ? state.pointRadius * 2 : state.pointRadius,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
   }
 
   private strokePath(
