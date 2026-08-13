@@ -125,14 +125,25 @@ describe("FieldsSidebar", () => {
     );
   });
 
-  it("JSON-renders a list field's value", () => {
+  it("pretty-prints a non-empty list field's value", () => {
     setFields([{ path: "tags", ftype: "fiftyone.core.fields.ListField" }]);
     useActiveModalSample.mockReturnValue({ tags: ["train", "front-cam"] });
 
     render(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
-      '["train","front-cam"]',
+      JSON.stringify(["train", "front-cam"], null, 2),
+    );
+  });
+
+  it("shows a muted placeholder for an empty list field's value", () => {
+    setFields([{ path: "tags", ftype: "fiftyone.core.fields.ListField" }]);
+    useActiveModalSample.mockReturnValue({ tags: [] });
+
+    render(<FieldsSidebar />);
+
+    expect(screen.getByTestId("episode-fields-body").textContent).toContain(
+      "None",
     );
   });
 

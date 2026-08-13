@@ -1,5 +1,4 @@
 import { TileIdScope, useTiling } from "@fiftyone/tiling";
-import { Size, ToggleSwitch } from "@voxel51/voodo";
 import type { Descriptor, ToggleSwitchTab } from "@voxel51/voodo";
 import React, {
   useCallback,
@@ -15,6 +14,7 @@ import {
   type TileSettingsRegistration,
 } from "../../tiles/tile-settings-context";
 import PerformanceStats from "../../status/PerformanceStats";
+import EpisodeSidebarTabs from "../../shell/EpisodeSidebarTabs";
 import { SceneStatusStrip, usePointCloudSamplingSummary } from "./SceneStatus";
 import SceneWorldSettings from "./SceneWorldSettings";
 import styles from "./SettingsSidebar.module.css";
@@ -163,19 +163,12 @@ const SettingsSidebar: React.FC<{
   );
 
   return (
-    <div className={styles.sidebarRoot}>
-      <ToggleSwitch
-        key={hasPanelTab ? "with-panel" : "scene-only"}
-        className={styles.toggleSwitchRoot}
-        defaultIndex={defaultIndex}
-        fullWidth
-        onChange={handleTabChange}
-        size={Size.Sm}
-        tabListClassName={styles.stickyTabList}
-        tabPanelClassName={styles.tabPanelGroup}
-        tabs={tabs}
-      />
-    </div>
+    <EpisodeSidebarTabs
+      defaultIndex={defaultIndex}
+      onChange={handleTabChange}
+      remountKey={hasPanelTab ? "with-panel" : "scene-only"}
+      tabs={tabs}
+    />
   );
 };
 
@@ -199,7 +192,7 @@ function PanelSettingsContent({
   readonly tileId: string | null;
 }) {
   return (
-    <div className={`${styles.root} ${styles.tabContent}`}>
+    <div className={styles.root}>
       {registration && tileId ? (
         <TileIdScope tileId={tileId}>
           {registration.streamStreams?.length ? (
@@ -228,7 +221,7 @@ function GlobalSceneSettings({
   const sampling = usePointCloudSamplingSummary();
 
   return (
-    <div className={`${styles.root} ${styles.tabContent}`}>
+    <div className={styles.root}>
       <SceneStatusStrip recordingFacts={recordingFacts} sampling={sampling} />
       <RecordingSettings facts={recordingFacts} />
       <SceneWorldSettings />

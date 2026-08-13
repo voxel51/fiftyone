@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import styles from "./RightSidebar.module.css";
+import styles from "./EpisodeSidebarTabs.module.css";
 import RightSidebar from "./RightSidebar";
 
 // Isolates this test to RightSidebar's own wiring (the tab list padding
@@ -21,10 +21,6 @@ vi.mock("./FieldsSidebar", () => ({
 // implementation, while still covering tab selection.
 vi.mock("@voxel51/voodo", () => ({
   Size: { Sm: "sm" },
-  ToggleSwitchVariant: { Soft: "soft" },
-  HeadingLevel: { H4: "h4" },
-  Heading: ({ children }: { children: ReactNode }) => <h4>{children}</h4>,
-  Divider: () => <hr />,
   ToggleSwitch: ({
     tabs,
     tabListClassName,

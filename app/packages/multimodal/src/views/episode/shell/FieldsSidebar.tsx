@@ -29,21 +29,33 @@ const resolveDbPath = (field: {
 };
 
 /**
- * Renders a field's value for display. Dates/datetimes go through the same
+ * A formatted field value, tagged with how it should render: `muted` for
+ * "nothing here" placeholders (no value set, or an empty list/dict), `pre`
+ * for multi-key objects/arrays that need line breaks and indentation to be
+ * readable, and `text` for everything else.
+ */
+type FormattedFieldValue =
+  | { kind: "muted"; text: string }
+  | { kind: "pre"; text: string }
+  | { kind: "text"; text: string };
+
+/**
+ * Formats a field's value for display. Dates/datetimes go through the same
  * formatter as the classic sidebar rather than showing their raw
- * `{"_cls":"DateTime","datetime":<ms>}` wrapper; arrays/objects (tags, …)
- * get JSON'd rather than showing "[object Object]"; `null`/`undefined` (no
- * value set — including fields, like `metadata`, that were never computed
- * for this sample) render as an em dash so they're distinguishable from a
- * genuinely empty string value.
+ * `{"_cls":"DateTime","datetime":<ms>}` wrapper; non-empty arrays/objects
+ * (metadata, …) are pretty-printed so nested structure is actually
+ * readable; empty arrays/objects (e.g. `tags: []`) and `null`/`undefined`
+ * (no value set — including fields, like `metadata`, that were never
+ * computed for this sample) render as muted placeholders rather than
+ * literal "[]"/"{}" text.
  */
 const formatFieldValue = (
   value: unknown,
   ftype: string,
   timeZone: string,
-): string => {
+): FormattedFieldValue => {
   if (value === null || value === undefined) {
-    return "—";
+    return { kind: "muted", text: "—" };
   }
   if (typeof value === "string" || typeof value === "number") {
     const formatted = formatPrimitive({
@@ -51,10 +63,13 @@ const formatFieldValue = (
       timeZone,
       value: value as never,
     });
-    return formatted === null ? String(value) : String(formatted);
+    return {
+      kind: "text",
+      text: formatted === null ? String(value) : String(formatted),
+    };
   }
   if (typeof value === "boolean") {
-    return value ? "true" : "false";
+    return { kind: "text", text: value ? "true" : "false" };
   }
   if (
     typeof value === "object" &&
@@ -66,13 +81,19 @@ const formatFieldValue = (
       value: value as { datetime: number },
     });
     if (formatted !== null) {
-      return String(formatted);
+      return { kind: "text", text: String(formatted) };
     }
   }
+  const isEmptyCollection = Array.isArray(value)
+    ? value.length === 0
+    : Object.keys(value as Record<string, unknown>).length === 0;
+  if (isEmptyCollection) {
+    return { kind: "muted", text: "None" };
+  }
   try {
-    return JSON.stringify(value);
+    return { kind: "pre", text: JSON.stringify(value, null, 2) };
   } catch {
-    return String(value);
+    return { kind: "text", text: String(value) };
   }
 };
 
@@ -104,23 +125,39 @@ const FieldsSidebar: React.FC = () => {
 
   return (
     <div className={settingsStyles.root} data-testid="episode-fields-body">
-      {nonPrivateFields.map((field) => (
-        <div className={settingsStyles.field} key={field.path}>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            {field.path}
-          </Text>
-          <Text variant={TextVariant.Xs} color={TextColor.Primary}>
-            {formatFieldValue(
-              getNestedField(activeSample, resolveDbPath(field)),
-              field.ftype,
-              timeZone,
+      {nonPrivateFields.map((field) => {
+        const formatted = formatFieldValue(
+          getNestedField(activeSample, resolveDbPath(field)),
+          field.ftype,
+          timeZone,
+        );
+        return (
+          <div className={settingsStyles.field} key={field.path}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              {field.path}
+            </Text>
+            {formatted.kind === "pre" ? (
+              <pre className={settingsStyles.jsonPre}>{formatted.text}</pre>
+            ) : (
+              <Text
+                variant={TextVariant.Xs}
+                color={
+                  formatted.kind === "muted"
+                    ? TextColor.Secondary
+                    : TextColor.Primary
+                }
+              >
+                {formatted.text}
+              </Text>
             )}
-          </Text>
-          {field.description ? (
-            <span className={settingsStyles.metaText}>{field.description}</span>
-          ) : null}
-        </div>
-      ))}
+            {field.description ? (
+              <span className={settingsStyles.metaText}>
+                {field.description}
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 };
