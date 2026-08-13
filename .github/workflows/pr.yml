@@ -251,9 +251,13 @@ jobs:
     # `all-tests` would shadow the real verdict (vacuous green on a SHA whose
     # suite failed, or a misleading link on one that passed). Under the alias,
     # the SHA's latest `all-tests` is always the run that actually tested it.
+    # Built from the event payload (the gate's run-ci logic), not `needs`: a
+    # needs-based name resolves only when the job starts, so a run cancelled
+    # while queued (an edit burst, the next no-op displacing this one) would
+    # publish the raw expression string as its check name.
     name: >-
-      ${{ (needs.modified-files.result == 'success' &&
-      needs.modified-files.outputs.run-ci != 'true')
+      ${{ (github.event.action == 'edited' &&
+      github.event.changes.base == null)
       && 'all-tests (no-op edit)' || 'all-tests' }}
     runs-on: ubuntu-latest
     needs: [modified-files, build, lint, test, e2e]
