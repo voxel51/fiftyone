@@ -19,7 +19,6 @@ import {
   getMimeType,
   isDirect3dSamplePath,
   isFo3dSamplePath,
-  isNativeMediaType,
   isNullish,
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
@@ -35,6 +34,7 @@ import { State } from "../recoil/types";
 import { getSampleSrc, resolveSelectionIcon } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getNormalizedUrls } from "../utils";
+import { supportsNativeLooker } from "./media-field-lookers";
 import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
 
 export default <T extends AbstractLooker<BaseState>>(
@@ -105,8 +105,6 @@ export default <T extends AbstractLooker<BaseState>>(
           | typeof VideoLooker
           | typeof MetadataLooker = ImageLooker;
 
-        const mimeType = getMimeType(sample);
-
         // sometimes the urls are an array of objects, sometimes they are just an object
         // this is a workaround to make sure we can handle both cases
         // todo: investigate why this is the case
@@ -116,12 +114,24 @@ export default <T extends AbstractLooker<BaseState>>(
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
         const mediaFieldPath = urls[mediaField];
+        const hasAlternateMediaPath =
+          mediaField !== "filepath" && !isNullish(mediaFieldPath);
+        const mimeType = getMimeType(
+          sample,
+          hasAlternateMediaPath ? mediaFieldPath : undefined,
+        );
         const isDirect3dSample =
           isDirect3dSamplePath(filePath) ||
           isDirect3dSamplePath(mediaFieldPath);
 
         if (
-          !isNativeMediaType(sample.media_type ?? sample._media_type) &&
+          !supportsNativeLooker({
+            mediaField,
+            mediaFieldPath,
+            mimeType,
+            sampleMediaType: sample.media_type ?? sample._media_type,
+            samplePath: filePath,
+          }) &&
           !isDirect3dSample
         ) {
           create = MetadataLooker;
