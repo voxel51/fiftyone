@@ -42,12 +42,16 @@ export interface GridPosterEncoder {
 export function createGridPosterEncoder(
   options: GridPosterEncoderOptions = {},
 ): GridPosterEncoder {
-  const concurrency = Math.max(1, Math.floor(options.concurrency ?? 2));
+  const normalizeLimit = (value: number | undefined, fallback: number) =>
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.max(1, Math.floor(value))
+      : fallback;
+  const concurrency = normalizeLimit(options.concurrency, 2);
   const cloneCanvas = options.cloneCanvas ?? cloneDisplayCanvas;
   const encode = options.encode ?? encodeCanvas;
-  const maxPendingCaptures = Math.max(
-    1,
-    Math.floor(options.maxPendingCaptures ?? DEFAULT_MAX_PENDING_CAPTURES),
+  const maxPendingCaptures = normalizeLimit(
+    options.maxPendingCaptures,
+    DEFAULT_MAX_PENDING_CAPTURES,
   );
   const pending = new Map<GridPosterCacheKey, EncodeJob>();
   const order: GridPosterCacheKey[] = [];
