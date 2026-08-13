@@ -7,7 +7,6 @@ FiftyOne Model Zoo.
 |
 """
 
-import contextlib
 import glob
 import logging
 import os
@@ -27,28 +26,38 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_SAPIENS2_POSE_REPO = "facebook/sapiens2-pose-1b"
 
-# Maps each pose repo to (backbone arch token, checkpoint filename). The arch
-# token selects the shipped keypoints308 config inside the installed package.
+# Maps each pose repo to (backbone arch token, checkpoint filename, revision).
+# The arch token selects the shipped keypoints308 config inside the installed
+# package; the revision pins the weights this wrapper was validated against.
 _POSE_REPOS = {
     "facebook/sapiens2-pose-0.4b": (
         "sapiens2_0.4b",
         "sapiens2_0.4b_pose.safetensors",
+        "73572e121602e8a6eb40eb841732e88f386d250b",
     ),
     "facebook/sapiens2-pose-0.8b": (
         "sapiens2_0.8b",
         "sapiens2_0.8b_pose.safetensors",
+        "76f06b9854d04bb1e59e0624de39b1e8921b12aa",
     ),
     "facebook/sapiens2-pose-1b": (
         "sapiens2_1b",
         "sapiens2_1b_pose.safetensors",
+        "f5fed8b97b99698d5eea1d14ff0855d0b4c3f000",
     ),
     "facebook/sapiens2-pose-5b": (
         "sapiens2_5b",
         "sapiens2_5b_pose.safetensors",
+        "ada1f29aa1fd454ca28665c700923a0101b6b24f",
     ),
 }
 
-_SAPIENS_REQ = "sapiens @ git+https://github.com/facebookresearch/sapiens2.git"
+# Pinned so the installed code is the revision this wrapper was built against
+_SAPIENS_REV = "7e5bae88456ac418ff0e58e74106c9fe192055d4"
+_SAPIENS_REQ = (
+    "sapiens @ git+https://github.com/facebookresearch/sapiens2.git@%s"
+    % _SAPIENS_REV
+)
 
 
 def _ensure_sapiens():
@@ -63,22 +72,6 @@ _sapiens_pose_models = fou.lazy_import(
 _sapiens_pose_datasets = fou.lazy_import(
     "sapiens.pose.datasets", callback=_ensure_sapiens
 )
-
-
-@contextlib.contextmanager
-def _chdir(path):
-    """Temporarily change the working directory.
-
-    Sapiens' ``init_model`` resolves nested ``from_file`` config references
-    relative to the working directory, matching the upstream demo which cd's
-    into the pose package before building the model.
-    """
-    prev = os.getcwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(prev)
 
 
 class Sapiens2PoseGetItem(fout.GetItem):
@@ -203,8 +196,8 @@ class Sapiens2PoseModel(fout.TorchImageModel, fom.SupportsGetItem):
     def _load_model(self, config):
         from huggingface_hub import hf_hub_download
 
-        arch, filename = _POSE_REPOS[config.hf_repo]
-        ckpt = hf_hub_download(config.hf_repo, filename)
+        arch, filename, revision = _POSE_REPOS[config.hf_repo]
+        ckpt = hf_hub_download(config.hf_repo, filename, revision=revision)
 
         pkg_dir = os.path.dirname(sapiens.__file__)
         pose_dir = os.path.join(pkg_dir, "pose")
@@ -223,11 +216,9 @@ class Sapiens2PoseModel(fout.TorchImageModel, fom.SupportsGetItem):
             )
         self._config_path = matches[0]
 
-        with _chdir(pose_dir):
-            model = _sapiens_pose_models.init_model(
-                self._config_path, ckpt, device=str(self._device)
-            )
-        return model
+        return _sapiens_pose_models.init_model(
+            self._config_path, ckpt, device=str(self._device)
+        )
 
     def _build_codec(self):
         codec_cfg = dict(self._model.cfg.codec)
