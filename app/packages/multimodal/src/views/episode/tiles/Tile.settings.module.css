@@ -210,6 +210,18 @@
   min-width: 0;
 }
 
+.sourceSelection {
+  align-items: center;
+  display: flex;
+  min-width: 0;
+}
+
+.sourceCount {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
 .sharedDisplayControls {
   border-bottom: 1px solid var(--color-border);
   display: grid;
