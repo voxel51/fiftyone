@@ -2,22 +2,18 @@ import { describe, expect, it } from "vitest";
 import { supportsNativeLooker } from "./media-field-lookers";
 
 const multimodalSample = {
+  isDirect3dSample: false,
   sampleMediaType: "multimodal",
-  samplePath: "/tmp/episode.mcap",
 };
 
 describe("supportsNativeLooker", () => {
-  it.each([
-    ["image/webp", "/tmp/preview.webp"],
-    ["video/mp4", "/tmp/preview.mp4"],
-  ])(
+  it.each(["image/webp", "video/mp4"])(
     "uses the native looker for an alternate %s media path",
-    (mimeType, mediaFieldPath) => {
+    (mimeType) => {
       expect(
         supportsNativeLooker({
           ...multimodalSample,
-          mediaField: "alternate_media",
-          mediaFieldPath,
+          hasAlternateMediaPath: true,
           mimeType,
         }),
       ).toBe(true);
@@ -28,8 +24,7 @@ describe("supportsNativeLooker", () => {
     expect(
       supportsNativeLooker({
         ...multimodalSample,
-        mediaField: "alternate_media",
-        mediaFieldPath: "/tmp/preview.pdf",
+        hasAlternateMediaPath: true,
         mimeType: "application/pdf",
       }),
     ).toBe(false);
@@ -39,8 +34,7 @@ describe("supportsNativeLooker", () => {
     expect(
       supportsNativeLooker({
         ...multimodalSample,
-        mediaField: "filepath",
-        mediaFieldPath: multimodalSample.samplePath,
+        hasAlternateMediaPath: false,
         mimeType: "application/mcap",
       }),
     ).toBe(false);
@@ -50,8 +44,7 @@ describe("supportsNativeLooker", () => {
     expect(
       supportsNativeLooker({
         ...multimodalSample,
-        mediaField: "alternate_media",
-        mediaFieldPath: null,
+        hasAlternateMediaPath: false,
         mimeType: null,
       }),
     ).toBe(false);
@@ -61,8 +54,8 @@ describe("supportsNativeLooker", () => {
     expect(
       supportsNativeLooker({
         ...multimodalSample,
-        mediaField: "alternate_media",
-        mediaFieldPath: "/tmp/preview.ply",
+        hasAlternateMediaPath: true,
+        isDirect3dSample: true,
         mimeType: null,
       }),
     ).toBe(true);
@@ -71,12 +64,36 @@ describe("supportsNativeLooker", () => {
   it("does not let a non-media alternate path inherit a native root type", () => {
     expect(
       supportsNativeLooker({
-        mediaField: "alternate_media",
-        mediaFieldPath: "/tmp/notes.json",
+        hasAlternateMediaPath: true,
+        isDirect3dSample: false,
         mimeType: "application/json",
         sampleMediaType: "image",
-        samplePath: "/tmp/image.png",
       }),
     ).toBe(false);
   });
+
+  it("lets a selected image override a direct-3D root media type", () => {
+    expect(
+      supportsNativeLooker({
+        hasAlternateMediaPath: true,
+        isDirect3dSample: false,
+        mimeType: "image/png",
+        sampleMediaType: "point-cloud",
+      }),
+    ).toBe(true);
+  });
+
+  it.each(["image", "video"])(
+    "preserves the native %s looker for an extensionless alternate path",
+    (sampleMediaType) => {
+      expect(
+        supportsNativeLooker({
+          hasAlternateMediaPath: true,
+          isDirect3dSample: false,
+          mimeType: null,
+          sampleMediaType,
+        }),
+      ).toBe(true);
+    },
+  );
 });

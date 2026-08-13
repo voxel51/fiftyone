@@ -1,11 +1,14 @@
-import { isDirect3dSamplePath, isNativeMediaType } from "@fiftyone/utilities";
+import {
+  MEDIA_TYPE_IMAGE,
+  MEDIA_TYPE_VIDEO,
+  isNativeMediaType,
+} from "@fiftyone/utilities";
 
 type NativeLookerSupport = {
-  mediaField: string;
-  mediaFieldPath: string | null | undefined;
+  hasAlternateMediaPath: boolean;
+  isDirect3dSample: boolean;
   mimeType: string | null;
   sampleMediaType: string | null | undefined;
-  samplePath: string | null | undefined;
 };
 
 /**
@@ -15,27 +18,25 @@ type NativeLookerSupport = {
  * field must instead prove its own native compatibility through its path.
  */
 export const supportsNativeLooker = ({
-  mediaField,
-  mediaFieldPath,
+  hasAlternateMediaPath,
+  isDirect3dSample,
   mimeType,
   sampleMediaType,
-  samplePath,
 }: NativeLookerSupport): boolean => {
-  if (
-    isDirect3dSamplePath(samplePath) ||
-    isDirect3dSamplePath(mediaFieldPath)
-  ) {
+  if (isDirect3dSample) {
     return true;
   }
-
-  const hasAlternateMediaPath =
-    mediaField !== "filepath" && Boolean(mediaFieldPath);
 
   if (!hasAlternateMediaPath) {
     return isNativeMediaType(sampleMediaType);
   }
 
-  return Boolean(
-    mimeType?.startsWith("image/") || mimeType?.startsWith("video/"),
-  );
+  if (mimeType === null) {
+    return (
+      sampleMediaType === MEDIA_TYPE_IMAGE ||
+      sampleMediaType === MEDIA_TYPE_VIDEO
+    );
+  }
+
+  return mimeType.startsWith("image/") || mimeType.startsWith("video/");
 };

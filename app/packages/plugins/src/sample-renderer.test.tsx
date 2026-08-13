@@ -89,6 +89,40 @@ describe("sample renderer matcher utilities", () => {
     expect(media.url).toContain(encodeURIComponent("/tmp/preview.PDF"));
   });
 
+  it("does not reuse root metadata for an unknown alternate path", () => {
+    const sample = createSample();
+    const media = createSampleRendererMediaContext(
+      {
+        ...sample,
+        urls: [...sample.urls, { field: "unknown_path", url: "/tmp/preview" }],
+      },
+      "unknown_path",
+    );
+
+    expect(media.mimeType).toBeNull();
+  });
+
+  it("keeps root metadata authoritative for an extensionless signed URL", () => {
+    const media = createSampleRendererMediaContext(
+      {
+        sample: {
+          filepath: "/tmp/default",
+          metadata: { mime_type: "application/pdf" },
+          media_type: "unknown",
+        },
+        urls: [
+          {
+            field: "filepath",
+            url: "https://example.com/media/asset?signature=abc",
+          },
+        ],
+      },
+      "filepath",
+    );
+
+    expect(media.mimeType).toBe("application/pdf");
+  });
+
   it("builds a render context with the surface included", () => {
     const sample = createSample();
     const ctx = createSampleRendererRenderContext(

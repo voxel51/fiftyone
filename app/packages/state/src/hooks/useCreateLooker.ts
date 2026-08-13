@@ -114,23 +114,24 @@ export default <T extends AbstractLooker<BaseState>>(
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
         const mediaFieldPath = urls[mediaField];
+        const hasSelectedMediaPath = Boolean(mediaFieldPath?.trim());
         const hasAlternateMediaPath =
-          mediaField !== "filepath" && !isNullish(mediaFieldPath);
+          mediaField !== "filepath" && hasSelectedMediaPath;
+        const selectedMediaPath = hasAlternateMediaPath
+          ? mediaFieldPath
+          : filePath;
         const mimeType = getMimeType(
           sample,
           hasAlternateMediaPath ? mediaFieldPath : undefined,
         );
-        const isDirect3dSample =
-          isDirect3dSamplePath(filePath) ||
-          isDirect3dSamplePath(mediaFieldPath);
+        const isDirect3dSample = isDirect3dSamplePath(selectedMediaPath);
 
         if (
           !supportsNativeLooker({
-            mediaField,
-            mediaFieldPath,
+            hasAlternateMediaPath,
+            isDirect3dSample,
             mimeType,
             sampleMediaType: sample.media_type ?? sample._media_type,
-            samplePath: filePath,
           }) &&
           !isDirect3dSample
         ) {
@@ -184,7 +185,9 @@ export default <T extends AbstractLooker<BaseState>>(
           isModal,
         };
 
-        let sampleMediaFilePath = urls[mediaField];
+        let sampleMediaFilePath = hasSelectedMediaPath
+          ? mediaFieldPath
+          : undefined;
         if (isNullish(sampleMediaFilePath) && options.mediaFallback === true) {
           sampleMediaFilePath = urls.filepath;
         }
