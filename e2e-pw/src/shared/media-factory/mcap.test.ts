@@ -26,6 +26,7 @@ describe("MCAP correctness fixtures", () => {
     for (const kind of [
       "tiny-episode-a",
       "tiny-episode-b",
+      "sidebar-persistence",
       "unsupported",
       "long-mixed-episode",
     ] as const) {
@@ -134,6 +135,25 @@ describe("MCAP correctness fixtures", () => {
       status_code: 203,
       tick: 3,
       vehicle: { gear: "reverse" },
+    });
+  });
+
+  it("builds the compact complete sidebar inventory", async () => {
+    const report = reports["sidebar-persistence"];
+    const reader = await openReader(await fs.readFile(report.outputPath));
+    expect(topics(reader)).toEqual([
+      "/camera/front/camera_info",
+      "/camera/front/detections",
+      "/camera/front/image_raw",
+      "/detections_3d",
+      "/lidar/points",
+    ]);
+    expect(report.messageCounts).toEqual({
+      "/camera/front/camera_info": 2,
+      "/camera/front/detections": 2,
+      "/camera/front/image_raw": 2,
+      "/detections_3d": 2,
+      "/lidar/points": 2,
     });
   });
 

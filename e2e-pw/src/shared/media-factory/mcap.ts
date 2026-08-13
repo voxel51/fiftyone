@@ -67,6 +67,10 @@ export const MCAP_FIXTURE_CONTRACT = {
     rearLastSecond: 3_000,
     statusIntervalSeconds: 5,
   },
+  sidebar: {
+    fileName: "sidebar-persistence.mcap",
+    kind: "sidebar-persistence",
+  },
   unsupported: {
     fileName: "unsupported.mcap",
     kind: "unsupported",
@@ -218,11 +222,64 @@ function fixtureDefinition(kind: McapFixtureKind): FixtureDefinition {
       return tinyEpisodeA();
     case "tiny-episode-b":
       return tinyEpisodeB();
+    case "sidebar-persistence":
+      return sidebarPersistenceEpisode();
     case "unsupported":
       return unsupportedEpisode();
     case "long-mixed-episode":
       return longMixedEpisode();
   }
+}
+
+/** Minimal complete sidebar inventory: image, calibration, cloud, 2D and 3D labels. */
+function sidebarPersistenceEpisode(): FixtureDefinition {
+  const channels: ChannelSpec[] = [
+    jsonChannel(
+      "/camera/front/image_raw",
+      "sensor_msgs/msg/CompressedImage",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+    jsonChannel(
+      "/camera/front/camera_info",
+      "sensor_msgs/msg/CameraInfo",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+    jsonChannel(
+      "/lidar/points",
+      "sensor_msgs/msg/PointCloud2",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+    jsonChannel(
+      "/camera/front/detections",
+      "vision_msgs/msg/Detection2DArray",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+    jsonChannel(
+      "/detections_3d",
+      "vision_msgs/msg/Detection3DArray",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+  ];
+  const messages: FixtureMessage[] = [];
+  for (let tick = 0; tick < 2; tick++) {
+    const timeNs = EPOCH_START_NS + BigInt(tick) * NANOSECONDS_PER_SECOND;
+    messages.push(
+      jsonMessage(
+        0,
+        timeNs,
+        compressedImageMessage({
+          frameId: "camera_front",
+          png: labeledPng(160, 90, A_COLORS[tick], `S${tick}`),
+          timeNs,
+        }),
+      ),
+      jsonMessage(1, timeNs, cameraInfoMessage(timeNs)),
+      jsonMessage(2, timeNs, pointCloudMessage(timeNs, "map", aPoints(tick))),
+      jsonMessage(3, timeNs, detectionMessage(timeNs, tick)),
+      jsonMessage(4, timeNs, detection3dMessage(timeNs, tick)),
+    );
+  }
+  return { channels, messages };
 }
 
 function tinyEpisodeA(): FixtureDefinition {
@@ -602,6 +659,19 @@ function compressedImageMessage({
   };
 }
 
+function cameraInfoMessage(timeNs: bigint): Record<string, unknown> {
+  return {
+    D: [0, 0, 0, 0, 0],
+    K: [120, 0, 80, 0, 120, 45, 0, 0, 1],
+    P: [120, 0, 80, 0, 0, 120, 45, 0, 0, 0, 1, 0],
+    R: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+    distortion_model: "plumb_bob",
+    header: header(timeNs, "camera_front"),
+    height: 90,
+    width: 160,
+  };
+}
+
 function pointCloudMessage(
   timeNs: bigint,
   frameId: string,
@@ -722,6 +792,28 @@ function detectionMessage(
       },
     ],
     header: header(timeNs, "camera_front"),
+  };
+}
+
+function detection3dMessage(
+  timeNs: bigint,
+  tick: number,
+): Record<string, unknown> {
+  return {
+    detections: [
+      {
+        bbox: {
+          center: {
+            orientation: { w: 1, x: 0, y: 0, z: 0 },
+            position: { x: 2 + tick, y: 1, z: 0.75 },
+          },
+          size: { x: 2, y: 1, z: 1.5 },
+        },
+        id: "sidebar-box",
+        results: [{ hypothesis: { class_id: "vehicle", score: 0.95 } }],
+      },
+    ],
+    header: header(timeNs, "map"),
   };
 }
 

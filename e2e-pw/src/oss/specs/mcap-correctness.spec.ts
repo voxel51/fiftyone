@@ -12,7 +12,7 @@ import { getLocatorDominantColorShare } from "src/oss/utils/screenshot";
 const datasetName = getUniqueDatasetNameWithPrefix("mcap-correctness");
 const fixtureDir = path.join(os.tmpdir(), datasetName);
 const originalMultimodalFlag = process.env.VFF_MULTIMODAL;
-const { long, tinyA, tinyB, unsupported } = MCAP_FIXTURE_CONTRACT;
+const { long, sidebar, tinyA, tinyB, unsupported } = MCAP_FIXTURE_CONTRACT;
 const fixturePaths = {
   episodeA: path.join(fixtureDir, tinyA.fileName),
   episodeB: path.join(fixtureDir, tinyB.fileName),
@@ -29,6 +29,15 @@ const cameraPoseFileNames = [
 const cameraPosePaths = cameraPoseFileNames.map((fileName) =>
   path.join(fixtureDir, fileName),
 );
+const sidebarFileNames = [
+  "sidebar-persistence-a.mcap",
+  "sidebar-persistence-b.mcap",
+  "sidebar-persistence-c.mcap",
+  "sidebar-persistence-d.mcap",
+] as const;
+const sidebarPaths = sidebarFileNames.map((fileName) =>
+  path.join(fixtureDir, fileName),
+);
 const sampleIndex = {
   episodeA: 0,
   episodeB: 1,
@@ -37,6 +46,7 @@ const sampleIndex = {
   shortAfterLong: 4,
   unsupported: 5,
   cameraPoseStart: 6,
+  sidebarStart: 10,
 } as const;
 const longExpectation = {
   diagnosticBeforeMidpointSecond:
@@ -95,6 +105,13 @@ test.describe.serial("MCAP correctness", () => {
           outputPath,
         }),
       ),
+      ...sidebarPaths.map((outputPath, index) =>
+        mediaFactory.createMcapFixture({
+          channelIdOffset: index % 2 === 0 ? 0 : 3,
+          kind: sidebar.kind,
+          outputPath,
+        }),
+      ),
     ]);
     await fs.writeFile(fixturePaths.invalid, "not an mcap file");
 
@@ -114,6 +131,10 @@ dataset.add_samples([
     fo.Sample(filepath=r"${cameraPosePaths[1]}", name="camera-pose-b"),
     fo.Sample(filepath=r"${cameraPosePaths[2]}", name="camera-pose-c"),
     fo.Sample(filepath=r"${cameraPosePaths[3]}", name="camera-pose-d"),
+    fo.Sample(filepath=r"${sidebarPaths[0]}", name="sidebar-persistence-a"),
+    fo.Sample(filepath=r"${sidebarPaths[1]}", name="sidebar-persistence-b"),
+    fo.Sample(filepath=r"${sidebarPaths[2]}", name="sidebar-persistence-c"),
+    fo.Sample(filepath=r"${sidebarPaths[3]}", name="sidebar-persistence-d"),
 ])
   `);
   });
@@ -207,9 +228,10 @@ if fo.dataset_exists("${datasetName}"):
     await modal.episode.expectTileTitleCount("camera/side", 1);
   });
 
-  test("persists the ego camera pose across channel-id changes and modal reopen", async ({
+  test("persists the ego camera pose across channel-id changes, modal reopen, and reload", async ({
     grid,
     modal,
+    page,
   }) => {
     await openMcapModal(grid, modal, sampleIndex.cameraPoseStart);
     await modal.episode.waitForReady(cameraPoseFileNames[0]);
@@ -228,6 +250,52 @@ if fo.dataset_exists("${datasetName}"):
     );
     await modal.episode.waitForReady(cameraPoseFileNames.at(-1)!);
     await modal.episode.expectCameraPose("points", egoPose);
+
+    await modal.close();
+    await page.reload();
+    await expect(grid.locator).toBeVisible({ timeout: 30_000 });
+    await openMcapModal(
+      grid,
+      modal,
+      sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+    );
+    await modal.episode.waitForReady(cameraPoseFileNames.at(-1)!);
+    await modal.episode.expectCameraPose("points", egoPose);
+  });
+
+  test("persists dataset sidebar settings across channel ids, remount, and reload", async ({
+    grid,
+    modal,
+    page,
+  }) => {
+    await openMcapModal(grid, modal, sampleIndex.sidebarStart);
+    await modal.episode.waitForReady(sidebarFileNames[0]);
+    await setRepresentativeSidebarPreferences(modal);
+
+    for (const fileName of sidebarFileNames.slice(1)) {
+      await modal.episode.navigateDatasetSample("forward", fileName);
+      await expectRepresentativeSidebarPreferences(modal);
+    }
+
+    await modal.close();
+    await openMcapModal(
+      grid,
+      modal,
+      sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+    );
+    await modal.episode.waitForReady(sidebarFileNames.at(-1)!);
+    await expectRepresentativeSidebarPreferences(modal);
+
+    await modal.close();
+    await page.reload();
+    await expect(grid.locator).toBeVisible({ timeout: 30_000 });
+    await openMcapModal(
+      grid,
+      modal,
+      sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+    );
+    await modal.episode.waitForReady(sidebarFileNames.at(-1)!);
+    await expectRepresentativeSidebarPreferences(modal);
   });
 
   test("keeps paused stepping, raw values, logs, and image pixels synchronized", async ({
@@ -632,6 +700,40 @@ async function openMcapModal(
   // multimodal never mounts the classic sidebar (it has its own right panel),
   // so there's nothing to hide and no toggle to hide it with
   await modal.enterFullscreen();
+}
+
+async function setRepresentativeSidebarPreferences(
+  modal: ModalPom,
+): Promise<void> {
+  await modal.episode.setSidebarNumber("3D", "Point size (px)", 7);
+  await modal.episode.setSidebarToggle("3D", "Toggle 3D labels", true);
+  await modal.episode.setSidebarToggle(
+    "camera/front",
+    "Toggle matching labels",
+    true,
+  );
+  await modal.episode.setSidebarToggle(
+    "camera/front",
+    "Toggle pointcloud projections",
+    true,
+  );
+}
+
+async function expectRepresentativeSidebarPreferences(
+  modal: ModalPom,
+): Promise<void> {
+  await modal.episode.expectSidebarNumber("3D", "Point size (px)", 7);
+  await modal.episode.expectSidebarToggle("3D", "Toggle 3D labels", true);
+  await modal.episode.expectSidebarToggle(
+    "camera/front",
+    "Toggle matching labels",
+    true,
+  );
+  await modal.episode.expectSidebarToggle(
+    "camera/front",
+    "Toggle pointcloud projections",
+    true,
+  );
 }
 
 function fractionOfLongRecording(second: number): number {

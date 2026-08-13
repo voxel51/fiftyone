@@ -110,6 +110,65 @@ export class EpisodePom {
     }
   }
 
+  async setSidebarToggle(
+    tileTitle: string,
+    accessibleName: string,
+    checked: boolean,
+  ): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    const toggle = this.scope.getByRole("switch", {
+      name: accessibleName,
+      exact: true,
+    });
+    await expect(toggle).toBeVisible({ timeout: READY_TIMEOUT });
+    if ((await toggle.isChecked()) !== checked) await toggle.click();
+    await this.expectSidebarToggle(tileTitle, accessibleName, checked);
+  }
+
+  async expectSidebarToggle(
+    tileTitle: string,
+    accessibleName: string,
+    checked: boolean,
+  ): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    const toggle = this.scope.getByRole("switch", {
+      name: accessibleName,
+      exact: true,
+    });
+    if (checked) await expect(toggle).toBeChecked({ timeout: READY_TIMEOUT });
+    else await expect(toggle).not.toBeChecked({ timeout: READY_TIMEOUT });
+  }
+
+  async setSidebarNumber(
+    tileTitle: string,
+    accessibleName: string,
+    value: number,
+  ): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    const input = this.scope.getByRole("spinbutton", {
+      name: accessibleName,
+      exact: true,
+    });
+    await input.click();
+    await input.fill(String(value));
+    await input.press("Enter");
+    await this.expectSidebarNumber(tileTitle, accessibleName, value);
+  }
+
+  async expectSidebarNumber(
+    tileTitle: string,
+    accessibleName: string,
+    value: number,
+  ): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    await expect(
+      this.scope.getByRole("spinbutton", {
+        name: accessibleName,
+        exact: true,
+      }),
+    ).toHaveValue(String(value), { timeout: READY_TIMEOUT });
+  }
+
   private async readCameraPoseInputs(
     inputs: Locator,
   ): Promise<Readonly<Record<string, number>>> {
@@ -123,20 +182,23 @@ export class EpisodePom {
   }
 
   private async openViewpointInputs(tileTitle: string): Promise<Locator> {
-    await this.tileTitle(tileTitle).click();
-    const panelTab = this.scope.getByRole("tab", {
-      name: tileTitle,
-      exact: true,
-    });
-    await expect(panelTab).toBeVisible({ timeout: READY_TIMEOUT });
-    await panelTab.click();
-
+    await this.openTileSettings(tileTitle);
     const viewpoint = this.scope.getByRole("button", { name: /^Viewpoint/ });
     if ((await viewpoint.getAttribute("aria-expanded")) !== "true") {
       await viewpoint.click();
     }
     await expect(viewpoint).toHaveAttribute("aria-expanded", "true");
     return this.scope;
+  }
+
+  private async openTileSettings(tileTitle: string): Promise<void> {
+    await this.tileTitle(tileTitle).first().click();
+    const panelTab = this.scope.getByRole("tab", {
+      name: tileTitle,
+      exact: true,
+    });
+    await expect(panelTab).toBeVisible({ timeout: READY_TIMEOUT });
+    await panelTab.click();
   }
 
   async expectFileName(fileName: string): Promise<void> {
