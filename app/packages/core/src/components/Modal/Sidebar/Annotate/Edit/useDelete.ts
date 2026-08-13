@@ -38,6 +38,20 @@ const isVertexSubSelected = (overlay: unknown): boolean => {
   return index != null && index >= 0;
 };
 
+/** Total vertices across a polyline / keypoint label's shapes. */
+const vertexCount = (data: unknown): number => {
+  const points = (data as { points?: unknown[] })?.points;
+
+  if (!Array.isArray(points)) {
+    return 0;
+  }
+
+  return points.reduce(
+    (total: number, shape) => total + (Array.isArray(shape) ? shape.length : 0),
+    0,
+  );
+};
+
 export default function useDelete() {
   const { scene, removeOverlay } = useLighter();
   const { selected } = useAnnotationContext();
@@ -73,7 +87,14 @@ export default function useDelete() {
     // handler; defer to it so Backspace edits the vertex instead of deleting
     // the whole label/track. The command bus fires before that handler, so the
     // sub-point index still reads its pre-removal value here.
-    if (isVertexSubSelected(selectedOverlay)) {
+    //
+    // EXCEPT when that vertex is the label's last one: removing it would leave a
+    // shape with no geometry — a label (and, on video, a whole track) that
+    // renders nothing but still exists. Selecting a single-vertex polyline
+    // sub-selects its only point, so deferring there is why Backspace deleted
+    // multi-vertex polylines but appeared to do nothing to single-vertex ones.
+    // Deleting the only vertex IS deleting the label, so fall through.
+    if (isVertexSubSelected(selectedOverlay) && vertexCount(label.data) > 1) {
       return;
     }
 
