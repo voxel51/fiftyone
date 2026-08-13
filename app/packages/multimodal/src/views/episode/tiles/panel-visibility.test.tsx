@@ -3,7 +3,6 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneSource } from "../../../ir";
 import {
-  __resetSidebarPreferencesForTests,
   SIDEBAR_PREFERENCES_STORAGE_KEY,
   updateSidebarPreferences,
 } from "../settings/sidebar-preferences";
@@ -44,7 +43,6 @@ describe("dataset-owned panel preferences", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
-    __resetSidebarPreferencesForTests();
     tileId = "image-1";
   });
 

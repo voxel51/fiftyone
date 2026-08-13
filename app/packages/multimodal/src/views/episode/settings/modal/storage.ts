@@ -7,13 +7,11 @@ import {
 } from "../../../../visualization/scene-3d";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../../visualization/panel-ui/style-tokens";
 import { sanitizeBoundedStringList } from "../../../../utils/bounded-string-list";
-import { createTimestampLruScopedStore } from "../../../../utils/scoped-store";
 import type {
   ImageDisplayMode,
   ImageGeometryMode,
 } from "../../spatial/camera-geometry/camera-model";
 import {
-  DEFAULT_POINT_CLOUD_POINT_SIZE,
   DEFAULT_PROJECTION_POINT_SIZE,
   normalizePointSize,
 } from "../../presentation/point-size-policy";
@@ -92,42 +90,6 @@ export interface ImageProjectionSettings {
   readonly streams: readonly string[] | null;
 }
 
-/**
- * Stream-keyed styling persisted per settings scope (one dataset or ad hoc
- * recording source). Bare stream names collide across unrelated datasets —
- * two recordings sharing `/lidar_top` are not one preference — so these
- * maps are isolated from the unscoped top-level maps.
- */
-export interface ScopedModalSettings {
-  readonly imageLabelStreams: Record<string, readonly string[]>;
-  readonly imageProjection: Record<string, ImageProjectionSettings>;
-  readonly pointCloudColors: Record<string, PersistedPointCloudColorSettings>;
-}
-
-/**
- * Full localStorage payload for browser-wide episode modal preferences.
- *
- * Device-global appearance preferences live at the top level. Stream-keyed
- * styling additionally lives under `scoped`, keyed by settings scope; the
- * top-level stream maps serve unscoped playback hosts.
- */
-export interface PersistedModalSettings {
-  readonly imageLabelStreams: Record<string, readonly string[]>;
-  readonly imageProjection: Record<string, ImageProjectionSettings>;
-  readonly pinholeCamera: PinholeCameraSettings;
-  readonly pointCloudColors: Record<string, PersistedPointCloudColorSettings>;
-  readonly pointCloudPointSize: number;
-  readonly referenceGrid: ReferenceGridSettings;
-  readonly sceneBackground: SceneBackgroundSettings;
-  readonly scoped: Record<string, ScopedModalSettings>;
-  readonly showPointCloudColorLegend: boolean;
-}
-
-type ModalSettingsFallback = Omit<PersistedModalSettings, "scoped">;
-
-const STORAGE_KEY = "fiftyone.episode.modal-settings.v3";
-const STORAGE_VERSION = 3;
-const MAX_SETTINGS_SCOPE_LENGTH = 1_024;
 const MAX_SETTINGS_STREAMS = 128;
 const MAX_SETTINGS_STREAM_LENGTH = 512;
 
@@ -268,212 +230,6 @@ const SCENE_BACKGROUND_MODES: readonly SceneBackgroundMode[] = [
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
 /**
- * Empty per-scope styling payload.
- */
-export const EMPTY_SCOPED_SETTINGS: ScopedModalSettings = {
-  imageLabelStreams: {},
-  imageProjection: {},
-  pointCloudColors: {},
-};
-
-/**
- * Most scopes retained in the persisted payload. The shared store prunes by
- * each scope's last-write timestamp.
- */
-export const MAX_SETTINGS_SCOPES = 20;
-
-/**
- * Complete default episode modal settings payload.
- */
-export const DEFAULT_MODAL_SETTINGS: PersistedModalSettings = {
-  imageLabelStreams: {},
-  imageProjection: {},
-  pinholeCamera: DEFAULT_PINHOLE_CAMERA,
-  pointCloudColors: {},
-  pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
-  referenceGrid: DEFAULT_REFERENCE_GRID,
-  sceneBackground: DEFAULT_SCENE_BACKGROUND,
-  scoped: {},
-  showPointCloudColorLegend: false,
-};
-
-const modalSettingsStore = createTimestampLruScopedStore<
-  ScopedModalSettings,
-  ModalSettingsFallback
->({
-  acceptUnversioned: true,
-  fallback: {
-    location: "root",
-    sanitize: normalizeModalSettingsFallback,
-    serialize: (settings) => ({ ...settings }),
-  },
-  key: STORAGE_KEY,
-  maxScopes: MAX_SETTINGS_SCOPES,
-  normalizeScopeKey: normalizeSettingsScopeKey,
-  sanitizeScope: normalizeNonEmptyScopedSettings,
-  scopeField: "scoped",
-  serializeScope: (settings) => ({ ...settings }),
-  storage: () => globalThis.localStorage,
-  version: STORAGE_VERSION,
-});
-
-/**
- * Reads persisted episode modal settings from local storage.
- */
-export function readModalSettings(): PersistedModalSettings {
-  const snapshot = modalSettingsStore.readSnapshot();
-  return {
-    ...(snapshot.fallback ?? modalSettingsFallback(DEFAULT_MODAL_SETTINGS)),
-    scoped: Object.fromEntries(
-      Object.entries(snapshot.scopes).map(([scope, entry]) => [
-        scope,
-        entry.value,
-      ]),
-    ),
-  };
-}
-
-/**
- * Writes the full persisted episode modal settings payload.
- */
-export function writeModalSettings(settings: PersistedModalSettings): void {
-  const normalized = normalizeModalSettings(settings);
-  modalSettingsStore.replace({
-    fallback: modalSettingsFallback(normalized),
-    scopes: normalized.scoped,
-  });
-}
-
-/**
- * Persists one settings mutation without refreshing unrelated scope
- * timestamps. The returned payload reflects canonical sanitization and any
- * timestamp-LRU eviction performed by the shared engine.
- */
-export function persistModalSettingsUpdate(
-  settings: PersistedModalSettings,
-  touchedScope?: string,
-): PersistedModalSettings {
-  if (touchedScope) {
-    const scope = normalizeSettingsScopeKey(touchedScope);
-    if (scope) {
-      const scoped = normalizeNonEmptyScopedSettings(settings.scoped[scope]);
-      modalSettingsStore.updateScope(scope, () => scoped);
-      return {
-        ...settings,
-        scoped: Object.fromEntries(
-          Object.entries(modalSettingsStore.readSnapshot().scopes).map(
-            ([key, entry]) => [key, entry.value],
-          ),
-        ),
-      };
-    }
-  } else {
-    modalSettingsStore.updateFallback(() =>
-      normalizeModalSettingsFallback(settings),
-    );
-  }
-  return settings;
-}
-
-/**
- * Normalizes a full episode modal settings payload before persistence.
- */
-export function normalizeModalSettings(
-  settings: PersistedModalSettings,
-): PersistedModalSettings {
-  return {
-    ...normalizeModalSettingsFallback(settings),
-    scoped: normalizeScopedSettingsMap(settings.scoped),
-  };
-}
-
-function normalizeModalSettingsFallback(value: unknown): ModalSettingsFallback {
-  const candidate =
-    typeof value === "object" && value !== null && !Array.isArray(value)
-      ? (value as Partial<PersistedModalSettings>)
-      : DEFAULT_MODAL_SETTINGS;
-  return {
-    imageLabelStreams: normalizeImageLabelStreamMap(
-      candidate.imageLabelStreams,
-    ),
-    imageProjection: normalizeImageProjectionMap(candidate.imageProjection),
-    pinholeCamera: normalizePinholeCamera(candidate.pinholeCamera),
-    pointCloudColors: normalizePointCloudColorMap(candidate.pointCloudColors),
-    pointCloudPointSize: normalizePointCloudPointSize(
-      candidate.pointCloudPointSize,
-    ),
-    referenceGrid: normalizeReferenceGrid(candidate.referenceGrid),
-    sceneBackground: normalizeSceneBackground(candidate.sceneBackground),
-    showPointCloudColorLegend: candidate.showPointCloudColorLegend === true,
-  };
-}
-
-function modalSettingsFallback(
-  settings: PersistedModalSettings,
-): ModalSettingsFallback {
-  const { scoped: _scoped, ...fallback } = settings;
-  return fallback;
-}
-
-function normalizeSettingsScopeKey(value: string): string | null {
-  const scope = value.trim();
-  return scope && scope.length <= MAX_SETTINGS_SCOPE_LENGTH ? scope : null;
-}
-
-function normalizeNonEmptyScopedSettings(
-  value: unknown,
-): ScopedModalSettings | null {
-  const scoped = normalizeScopedSettings(value);
-  return Object.keys(scoped.imageLabelStreams).length === 0 &&
-    Object.keys(scoped.imageProjection).length === 0 &&
-    Object.keys(scoped.pointCloudColors).length === 0
-    ? null
-    : scoped;
-}
-
-/**
- * Normalizes the per-scope styling map: each entry's stream maps go through
- * the same normalizers as the top-level maps, entries left empty are
- * dropped. Timestamp-LRU capping is owned by the shared store engine.
- */
-export function normalizeScopedSettingsMap(
-  value: unknown,
-): Record<string, ScopedModalSettings> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return {};
-  }
-
-  const entries: [string, ScopedModalSettings][] = [];
-  for (const [scope, scopedValue] of Object.entries(value)) {
-    const normalizedScope = normalizeSettingsScopeKey(scope);
-    if (!normalizedScope) continue;
-    const scoped = normalizeNonEmptyScopedSettings(scopedValue);
-    if (!scoped) continue;
-    entries.push([normalizedScope, scoped]);
-  }
-
-  return Object.fromEntries(entries);
-}
-
-/**
- * Normalizes one scope's styling payload.
- */
-export function normalizeScopedSettings(value: unknown): ScopedModalSettings {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return EMPTY_SCOPED_SETTINGS;
-  }
-
-  const candidate = value as Partial<ScopedModalSettings>;
-  return {
-    imageLabelStreams: normalizeImageLabelStreamMap(
-      candidate.imageLabelStreams,
-    ),
-    imageProjection: normalizeImageProjectionMap(candidate.imageProjection),
-    pointCloudColors: normalizePointCloudColorMap(candidate.pointCloudColors),
-  };
-}
-
-/**
  * Default pointcloud projection settings for one image stream.
  */
 export const DEFAULT_IMAGE_PROJECTION: ImageProjectionSettings = {
@@ -484,25 +240,6 @@ export const DEFAULT_IMAGE_PROJECTION: ImageProjectionSettings = {
   pointSize: DEFAULT_PROJECTION_POINT_SIZE,
   streams: [],
 } as const;
-
-/**
- * Normalizes persisted per-image-stream pointcloud projection settings.
- */
-export function normalizeImageProjectionMap(
-  value: unknown,
-): Record<string, ImageProjectionSettings> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return {};
-  }
-
-  const result: Record<string, ImageProjectionSettings> = {};
-  for (const [imageStream, settings] of Object.entries(value)) {
-    const normalizedImageStream = normalizeSettingsStreamKey(imageStream);
-    if (!normalizedImageStream) continue;
-    result[normalizedImageStream] = normalizeImageProjection(settings);
-  }
-  return result;
-}
 
 /**
  * Normalizes one pointcloud projection settings entry.
@@ -546,25 +283,6 @@ export function normalizeImageGeometry(value: unknown): ImageGeometryMode {
 }
 
 /**
- * Normalizes persisted image-stream to label-stream selections.
- */
-export function normalizeImageLabelStreamMap(
-  value: unknown,
-): Record<string, readonly string[]> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return {};
-  }
-
-  const result: Record<string, readonly string[]> = {};
-  for (const [imageStream, labelStreams] of Object.entries(value)) {
-    const normalizedImageStream = normalizeSettingsStreamKey(imageStream);
-    if (!normalizedImageStream) continue;
-    result[normalizedImageStream] = normalizeStreamList(labelStreams);
-  }
-  return result;
-}
-
-/**
  * Normalizes a list of stream names by trimming, filtering, and deduplicating.
  */
 export function normalizeStreamList(value: unknown): readonly string[] {
@@ -585,25 +303,6 @@ function normalizeOptionalStream(value: unknown): string | null {
     return null;
   }
   return normalizeSettingsStreamKey(value);
-}
-
-/**
- * Normalizes persisted per-stream point-cloud color overrides.
- */
-export function normalizePointCloudColorMap(
-  value: unknown,
-): Record<string, PersistedPointCloudColorSettings> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return {};
-  }
-
-  const result: Record<string, PersistedPointCloudColorSettings> = {};
-  for (const [stream, settings] of Object.entries(value)) {
-    const normalizedStream = normalizeSettingsStreamKey(stream);
-    if (!normalizedStream) continue;
-    result[normalizedStream] = normalizePointCloudColor(settings);
-  }
-  return result;
 }
 
 /**

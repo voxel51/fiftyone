@@ -33,11 +33,6 @@ const MAX_TILES = 64;
 const MAX_SOURCES = 128;
 const MAX_FRAME_ID_LENGTH = 512;
 const MAX_CAMERA_COMPOSITIONS = 2;
-const LEGACY_STORAGE_KEYS = [
-  "fiftyone.episode.panel-visibility.v2",
-  "fiftyone.episode.projections.v1",
-  "fiftyone.episode.modal-settings.v3",
-] as const;
 
 export interface SidebarAppearancePreferences {
   readonly pinholeCamera: PinholeCameraSettings;
@@ -153,7 +148,6 @@ export const DEFAULT_SIDEBAR_PREFERENCES: SidebarPreferences = Object.freeze({
   tiles: Object.freeze({}),
 });
 
-let legacyResetPerformed = false;
 type SidebarPreferencesListener = (preferences: SidebarPreferences) => void;
 const listenersByScope = new Map<string, Set<SidebarPreferencesListener>>();
 
@@ -172,7 +166,6 @@ const preferencesStore = createTimestampLruScopedStore<SidebarPreferences>({
 export function readSidebarPreferences(
   scopeKey: string | null | undefined,
 ): SidebarPreferences {
-  ensureLegacyReset();
   const normalized = normalizeScopeKey(scopeKey ?? "");
   return normalized
     ? (preferencesStore.readScope(normalized) ?? DEFAULT_SIDEBAR_PREFERENCES)
@@ -184,7 +177,6 @@ export function updateSidebarPreferences(
   scopeKey: string | null | undefined,
   resolver: (current: SidebarPreferences) => SidebarPreferences,
 ): SidebarPreferences {
-  ensureLegacyReset();
   const normalized = normalizeScopeKey(scopeKey ?? "");
   if (!normalized) return DEFAULT_SIDEBAR_PREFERENCES;
   const next =
@@ -213,25 +205,7 @@ export function subscribeSidebarPreferences(
 
 /** Exposed for schema/LRU tests. */
 export function readSidebarPreferenceScopesForTests() {
-  ensureLegacyReset();
   return preferencesStore.readSnapshot().scopes;
-}
-
-/** Resets one-time initialization state between isolated tests. */
-export function __resetSidebarPreferencesForTests(): void {
-  legacyResetPerformed = false;
-}
-
-function ensureLegacyReset(): void {
-  if (legacyResetPerformed) return;
-  legacyResetPerformed = true;
-  try {
-    for (const key of LEGACY_STORAGE_KEYS)
-      globalThis.localStorage?.removeItem(key);
-    globalThis.sessionStorage?.removeItem("fiftyone.episode.projections.v1");
-  } catch {
-    // Browser storage is best-effort.
-  }
 }
 
 function normalizeSidebarPreferences(raw: unknown): SidebarPreferences | null {

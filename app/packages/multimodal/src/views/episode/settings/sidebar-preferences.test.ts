@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  __resetSidebarPreferencesForTests,
   MAX_SIDEBAR_PREFERENCE_SCOPES,
   readSidebarPreferences,
   readSidebarPreferenceScopesForTests,
@@ -13,7 +12,6 @@ describe("dataset-owned sidebar preferences", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
-    __resetSidebarPreferencesForTests();
     vi.restoreAllMocks();
   });
 
@@ -130,23 +128,5 @@ describe("dataset-owned sidebar preferences", () => {
     expect(scopes["dataset-0"]).toBeDefined();
     expect(scopes["dataset-1"]).toBeUndefined();
     expect(scopes[`dataset-${MAX_SIDEBAR_PREFERENCE_SCOPES}`]).toBeDefined();
-  });
-
-  it("intentionally resets every legacy sidebar store once", () => {
-    localStorage.setItem("fiftyone.episode.panel-visibility.v2", "old");
-    localStorage.setItem("fiftyone.episode.modal-settings.v3", "old");
-    sessionStorage.setItem("fiftyone.episode.projections.v1", "old");
-
-    readSidebarPreferences("dataset");
-
-    expect(
-      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
-    ).toBeNull();
-    expect(
-      localStorage.getItem("fiftyone.episode.modal-settings.v3"),
-    ).toBeNull();
-    expect(
-      sessionStorage.getItem("fiftyone.episode.projections.v1"),
-    ).toBeNull();
   });
 });

@@ -124,7 +124,6 @@ describe("layout-persistence", () => {
             mcap: { preferredWorldFrameId: "map" },
           },
           leftSidebarOpen: true,
-          imageBindings: { "image-1": "/cam/front" },
           plotSeries: {
             "plot-1": [{ color: "#3987e5", fieldPath: "x", stream: "/odom" }],
           },
@@ -475,15 +474,6 @@ describe("layout-persistence", () => {
       expect(sanitizePlotSeries([])).toBeUndefined();
       expect(sanitizePlotSeries("x")).toBeUndefined();
       expect(sanitizePlotSeries({ "plot-1": [] })).toBeUndefined();
-    });
-  });
-
-  describe("imageBindings", () => {
-    it("intentionally ignores legacy raw-id image tile bindings", () => {
-      writeModalLayout({ imageBindings: { "image-1": "/cam/back" } }, "ds-a");
-
-      expect(readModalLayout("ds-a")?.imageBindings).toBeUndefined();
-      expect(readModalLayout("ds-b")?.imageBindings).toBeUndefined();
     });
   });
 

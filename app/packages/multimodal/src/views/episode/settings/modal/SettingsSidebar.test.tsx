@@ -28,7 +28,7 @@ import {
 import type { EpisodeTerminology } from "../../../../ports";
 import { rawTileStreamAtom } from "../../tiles/raw-message-binding";
 import { TILE_TYPE } from "../../tiles/tile-types";
-import { __resetModalSettingsForTests } from "./state";
+import { SidebarPreferencesProvider } from "../sidebar-preferences-context";
 import {
   TileSettingsProvider,
   useRegisterTileSettings,
@@ -185,33 +185,35 @@ function renderSidebar({
   const probeState: { current: TilingProbeState | null } = { current: null };
   const result = render(
     <PlaybackProvider duration={1}>
-      <SceneInventoryProvider sources={sources}>
-        <TilingProvider initialTiles={INITIAL_TILES}>
-          <TileSettingsProvider>
-            <TileRegistryFixture />
-            <TilingStateProbe stateRef={probeState} />
-            <RegisteredTileBody
-              label="camera"
-              streamStreams={registeredStreamStreams}
-              tileId={CAMERA_TILE_ID}
-            />
-            <RegisteredTileBody
-              label="lidar"
-              streamStreams={registeredStreamStreams}
-              tileId={LIDAR_TILE_ID}
-            />
-            <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
-            <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
-            <SettingsSidebar
-              onTimelineSamplingRateChange={onTimelineSamplingRateChange}
-              recordingFacts={recordingFacts}
-              streams={streams}
-              terminology={terminology}
-              timelineSamplingRateHz={timelineSamplingRateHz}
-            />
-          </TileSettingsProvider>
-        </TilingProvider>
-      </SceneInventoryProvider>
+      <SidebarPreferencesProvider scopeKey="settings-sidebar" sources={sources}>
+        <SceneInventoryProvider sources={sources}>
+          <TilingProvider initialTiles={INITIAL_TILES}>
+            <TileSettingsProvider>
+              <TileRegistryFixture />
+              <TilingStateProbe stateRef={probeState} />
+              <RegisteredTileBody
+                label="camera"
+                streamStreams={registeredStreamStreams}
+                tileId={CAMERA_TILE_ID}
+              />
+              <RegisteredTileBody
+                label="lidar"
+                streamStreams={registeredStreamStreams}
+                tileId={LIDAR_TILE_ID}
+              />
+              <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
+              <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
+              <SettingsSidebar
+                onTimelineSamplingRateChange={onTimelineSamplingRateChange}
+                recordingFacts={recordingFacts}
+                streams={streams}
+                terminology={terminology}
+                timelineSamplingRateHz={timelineSamplingRateHz}
+              />
+            </TileSettingsProvider>
+          </TilingProvider>
+        </SceneInventoryProvider>
+      </SidebarPreferencesProvider>
     </PlaybackProvider>,
   );
   return { ...result, probeState };
@@ -221,7 +223,6 @@ describe("SettingsSidebar", () => {
   beforeEach(() => {
     playbackFrames.current = [];
     window.localStorage?.clear();
-    __resetModalSettingsForTests();
   });
 
   afterEach(() => cleanup());

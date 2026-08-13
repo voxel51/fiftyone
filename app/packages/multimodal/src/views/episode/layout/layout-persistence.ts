@@ -47,8 +47,6 @@ export interface PersistedModalLayout {
   leftSidebarOpen?: boolean;
   /** Mosaic tree whose leaves are tile ids (e.g. `image-default`). */
   layout?: MosaicNode<string> | null;
-  /** @deprecated Raw recording ids are intentionally ignored on restore. */
-  imageBindings?: Record<string, string>;
   /**
    * Enabled plot series per plot tile id. Series reference streams of
    * one dataset's recordings, so this field is dataset-scoped only —
