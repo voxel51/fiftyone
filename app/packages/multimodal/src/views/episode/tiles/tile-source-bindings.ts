@@ -1,7 +1,15 @@
 import { useTileId } from "@fiftyone/tiling";
 import { atom, useAtomValue, useStore } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { SceneSource } from "../../../scene-inventory";
+import {
+  readSidebarPreferences,
+  updateSidebarPreferences,
+  usePanelVisibilityScope,
+  useSidebarSourceIdentity,
+} from "../preferences";
+
+type ImageTileBindings = Readonly<Record<string, string>>;
 
 /**
  * Which image source each mounted image tile currently displays
@@ -14,11 +22,34 @@ import type { SceneSource } from "../../../scene-inventory";
  * Lives in the tiling shell's per-instance Jotai store, so bindings are
  * scoped to one modal and vanish with it.
  */
-export const imageTileBindingsAtom = atom<Readonly<Record<string, string>>>({});
+export const imageTileBindingsAtom = atom<ImageTileBindings>({});
+
+/**
+ * Durable preferred source per image tile. Unlike the mounted registry above,
+ * entries survive temporary source unavailability and tile-body unmounts;
+ * ModalLayoutPersistence snapshots them per dataset.
+ */
+export const persistedImageTileBindingsAtom = atom<ImageTileBindings>({});
 
 /** Subscribe to the current tile→source bindings map. */
 export function useImageTileBindings(): Readonly<Record<string, string>> {
   return useAtomValue(imageTileBindingsAtom);
+}
+
+/**
+ * Resolves this image tile's durable semantic preference to a runtime id.
+ * `null` means the preference exists but its source is currently unavailable.
+ */
+export function usePreferredImageTileStream(): string | null | undefined {
+  const tileId = useTileId();
+  const scopeKey = usePanelVisibilityScope();
+  const identity = useSidebarSourceIdentity();
+  if (!tileId || !scopeKey) return undefined;
+  const preferredKey =
+    readSidebarPreferences(scopeKey).tiles[tileId]?.imageSourceKey;
+  return preferredKey
+    ? (identity.runtimeIdsForKey(preferredKey)[0] ?? null)
+    : undefined;
 }
 
 /**
@@ -46,6 +77,67 @@ export function usePublishImageTileBinding(sourceId: string): void {
       });
     };
   }, [sourceId, store, tileId]);
+}
+
+/**
+ * Initialize a new image pane's durable source preference and return the
+ * setter used by intentional source selection. Later automatic fallbacks do
+ * not overwrite an existing preference.
+ */
+export function usePersistImageTileBinding(
+  sourceId: string,
+): (sourceId: string) => void {
+  const tileId = useTileId();
+  const store = useStore();
+  const scopeKey = usePanelVisibilityScope();
+  const identity = useSidebarSourceIdentity();
+  const preferredRuntimeId = usePreferredImageTileStream();
+
+  // This effect records pane creation/duplication in durable modal state.
+  useEffect(() => {
+    if (!tileId || !sourceId) return;
+    const runtimeId = preferredRuntimeId ?? sourceId;
+    store.set(persistedImageTileBindingsAtom, (previous) =>
+      (!scopeKey && previous[tileId]) || previous[tileId] === runtimeId
+        ? previous
+        : { ...previous, [tileId]: runtimeId },
+    );
+    if (!scopeKey || preferredRuntimeId !== undefined) return;
+    const sourceKey = identity.keyForRuntimeId(sourceId);
+    if (!sourceKey) return;
+    updateSidebarPreferences(scopeKey, (current) => ({
+      ...current,
+      tiles: {
+        ...current.tiles,
+        [tileId]: { ...current.tiles[tileId], imageSourceKey: sourceKey },
+      },
+    }));
+  }, [identity, preferredRuntimeId, scopeKey, sourceId, store, tileId]);
+
+  return useCallback(
+    (nextSourceId: string) => {
+      if (!tileId || !nextSourceId) return;
+      const sourceKey = identity.keyForRuntimeId(nextSourceId);
+      if (scopeKey && sourceKey) {
+        updateSidebarPreferences(scopeKey, (current) => ({
+          ...current,
+          tiles: {
+            ...current.tiles,
+            [tileId]: {
+              ...current.tiles[tileId],
+              imageSourceKey: sourceKey,
+            },
+          },
+        }));
+      }
+      store.set(persistedImageTileBindingsAtom, (previous) =>
+        previous[tileId] === nextSourceId
+          ? previous
+          : { ...previous, [tileId]: nextSourceId },
+      );
+    },
+    [identity, scopeKey, store, tileId],
+  );
 }
 
 /**
@@ -143,4 +235,26 @@ export function chooseNextImageStream(
     rankedImages[0]?.id ??
     ""
   );
+}
+
+/**
+ * Reconcile the pane's displayed source with a changing sample inventory.
+ * A returning durable preference wins; otherwise an available current
+ * fallback remains stable, and only an unavailable display is replaced.
+ */
+export function resolveAvailableImageStream(
+  currentSourceId: string,
+  preferredSourceId: string | undefined,
+  availableImages: readonly SceneSource[],
+  rankedFallbackImages: readonly SceneSource[],
+  mountedBindings: ImageTileBindings,
+): string {
+  const available = new Set(availableImages.map((source) => source.id));
+  if (preferredSourceId && available.has(preferredSourceId)) {
+    return preferredSourceId;
+  }
+  if (currentSourceId && available.has(currentSourceId)) {
+    return currentSourceId;
+  }
+  return chooseNextImageStream(rankedFallbackImages, mountedBindings);
 }

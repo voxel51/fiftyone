@@ -25,14 +25,17 @@ import Scene3dTileSettings, {
 } from "./Scene3dTileSettings";
 import type { CameraSourceStatus } from "./camera-source-status";
 import {
-  __resetModalSettingsForTests,
-  readModalSettings,
-  writeModalSettings,
   type PinholeCameraSettings,
   type PersistedPointCloudColorSettings,
   type ReferenceGridSettings,
   type SceneBackgroundSettings,
 } from "../../settings/modal/state";
+import {
+  readSidebarPreferences,
+  updateSidebarPreferences,
+} from "../../settings/sidebar-preferences";
+import { SidebarPreferencesProvider } from "../../settings/sidebar-preferences-context";
+import { semanticSourceKey } from "../../settings/semantic-source";
 import { publishPointCloudCounts } from "./point-cloud-count-state";
 
 const CAM_FRONT = source(
@@ -58,10 +61,10 @@ const LIDAR = source(
   SCENE_SOURCE_TYPE.POINT_CLOUD,
   100,
 );
+const SETTINGS_SCOPE = "scene-3d-settings";
 
 beforeEach(() => {
   localStorage.clear();
-  __resetModalSettingsForTests();
 });
 
 afterEach(() => {
@@ -301,17 +304,17 @@ describe("Scene3dTileSettings", () => {
     fireEvent.change(screen.getByRole("spinbutton", { name: "Spacing (m)" }), {
       target: { value: "5" },
     });
-    expect(readModalSettings().referenceGrid.spacingM).toBe(5);
+    expect(storedAppearance().referenceGrid.spacingM).toBe(5);
 
     fireEvent.change(screen.getByRole("spinbutton", { name: "Opacity (%)" }), {
       target: { value: "50" },
     });
-    expect(readModalSettings().referenceGrid.opacityPercent).toBe(50);
+    expect(storedAppearance().referenceGrid.opacityPercent).toBe(50);
 
     fireEvent.click(
       screen.getByRole("switch", { name: "Toggle reference grid" }),
     );
-    expect(readModalSettings().referenceGrid.enabled).toBe(false);
+    expect(storedAppearance().referenceGrid.enabled).toBe(false);
   });
 
   it("keeps compact frustum controls inside the camera section", () => {
@@ -324,7 +327,7 @@ describe("Scene3dTileSettings", () => {
         target: { value: "4.5" },
       },
     );
-    expect(readModalSettings().pinholeCamera.imagePlaneDepthM).toBe(4.5);
+    expect(storedAppearance().pinholeCamera.imagePlaneDepthM).toBe(4.5);
 
     fireEvent.change(
       screen.getByRole("spinbutton", { name: "Frustum opacity (%)" }),
@@ -332,7 +335,7 @@ describe("Scene3dTileSettings", () => {
         target: { value: "40" },
       },
     );
-    expect(readModalSettings().pinholeCamera.opacityPercent).toBe(40);
+    expect(storedAppearance().pinholeCamera.opacityPercent).toBe(40);
   });
 
   it("lets a camera texture geometry be chosen without an image tile", () => {
@@ -346,9 +349,9 @@ describe("Scene3dTileSettings", () => {
     const geometry = getVoodooCombobox(/^Image geometry \(CAM_FRONT\)/);
     selectVoodooOption(geometry, "Raw");
 
-    expect(
-      readModalSettings().imageProjection["CAM_FRONT/image_raw"]?.geometry,
-    ).toBe("original");
+    expect(storedImageProjection("CAM_FRONT/image_raw")?.geometry).toBe(
+      "original",
+    );
   });
 
   it("wires the background controls to the settings updater", () => {
@@ -358,10 +361,10 @@ describe("Scene3dTileSettings", () => {
     fireEvent.change(screen.getByLabelText("Background color"), {
       target: { value: "#123456" },
     });
-    expect(readModalSettings().sceneBackground.solidColor).toBe("#123456");
+    expect(storedAppearance().sceneBackground.solidColor).toBe("#123456");
 
     selectVoodooOption(getVoodooCombobox(/^Background\b/), "Abyss");
-    expect(readModalSettings().sceneBackground.mode).toBe("abyss");
+    expect(storedAppearance().sceneBackground.mode).toBe("abyss");
   });
 
   it("keeps scene-scoped controls off the tile settings", () => {
@@ -475,13 +478,13 @@ describe("Scene3dTileSettings", () => {
       target: { value: "4.5" },
     });
 
-    expect(readModalSettings().pointCloudPointSize).toBe(4.5);
+    expect(storedAppearance().pointCloudPointSize).toBe(4.5);
 
     // Out-of-range commits clamp instead of writing through.
     fireEvent.change(input, {
       target: { value: "50" },
     });
-    expect(readModalSettings().pointCloudPointSize).toBe(10);
+    expect(storedAppearance().pointCloudPointSize).toBe(10);
   });
 
   it("keeps per-source default colormaps distinct", () => {
@@ -596,7 +599,7 @@ describe("Scene3dTileSettings", () => {
       screen.getByRole("switch", { name: "Show point cloud color legend" }),
     );
 
-    expect(readModalSettings().showPointCloudColorLegend).toBe(true);
+    expect(storedAppearance().showPointCloudColorLegend).toBe(true);
   });
 
   it("saves custom colormap edits from the editor modal", () => {
@@ -975,14 +978,17 @@ function renderSettings(
 ): SettingsTestProps {
   const props = settingsProps(overrides);
   seedModalSettings(props);
+  const sources = settingsSources(props);
   render(
-    <JotaiProvider store={store}>
-      <PlaybackProvider duration={1}>
-        <TileIdScope tileId="3d-1">
-          <Scene3dTileSettings {...componentProps(props)} />
-        </TileIdScope>
-      </PlaybackProvider>
-    </JotaiProvider>,
+    <SidebarPreferencesProvider scopeKey={SETTINGS_SCOPE} sources={sources}>
+      <JotaiProvider store={store}>
+        <PlaybackProvider duration={1}>
+          <TileIdScope tileId="3d-1">
+            <Scene3dTileSettings {...componentProps(props)} />
+          </TileIdScope>
+        </PlaybackProvider>
+      </JotaiProvider>
+    </SidebarPreferencesProvider>,
   );
   return props;
 }
@@ -1031,18 +1037,28 @@ function settingsProps(
 }
 
 function seedModalSettings(props: SettingsTestProps) {
-  writeModalSettings({
-    scoped: {},
-    imageLabelStreams: {},
-    imageProjection: {},
-    pinholeCamera: props.pinholeCamera,
-    pointCloudColors: props.pointCloudColors,
-    pointCloudPointSize: props.pointCloudPointSize,
-    referenceGrid: props.referenceGrid,
-    sceneBackground: props.sceneBackground,
-    showPointCloudColorLegend: props.showPointCloudColorLegend,
-  });
-  __resetModalSettingsForTests();
+  const sources = settingsSources(props);
+  updateSidebarPreferences(SETTINGS_SCOPE, (current) => ({
+    ...current,
+    appearance: {
+      pinholeCamera: props.pinholeCamera,
+      pointCloudPointSize: props.pointCloudPointSize,
+      referenceGrid: props.referenceGrid,
+      sceneBackground: props.sceneBackground,
+      showPointCloudColorLegend: props.showPointCloudColorLegend,
+    },
+    pointCloudColors: Object.fromEntries(
+      Object.entries(props.pointCloudColors).map(([stream, settings]) => {
+        const source =
+          sources.find((candidate) => candidate.id === stream) ??
+          ({
+            sourceName: stream,
+            type: SCENE_SOURCE_TYPE.POINT_CLOUD,
+          } as const);
+        return [semanticSourceKey(source), settings];
+      }),
+    ),
+  }));
 }
 
 function componentProps(props: SettingsTestProps): Scene3dTileSettingsProps {
@@ -1118,8 +1134,37 @@ function cameraStatus(
   };
 }
 
+function settingsSources(props: SettingsTestProps): readonly SceneSource[] {
+  return [
+    ...props.cameraSources,
+    ...props.cameraImageStreams.map((stream) =>
+      source(stream, stream, SCENE_SOURCE_TYPE.IMAGE),
+    ),
+    ...props.mapLayerSources,
+    ...props.pointCloudSources,
+    ...props.poseSources,
+    ...props.sceneAnnotationSources,
+  ];
+}
+
+function storedAppearance() {
+  return readSidebarPreferences(SETTINGS_SCOPE).appearance;
+}
+
+function storedImageProjection(stream: string) {
+  const key = semanticSourceKey({
+    sourceName: stream,
+    type: SCENE_SOURCE_TYPE.IMAGE,
+  });
+  return readSidebarPreferences(SETTINGS_SCOPE).imageProjection[key];
+}
+
 function storedPointCloudColor(stream: string) {
-  return readModalSettings().pointCloudColors[stream];
+  const key = semanticSourceKey({
+    sourceName: stream,
+    type: SCENE_SOURCE_TYPE.POINT_CLOUD,
+  });
+  return readSidebarPreferences(SETTINGS_SCOPE).pointCloudColors[key];
 }
 
 function source(

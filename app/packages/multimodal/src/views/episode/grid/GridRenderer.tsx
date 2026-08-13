@@ -32,8 +32,8 @@ import {
   useGridSelectedStream,
 } from "./grid-stream-state";
 import { useGridCameraPose } from "./grid-camera-state";
-import { cameraScopeKey } from "../shell/camera-scope";
 import { useSampleRendererFirstMatch } from "../../../extensions/timeline";
+import { cameraScopeKey } from "../scope/camera-scope";
 import { useGridPreview, type GridPreviewStatus } from "./use-grid-preview";
 
 const IMAGE_FIT = "cover";

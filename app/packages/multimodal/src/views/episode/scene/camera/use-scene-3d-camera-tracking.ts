@@ -90,7 +90,7 @@ export type { CameraTargetResolution } from "./scene-3d-camera";
 export interface Scene3dCameraTrackingRestore {
   readonly cameraView: Scene3dCameraViewSnapshot | null;
   readonly navigationCompositions: readonly Scene3dCameraComposition[];
-  readonly renderableSourceIds: readonly string[] | null;
+  readonly renderableSourceKeys: readonly string[] | null;
   readonly trackingMode: Scene3dTrackingMode | null;
 }
 
@@ -131,7 +131,7 @@ export function useScene3dCameraTracking({
   onCameraPoseSample,
   onDefaultTrackingModeChange,
   navigationReferenceSettled,
-  renderableSourceIds,
+  renderableSourceKeys,
   restore = null,
   sceneUpAxis = DEFAULT_SCENE_3D_UP_AXIS,
   selectedStreamsKey,
@@ -155,7 +155,7 @@ export function useScene3dCameraTracking({
   readonly onDefaultTrackingModeChange?: (mode: Scene3dTrackingMode) => void;
   /** Whether the incoming sample's durable world-frame choice has settled. */
   readonly navigationReferenceSettled: boolean;
-  readonly renderableSourceIds: readonly string[];
+  readonly renderableSourceKeys: readonly string[];
   readonly restore?: Scene3dCameraTrackingRestore | null;
   readonly sceneUpAxis?: Scene3dUpAxis;
   readonly selectedStreamsKey: string;
@@ -169,8 +169,8 @@ export function useScene3dCameraTracking({
 }) {
   const viewStateStore = useScene3dViewStateStore(suppliedViewStateStore);
   const restoreSourceShapeMatches = scene3dSourceShapeMatches(
-    restore?.renderableSourceIds ?? null,
-    renderableSourceIds,
+    restore?.renderableSourceKeys ?? null,
+    renderableSourceKeys,
   );
   // The restored tracking mode decides which camera restore is meaningful:
   // in follow modes the view is defined by the anchor (a target-relative
@@ -875,8 +875,8 @@ export function useScene3dCameraTracking({
 
     const snapshot = viewStateStore.getSnapshot();
     const navigationRestoreCompatible = scene3dSourceShapeMatches(
-      snapshot.renderableSourceIds,
-      renderableSourceIds,
+      snapshot.renderableSourceKeys,
+      renderableSourceKeys,
     );
     const carriedCameraView =
       snapshot.cameraView &&
@@ -936,7 +936,7 @@ export function useScene3dCameraTracking({
     defaultTrackingMode,
     placementStatus,
     recordNavigationComposition,
-    renderableSourceIds,
+    renderableSourceKeys,
     sourceKey,
     viewStateStore,
     worldFrameId,

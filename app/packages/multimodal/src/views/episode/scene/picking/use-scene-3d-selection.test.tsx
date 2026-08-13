@@ -12,7 +12,13 @@ import {
   type Scene3dViewStateStore,
   type Scene3dViewStateSnapshot,
 } from "../camera/scene-3d-view-state";
-import { PanelVisibilityProvider } from "../../tiles/panel-visibility";
+import {
+  PanelVisibilityProvider,
+  readScene3dTileVisibility,
+  writeScene3dTileVisibility,
+} from "../../tiles/panel-visibility";
+import { SIDEBAR_PREFERENCES_STORAGE_KEY } from "../../settings/sidebar-preferences";
+import { semanticSourceKey } from "../../settings/semantic-source";
 import {
   selectProvisionalPointCloudStream,
   useScene3dSelection,
@@ -460,6 +466,33 @@ describe("useScene3dSelection", () => {
     expect(viewStateStore.getSnapshot()).not.toHaveProperty("showCameraImages");
   });
 
+  it("keeps navigation source keys stable when recording-local ids change", () => {
+    const firstLidar = source(
+      "10",
+      SCENE_SOURCE_TYPE.POINT_CLOUD,
+      "/lidar/top",
+    );
+    const secondLidar = source(
+      "11",
+      SCENE_SOURCE_TYPE.POINT_CLOUD,
+      "/lidar/top",
+    );
+    const { rerender, result } = renderSelection([firstLidar]);
+
+    expect(result.current.renderableSourceIds).toEqual(["10"]);
+    expect(result.current.renderableSourceKeys).toEqual([
+      semanticSourceKey(firstLidar),
+    ]);
+
+    useSceneInventoryMock.mockReturnValue([secondLidar]);
+    rerender();
+
+    expect(result.current.renderableSourceIds).toEqual(["11"]);
+    expect(result.current.renderableSourceKeys).toEqual([
+      semanticSourceKey(secondLidar),
+    ]);
+  });
+
   it("keeps the outgoing source shape while the next stream is unbound", () => {
     let sourceKey = "source-a";
     useSceneInventoryMock.mockReturnValue([lidarTop]);
@@ -495,15 +528,13 @@ describe("useScene3dSelection", () => {
 
   it("restores per-tile visibility before applying fresh defaults", () => {
     const first = renderSelection([lidarTop, lidarFront, boxes]);
-    expect(
-      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
-    ).toBeNull();
+    expect(localStorage.getItem(SIDEBAR_PREFERENCES_STORAGE_KEY)).toBeNull();
     act(() => {
       first.result.current.toggleSource(lidarFront.id, true);
       first.result.current.toggleSource(boxes.id, true);
     });
     expect(
-      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
+      localStorage.getItem(SIDEBAR_PREFERENCES_STORAGE_KEY),
     ).not.toBeNull();
     expect(first.result.current.enabled).toEqual(
       new Set([lidarTop.id, lidarFront.id, boxes.id]),
@@ -515,6 +546,35 @@ describe("useScene3dSelection", () => {
     expect(restored.result.current.enabled).toEqual(
       new Set([lidarTop.id, lidarFront.id, boxes.id]),
     );
+  });
+
+  it("keeps trajectory overrides latent while a source is unavailable", () => {
+    const topKey = semanticSourceKey(lidarTop);
+    const frontKey = semanticSourceKey(lidarFront);
+    writeScene3dTileVisibility("dataset-a:field-a", "3d-1", {
+      cameraSelectionCustomized: false,
+      enabledSourceKeys: [topKey],
+      primarySourceKey: topKey,
+      trajectoryFrameOverrides: {
+        [frontKey]: "front-frame",
+        [topKey]: "top-frame",
+      },
+    });
+    const { result } = renderSelection([lidarTop]);
+
+    act(() => {
+      result.current.persistTrajectoryFrameOverrides({
+        [lidarTop.id]: "updated-top-frame",
+      });
+    });
+
+    expect(
+      readScene3dTileVisibility("dataset-a:field-a", "3d-1")
+        ?.trajectoryFrameOverrides,
+    ).toEqual({
+      [frontKey]: "front-frame",
+      [topKey]: "updated-top-frame",
+    });
   });
 
   it("restores label-only edits without freezing automatic cameras", () => {

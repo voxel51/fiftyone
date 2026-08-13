@@ -24,6 +24,9 @@ import {
   scene3dTilePlaybackSettingsAtom,
   type Scene3dTilePlaybackSettingsByTile,
 } from "../scene/tile/scene-3d-tile-state";
+import { cameraScopeKey } from "../scope/camera-scope";
+import { updateSidebarPreferences } from "../settings/sidebar-preferences";
+import { semanticSourceKey } from "../settings/semantic-source";
 
 // The tile bodies drag in WebGPU/Three at module load, which jsdom can't
 // evaluate. Layout restore only needs them to exist as components; the
@@ -214,6 +217,58 @@ describe("useModalLayout", () => {
     );
   });
 
+  it("restores image bindings without requiring an edited mosaic layout", () => {
+    writeSemanticImageBinding("dataset-a", "image-1", "/a");
+    const { result } = renderLayoutHook(
+      [
+        {
+          id: "/a",
+          label: "a",
+          recordCount: 10,
+          sourceName: "/a",
+          type: "image",
+        },
+        {
+          id: "/b",
+          label: "b",
+          recordCount: 90,
+          sourceName: "/b",
+          type: "image",
+        },
+      ],
+      "dataset-a",
+    );
+
+    expect(renderedSourceOf(result.current.initialTiles["image-1"])).toBe("/a");
+    expect(renderedSourceOf(result.current.initialTiles["image-2"])).toBe("/b");
+    expect(readModalLayout("dataset-a")?.layout).toBeUndefined();
+  });
+
+  it("uses the first runtime channel for duplicate semantic image sources", () => {
+    writeSemanticImageBinding("dataset-a", "image-1", "/camera/front");
+    const { result } = renderLayoutHook(
+      [
+        {
+          id: "channel-7",
+          label: "front duplicate 1",
+          sourceName: "/camera/front",
+          type: "image",
+        },
+        {
+          id: "channel-19",
+          label: "front duplicate 2",
+          sourceName: "/camera/front",
+          type: "image",
+        },
+      ],
+      "dataset-a",
+    );
+
+    expect(renderedSourceOf(result.current.initialTiles["image-1"])).toBe(
+      "channel-7",
+    );
+  });
+
   it("omits default tiles for types absent from the scene", () => {
     const { result } = renderLayoutHook([SCENE_SOURCES[0]]);
     expect(Object.keys(result.current.initialTiles)).toEqual(["image-1"]);
@@ -365,6 +420,80 @@ describe("useModalLayout", () => {
 
     expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe("/b");
     expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe("/a");
+  });
+
+  it("restores valid image bindings by tile id", () => {
+    writeSemanticImageBinding("dataset-a", "image-3", "/a");
+    writeSemanticImageBinding("dataset-a", "image-8", "/b");
+    writeModalLayout(
+      {
+        layout: {
+          direction: "row",
+          first: "image-3",
+          second: "image-8",
+        },
+      },
+      "dataset-a",
+    );
+    const { result } = renderLayoutHook(
+      [
+        {
+          id: "/a",
+          label: "a",
+          recordCount: 10,
+          sourceName: "/a",
+          type: "image",
+        },
+        {
+          id: "/b",
+          label: "b",
+          recordCount: 90,
+          sourceName: "/b",
+          type: "image",
+        },
+      ],
+      "dataset-a",
+    );
+
+    expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe("/a");
+    expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe("/b");
+  });
+
+  it("keeps ranked fallbacks distinct from valid restored bindings", () => {
+    writeSemanticImageBinding("dataset-a", "image-3", "/missing");
+    writeSemanticImageBinding("dataset-a", "image-8", "/b");
+    writeModalLayout(
+      {
+        layout: {
+          direction: "row",
+          first: "image-3",
+          second: "image-8",
+        },
+      },
+      "dataset-a",
+    );
+    const { result } = renderLayoutHook(
+      [
+        {
+          id: "/a",
+          label: "a",
+          recordCount: 10,
+          sourceName: "/a",
+          type: "image",
+        },
+        {
+          id: "/b",
+          label: "b",
+          recordCount: 90,
+          sourceName: "/b",
+          type: "image",
+        },
+      ],
+      "dataset-a",
+    );
+
+    expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe("/a");
+    expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe("/b");
   });
 
   it("rebinds restored image tiles to preferred equivalents", () => {
@@ -642,6 +771,23 @@ describe("useModalLayout", () => {
     expect(result.current.sceneUpAxis).toBe("z");
   });
 });
+
+function writeSemanticImageBinding(
+  datasetId: string,
+  tileId: string,
+  sourceName: string,
+): void {
+  const scope = cameraScopeKey(datasetId, undefined);
+  if (!scope) throw new Error("expected a dataset scope");
+  const imageSourceKey = semanticSourceKey({ sourceName, type: "image" });
+  updateSidebarPreferences(scope, (current) => ({
+    ...current,
+    tiles: {
+      ...current.tiles,
+      [tileId]: { ...current.tiles[tileId], imageSourceKey },
+    },
+  }));
+}
 
 describe("pruneMosaicLayout", () => {
   const rejecting =

@@ -1,4 +1,4 @@
-/** Stable collision-free identity for camera state within one media field. */
+/** Stable collision-free preference identity within one dataset/media field. */
 export function cameraScopeKey(
   datasetOrSourceId: string | undefined,
   mediaField: string | undefined,
