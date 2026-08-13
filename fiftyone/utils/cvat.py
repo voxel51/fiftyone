@@ -7241,11 +7241,12 @@ class CVATShape(CVATLabel):
         if "width" in metadata and "height" in metadata:
             self.frame_size = (metadata["width"], metadata["height"])
 
-        self.points = label_dict["points"]
+        self.points = label_dict.get("points", [])
         self.index = index
 
         # Skeleton shapes store their keypoints in an "elements" array of
-        # per-node shapes rather than in "points", which is always empty
+        # per-node shapes rather than in "points", which CVAT sends as an
+        # empty list
         if label_dict.get("type", None) == "skeleton":
             self.skeleton_elements = label_dict.get("elements", None) or []
         else:
