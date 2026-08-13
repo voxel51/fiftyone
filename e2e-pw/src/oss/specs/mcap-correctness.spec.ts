@@ -20,6 +20,15 @@ const fixturePaths = {
   long: path.join(fixtureDir, long.fileName),
   unsupported: path.join(fixtureDir, unsupported.fileName),
 };
+const cameraPoseFileNames = [
+  "camera-pose-a.mcap",
+  "camera-pose-b.mcap",
+  "camera-pose-c.mcap",
+  "camera-pose-d.mcap",
+] as const;
+const cameraPosePaths = cameraPoseFileNames.map((fileName) =>
+  path.join(fixtureDir, fileName),
+);
 const sampleIndex = {
   episodeA: 0,
   episodeB: 1,
@@ -27,6 +36,7 @@ const sampleIndex = {
   long: 3,
   shortAfterLong: 4,
   unsupported: 5,
+  cameraPoseStart: 6,
 } as const;
 const longExpectation = {
   diagnosticBeforeMidpointSecond:
@@ -78,6 +88,13 @@ test.describe.serial("MCAP correctness", () => {
         kind: long.kind,
         outputPath: fixturePaths.long,
       }),
+      ...cameraPosePaths.map((outputPath, index) =>
+        mediaFactory.createMcapFixture({
+          channelIdOffset: index % 2,
+          kind: tinyA.kind,
+          outputPath,
+        }),
+      ),
     ]);
     await fs.writeFile(fixturePaths.invalid, "not an mcap file");
 
@@ -93,6 +110,10 @@ dataset.add_samples([
     fo.Sample(filepath=r"${fixturePaths.long}", name="long-episode"),
     fo.Sample(filepath=r"${fixturePaths.episodeA}", name="short-after-long"),
     fo.Sample(filepath=r"${fixturePaths.unsupported}", name="unsupported-episode"),
+    fo.Sample(filepath=r"${cameraPosePaths[0]}", name="camera-pose-a"),
+    fo.Sample(filepath=r"${cameraPosePaths[1]}", name="camera-pose-b"),
+    fo.Sample(filepath=r"${cameraPosePaths[2]}", name="camera-pose-c"),
+    fo.Sample(filepath=r"${cameraPosePaths[3]}", name="camera-pose-d"),
 ])
   `);
   });
@@ -184,6 +205,29 @@ if fo.dataset_exists("${datasetName}"):
     await modal.episode.selectImageSource("camera/side", "camera/rear");
     await modal.episode.expectTileTitleCount("camera/rear", 1);
     await modal.episode.expectTileTitleCount("camera/side", 1);
+  });
+
+  test("persists the ego camera pose across channel-id changes and modal reopen", async ({
+    grid,
+    modal,
+  }) => {
+    await openMcapModal(grid, modal, sampleIndex.cameraPoseStart);
+    await modal.episode.waitForReady(cameraPoseFileNames[0]);
+    const egoPose = await modal.episode.applyEgoView("points");
+
+    for (const fileName of cameraPoseFileNames.slice(1)) {
+      await modal.episode.navigateDatasetSample("forward", fileName);
+      await modal.episode.expectCameraPose("points", egoPose);
+    }
+
+    await modal.close();
+    await openMcapModal(
+      grid,
+      modal,
+      sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+    );
+    await modal.episode.waitForReady(cameraPoseFileNames.at(-1)!);
+    await modal.episode.expectCameraPose("points", egoPose);
   });
 
   test("keeps paused stepping, raw values, logs, and image pixels synchronized", async ({

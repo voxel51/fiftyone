@@ -69,6 +69,26 @@ describe("MCAP correctness fixtures", () => {
     ]);
   });
 
+  it("can shift recording-local channel ids without changing payload topics", async () => {
+    const shiftedPath = path.join(outputDir, "tiny-episode-a-shifted.mcap");
+    await createMcapFixture({
+      channelIdOffset: 1,
+      kind: "tiny-episode-a",
+      outputPath: shiftedPath,
+    });
+
+    const original = await openReader(
+      await fs.readFile(reports["tiny-episode-a"].outputPath),
+    );
+    const shifted = await openReader(await fs.readFile(shiftedPath));
+    expect(channel(shifted, "/points").id).toBe(
+      channel(original, "/points").id + 1,
+    );
+    expect(topics(shifted).filter((topic) => !topic.startsWith("/__"))).toEqual(
+      topics(original),
+    );
+  });
+
   it("preserves fixture A tick values and absolute time", async () => {
     const reader = await openReader(
       await fs.readFile(reports["tiny-episode-a"].outputPath),

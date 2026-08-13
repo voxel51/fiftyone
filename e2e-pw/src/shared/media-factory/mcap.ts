@@ -113,13 +113,19 @@ interface FixtureDefinition {
 
 /** Writes one deterministic, indexed, uncompressed MCAP correctness fixture. */
 export async function createMcapFixture({
+  channelIdOffset = 0,
   kind,
   outputPath,
 }: {
+  /** Empty leading channels used to vary otherwise recording-local ids. */
+  readonly channelIdOffset?: number;
   readonly kind: McapFixtureKind;
   readonly outputPath: string;
 }): Promise<McapFixtureReport> {
   const definition = fixtureDefinition(kind);
+  if (!Number.isInteger(channelIdOffset) || channelIdOffset < 0) {
+    throw new Error("channel id offset must be a non-negative integer");
+  }
   const target = new MemoryWritable();
   const writer = new McapWriter({
     chunkSize: 1024 * 1024,
@@ -131,6 +137,20 @@ export async function createMcapFixture({
     writable: target,
   });
   await writer.start({ library: "fiftyone-e2e-pw", profile: "" });
+
+  for (let index = 0; index < channelIdOffset; index++) {
+    const schemaId = await writer.registerSchema({
+      data: jsonSchemaData("fiftyone.e2e.ChannelIdPadding"),
+      encoding: "jsonschema",
+      name: "fiftyone.e2e.ChannelIdPadding",
+    });
+    await writer.registerChannel({
+      messageEncoding: "json",
+      metadata: new Map(),
+      schemaId,
+      topic: `/__channel_id_padding/${index}`,
+    });
+  }
 
   const channelIds: number[] = [];
   for (const channel of definition.channels) {

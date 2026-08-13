@@ -73,10 +73,70 @@ export class EpisodePom {
     direction: "forward" | "backward",
     fileName: string,
   ): Promise<void> {
+    await this.blurActiveElement();
     await this.page.keyboard.press(
       direction === "forward" ? "ArrowRight" : "ArrowLeft",
     );
     await this.waitForReady(fileName);
+  }
+
+  async applyEgoView(
+    tileTitle: string,
+  ): Promise<Readonly<Record<string, number>>> {
+    const inputs = await this.openViewpointInputs(tileTitle);
+    const previousPose = await this.readCameraPoseInputs(inputs);
+    await this.blurActiveElement();
+    await this.page.keyboard.press("e");
+    await expect
+      .poll(() => this.readCameraPoseInputs(inputs), {
+        timeout: READY_TIMEOUT,
+      })
+      .not.toEqual(previousPose);
+    return this.readCameraPoseInputs(inputs);
+  }
+
+  async expectCameraPose(
+    tileTitle: string,
+    expected: Readonly<Record<string, number>>,
+  ): Promise<void> {
+    const inputs = await this.openViewpointInputs(tileTitle);
+    for (const [name, value] of Object.entries(expected)) {
+      const input = inputs.getByRole("spinbutton", { name });
+      await expect
+        .poll(() => input.inputValue().then(Number.parseFloat), {
+          timeout: READY_TIMEOUT,
+        })
+        .toBeCloseTo(value, 6);
+    }
+  }
+
+  private async readCameraPoseInputs(
+    inputs: Locator,
+  ): Promise<Readonly<Record<string, number>>> {
+    const pose: Record<string, number> = {};
+    for (const name of CAMERA_POSE_INPUT_NAMES) {
+      pose[name] = Number.parseFloat(
+        await inputs.getByRole("spinbutton", { name }).inputValue(),
+      );
+    }
+    return pose;
+  }
+
+  private async openViewpointInputs(tileTitle: string): Promise<Locator> {
+    await this.tileTitle(tileTitle).click();
+    const panelTab = this.scope.getByRole("tab", {
+      name: tileTitle,
+      exact: true,
+    });
+    await expect(panelTab).toBeVisible({ timeout: READY_TIMEOUT });
+    await panelTab.click();
+
+    const viewpoint = this.scope.getByRole("button", { name: /^Viewpoint/ });
+    if ((await viewpoint.getAttribute("aria-expanded")) !== "true") {
+      await viewpoint.click();
+    }
+    await expect(viewpoint).toHaveAttribute("aria-expanded", "true");
+    return this.scope;
   }
 
   async expectFileName(fileName: string): Promise<void> {
@@ -446,7 +506,22 @@ export class EpisodePom {
   private tileTitle(title: string): Locator {
     return this.tileTitles.filter({ hasText: exactText(title) });
   }
+
+  private async blurActiveElement(): Promise<void> {
+    await this.page.evaluate(() =>
+      (document.activeElement as HTMLElement | null)?.blur(),
+    );
+  }
 }
+
+const CAMERA_POSE_INPUT_NAMES = [
+  "Position X",
+  "Position Y",
+  "Position Z",
+  "Target X",
+  "Target Y",
+  "Target Z",
+] as const;
 
 function byDataTestId(root: Locator, id: string): Locator {
   return root.locator('[data-testid="' + id + '"]');
