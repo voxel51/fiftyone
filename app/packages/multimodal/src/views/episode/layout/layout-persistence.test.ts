@@ -5,6 +5,7 @@ import {
   readCameraPreferences,
   readModalLayout,
   sanitizeExtensionSettings,
+  sanitizeImageBindings,
   sanitizeLogSettings,
   sanitizeMapSettings,
   sanitizePlotSeries,
@@ -124,6 +125,7 @@ describe("layout-persistence", () => {
             mcap: { preferredWorldFrameId: "map" },
           },
           leftSidebarOpen: true,
+          imageBindings: { "image-1": "/cam/front" },
           plotSeries: {
             "plot-1": [{ color: "#3987e5", fieldPath: "x", stream: "/odom" }],
           },
@@ -474,6 +476,45 @@ describe("layout-persistence", () => {
       expect(sanitizePlotSeries([])).toBeUndefined();
       expect(sanitizePlotSeries("x")).toBeUndefined();
       expect(sanitizePlotSeries({ "plot-1": [] })).toBeUndefined();
+    });
+  });
+
+  describe("imageBindings", () => {
+    it("round-trips per-dataset image tile bindings", () => {
+      writeModalLayout({ imageBindings: { "image-1": "/cam/back" } }, "ds-a");
+
+      expect(readModalLayout("ds-a")?.imageBindings).toEqual({
+        "image-1": "/cam/back",
+      });
+      expect(readModalLayout("ds-b")?.imageBindings).toBeUndefined();
+    });
+
+    it("drops malformed rows and bounds the table", () => {
+      const rows = Object.fromEntries(
+        Array.from({ length: 40 }, (_, index) => [
+          `image-${index + 1}`,
+          `/cam/${index + 1}`,
+        ]),
+      );
+
+      const sanitized = sanitizeImageBindings({
+        ...rows,
+        "3d-1": "/not-an-image-pane",
+        "image-empty": "",
+        "image-long": "x".repeat(513),
+        "image-number": 7,
+      });
+
+      expect(Object.keys(sanitized ?? {})).toHaveLength(32);
+      expect(sanitized?.["image-1"]).toBe("/cam/1");
+      expect(sanitized?.["3d-1"]).toBeUndefined();
+    });
+
+    it("rejects non-object payloads", () => {
+      expect(sanitizeImageBindings(null)).toBeUndefined();
+      expect(sanitizeImageBindings([])).toBeUndefined();
+      expect(sanitizeImageBindings("x")).toBeUndefined();
+      expect(sanitizeImageBindings({})).toBeUndefined();
     });
   });
 

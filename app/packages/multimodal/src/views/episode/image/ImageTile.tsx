@@ -41,8 +41,11 @@ import {
 import {
   chooseNextImageStream,
   imageTileBindingsAtom,
+  persistedImageTileBindingsAtom,
+  resolveAvailableImageStream,
   useHoveredFrustumImageStream,
   useImageTileHoverProps,
+  usePersistImageTileBinding,
   usePublishImageTileBinding,
 } from "../tiles/tile-source-bindings";
 import ImageAnnotationOverlay from "./ImageAnnotationOverlay";
@@ -134,6 +137,14 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         jotaiStore.get(imageTileBindingsAtom),
       ),
   );
+  const persistImageTileBinding = usePersistImageTileBinding(stream);
+  const selectStream = useCallback(
+    (nextStream: string) => {
+      persistImageTileBinding(nextStream);
+      setStream(nextStream);
+    },
+    [persistImageTileBinding],
+  );
   const { labelStreams: storedLabelStreams, setLabelStreams } =
     useImageTileLabelStreams(stream);
   const { projection: label3dProjection, setProjection: setLabel3dProjection } =
@@ -145,17 +156,22 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     setProjection: setPointCloudProjection,
   } = useImageTilePointCloudProjection(stream);
 
-  // This effect binds the pane to the best undisplayed image source once
-  // sources resolve.
+  // This effect restores a returning durable preference or temporarily falls
+  // back when the current sample lacks it. Automatic fallback never writes
+  // the preference, so a later sample can restore the user's chosen source.
   useEffect(() => {
-    if (stream && images.some((source) => source.id === stream)) return;
-
-    const nextStream = chooseNextImageStream(
+    const preferredStream = tileId
+      ? jotaiStore.get(persistedImageTileBindingsAtom)[tileId]
+      : undefined;
+    const nextStream = resolveAvailableImageStream(
+      stream,
+      preferredStream,
+      images,
       rankDefaultImageSources(images),
       jotaiStore.get(imageTileBindingsAtom),
     );
     if (nextStream !== stream) setStream(nextStream);
-  }, [images, jotaiStore, stream]);
+  }, [images, jotaiStore, stream, tileId]);
 
   // Advertise this tile's stream so spawn points know what's on screen.
   usePublishImageTileBinding(stream);
@@ -709,7 +725,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           setLabel3dProjection={setLabel3dProjection}
           setLabelStreams={setLabelStreams}
           setPointCloudProjection={setPointCloudProjection}
-          setStream={setStream}
+          setStream={selectStream}
           stream={stream}
           toggleLabelStream={toggleLabelStream}
           toggleProjectionStream={toggleProjectionStream}
@@ -740,6 +756,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       selectedLabelStreams,
       selectedProjectionStreams,
       selectedSceneAnnotationStreams,
+      selectStream,
       setCameraProjection,
       setLabel3dProjection,
       setLabelStreams,

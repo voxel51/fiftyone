@@ -24,6 +24,7 @@ import {
   scene3dTilePlaybackSettingsAtom,
   type Scene3dTilePlaybackSettingsByTile,
 } from "../scene/tile/scene-3d-tile-state";
+import { persistedImageTileBindingsAtom } from "../tiles/tile-source-bindings";
 
 // The tile bodies drag in WebGPU/Three at module load, which jsdom can't
 // evaluate. Layout restore only needs them to exist as components; the
@@ -214,6 +215,33 @@ describe("useModalLayout", () => {
     );
   });
 
+  it("restores image bindings without requiring an edited mosaic layout", () => {
+    writeModalLayout({ imageBindings: { "image-1": "/a" } }, "dataset-a");
+    const { result } = renderLayoutHook(
+      [
+        {
+          id: "/a",
+          label: "a",
+          recordCount: 10,
+          sourceName: "/a",
+          type: "image",
+        },
+        {
+          id: "/b",
+          label: "b",
+          recordCount: 90,
+          sourceName: "/b",
+          type: "image",
+        },
+      ],
+      "dataset-a",
+    );
+
+    expect(renderedSourceOf(result.current.initialTiles["image-1"])).toBe("/a");
+    expect(renderedSourceOf(result.current.initialTiles["image-2"])).toBe("/b");
+    expect(readModalLayout("dataset-a")?.layout).toBeUndefined();
+  });
+
   it("omits default tiles for types absent from the scene", () => {
     const { result } = renderLayoutHook([SCENE_SOURCES[0]]);
     expect(Object.keys(result.current.initialTiles)).toEqual(["image-1"]);
@@ -365,6 +393,84 @@ describe("useModalLayout", () => {
 
     expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe("/b");
     expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe("/a");
+  });
+
+  it("restores valid image bindings by tile id", () => {
+    writeModalLayout(
+      {
+        imageBindings: {
+          "image-3": "/a",
+          "image-8": "/b",
+        },
+        layout: {
+          direction: "row",
+          first: "image-3",
+          second: "image-8",
+        },
+      },
+      "dataset-a",
+    );
+    const { result } = renderLayoutHook(
+      [
+        {
+          id: "/a",
+          label: "a",
+          recordCount: 10,
+          sourceName: "/a",
+          type: "image",
+        },
+        {
+          id: "/b",
+          label: "b",
+          recordCount: 90,
+          sourceName: "/b",
+          type: "image",
+        },
+      ],
+      "dataset-a",
+    );
+
+    expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe("/a");
+    expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe("/b");
+  });
+
+  it("keeps ranked fallbacks distinct from valid restored bindings", () => {
+    writeModalLayout(
+      {
+        imageBindings: {
+          "image-3": "/missing",
+          "image-8": "/b",
+        },
+        layout: {
+          direction: "row",
+          first: "image-3",
+          second: "image-8",
+        },
+      },
+      "dataset-a",
+    );
+    const { result } = renderLayoutHook(
+      [
+        {
+          id: "/a",
+          label: "a",
+          recordCount: 10,
+          sourceName: "/a",
+          type: "image",
+        },
+        {
+          id: "/b",
+          label: "b",
+          recordCount: 90,
+          sourceName: "/b",
+          type: "image",
+        },
+      ],
+      "dataset-a",
+    );
+
+    expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe("/a");
+    expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe("/b");
   });
 
   it("rebinds restored image tiles to preferred equivalents", () => {
@@ -798,6 +904,32 @@ describe("ModalLayoutPersistence", () => {
     return null;
   }
 
+  function ImageBindingsDriver({
+    next,
+  }: {
+    readonly next: Readonly<Record<string, string>> | null;
+  }) {
+    const store = useStore();
+    // This effect stands in for intentional image-pane binding changes.
+    useEffect(() => {
+      if (next) store.set(persistedImageTileBindingsAtom, next);
+    }, [next, store]);
+    return null;
+  }
+
+  function ImageBindingsProbe({
+    onValue,
+  }: {
+    readonly onValue: (value: Readonly<Record<string, string>>) => void;
+  }) {
+    const value = useAtomValue(persistedImageTileBindingsAtom);
+    // This effect exposes atom updates to the test assertion.
+    useEffect(() => {
+      onValue(value);
+    }, [onValue, value]);
+    return null;
+  }
+
   // Two tiles so the provider's derived initial layout differs from the
   // single-leaf arrangement the driver applies — persistence only writes
   // once the layout changes from what the mount started with.
@@ -928,6 +1060,86 @@ describe("ModalLayoutPersistence", () => {
 
     expect(values.at(-1)).toEqual({
       "3d-1": { smoothTrackedLabels: true },
+    });
+  });
+
+  it("seeds and mirrors durable image bindings for surviving panes", () => {
+    writeModalLayout(
+      { imageBindings: { "image-1": "/cam/front" } },
+      "dataset-a",
+    );
+    const values: unknown[] = [];
+    const imageTiles = {
+      "image-1": { title: "Image", render: () => null, type: "image" },
+    };
+    const { rerender } = render(
+      <TilingProvider initialTiles={imageTiles}>
+        <ModalLayoutPersistence datasetId="dataset-a" />
+        <ImageBindingsDriver next={null} />
+        <ImageBindingsProbe onValue={(value) => values.push(value)} />
+      </TilingProvider>,
+    );
+
+    expect(values.at(-1)).toEqual({ "image-1": "/cam/front" });
+
+    rerender(
+      <TilingProvider initialTiles={imageTiles}>
+        <ModalLayoutPersistence datasetId="dataset-a" />
+        <ImageBindingsDriver next={{ "image-1": "/cam/back" }} />
+        <ImageBindingsProbe onValue={(value) => values.push(value)} />
+      </TilingProvider>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(readModalLayout("dataset-a")?.imageBindings).toEqual({
+      "image-1": "/cam/back",
+    });
+  });
+
+  it("removes durable bindings when the pane leaves the live layout", () => {
+    writeModalLayout(
+      { imageBindings: { "image-1": "/cam/front" } },
+      "dataset-a",
+    );
+    render(
+      <TilingProvider
+        initialTiles={{
+          "3d-1": { title: "3D", render: () => null, type: "3d" },
+          "image-1": { title: "Image", render: () => null, type: "image" },
+        }}
+      >
+        <ModalLayoutPersistence datasetId="dataset-a" />
+        <LayoutDriver next="3d-1" />
+      </TilingProvider>,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(readModalLayout("dataset-a")?.imageBindings).toBeUndefined();
+  });
+
+  it("does not erase durable image bindings during modal teardown", () => {
+    writeModalLayout(
+      { imageBindings: { "image-1": "/cam/back" } },
+      "dataset-a",
+    );
+    const { unmount } = render(
+      <TilingProvider
+        initialTiles={{
+          "image-1": { title: "Image", render: () => null, type: "image" },
+        }}
+      >
+        <ModalLayoutPersistence datasetId="dataset-a" />
+      </TilingProvider>,
+    );
+
+    unmount();
+
+    expect(readModalLayout("dataset-a")?.imageBindings).toEqual({
+      "image-1": "/cam/back",
     });
   });
 
