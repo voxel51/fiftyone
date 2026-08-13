@@ -180,6 +180,13 @@ describe("PlanarCamera cursor", () => {
     pointer("pointerup", { pointerId: 1 });
     expect(element.style.cursor).toBe("grab");
 
+    // A cancelled drag (e.g. the browser reclaims the pointer) must
+    // release the cursor through the same path
+    pointer("pointerdown", { pointerId: 2, button: 0, offsetX: 50 });
+    expect(element.style.cursor).toBe("grabbing");
+    pointer("pointercancel", { pointerId: 2 });
+    expect(element.style.cursor).toBe("grab");
+
     camera.destroy();
   });
 });
