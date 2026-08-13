@@ -462,19 +462,19 @@ export class Sample {
       const child = LIST_LABEL_CHILD[type]!;
       const existing = this.getResolved<Record<string, unknown>>(path);
 
-      if (!existing) {
-        return;
+      if (existing) {
+        const prior = Array.isArray(existing[child])
+          ? (existing[child] as LabelData[])
+          : [];
+
+        this.transientData[path] = {
+          ...existing,
+          [child]: prior.filter((l) => l._id !== id),
+        };
       }
 
-      const prior = Array.isArray(existing[child])
-        ? (existing[child] as LabelData[])
-        : [];
-
-      this.transientData[path] = {
-        ...existing,
-        [child]: prior.filter((l) => l._id !== id),
-      };
-
+      // Notify even when nothing was removed — subscribers key off the
+      // announcement, not the data diff.
       this.notify([{ path, labelId: id, kind: SampleChangeKind.Delete }]);
 
       return;

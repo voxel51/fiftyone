@@ -30,12 +30,9 @@ export default function useLabelAttributeToggle(path: string, modal: boolean) {
     return null;
   }
 
-  const isShown = shown.includes(row.attribute);
   return {
     attribute: row.attribute,
-    isShown,
-    // hiding the last shown attribute is not allowed
-    locked: isShown && shown.length === 1,
+    isShown: shown.includes(row.attribute),
     toggle,
   };
 }

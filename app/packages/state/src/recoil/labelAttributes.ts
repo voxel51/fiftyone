@@ -68,9 +68,10 @@ const labelAttributeNames = selectorFamily<string[], string>({
 
 /**
  * The attribute names of a label field rendered as text in looker overlays.
- * Attributes no longer present in the schema are silently dropped; when
- * nothing valid remains, the default applies. Setting an empty list is
- * ignored so at least one attribute is always shown.
+ * An explicitly empty list means the user turned every attribute off and
+ * renders no text. Attributes no longer present in the schema are silently
+ * dropped; when a non-empty list loses every valid entry, the default
+ * applies.
  */
 export const shownLabelAttributes = selectorFamily<string[], string>({
   key: "shownLabelAttributes",
@@ -78,8 +79,12 @@ export const shownLabelAttributes = selectorFamily<string[], string>({
     (path) =>
     ({ get }) => {
       const stored = get(shownLabelAttributesMap)[path];
-      if (!stored?.length) {
+      if (!stored) {
         return DEFAULT_SHOWN_LABEL_ATTRIBUTES;
+      }
+
+      if (!stored.length) {
+        return stored;
       }
 
       const valid = new Set(get(labelAttributeNames(path)));
@@ -89,7 +94,7 @@ export const shownLabelAttributes = selectorFamily<string[], string>({
   set:
     (path) =>
     ({ get, set }, value) => {
-      if (value instanceof DefaultValue || !value.length) {
+      if (value instanceof DefaultValue) {
         return;
       }
 
@@ -195,11 +200,7 @@ export const labelAttributeRow = selectorFamily<
 export const toggleShownLabelAttribute = (
   shown: string[],
   attribute: string,
-): string[] => {
-  if (!shown.includes(attribute)) {
-    return [...shown, attribute];
-  }
-
-  const next = shown.filter((name) => name !== attribute);
-  return next.length ? next : shown;
-};
+): string[] =>
+  shown.includes(attribute)
+    ? shown.filter((name) => name !== attribute)
+    : [...shown, attribute];

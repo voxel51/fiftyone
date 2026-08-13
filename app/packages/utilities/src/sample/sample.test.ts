@@ -311,6 +311,18 @@ describe("Sample", () => {
       s.setField("detection", makeDet("d1", "cat-revived"));
       expect(s.getResolved("detection")).toEqual(makeDet("d1", "cat-revived"));
     });
+
+    it("notifies a list-label delete even when the parent has no value", () => {
+      const s = new Sample({ schema: detectionsSchema });
+      const changes: unknown[] = [];
+      s.subscribeChanges((c) => changes.push(...c));
+      s.deleteLabel("ground_truth", "d1");
+      expect(changes).toEqual([
+        { path: "ground_truth", labelId: "d1", kind: SampleChangeKind.Delete },
+      ]);
+      // nothing existed, so nothing persists
+      expect(s.getJsonPatch()).toEqual([]);
+    });
   });
 
   describe("getJsonPatch", () => {
