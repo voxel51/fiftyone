@@ -48,6 +48,7 @@ export interface GridPreviewState extends GridPreviewSnapshot {
  */
 export interface UseGridPreviewOptions {
   readonly cacheRequestKey?: string | null;
+  /** Snapshot for `cacheRequestKey`; keep its identity stable while the key is unchanged. */
   readonly cachedPoster?: GridPosterCacheEntry | null;
   readonly enabled?: boolean;
   /** Whether this tile is the user's current interactive target. */
@@ -110,6 +111,8 @@ export function useGridPreview({
   );
   const [stateOwnerKey, setStateOwnerKey] = useState(cacheRequestKey);
   const [playing, setPlaying] = useState(false);
+  const cachedPosterRef = useRef(cachedPoster);
+  cachedPosterRef.current = cachedPoster;
   // Bumped whenever the still-frame load below commits a fresh result
   // (a poster move included) — the hover loop depends on it so a poster
   // moving out from under an in-progress loop tears the stale loop down
@@ -159,14 +162,8 @@ export function useGridPreview({
     finishBuffering();
     setPlaying(false);
     setStateOwnerKey(cacheRequestKey);
-    setState(seededSnapshot(source, cachedPoster));
-  }, [
-    cacheRequestKey,
-    cachedPoster,
-    finishBuffering,
-    selectedSourceName,
-    source,
-  ]);
+    setState(seededSnapshot(source, cachedPosterRef.current));
+  }, [cacheRequestKey, finishBuffering, selectedSourceName, source]);
 
   // This effect surfaces adapter failures and unsupported preview providers
   // without exposing format details to the grid.
@@ -181,18 +178,12 @@ export function useGridPreview({
       return;
     }
     if (previewSessionStatus === "unavailable") {
-      setState((current) =>
-        current.cachedPoster
-          ? current
-          : { ...IDLE_PREVIEW_STATE, status: "unavailable" },
-      );
+      setState((current) => preservingCachedPoster(current, "unavailable"));
       return;
     }
     if (previewSessionStatus === "error") {
       setState((current) => ({
-        ...(current.cachedPoster
-          ? current
-          : { ...IDLE_PREVIEW_STATE, status: "error" as const }),
+        ...preservingCachedPoster(current, "error"),
         error: previewSessionError ?? "Episode preview failed to open",
       }));
     }
@@ -247,10 +238,7 @@ export function useGridPreview({
           };
           frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
-          setState((current) => ({
-            ...snapshotFromResult(result),
-            cachedPoster: current.cachedPoster,
-          }));
+          setState((current) => resultPreservingCachedPoster(current, result));
           setLoadGeneration((g) => g + 1);
         }
       })
@@ -260,9 +248,7 @@ export function useGridPreview({
         }
 
         setState((current) => ({
-          ...(current.cachedPoster
-            ? current
-            : { ...IDLE_PREVIEW_STATE, status: "error" as const }),
+          ...preservingCachedPoster(current, "error"),
           error: errorMessage(caughtError),
         }));
       })
@@ -371,10 +357,7 @@ export function useGridPreview({
 
           frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
-          setState((current) => ({
-            ...snapshotFromResult(result),
-            cachedPoster: current.cachedPoster,
-          }));
+          setState((current) => resultPreservingCachedPoster(current, result));
           previousFrameTimeNs = result.frameTimeNs;
           presentedAtMs = performance.now();
         }
@@ -433,6 +416,25 @@ function seededSnapshot(
     streamSourceName: cachedPoster.streamSourceName,
     streamSourceNames: cachedPoster.streamSourceNames,
     status: "ready",
+  };
+}
+
+function preservingCachedPoster(
+  current: GridPreviewSnapshot,
+  fallbackStatus: GridPreviewStatus,
+): GridPreviewSnapshot {
+  return current.cachedPoster
+    ? current
+    : { ...IDLE_PREVIEW_STATE, status: fallbackStatus };
+}
+
+function resultPreservingCachedPoster(
+  current: GridPreviewSnapshot,
+  result: EpisodePreviewReadResult,
+): GridPreviewSnapshot {
+  return {
+    ...snapshotFromResult(result),
+    cachedPoster: current.cachedPoster,
   };
 }
 

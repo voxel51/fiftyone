@@ -1,5 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -179,8 +180,11 @@ describe("fixture adapter through the production grid renderer", () => {
       {},
       expect.objectContaining({ priority: "current" }),
     );
-    fireEvent.pointerLeave(remounted.container.firstElementChild as Element);
-    fireEvent.pointerEnter(remounted.container.firstElementChild as Element);
+    await act(async () => {
+      fireEvent.pointerLeave(remounted.container.firstElementChild as Element);
+      fireEvent.pointerEnter(remounted.container.firstElementChild as Element);
+      await Promise.resolve();
+    });
     expect(read).toHaveBeenCalledTimes(1);
   });
 });

@@ -75,6 +75,66 @@ describe("useGridPreview", () => {
     expect(latest.current?.status).toBe("loading");
   });
 
+  it("preserves a cached poster when the preview session fails", async () => {
+    const latest = { current: null as GridPreviewState | null };
+    render(
+      <PreviewHarness
+        cacheRequestKey="cached-error"
+        cachedPoster={cachedPoster()}
+        id="cached-error"
+        onState={(state) => {
+          latest.current = state;
+        }}
+        previewSession={null}
+        previewSessionStatus="error"
+        source={sourceForId("cached-error")}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(latest.current?.error).toBe("Episode preview failed to open"),
+    );
+    expect(latest.current?.cachedPoster?.bytes[0]).toBe(7);
+    expect(latest.current?.status).toBe("ready");
+  });
+
+  it("does not reset a live preview when same-key poster identity changes", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1, 2, 3] }),
+    );
+    const source = sourceForId("same-key-poster");
+    const { rerender } = render(
+      <PreviewHarness
+        cacheRequestKey="same-key"
+        cachedPoster={cachedPoster()}
+        id="same-key-poster"
+        source={source}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("preview-same-key-poster").textContent).toBe(
+        "ready:1:frame:",
+      ),
+    );
+
+    rerender(
+      <PreviewHarness
+        cacheRequestKey="same-key"
+        cachedPoster={{ ...cachedPoster(), bytes: new Uint8Array([9]) }}
+        id="same-key-poster"
+        source={source}
+      />,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("preview-same-key-poster").textContent).toBe(
+      "ready:1:frame:",
+    );
+  });
+
   it("loads an initial preview through the preview session", async () => {
     sessionHarness.session.read.mockResolvedValueOnce(
       readyResult({ bytes: [1, 2, 3], nextStartTimeNs: 5n }),
@@ -822,6 +882,7 @@ function PreviewHarness({
   posterStartTimeNs,
   posterSourceName,
   previewSession,
+  previewSessionStatus,
   selectedSourceName,
   source,
 }: {
@@ -835,6 +896,12 @@ function PreviewHarness({
   readonly posterStartTimeNs?: bigint | null;
   readonly posterSourceName?: string | null;
   readonly previewSession?: EpisodePreviewSession | null;
+  readonly previewSessionStatus?:
+    | "error"
+    | "idle"
+    | "loading"
+    | "ready"
+    | "unavailable";
   readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }) {
@@ -850,7 +917,8 @@ function PreviewHarness({
       previewSession === undefined
         ? (sessionHarness.session as EpisodePreviewSession)
         : previewSession,
-    previewSessionStatus: previewSession === null ? "idle" : "ready",
+    previewSessionStatus:
+      previewSessionStatus ?? (previewSession === null ? "idle" : "ready"),
     selectedSourceName,
     source,
   });
