@@ -11,6 +11,7 @@ import {
   loopEndAtom,
   loopStartAtom,
   playheadAtom,
+  seekEventAtom,
   speedAtom,
   stepIntervalAtom,
   viewEndAtom,
@@ -22,7 +23,11 @@ import {
   usePlayback,
   usePlaybackStore,
 } from "./PlaybackProvider";
-import { bumpStreamRangesVersion, setBufferedRanges } from "./store-access";
+import {
+  bumpStreamRangesVersion,
+  setBufferedRanges,
+  setSeekFetchDebounceMs,
+} from "./store-access";
 import type { PlaybackStream, TimelineMode } from "./types";
 import { MAX_SPEED } from "../constants";
 
@@ -31,6 +36,8 @@ interface RenderOpts {
   defaultLoopStart?: number;
   defaultLoopEnd?: number;
   snapToFrameOnSettle?: boolean;
+  seekFetchDebounceMs?: number;
+  mode?: TimelineMode;
 }
 
 function renderEngine(opts: RenderOpts = {}) {
@@ -39,6 +46,8 @@ function renderEngine(opts: RenderOpts = {}) {
     defaultLoopStart,
     defaultLoopEnd,
     snapToFrameOnSettle,
+    seekFetchDebounceMs,
+    mode,
   } = opts;
   return renderHook(
     () => {
@@ -64,6 +73,8 @@ function renderEngine(opts: RenderOpts = {}) {
           defaultLoopStart={defaultLoopStart}
           defaultLoopEnd={defaultLoopEnd}
           snapToFrameOnSettle={snapToFrameOnSettle}
+          seekFetchDebounceMs={seekFetchDebounceMs}
+          mode={mode}
         >
           {children}
         </PlaybackProvider>
@@ -288,6 +299,16 @@ describe("PlaybackProvider engine actions", () => {
       act(() => result.current.api.seek(10));
       act(() => result.current.api.stepForward());
       expect(result.current.playhead).toBeCloseTo(299 / 30, 5);
+    });
+
+    it("stepForward preserves the inclusive endpoint of an absolute timeline", () => {
+      const { result } = renderEngine({
+        duration: 10,
+        mode: { kind: "absolute", epochAnchorMs: 0 },
+      });
+      act(() => result.current.api.seek(10));
+      act(() => result.current.api.stepForward());
+      expect(result.current.playhead).toBe(10);
     });
 
     it("stepForward can enter a partial trailing frame", () => {
@@ -1228,28 +1249,170 @@ describe("PlaybackProvider engine actions", () => {
     });
   });
 
-  describe("seek event debouncing", () => {
-    it("seek (non-immediate) is debounced; rapid seeks coalesce", () => {
+  describe("seek fetch debouncing", () => {
+    it("emits every seek event immediately", () => {
+      const { result } = renderEngine({ duration: 10 });
+      const events: Array<{ seq: number; time: number }> = [];
+      const unsubscribe = result.current.store.sub(seekEventAtom, () => {
+        const event = result.current.store.get(seekEventAtom);
+        if (event) events.push(event);
+      });
+
+      act(() => {
+        result.current.api.seek(1);
+        result.current.api.seek(2);
+        result.current.api.seek(3);
+      });
+
+      expect(events.map(({ time }) => time)).toEqual([1, 2, 3]);
+      unsubscribe();
+    });
+
+    it("defaults missing-data fetches to immediate admission", () => {
+      const { result } = renderEngine({ duration: 10 });
+      const prefetch = vi.fn();
+      act(() => {
+        result.current.api.registerStream({
+          id: "remote",
+          blocking: true,
+          bufferState: () => "missing",
+          prefetch,
+        });
+        result.current.api.subscribeStream("remote");
+        result.current.api.seek(3);
+      });
+
+      expect(prefetch).toHaveBeenCalledWith([3, 6]);
+    });
+
+    it("coalesces only missing-data fetches around the latest seek target", () => {
       vi.useFakeTimers();
       try {
-        const { result } = renderEngine({ duration: 10 });
-        const seekSpy = vi.fn();
-        // Subscribe via store.sub to seekEventAtom to count emissions.
-        // We can't easily reach seekEventAtom from outside the engine,
-        // so we use the side effect: prefetch on a stream with bufferState
-        // that returns "missing" — but that requires a tick. Instead just
-        // verify rapid calls don't throw and the final playhead reflects
-        // the last seek.
-        act(() => result.current.api.seek(1));
-        act(() => result.current.api.seek(2));
-        act(() => result.current.api.seek(3));
-        // Flush the 50ms debounce window.
-        vi.advanceTimersByTime(60);
+        const { result } = renderEngine({
+          duration: 10,
+          seekFetchDebounceMs: 100,
+        });
+        const prefetch = vi.fn();
+        act(() => {
+          result.current.api.registerStream({
+            id: "remote",
+            blocking: true,
+            bufferState: () => "missing",
+            prefetch,
+          });
+          result.current.api.subscribeStream("remote");
+          result.current.api.seek(1);
+          result.current.api.seek(2);
+          result.current.api.seek(3);
+        });
+
         expect(result.current.playhead).toBe(3);
-        expect(seekSpy).not.toHaveBeenCalled(); // unused — just shape
+        expect(prefetch).not.toHaveBeenCalled();
+
+        act(() => vi.advanceTimersByTime(99));
+        expect(prefetch).not.toHaveBeenCalled();
+
+        act(() => vi.advanceTimersByTime(1));
+        expect(prefetch).toHaveBeenCalledWith([3, 6]);
+        expect(prefetch).toHaveBeenCalledTimes(1);
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it("flushes the final missing-data target when a scrub settles", () => {
+      vi.useFakeTimers();
+      try {
+        const { result } = renderEngine({
+          duration: 10,
+          seekFetchDebounceMs: 100,
+        });
+        let state: "loading" | "missing" = "missing";
+        const prefetch = vi.fn(() => {
+          state = "loading";
+        });
+        act(() => {
+          result.current.api.registerStream({
+            id: "remote",
+            blocking: true,
+            bufferState: () => state,
+            prefetch,
+          });
+          result.current.api.subscribeStream("remote");
+          result.current.api.seek(1);
+          result.current.api.seek(3);
+        });
+
+        expect(prefetch).not.toHaveBeenCalled();
+        act(() => result.current.api.settleSeek());
+        expect(prefetch).toHaveBeenCalledOnce();
+        expect(prefetch).toHaveBeenCalledWith([3, 6]);
+
+        act(() => vi.advanceTimersByTime(100));
+        expect(prefetch).toHaveBeenCalledOnce();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("commits buffered seeks synchronously despite a configured debounce", () => {
+      const { result } = renderEngine({
+        duration: 10,
+        seekFetchDebounceMs: 100,
+      });
+      act(() => {
+        result.current.api.registerStream(readyStream("cached"));
+        result.current.api.subscribeStream("cached");
+        result.current.api.seek(4);
+      });
+
+      expect(result.current.playhead).toBe(4);
+      expect(result.current.currentTime).toBe(4);
+    });
+
+    it("lets long-lived clients update the fetch debounce at runtime", () => {
+      vi.useFakeTimers();
+      try {
+        const { result } = renderEngine({ duration: 10 });
+        const prefetch = vi.fn();
+        act(() => {
+          result.current.api.registerStream({
+            id: "remote",
+            blocking: true,
+            bufferState: () => "missing",
+            prefetch,
+          });
+          result.current.api.subscribeStream("remote");
+          setSeekFetchDebounceMs(result.current.store, 50);
+          result.current.api.seek(5);
+        });
+
+        expect(prefetch).not.toHaveBeenCalled();
+        act(() => vi.advanceTimersByTime(50));
+        expect(prefetch).toHaveBeenCalledWith([5, 8]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("keeps frame steps on the immediate fetch path", () => {
+      const { result } = renderEngine({
+        duration: 10,
+        seekFetchDebounceMs: 100,
+      });
+      const prefetch = vi.fn();
+      act(() => {
+        result.current.api.registerStream({
+          id: "remote",
+          blocking: true,
+          bufferState: () => "missing",
+          prefetch,
+        });
+        result.current.api.subscribeStream("remote");
+        result.current.api.stepForward();
+      });
+
+      expect(prefetch).toHaveBeenCalledOnce();
     });
   });
 });

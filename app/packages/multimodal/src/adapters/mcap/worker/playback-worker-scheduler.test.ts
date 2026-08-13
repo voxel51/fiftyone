@@ -3,7 +3,7 @@ import { MCAP_PLAYBACK_WORKER_PRIORITY } from "./playback-worker-types";
 import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
 
 describe("MCAP playback worker scheduler", () => {
-  it("runs one job at a time and prioritizes current, placement, then playback work", async () => {
+  it("orders paused inspection behind playback and ahead of idle work", async () => {
     const scheduler = new McapPlaybackWorkerScheduler();
     const firstJob = deferred<void>();
     const ran: string[] = [];
@@ -41,14 +41,37 @@ describe("MCAP playback worker scheduler", () => {
       },
       sourceKey: "source",
     });
+    scheduler.enqueue({
+      id: 5,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      run: async () => {
+        ran.push("idle");
+      },
+      sourceKey: "source",
+    });
+    scheduler.enqueue({
+      id: 6,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PAUSED_INSPECTION,
+      run: async () => {
+        ran.push("inspection");
+      },
+      sourceKey: "source",
+    });
 
     await Promise.resolve();
     expect(ran).toEqual(["batch-1"]);
 
     firstJob.resolve();
-    await flushAsync(4);
+    await flushAsync(8);
 
-    expect(ran).toEqual(["batch-1", "current", "placement", "batch-2"]);
+    expect(ran).toEqual([
+      "batch-1",
+      "current",
+      "placement",
+      "batch-2",
+      "inspection",
+      "idle",
+    ]);
   });
 
   it("skips queued jobs that are cancelled before they start", async () => {
@@ -67,13 +90,17 @@ describe("MCAP playback worker scheduler", () => {
     });
     scheduler.enqueue({
       id: 2,
+      operation: "readBoundedMessages",
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
       run: async () => {
         ran.push("cancelled");
       },
       sourceKey: "source",
     });
-    scheduler.cancel(2);
+    expect(scheduler.cancel(2)).toEqual({
+      operation: "readBoundedMessages",
+      state: "queued",
+    });
 
     firstJob.resolve();
     await flushAsync();
@@ -98,7 +125,7 @@ describe("MCAP playback worker scheduler", () => {
     await flushAsync();
     expect(signals[0]?.aborted).toBe(false);
 
-    scheduler.cancel(7);
+    expect(scheduler.cancel(7)).toEqual({ state: "running" });
     expect(signals[0]?.aborted).toBe(true);
 
     gate.resolve();

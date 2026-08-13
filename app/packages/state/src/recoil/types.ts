@@ -112,6 +112,12 @@ export namespace State {
   }
 
   export interface BrainRun extends Run {
+    /** Whether the run's results have been saved. A run still computing (or
+     * whose computation died) is not ready. */
+    ready: boolean | null;
+    /** Why the run cannot be used, when knowable from the run doc alone
+     * (e.g. its config class no longer imports); null when usable. */
+    error: string | null;
     config: {
       embeddingsField: string | null;
       method: string;
@@ -121,6 +127,10 @@ export namespace State {
       type: string | null;
       maxK: number | null;
       supportsLeastSimilarity: boolean | null;
+      /** Visualization runs */
+      numDims: number | null;
+      pointsField: string | null;
+      model: string | null;
     };
   }
 

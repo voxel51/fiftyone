@@ -1,4 +1,4 @@
-import type { OverlayLabel } from "../labels/loader";
+import type { Overlay3DDocument, OverlayLabel } from "../labels/loader";
 
 export type {
   ToolbarActionItem,
@@ -77,38 +77,42 @@ export interface AnnotationPlaneState {
 }
 
 /**
- * Base properties shared by all reconciled 3D labels.
+ * The persistable document of a reconciled 3D detection: the sample's label
+ * data merged with staged geometry. Everything here — and ONLY this — is
+ * committed to the engine and the sample.
  */
-interface ReconciledLabelBase3D {
-  /** True if this label only exists in staged transforms (newly created) */
-  isNew?: boolean;
-  label?: string;
-}
+export type Detection3DDocument = Overlay3DDocument &
+  CuboidTransformData & {
+    _cls: "Detection";
+  };
+
+/**
+ * The persistable document of a reconciled 3D polyline.
+ */
+export type Polyline3DDocument = Overlay3DDocument &
+  PolylineTransformData & {
+    _cls: "Polyline";
+    closed?: boolean;
+    filled?: boolean;
+  };
 
 /**
  * A reconciled detection that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D detection that will be rendered.
+ * Shape follows {@link OverlayLabel}: document under `data`, view state under `ui`.
  */
-export type ReconciledDetection3D = Omit<OverlayLabel, "selected"> &
-  CuboidTransformData &
-  ReconciledLabelBase3D & {
-    _cls: "Detection";
-    _id: string;
-    path: string;
-  } & Record<string, unknown>;
+export type ReconciledDetection3D = Omit<OverlayLabel, "data"> & {
+  data: Detection3DDocument;
+};
 
 /**
  * A reconciled polyline that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D polyline that will be rendered.
+ * Shape follows {@link OverlayLabel}: document under `data`, view state under `ui`.
  */
-export type ReconciledPolyline3D = Omit<OverlayLabel, "selected"> &
-  ReconciledLabelBase3D &
-  PolylineTransformData & {
-    _cls: "Polyline";
-    _id: string;
-    path: string;
-    closed?: boolean;
-  } & Record<string, unknown>;
+export type ReconciledPolyline3D = Omit<OverlayLabel, "data"> & {
+  data: Polyline3DDocument;
+};
 
 /**
  * Container for reconciled 3D label data.

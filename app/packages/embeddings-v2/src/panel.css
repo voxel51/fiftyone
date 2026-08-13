@@ -596,3 +596,15 @@
   height: 100%;
   gap: 0.75rem;
 }
+
+/* The landing renders the shared PanelCTA, whose Card chrome reads as
+   a floating square against the panel background — flatten it so the
+   content sits directly on the panel (design call, FOEPD-4369) */
+.emb-landing {
+  height: 100%;
+}
+.emb-landing .MuiCard-root {
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+}

@@ -42,23 +42,55 @@
   flex-direction: column;
 }
 
-/* Pinned tracks block, rendered into the always-visible header below
-   the ruler. Tracks here are full opacity since they're the user's
-   "promoted" tracks. */
-.pinnedTracks {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Wrapper used only when the drawer is closed: hosts the pinned tracks
-   inside the TimelineHeader's below-ruler slot AND acts as the
-   positioning context for PlayheadLine / LoopOverlays so they anchor
-   over the visible pinned section. */
+/* Hosts the pinned tracks inside the TimelineHeader's below-ruler slot in
+   both drawer states, AND acts as the positioning context for PlayheadLine /
+   LoopOverlays so they anchor over the visible pinned section. Tracks here
+   are full opacity since they're the user's "promoted" tracks. */
 .pinnedOverlayHost {
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Drag affordance on the label column's right border, running the full height
+   of whichever surface hosts it. `left` is set inline from the current label
+   width, and the hit area sits entirely *inside* the column via the negative
+   offset — deliberately not straddling the seam. An event starting at time 0
+   renders flush against the lane's left edge, i.e. at exactly this x, so a
+   handle overhanging the lane would swallow clicks on short interval bars.
+   The 6px it does cover is the column's right padding and border, which owns
+   no controls: the pin button's content box ends a pixel short of it.
+   Above the playhead line (z-index 3) so the drag never gets stolen. */
+.labelResizeHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  margin-left: -6px;
+  cursor: col-resize;
+  z-index: 6;
+  /* Keep touch drags from scrolling the tracks area instead of resizing. */
+  touch-action: none;
+}
+
+/* The seam itself only lights up on hover / during a drag, so at rest the
+   column reads as a plain border rather than a second piece of chrome. */
+.labelResizeHandle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 2px;
+  background: var(--color-brand-primary);
+  opacity: 0;
+  transition: var(--transition-preset-opacity);
+}
+
+.labelResizeHandle:hover::after,
+.labelResizeHandleActive::after {
+  opacity: 1;
 }
 
 /* Unpinned tracks live in the collapsible drawer body. Dimmed so they

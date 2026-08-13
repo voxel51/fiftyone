@@ -162,8 +162,8 @@ export const createPointCloudCropFromDetection = (
   options: CreatePointCloudCropOptions = {},
 ) => {
   return createPointCloudCropFromCuboidTransform(
-    detection._id,
-    detection,
+    detection.data._id,
+    detection.data,
     options,
   );
 };
@@ -240,14 +240,17 @@ export const getExploreSelectedCuboidId = ({
 }: ExploreSelectedCuboidIdOptions) => {
   if (
     hoveredLabelId &&
-    renderModel.detections.some((detection) => detection._id === hoveredLabelId)
+    renderModel.detections.some(
+      (detection) => detection.data._id === hoveredLabelId,
+    )
   ) {
     return hoveredLabelId;
   }
 
   return (
-    renderModel.detections.find((detection) => selectedLabels?.[detection._id])
-      ?._id ?? null
+    renderModel.detections.find(
+      (detection) => selectedLabels?.[detection.data._id],
+    )?.data._id ?? null
   );
 };
 
@@ -264,7 +267,7 @@ export const getCuboidPointCloudCrop = ({
   }
 
   const detection = renderModel.detections.find(
-    (candidate) => candidate._id === labelId,
+    (candidate) => candidate.data._id === labelId,
   );
 
   if (!detection) {

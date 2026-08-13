@@ -18,6 +18,13 @@ export interface TimelineHeaderProps {
    */
   onToggle?: () => void;
   /**
+   * Open state of the surface {@link onToggle} controls, forwarded to
+   * {@link TimelineControls} to orient its trailing chevron. Owned by the
+   * `Drawer` — `TimelineWithTracks` reads it off the `header` render prop's
+   * state rather than tracking a second copy.
+   */
+  expanded?: boolean;
+  /**
    * Overlay rendered on top of the ruler row (position:relative wrapper).
    * Used by TemporalTagRangeOverlay to capture pointer events for range
    * selection — sits only over the ruler, not the controls row above.
@@ -37,6 +44,11 @@ export interface TimelineHeaderProps {
    */
   extraActions?: ReactNode;
   /**
+   * Optional content forwarded to {@link TimelineControls}' `trailingActions`
+   * — buttons pinned to the right edge, just left of the drawer chevron.
+   */
+  trailingActions?: ReactNode;
+  /**
    * Content rendered below the ruler, still inside the always-visible
    * header region. Used by `TimelineWithTracks` to keep pinned tracks
    * on-screen even when the drawer body is collapsed.
@@ -54,17 +66,21 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   labelWidth,
   zoomRef,
   onToggle,
+  expanded,
   rulerOverlay,
   extraControls,
   extraActions,
+  trailingActions,
   children,
 }) => {
   return (
     <div className={styles.root} data-testid="timeline-header-root">
       <TimelineControls
         onToggle={onToggle}
+        expanded={expanded}
         extraControls={extraControls}
         extraActions={extraActions}
+        trailingActions={trailingActions}
       />
       <TimelineRuler
         labelWidth={labelWidth}
