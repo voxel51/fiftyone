@@ -565,7 +565,12 @@ class TestDepthAnythingV3InferenceForwarding:
     """The config reaches self._model.inference, not just the config object."""
 
     @staticmethod
-    def _make_model(config_dict, scale_factor=None):
+    def _make_model(
+        config_dict: dict[str, Any],
+        scale_factor: Optional[float] = None,
+    ) -> tuple[Any, list[tuple[Any, dict[str, Any]]]]:
+        """Returns a model whose inference is stubbed, and the list that
+        records each ``(inputs, kwargs)`` it was called with."""
         from fiftyone.utils.depth_anything import (
             DepthAnythingV3Model,
             DepthAnythingV3ModelConfig,
