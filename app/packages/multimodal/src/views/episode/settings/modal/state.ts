@@ -3,15 +3,13 @@ import {
   createStore,
   useAtomValue,
   useSetAtom,
-  type Getter,
   type Setter,
 } from "jotai";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import {
   DEFAULT_IMAGE_PROJECTION,
   DEFAULT_POINT_CLOUD_COLOR,
-  EMPTY_SCOPED_SETTINGS,
   normalizeImageProjection,
   normalizePinholeCamera,
   normalizePointCloudColor,
@@ -29,6 +27,13 @@ import {
   type SceneBackgroundSettings,
 } from "./storage";
 import type { ScopedModalSettings } from "./storage";
+import {
+  usePanelVisibilityScope,
+  useSidebarPreferencesState,
+  useSidebarSourceIdentity,
+} from "../sidebar-preferences-context";
+import type { PersistedSemanticImageProjection } from "../sidebar-preferences";
+import type { SemanticSourceKey } from "../semantic-source";
 export type { ScopedModalSettings };
 export type {
   ImageDisplayMode,
@@ -68,60 +73,16 @@ const EMPTY_STREAM_LIST: readonly string[] = Object.freeze([]);
 const modalSettingsStore = createStore();
 const modalSettingsAtom = atom<PersistedModalSettings>(readModalSettings());
 
-/**
- * Active settings scope — one dataset (or ad hoc recording source). While
- * set, stream-keyed styling reads and writes only that scope, so `/lidar_top`
- * in one dataset cannot style `/lidar_top` in another. Empty means unscoped:
- * reads and writes use the top-level maps.
- */
-const settingsScopeAtom = atom("");
-
-/**
- * Resolves one stream-keyed styling map against the active scope. Scoped and
- * unscoped maps are deliberately isolated.
- */
-function resolveStreamKeyedMap<Key extends keyof ScopedModalSettings>(
-  get: Getter,
-  key: Key,
-): ScopedModalSettings[Key] {
-  const settings = get(modalSettingsAtom);
-  const scope = get(settingsScopeAtom);
-  if (scope) {
-    return settings.scoped[scope]?.[key] ?? EMPTY_SCOPED_SETTINGS[key];
-  }
-  return settings[key] as ScopedModalSettings[Key];
-}
-
-/**
- * Routes one stream-keyed write to the active scope, or to the unscoped
- * global map while unscoped. The persistence engine timestamps only the
- * touched scope for truthful LRU eviction.
- */
-function updateStreamKeyedSettings<Key extends keyof ScopedModalSettings>(
-  get: Getter,
+/** Legacy unscoped atoms remain only for isolated renderers/tests. */
+function updateUnscopedMap<Key extends keyof ScopedModalSettings>(
   set: Setter,
   key: Key,
   updateMap: (current: ScopedModalSettings[Key]) => ScopedModalSettings[Key],
 ): void {
-  const scope = get(settingsScopeAtom);
-  updateModalSettings(
-    set,
-    (current) => {
-      if (!scope) {
-        return { ...current, [key]: updateMap(current[key]) };
-      }
-      const previousScoped = current.scoped[scope] ?? EMPTY_SCOPED_SETTINGS;
-      const nextScoped = {
-        ...previousScoped,
-        [key]: updateMap(previousScoped[key]),
-      };
-      return {
-        ...current,
-        scoped: { ...current.scoped, [scope]: nextScoped },
-      };
-    },
-    scope || undefined,
-  );
+  updateModalSettings(set, (current) => ({
+    ...current,
+    [key]: updateMap(current[key]),
+  }));
 }
 
 const pinholeCameraAtom = atom(
@@ -164,7 +125,7 @@ const sceneBackgroundAtom = atom(
 );
 
 const pointCloudColorsAtom = atom(
-  (get) => resolveStreamKeyedMap(get, "pointCloudColors"),
+  (get) => get(modalSettingsAtom).pointCloudColors,
   (
     get,
     set,
@@ -181,9 +142,9 @@ const pointCloudColorsAtom = atom(
 
     // Merge over the value visible in the current scope.
     const previous =
-      resolveStreamKeyedMap(get, "pointCloudColors")[normalizedStream] ??
+      get(modalSettingsAtom).pointCloudColors[normalizedStream] ??
       DEFAULT_POINT_CLOUD_COLOR;
-    updateStreamKeyedSettings(get, set, "pointCloudColors", (colors) => ({
+    updateUnscopedMap(set, "pointCloudColors", (colors) => ({
       ...colors,
       [normalizedStream]: normalizePointCloudColor({
         ...previous,
@@ -214,9 +175,9 @@ const showPointCloudColorLegendAtom = atom(
 );
 
 const imageLabelStreamsAtom = atom(
-  (get) => resolveStreamKeyedMap(get, "imageLabelStreams"),
+  (get) => get(modalSettingsAtom).imageLabelStreams,
   (
-    get,
+    _get,
     set,
     {
       imageStream,
@@ -230,7 +191,7 @@ const imageLabelStreamsAtom = atom(
     if (!normalizedImageStream) return;
     const normalizedLabelStreams = normalizeStreamList(labelStreams);
 
-    updateStreamKeyedSettings(get, set, "imageLabelStreams", (streams) => ({
+    updateUnscopedMap(set, "imageLabelStreams", (streams) => ({
       ...streams,
       [normalizedImageStream]: normalizedLabelStreams,
     }));
@@ -238,7 +199,7 @@ const imageLabelStreamsAtom = atom(
 );
 
 const imageProjectionAtom = atom(
-  (get) => resolveStreamKeyedMap(get, "imageProjection"),
+  (get) => get(modalSettingsAtom).imageProjection,
   (
     get,
     set,
@@ -255,7 +216,7 @@ const imageProjectionAtom = atom(
 
     // Merge over the value visible in the current scope.
     const previous =
-      resolveStreamKeyedMap(get, "imageProjection")[normalizedImageStream] ??
+      get(modalSettingsAtom).imageProjection[normalizedImageStream] ??
       DEFAULT_IMAGE_PROJECTION;
     let streams =
       settings.streams !== undefined ? settings.streams : previous.streams;
@@ -268,7 +229,7 @@ const imageProjectionAtom = atom(
     ) {
       streams = null;
     }
-    updateStreamKeyedSettings(get, set, "imageProjection", (projections) => ({
+    updateUnscopedMap(set, "imageProjection", (projections) => ({
       ...projections,
       [normalizedImageStream]: normalizeImageProjection({
         ...previous,
@@ -294,39 +255,36 @@ function updateModalSettings(
 }
 
 /**
- * Scopes stream-keyed styling (point-cloud colors, image projection, label
- * streams) to the mounted playback host's dataset. Reads and writes stay under
- * the scope. Call once from the playback host; an empty/undefined scope key
- * leaves settings unscoped.
- */
-export function useModalSettingsScopeSync(
-  scopeKey: string | null | undefined,
-): void {
-  // This effect binds the settings scope to the active dataset for this
-  // host's mounted lifetime, and releases only its own scope on unmount so
-  // an interleaved mount of another host is never reset.
-  useEffect(() => {
-    const scope = scopeKey?.trim() ?? "";
-    if (!scope) return undefined;
-    modalSettingsStore.set(settingsScopeAtom, scope);
-    return () => {
-      modalSettingsStore.set(settingsScopeAtom, (current) =>
-        current === scope ? "" : current,
-      );
-    };
-  }, [scopeKey]);
-}
-
-/**
  * Reads and updates camera frustum display preferences.
  */
 export function usePinholeCameraSettings() {
-  const pinholeCamera = useAtomValue(pinholeCameraAtom, {
+  const legacyPinholeCamera = useAtomValue(pinholeCameraAtom, {
     store: modalSettingsStore,
   });
-  const setPinholeCamera = useSetAtom(pinholeCameraAtom, {
+  const setLegacyPinholeCamera = useSetAtom(pinholeCameraAtom, {
     store: modalSettingsStore,
   });
+  const scope = usePanelVisibilityScope();
+  const [preferences, updatePreferences] = useSidebarPreferencesState();
+  const setPinholeCamera = useCallback(
+    (settings: Partial<PinholeCameraSettings>) => {
+      if (!scope) return setLegacyPinholeCamera(settings);
+      updatePreferences((current) => ({
+        ...current,
+        appearance: {
+          ...current.appearance,
+          pinholeCamera: normalizePinholeCamera({
+            ...current.appearance.pinholeCamera,
+            ...settings,
+          }),
+        },
+      }));
+    },
+    [scope, setLegacyPinholeCamera, updatePreferences],
+  );
+  const pinholeCamera = scope
+    ? preferences.appearance.pinholeCamera
+    : legacyPinholeCamera;
 
   return useMemo(
     () => ({ pinholeCamera, setPinholeCamera }),
@@ -338,12 +296,33 @@ export function usePinholeCameraSettings() {
  * Reads and updates 3D reference grid preferences.
  */
 export function useReferenceGridSettings() {
-  const referenceGrid = useAtomValue(referenceGridAtom, {
+  const legacyReferenceGrid = useAtomValue(referenceGridAtom, {
     store: modalSettingsStore,
   });
-  const setReferenceGrid = useSetAtom(referenceGridAtom, {
+  const setLegacyReferenceGrid = useSetAtom(referenceGridAtom, {
     store: modalSettingsStore,
   });
+  const scope = usePanelVisibilityScope();
+  const [preferences, updatePreferences] = useSidebarPreferencesState();
+  const setReferenceGrid = useCallback(
+    (settings: Partial<ReferenceGridSettings>) => {
+      if (!scope) return setLegacyReferenceGrid(settings);
+      updatePreferences((current) => ({
+        ...current,
+        appearance: {
+          ...current.appearance,
+          referenceGrid: normalizeReferenceGrid({
+            ...current.appearance.referenceGrid,
+            ...settings,
+          }),
+        },
+      }));
+    },
+    [scope, setLegacyReferenceGrid, updatePreferences],
+  );
+  const referenceGrid = scope
+    ? preferences.appearance.referenceGrid
+    : legacyReferenceGrid;
 
   return useMemo(
     () => ({ referenceGrid, setReferenceGrid }),
@@ -355,12 +334,33 @@ export function useReferenceGridSettings() {
  * Reads and updates 3D scene background preferences.
  */
 export function useSceneBackgroundSettings() {
-  const sceneBackground = useAtomValue(sceneBackgroundAtom, {
+  const legacySceneBackground = useAtomValue(sceneBackgroundAtom, {
     store: modalSettingsStore,
   });
-  const setSceneBackground = useSetAtom(sceneBackgroundAtom, {
+  const setLegacySceneBackground = useSetAtom(sceneBackgroundAtom, {
     store: modalSettingsStore,
   });
+  const scope = usePanelVisibilityScope();
+  const [preferences, updatePreferences] = useSidebarPreferencesState();
+  const setSceneBackground = useCallback(
+    (settings: Partial<SceneBackgroundSettings>) => {
+      if (!scope) return setLegacySceneBackground(settings);
+      updatePreferences((current) => ({
+        ...current,
+        appearance: {
+          ...current.appearance,
+          sceneBackground: normalizeSceneBackground({
+            ...current.appearance.sceneBackground,
+            ...settings,
+          }),
+        },
+      }));
+    },
+    [scope, setLegacySceneBackground, updatePreferences],
+  );
+  const sceneBackground = scope
+    ? preferences.appearance.sceneBackground
+    : legacySceneBackground;
 
   return useMemo(
     () => ({ sceneBackground, setSceneBackground }),
@@ -372,37 +372,98 @@ export function useSceneBackgroundSettings() {
  * Reads and updates point-cloud style preferences.
  */
 export function usePointCloudStyleSettings() {
-  const pointCloudColors = useAtomValue(pointCloudColorsAtom, {
+  const legacyPointCloudColors = useAtomValue(pointCloudColorsAtom, {
     store: modalSettingsStore,
   });
-  const pointCloudPointSize = useAtomValue(pointCloudPointSizeAtom, {
+  const legacyPointCloudPointSize = useAtomValue(pointCloudPointSizeAtom, {
     store: modalSettingsStore,
   });
-  const showPointCloudColorLegend = useAtomValue(
+  const legacyShowPointCloudColorLegend = useAtomValue(
     showPointCloudColorLegendAtom,
     {
       store: modalSettingsStore,
     },
   );
-  const setPointCloudColor = useSetAtom(pointCloudColorsAtom, {
+  const setLegacyPointCloudColor = useSetAtom(pointCloudColorsAtom, {
     store: modalSettingsStore,
   });
-  const setPointCloudPointSize = useSetAtom(pointCloudPointSizeAtom, {
+  const setLegacyPointCloudPointSize = useSetAtom(pointCloudPointSizeAtom, {
     store: modalSettingsStore,
   });
-  const setShowPointCloudColorLegend = useSetAtom(
+  const setLegacyShowPointCloudColorLegend = useSetAtom(
     showPointCloudColorLegendAtom,
     {
       store: modalSettingsStore,
     },
   );
 
+  const scope = usePanelVisibilityScope();
+  const [preferences, updatePreferences] = useSidebarPreferencesState();
+  const identity = useSidebarSourceIdentity();
+  const scopedPointCloudColors = useMemo(() => {
+    const result: Record<string, PersistedPointCloudColorSettings> = {};
+    for (const [key, settings] of Object.entries(
+      preferences.pointCloudColors,
+    )) {
+      for (const id of identity.runtimeIdsForKey(key as SemanticSourceKey)) {
+        result[id] = settings;
+      }
+    }
+    return result;
+  }, [identity, preferences.pointCloudColors]);
   const updatePointCloudColor = useCallback(
     (stream: string, settings: Partial<PersistedPointCloudColorSettings>) => {
-      setPointCloudColor({ settings, stream });
+      if (!scope) return setLegacyPointCloudColor({ settings, stream });
+      const key = identity.keyForRuntimeId(stream);
+      if (!key) return;
+      updatePreferences((current) => ({
+        ...current,
+        pointCloudColors: {
+          ...current.pointCloudColors,
+          [key]: normalizePointCloudColor({
+            ...current.pointCloudColors[key],
+            ...settings,
+          }),
+        },
+      }));
     },
-    [setPointCloudColor],
+    [identity, scope, setLegacyPointCloudColor, updatePreferences],
   );
+  const setPointCloudPointSize = useCallback(
+    (pointSize: number) => {
+      if (!scope) return setLegacyPointCloudPointSize(pointSize);
+      updatePreferences((current) => ({
+        ...current,
+        appearance: {
+          ...current.appearance,
+          pointCloudPointSize: normalizePointCloudPointSize(pointSize),
+        },
+      }));
+    },
+    [scope, setLegacyPointCloudPointSize, updatePreferences],
+  );
+  const setShowPointCloudColorLegend = useCallback(
+    (show: boolean) => {
+      if (!scope) return setLegacyShowPointCloudColorLegend(show);
+      updatePreferences((current) => ({
+        ...current,
+        appearance: {
+          ...current.appearance,
+          showPointCloudColorLegend: show,
+        },
+      }));
+    },
+    [scope, setLegacyShowPointCloudColorLegend, updatePreferences],
+  );
+  const pointCloudColors = scope
+    ? scopedPointCloudColors
+    : legacyPointCloudColors;
+  const pointCloudPointSize = scope
+    ? preferences.appearance.pointCloudPointSize
+    : legacyPointCloudPointSize;
+  const showPointCloudColorLegend = scope
+    ? preferences.appearance.showPointCloudColorLegend
+    : legacyShowPointCloudColorLegend;
 
   return useMemo(
     () => ({
@@ -490,18 +551,25 @@ export function useImageProjection(imageStream: string | null | undefined) {
       ),
     [normalizedImageStream],
   );
-  const projection = useAtomValue(projectionValueAtom, {
+  const legacyProjection = useAtomValue(projectionValueAtom, {
     store: modalSettingsStore,
   });
   const setStoredProjection = useSetAtom(imageProjectionAtom, {
     store: modalSettingsStore,
   });
+  const { projections, setProjection: setScopedProjection } =
+    useScopedImageProjections();
+  const scope = usePanelVisibilityScope();
+  const projection = normalizedImageStream
+    ? (projections[normalizedImageStream] ?? legacyProjection)
+    : DEFAULT_IMAGE_PROJECTION;
   const setProjection = useCallback(
     (settings: Partial<ImageProjectionSettings>) => {
       if (!normalizedImageStream) return;
+      if (scope) return setScopedProjection(normalizedImageStream, settings);
       setStoredProjection({ imageStream: normalizedImageStream, settings });
     },
-    [normalizedImageStream, setStoredProjection],
+    [normalizedImageStream, scope, setScopedProjection, setStoredProjection],
   );
 
   return useMemo(
@@ -514,9 +582,12 @@ export function useImageProjection(imageStream: string | null | undefined) {
 export function useImageProjectionSettingsByStream(): Readonly<
   Record<string, ImageProjectionSettings>
 > {
-  return useAtomValue(imageProjectionAtom, {
+  const legacy = useAtomValue(imageProjectionAtom, {
     store: modalSettingsStore,
   });
+  const scope = usePanelVisibilityScope();
+  const { projections } = useScopedImageProjections();
+  return scope ? projections : legacy;
 }
 
 /** Updates camera geometry settings for an image without requiring its tile. */
@@ -524,11 +595,134 @@ export function useSetImageProjection() {
   const setStoredProjection = useSetAtom(imageProjectionAtom, {
     store: modalSettingsStore,
   });
+  const scope = usePanelVisibilityScope();
+  const { setProjection } = useScopedImageProjections();
   return useCallback(
-    (imageStream: string, settings: Partial<ImageProjectionSettings>) =>
-      setStoredProjection({ imageStream, settings }),
-    [setStoredProjection],
+    (imageStream: string, settings: Partial<ImageProjectionSettings>) => {
+      if (scope) return setProjection(imageStream, settings);
+      setStoredProjection({ imageStream, settings });
+    },
+    [scope, setProjection, setStoredProjection],
   );
+}
+
+function useScopedImageProjections(): {
+  readonly projections: Readonly<Record<string, ImageProjectionSettings>>;
+  readonly setProjection: (
+    imageStream: string,
+    settings: Partial<ImageProjectionSettings>,
+  ) => void;
+} {
+  const [preferences, updatePreferences] = useSidebarPreferencesState();
+  const identity = useSidebarSourceIdentity();
+  const projections = useMemo(() => {
+    const result: Record<string, ImageProjectionSettings> = {};
+    for (const [imageKey, stored] of Object.entries(
+      preferences.imageProjection,
+    )) {
+      const runtime = semanticImageProjectionToRuntime(
+        stored,
+        identity.runtimeIdsForKey,
+      );
+      for (const imageStream of identity.runtimeIdsForKey(
+        imageKey as SemanticSourceKey,
+      )) {
+        result[imageStream] = runtime;
+      }
+    }
+    return result;
+  }, [identity, preferences.imageProjection]);
+  const setProjection = useCallback(
+    (imageStream: string, settings: Partial<ImageProjectionSettings>) => {
+      const imageKey = identity.keyForRuntimeId(imageStream);
+      if (!imageKey) return;
+      updatePreferences((current) => {
+        const previous = semanticImageProjectionToRuntime(
+          current.imageProjection[imageKey] ?? semanticDefaultImageProjection(),
+          identity.runtimeIdsForKey,
+        );
+        const nextRuntime = normalizeScopedImageProjectionUpdate(
+          previous,
+          settings,
+        );
+        return {
+          ...current,
+          imageProjection: {
+            ...current.imageProjection,
+            [imageKey]: runtimeImageProjectionToSemantic(
+              nextRuntime,
+              identity.keyForRuntimeId,
+            ),
+          },
+        };
+      });
+    },
+    [identity, updatePreferences],
+  );
+  return { projections, setProjection };
+}
+
+function normalizeScopedImageProjectionUpdate(
+  previous: ImageProjectionSettings,
+  settings: Partial<ImageProjectionSettings>,
+): ImageProjectionSettings {
+  let streams =
+    settings.streams === undefined ? previous.streams : settings.streams;
+  if (
+    settings.enabled === true &&
+    settings.streams === undefined &&
+    !previous.enabled &&
+    previous.streams !== null &&
+    previous.streams.length === 0
+  ) {
+    streams = null;
+  }
+  const enabled =
+    (settings.enabled ?? previous.enabled) &&
+    (streams === null || streams.length > 0);
+  return {
+    ...normalizeImageProjection({ ...previous, ...settings, enabled, streams }),
+    enabled,
+    streams,
+  };
+}
+
+function semanticImageProjectionToRuntime(
+  projection: PersistedSemanticImageProjection,
+  runtimeIdsForKey: (key: SemanticSourceKey) => readonly string[],
+): ImageProjectionSettings {
+  return {
+    ...projection,
+    calibrationStream: projection.calibrationStream
+      ? (runtimeIdsForKey(projection.calibrationStream)[0] ?? null)
+      : null,
+    streams:
+      projection.streams === null
+        ? null
+        : projection.streams.flatMap(runtimeIdsForKey),
+  };
+}
+
+function runtimeImageProjectionToSemantic(
+  projection: ImageProjectionSettings,
+  keyForRuntimeId: (id: string) => SemanticSourceKey | null,
+): PersistedSemanticImageProjection {
+  return {
+    ...projection,
+    calibrationStream: projection.calibrationStream
+      ? keyForRuntimeId(projection.calibrationStream)
+      : null,
+    streams:
+      projection.streams === null
+        ? null
+        : projection.streams
+            .map(keyForRuntimeId)
+            .filter((key): key is NonNullable<typeof key> => key !== null),
+  };
+}
+
+function semanticDefaultImageProjection(): PersistedSemanticImageProjection {
+  return { ...DEFAULT_IMAGE_PROJECTION, calibrationStream: null, streams: [] };
 }
 
 /**
@@ -536,5 +730,4 @@ export function useSetImageProjection() {
  */
 export function __resetModalSettingsForTests(): void {
   modalSettingsStore.set(modalSettingsAtom, readModalSettings());
-  modalSettingsStore.set(settingsScopeAtom, "");
 }

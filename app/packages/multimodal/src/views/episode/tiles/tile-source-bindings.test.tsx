@@ -20,6 +20,7 @@ import {
   usePersistImageTileBinding,
   usePublishImageTileBinding,
 } from "./tile-source-bindings";
+import { PanelVisibilityProvider } from "./panel-visibility";
 
 function imageSource(id: string): SceneSource {
   return { id, label: id.toUpperCase(), sourceName: id, type: "image" };
@@ -172,7 +173,10 @@ describe("usePublishImageTileBinding", () => {
 });
 
 describe("usePersistImageTileBinding", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
 
   it("persists creation and selection but not transient fallback or teardown", () => {
     const view = render(
@@ -229,6 +233,42 @@ describe("usePersistImageTileBinding", () => {
     expect(screen.getByTestId("bindings").textContent).toBe("{}");
     expect(screen.getByTestId("persisted-bindings").textContent).toBe(
       '{"image-1":"cam_front"}',
+    );
+  });
+
+  it("restores the semantic image binding after runtime ids change", () => {
+    const firstSource = {
+      ...imageSource("10"),
+      sourceName: "/camera/front",
+    };
+    const first = render(
+      <PanelVisibilityProvider scopeKey="dataset-a" sources={[firstSource]}>
+        <TilingProvider>
+          <TileIdScope tileId="image-1">
+            <PreferencePublisher sourceId="10" />
+          </TileIdScope>
+          <PersistedBindingsProbe />
+        </TilingProvider>
+      </PanelVisibilityProvider>,
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"10"}',
+    );
+    first.unmount();
+
+    const shiftedSource = { ...firstSource, id: "80" };
+    render(
+      <PanelVisibilityProvider scopeKey="dataset-a" sources={[shiftedSource]}>
+        <TilingProvider>
+          <TileIdScope tileId="image-1">
+            <PreferencePublisher sourceId="80" />
+          </TileIdScope>
+          <PersistedBindingsProbe />
+        </TilingProvider>
+      </PanelVisibilityProvider>,
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"80"}',
     );
   });
 });

@@ -37,7 +37,10 @@ import {
   useImageTile3dLabelProjection,
   useImageTileLabelStreams,
   useImageTilePointCloudProjection,
+  usePanelVisibilityScope,
+  useSidebarSourceIdentity,
 } from "../tiles/panel-visibility";
+import { readSidebarPreferences } from "../settings/sidebar-preferences";
 import {
   chooseNextImageStream,
   imageTileBindingsAtom,
@@ -107,6 +110,8 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     useRef<GpuPointCloudProjectionPickerHandle | null>(null);
   const sharedHover = useHoverEcho();
   const images = useSceneSourcesByType(SCENE_SOURCE_TYPE.IMAGE);
+  const sourceIdentity = useSidebarSourceIdentity();
+  const sidebarScope = usePanelVisibilityScope();
   const annotationSources = useSceneSourcesByType(
     SCENE_SOURCE_TYPE.IMAGE_ANNOTATION,
   );
@@ -160,9 +165,15 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   // back when the current sample lacks it. Automatic fallback never writes
   // the preference, so a later sample can restore the user's chosen source.
   useEffect(() => {
-    const preferredStream = tileId
-      ? jotaiStore.get(persistedImageTileBindingsAtom)[tileId]
-      : undefined;
+    const preferredKey =
+      tileId && sidebarScope
+        ? readSidebarPreferences(sidebarScope).tiles[tileId]?.imageSourceKey
+        : null;
+    const preferredStream = preferredKey
+      ? sourceIdentity.runtimeIdsForKey(preferredKey)[0]
+      : tileId
+        ? jotaiStore.get(persistedImageTileBindingsAtom)[tileId]
+        : undefined;
     const nextStream = resolveAvailableImageStream(
       stream,
       preferredStream,
@@ -171,7 +182,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       jotaiStore.get(imageTileBindingsAtom),
     );
     if (nextStream !== stream) setStream(nextStream);
-  }, [images, jotaiStore, stream, tileId]);
+  }, [images, jotaiStore, sidebarScope, sourceIdentity, stream, tileId]);
 
   // Advertise this tile's stream so spawn points know what's on screen.
   usePublishImageTileBinding(stream);
@@ -556,10 +567,12 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     (labelStream: string, checked: boolean) => {
       if (!stream) return;
       const next = new Set(selectedLabelStreams);
-      if (checked) {
-        next.add(labelStream);
-      } else {
-        next.delete(labelStream);
+      const key = sourceIdentity.keyForRuntimeId(labelStream);
+      for (const id of key
+        ? sourceIdentity.runtimeIdsForKey(key)
+        : [labelStream]) {
+        if (checked) next.add(id);
+        else next.delete(id);
       }
       setLabelStreams(
         annotationStreams.filter((availableStream) =>
@@ -567,30 +580,45 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         ),
       );
     },
-    [annotationStreams, selectedLabelStreams, setLabelStreams, stream],
+    [
+      annotationStreams,
+      selectedLabelStreams,
+      setLabelStreams,
+      sourceIdentity,
+      stream,
+    ],
   );
   const toggleProjectionStream = useCallback(
     (cloudStream: string, checked: boolean) => {
       const next = new Set(selectedProjectionStreams);
-      if (checked) {
-        next.add(cloudStream);
-      } else {
-        next.delete(cloudStream);
+      const key = sourceIdentity.keyForRuntimeId(cloudStream);
+      for (const id of key
+        ? sourceIdentity.runtimeIdsForKey(key)
+        : [cloudStream]) {
+        if (checked) next.add(id);
+        else next.delete(id);
       }
       const streams = pointCloudStreams.filter((availableStream) =>
         next.has(availableStream),
       );
       setPointCloudProjection({ enabled: streams.length > 0, streams });
     },
-    [pointCloudStreams, selectedProjectionStreams, setPointCloudProjection],
+    [
+      pointCloudStreams,
+      selectedProjectionStreams,
+      setPointCloudProjection,
+      sourceIdentity,
+    ],
   );
   const toggleSceneAnnotationStream = useCallback(
     (annotationStream: string, checked: boolean) => {
       const next = new Set(selectedSceneAnnotationStreams);
-      if (checked) {
-        next.add(annotationStream);
-      } else {
-        next.delete(annotationStream);
+      const key = sourceIdentity.keyForRuntimeId(annotationStream);
+      for (const id of key
+        ? sourceIdentity.runtimeIdsForKey(key)
+        : [annotationStream]) {
+        if (checked) next.add(id);
+        else next.delete(id);
       }
       const streams = sceneAnnotationStreams.filter((availableStream) =>
         next.has(availableStream),
@@ -601,6 +629,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       sceneAnnotationStreams,
       selectedSceneAnnotationStreams,
       setLabel3dProjection,
+      sourceIdentity,
     ],
   );
   const canProjectPointClouds = pointCloudSources.length > 0;

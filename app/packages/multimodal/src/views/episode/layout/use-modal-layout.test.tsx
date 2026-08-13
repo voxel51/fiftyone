@@ -25,6 +25,9 @@ import {
   type Scene3dTilePlaybackSettingsByTile,
 } from "../scene/tile/scene-3d-tile-state";
 import { persistedImageTileBindingsAtom } from "../tiles/tile-source-bindings";
+import { cameraScopeKey } from "../scope/camera-scope";
+import { updateSidebarPreferences } from "../settings/sidebar-preferences";
+import { semanticSourceKey } from "../settings/semantic-source";
 
 // The tile bodies drag in WebGPU/Three at module load, which jsdom can't
 // evaluate. Layout restore only needs them to exist as components; the
@@ -216,7 +219,7 @@ describe("useModalLayout", () => {
   });
 
   it("restores image bindings without requiring an edited mosaic layout", () => {
-    writeModalLayout({ imageBindings: { "image-1": "/a" } }, "dataset-a");
+    writeSemanticImageBinding("dataset-a", "image-1", "/a");
     const { result } = renderLayoutHook(
       [
         {
@@ -240,6 +243,31 @@ describe("useModalLayout", () => {
     expect(renderedSourceOf(result.current.initialTiles["image-1"])).toBe("/a");
     expect(renderedSourceOf(result.current.initialTiles["image-2"])).toBe("/b");
     expect(readModalLayout("dataset-a")?.layout).toBeUndefined();
+  });
+
+  it("uses the first runtime channel for duplicate semantic image sources", () => {
+    writeSemanticImageBinding("dataset-a", "image-1", "/camera/front");
+    const { result } = renderLayoutHook(
+      [
+        {
+          id: "channel-7",
+          label: "front duplicate 1",
+          sourceName: "/camera/front",
+          type: "image",
+        },
+        {
+          id: "channel-19",
+          label: "front duplicate 2",
+          sourceName: "/camera/front",
+          type: "image",
+        },
+      ],
+      "dataset-a",
+    );
+
+    expect(renderedSourceOf(result.current.initialTiles["image-1"])).toBe(
+      "channel-7",
+    );
   });
 
   it("omits default tiles for types absent from the scene", () => {
@@ -396,12 +424,10 @@ describe("useModalLayout", () => {
   });
 
   it("restores valid image bindings by tile id", () => {
+    writeSemanticImageBinding("dataset-a", "image-3", "/a");
+    writeSemanticImageBinding("dataset-a", "image-8", "/b");
     writeModalLayout(
       {
-        imageBindings: {
-          "image-3": "/a",
-          "image-8": "/b",
-        },
         layout: {
           direction: "row",
           first: "image-3",
@@ -435,12 +461,10 @@ describe("useModalLayout", () => {
   });
 
   it("keeps ranked fallbacks distinct from valid restored bindings", () => {
+    writeSemanticImageBinding("dataset-a", "image-3", "/missing");
+    writeSemanticImageBinding("dataset-a", "image-8", "/b");
     writeModalLayout(
       {
-        imageBindings: {
-          "image-3": "/missing",
-          "image-8": "/b",
-        },
         layout: {
           direction: "row",
           first: "image-3",
@@ -748,6 +772,23 @@ describe("useModalLayout", () => {
     expect(result.current.sceneUpAxis).toBe("z");
   });
 });
+
+function writeSemanticImageBinding(
+  datasetId: string,
+  tileId: string,
+  sourceName: string,
+): void {
+  const scope = cameraScopeKey(datasetId, undefined);
+  if (!scope) throw new Error("expected a dataset scope");
+  const imageSourceKey = semanticSourceKey({ sourceName, type: "image" });
+  updateSidebarPreferences(scope, (current) => ({
+    ...current,
+    tiles: {
+      ...current.tiles,
+      [tileId]: { ...current.tiles[tileId], imageSourceKey },
+    },
+  }));
+}
 
 describe("pruneMosaicLayout", () => {
   const rejecting =
@@ -1063,7 +1104,7 @@ describe("ModalLayoutPersistence", () => {
     });
   });
 
-  it("seeds and mirrors durable image bindings for surviving panes", () => {
+  it("does not seed or mirror legacy raw-id image bindings", () => {
     writeModalLayout(
       { imageBindings: { "image-1": "/cam/front" } },
       "dataset-a",
@@ -1080,7 +1121,7 @@ describe("ModalLayoutPersistence", () => {
       </TilingProvider>,
     );
 
-    expect(values.at(-1)).toEqual({ "image-1": "/cam/front" });
+    expect(values.at(-1)).toEqual({});
 
     rerender(
       <TilingProvider initialTiles={imageTiles}>
@@ -1093,9 +1134,7 @@ describe("ModalLayoutPersistence", () => {
       vi.advanceTimersByTime(600);
     });
 
-    expect(readModalLayout("dataset-a")?.imageBindings).toEqual({
-      "image-1": "/cam/back",
-    });
+    expect(readModalLayout("dataset-a")?.imageBindings).toBeUndefined();
   });
 
   it("removes durable bindings when the pane leaves the live layout", () => {
@@ -1121,7 +1160,7 @@ describe("ModalLayoutPersistence", () => {
     expect(readModalLayout("dataset-a")?.imageBindings).toBeUndefined();
   });
 
-  it("does not erase durable image bindings during modal teardown", () => {
+  it("does not revive legacy image bindings during modal teardown", () => {
     writeModalLayout(
       { imageBindings: { "image-1": "/cam/back" } },
       "dataset-a",
@@ -1138,9 +1177,7 @@ describe("ModalLayoutPersistence", () => {
 
     unmount();
 
-    expect(readModalLayout("dataset-a")?.imageBindings).toEqual({
-      "image-1": "/cam/back",
-    });
+    expect(readModalLayout("dataset-a")?.imageBindings).toBeUndefined();
   });
 
   it("flushes expanded tile changes on unmount even when the debounce is pending", () => {

@@ -17,9 +17,17 @@ import { useScene3dViewStateStore } from "../camera/scene-3d-view-state-context"
 import {
   readScene3dTileVisibility,
   usePanelVisibilityScope,
+  writeScene3dTrajectoryFrameOverrides,
   writeScene3dTileVisibility,
   type Scene3dTileVisibility,
 } from "../../tiles/panel-visibility";
+import {
+  createSemanticSourceIndex,
+  resolveSemanticSourceKeys,
+  semanticSourceKey,
+  semanticSourceKeysForRuntimeIds,
+  type SemanticSourceKey,
+} from "../../settings/semantic-source";
 import { useImageProjectionSettingsByStream } from "../../settings/modal/state";
 import { useImageTileBindings } from "../../tiles/tile-source-bindings";
 import type { StreamContentFrame } from "../../playback/use-stream-values";
@@ -55,8 +63,8 @@ const PROVISIONAL_STREAM_PENALTIES: readonly {
 interface Scene3dSelectionState {
   readonly cameraSelectionCustomized: boolean;
   readonly customized: boolean;
-  readonly enabled: ReadonlySet<string>;
-  readonly primarySourceId: string | null;
+  readonly enabledSourceKeys: ReadonlySet<SemanticSourceKey>;
+  readonly primarySourceKey: SemanticSourceKey | null;
 }
 
 interface CameraImageAssociations {
@@ -87,6 +95,10 @@ export function useScene3dSelection({
   const visibilityScope = usePanelVisibilityScope();
   const imageTileBindings = useImageTileBindings();
   const sources = useSceneInventory();
+  const sourceIndex = useMemo(
+    () => createSemanticSourceIndex(sources),
+    [sources],
+  );
   const imageProjectionSettings = useImageProjectionSettingsByStream();
   const renderableSources = useMemo(
     () => sources.filter(is3dRenderableSource),
@@ -104,8 +116,11 @@ export function useScene3dSelection({
     () => renderableSources.filter(isCameraCalibrationSource),
     [renderableSources],
   );
-  const cameraCalibrationStreams = useMemo(
-    () => new Set(cameraCalibrationSources.map((source) => source.id)),
+  const cameraCalibrationSourceKeys = useMemo(
+    () =>
+      new Set(
+        cameraCalibrationSources.map((source) => semanticSourceKey(source)),
+      ),
     [cameraCalibrationSources],
   );
   const poseSources = useMemo(
@@ -166,10 +181,7 @@ export function useScene3dSelection({
     [selectableRenderableSources],
   );
   const selectableRenderableSourceKeys = useMemo(
-    () =>
-      selectableRenderableSources.map(
-        (source) => `${source.type}\0${source.sourceName}`,
-      ),
+    () => [...new Set(selectableRenderableSources.map(semanticSourceKey))],
     [selectableRenderableSources],
   );
   const defaultRenderableSources = useMemo(
@@ -181,6 +193,10 @@ export function useScene3dSelection({
     [selectableRenderableSources],
   );
   const setTileTitle = useSetTileTitle();
+  const persistedVisibility = useMemo(
+    () => readScene3dTileVisibility(visibilityScope, tileId ?? null),
+    [tileId, visibilityScope],
+  );
   // Carried-over selection state from the previous sample, resolved once at
   // mount: it applies only when the new sample's renderable source ids
   // exactly match the shape the snapshot was captured against.
@@ -188,16 +204,9 @@ export function useScene3dSelection({
     resolveScene3dSelectionRestore(restore, selectableRenderableSourceIds),
   );
   const [selection, setSelection] = useState<Scene3dSelectionState>(() => {
-    const persisted = readScene3dTileVisibility(
-      visibilityScope,
-      tileId ?? null,
-    );
+    const persisted = persistedVisibility;
     if (persisted) {
-      return reconcilePersistedSelection(
-        persisted,
-        selectableRenderableSources,
-        defaultRenderableSources,
-      );
+      return reconcilePersistedSelection(persisted);
     }
     if (selectionRestore.enabledSourceIds) {
       return selectionFromEnabledIds(
@@ -210,8 +219,26 @@ export function useScene3dSelection({
       cameraAssociations.openCalibrationStreams,
     );
   });
-  const { cameraSelectionCustomized, customized, enabled, primarySourceId } =
-    selection;
+  const {
+    cameraSelectionCustomized,
+    customized,
+    enabledSourceKeys,
+    primarySourceKey,
+  } = selection;
+  const enabled = useMemo(
+    () =>
+      new Set(resolveSemanticSourceKeys([...enabledSourceKeys], sourceIndex)),
+    [enabledSourceKeys, sourceIndex],
+  );
+  const primarySourceId = useMemo(
+    () =>
+      primarySourceKey
+        ? (selectableRenderableSources.find(
+            (source) => semanticSourceKey(source) === primarySourceKey,
+          )?.id ?? null)
+        : null,
+    [primarySourceKey, selectableRenderableSources],
+  );
 
   // This effect writes panel-local visibility to durable storage before a
   // later modal open can recreate stream demand.
@@ -219,14 +246,14 @@ export function useScene3dSelection({
     if (!customized && !cameraSelectionCustomized) return;
     writeScene3dTileVisibility(visibilityScope, tileId ?? null, {
       cameraSelectionCustomized,
-      enabledSourceIds: [...enabled],
-      primarySourceId,
+      enabledSourceKeys: [...enabledSourceKeys],
+      primarySourceKey,
     });
   }, [
     cameraSelectionCustomized,
     customized,
-    enabled,
-    primarySourceId,
+    enabledSourceKeys,
+    primarySourceKey,
     tileId,
     visibilityScope,
   ]);
@@ -262,48 +289,46 @@ export function useScene3dSelection({
         cameraAssociations.openCalibrationStreams,
       );
       const nextEnabled = new Set(
-        [...current.enabled].filter((id) => !cameraCalibrationStreams.has(id)),
+        [...current.enabledSourceKeys].filter(
+          (key) => !cameraCalibrationSourceKeys.has(key),
+        ),
       );
-      for (const id of defaults.enabled) {
-        if (cameraCalibrationStreams.has(id)) nextEnabled.add(id);
+      for (const key of defaults.enabledSourceKeys) {
+        if (cameraCalibrationSourceKeys.has(key)) nextEnabled.add(key);
       }
-      return sameStringSet(nextEnabled, current.enabled)
+      return sameStringSet(nextEnabled, current.enabledSourceKeys)
         ? current
-        : { ...current, enabled: nextEnabled };
+        : { ...current, enabledSourceKeys: nextEnabled };
     });
   }, [
     cameraAssociations.openCalibrationStreams,
-    cameraCalibrationStreams,
+    cameraCalibrationSourceKeys,
     defaultRenderableSources,
   ]);
 
-  // This effect reconciles inventory churn conservatively: missing sources
-  // disappear and a missing primary gets one ranked replacement, but newly
-  // discovered secondary sources never auto-enable.
+  // Before any user customization, a temporarily missing automatic primary
+  // may use the best available fallback. Customized semantic intent remains
+  // latent instead and is never rewritten by inventory churn.
   useEffect(() => {
-    const currentIds = new Set(
-      selectableRenderableSources.map((source) => source.id),
+    const currentKeys = new Set(
+      selectableRenderableSources.map(semanticSourceKey),
     );
     setSelection((current) => {
-      const nextEnabled = new Set(
-        [...current.enabled].filter((id) => currentIds.has(id)),
-      );
-      let nextPrimary = current.primarySourceId;
-      if (nextPrimary && !currentIds.has(nextPrimary)) {
-        const replacement = defaultPrimarySource(defaultRenderableSources);
-        nextPrimary = replacement?.id ?? null;
-        if (replacement) nextEnabled.add(replacement.id);
-      }
-      if (
-        nextPrimary === current.primarySourceId &&
-        sameStringSet(nextEnabled, current.enabled)
-      ) {
-        return current;
-      }
+      if (current.customized) return current;
+      const primaryAvailable =
+        !current.primarySourceKey || currentKeys.has(current.primarySourceKey);
+      if (primaryAvailable) return current;
+      const replacement = defaultPrimarySource(defaultRenderableSources);
+      const replacementKey = replacement
+        ? semanticSourceKey(replacement)
+        : null;
+      const nextEnabled = new Set(current.enabledSourceKeys);
+      nextEnabled.delete(current.primarySourceKey);
+      if (replacementKey) nextEnabled.add(replacementKey);
       return {
         ...current,
-        enabled: nextEnabled,
-        primarySourceId: nextPrimary,
+        enabledSourceKeys: nextEnabled,
+        primarySourceKey: replacementKey,
       };
     });
   }, [defaultRenderableSources, selectableRenderableSources]);
@@ -401,50 +426,53 @@ export function useScene3dSelection({
 
   const toggleSource = useCallback(
     (id: string, checked: boolean) => {
+      const key = sourceIndex.keyByRuntimeId.get(id);
+      if (!key) return;
       setSelection((current) => {
-        const nextEnabled = new Set(current.enabled);
+        const nextEnabled = new Set(current.enabledSourceKeys);
         if (checked) {
-          nextEnabled.add(id);
+          nextEnabled.add(key);
         } else {
-          nextEnabled.delete(id);
+          nextEnabled.delete(key);
         }
-        const primarySourceId = nextPrimarySourceId(
-          current.primarySourceId,
+        const primarySourceKey = nextPrimarySourceKey(
+          current.primarySourceKey,
           nextEnabled,
           selectableRenderableSources,
-          checked ? id : null,
+          checked ? key : null,
         );
         if (
-          primarySourceId === current.primarySourceId &&
-          sameStringSet(nextEnabled, current.enabled)
+          primarySourceKey === current.primarySourceKey &&
+          sameStringSet(nextEnabled, current.enabledSourceKeys)
         ) {
           return current;
         }
         return {
           cameraSelectionCustomized:
             current.cameraSelectionCustomized ||
-            cameraCalibrationStreams.has(id),
+            cameraCalibrationSourceKeys.has(key),
           customized: true,
-          enabled: nextEnabled,
-          primarySourceId,
+          enabledSourceKeys: nextEnabled,
+          primarySourceKey,
         };
       });
     },
-    [cameraCalibrationStreams, selectableRenderableSources],
+    [cameraCalibrationSourceKeys, selectableRenderableSources, sourceIndex],
   );
 
   const setSourcesEnabled = useCallback(
     (ids: readonly string[], checked: boolean) => {
+      const keys = semanticSourceKeysForRuntimeIds(ids, sourceIndex);
       setSelection((current) => {
-        const nextEnabled = new Set(current.enabled);
+        const nextEnabled = new Set(current.enabledSourceKeys);
         let changed = false;
-        for (const id of ids) {
+        for (const key of keys) {
           if (checked) {
-            if (!nextEnabled.has(id)) {
-              nextEnabled.add(id);
+            if (!nextEnabled.has(key)) {
+              nextEnabled.add(key);
               changed = true;
             }
-          } else if (nextEnabled.delete(id)) {
+          } else if (nextEnabled.delete(key)) {
             changed = true;
           }
         }
@@ -452,19 +480,45 @@ export function useScene3dSelection({
         return {
           cameraSelectionCustomized:
             current.cameraSelectionCustomized ||
-            ids.some((id) => cameraCalibrationStreams.has(id)),
+            keys.some((key) => cameraCalibrationSourceKeys.has(key)),
           customized: true,
-          enabled: nextEnabled,
-          primarySourceId: nextPrimarySourceId(
-            current.primarySourceId,
+          enabledSourceKeys: nextEnabled,
+          primarySourceKey: nextPrimarySourceKey(
+            current.primarySourceKey,
             nextEnabled,
             selectableRenderableSources,
-            checked ? (ids[0] ?? null) : null,
+            checked ? (keys[0] ?? null) : null,
           ),
         };
       });
     },
-    [cameraCalibrationStreams, selectableRenderableSources],
+    [cameraCalibrationSourceKeys, selectableRenderableSources, sourceIndex],
+  );
+  const restoredTrajectoryFrameOverrides = useMemo(() => {
+    const restored: Record<string, string> = {};
+    for (const [key, frameId] of Object.entries(
+      persistedVisibility?.trajectoryFrameOverrides ?? {},
+    )) {
+      for (const runtimeId of sourceIndex.runtimeIdsByKey.get(key) ?? []) {
+        restored[runtimeId] = frameId;
+      }
+    }
+    return restored;
+  }, [persistedVisibility?.trajectoryFrameOverrides, sourceIndex]);
+  const persistTrajectoryFrameOverrides = useCallback(
+    (overrides: Readonly<Record<string, string>>) => {
+      const semantic: Record<SemanticSourceKey, string> = {};
+      for (const [runtimeId, frameId] of Object.entries(overrides)) {
+        const key = sourceIndex.keyByRuntimeId.get(runtimeId);
+        if (key) semantic[key] = frameId;
+      }
+      writeScene3dTrajectoryFrameOverrides(
+        visibilityScope,
+        tileId ?? null,
+        semantic,
+      );
+    },
+    [sourceIndex, tileId, visibilityScope],
   );
 
   return {
@@ -483,6 +537,8 @@ export function useScene3dSelection({
     primarySourceId,
     renderableSourceIds: selectableRenderableSourceIds,
     renderableSourceKeys: selectableRenderableSourceKeys,
+    persistTrajectoryFrameOverrides,
+    restoredTrajectoryFrameOverrides,
     restoredSourceShapeMatches: selectionRestore.sourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationStreams,
@@ -501,21 +557,21 @@ function default3dSelection(
   openCalibrationStreams: ReadonlySet<string>,
 ): Scene3dSelectionState {
   const primary = defaultPrimarySource(defaultRenderableSources);
-  const enabled = new Set(
+  const enabledSourceKeys = new Set(
     defaultRenderableSources
       .filter(
         (source) =>
           isCameraCalibrationSource(source) &&
           openCalibrationStreams.has(source.id),
       )
-      .map((source) => source.id),
+      .map(semanticSourceKey),
   );
-  if (primary) enabled.add(primary.id);
+  if (primary) enabledSourceKeys.add(semanticSourceKey(primary));
   return {
     cameraSelectionCustomized: false,
     customized: false,
-    enabled,
-    primarySourceId: primary?.id ?? null,
+    enabledSourceKeys,
+    primarySourceKey: primary ? semanticSourceKey(primary) : null,
   };
 }
 
@@ -590,26 +646,17 @@ function defaultPrimarySource(
 
 function reconcilePersistedSelection(
   persisted: Scene3dTileVisibility,
-  renderableSources: readonly SceneSource[],
-  defaultRenderableSources: readonly SceneSource[],
 ): Scene3dSelectionState {
-  const currentIds = new Set(renderableSources.map((source) => source.id));
-  const enabled = new Set(
-    persisted.enabledSourceIds.filter((id) => currentIds.has(id)),
-  );
-  let primarySourceId = persisted.primarySourceId;
-  if (primarySourceId && currentIds.has(primarySourceId)) {
-    enabled.add(primarySourceId);
-  } else if (primarySourceId) {
-    const replacement = defaultPrimarySource(defaultRenderableSources);
-    primarySourceId = replacement?.id ?? null;
-    if (replacement) enabled.add(replacement.id);
-  }
+  const enabledSourceKeys = new Set(persisted.enabledSourceKeys);
+  const primarySourceKey = persisted.primarySourceKey;
+  // Keep unavailable identities latent. Only runtime derivation filters them;
+  // inventory churn never rewrites the user's saved intent.
+  if (primarySourceKey) enabledSourceKeys.add(primarySourceKey);
   return {
     cameraSelectionCustomized: persisted.cameraSelectionCustomized,
     customized: true,
-    enabled,
-    primarySourceId,
+    enabledSourceKeys,
+    primarySourceKey,
   };
 }
 
@@ -618,33 +665,56 @@ function selectionFromEnabledIds(
   renderableSources: readonly SceneSource[],
 ): Scene3dSelectionState {
   const currentIds = new Set(renderableSources.map((source) => source.id));
-  const enabled = new Set(enabledSourceIds.filter((id) => currentIds.has(id)));
+  const enabledIds = enabledSourceIds.filter((id) => currentIds.has(id));
+  const enabledSourceKeys = new Set(
+    renderableSources
+      .filter((source) => enabledIds.includes(source.id))
+      .map(semanticSourceKey),
+  );
+  const primary = bestEnabledPrimarySourceId(
+    new Set(enabledIds),
+    renderableSources,
+  );
+  const primarySource = primary
+    ? renderableSources.find((source) => source.id === primary)
+    : undefined;
   return {
     cameraSelectionCustomized: false,
     customized: false,
-    enabled,
-    primarySourceId: bestEnabledPrimarySourceId(enabled, renderableSources),
+    enabledSourceKeys,
+    primarySourceKey: primarySource ? semanticSourceKey(primarySource) : null,
   };
 }
 
-function nextPrimarySourceId(
-  currentPrimarySourceId: string | null,
-  enabled: ReadonlySet<string>,
+function nextPrimarySourceKey(
+  currentPrimarySourceKey: SemanticSourceKey | null,
+  enabled: ReadonlySet<SemanticSourceKey>,
   renderableSources: readonly SceneSource[],
-  newlyEnabledSourceId: string | null,
-): string | null {
-  if (currentPrimarySourceId && enabled.has(currentPrimarySourceId)) {
-    return currentPrimarySourceId;
+  newlyEnabledSourceKey: SemanticSourceKey | null,
+): SemanticSourceKey | null {
+  if (currentPrimarySourceKey && enabled.has(currentPrimarySourceKey)) {
+    return currentPrimarySourceKey;
   }
-  if (newlyEnabledSourceId && enabled.has(newlyEnabledSourceId)) {
+  if (newlyEnabledSourceKey && enabled.has(newlyEnabledSourceKey)) {
     const source = renderableSources.find(
-      (candidate) => candidate.id === newlyEnabledSourceId,
+      (candidate) => semanticSourceKey(candidate) === newlyEnabledSourceKey,
     );
     if (source && !isCameraCalibrationSource(source)) {
-      return source.id;
+      return newlyEnabledSourceKey;
     }
   }
-  return bestEnabledPrimarySourceId(enabled, renderableSources);
+  const primary = bestEnabledPrimarySourceId(
+    new Set(
+      renderableSources
+        .filter((source) => enabled.has(semanticSourceKey(source)))
+        .map((source) => source.id),
+    ),
+    renderableSources,
+  );
+  const source = renderableSources.find(
+    (candidate) => candidate.id === primary,
+  );
+  return source ? semanticSourceKey(source) : null;
 }
 
 function bestEnabledPrimarySourceId(

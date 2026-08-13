@@ -7,6 +7,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type React from "react";
 import {
   __resetModalSettingsForTests,
   DEFAULT_IMAGE_PROJECTION,
@@ -16,19 +17,19 @@ import {
   DEFAULT_REFERENCE_GRID,
   DEFAULT_SCENE_BACKGROUND,
   MAX_POINT_CLOUD_POINT_SIZE,
-  MAX_SETTINGS_SCOPES,
   defaultPointCloudColorForIndex,
   defaultPointCloudColorForSource,
   readModalSettings,
   useImageLabelStreams,
   useImageProjection,
-  useModalSettingsScopeSync,
   usePinholeCameraSettings,
   usePointCloudStyleSettings,
   useReferenceGridSettings,
   useSceneBackgroundSettings,
   writeModalSettings,
 } from "./state";
+import type { SceneSource } from "../../../../ir";
+import { SidebarPreferencesProvider as PanelVisibilityProvider } from "../sidebar-preferences-context";
 
 describe("episode-modal-settings", () => {
   beforeEach(() => {
@@ -676,173 +677,159 @@ describe("episode-modal-settings", () => {
     );
   });
 
-  it("isolates scoped stream styling from unscoped settings", () => {
-    const globalHook = renderHook(() => usePointCloudStyleSettings());
+  it("isolates point-cloud style and appearance in mounted dataset scopes", () => {
+    const datasetA = renderHook(() => usePointCloudStyleSettings(), {
+      wrapper: settingsWrapper("dataset-a"),
+    });
     act(() => {
-      globalHook.result.current.setPointCloudColor("/lidar_top", {
-        colorBy: "height",
-      });
+      datasetA.result.current.setPointCloudColor("10", { rangeMax: 9 });
+      datasetA.result.current.setPointCloudPointSize(7);
     });
-    globalHook.unmount();
-
-    const { result, unmount } = renderHook(() => {
-      useModalSettingsScopeSync("dataset-a");
-      return usePointCloudStyleSettings();
-    });
-
-    expect(result.current.pointCloudColors["/lidar_top"]).toBeUndefined();
-
-    act(() => {
-      result.current.setPointCloudColor("/lidar_top", { rangeMax: 9 });
-    });
-    expect(result.current.pointCloudColors["/lidar_top"]).toMatchObject({
-      colorBy: DEFAULT_POINT_CLOUD_COLOR.colorBy,
+    expect(datasetA.result.current.pointCloudColors["10"]).toMatchObject({
       rangeMax: 9,
     });
+    expect(datasetA.result.current.pointCloudPointSize).toBe(7);
 
-    const persisted = readModalSettings();
-    expect(
-      persisted.scoped["dataset-a"]?.pointCloudColors["/lidar_top"],
-    ).toMatchObject({
-      colorBy: DEFAULT_POINT_CLOUD_COLOR.colorBy,
-      rangeMax: 9,
+    const datasetB = renderHook(() => usePointCloudStyleSettings(), {
+      wrapper: settingsWrapper("dataset-b"),
     });
-    expect(persisted.pointCloudColors["/lidar_top"]).toMatchObject({
-      colorBy: "height",
-      rangeMax: null,
-    });
-
-    // Leaving the dataset restores the unscoped (global) view.
-    unmount();
-    const after = renderHook(() => usePointCloudStyleSettings());
-    expect(after.result.current.pointCloudColors["/lidar_top"]).toMatchObject({
-      colorBy: "height",
-      rangeMax: null,
-    });
-  });
-
-  it("keeps datasets from styling each other's streams", () => {
-    const datasetA = renderHook(() => {
-      useModalSettingsScopeSync("dataset-a");
-      return useImageLabelStreams("/camera/front");
-    });
-    act(() => {
-      datasetA.result.current.setLabelStreams(["/labels/a"]);
-    });
-    expect(datasetA.result.current.labelStreams).toEqual(["/labels/a"]);
-    datasetA.unmount();
-
-    const datasetB = renderHook(() => {
-      useModalSettingsScopeSync("dataset-b");
-      return useImageLabelStreams("/camera/front");
-    });
-    expect(datasetB.result.current.labelStreams).toEqual([]);
-    expect(datasetB.result.current.hasExplicitLabelStreams).toBe(false);
-  });
-
-  it("switches scoped settings in place and restores each scope", () => {
-    const activeScope = { current: "dataset-a" };
-    const hook = renderHook(() => {
-      useModalSettingsScopeSync(activeScope.current);
-      return useImageLabelStreams("/camera/front");
-    });
-
-    act(() => hook.result.current.setLabelStreams(["/labels/a"]));
-    activeScope.current = "dataset-b";
-    hook.rerender();
-    expect(hook.result.current.labelStreams).toEqual([]);
-
-    act(() => hook.result.current.setLabelStreams(["/labels/b"]));
-    activeScope.current = "dataset-a";
-    hook.rerender();
-    expect(hook.result.current.labelStreams).toEqual(["/labels/a"]);
-  });
-
-  it("persists the latest scoped write before unmount and restores it", () => {
-    const first = renderHook(() => {
-      useModalSettingsScopeSync("dataset-a");
-      return useImageLabelStreams("/camera/front");
-    });
-    act(() => first.result.current.setLabelStreams(["/labels/latest"]));
-    const persistedBeforeUnmount = localStorage.getItem(
-      "fiftyone.episode.modal-settings.v3",
+    expect(datasetB.result.current.pointCloudColors["10"]).toBeUndefined();
+    expect(datasetB.result.current.pointCloudPointSize).toBe(
+      DEFAULT_POINT_CLOUD_POINT_SIZE,
     );
+  });
 
+  it("remaps scoped style when a recording assigns a different runtime id", () => {
+    const first = renderHook(() => usePointCloudStyleSettings(), {
+      wrapper: settingsWrapper("dataset-a", "10"),
+    });
+    act(() =>
+      first.result.current.setPointCloudColor("10", { colorBy: "height" }),
+    );
     first.unmount();
-    expect(localStorage.getItem("fiftyone.episode.modal-settings.v3")).toBe(
-      persistedBeforeUnmount,
+
+    const shifted = renderHook(() => usePointCloudStyleSettings(), {
+      wrapper: settingsWrapper("dataset-a", "80"),
+    });
+    expect(shifted.result.current.pointCloudColors["80"]).toMatchObject({
+      colorBy: "height",
+    });
+  });
+
+  it("persists image geometry and semantic calibration across channel ids", () => {
+    const first = renderHook(() => useImageProjection("20"), {
+      wrapper: cameraSettingsWrapper("dataset-a", "20", "21"),
+    });
+    act(() =>
+      first.result.current.setProjection({
+        calibrationStream: "21",
+        display: "rectified",
+        geometry: "rectified",
+      }),
     );
+    first.unmount();
 
-    __resetModalSettingsForTests();
-    const restored = renderHook(() => {
-      useModalSettingsScopeSync("dataset-a");
-      return useImageLabelStreams("/camera/front");
+    const shifted = renderHook(() => useImageProjection("80"), {
+      wrapper: cameraSettingsWrapper("dataset-a", "80", "81"),
     });
-    expect(restored.result.current.labelStreams).toEqual(["/labels/latest"]);
+    expect(shifted.result.current.projection).toMatchObject({
+      calibrationStream: "81",
+      display: "rectified",
+      geometry: "rectified",
+    });
   });
 
-  it("prunes the least recently written scopes past the retention cap", () => {
-    for (let index = 0; index < MAX_SETTINGS_SCOPES + 1; index++) {
-      const scope = renderHook(() => {
-        useModalSettingsScopeSync(`dataset-${index}`);
-        return usePointCloudStyleSettings();
-      });
-      act(() => {
-        scope.result.current.setPointCloudColor("/lidar_top", {
-          colorBy: "height",
-        });
-      });
-      scope.unmount();
-    }
-
-    const scopes = Object.keys(readModalSettings().scoped);
-    expect(scopes).toHaveLength(MAX_SETTINGS_SCOPES);
-    expect(scopes).not.toContain("dataset-0");
-    expect(scopes).toContain(`dataset-${MAX_SETTINGS_SCOPES}`);
-  });
-
-  it("retains a touched old scope when timestamp-LRU pruning runs", () => {
-    let now = 1_000;
-    vi.spyOn(Date, "now").mockImplementation(() => now++);
-    for (let index = 0; index < MAX_SETTINGS_SCOPES; index++) {
-      const scope = renderHook(() => {
-        useModalSettingsScopeSync(`dataset-${index}`);
-        return usePointCloudStyleSettings();
-      });
-      act(() => {
-        scope.result.current.setPointCloudColor("/lidar_top", {
-          colorBy: "height",
-        });
-      });
-      scope.unmount();
-    }
-
-    now = 5_000;
-    const touched = renderHook(() => {
-      useModalSettingsScopeSync("dataset-0");
-      return usePointCloudStyleSettings();
+  it("retains semantic projection streams while projection is disabled", () => {
+    const first = renderHook(() => useImageProjection("20"), {
+      wrapper: cameraSettingsWrapper("dataset-a", "20", "21", "22"),
     });
-    act(() => {
-      touched.result.current.setPointCloudColor("/lidar_top", {
-        rangeMax: 42,
-      });
-    });
-    touched.unmount();
+    act(() =>
+      first.result.current.setProjection({
+        enabled: true,
+        streams: ["22"],
+      }),
+    );
+    act(() => first.result.current.setProjection({ enabled: false }));
+    first.unmount();
 
-    const newest = renderHook(() => {
-      useModalSettingsScopeSync(`dataset-${MAX_SETTINGS_SCOPES}`);
-      return usePointCloudStyleSettings();
+    const shifted = renderHook(() => useImageProjection("80"), {
+      wrapper: cameraSettingsWrapper("dataset-a", "80", "81", "82"),
     });
-    act(() => {
-      newest.result.current.setPointCloudColor("/lidar_top", {
-        colorBy: "intensity",
-      });
+    expect(shifted.result.current.projection).toMatchObject({
+      enabled: false,
+      streams: ["82"],
     });
-    newest.unmount();
-
-    const scopes = Object.keys(readModalSettings().scoped);
-    expect(scopes).toHaveLength(MAX_SETTINGS_SCOPES);
-    expect(scopes).toContain("dataset-0");
-    expect(scopes).not.toContain("dataset-1");
+    act(() => shifted.result.current.setProjection({ enabled: true }));
+    expect(shifted.result.current.projection).toMatchObject({
+      enabled: true,
+      streams: ["82"],
+    });
+    act(() => shifted.result.current.setProjection({ streams: null }));
+    expect(shifted.result.current.projection.streams).toBeNull();
   });
 });
+
+function settingsWrapper(scopeKey: string, runtimeId = "10") {
+  const sources: readonly SceneSource[] = [
+    {
+      id: runtimeId,
+      label: "/lidar_top",
+      sourceName: "/lidar_top",
+      type: "point-cloud",
+    },
+  ];
+  return function SettingsTestWrapper({
+    children,
+  }: {
+    readonly children: React.ReactNode;
+  }) {
+    return (
+      <PanelVisibilityProvider scopeKey={scopeKey} sources={sources}>
+        {children}
+      </PanelVisibilityProvider>
+    );
+  };
+}
+
+function cameraSettingsWrapper(
+  scopeKey: string,
+  imageId: string,
+  calibrationId: string,
+  pointCloudId?: string,
+) {
+  const sources: readonly SceneSource[] = [
+    {
+      id: imageId,
+      label: "/camera/front",
+      sourceName: "/camera/front",
+      type: "image",
+    },
+    {
+      id: calibrationId,
+      label: "/camera/front/camera_info",
+      sourceName: "/camera/front/camera_info",
+      type: "camera-calibration",
+    },
+    ...(pointCloudId
+      ? [
+          {
+            id: pointCloudId,
+            label: "/lidar_top",
+            sourceName: "/lidar_top",
+            type: "point-cloud",
+          },
+        ]
+      : []),
+  ];
+  return function CameraSettingsTestWrapper({
+    children,
+  }: {
+    readonly children: React.ReactNode;
+  }) {
+    return (
+      <PanelVisibilityProvider scopeKey={scopeKey} sources={sources}>
+        {children}
+      </PanelVisibilityProvider>
+    );
+  };
+}

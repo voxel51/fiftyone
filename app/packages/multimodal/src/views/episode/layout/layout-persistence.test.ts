@@ -480,16 +480,14 @@ describe("layout-persistence", () => {
   });
 
   describe("imageBindings", () => {
-    it("round-trips per-dataset image tile bindings", () => {
+    it("intentionally ignores legacy raw-id image tile bindings", () => {
       writeModalLayout({ imageBindings: { "image-1": "/cam/back" } }, "ds-a");
 
-      expect(readModalLayout("ds-a")?.imageBindings).toEqual({
-        "image-1": "/cam/back",
-      });
+      expect(readModalLayout("ds-a")?.imageBindings).toBeUndefined();
       expect(readModalLayout("ds-b")?.imageBindings).toBeUndefined();
     });
 
-    it("drops malformed rows and bounds the table", () => {
+    it("resets every legacy raw-id binding payload", () => {
       const rows = Object.fromEntries(
         Array.from({ length: 40 }, (_, index) => [
           `image-${index + 1}`,
@@ -505,9 +503,7 @@ describe("layout-persistence", () => {
         "image-number": 7,
       });
 
-      expect(Object.keys(sanitized ?? {})).toHaveLength(32);
-      expect(sanitized?.["image-1"]).toBe("/cam/1");
-      expect(sanitized?.["3d-1"]).toBeUndefined();
+      expect(sanitized).toBeUndefined();
     });
 
     it("rejects non-object payloads", () => {

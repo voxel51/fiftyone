@@ -2,6 +2,14 @@ import { useTileId } from "@fiftyone/tiling";
 import { atom, useAtomValue, useStore } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import type { SceneSource } from "../../../scene-inventory";
+import {
+  readSidebarPreferences,
+  updateSidebarPreferences,
+} from "../preferences";
+import {
+  usePanelVisibilityScope,
+  useSidebarSourceIdentity,
+} from "../preferences";
 
 type ImageTileBindings = Readonly<Record<string, string>>;
 
@@ -67,30 +75,59 @@ export function usePersistImageTileBinding(
 ): (sourceId: string) => void {
   const tileId = useTileId();
   const store = useStore();
+  const scopeKey = usePanelVisibilityScope();
+  const identity = useSidebarSourceIdentity();
 
   // This effect records pane creation/duplication in durable modal state.
   useEffect(() => {
     if (!tileId || !sourceId) return;
+    const preferredKey = scopeKey
+      ? readSidebarPreferences(scopeKey).tiles[tileId]?.imageSourceKey
+      : null;
+    const preferredRuntimeId = preferredKey
+      ? identity.runtimeIdsForKey(preferredKey)[0]
+      : null;
+    const runtimeId = preferredRuntimeId ?? sourceId;
     store.set(persistedImageTileBindingsAtom, (previous) =>
-      previous[tileId]
+      (!scopeKey && previous[tileId]) || previous[tileId] === runtimeId
         ? previous
-        : {
-            ...previous,
-            [tileId]: sourceId,
-          },
+        : { ...previous, [tileId]: runtimeId },
     );
-  }, [sourceId, store, tileId]);
+    if (!scopeKey || preferredKey) return;
+    const sourceKey = identity.keyForRuntimeId(sourceId);
+    if (!sourceKey) return;
+    updateSidebarPreferences(scopeKey, (current) => ({
+      ...current,
+      tiles: {
+        ...current.tiles,
+        [tileId]: { ...current.tiles[tileId], imageSourceKey: sourceKey },
+      },
+    }));
+  }, [identity, scopeKey, sourceId, store, tileId]);
 
   return useCallback(
     (nextSourceId: string) => {
       if (!tileId || !nextSourceId) return;
+      const sourceKey = identity.keyForRuntimeId(nextSourceId);
+      if (scopeKey && sourceKey) {
+        updateSidebarPreferences(scopeKey, (current) => ({
+          ...current,
+          tiles: {
+            ...current.tiles,
+            [tileId]: {
+              ...current.tiles[tileId],
+              imageSourceKey: sourceKey,
+            },
+          },
+        }));
+      }
       store.set(persistedImageTileBindingsAtom, (previous) =>
         previous[tileId] === nextSourceId
           ? previous
           : { ...previous, [tileId]: nextSourceId },
       );
     },
-    [store, tileId],
+    [identity, scopeKey, store, tileId],
   );
 }
 

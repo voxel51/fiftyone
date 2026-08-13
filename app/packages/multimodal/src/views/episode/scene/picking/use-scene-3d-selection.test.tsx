@@ -13,6 +13,8 @@ import {
   type Scene3dViewStateSnapshot,
 } from "../camera/scene-3d-view-state";
 import { PanelVisibilityProvider } from "../../tiles/panel-visibility";
+import { SIDEBAR_PREFERENCES_STORAGE_KEY } from "../../settings/sidebar-preferences";
+import { semanticSourceKey } from "../../settings/semantic-source";
 import {
   selectProvisionalPointCloudStream,
   useScene3dSelection,
@@ -475,7 +477,7 @@ describe("useScene3dSelection", () => {
 
     expect(result.current.renderableSourceIds).toEqual(["10"]);
     expect(result.current.renderableSourceKeys).toEqual([
-      `${SCENE_SOURCE_TYPE.POINT_CLOUD}\0/lidar/top`,
+      semanticSourceKey(firstLidar),
     ]);
 
     useSceneInventoryMock.mockReturnValue([secondLidar]);
@@ -483,7 +485,7 @@ describe("useScene3dSelection", () => {
 
     expect(result.current.renderableSourceIds).toEqual(["11"]);
     expect(result.current.renderableSourceKeys).toEqual([
-      `${SCENE_SOURCE_TYPE.POINT_CLOUD}\0/lidar/top`,
+      semanticSourceKey(secondLidar),
     ]);
   });
 
@@ -522,15 +524,13 @@ describe("useScene3dSelection", () => {
 
   it("restores per-tile visibility before applying fresh defaults", () => {
     const first = renderSelection([lidarTop, lidarFront, boxes]);
-    expect(
-      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
-    ).toBeNull();
+    expect(localStorage.getItem(SIDEBAR_PREFERENCES_STORAGE_KEY)).toBeNull();
     act(() => {
       first.result.current.toggleSource(lidarFront.id, true);
       first.result.current.toggleSource(boxes.id, true);
     });
     expect(
-      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
+      localStorage.getItem(SIDEBAR_PREFERENCES_STORAGE_KEY),
     ).not.toBeNull();
     expect(first.result.current.enabled).toEqual(
       new Set([lidarTop.id, lidarFront.id, boxes.id]),

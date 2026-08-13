@@ -47,10 +47,7 @@ export interface PersistedModalLayout {
   leftSidebarOpen?: boolean;
   /** Mosaic tree whose leaves are tile ids (e.g. `image-default`). */
   layout?: MosaicNode<string> | null;
-  /**
-   * Preferred image stream per image tile id. Dataset-scoped only: stream
-   * names describe one recording family and must not leak through fallback.
-   */
+  /** @deprecated Raw recording ids are intentionally ignored on restore. */
   imageBindings?: Record<string, string>;
   /**
    * Enabled plot series per plot tile id. Series reference streams of
@@ -134,8 +131,6 @@ export type PersistedExtensionSettingsValue =
 // cannot balloon the localStorage entry parsed on every modal mount.
 const MAX_PLOT_TILES = 32;
 const MAX_PLOT_SERIES_PER_TILE = 64;
-const MAX_IMAGE_TILES = 32;
-const MAX_IMAGE_STREAM_LENGTH = 512;
 const MAX_RAW_TILES = 32;
 const MAX_RAW_STREAM_LENGTH = 512;
 const MAX_MAP_TILES = 16;
@@ -163,7 +158,6 @@ const FALLBACK_OMITTED_FIELDS = [
   "mapSettings",
   "cameraPreferences",
   "extensionSettings",
-  "imageBindings",
   "plotSeries",
   "rawStreams",
   "scene3dSettings",
@@ -221,7 +215,6 @@ function sanitizeEntry(raw: unknown): PersistedModalLayout | undefined {
     cameraPreferences: sanitizeCameraPreferences(candidate.cameraPreferences),
     extensionSettings: sanitizeExtensionSettings(candidate.extensionSettings),
     expandedTileId: sanitizeTileId(candidate.expandedTileId),
-    imageBindings: sanitizeImageBindings(candidate.imageBindings),
     leftSidebarOpen:
       typeof candidate.leftSidebarOpen === "boolean"
         ? candidate.leftSidebarOpen
@@ -248,34 +241,9 @@ function sanitizeEntry(raw: unknown): PersistedModalLayout | undefined {
   };
 }
 
-/**
- * Structural validation of preferred image streams: keys must be image tile
- * ids, values non-empty bounded stream strings, and the table is capped.
- */
-export function sanitizeImageBindings(
-  raw: unknown,
-): Record<string, string> | undefined {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return undefined;
-  }
-
-  const result: Record<string, string> = {};
-  let tileCount = 0;
-  for (const [tileId, stream] of Object.entries(raw)) {
-    if (
-      tileTypeFromId(tileId) !== TILE_TYPE.IMAGE ||
-      typeof stream !== "string" ||
-      stream.length === 0 ||
-      stream.length > MAX_IMAGE_STREAM_LENGTH
-    ) {
-      continue;
-    }
-    if (tileCount >= MAX_IMAGE_TILES) break;
-    result[tileId] = stream;
-    tileCount += 1;
-  }
-
-  return Object.keys(result).length > 0 ? result : undefined;
+/** @deprecated Legacy raw-id image bindings are intentionally reset. */
+export function sanitizeImageBindings(_raw: unknown): undefined {
+  return undefined;
 }
 
 /** Bounds opaque extension state before it enters layout persistence. */

@@ -45,6 +45,9 @@ import {
 } from "../plots/plot-tile-state";
 import { rawTileStreamAtom } from "../tiles/raw-message-binding";
 import { persistedImageTileBindingsAtom } from "../tiles/tile-source-bindings";
+import { cameraScopeKey } from "../scope/camera-scope";
+import { readSidebarPreferences } from "../settings/sidebar-preferences";
+import { createSemanticSourceIndex } from "../settings/semantic-source";
 import {
   DEFAULT_SCENE_3D_TILE_PLAYBACK_SETTINGS,
   scene3dTilePlaybackSettingsAtom,
@@ -122,6 +125,23 @@ export type TileResolver = (type: string) => {
   readonly typeLabel: string;
 } | null;
 
+function resolveSemanticImageBindings(
+  scopeKey: string | null,
+  sources: readonly SceneSource[],
+): Readonly<Record<string, string>> {
+  if (!scopeKey) return {};
+  const sourceIndex = createSemanticSourceIndex(sources);
+  const result: Record<string, string> = {};
+  for (const [tileId, tile] of Object.entries(
+    readSidebarPreferences(scopeKey).tiles,
+  )) {
+    if (!tile.imageSourceKey) continue;
+    const source = sourceIndex.representativeByKey.get(tile.imageSourceKey);
+    if (source) result[tileId] = source.id;
+  }
+  return result;
+}
+
 /**
  * Mount-time layout state for the episode modal: the user's persisted
  * sidebar visibility and tile arrangement when one restores cleanly
@@ -168,15 +188,23 @@ export function useModalLayout({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sources re-reads storage after in-place sample swaps
     [cameraPreferenceField, datasetId, sources],
   );
+  const semanticImageBindings = useMemo(
+    () =>
+      resolveSemanticImageBindings(
+        cameraScopeKey(datasetId, cameraPreferenceField),
+        sources,
+      ),
+    [cameraPreferenceField, datasetId, sources],
+  );
   const boundDefaultTiles = useMemo(
     () =>
       buildResolvedTiles(
         resolved.tiles,
         resolveTile,
         sources,
-        persisted?.imageBindings,
+        semanticImageBindings,
       ),
-    [persisted?.imageBindings, resolveTile, resolved.tiles, sources],
+    [resolveTile, resolved.tiles, semanticImageBindings, sources],
   );
 
   const restored = useMemo(
@@ -187,9 +215,15 @@ export function useModalLayout({
         sources,
         resolveTile,
         persisted?.tileTitles,
-        persisted?.imageBindings,
+        semanticImageBindings,
       ),
-    [availableTileTypes, persisted, resolveTile, sources],
+    [
+      availableTileTypes,
+      persisted,
+      resolveTile,
+      semanticImageBindings,
+      sources,
+    ],
   );
   const restoredTileIds = useMemo(
     () => (restored ? new Set(collectTileIds(restored.layout)) : null),
@@ -565,16 +599,6 @@ export function ModalLayoutPersistence({
     tilesRef,
   });
 
-  const seededImageBindingsKeyRef = useRef<string | null>(null);
-  useSeedPersistedTileAtom({
-    atom: persistedImageTileBindingsAtom,
-    datasetIdRef,
-    field: "imageBindings",
-    seededKeyRef: seededImageBindingsKeyRef,
-    store,
-    tilesRef,
-  });
-
   usePrunePersistedImageBindings(store, tiles);
 
   const plotSeriesPatch = useCallback(
@@ -600,18 +624,6 @@ export function ModalLayoutPersistence({
     datasetIdRef,
     patchForValue: rawStreamsPatch,
     seededKeyRef: seededRawKeyRef,
-    store,
-  });
-
-  const imageBindingsPatch = useCallback(
-    (value: Readonly<Record<string, string>>) => ({ imageBindings: value }),
-    [],
-  );
-  useDebouncedLayoutAtomMirror({
-    atom: persistedImageTileBindingsAtom,
-    datasetIdRef,
-    patchForValue: imageBindingsPatch,
-    seededKeyRef: seededImageBindingsKeyRef,
     store,
   });
 
@@ -901,7 +913,6 @@ function compactScene3dSettings(
 
 type PersistedTileAtomField =
   | "extensionSettings"
-  | "imageBindings"
   | "logSettings"
   | "mapSettings"
   | "plotSeries"
