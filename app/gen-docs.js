@@ -714,9 +714,14 @@ class DocFragment {
     return _.has(this.raw, path);
   }
   mapArray(path, override) {
-    return this.get(path, [])
-      .map((raw) => toFragment(raw, override, this))
-      .filter((f) => f.shouldInclude());
+    return (
+      this.get(path, [])
+        // typedoc emits re-exports (`export { default as X } from ...`) as
+        // "Reference" nodes; the target is documented at its source, so skip
+        .filter((raw) => raw.kindString !== "Reference")
+        .map((raw) => toFragment(raw, override, this))
+        .filter((f) => f.shouldInclude())
+    );
   }
   label() {
     return this.get("name");
