@@ -24,9 +24,8 @@ export const DEFAULT_SCENE_3D_CAMERA_NAVIGATION_MODE: Scene3dCameraNavigationMod
  *
  * This is deliberately a non-reactive store: the access pattern is a one-shot
  * snapshot read at mount plus write-through recording. Camera samples must not
- * become React subscriptions. It is also deliberately memory-only: camera
- * composition survives an accidental modal close, but not a page reload;
- * durable dataset preferences are persisted separately.
+ * become React subscriptions. Recording-local poses remain memory-only; the
+ * provider separately persists portable camera compositions for reloads.
  */
 
 /** One displayed camera pose expressed in a recording's world frame. */
@@ -103,51 +102,61 @@ export interface Scene3dViewStateStore {
 }
 
 /** Creates one non-reactive view-state store for one inspection scope. */
-export function createScene3dViewStateStore(): Scene3dViewStateStore {
+export function createScene3dViewStateStore(options?: {
+  readonly initialState?: Partial<Scene3dViewStateSnapshot>;
+  readonly onChange?: (snapshot: Scene3dViewStateSnapshot) => void;
+}): Scene3dViewStateStore {
   // Replacing the object on every write makes handed-out snapshots immutable
   // by construction without freezing user-owned arrays or records.
-  let state = EMPTY_SCENE_3D_VIEW_STATE;
+  let state: Scene3dViewStateSnapshot = {
+    ...EMPTY_SCENE_3D_VIEW_STATE,
+    ...options?.initialState,
+  };
+  const replace = (patch: Partial<Scene3dViewStateSnapshot>) => {
+    state = { ...state, ...patch };
+    options?.onChange?.(state);
+  };
 
   return {
     clear: () => {
       state = EMPTY_SCENE_3D_VIEW_STATE;
+      options?.onChange?.(state);
     },
     getSnapshot: () => state,
     recordCameraNavigationMode: (cameraNavigationMode) => {
-      state = { ...state, cameraNavigationMode };
+      replace({ cameraNavigationMode });
     },
     recordCameraView: (cameraView) => {
-      state = { ...state, cameraView };
+      replace({ cameraView });
     },
     recordCameraProjection: (cameraProjection) => {
-      state = { ...state, cameraProjection };
+      replace({ cameraProjection });
     },
     recordNavigationCompositions: (navigationCompositions) => {
-      state = { ...state, navigationCompositions };
+      replace({ navigationCompositions });
     },
     recordSourceSelection: ({
       enabledSourceIds,
       renderableSourceIds,
       renderableSourceKeys,
     }) => {
-      state = {
-        ...state,
+      replace({
         enabledSourceIds,
         renderableSourceIds,
         renderableSourceKeys,
-      };
+      });
     },
     recordTrackingMode: (trackingMode) => {
-      state = { ...state, trackingMode };
+      replace({ trackingMode });
     },
     recordTrajectoryFrameOverrides: (trajectoryFrameOverrides) => {
-      state = { ...state, trajectoryFrameOverrides };
+      replace({ trajectoryFrameOverrides });
     },
     recordUserCameraTargetFrameId: (userCameraTargetFrameId) => {
-      state = { ...state, userCameraTargetFrameId };
+      replace({ userCameraTargetFrameId });
     },
     recordUserWorldFrameId: (userWorldFrameId) => {
-      state = { ...state, userWorldFrameId };
+      replace({ userWorldFrameId });
     },
   };
 }

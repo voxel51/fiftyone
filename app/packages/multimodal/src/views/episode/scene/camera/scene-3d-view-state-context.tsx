@@ -7,8 +7,13 @@ import React, {
 } from "react";
 import {
   createScene3dViewStateStore,
+  type Scene3dViewStateSnapshot,
   type Scene3dViewStateStore,
 } from "./scene-3d-view-state";
+import {
+  readSidebarPreferences,
+  updateSidebarPreferences,
+} from "../../settings/sidebar-preferences";
 
 const Scene3dViewStateStoreContext =
   createContext<Scene3dViewStateStore | null>(null);
@@ -21,12 +26,14 @@ const viewStateStoresByScope = new Map<
     readonly store: Scene3dViewStateStore;
   }
 >();
+const durableFlushByStore = new WeakMap<Scene3dViewStateStore, () => void>();
+const DURABLE_CAMERA_WRITE_DELAY_MS = 250;
 
 /**
- * Provides memory-only 3D navigation state for one dataset/media-field
- * inspection scope. A scoped store survives modal teardown so an accidental
- * close/reopen preserves the camera, but naturally disappears on page reload.
- * The store remains non-reactive: camera sampling never invalidates the shell.
+ * Provides non-reactive 3D navigation state for one dataset/media-field
+ * inspection scope. Recording-local state survives modal teardown in memory;
+ * portable camera composition is debounced to dataset preferences for reloads.
+ * Camera sampling never invalidates the shell.
  */
 export const Scene3dViewStateProvider: React.FC<{
   readonly children: React.ReactNode;
@@ -38,7 +45,7 @@ export const Scene3dViewStateProvider: React.FC<{
     () =>
       scopeKey && !suppliedStore
         ? (viewStateStoresByScope.get(scopeKey)?.store ??
-          createScene3dViewStateStore())
+          createDurableScene3dViewStateStore(scopeKey))
         : null,
     [scopeKey, suppliedStore],
   );
@@ -83,7 +90,10 @@ export const Scene3dViewStateProvider: React.FC<{
     }
     const release = retainViewStateScope(scopeKey, store);
     evictInactiveViewStateScopesToLimit(scopeKey);
-    return release;
+    return () => {
+      durableFlushByStore.get(store)?.();
+      release();
+    };
   }, [scopeKey, scopedStore, scopedStoreCandidate, store, suppliedStore]);
 
   return (
@@ -109,7 +119,49 @@ export function useScene3dViewStateStore(
 
 /** Clears the inspection-session registry between tests. */
 export function __resetScene3dViewStateScopesForTests() {
+  for (const { store } of viewStateStoresByScope.values()) {
+    durableFlushByStore.get(store)?.();
+  }
   viewStateStoresByScope.clear();
+}
+
+function createDurableScene3dViewStateStore(
+  scopeKey: string,
+): Scene3dViewStateStore {
+  const persisted = readSidebarPreferences(scopeKey).camera;
+  let pending: Scene3dViewStateSnapshot | null = null;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  const flush = () => {
+    if (timeout) clearTimeout(timeout);
+    timeout = null;
+    const snapshot = pending;
+    pending = null;
+    if (!snapshot) return;
+    updateSidebarPreferences(scopeKey, (current) => ({
+      ...current,
+      camera: {
+        cameraNavigationMode: snapshot.cameraNavigationMode,
+        // Rejection is a compatibility decision for the current scene, not
+        // a user reset. Empty transient snapshots never delete durable intent.
+        navigationCompositions: snapshot.navigationCompositions.length
+          ? snapshot.navigationCompositions
+          : current.camera.navigationCompositions,
+        renderableSourceKeys: snapshot.navigationCompositions.length
+          ? snapshot.renderableSourceKeys
+          : current.camera.renderableSourceKeys,
+      },
+    }));
+  };
+  const store = createScene3dViewStateStore({
+    initialState: persisted,
+    onChange: (snapshot) => {
+      pending = snapshot;
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(flush, DURABLE_CAMERA_WRITE_DELAY_MS);
+    },
+  });
+  durableFlushByStore.set(store, flush);
+  return store;
 }
 
 function retainViewStateScope(
