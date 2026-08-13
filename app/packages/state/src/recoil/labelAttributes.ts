@@ -24,8 +24,13 @@ const TAG_OVERLAY_TYPES = new Set(
   [CLASSIFICATION, CLASSIFICATIONS].map((cls) => withPath(LABELS_PATH, cls)),
 );
 
-const BOX_HEADER_TYPES = new Set(
-  [DETECTION, DETECTIONS].map((cls) => withPath(LABELS_PATH, cls)),
+// Label types that render their attributes as overlay text in the modal:
+// detection box headers, and polyline tags (anchored on the shape's centroid,
+// or above the dot for a single-vertex polyline).
+const MODAL_LABEL_TEXT_TYPES = new Set(
+  [DETECTION, DETECTIONS, POLYLINE, POLYLINES].map((cls) =>
+    withPath(LABELS_PATH, cls),
+  ),
 );
 
 const PATCH_LABEL_TYPES = new Set(
@@ -127,8 +132,8 @@ export const resolvedShownLabelAttributes = selector<Record<string, string[]>>({
 /**
  * Whether toggling shown attributes for a label field changes what is
  * rendered in the current context: classification-style tag overlays render
- * everywhere, detection box headers render in the modal, and spatial patch
- * labels render as grid tag overlays in patches views.
+ * everywhere, detection box headers and polyline tags render in the modal, and
+ * spatial patch labels render as grid tag overlays in patches views.
  */
 export const canToggleShownLabelAttributes = selectorFamily<
   boolean,
@@ -148,7 +153,7 @@ export const canToggleShownLabelAttributes = selectorFamily<
       }
 
       if (modal) {
-        return BOX_HEADER_TYPES.has(docType);
+        return MODAL_LABEL_TEXT_TYPES.has(docType);
       }
 
       return PATCH_LABEL_TYPES.has(docType) && get(isPatchesView);

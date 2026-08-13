@@ -109,7 +109,9 @@ export default class PolylineOverlay<
    *
    * Anchored at the centroid of the shape's points — a polyline's bounding-box
    * corner can sit far from any actual geometry — except for a lone vertex,
-   * where the tag is lifted clear of the dot so it doesn't hide it.
+   * where the tag is lifted clear of the dot so it doesn't hide it. Placement
+   * mirrors the Annotate surface (centred on the anchor, above the dot) so a
+   * label doesn't shift when toggling between Explore and Annotate.
    */
   private drawLabelText(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
     const labelText = this.getLabelText(state);
@@ -132,24 +134,29 @@ export default class PolylineOverlay<
           points.reduce((sum, p) => sum + p[1], 0) / points.length,
         ];
 
-    ctx.beginPath();
-    ctx.fillStyle = this.getColor(state);
-
-    let [ox, oy] = t(state, anchor[0], anchor[1]);
-    // clear the dot for a lone vertex; centre the box on the centroid otherwise
-    oy = isLoneVertex
-      ? oy - state.pointRadius - state.strokeWidth
-      : oy + state.fontSize / 2;
-
-    ctx.moveTo(ox, oy);
     const { width } = ctx.measureText(labelText);
     const height = state.fontSize;
     const bpad = state.textPad * 3 + state.strokeWidth;
-    const btrx = ox + width + bpad;
-    const btry = oy - height - bpad;
-    ctx.lineTo(btrx, oy);
-    ctx.lineTo(btrx, btry);
-    ctx.lineTo(ox, btry);
+    const boxWidth = width + bpad;
+    const boxHeight = height + bpad;
+
+    const [ax, ay] = t(state, anchor[0], anchor[1]);
+
+    // Match the Annotate placement so a label doesn't jump when toggling modes:
+    // horizontally centred on the anchor, and for a lone vertex lifted entirely
+    // above the dot rather than sitting up-and-to-the-right of it. `oy` is the
+    // box's BOTTOM edge (it is drawn upward from there).
+    const ox = ax - boxWidth / 2;
+    const oy = isLoneVertex
+      ? ay - state.pointRadius - state.strokeWidth
+      : ay + boxHeight / 2;
+
+    ctx.beginPath();
+    ctx.fillStyle = this.getColor(state);
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(ox + boxWidth, oy);
+    ctx.lineTo(ox + boxWidth, oy - boxHeight);
+    ctx.lineTo(ox, oy - boxHeight);
     ctx.closePath();
     ctx.fill();
 
