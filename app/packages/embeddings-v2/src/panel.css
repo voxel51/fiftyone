@@ -854,6 +854,21 @@
 
 /* --- Hover card --------------------------------------------------------- */
 
+/* Ring marking the hovered point itself — the card floats offset from
+   the cursor, so without it the subject of the card is ambiguous in a
+   dense cloud. Renders immediately on hover (the card waits for its
+   thumbnail to load). */
+.emb-hover-ring {
+  position: absolute;
+  z-index: 2;
+  width: 14px; /* rings the 6px point with breathing room */
+  height: 14px;
+  border: 2px solid var(--emb-fg);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .emb-hover-card {
   position: absolute;
   z-index: 3;
