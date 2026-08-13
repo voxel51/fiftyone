@@ -7,6 +7,7 @@ import {
   SIDEBAR_PREFERENCES_STORAGE_KEY,
   updateSidebarPreferences,
 } from "./sidebar-preferences";
+import { semanticSourceKey } from "./semantic-source";
 
 describe("dataset-owned sidebar preferences", () => {
   beforeEach(() => {
@@ -63,6 +64,47 @@ describe("dataset-owned sidebar preferences", () => {
     expect(read.camera.navigationCompositions).toEqual([]);
     expect(read.camera.renderableSourceKeys).toEqual([]);
     expect(read.tiles).toEqual({});
+  });
+
+  it("normalizes missing projection stream lists to empty selections", () => {
+    const imageKey = semanticSourceKey({
+      sourceName: "/camera/front",
+      type: "image",
+    });
+    localStorage.setItem(
+      SIDEBAR_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        byScope: {
+          dataset: {
+            imageProjection: { [imageKey]: { enabled: true } },
+            tiles: {
+              "image-1": {
+                image3dLabelProjections: {
+                  [imageKey]: { enabled: true },
+                },
+                imagePointCloudProjections: {
+                  [imageKey]: { enabled: true },
+                },
+              },
+            },
+            updatedAtMs: 1,
+          },
+        },
+      }),
+    );
+
+    const restored = readSidebarPreferences("dataset");
+    expect(restored.imageProjection[imageKey]).toMatchObject({
+      enabled: false,
+      streams: [],
+    });
+    expect(
+      restored.tiles["image-1"]?.image3dLabelProjections?.[imageKey],
+    ).toMatchObject({ enabled: false, streams: [] });
+    expect(
+      restored.tiles["image-1"]?.imagePointCloudProjections?.[imageKey],
+    ).toMatchObject({ enabled: false, streams: [] });
   });
 
   it("evicts the least recently updated scope after twenty entries", () => {

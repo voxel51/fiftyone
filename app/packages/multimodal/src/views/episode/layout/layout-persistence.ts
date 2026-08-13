@@ -241,11 +241,6 @@ function sanitizeEntry(raw: unknown): PersistedModalLayout | undefined {
   };
 }
 
-/** @deprecated Legacy raw-id image bindings are intentionally reset. */
-export function sanitizeImageBindings(_raw: unknown): undefined {
-  return undefined;
-}
-
 /** Bounds opaque extension state before it enters layout persistence. */
 export function sanitizeExtensionSettings(
   value: unknown,

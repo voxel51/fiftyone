@@ -37,10 +37,8 @@ import {
   useImageTile3dLabelProjection,
   useImageTileLabelStreams,
   useImageTilePointCloudProjection,
-  usePanelVisibilityScope,
   useSidebarSourceIdentity,
 } from "../tiles/panel-visibility";
-import { readSidebarPreferences } from "../settings/sidebar-preferences";
 import {
   chooseNextImageStream,
   imageTileBindingsAtom,
@@ -49,6 +47,7 @@ import {
   useHoveredFrustumImageStream,
   useImageTileHoverProps,
   usePersistImageTileBinding,
+  usePreferredImageTileStream,
   usePublishImageTileBinding,
 } from "../tiles/tile-source-bindings";
 import ImageAnnotationOverlay from "./ImageAnnotationOverlay";
@@ -111,7 +110,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const sharedHover = useHoverEcho();
   const images = useSceneSourcesByType(SCENE_SOURCE_TYPE.IMAGE);
   const sourceIdentity = useSidebarSourceIdentity();
-  const sidebarScope = usePanelVisibilityScope();
+  const preferredImageTileStream = usePreferredImageTileStream();
   const annotationSources = useSceneSourcesByType(
     SCENE_SOURCE_TYPE.IMAGE_ANNOTATION,
   );
@@ -165,15 +164,11 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   // back when the current sample lacks it. Automatic fallback never writes
   // the preference, so a later sample can restore the user's chosen source.
   useEffect(() => {
-    const preferredKey =
-      tileId && sidebarScope
-        ? readSidebarPreferences(sidebarScope).tiles[tileId]?.imageSourceKey
-        : null;
-    const preferredStream = preferredKey
-      ? sourceIdentity.runtimeIdsForKey(preferredKey)[0]
-      : tileId
+    const preferredStream =
+      preferredImageTileStream ??
+      (tileId
         ? jotaiStore.get(persistedImageTileBindingsAtom)[tileId]
-        : undefined;
+        : undefined);
     const nextStream = resolveAvailableImageStream(
       stream,
       preferredStream,
@@ -182,7 +177,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       jotaiStore.get(imageTileBindingsAtom),
     );
     if (nextStream !== stream) setStream(nextStream);
-  }, [images, jotaiStore, sidebarScope, sourceIdentity, stream, tileId]);
+  }, [images, jotaiStore, preferredImageTileStream, stream, tileId]);
 
   // Advertise this tile's stream so spawn points know what's on screen.
   usePublishImageTileBinding(stream);

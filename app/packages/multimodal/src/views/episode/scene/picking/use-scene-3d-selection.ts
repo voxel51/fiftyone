@@ -507,7 +507,15 @@ export function useScene3dSelection({
   }, [persistedVisibility?.trajectoryFrameOverrides, sourceIndex]);
   const persistTrajectoryFrameOverrides = useCallback(
     (overrides: Readonly<Record<string, string>>) => {
-      const semantic: Record<SemanticSourceKey, string> = {};
+      const semantic: Record<SemanticSourceKey, string> = {
+        ...(readScene3dTileVisibility(visibilityScope, tileId ?? null)
+          ?.trajectoryFrameOverrides ?? {}),
+      };
+      // Current sources are authoritative: an omitted current override means
+      // the user cleared it. Keys absent from this recording stay latent.
+      for (const key of sourceIndex.runtimeIdsByKey.keys()) {
+        delete semantic[key];
+      }
       for (const [runtimeId, frameId] of Object.entries(overrides)) {
         const key = sourceIndex.keyByRuntimeId.get(runtimeId);
         if (key) semantic[key] = frameId;
@@ -516,9 +524,21 @@ export function useScene3dSelection({
         visibilityScope,
         tileId ?? null,
         semantic,
+        {
+          cameraSelectionCustomized,
+          enabledSourceKeys: [...enabledSourceKeys],
+          primarySourceKey,
+        },
       );
     },
-    [sourceIndex, tileId, visibilityScope],
+    [
+      cameraSelectionCustomized,
+      enabledSourceKeys,
+      primarySourceKey,
+      sourceIndex,
+      tileId,
+      visibilityScope,
+    ],
   );
 
   return {

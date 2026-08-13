@@ -18,6 +18,7 @@ import {
   type SceneBackgroundSettings,
 } from "./modal/storage";
 import {
+  MAX_SEMANTIC_SOURCE_KEY_LENGTH,
   normalizeSemanticSourceKey,
   type SemanticSourceKey,
 } from "./semantic-source";
@@ -263,15 +264,17 @@ function normalizeImageProjectionMap(
   return normalizeSemanticRecord(raw, (value) => {
     const candidate = isRecord(value) ? value : {};
     const normalized = normalizeImageProjection(value);
+    const streams =
+      candidate.streams === null
+        ? null
+        : normalizeSemanticKeyList(candidate.streams);
     return {
       ...normalized,
       calibrationStream: normalizeSemanticSourceKey(
         candidate.calibrationStream,
       ),
-      streams:
-        candidate.streams === null || candidate.streams === undefined
-          ? null
-          : normalizeSemanticKeyList(candidate.streams),
+      enabled: normalized.enabled && (streams === null || streams.length > 0),
+      streams,
     };
   });
 }
@@ -357,13 +360,14 @@ function normalizeImagePointCloudProjection(
 ): PersistedImagePointCloudProjection {
   const candidate = isRecord(raw) ? raw : {};
   const projection = normalizeImageProjection(raw);
+  const streams =
+    candidate.streams === null
+      ? null
+      : normalizeSemanticKeyList(candidate.streams);
   return {
-    enabled: projection.enabled,
+    enabled: projection.enabled && (streams === null || streams.length > 0),
     pointSize: projection.pointSize,
-    streams:
-      candidate.streams === null || candidate.streams === undefined
-        ? null
-        : normalizeSemanticKeyList(candidate.streams),
+    streams,
   };
 }
 
@@ -477,7 +481,11 @@ function normalizeSemanticRecord<Value>(
 
 function normalizeSemanticKeyList(raw: unknown): readonly SemanticSourceKey[] {
   if (!Array.isArray(raw)) return [];
-  return sanitizeBoundedStringList(raw, MAX_SOURCES, 1_100)
+  return sanitizeBoundedStringList(
+    raw,
+    MAX_SOURCES,
+    MAX_SEMANTIC_SOURCE_KEY_LENGTH,
+  )
     .map(normalizeSemanticSourceKey)
     .filter((value): value is SemanticSourceKey => value !== null);
 }

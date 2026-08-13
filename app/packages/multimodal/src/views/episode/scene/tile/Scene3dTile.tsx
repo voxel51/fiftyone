@@ -889,16 +889,31 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       settingsGroups.pose.sources.filter((source) => enabled.has(source.id)),
     [enabled, settingsGroups.pose.sources],
   );
-  const settingsCameraImageStreams = useMemo(
-    () =>
-      settingsGroups.camera.sources.map((source) => {
-        const runtimeIndex = cameraStreams.indexOf(source.id);
-        return runtimeIndex >= 0
-          ? (frustumImageStreams[runtimeIndex] ?? "")
-          : "";
-      }),
-    [cameraStreams, frustumImageStreams, settingsGroups.camera.sources],
-  );
+  const settingsCameraImageStreams = useMemo(() => {
+    const imageStreamByCameraKey = new Map<string, string>();
+    cameraStreams.forEach((runtimeId, index) => {
+      const source = cameraSources.find((item) => item.id === runtimeId);
+      if (source) {
+        imageStreamByCameraKey.set(
+          semanticSourceKey(source),
+          frustumImageStreams[index] ?? "",
+        );
+      }
+    });
+    return settingsGroups.camera.streams.map((representativeId) => {
+      const source = settingsGroups.camera.sources.find(
+        (item) => item.id === representativeId,
+      );
+      return source
+        ? (imageStreamByCameraKey.get(semanticSourceKey(source)) ?? "")
+        : "";
+    });
+  }, [
+    cameraSources,
+    cameraStreams,
+    frustumImageStreams,
+    settingsGroups.camera,
+  ]);
 
   // The settings tree is registered into the sidebar rather than rendered
   // here; the registration is memoized over grouped, stabilized props so

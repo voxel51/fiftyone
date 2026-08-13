@@ -4,6 +4,7 @@ import React, {
   useContext,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { SceneSource } from "../../../ir";
@@ -51,11 +52,14 @@ export const SidebarPreferencesProvider: React.FC<{
   const [preferences, setPreferences] = useState(() =>
     readSidebarPreferences(normalizedScope),
   );
+  const loadedScope = useRef(normalizedScope);
   // This layout effect swaps storage subscriptions before descendants paint
   // with state from a previously mounted dataset scope.
   useLayoutEffect(() => {
-    const next = readSidebarPreferences(normalizedScope);
-    setPreferences(next);
+    if (loadedScope.current !== normalizedScope) {
+      loadedScope.current = normalizedScope;
+      setPreferences(readSidebarPreferences(normalizedScope));
+    }
     return subscribeSidebarPreferences(normalizedScope, setPreferences);
   }, [normalizedScope]);
   const updatePreferences = useCallback(

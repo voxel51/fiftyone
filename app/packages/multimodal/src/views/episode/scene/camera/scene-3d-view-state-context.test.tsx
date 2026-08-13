@@ -6,6 +6,7 @@ import {
   Scene3dViewStateProvider,
   useScene3dViewStateStore,
 } from "./scene-3d-view-state-context";
+import { readSidebarPreferences } from "../../settings/sidebar-preferences";
 
 beforeEach(() => localStorage.clear());
 
@@ -84,6 +85,27 @@ describe("Scene3dViewStateProvider inspection scopes", () => {
       navigationCompositions: [composition],
       renderableSourceKeys: ['["point-cloud","/lidar"]'],
     });
+  });
+
+  it("flushes pending portable camera intent before the page exits", () => {
+    const composition = {
+      distanceInRadii: 3,
+      kind: "bounds-normalized" as const,
+      sceneUpAxis: "z" as const,
+      targetOffsetInRadii: [0, 0, 0] as const,
+      trackingMode: "position" as const,
+      viewDirection: [1, 0, 0] as const,
+    };
+    const mounted = renderScopedStore("dataset-a:filepath");
+    act(() => {
+      mounted.result.current.recordNavigationCompositions([composition]);
+      globalThis.dispatchEvent(new Event("pagehide"));
+    });
+
+    expect(
+      readSidebarPreferences("dataset-a:filepath").camera
+        .navigationCompositions,
+    ).toEqual([composition]);
   });
 
   it("does not delete a durable composition when one scene rejects it", () => {

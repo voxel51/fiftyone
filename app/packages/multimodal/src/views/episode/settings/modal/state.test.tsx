@@ -22,6 +22,7 @@ import {
   readModalSettings,
   useImageLabelStreams,
   useImageProjection,
+  useImageProjectionSettingsByStream,
   usePinholeCameraSettings,
   usePointCloudStyleSettings,
   useReferenceGridSettings,
@@ -29,7 +30,7 @@ import {
   writeModalSettings,
 } from "./state";
 import type { SceneSource } from "../../../../ir";
-import { SidebarPreferencesProvider as PanelVisibilityProvider } from "../sidebar-preferences-context";
+import { SidebarPreferencesProvider } from "../sidebar-preferences-context";
 
 describe("episode-modal-settings", () => {
   beforeEach(() => {
@@ -739,6 +740,30 @@ describe("episode-modal-settings", () => {
     });
   });
 
+  it("reports legacy image projections through scoped aggregate reads", () => {
+    const legacyProjection = {
+      ...DEFAULT_IMAGE_PROJECTION,
+      enabled: true,
+      streams: null,
+    };
+    writeModalSettings({
+      ...readModalSettings(),
+      imageProjection: { "20": legacyProjection },
+    });
+    __resetModalSettingsForTests();
+
+    const { result } = renderHook(
+      () => ({
+        aggregate: useImageProjectionSettingsByStream()["20"],
+        single: useImageProjection("20").projection,
+      }),
+      { wrapper: cameraSettingsWrapper("dataset-a", "20", "21") },
+    );
+
+    expect(result.current.single).toEqual(legacyProjection);
+    expect(result.current.aggregate).toEqual(legacyProjection);
+  });
+
   it("retains semantic projection streams while projection is disabled", () => {
     const first = renderHook(() => useImageProjection("20"), {
       wrapper: cameraSettingsWrapper("dataset-a", "20", "21", "22"),
@@ -784,9 +809,9 @@ function settingsWrapper(scopeKey: string, runtimeId = "10") {
     readonly children: React.ReactNode;
   }) {
     return (
-      <PanelVisibilityProvider scopeKey={scopeKey} sources={sources}>
+      <SidebarPreferencesProvider scopeKey={scopeKey} sources={sources}>
         {children}
-      </PanelVisibilityProvider>
+      </SidebarPreferencesProvider>
     );
   };
 }
@@ -827,9 +852,9 @@ function cameraSettingsWrapper(
     readonly children: React.ReactNode;
   }) {
     return (
-      <PanelVisibilityProvider scopeKey={scopeKey} sources={sources}>
+      <SidebarPreferencesProvider scopeKey={scopeKey} sources={sources}>
         {children}
-      </PanelVisibilityProvider>
+      </SidebarPreferencesProvider>
     );
   };
 }

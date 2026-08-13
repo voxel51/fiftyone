@@ -587,7 +587,10 @@ export function useImageProjectionSettingsByStream(): Readonly<
   });
   const scope = usePanelVisibilityScope();
   const { projections } = useScopedImageProjections();
-  return scope ? projections : legacy;
+  return useMemo(
+    () => (scope ? { ...legacy, ...projections } : legacy),
+    [legacy, projections, scope],
+  );
 }
 
 /** Updates camera geometry settings for an image without requiring its tile. */

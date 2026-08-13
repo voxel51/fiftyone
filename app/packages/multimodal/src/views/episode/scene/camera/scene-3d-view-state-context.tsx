@@ -89,9 +89,13 @@ export const Scene3dViewStateProvider: React.FC<{
       viewStateStoresByScope.set(scopeKey, existing);
     }
     const release = retainViewStateScope(scopeKey, store);
+    const flush = durableFlushByStore.get(store);
+    const flushBeforePageExit = () => flush?.();
+    globalThis.addEventListener("pagehide", flushBeforePageExit);
     evictInactiveViewStateScopesToLimit(scopeKey);
     return () => {
-      durableFlushByStore.get(store)?.();
+      globalThis.removeEventListener("pagehide", flushBeforePageExit);
+      flush?.();
       release();
     };
   }, [scopeKey, scopedStore, scopedStoreCandidate, store, suppliedStore]);

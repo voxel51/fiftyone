@@ -15,6 +15,7 @@ import {
   useImageTileLabelStreams,
   useImageTilePointCloudProjection,
   useSidebarPreferencesState,
+  writeScene3dTrajectoryFrameOverrides,
   writeScene3dTileVisibility,
 } from "./panel-visibility";
 
@@ -62,6 +63,28 @@ describe("dataset-owned panel preferences", () => {
     });
     expect(readScene3dTileVisibility("dataset-b", tileId)).toBeNull();
     expect(readScene3dTileVisibility("dataset-a", "3d-2")).toBeNull();
+  });
+
+  it("seeds fresh 3D state when persisting a trajectory override", () => {
+    tileId = "3d-1";
+    const cloudKey = semanticSourceKey(firstSources[2]);
+    writeScene3dTrajectoryFrameOverrides(
+      "dataset-a",
+      tileId,
+      { [cloudKey]: "ego" },
+      {
+        cameraSelectionCustomized: false,
+        enabledSourceKeys: [cloudKey],
+        primarySourceKey: cloudKey,
+      },
+    );
+
+    expect(readScene3dTileVisibility("dataset-a", tileId)).toEqual({
+      cameraSelectionCustomized: false,
+      enabledSourceKeys: [cloudKey],
+      primarySourceKey: cloudKey,
+      trajectoryFrameOverrides: { [cloudKey]: "ego" },
+    });
   });
 
   it("keeps mounted scope state reactive to domain-level writes", () => {

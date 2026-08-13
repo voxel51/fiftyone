@@ -10,6 +10,8 @@ import { createStore, Provider as JotaiProvider, useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
+import { readSidebarPreferences } from "../settings/sidebar-preferences";
+import { semanticSourceKey } from "../settings/semantic-source";
 import {
   chooseNextImageStream,
   hoveredImageStreamAtom,
@@ -18,6 +20,7 @@ import {
   useImageTileBindings,
   useImageTileHoverProps,
   usePersistImageTileBinding,
+  usePreferredImageTileStream,
   usePublishImageTileBinding,
 } from "./tile-source-bindings";
 import { PanelVisibilityProvider } from "./panel-visibility";
@@ -111,6 +114,12 @@ const BindingsProbe: React.FC = () => (
 const PersistedBindingsProbe: React.FC = () => (
   <span data-testid="persisted-bindings">
     {JSON.stringify(useAtomValue(persistedImageTileBindingsAtom))}
+  </span>
+);
+
+const PreferredBindingProbe: React.FC = () => (
+  <span data-testid="preferred-binding">
+    {usePreferredImageTileStream() ?? ""}
   </span>
 );
 
@@ -246,6 +255,7 @@ describe("usePersistImageTileBinding", () => {
         <TilingProvider>
           <TileIdScope tileId="image-1">
             <PreferencePublisher sourceId="10" />
+            <PreferredBindingProbe />
           </TileIdScope>
           <PersistedBindingsProbe />
         </TilingProvider>
@@ -254,14 +264,16 @@ describe("usePersistImageTileBinding", () => {
     expect(screen.getByTestId("persisted-bindings").textContent).toBe(
       '{"image-1":"10"}',
     );
+    expect(screen.getByTestId("preferred-binding").textContent).toBe("10");
     first.unmount();
 
     const shiftedSource = { ...firstSource, id: "80" };
-    render(
+    const shifted = render(
       <PanelVisibilityProvider scopeKey="dataset-a" sources={[shiftedSource]}>
         <TilingProvider>
           <TileIdScope tileId="image-1">
             <PreferencePublisher sourceId="80" />
+            <PreferredBindingProbe />
           </TileIdScope>
           <PersistedBindingsProbe />
         </TilingProvider>
@@ -270,6 +282,30 @@ describe("usePersistImageTileBinding", () => {
     expect(screen.getByTestId("persisted-bindings").textContent).toBe(
       '{"image-1":"80"}',
     );
+    expect(screen.getByTestId("preferred-binding").textContent).toBe("80");
+    shifted.unmount();
+
+    const unavailableSource = {
+      ...imageSource("90"),
+      sourceName: "/camera/rear",
+    };
+    render(
+      <PanelVisibilityProvider
+        scopeKey="dataset-a"
+        sources={[unavailableSource]}
+      >
+        <TilingProvider>
+          <TileIdScope tileId="image-1">
+            <PreferencePublisher sourceId="90" />
+            <PreferredBindingProbe />
+          </TileIdScope>
+        </TilingProvider>
+      </PanelVisibilityProvider>,
+    );
+    expect(screen.getByTestId("preferred-binding").textContent).toBe("");
+    expect(
+      readSidebarPreferences("dataset-a").tiles["image-1"]?.imageSourceKey,
+    ).toBe(semanticSourceKey(firstSource));
   });
 });
 

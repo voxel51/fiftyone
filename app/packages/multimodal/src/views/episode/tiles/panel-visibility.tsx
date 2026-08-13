@@ -12,14 +12,10 @@ import {
   type PersistedImagePointCloudProjection,
   type PersistedScene3dTilePreferences,
   type SidebarPreferences,
-} from "../preferences";
-import {
   resolveSemanticSourceKeys,
   semanticSourceKeysForRuntimeIds,
   type SemanticSourceIndex,
   type SemanticSourceKey,
-} from "../preferences";
-import {
   usePanelVisibilityScope,
   useSidebarPreferencesContext,
 } from "../preferences";
@@ -85,18 +81,24 @@ export function writeScene3dTrajectoryFrameOverrides(
   scopeKey: string | null,
   tileId: string | null,
   trajectoryFrameOverrides: Readonly<Record<SemanticSourceKey, string>>,
+  seedVisibility: Scene3dTileVisibility,
 ): void {
   if (!scopeKey || !tileId) return;
   updateSidebarPreferences(scopeKey, (current) => {
     const threeD = current.tiles[tileId]?.threeD;
-    if (!threeD) return current;
+    if (!threeD && Object.keys(trajectoryFrameOverrides).length === 0) {
+      return current;
+    }
     return {
       ...current,
       tiles: {
         ...current.tiles,
         [tileId]: {
           ...current.tiles[tileId],
-          threeD: { ...threeD, trajectoryFrameOverrides },
+          threeD: {
+            ...(threeD ?? seedVisibility),
+            trajectoryFrameOverrides,
+          },
         },
       },
     };

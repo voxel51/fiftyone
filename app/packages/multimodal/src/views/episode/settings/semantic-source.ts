@@ -4,6 +4,7 @@ import type { SceneSource } from "../../../ir";
 export type SemanticSourceKey = string;
 
 const MAX_SOURCE_PART_LENGTH = 512;
+export const MAX_SEMANTIC_SOURCE_KEY_LENGTH = 1_100;
 
 /**
  * Builds a collision-safe source identity. JSON tuple encoding avoids the
@@ -19,7 +20,12 @@ export function semanticSourceKey(
 export function normalizeSemanticSourceKey(
   value: unknown,
 ): SemanticSourceKey | null {
-  if (typeof value !== "string" || value.length > 1_100) return null;
+  if (
+    typeof value !== "string" ||
+    value.length > MAX_SEMANTIC_SOURCE_KEY_LENGTH
+  ) {
+    return null;
+  }
   try {
     const tuple: unknown = JSON.parse(value);
     if (

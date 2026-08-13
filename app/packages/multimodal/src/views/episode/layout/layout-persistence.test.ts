@@ -5,7 +5,6 @@ import {
   readCameraPreferences,
   readModalLayout,
   sanitizeExtensionSettings,
-  sanitizeImageBindings,
   sanitizeLogSettings,
   sanitizeMapSettings,
   sanitizePlotSeries,
@@ -485,32 +484,6 @@ describe("layout-persistence", () => {
 
       expect(readModalLayout("ds-a")?.imageBindings).toBeUndefined();
       expect(readModalLayout("ds-b")?.imageBindings).toBeUndefined();
-    });
-
-    it("resets every legacy raw-id binding payload", () => {
-      const rows = Object.fromEntries(
-        Array.from({ length: 40 }, (_, index) => [
-          `image-${index + 1}`,
-          `/cam/${index + 1}`,
-        ]),
-      );
-
-      const sanitized = sanitizeImageBindings({
-        ...rows,
-        "3d-1": "/not-an-image-pane",
-        "image-empty": "",
-        "image-long": "x".repeat(513),
-        "image-number": 7,
-      });
-
-      expect(sanitized).toBeUndefined();
-    });
-
-    it("rejects non-object payloads", () => {
-      expect(sanitizeImageBindings(null)).toBeUndefined();
-      expect(sanitizeImageBindings([])).toBeUndefined();
-      expect(sanitizeImageBindings("x")).toBeUndefined();
-      expect(sanitizeImageBindings({})).toBeUndefined();
     });
   });
 
