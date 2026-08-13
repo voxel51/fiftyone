@@ -113,7 +113,12 @@ export function createNewLabel(
     // produced an edit commit. Delete was collateral damage: it relies on the
     // engine's delete tick to unmount the overlay, so with no row the row
     // vanished from the sidebar while the point stayed on the canvas.
-    if (sample) {
+    // Sample-level only, like the Classification write above: `CreateDeps` has
+    // no `frame`, so a `frames.<field>` path would be addressed without one and
+    // land in the wrong store. Video polyline tracks are established by the
+    // video surface instead (see FOEPD-4459 — that path is still missing its
+    // draw signal, so a video polyline currently persists on first edit).
+    if (sample && !field.startsWith("frames.")) {
       engine.updateLabel(
         { sample, path: field, instanceId: id },
         polylineData as Partial<LabelData>,
