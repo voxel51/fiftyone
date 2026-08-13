@@ -103,6 +103,23 @@ export function createNewLabel(
     // withUndo=true so first-point placement is undoable.
     addOverlay(overlay, true);
     scene?.selectOverlay(id, { ignoreSideEffects: true });
+
+    // Persist the new Polyline through to the engine immediately, for the same
+    // reason Classification does above: a polyline is established by clicking
+    // vertices, and `lighter:overlay-establish` only fires once the shape is
+    // committed — so a single-vertex polyline had no engine row. It showed in
+    // the sidebar (the jotai draft) and on the canvas (the overlay) while never
+    // reaching the sample document, and only appeared once a second vertex
+    // produced an edit commit. Delete was collateral damage: it relies on the
+    // engine's delete tick to unmount the overlay, so with no row the row
+    // vanished from the sidebar while the point stayed on the canvas.
+    if (sample) {
+      engine.updateLabel(
+        { sample, path: field, instanceId: id },
+        polylineData as Partial<LabelData>,
+      );
+    }
+
     return {
       data: polylineData,
       overlay,

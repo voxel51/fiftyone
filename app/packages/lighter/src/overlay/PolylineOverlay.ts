@@ -906,6 +906,14 @@ export class PolylineOverlay extends KeypointOverlay {
 
     const centroid = PolylineOverlay.computeCentroid(ctx.absPoints);
 
+    // A single-vertex polyline's centroid IS its only vertex, so a centred
+    // label box lands exactly on top of the point and hides it. Anchor the box
+    // above the point instead ("bottom" places it entirely above the anchor),
+    // with a fraction of a text-height of clearance so the vertex marker stays
+    // visible. Multi-vertex shapes keep the centred centroid label, which reads
+    // better than a bounding-box corner that can sit far from any geometry.
+    const isSinglePoint = ctx.absPoints.length === 1;
+
     // `drawText` returns the absolute-space background rect; retain it for
     // hover/selection hit-testing.
     this.textBounds = renderer.drawText(
@@ -914,7 +922,10 @@ export class PolylineOverlay extends KeypointOverlay {
       {
         fontColor: "#ffffff",
         backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
-        anchor: { vertical: "center", horizontal: "center" },
+        anchor: isSinglePoint
+          ? { vertical: "bottom", horizontal: "center" }
+          : { vertical: "center", horizontal: "center" },
+        ...(isSinglePoint ? { offset: { top: 0.35 } } : {}),
       },
       this.containerId,
     );
