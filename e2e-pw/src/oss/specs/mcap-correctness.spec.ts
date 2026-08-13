@@ -130,6 +130,43 @@ if fo.dataset_exists("${datasetName}"):
     await modal.episode.expectNoViewerError();
   });
 
+  test("restores an image pane source across sample navigation and modal reopen", async ({
+    grid,
+    modal,
+  }) => {
+    await openMcapModal(grid, modal, 1);
+    await modal.episode.waitForReady("tiny-episode-b.mcap");
+    await modal.episode.selectImageSource("camera/rear", "camera/side");
+    await expect(
+      modal.episode.tileTitles.filter({ hasText: "camera/side" }),
+    ).toHaveCount(2);
+    await modal.episode.expectTileTitles([], ["camera/rear"]);
+
+    await modal.episode.navigateDatasetSample(
+      "backward",
+      "tiny-episode-a.mcap",
+    );
+    await modal.episode.expectTileTitles(
+      ["camera/front"],
+      ["camera/side", "camera/rear"],
+    );
+
+    await modal.episode.navigateDatasetSample("forward", "tiny-episode-b.mcap");
+    await expect(
+      modal.episode.tileTitles.filter({ hasText: "camera/side" }),
+    ).toHaveCount(2);
+    await modal.episode.expectTileTitles([], ["camera/rear"]);
+
+    await modal.close();
+    await openMcapModal(grid, modal, 1);
+    await modal.episode.waitForReady("tiny-episode-b.mcap");
+
+    await expect(
+      modal.episode.tileTitles.filter({ hasText: "camera/side" }),
+    ).toHaveCount(2);
+    await modal.episode.expectTileTitles([], ["camera/rear"]);
+  });
+
   test("keeps paused stepping, raw values, logs, and image pixels synchronized", async ({
     grid,
     modal,

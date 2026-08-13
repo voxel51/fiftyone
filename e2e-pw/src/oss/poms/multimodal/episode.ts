@@ -73,9 +73,9 @@ export class EpisodePom {
     direction: "forward" | "backward",
     fileName: string,
   ): Promise<void> {
-    await this.scope
-      .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
-      .click();
+    await this.page.keyboard.press(
+      direction === "forward" ? "ArrowRight" : "ArrowLeft",
+    );
     await this.waitForReady(fileName);
   }
 
@@ -117,6 +117,22 @@ export class EpisodePom {
 
   image(title: string): Locator {
     return this.tile(title).getByRole("img", { name: "Image" });
+  }
+
+  async selectImageSource(
+    currentTitle: string,
+    nextTitle: string,
+  ): Promise<void> {
+    await this.tileTitles.filter({ hasText: currentTitle }).first().click();
+    const source = this.scope.locator('[aria-label="Source"]');
+    await expect(source).toBeVisible({ timeout: READY_TIMEOUT });
+    await source.click();
+    await this.page
+      .getByRole("option", { name: nextTitle, exact: true })
+      .click();
+    await expect(
+      this.tileTitles.filter({ hasText: nextTitle }).first(),
+    ).toBeVisible({ timeout: READY_TIMEOUT });
   }
 
   async expectPaused(): Promise<void> {
