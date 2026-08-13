@@ -41,14 +41,14 @@ export class EpisodePom {
     const root = this.inspectedStream
       ? this.tile(this.inspectedStream)
       : this.shell;
-    return byDataTestId(root, "episode-raw-tree").last();
+    return byDataTestId(root, "episode-raw-tree");
   }
 
   get rawMeta(): Locator {
     const root = this.inspectedStream
       ? this.tile(this.inspectedStream)
       : this.shell;
-    return root.locator("[data-cy=episode-raw-meta]").last();
+    return root.locator("[data-cy=episode-raw-meta]");
   }
 
   async waitForReady(fileName: string): Promise<void> {
@@ -73,10 +73,132 @@ export class EpisodePom {
     direction: "forward" | "backward",
     fileName: string,
   ): Promise<void> {
-    await this.scope
-      .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
-      .click();
+    await this.blurActiveElement();
+    await this.page.keyboard.press(
+      direction === "forward" ? "ArrowRight" : "ArrowLeft",
+    );
     await this.waitForReady(fileName);
+  }
+
+  async applyEgoView(
+    tileTitle: string,
+  ): Promise<Readonly<Record<string, number>>> {
+    const inputs = await this.openViewpointInputs(tileTitle);
+    const previousPose = await this.readCameraPoseInputs(inputs);
+    await this.blurActiveElement();
+    await this.page.keyboard.press("e");
+    await expect
+      .poll(() => this.readCameraPoseInputs(inputs), {
+        timeout: READY_TIMEOUT,
+      })
+      .not.toEqual(previousPose);
+    return this.readCameraPoseInputs(inputs);
+  }
+
+  async expectCameraPose(
+    tileTitle: string,
+    expected: Readonly<Record<string, number>>,
+  ): Promise<void> {
+    const inputs = await this.openViewpointInputs(tileTitle);
+    for (const [name, value] of Object.entries(expected)) {
+      const input = inputs.getByRole("spinbutton", { name });
+      await expect
+        .poll(() => input.inputValue().then(Number.parseFloat), {
+          timeout: READY_TIMEOUT,
+        })
+        .toBeCloseTo(value, 6);
+    }
+  }
+
+  async setSidebarToggle(
+    tileTitle: string,
+    accessibleName: string,
+    checked: boolean,
+  ): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    const toggle = this.scope.getByRole("switch", {
+      name: accessibleName,
+      exact: true,
+    });
+    await expect(toggle).toBeVisible({ timeout: READY_TIMEOUT });
+    if ((await toggle.isChecked()) !== checked) await toggle.click();
+    await this.expectSidebarToggle(tileTitle, accessibleName, checked);
+  }
+
+  async expectSidebarToggle(
+    tileTitle: string,
+    accessibleName: string,
+    checked: boolean,
+  ): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    const toggle = this.scope.getByRole("switch", {
+      name: accessibleName,
+      exact: true,
+    });
+    if (checked) await expect(toggle).toBeChecked({ timeout: READY_TIMEOUT });
+    else await expect(toggle).not.toBeChecked({ timeout: READY_TIMEOUT });
+  }
+
+  async setSidebarNumber(
+    tileTitle: string,
+    accessibleName: string,
+    value: number,
+  ): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    const input = this.scope.getByRole("spinbutton", {
+      name: accessibleName,
+      exact: true,
+    });
+    await input.click();
+    await input.fill(String(value));
+    await input.press("Enter");
+    await this.expectSidebarNumber(tileTitle, accessibleName, value);
+  }
+
+  async expectSidebarNumber(
+    tileTitle: string,
+    accessibleName: string,
+    value: number,
+  ): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    await expect(
+      this.scope.getByRole("spinbutton", {
+        name: accessibleName,
+        exact: true,
+      }),
+    ).toHaveValue(String(value), { timeout: READY_TIMEOUT });
+  }
+
+  private async readCameraPoseInputs(
+    inputs: Locator,
+  ): Promise<Readonly<Record<string, number>>> {
+    const pose: Record<string, number> = {};
+    for (const name of CAMERA_POSE_INPUT_NAMES) {
+      pose[name] = Number.parseFloat(
+        await inputs.getByRole("spinbutton", { name }).inputValue(),
+      );
+    }
+    return pose;
+  }
+
+  private async openViewpointInputs(tileTitle: string): Promise<Locator> {
+    await this.openTileSettings(tileTitle);
+    const viewpoint = this.scope.getByRole("button", { name: /^Viewpoint/ });
+    if ((await viewpoint.getAttribute("aria-expanded")) !== "true") {
+      await viewpoint.click();
+    }
+    await expect(viewpoint).toHaveAttribute("aria-expanded", "true");
+    return this.scope;
+  }
+
+  private async openTileSettings(tileTitle: string): Promise<void> {
+    await this.tileTitle(tileTitle).first().click();
+    const panelTab = this.scope.getByRole("tab", {
+      name: tileTitle,
+      exact: true,
+    });
+    await expect(panelTab).toBeVisible({ timeout: READY_TIMEOUT });
+    await panelTab.click();
   }
 
   async expectFileName(fileName: string): Promise<void> {
@@ -88,13 +210,15 @@ export class EpisodePom {
     absent: readonly string[] = [],
   ): Promise<void> {
     for (const title of present) {
-      await expect(
-        this.tileTitles.filter({ hasText: title }).first(),
-      ).toBeVisible();
+      await expect(this.tileTitle(title).first()).toBeVisible();
     }
     for (const title of absent) {
-      await expect(this.tileTitles.filter({ hasText: title })).toHaveCount(0);
+      await expect(this.tileTitle(title)).toHaveCount(0);
     }
+  }
+
+  async expectTileTitleCount(title: string, count: number): Promise<void> {
+    await expect(this.tileTitle(title)).toHaveCount(count);
   }
 
   async addTile(type: string, title: string): Promise<void> {
@@ -102,21 +226,35 @@ export class EpisodePom {
       .getByRole("button", { name: "Layout", exact: true })
       .click();
     await this.page.locator(`[data-testid="episode-add-tile-${type}"]`).click();
-    await expect(
-      this.tileTitles.filter({ hasText: title }).first(),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+    await expect(this.tileTitle(title)).toBeVisible({ timeout: READY_TIMEOUT });
   }
 
   tile(title: string): Locator {
     return this.shell.locator(".mosaic-window").filter({
       has: this.page
         .locator('[data-testid="tile-header-title"]')
-        .filter({ hasText: title }),
+        .filter({ hasText: exactText(title) }),
     });
   }
 
   image(title: string): Locator {
     return this.tile(title).getByRole("img", { name: "Image" });
+  }
+
+  async selectImageSource(
+    currentTitle: string,
+    nextTitle: string,
+  ): Promise<void> {
+    await this.tileTitle(currentTitle).first().click();
+    const source = this.scope.locator('[aria-label="Source"]');
+    await expect(source).toBeVisible({ timeout: READY_TIMEOUT });
+    await source.click();
+    await this.page
+      .getByRole("option", { name: nextTitle, exact: true })
+      .click();
+    await expect(this.tileTitle(nextTitle).first()).toBeVisible({
+      timeout: READY_TIMEOUT,
+    });
   }
 
   async expectPaused(): Promise<void> {
@@ -203,6 +341,9 @@ export class EpisodePom {
     const preset = this.scope.getByRole("combobox", {
       name: "Data sampling preset",
     });
+    const customRate = this.scope.getByRole("spinbutton", {
+      name: "Custom data sampling rate",
+    });
     if (!(await preset.inputValue()).startsWith("Custom")) {
       await preset.click();
       const customOption = this.page.getByRole("option", {
@@ -210,14 +351,13 @@ export class EpisodePom {
         exact: true,
       });
       await customOption.click();
-      // The portalled select may retain focus after its state changes. Close
-      // it explicitly before interacting with the number field underneath.
-      await this.page.keyboard.press("Escape");
-      await expect(customOption).toBeHidden();
+      await expect(customRate).toBeVisible({ timeout: READY_TIMEOUT });
+      // The select opens immediately on focus. Wait for the custom controls to
+      // commit, then blur its input directly so portal closure cannot race a
+      // document-level Escape with the controlled selection rerender.
+      await preset.blur();
+      await expect(customOption).toBeHidden({ timeout: READY_TIMEOUT });
     }
-    const customRate = this.scope.getByRole("spinbutton", {
-      name: "Custom data sampling rate",
-    });
     await customRate.click();
     await customRate.fill(String(rateHz));
     await customRate.press("Enter");
@@ -327,7 +467,7 @@ export class EpisodePom {
     await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
   }
 
-  async useRawStream(stream: string): Promise<void> {
+  async focusRawTile(stream: string): Promise<void> {
     this.inspectedStream = stream;
     await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
   }
@@ -389,7 +529,7 @@ export class EpisodePom {
     present: readonly string[],
     absent: readonly string[],
   ): Promise<void> {
-    const logs = this.tile("Logs");
+    const logs = this.tile("Logs / Diagnostics");
     await logs.getByRole("button", { name: "Fullscreen", exact: true }).click();
     await logs.getByRole("button", { name: view, exact: true }).click();
     for (const text of present) {
@@ -426,10 +566,33 @@ export class EpisodePom {
     );
     await expect(this.scope.locator("[data-cy=error-boundary]")).toHaveCount(0);
   }
+
+  private tileTitle(title: string): Locator {
+    return this.tileTitles.filter({ hasText: exactText(title) });
+  }
+
+  private async blurActiveElement(): Promise<void> {
+    await this.page.evaluate(() =>
+      (document.activeElement as HTMLElement | null)?.blur(),
+    );
+  }
 }
+
+const CAMERA_POSE_INPUT_NAMES = [
+  "Position X",
+  "Position Y",
+  "Position Z",
+  "Target X",
+  "Target Y",
+  "Target Z",
+] as const;
 
 function byDataTestId(root: Locator, id: string): Locator {
   return root.locator('[data-testid="' + id + '"]');
+}
+
+function exactText(value: string): RegExp {
+  return new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 }
 
 function utcDateTimeToMilliseconds(value: string): number | null {

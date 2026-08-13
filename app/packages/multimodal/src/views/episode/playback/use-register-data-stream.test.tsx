@@ -1178,6 +1178,55 @@ describe("stream status + buffering feedback", () => {
     );
   });
 
+  it("retries missing paused current-frame streams without requiring play", async () => {
+    const source = createSource("paused-current-retry");
+    const startupBatch = deferred<readonly SynchronizedMessageWindow[]>();
+    const storeCapture = capturePlaybackStore();
+    let currentReadCount = 0;
+    const readSynchronizedMessages = vi.fn(async (request) => {
+      currentReadCount += 1;
+      return currentReadCount === 1
+        ? createPartialDecodeWindow(request.timeNs)
+        : createEmptyWindow(request.timeNs);
+    });
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(() => startupBatch.promise),
+      readSynchronizedMessages,
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        allStreams={[STREAM, LIDAR_STREAM]}
+        blockingStreams={[STREAM, LIDAR_STREAM]}
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+        subscribedStreams={[STREAM, LIDAR_STREAM]}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(
+      () => {
+        expect(readSynchronizedMessages).toHaveBeenCalledTimes(2);
+      },
+      { timeout: 2_000 },
+    );
+    expect(readSynchronizedMessages.mock.calls[0]?.[0].topics).toEqual([
+      STREAM,
+      LIDAR_STREAM,
+    ]);
+    expect(readSynchronizedMessages.mock.calls[1]?.[0].topics).toEqual([
+      STREAM,
+    ]);
+    await waitFor(() => {
+      expect(getStreamStatus(store, STREAM)).toBe("gap");
+      expect(getStreamStatus(store, LIDAR_STREAM)).toBe("ready");
+    });
+  });
+
   it("starts pending play as soon as the startup window is covered", async () => {
     const source = createSource("source");
     const startupBatch = deferred<readonly SynchronizedMessageWindow[]>();

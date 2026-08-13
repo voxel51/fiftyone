@@ -451,6 +451,25 @@ describe("DataStreamScheduler", () => {
     );
   });
 
+  it("keeps paused current-frame recovery alive while blocking coverage is incomplete", () => {
+    const streams = ["/camera", "/lidar"];
+    const harness = createSchedulerHarness({
+      activeStreams: streams,
+      fillCache: false,
+    });
+    harness.caches.get("/camera")?.set(0n, null);
+    // A false result means the missing stream is already pending. The retry
+    // cadence must still survive in case that in-flight read is cancelled.
+    harness.prefetcher.fetchCurrentFrame.mockReturnValue(false);
+
+    expect(harness.scheduler.runPausedIdleWarmup()).toBe(true);
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
+      0n,
+      streams,
+    );
+    expect(harness.prefetcher.fetchBatch).not.toHaveBeenCalled();
+  });
+
   it("applies paused chunk admission to warmup batches", () => {
     const harness = createSchedulerHarness({
       byteTimeline: byteTimelineAtTenths(),
@@ -582,6 +601,7 @@ function createSchedulerHarness({
 
   return {
     activeStreams,
+    caches,
     cancelIdle,
     prefetcher,
     register: () =>

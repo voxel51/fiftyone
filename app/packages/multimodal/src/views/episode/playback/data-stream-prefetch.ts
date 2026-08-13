@@ -589,13 +589,19 @@ export class DataStreamScheduler {
       return false;
     }
     const currentTick = index.nearestTick(timeSec);
+    if (currentTick === undefined) {
+      return false;
+    }
     if (
-      currentTick === undefined ||
       !activeBlockingStreams.every((stream) =>
         options.caches.get(stream)?.has(currentTick),
       )
     ) {
-      return false;
+      options.prefetcher.fetchCurrentFrame(currentTick, activeBlockingStreams);
+      // Keep the cadence alive while this read is pending. A cancellation
+      // clears pending ownership asynchronously, so stopping here would leave
+      // no later pass to retry the uncovered current frame.
+      return true;
     }
     const pausedLookaheadSeconds = Math.min(
       options.policy.pausedWarmupRunwaySeconds,
