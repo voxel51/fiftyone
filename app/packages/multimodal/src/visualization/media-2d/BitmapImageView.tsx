@@ -259,8 +259,7 @@ function useBitmapCanvas(
   const bitmapRef = useRef<CanvasDrawable | null>(null);
   const fitRef = useRef(fit);
   fitRef.current = fit;
-  const onCanvasCommittedRef = useRef(onCanvasCommitted);
-  onCanvasCommittedRef.current = onCanvasCommitted;
+  const onCanvasCommittedRef = useLatestRef(onCanvasCommitted);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -313,10 +312,16 @@ function useBitmapCanvas(
     context.drawImage(bitmap, rect.x, rect.y, rect.width, rect.height);
     try {
       onCanvasCommittedRef.current?.(canvas, { height, width });
-    } catch {
+    } catch (error) {
       // Poster capture is optional optimization work and cannot fail display.
+      if (import.meta.env.DEV) {
+        console.warn(
+          "onCanvasCommitted threw; display draw is unaffected",
+          error,
+        );
+      }
     }
-  }, [trackCssSize]);
+  }, [onCanvasCommittedRef, trackCssSize]);
 
   const commit = useCallback(
     (bitmap: CanvasDrawable | null) => {

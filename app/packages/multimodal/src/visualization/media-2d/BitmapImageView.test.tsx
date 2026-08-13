@@ -764,6 +764,33 @@ describe("BitmapCanvasHost", () => {
     });
   });
 
+  it("reports a commit callback failure in development without failing display", () => {
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const error = new Error("capture failed");
+
+    expect(() =>
+      render(
+        <BitmapCanvasHost
+          bitmap={fakeBitmap(100, 50)}
+          onCanvasCommitted={() => {
+            throw error;
+          }}
+        />,
+      ),
+    ).not.toThrow();
+
+    expect(drawImage).toHaveBeenCalledTimes(1);
+    expect(warning).toHaveBeenCalledWith(
+      "onCanvasCommitted threw; display draw is unaffected",
+      error,
+    );
+  });
+
   it("closes the replaced bitmap on swap and the committed one on unmount", () => {
     stubElementSize(100, 50);
     const first = fakeBitmap(10, 10);
