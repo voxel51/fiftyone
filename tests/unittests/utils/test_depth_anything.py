@@ -16,8 +16,6 @@ import numpy as np
 import pytest
 import torch
 
-import fiftyone.core.labels as fol
-
 
 class TestDepthAnythingV3ModelConfig:
     """Test DepthAnythingV3ModelConfig parsing and defaults."""
@@ -89,7 +87,7 @@ class TestDepthAnythingV3ModelConfig:
 class TestDepthAnythingV3OutputProcessor:
     """Test DepthAnythingV3OutputProcessor."""
 
-    def _make_processor(self) -> "DepthAnythingV3OutputProcessor":
+    def _make_processor(self) -> Any:
         from fiftyone.utils.depth_anything import (
             DepthAnythingV3OutputProcessor,
         )
