@@ -67,6 +67,7 @@ const test = base.extend<{
   explorer: McapExplorerPom;
   grid: GridPom;
   modal: ModalPom;
+  targetDatasetName: string;
 }>({
   explorer: async ({ page }, use) => {
     const explorer = new McapExplorerPom(page);
@@ -79,6 +80,7 @@ const test = base.extend<{
   modal: async ({ eventUtils, page }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
+  targetDatasetName: datasetName,
 });
 
 test.describe.serial("MCAP correctness", () => {
@@ -189,14 +191,8 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
     await fs.rm(fixtureDir, { force: true, recursive: true });
   });
 
-  test.beforeEach(async ({ fiftyoneLoader, page }, testInfo) => {
-    await fiftyoneLoader.waitUntilGridVisible(
-      page,
-      testInfo.title ===
-        "renders an alternate image field in grid and opens the MCAP episode modal"
-        ? alternateMediaDatasetName
-        : datasetName,
-    );
+  test.beforeEach(async ({ fiftyoneLoader, page, targetDatasetName }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, targetDatasetName);
   });
 
   test.afterEach(async ({ modal }) => {
@@ -330,18 +326,25 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
     await expectRepresentativeSidebarPreferences(modal);
   });
 
-  test("renders an alternate image field in grid and opens the MCAP episode modal", async ({
-    grid,
-    modal,
-  }) => {
-    const tile = grid.getNthTile(0);
-    await expect(tile).toHaveAttribute("data-cy", "looker");
-    await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
+  test.describe("alternate grid media", () => {
+    test.use({ targetDatasetName: alternateMediaDatasetName });
 
-    await openMcapModal(grid, modal);
-    await modal.episode.waitForReady("tiny-episode-a.mcap");
-    await modal.episode.expectTileTitles(["camera/front", "points"], ["Logs"]);
-    await modal.episode.expectNoViewerError();
+    test("renders an alternate image field in grid and opens the MCAP episode modal", async ({
+      grid,
+      modal,
+    }) => {
+      const tile = grid.getNthTile(0);
+      await expect(tile).toHaveAttribute("data-cy", "looker");
+      await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
+
+      await openMcapModal(grid, modal);
+      await modal.episode.waitForReady("tiny-episode-a.mcap");
+      await modal.episode.expectTileTitles(
+        ["camera/front", "points"],
+        ["Logs"],
+      );
+      await modal.episode.expectNoViewerError();
+    });
   });
 
   test("keeps paused stepping, raw values, logs, and image pixels synchronized", async ({
