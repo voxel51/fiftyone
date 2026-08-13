@@ -341,6 +341,9 @@ export class EpisodePom {
     const preset = this.scope.getByRole("combobox", {
       name: "Data sampling preset",
     });
+    const customRate = this.scope.getByRole("spinbutton", {
+      name: "Custom data sampling rate",
+    });
     if (!(await preset.inputValue()).startsWith("Custom")) {
       await preset.click();
       const customOption = this.page.getByRole("option", {
@@ -348,14 +351,13 @@ export class EpisodePom {
         exact: true,
       });
       await customOption.click();
-      // The portalled select may retain focus after its state changes. Close
-      // it explicitly before interacting with the number field underneath.
-      await this.page.keyboard.press("Escape");
-      await expect(customOption).toBeHidden();
+      await expect(customRate).toBeVisible({ timeout: READY_TIMEOUT });
+      // The select opens immediately on focus. Wait for the custom controls to
+      // commit, then blur its input directly so portal closure cannot race a
+      // document-level Escape with the controlled selection rerender.
+      await preset.blur();
+      await expect(customOption).toBeHidden({ timeout: READY_TIMEOUT });
     }
-    const customRate = this.scope.getByRole("spinbutton", {
-      name: "Custom data sampling rate",
-    });
     await customRate.click();
     await customRate.fill(String(rateHz));
     await customRate.press("Enter");
