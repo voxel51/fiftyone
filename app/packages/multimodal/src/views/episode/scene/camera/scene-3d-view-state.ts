@@ -51,8 +51,10 @@ export interface Scene3dViewStateSnapshot {
   readonly navigationCompositions: readonly Scene3dCameraComposition[];
   /** Enabled source ids; only valid against `renderableSourceIds`. */
   readonly enabledSourceIds: readonly string[] | null;
-  /** The renderable-source shape the selection state was captured against. */
+  /** Recording-local renderable ids the selection state was captured against. */
   readonly renderableSourceIds: readonly string[] | null;
+  /** Stable semantic source keys used to gate cross-recording camera intent. */
+  readonly renderableSourceKeys: readonly string[] | null;
   readonly trackingMode: Scene3dTrackingMode | null;
   /** Per-stream trajectory frame overrides; gated on `renderableSourceIds`. */
   readonly trajectoryFrameOverrides: Readonly<Record<string, string>> | null;
@@ -70,6 +72,7 @@ export const EMPTY_SCENE_3D_VIEW_STATE: Scene3dViewStateSnapshot = {
   navigationCompositions: [],
   enabledSourceIds: null,
   renderableSourceIds: null,
+  renderableSourceKeys: null,
   trajectoryFrameOverrides: null,
   trackingMode: null,
   userCameraTargetFrameId: null,
@@ -89,6 +92,7 @@ export interface Scene3dViewStateStore {
   recordSourceSelection(selection: {
     readonly enabledSourceIds: readonly string[];
     readonly renderableSourceIds: readonly string[];
+    readonly renderableSourceKeys: readonly string[];
   }): void;
   recordTrackingMode(trackingMode: Scene3dTrackingMode): void;
   recordTrajectoryFrameOverrides(
@@ -121,8 +125,17 @@ export function createScene3dViewStateStore(): Scene3dViewStateStore {
     recordNavigationCompositions: (navigationCompositions) => {
       state = { ...state, navigationCompositions };
     },
-    recordSourceSelection: ({ enabledSourceIds, renderableSourceIds }) => {
-      state = { ...state, enabledSourceIds, renderableSourceIds };
+    recordSourceSelection: ({
+      enabledSourceIds,
+      renderableSourceIds,
+      renderableSourceKeys,
+    }) => {
+      state = {
+        ...state,
+        enabledSourceIds,
+        renderableSourceIds,
+        renderableSourceKeys,
+      };
     },
     recordTrackingMode: (trackingMode) => {
       state = { ...state, trackingMode };
@@ -140,25 +153,25 @@ export function createScene3dViewStateStore(): Scene3dViewStateStore {
 }
 
 /**
- * Strict shape gate: the snapshot's renderable source ids must equal the new
- * sample's (as sets). Selection state carried across samples is only
- * meaningful when the recordings are same-shaped.
+ * Strict shape gate: the snapshot's source-shape tokens must equal the current
+ * tokens (as sets). Callers choose recording-local ids or semantic keys based
+ * on whether the persisted state may cross recording boundaries.
  */
 export function scene3dSourceShapeMatches(
-  snapshotSourceIds: readonly string[] | null,
-  currentSourceIds: readonly string[],
+  snapshotSourceShape: readonly string[] | null,
+  currentSourceShape: readonly string[],
 ): boolean {
-  if (!snapshotSourceIds) {
+  if (!snapshotSourceShape) {
     return false;
   }
 
-  const snapshotSet = new Set(snapshotSourceIds);
-  const currentSet = new Set(currentSourceIds);
+  const snapshotSet = new Set(snapshotSourceShape);
+  const currentSet = new Set(currentSourceShape);
   if (snapshotSet.size !== currentSet.size) {
     return false;
   }
-  for (const id of snapshotSet) {
-    if (!currentSet.has(id)) {
+  for (const token of snapshotSet) {
+    if (!currentSet.has(token)) {
       return false;
     }
   }

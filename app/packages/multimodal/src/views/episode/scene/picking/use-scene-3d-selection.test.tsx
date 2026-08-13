@@ -460,6 +460,33 @@ describe("useScene3dSelection", () => {
     expect(viewStateStore.getSnapshot()).not.toHaveProperty("showCameraImages");
   });
 
+  it("keeps navigation source keys stable when recording-local ids change", () => {
+    const firstLidar = source(
+      "10",
+      SCENE_SOURCE_TYPE.POINT_CLOUD,
+      "/lidar/top",
+    );
+    const secondLidar = source(
+      "11",
+      SCENE_SOURCE_TYPE.POINT_CLOUD,
+      "/lidar/top",
+    );
+    const { rerender, result } = renderSelection([firstLidar]);
+
+    expect(result.current.renderableSourceIds).toEqual(["10"]);
+    expect(result.current.renderableSourceKeys).toEqual([
+      `${SCENE_SOURCE_TYPE.POINT_CLOUD}\0/lidar/top`,
+    ]);
+
+    useSceneInventoryMock.mockReturnValue([secondLidar]);
+    rerender();
+
+    expect(result.current.renderableSourceIds).toEqual(["11"]);
+    expect(result.current.renderableSourceKeys).toEqual([
+      `${SCENE_SOURCE_TYPE.POINT_CLOUD}\0/lidar/top`,
+    ]);
+  });
+
   it("keeps the outgoing source shape while the next stream is unbound", () => {
     let sourceKey = "source-a";
     useSceneInventoryMock.mockReturnValue([lidarTop]);

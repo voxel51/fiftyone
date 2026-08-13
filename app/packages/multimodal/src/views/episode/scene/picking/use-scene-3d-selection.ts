@@ -165,6 +165,13 @@ export function useScene3dSelection({
     () => selectableRenderableSources.map((source) => source.id),
     [selectableRenderableSources],
   );
+  const selectableRenderableSourceKeys = useMemo(
+    () =>
+      selectableRenderableSources.map(
+        (source) => `${source.type}\0${source.sourceName}`,
+      ),
+    [selectableRenderableSources],
+  );
   const defaultRenderableSources = useMemo(
     () =>
       filterDefaultStreamEquivalents(selectableRenderableSources, {
@@ -234,8 +241,15 @@ export function useScene3dSelection({
     viewStateStore.recordSourceSelection({
       enabledSourceIds: [...enabled],
       renderableSourceIds: selectableRenderableSourceIds,
+      renderableSourceKeys: selectableRenderableSourceKeys,
     });
-  }, [enabled, selectableRenderableSourceIds, sourceKey, viewStateStore]);
+  }, [
+    enabled,
+    selectableRenderableSourceIds,
+    selectableRenderableSourceKeys,
+    sourceKey,
+    viewStateStore,
+  ]);
 
   // This effect keeps automatic camera defaults aligned with the image panes
   // currently open. Only a camera edit freezes that selection; unrelated 3D
@@ -468,6 +482,7 @@ export function useScene3dSelection({
     poseStreams,
     primarySourceId,
     renderableSourceIds: selectableRenderableSourceIds,
+    renderableSourceKeys: selectableRenderableSourceKeys,
     restoredSourceShapeMatches: selectionRestore.sourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationStreams,
