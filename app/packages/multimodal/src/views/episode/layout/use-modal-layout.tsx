@@ -44,6 +44,7 @@ import {
   type PlotSeriesConfig,
 } from "../plots/plot-tile-state";
 import { rawTileStreamAtom } from "../tiles/raw-message-binding";
+import { persistedImageTileBindingsAtom } from "../tiles/tile-source-bindings";
 import {
   DEFAULT_SCENE_3D_TILE_PLAYBACK_SETTINGS,
   scene3dTilePlaybackSettingsAtom,
@@ -57,6 +58,7 @@ import {
 import {
   collectPlaybackDeviceCapabilities,
   rankDefaultImageSources,
+  rankImageSources,
   resolvePlaybackLayout,
   type PlaybackDeviceCapabilities,
   type PlaybackLayoutTile,
@@ -166,6 +168,16 @@ export function useModalLayout({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sources re-reads storage after in-place sample swaps
     [cameraPreferenceField, datasetId, sources],
   );
+  const boundDefaultTiles = useMemo(
+    () =>
+      buildResolvedTiles(
+        resolved.tiles,
+        resolveTile,
+        sources,
+        persisted?.imageBindings,
+      ),
+    [persisted?.imageBindings, resolveTile, resolved.tiles, sources],
+  );
 
   const restored = useMemo(
     () =>
@@ -175,6 +187,7 @@ export function useModalLayout({
         sources,
         resolveTile,
         persisted?.tileTitles,
+        persisted?.imageBindings,
       ),
     [availableTileTypes, persisted, resolveTile, sources],
   );
@@ -307,7 +320,7 @@ export function useModalLayout({
   );
 
   return {
-    initialTiles: restored?.tiles ?? defaultTiles,
+    initialTiles: restored?.tiles ?? boundDefaultTiles,
     initialManualTileTitles: restored?.manualTileTitles ?? {},
     initialLayout: restored?.layout ?? resolved.layout,
     initialExpandedTileId,
@@ -336,13 +349,31 @@ export function useModalLayout({
 function buildResolvedTiles(
   tiles: readonly PlaybackLayoutTile[],
   resolveTile: TileResolver,
+  sources?: readonly SceneSource[],
+  imageBindings?: Readonly<Record<string, string>>,
 ): Record<string, TilingTile> {
+  const resolvedImageBindings =
+    sources && imageBindings
+      ? resolveInitialImageBindings(
+          tiles
+            .filter((tile) => tile.tileType === TILE_TYPE.IMAGE)
+            .map((tile) => tile.id),
+          new Set(rankImageSources(sources).map((source) => source.id)),
+          tiles.flatMap((tile) =>
+            tile.tileType === TILE_TYPE.IMAGE && tile.initialSourceId
+              ? [tile.initialSourceId]
+              : [],
+          ),
+          imageBindings,
+        )
+      : null;
   const result: Record<string, TilingTile> = {};
   for (const tile of tiles) {
     const definition = resolveTile(tile.tileType);
     if (!definition) continue;
     const Tile = definition.Tile;
-    const initialSourceId = tile.initialSourceId;
+    const initialSourceId =
+      resolvedImageBindings?.get(tile.id) ?? tile.initialSourceId;
     result[tile.id] = {
       render: () => <Tile initialSourceId={initialSourceId} />,
       title: tile.title,
@@ -380,11 +411,10 @@ export function pruneMosaicLayout(
  * tiles. Only when nothing survives does the whole restore fall back to
  * the resolver defaults.
  *
- * Persistence stores the arrangement, not per-tile bindings, so
- * surviving image leaves rebind positionally (depth-first order of the
- * pruned tree) to the default-preferred sources of the current recording —
- * restored multi-camera layouts open on distinct streams
- * instead of all defaulting to the same one.
+ * Valid persisted image bindings restore exactly. Unbound or unavailable
+ * image leaves receive distinct ranked fallbacks where possible, reserving
+ * valid restored streams so an earlier fallback does not collide with a
+ * later restored pane.
  */
 function rebuildTilesFromLayout(
   layout: MosaicNode<string> | null | undefined,
@@ -392,6 +422,7 @@ function rebuildTilesFromLayout(
   sources: readonly SceneSource[],
   resolveTile: TileResolver,
   tileTitles?: Readonly<Record<string, string>>,
+  imageBindings?: Readonly<Record<string, string>>,
 ): {
   layout: MosaicNode<string>;
   manualTileTitles: Record<string, string>;
@@ -414,7 +445,15 @@ function rebuildTilesFromLayout(
   if (tileIds.length === 0) return null;
 
   const rankedImages = rankDefaultImageSources(sources);
-  let imageLeafIndex = 0;
+  const availableImageIds = new Set(
+    rankImageSources(sources).map((source) => source.id),
+  );
+  const resolvedImageBindings = resolveInitialImageBindings(
+    tileIds.filter((id) => tileTypeFromId(id) === TILE_TYPE.IMAGE),
+    availableImageIds,
+    rankedImages.map((source) => source.id),
+    imageBindings,
+  );
   const manualTileTitles: Record<string, string> = {};
   const tiles: Record<string, TilingTile> = {};
   for (const id of tileIds) {
@@ -422,8 +461,7 @@ function rebuildTilesFromLayout(
     if (!type) return null;
     const definition = resolveTile(type);
     const Tile = definition?.Tile ?? MissingTile;
-    const initialSourceId =
-      type === TILE_TYPE.IMAGE ? rankedImages[imageLeafIndex++]?.id : undefined;
+    const initialSourceId = resolvedImageBindings.get(id);
     const restoredTitle = tileTitles?.[id];
     const title = restoredTitle ?? definition?.typeLabel ?? "Unavailable tile";
     if (restoredTitle) {
@@ -441,6 +479,34 @@ function rebuildTilesFromLayout(
     };
   }
   return { layout: pruned, manualTileTitles, tiles };
+}
+
+/** Resolve valid saved bindings, then assign collision-free fallbacks. */
+function resolveInitialImageBindings(
+  tileIds: readonly string[],
+  availableSourceIds: ReadonlySet<string>,
+  fallbackSourceIds: readonly string[],
+  persistedBindings?: Readonly<Record<string, string>>,
+): ReadonlyMap<string, string> {
+  const resolved = new Map<string, string>();
+  for (const tileId of tileIds) {
+    const persistedSourceId = persistedBindings?.[tileId];
+    if (persistedSourceId && availableSourceIds.has(persistedSourceId)) {
+      resolved.set(tileId, persistedSourceId);
+    }
+  }
+
+  const claimedSourceIds = new Set(resolved.values());
+  for (const tileId of tileIds) {
+    if (resolved.has(tileId)) continue;
+    const sourceId =
+      fallbackSourceIds.find((id) => !claimedSourceIds.has(id)) ??
+      fallbackSourceIds[0];
+    if (!sourceId) continue;
+    resolved.set(tileId, sourceId);
+    claimedSourceIds.add(sourceId);
+  }
+  return resolved;
 }
 
 export interface ModalLayoutPersistenceProps {
@@ -499,6 +565,18 @@ export function ModalLayoutPersistence({
     tilesRef,
   });
 
+  const seededImageBindingsKeyRef = useRef<string | null>(null);
+  useSeedPersistedTileAtom({
+    atom: persistedImageTileBindingsAtom,
+    datasetIdRef,
+    field: "imageBindings",
+    seededKeyRef: seededImageBindingsKeyRef,
+    store,
+    tilesRef,
+  });
+
+  usePrunePersistedImageBindings(store, tiles);
+
   const plotSeriesPatch = useCallback(
     (value: Readonly<Record<string, readonly PlotSeriesConfig[]>>) => ({
       plotSeries: compactPlotSeries(value),
@@ -522,6 +600,18 @@ export function ModalLayoutPersistence({
     datasetIdRef,
     patchForValue: rawStreamsPatch,
     seededKeyRef: seededRawKeyRef,
+    store,
+  });
+
+  const imageBindingsPatch = useCallback(
+    (value: Readonly<Record<string, string>>) => ({ imageBindings: value }),
+    [],
+  );
+  useDebouncedLayoutAtomMirror({
+    atom: persistedImageTileBindingsAtom,
+    datasetIdRef,
+    patchForValue: imageBindingsPatch,
+    seededKeyRef: seededImageBindingsKeyRef,
     store,
   });
 
@@ -811,11 +901,38 @@ function compactScene3dSettings(
 
 type PersistedTileAtomField =
   | "extensionSettings"
+  | "imageBindings"
   | "logSettings"
   | "mapSettings"
   | "plotSeries"
   | "rawStreams"
   | "scene3dSettings";
+
+/** Remove durable bindings only when their pane leaves the live layout. */
+function usePrunePersistedImageBindings(
+  store: ReturnType<typeof useStore>,
+  tiles: Readonly<Record<string, TilingTile>>,
+): void {
+  const imageTileIdsKey = Object.keys(tiles)
+    .filter((tileId) => tileTypeFromId(tileId) === TILE_TYPE.IMAGE)
+    .join("\u0000");
+
+  // This effect reconciles intentional pane removal with durable bindings.
+  useEffect(() => {
+    const imageTileIds = new Set(
+      imageTileIdsKey ? imageTileIdsKey.split("\u0000") : [],
+    );
+    store.set(persistedImageTileBindingsAtom, (previous) => {
+      const staleIds = Object.keys(previous).filter(
+        (tileId) => !imageTileIds.has(tileId),
+      );
+      if (staleIds.length === 0) return previous;
+      const next = { ...previous };
+      for (const tileId of staleIds) delete next[tileId];
+      return next;
+    });
+  }, [imageTileIdsKey, store]);
+}
 
 /**
  * Seeds tile-scoped atoms from the dataset entry once per modal mount.

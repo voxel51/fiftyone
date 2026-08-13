@@ -6,15 +6,18 @@ import {
   renderHook,
   screen,
 } from "@testing-library/react";
-import { createStore, Provider as JotaiProvider } from "jotai";
+import { createStore, Provider as JotaiProvider, useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
 import {
   chooseNextImageStream,
   hoveredImageStreamAtom,
+  persistedImageTileBindingsAtom,
+  resolveAvailableImageStream,
   useImageTileBindings,
   useImageTileHoverProps,
+  usePersistImageTileBinding,
   usePublishImageTileBinding,
 } from "./tile-source-bindings";
 
@@ -57,6 +60,44 @@ describe("chooseNextImageStream", () => {
   });
 });
 
+describe("resolveAvailableImageStream", () => {
+  const front = imageSource("cam_front");
+  const back = imageSource("cam_back");
+
+  it("temporarily falls back without forgetting a returning preference", () => {
+    const fallback = resolveAvailableImageStream(
+      "cam_back",
+      "cam_back",
+      [front],
+      [front],
+      {},
+    );
+    expect(fallback).toBe("cam_front");
+
+    expect(
+      resolveAvailableImageStream(
+        fallback,
+        "cam_back",
+        [front, back],
+        [front, back],
+        {},
+      ),
+    ).toBe("cam_back");
+  });
+
+  it("keeps an available current fallback while the preference is absent", () => {
+    expect(
+      resolveAvailableImageStream(
+        "cam_front",
+        "cam_back",
+        [front],
+        [front],
+        {},
+      ),
+    ).toBe("cam_front");
+  });
+});
+
 const Publisher: React.FC<{ readonly sourceId: string }> = ({ sourceId }) => {
   usePublishImageTileBinding(sourceId);
   return null;
@@ -65,6 +106,24 @@ const Publisher: React.FC<{ readonly sourceId: string }> = ({ sourceId }) => {
 const BindingsProbe: React.FC = () => (
   <span data-testid="bindings">{JSON.stringify(useImageTileBindings())}</span>
 );
+
+const PersistedBindingsProbe: React.FC = () => (
+  <span data-testid="persisted-bindings">
+    {JSON.stringify(useAtomValue(persistedImageTileBindingsAtom))}
+  </span>
+);
+
+const PreferencePublisher: React.FC<{
+  readonly selectedSourceId?: string;
+  readonly sourceId: string;
+}> = ({ selectedSourceId, sourceId }) => {
+  const persistBinding = usePersistImageTileBinding(sourceId);
+  usePublishImageTileBinding(sourceId);
+  React.useEffect(() => {
+    if (selectedSourceId) persistBinding(selectedSourceId);
+  }, [persistBinding, selectedSourceId]);
+  return null;
+};
 
 describe("usePublishImageTileBinding", () => {
   afterEach(() => cleanup());
@@ -109,6 +168,68 @@ describe("usePublishImageTileBinding", () => {
   it("publishes nothing for an empty source id", () => {
     renderPublisher("");
     expect(screen.getByTestId("bindings").textContent).toBe("{}");
+  });
+});
+
+describe("usePersistImageTileBinding", () => {
+  afterEach(() => cleanup());
+
+  it("persists creation and selection but not transient fallback or teardown", () => {
+    const view = render(
+      <TilingProvider>
+        <TileIdScope tileId="image-1">
+          <PreferencePublisher sourceId="cam_back" />
+        </TileIdScope>
+        <BindingsProbe />
+        <PersistedBindingsProbe />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"cam_back"}',
+    );
+
+    view.rerender(
+      <TilingProvider>
+        <TileIdScope tileId="image-1">
+          <PreferencePublisher sourceId="cam_front" />
+        </TileIdScope>
+        <BindingsProbe />
+        <PersistedBindingsProbe />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("bindings").textContent).toBe(
+      '{"image-1":"cam_front"}',
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"cam_back"}',
+    );
+
+    view.rerender(
+      <TilingProvider>
+        <TileIdScope tileId="image-1">
+          <PreferencePublisher
+            selectedSourceId="cam_front"
+            sourceId="cam_front"
+          />
+        </TileIdScope>
+        <BindingsProbe />
+        <PersistedBindingsProbe />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"cam_front"}',
+    );
+
+    view.rerender(
+      <TilingProvider>
+        <BindingsProbe />
+        <PersistedBindingsProbe />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("bindings").textContent).toBe("{}");
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"cam_front"}',
+    );
   });
 });
 
