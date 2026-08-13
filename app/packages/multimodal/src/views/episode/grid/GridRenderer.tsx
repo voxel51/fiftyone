@@ -122,11 +122,17 @@ export function GridRenderer({
   }>({ entry: null, key: null });
   if (cachedPosterRef.current.key !== cacheKey) {
     cachedPosterRef.current = {
-      entry: cacheKey ? getGridPosterCache().get(cacheKey) : null,
+      entry: cacheKey ? getGridPosterCache().peek(cacheKey) : null,
       key: cacheKey,
     };
   }
   const cachedPoster = cachedPosterRef.current.entry;
+  const recordedCacheLookupKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cacheKey || recordedCacheLookupKeyRef.current === cacheKey) return;
+    recordedCacheLookupKeyRef.current = cacheKey;
+    recordGridPosterDiagnostic(cachedPoster ? "hits" : "misses");
+  }, [cacheKey, cachedPoster]);
   const [cameraPose, setCameraPose] = useGridCameraPose(
     gridCameraScopeKey,
     visible,

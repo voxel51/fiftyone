@@ -79,6 +79,12 @@ describe("grid poster cache", () => {
       gridPosterCacheKey({ ...base, selectedSourceName: "/camera" }),
     ).not.toBe(key);
     expect(
+      gridPosterCacheKey({ ...base, posterSourceName: "/camera/match" }),
+    ).not.toBe(key);
+    expect(gridPosterCacheKey({ ...base, posterStartTimeNs: 42n })).not.toBe(
+      key,
+    );
+    expect(
       gridPosterCacheKey({ ...base, source: source("two", "etag-a") }),
     ).not.toBe(key);
     expect(
@@ -122,6 +128,15 @@ describe("grid poster cache", () => {
         entry([2]),
       ),
     ).toBe(false);
+    expect(
+      shouldReplaceGridPoster(
+        entry([1], { sourceKind: "image" }),
+        entry([2], {
+          pointCloudPoseKey: poseA,
+          sourceKind: "point-cloud",
+        }),
+      ),
+    ).toBe(true);
   });
 
   it("uses the fallback and adaptive browser budgets", () => {

@@ -115,11 +115,11 @@ export function createGridPosterCache(
       return cache.peek(key) ?? null;
     },
     put(key, entry) {
-      const immutableEntry = copyEntry(entry);
-      if (entrySizeBytes(immutableEntry) > maxSizeBytes) {
+      if (entrySizeBytes(entry) > maxSizeBytes) {
         counters.oversizeRejections += 1;
         return false;
       }
+      const immutableEntry = copyEntry(entry);
       const replacing = cache.has(key);
       cache.set(key, immutableEntry);
       counters.puts += 1;
@@ -189,6 +189,7 @@ export function shouldReplaceGridPoster(
   next: Omit<GridPosterCacheEntry, "bytes">,
 ): boolean {
   if (!current) return true;
+  if (current.sourceKind !== next.sourceKind) return true;
   if (
     next.sourceKind === "point-cloud" &&
     current.pointCloudPoseKey !== next.pointCloudPoseKey
@@ -246,6 +247,8 @@ export function recordGridPosterDiagnostic(
     | "encodesCompleted"
     | "encodesFailed"
     | "encodesStarted"
+    | "hits"
+    | "misses"
     | "sourceRefreshesHover"
     | "sourceRefreshesPose"
     | "sourceRefreshesSize"
