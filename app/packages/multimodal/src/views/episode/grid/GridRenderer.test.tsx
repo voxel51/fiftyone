@@ -20,7 +20,11 @@ import {
   gridLiveLeaseStats,
   resetGridLiveLeasesForTests,
 } from "../../../visualization/webgpu/webgpu-live-lease";
-import type { EpisodePosterFrame } from "../../../ir";
+import type { ByteSourceDescriptor, EpisodePosterFrame } from "../../../ir";
+import {
+  pointCloudPoseKey,
+  type GridPosterCacheEntry,
+} from "./grid-poster-cache";
 import {
   GridRenderer,
   HOVER_INTENT_DELAY_MS,
@@ -49,6 +53,7 @@ function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
 
 const previewHarness = vi.hoisted(() => ({
   preview: {
+    cachedPoster: null as GridPosterCacheEntry | null,
     error: null as string | null,
     frame: null as EpisodePosterFrame | null,
     hasPreviewStreams: false,
@@ -56,6 +61,7 @@ const previewHarness = vi.hoisted(() => ({
     pause: vi.fn(),
     play: vi.fn(),
     streamId: null as string | null,
+    streamSourceName: null as string | null,
     streamSourceNames: [] as readonly string[],
     status: "idle",
   },
@@ -71,6 +77,20 @@ const bitmapViewHarness = vi.hoisted(() => ({
 
 const bitmapHostHarness = vi.hoisted(() => ({
   lastBitmap: null as ImageBitmap | null,
+  onCanvasCommitted: null as
+    | ((
+        canvas: HTMLCanvasElement,
+        size: { readonly height: number; readonly width: number },
+      ) => void)
+    | null,
+}));
+
+const posterCaptureHarness = vi.hoisted(() => ({
+  capture: vi.fn(),
+}));
+
+const sourceHarness = vi.hoisted(() => ({
+  byteSource: null as ByteSourceDescriptor | null,
 }));
 
 interface SnapshotRequest {
@@ -104,9 +124,13 @@ function getGridRendererRoot(container: HTMLElement): HTMLElement {
 
 vi.mock("../../session/use-stable-episode-source", () => ({
   useStableEpisodeSource: vi.fn(() => ({
-    byteSource: null,
+    byteSource: sourceHarness.byteSource,
     episodeSource: null,
   })),
+}));
+
+vi.mock("./grid-poster-codec", () => ({
+  captureGridPoster: posterCaptureHarness.capture,
 }));
 
 vi.mock("../../session/use-episode-preview-session", () => ({
@@ -146,14 +170,33 @@ vi.mock("./grid-stream-state", () => ({
 vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
   const { useEffect } = await import("react");
   return {
-    BitmapCanvasHost: ({ bitmap }: { readonly bitmap: ImageBitmap | null }) => {
+    BitmapCanvasHost: ({
+      bitmap,
+      onCanvasCommitted,
+    }: {
+      readonly bitmap: ImageBitmap | null;
+      readonly onCanvasCommitted?: (
+        canvas: HTMLCanvasElement,
+        size: { readonly height: number; readonly width: number },
+      ) => void;
+    }) => {
       bitmapHostHarness.lastBitmap = bitmap;
+      bitmapHostHarness.onCanvasCommitted = onCanvasCommitted ?? null;
       return (
         <div
           data-committed={bitmap ? "true" : "false"}
           data-testid="bitmap-canvas-host"
         />
       );
+    },
+    BitmapImageView: (props: {
+      readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
+    }) => {
+      const { onBitmapRetainedBytesChange } = props;
+      useEffect(() => {
+        onBitmapRetainedBytesChange?.(320 * 180 * 4);
+      }, [onBitmapRetainedBytesChange]);
+      return <div data-testid="bitmap-cached-image-view" />;
     },
     BitmapImageFrameView: (props: {
       readonly fit?: string;
@@ -189,18 +232,23 @@ afterEach(() => {
   resetGridLiveLeasesForTests();
   resetWebGpuDeviceRegistryForTests();
   bitmapHostHarness.lastBitmap = null;
+  bitmapHostHarness.onCanvasCommitted = null;
   bitmapViewHarness.lastProps = null;
   cameraPoseHarness.pose = null;
   previewHarness.preview.error = null;
+  previewHarness.preview.cachedPoster = null;
   previewHarness.preview.frame = null;
   previewHarness.preview.hasPreviewStreams = false;
   previewHarness.preview.isBuffering = false;
   previewHarness.preview.status = "idle";
   previewHarness.preview.streamId = null;
+  previewHarness.preview.streamSourceName = null;
   previewHarness.preview.streamSourceNames = [];
   previewHarness.preview.pause.mockClear();
   previewHarness.preview.play.mockClear();
   snapshotHarness.requests.length = 0;
+  posterCaptureHarness.capture.mockReset();
+  sourceHarness.byteSource = null;
 });
 
 describe("GridRenderer", () => {
@@ -229,6 +277,34 @@ describe("GridRenderer", () => {
       posterStartTimeNs: null,
       posterSourceName: null,
     });
+  });
+
+  it("renders a cached point-cloud poster with point-cloud activation semantics", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      pointCloudPoseKey: "pose",
+      sourceKind: "point-cloud",
+      streamId: "point-cloud",
+      streamSourceName: "/lidar",
+      streamSourceNames: ["/lidar"],
+      width: 320,
+    };
+    previewHarness.preview.status = "ready";
+    const parentClick = vi.fn();
+    const { container } = render(
+      <div onClick={parentClick}>
+        <GridRenderer ctx={rendererCtx()} />
+      </div>,
+    );
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    const root = getGridRendererRoot(container);
+    expect(root.classList.contains(classes.modalActivationSurface)).toBe(false);
+    fireEvent.click(root);
+    expect(parentClick).not.toHaveBeenCalled();
+    expect(posterCaptureHarness.capture).not.toHaveBeenCalled();
   });
 
   it("explains when the recording cannot be found", () => {
@@ -438,6 +514,45 @@ describe("GridRenderer", () => {
     expect(
       screen.getByTestId("bitmap-canvas-host").getAttribute("data-committed"),
     ).toBe("true");
+  });
+
+  it("tags a point-cloud poster with the pose that rendered its snapshot", async () => {
+    const renderedPose = {
+      position: [1, 2, 3] as [number, number, number],
+      target: [0, 0, 0] as [number, number, number],
+    };
+    const laterPose = {
+      position: [4, 5, 6] as [number, number, number],
+      target: [0, 0, 0] as [number, number, number],
+    };
+    sourceHarness.byteSource = {
+      sourceId: "pose-provenance",
+      url: "memory://pose-provenance",
+    };
+    cameraPoseHarness.pose = renderedPose;
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    expect(snapshotHarness.requests[0]?.job.cameraPose).toBe(renderedPose);
+    await act(async () => {
+      snapshotHarness.requests[0]?.resolve(fakeSnapshotBitmap());
+    });
+
+    cameraPoseHarness.pose = laterPose;
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    bitmapHostHarness.onCanvasCommitted?.(document.createElement("canvas"), {
+      height: 180,
+      width: 320,
+    });
+
+    expect(posterCaptureHarness.capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entry: expect.objectContaining({
+          pointCloudPoseKey: pointCloudPoseKey(renderedPose),
+        }),
+      }),
+    );
   });
 
   it("never goes live when the hover ends before the intent delay", () => {

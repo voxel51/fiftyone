@@ -742,8 +742,14 @@ describe("BitmapCanvasHost", () => {
     const context = sharedMockContext();
     const drawImage = vi.spyOn(context, "drawImage");
     const bitmap = fakeBitmap(100, 50);
+    const onCanvasCommitted = vi.fn();
 
-    const { container } = render(<BitmapCanvasHost bitmap={bitmap} />);
+    const { container } = render(
+      <BitmapCanvasHost
+        bitmap={bitmap}
+        onCanvasCommitted={onCanvasCommitted}
+      />,
+    );
 
     // Snapshots are rendered at the cell's CSS pixel size, so cover fit
     // degenerates to an exact 1:1 blit — no crop, no stretch.
@@ -752,6 +758,37 @@ describe("BitmapCanvasHost", () => {
     const canvas = container.querySelector("canvas");
     expect(canvas?.width).toBe(100);
     expect(canvas?.height).toBe(50);
+    expect(onCanvasCommitted).toHaveBeenCalledWith(canvas, {
+      height: 50,
+      width: 100,
+    });
+  });
+
+  it("reports a commit callback failure in development without failing display", () => {
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const error = new Error("capture failed");
+
+    expect(() =>
+      render(
+        <BitmapCanvasHost
+          bitmap={fakeBitmap(100, 50)}
+          onCanvasCommitted={() => {
+            throw error;
+          }}
+        />,
+      ),
+    ).not.toThrow();
+
+    expect(drawImage).toHaveBeenCalledTimes(1);
+    expect(warning).toHaveBeenCalledWith(
+      "onCanvasCommitted threw; display draw is unaffected",
+      error,
+    );
   });
 
   it("closes the replaced bitmap on swap and the committed one on unmount", () => {

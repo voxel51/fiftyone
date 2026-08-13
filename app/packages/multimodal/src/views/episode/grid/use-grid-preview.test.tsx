@@ -18,6 +18,7 @@ import {
   useGridPreview,
   type GridPreviewState,
 } from "./use-grid-preview";
+import type { GridPosterCacheEntry } from "./grid-poster-cache";
 
 const sessionHarness = vi.hoisted(() => ({
   session: {
@@ -36,6 +37,102 @@ afterEach(() => {
 describe("useGridPreview", () => {
   beforeEach(() => {
     sessionHarness.session.read.mockReset();
+  });
+
+  it("seeds a cached poster synchronously and never reads without session demand", () => {
+    const latest = { current: null as GridPreviewState | null };
+    const source = sourceForId("cached");
+    const { rerender } = render(
+      <PreviewHarness
+        cacheRequestKey="cached-key"
+        cachedPoster={cachedPoster()}
+        id="cached"
+        onState={(state) => {
+          latest.current = state;
+        }}
+        previewSession={null}
+        source={source}
+      />,
+    );
+
+    expect(latest.current?.cachedPoster?.bytes[0]).toBe(7);
+    expect(latest.current?.status).toBe("ready");
+    expect(sessionHarness.session.read).not.toHaveBeenCalled();
+
+    rerender(
+      <PreviewHarness
+        cacheRequestKey="other-key"
+        cachedPoster={null}
+        id="cached"
+        onState={(state) => {
+          latest.current = state;
+        }}
+        previewSession={null}
+        source={sourceForId("other")}
+      />,
+    );
+    expect(latest.current?.cachedPoster).toBeNull();
+    expect(latest.current?.status).toBe("loading");
+  });
+
+  it("preserves a cached poster when the preview session fails", async () => {
+    const latest = { current: null as GridPreviewState | null };
+    render(
+      <PreviewHarness
+        cacheRequestKey="cached-error"
+        cachedPoster={cachedPoster()}
+        id="cached-error"
+        onState={(state) => {
+          latest.current = state;
+        }}
+        previewSession={null}
+        previewSessionStatus="error"
+        source={sourceForId("cached-error")}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(latest.current?.error).toBe("Episode preview failed to open"),
+    );
+    expect(latest.current?.cachedPoster?.bytes[0]).toBe(7);
+    expect(latest.current?.status).toBe("ready");
+  });
+
+  it("does not reset a live preview when same-key poster identity changes", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1, 2, 3] }),
+    );
+    const source = sourceForId("same-key-poster");
+    const { rerender } = render(
+      <PreviewHarness
+        cacheRequestKey="same-key"
+        cachedPoster={cachedPoster()}
+        id="same-key-poster"
+        source={source}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("preview-same-key-poster").textContent).toBe(
+        "ready:1:frame:",
+      ),
+    );
+
+    rerender(
+      <PreviewHarness
+        cacheRequestKey="same-key"
+        cachedPoster={{ ...cachedPoster(), bytes: new Uint8Array([9]) }}
+        id="same-key-poster"
+        source={source}
+      />,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("preview-same-key-poster").textContent).toBe(
+      "ready:1:frame:",
+    );
   });
 
   it("loads an initial preview through the preview session", async () => {
@@ -775,6 +872,8 @@ describe("useGridPreview", () => {
 });
 
 function PreviewHarness({
+  cacheRequestKey,
+  cachedPoster,
   enabled,
   hovered,
   id,
@@ -782,9 +881,13 @@ function PreviewHarness({
   onState,
   posterStartTimeNs,
   posterSourceName,
+  previewSession,
+  previewSessionStatus,
   selectedSourceName,
   source,
 }: {
+  readonly cacheRequestKey?: string | null;
+  readonly cachedPoster?: GridPosterCacheEntry | null;
   readonly enabled?: boolean;
   readonly hovered?: boolean;
   readonly id: string;
@@ -792,17 +895,30 @@ function PreviewHarness({
   readonly onState?: (state: GridPreviewState) => void;
   readonly posterStartTimeNs?: bigint | null;
   readonly posterSourceName?: string | null;
+  readonly previewSession?: EpisodePreviewSession | null;
+  readonly previewSessionStatus?:
+    | "error"
+    | "idle"
+    | "loading"
+    | "ready"
+    | "unavailable";
   readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }) {
   const state = useGridPreview({
+    cacheRequestKey,
+    cachedPoster,
     enabled,
     hovered,
     onReadResult,
     posterStartTimeNs,
     posterSourceName,
-    previewSession: sessionHarness.session as EpisodePreviewSession,
-    previewSessionStatus: "ready",
+    previewSession:
+      previewSession === undefined
+        ? (sessionHarness.session as EpisodePreviewSession)
+        : previewSession,
+    previewSessionStatus:
+      previewSessionStatus ?? (previewSession === null ? "idle" : "ready"),
     selectedSourceName,
     source,
   });
@@ -858,6 +974,19 @@ function emptyResult(hasPreviewStreams: boolean): EpisodePreviewReadResult {
     streamSourceName: hasPreviewStreams ? "/camera/front" : null,
     streamSourceNames: hasPreviewStreams ? ["/camera/front"] : [],
     status: "empty",
+  };
+}
+
+function cachedPoster(): GridPosterCacheEntry {
+  return {
+    bytes: new Uint8Array([7, 8]),
+    height: 100,
+    mimeType: "image/webp",
+    sourceKind: "image",
+    streamId: "cached-stream",
+    streamSourceName: "/camera/cached",
+    streamSourceNames: ["/camera/cached"],
+    width: 100,
   };
 }
 
