@@ -73,6 +73,8 @@ export interface GridPosterCacheOptions {
 export interface GridPosterKeyParts {
   readonly datasetId: string;
   readonly mediaField: string | null | undefined;
+  readonly posterSourceName?: string | null | undefined;
+  readonly posterStartTimeNs?: bigint | null | undefined;
   readonly selectedSourceName: string | null | undefined;
   readonly source: ByteSourceDescriptor;
 }
@@ -141,6 +143,8 @@ export function createGridPosterCache(
 export function gridPosterCacheKey({
   datasetId,
   mediaField,
+  posterSourceName,
+  posterStartTimeNs,
   selectedSourceName,
   source,
 }: GridPosterKeyParts): GridPosterCacheKey {
@@ -150,6 +154,8 @@ export function gridPosterCacheKey({
     mediaField ?? null,
     episodeSourceAccessKey(source),
     selectedSourceName ?? GRID_POSTER_AUTO_SOURCE,
+    posterSourceName ?? null,
+    posterStartTimeNs?.toString() ?? null,
     PREVIEW_SELECTION_POLICY_VERSION,
   ]);
 }

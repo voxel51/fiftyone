@@ -11,6 +11,7 @@ import {
   publishSourceBootstrap,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
+import type { GridPosterCacheEntry } from "./grid-poster-cache";
 
 /** Status values used by the format-neutral episode grid preview. */
 export type GridPreviewStatus =
@@ -23,10 +24,12 @@ export type GridPreviewStatus =
 
 /** Render state for one lightweight episode preview. */
 export interface GridPreviewSnapshot {
+  readonly cachedPoster: GridPosterCacheEntry | null;
   readonly error: string | null;
   readonly frame: EpisodePosterFrame | null;
   readonly hasPreviewStreams: boolean;
   readonly streamId: string | null;
+  readonly streamSourceName: string | null;
   readonly streamSourceNames: readonly string[];
   readonly status: GridPreviewStatus;
 }
@@ -44,6 +47,8 @@ export interface GridPreviewState extends GridPreviewSnapshot {
  * Options for rendering one lightweight episode stream preview in the grid.
  */
 export interface UseGridPreviewOptions {
+  readonly cacheRequestKey?: string | null;
+  readonly cachedPoster?: GridPosterCacheEntry | null;
   readonly enabled?: boolean;
   /** Whether this tile is the user's current interactive target. */
   readonly hovered?: boolean;
@@ -71,10 +76,12 @@ export interface UseGridPreviewOptions {
 export const GRID_BUFFERING_DELAY_MS = 150;
 
 const IDLE_PREVIEW_STATE: GridPreviewSnapshot = {
+  cachedPoster: null,
   error: null,
   frame: null,
   hasPreviewStreams: false,
   streamId: null,
+  streamSourceName: null,
   streamSourceNames: [],
   status: "idle",
 } as const;
@@ -85,6 +92,8 @@ const IDLE_PREVIEW_STATE: GridPreviewSnapshot = {
  * advance playback from the last rendered frame.
  */
 export function useGridPreview({
+  cacheRequestKey = null,
+  cachedPoster = null,
   enabled = true,
   hovered = false,
   onReadResult,
@@ -96,7 +105,10 @@ export function useGridPreview({
   selectedSourceName,
   source,
 }: UseGridPreviewOptions): GridPreviewState {
-  const [state, setState] = useState<GridPreviewSnapshot>(IDLE_PREVIEW_STATE);
+  const [state, setState] = useState<GridPreviewSnapshot>(() =>
+    seededSnapshot(source, cachedPoster),
+  );
+  const [stateOwnerKey, setStateOwnerKey] = useState(cacheRequestKey);
   const [playing, setPlaying] = useState(false);
   // Bumped whenever the still-frame load below commits a fresh result
   // (a poster move included) — the hover loop depends on it so a poster
@@ -146,19 +158,15 @@ export function useGridPreview({
     nextStartTimeNsRef.current = undefined;
     finishBuffering();
     setPlaying(false);
-    setState(
-      source
-        ? {
-            error: null,
-            frame: null,
-            hasPreviewStreams: false,
-            streamId: null,
-            streamSourceNames: [],
-            status: "loading",
-          }
-        : IDLE_PREVIEW_STATE,
-    );
-  }, [finishBuffering, selectedSourceName, source]);
+    setStateOwnerKey(cacheRequestKey);
+    setState(seededSnapshot(source, cachedPoster));
+  }, [
+    cacheRequestKey,
+    cachedPoster,
+    finishBuffering,
+    selectedSourceName,
+    source,
+  ]);
 
   // This effect surfaces adapter failures and unsupported preview providers
   // without exposing format details to the grid.
@@ -166,30 +174,27 @@ export function useGridPreview({
     if (!source || previewSessionStatus === "idle") return;
     if (previewSessionStatus === "loading") {
       setState((current) =>
-        current.frame ? current : { ...current, status: "loading" },
+        current.frame || current.cachedPoster
+          ? current
+          : { ...current, status: "loading" },
       );
       return;
     }
     if (previewSessionStatus === "unavailable") {
-      setState({
-        error: null,
-        frame: null,
-        hasPreviewStreams: false,
-        streamId: null,
-        streamSourceNames: [],
-        status: "unavailable",
-      });
+      setState((current) =>
+        current.cachedPoster
+          ? current
+          : { ...IDLE_PREVIEW_STATE, status: "unavailable" },
+      );
       return;
     }
     if (previewSessionStatus === "error") {
-      setState({
+      setState((current) => ({
+        ...(current.cachedPoster
+          ? current
+          : { ...IDLE_PREVIEW_STATE, status: "error" as const }),
         error: previewSessionError ?? "Episode preview failed to open",
-        frame: null,
-        hasPreviewStreams: false,
-        streamId: null,
-        streamSourceNames: [],
-        status: "error",
-      });
+      }));
     }
   }, [previewSessionError, previewSessionStatus, source]);
 
@@ -242,7 +247,10 @@ export function useGridPreview({
           };
           frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
-          setState(snapshotFromResult(result));
+          setState((current) => ({
+            ...snapshotFromResult(result),
+            cachedPoster: current.cachedPoster,
+          }));
           setLoadGeneration((g) => g + 1);
         }
       })
@@ -251,14 +259,12 @@ export function useGridPreview({
           return;
         }
 
-        setState({
+        setState((current) => ({
+          ...(current.cachedPoster
+            ? current
+            : { ...IDLE_PREVIEW_STATE, status: "error" as const }),
           error: errorMessage(caughtError),
-          frame: null,
-          hasPreviewStreams: false,
-          streamId: null,
-          streamSourceNames: [],
-          status: "error",
-        });
+        }));
       })
       .finally(() => {
         if (active) {
@@ -365,7 +371,10 @@ export function useGridPreview({
 
           frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
-          setState(snapshotFromResult(result));
+          setState((current) => ({
+            ...snapshotFromResult(result),
+            cachedPoster: current.cachedPoster,
+          }));
           previousFrameTimeNs = result.frameTimeNs;
           presentedAtMs = performance.now();
         }
@@ -400,7 +409,31 @@ export function useGridPreview({
     state.status,
   ]);
 
-  return { ...state, isBuffering, pause, play };
+  const visibleState =
+    stateOwnerKey === cacheRequestKey
+      ? state
+      : seededSnapshot(source, cachedPoster);
+  return { ...visibleState, isBuffering, pause, play };
+}
+
+function seededSnapshot(
+  source: ByteSourceDescriptor | null,
+  cachedPoster: GridPosterCacheEntry | null,
+): GridPreviewSnapshot {
+  if (!source) return IDLE_PREVIEW_STATE;
+  if (!cachedPoster) {
+    return { ...IDLE_PREVIEW_STATE, status: "loading" };
+  }
+  return {
+    cachedPoster,
+    error: null,
+    frame: null,
+    hasPreviewStreams: cachedPoster.streamSourceNames.length > 0,
+    streamId: cachedPoster.streamId,
+    streamSourceName: cachedPoster.streamSourceName,
+    streamSourceNames: cachedPoster.streamSourceNames,
+    status: "ready",
+  };
 }
 
 function notifyReadResult(
@@ -509,10 +542,12 @@ function snapshotFromResult(
         }
       : frame;
   return {
+    cachedPoster: null,
     error: null,
     frame: timestampedFrame,
     hasPreviewStreams: result.streamSourceNames.length > 0,
     streamId: result.streamId,
+    streamSourceName: result.streamSourceName,
     streamSourceNames: result.streamSourceNames,
     status: result.status,
   };

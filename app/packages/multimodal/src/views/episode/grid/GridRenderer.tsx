@@ -10,7 +10,9 @@ import {
 } from "react";
 import {
   BitmapCanvasHost,
+  BitmapImageView,
   BitmapImageFrameView,
+  type BitmapDrawSize,
 } from "../../../visualization/media-2d/BitmapImageView";
 import type { EpisodePosterFrame, EpisodePreviewReadResult } from "../../../ir";
 import { retainedBinaryBytes } from "../../../runtime";
@@ -35,6 +37,17 @@ import { useGridCameraPose } from "./grid-camera-state";
 import { cameraScopeKey } from "../shell/camera-scope";
 import { useSampleRendererFirstMatch } from "../../../extensions/timeline";
 import { useGridPreview, type GridPreviewStatus } from "./use-grid-preview";
+import {
+  getGridPosterCache,
+  gridPosterCacheKey,
+  gridPosterFreshness,
+  pointCloudPoseKey,
+  recordGridPosterDiagnostic,
+  type GridPosterCacheEntry,
+  type GridPosterFreshness,
+} from "./grid-poster-cache";
+import { captureGridPoster } from "./grid-poster-codec";
+import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 
 const IMAGE_FIT = "cover";
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
@@ -76,17 +89,73 @@ export function GridRenderer({
     return sample._id ?? sample.id;
   }, [ctx.sample.sample]);
   const [selectedStream] = useGridSelectedStream(ctx.dataset.name);
+  const selectedSourceName =
+    selectedStream === GRID_STREAM_AUTO ? null : selectedStream;
+  // A lasso/search in the embeddings panel posters this tile at its earliest
+  // matched window, so both the requested time and preferred stream belong to
+  // the poster cache identity.
+  const firstMatch = useSampleRendererFirstMatch(ctx);
+  const cacheKey = useMemo(
+    () =>
+      source
+        ? gridPosterCacheKey({
+            datasetId: ctx.dataset.datasetId,
+            mediaField: ctx.media?.field,
+            posterSourceName: firstMatch?.stream,
+            posterStartTimeNs: firstMatch?.startNs,
+            selectedSourceName,
+            source,
+          })
+        : null,
+    [
+      ctx.dataset.datasetId,
+      ctx.media?.field,
+      firstMatch?.startNs,
+      firstMatch?.stream,
+      selectedSourceName,
+      source,
+    ],
+  );
+  const cachedPosterRef = useRef<{
+    readonly entry: GridPosterCacheEntry | null;
+    readonly key: string | null;
+  }>({ entry: null, key: null });
+  if (cachedPosterRef.current.key !== cacheKey) {
+    cachedPosterRef.current = {
+      entry: cacheKey ? getGridPosterCache().get(cacheKey) : null,
+      key: cacheKey,
+    };
+  }
+  const cachedPoster = cachedPosterRef.current.entry;
+  const [cameraPose, setCameraPose] = useGridCameraPose(
+    gridCameraScopeKey,
+    visible,
+  );
+  const rootSize = useElementCssSize(rootElement);
+  const poseKey = pointCloudPoseKey(cameraPose);
+  const freshness = useMemo<GridPosterFreshness | null>(
+    () =>
+      cachedPoster && rootSize
+        ? gridPosterFreshness(cachedPoster, rootSize, poseKey)
+        : null,
+    [cachedPoster, poseKey, rootSize],
+  );
+  const previewSessionDemand = usePreviewSessionDemand({
+    cacheKey,
+    cachedPoster,
+    freshness,
+    hovered,
+    visible,
+  });
   const gridVideoPlayback = useGridVideoPlayback(source?.sourceId ?? null);
   const previewSession = useEpisodePreviewSession(
     sampleDescriptorFromContext(ctx),
     episodeSource,
-    visible,
+    previewSessionDemand,
   );
-  // A lasso/search in the embeddings panel posters this tile at its earliest
-  // matched window, so the still frame is the match rather than the recording
-  // start. Null whenever nothing matched this episode.
-  const firstMatch = useSampleRendererFirstMatch(ctx);
   const preview = useGridPreview({
+    cacheRequestKey: cacheKey,
+    cachedPoster,
     enabled: visible,
     hovered,
     onReadResult: gridVideoPlayback.onReadResult,
@@ -95,13 +164,13 @@ export function GridRenderer({
     previewSession: previewSession.session,
     previewSessionError: previewSession.error,
     previewSessionStatus: previewSession.status,
-    selectedSourceName:
-      selectedStream === GRID_STREAM_AUTO ? null : selectedStream,
+    selectedSourceName,
     source,
   });
   const registerStreams = useRegisterGridStreams();
   const stableStreams = useStableGridStreams(preview.streamSourceNames);
-  const blocksGridActivation = preview.frame?.kind === "point-cloud";
+  const sourceKind = preview.frame?.kind ?? preview.cachedPoster?.sourceKind;
+  const blocksGridActivation = sourceKind === "point-cloud";
   const gridActivationHandler = blocksGridActivation
     ? stopGridActivationPropagation
     : undefined;
@@ -116,22 +185,70 @@ export function GridRenderer({
   );
   const [surfaceRetention, setSurfaceRetention] = useState<{
     readonly bytes: number;
-    readonly frame: EpisodePosterFrame;
+    readonly owner: EpisodePosterFrame | GridPosterCacheEntry;
   } | null>(null);
+  const displayOwner = preview.frame ?? preview.cachedPoster;
   const surfaceRetainedBytes =
-    surfaceRetention?.frame === preview.frame ? surfaceRetention.bytes : 0;
+    surfaceRetention && surfaceRetention.owner === displayOwner
+      ? surfaceRetention.bytes
+      : 0;
   const handleSurfaceRetainedBytesChange = useCallback(
     (bytes: number) => {
-      const frame = preview.frame;
-      if (frame) {
+      const owner = displayOwner;
+      if (owner) {
         setSurfaceRetention((current) =>
-          current?.frame === frame && current.bytes === bytes
+          current?.owner === owner && current.bytes === bytes
             ? current
-            : { bytes, frame },
+            : { bytes, owner },
         );
       }
     },
-    [preview.frame],
+    [displayOwner],
+  );
+  const capturedTokensRef = useRef(new Set<string>());
+  useEffect(() => {
+    capturedTokensRef.current.clear();
+  }, [cacheKey]);
+  const handlePosterCanvasCommitted = useCallback(
+    (
+      sourceKind: "image" | "point-cloud",
+      canvas: HTMLCanvasElement,
+      size: BitmapDrawSize,
+      snapshotPoseKey?: string,
+    ) => {
+      if (!cacheKey) return;
+      const capturePoseKey =
+        sourceKind === "point-cloud" ? snapshotPoseKey : undefined;
+      if (sourceKind === "point-cloud" && !capturePoseKey) return;
+      const token = JSON.stringify([
+        sourceKind,
+        capturePoseKey ?? null,
+        size.width,
+        size.height,
+      ]);
+      if (capturedTokensRef.current.has(token)) return;
+      capturedTokensRef.current.add(token);
+      captureGridPoster({
+        entry: {
+          height: size.height,
+          mimeType: "image/webp",
+          ...(capturePoseKey ? { pointCloudPoseKey: capturePoseKey } : {}),
+          sourceKind,
+          streamId: preview.streamId,
+          streamSourceName: preview.streamSourceName,
+          streamSourceNames: preview.streamSourceNames,
+          width: size.width,
+        },
+        key: cacheKey,
+        source: canvas,
+      });
+    },
+    [
+      cacheKey,
+      preview.streamId,
+      preview.streamSourceName,
+      preview.streamSourceNames,
+    ],
   );
 
   // This effect keeps the grid cache's retained-byte estimate current.
@@ -166,12 +283,24 @@ export function GridRenderer({
             // dimensions when the source or selected stream changes.
             key={`${source?.sourceId ?? ""}:${preview.streamId ?? ""}`}
             active={visible}
-            cameraScopeKey={gridCameraScopeKey}
+            cachedPoster={preview.cachedPoster}
+            cameraPose={cameraPose}
             frame={preview.frame}
+            hovered={hovered}
+            onCameraPoseChange={setCameraPose}
+            onCanvasCommitted={handlePosterCanvasCommitted}
             onSurfaceRetainedBytesChange={handleSurfaceRetainedBytesChange}
             videoStream={preview.streamId}
           />
         </VideoPlaybackManagerProvider>
+      ) : preview.cachedPoster ? (
+        <BitmapImageView
+          bytes={preview.cachedPoster.bytes}
+          className={classes.imagePanel}
+          fit={IMAGE_FIT}
+          mimeType={preview.cachedPoster.mimeType}
+          onBitmapRetainedBytesChange={handleSurfaceRetainedBytesChange}
+        />
       ) : (
         <PreviewStatus
           error={preview.error}
@@ -301,6 +430,85 @@ function useGridRendererVisibility(
   return gridActive && intersecting;
 }
 
+function useElementCssSize(
+  element: HTMLDivElement | null,
+): BitmapDrawSize | null {
+  const [size, setSize] = useState<BitmapDrawSize | null>(null);
+  useEffect(() => {
+    if (!element) {
+      setSize(null);
+      return undefined;
+    }
+    const update = () => {
+      const rect = element.getBoundingClientRect();
+      const next = {
+        height: Math.max(1, Math.round(rect.height)),
+        width: Math.max(1, Math.round(rect.width)),
+      };
+      setSize((current) =>
+        current?.height === next.height && current.width === next.width
+          ? current
+          : next,
+      );
+    };
+    update();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+  return size;
+}
+
+function usePreviewSessionDemand({
+  cacheKey,
+  cachedPoster,
+  freshness,
+  hovered,
+  visible,
+}: {
+  readonly cacheKey: string | null;
+  readonly cachedPoster: GridPosterCacheEntry | null;
+  readonly freshness: GridPosterFreshness | null;
+  readonly hovered: boolean;
+  readonly visible: boolean;
+}): boolean {
+  const [latched, setLatched] = useState(false);
+  const diagnosticRef = useRef<string | null>(null);
+  useEffect(() => {
+    setLatched(false);
+    diagnosticRef.current = null;
+  }, [cacheKey, visible]);
+  useEffect(() => {
+    if (visible && hovered && cachedPoster) {
+      setLatched(true);
+      recordGridPosterDiagnostic("sourceRefreshesHover");
+    }
+  }, [cachedPoster, hovered, visible]);
+  useEffect(() => {
+    if (!visible || !cachedPoster || !freshness) return;
+    const diagnosticKey = `${cacheKey}:${freshness}`;
+    if (diagnosticRef.current === diagnosticKey) return;
+    diagnosticRef.current = diagnosticKey;
+    if (freshness === "fresh") {
+      recordGridPosterDiagnostic("staticHitsAvoidedSessionOpen");
+    } else {
+      recordGridPosterDiagnostic("staleHits");
+      recordGridPosterDiagnostic(
+        freshness === "stale-pose"
+          ? "sourceRefreshesPose"
+          : "sourceRefreshesSize",
+      );
+    }
+  }, [cacheKey, cachedPoster, freshness, visible]);
+
+  if (!visible) return false;
+  if (!cachedPoster) return true;
+  if (latched || hovered) return true;
+  if (freshness === null) return false;
+  return freshness !== "fresh";
+}
+
 function usePlaybackHoverIntent(
   pause: () => void,
   play: () => void,
@@ -368,27 +576,45 @@ function useStableGridStreams(streams: readonly string[]) {
 
 function PreviewFrame({
   active,
-  cameraScopeKey,
+  cachedPoster,
+  cameraPose,
   frame,
+  hovered,
+  onCameraPoseChange,
+  onCanvasCommitted,
   onSurfaceRetainedBytesChange,
   videoStream,
 }: {
   readonly active: boolean;
-  readonly cameraScopeKey: string;
+  readonly cachedPoster: GridPosterCacheEntry | null;
+  readonly cameraPose: PointCloudCameraPose | null;
   readonly frame: EpisodePosterFrame;
+  readonly hovered: boolean;
+  readonly onCameraPoseChange: (pose: PointCloudCameraPose | null) => void;
+  readonly onCanvasCommitted: (
+    sourceKind: "image" | "point-cloud",
+    canvas: HTMLCanvasElement,
+    size: BitmapDrawSize,
+    snapshotPoseKey?: string,
+  ) => void;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
   readonly videoStream: string | null;
 }) {
   return frame.kind === "point-cloud" ? (
     <PointCloudPreviewFrame
       active={active}
-      cameraScopeKey={cameraScopeKey}
+      cachedPoster={cachedPoster}
+      cameraPose={cameraPose}
       frame={frame}
+      hovered={hovered}
+      onCameraPoseChange={onCameraPoseChange}
+      onCanvasCommitted={onCanvasCommitted}
       onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
     />
   ) : (
     <ImagePreviewFrame
       frame={frame}
+      onCanvasCommitted={onCanvasCommitted}
       onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
       videoStream={videoStream}
     />
@@ -403,18 +629,30 @@ function PreviewFrame({
  */
 function PointCloudPreviewFrame({
   active,
-  cameraScopeKey,
+  cachedPoster,
+  cameraPose,
   frame,
+  hovered,
+  onCameraPoseChange,
+  onCanvasCommitted,
   onSurfaceRetainedBytesChange,
 }: {
   readonly active: boolean;
-  readonly cameraScopeKey: string;
+  readonly cachedPoster: GridPosterCacheEntry | null;
+  readonly cameraPose: PointCloudCameraPose | null;
   readonly frame: Extract<EpisodePosterFrame, { kind: "point-cloud" }>;
+  readonly hovered: boolean;
+  readonly onCameraPoseChange: (pose: PointCloudCameraPose | null) => void;
+  readonly onCanvasCommitted: (
+    sourceKind: "image" | "point-cloud",
+    canvas: HTMLCanvasElement,
+    size: BitmapDrawSize,
+    snapshotPoseKey?: string,
+  ) => void;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
 }) {
   // Only active/visible cells subscribe to the shared pose. Hidden cached
   // roots keep their last bitmap and catch up lazily when reattached.
-  const [cameraPose, setCameraPose] = useGridCameraPose(cameraScopeKey, active);
   // Two-step live gate: `wantsLive` flips once the pointer has dwelled
   // past the intent delay; `live` flips only once the lease pool grants
   // this cell one of its capped live-renderer slots.
@@ -424,7 +662,10 @@ function PointCloudPreviewFrame({
   // StrictMode's double-invoked effects.
   const holderId = useId();
   const intentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [snapshot, setSnapshot] = useState<ImageBitmap | null>(null);
+  const [snapshot, setSnapshot] = useState<{
+    readonly bitmap: ImageBitmap;
+    readonly poseKey: string;
+  } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const inFlightRef = useRef<AbortController | null>(null);
   const layers = useMemo(
@@ -458,8 +699,10 @@ function PointCloudPreviewFrame({
     // of rescaling. A null pose auto-fits exactly like the live panel, so
     // hover swaps don't jump.
     const rect = root.getBoundingClientRect();
+    const snapshotPose = cameraPoseRef.current;
+    const snapshotPoseKey = pointCloudPoseKey(snapshotPose);
     void renderPointCloudSnapshot({
-      cameraPose: cameraPoseRef.current,
+      cameraPose: snapshotPose,
       height: rect.height,
       layers: layersRef.current,
       signal: controller.signal,
@@ -476,7 +719,7 @@ function PointCloudPreviewFrame({
       }
 
       // The host adopts the bitmap and closes the one it replaces.
-      setSnapshot(bitmap);
+      setSnapshot({ bitmap, poseKey: snapshotPoseKey });
       onSurfaceRetainedBytesChange(bitmap.width * bitmap.height * 4);
     });
   }, [onSurfaceRetainedBytesChange]);
@@ -487,6 +730,22 @@ function PointCloudPreviewFrame({
       intentTimerRef.current = null;
     }
   }, []);
+
+  // A cached point-cloud poster can receive hover before the real frame
+  // arrives. Derive live intent from the parent hover state so mounting the
+  // point-cloud surface under an already-stationary pointer still upgrades.
+  useEffect(() => {
+    cancelHoverIntent();
+    if (!active || !hovered) {
+      setWantsLive(false);
+      return undefined;
+    }
+    intentTimerRef.current = setTimeout(() => {
+      intentTimerRef.current = null;
+      setWantsLive(true);
+    }, HOVER_INTENT_DELAY_MS);
+    return cancelHoverIntent;
+  }, [active, cancelHoverIntent, hovered]);
 
   // This effect holds this cell's live-renderer lease while the hover
   // intent stands: acquire on wants-live, release in the cleanup
@@ -623,33 +882,26 @@ function PointCloudPreviewFrame({
     : `${classes.imagePanel} ${classes.pointCloud}`;
 
   return (
-    <div
-      className={pointCloudClassName}
-      onPointerEnter={() => {
-        // Arm the hover-intent timer; only a dwell past the delay asks
-        // the pool for a live-renderer lease.
-        cancelHoverIntent();
-        if (!active) {
-          return;
-        }
-        intentTimerRef.current = setTimeout(() => {
-          intentTimerRef.current = null;
-          setWantsLive(true);
-        }, HOVER_INTENT_DELAY_MS);
-      }}
-      onPointerLeave={() => {
-        // Back to rest: a pending intent is simply cancelled; if the cell
-        // went live, dropping wantsLive releases the lease and unmounts
-        // the panel (the lease effect's cleanup), and the snapshot is
-        // refreshed at the pose the user left the shared camera in.
-        cancelHoverIntent();
-        setWantsLive(false);
-      }}
-      ref={rootRef}
-    >
+    <div className={pointCloudClassName} ref={rootRef}>
       {/* The snapshot host stays mounted UNDERNEATH the live panel while
           hovered so unhovering never flashes an empty cell. */}
-      <BitmapCanvasHost bitmap={snapshot} fit={IMAGE_FIT} />
+      {!snapshot && cachedPoster ? (
+        <BitmapImageView
+          bytes={cachedPoster.bytes}
+          className={classes.imagePanel}
+          fit={IMAGE_FIT}
+          mimeType={cachedPoster.mimeType}
+          onBitmapRetainedBytesChange={onSurfaceRetainedBytesChange}
+        />
+      ) : null}
+      <BitmapCanvasHost
+        bitmap={snapshot?.bitmap ?? null}
+        className={classes.imagePanel}
+        fit={IMAGE_FIT}
+        onCanvasCommitted={(canvas, size) =>
+          onCanvasCommitted("point-cloud", canvas, size, snapshot?.poseKey)
+        }
+      />
       {live ? (
         // Hover comes alive — but only with one of the pool's capped
         // live-renderer leases; denied/stolen cells stay on the snapshot.
@@ -658,7 +910,7 @@ function PointCloudPreviewFrame({
           canvasSurface="grid-preview"
           className={classes.imagePanel}
           layers={layers}
-          onCameraPoseChange={setCameraPose}
+          onCameraPoseChange={onCameraPoseChange}
           showControls={false}
           showGizmo={false}
           showHud={false}
@@ -674,10 +926,16 @@ function PointCloudPreviewFrame({
 
 function ImagePreviewFrame({
   frame,
+  onCanvasCommitted,
   onSurfaceRetainedBytesChange,
   videoStream,
 }: {
   readonly frame: Extract<EpisodePosterFrame, { kind: "image" }>;
+  readonly onCanvasCommitted: (
+    sourceKind: "image" | "point-cloud",
+    canvas: HTMLCanvasElement,
+    size: BitmapDrawSize,
+  ) => void;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
   readonly videoStream: string | null;
 }) {
@@ -688,6 +946,9 @@ function ImagePreviewFrame({
       className={classes.imagePanel}
       fit={IMAGE_FIT}
       frame={frame.image}
+      onCanvasCommitted={(canvas, size) =>
+        onCanvasCommitted("image", canvas, size)
+      }
       onBitmapRetainedBytesChange={onSurfaceRetainedBytesChange}
       videoSessionKey={videoStream ?? undefined}
     />
