@@ -42,15 +42,20 @@ export const MARGIN = 24;
 /** Max planar zoom-in factor relative to the home view */
 export const MAX_ZOOM = 50;
 
-/** Camera clamp give, as a fraction of the viewport per side: how far
- * the data may sit off-frame. Nonzero so dragging still responds at
- * full zoom-out (FOEPD-4318); pan and zoom clamp against the same
- * inflated bounds, so zooming never yanks an offset view back —
- * only the header's reset recenters. Tuned by feel: high enough that
- * a full-zoom-out drag visibly responds, low enough that a zoomed-in
- * pan can't strand the view in empty space and a give-preserving
- * zoom-out still shows nearly the whole graph */
-export const PAN_GIVE = 0.1;
+/**
+ * Zoom level of the default view (first load and reset), measured like
+ * the other zoom constants against the fit view (1 = fit). Slightly
+ * out of fit, so the cloud lands with breathing room around it and pan
+ * works immediately. Must stay above MIN_ZOOM.
+ */
+export const DEFAULT_ZOOM = 0.9;
+
+/** Min planar zoom-out factor relative to the fit view. Defines the
+ * camera's world (see worldRect) — the fixed pannable space every zoom
+ * level is a window into — so any view above the floor has pan room,
+ * and lassoing around the entire cloud has breathing room (FOEPD user
+ * asks, 08-11) */
+export const MIN_ZOOM = 0.55;
 
 /** Pointer must sit still this long before a hover hit-test runs */
 export const HOVER_DEBOUNCE_MS = 120;
