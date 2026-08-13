@@ -5966,17 +5966,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 else:
                     class_val = False
 
-            # CVAT skeleton shapes store keypoints in an "elements" array
-            # rather than a top-level "points" field. Flatten them into
-            # a single points list so CVATShape can process them.
-            if shape_type == "skeleton":
-                elements = anno.get("elements", [])
-                skeleton_points = []
-                for elem in elements:
-                    skeleton_points.extend(elem.get("points", []))
-                anno = dict(anno)
-                anno["points"] = skeleton_points
-
             cvat_shape = CVATShape(
                 anno,
                 class_map,
@@ -7255,6 +7244,13 @@ class CVATShape(CVATLabel):
         self.points = label_dict["points"]
         self.index = index
 
+        # Skeleton shapes store their keypoints in an "elements" array of
+        # per-node shapes rather than in "points", which is always empty
+        if label_dict.get("type", None) == "skeleton":
+            self.skeleton_elements = label_dict.get("elements", None) or []
+        else:
+            self.skeleton_elements = None
+
         if "rotation" in label_dict and int(label_dict["rotation"]) != 0:
             self.attributes["rotation"] = label_dict["rotation"]
 
@@ -7282,6 +7278,14 @@ class CVATShape(CVATLabel):
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))
         return reshaped_points.tolist()
+
+    def _skeleton_points(self):
+        """Returns this skeleton shape's keypoints as ``(x, y)`` pairs."""
+        points = []
+        for element in self.skeleton_elements:
+            points.extend(element.get("points", []))
+
+        return self._to_pairs_of_points(points)
 
     def to_detection(self):
         """Converts this shape to a :class:`fiftyone.core.labels.Detection`.
@@ -7389,7 +7393,11 @@ class CVATShape(CVATLabel):
         Returns:
             a :class:`fiftyone.core.labels.Keypoint`
         """
-        points = self._to_pairs_of_points(self.points)
+        if self.skeleton_elements is not None:
+            points = self._skeleton_points()
+        else:
+            points = self._to_pairs_of_points(self.points)
+
         rel_points = HasCVATPoints._to_rel_points(points, self.frame_size)
         label = fol.Keypoint(
             label=self.label, points=rel_points, index=self.index
