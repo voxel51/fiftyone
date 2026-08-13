@@ -75,6 +75,9 @@ describe("publishDataStreamStatuses", () => {
       { id: LIDAR, label: LIDAR_NAME, state: "waiting" },
     ]);
     expect(scheduleBufferedRangesPublish).toHaveBeenCalledOnce();
+    expect(common.schedulePausedIdleWarmup).toHaveBeenCalledWith(
+      common.policy.prefetchRefreshSeconds * 1000,
+    );
 
     setIsBuffering(store, true);
     lidar.set(0n, null);
