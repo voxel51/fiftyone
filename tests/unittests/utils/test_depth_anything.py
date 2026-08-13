@@ -565,7 +565,7 @@ class TestDepthAnythingV3InferenceForwarding:
     """The config reaches self._model.inference, not just the config object."""
 
     @staticmethod
-    def _make_model(config_dict):
+    def _make_model(config_dict, scale_factor=None):
         from fiftyone.utils.depth_anything import (
             DepthAnythingV3Model,
             DepthAnythingV3ModelConfig,
@@ -583,7 +583,7 @@ class TestDepthAnythingV3InferenceForwarding:
                 intrinsics=None,
                 gaussians=None,
                 aux=None,
-                scale_factor=None,
+                scale_factor=scale_factor,
             )
 
         model = DepthAnythingV3Model.__new__(DepthAnythingV3Model)
@@ -624,3 +624,17 @@ class TestDepthAnythingV3InferenceForwarding:
         _, kwargs = calls[0]
         assert kwargs["ref_view_strategy"] == "saddle_sim_range"
         assert kwargs["align_to_input_ext_scale"] is False
+
+    def test_forward_pass_preserves_scale_factor(self) -> None:
+        model, _ = self._make_model({}, scale_factor=0.42)
+
+        output = model._forward_pass([np.zeros((2, 2, 3), dtype=np.uint8)])
+
+        assert output["scale_factor"] == pytest.approx(0.42)
+
+    def test_compute_multiview_depth_preserves_scale_factor(self) -> None:
+        model, _ = self._make_model({}, scale_factor=0.42)
+
+        results = model.compute_multiview_depth(["a.png"])
+
+        assert results[0].scale_factor == pytest.approx(0.42)
