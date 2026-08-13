@@ -86,6 +86,15 @@ export interface BitmapImageViewProps {
    * decode — the contract annotation overlays position themselves by.
    */
   readonly onImageLoaded?: (width: number, height: number) => void;
+  /**
+   * Reports every successful display draw, including unchanged-bitmap redraws.
+   * Consumers must deduplicate and treat the canvas as read-only: resizing or
+   * drawing into it can synchronously trigger another display draw.
+   */
+  readonly onCanvasCommitted?: (
+    canvas: HTMLCanvasElement,
+    size: BitmapDrawSize,
+  ) => void;
   readonly style?: CSSProperties;
 }
 
@@ -97,6 +106,11 @@ export interface BitmapCanvasHostProps {
   readonly bitmap: ImageBitmap | null;
   readonly className?: string;
   readonly fit?: "contain" | "cover";
+  /** See `BitmapImageViewProps.onCanvasCommitted`. */
+  readonly onCanvasCommitted?: (
+    canvas: HTMLCanvasElement,
+    size: BitmapDrawSize,
+  ) => void;
   readonly role?: string;
   readonly style?: CSSProperties;
 }
@@ -115,6 +129,11 @@ export interface BitmapImageFrameViewProps {
   readonly onError?: (error: unknown) => void;
   readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
   readonly onImageLoaded?: (width: number, height: number) => void;
+  /** See `BitmapImageViewProps.onCanvasCommitted`. */
+  readonly onCanvasCommitted?: (
+    canvas: HTMLCanvasElement,
+    size: BitmapDrawSize,
+  ) => void;
   readonly style?: CSSProperties;
   /** Stable source/stream owner key for encoded-video decoder cleanup. */
   readonly videoSessionKey?: string;
@@ -227,7 +246,11 @@ export function bitmapDrawRect(
  * close-on-unmount), sizes the backing store to CSS pixels, and redraws
  * on layout or fit changes.
  */
-function useBitmapCanvas(fit: "contain" | "cover", trackCssSize = false) {
+function useBitmapCanvas(
+  fit: "contain" | "cover",
+  trackCssSize = false,
+  onCanvasCommitted?: BitmapImageViewProps["onCanvasCommitted"],
+) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [cssSize, setCssSize] = useState<BitmapDrawSize | null>(null);
   // The committed bitmap — stays drawn until the NEXT commit lands, so
@@ -236,6 +259,8 @@ function useBitmapCanvas(fit: "contain" | "cover", trackCssSize = false) {
   const bitmapRef = useRef<CanvasDrawable | null>(null);
   const fitRef = useRef(fit);
   fitRef.current = fit;
+  const onCanvasCommittedRef = useRef(onCanvasCommitted);
+  onCanvasCommittedRef.current = onCanvasCommitted;
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -286,6 +311,11 @@ function useBitmapCanvas(fit: "contain" | "cover", trackCssSize = false) {
     // frame's aspect never linger.
     context.clearRect(0, 0, width, height);
     context.drawImage(bitmap, rect.x, rect.y, rect.width, rect.height);
+    try {
+      onCanvasCommittedRef.current?.(canvas, { height, width });
+    } catch {
+      // Poster capture is optional optimization work and cannot fail display.
+    }
   }, [trackCssSize]);
 
   const commit = useCallback(
@@ -360,11 +390,16 @@ export function BitmapImageView({
   fit = "cover",
   mimeType,
   onBitmapRetainedBytesChange,
+  onCanvasCommitted,
   onError,
   onImageLoaded,
   style,
 }: BitmapImageViewProps) {
-  const { canvasRef, commit, cssSize } = useBitmapCanvas(fit, true);
+  const { canvasRef, commit, cssSize } = useBitmapCanvas(
+    fit,
+    true,
+    onCanvasCommitted,
+  );
   const decodeSize = useDebouncedBitmapDecodeSize(cssSize);
   const decoderRef = useRef<LatestEncodedBitmapDecoder | null>(null);
   if (decoderRef.current === null) {
@@ -436,6 +471,7 @@ export function BitmapImageFrameView({
   fit = "cover",
   frame,
   onBitmapRetainedBytesChange,
+  onCanvasCommitted,
   onError,
   onImageLoaded,
   style,
@@ -449,6 +485,7 @@ export function BitmapImageFrameView({
         fit={fit}
         onError={onError}
         onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
+        onCanvasCommitted={onCanvasCommitted}
         onImageLoaded={onImageLoaded}
         style={style}
         videoSessionKey={videoSessionKey}
@@ -463,6 +500,7 @@ export function BitmapImageFrameView({
       frame={frame}
       onError={onError}
       onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
+      onCanvasCommitted={onCanvasCommitted}
       onImageLoaded={onImageLoaded}
       style={style}
     />
@@ -474,6 +512,7 @@ export function BitmapImageFrameView({
       mimeType={frame.mimeType}
       onError={onError}
       onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
+      onCanvasCommitted={onCanvasCommitted}
       onImageLoaded={onImageLoaded}
       style={style}
     />
@@ -486,13 +525,14 @@ function BitmapEncodedVideoView({
   fit = "cover",
   onError,
   onBitmapRetainedBytesChange,
+  onCanvasCommitted,
   onImageLoaded,
   style,
   videoSessionKey,
 }: Omit<BitmapImageFrameViewProps, "frame"> & {
   readonly frame: EncodedVideoVisualization;
 }) {
-  const { canvasRef, commit } = useBitmapCanvas(fit);
+  const { canvasRef, commit } = useBitmapCanvas(fit, false, onCanvasCommitted);
   const onErrorRef = useLatestRef(onError);
   const onImageLoadedRef = useLatestRef(onImageLoaded);
   const onBitmapRetainedBytesChangeRef = useLatestRef(
@@ -675,12 +715,17 @@ function BitmapRawImageView({
   frame,
   onError,
   onBitmapRetainedBytesChange,
+  onCanvasCommitted,
   onImageLoaded,
   style,
 }: Omit<BitmapImageFrameViewProps, "frame"> & {
   readonly frame: RawImageVisualization;
 }) {
-  const { canvasRef, commit, cssSize } = useBitmapCanvas(fit, true);
+  const { canvasRef, commit, cssSize } = useBitmapCanvas(
+    fit,
+    true,
+    onCanvasCommitted,
+  );
   const previewSize = useDebouncedBitmapDecodeSize(cssSize);
   const onErrorRef = useLatestRef(onError);
   const onImageLoadedRef = useLatestRef(onImageLoaded);
@@ -988,10 +1033,11 @@ export function BitmapCanvasHost({
   bitmap,
   className,
   fit = "cover",
+  onCanvasCommitted,
   role = "img",
   style,
 }: BitmapCanvasHostProps) {
-  const { canvasRef, commit } = useBitmapCanvas(fit);
+  const { canvasRef, commit } = useBitmapCanvas(fit, false, onCanvasCommitted);
 
   // This layout effect adopts the incoming bitmap before paint: the
   // replaced bitmap is closed exactly once and the swap draws in the same
