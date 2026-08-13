@@ -21,6 +21,10 @@
     "devDependencies": {
         "@fiftyone/utilities": "workspace:^",
         "prettier": "catalog:",
+        "react": "catalog:",
         "vite": "catalog:"
+    },
+    "dependencies": {
+        "moment": "^2.29.4"
     }
 }

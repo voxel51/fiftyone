@@ -55,3 +55,30 @@ body {
   /* mainChannel override in ThemeProvider is not working for some reason */
   --fo-palette-primary-mainChannel: 0 0 0;
 }
+
+/* Scrollbars, app-wide.
+   Matches the treatment in `@fiftyone/components` scrollable.module.css so a
+   panel that scrolls looks like the grid instead of falling back to the
+   platform default, which renders wide and near-white on a dark theme. The
+   thumb is an inset shadow behind a transparent border, so it reads as a slim
+   inset track rather than a raised bar. */
+* {
+  scrollbar-color: var(--fo-palette-text-tertiary) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: solid 3px transparent;
+  border-radius: 0;
+  box-shadow: inset 0 0 8px 8px var(--fo-palette-text-tertiary);
+}

@@ -5,6 +5,9 @@ API Connection
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 1.3.0
+
 This page describes how to create API keys and configure your
 :ref:`SDK installation <enterprise-python-sdk>` to connect to your FiftyOne
 Enterprise deployment.

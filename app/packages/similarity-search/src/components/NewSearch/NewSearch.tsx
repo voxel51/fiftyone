@@ -28,7 +28,7 @@ import {
   BrainKeyConfig,
   CloneConfig,
   QueryType,
-  SearchScope,
+  ViewTarget,
 } from "../../types";
 import {
   SEARCH_OPERATOR_URI,
@@ -41,6 +41,7 @@ import {
 } from "../../constants";
 import { fileToBase64 } from "../../utils";
 import { FileDrop } from "@fiftyone/core/src/plugins/SchemaIO/components";
+import { Markdown } from "@fiftyone/components";
 import { useNewSearchForm } from "../../hooks/useNewSearchForm";
 import {
   NewSearchContainer,
@@ -156,27 +157,38 @@ export default function NewSearch({
           </InfoCard>
         )}
 
-        {/* Search scope */}
+        {/* Target */}
         <FormField
-          label="Search scope"
+          label="Target"
           control={
-            <RadioGroup
-              options={
-                isPatchesView
-                  ? [
-                      { value: "dataset", label: "All Patches" },
-                      { value: "view", label: "Current Patches View" },
-                    ]
-                  : [
-                      { value: "dataset", label: "Full Dataset" },
-                      { value: "view", label: "Current View" },
-                    ]
-              }
-              value={form.searchScope}
-              onChange={(value) => form.setSearchScope(value as SearchScope)}
-              size={Size.Md}
-              style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
-            />
+            <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+              <RadioGroup
+                options={form.viewTargetOptions.map((meta) => ({
+                  value: meta.target,
+                  label:
+                    meta.target === ViewTarget.DATASET
+                      ? isPatchesView
+                        ? "All Patches"
+                        : "Full Dataset"
+                      : isPatchesView
+                        ? "Current Patches View"
+                        : "Current View",
+                  disabled: meta.unavailableReason !== undefined,
+                }))}
+                value={form.viewTarget}
+                onChange={(value) => form.setViewTarget(value as ViewTarget)}
+                size={Size.Md}
+                style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
+              />
+              {form.viewTargetOptions.map(
+                (meta) =>
+                  meta.unavailableReason && (
+                    <Markdown key={meta.target}>
+                      {meta.unavailableReason}
+                    </Markdown>
+                  ),
+              )}
+            </Stack>
           }
         />
 

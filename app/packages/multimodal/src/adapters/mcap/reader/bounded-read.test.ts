@@ -1,0 +1,1389 @@
+import { McapRecordBuilder, type McapTypes } from "@mcap/core";
+import { describe, expect, it } from "vitest";
+import type { BudgetedReadStopReason, ReadWorkBudget } from "../../../ports";
+import {
+  createCachedByteClient,
+  createMemoryByteRangeCache,
+  type ByteClient,
+  type ByteRangeReadRequest,
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
+import { createMcapBoundedReader } from "./bounded-read";
+import {
+  isMcapBoundedReadCancelledError,
+  type McapBoundedReadCancelledError,
+} from "./bounded-read-cancellation";
+import { MCAP_BOUNDED_GRANT_YIELD_INTERVAL } from "./consume-bounded-grant";
+import { ByteClientReadable } from "./byte-readable";
+import { createMcapDecompressedChunkCache } from "./decompressed-chunk-cache";
+import type {
+  McapBoundedMessageReadRequest,
+  McapBoundedMessageReadResult,
+  McapIndexedReaderLike,
+  McapReadContinuation,
+} from "./types";
+
+interface MessageSpec {
+  readonly channelId: number;
+  readonly data?: Uint8Array;
+  readonly indexLogTime?: bigint;
+  readonly logTime: bigint;
+  readonly sequence?: number;
+}
+
+interface ChunkSpec {
+  readonly compression?: "" | "fake";
+  readonly corruptRecordSequence?: number;
+  readonly indexEndTime?: bigint;
+  readonly indexStartTime?: bigint;
+  readonly messages: readonly MessageSpec[];
+  readonly omitMessageIndexes?: boolean;
+}
+
+interface BuiltFixture {
+  readonly bytes: Uint8Array;
+  readonly chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
+  readonly decompressedBySize: ReadonlyMap<string, Uint8Array>;
+}
+
+const source: ByteSourceDescriptor = {
+  readProfile: "remote",
+  sizeBytes: "1000000",
+  sourceId: "bounded-fixture",
+  url: "https://fixture.example/bounded.mcap",
+};
+
+describe("bounded MCAP reader", () => {
+  it("measures map-route horizon admission against a full scan", async () => {
+    const chunkCount = 96;
+    const fixture = buildFixture(
+      Array.from({ length: chunkCount }, (_, index) => ({
+        messages: [
+          {
+            channelId: 1,
+            logTime: BigInt(index * 10),
+            sequence: index,
+          },
+          {
+            channelId: 3,
+            data: new Uint8Array(128 * 1024).fill(index),
+            logTime: BigInt(index * 10),
+            sequence: 10_000 + index,
+          },
+        ],
+      })),
+    );
+    const absolute = budgetFor(fixture.chunkIndexes, chunkCount);
+    const grant = budgetFor(fixture.chunkIndexes.slice(0, 4), 4);
+
+    for (const [label, playheadNs] of [
+      ["early", 100n],
+      ["intermediate", 470n],
+      ["end", 950n],
+    ] as const) {
+      const harness = createHarness(fixture, ["/gps"]);
+      const request = requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 4,
+        budget: grant,
+        endTimeNs: 950n,
+        maxChunks: 4,
+        topics: ["/gps"],
+      });
+      let continuation: McapReadContinuation | undefined;
+      let chunksOpened = 0;
+      let logicalSourceBytes = 0;
+      let transferredBytes = 0;
+      do {
+        const result = await harness.read({ ...request, continuation });
+        chunksOpened += result.usage.chunksOpened;
+        logicalSourceBytes += result.usage.logicalSourceBytes;
+        transferredBytes += result.usage.transferredBytes;
+        continuation = result.continuation;
+      } while (continuation);
+      console.info("map-route-baseline", {
+        chunksOpened,
+        label,
+        logicalSourceBytes,
+        playheadNs: playheadNs.toString(),
+        transferredBytes,
+      });
+      expect(chunksOpened).toBe(chunkCount);
+
+      const horizonHarness = createHarness(fixture, ["/gps"]);
+      continuation = undefined;
+      chunksOpened = 0;
+      logicalSourceBytes = 0;
+      transferredBytes = 0;
+      let stopReason: BudgetedReadStopReason;
+      do {
+        const result: McapBoundedMessageReadResult = await horizonHarness.read({
+          ...request,
+          admissionEndNs: playheadNs,
+          continuation,
+        });
+        chunksOpened += result.usage.chunksOpened;
+        logicalSourceBytes += result.usage.logicalSourceBytes;
+        transferredBytes += result.usage.transferredBytes;
+        continuation = result.continuation;
+        stopReason = result.stopReason;
+      } while (continuation && stopReason === "budget-exhausted");
+      console.info("map-route-horizon", {
+        chunksOpened,
+        label,
+        logicalSourceBytes,
+        playheadNs: playheadNs.toString(),
+        transferredBytes,
+      });
+      expect(chunksOpened).toBe(Number(playheadNs / 10n) + 1);
+    }
+  });
+
+  it("keeps continuation identity stable while a horizon advances", async () => {
+    const fixture = buildFixture([
+      {
+        indexEndTime: 15n,
+        indexStartTime: 0n,
+        messages: [
+          { channelId: 1, logTime: 5n, sequence: 1 },
+          { channelId: 1, logTime: 12n, sequence: 2 },
+        ],
+      },
+      {
+        messages: [{ channelId: 1, logTime: 20n, sequence: 3 }],
+      },
+      {
+        messages: [{ channelId: 1, logTime: 30n, sequence: 4 }],
+      },
+    ]);
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 4);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 3,
+      budget: full,
+      endTimeNs: 30n,
+      maxChunks: 3,
+    });
+
+    const early = await harness.read({ ...request, admissionEndNs: 10n });
+    expect(early.messages.map((message) => message.sequence)).toEqual([1, 2]);
+    expect(early.stopReason).toBe("horizon-reached");
+    expect(early.resumeAtNs).toBe(20n);
+    expect(early.continuation).toBeDefined();
+
+    const middle = await harness.read({
+      ...request,
+      admissionEndNs: 20n,
+      continuation: early.continuation,
+    });
+    expect(middle.messages.map((message) => message.sequence)).toEqual([3]);
+    expect(middle.stopReason).toBe("horizon-reached");
+    expect(middle.resumeAtNs).toBe(30n);
+
+    const end = await harness.read({
+      ...request,
+      admissionEndNs: 30n,
+      continuation: middle.continuation,
+    });
+    expect(end.messages.map((message) => message.sequence)).toEqual([4]);
+    expect(end.stopReason).toBe("source-exhausted");
+    expect(end.continuation).toBeUndefined();
+  });
+
+  it("rejects horizon admission with center-out group ordering", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+    ]);
+    const harness = createHarness(fixture);
+
+    await expect(
+      harness.read(requestFor({ admissionEndNs: 0n, preferredTimeNs: 0n })),
+    ).rejects.toThrow("admissionEndNs cannot be combined with preferredTimeNs");
+  });
+
+  it("reports the earliest unread time during a center-out traversal", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n, sequence: 1 }] },
+      { messages: [{ channelId: 1, logTime: 40n, sequence: 2 }] },
+      { messages: [{ channelId: 1, logTime: 50n, sequence: 3 }] },
+      { messages: [{ channelId: 1, logTime: 100n, sequence: 4 }] },
+    ]);
+    const harness = createHarness(fixture);
+    const absolute = budgetFor(fixture.chunkIndexes, 4);
+    const grant = budgetFor([fixture.chunkIndexes[2]], 1);
+
+    const result = await harness.read(
+      requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 4,
+        budget: grant,
+        maxChunks: 1,
+        preferredTimeNs: 50n,
+      }),
+    );
+
+    expect(result.messages.map((message) => message.sequence)).toEqual([3]);
+    expect(result.stopReason).toBe("budget-exhausted");
+    expect(result.resumeAtNs).toBe(0n);
+  });
+
+  it("opens no more chunks than one grant and resumes without omissions", async () => {
+    const fixture = buildFixture(
+      Array.from({ length: 100 }, (_, index) => ({
+        messages: [
+          {
+            channelId: 1,
+            logTime: BigInt(index * 10),
+            sequence: index,
+          },
+        ],
+      })),
+    );
+    const harness = createHarness(fixture);
+    const grant = budgetFor(fixture.chunkIndexes.slice(0, 4), 4);
+    const absolute = budgetFor(fixture.chunkIndexes, 100);
+    const request = requestFor({
+      absoluteBudget: absolute,
+      absoluteMaxChunks: 4,
+      budget: grant,
+      maxChunks: 4,
+    });
+
+    const first = await harness.read(request);
+
+    expect(first.stopReason).toBe("budget-exhausted");
+    expect(first.usage.chunksOpened).toBe(4);
+    expect(first.messages.map((message) => message.sequence)).toEqual([
+      0, 1, 2, 3,
+    ]);
+    expect(first.continuation).toBeDefined();
+    expect(
+      chunkBodyReads(harness.networkReads, fixture.chunkIndexes),
+    ).toHaveLength(4);
+
+    const messages = [...first.messages];
+    let continuation = first.continuation;
+    while (continuation) {
+      const result = await harness.read({ ...request, continuation });
+      messages.push(...result.messages);
+      continuation = result.continuation;
+    }
+
+    expect(messages.map((message) => message.sequence)).toEqual(
+      Array.from({ length: 100 }, (_, index) => index),
+    );
+    expect(new Set(messages.map(messageKey)).size).toBe(messages.length);
+  });
+
+  it("pages ownership groups from the preferred time outward", async () => {
+    const fixture = buildFixture(
+      Array.from({ length: 10 }, (_, index) => ({
+        messages: [
+          {
+            channelId: 1,
+            logTime: BigInt(index * 10),
+            sequence: index,
+          },
+        ],
+      })),
+    );
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 10);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 10,
+      budget: full,
+      maxChunks: 10,
+      maxGroups: 1,
+      preferredTimeNs: 55n,
+    });
+    const sequences: number[] = [];
+    let continuation: McapReadContinuation | undefined;
+
+    do {
+      const result = await harness.read({ ...request, continuation });
+      sequences.push(...result.messages.map((message) => message.sequence));
+      expect(result.usage.chunksOpened).toBe(1);
+      continuation = result.continuation;
+    } while (continuation);
+
+    expect(sequences).toEqual([5, 6, 4, 7, 3, 8, 2, 9, 1, 0]);
+  });
+
+  it("returns each center-out grant in global log-time order", async () => {
+    const fixture = buildFixture(
+      Array.from({ length: 5 }, (_, index) => ({
+        messages: [
+          {
+            channelId: 1,
+            logTime: BigInt(index * 10),
+            sequence: index,
+          },
+        ],
+      })),
+    );
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 5);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 5,
+      budget: full,
+      maxChunks: 5,
+      maxGroups: 4,
+      preferredTimeNs: 25n,
+    });
+
+    const first = await harness.read(request);
+
+    expect(first.stopReason).toBe("budget-exhausted");
+    expect(first.messages.map((message) => message.sequence)).toEqual([
+      1, 2, 3, 4,
+    ]);
+    expect(first.continuation).toBeDefined();
+
+    const second = await harness.read({
+      ...request,
+      continuation: first.continuation,
+    });
+    expect(second.messages.map((message) => message.sequence)).toEqual([0]);
+    expect(second.stopReason).toBe("source-exhausted");
+  });
+
+  it("rejects continuations reused after source, topic, or window changes", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+      { messages: [{ channelId: 1, logTime: 10n }] },
+    ]);
+    let activeSourceKey = "source:etag-a";
+    const harness = createHarness(fixture, ["/selected", "/other"], {
+      sourceKey: () => activeSourceKey,
+    });
+    const full = budgetFor(fixture.chunkIndexes, 2);
+    const grant = budgetFor(fixture.chunkIndexes.slice(0, 1), 1);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 1,
+      budget: grant,
+      maxChunks: 1,
+    });
+    const first = await harness.read(request);
+    const continuation = first.continuation;
+    if (!continuation) {
+      throw new Error("fixture should return a continuation");
+    }
+
+    await expect(
+      harness.read({
+        ...request,
+        continuation,
+        topics: ["/other"],
+      }),
+    ).rejects.toThrow("does not match its source");
+    await expect(
+      harness.read({
+        ...request,
+        continuation,
+        endTimeNs: 999n,
+      }),
+    ).rejects.toThrow("does not match its source");
+    await expect(
+      harness.read({
+        ...request,
+        continuation,
+        preferredTimeNs: 10n,
+      }),
+    ).rejects.toThrow("does not match its source");
+
+    activeSourceKey = "source:etag-b";
+    await expect(
+      harness.read({
+        ...request,
+        continuation,
+      }),
+    ).rejects.toThrow("does not match its source");
+  });
+
+  it("treats overlapping chunks as one atomic ordered source unit", async () => {
+    const fixture = buildFixture([
+      {
+        indexEndTime: 10n,
+        indexStartTime: 0n,
+        messages: [{ channelId: 1, logTime: 8n, sequence: 10 }],
+      },
+      {
+        indexEndTime: 15n,
+        indexStartTime: 5n,
+        messages: [{ channelId: 1, logTime: 8n, sequence: 20 }],
+      },
+    ]);
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 2);
+
+    const rejected = await harness.read(
+      requestFor({
+        absoluteBudget: full,
+        absoluteMaxChunks: 1,
+        budget: full,
+        maxChunks: 1,
+      }),
+    );
+
+    expect(rejected.stopReason).toBe("oversized-source-unit");
+    expect(rejected.usage.chunksOpened).toBe(0);
+    expect(rejected.continuation).toBeUndefined();
+    expect(harness.networkReads).toHaveLength(0);
+
+    const admitted = await harness.read(
+      requestFor({
+        absoluteBudget: full,
+        absoluteMaxChunks: 2,
+        budget: full,
+        maxChunks: 2,
+      }),
+    );
+    expect(admitted.stopReason).toBe("source-exhausted");
+    expect(admitted.messages.map((message) => message.sequence)).toEqual([
+      10, 20,
+    ]);
+  });
+
+  it("rejects a transitively overlapping group above the absolute chunk ceiling", async () => {
+    const fixture = buildFixture([
+      {
+        indexEndTime: 10n,
+        indexStartTime: 0n,
+        messages: [{ channelId: 1, logTime: 2n }],
+      },
+      {
+        indexEndTime: 20n,
+        indexStartTime: 8n,
+        messages: [{ channelId: 1, logTime: 10n }],
+      },
+      {
+        indexEndTime: 30n,
+        indexStartTime: 18n,
+        messages: [{ channelId: 1, logTime: 20n }],
+      },
+    ]);
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 3);
+
+    const result = await harness.read(
+      requestFor({
+        absoluteBudget: full,
+        absoluteMaxChunks: 2,
+        budget: full,
+        maxChunks: 2,
+      }),
+    );
+
+    expect(result.stopReason).toBe("oversized-source-unit");
+    expect(result.usage.chunksOpened).toBe(0);
+    expect(result.continuation).toBeUndefined();
+    expect(harness.networkReads).toHaveLength(0);
+  });
+
+  it("does not read an index or body when the next group misses its byte grant", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+    ]);
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 1);
+
+    const result = await harness.read(
+      requestFor({
+        absoluteBudget: full,
+        absoluteMaxChunks: 1,
+        budget: { ...full, maxSourceBytes: full.maxSourceBytes - 1 },
+        maxChunks: 1,
+      }),
+    );
+
+    expect(result.stopReason).toBe("budget-exhausted");
+    expect(result.usage.logicalSourceBytes).toBe(0);
+    expect(harness.networkReads).toHaveLength(0);
+  });
+
+  it("can skip a grant-sized dense group with exact unavailable coverage", async () => {
+    const fixture = buildFixture([
+      {
+        messages: [
+          { channelId: 1, logTime: 10n, sequence: 1 },
+          { channelId: 1, logTime: 11n, sequence: 2 },
+        ],
+      },
+      { messages: [{ channelId: 1, logTime: 20n, sequence: 3 }] },
+    ]);
+    const harness = createHarness(fixture);
+    const absolute = budgetFor(fixture.chunkIndexes, 3);
+    const smallGrant = { ...absolute, maxMessages: 1 };
+
+    const skipped = await harness.read(
+      requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 2,
+        budget: smallGrant,
+        maxChunks: 2,
+        skipOversizedSourceUnit: true,
+      }),
+    );
+
+    expect(skipped.stopReason).toBe("oversized-source-unit");
+    expect(skipped.messages).toEqual([]);
+    expect(skipped.skippedByTopic?.get("/selected")).toEqual([
+      { endNs: 11n, startNs: 10n },
+    ]);
+    expect(skipped.resumeAtNs).toBe(20n);
+    expect(skipped.continuation).toBeDefined();
+
+    const resumed = await harness.read({
+      ...requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 2,
+        budget: smallGrant,
+        maxChunks: 2,
+      }),
+      continuation: skipped.continuation,
+    });
+    expect(resumed.stopReason).toBe("source-exhausted");
+    expect(resumed.messages.map((message) => message.sequence)).toEqual([3]);
+  });
+
+  it("does not skip a later group that fits a fresh grant", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 10n, sequence: 1 }] },
+      {
+        messages: [
+          { channelId: 1, logTime: 20n, sequence: 2 },
+          { channelId: 1, logTime: 21n, sequence: 3 },
+        ],
+      },
+    ]);
+    const harness = createHarness(fixture);
+    const absolute = budgetFor(fixture.chunkIndexes, 3);
+    const twoMessageGrant = { ...absolute, maxMessages: 2 };
+
+    const first = await harness.read(
+      requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 2,
+        budget: twoMessageGrant,
+        maxChunks: 2,
+        skipOversizedSourceUnit: true,
+      }),
+    );
+
+    expect(first.stopReason).toBe("budget-exhausted");
+    expect(first.messages.map((message) => message.sequence)).toEqual([1]);
+    expect(first.skippedByTopic?.size).toBe(0);
+    expect(first.continuation).toBeDefined();
+
+    const resumed = await harness.read({
+      ...requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 2,
+        budget: twoMessageGrant,
+        maxChunks: 2,
+      }),
+      continuation: first.continuation,
+    });
+    expect(resumed.stopReason).toBe("source-exhausted");
+    expect(resumed.messages.map((message) => message.sequence)).toEqual([2, 3]);
+  });
+
+  it("rejects an absolute oversized unit before fetching it", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+    ]);
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 1);
+
+    const result = await harness.read(
+      requestFor({
+        absoluteBudget: {
+          ...full,
+          maxSourceBytes: full.maxSourceBytes - 1,
+        },
+        absoluteMaxChunks: 1,
+        budget: full,
+        maxChunks: 1,
+      }),
+    );
+
+    expect(result.stopReason).toBe("oversized-source-unit");
+    expect(result.usage.chunksOpened).toBe(0);
+    expect(result.continuation).toBeUndefined();
+    expect(harness.networkReads).toHaveLength(0);
+  });
+
+  it("reports and skips only an oversized span before continuing", async () => {
+    const fixture = buildFixture([
+      {
+        messages: [{ channelId: 1, logTime: 10n, sequence: 1 }],
+      },
+      {
+        messages: [
+          {
+            channelId: 1,
+            data: new Uint8Array(16 * 1024),
+            logTime: 20n,
+            sequence: 2,
+          },
+        ],
+      },
+      {
+        messages: [{ channelId: 1, logTime: 30n, sequence: 3 }],
+      },
+    ]);
+    const harness = createHarness(fixture);
+    const ordinary = budgetFor(
+      [fixture.chunkIndexes[0], fixture.chunkIndexes[2]],
+      3,
+    );
+    const request = requestFor({
+      absoluteBudget: ordinary,
+      absoluteMaxChunks: 3,
+      budget: ordinary,
+      maxChunks: 3,
+    });
+
+    const first = await harness.read(request);
+    expect(first.stopReason).toBe("oversized-source-unit");
+    expect(first.messages.map((message) => message.sequence)).toEqual([1]);
+    expect(first.coverageByTopic.get("/selected")).toEqual([
+      { endNs: 10n, startNs: 10n },
+    ]);
+    expect(first.skippedByTopic?.get("/selected")).toEqual([
+      { endNs: 20n, startNs: 20n },
+    ]);
+    expect(first.continuation).toBeDefined();
+    expect(
+      chunkBodyReads(harness.networkReads, fixture.chunkIndexes).map(
+        (read) => read.range.offset,
+      ),
+    ).toEqual([fixture.chunkIndexes[0].chunkStartOffset]);
+
+    const second = await harness.read({
+      ...request,
+      continuation: first.continuation,
+    });
+    expect(second.stopReason).toBe("source-exhausted");
+    expect(second.messages.map((message) => message.sequence)).toEqual([3]);
+    expect(second.coverageByTopic.get("/selected")).toEqual([
+      { endNs: 30n, startNs: 30n },
+    ]);
+    expect(second.skippedByTopic?.size).toBe(0);
+    expect(second.continuation).toBeUndefined();
+  });
+
+  it("charges widened chunk fills while keeping message-index reads exact", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+    ]);
+    const harness = createHarness(fixture, ["/selected"], {
+      blockSizeBytes: 128,
+    });
+
+    const result = await harness.read(requestFor({}));
+    const exactIndexReads = harness.networkReads.filter(
+      (read) => read.cachePolicy?.blockFill === false,
+    );
+    const chunkFills = harness.networkReads.filter(
+      (read) => read.cachePolicy?.blockFill !== false,
+    );
+
+    expect(result.stopReason).toBe("source-exhausted");
+    expect(exactIndexReads).toHaveLength(1);
+    expect(exactIndexReads[0].range.length).toBeLessThan(128n);
+    expect(exactIndexReads[0].cachePolicy?.readahead).toBe(false);
+    expect(chunkFills).toHaveLength(1);
+    expect(chunkFills[0].range).toEqual({ length: 128n, offset: 1_024n });
+    expect(chunkFills[0].cachePolicy?.readahead).toBe(false);
+    expect(result.usage.logicalSourceBytes).toBe(
+      harness.networkReads.reduce(
+        (sum, read) => sum + Number(read.range.length),
+        0,
+      ),
+    );
+  });
+
+  it("reads shared selected channels once and distinguishes warm-cache work", async () => {
+    const fixture = buildFixture([
+      {
+        compression: "fake",
+        messages: [
+          { channelId: 1, logTime: 5n, sequence: 1 },
+          {
+            channelId: 3,
+            data: new Uint8Array(256).fill(9),
+            logTime: 5n,
+            sequence: 2,
+          },
+          { channelId: 2, logTime: 5n, sequence: 3 },
+        ],
+      },
+    ]);
+    const harness = createHarness(fixture, ["/selected-a", "/selected-b"]);
+    const full = budgetFor(fixture.chunkIndexes, 2);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 1,
+      budget: full,
+      maxChunks: 1,
+      topics: ["/selected-a", "/selected-b"],
+    });
+
+    const cold = await harness.read(request);
+    const networkReadsAfterCold = harness.networkReads.length;
+    const warm = await harness.read(request);
+
+    expect(cold.messages.map((message) => message.channelId)).toEqual([1, 2]);
+    expect(cold.usage.chunksOpened).toBe(1);
+    expect(cold.usage.decompressedBytes).toBeGreaterThan(0);
+    expect(cold.usage.decompressionCacheHits).toBe(0);
+    expect(cold.usage.transferredBytes).toBeGreaterThan(0);
+    expect(warm.messages.map((message) => message.channelId)).toEqual([1, 2]);
+    expect(warm.usage.logicalSourceBytes).toBe(cold.usage.logicalSourceBytes);
+    expect(warm.usage.logicalUncompressedBytes).toBe(
+      cold.usage.logicalUncompressedBytes,
+    );
+    expect(warm.usage.decompressedBytes).toBe(0);
+    expect(warm.usage.decompressionCacheHits).toBe(1);
+    expect(warm.usage.transferredBytes).toBe(0);
+    expect(harness.networkReads).toHaveLength(networkReadsAfterCold);
+    expect(
+      chunkBodyReads(harness.networkReads, fixture.chunkIndexes),
+    ).toHaveLength(1);
+  });
+
+  it("propagates abort to an in-flight contained range request", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+    ]);
+    const controller = new AbortController();
+    const harness = createHarness(fixture, ["/selected"], {
+      onNetworkRead(request) {
+        if (
+          fixture.chunkIndexes.some(
+            (chunk) => chunk.chunkStartOffset === request.range.offset,
+          )
+        ) {
+          controller.abort();
+        }
+      },
+    });
+    const full = budgetFor(fixture.chunkIndexes, 1);
+
+    const cancellation = await captureCancellation(
+      harness.read(
+        requestFor({
+          absoluteBudget: full,
+          absoluteMaxChunks: 1,
+          budget: full,
+          maxChunks: 1,
+          signal: controller.signal,
+        }),
+      ),
+    );
+
+    expect(cancellation.usage.chunksOpened).toBe(1);
+    expect(cancellation.usage.logicalSourceBytes).toBeGreaterThan(0);
+    expect(cancellation.usage.logicalUncompressedBytes).toBeGreaterThan(0);
+    expect(cancellation.usage.messagesDecoded).toBe(0);
+  });
+
+  it("propagates abort from an exact message-index request before body work", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+    ]);
+    const controller = new AbortController();
+    const harness = createHarness(fixture, ["/selected"], {
+      onNetworkRead(request) {
+        if (request.cachePolicy?.blockFill === false) {
+          controller.abort();
+        }
+      },
+    });
+
+    const cancellation = await captureCancellation(
+      harness.read(
+        requestFor({
+          signal: controller.signal,
+        }),
+      ),
+    );
+    expect(cancellation.usage.chunksOpened).toBe(0);
+    expect(cancellation.usage.logicalSourceBytes).toBeGreaterThan(0);
+    expect(
+      chunkBodyReads(harness.networkReads, fixture.chunkIndexes),
+    ).toHaveLength(0);
+  });
+
+  it("stops after one atomic decompression and reports completed work", async () => {
+    const controller = new AbortController();
+    const fixture = buildFixture([
+      {
+        compression: "fake",
+        messages: Array.from({ length: 8 }, (_, index) => ({
+          channelId: 1,
+          logTime: BigInt(index),
+        })),
+      },
+      {
+        compression: "fake",
+        messages: [{ channelId: 1, logTime: 20n }],
+      },
+    ]);
+    const harness = createHarness(fixture, ["/selected"], {
+      onDecompress: () => controller.abort(),
+    });
+
+    const cancellation = await captureCancellation(
+      harness.read(requestFor({ signal: controller.signal })),
+    );
+
+    expect(cancellation.usage.chunksOpened).toBe(1);
+    expect(cancellation.usage.decompressedBytes).toBeGreaterThan(0);
+    expect(cancellation.usage.messagesDecoded).toBe(0);
+    expect(
+      chunkBodyReads(harness.networkReads, fixture.chunkIndexes),
+    ).toHaveLength(1);
+  });
+
+  it("yields during a warm-cache decode walk and reports partial progress", async () => {
+    const controller = new AbortController();
+    let cancellationArmed = false;
+    let armedYieldCount = 0;
+    const fixture = buildFixture([
+      {
+        compression: "fake",
+        messages: Array.from({ length: 130 }, (_, index) => ({
+          channelId: 1,
+          logTime: BigInt(index),
+          sequence: index,
+        })),
+      },
+    ]);
+    const harness = createHarness(fixture, ["/selected"], {
+      taskYield: async () => {
+        if (cancellationArmed && ++armedYieldCount === 1) {
+          controller.abort();
+        }
+      },
+    });
+    const full = budgetFor(fixture.chunkIndexes, 130);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 1,
+      budget: full,
+      endTimeNs: 200n,
+      maxChunks: 1,
+    });
+    await harness.read(request);
+    const readsAfterWarm = harness.networkReads.length;
+    cancellationArmed = true;
+
+    const cancellation = await captureCancellation(
+      harness.read({ ...request, signal: controller.signal }),
+    );
+
+    expect(cancellation.usage.chunksOpened).toBe(1);
+    expect(cancellation.usage.decompressionCacheHits).toBe(1);
+    expect(cancellation.usage.decompressedBytes).toBe(0);
+    expect(cancellation.usage.messagesDecoded).toBe(
+      MCAP_BOUNDED_GRANT_YIELD_INTERVAL,
+    );
+    expect(cancellation.usage.transferredBytes).toBe(0);
+    expect(harness.networkReads).toHaveLength(readsAfterWarm);
+  });
+
+  it("parses only selected indexed offsets", async () => {
+    const messages = [
+      { channelId: 1, logTime: 1n, sequence: 1 },
+      { channelId: 3, logTime: 2n, sequence: 99 },
+      { channelId: 1, logTime: 3n, sequence: 2 },
+    ] satisfies readonly MessageSpec[];
+    const fixture = buildFixture([
+      {
+        corruptRecordSequence: 99,
+        messages,
+      },
+    ]);
+    const harness = createHarness(fixture);
+
+    const result = await harness.read(requestFor({ endTimeNs: 3n }));
+
+    expect(result.messages.map((message) => message.sequence)).toEqual([1, 2]);
+    expect(result.usage.messagesDecoded).toBe(2);
+
+    const unindexedFixture = buildFixture([
+      {
+        corruptRecordSequence: 99,
+        messages,
+        omitMessageIndexes: true,
+      },
+    ]);
+    await expect(
+      createHarness(unindexedFixture).read(requestFor({ endTimeNs: 3n })),
+    ).rejects.toThrow();
+  });
+
+  it("validates selected index entries against message records", async () => {
+    const fixture = buildFixture([
+      {
+        messages: [
+          {
+            channelId: 1,
+            indexLogTime: 2n,
+            logTime: 1n,
+            sequence: 1,
+          },
+        ],
+      },
+    ]);
+    const harness = createHarness(fixture);
+
+    await expect(harness.read(requestFor({ endTimeNs: 2n }))).rejects.toThrow(
+      "MCAP message index/data mismatch",
+    );
+  });
+
+  it("falls back to a full cooperative scan when indexes are unavailable", async () => {
+    const fixture = buildFixture([
+      {
+        messages: [
+          { channelId: 1, logTime: 1n, sequence: 1 },
+          { channelId: 3, logTime: 2n, sequence: 99 },
+          { channelId: 1, logTime: 3n, sequence: 2 },
+        ],
+        omitMessageIndexes: true,
+      },
+    ]);
+    const harness = createHarness(fixture);
+
+    const result = await harness.read(requestFor({ endTimeNs: 3n }));
+
+    expect(result.messages.map((message) => message.sequence)).toEqual([1, 2]);
+    expect(result.usage.messagesDecoded).toBe(2);
+    expect(result.coverageByTopic.get("/selected")).toEqual([
+      { endNs: 3n, startNs: 1n },
+    ]);
+    expect(
+      harness.networkReads.filter(
+        (request) => request.cachePolicy?.blockFill === false,
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("cancels a warm-cache fallback scan after bounded record work", async () => {
+    const controller = new AbortController();
+    let cancellationArmed = false;
+    let armedYieldCount = 0;
+    const fixture = buildFixture([
+      {
+        compression: "fake",
+        messages: [
+          ...Array.from({ length: 130 }, (_, index) => ({
+            channelId: 3,
+            logTime: BigInt(index),
+            sequence: index,
+          })),
+          { channelId: 1, logTime: 130n, sequence: 1_000 },
+        ],
+        omitMessageIndexes: true,
+      },
+    ]);
+    const harness = createHarness(fixture, ["/selected"], {
+      taskYield: async () => {
+        if (cancellationArmed && ++armedYieldCount === 1) {
+          controller.abort();
+        }
+      },
+    });
+    const full = budgetFor(fixture.chunkIndexes, 1);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 1,
+      budget: full,
+      endTimeNs: 130n,
+      maxChunks: 1,
+    });
+    await harness.read(request);
+    const readsAfterWarm = harness.networkReads.length;
+    cancellationArmed = true;
+
+    const cancellation = await captureCancellation(
+      harness.read({ ...request, signal: controller.signal }),
+    );
+
+    expect(cancellation.usage.chunksOpened).toBe(1);
+    expect(cancellation.usage.decompressionCacheHits).toBe(1);
+    expect(cancellation.usage.messagesDecoded).toBe(0);
+    expect(cancellation.usage.transferredBytes).toBe(0);
+    expect(harness.networkReads).toHaveLength(readsAfterWarm);
+  });
+
+  it("reports independent coverage for streams with different chunk density", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+      {
+        messages: [
+          { channelId: 1, logTime: 10n },
+          { channelId: 2, logTime: 10n },
+        ],
+      },
+    ]);
+    const harness = createHarness(fixture, ["/dense", "/sparse"]);
+
+    const result = await harness.read(
+      requestFor({ topics: ["/dense", "/sparse"] }),
+    );
+
+    expect(result.coverageByTopic.get("/dense")).toEqual([
+      { endNs: 0n, startNs: 0n },
+      { endNs: 10n, startNs: 10n },
+    ]);
+    expect(result.coverageByTopic.get("/sparse")).toEqual([
+      { endNs: 10n, startNs: 10n },
+    ]);
+  });
+
+  it("returns before index or body work when wall-time is already exhausted", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+    ]);
+    const harness = createHarness(fixture);
+
+    const result = await harness.read(
+      requestFor({
+        budget: {
+          ...requestFor({}).budget,
+          maxWallTimeMs: 0,
+        },
+      }),
+    );
+
+    expect(result.stopReason).toBe("budget-exhausted");
+    expect(result.usage.chunksOpened).toBe(0);
+    expect(harness.networkReads).toHaveLength(0);
+  });
+
+  it("returns a continuation before the next group after wall-time expires", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+      { messages: [{ channelId: 1, logTime: 10n }] },
+    ]);
+    let nowMs = 0;
+    const firstChunkOffset = fixture.chunkIndexes[0].chunkStartOffset;
+    const harness = createHarness(fixture, ["/selected"], {
+      nowMs: () => nowMs,
+      onNetworkRead: (request) => {
+        if (request.range.offset === firstChunkOffset) {
+          nowMs = 101;
+        }
+      },
+    });
+    const full = budgetFor(fixture.chunkIndexes, 2);
+
+    const result = await harness.read(
+      requestFor({
+        absoluteBudget: full,
+        budget: { ...full, maxWallTimeMs: 100 },
+      }),
+    );
+
+    expect(result.stopReason).toBe("budget-exhausted");
+    expect(result.usage.chunksOpened).toBe(1);
+    expect(result.continuation).toBeDefined();
+    expect(
+      chunkBodyReads(harness.networkReads, fixture.chunkIndexes),
+    ).toHaveLength(1);
+  });
+});
+
+function createHarness(
+  fixture: BuiltFixture,
+  selectedTopics: readonly string[] = ["/selected"],
+  options: {
+    readonly blockSizeBytes?: number;
+    readonly nowMs?: () => number;
+    readonly onDecompress?: () => void;
+    readonly onNetworkRead?: (request: ByteRangeReadRequest) => void;
+    readonly sourceKey?: string | (() => string);
+    readonly taskYield?: () => Promise<void>;
+  } = {},
+) {
+  const channels = new Map([
+    [1, channel(1, selectedTopics[0] ?? "/selected")],
+    [2, channel(2, selectedTopics[1] ?? "/selected-b")],
+    [3, channel(3, "/filler")],
+  ]);
+  const reader: McapIndexedReaderLike = {
+    channelsById: channels,
+    chunkIndexes: fixture.chunkIndexes,
+    readMessages: async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
+      }
+    },
+    schemasById: new Map(),
+  };
+  const networkReads: ByteRangeReadRequest[] = [];
+  const network: ByteClient = {
+    async readBytes(request) {
+      networkReads.push(request);
+      options.onNetworkRead?.(request);
+      if (request.signal?.aborted) {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        throw error;
+      }
+      const start = Number(request.range.offset);
+      const end = start + Number(request.range.length);
+      return {
+        bytes: fixture.bytes.subarray(start, end),
+        range: request.range,
+        source: request.source,
+      };
+    },
+  };
+  const bytes = createCachedByteClient(network, {
+    blockSizeBytes: options.blockSizeBytes ?? 1,
+    locks: false,
+    memory: createMemoryByteRangeCache({ maxSizeBytes: 4 * 1024 * 1024 }),
+    persistent: false,
+  });
+  const readable = new ByteClientReadable(
+    { ...source, sizeBytes: fixture.bytes.byteLength.toString() },
+    bytes,
+  );
+  const read = createMcapBoundedReader({
+    decompressedChunkCache: createMcapDecompressedChunkCache(),
+    decompressHandlers: {
+      fake: (_compressed: Uint8Array, size: bigint) => {
+        options.onDecompress?.();
+        const records = fixture.decompressedBySize.get(size.toString());
+        if (!records) {
+          throw new Error(`missing fake decompression payload for ${size}`);
+        }
+        return records;
+      },
+    },
+    ...(options.nowMs ? { nowMs: options.nowMs } : {}),
+    readable,
+    reader,
+    sourceKey: options.sourceKey ?? "bounded-fixture-key",
+    ...(options.taskYield ? { taskYield: options.taskYield } : {}),
+  });
+  return { networkReads, read };
+}
+
+async function captureCancellation(
+  promise: Promise<unknown>,
+): Promise<McapBoundedReadCancelledError> {
+  try {
+    await promise;
+  } catch (error) {
+    expect(isMcapBoundedReadCancelledError(error)).toBe(true);
+    return error as McapBoundedReadCancelledError;
+  }
+  throw new Error("expected bounded read cancellation");
+}
+
+function buildFixture(specs: readonly ChunkSpec[]): BuiltFixture {
+  const placements: Array<{ bytes: Uint8Array; offset: bigint }> = [];
+  const pending: Array<{
+    readonly chunkBytes: Uint8Array;
+    readonly chunkStartOffset: bigint;
+    readonly compression: string;
+    readonly indexEndTime: bigint;
+    readonly indexStartTime: bigint;
+    readonly messageIndexes: ReadonlyMap<
+      number,
+      readonly (readonly [bigint, bigint])[]
+    >;
+    readonly records: Uint8Array;
+  }> = [];
+  const decompressedBySize = new Map<string, Uint8Array>();
+  let cursor = 1_024n;
+
+  for (const spec of specs) {
+    const recordsBuilder = new McapRecordBuilder();
+    const messageIndexes = new Map<number, Array<readonly [bigint, bigint]>>();
+    const messageOffsetsBySequence = new Map<number, bigint>();
+    for (const message of spec.messages) {
+      const messageOffset = BigInt(recordsBuilder.length);
+      const sequence = message.sequence ?? Number(message.logTime);
+      recordsBuilder.writeMessage({
+        channelId: message.channelId,
+        data: message.data ?? new Uint8Array([message.channelId]),
+        logTime: message.logTime,
+        publishTime: message.logTime,
+        sequence,
+      });
+      messageOffsetsBySequence.set(sequence, messageOffset);
+      if (spec.omitMessageIndexes) {
+        continue;
+      }
+      let entries = messageIndexes.get(message.channelId);
+      if (!entries) {
+        entries = [];
+        messageIndexes.set(message.channelId, entries);
+      }
+      entries.push([message.indexLogTime ?? message.logTime, messageOffset]);
+    }
+    const records = recordsBuilder.buffer.slice();
+    if (spec.corruptRecordSequence !== undefined) {
+      const offset = messageOffsetsBySequence.get(spec.corruptRecordSequence);
+      if (offset === undefined) {
+        throw new Error(
+          `missing record sequence ${spec.corruptRecordSequence} to corrupt`,
+        );
+      }
+      const recordOffset = Number(offset);
+      records.fill(0xff, recordOffset + 1, recordOffset + 9);
+    }
+    const compression = spec.compression ?? "";
+    const storedRecords =
+      compression === "fake" ? new Uint8Array([0xfa]) : records;
+    const times = spec.messages.map((message) => message.logTime);
+    const indexStartTime =
+      spec.indexStartTime ??
+      times.reduce((first, time) => (time < first ? time : first), times[0]);
+    const indexEndTime =
+      spec.indexEndTime ??
+      times.reduce((last, time) => (time > last ? time : last), times[0]);
+    const chunkBuilder = new McapRecordBuilder();
+    chunkBuilder.writeChunk({
+      compression,
+      messageEndTime: indexEndTime,
+      messageStartTime: indexStartTime,
+      records: storedRecords,
+      uncompressedCrc: 0,
+      uncompressedSize: BigInt(records.byteLength),
+    });
+    const chunkBytes = chunkBuilder.buffer.slice();
+    const chunkStartOffset = cursor;
+    placements.push({ bytes: chunkBytes, offset: chunkStartOffset });
+    pending.push({
+      chunkBytes,
+      chunkStartOffset,
+      compression,
+      indexEndTime,
+      indexStartTime,
+      messageIndexes,
+      records,
+    });
+    if (compression === "fake") {
+      decompressedBySize.set(records.byteLength.toString(), records);
+    }
+    cursor += BigInt(chunkBytes.byteLength) + 64n;
+  }
+
+  const chunkIndexes: McapTypes.TypedMcapRecords["ChunkIndex"][] = [];
+  for (const chunk of pending) {
+    const messageIndexOffsets = new Map<number, bigint>();
+    const messageIndexStart = cursor;
+    for (const [channelId, records] of chunk.messageIndexes) {
+      const indexBuilder = new McapRecordBuilder();
+      indexBuilder.writeMessageIndex({
+        channelId,
+        records: records.map(([time, offset]) => [time, offset]),
+      });
+      const indexBytes = indexBuilder.buffer.slice();
+      messageIndexOffsets.set(channelId, cursor);
+      placements.push({ bytes: indexBytes, offset: cursor });
+      cursor += BigInt(indexBytes.byteLength);
+    }
+    chunkIndexes.push({
+      chunkLength: BigInt(chunk.chunkBytes.byteLength),
+      chunkStartOffset: chunk.chunkStartOffset,
+      compressedSize:
+        chunk.compression.length > 0 ? 1n : BigInt(chunk.records.byteLength),
+      compression: chunk.compression,
+      messageEndTime: chunk.indexEndTime,
+      messageIndexLength: cursor - messageIndexStart,
+      messageIndexOffsets,
+      messageStartTime: chunk.indexStartTime,
+      type: "ChunkIndex",
+      uncompressedSize: BigInt(chunk.records.byteLength),
+    });
+    cursor += 64n;
+  }
+
+  const bytes = new Uint8Array(Number(cursor + 64n));
+  for (const placement of placements) {
+    bytes.set(placement.bytes, Number(placement.offset));
+  }
+  return { bytes, chunkIndexes, decompressedBySize };
+}
+
+function budgetFor(
+  chunks: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
+  maxMessages: number,
+): ReadWorkBudget {
+  const maxSourceBytes = chunks.reduce(
+    (sum, chunk) => sum + Number(chunk.chunkLength + chunk.messageIndexLength),
+    0,
+  );
+  const maxUncompressedBytes = chunks.reduce(
+    (sum, chunk) => sum + Number(chunk.uncompressedSize),
+    0,
+  );
+  return {
+    maxMessages,
+    maxSourceBytes,
+    maxUncompressedBytes,
+    maxWallTimeMs: 10_000,
+  };
+}
+
+function requestFor(
+  overrides: Partial<McapBoundedMessageReadRequest>,
+): McapBoundedMessageReadRequest {
+  const fallback: ReadWorkBudget = {
+    maxMessages: 100,
+    maxSourceBytes: 1_000_000,
+    maxUncompressedBytes: 1_000_000,
+    maxWallTimeMs: 10_000,
+  };
+  return {
+    absoluteBudget: fallback,
+    absoluteMaxChunks: 4,
+    budget: fallback,
+    endTimeNs: 1_000n,
+    maxChunks: 4,
+    startTimeNs: 0n,
+    topics: ["/selected"],
+    ...overrides,
+  };
+}
+
+function channel(
+  id: number,
+  topic: string,
+): McapTypes.TypedMcapRecords["Channel"] {
+  return {
+    id,
+    messageEncoding: "protobuf",
+    metadata: new Map(),
+    schemaId: 0,
+    topic,
+    type: "Channel",
+  };
+}
+
+function chunkBodyReads(
+  reads: readonly ByteRangeReadRequest[],
+  chunks: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
+) {
+  const offsets = new Set(chunks.map((chunk) => chunk.chunkStartOffset));
+  return reads.filter((read) => offsets.has(read.range.offset));
+}
+
+function messageKey(message: McapTypes.TypedMcapRecords["Message"]): string {
+  return [message.logTime.toString(), message.channelId, message.sequence].join(
+    ":",
+  );
+}

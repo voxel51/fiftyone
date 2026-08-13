@@ -171,8 +171,12 @@ export const SidePanel = ({
   sample,
 }: SidePanelProps) => {
   const { activeSampleMap: labelSampleMap } = fos.useRenderConfig3dState();
-  const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
-    useImageSlicesIfAvailable(sample);
+  const {
+    imageSlices,
+    resolveUrlForImageSlice,
+    resolveLabelsForImageSlice,
+    isLoadingImageSlices,
+  } = useImageSlicesIfAvailable(sample);
 
   // While a label transform is in progress (e.g. a cuboid face-pull resize
   // started in this panel), suspend panning so the drag doesn't also move the
@@ -239,6 +243,7 @@ export const SidePanel = ({
           imageSlices={imageSlices}
           isLoadingImageSlices={isLoadingImageSlices}
           resolveUrlForImageSlice={resolveUrlForImageSlice}
+          resolveLabelsForImageSlice={resolveLabelsForImageSlice}
           upVector={upVector}
         />
       ) : (
@@ -792,7 +797,7 @@ const BoundsSideEffectsComponent = ({
     const { label, archetype } = payload;
     const crop = pointCloudCropRef.current;
 
-    if (crop?.labelId === label._id) {
+    if (crop?.labelId === label.data._id) {
       fitToPointCloudCrop(crop);
       return;
     }
@@ -800,7 +805,7 @@ const BoundsSideEffectsComponent = ({
     const object = findObjectByUserData(
       scene,
       FO_USER_DATA.LABEL_ID,
-      label._id,
+      label.data._id,
     );
 
     if (object) {

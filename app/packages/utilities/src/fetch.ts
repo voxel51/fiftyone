@@ -1,3 +1,4 @@
+/// <reference path="./env.d.ts" />
 import {
   EventSourceMessage,
   fetchEventSource,
@@ -315,6 +316,34 @@ export const getFetchParameters = () => {
   };
 };
 
+// Identical GraphQL QUERIES that are in flight at the same moment share one
+// request. Several independent subscribers commonly derive the same
+// dataset-level aggregation from one view change, and each duplicate costs a
+// full server resolve. Only reads are shared: a mutation is never coalesced,
+// and the entry is dropped the moment the request settles, so nothing is
+// cached across gestures.
+const inFlightQueries = new Map<string, Promise<unknown>>();
+
+const graphqlQueryKey = (
+  method: string,
+  path: string,
+  body: unknown,
+): string | null => {
+  if (method.toUpperCase() !== "POST" || !body || typeof body !== "object") {
+    return null;
+  }
+
+  const query = (body as { query?: unknown }).query;
+  if (
+    typeof query !== "string" ||
+    !/^\s*query\s+aggregationsQuery\b/.test(query)
+  ) {
+    return null;
+  }
+
+  return `${path}:${JSON.stringify(body)}`;
+};
+
 export const setFetchFunction = (
   origin: string,
   defaultHeaders: HeadersInit = {},
@@ -469,19 +498,35 @@ export const setFetchFunction = (
     retryCodes: number[] = [502, 503, 504],
     errorHandler: (response: Response) => void | Promise<void>,
     headers: Record<string, string>,
-  ) =>
-    fetchFunctionExtended<A, R>(
-      method,
-      path,
-      body,
-      result,
-      retries,
-      retryCodes,
-      errorHandler,
-      headers,
-      undefined,
-      undefined,
-    ).then((res) => res.response);
+  ) => {
+    const send = () =>
+      fetchFunctionExtended<A, R>(
+        method,
+        path,
+        body,
+        result,
+        retries,
+        retryCodes,
+        errorHandler,
+        headers,
+        undefined,
+        undefined,
+      ).then((res) => res.response);
+
+    const key = result === "json" ? graphqlQueryKey(method, path, body) : null;
+    if (key === null) {
+      return send();
+    }
+
+    const pending = inFlightQueries.get(key);
+    if (pending) {
+      return pending as Promise<R>;
+    }
+
+    const request = send().finally(() => inFlightQueries.delete(key));
+    inFlightQueries.set(key, request);
+    return request;
+  };
 };
 
 // FetchFunctionExtended predates result-type discrimination and lets callers

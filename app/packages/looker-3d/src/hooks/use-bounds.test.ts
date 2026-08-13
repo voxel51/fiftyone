@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { Box3, type Group } from "three";
 import { type Mock, afterEach, describe, expect, it, vi } from "vitest";
 import { useFo3dBounds } from "./use-bounds";
@@ -176,9 +176,7 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     // Mock Box3 to return a stable box after multiple calls
-    let callCount = 0;
     const MockBox3 = vi.fn().mockImplementation(function () {
-      callCount++;
       return {
         min: { x: 0.5, y: 0.5, z: 0.5 },
         max: { x: 1.5, y: 1.5, z: 1.5 },

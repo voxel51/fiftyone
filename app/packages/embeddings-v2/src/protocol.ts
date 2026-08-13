@@ -36,6 +36,9 @@ export interface VisualizationRun {
   /** The run's results blob exists (readiness says nothing about how a
    * computation ended — only whether there is anything to load) */
   ready: boolean;
+  /** Why the run cannot be used, when knowable without loading results
+   * (e.g. its config class no longer imports); null when usable */
+  error: string | null;
   timestamp: string | null;
 }
 
@@ -72,16 +75,18 @@ export interface Geometry {
 /** Raw 12-byte ObjectIds in wire order; decode lazily via idAt() */
 export type IdColumn = Uint8Array;
 
-export async function fetchRuns(
-  datasetName: string,
-): Promise<VisualizationRun[]> {
-  const response = await getFetchFunction()<
-    { datasetName: string },
-    { runs: (Omit<VisualizationRun, "ready"> & { ready?: boolean })[] }
-  >("POST", "/embeddings/v2/runs", { datasetName });
-  // Servers predating the flag omit it; absent means ready, or every
-  // run on an older deployment would render pending forever
-  return response.runs.map((run) => ({ ...run, ready: run.ready !== false }));
+export interface RunStatus {
+  brainKey: string;
+  ready: boolean;
+  error: string | null;
+}
+
+export async function fetchRunsStatus(datasetId: string): Promise<RunStatus[]> {
+  const { runs } = await getFetchFunction()<
+    Record<string, unknown>,
+    { runs: RunStatus[] }
+  >("POST", "/embeddings/v2/runs-status", { datasetId });
+  return runs;
 }
 
 export interface RunInfo extends VisualizationRun {
@@ -98,8 +103,9 @@ export async function fetchRunInfo(
     Omit<RunInfo, "ready"> & { ready?: boolean }
   >("POST", "/embeddings/v2/run-info", { datasetName, brainKey });
   // run-info answering at all implies loadable results; the endpoint
-  // doesn't send the flag
-  return { ...info, ready: info.ready !== false };
+  // doesn't send the flag, and structural errors belong to the LIST
+  // contract (BrainRun.error) — this endpoint never reports one
+  return { ...info, ready: info.ready !== false, error: null };
 }
 
 export interface Slice {

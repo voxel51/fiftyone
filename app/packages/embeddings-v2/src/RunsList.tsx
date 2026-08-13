@@ -28,7 +28,8 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { LandingCTA } from "./LandingCTA";
 import "./panel.css";
 import type { VisualizationRun } from "./protocol";
 import { RunCard } from "./RunCard";
@@ -42,7 +43,6 @@ const formatTimestamp = (timestamp: string | null): string | null => {
 
 export default function RunsList({
   runs,
-  error,
   actionError = null,
   showUpsell = true,
   onCreate,
@@ -50,7 +50,6 @@ export default function RunsList({
   onDelete,
 }: {
   runs: VisualizationRun[] | null;
-  error: string | null;
   /** A failed mutation (e.g. delete); shown without replacing the list */
   actionError?: string | null;
   /** Advertise capabilities this build lacks; off where they exist */
@@ -75,17 +74,62 @@ export default function RunsList({
     anchor: HTMLElement;
   } | null>(null);
 
-  if (error) {
+  // A refreshed run list can delete a run or flip its readiness under an
+  // open menu or an armed confirmation; both must not outlive the ready
+  // card they belong to (a recreated same-name run must not inherit them)
+  useEffect(() => {
+    const isActionable = (key: string | null) =>
+      Boolean(
+        key && runs?.some((r) => r.brainKey === key && (r.ready || r.error)),
+      );
+    if (menu && !isActionable(menu.key)) setMenu(null);
+    if (confirmKey && !isActionable(confirmKey)) setConfirmKey(null);
+  }, [runs, menu, confirmKey]);
+
+  const runActions = (run: VisualizationRun) => {
+    // No actions on pending runs: Refresh needs results, and Delete
+    // would remove the run record without stopping the computation
+    // writing it (manage those from the Runs page). An ERRORED run is
+    // not pending — Delete is its recovery path
+    if (!run.ready && !run.error) return undefined;
+    if (confirmKey === run.brainKey) {
+      return (
+        <>
+          <Button
+            variant={Variant.Secondary}
+            size={Size.Xs}
+            onClick={() => setConfirmKey(null)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant={Variant.Danger}
+            size={Size.Xs}
+            onClick={() => {
+              setConfirmKey(null);
+              onDelete(run.brainKey);
+            }}
+          >
+            Delete run
+          </Button>
+        </>
+      );
+    }
     return (
-      <div className="emb-runs-page">
-        <div className="emb-runs-center">
-          <Text variant={TextVariant.Md} color={TextColor.Destructive}>
-            {error}
-          </Text>
-        </div>
-      </div>
+      <IconButton
+        size="small"
+        aria-label="Run actions"
+        onClick={(event) =>
+          setMenu({
+            key: run.brainKey,
+            anchor: event.currentTarget,
+          })
+        }
+      >
+        <MoreHoriz fontSize="small" />
+      </IconButton>
     );
-  }
+  };
 
   if (!runs) {
     return (
@@ -98,7 +142,7 @@ export default function RunsList({
   }
 
   return (
-    <div className="emb-runs-page">
+    <div className="emb-runs-page" data-cy="embeddings-runs-page">
       {runs.length > 0 && (
         <div className="emb-runs-header">
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>
@@ -116,7 +160,10 @@ export default function RunsList({
         </div>
       )}
       <div className="emb-runs-scroll">
-        {showUpsell && !dismissed && (
+        {/* The 3D banner earns its slot only once a first run exists
+            (FOEPD-4401) — before that, the landing CTA below is the
+            single upsell surface */}
+        {showUpsell && !dismissed && runs.length > 0 && (
           <UpsellBanner onDismiss={() => setDismissed(true)} />
         )}
         {actionError && (
@@ -127,30 +174,36 @@ export default function RunsList({
           </div>
         )}
         {runs.length === 0 ? (
-          <div className="emb-runs-center emb-runs-overlay">
-            <EmptyState
-              icon={IconName.Embeddings}
-              title="Visualize your embeddings"
-              description="Compute a visualization to explore your dataset in a low-dimensional embedding space."
-            />
-            {onCreate ? (
-              <Button
-                size={Size.Sm}
-                leadingIcon={IconName.Add}
-                onClick={onCreate}
-              >
-                New visualization
-              </Button>
-            ) : (
-              <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-                <code>
-                  {'fob.compute_visualization(dataset, brain_key="viz")'}
-                </code>
-              </Text>
-            )}
-          </div>
+          showUpsell ? (
+            // Builds that can't compute in-app show the enterprise
+            // landing instead of a dead-end empty state (FOEPD-4369)
+            <LandingCTA />
+          ) : (
+            <div className="emb-runs-center emb-runs-overlay">
+              <EmptyState
+                icon={IconName.Embeddings}
+                title="Visualize your embeddings"
+                description="Compute a visualization to explore your dataset in a low-dimensional embedding space."
+              />
+              {onCreate ? (
+                <Button
+                  size={Size.Sm}
+                  leadingIcon={IconName.Add}
+                  onClick={onCreate}
+                >
+                  New visualization
+                </Button>
+              ) : (
+                <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+                  <code>
+                    {'fob.compute_visualization(dataset, brain_key="viz")'}
+                  </code>
+                </Text>
+              )}
+            </div>
+          )
         ) : (
-          <div className="emb-runs-stack" style={{ marginTop: "1rem" }}>
+          <div className="emb-runs-stack">
             {runs.map((run) => (
               <RunCard
                 key={run.brainKey}
@@ -159,57 +212,35 @@ export default function RunsList({
                 badge={run.dims ? `${run.dims}D` : undefined}
                 badgeAccent={run.dims === 3}
                 status={
-                  run.ready
-                    ? // Icon-tier success: the soft sage the design
-                      // reference uses, not the saturated text green
-                      { label: "Ready", color: IconColor.Success }
-                    : // Deliberately status-agnostic: without run-status
-                      // bookkeeping, "no results yet" cannot distinguish
-                      // still-computing from failed
-                      { label: "Pending", color: TextColor.Secondary }
+                  run.error
+                    ? // Structurally unusable (see BrainRun.error): opening
+                      // it could only fail, but Delete stays available
+                      { label: "Error", color: TextColor.Destructive }
+                    : run.ready
+                      ? // Icon-tier success: the soft sage the design
+                        // reference uses, not the saturated text green
+                        { label: "Ready", color: IconColor.Success }
+                      : // Deliberately status-agnostic: without run-status
+                        // bookkeeping, "no results yet" cannot distinguish
+                        // still-computing from failed
+                        { label: "Pending", color: TextColor.Secondary }
                 }
                 meta={[
+                  run.error,
                   run.method,
+                  // Same brain key semantics, very different plots —
+                  // which granularity a run embeds must be readable
+                  // from the card
+                  run.patchesField ? `${run.patchesField} patches` : "samples",
                   run.model,
                   formatTimestamp(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}
-                onClick={run.ready ? () => onOpen(run.brainKey) : undefined}
-                actions={
-                  confirmKey === run.brainKey ? (
-                    <>
-                      <Button
-                        variant={Variant.Secondary}
-                        size={Size.Xs}
-                        onClick={() => setConfirmKey(null)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant={Variant.Danger}
-                        size={Size.Xs}
-                        onClick={() => {
-                          setConfirmKey(null);
-                          onDelete(run.brainKey);
-                        }}
-                      >
-                        Delete run
-                      </Button>
-                    </>
-                  ) : (
-                    <IconButton
-                      size="small"
-                      aria-label="Run actions"
-                      onClick={(event) =>
-                        setMenu({
-                          key: run.brainKey,
-                          anchor: event.currentTarget,
-                        })
-                      }
-                    >
-                      <MoreHoriz fontSize="small" />
-                    </IconButton>
-                  )
+                onClick={
+                  run.ready && !run.error
+                    ? () => onOpen(run.brainKey)
+                    : undefined
                 }
+                actions={runActions(run)}
               />
             ))}
           </div>

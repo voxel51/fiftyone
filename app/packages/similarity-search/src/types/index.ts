@@ -17,10 +17,7 @@ export enum QueryType {
   Upload = "upload",
 }
 
-/**
- * Scope for a similarity search (full dataset or current view).
- */
-export type SearchScope = "view" | "dataset";
+export { ViewTarget } from "@fiftyone/operators/src/types";
 
 /**
  * Configuration for a brain similarity key.
@@ -72,7 +69,7 @@ export type SimilaritySearchParams = {
   query_type: QueryType;
   query: string | string[];
   reverse: boolean;
-  search_scope: SearchScope;
+  view_target: ViewTarget;
   patches_field?: string;
   k?: number;
   dist_field?: string;

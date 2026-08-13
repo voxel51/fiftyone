@@ -5,6 +5,9 @@ FiftyOne Agent
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 2.19.0
+
 The FiftyOne Agent is an AI-powered assistant built into the
 :ref:`FiftyOne Enterprise App <enterprise-app>`. It lets you work with your
 datasets using natural language. You can import data, run model inference,

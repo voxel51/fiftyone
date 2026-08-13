@@ -19,7 +19,6 @@ import type {
 import type { LabelData } from "@fiftyone/utilities";
 import { LabelType } from "@fiftyone/utilities";
 
-import { build3dLabel } from "../../../state/build3dLabel";
 import type { AdapterMap, LabelKindAdapter } from "../../bridge/types";
 
 /** A working-store entry: a reconciled 3D detection or polyline. */
@@ -31,7 +30,7 @@ export type Working3dLabel = ReconciledDetection3D | ReconciledPolyline3D;
  * from the coloring scheme at mount.
  */
 export interface Looker3dDescriptor {
-  label: Working3dLabel;
+  entry: Working3dLabel;
 }
 
 /**
@@ -51,19 +50,18 @@ export type Looker3dAdapter = LabelKindAdapter<
   Looker3dDescriptor
 >;
 
-/** Strip identity — the working store owns `_id = ref.instanceId`. */
+/**
+ * The persistable partial is the entry's document, verbatim — view state lives
+ * under `entry.ui` and never enters it. Identity is stripped: the working
+ * store owns `_id = ref.instanceId`.
+ */
 const toPersistable = (handle: Looker3dHandle): Partial<LabelData> | null => {
   const entry = handle.read();
   if (!entry) {
     return null;
   }
 
-  const data = build3dLabel(entry);
-  if (!data) {
-    return null;
-  }
-
-  const { _id: _ignored, ...rest } = data as Record<string, unknown>;
+  const { _id: _ignored, ...rest } = entry.data as Record<string, unknown>;
   return rest as Partial<LabelData>;
 };
 
@@ -78,13 +76,15 @@ export const detection3dAdapter: Looker3dAdapter = {
     (label.dimensions as unknown[]).length === 3,
 
   buildHandle: (ref, label) => ({
-    label: {
-      ...(label as unknown as ReconciledDetection3D),
-      _id: ref.instanceId,
-      _cls: "Detection",
-      type: "Detection",
+    entry: {
+      data: {
+        ...(label as unknown as ReconciledDetection3D["data"]),
+        _id: ref.instanceId,
+        _cls: "Detection",
+      },
       path: ref.path,
-      isNew: false,
+      sampleId: ref.sample,
+      ui: { selected: false, isNew: false },
     },
   }),
 
@@ -104,15 +104,17 @@ export const polyline3dAdapter: Looker3dAdapter = {
   buildHandle: (ref, label) => {
     const raw = label as Record<string, unknown>;
     return {
-      label: {
-        ...(label as unknown as ReconciledPolyline3D),
-        _id: ref.instanceId,
-        _cls: "Polyline",
-        type: "Polyline",
+      entry: {
+        data: {
+          ...(label as unknown as ReconciledPolyline3D["data"]),
+          _id: ref.instanceId,
+          _cls: "Polyline",
+          closed: !!raw.closed,
+          filled: !!raw.filled,
+        },
         path: ref.path,
-        isNew: false,
-        closed: !!raw.closed,
-        filled: !!raw.filled,
+        sampleId: ref.sample,
+        ui: { selected: false, isNew: false },
       },
     };
   },

@@ -26,9 +26,19 @@
     "devDependencies": {
         "@types/mapbox-gl": "^2.7.4",
         "@types/mapbox__mapbox-gl-draw": "^1.2.5",
+        "@types/react": "catalog:",
         "@types/react-map-gl": "^6.1.3",
         "@types/robust-point-in-polygon": "^1.0.2",
         "@vitejs/plugin-react": "catalog:",
+        "jotai": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-error-boundary": "catalog:",
+        "react-relay": "catalog:",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "catalog:",
+        "styled-components": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },
@@ -37,7 +47,13 @@
     },
     "peerDependencies": {
         "@mui/icons-material": "*",
+        "jotai": "*",
+        "react": "*",
+        "react-dom": "*",
         "react-error-boundary": "*",
-        "recoil": "*"
+        "react-relay": "*",
+        "recoil": "*",
+        "recoil-relay": "*",
+        "styled-components": "*"
     }
 }

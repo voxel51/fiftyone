@@ -17,7 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # full commit graph for the merge-base diff, but no blobs up front —
+          # git pulls the few setup.py blobs on demand
           fetch-depth: 0
+          filter: blob:none
       - name: Guard VERSION
         env:
           AUTHOR: ${{ github.event.pull_request.user.login }}

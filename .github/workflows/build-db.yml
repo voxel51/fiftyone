@@ -25,10 +25,10 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v6
-      - name: Set up Python 3.10
+      - name: Set up Python 3.13
         uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.13"
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel build
@@ -92,10 +92,10 @@ jobs:
           name: dist-sdist
           path: downloads
         background: true
-      - name: Set up Python 3.10
+      - name: Set up Python 3.13
         uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.13"
       - name: Wait for fiftyone-db
         wait: download-fiftyone-db
       - name: Install fiftyone-db
@@ -130,4 +130,4 @@ jobs:
       # See
       # [fiftyone-db](https://pypi.org/manage/project/fiftyone-db/settings/publishing/)
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@v1.14.0
+        uses: pypa/gh-action-pypi-publish@v1.14.2

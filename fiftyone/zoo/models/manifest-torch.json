@@ -12322,6 +12322,162 @@
                 }
             ],
             "date_added": "2026-06-15 12:00:00"
+        },
+        {
+            "base_name": "dinov3-vits16-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "DINOv3 ViT-S/16 self-supervised image embeddings pretrained on LVD-1689M (1.7B images). Requires accepting the DINOv3 license on Hugging Face",
+            "source": "https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m",
+            "author": "Oriane Simeoni, et al.",
+            "license": "DINOv3 License",
+            "size_bytes": 86406384,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformer",
+                "config": {
+                    "name_or_path": "facebook/dinov3-vits16-pretrain-lvd1689m"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov3",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-1689M",
+                    "url": "https://arxiv.org/abs/2508.10104"
+                }
+            ],
+            "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "dinov3-vitb16-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "DINOv3 ViT-B/16 self-supervised image embeddings pretrained on LVD-1689M (1.7B images). Requires accepting the DINOv3 license on Hugging Face",
+            "source": "https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m",
+            "author": "Oriane Simeoni, et al.",
+            "license": "DINOv3 License",
+            "size_bytes": 342662192,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformer",
+                "config": {
+                    "name_or_path": "facebook/dinov3-vitb16-pretrain-lvd1689m"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov3",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-1689M",
+                    "url": "https://arxiv.org/abs/2508.10104"
+                }
+            ],
+            "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "dinov3-vitl16-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "DINOv3 ViT-L/16 self-supervised image embeddings pretrained on LVD-1689M (1.7B images). Requires accepting the DINOv3 license on Hugging Face",
+            "source": "https://huggingface.co/facebook/dinov3-vitl16-pretrain-lvd1689m",
+            "author": "Oriane Simeoni, et al.",
+            "license": "DINOv3 License",
+            "size_bytes": 1212559808,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformer",
+                "config": {
+                    "name_or_path": "facebook/dinov3-vitl16-pretrain-lvd1689m"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov3",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-1689M",
+                    "url": "https://arxiv.org/abs/2508.10104"
+                }
+            ],
+            "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "dinov3-vith16plus-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "DINOv3 ViT-H+/16 self-supervised image embeddings pretrained on LVD-1689M (1.7B images). Requires accepting the DINOv3 license on Hugging Face",
+            "source": "https://huggingface.co/facebook/dinov3-vith16plus-pretrain-lvd1689m",
+            "author": "Oriane Simeoni, et al.",
+            "license": "DINOv3 License",
+            "size_bytes": 3362432800,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformer",
+                "config": {
+                    "name_or_path": "facebook/dinov3-vith16plus-pretrain-lvd1689m"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov3",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-1689M",
+                    "url": "https://arxiv.org/abs/2508.10104"
+                }
+            ],
+            "date_added": "2026-07-14 12:00:00"
         }
     ]
 }

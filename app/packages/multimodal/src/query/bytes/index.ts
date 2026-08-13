@@ -10,6 +10,7 @@ export { createAdaptiveByteCacheBlockSize } from "./adaptive-block-size";
 export {
   createCachedByteClient,
   defaultByteCacheBlockSizeBytes,
+  planByteCacheFillRequest,
 } from "./cached-byte-client";
 export { createDefaultByteClient } from "./default-byte-client";
 export {
@@ -19,6 +20,13 @@ export {
   REMOTE_FILL_SLOTS,
 } from "./fill-lock";
 export { createZonedRemoteBlockSize } from "./remote-block-zones";
+export {
+  createNetworkTransportMeter,
+  type LaneTransportSnapshot,
+  type NetworkTransportMeter,
+  type NetworkTransportSnapshot,
+  type TransportLane,
+} from "./network-meter";
 export { createHttpByteClient } from "./http-byte-client";
 export { createLocalFileByteClient } from "./local-file-byte-client";
 
@@ -53,6 +61,7 @@ export type {
   ByteRangeCache,
   ByteRangeReadRequest,
   ByteRangeReadResult,
+  ByteRangeReadUsage,
   ByteReadDebugLog,
   ByteClient,
   ByteSourceDescriptor,

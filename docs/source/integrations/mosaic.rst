@@ -5,6 +5,10 @@ Databricks Mosaic AI Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 1.4.0
+    :enterprise_version: 2.7.0
+
 `Mosaic AI Search <https://docs.databricks.com/en/generative-ai/vector-search.html>`_ is
 a vector database that is built into the Databricks Data Intelligence Platform and integrated 
 with its governance and productivity tools, and we've made it easy to

@@ -690,7 +690,7 @@ class ShowSamples extends Operator {
   async execute({ state, hooks, params }: ExecutionContext) {
     if (params.use_extended_selection) {
       state.set(fos.extendedSelection, {
-        selection: params.samples,
+        selection: params.samples as string[],
         scope: "global",
       });
       return;
@@ -956,7 +956,7 @@ class ClearPanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -972,7 +972,7 @@ class ClearPanelData extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -988,7 +988,7 @@ class SetPanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1004,7 +1004,7 @@ class SetPanelData extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1020,7 +1020,7 @@ class PatchPanelData extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1053,7 +1053,7 @@ function useUpdatePanelStatePartial(local?: boolean) {
         } else if (patch) {
           updatedState = cloneDeep(currentCustomPanelState);
           // patch = shallow merge OR set by path
-          for (let [path, value] of Object.entries(providedData)) {
+          for (const [path, value] of Object.entries(providedData)) {
             setPathUserUnchanged(path, panelId); // clear user changed flag
             setValue(updatedState, path, value);
           }
@@ -1077,7 +1077,7 @@ class PatchPanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1086,7 +1086,9 @@ class PatchPanelState extends Operator {
 }
 
 function createFunctionFromSource(src) {
-  return eval(src.trim());
+  // indirect eval: the reducer source is self-contained, and global-scope
+  // evaluation lets the bundler minify this module normally
+  return (0, eval)(src.trim());
 }
 
 class ReducePanelState extends Operator {
@@ -1097,7 +1099,7 @@ class ReducePanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     const setPanelStateById = useSetPanelStateById();
     return { setPanelStateById };
   }
@@ -1120,7 +1122,7 @@ class ShowPanelOutput extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1184,7 +1186,7 @@ class PromptUserForOperation extends Operator {
     inputs.bool("skip_prompt", { label: "Skip prompt", default: false });
     return new types.Property(inputs);
   }
-  useHooks(): {} {
+  useHooks(): object {
     const triggerEvent = usePanelEvent();
     return { triggerEvent };
   }
@@ -1237,7 +1239,7 @@ class Notify extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { notify: fos.useNotification() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1256,7 +1258,7 @@ class SetExtendedSelection extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return {
       setExtendedSelection: useSetRecoilState(fos.extendedSelection),
       clearExtendedSelection: useSetRecoilState(fos.extendedSelection),

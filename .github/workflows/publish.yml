@@ -35,7 +35,7 @@ jobs:
       # See
       # [fiftyone](https://pypi.org/manage/project/fiftyone/settings/publishing)
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@v1.14.0
+        uses: pypa/gh-action-pypi-publish@v1.14.2
 
   publish-docker-images:
     needs: [publish]
@@ -47,6 +47,7 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v6

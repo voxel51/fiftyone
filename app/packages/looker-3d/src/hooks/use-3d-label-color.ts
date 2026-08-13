@@ -11,7 +11,6 @@ export const use3dLabelColor = ({
   isHovered,
   isSimilarLabelHovered,
   defaultColor,
-  isSelectedForAnnotation,
 }: {
   isSelected: boolean;
   isHovered: boolean;
@@ -28,11 +27,5 @@ export const use3dLabelColor = ({
     if (isSimilarLabelHovered) return LABEL_3D_INSTANCE_HOVERED_COLOR;
     if (isHovered) return LABEL_3D_HOVERED_COLOR;
     return defaultColor;
-  }, [
-    isSelected,
-    isHovered,
-    isSimilarLabelHovered,
-    defaultColor,
-    isSelectedForAnnotation,
-  ]);
+  }, [isSelected, isHovered, isSimilarLabelHovered, defaultColor]);
 };

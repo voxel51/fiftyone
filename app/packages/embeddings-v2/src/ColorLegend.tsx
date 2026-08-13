@@ -8,25 +8,79 @@
  * Continuous fields render no legend.
  */
 import { Text, TextBadge, TextColor, TextVariant } from "@voxel51/voodo";
-import { categoryHex } from "./colors";
+import { useEffect, useRef } from "react";
+import { categoryCss, type PlotPalette } from "./colors";
 import { FloatingPanel } from "./FloatingPanel";
 import "./panel.css";
 import type { ColorMeta } from "./protocol";
 
+// A double click physically contains a single click, so the toggle is
+// deferred by this window and cancelled when the second click arrives —
+// otherwise every isolate flashes the toggled state first. Matches the
+// legacy panel, whose plotly legend used the same deferral (plotly.js
+// DBLCLICKDELAY).
+const DOUBLE_CLICK_DELAY_MS = 300;
+
 export function ColorLegend({
   field,
   meta,
+  palette,
   offLabels,
+  scopedCounts,
   onToggle,
   onSolo,
 }: {
   field: string;
   meta: ColorMeta;
+  palette: PlotPalette;
   /** Classes the field's filter hides; null = filtering unavailable */
   offLabels: ReadonlySet<string> | null;
+  /** Per-class counts for the current selection/scope, aligned with
+   * `meta.classes`; rows then render "scoped / total". Null = no
+   * scope, rows show the run's full counts alone */
+  scopedCounts?: readonly number[] | null;
   onToggle: (label: string) => void;
   onSolo: (label: string) => void;
 }) {
+  // per-label: a pending single-click toggle on one row must only be
+  // cancelled by a second click on the same row, not a click elsewhere
+  const clickTimeouts = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>(),
+  );
+  useEffect(
+    () => () => {
+      for (const timeout of clickTimeouts.current.values()) {
+        clearTimeout(timeout);
+      }
+    },
+    [],
+  );
+
+  const handleRowClick = (label: string, detail: number) => {
+    const pending = clickTimeouts.current.get(label);
+    if (pending) {
+      clearTimeout(pending);
+      clickTimeouts.current.delete(label);
+    }
+    if (detail >= 2) {
+      onSolo(label);
+      return;
+    }
+    if (detail === 0) {
+      // keyboard activation reports detail 0; no double press exists on
+      // that path, so the toggle applies immediately
+      onToggle(label);
+      return;
+    }
+    clickTimeouts.current.set(
+      label,
+      setTimeout(() => {
+        clickTimeouts.current.delete(label);
+        onToggle(label);
+      }, DOUBLE_CLICK_DELAY_MS),
+    );
+  };
+
   const classes = meta.style === "categorical" ? (meta.classes ?? []) : [];
   if (!classes.length) return null;
 
@@ -36,6 +90,7 @@ export function ColorLegend({
     <FloatingPanel
       aria-label="Color legend"
       title={<TextBadge color={TextColor.Secondary}>{field}</TextBadge>}
+      titleText={field}
       footer={
         interactive ? (
           <Text variant={TextVariant.Sm} color={TextColor.Muted}>
@@ -55,20 +110,25 @@ export function ColorLegend({
                 className="emb-legend-row"
                 disabled={!interactive}
                 data-off={offLabels?.has(label) ? "true" : "false"}
-                onClick={() => onToggle(label)}
-                onDoubleClick={() => onSolo(label)}
+                onClick={(event) => handleRowClick(label, event.detail)}
               >
                 <span
                   className="emb-legend-swatch"
-                  style={{ background: categoryHex(index) }}
+                  style={{ background: categoryCss(palette, index) }}
                 />
-                <span className="emb-legend-label">
+                <span className="emb-legend-label" title={label}>
                   <Text variant={TextVariant.Md} color={TextColor.Secondary}>
                     {label}
                   </Text>
                 </span>
-                <Text variant={TextVariant.Md} color={TextColor.Tertiary}>
-                  {cls.count.toLocaleString()}
+                <Text
+                  className="emb-legend-count"
+                  variant={TextVariant.Md}
+                  color={TextColor.Tertiary}
+                >
+                  {scopedCounts
+                    ? `${scopedCounts[index]?.toLocaleString() ?? 0} / ${cls.count.toLocaleString()}`
+                    : cls.count.toLocaleString()}
                 </Text>
               </button>
             );

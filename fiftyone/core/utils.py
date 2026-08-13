@@ -11,6 +11,7 @@ import atexit
 from bson import json_util
 from base64 import b64encode, b64decode
 from collections import defaultdict
+from collections.abc import Mapping
 from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
@@ -2640,16 +2641,42 @@ def iter_slices(sliceable, batch_size):
     """Iterates over batches of the given object via slicing.
 
     Args:
-        sliceable: an object that supports slicing
+        sliceable: an object that supports slicing, or a dict-like object
+            whose values all support slicing and share a common length
         batch_size: the desired batch size, or None to return the contents in
             a single batch
 
     Returns:
         a generator that emits batches of elements of the requested batch size
         from the input
+
+    Raises:
+        ValueError: if a dict-like ``sliceable`` has values with mismatched
+            lengths
     """
     if batch_size is None:
         yield sliceable
+        return
+
+    if isinstance(sliceable, Mapping):
+        # dict-like batches (eg HuggingFace ``BatchFeature``) are sliced
+        # per key along the batch dimension
+        lengths = {len(v) for v in sliceable.values()}
+        if len(lengths) > 1:
+            raise ValueError(
+                "Cannot slice mapping whose values have mismatched lengths "
+                "%s" % lengths
+            )
+
+        end = next(iter(lengths), 0)
+        for start in range(0, end, batch_size):
+            yield type(sliceable)(
+                {
+                    k: v[start : (start + batch_size)]
+                    for k, v in sliceable.items()
+                }
+            )
+
         return
 
     try:

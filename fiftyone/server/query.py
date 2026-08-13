@@ -9,6 +9,8 @@ FiftyOne Server queries.
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
+from functools import lru_cache
+import importlib
 import logging
 import typing as t
 
@@ -110,6 +112,9 @@ class BrainRunConfig(RunConfig):
     method: t.Optional[str]
     patches_field: t.Optional[str]
     supports_prompts: t.Optional[bool]
+    num_dims: t.Optional[int]
+    points_field: t.Optional[str]
+    model: t.Optional[str]
 
     @gql.field
     def type(self) -> t.Optional[BrainRunType]:
@@ -148,6 +153,47 @@ class BrainRunConfig(RunConfig):
 @gql.type
 class BrainRun(Run):
     config: t.Optional[BrainRunConfig]
+    #: Whether the run's results have been saved.
+    ready: t.Optional[bool]
+    #: Why this run cannot be used, when that is knowable WITHOUT loading its
+    #: results — a config class that no longer imports (a rename the run
+    #: predates), or a malformed run document.
+    error: t.Optional[str]
+
+
+@lru_cache(maxsize=256)
+def _run_cls_error(cls_path: str) -> t.Optional[str]:
+    """Whether a stored run class still imports. Cached because a failed
+    import is not cached by Python — every miss would re-walk the module
+    search path on every dataset query."""
+    module, _, name = cls_path.rpartition(".")
+    if not module:
+        return f"invalid run config class '{cls_path}'"
+
+    try:
+        cls = getattr(importlib.import_module(module), name, None)
+    except ImportError:
+        cls = None
+
+    if cls is None:
+        return (
+            f"run config class '{cls_path}' is not importable; the run "
+            "likely predates a rename and must be regenerated or migrated"
+        )
+
+    return None
+
+
+def _brain_run_error(run: dict) -> t.Optional[str]:
+    """A run's list-time error: knowable from the run DOCUMENT alone, never
+    from its results (loading those per run per dataset query is exactly the
+    cost the ``ready``/``error`` fields exist to avoid)."""
+    config = run.get("config")
+    cls_path = config.get("cls") if isinstance(config, dict) else None
+    if not isinstance(cls_path, str) or not cls_path:
+        return "run document has no config"
+
+    return _run_cls_error(cls_path)
 
 
 @gql.type
@@ -321,7 +367,18 @@ class Dataset:
         doc["sample_fields"] = flat
 
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
-        doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
+        doc["brain_methods"] = [
+            (
+                {
+                    **run,
+                    "ready": run.get("results") is not None,
+                    "error": _brain_run_error(run),
+                }
+                if isinstance(run, dict)
+                else run
+            )
+            for run in doc.get("brain_methods", {}).values()
+        ]
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["saved_views"] = doc.get("saved_views", [])
         doc["skeletons"] = list(

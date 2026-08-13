@@ -135,13 +135,12 @@ export const useLightControls = (
       default:
         return null;
     }
-  }, [lightHelperConfig, lightHelperSize]);
+  }, [lightHelperConfig, lightHelperSize, theme.primary.main]);
 
   useHelper(
     helperConfig ? editingLightRef : false,
-    // @ts-ignore
+    // @ts-expect-error helper tuple is heterogeneous, drei expects a helper class
     helperConfig?.at(0) ?? DirectionalLightHelper,
-    // @ts-ignore
     ...(helperConfig ?? []).slice(1),
   );
 

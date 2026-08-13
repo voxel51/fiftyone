@@ -40,6 +40,9 @@ const ANCHOR_Y = 12;
 export interface FloatingPanelProps {
   /** Header label, rendered beside the drag grip */
   title: ReactNode;
+  /** Full title as plain text, for the native hover tooltip when the header
+   * is truncated (the visible label shows the meaningful tail) */
+  titleText?: string;
   /** Muted helper row under a hairline */
   footer?: ReactNode;
   children: ReactNode;
@@ -48,6 +51,7 @@ export interface FloatingPanelProps {
 
 export function FloatingPanel({
   title,
+  titleText,
   footer,
   children,
   "aria-label": ariaLabel,
@@ -79,7 +83,9 @@ export function FloatingPanel({
         >
           <DragHandleIcon />
         </div>
-        <span className="emb-floating-panel-title">{title}</span>
+        <span className="emb-floating-panel-title" title={titleText}>
+          {title}
+        </span>
         <Button
           variant={Variant.Icon}
           size={Size.Xs}

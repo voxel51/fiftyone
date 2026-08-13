@@ -1,0 +1,17 @@
+name: Setup yarn
+description: >-
+  Enables corepack and activates the yarn version pinned by app/package.json's
+  packageManager field, so workflows can never drift from the repo's yarn.
+  The binary is fetched from the npm registry — repo.yarnpkg.com (corepack's
+  default) has had outages that killed every job at this step.
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare yarn
+      shell: bash
+      env:
+        COREPACK_NPM_REGISTRY: https://registry.npmjs.org
+      run: |
+        corepack enable
+        corepack prepare "$(node -p "require('./app/package.json').packageManager.split('+')[0]")" --activate

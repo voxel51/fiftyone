@@ -9,6 +9,7 @@ import {
   fetchRemotePlacements,
   listLocalAndRemoteOperators,
   resolveLocalPlacements,
+  type RawContext,
 } from "./operators";
 import {
   activePanelsEventCountAtom,
@@ -32,6 +33,9 @@ function useOperatorThrottledContextSetter() {
   const setContext = useSetRecoilState(operatorThrottledContext);
   const spaces = useRecoilValue(fos.sessionSpaces);
   const workspaceName = spaces._name;
+  const modal = !!useRecoilValue(fos.modal);
+  const extendedSelection = useRecoilValue(fos.extendedSelection);
+  const activeFields = useRecoilValue(fos.activeFields({ modal }));
   const setThrottledContext = useMemo(() => {
     return debounce(
       (context) => {
@@ -46,7 +50,7 @@ function useOperatorThrottledContextSetter() {
     setThrottledContext({
       datasetName,
       view,
-      extendedStages,
+      extended: extendedStages,
       filters,
       selectedSamples,
       sampleSelectionStyle,
@@ -56,6 +60,8 @@ function useOperatorThrottledContextSetter() {
       groupSlice,
       spaces,
       workspaceName,
+      extendedSelection,
+      activeFields,
     });
   }, [
     setThrottledContext,
@@ -71,7 +77,15 @@ function useOperatorThrottledContextSetter() {
     groupSlice,
     spaces,
     workspaceName,
+    extendedSelection,
+    activeFields,
   ]);
+}
+
+function isCompleteThrottledContext(
+  context: Partial<RawContext>,
+): context is RawContext {
+  return Boolean(context.datasetName);
 }
 
 export function useOperatorPlacementsResolver() {
@@ -85,10 +99,13 @@ export function useOperatorPlacementsResolver() {
   const lastContext = useRef(null);
 
   useEffect(() => {
-    async function updateOperatorPlacementsAtom() {
+    async function updateOperatorPlacementsAtom(completeContext: RawContext) {
       setResolving(true);
       try {
-        const ctx = new ExecutionContext({}, context);
+        // this context only has the fields the setter above publishes, not
+        // everything a live invocation context would — that's enough for
+        // resolving placements
+        const ctx = new ExecutionContext({}, completeContext);
         const remotePlacements = await fetchRemotePlacements(ctx);
         const localPlacements = await resolveLocalPlacements(ctx);
         const placements = [...remotePlacements, ...localPlacements];
@@ -101,12 +118,12 @@ export function useOperatorPlacementsResolver() {
     }
     if (
       !isEqual(lastContext.current, context) &&
-      context?.datasetName &&
+      isCompleteThrottledContext(context) &&
       operatorsInitialized &&
       pluginsLoaderState === "ready"
     ) {
       lastContext.current = context;
-      updateOperatorPlacementsAtom();
+      updateOperatorPlacementsAtom(context);
     }
   }, [
     context,

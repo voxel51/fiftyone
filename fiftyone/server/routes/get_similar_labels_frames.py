@@ -302,7 +302,8 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
         collection = foo.get_async_db_conn()[
             view._dataset._sample_collection_name
         ]
-        _results = await foo.aggregate(collection, pipeline).to_list(None)
+        cursor = await foo.aggregate(collection, pipeline)
+        _results = await cursor.to_list(None)
         label_id_map = _results[0]["labelIdMap"] if _results else {}
         return JSONResponse(
             {

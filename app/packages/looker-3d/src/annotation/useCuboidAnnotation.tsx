@@ -6,7 +6,7 @@ import {
   useSceneSampleId,
 } from "@fiftyone/annotation";
 import { useCurrentDatasetId } from "@fiftyone/state";
-import { TransformControlsProps } from "@react-three/drei";
+import type { TransformControlsProps } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
@@ -18,11 +18,12 @@ import {
   useWorkingLabel,
 } from "../annotation/store";
 import type { TransientCuboidState } from "../annotation/store/types";
+import type { OverlayLabel } from "../labels/loader";
 import { isDetection3dOverlay } from "../types";
 import { radiansToQuaternion } from "../utils";
 
 interface UseCuboidAnnotationProps {
-  label: any;
+  label: OverlayLabel;
   location: Vector3Tuple;
   dimensions: Vector3Tuple;
   rotation: Vector3Tuple;
@@ -38,7 +39,7 @@ export const useCuboidAnnotation = ({
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UseCuboidAnnotationProps) => {
-  const labelId = label._id;
+  const labelId = label.data._id;
 
   const workingLabel = useWorkingLabel(labelId);
   const { updateCuboid } = useUpdateTransient();
@@ -50,7 +51,9 @@ export const useCuboidAnnotation = ({
   const dataset = useCurrentDatasetId() ?? "";
   const sample = useSceneSampleId();
 
-  const transformControlsRef = useRef<TransformControlsProps>(null);
+  const transformControlsRef = useRef<
+    THREE.Object3D & Pick<TransformControlsProps, "mode">
+  >(null);
   const contentRef = useRef<THREE.Group>(null);
 
   // Compute effective values from working store (or fallback to props)
@@ -69,10 +72,10 @@ export const useCuboidAnnotation = ({
   >(() => {
     if (isDetection3dOverlay(workingLabel)) {
       return [
-        workingLabel.location,
-        workingLabel.dimensions,
-        workingLabel.rotation ?? rotation,
-        workingLabel.quaternion ?? null,
+        workingLabel.data.location,
+        workingLabel.data.dimensions,
+        workingLabel.data.rotation ?? rotation,
+        workingLabel.data.quaternion ?? null,
       ];
     }
     // Fallback to props if not in working store
@@ -205,6 +208,45 @@ export const useCuboidAnnotation = ({
     finalizeCuboidDrag(labelId);
   }, [labelId, finalizeCuboidDrag]);
 
+  const handleHeadingDragStart = useCallback(() => {
+    startDrag(labelId);
+  }, [startDrag, labelId]);
+
+  /**
+   * Commits a heading relabel in one shot. Unlike face-resize there is nothing
+   * continuous to preview — the arrow snaps to a face on release — so the
+   * transient write and the finalize happen together. `finalizeCuboidDrag`
+   * applies `dimensionsDelta` and `quaternionOverride` independently, so
+   * sending both is the same path scale and rotate already use, just combined.
+   *
+   * `baseDimensions` is the caller's drag-start snapshot rather than the live
+   * `effectiveDimensions`, which keeps this callback referentially stable for
+   * the duration of a drag (a changing identity would retrigger the caller's
+   * pointer-listener effect and commit mid-drag).
+   */
+  const handleHeadingRelabelCommit = useCallback(
+    (
+      baseDimensions: Vector3Tuple,
+      nextDimensions: Vector3Tuple,
+      nextQuaternion: THREE.Vector4Tuple,
+    ) => {
+      updateCuboid(labelId, {
+        dimensionsDelta: [
+          nextDimensions[0] - baseDimensions[0],
+          nextDimensions[1] - baseDimensions[1],
+          nextDimensions[2] - baseDimensions[2],
+        ],
+        quaternionOverride: nextQuaternion,
+      });
+      finalizeCuboidDrag(labelId);
+    },
+    [labelId, updateCuboid, finalizeCuboidDrag],
+  );
+
+  const handleHeadingDragCancel = useCallback(() => {
+    endDrag(labelId);
+  }, [endDrag, labelId]);
+
   // This effect clears drag state on unmount
   useEffect(() => {
     return () => endDrag(labelId);
@@ -228,5 +270,8 @@ export const useCuboidAnnotation = ({
     handleFaceResizeStart,
     handleFaceResizeChange,
     handleFaceResizeEnd,
+    handleHeadingDragStart,
+    handleHeadingRelabelCommit,
+    handleHeadingDragCancel,
   };
 };

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
-import { SCOPE_DATASET } from "../constants";
+import { useViewTargets } from "@fiftyone/operators";
+import { BrainKeyConfig, CloneConfig, QueryType, ViewTarget } from "../types";
 import { UploadedImage } from "../utils";
 import { useSearchSelection } from "./useSearchSelection";
 import { useSearchSubmission } from "./useSearchSubmission";
@@ -57,7 +57,12 @@ export const useNewSearchForm = (
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
     null,
   );
-  const [searchScope, setSearchScope] = useState<SearchScope>(SCOPE_DATASET);
+  const { targets, defaultTarget } = useViewTargets({ requireFlat: true });
+  const viewTargetOptions = useMemo(
+    () => targets.filter((meta) => meta.target !== ViewTarget.SELECTED_SAMPLES),
+    [targets],
+  );
+  const [viewTarget, setViewTarget] = useState<ViewTarget>(defaultTarget);
 
   // ─── Derived config ─────────────────────────────────────────────
 
@@ -95,6 +100,15 @@ export const useNewSearchForm = (
     }
   }, [supportsUpload, queryType]);
 
+  useEffect(() => {
+    const current = viewTargetOptions.find(
+      (meta) => meta.target === viewTarget,
+    );
+    if (!current || current.unavailableReason !== undefined) {
+      setViewTarget(defaultTarget);
+    }
+  }, [viewTargetOptions, defaultTarget, viewTarget]);
+
   // ─── Submission ─────────────────────────────────────────────────
 
   const {
@@ -114,7 +128,7 @@ export const useNewSearchForm = (
     uploadedImage,
     reverse,
     selectedConfig,
-    searchScope,
+    viewTarget,
     hasView,
     view: view as unknown[],
     k,
@@ -150,8 +164,9 @@ export const useNewSearchForm = (
     setDistField,
     runName,
     setRunName,
-    searchScope,
-    setSearchScope,
+    viewTarget,
+    setViewTarget,
+    viewTargetOptions,
     dynamicResults,
     setDynamicResults,
     uploadedImage,

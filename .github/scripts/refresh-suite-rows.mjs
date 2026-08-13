@@ -21,7 +21,7 @@ import {
   collectResults,
   hasPythonJobs,
 } from "./python-section.mjs";
-import { buildSuiteRows, jobsIcon } from "./suite-rows.mjs";
+import { buildSuiteRows, jobsIcon, settleHeadline } from "./suite-rows.mjs";
 
 const [, , jobsPath, bodyPath, junitDir] = process.argv;
 if (!jobsPath || !bodyPath) {
@@ -89,13 +89,7 @@ if (bodyPath === "--new") {
     lines = buildFresh();
   } else {
     lines.splice(header + 2, e2eRow - header - 2, ...rows);
-
-    // The headline is posted by the e2e verdict, which only knows e2e; a
-    // suite that failed after posting must flip it
-    const headline = lines.findIndex((l) => l.startsWith("## "));
-    if (headline !== -1 && rows.some((r) => r.includes("❌"))) {
-      lines[headline] = lines[headline].replace(/^## [✅⚠️]+ CI/u, "## ❌ CI");
-    }
+    settleHeadline(lines, rows);
   }
 }
 

@@ -1,67 +1,48 @@
-import { useCallback, useEffect, useState } from "react";
-import { fetchRuns, type VisualizationRun } from "./protocol";
+import * as fos from "@fiftyone/state";
+import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
+import type { VisualizationRun } from "./protocol";
 
-/** Poll cadence while any run is awaiting results */
-export const PENDING_POLL_MS = 5_000;
+/** The brain config class every visualization run derives from */
+const VISUALIZATION_CLS = "fiftyone.brain.visualization.";
 
 /**
- * The dataset's visualization runs. `runs` is null while loading —
- * the runs page is the landing view, so there is no auto-selection;
- * callers resolve their own active run from the list. `refresh`
- * re-fetches after a mutation (e.g. deleting a run).
+ * The dataset's visualization runs.
  *
- * While any run is pending (no results yet), the list re-fetches every
- * few seconds so a finished computation appears without a reload. The
- * poll stops the moment every run is ready, skips ticks while the tab
- * is hidden, keeps the last list on transient errors, and only
- * publishes a new list when something actually changed.
+ * Read from the dataset the page already loaded — its GraphQL query carries
+ * `brainMethods` on every dataset query, so asking a route for the same
+ * records was a round trip for data already in hand. `runs` is null only
+ * before the dataset resolves; the runs page is the landing view, so there is
+ * no auto-selection and callers pick their own active run from the list.
+ *
+ * A run that is still computing arrives with `ready: false` and flips when
+ * the dataset query refreshes. This hook never fetches on its own; whether
+ * and when to ask for a fresh dataset query is the caller's concern.
  */
-export function useVisualizationRuns(datasetName: string | null): {
+export function useVisualizationRuns(): {
   runs: VisualizationRun[] | null;
-  error: string | null;
-  refresh: () => void;
 } {
-  const [runs, setRuns] = useState<VisualizationRun[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [nonce, setNonce] = useState(0);
+  const dataset = useRecoilValue(fos.dataset);
 
-  useEffect(() => {
-    if (!datasetName) return undefined;
-    let stale = false;
-    setRuns(null);
-    setError(null);
-    fetchRuns(datasetName)
-      .then((result) => !stale && setRuns(result))
-      .catch((e) => !stale && setError(String(e)));
-    return () => {
-      stale = true;
-    };
-  }, [datasetName, nonce]);
+  const runs = useMemo(() => {
+    if (!dataset) return null;
 
-  const pending = Boolean(runs?.some((run) => !run.ready));
-  useEffect(() => {
-    if (!datasetName || !pending) return undefined;
-    let stale = false;
-    const id = window.setInterval(() => {
-      if (document.hidden) return;
-      fetchRuns(datasetName)
-        .then((result) => {
-          if (stale) return;
-          setRuns((current) =>
-            JSON.stringify(current) === JSON.stringify(result)
-              ? current
-              : result,
-          );
-        })
-        .catch(() => undefined);
-    }, PENDING_POLL_MS);
-    return () => {
-      stale = true;
-      window.clearInterval(id);
-    };
-  }, [datasetName, pending]);
+    return (dataset.brainMethods ?? [])
+      .filter((run) => run.config?.cls?.startsWith(VISUALIZATION_CLS))
+      .map((run) => ({
+        brainKey: run.key,
+        method: run.config?.method ?? null,
+        dims: run.config?.numDims ?? null,
+        patchesField: run.config?.patchesField ?? null,
+        pointsField: run.config?.pointsField ?? null,
+        model: run.config?.model ?? null,
+        ready: run.ready ?? false,
+        error: run.error ?? null,
+        // The run timestamp keys every per-run client cache, so it has to be
+        // the same string the columns were cached under
+        timestamp: run.timestamp ? String(run.timestamp) : null,
+      }));
+  }, [dataset]);
 
-  const refresh = useCallback(() => setNonce((n) => n + 1), []);
-
-  return { runs, error, refresh };
+  return { runs };
 }

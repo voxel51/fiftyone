@@ -84,11 +84,8 @@ jobs:
         with:
           node-version: 22
 
-      - name: Enable corepack
-        run: corepack enable
-
-      - name: Prepare yarn 4
-        run: corepack prepare yarn@4.9.1 --activate
+      - name: Prepare yarn
+        uses: ./.github/actions/setup-yarn
 
       - name: Detect tests to burn in
         # New and modified tests must pass a burn-in (repeated runs, retries
@@ -195,7 +192,6 @@ jobs:
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
-      VFF_EXP_ANNOTATION: true
     defaults:
       run:
         shell: bash
@@ -331,7 +327,6 @@ jobs:
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
-      VFF_EXP_ANNOTATION: true
     defaults:
       run:
         shell: bash

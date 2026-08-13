@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { LASSO_MIN_EXTENT_PX } from "../constants";
 import type { Polygon } from "../types";
 import { LassoOverlay } from "./LassoOverlay";
 
@@ -24,7 +25,9 @@ const fire = (
 describe("LassoOverlay", () => {
   let parent: HTMLDivElement;
   let container: HTMLDivElement;
-  let onComplete: ReturnType<typeof vi.fn>;
+  let onComplete: Mock<
+    (screenPolygon: Polygon | null, x: number, y: number) => void
+  >;
   let overlay: LassoOverlay;
 
   beforeEach(() => {
@@ -118,19 +121,48 @@ describe("LassoOverlay", () => {
     expect(onComplete).toHaveBeenCalledExactlyOnceWith(null, 6, 6);
   });
 
+  // Hand jitter during a click clears the 3px move filter several times over,
+  // so point count alone called it a lasso — one that encloses nothing and
+  // (before the extent test) reached the plot as a real gesture
+  it("reports a jittery click as a click, not a pinprick lasso", () => {
+    drag([
+      [40, 40],
+      [44, 40],
+      [48, 41],
+      [48, 44],
+    ]);
+    expect(onComplete).toHaveBeenCalledExactlyOnceWith(null, 48, 44);
+  });
+
+  it.each([
+    ["under the extent threshold", LASSO_MIN_EXTENT_PX - 4, null],
+    ["over the extent threshold", LASSO_MIN_EXTENT_PX + 28, "polygon"],
+  ])("treats a drag %s accordingly", (_label, span, expected) => {
+    drag([
+      [0, 0],
+      [span, 0],
+      [span, span],
+    ]);
+    const [polygon] = onComplete.mock.calls[0];
+    expect(polygon === null ? null : "polygon").toBe(expected);
+  });
+
   it("skips sub-3px moves to keep the polygon small", () => {
+    // Last point off the (0,0)-(10,10) line: a collinear drag has no
+    // enclosing area and would otherwise be rejected as a degenerate lasso,
+    // which isn't what this test is about
     drag([
       [0, 0],
       [1, 1],
       [2, 2],
       [10, 10],
-      [20, 20],
+      [20, 21],
     ]);
     const polygon = onComplete.mock.calls[0][0];
     expect(polygon).toEqual([
       [0, 0],
       [10, 10],
-      [20, 20],
+      [20, 21],
     ]);
   });
 

@@ -25,6 +25,8 @@ export interface DecodeVerdict {
   codec: string;
   /** Whether `VideoDecoder.isConfigSupported` accepted it. */
   decodable: boolean;
+  /** Audio track present in the container; undefined = unknown. */
+  hasAudio?: boolean;
 }
 
 /** The slice of the `Storage` interface we use (so tests inject a fake). */
@@ -33,9 +35,10 @@ export interface KeyValueStore {
   setItem(key: string, value: string): void;
 }
 
-// Bump to invalidate every persisted entry (keys are namespaced by version, so
-// old entries simply stop being read).
-const VERSION = "v1";
+// Bump to invalidate every persisted entry (keys are namespaced by version,
+// so old entries simply stop being read) — required whenever the verdict
+// shape gains a field, else stale entries skip the probe that would fill it.
+const VERSION = "v2";
 const PREFIX = `fo:nd:${VERSION}`;
 
 const sampleKey = (dataset: string, sampleId: string): string =>
@@ -172,7 +175,11 @@ function isVerdict(value: unknown): value is DecodeVerdict {
   }
 
   const v = value as Record<string, unknown>;
-  return typeof v.codec === "string" && typeof v.decodable === "boolean";
+  return (
+    typeof v.codec === "string" &&
+    typeof v.decodable === "boolean" &&
+    (v.hasAudio === undefined || typeof v.hasAudio === "boolean")
+  );
 }
 
 /** A guarded `localStorage`, or `null` where it's unavailable (SSR/privacy). */
