@@ -10,6 +10,9 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { getLocatorDominantColorShare } from "src/oss/utils/screenshot";
 
 const datasetName = getUniqueDatasetNameWithPrefix("mcap-correctness");
+const alternateMediaDatasetName = getUniqueDatasetNameWithPrefix(
+  "mcap-alternate-grid-media",
+);
 const fixtureDir = path.join(os.tmpdir(), datasetName);
 const originalMultimodalFlag = process.env.VFF_MULTIMODAL;
 const { long, sidebar, tinyA, tinyB, unsupported } = MCAP_FIXTURE_CONTRACT;
@@ -18,6 +21,7 @@ const fixturePaths = {
   episodeB: path.join(fixtureDir, tinyB.fileName),
   invalid: path.join(fixtureDir, "not-an-mcap.txt"),
   long: path.join(fixtureDir, long.fileName),
+  thumbnail: path.join(fixtureDir, "episode-thumbnail.png"),
   unsupported: path.join(fixtureDir, unsupported.fileName),
 };
 const cameraPoseFileNames = [
@@ -81,6 +85,7 @@ test.describe.serial("MCAP correctness", () => {
   test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
     process.env.VFF_MULTIMODAL = "1";
     await foWebServer.startWebServer();
+    await fs.mkdir(fixtureDir, { recursive: true });
     await Promise.all([
       mediaFactory.createMcapFixture({
         kind: tinyA.kind,
@@ -112,6 +117,13 @@ test.describe.serial("MCAP correctness", () => {
           outputPath,
         }),
       ),
+      mediaFactory.createImage({
+        fillColor: "#ff00ff",
+        height: 96,
+        hideLogs: true,
+        outputPath: fixturePaths.thumbnail,
+        width: 128,
+      }),
     ]);
     await fs.writeFile(fixturePaths.invalid, "not an mcap file");
 
@@ -136,6 +148,19 @@ dataset.add_samples([
     fo.Sample(filepath=r"${sidebarPaths[2]}", name="sidebar-persistence-c"),
     fo.Sample(filepath=r"${sidebarPaths[3]}", name="sidebar-persistence-d"),
 ])
+
+alternate_media_dataset = fo.Dataset("${alternateMediaDatasetName}")
+alternate_media_dataset.persistent = True
+alternate_media_dataset.add_sample(
+    fo.Sample(
+        filepath=r"${fixturePaths.episodeA}",
+        thumbnail_path=r"${fixturePaths.thumbnail}",
+    )
+)
+alternate_media_dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+alternate_media_dataset.app_config.grid_media_field = "thumbnail_path"
+alternate_media_dataset.app_config.modal_media_field = "filepath"
+alternate_media_dataset.save()
   `);
   });
 
@@ -149,8 +174,9 @@ dataset.add_samples([
       await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
 
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
+for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
+    if fo.dataset_exists(dataset_name):
+        fo.delete_dataset(dataset_name)
     `);
     } catch (error) {
       void error;
@@ -163,8 +189,14 @@ if fo.dataset_exists("${datasetName}"):
     await fs.rm(fixtureDir, { force: true, recursive: true });
   });
 
-  test.beforeEach(async ({ fiftyoneLoader, page }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  test.beforeEach(async ({ fiftyoneLoader, page }, testInfo) => {
+    await fiftyoneLoader.waitUntilGridVisible(
+      page,
+      testInfo.title ===
+        "renders an alternate image field in grid and opens the MCAP episode modal"
+        ? alternateMediaDatasetName
+        : datasetName,
+    );
   });
 
   test.afterEach(async ({ modal }) => {
@@ -296,6 +328,20 @@ if fo.dataset_exists("${datasetName}"):
     );
     await modal.episode.waitForReady(sidebarFileNames.at(-1)!);
     await expectRepresentativeSidebarPreferences(modal);
+  });
+
+  test("renders an alternate image field in grid and opens the MCAP episode modal", async ({
+    grid,
+    modal,
+  }) => {
+    const tile = grid.getNthTile(0);
+    await expect(tile).toHaveAttribute("data-cy", "looker");
+    await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
+
+    await openMcapModal(grid, modal);
+    await modal.episode.waitForReady("tiny-episode-a.mcap");
+    await modal.episode.expectTileTitles(["camera/front", "points"], ["Logs"]);
+    await modal.episode.expectNoViewerError();
   });
 
   test("keeps paused stepping, raw values, logs, and image pixels synchronized", async ({
