@@ -324,7 +324,7 @@ export const computeTagData = ({
   ): TagData | null => {
     const attributes = shownLabelAttributes?.[path];
 
-    // every attribute toggled off — hide the tag entirely
+    // all attributes off — no tag
     if (attributes && !attributes.length) {
       return null;
     }

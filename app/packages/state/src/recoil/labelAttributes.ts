@@ -68,10 +68,9 @@ const labelAttributeNames = selectorFamily<string[], string>({
 
 /**
  * The attribute names of a label field rendered as text in looker overlays.
- * An explicitly empty list means the user turned every attribute off and
- * renders no text. Attributes no longer present in the schema are silently
- * dropped; when a non-empty list loses every valid entry, the default
- * applies.
+ * An explicitly empty list renders no text. Attributes no longer present in
+ * the schema are silently dropped; when a non-empty list loses every valid
+ * entry, the default applies.
  */
 export const shownLabelAttributes = selectorFamily<string[], string>({
   key: "shownLabelAttributes",
