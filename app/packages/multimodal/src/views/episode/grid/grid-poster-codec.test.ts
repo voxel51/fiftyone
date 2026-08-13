@@ -80,6 +80,22 @@ describe("grid poster codec", () => {
     );
     expect(getGridPosterCache().peek("failed")).toBeNull();
   });
+
+  it("skips encoding when the cached poster is already large enough", () => {
+    resetGridPosterCacheForTests({ maxSizeBytes: 10_000 });
+    getGridPosterCache().put("current", {
+      ...capture("current", 30).entry,
+      bytes: new Uint8Array([1]),
+    });
+    const cloneCanvas = vi.fn(() => ownedCanvas());
+    const encode = vi.fn();
+    const encoder = createGridPosterEncoder({ cloneCanvas, encode });
+
+    encoder.capture(capture("current", 30));
+
+    expect(cloneCanvas).not.toHaveBeenCalled();
+    expect(encode).not.toHaveBeenCalled();
+  });
 });
 
 function capture(key: string, width = 10) {

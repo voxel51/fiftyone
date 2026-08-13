@@ -55,6 +55,10 @@ export function createGridPosterEncoder(
       const job = pending.get(key);
       if (!job) continue;
       pending.delete(key);
+      if (!shouldReplaceGridPoster(getGridPosterCache().peek(key), job.entry)) {
+        releaseCanvas(job.canvas);
+        continue;
+      }
       active += 1;
       const jobGeneration = generation;
       recordGridPosterDiagnostic("encodesStarted");
@@ -81,6 +85,14 @@ export function createGridPosterEncoder(
   return {
     capture(capture) {
       try {
+        if (
+          !shouldReplaceGridPoster(
+            getGridPosterCache().peek(capture.key),
+            capture.entry,
+          )
+        ) {
+          return;
+        }
         const job = { ...capture, canvas: cloneCanvas(capture.source) };
         const previous = pending.get(capture.key);
         if (previous) {

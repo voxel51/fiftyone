@@ -186,7 +186,7 @@ export function gridPosterFreshness(
 
 export function shouldReplaceGridPoster(
   current: GridPosterCacheEntry | null,
-  next: GridPosterCacheEntry,
+  next: Omit<GridPosterCacheEntry, "bytes">,
 ): boolean {
   if (!current) return true;
   if (
@@ -195,7 +195,11 @@ export function shouldReplaceGridPoster(
   ) {
     return true;
   }
-  return next.width >= current.width && next.height >= current.height;
+  return (
+    next.width >= current.width &&
+    next.height >= current.height &&
+    (next.width > current.width || next.height > current.height)
+  );
 }
 
 export function defaultGridPosterCacheBudgetBytes(): number {

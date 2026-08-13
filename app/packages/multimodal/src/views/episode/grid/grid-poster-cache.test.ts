@@ -106,9 +106,14 @@ describe("grid poster cache", () => {
     ).toBe("stale-pose");
     expect(
       shouldReplaceGridPoster(poster, {
-        ...poster,
-        bytes: new Uint8Array([2]),
+        height: poster.height,
+        mimeType: poster.mimeType,
         pointCloudPoseKey: poseB,
+        sourceKind: poster.sourceKind,
+        streamId: poster.streamId,
+        streamSourceName: poster.streamSourceName,
+        streamSourceNames: poster.streamSourceNames,
+        width: poster.width,
       }),
     ).toBe(true);
     expect(
