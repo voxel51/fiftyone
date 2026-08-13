@@ -10,7 +10,13 @@ import inspect
 import os
 from collections.abc import Iterator
 from types import SimpleNamespace
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from fiftyone.utils.depth_anything import (
+        DepthAnythingV3Model,
+        DepthAnythingV3OutputProcessor,
+    )
 
 import numpy as np
 import pytest
@@ -87,7 +93,7 @@ class TestDepthAnythingV3ModelConfig:
 class TestDepthAnythingV3OutputProcessor:
     """Test DepthAnythingV3OutputProcessor."""
 
-    def _make_processor(self) -> Any:
+    def _make_processor(self) -> "DepthAnythingV3OutputProcessor":
         from fiftyone.utils.depth_anything import (
             DepthAnythingV3OutputProcessor,
         )
@@ -566,7 +572,7 @@ class TestDepthAnythingV3InferenceForwarding:
     def _make_model(
         config_dict: dict[str, Any],
         scale_factor: Optional[float] = None,
-    ) -> tuple[Any, list[tuple[Any, dict[str, Any]]]]:
+    ) -> tuple["DepthAnythingV3Model", list[tuple[Any, dict[str, Any]]]]:
         """Returns a model whose inference is stubbed, and the list that
         records each ``(inputs, kwargs)`` it was called with."""
         from fiftyone.utils.depth_anything import (
