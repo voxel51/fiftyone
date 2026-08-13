@@ -6,7 +6,7 @@ import {
   TextVariant,
   Toggle,
 } from "@voxel51/voodo";
-import React, { useMemo, useState, useSyncExternalStore } from "react";
+import React, { useMemo, useState } from "react";
 import type { SceneSource } from "../../../../scene-inventory/index";
 import {
   isFollowTrackingMode,
@@ -49,7 +49,7 @@ import {
   cameraSourceStatusDetails,
   type CameraSourceStatus,
 } from "./camera-source-status";
-import type { PointCloudCountStore } from "./point-cloud-count-store";
+import { usePointCloudCount } from "./point-cloud-count-state";
 
 /**
  * One source group shown in the 3D settings sidebar.
@@ -87,7 +87,6 @@ export interface Scene3dTileSettingsSelectionControls {
  */
 export interface Scene3dTileSettingsPointCloudInputs {
   readonly colorCapabilities: ReadonlyMap<string, PointCloudColorCapabilities>;
-  readonly pointCountStore: PointCloudCountStore;
   readonly selectedSources: readonly SceneSource[];
 }
 
@@ -189,11 +188,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
   const pointCloudLabelSuffixesBySourceId = new Map(
     pointCloudSources.map((source) => [
       source.id,
-      <PointCloudCountLabel
-        key={source.id}
-        sourceId={source.id}
-        store={pointCloudInputs.pointCountStore}
-      />,
+      <PointCloudCountLabel key={source.id} sourceId={source.id} />,
     ]),
   );
   const selectedPointCloudSourceIds = new Set(
@@ -729,18 +724,8 @@ function SourceGroup({
 
 const EMPTY_SOURCE_IDS: ReadonlySet<string> = new Set();
 
-function PointCloudCountLabel({
-  sourceId,
-  store,
-}: {
-  readonly sourceId: string;
-  readonly store: PointCloudCountStore;
-}) {
-  const pointCount = useSyncExternalStore(
-    store.subscribe,
-    () => store.getPointCount(sourceId),
-    () => undefined,
-  );
+function PointCloudCountLabel({ sourceId }: { readonly sourceId: string }) {
+  const pointCount = usePointCloudCount(sourceId);
 
   return pointCount === undefined ? null : (
     <Text

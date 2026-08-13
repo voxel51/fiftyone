@@ -1,5 +1,6 @@
 import { PlaybackProvider } from "@fiftyone/playback";
 import { TileIdScope } from "@fiftyone/tiling";
+import { createStore, Provider as JotaiProvider } from "jotai";
 import {
   act,
   cleanup,
@@ -32,10 +33,7 @@ import {
   type ReferenceGridSettings,
   type SceneBackgroundSettings,
 } from "../../settings/modal/state";
-import {
-  createPointCloudCountStore,
-  type PointCloudCountStore,
-} from "./point-cloud-count-store";
+import { publishPointCloudCounts } from "./point-cloud-count-state";
 
 const CAM_FRONT = source(
   "CAM_FRONT/camera_info",
@@ -155,20 +153,20 @@ describe("Scene3dTileSettings", () => {
   });
 
   it("shows the current point count beside each point cloud name", () => {
-    const pointCloudCountStore = createPointCloudCountStore();
-    renderSettings({ pointCloudCountStore });
+    const store = createStore();
+    renderSettings({}, store);
 
     expect(screen.queryByText("(123,456)")).toBeNull();
 
     act(() => {
-      pointCloudCountStore.publish(new Map([[LIDAR.id, 123_456]]));
+      publishPointCloudCounts(store, "3d-1", new Map([[LIDAR.id, 123_456]]));
     });
 
     expect(screen.getByText("(123,456)")).toBeTruthy();
     expect(screen.getByRole("checkbox", { name: LIDAR.label })).toBeTruthy();
 
     act(() => {
-      pointCloudCountStore.publish(new Map());
+      publishPointCloudCounts(store, "3d-1", new Map());
     });
 
     expect(screen.queryByText("(123,456)")).toBeNull();
@@ -941,7 +939,6 @@ interface SettingsTestProps {
     string,
     { readonly hasRgb: boolean; readonly scalarFields: readonly string[] }
   >;
-  readonly pointCloudCountStore: PointCloudCountStore;
   readonly pointCloudColors: Record<string, PersistedPointCloudColorSettings>;
   readonly pointCloudPointSize: number;
   readonly pointCloudSources: readonly SceneSource[];
@@ -974,15 +971,18 @@ interface SettingsTestProps {
 
 function renderSettings(
   overrides: Partial<SettingsTestProps> = {},
+  store: ReturnType<typeof createStore> = createStore(),
 ): SettingsTestProps {
   const props = settingsProps(overrides);
   seedModalSettings(props);
   render(
-    <PlaybackProvider duration={1}>
-      <TileIdScope tileId="3d-1">
-        <Scene3dTileSettings {...componentProps(props)} />
-      </TileIdScope>
-    </PlaybackProvider>,
+    <JotaiProvider store={store}>
+      <PlaybackProvider duration={1}>
+        <TileIdScope tileId="3d-1">
+          <Scene3dTileSettings {...componentProps(props)} />
+        </TileIdScope>
+      </PlaybackProvider>
+    </JotaiProvider>,
   );
   return props;
 }
@@ -1004,7 +1004,6 @@ function settingsProps(
     pointCloudColorCapabilities: new Map([
       [LIDAR.id, { hasRgb: false, scalarFields: ["intensity", "ring"] }],
     ]),
-    pointCloudCountStore: createPointCloudCountStore(),
     pointCloudColors: {},
     pointCloudPointSize: 2,
     pointCloudSources: [LIDAR],
@@ -1060,7 +1059,6 @@ function componentProps(props: SettingsTestProps): Scene3dTileSettingsProps {
     },
     pointCloudInputs: {
       colorCapabilities: props.pointCloudColorCapabilities,
-      pointCountStore: props.pointCloudCountStore,
       selectedSources: props.selectedPointCloudSources,
     },
     poseControls: {
