@@ -90,9 +90,20 @@ class Sapiens2PoseGetItem(fout.GetItem):
     upstream demo's detector fallback.
     """
 
+    def __init__(self, field_mapping=None, **kwargs):
+        # Only require the prompt field when the caller supplies one; without
+        # it the whole image is used as a single box
+        self._has_prompt = bool(
+            field_mapping and "prompt_field" in field_mapping
+        )
+        super().__init__(field_mapping=field_mapping, **kwargs)
+
     @property
     def required_keys(self):
-        return ["filepath", "prompt_field"]
+        if self._has_prompt:
+            return ["filepath", "prompt_field"]
+
+        return ["filepath"]
 
     def __call__(self, d):
         import cv2
@@ -142,6 +153,11 @@ class Sapiens2PoseModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.keypoint_thresh = self.parse_number(
             d, "keypoint_thresh", default=0.3
         )
+        if not 0.0 <= self.keypoint_thresh <= 1.0:
+            raise ValueError(
+                "keypoint_thresh must be in [0, 1]; got %s"
+                % self.keypoint_thresh
+            )
 
         # Sapiens runs its own preprocessing pipeline on raw image + boxes
         self.raw_inputs = True

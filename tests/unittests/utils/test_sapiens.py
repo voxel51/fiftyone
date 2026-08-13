@@ -61,6 +61,16 @@ class TestSapiens2PoseModelConfig:
                 {"hf_repo": "facebook/not-a-real-repo"}
             )
 
+    @pytest.mark.parametrize("thresh", [-0.1, 1.1])
+    def test_out_of_range_keypoint_thresh_raises(self, thresh):
+        with pytest.raises(ValueError, match="keypoint_thresh"):
+            fus.Sapiens2PoseModelConfig({"keypoint_thresh": thresh})
+
+    @pytest.mark.parametrize("thresh", [0.0, 1.0])
+    def test_boundary_keypoint_thresh_accepted(self, thresh):
+        config = fus.Sapiens2PoseModelConfig({"keypoint_thresh": thresh})
+        assert config.keypoint_thresh == thresh
+
     def test_all_known_repos_accepted(self):
         for repo in fus._POSE_REPOS:
             assert (
@@ -82,9 +92,17 @@ class TestSapiens2PoseModelConfig:
 
 
 class TestSapiens2PoseGetItem:
-    def test_required_keys(self):
+    def test_required_keys_without_prompt(self):
         item = fus.Sapiens2PoseGetItem()
+        assert item.required_keys == ["filepath"]
+        assert "prompt_field" not in item.field_mapping
+
+    def test_required_keys_with_prompt(self):
+        item = fus.Sapiens2PoseGetItem(
+            field_mapping={"prompt_field": "persons"}
+        )
         assert item.required_keys == ["filepath", "prompt_field"]
+        assert item.field_mapping["prompt_field"] == "persons"
 
     def _write_image(self, tmp_path, w=100, h=80):
         import cv2
