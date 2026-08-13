@@ -41,14 +41,14 @@ export class EpisodePom {
     const root = this.inspectedStream
       ? this.tile(this.inspectedStream)
       : this.shell;
-    return byDataTestId(root, "episode-raw-tree").last();
+    return byDataTestId(root, "episode-raw-tree");
   }
 
   get rawMeta(): Locator {
     const root = this.inspectedStream
       ? this.tile(this.inspectedStream)
       : this.shell;
-    return root.locator("[data-cy=episode-raw-meta]").last();
+    return root.locator("[data-cy=episode-raw-meta]");
   }
 
   async waitForReady(fileName: string): Promise<void> {
@@ -88,13 +88,15 @@ export class EpisodePom {
     absent: readonly string[] = [],
   ): Promise<void> {
     for (const title of present) {
-      await expect(
-        this.tileTitles.filter({ hasText: title }).first(),
-      ).toBeVisible();
+      await expect(this.tileTitle(title).first()).toBeVisible();
     }
     for (const title of absent) {
-      await expect(this.tileTitles.filter({ hasText: title })).toHaveCount(0);
+      await expect(this.tileTitle(title)).toHaveCount(0);
     }
+  }
+
+  async expectTileTitleCount(title: string, count: number): Promise<void> {
+    await expect(this.tileTitle(title)).toHaveCount(count);
   }
 
   async addTile(type: string, title: string): Promise<void> {
@@ -102,16 +104,14 @@ export class EpisodePom {
       .getByRole("button", { name: "Layout", exact: true })
       .click();
     await this.page.locator(`[data-testid="episode-add-tile-${type}"]`).click();
-    await expect(
-      this.tileTitles.filter({ hasText: title }).first(),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+    await expect(this.tileTitle(title)).toBeVisible({ timeout: READY_TIMEOUT });
   }
 
   tile(title: string): Locator {
     return this.shell.locator(".mosaic-window").filter({
       has: this.page
         .locator('[data-testid="tile-header-title"]')
-        .filter({ hasText: title }),
+        .filter({ hasText: exactText(title) }),
     });
   }
 
@@ -123,16 +123,16 @@ export class EpisodePom {
     currentTitle: string,
     nextTitle: string,
   ): Promise<void> {
-    await this.tileTitles.filter({ hasText: currentTitle }).first().click();
+    await this.tileTitle(currentTitle).first().click();
     const source = this.scope.locator('[aria-label="Source"]');
     await expect(source).toBeVisible({ timeout: READY_TIMEOUT });
     await source.click();
     await this.page
       .getByRole("option", { name: nextTitle, exact: true })
       .click();
-    await expect(
-      this.tileTitles.filter({ hasText: nextTitle }).first(),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+    await expect(this.tileTitle(nextTitle).first()).toBeVisible({
+      timeout: READY_TIMEOUT,
+    });
   }
 
   async expectPaused(): Promise<void> {
@@ -343,7 +343,7 @@ export class EpisodePom {
     await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
   }
 
-  async useRawStream(stream: string): Promise<void> {
+  async focusRawTile(stream: string): Promise<void> {
     this.inspectedStream = stream;
     await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
   }
@@ -405,7 +405,7 @@ export class EpisodePom {
     present: readonly string[],
     absent: readonly string[],
   ): Promise<void> {
-    const logs = this.tile("Logs");
+    const logs = this.tile("Logs / Diagnostics");
     await logs.getByRole("button", { name: "Fullscreen", exact: true }).click();
     await logs.getByRole("button", { name: view, exact: true }).click();
     for (const text of present) {
@@ -442,10 +442,18 @@ export class EpisodePom {
     );
     await expect(this.scope.locator("[data-cy=error-boundary]")).toHaveCount(0);
   }
+
+  private tileTitle(title: string): Locator {
+    return this.tileTitles.filter({ hasText: exactText(title) });
+  }
 }
 
 function byDataTestId(root: Locator, id: string): Locator {
   return root.locator('[data-testid="' + id + '"]');
+}
+
+function exactText(value: string): RegExp {
+  return new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 }
 
 function utcDateTimeToMilliseconds(value: string): number | null {
