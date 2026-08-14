@@ -72,6 +72,13 @@ export type FetchFunctionConfig<T> = {
    * @default false
    */
   cache?: boolean;
+  /**
+   * Browser HTTP cache mode for the underlying fetch. Byte-range readers
+   * pass "no-store": Chrome may answer a Range request from a cached
+   * superset block whose Content-Range does not match what was asked.
+   * @default "no-cache"
+   */
+  browserCache?: RequestCache;
   /** Cancels the request and response-body read. */
   signal?: AbortSignal;
   /** Reports cumulative response-body bytes as they arrive. */
@@ -114,6 +121,7 @@ export interface FetchFunctionExtended {
     headers?: Record<string, string>,
     signal?: AbortSignal,
     onProgress?: (loadedBytes: number) => void,
+    browserCache?: RequestCache,
   ): Promise<FetchFunctionResult<R>>;
 }
 
@@ -226,6 +234,7 @@ export const getFetchFunctionExtended =
         config.headers,
         config.signal,
         config.onProgress,
+        config.browserCache,
       );
 
     if (config.cache && config.result !== "response") {
@@ -362,6 +371,7 @@ export const setFetchFunction = (
     headers,
     signal,
     onProgress,
+    browserCache,
   ) => {
     let url: string;
     const controller = new AbortController();
@@ -406,7 +416,7 @@ export const setFetchFunction = (
 
     const response = await fetchCall(url, {
       method: method,
-      cache: "no-cache",
+      cache: browserCache ?? "no-cache",
       headers,
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
