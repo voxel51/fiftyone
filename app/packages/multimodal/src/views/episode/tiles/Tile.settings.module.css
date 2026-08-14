@@ -29,10 +29,10 @@
   white-space: pre-wrap;
 }
 
-.jsonPre {
-  margin: 0;
+.jsonViewer {
+  font-size: 12px;
+  max-width: 100%;
   overflow-wrap: anywhere;
-  white-space: pre-wrap;
 }
 
 .recommendButton {

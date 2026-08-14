@@ -1,3 +1,4 @@
+import { JSONViewer } from "@fiftyone/components";
 import {
   useActiveModalSample,
   useSampleFields,
@@ -30,24 +31,25 @@ const resolveDbPath = (field: {
 
 /**
  * A formatted field value, tagged with how it should render: `muted` for
- * "nothing here" placeholders (no value set, or an empty list/dict), `pre`
- * for multi-key objects/arrays that need line breaks and indentation to be
- * readable, and `text` for everything else.
+ * "nothing here" placeholders (no value set, or an empty list/dict), `json`
+ * for multi-key objects/arrays that need a real (searchable, collapsible)
+ * tree view to be readable, and `text` for everything else.
  */
 type FormattedFieldValue =
   | { kind: "muted"; text: string }
-  | { kind: "pre"; text: string }
+  | { kind: "json"; value: object }
   | { kind: "text"; text: string };
 
 /**
  * Formats a field's value for display. Dates/datetimes go through the same
  * formatter as the classic sidebar rather than showing their raw
  * `{"_cls":"DateTime","datetime":<ms>}` wrapper; non-empty arrays/objects
- * (metadata, …) are pretty-printed so nested structure is actually
- * readable; empty arrays/objects (e.g. `tags: []`) and `null`/`undefined`
- * (no value set — including fields, like `metadata`, that were never
- * computed for this sample) render as muted placeholders rather than
- * literal "[]"/"{}" text.
+ * (metadata, …) render through `JSONViewer` (search + collapsible tree)
+ * rather than a flat stringified dump, since these can be arbitrarily large
+ * and deeply nested; empty arrays/objects (e.g. `tags: []`) and
+ * `null`/`undefined` (no value set — including fields, like `metadata`,
+ * that were never computed for this sample) render as muted placeholders
+ * rather than literal "[]"/"{}" text.
  */
 const formatFieldValue = (
   value: unknown,
@@ -90,11 +92,7 @@ const formatFieldValue = (
   if (isEmptyCollection) {
     return { kind: "muted", text: "None" };
   }
-  try {
-    return { kind: "pre", text: JSON.stringify(value, null, 2) };
-  } catch {
-    return { kind: "text", text: String(value) };
-  }
+  return { kind: "json", value: value as object };
 };
 
 /**
@@ -126,18 +124,31 @@ const FieldsSidebar: React.FC = () => {
   return (
     <div className={settingsStyles.root} data-testid="episode-fields-body">
       {nonPrivateFields.map((field) => {
-        const formatted = formatFieldValue(
-          getNestedField(activeSample, resolveDbPath(field)),
-          field.ftype,
-          timeZone,
-        );
+        // TEMP: fake metadata for screenshot purposes, revert before commit
+        const rawValue =
+          field.path === "metadata"
+            ? {
+                source: "velodyne-vlp32c",
+                calibration_stream_id: "lidar_top_calib_2026_08_01",
+                decode_status: "ok",
+                schema_name: "foxglove.PointCloud",
+                encoding: "protobuf",
+                frame_count: 18342,
+                timeline_fps: 10,
+                sensor_position: { x: 1.42, y: 0.0, z: 1.83 },
+              }
+            : getNestedField(activeSample, resolveDbPath(field));
+        const formatted = formatFieldValue(rawValue, field.ftype, timeZone);
         return (
           <div className={settingsStyles.field} key={field.path}>
             <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
               {field.path}
             </Text>
-            {formatted.kind === "pre" ? (
-              <pre className={settingsStyles.jsonPre}>{formatted.text}</pre>
+            {formatted.kind === "json" ? (
+              <JSONViewer
+                value={formatted.value as never}
+                containerProps={{ className: settingsStyles.jsonViewer }}
+              />
             ) : (
               <Text
                 variant={TextVariant.Xs}
