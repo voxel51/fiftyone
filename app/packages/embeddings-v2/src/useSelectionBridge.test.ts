@@ -137,6 +137,9 @@ describe("useSelectionBridge", () => {
               ordered: false,
             },
           },
+          // Derived from the returned Select stage — the server route
+          // reports samples too when the stage enumerates them
+          sampleCount: 1,
         }),
       ),
     );
@@ -194,6 +197,9 @@ describe("useSelectionBridge", () => {
             ordered: false,
           },
         },
+        // A Select stage enumerates its samples, so the sample count is
+        // knowable client-side
+        sampleCount: 1,
       }),
     );
     expect(fetchLassoStage).not.toHaveBeenCalled();
@@ -223,6 +229,9 @@ describe("useSelectionBridge", () => {
       expect(opts.publishSelection).toHaveBeenCalledWith(
         expect.objectContaining({
           stage: { "fiftyone.core.stages.GeoWithin": { boundary: [] } },
+          // A spatial stage only the server can enumerate: the sample
+          // count is unknowable and the UI falls back to points
+          sampleCount: null,
         }),
       ),
     );
@@ -414,6 +423,7 @@ describe("useSelectionBridge", () => {
         },
       },
       count: 1,
+      sampleCount: 1,
       decorate: null,
     });
   });
@@ -450,7 +460,7 @@ describe("useSelectionBridge", () => {
     );
 
     expect(opts.publishSelection).toHaveBeenCalledWith(
-      expect.objectContaining({ count: 2 }),
+      expect.objectContaining({ count: 2, sampleCount: 1 }),
     );
   });
 
@@ -505,6 +515,7 @@ describe("useSelectionBridge", () => {
     expect(opts.publishSelection).toHaveBeenCalledWith({
       stage: null,
       count: null,
+      sampleCount: null,
       decorate: null,
     });
   });
@@ -658,6 +669,7 @@ describe("useSelectionBridge", () => {
     expect(opts.publishSelection).toHaveBeenCalledWith({
       stage: null,
       count: null,
+      sampleCount: null,
       decorate: null,
     });
   });

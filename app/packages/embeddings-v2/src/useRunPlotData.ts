@@ -54,7 +54,11 @@ import {
 } from "./legendFilter";
 import { type ColorMeta, type VisualizationRun } from "./protocol";
 import type { EmbeddingsViewHandle, HoverHit } from "./renderer";
-import { clearSelectionNonceState, selectionCountState } from "./state";
+import {
+  clearSelectionNonceState,
+  selectionCountState,
+  selectionSampleCountState,
+} from "./state";
 import {
   getEmbeddingsPanelExtension,
   useFallbackRunFeatures,
@@ -118,6 +122,8 @@ export interface RunPlotData {
   selectedSamples: Map<string, SelectionType>;
   selectionCount: number | null;
   chipCount: number | null;
+  /** Distinct selected samples; null when only points are knowable. */
+  chipSampleCount: number | null;
   handleLasso: (
     indices: number[],
     polygon?: Array<[number, number]> | null,
@@ -202,6 +208,9 @@ export function useRunPlotData(
         }
         if (next.count !== undefined) {
           set(selectionCountState, next.count as never);
+        }
+        if (next.sampleCount !== undefined) {
+          set(selectionSampleCountState, next.sampleCount as never);
         }
         next.decorate?.({ set, reset });
       },
@@ -747,6 +756,11 @@ export function useRunPlotData(
   // appeared for anything but a grid checkbox.
   const publishedCount = useRecoilValue(selectionCountState);
   const chipCount = publishedCount ?? (selectedSamples.size || null);
+  const publishedSampleCount = useRecoilValue(selectionSampleCountState);
+  // In the unpublished (grid-checkbox) fallback, the selection size IS a
+  // sample count
+  const chipSampleCount =
+    publishedCount == null ? chipCount : publishedSampleCount;
 
   // chipCount is the pre-click value — the chart clears its own lasso layer
   // before this fires. See backgroundClickAction for which layer comes off
@@ -800,6 +814,7 @@ export function useRunPlotData(
     selectedSamples,
     selectionCount: chipCount,
     chipCount,
+    chipSampleCount,
     handleLasso,
     handlePointClick,
     handleBackgroundClick,

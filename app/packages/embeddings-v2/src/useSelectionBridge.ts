@@ -51,6 +51,21 @@ export interface SelectionBridgeOptions {
 }
 
 /**
+ * A published stage's sample count, when the stage itself knows it: a
+ * Select stage enumerates its sample ids. Any other stage shape (Mongo,
+ * a server-resolved spatial stage) selects samples only the server can
+ * count — null, and the UI falls back to the point count.
+ */
+export function stageSampleCount(
+  stage: Record<string, unknown>,
+): number | null {
+  const kwargs = stage["fiftyone.core.stages.Select"];
+  if (!kwargs || typeof kwargs !== "object") return null;
+  const ids = (kwargs as { sample_ids?: unknown }).sample_ids;
+  return Array.isArray(ids) ? ids.length : null;
+}
+
+/**
  * Two-way selection wiring between the plot and the App. Plot -> grid:
  * a lasso resolves to a view stage — client-side when the extension
  * supplies a resolver and the run is fully loaded (zero requests per
@@ -105,11 +120,12 @@ export function useSelectionBridge({
     setLassoIndices(null);
     setError(null);
     // The extension's artifacts clear in the same commit they were
-    // published in; the count is what the chip and the panel tab's pill
-    // both read
+    // published in; the counts are what the chip and the panel tab's
+    // pill both read, and they clear together so they can never desync
     publishSelection({
       stage: null,
       count: null,
+      sampleCount: null,
       decorate: decorateSelection?.(null) ?? null,
     });
     chart.current?.clearSelection();
@@ -197,6 +213,7 @@ export function useSelectionBridge({
       publishSelection({
         stage: null,
         count: null,
+        sampleCount: null,
         decorate: decorateSelection?.(null) ?? null,
       });
       return;
@@ -218,6 +235,7 @@ export function useSelectionBridge({
         publishSelection({
           stage,
           count: kept.length,
+          sampleCount: stageSampleCount(stage),
           decorate: decorateSelection?.(kept) ?? null,
         });
         return;
@@ -231,9 +249,11 @@ export function useSelectionBridge({
         if (seq !== lassoSeq.current) return;
         // A stale failure banner must not outlive the success after it
         setError(null);
+        const published = { [stage._cls]: stage.kwargs };
         publishSelection({
-          stage: { [stage._cls]: stage.kwargs },
+          stage: published,
           count: stage.count ?? kept.length,
+          sampleCount: stageSampleCount(published),
           decorate: decorateSelection?.(kept) ?? null,
         });
       })
@@ -249,6 +269,7 @@ export function useSelectionBridge({
       publishSelection({
         stage: null,
         count: null,
+        sampleCount: null,
         decorate: decorateSelection?.(null) ?? null,
       });
       return;
@@ -267,6 +288,7 @@ export function useSelectionBridge({
       // clicked sample can carry many points (every window of an
       // episode), so this can be far bigger than samples.size.
       count: indices.length || samples.size,
+      sampleCount: samples.size,
       decorate: decorateSelection?.(indices.length ? indices : null) ?? null,
     });
   };

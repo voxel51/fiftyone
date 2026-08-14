@@ -92,7 +92,10 @@ export type SelectionDecorator = (
  * commit (see useRunPlotData). */
 export type PublishSelection = (next: {
   stage?: Record<string, unknown> | null;
+  /** Selected points. One sample can own many points. */
   count?: number | null;
+  /** Distinct selected samples; null when only points are knowable. */
+  sampleCount?: number | null;
   decorate?: SelectionDecorator | null;
 }) => void;
 
