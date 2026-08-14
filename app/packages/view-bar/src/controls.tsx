@@ -89,10 +89,28 @@ interface ParamInputProps {
  * per control and reads as a form; the name belongs in the control it names.
  * Removable once `placeholder` lands on `Select` in voxel51/design-system.
  */
+/**
+ * voodo's single-select trigger wraps its `w-full` input in a Stack with no
+ * width of its own, so the input's 100% resolves against the input's intrinsic
+ * size and the picker renders narrow. Sizes the Stack until the fix lands in
+ * voxel51/design-system; the multi-select trigger has no wrapper and no bug.
+ */
+const SELECT_WIDTH_CLASS = "fo-view-bar-select";
+const SELECT_WIDTH_STYLE_ID = "fo-view-bar-select-width";
+if (
+  typeof document !== "undefined" &&
+  !document.getElementById(SELECT_WIDTH_STYLE_ID)
+) {
+  const style = document.createElement("style");
+  style.id = SELECT_WIDTH_STYLE_ID;
+  style.textContent = `.${SELECT_WIDTH_CLASS} div:has(> input[role="combobox"]){width:100%}`;
+  document.head.appendChild(style);
+}
+
 const PlaceheldSelect: React.FC<
   React.PropsWithChildren<{ placeholder: string; empty: boolean }>
 > = ({ placeholder, empty, children }) => (
-  <div style={{ position: "relative" }}>
+  <div className={SELECT_WIDTH_CLASS} style={{ position: "relative" }}>
     {children}
     {empty && (
       <Text
@@ -192,6 +210,9 @@ const ParamControl: React.FC<ParamInputProps> = ({
             empty={asList(value).length === 0}
           >
             <Select
+              // Spans the popover like every other control; voodo's Select
+              // otherwise sits at its intrinsic width
+              style={{ width: "100%" }}
               portal
               disabled={disabled || barren}
               value={asList(value)}
@@ -207,6 +228,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           empty={typeof value !== "string"}
         >
           <Select
+            style={{ width: "100%" }}
             exclusive
             portal
             disabled={disabled || barren}
@@ -227,6 +249,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           empty={typeof value !== "string"}
         >
           <Select
+            style={{ width: "100%" }}
             exclusive
             portal
             disabled={disabled || options.length === 0}
@@ -246,6 +269,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           empty={asList(value).length === 0}
         >
           <Select
+            style={{ width: "100%" }}
             portal
             disabled={disabled || options.length === 0}
             value={asList(value)}
@@ -374,8 +398,16 @@ const ParamControl: React.FC<ParamInputProps> = ({
         >
           {/*
             The same header the expression editor has: switcher and status on
-            one line, the box below carrying the outline
+            one line, the box below carrying the outline. A single-mode data
+            param has no header — an empty line here read as a gap between the
+            box and the control above it. The condition is stable while
+            typing: hanging it on `invalid` would bounce the box on every
+            half-typed brace, so a headerless param reports through its border
+            and the Apply tooltip instead.
           */}
+          {(Boolean(tabs) ||
+            Boolean(disabled && blockedReason) ||
+            param.tokens.includes("expr")) && (
           <Stack
             orientation={Orientation.Row}
             spacing={Spacing.Sm}
@@ -427,27 +459,32 @@ const ParamControl: React.FC<ParamInputProps> = ({
                 </Tooltip>
               )
             )}
-            {/* The json here is a lowered ViewExpression — the same corner
-                link every stage carries, pointed at the format's docs */}
-            <Tooltip
-              anchor={Anchor.Bottom}
-              content="View expression documentation"
-            >
-              <a
-                href="https://docs.voxel51.com/api/fiftyone.core.expressions.html#fiftyone.core.expressions.ViewExpression"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="View expression documentation"
-                style={{
-                  marginLeft: "auto",
-                  display: "inline-flex",
-                  color: "var(--fo-palette-text-secondary)",
-                }}
+            {/* The json here is a lowered ViewExpression, so the corner links
+                the format's docs — unless the param is plain data, which has
+                no format to document beyond the stage's own docs already on
+                the pill */}
+            {param.tokens.includes("expr") && (
+              <Tooltip
+                anchor={Anchor.Bottom}
+                content="View expression documentation"
               >
-                <Icon name={IconName.ExternalLink} size={Size.Sm} />
-              </a>
-            </Tooltip>
+                <a
+                  href="https://docs.voxel51.com/api/fiftyone.core.expressions.html#fiftyone.core.expressions.ViewExpression"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="View expression documentation"
+                  style={{
+                    marginLeft: "auto",
+                    display: "inline-flex",
+                    color: "var(--fo-palette-text-secondary)",
+                  }}
+                >
+                  <Icon name={IconName.ExternalLink} size={Size.Sm} />
+                </a>
+              </Tooltip>
+            )}
           </Stack>
+          )}
           {/*
             Monaco lays itself out against a definite box. Its parent is the
             popover's fixed width, so 100% is a real number here — and it keeps
@@ -515,7 +552,15 @@ const ParamControl: React.FC<ParamInputProps> = ({
                   pointerEvents: "none",
                 }}
               >
-                {`${placeholder} — {"$gt": ["$confidence", 0.5]}`}
+                {/* An expression param shows an operator example; a dict a
+                    mapping one. Other data params (a list of values, a
+                    pipeline) share no example worth lying with, so the
+                    parameter names itself alone. */}
+                {param.tokens.includes("expr")
+                  ? `${placeholder} — {"$gt": ["$confidence", 0.5]}`
+                  : param.tokens.includes("dict")
+                    ? `${placeholder} — {"cat": "dog"}`
+                    : placeholder}
               </Text>
             )}
           </div>
@@ -628,8 +673,10 @@ export const ParamInput: React.FC<
       data-cy={props.testId}
     >
       {/* The Xs tab strip is shorter than the control beside it; nudge it
-          to the control's vertical center rather than its top edge */}
-      <div style={{ marginTop: 4 }}>{tabs}</div>
+          to the control's vertical center rather than its top edge. Rendered
+          only when there are tabs: an empty slot still costs the row's flex
+          gap, leaving single-mode controls a gap thinner than their peers. */}
+      {tabs ? <div style={{ marginTop: 4 }}>{tabs}</div> : null}
       <Stack
         orientation={Orientation.Column}
         spacing={Spacing.None}
