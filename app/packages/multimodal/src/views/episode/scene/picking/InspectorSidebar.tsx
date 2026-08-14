@@ -1,4 +1,3 @@
-import { SidebarPanel } from "@fiftyone/tiling";
 import {
   Button,
   Size,
@@ -38,7 +37,7 @@ const InspectorSidebar: React.FC = () => {
     : "Unknown source";
 
   return (
-    <SidebarPanel title="Inspect">
+    <>
       {selected === null ? (
         <span
           className={settingsStyles.emptyText}
@@ -73,7 +72,7 @@ const InspectorSidebar: React.FC = () => {
           </Button>
         </div>
       )}
-    </SidebarPanel>
+    </>
   );
 };
 
