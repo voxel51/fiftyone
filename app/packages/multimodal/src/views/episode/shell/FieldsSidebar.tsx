@@ -1,4 +1,4 @@
-import { JSONViewer } from "@fiftyone/components";
+import JSONViewer from "@fiftyone/components/src/components/JSONViewer";
 import {
   useActiveModalSample,
   useSampleFields,
@@ -124,21 +124,11 @@ const FieldsSidebar: React.FC = () => {
   return (
     <div className={settingsStyles.root} data-testid="episode-fields-body">
       {nonPrivateFields.map((field) => {
-        // TEMP: fake metadata for screenshot purposes, revert before commit
-        const rawValue =
-          field.path === "metadata"
-            ? {
-                source: "velodyne-vlp32c",
-                calibration_stream_id: "lidar_top_calib_2026_08_01",
-                decode_status: "ok",
-                schema_name: "foxglove.PointCloud",
-                encoding: "protobuf",
-                frame_count: 18342,
-                timeline_fps: 10,
-                sensor_position: { x: 1.42, y: 0.0, z: 1.83 },
-              }
-            : getNestedField(activeSample, resolveDbPath(field));
-        const formatted = formatFieldValue(rawValue, field.ftype, timeZone);
+        const formatted = formatFieldValue(
+          getNestedField(activeSample, resolveDbPath(field)),
+          field.ftype,
+          timeZone,
+        );
         return (
           <div className={settingsStyles.field} key={field.path}>
             <Text variant={TextVariant.Xs} color={TextColor.Secondary}>

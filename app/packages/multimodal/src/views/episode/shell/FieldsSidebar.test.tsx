@@ -1,5 +1,19 @@
+import {
+  Experimental_CssVarsProvider as CssVarsProvider,
+  experimental_extendTheme as extendMuiTheme,
+} from "@mui/material";
 import { cleanup, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// `JSONViewer` (used for non-empty object/array fields) reads the color
+// scheme via MUI's `useColorScheme`, which throws outside a
+// `CssVarsProvider` — the real app supplies one at its root
+// (`ThemeProvider`), but this unit test renders `FieldsSidebar` standalone.
+const muiTestTheme = extendMuiTheme();
+function renderFieldsSidebar(ui: ReactElement) {
+  return render(<CssVarsProvider theme={muiTestTheme}>{ui}</CssVarsProvider>);
+}
 
 interface FakeField {
   path: string;
@@ -44,7 +58,7 @@ describe("FieldsSidebar", () => {
     setFields([]);
     useActiveModalSample.mockReturnValue({});
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-empty")).toBeTruthy();
   });
@@ -56,7 +70,7 @@ describe("FieldsSidebar", () => {
     ]);
     useActiveModalSample.mockReturnValue({ filepath: "/a/b.mcap" });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     const body = screen.getByTestId("episode-fields-body");
     expect(body.textContent).toContain("filepath");
@@ -71,7 +85,7 @@ describe("FieldsSidebar", () => {
       filepath: "/data/scene-0001.mcap",
     });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     const body = screen.getByTestId("episode-fields-body");
     expect(body.textContent).toContain("/data/scene-0001.mcap");
@@ -88,7 +102,7 @@ describe("FieldsSidebar", () => {
     ]);
     useActiveModalSample.mockReturnValue({ _id: "abc123" });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
       "abc123",
@@ -103,7 +117,7 @@ describe("FieldsSidebar", () => {
       created_at: { _cls: "DateTime", datetime: 1_700_000_000_000 },
     });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     const value = screen.getByTestId("episode-fields-body").textContent ?? "";
     expect(value).not.toContain("_cls");
@@ -118,29 +132,31 @@ describe("FieldsSidebar", () => {
     ]);
     useActiveModalSample.mockReturnValue({});
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
       "—",
     );
   });
 
-  it("pretty-prints a non-empty list field's value", () => {
+  it("renders a non-empty list field's value through the JSON tree viewer", () => {
     setFields([{ path: "tags", ftype: "fiftyone.core.fields.ListField" }]);
     useActiveModalSample.mockReturnValue({ tags: ["train", "front-cam"] });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
-    expect(screen.getByTestId("episode-fields-body").textContent).toContain(
-      JSON.stringify(["train", "front-cam"], null, 2),
-    );
+    // `JsonViewer` renders each entry as separate key/value nodes rather
+    // than one flat stringified block, so assert on the values individually.
+    const body = screen.getByTestId("episode-fields-body");
+    expect(body.textContent).toContain("train");
+    expect(body.textContent).toContain("front-cam");
   });
 
   it("shows a muted placeholder for an empty list field's value", () => {
     setFields([{ path: "tags", ftype: "fiftyone.core.fields.ListField" }]);
     useActiveModalSample.mockReturnValue({ tags: [] });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
       "None",
@@ -157,7 +173,7 @@ describe("FieldsSidebar", () => {
     ]);
     useActiveModalSample.mockReturnValue({ media_type: "multimodal" });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
       "The type of media for the sample.",
