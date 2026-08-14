@@ -54,12 +54,16 @@ export type InputKind =
  */
 export const paramModes = (param: ParamDef): InputKind[] => {
   const has = (t: string) => param.tokens.includes(t);
-  // The expression editor leads: it is what these params are for. Not every
-  // `json` param holds an expression though — `Mongo.pipeline` is a pipeline,
-  // `ExcludeLabels.labels` a list of dicts — and nothing in the parameter's
-  // description says which, so the raw editor stays available behind it.
-  const expression: InputKind[] =
-    has("json") || has("dict") ? ["python", "json"] : [];
+  // `expr` marks a param a ViewExpression satisfies, so the expression editor
+  // leads and the raw editor stays behind it showing the lowering. `json` and
+  // `dict` are plain data — `Mongo.pipeline` a pipeline, `MapLabels.map` a
+  // lookup table — where an expression is not an answer, so they get the raw
+  // editor alone.
+  const expression: InputKind[] = has("expr")
+    ? ["python", "json"]
+    : has("json") || has("dict")
+      ? ["json"]
+      : [];
 
   // A closed set of valid values — constants from the stage itself, or names
   // the App resolves from the dataset — is a picker, not a text box

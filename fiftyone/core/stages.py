@@ -2234,7 +2234,7 @@ class FilterField(ViewStage):
     def _params(cls):
         return [
             {"name": "field", "type": "field|str"},
-            {"name": "filter", "type": "json", "placeholder": ""},
+            {"name": "filter", "type": "expr", "placeholder": ""},
             {
                 "name": "only_matches",
                 "type": "bool",
@@ -2834,7 +2834,7 @@ class FilterLabels(ViewStage):
                 "type": "field|str",
                 "choices": _field_choices(_label_field()),
             },
-            {"name": "filter", "type": "json", "placeholder": ""},
+            {"name": "filter", "type": "expr", "placeholder": ""},
             {
                 "name": "only_matches",
                 "type": "bool",
@@ -3319,7 +3319,7 @@ class FilterKeypoints(ViewStage):
             },
             {
                 "name": "filter",
-                "type": "NoneType|json",
+                "type": "NoneType|expr",
                 "placeholder": "filter",
                 "default": "None",
             },
@@ -4069,7 +4069,7 @@ class GroupBy(ViewStage):
         return [
             {
                 "name": "field_or_expr",
-                "type": "field|str|json",
+                "type": "field|str|expr",
                 "placeholder": "field or expression",
             },
             {
@@ -4092,13 +4092,13 @@ class GroupBy(ViewStage):
             },
             {
                 "name": "match_expr",
-                "type": "NoneType|json",
+                "type": "NoneType|expr",
                 "placeholder": "match expression",
                 "default": "None",
             },
             {
                 "name": "sort_expr",
-                "type": "NoneType|json",
+                "type": "NoneType|expr",
                 "placeholder": "sort expression",
                 "default": "None",
             },
@@ -4970,7 +4970,7 @@ class SetField(ViewStage):
                     _typed_field(existence=_EXISTING_ROOT)
                 ),
             },
-            {"name": "expr", "type": "json", "placeholder": ""},
+            {"name": "expr", "type": "expr", "placeholder": ""},
             {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
 
@@ -5154,7 +5154,7 @@ class Match(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "filter", "type": "json", "placeholder": ""}]
+        return [{"name": "filter", "type": "expr", "placeholder": ""}]
 
 
 class SelectGroupSlices(ViewStage):
@@ -5764,7 +5764,7 @@ class MatchFrames(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "filter", "type": "json", "placeholder": ""},
+            {"name": "filter", "type": "expr", "placeholder": ""},
             {
                 "name": "omit_empty",
                 "type": "bool",
@@ -6057,7 +6057,7 @@ class MatchLabels(ViewStage):
             },
             {
                 "name": "filter",
-                "type": "NoneType|json",
+                "type": "NoneType|expr",
                 "placeholder": "filter",
                 "default": "None",
             },
@@ -8020,7 +8020,7 @@ class SortBy(ViewStage):
         return [
             {
                 "name": "field_or_expr",
-                "type": "field|str|json",
+                "type": "field|str|expr",
                 "placeholder": "field or expression",
             },
             {
@@ -8962,7 +8962,7 @@ class ToClips(ViewStage):
         return [
             {
                 "name": "field_or_expr",
-                "type": "field|str|json",
+                "type": "field|str|expr",
                 "placeholder": "field or expression",
                 "choices": _field_choices(
                     _label_field(

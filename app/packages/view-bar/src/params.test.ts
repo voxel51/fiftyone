@@ -41,9 +41,9 @@ describe("paramModes", () => {
   });
 
   it("keeps the expression alternatives beside a field", () => {
-    // Both editors for the expression: not every `json` param holds one, so
-    // Python is offered rather than assumed
-    expect(paramModes(param("field|str|json", "FIELDS"))).toEqual([
+    // Both editors for the expression: the Python source and the json it
+    // lowers to
+    expect(paramModes(param("field|str|expr", "FIELDS"))).toEqual([
       "field",
       "python",
       "json",
@@ -86,7 +86,14 @@ describe("paramModes", () => {
   });
 
   it("offers both editors for an expression", () => {
-    expect(paramModes(param("json"))).toEqual(["python", "json"]);
+    expect(paramModes(param("expr"))).toEqual(["python", "json"]);
+  });
+
+  it("offers the raw editor alone for plain data", () => {
+    // `MapLabels.map` is a lookup table and `Mongo.pipeline` a pipeline —
+    // an expression is not an answer to either
+    expect(paramModes(param("dict"))).toEqual(["json"]);
+    expect(paramModes(param("json"))).toEqual(["json"]);
   });
 
   it("falls back to the raw editor for a type it does not recognize", () => {

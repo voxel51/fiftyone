@@ -432,6 +432,17 @@ const ViewBar: React.FC<{
             const result = fromSource(value);
             return [p.name, result.status === "ok" ? result.envelope : value];
           }
+          // The json editor holds text; the server takes the document it
+          // parses to — as a string, `MapLabels(map='{...}')` is a type error.
+          // Validation gated Apply on parseability, so the fallthrough only
+          // covers an envelope shown as its lowering, which passes through.
+          if (kind === "json" && typeof value === "string" && !isEnvelope(value)) {
+            try {
+              return [p.name, JSON.parse(value)];
+            } catch {
+              return [p.name, value];
+            }
+          }
           return [p.name, value];
         });
       return { _cls: `fiftyone.core.stages.${s.cls}`, kwargs };
