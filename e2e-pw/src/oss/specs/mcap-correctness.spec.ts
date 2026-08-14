@@ -329,7 +329,7 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
   test.describe("alternate grid media", () => {
     test.use({ targetDatasetName: alternateMediaDatasetName });
 
-    test("renders an alternate image field in grid and opens the MCAP episode modal", async ({
+    test("switches between an alternate image and MCAP media in the modal", async ({
       grid,
       modal,
     }) => {
@@ -338,6 +338,23 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
       await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
 
       await openMcapModal(grid, modal);
+      await modal.episode.waitForReady("tiny-episode-a.mcap");
+      await modal.episode.expectTileTitles(
+        ["camera/front", "points"],
+        ["Logs"],
+      );
+      await modal.episode.expectNoViewerError();
+
+      const lookerAttached = await modal.armLookerAttached();
+      await modal.selectMediaField("thumbnail_path");
+      await lookerAttached.received;
+      await modal.waitForSampleLoadDomAttribute();
+      await expectDominantColor(
+        modal.modalContainer.locator("canvas"),
+        [255, 0, 255],
+      );
+
+      await modal.selectMediaField("filepath");
       await modal.episode.waitForReady("tiny-episode-a.mcap");
       await modal.episode.expectTileTitles(
         ["camera/front", "points"],
