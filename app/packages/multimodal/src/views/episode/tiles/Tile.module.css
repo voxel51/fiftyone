@@ -12,6 +12,15 @@
   width: 100%;
 }
 
+.destinationPoster {
+  height: 100%;
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  z-index: 1;
+}
+
 /* Generic positioned wrapper so the status badge can anchor to any
    tile body (lidar, future panels) the way .imageStack anchors the
    camera overlay. */
@@ -50,7 +59,7 @@
   position: absolute;
   right: 8px;
   top: 8px;
-  z-index: 1;
+  z-index: 2;
 }
 
 .statusBadgeError {

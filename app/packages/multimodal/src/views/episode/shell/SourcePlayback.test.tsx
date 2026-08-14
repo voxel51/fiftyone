@@ -1,18 +1,45 @@
 import { PlaybackProvider } from "@fiftyone/playback";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BYTE_SOURCE_READ_PROFILE,
   type ByteSourceDescriptor,
 } from "../../../query/bytes";
 import type { EpisodeSession } from "../../../ports";
-import type { EpisodeRecordingFacts, StreamDescriptor } from "../../../ir";
+import {
+  SCENE_SOURCE_METADATA,
+  SCENE_SOURCE_TYPE,
+  type EpisodeManifest,
+  type EpisodePosterFrame,
+  type EpisodeRecordingFacts,
+  type StreamDescriptor,
+} from "../../../ir";
+import {
+  peekSourceBootstrap,
+  publishSourceBootstrap,
+  resetSourceBootstrapCacheForTests,
+} from "../../../runtime";
+import { useSourcePoster } from "../image/source-poster-context";
+import { TILE_TYPE } from "../tiles/tile-types";
 import { SourcePlayback } from "./SourcePlayback";
 
 const playbackHarness = vi.hoisted(() => {
   const harness = {
     nextShellId: 0,
+    posterConsumerEnabled: true,
     sceneInventory: {
       error: null as string | null,
       sources: [] as Array<{ id: string; label: string; type: string }>,
@@ -22,24 +49,26 @@ const playbackHarness = vi.hoisted(() => {
     },
     shellMounts: 0,
     shellUnmounts: 0,
-    useModalLayout: vi.fn(() => ({
+    modalLayoutResult: {
       defaultLeftOpen: true,
       defaultLeftSidebarWidth: undefined,
       initialExpandedTileId: null,
-      initialLayout: undefined,
-      initialTiles: {},
+      initialLayout: undefined as unknown,
+      initialTiles: {} as Record<string, unknown>,
       onLeftOpenChange: vi.fn(),
       onLeftSidebarWidthChange: vi.fn(),
       onSceneUpAxisChange: vi.fn(),
       onTimelineSamplingRateChange: vi.fn(),
       sceneUpAxis: "z",
       timelineSamplingRateHz: 30,
-    })),
+    },
+    useModalLayout: vi.fn(),
     useSceneInventoryState: vi.fn(),
   };
   harness.useSceneInventoryState.mockImplementation(
     () => harness.sceneInventory,
   );
+  harness.useModalLayout.mockImplementation(() => harness.modalLayoutResult);
   return harness;
 });
 
@@ -50,12 +79,14 @@ vi.mock("./PlaybackShell", () => {
     leftSidebar,
     mainOverlay,
     sceneSources,
+    initialTiles,
   }: {
     readonly children?: ReactNode;
     readonly fileName: string;
     readonly leftSidebar?: ReactNode;
     readonly mainOverlay?: ReactNode;
     readonly sceneSources?: readonly { id: string }[];
+    readonly initialTiles?: Readonly<Record<string, unknown>>;
   }) => {
     const instanceIdRef = useRef<number | null>(null);
     if (instanceIdRef.current === null) {
@@ -78,6 +109,11 @@ vi.mock("./PlaybackShell", () => {
           <span data-testid="shell-sources">
             {sceneSources?.map((source) => source.id).join(",") ?? ""}
           </span>
+          <span data-testid="shell-initial-tiles">
+            {Object.keys(initialTiles ?? {})
+              .sort()
+              .join(",")}
+          </span>
           <button
             data-testid="shell-state"
             onClick={() => setShellState((value) => value + 1)}
@@ -93,6 +129,10 @@ vi.mock("./PlaybackShell", () => {
   };
   return { default: MockPlaybackShell };
 });
+
+vi.mock("../../../visualization/media-2d/BitmapImageView", () => ({
+  BitmapImageFrameView: () => <span data-testid="mock-poster-frame" />,
+}));
 
 vi.mock("./AddTileMenu", () => ({ default: () => null }));
 vi.mock("./RightSidebar", () => ({
@@ -132,14 +172,27 @@ vi.mock("./Streams", () => ({
   }: {
     onPlayheadDataReady?: () => void;
     source: ByteSourceDescriptor | null;
-  }) => (
-    <>
-      <span data-testid="stream-source">{source?.sourceId ?? "none"}</span>
-      <button data-testid="stream-ready" onClick={onPlayheadDataReady}>
-        ready
-      </button>
-    </>
-  ),
+  }) => {
+    const sourcePoster = useSourcePoster();
+    const posterConsumerEnabled = playbackHarness.posterConsumerEnabled;
+    useLayoutEffect(() => {
+      if (!posterConsumerEnabled || !sourcePoster?.streamId) return undefined;
+      return sourcePoster.registerConsumer("mock-image-tile");
+    }, [posterConsumerEnabled, sourcePoster]);
+    return (
+      <>
+        <span data-testid="stream-source">{source?.sourceId ?? "none"}</span>
+        <span data-testid="stream-source-poster">
+          {sourcePoster
+            ? `${sourcePoster.streamId}:${sourcePoster.frame.kind}`
+            : "none"}
+        </span>
+        <button data-testid="stream-ready" onClick={onPlayheadDataReady}>
+          ready
+        </button>
+      </>
+    );
+  },
 }));
 vi.mock("../playback/TimestampReadout", () => ({ default: () => null }));
 vi.mock("../layout/use-modal-layout", () => ({
@@ -152,6 +205,7 @@ vi.mock("../stream-discovery/use-scene-inventory", () => ({
 
 describe("SourcePlayback", () => {
   beforeEach(() => {
+    resetSourceBootstrapCacheForTests();
     playbackHarness.sceneInventory = {
       error: null,
       sources: [],
@@ -160,9 +214,26 @@ describe("SourcePlayback", () => {
       streamCount: 3,
     };
     playbackHarness.nextShellId = 0;
+    playbackHarness.posterConsumerEnabled = true;
     playbackHarness.shellMounts = 0;
     playbackHarness.shellUnmounts = 0;
-    playbackHarness.useModalLayout.mockClear();
+    playbackHarness.modalLayoutResult = {
+      defaultLeftOpen: true,
+      defaultLeftSidebarWidth: undefined,
+      initialExpandedTileId: null,
+      initialLayout: undefined,
+      initialTiles: {},
+      onLeftOpenChange: vi.fn(),
+      onLeftSidebarWidthChange: vi.fn(),
+      onSceneUpAxisChange: vi.fn(),
+      onTimelineSamplingRateChange: vi.fn(),
+      sceneUpAxis: "z",
+      timelineSamplingRateHz: 30,
+    };
+    playbackHarness.useModalLayout.mockReset();
+    playbackHarness.useModalLayout.mockImplementation(
+      () => playbackHarness.modalLayoutResult,
+    );
     playbackHarness.useSceneInventoryState.mockClear();
   });
 
@@ -227,19 +298,295 @@ describe("SourcePlayback", () => {
     );
   });
 
-  it("retains recording facts with their source inventory during navigation", () => {
+  it("builds the destination shell and poster from a buffered grid bootstrap", () => {
+    const source = createSource("grid-buffered");
+    const manifest = bootstrapManifest("/camera/front");
+    const poster = bootstrapPoster();
+    publishSourceBootstrap(source, {
+      manifest,
+      poster,
+      posterStreamId: "/camera/front",
+    });
+    playbackHarness.sceneInventory = {
+      error: null,
+      sources: [],
+      status: "loading",
+      streams: [],
+      streamCount: 0,
+    };
+
+    render(
+      <SourcePlayback
+        session={null}
+        fileName="grid-buffered.mcap"
+        source={source}
+      />,
+    );
+
+    expect(screen.queryByTestId("episode-preparing-scaffold")).toBeNull();
+    expect(screen.getByTestId("playback-shell")).toBeTruthy();
+    expect(screen.getByTestId("shell-sources").textContent).toBe(
+      "/camera/front",
+    );
+    expect(screen.getByTestId("stream-source").textContent).toBe("none");
+    expect(screen.getByTestId("stream-source-poster").textContent).toBe(
+      "/camera/front:encoded-image",
+    );
+    expect(screen.queryByTestId("episode-poster-overlay")).toBeNull();
+
+    act(() => {
+      // The cache retains 64 sources; these 65 publishes evict the destination.
+      for (let index = 0; index <= 64; index++) {
+        publishSourceBootstrap(createSource(`grid-overscan-${index}`), {
+          manifest: bootstrapManifest(`/camera/${index}`),
+        });
+      }
+    });
+    expect(peekSourceBootstrap(source)).toBeNull();
+    expect(screen.getByTestId("shell-sources").textContent).toBe(
+      "/camera/front",
+    );
+    expect(screen.getByTestId("stream-source-poster").textContent).toBe("none");
+  });
+
+  it("does not build an empty shell from unclassified bootstrap streams", () => {
+    const source = createSource("unclassified-bootstrap");
+    const manifest = bootstrapManifest("/unknown");
+    publishSourceBootstrap(source, {
+      manifest: {
+        ...manifest,
+        streams: manifest.streams.map((stream) => ({
+          ...stream,
+          metadata: {},
+        })),
+      },
+    });
+    playbackHarness.sceneInventory = {
+      error: null,
+      sources: [],
+      status: "loading",
+      streams: [],
+      streamCount: 0,
+    };
+
+    render(
+      <SourcePlayback
+        session={null}
+        fileName="unclassified-bootstrap.mcap"
+        source={source}
+      />,
+    );
+
+    expect(screen.getByTestId("episode-preparing-scaffold")).toBeTruthy();
+    expect(screen.queryByTestId("playback-shell")).toBeNull();
+  });
+
+  it("keeps the fallback overlay when no tile can consume the poster", () => {
+    const source = createSource("poster-without-image-tile");
+    playbackHarness.posterConsumerEnabled = false;
+    publishSourceBootstrap(source, {
+      manifest: bootstrapManifest("/camera/front"),
+      poster: bootstrapPoster(),
+      posterStreamId: "/camera/front",
+    });
+    playbackHarness.sceneInventory = {
+      error: null,
+      sources: [],
+      status: "loading",
+      streams: [],
+      streamCount: 0,
+    };
+
+    render(
+      <SourcePlayback
+        session={null}
+        fileName="poster-without-image-tile.mcap"
+        source={source}
+      />,
+    );
+
+    expect(screen.getByTestId("episode-poster-overlay")).toBeTruthy();
+  });
+
+  it("reseeds only with authoritative capabilities and timeline mode", () => {
+    const source = createSource("capability-bootstrap");
+    const nextSource = createSource("capability-next");
+    const session = {
+      activate: vi.fn(),
+      numericSeries: {},
+    } as unknown as EpisodeSession;
+    publishSourceBootstrap(source, {
+      manifest: bootstrapManifest("/camera/front"),
+      poster: bootstrapPoster(),
+      posterStreamId: "/camera/front",
+    });
+    playbackHarness.modalLayoutResult = {
+      ...playbackHarness.modalLayoutResult,
+      initialLayout: "image-1",
+      initialTiles: {
+        "image-1": { render: () => null, title: "Image" },
+      },
+    };
+    playbackHarness.sceneInventory = {
+      error: null,
+      sources: [],
+      status: "loading",
+      streams: [],
+      streamCount: 0,
+    };
+
+    const view = render(
+      <SourcePlayback
+        session={session}
+        fileName="capability-bootstrap.mcap"
+        source={source}
+      />,
+    );
+    const bootstrapShellId = screen
+      .getByTestId("playback-shell")
+      .getAttribute("data-instance-id");
+    expect(screen.getByTestId("shell-initial-tiles").textContent).toBe(
+      "image-1",
+    );
+
+    playbackHarness.modalLayoutResult = {
+      ...playbackHarness.modalLayoutResult,
+      initialLayout: {
+        direction: "row",
+        first: "image-1",
+        second: "plot-1",
+      },
+      initialTiles: {
+        "image-1": { render: () => null, title: "Image" },
+        "plot-1": { render: () => null, title: "Plot" },
+      },
+    };
+    playbackHarness.sceneInventory = readyInventory("/camera/front");
+    view.rerender(
+      <SourcePlayback
+        session={session}
+        fileName="capability-bootstrap.mcap"
+        source={source}
+      />,
+    );
+
+    const authoritativeShellId = screen
+      .getByTestId("playback-shell")
+      .getAttribute("data-instance-id");
+    expect(authoritativeShellId).not.toBe(bootstrapShellId);
+    expect(screen.getByTestId("shell-initial-tiles").textContent).toBe(
+      "image-1,plot-1",
+    );
+    expect(playbackHarness.useModalLayout).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        availableTileTypes: expect.arrayContaining([TILE_TYPE.PLOT]),
+      }),
+    );
+
+    const nextManifest = bootstrapManifest("/camera/front");
+    const nextSequenceManifest = {
+      ...nextManifest,
+      streams: nextManifest.streams.map((stream) => ({
+        ...stream,
+        metadata: {
+          ...stream.metadata,
+          "mcap.channel_metadata.timeline_fps": "10",
+          "mcap.channel_metadata.timeline_mode": "sequence",
+        },
+      })),
+    };
+    publishSourceBootstrap(nextSource, {
+      manifest: nextSequenceManifest,
+      poster: bootstrapPoster(),
+      posterStreamId: "/camera/front",
+    });
+    playbackHarness.sceneInventory = {
+      error: null,
+      sources: [],
+      status: "loading",
+      streams: [],
+      streamCount: 0,
+    };
+    view.rerender(
+      <SourcePlayback
+        session={session}
+        fileName="capability-next.mcap"
+        source={nextSource}
+      />,
+    );
+    expect(
+      screen.getByTestId("playback-shell").getAttribute("data-instance-id"),
+    ).toBe(authoritativeShellId);
+    expect(screen.getByTestId("shell-initial-tiles").textContent).toBe(
+      "image-1,plot-1",
+    );
+
+    playbackHarness.sceneInventory = readyInventory(
+      "/camera/front",
+      nextSequenceManifest.streams,
+    );
+    view.rerender(
+      <SourcePlayback
+        session={session}
+        fileName="capability-next.mcap"
+        source={nextSource}
+      />,
+    );
+    expect(
+      screen.getByTestId("playback-shell").getAttribute("data-instance-id"),
+    ).not.toBe(authoritativeShellId);
+    expect(screen.getByTestId("shell-initial-tiles").textContent).toBe(
+      "image-1,plot-1",
+    );
+    expect(playbackHarness.useModalLayout).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        availableTileTypes: expect.arrayContaining([TILE_TYPE.PLOT]),
+      }),
+    );
+  });
+
+  it("keeps the initial poster overlay when its stream is unknown", () => {
+    const source = createSource("grid-poster-without-stream");
+    publishSourceBootstrap(source, {
+      manifest: bootstrapManifest("/camera/front"),
+      poster: bootstrapPoster(),
+    });
+    playbackHarness.sceneInventory = {
+      error: null,
+      sources: [],
+      status: "loading",
+      streams: [],
+      streamCount: 0,
+    };
+
+    render(
+      <SourcePlayback
+        session={null}
+        fileName="grid-poster-without-stream.mcap"
+        source={source}
+      />,
+    );
+
+    expect(screen.queryByTestId("episode-preparing-scaffold")).toBeNull();
+    expect(screen.getByTestId("playback-shell")).toBeTruthy();
+    expect(screen.getByTestId("episode-poster-overlay")).toBeTruthy();
+  });
+
+  it("never applies retained recording facts to a different source", () => {
     const firstSource = createSource("sample-a");
     const secondSource = createSource("sample-b");
-    const firstSession = sessionWithRecordingFacts({
+    const firstRecordingFacts = {
       format: "mcap",
       sizeBytes: "100",
       topicCount: 1,
-    });
-    const secondSession = sessionWithRecordingFacts({
+    } as const;
+    const secondRecordingFacts = {
       format: "mcap",
       sizeBytes: "200",
       topicCount: 2,
-    });
+    } as const;
+    const firstSession = sessionWithRecordingFacts(firstRecordingFacts);
+    const secondSession = sessionWithRecordingFacts(secondRecordingFacts);
     playbackHarness.sceneInventory = readyInventory("/camera/a");
 
     const view = render(
@@ -267,8 +614,19 @@ describe("SourcePlayback", () => {
         source={secondSource}
       />,
     );
+    expect(screen.queryByTestId("settings-recording-facts")).toBeNull();
+    expect(screen.getByTestId("episode-preparing-scaffold")).toBeTruthy();
+
+    act(() => {
+      publishSourceBootstrap(secondSource, {
+        manifest: {
+          ...bootstrapManifest("/camera/b"),
+          recordingFacts: secondRecordingFacts,
+        },
+      });
+    });
     expect(screen.getByTestId("settings-recording-facts").textContent).toBe(
-      "1:100",
+      "2:200",
     );
 
     playbackHarness.sceneInventory = readyInventory("/camera/b");
@@ -331,6 +689,11 @@ describe("SourcePlayback", () => {
       streams: [],
       streamCount: 0,
     };
+    publishSourceBootstrap(secondSource, {
+      manifest: bootstrapManifest("/camera/b"),
+      poster: bootstrapPoster(),
+      posterStreamId: "/camera/b",
+    });
     rerender(
       <SourcePlayback
         session={session}
@@ -346,8 +709,11 @@ describe("SourcePlayback", () => {
     expect(screen.getByTestId("shell-file-name").textContent).toBe(
       "sample-b.mcap",
     );
-    expect(screen.getByTestId("shell-sources").textContent).toBe("/camera/a");
+    expect(screen.getByTestId("shell-sources").textContent).toBe("/camera/b");
     expect(screen.getByTestId("stream-source").textContent).toBe("none");
+    expect(screen.getByTestId("stream-source-poster").textContent).toBe(
+      "/camera/b:encoded-image",
+    );
     expect(screen.queryByTestId("episode-preparing-scaffold")).toBeNull();
     expect(screen.queryByTestId("episode-poster-overlay")).toBeNull();
 
@@ -423,6 +789,11 @@ describe("SourcePlayback", () => {
       streams: [],
       streamCount: 0,
     };
+    publishSourceBootstrap(firstSource, {
+      manifest: bootstrapManifest("/camera/a"),
+      poster: bootstrapPoster(),
+      posterStreamId: "/camera/a",
+    });
     rerender(
       <SourcePlayback
         session={session}
@@ -545,6 +916,39 @@ function timelineModeStream(
     },
     sourceName: "/topic",
     timeRange: { endNs: 1n, startNs: 0n },
+  };
+}
+
+function bootstrapManifest(streamId: string): EpisodeManifest {
+  const timeRange = { endNs: 20n, startNs: 10n };
+  return {
+    episodeId: "grid-buffered",
+    streams: [
+      {
+        id: streamId,
+        kind: "image",
+        metadata: {
+          [SCENE_SOURCE_METADATA.SOURCE_NAME]: streamId,
+          [SCENE_SOURCE_METADATA.TYPE]: SCENE_SOURCE_TYPE.IMAGE,
+        },
+        payload: { encoding: "jpeg" },
+        sourceName: streamId,
+        timeRange,
+      },
+    ],
+    timeDomain: { id: "recording", kind: "timestamp" },
+    timeRange,
+  };
+}
+
+function bootstrapPoster(): EpisodePosterFrame {
+  return {
+    image: {
+      bytes: new Uint8Array([1, 2, 3]),
+      kind: "encoded-image",
+      mimeType: "image/jpeg",
+    },
+    kind: "image",
   };
 }
 
