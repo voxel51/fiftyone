@@ -1,7 +1,7 @@
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import type { SyntheticBox } from "@fiftyone/utilities";
+import type { SyntheticKeyframe } from "@fiftyone/utilities";
 import type { ProviderError } from "../providers";
 
 /** Helper type representing a `fo.Polylines`-like element. */
@@ -130,7 +130,7 @@ export type PropagationContext = AnnotationContext & {
   fromFrame: number;
   toFrame: number;
   /** The two bracketing keyframe labels the propagator interpolates between. */
-  parentKeyframes: [SyntheticBox, SyntheticBox];
+  parentKeyframes: [SyntheticKeyframe, SyntheticKeyframe];
 };
 
 /**
@@ -206,11 +206,31 @@ export type PropagatedDetection = DetectionLabel & {
 };
 
 /**
- * Response type for propagation tasks: a flat list of per-frame Detection
- * labels the propagator wants written into the frame-labels stream cache.
+/**
+ * A `PolylineLabel` carrying the same video-annotation dynamic attrs, for
+ * propagation over vertex geometry. `points` is required — an emitted polyline
+ * always has geometry.
+ */
+export type PropagatedPolyline = PolylineLabel & {
+  points: [number, number][][];
+  keyframe: boolean;
+};
+
+/**
+ * Whichever label kind the resolved agent emits. The writer
+ * (`useApplyPropagationResult`) is geometry-agnostic — it spreads the label —
+ * so this union costs it nothing.
+ */
+export type PropagatedLabel = PropagatedDetection | PropagatedPolyline;
+
+/**
+ * Response type for propagation tasks: a flat list of per-frame labels the
+ * propagator wants written into the frame-labels stream cache. The field is
+ * named `detection` for historical reasons — propagation started life
+ * bbox-only — and may carry a polyline.
  */
 export type PropagationInferenceResult = {
-  perFrame: Array<{ frameNumber: number; detection: PropagatedDetection }>;
+  perFrame: Array<{ frameNumber: number; detection: PropagatedLabel }>;
 };
 
 /**

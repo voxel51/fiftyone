@@ -170,7 +170,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             tooltip: !hasSelection
               ? "Select a label to mark a keyframe"
               : !selectionIsKeyframeable
-                ? "Keyframes are only available for detections"
+                ? "Keyframes are only available for detections and polylines"
                 : "Toggle keyframe at this frame",
             isDisabled: !canMarkKeyframe,
             onClick: () => {
