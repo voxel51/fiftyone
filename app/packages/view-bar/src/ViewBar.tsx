@@ -20,7 +20,6 @@ import {
   Align,
   Anchor,
   Button,
-  Input,
   Orientation,
   Size,
   Spacing,
@@ -61,6 +60,7 @@ import {
   viewFingerprint,
   workingStagesFromView,
 } from "./state";
+import { usePrefixSchema } from "./prefix-schema";
 import type { SerializedStage } from "./state";
 import type { WorkingStage } from "./state";
 import { useRecoilValue } from "recoil";
@@ -134,6 +134,7 @@ const ViewBar: React.FC<{
   const fieldTypes = fos.useFieldTypes();
   const mediaType = fos.useDatasetMediaType();
   const currentView = useRecoilValue(fos.view);
+  const datasetName = fos.useCurrentDatasetName();
   const setView = fos.useSetView();
 
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -453,6 +454,44 @@ const ViewBar: React.FC<{
     });
   }, [state.stages, defsByName, kindOf]);
 
+  //
+  // A stage edits against the view the stages BEFORE it produce — resolving
+  // fields on the view it is part of offers the wrong schema once a generator
+  // stage (`ToPatches`, `ToClips`, …) has run. The open editor gets the prefix
+  // view's schema; the applied view's remains right for everything else.
+  //
+  const editingIndex = editingId
+    ? state.stages.findIndex((stage) => stage.id === editingId)
+    : -1;
+  const editingPrefix = useMemo(
+    () => (editingIndex < 0 ? null : serializeWorking().slice(0, editingIndex)),
+    [editingIndex, serializeWorking],
+  );
+  const prefixSchema = usePrefixSchema(datasetName, editingPrefix);
+
+  const editingPaths = prefixSchema?.paths ?? fieldPaths;
+  const editingTypes = prefixSchema?.types ?? fieldTypes;
+  const editingFieldOptions = useMemo(
+    () =>
+      editingPaths.map((path) => ({
+        id: path,
+        data: { label: path },
+      })),
+    [editingPaths],
+  );
+  const editingAllowedFor = useCallback(
+    (param: ParamDef) =>
+      allowedFields(editingPaths, param.choices.fields, editingTypes),
+    [editingPaths, editingTypes],
+  );
+  const editingFieldKind = useCallback(
+    (path: string) => {
+      const field = editingTypes.get(path);
+      return field ? kindByFtype.get(field.ftype) : undefined;
+    },
+    [editingTypes, kindByFtype],
+  );
+
   /**
    * Required params with nothing entered, keyed `${stageId}:${paramName}`.
    *
@@ -669,12 +708,18 @@ const ViewBar: React.FC<{
                   onModeChange={(param, kind) => changeMode(stage, param, kind)}
                   stage={stage}
                   definition={def}
-                  fieldOptions={fieldOptions}
-                  allPaths={fieldPaths}
-                  allowedFor={allowedFor}
+                  fieldOptions={
+                    editingId === stage.id ? editingFieldOptions : fieldOptions
+                  }
+                  allPaths={editingId === stage.id ? editingPaths : fieldPaths}
+                  allowedFor={
+                    editingId === stage.id ? editingAllowedFor : allowedFor
+                  }
                   choicesFor={choicesFor}
                   operators={operators}
-                  fieldKind={fieldKind}
+                  fieldKind={
+                    editingId === stage.id ? editingFieldKind : fieldKind
+                  }
                   expanded={editingId === stage.id}
                   onToggle={() =>
                     setEditingId((id) => (id === stage.id ? null : stage.id))

@@ -468,3 +468,4 @@ packages/state/src/recoil/utils.ts
 packages/state/src/recoil/view.ts
 packages/state/src/session.ts
 packages/video-annotation/src/state/accessors.ts
+packages/view-bar/src/ViewBar.tsx
