@@ -16,25 +16,7 @@ from fiftyone.core.fields import (
     StringField,
 )
 
-from .database import ensure_connection
 from .document import Document
-
-
-class RunReferencesField(DictField):
-    """Dict field of run references that establishes the database connection
-    before dereferencing.
-
-    Run references on a dataset document are dereferenced lazily upon first
-    access, which may occur in a process without an established connection
-    (e.g. a cold process in API mode, or a worker that disconnected), so the
-    access cannot rely on another SDK call having connected first.
-    """
-
-    def __get__(self, instance, owner):
-        if instance is not None:
-            ensure_connection()
-
-        return super().__get__(instance, owner)
 
 
 class RunDocument(Document):

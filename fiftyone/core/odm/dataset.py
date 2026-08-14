@@ -33,6 +33,7 @@ from fiftyone.core.fields import (
 )
 
 from .database import (
+    ensure_connection,
     patch_annotation_runs,
     patch_brain_runs,
     patch_evaluations,
@@ -42,7 +43,7 @@ from .database import (
 )
 from .document import Document
 from .embedded_document import EmbeddedDocument
-from .runs import RunDocument, RunReferencesField
+from .runs import RunDocument
 from .utils import create_field
 from .views import SavedViewDocument
 from .workspace import WorkspaceDocument
@@ -906,6 +907,35 @@ def _update_path(p, path, new_path):
     return new_path + p[len(path) :]
 
 
+class _ConnectedReferencesMixin:
+    """Mixin for reference-holding fields that establishes the database
+    connection before dereferencing.
+
+    References are dereferenced lazily upon first access, which may occur in
+    a process without an established connection (e.g. a cold process in API
+    mode, or a worker that disconnected), so the access cannot rely on
+    another SDK call having connected first.
+    """
+
+    def __get__(self, instance, owner):
+        if instance is not None:
+            ensure_connection()
+
+        return super().__get__(instance, owner)
+
+
+class _ConnectedReferencesDictField(_ConnectedReferencesMixin, DictField):
+    """Dict field of document references that establishes the database
+    connection before dereferencing.
+    """
+
+
+class _ConnectedReferencesListField(_ConnectedReferencesMixin, ListField):
+    """List field of document references that establishes the database
+    connection before dereferencing.
+    """
+
+
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
@@ -945,12 +975,18 @@ class DatasetDocument(Document):
     static_transforms = DictField(EmbeddedDocumentField(StaticTransform))
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
-    saved_views = ListField(ReferenceField(SavedViewDocument))
-    workspaces = ListField(ReferenceField(WorkspaceDocument))
-    annotation_runs = RunReferencesField(ReferenceField(RunDocument))
-    brain_methods = RunReferencesField(ReferenceField(RunDocument))
-    evaluations = RunReferencesField(ReferenceField(RunDocument))
-    runs = RunReferencesField(ReferenceField(RunDocument))
+    saved_views = _ConnectedReferencesListField(
+        ReferenceField(SavedViewDocument)
+    )
+    workspaces = _ConnectedReferencesListField(
+        ReferenceField(WorkspaceDocument)
+    )
+    annotation_runs = _ConnectedReferencesDictField(
+        ReferenceField(RunDocument)
+    )
+    brain_methods = _ConnectedReferencesDictField(ReferenceField(RunDocument))
+    evaluations = _ConnectedReferencesDictField(ReferenceField(RunDocument))
+    runs = _ConnectedReferencesDictField(ReferenceField(RunDocument))
     active_label_schemas = ListField(StringField())
     label_schemas = DictField()
     frame_label_schemas = DictField()
