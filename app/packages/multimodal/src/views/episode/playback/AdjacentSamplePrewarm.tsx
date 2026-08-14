@@ -151,11 +151,11 @@ export function AdjacentSamplePrewarm({
             mediaField,
             mediaType,
           );
-          const episodeSource = episodeSourceFromByteSource(source);
           if (needsPreview) {
+            const previewSource = episodeSourceFromByteSource(source);
             const preview = await openEpisodePreviewSession(
               sampleDescriptor,
-              episodeSource,
+              previewSource,
               { signal: abort.signal },
             );
             try {
@@ -190,9 +190,10 @@ export function AdjacentSamplePrewarm({
             continue;
           }
 
+          const prewarmSource = episodeSourceFromByteSource(source);
           const prewarmed = await prewarmEpisodeSource(
             sampleDescriptor,
-            episodeSource,
+            prewarmSource,
             abort.signal,
           );
           if (prewarmed && !abort.signal.aborted) {

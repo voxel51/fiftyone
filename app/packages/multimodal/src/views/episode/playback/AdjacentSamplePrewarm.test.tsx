@@ -7,6 +7,7 @@ import { AdjacentSamplePrewarm } from "./AdjacentSamplePrewarm";
 const prewarmHarness = vi.hoisted(() => ({
   buffering: false,
   episodeSource: { episodeId: "next" },
+  episodeSourceFromByteSource: vi.fn(),
   isPlayPending: false,
   neighbor: { sample: { _id: "next" } },
   openEpisodePreviewSession: vi.fn(),
@@ -46,7 +47,7 @@ vi.mock("../../../runtime", () => ({
 
 vi.mock("../../session/episode-source", () => ({
   episodeByteSourceFromSample: () => prewarmHarness.source,
-  episodeSourceFromByteSource: () => prewarmHarness.episodeSource,
+  episodeSourceFromByteSource: prewarmHarness.episodeSourceFromByteSource,
   sampleDescriptorFromSample: () => ({
     mediaType: "group",
     path: "next.mcap",
@@ -62,6 +63,10 @@ describe("AdjacentSamplePrewarm", () => {
     });
     prewarmHarness.buffering = false;
     prewarmHarness.isPlayPending = false;
+    prewarmHarness.episodeSourceFromByteSource.mockReset();
+    prewarmHarness.episodeSourceFromByteSource.mockReturnValue(
+      prewarmHarness.episodeSource,
+    );
     prewarmHarness.openEpisodePreviewSession.mockReset();
     prewarmHarness.peekSourceBootstrap.mockReset();
     prewarmHarness.prewarmEpisodeSource.mockReset();
@@ -133,6 +138,89 @@ describe("AdjacentSamplePrewarm", () => {
       prewarmHarness.publishEpisodePreviewBootstrap.mock.invocationCallOrder[0],
     ).toBeLessThan(
       prewarmHarness.prewarmEpisodeSource.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("passes preview-derived hints to the byte prewarm", async () => {
+    const manifest = { streams: [] } as const;
+    const timeline = {
+      endNs: 30n,
+      startNs: 10n,
+      timeDomainId: "recording",
+    } as const;
+    const result = {
+      bootstrapManifest: manifest,
+      bootstrapTimeline: timeline,
+      frame: {
+        image: {
+          bytes: new Uint8Array([1, 2, 3]),
+          kind: "encoded-image",
+          mimeType: "image/jpeg",
+        },
+        kind: "image",
+      },
+      status: "ready",
+      streamId: "/camera/front",
+      streamSourceName: "/camera/front",
+      streamSourceNames: ["/camera/front"],
+    } as const;
+    let cachedHints: {
+      manifest: typeof manifest;
+      timeline: typeof timeline;
+    } | null = null;
+    prewarmHarness.peekSourceBootstrap.mockImplementation(() =>
+      cachedHints
+        ? { manifest: cachedHints.manifest, poster: result.frame }
+        : null,
+    );
+    prewarmHarness.episodeSourceFromByteSource.mockImplementation(() => ({
+      ...prewarmHarness.episodeSource,
+      ...(cachedHints
+        ? {
+            manifestHint: cachedHints.manifest,
+            playbackHint: cachedHints.timeline,
+          }
+        : {}),
+    }));
+    prewarmHarness.publishEpisodePreviewBootstrap.mockImplementation(() => {
+      cachedHints = { manifest, timeline };
+    });
+    prewarmHarness.previewRead.mockResolvedValue(result);
+    prewarmHarness.openEpisodePreviewSession.mockResolvedValue({
+      dispose: prewarmHarness.previewDispose,
+      read: prewarmHarness.previewRead,
+    });
+    prewarmHarness.prewarmEpisodeSource.mockResolvedValue(true);
+
+    render(
+      <EpisodeSourceReadyProvider ready>
+        <AdjacentSamplePrewarm
+          ctx={
+            {
+              dataset: { mediaType: "group" },
+              media: { field: "mcap" },
+              sample: { sample: { _id: "current-with-hints" } },
+            } as never
+          }
+        />
+      </EpisodeSourceReadyProvider>,
+    );
+
+    await act(async () => vi.runAllTimersAsync());
+
+    expect(prewarmHarness.episodeSourceFromByteSource).toHaveBeenCalledTimes(2);
+    expect(prewarmHarness.openEpisodePreviewSession).toHaveBeenCalledWith(
+      expect.anything(),
+      prewarmHarness.episodeSource,
+      expect.anything(),
+    );
+    expect(prewarmHarness.prewarmEpisodeSource).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        manifestHint: manifest,
+        playbackHint: timeline,
+      }),
+      expect.any(AbortSignal),
     );
   });
 
