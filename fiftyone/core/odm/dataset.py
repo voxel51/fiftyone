@@ -42,7 +42,7 @@ from .database import (
 )
 from .document import Document
 from .embedded_document import EmbeddedDocument
-from .runs import RunDocument
+from .runs import RunDocument, RunReferencesField
 from .utils import create_field
 from .views import SavedViewDocument
 from .workspace import WorkspaceDocument
@@ -947,10 +947,10 @@ class DatasetDocument(Document):
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
     saved_views = ListField(ReferenceField(SavedViewDocument))
     workspaces = ListField(ReferenceField(WorkspaceDocument))
-    annotation_runs = DictField(ReferenceField(RunDocument))
-    brain_methods = DictField(ReferenceField(RunDocument))
-    evaluations = DictField(ReferenceField(RunDocument))
-    runs = DictField(ReferenceField(RunDocument))
+    annotation_runs = RunReferencesField(ReferenceField(RunDocument))
+    brain_methods = RunReferencesField(ReferenceField(RunDocument))
+    evaluations = RunReferencesField(ReferenceField(RunDocument))
+    runs = RunReferencesField(ReferenceField(RunDocument))
     active_label_schemas = ListField(StringField())
     label_schemas = DictField()
     frame_label_schemas = DictField()
