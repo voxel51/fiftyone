@@ -206,6 +206,7 @@ class ReferenceConnectionBootstrapTests(unittest.TestCase):
         import fiftyone.core.fields as fof
         import fiftyone.core.odm.dataset as food
 
+        # pylint: disable=no-member
         return (
             (food._ConnectedReferencesDictField, fof.DictField),
             (food._ConnectedReferencesListField, fof.ListField),
@@ -307,6 +308,10 @@ class ReferenceConnectionBootstrapTests(unittest.TestCase):
         self._disconnect()
 
         self.assertListEqual(dataset.list_runs(), ["test"])
+
+        # Disconnect again so that loading results also starts cold
+        dataset.reload()
+        self._disconnect()
 
         results = dataset.load_run_results("test", cache=False)
         self.assertEqual(results.spam, "eggs")
