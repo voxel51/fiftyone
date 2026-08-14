@@ -238,6 +238,19 @@ class ModalAnnotateSidebarAsserter {
   constructor(private readonly modalAnnotateSidebar: ModalAnnotateSidebarPom) {}
 
   /**
+   * Verify the count shown on the sidebar's Labels group
+   *
+   * @param count The expected number of active labels
+   */
+  async hasActiveLabelsCount(count: number) {
+    await expect(
+      this.modalAnnotateSidebar.locator.getByTestId(
+        "sidebar-group-Labels-field-count",
+      ),
+    ).toHaveText(count.toString());
+  }
+
+  /**
    * Verify that the active labels section is expanded
    */
   async verifyActiveLabelsIsExpanded() {
