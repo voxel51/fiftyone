@@ -93,6 +93,7 @@ import {
 import { EpisodeSourceReadyProvider } from "../playback/source-ready-context";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
+const TRANSITION_STATUS_DELAY_MS = 200;
 
 interface ReadyInventory {
   readonly hasNumericSeries: boolean;
@@ -221,47 +222,16 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const poster: PosterImage | undefined =
     bootstrap?.poster?.kind === "image" ? bootstrap.poster : undefined;
   const posterStreamId = bootstrap?.posterStreamId ?? null;
-  const posterIdentityKey =
-    poster && posterStreamId
-      ? JSON.stringify([sourceAccessKey, posterStreamId])
-      : null;
-  const [posterConsumerIdentities, setPosterConsumerIdentities] = useState<
-    ReadonlyMap<string, string>
-  >(() => new Map());
-  const registerPosterConsumer = useCallback(
-    (consumerId: string) => {
-      if (!posterIdentityKey) return () => undefined;
-      setPosterConsumerIdentities((current) => {
-        if (current.get(consumerId) === posterIdentityKey) return current;
-        const next = new Map(current);
-        next.set(consumerId, posterIdentityKey);
-        return next;
-      });
-      return () => {
-        setPosterConsumerIdentities((current) => {
-          if (current.get(consumerId) !== posterIdentityKey) return current;
-          const next = new Map(current);
-          next.delete(consumerId);
-          return next;
-        });
-      };
-    },
-    [posterIdentityKey],
-  );
-  const hasDestinationPosterConsumer = posterIdentityKey
-    ? [...posterConsumerIdentities.values()].includes(posterIdentityKey)
-    : false;
-  const sourcePoster = useMemo(
+  const sourcePoster = useMemo<SourcePosterValue | null>(
     () =>
       poster
         ? {
             frame: poster.image,
-            registerConsumer: registerPosterConsumer,
             sourceKey: sourceAccessKey,
             streamId: posterStreamId,
           }
         : null,
-    [poster, posterStreamId, registerPosterConsumer, sourceAccessKey],
+    [poster, posterStreamId, sourceAccessKey],
   );
   const [presentedSourceKey, setPresentedSourceKey] = useState("");
   const handlePlayheadDataReady = useCallback(
@@ -333,11 +303,24 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     retainedInventoryState?.sourceKey === sourceKey
       ? retainedInventoryState.inventory
       : null;
-  const shellInventory =
+  const destinationInventory =
     readyInventory ?? bootstrapInventory ?? retainedInventory;
+  const [retainedShellInventory, setRetainedShellInventory] =
+    useState<ReadyInventory | null>(null);
+  // Keep the mounted shell's presentation topology while a destination that
+  // lacks bootstrap facts opens. Playback and source-specific metadata remain
+  // gated on destinationInventory below, so this cannot expose outgoing data.
+  useLayoutEffect(() => {
+    if (destinationInventory) {
+      setRetainedShellInventory((current) =>
+        current === destinationInventory ? current : destinationInventory,
+      );
+    }
+  }, [destinationInventory]);
+  const shellInventory = destinationInventory ?? retainedShellInventory;
   const shellSources = shellInventory?.sources ?? sources;
   const shellStreams = shellInventory?.streams ?? streams;
-  const timelineMode = useMemo(
+  const resolvedTimelineMode = useMemo(
     () => resolveTimelineMode(shellStreams),
     [shellStreams],
   );
@@ -346,19 +329,15 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   // forces a remount — and a fresh provider/store — whenever navigating to a
   // source resolves a different timeline mode, instead of silently retaining
   // the previous mode's stale presentation.
-  const timelineModeKey =
-    timelineMode.kind === "sequence"
-      ? `sequence:${timelineMode.fps}`
-      : timelineMode.kind === "absolute"
-        ? `absolute:${timelineMode.epochAnchorMs}`
-        : "duration";
-  const [
-    retainedAuthoritativeTimelineModeKey,
-    setAuthoritativeTimelineModeKey,
-  ] = useState<string | null>(null);
-  const authoritativeTimelineModeKey = readyInventory
-    ? timelineModeKey
-    : retainedAuthoritativeTimelineModeKey;
+  const resolvedTimelineModeKey = timelineModeKey(resolvedTimelineMode);
+  const initialShellTimelineModeRef = useRef<ReturnType<
+    typeof resolveTimelineMode
+  > | null>(null);
+  if (initialShellTimelineModeRef.current === null && shellInventory) {
+    initialShellTimelineModeRef.current = resolvedTimelineMode;
+  }
+  const [retainedAuthoritativeTimelineMode, setAuthoritativeTimelineMode] =
+    useState<ReturnType<typeof resolveTimelineMode> | null>(null);
   // This layout effect records the last authoritative timeline mode. A
   // bootstrap manifest can seed the first-pixel shell but cannot describe
   // session capabilities such as plots, raw records, and transforms. After
@@ -366,11 +345,27 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   // transitions. A different destination mode may remount only after its
   // capabilities are authoritative, so capability-gated tiles are not pruned.
   useLayoutEffect(() => {
-    if (readyInventory) setAuthoritativeTimelineModeKey(timelineModeKey);
-  }, [readyInventory, timelineModeKey]);
-  const playbackShellKey = authoritativeTimelineModeKey
-    ? `authoritative:${authoritativeTimelineModeKey}`
-    : `bootstrap:${sourceKey}:${timelineModeKey}`;
+    if (!readyInventory) return;
+    setAuthoritativeTimelineMode((current) =>
+      current && timelineModeKey(current) === resolvedTimelineModeKey
+        ? current
+        : resolvedTimelineMode,
+    );
+  }, [readyInventory, resolvedTimelineMode, resolvedTimelineModeKey]);
+  const playbackTimelineMode = readyInventory
+    ? resolvedTimelineMode
+    : (retainedAuthoritativeTimelineMode ??
+      initialShellTimelineModeRef.current ??
+      resolvedTimelineMode);
+  // The first authoritative inventory gets one chance to reseed capability-
+  // gated tiles that a bootstrap manifest cannot describe. After that, keep
+  // the shell mounted across source changes unless an authoritative timeline
+  // mode proves incompatible with the current PlaybackProvider.
+  const playbackShellKey = `${
+    readyInventory || retainedAuthoritativeTimelineMode
+      ? "authoritative"
+      : "bootstrap"
+  }:${timelineModeKey(playbackTimelineMode)}`;
   const availableTileTypes = useMemo(
     () =>
       tileTypesFor({
@@ -454,9 +449,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const transitionMessage =
     status === "error"
       ? `Failed to read recording: ${error ?? "Unknown error"}`
-      : status === "ready" && sources.length === 0
-        ? `No previewable streams in this recording (${streamCount.toLocaleString()} streams found)`
-        : "Preparing viewer";
+      : `No previewable streams in this recording (${streamCount.toLocaleString()} streams found)`;
   const hasTerminalTransition =
     status === "error" || (status === "ready" && sources.length === 0);
   const transitioning =
@@ -526,14 +519,19 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 decorateTrack={decorateTrack}
                                 headerCaption={headerCaption}
                                 headerActions={
-                                  <HeaderActions actions={headerActions} />
+                                  <HeaderActions
+                                    actions={headerActions}
+                                    loading={
+                                      transitioning && !hasTerminalTransition
+                                    }
+                                  />
                                 }
                                 addTileMenu={
                                   <AddTileMenu tileTypes={availableTileTypes} />
                                 }
                                 timelineExtraActions={<TimestampReadout />}
                                 sceneSources={shellSources}
-                                mode={timelineMode}
+                                mode={playbackTimelineMode}
                                 deselectFocusedTileOnRepeatSelect={false}
                                 initialTiles={initialTiles}
                                 initialManualTileTitles={
@@ -563,10 +561,14 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                       onTimelineSamplingRateChange
                                     }
                                     recordingFacts={
-                                      shellInventory?.recordingFacts
+                                      destinationInventory?.recordingFacts
                                     }
-                                    streams={shellStreams}
-                                    terminology={shellInventory?.terminology}
+                                    streams={
+                                      destinationInventory?.streams ?? []
+                                    }
+                                    terminology={
+                                      destinationInventory?.terminology
+                                    }
                                     timelineSamplingRateHz={
                                       timelineSamplingRateHz
                                     }
@@ -577,15 +579,6 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                     <PlaybackState
                                       error={status === "error"}
                                       text={transitionMessage}
-                                    />
-                                  ) : presentedSourceKey !== sourceKey &&
-                                    !hasDestinationPosterConsumer ? (
-                                    <PosterOverlay
-                                      fileName={fileName}
-                                      poster={poster}
-                                      posterStream={bootstrap?.posterStreamId}
-                                      sourceKey={sourceAccessKey}
-                                      statusText={transitionMessage}
                                     />
                                   ) : null
                                 }
@@ -725,13 +718,46 @@ function SourceResourceBoundary() {
   return null;
 }
 
-function HeaderActions({ actions }: { readonly actions?: React.ReactNode }) {
+function HeaderActions({
+  actions,
+  loading,
+}: {
+  readonly actions?: React.ReactNode;
+  readonly loading: boolean;
+}) {
   return (
     <>
+      <DelayedTransitionStatus active={loading} />
       <NetworkStatusPill />
       {actions}
     </>
   );
+}
+
+function DelayedTransitionStatus({ active }: { readonly active: boolean }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!active) {
+      setVisible(false);
+      return undefined;
+    }
+    const timer = setTimeout(
+      () => setVisible(true),
+      TRANSITION_STATUS_DELAY_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [active]);
+
+  return active && visible ? (
+    <span
+      className={styles.transitionStatus}
+      data-testid="episode-transition-status"
+      role="status"
+    >
+      Loading sample…
+    </span>
+  ) : null;
 }
 
 function PlaybackState({
@@ -791,45 +817,14 @@ function PreparingPlayback({
   );
 }
 
-function PosterOverlay({
-  fileName,
-  poster,
-  posterStream,
-  sourceKey,
-  statusText,
-}: {
-  readonly fileName: string;
-  readonly poster?: PosterImage;
-  readonly posterStream?: string;
-  readonly sourceKey: string;
-  readonly statusText?: string;
-}) {
-  return (
-    <div
-      aria-label={`Preview of ${fileName}`}
-      className={styles.posterOverlay}
-      data-testid="episode-poster-overlay"
-    >
-      <PosterCard
-        poster={poster}
-        posterStream={posterStream}
-        sourceKey={sourceKey}
-        statusText={statusText}
-      />
-    </div>
-  );
-}
-
 function PosterCard({
   poster,
   posterStream,
   sourceKey,
-  statusText,
 }: {
   readonly poster?: PosterImage;
   readonly posterStream?: string;
   readonly sourceKey: string;
-  readonly statusText?: string;
 }) {
   return (
     <div className={styles.posterCard}>
@@ -845,10 +840,18 @@ function PosterCard({
       )}
       <div className={styles.posterCaption}>
         <span>{posterStream ?? "Primary preview"}</span>
-        <span>{statusText ?? (poster ? "Preview" : "Preparing")}</span>
+        <span>{poster ? "Preview" : "Preparing"}</span>
       </div>
     </div>
   );
+}
+
+function timelineModeKey(mode: ReturnType<typeof resolveTimelineMode>): string {
+  return mode.kind === "sequence"
+    ? `sequence:${mode.fps}`
+    : mode.kind === "absolute"
+      ? `absolute:${mode.epochAnchorMs}`
+      : "duration";
 }
 
 // Deliberately just the file size: stream/stream/label counts used to render
