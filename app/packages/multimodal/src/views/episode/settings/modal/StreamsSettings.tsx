@@ -79,9 +79,7 @@ const StreamsSettings: React.FC<{
   );
 
   return (
-    <div
-      className={`${styles.root} ${styles.tabContent} ${styles.streamsTabContent}`}
-    >
+    <div className={styles.root}>
       {rows.length === 0 ? (
         <span className={styles.streamEmpty}>No {plural} found</span>
       ) : (
