@@ -21,6 +21,7 @@ import {
   useAnnotationContext,
   useAnnotationFields,
 } from "./useAnnotationContext";
+import useExit from "./useExit";
 
 /**
  * Whether a 2D polyline is the current selection. Keys off the normalized
@@ -62,7 +63,8 @@ const resolveEmptyHit = (ctx: PolylineEmptyHitContext) =>
  *
  * Returns the active flag, tooltip/disabled state, and the public
  * activate/deactivate/toggle methods. Safe to call from any number of
- * components — it has no side effects of its own.
+ * components: reading it does nothing, though `deactivatePolylineMode` closes
+ * any open polyline edit when called (mirroring detection mode).
  *
  * The actual install/teardown of the {@link InteractivePolylineHandler} lives
  * in {@link usePolylineModeInstaller}, which must be called exactly once in
@@ -74,6 +76,11 @@ export const usePolylineMode = () => {
   );
   const isPatchView = useRecoilValue(isPatchesView);
   const { fields } = useAnnotationFields(POLYLINE);
+  const exit = useExit();
+  // ref so `deactivatePolylineMode` doesn't churn with every scene render
+  const { scene } = useLighter();
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -91,14 +98,36 @@ export const usePolylineMode = () => {
     [setPolylineModeActive],
   );
 
-  const deactivatePolylineMode = useCallback(
-    () => setPolylineModeActive(false),
-    [setPolylineModeActive],
-  );
+  /**
+   * Leave polyline mode, closing any open polyline edit with it — the same
+   * finalize `useDetectionMode.deactivateDetectionMode` does.
+   *
+   * Right-click tiers in `InteractionManager`: Tier 2 clears the CANVAS
+   * selection ("stop editing this label"), Tier 3 quits the mode. On a frame
+   * outside the selected track's extent the overlay is unmounted, so there is no
+   * canvas selection for Tier 2 to clear and right-click lands straight on Tier
+   * 3 — while the engine keeps the label active on purpose (the bridge unmounts
+   * with a flagged deselect so scrubbing back re-opens the same edit). Without
+   * finalizing here, the sidebar's Edit Polyline form is stranded: right-click,
+   * the gesture the on-canvas hint advertises as "Right click to exit", does
+   * nothing at all.
+   */
+  const deactivatePolylineMode = useCallback(() => {
+    sceneRef.current?.exitInteractiveMode();
+    exit();
+    setPolylineModeActive(false);
+  }, [exit, setPolylineModeActive]);
 
+  // Route through activate/deactivate rather than flipping the flag, so
+  // toggling the tool off finalizes the open edit exactly as right-click and Esc
+  // do. Mirrors `useDetectionMode.toggleDetectionMode`.
   const togglePolylineMode = useCallback(() => {
-    setPolylineModeActive((prev) => !prev);
-  }, [setPolylineModeActive]);
+    if (polylineModeActive) {
+      deactivatePolylineMode();
+    } else {
+      activatePolylineMode();
+    }
+  }, [polylineModeActive, activatePolylineMode, deactivatePolylineMode]);
 
   return useMemo(
     () => ({
@@ -272,11 +301,7 @@ export const usePolylineModeInstaller = (): void => {
         // equivalent, so without this a drawn polyline never became a track.
         //
         // Frame-level fields only: an image polyline is already committed by
-        // `createNew`'s vertex seeding, and re-announcing it would only
-        // re-commit the same label. On video the seeding commit also ran
-        // (frame-stamped), so the bridge's establish commit is a value-equal
-        // no-op — the undo stack drops it — but the establish is still what
-        // stashes the gesture key and hands the draw to the video surface.
+        // `createNew`, and re-announcing it would just re-commit the same label.
         // Lighter records no undo command of its own here (the annotation engine
         // holds undo authority while mounted), so this pushes no duplicate.
         if (created?.path?.startsWith(FRAMES_PREFIX)) {
