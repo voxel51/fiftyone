@@ -11,10 +11,11 @@
  * Each test draws on its own sample, so a failed test cannot leak a stray
  * polyline into another.
  */
-import { test as base, type Page } from "src/oss/fixtures";
+import { test as base, type Browser, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { EventUtils } from "src/shared/event-utils";
 import { indexToId } from "src/shared/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
@@ -77,6 +78,28 @@ const openSample = async (
   await modal.sidebar.switchMode("annotate");
 };
 
+/**
+ * Open the persisted sample in an annotate-mode modal in a brand-new browser
+ * context (no shared client cache — a true server round-trip) and run
+ * `verify` there.
+ */
+const inFreshContext = async (
+  browser: Browser,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  verify: (modal: ModalPom) => Promise<void>,
+) => {
+  const context = await browser.newContext();
+  const freshPage = await context.newPage();
+
+  try {
+    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+    await openSample(fiftyoneLoader, freshPage, freshModal, SAMPLE_IDS.persist);
+    await verify(freshModal);
+  } finally {
+    await context.close();
+  }
+};
+
 /** Draw the single-vertex polyline and class it `lane`. */
 const drawAndClass = async (modal: ModalPom) => {
   await modal.sidebar.annotate.polylineMode();
@@ -86,6 +109,7 @@ const drawAndClass = async (modal: ModalPom) => {
 };
 
 test("a single vertex persists on the first click", async ({
+  browser,
   fiftyoneLoader,
   modal,
   page,
@@ -94,13 +118,17 @@ test("a single vertex persists on the first click", async ({
   await drawAndClass(modal);
   await modal.sidebar.annotate.waitForSavesSettled();
 
-  // true round-trip: re-navigating rebuilds the app from the server, so the
-  // one-vertex label reads back. Pre-fix there was no engine row to save, so
-  // this reload found nothing.
-  await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.persist);
-  await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
-  await modal.sidebar.annotate.selectActiveLabel("lane", 0);
-  await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
+  // true round-trip: a brand-new browser context rebuilds the app from the
+  // server, so the one-vertex label reads back (pre-fix there was no engine
+  // row to save, so this read-back found nothing). Re-navigating in the same
+  // page can't be used: the modal reopens straight into Annotate mode, where
+  // the Explore looker canvas that `waitForSampleLoadDomAttribute` keys on
+  // never mounts. See ANNOTATION_E2E_TEST_NOTES.md "persistence pattern".
+  await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
+    await freshModal.sidebar.annotate.selectActiveLabel("lane", 0);
+    await freshModal.sidebar.edit.assert.verifyFieldValue("label", "lane");
+  });
 });
 
 test("Backspace on the lone vertex deletes the label", async ({

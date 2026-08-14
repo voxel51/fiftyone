@@ -144,11 +144,15 @@ export default class PolylineOverlay<
 
     // Match the Annotate placement so a label doesn't jump when toggling modes:
     // horizontally centred on the anchor, and for a lone vertex lifted entirely
-    // above the dot rather than sitting up-and-to-the-right of it. `oy` is the
-    // box's BOTTOM edge (it is drawn upward from there).
+    // above the dot rather than sitting up-and-to-the-right of it (the dot is
+    // drawn at double radius while selected). `oy` is the box's BOTTOM edge (it
+    // is drawn upward from there).
     const ox = ax - boxWidth / 2;
+    const vertexRadius = this.isSelected(state)
+      ? state.pointRadius * 2
+      : state.pointRadius;
     const oy = isLoneVertex
-      ? ay - state.pointRadius - state.strokeWidth
+      ? ay - vertexRadius - state.strokeWidth
       : ay + boxHeight / 2;
 
     ctx.beginPath();

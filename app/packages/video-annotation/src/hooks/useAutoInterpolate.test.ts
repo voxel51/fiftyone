@@ -258,8 +258,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
           closed: false,
           filled: false,
         } as never;
-      if (frame === 2)
-        return { keyframe: false, points: [[[0, 0]]] } as never;
+      if (frame === 2) return { keyframe: false, points: [[[0, 0]]] } as never;
       return null;
     };
 
