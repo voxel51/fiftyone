@@ -124,6 +124,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   // Mark Keyframe needs a detection selection.
   const canMarkKeyframe = hasSelection && selectionIsKeyframeable;
 
+
   // split needs one instance-track (detection / polyline) + a playhead frame
   const canSplit =
     selectedIds.length === 1 &&
@@ -170,7 +171,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             tooltip: !hasSelection
               ? "Select a label to mark a keyframe"
               : !selectionIsKeyframeable
-                ? "Keyframes are only available for detections"
+                ? "Keyframes are only available for detections and polylines"
                 : "Toggle keyframe at this frame",
             isDisabled: !canMarkKeyframe,
             onClick: () => {
