@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { ColorColumnSource } from "./extensions";
 import {
   fetchColor,
   fetchColorByChoices,
@@ -121,5 +122,35 @@ describe("useColorColumn", () => {
     // Deselecting the field never enters a loading state
     rerender({ field: null });
     expect(result.current.loading).toBe(false);
+  });
+
+  it("aborts a superseded source resolve instead of letting it run on", () => {
+    const signals: AbortSignal[] = [];
+    const source: ColorColumnSource = {
+      choices: ["a", "b"],
+      resolve: vi.fn((_field, _onPartial, signal?: AbortSignal) => {
+        if (signal) signals.push(signal);
+        // Never settles: a cancellable source only stops via the signal
+        return new Promise<ColorResponse>(() => undefined);
+      }),
+    };
+    const { rerender, unmount } = renderHook(
+      ({ field }: { field: string | null }) =>
+        useColorColumn("ds", "viz", RUN, field, source),
+      { initialProps: { field: "a" as string | null } },
+    );
+
+    expect(signals).toHaveLength(1);
+    expect(signals[0].aborted).toBe(false);
+
+    // Superseding the field releases the old resolve's interest
+    rerender({ field: "b" });
+    expect(signals[0].aborted).toBe(true);
+    expect(signals).toHaveLength(2);
+    expect(signals[1].aborted).toBe(false);
+
+    // Unmounting releases the in-flight resolve too
+    unmount();
+    expect(signals[1].aborted).toBe(true);
   });
 });
