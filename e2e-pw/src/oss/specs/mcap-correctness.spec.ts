@@ -22,6 +22,7 @@ const fixturePaths = {
   invalid: path.join(fixtureDir, "not-an-mcap.txt"),
   long: path.join(fixtureDir, long.fileName),
   thumbnail: path.join(fixtureDir, "episode-thumbnail.png"),
+  thumbnailB: path.join(fixtureDir, "episode-thumbnail-b.png"),
   unsupported: path.join(fixtureDir, unsupported.fileName),
 };
 const cameraPoseFileNames = [
@@ -126,6 +127,13 @@ test.describe.serial("MCAP correctness", () => {
         outputPath: fixturePaths.thumbnail,
         width: 128,
       }),
+      mediaFactory.createImage({
+        fillColor: "#00ffff",
+        height: 96,
+        hideLogs: true,
+        outputPath: fixturePaths.thumbnailB,
+        width: 128,
+      }),
     ]);
     await fs.writeFile(fixturePaths.invalid, "not an mcap file");
 
@@ -153,12 +161,16 @@ dataset.add_samples([
 
 alternate_media_dataset = fo.Dataset("${alternateMediaDatasetName}")
 alternate_media_dataset.persistent = True
-alternate_media_dataset.add_sample(
+alternate_media_dataset.add_samples([
     fo.Sample(
         filepath=r"${fixturePaths.episodeA}",
         thumbnail_path=r"${fixturePaths.thumbnail}",
-    )
-)
+    ),
+    fo.Sample(
+        filepath=r"${fixturePaths.episodeB}",
+        thumbnail_path=r"${fixturePaths.thumbnailB}",
+    ),
+])
 alternate_media_dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
 alternate_media_dataset.app_config.grid_media_field = "thumbnail_path"
 alternate_media_dataset.app_config.modal_media_field = "filepath"
@@ -329,7 +341,7 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
   test.describe("alternate grid media", () => {
     test.use({ targetDatasetName: alternateMediaDatasetName });
 
-    test("switches between an alternate image and MCAP media in the modal", async ({
+    test("keeps alternate modal media across sample navigation", async ({
       grid,
       modal,
     }) => {
@@ -337,7 +349,7 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
       await expect(tile).toHaveAttribute("data-cy", "looker");
       await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
 
-      await openMcapModal(grid, modal);
+      await openMcapModal(grid, modal, 0);
       await modal.episode.waitForReady("tiny-episode-a.mcap");
       await modal.episode.expectTileTitles(
         ["camera/front", "points"],
@@ -354,10 +366,19 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
         [255, 0, 255],
       );
 
+      const nextLookerAttached = await modal.armLookerAttached();
+      await modal.getSampleNavigation("forward").click();
+      await nextLookerAttached.received;
+      await modal.waitForSampleLoadDomAttribute();
+      await expectDominantColor(
+        modal.modalContainer.locator("canvas"),
+        [0, 255, 255],
+      );
+
       await modal.selectMediaField("filepath");
-      await modal.episode.waitForReady("tiny-episode-a.mcap");
+      await modal.episode.waitForReady("tiny-episode-b.mcap");
       await modal.episode.expectTileTitles(
-        ["camera/front", "points"],
+        ["camera/rear", "camera/side", "scan/rear"],
         ["Logs"],
       );
       await modal.episode.expectNoViewerError();
