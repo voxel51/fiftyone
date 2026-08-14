@@ -1,11 +1,13 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
   type RefObject,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   Orientation,
   Spacing,
@@ -13,6 +15,8 @@ import {
   Text,
   TextColor,
   TextVariant,
+  Z_INDEX_VALUES,
+  ZIndex,
 } from "@voxel51/voodo";
 import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
@@ -155,13 +159,14 @@ export function useScene3dHoverTooltip(): {
     pointerRef.current = { x: event.clientX, y: event.clientY };
   }, []);
 
-  const pointerPosition = useCallback(() => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    return {
-      x: pointerRef.current.x - (rect?.left ?? 0),
-      y: pointerRef.current.y - (rect?.top ?? 0),
-    };
-  }, []);
+  // Viewport-absolute (not container-relative): the tooltip itself renders
+  // through a body portal with `position: fixed` so the tile grid's
+  // `overflow: hidden` (every tile clips its content to its card boundary)
+  // can't clip it — see `Scene3dHoverTooltipPortal` below.
+  const pointerPosition = useCallback(
+    () => ({ x: pointerRef.current.x, y: pointerRef.current.y }),
+    [],
+  );
 
   const scheduleDelayedHover = useCallback(
     (ownerKey: string, hovered: DelayedHover | null) => {
@@ -278,10 +283,14 @@ const tooltipStyle: CSSProperties = {
   overflow: "hidden",
   padding: "8px 10px",
   pointerEvents: "none",
-  position: "absolute",
+  position: "fixed",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
-  zIndex: 3,
+  // `ZIndex.AboveModal` is a named token consumed via voodo's `zIndexStyles`
+  // helper (a Tailwind class referencing a CSS variable) — it isn't a valid
+  // raw CSS z-index value, so a plain inline style needs the numeric value
+  // it resolves to instead.
+  zIndex: Z_INDEX_VALUES[ZIndex.AboveModal],
 };
 
 const tooltipSectionStyle: CSSProperties = {
@@ -323,21 +332,86 @@ const colorBadgeStyle: CSSProperties = {
   width: 8,
 };
 
+/**
+ * Positions a cursor-adjacent tooltip at viewport-absolute `(anchorX,
+ * anchorY)`, flipping to the opposite side of the cursor on whichever axis
+ * would otherwise push it past the browser window's edge — the previous
+ * unconditional `anchor + offset` placement had no such check, so a hover
+ * near the right/bottom of the window rendered the tooltip partly
+ * off-screen instead of flipping to stay visible.
+ *
+ * Runs after paint (`useLayoutEffect`) because the tooltip's own rendered
+ * size — needed to know whether it overflows — isn't known until its
+ * content (which varies per hover) has actually laid out.
+ */
+function useEdgeAwareTooltipPosition(
+  anchorX: number,
+  anchorY: number,
+): { readonly ref: RefObject<HTMLDivElement>; readonly style: CSSProperties } {
+  const ref = useRef<HTMLDivElement>(null);
+  const [style, setStyle] = useState<CSSProperties>({
+    left: anchorX + HOVER_TOOLTIP_OFFSET_PX,
+    top: anchorY + HOVER_TOOLTIP_OFFSET_PX,
+    visibility: "hidden",
+  });
+
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+
+    const overflowsRight =
+      anchorX + HOVER_TOOLTIP_OFFSET_PX + node.offsetWidth > window.innerWidth;
+    const overflowsBottom =
+      anchorY + HOVER_TOOLTIP_OFFSET_PX + node.offsetHeight >
+      window.innerHeight;
+
+    const left = overflowsRight
+      ? Math.max(0, anchorX - HOVER_TOOLTIP_OFFSET_PX - node.offsetWidth)
+      : anchorX + HOVER_TOOLTIP_OFFSET_PX;
+    const top = overflowsBottom
+      ? Math.max(0, anchorY - HOVER_TOOLTIP_OFFSET_PX - node.offsetHeight)
+      : anchorY + HOVER_TOOLTIP_OFFSET_PX;
+
+    setStyle({ left, top, visibility: "visible" });
+  }, [anchorX, anchorY]);
+
+  return { ref, style };
+}
+
+/**
+ * Renders `children` (a positioned tooltip node) through a `document.body`
+ * portal at `position: fixed` rather than as an absolutely-positioned
+ * sibling inside the hovered tile: every tile's content wrapper clips to
+ * its own card boundary (`overflow: hidden`, shared by all tile types in
+ * the grid — not something to loosen just for this one tooltip), so a
+ * container-relative tooltip gets clipped whenever a hover lands near a
+ * tile edge. Escaping to the body sidesteps that without touching shared
+ * tile CSS.
+ */
+function Scene3dHoverTooltipPortal({
+  children,
+}: {
+  readonly children: React.ReactNode;
+}): React.ReactPortal | null {
+  if (typeof document === "undefined") return null;
+  return createPortal(children, document.body);
+}
+
 /** Minimal cursor-adjacent tooltip for a hovered 3D object. */
 export const Scene3dHoverTooltip: React.FC<{
   readonly tooltip: Scene3dHoverTooltipState;
 }> = ({ tooltip }) => {
+  const { ref, style } = useEdgeAwareTooltipPosition(tooltip.x, tooltip.y);
   return (
-    <div
-      data-testid="episode-3d-hover-tooltip"
-      style={{
-        ...tooltipStyle,
-        left: tooltip.x + HOVER_TOOLTIP_OFFSET_PX,
-        top: tooltip.y + HOVER_TOOLTIP_OFFSET_PX,
-      }}
-    >
-      <Scene3dHoverTooltipContent tooltip={tooltip} />
-    </div>
+    <Scene3dHoverTooltipPortal>
+      <div
+        data-testid="episode-3d-hover-tooltip"
+        ref={ref}
+        style={{ ...tooltipStyle, ...style }}
+      >
+        <Scene3dHoverTooltipContent tooltip={tooltip} />
+      </div>
+    </Scene3dHoverTooltipPortal>
   );
 };
 
@@ -346,32 +420,34 @@ export const Scene3dHoverTooltipStack: React.FC<{
   readonly tooltips: readonly Scene3dHoverTooltipState[];
 }> = ({ tooltips }) => {
   const anchor = tooltips[0];
+  const { ref, style } = useEdgeAwareTooltipPosition(
+    anchor?.x ?? 0,
+    anchor?.y ?? 0,
+  );
   if (!anchor) return null;
   return (
-    <div
-      data-testid="episode-3d-hover-tooltip"
-      style={{
-        ...tooltipStyle,
-        left: anchor.x + HOVER_TOOLTIP_OFFSET_PX,
-        padding: 0,
-        top: anchor.y + HOVER_TOOLTIP_OFFSET_PX,
-      }}
-    >
-      {tooltips.map((tooltip, index) => (
-        <div
-          data-testid="episode-3d-hover-tooltip-section"
-          key={`${tooltip.kind}:${index}:${tooltipIdentityKey(tooltip)}`}
-          style={{
-            ...tooltipSectionStyle,
-            ...(index > 0
-              ? { borderTop: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}` }
-              : {}),
-          }}
-        >
-          <Scene3dHoverTooltipContent tooltip={tooltip} />
-        </div>
-      ))}
-    </div>
+    <Scene3dHoverTooltipPortal>
+      <div
+        data-testid="episode-3d-hover-tooltip"
+        ref={ref}
+        style={{ ...tooltipStyle, ...style, padding: 0 }}
+      >
+        {tooltips.map((tooltip, index) => (
+          <div
+            data-testid="episode-3d-hover-tooltip-section"
+            key={`${tooltip.kind}:${index}:${tooltipIdentityKey(tooltip)}`}
+            style={{
+              ...tooltipSectionStyle,
+              ...(index > 0
+                ? { borderTop: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}` }
+                : {}),
+            }}
+          >
+            <Scene3dHoverTooltipContent tooltip={tooltip} />
+          </div>
+        ))}
+      </div>
+    </Scene3dHoverTooltipPortal>
   );
 };
 
