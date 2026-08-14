@@ -436,7 +436,11 @@ const ViewBar: React.FC<{
           // parses to — as a string, `MapLabels(map='{...}')` is a type error.
           // Validation gated Apply on parseability, so the fallthrough only
           // covers an envelope shown as its lowering, which passes through.
-          if (kind === "json" && typeof value === "string" && !isEnvelope(value)) {
+          if (
+            kind === "json" &&
+            typeof value === "string" &&
+            !isEnvelope(value)
+          ) {
             try {
               return [p.name, JSON.parse(value)];
             } catch {

@@ -408,45 +408,29 @@ const ParamControl: React.FC<ParamInputProps> = ({
           {(Boolean(tabs) ||
             Boolean(disabled && blockedReason) ||
             param.tokens.includes("expr")) && (
-          <Stack
-            orientation={Orientation.Row}
-            spacing={Spacing.Sm}
-            align={Align.Center}
-            style={{ height: EDITOR_HEADER_HEIGHT }}
-          >
-            {tabs}
-            {disabled && blockedReason ? (
-              // The same lock the expression editor's header shows, so the
-              // two tabs say the same thing the same way
-              <Stack
-                orientation={Orientation.Row}
-                spacing={Spacing.Xs}
-                align={Align.Center}
-              >
-                <Icon
-                  name={IconName.Lock}
-                  size={Size.Sm}
-                  color={TextColor.Muted}
-                />
-                <Text
-                  variant={TextVariant.Caption}
-                  color={TextColor.Muted}
-                  style={{
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    minWidth: 0,
-                  }}
+            <Stack
+              orientation={Orientation.Row}
+              spacing={Spacing.Sm}
+              align={Align.Center}
+              style={{ height: EDITOR_HEADER_HEIGHT }}
+            >
+              {tabs}
+              {disabled && blockedReason ? (
+                // The same lock the expression editor's header shows, so the
+                // two tabs say the same thing the same way
+                <Stack
+                  orientation={Orientation.Row}
+                  spacing={Spacing.Xs}
+                  align={Align.Center}
                 >
-                  {blockedReason}
-                </Text>
-              </Stack>
-            ) : (
-              invalid && (
-                <Tooltip content={error ?? ""}>
+                  <Icon
+                    name={IconName.Lock}
+                    size={Size.Sm}
+                    color={TextColor.Muted}
+                  />
                   <Text
                     variant={TextVariant.Caption}
-                    color={TextColor.Destructive}
+                    color={TextColor.Muted}
                     style={{
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -454,36 +438,52 @@ const ParamControl: React.FC<ParamInputProps> = ({
                       minWidth: 0,
                     }}
                   >
-                    {error}
+                    {blockedReason}
                   </Text>
-                </Tooltip>
-              )
-            )}
-            {/* The json here is a lowered ViewExpression, so the corner links
+                </Stack>
+              ) : (
+                invalid && (
+                  <Tooltip content={error ?? ""}>
+                    <Text
+                      variant={TextVariant.Caption}
+                      color={TextColor.Destructive}
+                      style={{
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        minWidth: 0,
+                      }}
+                    >
+                      {error}
+                    </Text>
+                  </Tooltip>
+                )
+              )}
+              {/* The json here is a lowered ViewExpression, so the corner links
                 the format's docs — unless the param is plain data, which has
                 no format to document beyond the stage's own docs already on
                 the pill */}
-            {param.tokens.includes("expr") && (
-              <Tooltip
-                anchor={Anchor.Bottom}
-                content="View expression documentation"
-              >
-                <a
-                  href="https://docs.voxel51.com/api/fiftyone.core.expressions.html#fiftyone.core.expressions.ViewExpression"
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="View expression documentation"
-                  style={{
-                    marginLeft: "auto",
-                    display: "inline-flex",
-                    color: "var(--fo-palette-text-secondary)",
-                  }}
+              {param.tokens.includes("expr") && (
+                <Tooltip
+                  anchor={Anchor.Bottom}
+                  content="View expression documentation"
                 >
-                  <Icon name={IconName.ExternalLink} size={Size.Sm} />
-                </a>
-              </Tooltip>
-            )}
-          </Stack>
+                  <a
+                    href="https://docs.voxel51.com/api/fiftyone.core.expressions.html#fiftyone.core.expressions.ViewExpression"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="View expression documentation"
+                    style={{
+                      marginLeft: "auto",
+                      display: "inline-flex",
+                      color: "var(--fo-palette-text-secondary)",
+                    }}
+                  >
+                    <Icon name={IconName.ExternalLink} size={Size.Sm} />
+                  </a>
+                </Tooltip>
+              )}
+            </Stack>
           )}
           {/*
             Monaco lays itself out against a definite box. Its parent is the
