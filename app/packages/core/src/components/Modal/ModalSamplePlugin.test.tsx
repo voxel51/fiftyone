@@ -14,11 +14,17 @@ const harness = vi.hoisted(() => ({
     sample: { filepath: string; id: string };
     urls: { filepath: string };
   },
+  selectedMedia: {
+    hasAlternateMediaPath: false,
+    isDirect3dSample: false,
+  },
   sample2dMounts: 0,
 }));
 
 vi.mock("@fiftyone/state", () => ({
+  getNormalizedUrls: (urls: unknown) => urls,
   modalSample: "modal-sample",
+  resolveMediaFieldLooker: () => harness.selectedMedia,
   selectedMediaField: () => "selected-media-field",
 }));
 
@@ -32,10 +38,6 @@ vi.mock("recoil", () => ({
   useSetRecoilState: () => () => undefined,
 }));
 
-vi.mock("@fiftyone/utilities", () => ({
-  isDirect3dSamplePath: () => false,
-}));
-
 vi.mock("./Sample2D", () => ({
   Sample2D: () => {
     React.useEffect(() => {
@@ -45,7 +47,9 @@ vi.mock("./Sample2D", () => ({
   },
 }));
 
-vi.mock("./Sample3d", () => ({ Sample3d: () => null }));
+vi.mock("./Sample3d", () => ({
+  Sample3d: () => <div data-testid="sample-3d" />,
+}));
 vi.mock("./Group", () => ({ default: () => null }));
 vi.mock("./use-modal-sample-renderer-persistence", () => ({
   useRetainedModalSample: () => {
@@ -84,6 +88,10 @@ describe("NonGroupModalSample persistent routing", () => {
     };
     harness.persistenceKey = "renderer-McapRenderer";
     harness.retainedSample = null;
+    harness.selectedMedia = {
+      hasAlternateMediaPath: false,
+      isDirect3dSample: false,
+    };
     harness.sample2dMounts = 0;
   });
 
@@ -124,6 +132,30 @@ describe("NonGroupModalSample persistent routing", () => {
     );
 
     expect(screen.getByTestId("fallback")).toBeTruthy();
+    expect(screen.queryByTestId("sample-2d")).toBeNull();
+  });
+
+  it("lets an alternate image override a 3D root sample route", () => {
+    harness.selectedMedia = {
+      hasAlternateMediaPath: true,
+      isDirect3dSample: false,
+    };
+
+    render(<NonGroupModalSample is3DMediaType />);
+
+    expect(screen.getByTestId("sample-2d")).toBeTruthy();
+    expect(screen.queryByTestId("sample-3d")).toBeNull();
+  });
+
+  it("routes a selected direct-3D alternate field to Sample3d", () => {
+    harness.selectedMedia = {
+      hasAlternateMediaPath: true,
+      isDirect3dSample: true,
+    };
+
+    render(<NonGroupModalSample is3DMediaType={false} />);
+
+    expect(screen.getByTestId("sample-3d")).toBeTruthy();
     expect(screen.queryByTestId("sample-2d")).toBeNull();
   });
 });
