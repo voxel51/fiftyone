@@ -79,6 +79,7 @@ export default function HoverCard({
   const anchorX = origin.left + hit.x;
   const anchorY = origin.top + hit.y;
   const showImage = src !== null && settled?.ok === true;
+  const hasAction = action != null;
   useLayoutEffect(() => {
     const el = cardRef.current;
     if (!el) return;
@@ -91,7 +92,7 @@ export default function HoverCard({
     left = Math.max(4, Math.min(left, window.innerWidth - w - 4));
     top = Math.max(4, Math.min(top, window.innerHeight - h - 4));
     setPos({ left, top });
-  }, [anchorX, anchorY, showImage, details, value, filename, action != null]);
+  }, [anchorX, anchorY, showImage, details, value, filename, hasAction]);
 
   // Preload off-DOM; the card appears only once the image is ready — or
   // has failed, in which case the metadata still shows (an unloadable
