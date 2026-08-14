@@ -88,8 +88,6 @@ const ModalLookerContent = React.memo(
     const shouldRenderImavid = useRecoilValue(
       fos.shouldRenderImaVidLooker(true),
     );
-    const isVideoDataset = useRecoilValue(fos.isVideoDataset);
-
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
 
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
@@ -99,12 +97,6 @@ const ModalLookerContent = React.memo(
       urls: fos.getNormalizedUrls(sample.urls),
     });
     const isNative = selectedMedia.nativeLookerType !== null;
-
-    // The dataset-level fallback preserves grouped video behavior for
-    // filepath. An alternate source must instead select its own surface.
-    const video =
-      selectedMedia.nativeLookerType === "video" ||
-      (!selectedMedia.hasAlternateMediaPath && isVideoDataset);
 
     if (shouldRenderImavid) {
       return (
@@ -116,7 +108,7 @@ const ModalLookerContent = React.memo(
       );
     }
 
-    if (video) {
+    if (selectedMedia.nativeLookerType === "video") {
       return isAnnotate ? (
         <VideoAnnotationSurface sample={sample} />
       ) : (
