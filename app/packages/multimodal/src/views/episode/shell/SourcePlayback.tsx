@@ -22,11 +22,15 @@ import type {
   StreamDescriptor,
 } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
+import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection/scene-sources";
+import { episodeSourceAccessKey } from "../../../runtime/episode-resources";
+import { EpisodePlaybackStoreProvider } from "../../../runtime/react/playback-store-context";
+import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
+import { createScheduledSourceReadBudgetAccount } from "../../../runtime/scheduled-read-budget-account";
 import {
-  createScheduledSourceReadBudgetAccount,
-  episodeSourceAccessKey,
-} from "../../../runtime";
-import { EpisodePlaybackStoreProvider } from "../../../runtime/react";
+  sourceBootstrapKey,
+  type SourceBootstrap,
+} from "../../../runtime/source-bootstrap-cache";
 import { releaseRetainedImageTextures } from "../../../visualization/media-2d/image-texture-cache";
 import {
   releaseGpuImageAnnotationResources,
@@ -38,7 +42,6 @@ import {
 } from "../../../visualization/composition/gpu-point-cloud-projection-resources";
 import { releaseGpuPointCloudColormapTextures } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
 import { BitmapImageFrameView } from "../../../visualization/media-2d/BitmapImageView";
-import { getSourceBootstrap, sourceBootstrapKey } from "../../../runtime";
 import type { EpisodeSession, EpisodeTerminology } from "../../../ports";
 import { Scene3dViewStateProvider } from "../scene/camera/scene-3d-view-state-context";
 import { Scene3dViewSettingsProvider } from "../spatial/view-settings-context";
@@ -83,6 +86,11 @@ import {
 import { resolveTimelineMode } from "../playback/timeline-mode";
 import { useSceneInventoryState } from "../stream-discovery/use-scene-inventory";
 import { TransformTopologyProvider } from "../transforms/transform-topology-context";
+import {
+  SourcePosterProvider,
+  type SourcePosterValue,
+} from "../image/source-poster-context";
+import { EpisodeSourceReadyProvider } from "../playback/source-ready-context";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 
@@ -98,7 +106,7 @@ interface ReadyInventory {
 }
 
 type PosterImage = Extract<
-  NonNullable<ReturnType<typeof getSourceBootstrap>>["poster"],
+  NonNullable<SourceBootstrap["poster"]>,
   { kind: "image" }
 >;
 
@@ -209,19 +217,52 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     const account = session?.boundedRead?.openAccount();
     return account ? createScheduledSourceReadBudgetAccount(account) : null;
   }, [session]);
-  const previousSourceKeyRef = useRef(sourceKey);
-  const hasNavigatedRef = useRef(false);
-  if (navigationPending || previousSourceKeyRef.current !== sourceKey) {
-    previousSourceKeyRef.current = sourceKey;
-    hasNavigatedRef.current = true;
-  }
-  const isModalNavigation = hasNavigatedRef.current;
-  const bootstrap = useMemo(
-    () => (source ? getSourceBootstrap(source) : null),
-    [source],
-  );
+  const bootstrap = useSourceBootstrap(source);
   const poster: PosterImage | undefined =
     bootstrap?.poster?.kind === "image" ? bootstrap.poster : undefined;
+  const posterStreamId = bootstrap?.posterStreamId ?? null;
+  const posterIdentityKey =
+    poster && posterStreamId
+      ? JSON.stringify([sourceAccessKey, posterStreamId])
+      : null;
+  const [posterConsumerIdentities, setPosterConsumerIdentities] = useState<
+    ReadonlyMap<string, string>
+  >(() => new Map());
+  const registerPosterConsumer = useCallback(
+    (consumerId: string) => {
+      if (!posterIdentityKey) return () => undefined;
+      setPosterConsumerIdentities((current) => {
+        if (current.get(consumerId) === posterIdentityKey) return current;
+        const next = new Map(current);
+        next.set(consumerId, posterIdentityKey);
+        return next;
+      });
+      return () => {
+        setPosterConsumerIdentities((current) => {
+          if (current.get(consumerId) !== posterIdentityKey) return current;
+          const next = new Map(current);
+          next.delete(consumerId);
+          return next;
+        });
+      };
+    },
+    [posterIdentityKey],
+  );
+  const hasDestinationPosterConsumer = posterIdentityKey
+    ? [...posterConsumerIdentities.values()].includes(posterIdentityKey)
+    : false;
+  const sourcePoster = useMemo(
+    () =>
+      poster
+        ? {
+            frame: poster.image,
+            registerConsumer: registerPosterConsumer,
+            sourceKey: sourceAccessKey,
+            streamId: posterStreamId,
+          }
+        : null,
+    [poster, posterStreamId, registerPosterConsumer, sourceAccessKey],
+  );
   const [presentedSourceKey, setPresentedSourceKey] = useState("");
   const handlePlayheadDataReady = useCallback(
     () => setPresentedSourceKey(sourceKey),
@@ -253,14 +294,47 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       streams,
     ],
   );
-  const retainedInventoryRef = useRef<ReadyInventory | null>(null);
-  // This layout effect retains the last inventory that produced a usable shell.
+  const bootstrapInventory = useMemo<ReadyInventory | null>(() => {
+    const manifest = bootstrap?.manifest;
+    if (!manifest) return null;
+    const sources = sceneSourcesFromStreamDescriptors(manifest.streams);
+    if (sources.length === 0) return null;
+    return {
+      hasNumericSeries: false,
+      hasRawRecords: false,
+      hasTransformTopology: false,
+      recordingFacts: manifest.recordingFacts,
+      sources,
+      streamCount: manifest.streams.length,
+      streams: manifest.streams,
+    };
+  }, [bootstrap?.manifest]);
+  const [retainedInventoryState, setRetainedInventoryState] = useState<{
+    readonly inventory: ReadyInventory;
+    readonly sourceKey: string;
+  } | null>(null);
+  // Retain the current source's destination inventory before the bounded grid
+  // bootstrap cache can evict it while the full session is still opening.
   useLayoutEffect(() => {
-    if (readyInventory) {
-      retainedInventoryRef.current = readyInventory;
+    const retainableInventory = readyInventory ?? bootstrapInventory;
+    if (retainableInventory) {
+      setRetainedInventoryState((current) =>
+        current?.inventory === retainableInventory &&
+        current.sourceKey === sourceKey
+          ? current
+          : { inventory: retainableInventory, sourceKey },
+      );
     }
-  }, [readyInventory]);
-  const shellInventory = readyInventory ?? retainedInventoryRef.current;
+  }, [bootstrapInventory, readyInventory, sourceKey]);
+  // A fully buffered grid tile already knows the destination manifest. Prefer
+  // that source-authenticated inventory over the outgoing shell so modal open
+  // and adjacent navigation can lay out the destination before session open.
+  const retainedInventory =
+    retainedInventoryState?.sourceKey === sourceKey
+      ? retainedInventoryState.inventory
+      : null;
+  const shellInventory =
+    readyInventory ?? bootstrapInventory ?? retainedInventory;
   const shellSources = shellInventory?.sources ?? sources;
   const shellStreams = shellInventory?.streams ?? streams;
   const timelineMode = useMemo(
@@ -278,6 +352,25 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       : timelineMode.kind === "absolute"
         ? `absolute:${timelineMode.epochAnchorMs}`
         : "duration";
+  const [
+    retainedAuthoritativeTimelineModeKey,
+    setAuthoritativeTimelineModeKey,
+  ] = useState<string | null>(null);
+  const authoritativeTimelineModeKey = readyInventory
+    ? timelineModeKey
+    : retainedAuthoritativeTimelineModeKey;
+  // This layout effect records the last authoritative timeline mode. A
+  // bootstrap manifest can seed the first-pixel shell but cannot describe
+  // session capabilities such as plots, raw records, and transforms. After
+  // authoritative inventory commits, hold its timeline key through adjacent
+  // transitions. A different destination mode may remount only after its
+  // capabilities are authoritative, so capability-gated tiles are not pruned.
+  useLayoutEffect(() => {
+    if (readyInventory) setAuthoritativeTimelineModeKey(timelineModeKey);
+  }, [readyInventory, timelineModeKey]);
+  const playbackShellKey = authoritativeTimelineModeKey
+    ? `authoritative:${authoritativeTimelineModeKey}`
+    : `bootstrap:${sourceKey}:${timelineModeKey}`;
   const availableTileTypes = useMemo(
     () =>
       tileTypesFor({
@@ -380,6 +473,8 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       <PlaybackSessionStateProviders
         cameraViewStateScopeKey={cameraViewStateScopeKey}
         sources={shellSources}
+        sourcePoster={sourcePoster}
+        sourceReady={!transitioning}
         transformTopologyCapability={
           readyInventory ? (session?.transformTopology ?? null) : null
         }
@@ -426,7 +521,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                               onChange={onImageAspectRatioChange}
                             >
                               <PlaybackShell
-                                key={timelineModeKey}
+                                key={playbackShellKey}
                                 fileName={fileName}
                                 decorateTrack={decorateTrack}
                                 headerCaption={headerCaption}
@@ -483,8 +578,8 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                       error={status === "error"}
                                       text={transitionMessage}
                                     />
-                                  ) : !isModalNavigation &&
-                                    presentedSourceKey !== sourceKey ? (
+                                  ) : presentedSourceKey !== sourceKey &&
+                                    !hasDestinationPosterConsumer ? (
                                     <PosterOverlay
                                       fileName={fileName}
                                       poster={poster}
@@ -553,6 +648,8 @@ const PlaybackSessionStateProviders: React.FC<{
   readonly cameraViewStateScopeKey?: string;
   readonly children: React.ReactNode;
   readonly sources: readonly SceneSource[];
+  readonly sourcePoster: SourcePosterValue | null;
+  readonly sourceReady: boolean;
   readonly transformTopologyCapability: NonNullable<
     EpisodeSession["transformTopology"]
   > | null;
@@ -562,35 +659,41 @@ const PlaybackSessionStateProviders: React.FC<{
   cameraViewStateScopeKey,
   children,
   sources,
+  sourcePoster,
+  sourceReady,
   transformTopologyCapability,
   transformTopologySourceKey,
   viewportScopeKey,
 }) => (
-  <FullHistoryInterestsProvider>
-    <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
-      <SidebarPreferencesProvider
-        scopeKey={cameraViewStateScopeKey}
-        sources={sources}
-      >
-        <Scene3dViewpointProvider>
-          <SceneFramesProvider>
-            <SceneNoticesProvider>
-              <TileSettingsProvider>
-                <MapViewportScopeProvider scopeKey={viewportScopeKey}>
-                  <TransformTopologyProvider
-                    capability={transformTopologyCapability}
-                    sourceKey={transformTopologySourceKey}
-                  >
-                    {children}
-                  </TransformTopologyProvider>
-                </MapViewportScopeProvider>
-              </TileSettingsProvider>
-            </SceneNoticesProvider>
-          </SceneFramesProvider>
-        </Scene3dViewpointProvider>
-      </SidebarPreferencesProvider>
-    </Scene3dViewStateProvider>
-  </FullHistoryInterestsProvider>
+  <SourcePosterProvider value={sourcePoster}>
+    <EpisodeSourceReadyProvider ready={sourceReady}>
+      <FullHistoryInterestsProvider>
+        <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
+          <SidebarPreferencesProvider
+            scopeKey={cameraViewStateScopeKey}
+            sources={sources}
+          >
+            <Scene3dViewpointProvider>
+              <SceneFramesProvider>
+                <SceneNoticesProvider>
+                  <TileSettingsProvider>
+                    <MapViewportScopeProvider scopeKey={viewportScopeKey}>
+                      <TransformTopologyProvider
+                        capability={transformTopologyCapability}
+                        sourceKey={transformTopologySourceKey}
+                      >
+                        {children}
+                      </TransformTopologyProvider>
+                    </MapViewportScopeProvider>
+                  </TileSettingsProvider>
+                </SceneNoticesProvider>
+              </SceneFramesProvider>
+            </Scene3dViewpointProvider>
+          </SidebarPreferencesProvider>
+        </Scene3dViewStateProvider>
+      </FullHistoryInterestsProvider>
+    </EpisodeSourceReadyProvider>
+  </SourcePosterProvider>
 );
 
 function ExtensionRuntimeBoundary({

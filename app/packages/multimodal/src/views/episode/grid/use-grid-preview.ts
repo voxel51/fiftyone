@@ -7,8 +7,7 @@ import {
 import type { EpisodePreviewSession } from "../../../ports";
 import {
   episodePreviewPlaybackDelayMs,
-  publishEpisodeTimeRange,
-  publishSourceBootstrap,
+  publishEpisodePreviewBootstrap,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
 import type { GridPosterCacheEntry } from "./grid-poster-cache";
@@ -230,7 +229,7 @@ export function useGridPreview({
       .then((result) => {
         if (active) {
           notifyReadResult(onReadResultRef.current, result);
-          publishGridBootstrap(source, result);
+          publishEpisodePreviewBootstrap(source, result);
           loadedRequestRef.current = {
             posterStartTimeNs,
             source,
@@ -351,7 +350,7 @@ export function useGridPreview({
           }
 
           if (!bootstrapPublished) {
-            publishGridBootstrap(source, result);
+            publishEpisodePreviewBootstrap(source, result);
             bootstrapPublished = true;
           }
 
@@ -490,43 +489,6 @@ function useGridPreviewBufferingIndicator() {
   );
 
   return { finish, start, visible };
-}
-
-function publishGridBootstrap(
-  source: ByteSourceDescriptor,
-  result: EpisodePreviewReadResult,
-): void {
-  if (
-    !result.bootstrapManifest &&
-    !result.bootstrapTimeline &&
-    !result.bootstrapTimeRange &&
-    !result.frame
-  ) {
-    return;
-  }
-
-  publishSourceBootstrap(source, {
-    ...(result.bootstrapManifest ? { manifest: result.bootstrapManifest } : {}),
-    ...(result.bootstrapTimeline ? { timeline: result.bootstrapTimeline } : {}),
-    ...(result.bootstrapTimeRange
-      ? { timeRange: result.bootstrapTimeRange }
-      : {}),
-    ...(result.frame
-      ? {
-          poster: result.frame,
-          ...(result.streamId ? { posterStreamId: result.streamId } : {}),
-        }
-      : {}),
-  });
-  const timeRange = result.bootstrapTimeline
-    ? {
-        endNs: result.bootstrapTimeline.endNs,
-        startNs: result.bootstrapTimeline.startNs,
-      }
-    : result.bootstrapTimeRange;
-  if (timeRange) {
-    publishEpisodeTimeRange(source.sourceId, timeRange);
-  }
 }
 
 function snapshotFromResult(

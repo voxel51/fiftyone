@@ -49,6 +49,20 @@
   :global(img) {
   visibility: visible;
 }
+
+/* A grid-captured poster belongs to the incoming source, so it is safe to
+   paint inside its destination tile while outgoing media remains hidden. */
+.playbackRoot[data-episode-source-transitioning="true"]
+  :global([data-episode-destination-poster])
+  :global(canvas),
+.playbackRoot[data-episode-source-transitioning="true"]
+  :global([data-episode-destination-poster])
+  :global(img),
+.playbackRoot[data-episode-source-transitioning="true"]
+  :global([data-episode-destination-poster])
+  :global(video) {
+  visibility: visible;
+}
 /* stylelint-enable selector-pseudo-class-no-unknown */
 
 .preparing {
