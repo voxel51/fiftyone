@@ -33,6 +33,7 @@ export * from "./useRefreshSample";
 export * from "./useRenderConfig3d";
 export { default as useReset } from "./useReset";
 export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
+export * from "./extendedSelectionReset";
 export * from "./useRetryController";
 export { default as useSampleFields } from "./useSampleFields";
 export { default as useSavedViews } from "./useSavedViews";

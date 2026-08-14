@@ -6,6 +6,7 @@ import { useStableEpisodeSource } from "../../session/use-stable-episode-source"
 import {
   AnnotationStreamsProvider,
   TimelineExtensionHost,
+  useSampleRendererFirstMatch,
   type TimelineSection,
 } from "../../../extensions/timeline";
 import { AdjacentSamplePrewarm } from "../playback/AdjacentSamplePrewarm";
@@ -50,6 +51,10 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     [tagTracks],
   );
 
+  // Opening a tile the embeddings panel matched lands the playhead on the same
+  // window the tile postered at, rather than the recording start.
+  const firstMatch = useSampleRendererFirstMatch(ctx);
+
   return (
     <AnnotationStreamsProvider>
       <TimelineExtensionHost
@@ -71,6 +76,7 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             defaultPinnedTrackIds={defaultPinnedTrackIds}
             decorateTrack={decorateTrack}
             fileName={fileName}
+            initialSeekTimeNs={firstMatch?.startNs ?? null}
             layoutScopeKey={datasetId}
             cameraPreferenceField={ctx.media.field}
             onTagCreate={onTagCreate}

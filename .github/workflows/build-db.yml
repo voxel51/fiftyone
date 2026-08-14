@@ -130,4 +130,4 @@ jobs:
       # See
       # [fiftyone-db](https://pypi.org/manage/project/fiftyone-db/settings/publishing/)
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@v1.14.1
+        uses: pypa/gh-action-pypi-publish@v1.14.2

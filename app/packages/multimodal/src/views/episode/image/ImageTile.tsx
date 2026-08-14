@@ -37,12 +37,17 @@ import {
   useImageTile3dLabelProjection,
   useImageTileLabelStreams,
   useImageTilePointCloudProjection,
+  useSidebarSourceIdentity,
 } from "../tiles/panel-visibility";
 import {
   chooseNextImageStream,
   imageTileBindingsAtom,
+  persistedImageTileBindingsAtom,
+  resolveAvailableImageStream,
   useHoveredFrustumImageStream,
   useImageTileHoverProps,
+  usePersistImageTileBinding,
+  usePreferredImageTileStream,
   usePublishImageTileBinding,
 } from "../tiles/tile-source-bindings";
 import ImageAnnotationOverlay from "./ImageAnnotationOverlay";
@@ -104,6 +109,8 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     useRef<GpuPointCloudProjectionPickerHandle | null>(null);
   const sharedHover = useHoverEcho();
   const images = useSceneSourcesByType(SCENE_SOURCE_TYPE.IMAGE);
+  const sourceIdentity = useSidebarSourceIdentity();
+  const preferredImageTileStream = usePreferredImageTileStream();
   const annotationSources = useSceneSourcesByType(
     SCENE_SOURCE_TYPE.IMAGE_ANNOTATION,
   );
@@ -134,6 +141,14 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         jotaiStore.get(imageTileBindingsAtom),
       ),
   );
+  const persistImageTileBinding = usePersistImageTileBinding(stream);
+  const selectStream = useCallback(
+    (nextStream: string) => {
+      persistImageTileBinding(nextStream);
+      setStream(nextStream);
+    },
+    [persistImageTileBinding],
+  );
   const { labelStreams: storedLabelStreams, setLabelStreams } =
     useImageTileLabelStreams(stream);
   const { projection: label3dProjection, setProjection: setLabel3dProjection } =
@@ -145,17 +160,24 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     setProjection: setPointCloudProjection,
   } = useImageTilePointCloudProjection(stream);
 
-  // This effect binds the pane to the best undisplayed image source once
-  // sources resolve.
+  // This effect restores a returning durable preference or temporarily falls
+  // back when the current sample lacks it. Automatic fallback never writes
+  // the preference, so a later sample can restore the user's chosen source.
   useEffect(() => {
-    if (stream && images.some((source) => source.id === stream)) return;
-
-    const nextStream = chooseNextImageStream(
+    const preferredStream =
+      preferredImageTileStream ??
+      (tileId
+        ? jotaiStore.get(persistedImageTileBindingsAtom)[tileId]
+        : undefined);
+    const nextStream = resolveAvailableImageStream(
+      stream,
+      preferredStream,
+      images,
       rankDefaultImageSources(images),
       jotaiStore.get(imageTileBindingsAtom),
     );
     if (nextStream !== stream) setStream(nextStream);
-  }, [images, jotaiStore, stream]);
+  }, [images, jotaiStore, preferredImageTileStream, stream, tileId]);
 
   // Advertise this tile's stream so spawn points know what's on screen.
   usePublishImageTileBinding(stream);
@@ -540,10 +562,12 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     (labelStream: string, checked: boolean) => {
       if (!stream) return;
       const next = new Set(selectedLabelStreams);
-      if (checked) {
-        next.add(labelStream);
-      } else {
-        next.delete(labelStream);
+      const key = sourceIdentity.keyForRuntimeId(labelStream);
+      for (const id of key
+        ? sourceIdentity.runtimeIdsForKey(key)
+        : [labelStream]) {
+        if (checked) next.add(id);
+        else next.delete(id);
       }
       setLabelStreams(
         annotationStreams.filter((availableStream) =>
@@ -551,30 +575,45 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         ),
       );
     },
-    [annotationStreams, selectedLabelStreams, setLabelStreams, stream],
+    [
+      annotationStreams,
+      selectedLabelStreams,
+      setLabelStreams,
+      sourceIdentity,
+      stream,
+    ],
   );
   const toggleProjectionStream = useCallback(
     (cloudStream: string, checked: boolean) => {
       const next = new Set(selectedProjectionStreams);
-      if (checked) {
-        next.add(cloudStream);
-      } else {
-        next.delete(cloudStream);
+      const key = sourceIdentity.keyForRuntimeId(cloudStream);
+      for (const id of key
+        ? sourceIdentity.runtimeIdsForKey(key)
+        : [cloudStream]) {
+        if (checked) next.add(id);
+        else next.delete(id);
       }
       const streams = pointCloudStreams.filter((availableStream) =>
         next.has(availableStream),
       );
       setPointCloudProjection({ enabled: streams.length > 0, streams });
     },
-    [pointCloudStreams, selectedProjectionStreams, setPointCloudProjection],
+    [
+      pointCloudStreams,
+      selectedProjectionStreams,
+      setPointCloudProjection,
+      sourceIdentity,
+    ],
   );
   const toggleSceneAnnotationStream = useCallback(
     (annotationStream: string, checked: boolean) => {
       const next = new Set(selectedSceneAnnotationStreams);
-      if (checked) {
-        next.add(annotationStream);
-      } else {
-        next.delete(annotationStream);
+      const key = sourceIdentity.keyForRuntimeId(annotationStream);
+      for (const id of key
+        ? sourceIdentity.runtimeIdsForKey(key)
+        : [annotationStream]) {
+        if (checked) next.add(id);
+        else next.delete(id);
       }
       const streams = sceneAnnotationStreams.filter((availableStream) =>
         next.has(availableStream),
@@ -585,6 +624,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       sceneAnnotationStreams,
       selectedSceneAnnotationStreams,
       setLabel3dProjection,
+      sourceIdentity,
     ],
   );
   const canProjectPointClouds = pointCloudSources.length > 0;
@@ -709,7 +749,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           setLabel3dProjection={setLabel3dProjection}
           setLabelStreams={setLabelStreams}
           setPointCloudProjection={setPointCloudProjection}
-          setStream={setStream}
+          setStream={selectStream}
           stream={stream}
           toggleLabelStream={toggleLabelStream}
           toggleProjectionStream={toggleProjectionStream}
@@ -740,6 +780,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       selectedLabelStreams,
       selectedProjectionStreams,
       selectedSceneAnnotationStreams,
+      selectStream,
       setCameraProjection,
       setLabel3dProjection,
       setLabelStreams,

@@ -284,6 +284,10 @@ const tooltipStyle: CSSProperties = {
   zIndex: 3,
 };
 
+const tooltipSectionStyle: CSSProperties = {
+  padding: "6px 10px",
+};
+
 const tooltipDetailStyle: CSSProperties = {
   display: "grid",
   gap: "2px 12px",
@@ -337,7 +341,7 @@ export const Scene3dHoverTooltip: React.FC<{
   );
 };
 
-/** Cursor-adjacent cards for every scene object under the pointer. */
+/** One cursor-adjacent tooltip with a compact section for every scene hit. */
 export const Scene3dHoverTooltipStack: React.FC<{
   readonly tooltips: readonly Scene3dHoverTooltipState[];
 }> = ({ tooltips }) => {
@@ -345,27 +349,23 @@ export const Scene3dHoverTooltipStack: React.FC<{
   if (!anchor) return null;
   return (
     <div
-      data-testid="episode-3d-hover-tooltip-stack"
+      data-testid="episode-3d-hover-tooltip"
       style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
+        ...tooltipStyle,
         left: anchor.x + HOVER_TOOLTIP_OFFSET_PX,
-        pointerEvents: "none",
-        position: "absolute",
+        padding: 0,
         top: anchor.y + HOVER_TOOLTIP_OFFSET_PX,
-        zIndex: 3,
       }}
     >
       {tooltips.map((tooltip, index) => (
         <div
-          data-testid="episode-3d-hover-tooltip"
+          data-testid="episode-3d-hover-tooltip-section"
           key={`${tooltip.kind}:${index}:${tooltipIdentityKey(tooltip)}`}
           style={{
-            ...tooltipStyle,
-            left: undefined,
-            position: "relative",
-            top: undefined,
+            ...tooltipSectionStyle,
+            ...(index > 0
+              ? { borderTop: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}` }
+              : {}),
           }}
         >
           <Scene3dHoverTooltipContent tooltip={tooltip} />

@@ -98,7 +98,7 @@ export function PlaybackProvider({
   // remount would otherwise update this context while the engine's
   // mode-dependent state stays stale. A caller that needs a new mode must
   // remount the provider (e.g. keyed on the resolved mode, as
-  // `McapSourcePlayback` does).
+  // `SourcePlayback` does).
   const resolvedModeRef = useRef<TimelineMode>();
   if (resolvedModeRef.current === undefined) {
     resolvedModeRef.current = normalizeTimelineMode(mode ?? DEFAULT_MODE);

@@ -14,6 +14,10 @@ describe("episode 3D view-state store", () => {
     store.recordSourceSelection({
       enabledSourceIds: ["/lidar/top"],
       renderableSourceIds: ["/lidar/top", "/labels/boxes"],
+      renderableSourceKeys: [
+        "point-cloud\0/lidar/top",
+        "scene-annotation\0/labels/boxes",
+      ],
     });
     store.recordTrajectoryFrameOverrides({ "/odom": "map" });
     store.recordTrackingMode("heading");
@@ -51,6 +55,10 @@ describe("episode 3D view-state store", () => {
       navigationCompositions: [navigationComposition],
       enabledSourceIds: ["/lidar/top"],
       renderableSourceIds: ["/lidar/top", "/labels/boxes"],
+      renderableSourceKeys: [
+        "point-cloud\0/lidar/top",
+        "scene-annotation\0/labels/boxes",
+      ],
       trackingMode: "heading",
       trajectoryFrameOverrides: { "/odom": "map" },
       userCameraTargetFrameId: "base_link",
@@ -77,7 +85,7 @@ describe("episode 3D view-state store", () => {
 });
 
 describe("scene3dSourceShapeMatches", () => {
-  it("matches equal id sets regardless of order", () => {
+  it("matches equal key sets regardless of order", () => {
     expect(scene3dSourceShapeMatches(["a", "b"], ["b", "a"])).toBe(true);
   });
 
@@ -95,6 +103,7 @@ describe("resolveScene3dSelectionRestore", () => {
     store.recordSourceSelection({
       enabledSourceIds: ["a"],
       renderableSourceIds: ["a", "b"],
+      renderableSourceKeys: ["point-cloud\0/a", "point-cloud\0/b"],
     });
 
     expect(
@@ -110,6 +119,7 @@ describe("resolveScene3dSelectionRestore", () => {
     store.recordSourceSelection({
       enabledSourceIds: ["a"],
       renderableSourceIds: ["a", "b"],
+      renderableSourceKeys: ["point-cloud\0/a", "point-cloud\0/b"],
     });
 
     expect(

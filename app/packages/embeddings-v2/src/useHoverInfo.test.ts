@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { HoverContent } from "./HoverCard";
 import { fetchSampleInfo, type SampleInfo } from "./protocol";
 import type { HoverHit } from "./renderer";
 import { useHoverInfo } from "./useHoverInfo";
@@ -88,8 +89,44 @@ describe("useHoverInfo", () => {
 
     act(() => result.current.handleHover(hit(1)));
     await waitFor(() => expect(result.current.hover).not.toBeNull());
+    // The card survives a short grace after the pointer leaves the point, so
+    // the pointer can reach the card's own actions
     act(() => result.current.handleHover(null));
-    expect(result.current.hover).toBeNull();
+    await waitFor(() => expect(result.current.hover).toBeNull());
+  });
+
+  it("serves local detail synchronously without fetching sample info", async () => {
+    vi.mocked(fetchSampleInfo).mockClear();
+    const localContent: HoverContent = {
+      hit: hit(1),
+      src: null,
+      value: { label: "local", swatch: null },
+      filename: null,
+    };
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", null, mediaUrl, undefined, () => localContent),
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+
+    expect(result.current.hover).toEqual(localContent);
+    expect(fetchSampleInfo).not.toHaveBeenCalled();
+  });
+
+  it("keeps the card when the pointer enters it", async () => {
+    vi.mocked(fetchSampleInfo).mockResolvedValue(info(1));
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", null, mediaUrl),
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+    await waitFor(() => expect(result.current.hover).not.toBeNull());
+    act(() => {
+      result.current.handleHover(null);
+      result.current.keepHover();
+    });
+    await new Promise((r) => setTimeout(r, 320));
+    expect(result.current.hover).not.toBeNull();
   });
 
   // The guard must be the FULL request identity: same index, previous

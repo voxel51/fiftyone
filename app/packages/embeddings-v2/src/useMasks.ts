@@ -19,6 +19,10 @@ export function useMasks(
   filters: unknown,
   loadedCount: number,
   localMask: Uint8Array | null = null,
+  /** Whether the server can answer masks for this run. An extension-owned run
+   * resolves its own view/filter masks from its storage, and its points are
+   * not sample-keyed, so the server cannot answer for it at all. */
+  serverMasks = true,
 ): {
   visibleMask: Uint8Array | null;
   visibleCount: number | null;
@@ -41,7 +45,7 @@ export function useMasks(
   }, [datasetName, brainKey]);
 
   useEffect(() => {
-    if (!datasetName || !brainKey) {
+    if (!serverMasks || !datasetName || !brainKey) {
       setMasks(null);
       return undefined;
     }
@@ -52,7 +56,7 @@ export function useMasks(
     return () => {
       stale = true;
     };
-  }, [datasetName, brainKey, view, filters]);
+  }, [datasetName, brainKey, view, filters, serverMasks]);
 
   // The endpoint early-outs each mask to null when its inputs are empty
   // (no view stages / no filters), so combining only pays when needed

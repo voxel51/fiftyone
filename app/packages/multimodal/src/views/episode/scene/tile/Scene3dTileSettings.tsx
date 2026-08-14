@@ -1,4 +1,11 @@
-import { Checkbox, Size, Toggle } from "@voxel51/voodo";
+import {
+  Checkbox,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Toggle,
+} from "@voxel51/voodo";
 import React, { useMemo, useState } from "react";
 import type { SceneSource } from "../../../../scene-inventory/index";
 import {
@@ -42,6 +49,7 @@ import {
   cameraSourceStatusDetails,
   type CameraSourceStatus,
 } from "./camera-source-status";
+import { usePointCloudCount } from "./point-cloud-count-state";
 
 /**
  * One source group shown in the 3D settings sidebar.
@@ -177,6 +185,12 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
   const pointCloudSources = sourceGroups.pointCloud.sources;
   const pointCloudStreams = sourceGroups.pointCloud.streams;
   const selectedPointCloudSources = pointCloudInputs.selectedSources;
+  const pointCloudLabelSuffixesBySourceId = new Map(
+    pointCloudSources.map((source) => [
+      source.id,
+      <PointCloudCountLabel key={source.id} sourceId={source.id} />,
+    ]),
+  );
   const selectedPointCloudSourceIds = new Set(
     selectedPointCloudSources.map((source) => source.id),
   );
@@ -380,6 +394,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
         contentBySourceId={pointCloudStyleContentBySourceId}
         controlsBySourceId={pointCloudStyleControlsBySourceId}
         enabled={enabled}
+        labelSuffixesBySourceId={pointCloudLabelSuffixesBySourceId}
         selectedCount={pointCloudStreams.length}
         setSourcesEnabled={(sourceIds, checked) => {
           if (!checked) setExpandedPointCloudSourceId(null);
@@ -598,6 +613,7 @@ function SourceGroup({
   controlsBySourceId,
   detailsBySourceId,
   enabled,
+  labelSuffixesBySourceId,
   labelsBySourceId,
   selectedCount,
   setSourcesEnabled,
@@ -614,6 +630,7 @@ function SourceGroup({
   readonly controlsBySourceId?: ReadonlyMap<string, React.ReactNode>;
   readonly detailsBySourceId?: ReadonlyMap<string, readonly string[]>;
   readonly enabled: ReadonlySet<string>;
+  readonly labelSuffixesBySourceId?: ReadonlyMap<string, React.ReactNode>;
   readonly labelsBySourceId?: ReadonlyMap<string, string>;
   readonly selectedCount: number;
   readonly setSourcesEnabled: (
@@ -665,15 +682,26 @@ function SourceGroup({
       <div className={settingsStyles.optionStack}>
         {sources.map((s) => {
           const details = detailsBySourceId?.get(s.id) ?? [];
+          const checkbox = (
+            <Checkbox
+              label={labelsBySourceId?.get(s.id) ?? s.label}
+              checked={enabled.has(s.id)}
+              onChange={(checked) => toggleSource(s.id, checked)}
+              {...settingsBooleanNoSpaceToggleProps}
+            />
+          );
+          const labelSuffix = labelSuffixesBySourceId?.get(s.id);
           return (
             <div key={s.id}>
               <div className={settingsStyles.fieldRow}>
-                <Checkbox
-                  label={labelsBySourceId?.get(s.id) ?? s.label}
-                  checked={enabled.has(s.id)}
-                  onChange={(checked) => toggleSource(s.id, checked)}
-                  {...settingsBooleanNoSpaceToggleProps}
-                />
+                {labelSuffix === undefined ? (
+                  checkbox
+                ) : (
+                  <div className={settingsStyles.sourceSelection}>
+                    {checkbox}
+                    {labelSuffix}
+                  </div>
+                )}
                 {controlsBySourceId?.get(s.id)}
               </div>
               {contentBySourceId?.get(s.id)}
@@ -695,6 +723,20 @@ function SourceGroup({
 }
 
 const EMPTY_SOURCE_IDS: ReadonlySet<string> = new Set();
+
+function PointCloudCountLabel({ sourceId }: { readonly sourceId: string }) {
+  const pointCount = usePointCloudCount(sourceId);
+
+  return pointCount === undefined ? null : (
+    <Text
+      className={settingsStyles.sourceCount}
+      color={TextColor.Secondary}
+      variant={TextVariant.Xs}
+    >
+      ({pointCount.toLocaleString()})
+    </Text>
+  );
+}
 
 function cameraDisplayLabel(label: string): string {
   return label.replace(/^\//, "").replace(/\/camera_info$/i, "");
