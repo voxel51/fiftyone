@@ -27,11 +27,15 @@
 }
 
 /* Width comes from an inline style: the left pane tracks the resizable
-   drawer width, the right pane stays at the fixed default. */
+   drawer width, the right pane stays at the fixed default. `padding-right`
+   reserves the resize handle's own width (see `.resizeHandle` below) so a
+   scrollbar rendered flush against this pane's edge — as any scrollable
+   content inside it will — never sits underneath that handle. */
 .sidebarPane {
   height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
+  padding-right: 6px;
 }
 
 /* Sits over the Drawer's built-in 4px resize strip (absolute, right: 0,

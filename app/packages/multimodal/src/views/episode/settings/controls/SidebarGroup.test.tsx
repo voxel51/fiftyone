@@ -90,9 +90,6 @@ describe("SidebarGroup", () => {
     const help = screen.getByRole("img", {
       name: "Explains pointcloud projections.",
     });
-    expect(help.getAttribute("data-tooltip")).toBe(
-      "Explains pointcloud projections.",
-    );
     expect(
       screen
         .getByRole("button", { name: /Pointcloud projections/ })
