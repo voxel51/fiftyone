@@ -9,11 +9,12 @@ import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventBus,
+  useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
 import { POLYLINE } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import {
   type AnnotationContextSelected,
@@ -179,6 +180,17 @@ export const usePolylineModeInstaller = (): void => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   const { selected, createNew } = useAnnotationContext();
+  const useLighterEvent = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
+  );
+
+  // Overlays mount / unmount as the playhead crosses a track's extent, which
+  // changes which handler belongs installed without `selected` ever changing.
+  // Bump an epoch on those events so the install effect re-runs.
+  const [sceneEpoch, setSceneEpoch] = useState(0);
+  const bumpEpoch = useCallback(() => setSceneEpoch((n) => n + 1), []);
+  useLighterEvent("lighter:overlay-added", bumpEpoch);
+  useLighterEvent("lighter:overlay-removed", bumpEpoch);
 
   // The handler currently installed via scene.enterInteractiveMode, or null
   // when the mode is off. Holds either an `InteractivePolylineHandler` (when
@@ -237,15 +249,27 @@ export const usePolylineModeInstaller = (): void => {
       return;
     }
 
-    const isPolyline2d = is2dPolylineSelected(selected);
-
     if (!polylineModeActive) {
       exitInstalledHandler();
       return;
     }
 
+    const candidate = is2dPolylineSelected(selected)
+      ? (selected!.label!.overlay as PolylineOverlay | undefined)
+      : undefined;
+
+    // A selected track's overlay unmounts on frames outside its extent, while the
+    // engine keeps the label active on purpose (so scrubbing back re-opens the
+    // same edit) — `selected.label.overlay` still references the unmounted
+    // overlay. Editing it is meaningless there, and installing the edit handler
+    // means no creation handler is installed, so clicks did nothing at all.
+    // Treat "selected but off-extent" as "nothing to edit" and fall through to
+    // the creation handler, so a click starts a NEW polyline the way it does for
+    // detections.
+    const isPolyline2d = !!candidate && scene.hasOverlay(candidate.id);
+
     if (isPolyline2d) {
-      const targetOverlay = selected!.label!.overlay as PolylineOverlay;
+      const targetOverlay = candidate as PolylineOverlay;
 
       const installed = installedHandlerRef.current;
       if (
@@ -323,7 +347,16 @@ export const usePolylineModeInstaller = (): void => {
 
     scene.enterInteractiveMode(handler);
     installedHandlerRef.current = handler;
-  }, [eventBus, exitInstalledHandler, polylineModeActive, scene, selected]);
+  }, [
+    eventBus,
+    exitInstalledHandler,
+    polylineModeActive,
+    scene,
+    // re-runs when the selected track's overlay mounts / unmounts across its
+    // extent, which changes which handler belongs installed
+    sceneEpoch,
+    selected,
+  ]);
 
   // Tear down on unmount (e.g., scene swap, modal close).
   useEffect(() => {
