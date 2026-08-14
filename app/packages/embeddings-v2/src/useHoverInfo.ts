@@ -53,7 +53,11 @@ export function useHoverInfo(
       clearTimer.current = null;
     }
   }, []);
-  const hoverKeyRef = useRef<string | null>(null);
+  // Invalidation token for card work: bumped on every hover transition
+  // (a new point, a miss, the SAME point re-anchored by a camera move)
+  // and on run/field changes, so an older dwell or in-flight response
+  // can never paint the card — not even at a stale position
+  const hoverSeq = useRef(0);
   const dwellRef = useRef<number | null>(null);
   const infoCache = useRef(new Map<string, SampleInfo>());
 
@@ -65,15 +69,26 @@ export function useHoverInfo(
   }, []);
 
   // A new run reorders the wire, invalidating cached indices — and any
-  // in-flight dwell or fetch, whose key would still match hoverKeyRef
+  // in-flight dwell or fetch
   useEffect(() => {
     infoCache.current.clear();
+    hoverSeq.current++;
     cancelDwell();
     cancelClear();
-    hoverKeyRef.current = null;
     setHover(null);
     setHoverHit(null);
   }, [datasetName, brainKey]);
+
+  // The card's value line describes the color-by field: a field change
+  // under a stationary pointer (keyboard-driven — a mouse trip to the
+  // menu leaves the plot and clears the hover first) must drop the card
+  // and any in-flight fetch for the old field. The ring (hoverHit) is
+  // field-independent and stays; the next transition rebuilds the card.
+  useEffect(() => {
+    hoverSeq.current++;
+    cancelDwell();
+    setHover(null);
+  }, [colorField, cancelDwell]);
 
   useEffect(
     () => () => {
@@ -84,12 +99,13 @@ export function useHoverInfo(
   );
 
   const handleHover = (hit: HoverHit | null) => {
-    // Every transition restarts the dwell; jitter over one point never
-    // reaches here (the picker only reports changes)
+    // Every transition restarts the dwell and invalidates the previous
+    // card work; jitter over one point never reaches here (the picker
+    // only reports changes)
+    const seq = ++hoverSeq.current;
     cancelDwell();
     setHoverHit(hit);
     if (!hit || !datasetName || !brainKey) {
-      hoverKeyRef.current = null;
       // Grace-delay the clear so the pointer can reach the card's actions
       cancelClear();
       clearTimer.current = setTimeout(() => setHover(null), CLEAR_GRACE_MS);
@@ -97,13 +113,15 @@ export function useHoverInfo(
     }
 
     cancelClear();
-    // The FULL request identity: a response for the same index but a
-    // previous dataset/run/field must not land on the current hover
+    // The CACHE identity: dataset/run/field/index. The apply guard is
+    // the seq token, not this key — a camera move re-anchors the same
+    // point under the same key, and the old response's card must not
+    // paint at the old position
     const key = `${datasetName}::${brainKey}::${colorField ?? ""}::${hit.index}`;
-    hoverKeyRef.current = key;
     const apply = (info: SampleInfo) => {
-      // The pointer (or the run) may have moved on while this resolved
-      if (hoverKeyRef.current !== key) return;
+      // The pointer, the camera, the run, or the field may have moved
+      // on while this resolved
+      if (hoverSeq.current !== seq) return;
 
       let value: HoverContent["value"] = null;
       if (info.value !== null && info.value !== undefined) {

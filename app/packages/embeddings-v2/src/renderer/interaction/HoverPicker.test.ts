@@ -157,6 +157,27 @@ describe("HoverPicker", () => {
     expect(onHover).toHaveBeenLastCalledWith(moved);
   });
 
+  // A drag moves the pointer without updating the remembered position
+  // (drag moves are filtered), so a post-drag wheel zoom used to
+  // hit-test the PRE-drag coordinate and ring the wrong point
+  it("forgets the pointer position when a drag starts", () => {
+    fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(onHover).toHaveBeenLastCalledWith(HIT);
+
+    fire(container, "pointerdown", {});
+    fire(container, "pointerup", {});
+    pick.mockClear();
+    picker.viewChanged();
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(pick).not.toHaveBeenCalled();
+
+    // The next real movement re-seeds hovering
+    fire(container, "pointermove", { offsetX: 7, offsetY: 8 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(pick).toHaveBeenCalledExactlyOnceWith(7, 8);
+  });
+
   it("forgets the pointer position on reset (new data)", () => {
     fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
     picker.reset();

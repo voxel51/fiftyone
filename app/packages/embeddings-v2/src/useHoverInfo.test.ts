@@ -156,6 +156,58 @@ describe("useHoverInfo", () => {
     expect(result.current.hover).not.toBeNull();
   });
 
+  // A camera move re-anchors the same point at new coords: a response
+  // requested at the OLD position must not paint the card there (same
+  // dataset/run/field/index — only the seq token can tell them apart)
+  it("drops a response that resolves after the point re-anchors", async () => {
+    let release!: (value: SampleInfo) => void;
+    // The fallback is a persistent implementation, NOT a queued once: a
+    // queued fallback this test never consumes would leak into the next
+    // test's fetch queue
+    vi.mocked(fetchSampleInfo)
+      .mockClear()
+      .mockImplementation(() => new Promise<SampleInfo>(() => undefined))
+      .mockImplementationOnce(
+        () => new Promise<SampleInfo>((res) => (release = res)),
+      );
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", null, mediaUrl),
+    );
+
+    // Dwell out on point 1 so its fetch is genuinely in flight
+    act(() => result.current.handleHover(hit(1)));
+    await waitFor(() => expect(fetchSampleInfo).toHaveBeenCalledTimes(1));
+    // Same index, new projected position (wheel zoom under a still pointer)
+    act(() => result.current.handleHover({ ...hit(1), x: 30, y: 40 }));
+    await act(async () => release(info(1)));
+    expect(result.current.hover).toBeNull();
+  });
+
+  // Keyboard-driven color-by changes can land under a stationary
+  // pointer: the card (whose value line shows the field) must drop, the
+  // ring must stay, and the old field's in-flight response must die
+  it("invalidates the card when the color field changes", async () => {
+    let release!: (value: SampleInfo) => void;
+    vi.mocked(fetchSampleInfo)
+      .mockClear()
+      .mockImplementationOnce(
+        () => new Promise<SampleInfo>((res) => (release = res)),
+      );
+    const { result, rerender } = renderHook(
+      ({ field }: { field: string | null }) =>
+        useHoverInfo("ds", "viz", field, mediaUrl),
+      { initialProps: { field: "label" as string | null } },
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+    await waitFor(() => expect(fetchSampleInfo).toHaveBeenCalledTimes(1));
+    rerender({ field: "other" });
+    await act(async () => release(info(1)));
+
+    expect(result.current.hover).toBeNull();
+    expect(result.current.hoverHit?.index).toBe(1);
+  });
+
   // The guard must be the FULL request identity: same index, previous
   // run — the stale response used to land because only the index matched
   it("drops an in-flight response that resolves after a run change", async () => {

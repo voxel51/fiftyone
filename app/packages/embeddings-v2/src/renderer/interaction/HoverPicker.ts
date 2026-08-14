@@ -24,7 +24,8 @@ export class HoverPicker {
   private readonly callbacks: HoverCallbacks;
   private readonly listeners = new AbortController();
   private handle: number | null = null;
-  /** Last idle pointer position (CSS px); null once the pointer leaves */
+  /** Last idle pointer position (CSS px); null once the pointer leaves
+   * or a drag starts (drag moves are filtered, so it would go stale) */
   private pointer: [number, number] | null = null;
   /** The hit the host is currently showing, for change detection */
   private shown: HoverHit | null = null;
@@ -37,6 +38,11 @@ export class HoverPicker {
       "pointerdown",
       () => {
         this.buttonsDown = true;
+        // Drag moves never update the position (the buttons filter
+        // below), so from here it describes where the pointer WAS — a
+        // post-drag viewChanged() must not hit-test the pre-drag spot.
+        // The next idle move re-seeds it.
+        this.pointer = null;
         this.clear();
       },
       { capture: true, signal },

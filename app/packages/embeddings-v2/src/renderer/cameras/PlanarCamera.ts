@@ -150,6 +150,9 @@ export class PlanarCamera implements CameraAdapter {
   }
 
   destroy(): void {
+    // The container outlives the camera (adapter swaps, chart teardown):
+    // a pan cut short by teardown must still give the cursor back
+    if (this.panPointer !== null) this.endPan();
     this.listeners.abort();
   }
 
@@ -223,7 +226,19 @@ export class PlanarCamera implements CameraAdapter {
 
   private handlePanEnd(event: PointerEvent): void {
     if (this.panPointer !== event.pointerId) return;
+    this.endPan();
+  }
+
+  /**
+   * Release the pan and give the cursor back — but only when the
+   * borrowed "grabbing" is still in place: if the chart re-owned the
+   * cursor mid-pan (a mode change), its value is newer than the one
+   * remembered at pan start.
+   */
+  private endPan(): void {
     this.panPointer = null;
-    this.element.style.cursor = this.cursorBefore;
+    if (this.element.style.cursor === "grabbing") {
+      this.element.style.cursor = this.cursorBefore;
+    }
   }
 }
