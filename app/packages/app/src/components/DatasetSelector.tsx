@@ -71,10 +71,16 @@ const DatasetSelector: React.FC<{
   // Highlighted option, driven by the arrow keys. Clamped on read rather than
   // reset by an effect, so it stays valid as the result set changes underneath.
   const [highlight, setHighlight] = useState(0);
+  // Whether the visible text is a search the user typed, as opposed to the
+  // seeded applied-dataset name. Searching by the seed is worse than useless:
+  // the picker opens to browse OTHER datasets, and the debounced refetch made
+  // the full list flash before collapsing to the one dataset matching its own
+  // name.
+  const [dirty, setDirty] = useState(false);
 
   // `useSearch` debounces internally — re-runs the server query as
   // `query` changes. Returns the current visible result set.
-  const { values } = useSearch(open ? query : "");
+  const { values } = useSearch(open && dirty ? query : "");
 
   // Snap input text back to the applied dataset name when the
   // dataset selection changes (e.g., via URL or external setter).
@@ -148,9 +154,14 @@ const DatasetSelector: React.FC<{
         autoComplete="off"
         autoCorrect="off"
         spellCheck={false}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          // Fresh open browses everything; the seeded name is not a search
+          setDirty(false);
+          setOpen(true);
+        }}
         onChange={(e) => {
           setQuery(e.target.value);
+          setDirty(true);
           setHighlight(0);
           if (!open) setOpen(true);
         }}
