@@ -434,7 +434,6 @@ export function publishDataStreamStatuses({
   if (
     tick !== null &&
     blockingTotal > 0 &&
-    blockingCovered === blockingTotal &&
     !getIsPlaying(store) &&
     !getIsPlayPending(store)
   ) {

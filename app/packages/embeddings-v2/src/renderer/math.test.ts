@@ -8,6 +8,7 @@ import {
   pointInPolygon,
   pxToData,
   selectInPolygon,
+  worldRect,
   zoomOf,
   zoomRect,
   type Rect,
@@ -135,48 +136,6 @@ describe("zoomRect / panRect / clampToHome", () => {
     });
   });
 
-  // Zooming from an overpanned view must not yank the view back to
-  // the data — the give bounds zoom exactly as they bound pan
-  it("zoom preserves an overpanned offset within the give", () => {
-    const offset: Rect = { x0: 3, y0: 0, x1: 13, y1: 10 };
-
-    // Zoom in around (8, 5): focus keeps its relative spot, no slide
-    expect(zoomRect(offset, home, [8, 5], 2, 50, 0.5)).toEqual({
-      x0: 5.5,
-      y0: 2.5,
-      x1: 10.5,
-      y1: 7.5,
-    });
-    // Without give, the strict clamp slides the same zoom back inside
-    expect(zoomRect(offset, home, [8, 5], 2, 50)).toEqual({
-      x0: 5,
-      y0: 2.5,
-      x1: 10,
-      y1: 7.5,
-    });
-  });
-
-  // FOEPD-4318: with no give, panning at full zoom-out is a no-op —
-  // the drag feels dead. Give lets the view slide, bounded so the
-  // data's edge stops at the viewport's center (give 0.5)
-  it("pans at full zoom-out within the give", () => {
-    expect(panRect(home, home, 3, 0)).toEqual(home);
-
-    expect(panRect(home, home, 3, 0, 0.5)).toEqual({
-      x0: 3,
-      y0: 0,
-      x1: 13,
-      y1: 10,
-    });
-    // The give is the cap: a huge delta stops half a viewport out
-    expect(panRect(home, home, 100, 0, 0.5)).toEqual({
-      x0: 5,
-      y0: 0,
-      x1: 15,
-      y1: 10,
-    });
-  });
-
   it("slides an out-of-bounds rect back inside home", () => {
     expect(clampToHome({ x0: -1, y0: 3, x1: 1, y1: 5 }, home)).toEqual({
       x0: 0,
@@ -184,6 +143,45 @@ describe("zoomRect / panRect / clampToHome", () => {
       x1: 2,
       y1: 5,
     });
+  });
+
+  it("builds the world by scaling home about its center", () => {
+    expect(worldRect(home, 0.5)).toEqual({ x0: -5, y0: -5, x1: 15, y1: 15 });
+    expect(worldRect(home, 1)).toEqual(home);
+  });
+
+  // The world model's headline: the fit view is smaller than the
+  // world, so panning works at the default view — up to the world edge
+  it("pans the fit view within the world", () => {
+    const world = worldRect(home, 0.5);
+    expect(panRect(home, world, 3, 0)).toEqual({
+      x0: 3,
+      y0: 0,
+      x1: 13,
+      y1: 10,
+    });
+    expect(panRect(home, world, 100, 0)).toEqual({
+      x0: 5,
+      y0: 0,
+      x1: 15,
+      y1: 10,
+    });
+  });
+
+  it("zooms out past fit to the world, never beyond", () => {
+    const world = worldRect(home, 0.5);
+    expect(zoomRect(home, home, [5, 5], 0.1, 50, world)).toEqual(world);
+  });
+
+  // Regression: bounds must not move during a zoom — clamping against
+  // home instead of the world yanked a panned view back toward center
+  it("zooming in from a panned fit view stays put", () => {
+    const world = worldRect(home, 0.5);
+    const panned = panRect(home, world, 3, 0);
+    const zoomed = zoomRect(panned, home, [8, 5], 2, 50, world);
+    expect((zoomed.x0 + zoomed.x1) / 2).toBeCloseTo(8);
+    expect((8 - zoomed.x0) / (zoomed.x1 - zoomed.x0)).toBeCloseTo(0.5);
+    expect(zoomOf(zoomed, home)).toBeCloseTo(2);
   });
 });
 

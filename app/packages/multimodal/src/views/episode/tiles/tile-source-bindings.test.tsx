@@ -6,17 +6,24 @@ import {
   renderHook,
   screen,
 } from "@testing-library/react";
-import { createStore, Provider as JotaiProvider } from "jotai";
+import { createStore, Provider as JotaiProvider, useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
+import { readSidebarPreferences } from "../settings/sidebar-preferences";
+import { semanticSourceKey } from "../settings/semantic-source";
 import {
   chooseNextImageStream,
   hoveredImageStreamAtom,
+  persistedImageTileBindingsAtom,
+  resolveAvailableImageStream,
   useImageTileBindings,
   useImageTileHoverProps,
+  usePersistImageTileBinding,
+  usePreferredImageTileStream,
   usePublishImageTileBinding,
 } from "./tile-source-bindings";
+import { PanelVisibilityProvider } from "./panel-visibility";
 
 function imageSource(id: string): SceneSource {
   return { id, label: id.toUpperCase(), sourceName: id, type: "image" };
@@ -57,6 +64,44 @@ describe("chooseNextImageStream", () => {
   });
 });
 
+describe("resolveAvailableImageStream", () => {
+  const front = imageSource("cam_front");
+  const back = imageSource("cam_back");
+
+  it("temporarily falls back without forgetting a returning preference", () => {
+    const fallback = resolveAvailableImageStream(
+      "cam_back",
+      "cam_back",
+      [front],
+      [front],
+      {},
+    );
+    expect(fallback).toBe("cam_front");
+
+    expect(
+      resolveAvailableImageStream(
+        fallback,
+        "cam_back",
+        [front, back],
+        [front, back],
+        {},
+      ),
+    ).toBe("cam_back");
+  });
+
+  it("keeps an available current fallback while the preference is absent", () => {
+    expect(
+      resolveAvailableImageStream(
+        "cam_front",
+        "cam_back",
+        [front],
+        [front],
+        {},
+      ),
+    ).toBe("cam_front");
+  });
+});
+
 const Publisher: React.FC<{ readonly sourceId: string }> = ({ sourceId }) => {
   usePublishImageTileBinding(sourceId);
   return null;
@@ -65,6 +110,30 @@ const Publisher: React.FC<{ readonly sourceId: string }> = ({ sourceId }) => {
 const BindingsProbe: React.FC = () => (
   <span data-testid="bindings">{JSON.stringify(useImageTileBindings())}</span>
 );
+
+const PersistedBindingsProbe: React.FC = () => (
+  <span data-testid="persisted-bindings">
+    {JSON.stringify(useAtomValue(persistedImageTileBindingsAtom))}
+  </span>
+);
+
+const PreferredBindingProbe: React.FC = () => (
+  <span data-testid="preferred-binding">
+    {usePreferredImageTileStream() ?? ""}
+  </span>
+);
+
+const PreferencePublisher: React.FC<{
+  readonly selectedSourceId?: string;
+  readonly sourceId: string;
+}> = ({ selectedSourceId, sourceId }) => {
+  const persistBinding = usePersistImageTileBinding(sourceId);
+  usePublishImageTileBinding(sourceId);
+  React.useEffect(() => {
+    if (selectedSourceId) persistBinding(selectedSourceId);
+  }, [persistBinding, selectedSourceId]);
+  return null;
+};
 
 describe("usePublishImageTileBinding", () => {
   afterEach(() => cleanup());
@@ -109,6 +178,134 @@ describe("usePublishImageTileBinding", () => {
   it("publishes nothing for an empty source id", () => {
     renderPublisher("");
     expect(screen.getByTestId("bindings").textContent).toBe("{}");
+  });
+});
+
+describe("usePersistImageTileBinding", () => {
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
+
+  it("persists creation and selection but not transient fallback or teardown", () => {
+    const view = render(
+      <TilingProvider>
+        <TileIdScope tileId="image-1">
+          <PreferencePublisher sourceId="cam_back" />
+        </TileIdScope>
+        <BindingsProbe />
+        <PersistedBindingsProbe />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"cam_back"}',
+    );
+
+    view.rerender(
+      <TilingProvider>
+        <TileIdScope tileId="image-1">
+          <PreferencePublisher sourceId="cam_front" />
+        </TileIdScope>
+        <BindingsProbe />
+        <PersistedBindingsProbe />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("bindings").textContent).toBe(
+      '{"image-1":"cam_front"}',
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"cam_back"}',
+    );
+
+    view.rerender(
+      <TilingProvider>
+        <TileIdScope tileId="image-1">
+          <PreferencePublisher
+            selectedSourceId="cam_front"
+            sourceId="cam_front"
+          />
+        </TileIdScope>
+        <BindingsProbe />
+        <PersistedBindingsProbe />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"cam_front"}',
+    );
+
+    view.rerender(
+      <TilingProvider>
+        <BindingsProbe />
+        <PersistedBindingsProbe />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("bindings").textContent).toBe("{}");
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"cam_front"}',
+    );
+  });
+
+  it("restores the semantic image binding after runtime ids change", () => {
+    const firstSource = {
+      ...imageSource("10"),
+      sourceName: "/camera/front",
+    };
+    const first = render(
+      <PanelVisibilityProvider scopeKey="dataset-a" sources={[firstSource]}>
+        <TilingProvider>
+          <TileIdScope tileId="image-1">
+            <PreferencePublisher sourceId="10" />
+            <PreferredBindingProbe />
+          </TileIdScope>
+          <PersistedBindingsProbe />
+        </TilingProvider>
+      </PanelVisibilityProvider>,
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"10"}',
+    );
+    expect(screen.getByTestId("preferred-binding").textContent).toBe("10");
+    first.unmount();
+
+    const shiftedSource = { ...firstSource, id: "80" };
+    const shifted = render(
+      <PanelVisibilityProvider scopeKey="dataset-a" sources={[shiftedSource]}>
+        <TilingProvider>
+          <TileIdScope tileId="image-1">
+            <PreferencePublisher sourceId="80" />
+            <PreferredBindingProbe />
+          </TileIdScope>
+          <PersistedBindingsProbe />
+        </TilingProvider>
+      </PanelVisibilityProvider>,
+    );
+    expect(screen.getByTestId("persisted-bindings").textContent).toBe(
+      '{"image-1":"80"}',
+    );
+    expect(screen.getByTestId("preferred-binding").textContent).toBe("80");
+    shifted.unmount();
+
+    const unavailableSource = {
+      ...imageSource("90"),
+      sourceName: "/camera/rear",
+    };
+    render(
+      <PanelVisibilityProvider
+        scopeKey="dataset-a"
+        sources={[unavailableSource]}
+      >
+        <TilingProvider>
+          <TileIdScope tileId="image-1">
+            <PreferencePublisher sourceId="90" />
+            <PreferredBindingProbe />
+          </TileIdScope>
+        </TilingProvider>
+      </PanelVisibilityProvider>,
+    );
+    expect(screen.getByTestId("preferred-binding").textContent).toBe("");
+    expect(
+      readSidebarPreferences("dataset-a").tiles["image-1"]?.imageSourceKey,
+    ).toBe(semanticSourceKey(firstSource));
   });
 });
 

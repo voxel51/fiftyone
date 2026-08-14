@@ -43,11 +43,10 @@ import type { EpisodeSession, EpisodeTerminology } from "../../../ports";
 import { Scene3dViewStateProvider } from "../scene/camera/scene-3d-view-state-context";
 import { Scene3dViewSettingsProvider } from "../spatial/view-settings-context";
 import { Scene3dViewpointProvider } from "../scene/camera/scene-3d-viewpoint-context";
-import { useModalSettingsScopeSync } from "../settings/modal/state";
 import { SceneFramesProvider } from "../spatial/frame-transforms/scene-frame-controls";
 import { SceneNoticesProvider } from "../status/scene-notices-context";
 import { TileSettingsProvider } from "../tiles/tile-settings-context";
-import { cameraScopeKey } from "./camera-scope";
+import { cameraScopeKey } from "../scope/camera-scope";
 import {
   DataStreamProvider,
   useDataStream,
@@ -69,7 +68,7 @@ import styles from "./ModalRenderer.module.css";
 import { NetworkHealthTracker, NetworkStatusPill } from "./NetworkStatus";
 import { FullHistoryInterestsProvider } from "../playback/full-history-interests";
 import { SourceVideoPlaybackProvider } from "../playback/video-playback-provider";
-import { PanelVisibilityProvider } from "../tiles/panel-visibility";
+import { SidebarPreferencesProvider } from "../settings/sidebar-preferences-context";
 import SettingsSidebar from "../settings/modal/SettingsSidebar";
 import { Streams } from "./Streams";
 import TimestampReadout from "../playback/TimestampReadout";
@@ -115,6 +114,9 @@ export interface SourcePlaybackProps {
   readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
   readonly fileName: string;
   readonly headerActions?: React.ReactNode;
+  /** Capture time to open the recording at, ahead of the first-data tick.
+   * Set to an embeddings match so opening a matched tile lands on it. */
+  readonly initialSeekTimeNs?: bigint | null;
   readonly layoutScopeKey?: string;
   /** Host selected a new sample whose media descriptor is still resolving. */
   readonly navigationPending?: boolean;
@@ -143,6 +145,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   decorateTrack,
   fileName,
   headerActions,
+  initialSeekTimeNs,
   layoutScopeKey,
   navigationPending = false,
   onTagCreate,
@@ -289,9 +292,6 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const effectiveLayoutScopeKey =
     layoutScopeKey ??
     (source ? `episode-source:${source.sourceId}` : undefined);
-  // Stream-keyed styling (point-cloud colors, image projection, label
-  // streams) persists per dataset scope, not per bare stream name.
-  useModalSettingsScopeSync(effectiveLayoutScopeKey);
   const cameraViewStateScopeKey =
     cameraScopeKey(effectiveLayoutScopeKey, cameraPreferenceField) ??
     effectiveLayoutScopeKey;
@@ -379,6 +379,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     >
       <PlaybackSessionStateProviders
         cameraViewStateScopeKey={cameraViewStateScopeKey}
+        sources={shellSources}
         transformTopologyCapability={
           readyInventory ? (session?.transformTopology ?? null) : null
         }
@@ -512,6 +513,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 <Streams
                                   availableTileTypes={availableTileTypes}
                                   budgetAccount={sourceReadBudgetAccount}
+                                  initialSeekTimeNs={initialSeekTimeNs}
                                   onPlayheadDataReady={handlePlayheadDataReady}
                                   session={readyInventory ? session : null}
                                   source={playbackSource}
@@ -550,6 +552,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
 const PlaybackSessionStateProviders: React.FC<{
   readonly cameraViewStateScopeKey?: string;
   readonly children: React.ReactNode;
+  readonly sources: readonly SceneSource[];
   readonly transformTopologyCapability: NonNullable<
     EpisodeSession["transformTopology"]
   > | null;
@@ -558,13 +561,17 @@ const PlaybackSessionStateProviders: React.FC<{
 }> = ({
   cameraViewStateScopeKey,
   children,
+  sources,
   transformTopologyCapability,
   transformTopologySourceKey,
   viewportScopeKey,
 }) => (
   <FullHistoryInterestsProvider>
     <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
-      <PanelVisibilityProvider scopeKey={cameraViewStateScopeKey}>
+      <SidebarPreferencesProvider
+        scopeKey={cameraViewStateScopeKey}
+        sources={sources}
+      >
         <Scene3dViewpointProvider>
           <SceneFramesProvider>
             <SceneNoticesProvider>
@@ -581,7 +588,7 @@ const PlaybackSessionStateProviders: React.FC<{
             </SceneNoticesProvider>
           </SceneFramesProvider>
         </Scene3dViewpointProvider>
-      </PanelVisibilityProvider>
+      </SidebarPreferencesProvider>
     </Scene3dViewStateProvider>
   </FullHistoryInterestsProvider>
 );

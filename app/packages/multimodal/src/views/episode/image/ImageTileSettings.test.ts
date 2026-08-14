@@ -382,7 +382,6 @@ describe("ImageTileSettings", () => {
     );
     expect(setLabel3dProjection).toHaveBeenCalledWith({
       enabled: true,
-      streams: null,
     });
   });
 });

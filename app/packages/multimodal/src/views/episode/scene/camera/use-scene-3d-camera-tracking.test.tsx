@@ -23,6 +23,7 @@ beforeEach(() => {
   viewStateStore.recordSourceSelection({
     enabledSourceIds: ["lidar"],
     renderableSourceIds: ["lidar"],
+    renderableSourceKeys: ["point-cloud\0/lidar"],
   });
 });
 
@@ -844,7 +845,7 @@ describe("useScene3dCameraTracking view-state restore", () => {
     rerender(
       trackingProps({
         placementStatus: "transformed",
-        renderableSourceIds: ["radar"],
+        renderableSourceKeys: ["point-cloud\0/radar"],
         sourceKey: "",
       }),
     );
@@ -854,7 +855,7 @@ describe("useScene3dCameraTracking view-state restore", () => {
       trackingProps({
         frameTransforms: translationTransforms(10, 0, 0),
         placementStatus: "transformed",
-        renderableSourceIds: ["radar"],
+        renderableSourceKeys: ["point-cloud\0/radar"],
         sourceKey: "source-b",
       }),
     );
@@ -878,7 +879,7 @@ describe("useScene3dCameraTracking view-state restore", () => {
     rerender(
       trackingProps({
         placementStatus: "transformed",
-        renderableSourceIds: ["radar"],
+        renderableSourceKeys: ["point-cloud\0/radar"],
         restore,
         sourceKey: "source-b",
       }),
@@ -928,6 +929,38 @@ describe("useScene3dCameraTracking view-state restore", () => {
     expect(result.current.poseCommand).toEqual({
       position: [16, 0, 10],
       target: [16, 0, 0],
+    });
+  });
+
+  it("restores across source-local stream id changes with the same semantic shape", () => {
+    viewStateStore.recordSourceSelection({
+      enabledSourceIds: ["10"],
+      renderableSourceIds: ["10"],
+      renderableSourceKeys: ["point-cloud\0/lidar"],
+    });
+    const { rerender, result } = renderHook(useScene3dCameraTracking, {
+      initialProps: trackingProps({ placementStatus: "transformed" }),
+    });
+    act(() => {
+      result.current.rig.onCommit(pose(5), trackingAnchor({}));
+    });
+
+    viewStateStore.recordSourceSelection({
+      enabledSourceIds: ["11"],
+      renderableSourceIds: ["11"],
+      renderableSourceKeys: ["point-cloud\0/lidar"],
+    });
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        sourceKey: "source-b",
+      }),
+    );
+
+    expect(result.current.poseCommand).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
     });
   });
 
@@ -1105,10 +1138,10 @@ describe("useScene3dCameraTracking view-state restore", () => {
       initialProps: trackingProps({
         frameTransforms: translationTransforms(10, 0, 0),
         placementStatus: "transformed",
-        renderableSourceIds: ["lidar-b"],
+        renderableSourceKeys: ["point-cloud\0/lidar-b"],
         restore: cameraRestore({
           navigationCompositions: compositions,
-          renderableSourceIds: ["lidar-a"],
+          renderableSourceKeys: ["point-cloud\0/lidar-a"],
         }),
         sourceKey: "source-b",
       }),
@@ -1261,7 +1294,7 @@ function cameraRestore(
   return {
     cameraView: null,
     navigationCompositions: [],
-    renderableSourceIds: ["lidar"],
+    renderableSourceKeys: ["point-cloud\0/lidar"],
     trackingMode: null,
     ...overrides,
   };
@@ -1322,7 +1355,7 @@ function trackingProps(overrides: Partial<TrackingProps> = {}): TrackingProps {
     playbackTimeNs: 0n,
     provisionalFrameIds: [],
     provisionalPlaybackFrame: null,
-    renderableSourceIds: ["lidar"],
+    renderableSourceKeys: ["point-cloud\0/lidar"],
     sceneUpAxis: "z",
     selectedStreamsKey: "streams",
     sourceKey: "source-a",

@@ -70,8 +70,10 @@ describe("fetchMasks", () => {
     fetchMock.mockResolvedValue(makeColumn(DTYPE_BITMASK, 2, 10, payload));
 
     const masks = await fetchMasks("d", "k", [], null);
-    expect(Array.from(masks.visible!)).toEqual([1, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
-    expect(Array.from(masks.match!)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+    const { visible, match } = masks;
+    if (!visible || !match) throw new Error("expected both masks");
+    expect(Array.from(visible)).toEqual([1, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(Array.from(match)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
   });
 
   it("returns null columns for the early-out flags", async () => {

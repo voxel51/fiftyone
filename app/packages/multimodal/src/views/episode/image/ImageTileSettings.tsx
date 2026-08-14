@@ -16,6 +16,7 @@ import {
 import React, { useMemo } from "react";
 
 import type { SceneSource } from "../../../ir";
+import { groupSourcesBySemanticIdentity } from "../settings/semantic-source";
 import {
   MAX_POINT_CLOUD_POINT_SIZE,
   MIN_POINT_CLOUD_POINT_SIZE,
@@ -139,13 +140,40 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
   toggleSceneAnnotationStream,
   viewStatus,
 }) => {
+  const visibleImages = useMemo(
+    () => groupSourcesBySemanticIdentity(images),
+    [images],
+  );
+  const visibleCalibrationSources = useMemo(
+    () => groupSourcesBySemanticIdentity(calibrationSources),
+    [calibrationSources],
+  );
+  const visibleAnnotationSources = useMemo(
+    () => groupSourcesBySemanticIdentity(annotationSources),
+    [annotationSources],
+  );
+  const visiblePointCloudSources = useMemo(
+    () => groupSourcesBySemanticIdentity(pointCloudSources),
+    [pointCloudSources],
+  );
+  const visibleSceneAnnotationSources = useMemo(
+    () => groupSourcesBySemanticIdentity(sceneAnnotationSources),
+    [sceneAnnotationSources],
+  );
+  const visibleLabelSourceGroups = useMemo(
+    () => ({
+      matching: groupSourcesBySemanticIdentity(labelSourceGroups.matching),
+      remaining: groupSourcesBySemanticIdentity(labelSourceGroups.remaining),
+    }),
+    [labelSourceGroups.matching, labelSourceGroups.remaining],
+  );
   const imageSourceOptions = useMemo(
     () =>
-      images.map((source) => ({
+      visibleImages.map((source) => ({
         data: { label: source.label },
         id: source.id,
       })),
-    [images],
+    [visibleImages],
   );
   const calibrationSourceOptions = useMemo(
     () => [
@@ -153,16 +181,16 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
         data: { label: calibrationSelectionLabel },
         id: AUTO_CALIBRATION_OPTION_ID,
       },
-      ...calibrationSources.map((source) => ({
+      ...visibleCalibrationSources.map((source) => ({
         data: { label: source.label },
         id: source.id,
       })),
     ],
-    [calibrationSelectionLabel, calibrationSources],
+    [calibrationSelectionLabel, visibleCalibrationSources],
   );
   const matchingLabelStreams = useMemo(
-    () => labelSourceGroups.matching.map((source) => source.id),
-    [labelSourceGroups.matching],
+    () => visibleLabelSourceGroups.matching.map((source) => source.id),
+    [visibleLabelSourceGroups.matching],
   );
   const hasEnabledMatchingLabels = useMemo(() => {
     const selected = new Set(selectedLabelStreams);
@@ -170,8 +198,17 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
       selected.has(labelStream),
     );
   }, [matchingLabelStreams, selectedLabelStreams]);
-  const canProject3dLabels = sceneAnnotationSources.length > 0;
-  const canProjectPointClouds = pointCloudSources.length > 0;
+  const canProject3dLabels = visibleSceneAnnotationSources.length > 0;
+  const canProjectPointClouds = visiblePointCloudSources.length > 0;
+  const selectedLabelCount = visibleAnnotationSources.filter((source) =>
+    selectedLabelStreams.includes(source.id),
+  ).length;
+  const selectedSceneAnnotationCount = visibleSceneAnnotationSources.filter(
+    (source) => selectedSceneAnnotationStreams.includes(source.id),
+  ).length;
+  const selectedPointCloudCount = visiblePointCloudSources.filter((source) =>
+    selectedProjectionStreams.includes(source.id),
+  ).length;
 
   return (
     <div className={settingsStyles.root}>
@@ -291,9 +328,9 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
           ) : null}
         </SidebarGroup>
       ) : null}
-      {annotationSources.length > 0 ? (
+      {visibleAnnotationSources.length > 0 ? (
         <SidebarGroup
-          summary={`${selectedLabelStreams.length} of ${annotationSources.length} on`}
+          summary={`${selectedLabelCount} of ${visibleAnnotationSources.length} on`}
           title="Labels"
           toggle={{
             ariaLabel: "Toggle matching labels",
@@ -315,13 +352,13 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
         >
           <div className={settingsStyles.labelGroups}>
             <ImageLabelSourceGroup
-              sources={labelSourceGroups.matching}
+              sources={visibleLabelSourceGroups.matching}
               selectedStreams={selectedLabelStreams}
               title="Matching"
               toggleStream={toggleLabelStream}
             />
             <ImageLabelSourceGroup
-              sources={labelSourceGroups.remaining}
+              sources={visibleLabelSourceGroups.remaining}
               selectedStreams={selectedLabelStreams}
               title="Remaining"
               toggleStream={toggleLabelStream}
@@ -334,7 +371,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
           <div className={settingsStyles.projectionGroups}>
             {canProject3dLabels ? (
               <SidebarGroup
-                summary={`${selectedSceneAnnotationStreams.length} of ${sceneAnnotationSources.length} on`}
+                summary={`${selectedSceneAnnotationCount} of ${visibleSceneAnnotationSources.length} on`}
                 title="3D Labels"
                 tooltip={LABEL_3D_PROJECTION_HELP}
                 toggle={{
@@ -344,9 +381,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
                     selectedSceneAnnotationStreams.length > 0,
                   onChange: (checked) =>
                     setLabel3dProjection(
-                      checked
-                        ? { enabled: true, streams: null }
-                        : { enabled: false, streams: [] },
+                      checked ? { enabled: true } : { enabled: false },
                     ),
                 }}
               >
@@ -366,7 +401,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
                   />
                 </div>
                 <div className={settingsStyles.optionStack}>
-                  {sceneAnnotationSources.map((source) => (
+                  {visibleSceneAnnotationSources.map((source) => (
                     <Checkbox
                       key={source.id}
                       label={source.label}
@@ -384,7 +419,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
             ) : null}
             {canProjectPointClouds ? (
               <SidebarGroup
-                summary={`${selectedProjectionStreams.length} of ${pointCloudSources.length} on`}
+                summary={`${selectedPointCloudCount} of ${visiblePointCloudSources.length} on`}
                 title="Pointclouds"
                 tooltip={POINT_CLOUD_PROJECTION_HELP}
                 toggle={{
@@ -392,9 +427,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
                   checked: selectedProjectionStreams.length > 0,
                   onChange: (checked) =>
                     setPointCloudProjection(
-                      checked
-                        ? { enabled: true, streams: null }
-                        : { enabled: false, streams: [] },
+                      checked ? { enabled: true } : { enabled: false },
                     ),
                 }}
               >
@@ -421,7 +454,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
                   />
                 </label>
                 <div className={settingsStyles.optionStack}>
-                  {pointCloudSources.map((source) => (
+                  {visiblePointCloudSources.map((source) => (
                     <Checkbox
                       key={source.id}
                       label={source.label}

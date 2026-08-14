@@ -40,4 +40,3 @@ export {
   ViewTargetSelector,
   type ViewTargetMeta,
 } from "./ViewTargets";
-export { ViewTarget } from "./types";
