@@ -460,19 +460,30 @@ function SharedViewRenderer({
       updateViewCamera(state.camera, bounds.width, bounds.height);
 
       const renderer = state.gl as unknown as SharedStageRenderer;
+      // The store's logical size can lag or diverge from the physical canvas
+      // (observed live: a canvas latched at one tile's dimensions while views
+      // still measured full-modal rects). WebGPU rejects any scissor outside
+      // the render area and invalidates the whole command buffer with it, so
+      // validate against what the renderer will actually encode. A fully
+      // clipped view renders nothing; the frame coordinator's finish pass
+      // clears the target when every view bailed this way.
+      const clamped = clampToRenderArea(renderer, bounds);
+      if (!clamped) {
+        return;
+      }
       // WebGPURenderer currently accepts the DOM-style top-left logical
       // coordinates produced below; DPR scaling remains renderer-owned.
       renderer.setViewport(
-        bounds.viewportX,
-        bounds.viewportY,
-        bounds.scissorWidth,
-        bounds.scissorHeight,
+        clamped.viewportX,
+        clamped.viewportY,
+        clamped.scissorWidth,
+        clamped.scissorHeight,
       );
       renderer.setScissor(
-        bounds.scissorX,
-        bounds.scissorY,
-        bounds.scissorWidth,
-        bounds.scissorHeight,
+        clamped.scissorX,
+        clamped.scissorY,
+        clamped.scissorWidth,
+        clamped.scissorHeight,
       );
       renderer.setScissorTest(true);
       try {
@@ -511,11 +522,53 @@ function SharedStageFrame({
 
 interface SharedStageRenderer {
   autoClear: boolean;
+  domElement?: { readonly height: number; readonly width: number };
+  getPixelRatio?(): number;
   clear(color?: boolean, depth?: boolean, stencil?: boolean): void;
   render(scene: unknown, camera: unknown): void;
   setScissor(x: number, y: number, width: number, height: number): void;
   setScissorTest(enabled: boolean): void;
   setViewport(x: number, y: number, width: number, height: number): void;
+}
+
+/**
+ * Clamps logical scissor/viewport bounds to the renderer's actual drawing
+ * buffer. A scissor outside the render area is a WebGPU validation error
+ * that discards the whole command buffer, so bounds computed from a stale
+ * store size must never reach the encoder. Returns null when nothing of
+ * the view lies inside the current canvas.
+ */
+function clampToRenderArea(
+  renderer: SharedStageRenderer,
+  bounds: WebGpuViewBounds,
+): WebGpuViewBounds | null {
+  const dom = renderer.domElement;
+  if (!dom || !(dom.width > 0) || !(dom.height > 0)) {
+    return bounds;
+  }
+  const pixelRatio = renderer.getPixelRatio?.() ?? 1;
+  const maxWidth = dom.width / pixelRatio;
+  const maxHeight = dom.height / pixelRatio;
+
+  const scissorX = Math.min(bounds.scissorX, maxWidth);
+  const scissorY = Math.min(bounds.scissorY, maxHeight);
+  const scissorWidth = Math.min(bounds.scissorWidth, maxWidth - scissorX);
+  const scissorHeight = Math.min(bounds.scissorHeight, maxHeight - scissorY);
+  // Sub-pixel logical sizes floor to zero physical pixels in the renderer,
+  // which WebGPU also rejects.
+  if (scissorWidth * pixelRatio < 1 || scissorHeight * pixelRatio < 1) {
+    return null;
+  }
+
+  return {
+    ...bounds,
+    scissorHeight,
+    scissorWidth,
+    scissorX,
+    scissorY,
+    viewportX: scissorX,
+    viewportY: scissorY,
+  };
 }
 
 /**
