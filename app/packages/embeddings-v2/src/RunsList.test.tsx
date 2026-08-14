@@ -56,7 +56,7 @@ describe("RunsList", () => {
           run("viz_model", { timestamp: "2026-08-11T18:00:00Z" }),
           run("viz_precomputed", { model: null }),
         ]}
-        error={null}
+        actionError={null}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
       />,
