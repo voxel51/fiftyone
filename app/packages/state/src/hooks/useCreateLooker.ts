@@ -120,7 +120,7 @@ export default <T extends AbstractLooker<BaseState>>(
         } else if (nativeLookerType === "3d") {
           create = ThreeDLooker;
         } else if (nativeLookerType === "video") {
-          create = isFrame || isPatch ? FrameLooker : VideoLooker;
+          create = VideoLooker;
         } else if (mimeType !== null && shouldRenderImaVidLooker) {
           create = ImaVidLooker;
         }
