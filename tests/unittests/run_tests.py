@@ -192,60 +192,75 @@ class RunTests(unittest.TestCase):
         self.assertTrue(run_info1.timestamp < run_info2.timestamp)
 
 
-class RunConnectionBootstrapTests(unittest.TestCase):
-    """Accessing a dataset document's run references must bootstrap the DB
-    connection before dereferencing — a runs access may occur in a process
-    without an established connection (e.g. a cold process in API mode, or a
-    worker that disconnected), and mongoengine's dereference machinery does
-    not establish the default connection on its own.
+class ReferenceConnectionBootstrapTests(unittest.TestCase):
+    """Accessing a dataset document's references (runs, saved views,
+    workspaces) must bootstrap the DB connection before dereferencing — the
+    access may occur in a process without an established connection (e.g. a
+    cold process in API mode, or a worker that disconnected), and
+    mongoengine's dereference machinery does not establish the default
+    connection on its own.
     """
 
-    def test_run_references_field_bootstraps_connection_first(self):
-        from mongoengine.base import ComplexBaseField
+    @classmethod
+    def _field_classes(cls):
+        import fiftyone.core.fields as fof
+        import fiftyone.core.odm.dataset as food
 
-        import fiftyone.core.odm.runs as foor
-
-        manager = mock.Mock()
-        field = foor.RunReferencesField()
-
-        with (
-            mock.patch.object(
-                foor, "ensure_connection", manager.ensure_connection
-            ),
-            mock.patch.object(ComplexBaseField, "__get__", manager.super_get),
-        ):
-            foor.RunReferencesField.__get__(field, object(), object)
-
-        calls = [name for name, _, _ in manager.mock_calls]
-        self.assertIn("super_get", calls)
-        self.assertEqual(
-            calls[0],
-            "ensure_connection",
-            f"connection must be established before dereferencing; got {calls}",
+        return (
+            (food._ConnectedReferencesDictField, fof.DictField),
+            (food._ConnectedReferencesListField, fof.ListField),
         )
 
-    def test_run_references_field_skips_class_access(self):
-        from mongoengine.base import ComplexBaseField
-
-        import fiftyone.core.odm.runs as foor
-
-        manager = mock.Mock()
-        field = foor.RunReferencesField()
-
-        with (
-            mock.patch.object(
-                foor, "ensure_connection", manager.ensure_connection
-            ),
-            mock.patch.object(ComplexBaseField, "__get__", manager.super_get),
-        ):
-            foor.RunReferencesField.__get__(field, None, object)
-
-        calls = [name for name, _, _ in manager.mock_calls]
-        self.assertNotIn("ensure_connection", calls)
-
-    def test_dataset_run_fields_use_connected_field(self):
+    def test_connected_fields_bootstrap_connection_first(self):
         import fiftyone.core.odm.dataset as food
-        import fiftyone.core.odm.runs as foor
+
+        for field_cls, base_cls in self._field_classes():
+            manager = mock.Mock()
+            field = field_cls()
+
+            with (
+                mock.patch.object(
+                    food, "ensure_connection", manager.ensure_connection
+                ),
+                mock.patch.object(
+                    base_cls, "__get__", manager.super_get, create=True
+                ),
+            ):
+                field_cls.__get__(field, object(), object)
+
+            calls = [name for name, _, _ in manager.mock_calls]
+            self.assertIn("super_get", calls)
+            self.assertEqual(
+                calls[0],
+                "ensure_connection",
+                f"connection must be established before dereferencing; got {calls}",
+            )
+
+    def test_connected_fields_skip_class_access(self):
+        import fiftyone.core.odm.dataset as food
+
+        for field_cls, base_cls in self._field_classes():
+            manager = mock.Mock()
+            field = field_cls()
+
+            with (
+                mock.patch.object(
+                    food, "ensure_connection", manager.ensure_connection
+                ),
+                mock.patch.object(
+                    base_cls, "__get__", manager.super_get, create=True
+                ),
+            ):
+                field_cls.__get__(field, None, object)
+
+            calls = [name for name, _, _ in manager.mock_calls]
+            self.assertNotIn("ensure_connection", calls)
+
+    def test_dataset_reference_fields_use_connected_fields(self):
+        import fiftyone.core.odm.dataset as food
+
+        # pylint: disable=no-member
+        fields = food.DatasetDocument._fields
 
         for name in (
             "annotation_runs",
@@ -254,16 +269,30 @@ class RunConnectionBootstrapTests(unittest.TestCase):
             "runs",
         ):
             self.assertIsInstance(
-                # pylint: disable=no-member
-                food.DatasetDocument._fields[name],
-                foor.RunReferencesField,
-                name,
+                fields[name], food._ConnectedReferencesDictField, name
             )
+
+        for name in ("saved_views", "workspaces"):
+            self.assertIsInstance(
+                fields[name], food._ConnectedReferencesListField, name
+            )
+
+    def _disconnect(self):
+        """Simulates a worker teardown (fiftyone.core.map.process,
+        fiftyone.utils.torch).
+        """
+        import fiftyone.core.odm.database as fodb
+        import fiftyone.factory.repo_factory as forf
+
+        fodb._disconnect()
+
+        # The repo factory caches the client, which is now closed; reset it
+        # so that test cleanup can reconnect
+        forf._db = None
+        forf.RepositoryFactory.repos.clear()
 
     @drop_datasets
     def test_run_access_after_disconnect(self):
-        import fiftyone.core.odm.database as food
-
         dataset = fo.Dataset()
 
         config = dataset.init_run(foo="bar")
@@ -275,14 +304,34 @@ class RunConnectionBootstrapTests(unittest.TestCase):
         # Reset the in-memory doc so the run references are raw DBRefs again
         dataset.reload()
 
-        # Simulates a worker teardown (fiftyone.core.map.process,
-        # fiftyone.utils.torch)
-        food._disconnect()
+        self._disconnect()
 
         self.assertListEqual(dataset.list_runs(), ["test"])
 
         results = dataset.load_run_results("test", cache=False)
         self.assertEqual(results.spam, "eggs")
+
+    @drop_datasets
+    def test_saved_view_access_after_disconnect(self):
+        dataset = fo.Dataset()
+        dataset.save_view("test", dataset.limit(1))
+
+        dataset.reload()
+        self._disconnect()
+
+        self.assertListEqual(dataset.list_saved_views(), ["test"])
+        dataset.load_saved_view("test")
+
+    @drop_datasets
+    def test_workspace_access_after_disconnect(self):
+        dataset = fo.Dataset()
+        dataset.save_workspace("test", fo.Space())
+
+        dataset.reload()
+        self._disconnect()
+
+        self.assertListEqual(dataset.list_workspaces(), ["test"])
+        dataset.load_workspace("test")
 
 
 if __name__ == "__main__":
