@@ -12,19 +12,79 @@ import descriptor from "protobufjs/ext/descriptor";
 const TEXT_ENCODER = new TextEncoder();
 const NANOSECONDS_PER_SECOND = 1_000_000_000n;
 const EPOCH_START_NS = 1_704_067_200_000_000_000n;
-const LONG_DURATION_SECONDS = 3_600;
-const LONG_REAR_FIRST_SECOND = 600;
-const LONG_REAR_LAST_SECOND = 3_000;
-const LONG_REAR_INTERVAL_SECONDS = 2;
 const ABSOLUTE_TIMELINE_METADATA = { timeline_mode: "absolute" } as const;
 
 export const MAX_LONG_MCAP_SIZE_BYTES = 10 * 1024 * 1024;
 
+/** Stable values shared by the fixture generator and correctness spec. */
+export const MCAP_FIXTURE_CONTRACT = {
+  tinyA: {
+    fileName: "tiny-episode-a.mcap",
+    imageRgb: [
+      [231, 76, 60],
+      [46, 204, 113],
+      [52, 152, 219],
+    ],
+    kind: "tiny-episode-a",
+    poseX: [0, 10, 20],
+  },
+  tinyB: {
+    fileName: "tiny-episode-b.mcap",
+    kind: "tiny-episode-b",
+    rearImageRgb: [
+      [155, 89, 182],
+      [243, 156, 18],
+      [26, 188, 156],
+      [232, 67, 147],
+    ],
+    sideImageRgb: [
+      [52, 73, 94],
+      [211, 84, 0],
+      [22, 160, 133],
+      [142, 68, 173],
+    ],
+    statusCodes: [200, 201, 202, 203],
+  },
+  long: {
+    cameraPhaseSeconds: 900,
+    cameraPhaseRgb: [
+      [23, 63, 95],
+      [32, 99, 155],
+      [60, 174, 163],
+      [246, 213, 92],
+    ],
+    diagnosticIntervalSeconds: 60,
+    durationSeconds: 3_600,
+    fileName: "long-mixed-episode.mcap",
+    kind: "long-mixed-episode",
+    lidarGapFirstSecond: 1_790,
+    lidarGapLastSecond: 1_810,
+    lidarIntervalSeconds: 2,
+    logBeforeMidpointSecond: 1_600,
+    midpointSecond: 1_800,
+    rearFirstSecond: 600,
+    rearIntervalSeconds: 2,
+    rearLastSecond: 3_000,
+    statusIntervalSeconds: 5,
+  },
+  sidebar: {
+    fileName: "sidebar-persistence.mcap",
+    kind: "sidebar-persistence",
+  },
+  unsupported: {
+    fileName: "unsupported.mcap",
+    kind: "unsupported",
+  },
+} as const;
+
+const LONG_DURATION_SECONDS = MCAP_FIXTURE_CONTRACT.long.durationSeconds;
+const LONG_REAR_FIRST_SECOND = MCAP_FIXTURE_CONTRACT.long.rearFirstSecond;
+const LONG_REAR_LAST_SECOND = MCAP_FIXTURE_CONTRACT.long.rearLastSecond;
+const LONG_REAR_INTERVAL_SECONDS =
+  MCAP_FIXTURE_CONTRACT.long.rearIntervalSeconds;
+
 export type McapFixtureKind =
-  | "tiny-episode-a"
-  | "tiny-episode-b"
-  | "unsupported"
-  | "long-mixed-episode";
+  (typeof MCAP_FIXTURE_CONTRACT)[keyof typeof MCAP_FIXTURE_CONTRACT]["kind"];
 
 export interface McapFixtureReport {
   readonly kind: McapFixtureKind;
@@ -57,13 +117,19 @@ interface FixtureDefinition {
 
 /** Writes one deterministic, indexed, uncompressed MCAP correctness fixture. */
 export async function createMcapFixture({
+  channelIdOffset = 0,
   kind,
   outputPath,
 }: {
+  /** Empty leading channels used to vary otherwise recording-local ids. */
+  readonly channelIdOffset?: number;
   readonly kind: McapFixtureKind;
   readonly outputPath: string;
 }): Promise<McapFixtureReport> {
   const definition = fixtureDefinition(kind);
+  if (!Number.isInteger(channelIdOffset) || channelIdOffset < 0) {
+    throw new Error("channel id offset must be a non-negative integer");
+  }
   const target = new MemoryWritable();
   const writer = new McapWriter({
     chunkSize: 1024 * 1024,
@@ -75,6 +141,20 @@ export async function createMcapFixture({
     writable: target,
   });
   await writer.start({ library: "fiftyone-e2e-pw", profile: "" });
+
+  for (let index = 0; index < channelIdOffset; index++) {
+    const schemaId = await writer.registerSchema({
+      data: jsonSchemaData("fiftyone.e2e.ChannelIdPadding"),
+      encoding: "jsonschema",
+      name: "fiftyone.e2e.ChannelIdPadding",
+    });
+    await writer.registerChannel({
+      messageEncoding: "json",
+      metadata: new Map(),
+      schemaId,
+      topic: `/__channel_id_padding/${index}`,
+    });
+  }
 
   const channelIds: number[] = [];
   for (const channel of definition.channels) {
@@ -142,11 +222,64 @@ function fixtureDefinition(kind: McapFixtureKind): FixtureDefinition {
       return tinyEpisodeA();
     case "tiny-episode-b":
       return tinyEpisodeB();
+    case "sidebar-persistence":
+      return sidebarPersistenceEpisode();
     case "unsupported":
       return unsupportedEpisode();
     case "long-mixed-episode":
       return longMixedEpisode();
   }
+}
+
+/** Minimal complete sidebar inventory: image, calibration, cloud, 2D and 3D labels. */
+function sidebarPersistenceEpisode(): FixtureDefinition {
+  const channels: ChannelSpec[] = [
+    jsonChannel(
+      "/camera/front/image_raw",
+      "sensor_msgs/msg/CompressedImage",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+    jsonChannel(
+      "/camera/front/camera_info",
+      "sensor_msgs/msg/CameraInfo",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+    jsonChannel(
+      "/lidar/points",
+      "sensor_msgs/msg/PointCloud2",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+    jsonChannel(
+      "/camera/front/detections",
+      "vision_msgs/msg/Detection2DArray",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+    jsonChannel(
+      "/detections_3d",
+      "vision_msgs/msg/Detection3DArray",
+      ABSOLUTE_TIMELINE_METADATA,
+    ),
+  ];
+  const messages: FixtureMessage[] = [];
+  for (let tick = 0; tick < 2; tick++) {
+    const timeNs = EPOCH_START_NS + BigInt(tick) * NANOSECONDS_PER_SECOND;
+    messages.push(
+      jsonMessage(
+        0,
+        timeNs,
+        compressedImageMessage({
+          frameId: "camera_front",
+          png: labeledPng(160, 90, A_COLORS[tick], `S${tick}`),
+          timeNs,
+        }),
+      ),
+      jsonMessage(1, timeNs, cameraInfoMessage(timeNs)),
+      jsonMessage(2, timeNs, pointCloudMessage(timeNs, "map", aPoints(tick))),
+      jsonMessage(3, timeNs, detectionMessage(timeNs, tick)),
+      jsonMessage(4, timeNs, detection3dMessage(timeNs, tick)),
+    );
+  }
+  return { channels, messages };
 }
 
 function tinyEpisodeA(): FixtureDefinition {
@@ -182,7 +315,11 @@ function tinyEpisodeA(): FixtureDefinition {
       jsonMessage(3, timeNs, {
         acceleration: { x: tick, y: tick + 0.25, z: 0 },
         orientation: { w: 1, x: 0, y: 0, z: 0 },
-        position: { x: tick * 10, y: tick + 1, z: tick + 2 },
+        position: {
+          x: MCAP_FIXTURE_CONTRACT.tinyA.poseX[tick],
+          y: tick + 1,
+          z: tick + 2,
+        },
         velocity: { x: tick + 1, y: 0, z: 0 },
       }),
     );
@@ -222,7 +359,7 @@ function tinyEpisodeB(): FixtureDefinition {
       jsonMessage(2, timeNs, laserScanMessage(timeNs, "rear_laser", tick)),
       jsonMessage(3, timeNs, {
         mode: tick < 2 ? "warming" : "ready",
-        status_code: 200 + tick,
+        status_code: MCAP_FIXTURE_CONTRACT.tinyB.statusCodes[tick],
         tick,
         vehicle: { gear: tick % 2 === 0 ? "drive" : "reverse" },
       }),
@@ -336,8 +473,17 @@ function longMixedEpisode(): FixtureDefinition {
     );
   }
 
-  for (let second = 0; second < LONG_DURATION_SECONDS; second += 2) {
-    if (second >= 1_790 && second <= 1_810) continue;
+  for (
+    let second = 0;
+    second < LONG_DURATION_SECONDS;
+    second += MCAP_FIXTURE_CONTRACT.long.lidarIntervalSeconds
+  ) {
+    if (
+      second >= MCAP_FIXTURE_CONTRACT.long.lidarGapFirstSecond &&
+      second <= MCAP_FIXTURE_CONTRACT.long.lidarGapLastSecond
+    ) {
+      continue;
+    }
     const timeNs = epochSecond(second);
     messages.push(
       jsonMessage(
@@ -379,10 +525,20 @@ function longMixedEpisode(): FixtureDefinition {
     messages.push(jsonMessage(5, timeNs, detectionMessage(timeNs, second)));
   }
 
-  for (let second = 0; second < LONG_DURATION_SECONDS; second += 5) {
+  for (
+    let second = 0;
+    second < LONG_DURATION_SECONDS;
+    second += MCAP_FIXTURE_CONTRACT.long.statusIntervalSeconds
+  ) {
     messages.push(jsonMessage(8, epochSecond(second), statusMessage(second)));
   }
-  messages.push(jsonMessage(8, epochSecond(3_600), statusMessage(3_600, true)));
+  messages.push(
+    jsonMessage(
+      8,
+      epochSecond(LONG_DURATION_SECONDS),
+      statusMessage(LONG_DURATION_SECONDS, true),
+    ),
+  );
 
   for (const { message, second } of LONG_LOG_ANCHORS) {
     messages.push(
@@ -394,7 +550,11 @@ function longMixedEpisode(): FixtureDefinition {
     );
   }
 
-  for (let second = 0; second < LONG_DURATION_SECONDS; second += 60) {
+  for (
+    let second = 0;
+    second < LONG_DURATION_SECONDS;
+    second += MCAP_FIXTURE_CONTRACT.long.diagnosticIntervalSeconds
+  ) {
     const timeNs = epochSecond(second);
     messages.push(jsonMessage(10, timeNs, diagnosticMessage(timeNs, second)));
   }
@@ -411,8 +571,14 @@ const LONG_LOG_ANCHORS = [
   { message: "LONG quarter-hour phase", second: 1_000 },
   { message: "LONG phase 1200", second: 1_200 },
   { message: "LONG phase 1400", second: 1_400 },
-  { message: "LONG pre-midpoint nominal", second: 1_600 },
-  { message: "LONG midpoint warning", second: 1_800 },
+  {
+    message: "LONG pre-midpoint nominal",
+    second: MCAP_FIXTURE_CONTRACT.long.logBeforeMidpointSecond,
+  },
+  {
+    message: "LONG midpoint warning",
+    second: MCAP_FIXTURE_CONTRACT.long.midpointSecond,
+  },
   { message: "LONG warning sustained", second: 2_000 },
   { message: "LONG phase 2200", second: 2_200 },
   { message: "LONG transform phase", second: 2_400 },
@@ -421,7 +587,10 @@ const LONG_LOG_ANCHORS = [
   { message: "LONG rear camera final frame", second: 3_000 },
   { message: "LONG phase 3200", second: 3_200 },
   { message: "LONG phase 3400", second: 3_400 },
-  { message: "LONG terminal 01:00:00", second: 3_600 },
+  {
+    message: "LONG terminal 01:00:00",
+    second: MCAP_FIXTURE_CONTRACT.long.durationSeconds,
+  },
 ] as const;
 
 function jsonChannel(
@@ -487,6 +656,19 @@ function compressedImageMessage({
     data: Array.from(png),
     format: "png",
     header: header(timeNs, frameId),
+  };
+}
+
+function cameraInfoMessage(timeNs: bigint): Record<string, unknown> {
+  return {
+    D: [0, 0, 0, 0, 0],
+    K: [120, 0, 80, 0, 120, 45, 0, 0, 1],
+    P: [120, 0, 80, 0, 0, 120, 45, 0, 0, 0, 1, 0],
+    R: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+    distortion_model: "plumb_bob",
+    header: header(timeNs, "camera_front"),
+    height: 90,
+    width: 160,
   };
 }
 
@@ -613,16 +795,41 @@ function detectionMessage(
   };
 }
 
+function detection3dMessage(
+  timeNs: bigint,
+  tick: number,
+): Record<string, unknown> {
+  return {
+    detections: [
+      {
+        bbox: {
+          center: {
+            orientation: { w: 1, x: 0, y: 0, z: 0 },
+            position: { x: 2 + tick, y: 1, z: 0.75 },
+          },
+          size: { x: 2, y: 1, z: 1.5 },
+        },
+        id: "sidebar-box",
+        results: [{ hypothesis: { class_id: "vehicle", score: 0.95 } }],
+      },
+    ],
+    header: header(timeNs, "map"),
+  };
+}
+
 function statusMessage(
   second: number,
   terminal = false,
 ): Record<string, unknown> {
   return {
-    counter: second / 5,
-    phase: Math.min(3, Math.floor(second / 900)),
+    counter: second / MCAP_FIXTURE_CONTRACT.long.statusIntervalSeconds,
+    phase: Math.min(
+      3,
+      Math.floor(second / MCAP_FIXTURE_CONTRACT.long.cameraPhaseSeconds),
+    ),
     state: terminal
       ? "complete"
-      : second >= 1_800
+      : second >= MCAP_FIXTURE_CONTRACT.long.midpointSecond
         ? "active-warning"
         : "active",
     terminal,
@@ -633,7 +840,7 @@ function diagnosticMessage(
   timeNs: bigint,
   second: number,
 ): Record<string, unknown> {
-  const warning = second >= 1_800;
+  const warning = second >= MCAP_FIXTURE_CONTRACT.long.midpointSecond;
   return {
     header: header(timeNs, "base_link"),
     status: [
@@ -758,9 +965,9 @@ function frameTransformMessage(
   }).finish();
 }
 
-const A_COLORS = [0xe74c3cff, 0x2ecc71ff, 0x3498dbff];
-const B_REAR_COLORS = [0x9b59b6ff, 0xf39c12ff, 0x1abc9cff, 0xe84393ff];
-const B_SIDE_COLORS = [0x34495eff, 0xd35400ff, 0x16a085ff, 0x8e44adff];
+const A_COLORS = MCAP_FIXTURE_CONTRACT.tinyA.imageRgb.map(rgbToRgba);
+const B_REAR_COLORS = MCAP_FIXTURE_CONTRACT.tinyB.rearImageRgb.map(rgbToRgba);
+const B_SIDE_COLORS = MCAP_FIXTURE_CONTRACT.tinyB.sideImageRgb.map(rgbToRgba);
 
 function labeledPng(
   width: number,
@@ -774,8 +981,11 @@ function labeledPng(
 }
 
 function longCameraPng(frame: number, camera: "front" | "rear"): Uint8Array {
-  const phase = Math.min(3, Math.floor(frame / 1_800));
-  const colors = [0x173f5fff, 0x20639bff, 0x3caea3ff, 0xf6d55cff];
+  const phase = Math.min(
+    3,
+    Math.floor(frame / (MCAP_FIXTURE_CONTRACT.long.cameraPhaseSeconds * 2)),
+  );
+  const colors = MCAP_FIXTURE_CONTRACT.long.cameraPhaseRgb.map(rgbToRgba);
   const width = 32;
   const height = 18;
   const pixels = solidPixels(width, height, colors[phase]);
@@ -797,6 +1007,11 @@ function longCameraPng(frame: number, camera: "front" | "rear"): Uint8Array {
     }
   }
   return encodePng(width, height, pixels);
+}
+
+function rgbToRgba(rgb: readonly [number, number, number]): number {
+  const [red, green, blue] = rgb;
+  return ((red << 24) | (green << 16) | (blue << 8) | 0xff) >>> 0;
 }
 
 function solidPixels(width: number, height: number, rgba: number): Uint8Array {

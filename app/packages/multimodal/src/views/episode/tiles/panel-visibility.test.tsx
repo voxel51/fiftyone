@@ -1,347 +1,270 @@
-import { TileIdScope, TilingProvider } from "@fiftyone/tiling";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SceneSource } from "../../../ir";
+import {
+  SIDEBAR_PREFERENCES_STORAGE_KEY,
+  updateSidebarPreferences,
+} from "../settings/sidebar-preferences";
+import { semanticSourceKey } from "../settings/semantic-source";
 import {
   PanelVisibilityProvider,
   readScene3dTileVisibility,
   useImageTile3dLabelProjection,
   useImageTileLabelStreams,
   useImageTilePointCloudProjection,
+  useSidebarPreferencesState,
+  writeScene3dTrajectoryFrameOverrides,
   writeScene3dTileVisibility,
 } from "./panel-visibility";
-import { DEFAULT_PROJECTION_POINT_SIZE } from "../presentation/point-size-policy";
 
-afterEach(() => {
-  cleanup();
-  localStorage.clear();
-  sessionStorage.clear();
-  vi.restoreAllMocks();
+let tileId = "image-1";
+vi.mock("@fiftyone/tiling", () => ({ useTileId: () => tileId }));
+
+const source = (id: string, type: string, sourceName: string): SceneSource => ({
+  id,
+  label: sourceName,
+  sourceName,
+  type,
 });
 
-describe("episode panel visibility persistence", () => {
-  it("isolates 3D visibility by inspection scope and tile", () => {
-    writeScene3dTileVisibility("dataset-a:field-a", "3d-1", {
-      cameraSelectionCustomized: false,
-      enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
-      primarySourceId: "/lidar/top",
-    });
+const firstSources = [
+  source("10", "image", "/camera/front"),
+  source("11", "image-annotation", "/camera/front/labels"),
+  source("12", "point-cloud", "/lidar"),
+  source("13", "scene-annotation", "/boxes"),
+];
+const shiftedSources = firstSources.map((item, index) => ({
+  ...item,
+  id: String(50 + index),
+}));
 
-    expect(readScene3dTileVisibility("dataset-a:field-a", "3d-1")).toEqual({
-      cameraSelectionCustomized: false,
-      enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
-      primarySourceId: "/lidar/top",
-    });
-    expect(readScene3dTileVisibility("dataset-a:field-a", "3d-2")).toBeNull();
-    expect(readScene3dTileVisibility("dataset-a:field-b", "3d-1")).toBeNull();
+describe("dataset-owned panel preferences", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    tileId = "image-1";
   });
 
-  it("defaults image labels off and restores an explicit per-tile choice", () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <PanelVisibilityProvider scopeKey="dataset-a:field-a">
-        <TilingProvider>
-          <TileIdScope tileId="image-1">{children}</TileIdScope>
-        </TilingProvider>
-      </PanelVisibilityProvider>
+  it("persists semantic 3D visibility per scope and tile", () => {
+    tileId = "3d-1";
+    const cloudKey = semanticSourceKey(firstSources[2]);
+    writeScene3dTileVisibility("dataset-a", tileId, {
+      cameraSelectionCustomized: false,
+      enabledSourceKeys: [cloudKey],
+      primarySourceKey: cloudKey,
+    });
+
+    expect(readScene3dTileVisibility("dataset-a", tileId)).toMatchObject({
+      enabledSourceKeys: [cloudKey],
+      primarySourceKey: cloudKey,
+    });
+    expect(readScene3dTileVisibility("dataset-b", tileId)).toBeNull();
+    expect(readScene3dTileVisibility("dataset-a", "3d-2")).toBeNull();
+  });
+
+  it("seeds fresh 3D state when persisting a trajectory override", () => {
+    tileId = "3d-1";
+    const cloudKey = semanticSourceKey(firstSources[2]);
+    writeScene3dTrajectoryFrameOverrides(
+      "dataset-a",
+      tileId,
+      { [cloudKey]: "ego" },
+      {
+        cameraSelectionCustomized: false,
+        enabledSourceKeys: [cloudKey],
+        primarySourceKey: cloudKey,
+      },
     );
+
+    expect(readScene3dTileVisibility("dataset-a", tileId)).toEqual({
+      cameraSelectionCustomized: false,
+      enabledSourceKeys: [cloudKey],
+      primarySourceKey: cloudKey,
+      trajectoryFrameOverrides: { [cloudKey]: "ego" },
+    });
+  });
+
+  it("keeps mounted scope state reactive to domain-level writes", () => {
+    const mounted = renderHook(
+      () => useSidebarPreferencesState()[0].appearance.pointCloudPointSize,
+      { wrapper: wrapper("dataset-a", firstSources) },
+    );
+
+    act(() => {
+      updateSidebarPreferences("dataset-a", (current) => ({
+        ...current,
+        appearance: { ...current.appearance, pointCloudPointSize: 6 },
+      }));
+    });
+
+    expect(mounted.result.current).toBe(6);
+  });
+
+  it("restores 2D labels after every runtime channel id changes", () => {
     const first = renderHook(
-      () => useImageTileLabelStreams("/camera/front/image"),
-      { wrapper },
+      () => useImageTileLabelStreams(firstSources[0].id),
+      { wrapper: wrapper("dataset-a", firstSources) },
     );
-
-    expect(first.result.current.labelStreams).toEqual([]);
-    const defaultLabelStreams = first.result.current.labelStreams;
-    first.rerender();
-    expect(first.result.current.labelStreams).toBe(defaultLabelStreams);
-    act(() => first.result.current.setLabelStreams(["/camera/front/labels"]));
-    expect(first.result.current.labelStreams).toEqual(["/camera/front/labels"]);
-    const persistedBeforeUnmount = localStorage.getItem(
-      "fiftyone.episode.panel-visibility.v2",
-    );
+    act(() => first.result.current.setLabelStreams([firstSources[1].id]));
+    expect(first.result.current.labelStreams).toEqual(["11"]);
     first.unmount();
-    expect(localStorage.getItem("fiftyone.episode.panel-visibility.v2")).toBe(
-      persistedBeforeUnmount,
-    );
 
-    const restored = renderHook(
-      () => useImageTileLabelStreams("/camera/front/image"),
-      { wrapper },
+    const shifted = renderHook(
+      () => useImageTileLabelStreams(shiftedSources[0].id),
+      { wrapper: wrapper("dataset-a", shiftedSources) },
     );
-    expect(restored.result.current.labelStreams).toEqual([
-      "/camera/front/labels",
-    ]);
+    expect(shifted.result.current.labelStreams).toEqual(["51"]);
   });
 
-  it("resets and restores hook state across an in-place scope swap", () => {
-    const activeScope = { current: "dataset-a:field-a" };
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <PanelVisibilityProvider scopeKey={activeScope.current}>
-        <TilingProvider>
-          <TileIdScope tileId="image-1">{children}</TileIdScope>
-        </TilingProvider>
-      </PanelVisibilityProvider>
-    );
-    const hook = renderHook(
-      () => useImageTileLabelStreams("/camera/front/image"),
-      { wrapper },
-    );
-
-    act(() => hook.result.current.setLabelStreams(["/labels/a"]));
-    activeScope.current = "dataset-b:field-a";
-    hook.rerender();
-    expect(hook.result.current.labelStreams).toEqual([]);
-
-    act(() => hook.result.current.setLabelStreams(["/labels/b"]));
-    activeScope.current = "dataset-a:field-a";
-    hook.rerender();
-    expect(hook.result.current.labelStreams).toEqual(["/labels/a"]);
-  });
-
-  it("keeps opt-in point-cloud projections isolated in session storage", () => {
-    const wrapperFor = (tileId: string) => {
-      const Wrapper = ({ children }: { children: React.ReactNode }) => (
-        <PanelVisibilityProvider scopeKey="dataset-a:field-a">
-          <TilingProvider>
-            <TileIdScope tileId={tileId}>{children}</TileIdScope>
-          </TilingProvider>
-        </PanelVisibilityProvider>
-      );
-      return Wrapper;
-    };
-    const foo = renderHook(
-      () => useImageTilePointCloudProjection("/camera/front/image"),
-      { wrapper: wrapperFor("image-1") },
-    );
-    const bar = renderHook(
-      () => useImageTilePointCloudProjection("/camera/front/image"),
-      { wrapper: wrapperFor("image-2") },
-    );
-
+  it("persists point-cloud projections across remounts and reload storage", () => {
+    const first = renderHook(() => useImageTilePointCloudProjection("10"), {
+      wrapper: wrapper("dataset-a", firstSources),
+    });
     act(() =>
-      foo.result.current.setProjection({
+      first.result.current.setProjection({
         enabled: true,
         pointSize: 8,
-        streams: ["/lidar/top"],
+        streams: ["12"],
       }),
     );
+    first.unmount();
 
-    expect(foo.result.current.projection).toEqual({
-      enabled: true,
-      pointSize: 8,
-      streams: ["/lidar/top"],
-    });
-    expect(bar.result.current.projection).toEqual({
-      enabled: false,
-      pointSize: DEFAULT_PROJECTION_POINT_SIZE,
-      streams: [],
-    });
-    expect(sessionStorage.getItem("fiftyone.episode.projections.v1")).toContain(
-      "/lidar/top",
-    );
     expect(
-      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
-    ).toBeNull();
-
-    foo.unmount();
-    const restored = renderHook(
-      () => useImageTilePointCloudProjection("/camera/front/image"),
-      { wrapper: wrapperFor("image-1") },
-    );
+      localStorage.getItem(SIDEBAR_PREFERENCES_STORAGE_KEY),
+    ).not.toBeNull();
+    expect(sessionStorage.length).toBe(0);
+    const restored = renderHook(() => useImageTilePointCloudProjection("50"), {
+      wrapper: wrapper("dataset-a", shiftedSources),
+    });
     expect(restored.result.current.projection).toEqual({
       enabled: true,
       pointSize: 8,
-      streams: ["/lidar/top"],
-    });
-
-    restored.unmount();
-    sessionStorage.clear();
-    const nextSession = renderHook(
-      () => useImageTilePointCloudProjection("/camera/front/image"),
-      { wrapper: wrapperFor("image-1") },
-    );
-    expect(nextSession.result.current.projection).toEqual({
-      enabled: false,
-      pointSize: DEFAULT_PROJECTION_POINT_SIZE,
-      streams: [],
+      streams: ["52"],
     });
   });
 
-  it("keeps opt-in 3D-label projections in session storage", () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <PanelVisibilityProvider scopeKey="dataset-a:field-a">
-        <TilingProvider>
-          <TileIdScope tileId="image-1">{children}</TileIdScope>
-        </TilingProvider>
-      </PanelVisibilityProvider>
-    );
-    const first = renderHook(
-      () => useImageTile3dLabelProjection("/camera/front/image"),
-      { wrapper },
-    );
-
-    expect(first.result.current.projection).toEqual({
-      enabled: false,
-      interpolate: false,
-      streams: [],
+  it("persists projected 3D labels without leaking into another dataset", () => {
+    const first = renderHook(() => useImageTile3dLabelProjection("10"), {
+      wrapper: wrapper("dataset-a", firstSources),
     });
     act(() =>
       first.result.current.setProjection({
         enabled: true,
         interpolate: true,
-        streams: ["/detections_3d"],
+        streams: ["13"],
       }),
     );
-    expect(first.result.current.projection).toEqual({
-      enabled: true,
-      interpolate: true,
-      streams: ["/detections_3d"],
-    });
-    expect(sessionStorage.getItem("fiftyone.episode.projections.v1")).toContain(
-      "/detections_3d",
-    );
-    expect(
-      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
-    ).toBeNull();
     first.unmount();
 
-    const restored = renderHook(
-      () => useImageTile3dLabelProjection("/camera/front/image"),
-      { wrapper },
-    );
+    const restored = renderHook(() => useImageTile3dLabelProjection("50"), {
+      wrapper: wrapper("dataset-a", shiftedSources),
+    });
     expect(restored.result.current.projection).toEqual({
       enabled: true,
       interpolate: true,
-      streams: ["/detections_3d"],
+      streams: ["53"],
     });
-    act(() => restored.result.current.setProjection({ enabled: false }));
-    expect(restored.result.current.projection).toEqual({
-      enabled: false,
-      interpolate: true,
-      streams: [],
+
+    const isolated = renderHook(() => useImageTile3dLabelProjection("50"), {
+      wrapper: wrapper("dataset-b", shiftedSources),
+    });
+    expect(isolated.result.current.projection.enabled).toBe(false);
+  });
+
+  it("preserves the explicit all-compatible-sources projection intent", () => {
+    const pointCloud = renderHook(
+      () => useImageTilePointCloudProjection("10"),
+      { wrapper: wrapper("dataset-a", firstSources) },
+    );
+    act(() =>
+      pointCloud.result.current.setProjection({ enabled: true, streams: null }),
+    );
+    expect(pointCloud.result.current.projection).toMatchObject({
+      enabled: true,
+      streams: null,
+    });
+
+    const labels = renderHook(() => useImageTile3dLabelProjection("10"), {
+      wrapper: wrapper("dataset-a", firstSources),
+    });
+    act(() =>
+      labels.result.current.setProjection({ enabled: true, streams: null }),
+    );
+    expect(labels.result.current.projection).toMatchObject({
+      enabled: true,
+      streams: null,
     });
   });
 
-  it("does not infer projection opt-in from incomplete session data", () => {
-    sessionStorage.setItem(
-      "fiftyone.episode.projections.v1",
-      JSON.stringify({
-        byScope: {
-          "dataset-a:field-a": {
-            tiles: {
-              "image-1": {
-                image3dLabelProjections: {
-                  "/camera/front/image": { streams: null },
-                },
-              },
-            },
-            updatedAtMs: 1,
-          },
-        },
-        version: 1,
+  it("retains curated projection streams while a layer is disabled", () => {
+    const labels = renderHook(() => useImageTile3dLabelProjection("10"), {
+      wrapper: wrapper("dataset-a", firstSources),
+    });
+    act(() =>
+      labels.result.current.setProjection({
+        enabled: true,
+        streams: ["13"],
       }),
     );
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <PanelVisibilityProvider scopeKey="dataset-a:field-a">
-        <TilingProvider>
-          <TileIdScope tileId="image-1">{children}</TileIdScope>
-        </TilingProvider>
-      </PanelVisibilityProvider>
-    );
-    const projection = renderHook(
-      () => useImageTile3dLabelProjection("/camera/front/image"),
-      { wrapper },
-    );
+    act(() => labels.result.current.setProjection({ enabled: false }));
+    labels.unmount();
 
-    expect(projection.result.current.projection).toEqual({
+    const restoredLabels = renderHook(
+      () => useImageTile3dLabelProjection("50"),
+      { wrapper: wrapper("dataset-a", shiftedSources) },
+    );
+    expect(restoredLabels.result.current.projection).toMatchObject({
       enabled: false,
-      interpolate: false,
-      streams: [],
+      streams: ["53"],
     });
-  });
+    act(() => restoredLabels.result.current.setProjection({ enabled: true }));
+    expect(restoredLabels.result.current.projection).toMatchObject({
+      enabled: true,
+      streams: ["53"],
+    });
 
-  it("fails closed on malformed storage", () => {
-    localStorage.setItem("fiftyone.episode.panel-visibility.v2", "{not-json");
-    expect(readScene3dTileVisibility("dataset-a", "3d-1")).toBeNull();
-  });
-
-  it("preserves legacy 3D visibility as a manual camera selection", () => {
-    localStorage.setItem(
-      "fiftyone.episode.panel-visibility.v2",
-      JSON.stringify({
-        byScope: {
-          "dataset-a:field-a": {
-            tiles: {
-              "3d-1": {
-                threeD: {
-                  enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
-                  primarySourceId: "/lidar/top",
-                },
-              },
-            },
-            updatedAtMs: 1,
-          },
-        },
-        version: 2,
+    const pointCloud = renderHook(
+      () => useImageTilePointCloudProjection("50"),
+      { wrapper: wrapper("dataset-a", shiftedSources) },
+    );
+    act(() =>
+      pointCloud.result.current.setProjection({
+        enabled: true,
+        streams: ["52"],
       }),
     );
+    act(() => pointCloud.result.current.setProjection({ enabled: false }));
+    pointCloud.unmount();
 
-    expect(readScene3dTileVisibility("dataset-a:field-a", "3d-1")).toEqual({
-      cameraSelectionCustomized: true,
-      enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
-      primarySourceId: "/lidar/top",
-    });
-  });
-
-  it("fails closed on malformed projection session storage", () => {
-    sessionStorage.setItem("fiftyone.episode.projections.v1", "{not-json");
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <PanelVisibilityProvider scopeKey="dataset-a:field-a">
-        <TilingProvider>
-          <TileIdScope tileId="image-1">{children}</TileIdScope>
-        </TilingProvider>
-      </PanelVisibilityProvider>
+    const restoredPointCloud = renderHook(
+      () => useImageTilePointCloudProjection("10"),
+      { wrapper: wrapper("dataset-a", firstSources) },
     );
-    const projection = renderHook(
-      () => useImageTilePointCloudProjection("/camera/front/image"),
-      { wrapper },
-    );
-
-    expect(projection.result.current.projection).toEqual({
+    expect(restoredPointCloud.result.current.projection).toMatchObject({
       enabled: false,
-      pointSize: DEFAULT_PROJECTION_POINT_SIZE,
-      streams: [],
+      streams: ["12"],
     });
-  });
-
-  it("caps scopes by least-recently-updated timestamp", () => {
-    let now = 1_000;
-    vi.spyOn(Date, "now").mockImplementation(() => now++);
-    for (let index = 0; index < 20; index++) {
-      writeScene3dTileVisibility(`dataset-${index}`, "3d-1", {
-        cameraSelectionCustomized: false,
-        enabledSourceIds: [`/lidar/${index}`],
-        primarySourceId: `/lidar/${index}`,
-      });
-    }
-
-    now = 5_000;
-    writeScene3dTileVisibility("dataset-0", "3d-1", {
-      cameraSelectionCustomized: false,
-      enabledSourceIds: ["/lidar/touched"],
-      primarySourceId: "/lidar/touched",
-    });
-    writeScene3dTileVisibility("dataset-20", "3d-1", {
-      cameraSelectionCustomized: false,
-      enabledSourceIds: ["/lidar/20"],
-      primarySourceId: "/lidar/20",
-    });
-
-    const raw = JSON.parse(
-      localStorage.getItem("fiftyone.episode.panel-visibility.v2") ?? "null",
+    act(() =>
+      restoredPointCloud.result.current.setProjection({ enabled: true }),
     );
-    expect(Object.keys(raw.byScope)).toHaveLength(20);
-    expect(raw.byScope["dataset-0"]).toBeDefined();
-    expect(raw.byScope["dataset-1"]).toBeUndefined();
-    expect(raw.byScope["dataset-20"]).toBeDefined();
+    expect(restoredPointCloud.result.current.projection).toMatchObject({
+      enabled: true,
+      streams: ["12"],
+    });
   });
 });
+
+function wrapper(scopeKey: string, sources: readonly SceneSource[]) {
+  return function PanelVisibilityTestWrapper({
+    children,
+  }: {
+    readonly children: React.ReactNode;
+  }) {
+    return (
+      <PanelVisibilityProvider scopeKey={scopeKey} sources={sources}>
+        {children}
+      </PanelVisibilityProvider>
+    );
+  };
+}

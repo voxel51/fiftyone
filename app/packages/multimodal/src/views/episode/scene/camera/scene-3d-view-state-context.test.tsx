@@ -1,11 +1,14 @@
 import { act, cleanup, render, renderHook } from "@testing-library/react";
 import { useEffect, type PropsWithChildren } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   __resetScene3dViewStateScopesForTests,
   Scene3dViewStateProvider,
   useScene3dViewStateStore,
 } from "./scene-3d-view-state-context";
+import { readSidebarPreferences } from "../../settings/sidebar-preferences";
+
+beforeEach(() => localStorage.clear());
 
 afterEach(() => {
   cleanup();
@@ -52,6 +55,99 @@ describe("Scene3dViewStateProvider inspection scopes", () => {
     expect(otherDatasetModal.result.current.getSnapshot().trackingMode).toBe(
       null,
     );
+  });
+
+  it("restores portable camera intent after a full page-memory reset", () => {
+    const composition = {
+      distanceInRadii: 3,
+      kind: "bounds-normalized" as const,
+      sceneUpAxis: "z" as const,
+      targetOffsetInRadii: [0, 0, 0] as const,
+      trackingMode: "position" as const,
+      viewDirection: [1, 0, 0] as const,
+    };
+    const first = renderScopedStore("dataset-a:filepath");
+    act(() => {
+      first.result.current.recordCameraNavigationMode("absolute");
+      first.result.current.recordSourceSelection({
+        enabledSourceIds: ["cloud-10"],
+        renderableSourceIds: ["cloud-10"],
+        renderableSourceKeys: ['["point-cloud","/lidar"]'],
+      });
+      first.result.current.recordNavigationCompositions([composition]);
+    });
+    first.unmount();
+    __resetScene3dViewStateScopesForTests();
+
+    const reloaded = renderScopedStore("dataset-a:filepath");
+    expect(reloaded.result.current.getSnapshot()).toMatchObject({
+      cameraNavigationMode: "absolute",
+      navigationCompositions: [composition],
+      renderableSourceKeys: ['["point-cloud","/lidar"]'],
+    });
+  });
+
+  it("flushes pending portable camera intent before the page exits", () => {
+    const composition = {
+      distanceInRadii: 3,
+      kind: "bounds-normalized" as const,
+      sceneUpAxis: "z" as const,
+      targetOffsetInRadii: [0, 0, 0] as const,
+      trackingMode: "position" as const,
+      viewDirection: [1, 0, 0] as const,
+    };
+    const mounted = renderScopedStore("dataset-a:filepath");
+    act(() => {
+      mounted.result.current.recordNavigationCompositions([composition]);
+      globalThis.dispatchEvent(new Event("pagehide"));
+    });
+
+    expect(
+      readSidebarPreferences("dataset-a:filepath").camera
+        .navigationCompositions,
+    ).toEqual([composition]);
+  });
+
+  it("does not delete a durable composition when one scene rejects it", () => {
+    const composition = {
+      distanceInRadii: 2,
+      kind: "bounds-normalized" as const,
+      sceneUpAxis: "z" as const,
+      targetOffsetInRadii: [0, 0, 0] as const,
+      trackingMode: "free" as const,
+      viewDirection: [0, 1, 0] as const,
+    };
+    const first = renderScopedStore("dataset-a:filepath");
+    act(() => {
+      first.result.current.recordSourceSelection({
+        enabledSourceIds: ["cloud-10"],
+        renderableSourceIds: ["cloud-10"],
+        renderableSourceKeys: ['["point-cloud","/lidar"]'],
+      });
+      first.result.current.recordNavigationCompositions([composition]);
+    });
+    first.unmount();
+    __resetScene3dViewStateScopesForTests();
+
+    const incompatible = renderScopedStore("dataset-a:filepath");
+    act(() => {
+      incompatible.result.current.recordSourceSelection({
+        enabledSourceIds: ["cloud-20"],
+        renderableSourceIds: ["cloud-20"],
+        renderableSourceKeys: ['["point-cloud","/other"]'],
+      });
+      incompatible.result.current.recordNavigationCompositions([]);
+    });
+    incompatible.unmount();
+    __resetScene3dViewStateScopesForTests();
+
+    const reloaded = renderScopedStore("dataset-a:filepath");
+    expect(
+      reloaded.result.current.getSnapshot().navigationCompositions,
+    ).toEqual([composition]);
+    expect(reloaded.result.current.getSnapshot().renderableSourceKeys).toEqual([
+      '["point-cloud","/lidar"]',
+    ]);
   });
 
   it("bounds inactive inspection scopes", () => {

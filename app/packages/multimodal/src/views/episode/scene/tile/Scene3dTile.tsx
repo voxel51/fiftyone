@@ -112,6 +112,10 @@ import { useScene3dViewpointRegistration } from "../camera/use-scene-3d-viewpoin
 import { useScene3dTilePlaybackSettings } from "./scene-3d-tile-state";
 import { frameTransformIdentityInputs } from "../entities/scene-3d-layer-identity";
 import { usePublishPointCloudCounts } from "./point-cloud-count-state";
+import {
+  groupSourcesBySemanticIdentity,
+  semanticSourceKey,
+} from "../../settings/semantic-source";
 
 /**
  * Named gradient backdrop profiles for the 3D scene. "Abyss" is dark
@@ -176,13 +180,14 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     pointCloudStreams,
     poseSources,
     poseStreams,
+    persistTrajectoryFrameOverrides,
     primarySourceId,
-    renderableSourceIds,
+    renderableSourceKeys,
     restoredSourceShapeMatches,
+    restoredTrajectoryFrameOverrides,
     sceneAnnotationSources,
     sceneAnnotationStreams,
     selectedPointCloudSources,
-    selectedPoseSources,
     selectedStreams,
     selectedStreamsKey,
     setSourcesEnabled,
@@ -391,6 +396,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     setTrajectoryFrameOverrides,
     trajectories,
     trajectoryFrameByStream,
+    trajectoryFrameOverrides,
   } = useScene3dPoseTrajectories({
     annotationFrames,
     frameIds,
@@ -399,11 +405,19 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     poseStreams,
     // Trajectory overrides share the enabled-set's strict shape gate: they
     // only carry over onto a same-shaped recording.
-    restore: restoredSourceShapeMatches
-      ? viewStateRestore.trajectoryFrameOverrides
-      : null,
+    restore:
+      Object.keys(restoredTrajectoryFrameOverrides).length > 0
+        ? restoredTrajectoryFrameOverrides
+        : restoredSourceShapeMatches
+          ? viewStateRestore.trajectoryFrameOverrides
+          : null,
     sceneAnnotationStreams,
   });
+  // This effect durably records explicit trajectory frame choices after the
+  // trajectory controller reconciles them with the current source inventory.
+  useEffect(() => {
+    persistTrajectoryFrameOverrides(trajectoryFrameOverrides);
+  }, [persistTrajectoryFrameOverrides, trajectoryFrameOverrides]);
   const {
     cameraFrustumLayers,
     gridLayers,
@@ -605,7 +619,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     provisionalPlaybackFrame,
     cameraNavigationMode,
     onCameraPoseSample: publishViewpointPose,
-    renderableSourceIds,
+    renderableSourceKeys,
     restore: viewStateRestore,
     sceneUpAxis,
     selectedStreamsKey,
@@ -826,6 +840,80 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     },
     [noteRenderedCameraPose, viewpointStore],
   );
+  const settingsGroups = useMemo(() => {
+    const group = (
+      sources: typeof pointCloudSources,
+      selectedStreams: readonly string[],
+    ) => {
+      const selectedKeys = new Set(
+        sources
+          .filter((source) => selectedStreams.includes(source.id))
+          .map(semanticSourceKey),
+      );
+      const groupedSources = groupSourcesBySemanticIdentity(sources);
+      return {
+        sources: groupedSources,
+        streams: groupedSources
+          .filter((source) => selectedKeys.has(semanticSourceKey(source)))
+          .map((source) => source.id),
+      };
+    };
+    return {
+      camera: group(cameraSources, cameraStreams),
+      mapLayer: group(mapLayerSources, mapLayerStreams),
+      pointCloud: group(pointCloudSources, pointCloudStreams),
+      pose: group(poseSources, poseStreams),
+      sceneAnnotation: group(sceneAnnotationSources, sceneAnnotationStreams),
+    };
+  }, [
+    cameraSources,
+    cameraStreams,
+    mapLayerSources,
+    mapLayerStreams,
+    pointCloudSources,
+    pointCloudStreams,
+    poseSources,
+    poseStreams,
+    sceneAnnotationSources,
+    sceneAnnotationStreams,
+  ]);
+  const settingsSelectedPointCloudSources = useMemo(
+    () =>
+      settingsGroups.pointCloud.sources.filter((source) =>
+        enabled.has(source.id),
+      ),
+    [enabled, settingsGroups.pointCloud.sources],
+  );
+  const settingsSelectedPoseSources = useMemo(
+    () =>
+      settingsGroups.pose.sources.filter((source) => enabled.has(source.id)),
+    [enabled, settingsGroups.pose.sources],
+  );
+  const settingsCameraImageStreams = useMemo(() => {
+    const imageStreamByCameraKey = new Map<string, string>();
+    cameraStreams.forEach((runtimeId, index) => {
+      const source = cameraSources.find((item) => item.id === runtimeId);
+      if (source) {
+        imageStreamByCameraKey.set(
+          semanticSourceKey(source),
+          frustumImageStreams[index] ?? "",
+        );
+      }
+    });
+    return settingsGroups.camera.streams.map((representativeId) => {
+      const source = settingsGroups.camera.sources.find(
+        (item) => item.id === representativeId,
+      );
+      return source
+        ? (imageStreamByCameraKey.get(semanticSourceKey(source)) ?? "")
+        : "";
+    });
+  }, [
+    cameraSources,
+    cameraStreams,
+    frustumImageStreams,
+    settingsGroups.camera,
+  ]);
 
   // The settings tree is registered into the sidebar rather than rendered
   // here; the registration is memoized over grouped, stabilized props so
@@ -837,7 +925,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       content: (
         <Scene3dTileSettings
           cameraInputs={{
-            imageStreams: frustumImageStreams,
+            imageStreams: settingsCameraImageStreams,
             statusBySourceId: cameraSourceStatuses,
           }}
           frameControls={{
@@ -848,28 +936,16 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
           }}
           pointCloudInputs={{
             colorCapabilities: pointCloudColorCapabilities,
-            selectedSources: selectedPointCloudSources,
+            selectedSources: settingsSelectedPointCloudSources,
           }}
           poseControls={{
-            selectedSources: selectedPoseSources,
+            selectedSources: settingsSelectedPoseSources,
             setTrajectoryFrameOverrides,
             trajectories,
             trajectoryFrameByStream,
           }}
           selection={{ enabled, setSourcesEnabled, toggleSource }}
-          sourceGroups={{
-            camera: { sources: cameraSources, streams: cameraStreams },
-            mapLayer: { sources: mapLayerSources, streams: mapLayerStreams },
-            pointCloud: {
-              sources: pointCloudSources,
-              streams: pointCloudStreams,
-            },
-            pose: { sources: poseSources, streams: poseStreams },
-            sceneAnnotation: {
-              sources: sceneAnnotationSources,
-              streams: sceneAnnotationStreams,
-            },
-          }}
+          sourceGroups={settingsGroups}
           tileId={tileId ?? null}
           trackingControls={{ mode: trackingMode, setMode: setTrackingMode }}
         />
@@ -877,24 +953,15 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       streamStreams: selectedStreams,
     }),
     [
-      cameraSources,
       cameraTargetFrameId,
-      cameraStreams,
       cameraSourceStatuses,
-      frustumImageStreams,
       enabled,
       frameIds,
-      mapLayerSources,
-      mapLayerStreams,
       pointCloudColorCapabilities,
-      pointCloudSources,
-      pointCloudStreams,
-      poseSources,
-      poseStreams,
-      sceneAnnotationSources,
-      sceneAnnotationStreams,
-      selectedPointCloudSources,
-      selectedPoseSources,
+      settingsCameraImageStreams,
+      settingsGroups,
+      settingsSelectedPointCloudSources,
+      settingsSelectedPoseSources,
       selectedStreams,
       setSourcesEnabled,
       setTrackingMode,

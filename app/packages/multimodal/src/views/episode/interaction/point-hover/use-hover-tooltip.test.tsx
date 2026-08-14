@@ -135,7 +135,7 @@ describe("useScene3dHoverTooltip", () => {
     expect(result.current.tooltips[0]).toMatchObject({ entityId: "ped-3" });
   });
 
-  it("stacks independently owned tooltips for overlapping scene objects", () => {
+  it("renders independently owned scene hits as sections in one tooltip", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useScene3dHoverTooltip());
 
@@ -152,7 +152,11 @@ describe("useScene3dHoverTooltip", () => {
       "camera",
     ]);
     render(<Scene3dHoverTooltipStack tooltips={result.current.tooltips} />);
-    expect(screen.getAllByTestId("episode-3d-hover-tooltip")).toHaveLength(2);
+    expect(screen.getAllByTestId("episode-3d-hover-tooltip")).toHaveLength(1);
+    const sections = screen.getAllByTestId("episode-3d-hover-tooltip-section");
+    expect(sections).toHaveLength(2);
+    expect(sections[0]?.style.borderTop).toBe("");
+    expect(sections[1]?.style.borderTop).not.toBe("");
     expect(screen.getByText("car")).toBeTruthy();
     expect(screen.getByText("camera/front/image")).toBeTruthy();
 
