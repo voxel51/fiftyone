@@ -10,17 +10,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Capture annotation event callbacks so tests can fire them directly. The
 // `useFrameLabelsStream` mock is rebound per test so we can simulate "stream
 // not ready".
-const { annotationHandlers, getLabelMock, streamRef, sampleIdRef } = vi.hoisted(
-  () => ({
+const { annotationHandlers, getLabelMock, streamRef, sampleIdRef, activeRefs } =
+  vi.hoisted(() => ({
     annotationHandlers: new Map<string, (payload: unknown) => void>(),
     getLabelMock: vi.fn(),
     streamRef: { current: null as unknown },
     sampleIdRef: { current: "sample-1" as string | null },
-  }),
-);
+    // Active interaction refs — the hook resolves the selected track's own field
+    // from these so a non-primary field (e.g. a polyline) reads the right label.
+    activeRefs: { current: [] as Array<{ instanceId: string; path: string }> },
+  }));
 
 vi.mock("@fiftyone/annotation", () => ({
-  useAnnotationEngine: () => ({ getLabel: getLabelMock }),
+  useAnnotationEngine: () => ({
+    getLabel: getLabelMock,
+    interaction: { getActive: () => activeRefs.current },
+  }),
   useActiveSampleId: () => sampleIdRef.current,
   useAnnotationEventHandler: (
     event: string,
@@ -52,6 +57,7 @@ beforeEach(() => {
     labelsField: "detections",
   };
   sampleIdRef.current = "sample-1";
+  activeRefs.current = [];
 });
 
 afterEach(() => {
@@ -132,5 +138,31 @@ describe("useFrameKeyframeState", () => {
 
     rerender({ ids: [], t: 0 });
     expect(result.current).toBe(false);
+  });
+
+  it("reads the selected track's own field, not the stream's primary", () => {
+    activeRefs.current = [{ instanceId: "a", path: "frames.polylines" }];
+    getLabelMock.mockImplementation(({ path }: { path: string }) =>
+      path === "frames.polylines" ? { keyframe: true } : { keyframe: false },
+    );
+
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 0));
+
+    expect(result.current).toBe(true);
+    expect(getLabelMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "frames.polylines" }),
+    );
+  });
+
+  it("falls back to the primary field when the track has no active ref", () => {
+    activeRefs.current = [{ instanceId: "other", path: "frames.polylines" }];
+    getLabelMock.mockReturnValue({ keyframe: true });
+
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 0));
+
+    expect(result.current).toBe(true);
+    expect(getLabelMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "frames.detections" }),
+    );
   });
 });
