@@ -409,8 +409,23 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
 
         return np.vstack(embeddings)
 
+    @staticmethod
+    def _final_hidden(outputs):
+        """The last layer's hidden states, however the loaded model reports
+        them.
+
+        The model is asked for the whole stack, whose last entry is the
+        normed output; a model that does not populate the stack reports that
+        same tensor as ``last_hidden_state``.
+        """
+        hidden = getattr(outputs, "hidden_states", None)
+        if hidden:
+            return hidden[-1]
+
+        return outputs.last_hidden_state
+
     def _postprocess_embedding(self, outputs):
-        last_hidden = outputs.hidden_states[-1]
+        last_hidden = self._final_hidden(outputs)
         embedding = last_hidden[:, -1, :]
 
         if self.config.embedding_dim is not None:
@@ -620,6 +635,40 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
 
         return self._embed_frame_list(frames, effective_fps)
 
+    @staticmethod
+    def _video_metadata(num_frames, fps):
+        """The clip's metadata, in whichever form this transformers version
+        takes it — the processor builds its per-frame timestamps from this,
+        and without it assumes 24fps regardless of the clip's real rate.
+
+        ``frames_indices`` names which source frames the clip holds — ALL of
+        them, for a frame-list clip. Newer processors read it directly to
+        compute timestamps and crash on a metadata object that leaves it
+        None; older ``VideoMetadata`` classes reject the field, so it is
+        retried without.
+        """
+        fields = {
+            "fps": float(fps),
+            "total_num_frames": int(num_frames),
+            "duration": float(num_frames) / float(fps),
+        }
+        try:
+            from transformers.video_utils import VideoMetadata
+        except ImportError:
+            return fields
+
+        try:
+            return VideoMetadata(
+                frames_indices=list(range(int(num_frames))), **fields
+            )
+        except TypeError:
+            pass
+
+        try:
+            return VideoMetadata(**fields)
+        except TypeError:
+            return fields
+
     def _embed_frame_list(self, frames, fps):
         """Embeds an ordered list of prepared frames as one native Qwen3-VL
         video message and returns a 1D numpy array embedding.
@@ -652,13 +701,52 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             tokenize=False,
             add_generation_prompt=False,
         )
-        inputs = self._processor(
-            text=[text],
-            images=image_inputs,
-            videos=video_inputs,
-            return_tensors="pt",
-            padding=True,
-        )
+        # These frames are already the intended selection, so the processor
+        # must not resample them toward ITS default rate — and it should
+        # build its frame timestamps from the clip's REAL rate rather than
+        # the 24fps it assumes when no metadata rides along. Tried richest
+        # first: older processors take neither kwarg and never resample.
+        attempts = [
+            {
+                "do_sample_frames": False,
+                "video_metadata": [self._video_metadata(len(frames), fps)],
+            },
+            {"do_sample_frames": False},
+        ]
+        # The convention is a fact about the processor VERSION, so a failed
+        # richer attempt — which can die mid-processor after real work — is
+        # skipped for every clip after the first
+        inputs = None
+        start = getattr(self, "_call_convention", 0)
+        for i, extra in enumerate(attempts[start:], start):
+            try:
+                inputs = self._processor(
+                    text=[text],
+                    images=image_inputs,
+                    videos=video_inputs,
+                    return_tensors="pt",
+                    padding=True,
+                    **extra,
+                )
+                self._call_convention = i
+                break
+            except (TypeError, AttributeError):
+                # TypeError: a kwarg this processor version does not take.
+                # AttributeError: metadata whose shape it cannot digest —
+                # both mean "try the next-poorer calling convention", never
+                # a reason to fail the clip.
+                continue
+
+        if inputs is None:
+            self._call_convention = len(attempts)
+            inputs = self._processor(
+                text=[text],
+                images=image_inputs,
+                videos=video_inputs,
+                return_tensors="pt",
+                padding=True,
+            )
+
         inputs = {
             k: v.to(self._model.device) if hasattr(v, "to") else v
             for k, v in inputs.items()
