@@ -314,12 +314,10 @@ function useBitmapCanvas(
       onCanvasCommittedRef.current?.(canvas, { height, width });
     } catch (error) {
       // Poster capture is optional optimization work and cannot fail display.
-      if (import.meta.env.DEV) {
-        console.warn(
-          "onCanvasCommitted threw; display draw is unaffected",
-          error,
-        );
-      }
+      console.warn(
+        "onCanvasCommitted threw; display draw is unaffected",
+        error,
+      );
     }
   }, [onCanvasCommittedRef, trackCssSize]);
 

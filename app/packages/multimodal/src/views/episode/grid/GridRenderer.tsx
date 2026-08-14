@@ -190,13 +190,6 @@ export function GridRenderer({
     visible,
     setHovered,
   );
-  const gridPosterDisplay = import.meta.env.DEV
-    ? preview.cachedPoster && !preview.frame
-      ? "cache"
-      : preview.frame
-        ? "source"
-        : "empty"
-    : undefined;
   const [surfaceRetention, setSurfaceRetention] = useState<{
     readonly bytes: number;
     readonly owner: EpisodePosterFrame | GridPosterCacheEntry;
@@ -284,7 +277,6 @@ export function GridRenderer({
   return (
     <div
       className={rootClassName}
-      data-grid-poster-display={gridPosterDisplay}
       onClick={gridActivationHandler}
       onContextMenu={gridActivationHandler}
       onPointerEnter={playbackIntent.enter}
