@@ -116,6 +116,7 @@ export default function PlotView({
     handleBackgroundClick,
     clearAll,
     hover,
+    hoverHit,
     handleHover,
     keepHover,
     features,
@@ -193,6 +194,7 @@ export default function PlotView({
         onHover: handleHover,
         onKeepHover: keepHover,
         hover,
+        hoverHit,
         hoverAction,
         registerChart,
       }
@@ -369,6 +371,7 @@ export default function PlotView({
                 hoverAction={shared.hoverAction}
                 registerChart={shared.registerChart}
                 hover={shared.hover}
+                hoverHit={shared.hoverHit}
               />
             </div>
           ))}

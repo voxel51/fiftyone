@@ -39,6 +39,8 @@ export class PlanarCamera implements CameraAdapter {
   private height = 1;
   private panPointer: number | null = null;
   private panLast: [number, number] = [0, 0];
+  // The chart owns the resting cursor; a drag only borrows it
+  private cursorBefore = "";
   private mode: InteractionMode = "select";
 
   constructor(element: HTMLElement, onChange: () => void) {
@@ -148,6 +150,9 @@ export class PlanarCamera implements CameraAdapter {
   }
 
   destroy(): void {
+    // The container outlives the camera (adapter swaps, chart teardown):
+    // a pan cut short by teardown must still give the cursor back
+    if (this.panPointer !== null) this.endPan();
     this.listeners.abort();
   }
 
@@ -187,6 +192,9 @@ export class PlanarCamera implements CameraAdapter {
   }
 
   private handlePanStart(event: PointerEvent): void {
+    // One pan at a time: a second pointer would overwrite the borrowed
+    // cursor and orphan the first pointer's restore
+    if (this.panPointer !== null) return;
     const pan =
       event.button === 1 ||
       (event.button === 0 && (event.shiftKey || this.mode === "explore"));
@@ -194,6 +202,8 @@ export class PlanarCamera implements CameraAdapter {
     event.preventDefault();
     this.panPointer = event.pointerId;
     this.panLast = [event.offsetX, event.offsetY];
+    this.cursorBefore = this.element.style.cursor;
+    this.element.style.cursor = "grabbing";
     this.element.setPointerCapture(event.pointerId);
   }
 
@@ -216,6 +226,19 @@ export class PlanarCamera implements CameraAdapter {
 
   private handlePanEnd(event: PointerEvent): void {
     if (this.panPointer !== event.pointerId) return;
+    this.endPan();
+  }
+
+  /**
+   * Release the pan and give the cursor back — but only when the
+   * borrowed "grabbing" is still in place: if the chart re-owned the
+   * cursor mid-pan (a mode change), its value is newer than the one
+   * remembered at pan start.
+   */
+  private endPan(): void {
     this.panPointer = null;
+    if (this.element.style.cursor === "grabbing") {
+      this.element.style.cursor = this.cursorBefore;
+    }
   }
 }
