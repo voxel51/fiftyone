@@ -99,6 +99,20 @@ describe("caretContext", () => {
     expect(caretContext(source, source.length).receiver).toBeUndefined();
   });
 
+  it("keeps the receiver across whitespace after an atom", () => {
+    const source = 'F("confidence") ';
+    const context = caretContext(source, source.length);
+    expect(context.receiver).toEqual({ t: "field", path: "confidence" });
+    expect(context.prefix).toBe("");
+  });
+
+  it("reads a half-typed symbolic operator as the prefix", () => {
+    const source = 'F("confidence") =';
+    const context = caretContext(source, source.length);
+    expect(context.receiver).toEqual({ t: "field", path: "confidence" });
+    expect(context.prefix).toBe("=");
+  });
+
   it("finds the call the caret is inside, and which argument", () => {
     const source = 'F("label").contains("a", ';
     const context = caretContext(source, source.length);
@@ -191,6 +205,15 @@ describe("suggestOperators", () => {
     expect(
       suggestOperators("ANY", "", CATALOG).every((s) => s.applicable),
     ).toBe(true);
+  });
+
+  it("matches symbolic operators from a half-typed spelling", () => {
+    const suggestions = suggestOperators("ANY", "=", CATALOG);
+    expect(suggestions.length).toBeGreaterThan(0);
+    expect(suggestions.every((s) => s.operator.display.includes("="))).toBe(
+      true,
+    );
+    expect(suggestions.map((s) => s.operator.display)).toContain("==");
   });
 
   it("filters by what has been typed, prefix matches first", () => {

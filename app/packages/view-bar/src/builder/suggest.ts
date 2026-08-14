@@ -39,6 +39,9 @@ export interface CaretContext {
 
 const IDENT = /[A-Za-z0-9_]/;
 
+/** Characters a symbolic operator is spelled with — `=`, `>=`, `!=`, … */
+const SYMBOL = /[=<>!+\-*/%&|^~]/;
+
 interface Frame {
   start: number;
   commas: number;
@@ -167,19 +170,25 @@ export const caretContext = (
 
   let start = offset;
   while (start > 0 && IDENT.test(source[start - 1])) start--;
+
+  // `F(label) =‸` — a half-typed symbolic operator filters just as an
+  // identifier prefix does
+  if (start === offset) {
+    while (start > 0 && SYMBOL.test(source[start - 1])) start--;
+  }
   const prefix = source.slice(start, offset);
 
   if (source[start - 1] !== ".") {
     //
-    // The caret sits right after a complete atom — `F(label)‸` or `F("x")‸`.
-    // Operators belong here just as much as after a dot: a method completes
-    // with its own dot, and `>` was never going to be typed through one.
+    // The caret sits after a complete atom — `F(label)‸`, `F(label) ‸`, or
+    // `F(label) =‸`. Operators belong here just as much as after a dot: a
+    // method completes with its own dot, and `>` was never going to be typed
+    // through one.
     //
-    if (
-      !prefix &&
-      (source[start - 1] === ")" || /["']/.test(source[start - 1] ?? ""))
-    ) {
-      const parsed = tryParse(source.slice(0, offset));
+    let end = start;
+    while (end > 0 && source[end - 1] === " ") end--;
+    if (source[end - 1] === ")" || /["']/.test(source[end - 1] ?? "")) {
+      const parsed = tryParse(source.slice(0, end));
       if (!("error" in parsed)) {
         return { receiver: parsed.node, prefix, openCall };
       }

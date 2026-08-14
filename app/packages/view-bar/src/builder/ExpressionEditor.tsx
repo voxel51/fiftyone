@@ -86,12 +86,17 @@ const applySuggestion = (
   let start = offset;
   while (start > 0 && /[A-Za-z0-9_]/.test(source[start - 1])) start--;
 
+  // A half-typed symbolic operator (`=‸` completing to `==`) is replaced too
+  if (start === offset) {
+    while (start > 0 && /[=<>!+\-*/%&|^~]/.test(source[start - 1])) start--;
+  }
+
   const symbolic = !/^[A-Za-z_]/.test(operator.display);
   const hasDot = source[start - 1] === ".";
 
   if (symbolic) {
     const from = hasDot ? start - 1 : start;
-    const head = `${source.slice(0, from)} ${operator.display} `;
+    const head = `${source.slice(0, from).trimEnd()} ${operator.display} `;
     return { source: head + source.slice(offset), offset: head.length };
   }
 
