@@ -509,6 +509,17 @@ export class GridCustomRendererItem {
     // stopped receiving updateOptions() calls (those only reach currently
     // shown rows), so its local `selected` flag can be stale relative to the
     // real selectedSamples atom.
+    //
+    // Known trade-off: the selection click handler applies its toggle to
+    // `this.selected` optimistically, before the Recoil write it dispatches
+    // has actually committed (that round-trip is async). If this exact
+    // instance were detached and reattached inside that narrow window, this
+    // reconciliation would read the not-yet-committed snapshot and revert the
+    // optimistic toggle. In practice a reattach is driven by scroll/relayout,
+    // which cannot happen inside the same microtask window as the click, so
+    // this hasn't been observed — flagging for future readers rather than
+    // guarding against it, since a guard would have to reintroduce the same
+    // staleness this reconciliation exists to fix.
     if (this.config.isSampleSelected) {
       this.selected = this.config.isSampleSelected(this.getSampleId());
     }
