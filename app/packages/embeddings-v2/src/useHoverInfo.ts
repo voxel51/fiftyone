@@ -41,7 +41,7 @@ export function useHoverInfo(
       clearTimer.current = null;
     }
   }, []);
-  useEffect(() => () => cancelClear(), []);
+  useEffect(() => () => cancelClear(), [cancelClear]);
   const hoverKeyRef = useRef<string | null>(null);
   const infoCache = useRef(new Map<string, SampleInfo>());
 
