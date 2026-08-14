@@ -4,18 +4,17 @@
  * Single-vertex polylines in Annotate (FOEPD-4459):
  *   - the seed vertex persists on the first click (previously the label lived
  *     only in the sidebar draft — no engine row, no document write — until a
- *     second vertex landed, so the fresh-context read below found nothing),
+ *     second vertex landed, so the reload read-back below found nothing),
  *   - Backspace with the lone vertex sub-selected deletes the whole label
  *     (previously it deferred to vertex removal and appeared to do nothing).
  *
  * Each test draws on its own sample, so a failed test cannot leak a stray
  * polyline into another.
  */
-import { test as base, type Browser, type Page } from "src/oss/fixtures";
+import { test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import { EventUtils } from "src/shared/event-utils";
 import { indexToId } from "src/shared/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
@@ -79,25 +78,22 @@ const openSample = async (
 };
 
 /**
- * Open the persisted sample in an annotate-mode modal in a brand-new browser
- * context (no shared client cache — a true server round-trip) and run
- * `verify` there.
+ * Re-open the sample after the first `openSample`: the annotate-mode choice
+ * persists across navigation, so the modal boots straight into Annotate and
+ * the Explore looker canvas (whose `canvas-loaded` attribute `openSample`
+ * waits on) never mounts — wait on the lighter surface instead.
  */
-const inFreshContext = async (
-  browser: Browser,
+const reopenSample = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
-  verify: (modal: ModalPom) => Promise<void>,
+  page: Page,
+  modal: ModalPom,
+  id: string,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openSample(fiftyoneLoader, freshPage, freshModal, SAMPLE_IDS.persist);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+  });
+  await modal.waitForLighterReady();
+  await modal.assert.isOpen();
 };
 
 /** Draw the single-vertex polyline and class it `lane`. */
@@ -109,7 +105,6 @@ const drawAndClass = async (modal: ModalPom) => {
 };
 
 test("a single vertex persists on the first click", async ({
-  browser,
   fiftyoneLoader,
   modal,
   page,
@@ -118,17 +113,13 @@ test("a single vertex persists on the first click", async ({
   await drawAndClass(modal);
   await modal.sidebar.annotate.waitForSavesSettled();
 
-  // true round-trip: a brand-new browser context rebuilds the app from the
-  // server, so the one-vertex label reads back (pre-fix there was no engine
-  // row to save, so this read-back found nothing). Re-navigating in the same
-  // page can't be used: the modal reopens straight into Annotate mode, where
-  // the Explore looker canvas that `waitForSampleLoadDomAttribute` keys on
-  // never mounts. See ANNOTATION_E2E_TEST_NOTES.md "persistence pattern".
-  await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
-    await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
-    await freshModal.sidebar.annotate.selectActiveLabel("lane", 0);
-    await freshModal.sidebar.edit.assert.verifyFieldValue("label", "lane");
-  });
+  // true round-trip: re-navigating reloads the page, so the app rebuilds from
+  // the server and the one-vertex label reads back. Pre-fix there was no
+  // engine row to save, so this reload found nothing.
+  await reopenSample(fiftyoneLoader, page, modal, SAMPLE_IDS.persist);
+  await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
+  await modal.sidebar.annotate.selectActiveLabel("lane", 0);
+  await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
 });
 
 test("Backspace on the lone vertex deletes the label", async ({
