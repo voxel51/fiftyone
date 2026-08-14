@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import styles from "./EpisodeSidebarTabs.module.css";
+import styles from "../settings/controls/EpisodeSidebarTabs.module.css";
 import RightSidebar from "./RightSidebar";
 
 // Isolates this test to RightSidebar's own wiring (the tab list padding

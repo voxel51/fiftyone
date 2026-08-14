@@ -1,6 +1,6 @@
 import React from "react";
 import InspectorSidebar from "../scene/picking/InspectorSidebar";
-import EpisodeSidebarTabs from "./EpisodeSidebarTabs";
+import EpisodeSidebarTabs from "../settings/controls/EpisodeSidebarTabs";
 import FieldsSidebar from "./FieldsSidebar";
 
 /**

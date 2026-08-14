@@ -14,7 +14,7 @@ import {
   type TileSettingsRegistration,
 } from "../../tiles/tile-settings-context";
 import PerformanceStats from "../../status/PerformanceStats";
-import EpisodeSidebarTabs from "../../shell/EpisodeSidebarTabs";
+import EpisodeSidebarTabs from "../controls/EpisodeSidebarTabs";
 import { SceneStatusStrip, usePointCloudSamplingSummary } from "./SceneStatus";
 import SceneWorldSettings from "./SceneWorldSettings";
 import styles from "./SettingsSidebar.module.css";
