@@ -366,13 +366,147 @@ describe("useSelectionBridge", () => {
       }),
     );
 
-    const updater = vi.mocked(opts.setSelectedSamples).mock.calls[0][0] as (
-      current: Map<string, SelectionType>,
-    ) => Map<string, SelectionType>;
-    expect(updater(new Map())).toEqual(new Map([["sample0", "default"]]));
-    expect(updater(new Map([["sample0", "default" as SelectionType]]))).toEqual(
-      new Map(),
+    // A concrete map, not an updater: the published Select stage is built
+    // from the same value, so the two can never disagree
+    expect(opts.setSelectedSamples).toHaveBeenCalledWith(
+      new Map([["sample0", "default"]]),
     );
+  });
+
+  it("toggles an already-selected sample off on plain click", () => {
+    const opts = options({
+      selectedSamples: new Map([["sample0", "default" as SelectionType]]),
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() =>
+      result.current.handlePointClick({
+        index: 0,
+        id: "sample0",
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    expect(opts.setSelectedSamples).toHaveBeenCalledWith(new Map());
+  });
+
+  it("filters the grid to the clicked sample, the same as a lasso would", () => {
+    const opts = options();
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() =>
+      result.current.handlePointClick({
+        index: 0,
+        id: idAt(IDS, 0),
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    expect(opts.publishSelection).toHaveBeenCalledWith({
+      stage: {
+        "fiftyone.core.stages.Select": {
+          sample_ids: [idAt(IDS, 0)],
+          ordered: false,
+        },
+      },
+      count: 1,
+      decorate: null,
+    });
+  });
+
+  it("counts every point a clicked sample owns, not just the sample", () => {
+    // One clicked episode can carry many window-points; the chip must
+    // report the point count a lasso over the same points would show,
+    // not the (much smaller) number of samples clicked
+    const idsWithDuplicate = new Uint8Array(36);
+    idsWithDuplicate.set(IDS.subarray(0, 12), 0); // point 0: id 0
+    idsWithDuplicate.set(IDS.subarray(12, 24), 12); // point 1: id 1
+    idsWithDuplicate.set(IDS.subarray(0, 12), 24); // point 2: id 0 again
+    const loaded: Loaded = {
+      ...LOADED,
+      points: [
+        { id: idAt(idsWithDuplicate, 0), x: 0, y: 0, label: null },
+        { id: idAt(idsWithDuplicate, 1), x: 1, y: 1, label: null },
+        { id: idAt(idsWithDuplicate, 2), x: 2, y: 2, label: null },
+      ],
+      ids: idsWithDuplicate,
+      total: 3,
+    };
+    const opts = options({ loaded });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() =>
+      result.current.handlePointClick({
+        index: 0,
+        id: idAt(IDS, 0),
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    expect(opts.publishSelection).toHaveBeenCalledWith(
+      expect.objectContaining({ count: 2 }),
+    );
+  });
+
+  it("accumulates a second click's sample into the same filter", () => {
+    // Each click's Select stage is rebuilt from the CURRENT selection, so
+    // a second click must widen the filter rather than replace it
+    const opts = options({
+      selectedSamples: new Map([[idAt(IDS, 0), "default" as SelectionType]]),
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() =>
+      result.current.handlePointClick({
+        index: 1,
+        id: idAt(IDS, 1),
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    expect(opts.publishSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: {
+          "fiftyone.core.stages.Select": {
+            sample_ids: [idAt(IDS, 0), idAt(IDS, 1)],
+            ordered: false,
+          },
+        },
+        count: 2,
+      }),
+    );
+  });
+
+  it("clears the grid filter when the last clicked sample is toggled off", () => {
+    const opts = options({
+      selectedSamples: new Map([[idAt(IDS, 0), "default" as SelectionType]]),
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() =>
+      result.current.handlePointClick({
+        index: 0,
+        id: idAt(IDS, 0),
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    expect(opts.resetExtended).toHaveBeenCalled();
+    expect(opts.publishSelection).toHaveBeenCalledWith({
+      stage: null,
+      count: null,
+      decorate: null,
+    });
   });
 
   it("resolves the owning sample for patches runs before toggling", async () => {
@@ -398,10 +532,9 @@ describe("useSelectionBridge", () => {
 
     await waitFor(() => expect(opts.setSelectedSamples).toHaveBeenCalled());
     expect(fetchSampleInfo).toHaveBeenCalledWith("ds", "viz", 7, null);
-    const updater = vi.mocked(opts.setSelectedSamples).mock.calls[0][0] as (
-      current: Map<string, SelectionType>,
-    ) => Map<string, SelectionType>;
-    expect(updater(new Map()).has("sample7")).toBe(true);
+    expect(opts.setSelectedSamples).toHaveBeenCalledWith(
+      new Map([["sample7", "default"]]),
+    );
   });
 
   it("maps grid-selected ids to wire indices for the plot", () => {
@@ -413,6 +546,60 @@ describe("useSelectionBridge", () => {
     const { result } = renderHook(() => useSelectionBridge(opts));
 
     expect(result.current.selectedIndices).toEqual([1]);
+  });
+
+  it("styles every point sharing a grid-selected id, not just one", () => {
+    // Points 0 and 2 share one sample (episode) id, e.g. two windows of
+    // the same episode in a multimodal run. Both must stay undimmed.
+    const idsWithDuplicate = new Uint8Array(36);
+    idsWithDuplicate.set(IDS.subarray(0, 12), 0); // point 0: id 0
+    idsWithDuplicate.set(IDS.subarray(12, 24), 12); // point 1: id 1
+    idsWithDuplicate.set(IDS.subarray(0, 12), 24); // point 2: id 0 again
+    const loaded: Loaded = {
+      ...LOADED,
+      points: [
+        { id: idAt(idsWithDuplicate, 0), x: 0, y: 0, label: null },
+        { id: idAt(idsWithDuplicate, 1), x: 1, y: 1, label: null },
+        { id: idAt(idsWithDuplicate, 2), x: 2, y: 2, label: null },
+      ],
+      ids: idsWithDuplicate,
+      total: 3,
+    };
+    const selected = new Map<string, SelectionType>([
+      [idAt(IDS, 0), "default"],
+    ]);
+    const opts = options({ loaded, selectedSamples: selected });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(result.current.selectedIndices).toEqual([0, 2]);
+  });
+
+  it("resolves a selection whose one id owns 200k points without overflowing", () => {
+    // Spread-pushing the matched indices used to RangeError past the
+    // engine's argument limit (~65-125k); one episode id can own that
+    // many window-points in a multimodal run
+    const total = 200_000;
+    const ids = new Uint8Array(total * 12);
+    for (let i = 0; i < total; i++) ids.set(IDS.subarray(0, 12), i * 12);
+    const loaded: Loaded = {
+      ...LOADED,
+      points: new Array(total).fill({
+        id: idAt(IDS, 0),
+        x: 0,
+        y: 0,
+        label: null,
+      }),
+      ids,
+      total,
+    };
+    const selected = new Map<string, SelectionType>([
+      [idAt(IDS, 0), "default"],
+    ]);
+    const opts = options({ loaded, selectedSamples: selected });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(result.current.selectedIndices).toHaveLength(total);
+    expect(result.current.selectedIndices?.[total - 1]).toBe(total - 1);
   });
 
   it("reports no plot styling without a grid selection", () => {

@@ -54,11 +54,11 @@ export interface SelectionBridgeOptions {
  * Two-way selection wiring between the plot and the App. Plot -> grid:
  * a lasso resolves to a view stage — client-side when the extension
  * supplies a resolver and the run is fully loaded (zero requests per
- * gesture), otherwise server-side — and lands on the grid via the
- * override stage; a plain click toggles the sample in the App's
- * selection. Grid -> plot: selected sample ids style the plot through a
- * lazily built id -> wire-index map. Esc (and `clearAll`) clears every
- * layer.
+ * gesture), otherwise server-side; a plain click builds a Select stage
+ * directly from the accumulated sample ids. Either way the stage lands
+ * on the grid via the override stage. Grid -> plot: selected sample ids
+ * style the plot through a lazily built id -> wire-indices map (one id
+ * can own many points). Esc (and `clearAll`) clears every layer.
  */
 export function useSelectionBridge({
   datasetName,
@@ -131,33 +131,45 @@ export function useSelectionBridge({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [clearAll]);
 
-  // Grid/checkbox selections style the plot (id -> wire index). The map
-  // is built lazily — only when a grid selection actually exists — and
-  // cached per loaded snapshot
+  // Grid/checkbox selections style the plot (id -> every wire index
+  // sharing that id — one sample can own many points, e.g. every window
+  // of an episode in a multimodal run). The map is built lazily and
+  // cached per loaded snapshot; a plain click resolves through the same
+  // map to publish its Select stage below.
   const idIndexRef = useRef<{
     token: Loaded;
-    map: Map<string, number>;
+    map: Map<string, number[]>;
   } | null>(null);
+  const resolveIndices = useCallback(
+    (ids: Iterable<string>): number[] => {
+      if (!loaded) return [];
+      if (idIndexRef.current?.token !== loaded) {
+        idIndexRef.current = {
+          token: loaded,
+          map: buildIdIndex(loaded.ids, loaded.points.length),
+        };
+      }
+      const indices: number[] = [];
+      for (const id of ids) {
+        const matches = idIndexRef.current.map.get(id);
+        // Plain loop: spread-push overflows the arg limit past ~100k
+        // matches, and one id can own every window of an episode
+        if (matches) for (const m of matches) indices.push(m);
+      }
+      return indices;
+    },
+    [loaded],
+  );
   const selectedIndices = useMemo(() => {
-    if (!loaded || !selectedSamples.size) return null;
-    if (idIndexRef.current?.token !== loaded) {
-      idIndexRef.current = {
-        token: loaded,
-        map: buildIdIndex(loaded.ids, loaded.points.length),
-      };
-    }
-    const indices: number[] = [];
-    for (const id of selectedSamples.keys()) {
-      const index = idIndexRef.current.map.get(id);
-      if (index !== undefined) indices.push(index);
-    }
+    if (!selectedSamples.size) return null;
+    const indices = resolveIndices(selectedSamples.keys());
     // No id resolving means the selection is not representable in this
     // plot's id space (sample selections against a patches run, whose
     // wire ids are label ids). That is "no selection" (null) — an empty
     // selection would dim every point and outrank the filter-match
     // layer in the host's precedence
     return indices.length ? indices : null;
-  }, [loaded, selectedSamples]);
+  }, [selectedSamples, resolveIndices]);
 
   // Lasso -> view stage -> the grid. The override stage alone drives
   // the grid; the stage builds locally when the extension supplies a
@@ -228,19 +240,52 @@ export function useSelectionBridge({
       .catch((e) => seq === lassoSeq.current && setError(String(e)));
   };
 
-  // Plain click toggles the sample in the App's selection. For patches
-  // runs the point id is a label id; the owning sample id resolves
-  // through sample-info (clicks are human-rate)
-  const toggleSample = (sampleId: string) => {
-    setSelectedSamples((current) => {
-      const next = new Map(current);
-      if (next.has(sampleId)) {
-        next.delete(sampleId);
-      } else {
-        next.set(sampleId, "default");
-      }
-      return next;
+  // A click's Select stage is built directly from the accumulated sample
+  // ids — no polygon or index resolution needed, so (unlike a lasso)
+  // this never leaves the client
+  const publishClickSelection = (samples: Map<string, SelectionType>) => {
+    if (!samples.size) {
+      resetExtended();
+      publishSelection({
+        stage: null,
+        count: null,
+        decorate: decorateSelection?.(null) ?? null,
+      });
+      return;
+    }
+    const sampleIds = Array.from(samples.keys());
+    const indices = resolveIndices(sampleIds);
+    publishSelection({
+      stage: {
+        "fiftyone.core.stages.Select": {
+          sample_ids: sampleIds,
+          ordered: false,
+        },
+      },
+      // Point count, not sample count — matches what a lasso reports for
+      // the same points, and what the dim layer actually highlights. One
+      // clicked sample can carry many points (every window of an
+      // episode), so this can be far bigger than samples.size.
+      count: indices.length || samples.size,
+      decorate: decorateSelection?.(indices.length ? indices : null) ?? null,
     });
+  };
+
+  // Plain click toggles the sample in the App's selection AND filters
+  // the grid to the accumulated set, the same way a lasso would. For
+  // patches runs the point id is a label id; the owning sample id
+  // resolves through sample-info (clicks are human-rate)
+  const toggleSample = (sampleId: string) => {
+    // One concrete map feeds both writes: an updater form could fold two
+    // batched toggles into state the publish below never saw
+    const next = new Map(selectedSamples);
+    if (next.has(sampleId)) {
+      next.delete(sampleId);
+    } else {
+      next.set(sampleId, "default");
+    }
+    setSelectedSamples(next);
+    publishClickSelection(next);
   };
 
   const handlePointClick = (hit: HoverHit) => {
