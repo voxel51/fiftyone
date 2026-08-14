@@ -202,6 +202,35 @@ describe("useImageTextureLease", () => {
 
     rendered.unmount();
   });
+
+  it("keeps the last committed texture visible when a later frame fails", async () => {
+    const first = deferred<ImageTextureHandle>();
+    const second = deferred<ImageTextureHandle>();
+    cacheHarness.leases.push(
+      { promise: first.promise, release: vi.fn() },
+      { promise: second.promise, release: vi.fn() },
+    );
+
+    const rendered = renderHook(
+      ({ id }) => useImageTextureLease({ frame: rawFrame(), identity: id }),
+      { initialProps: { id: 1 } },
+    );
+
+    const firstHandle = textureHandle();
+    await act(() => first.resolve(firstHandle));
+    await waitFor(() =>
+      expect(rendered.result.current.handle).toBe(firstHandle),
+    );
+
+    rendered.rerender({ id: 2 });
+    await act(async () => second.reject(new Error("byte read failed")));
+
+    await waitFor(() => expect(rendered.result.current.status).toBe("error"));
+    expect(rendered.result.current.errorMessage).toBe("byte read failed");
+    expect(rendered.result.current.handle).toBe(firstHandle);
+
+    rendered.unmount();
+  });
 });
 
 function rawFrame(): RawImageVisualization {
@@ -233,8 +262,10 @@ function textureHandle(): ImageTextureHandle {
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }
