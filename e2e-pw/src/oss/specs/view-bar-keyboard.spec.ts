@@ -193,6 +193,11 @@ test.describe("view bar keyboard", () => {
     await viewBar.fill("limit", "3");
     await page.keyboard.press("Enter");
 
+    // The commit closes the editor and hands the keyboard to Apply; Tabbing
+    // before that re-render lands walks a half-built bar
+    await expect(viewBar.editor).toBeHidden();
+    await expect(viewBar.applyBtn).toBeFocused();
+
     // Pending changes, so Apply is the last stop
     const slots = viewBar.locator.getByLabel("Insert stage");
     await slots.first().focus();
