@@ -200,18 +200,20 @@ class ConnectionBootstrapTests(unittest.TestCase):
     """
 
     def _disconnect(self):
-        """Simulates a worker teardown (fiftyone.core.map.process,
-        fiftyone.utils.torch) or a cold process.
+        """Puts the process in the state a cold or freshly-forked worker sees
+        (fiftyone.core.map.process, fiftyone.utils.torch): mongoengine's
+        connection registry is empty and FiftyOne will reconnect lazily.
+
+        Unlike ``fiftyone.core.odm.database._disconnect()``, this does not
+        close the pymongo client, so handles held by other tests sharing this
+        process (e.g. package-scoped fixtures) keep working.
         """
+        import mongoengine
+
         import fiftyone.core.odm.database as fodb
-        import fiftyone.factory.repo_factory as forf
 
-        fodb._disconnect()
-
-        # The repo factory caches the client, which is now closed; reset it
-        # so that test cleanup can reconnect
-        forf._db = None
-        forf.RepositoryFactory.repos.clear()
+        mongoengine.disconnect_all()
+        fodb._client = None
 
     def test_wrapper_is_installed(self):
         import mongoengine
