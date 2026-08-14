@@ -764,7 +764,7 @@ describe("BitmapCanvasHost", () => {
     });
   });
 
-  it("reports a commit callback failure in development without failing display", () => {
+  it("reports a commit callback failure without failing display", () => {
     stubElementSize(100, 50);
     const context = sharedMockContext();
     const drawImage = vi.spyOn(context, "drawImage");
