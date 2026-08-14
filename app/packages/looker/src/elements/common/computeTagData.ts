@@ -319,7 +319,7 @@ export const computeTagData = ({
   };
 
   const CLASSIFICATION_RENDERER = (
-    path,
+    path: string,
     param: Classification,
   ): TagData | null => {
     const attributes = shownLabelAttributes?.[path];
