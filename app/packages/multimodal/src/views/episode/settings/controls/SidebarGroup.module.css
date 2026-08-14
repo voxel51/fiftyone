@@ -44,6 +44,7 @@
   font-size: 11px;
   line-height: 1.25;
   margin-left: auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
