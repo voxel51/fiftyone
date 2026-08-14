@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { supportsNativeLooker } from "./media-field-lookers";
+import {
+  resolveMediaFieldLooker,
+  supportsNativeLooker,
+} from "./media-field-lookers";
 
 const multimodalSample = {
   isDirect3dSample: false,
@@ -96,4 +99,54 @@ describe("supportsNativeLooker", () => {
       ).toBe(true);
     },
   );
+});
+
+describe("resolveMediaFieldLooker", () => {
+  const sample = {
+    filepath: "/tmp/episode.mcap",
+    metadata: { mime_type: "application/mcap" },
+    media_type: "multimodal",
+  };
+  const urls = {
+    filepath: "/media?filepath=%2Ftmp%2Fepisode.mcap",
+    thumbnail_path: "/media?filepath=%2Ftmp%2Fpreview.png",
+    video_path: "/media?filepath=%2Ftmp%2Fpreview.mp4",
+  };
+
+  it("keeps the MCAP filepath on the custom-renderer path", () => {
+    expect(
+      resolveMediaFieldLooker({ mediaField: "filepath", sample, urls }),
+    ).toMatchObject({
+      hasAlternateMediaPath: false,
+      mimeType: "application/mcap",
+      nativeLookerType: null,
+      selectedMediaPath: urls.filepath,
+    });
+  });
+
+  it("routes an alternate image from a multimodal sample to ImageLooker", () => {
+    expect(
+      resolveMediaFieldLooker({
+        mediaField: "thumbnail_path",
+        sample,
+        urls,
+      }),
+    ).toMatchObject({
+      hasAlternateMediaPath: true,
+      mimeType: "image/png",
+      nativeLookerType: "image",
+      selectedMediaPath: urls.thumbnail_path,
+    });
+  });
+
+  it("routes an alternate video from a multimodal sample to VideoLooker", () => {
+    expect(
+      resolveMediaFieldLooker({ mediaField: "video_path", sample, urls }),
+    ).toMatchObject({
+      hasAlternateMediaPath: true,
+      mimeType: "video/mp4",
+      nativeLookerType: "video",
+      selectedMediaPath: urls.video_path,
+    });
+  });
 });

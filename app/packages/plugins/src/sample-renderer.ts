@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import { getMimeType, isNativeMediaType } from "@fiftyone/utilities";
 import type { Schema } from "@fiftyone/utilities";
 import type React from "react";
 
@@ -297,12 +296,11 @@ export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
 ) {
   const urls = sample.urls ? fos.getNormalizedUrls(sample.urls) : undefined;
 
-  return (
-    urls?.[selectedMediaField] ||
-    urls?.filepath ||
-    sample.sample.filepath ||
-    null
-  );
+  return fos.resolveMediaFieldLooker({
+    mediaField: selectedMediaField,
+    sample: sample.sample,
+    urls: urls ?? {},
+  }).selectedMediaPath;
 }
 
 /**
@@ -311,11 +309,13 @@ export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
 export function createSampleRendererMediaContext<
   TSample extends SampleRendererSampleLike,
 >(sample: TSample, selectedMediaField: string): SampleRendererMediaContext {
-  const path = getSelectedMediaPath(sample, selectedMediaField);
   const urls = sample.urls ? fos.getNormalizedUrls(sample.urls) : undefined;
-  const hasAlternateMediaPath = Boolean(
-    selectedMediaField !== "filepath" && urls?.[selectedMediaField],
-  );
+  const selectedMedia = fos.resolveMediaFieldLooker({
+    mediaField: selectedMediaField,
+    sample: sample.sample,
+    urls: urls ?? {},
+  });
+  const path = selectedMedia.selectedMediaPath;
   const mediaType =
     sample.sample.media_type ?? sample.sample._media_type ?? null;
 
@@ -324,12 +324,9 @@ export function createSampleRendererMediaContext<
     path,
     url: path ? fos.getSampleSrc(path) : null,
     extension: getFileExtension(path),
-    mimeType: getMimeType(
-      sample.sample,
-      hasAlternateMediaPath ? path : undefined,
-    ),
+    mimeType: selectedMedia.mimeType,
     mediaType,
-    isNative: isNativeMediaType(mediaType ?? "unknown"),
+    isNative: selectedMedia.nativeLookerType !== null,
   };
 }
 

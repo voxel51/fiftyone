@@ -72,6 +72,20 @@ describe("sample renderer matcher utilities", () => {
     expect(getSelectedMediaPath(sample, "missing")).toBe("/tmp/default.bin");
   });
 
+  it("ignores an empty selected media path", () => {
+    const sample = createSample();
+
+    expect(
+      getSelectedMediaPath(
+        {
+          ...sample,
+          urls: [...sample.urls, { field: "empty_path", url: "" }],
+        },
+        "empty_path",
+      ),
+    ).toBe("/tmp/default.bin");
+  });
+
   it("builds a media context for non-native selected media", () => {
     const media = createSampleRendererMediaContext(
       createSample(),
@@ -100,6 +114,26 @@ describe("sample renderer matcher utilities", () => {
     );
 
     expect(media.mimeType).toBeNull();
+  });
+
+  it("classifies a native alternate path independently of the root type", () => {
+    const sample = createSample();
+    const media = createSampleRendererMediaContext(
+      {
+        ...sample,
+        urls: [
+          ...sample.urls,
+          { field: "image_path", url: "/tmp/preview.png" },
+        ],
+      },
+      "image_path",
+    );
+
+    expect(media).toMatchObject({
+      mimeType: "image/png",
+      mediaType: "unknown",
+      isNative: true,
+    });
   });
 
   it("keeps root metadata authoritative for an extensionless signed URL", () => {

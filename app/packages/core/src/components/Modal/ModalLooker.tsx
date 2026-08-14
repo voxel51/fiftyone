@@ -1,7 +1,6 @@
 import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { isNativeMediaType } from "@fiftyone/utilities";
 import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { useAtomValue } from "jotai";
 import React from "react";
@@ -91,19 +90,21 @@ const ModalLookerContent = React.memo(
     );
     const isVideoDataset = useRecoilValue(fos.isVideoDataset);
 
-    const mediaType =
-      (sample.sample.media_type as unknown as string) ??
-      sample.sample._media_type;
-
-    // the root dataset media type is "group" for grouped datasets, so decide
-    // the video surface from the open sample: true for a video dataset or a
-    // grouped dataset whose active slice is a video sample
-    const video = isVideoDataset || mediaType === "video";
-
-    const isNative = isNativeMediaType(mediaType as string);
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
 
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+    const selectedMedia = fos.resolveMediaFieldLooker({
+      mediaField: modalMediaField,
+      sample: sample.sample,
+      urls: fos.getNormalizedUrls(sample.urls),
+    });
+    const isNative = selectedMedia.nativeLookerType !== null;
+
+    // The dataset-level fallback preserves grouped video behavior for
+    // filepath. An alternate source must instead select its own surface.
+    const video =
+      selectedMedia.nativeLookerType === "video" ||
+      (!selectedMedia.hasAlternateMediaPath && isVideoDataset);
 
     if (shouldRenderImavid) {
       return (
