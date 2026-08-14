@@ -27,6 +27,13 @@ type CacheEntry = SourceBootstrap & {
 
 const entries = new Map<string, CacheEntry>();
 let retainedPosterBytes = 0;
+const listenersBySource = new Map<string, Set<() => void>>();
+
+function notifySourceListeners(key: string): void {
+  for (const listener of listenersBySource.get(key) ?? []) {
+    listener();
+  }
+}
 
 /** Publishes cloneable source facts learned by a lightweight grid. */
 export function publishSourceBootstrap(
@@ -58,7 +65,15 @@ export function publishSourceBootstrap(
   };
   entries.set(key, next);
   retainedPosterBytes += next.posterBytes;
-  evictBootstrapEntries();
+  const evicted = evictBootstrapEntries();
+  notifySourceListeners(key);
+  // An eviction is a change too: a subscriber holding the evicted source's
+  // snapshot must re-read (and see null), not keep rendering stale facts
+  for (const evictedKey of evicted) {
+    if (evictedKey !== key) {
+      notifySourceListeners(evictedKey);
+    }
+  }
 }
 
 /** Returns the current source bootstrap without changing its LRU position. */
@@ -88,6 +103,24 @@ export function getSourceBootstrapSnapshot(
   return entries.get(sourceBootstrapKey(source)) ?? null;
 }
 
+/** Subscribes to one source's bootstrap publishes, for
+ * `useSyncExternalStore` alongside {@link getSourceBootstrapSnapshot}. */
+export function subscribeSourceBootstrap(
+  source: ByteSourceDescriptor,
+  listener: () => void,
+): () => void {
+  const key = sourceBootstrapKey(source);
+  const listeners = listenersBySource.get(key) ?? new Set<() => void>();
+  listeners.add(listener);
+  listenersBySource.set(key, listeners);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      listenersBySource.delete(key);
+    }
+  };
+}
+
 /** Cache identity for source facts, including transport validators. */
 export function sourceBootstrapKey(source: ByteSourceDescriptor): string {
   return JSON.stringify([byteSourceAccessKey(source), source.etag ?? null]);
@@ -108,9 +141,13 @@ function copyEntry(entry: CacheEntry | undefined): SourceBootstrap | null {
 export function resetSourceBootstrapCacheForTests(): void {
   entries.clear();
   retainedPosterBytes = 0;
+  for (const key of listenersBySource.keys()) {
+    notifySourceListeners(key);
+  }
 }
 
-function evictBootstrapEntries(): void {
+function evictBootstrapEntries(): string[] {
+  const evicted: string[] = [];
   while (
     entries.size > MAX_SOURCE_ENTRIES ||
     retainedPosterBytes > MAX_POSTER_BYTES
@@ -118,10 +155,12 @@ function evictBootstrapEntries(): void {
     const oldest = entries.entries().next().value as
       | [string, CacheEntry]
       | undefined;
-    if (!oldest) return;
+    if (!oldest) break;
     entries.delete(oldest[0]);
     retainedPosterBytes -= oldest[1].posterBytes;
+    evicted.push(oldest[0]);
   }
+  return evicted;
 }
 
 /** Counts unique retained binary allocations in an arbitrary poster graph. */

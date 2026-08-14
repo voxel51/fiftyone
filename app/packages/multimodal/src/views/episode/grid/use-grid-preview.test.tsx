@@ -559,6 +559,219 @@ describe("useGridPreview", () => {
 
     expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
   });
+
+  it("posters the still frame at an embeddings match", async () => {
+    sessionHarness.session.read.mockResolvedValueOnce(
+      readyResult({ bytes: [9], nextStartTimeNs: 1_700n }),
+    );
+    const source = sourceForId("poster-match");
+
+    render(
+      <PreviewHarness
+        id="poster-match"
+        posterStartTimeNs={1_500n}
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-poster-match").textContent).toBe(
+        "ready:1:frame:",
+      );
+    });
+    expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({
+      startTimeNs: 1_500n,
+    });
+  });
+
+  it("re-posters when the match moves to another window", async () => {
+    sessionHarness.session.read
+      .mockResolvedValueOnce(readyResult({ bytes: [1] }))
+      .mockResolvedValueOnce(readyResult({ bytes: [2] }));
+    const source = sourceForId("poster-relasso");
+    const { rerender } = render(
+      <PreviewHarness
+        id="poster-relasso"
+        posterStartTimeNs={1_000n}
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+    });
+    rerender(
+      <PreviewHarness
+        id="poster-relasso"
+        posterStartTimeNs={2_000n}
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(sessionHarness.session.read).toHaveBeenCalledTimes(2);
+    });
+    expect(sessionHarness.session.read.mock.calls[1]?.[0]).toMatchObject({
+      startTimeNs: 2_000n,
+    });
+  });
+
+  it("restarts hover playback once a re-postered tile's replacement frame commits", async () => {
+    const latestState = { current: null as GridPreviewState | null };
+    const loopFetch = deferred<EpisodePreviewReadResult>();
+    const replacementLoad = deferred<EpisodePreviewReadResult>();
+    sessionHarness.session.read
+      // initial still-frame load at the first poster
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], nextStartTimeNs: 1_100n }),
+      )
+      // the hover loop's own fetch — left pending so the loop is still "in
+      // flight" when the poster moves underneath it
+      .mockReturnValueOnce(loopFetch.promise)
+      // the replacement still-frame load once posterStartTimeNs moves
+      .mockReturnValueOnce(replacementLoad.promise);
+    const source = sourceForId("poster-hover-restart");
+
+    const { rerender } = render(
+      <PreviewHarness
+        hovered
+        id="poster-hover-restart"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        posterStartTimeNs={1_000n}
+        source={source}
+      />,
+    );
+    await waitFor(() => expect(latestState.current?.status).toBe("ready"));
+
+    act(() => latestState.current?.play());
+    await waitFor(() =>
+      expect(sessionHarness.session.read).toHaveBeenCalledTimes(2),
+    );
+
+    rerender(
+      <PreviewHarness
+        hovered
+        id="poster-hover-restart"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        posterStartTimeNs={5_000n}
+        source={source}
+      />,
+    );
+    await waitFor(() =>
+      expect(sessionHarness.session.read).toHaveBeenCalledTimes(3),
+    );
+    expect(sessionHarness.session.read.mock.calls[2]?.[0]).toMatchObject({
+      startTimeNs: 5_000n,
+    });
+
+    replacementLoad.resolve(
+      readyResult({ bytes: [9], nextStartTimeNs: 5_100n }),
+    );
+
+    // The stale loop tears down and a fresh one starts against the new
+    // poster's frame, rather than silently continuing to chain frames from
+    // the old poster's timeline
+    await waitFor(() =>
+      expect(sessionHarness.session.read).toHaveBeenCalledTimes(4),
+    );
+    expect(sessionHarness.session.read.mock.calls[3]?.[0]).toMatchObject({
+      startTimeNs: 5_100n,
+    });
+  });
+
+  it("posters from the matched stream once it is known previewable", async () => {
+    // The reported /camera/rear source triggers a third request beyond the
+    // two asserted below; leave it pending so the mock never returns undefined
+    sessionHarness.session.read
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], streamId: "/camera/front" }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [2], streamId: "/camera/rear" }),
+      )
+      .mockReturnValue(deferred<EpisodePreviewReadResult>().promise);
+    const source = sourceForId("poster-stream");
+
+    render(
+      <PreviewHarness
+        id="poster-stream"
+        posterStartTimeNs={500n}
+        posterSourceName="/camera/front"
+        source={source}
+      />,
+    );
+
+    // The first request cannot name the stream — nothing has reported which
+    // sources this episode can preview yet.
+    await waitFor(() => {
+      expect(sessionHarness.session.read).toHaveBeenCalledTimes(2);
+    });
+    expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({
+      startTimeNs: 500n,
+    });
+    expect(sessionHarness.session.read.mock.calls[1]?.[0]).toEqual({
+      sourceName: "/camera/front",
+      startTimeNs: 500n,
+    });
+  });
+
+  it("keeps the automatic stream when the match is not previewable", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], streamId: "/camera/front" }),
+    );
+    const source = sourceForId("poster-fused");
+
+    render(
+      <PreviewHarness
+        id="poster-fused"
+        posterStartTimeNs={500n}
+        posterSourceName="fused::cameras"
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-poster-fused").textContent).toBe(
+        "ready:1:frame:",
+      );
+    });
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+    expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({
+      startTimeNs: 500n,
+    });
+  });
+
+  it("lets an explicit grid stream choice outrank the matched stream", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], streamId: "/camera/rear" }),
+    );
+    const source = sourceForId("poster-explicit");
+
+    render(
+      <PreviewHarness
+        id="poster-explicit"
+        posterStartTimeNs={500n}
+        posterSourceName="/camera/front"
+        selectedSourceName="/camera/rear"
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-poster-explicit").textContent).toBe(
+        "ready:1:frame:",
+      );
+    });
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+    expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({
+      sourceName: "/camera/rear",
+      startTimeNs: 500n,
+    });
+  });
 });
 
 function PreviewHarness({
@@ -567,6 +780,8 @@ function PreviewHarness({
   id,
   onReadResult,
   onState,
+  posterStartTimeNs,
+  posterSourceName,
   selectedSourceName,
   source,
 }: {
@@ -575,6 +790,8 @@ function PreviewHarness({
   readonly id: string;
   readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
   readonly onState?: (state: GridPreviewState) => void;
+  readonly posterStartTimeNs?: bigint | null;
+  readonly posterSourceName?: string | null;
   readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }) {
@@ -582,6 +799,8 @@ function PreviewHarness({
     enabled,
     hovered,
     onReadResult,
+    posterStartTimeNs,
+    posterSourceName,
     previewSession: sessionHarness.session as EpisodePreviewSession,
     previewSessionStatus: "ready",
     selectedSourceName,

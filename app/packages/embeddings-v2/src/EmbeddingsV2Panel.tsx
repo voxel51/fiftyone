@@ -16,6 +16,7 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useEffect, useRef, useState } from "react";
+import { useExtensionGeneration } from "./extensions";
 import PlotView from "./PlotView";
 import { fetchRunsStatus, type RunStatus } from "./protocol";
 import RunsList from "./RunsList";
@@ -46,6 +47,10 @@ export default function EmbeddingsV2Panel() {
   const datasetName = fos.useCurrentDatasetName() ?? null;
   const datasetId = fos.useCurrentDatasetId() ?? null;
   const panelId = usePanelId();
+  // The plot selects the extension's hooks at mount; a late-arriving
+  // registration (the edition entrypoint is dynamically imported) must
+  // remount it rather than swap hooks under it
+  const extensionGeneration = useExtensionGeneration();
   const [openKeyState, setOpenKey] = usePanelStatePartial<string | null>(
     "openKey",
     null,
@@ -177,6 +182,7 @@ export default function EmbeddingsV2Panel() {
   if (openRun) {
     return (
       <PlotView
+        key={extensionGeneration}
         datasetName={datasetName}
         run={openRun}
         onBack={() => setOpenKey(null)}

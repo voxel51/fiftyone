@@ -115,6 +115,9 @@ export interface SourcePlaybackProps {
   readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
   readonly fileName: string;
   readonly headerActions?: React.ReactNode;
+  /** Capture time to open the recording at, ahead of the first-data tick.
+   * Set to an embeddings match so opening a matched tile lands on it. */
+  readonly initialSeekTimeNs?: bigint | null;
   readonly layoutScopeKey?: string;
   /** Host selected a new sample whose media descriptor is still resolving. */
   readonly navigationPending?: boolean;
@@ -143,6 +146,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   decorateTrack,
   fileName,
   headerActions,
+  initialSeekTimeNs,
   layoutScopeKey,
   navigationPending = false,
   onTagCreate,
@@ -512,6 +516,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 <Streams
                                   availableTileTypes={availableTileTypes}
                                   budgetAccount={sourceReadBudgetAccount}
+                                  initialSeekTimeNs={initialSeekTimeNs}
                                   onPlayheadDataReady={handlePlayheadDataReady}
                                   session={readyInventory ? session : null}
                                   source={playbackSource}

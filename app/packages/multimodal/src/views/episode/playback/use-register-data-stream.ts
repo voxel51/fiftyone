@@ -125,6 +125,9 @@ export interface UseDataStreamOptions {
   blockingStreams: readonly string[];
   /** Streams whose last indexed message is their presentation boundary. */
   endBoundedStreams: readonly string[];
+  /** Capture time to open the recording at, ahead of the first-data tick.
+   * Set to an embeddings match so opening a matched tile lands on it. */
+  initialSeekTimeNs?: bigint | null;
   session: EpisodeSession | null;
   /** Called whenever every blocking stream covers the current playhead. */
   onPlayheadDataReady?: () => void;
@@ -154,6 +157,7 @@ export interface UseDataStreamOptions {
 export function useRegisterDataStream({
   blockingStreams,
   endBoundedStreams,
+  initialSeekTimeNs,
   session,
   onPlayheadDataReady,
   source,
@@ -163,7 +167,8 @@ export function useRegisterDataStream({
   streamPolicies,
   timelineSamplingRateHz,
 }: UseDataStreamOptions): void {
-  const { pause, registerStream, seek, subscribeStream } = usePlayback();
+  const { duration, pause, registerStream, seek, subscribeStream } =
+    usePlayback();
   const store = usePlaybackStore();
   const isPlaying = useIsPlaying();
   const setDataStream = useSetDataStream();
@@ -220,6 +225,18 @@ export function useRegisterDataStream({
   }, [pause, seek, seekFetchDebounceMs, sourceKey, store]);
 
   const [index, setIndex] = useState<TimelineIndex | null>(null);
+
+  // Held in a ref, not a dependency: the auto-seek below is wired into the
+  // source lifecycle, and closing over this value directly would tear down
+  // and reload the whole recording whenever the match changed.
+  const initialSeekTimeNsRef = useRef<bigint | null>(null);
+  initialSeekTimeNsRef.current = initialSeekTimeNs ?? null;
+
+  // `seek` clamps to the duration known when it is called, and the timeline
+  // index resolves before any stream has reported one. Without this the
+  // opening seek is silently clamped to zero.
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
 
   // Stable refs — read in RAF/subscribe callbacks without closure capture.
   const streamCachesRef = useRef<Map<string, EpisodeStreamCache>>(new Map());
@@ -361,48 +378,96 @@ export function useRegisterDataStream({
   // resolves every short-skew stream. Later-starting and empty streams remain
   // at their honest gaps instead of pulling the whole recording forward. This
   // consumes the bounds already loaded for status copy and stays inside the
-  // startup buffer, so it never asks the worker for another index/read.
+  // startup buffer, so it never asks the worker for another index/read. An
+  // embeddings match overrides that target with the matched window, and needs
+  // no stream bounds to do it.
   const maybeAutoSeekToFirstData = useCallback(() => {
+    const matchNs = initialSeekTimeNsRef.current;
+    // Only for a matched open — an ordinary open would log on every tick
+    const trace = (outcome: string, detail: Record<string, unknown> = {}) => {
+      if (matchNs === null) return;
+      console.debug("[multimodal-embeddings] modal match seek:", {
+        outcome,
+        matchNs: String(matchNs),
+        ...detail,
+      });
+    };
+
     const currentEpoch = sourceEpochRef.current;
-    if (autoSeekSourceEpochRef.current === currentEpoch) return;
-    if (getPlayhead(store) !== 0) return;
-    if (getIsPlaying(store) || getIsPlayPending(store)) return;
+    if (autoSeekSourceEpochRef.current === currentEpoch) {
+      return trace("already-seeked-this-source");
+    }
+    if (getPlayhead(store) !== 0) {
+      return trace("playhead-moved", { playhead: getPlayhead(store) });
+    }
+    // A user seek to 0 leaves the playhead where the check above cannot see
+    // it — any recorded (non-lifecycle) seek means the viewer placed the
+    // playhead deliberately, and the opening seek must not move it
+    if (lastSeekAtMsRef.current !== null) {
+      return trace("user-seeked");
+    }
+    if (getIsPlaying(store) || getIsPlayPending(store)) {
+      return trace("already-playing");
+    }
 
     const currentIndex = indexRef.current;
-    if (!currentIndex) return;
+    if (!currentIndex) return trace("no-timeline-index");
 
-    const activeStreams = getActiveStreams();
-    if (activeStreams.length === 0) return;
+    let targetNs = matchNs;
+    if (targetNs === null) {
+      const activeStreams = getActiveStreams();
+      if (activeStreams.length === 0) return;
 
-    let latestShortStartTimeNs: bigint | null = null;
-    for (const stream of activeStreams) {
-      const streamStart = streamStartTimesNsRef.current.get(stream);
-      if (streamStart === null || streamStart === undefined) continue;
-      const startSec = currentIndex.nsToSec(streamStart);
-      if (
-        startSec <= 0 ||
-        startSec > INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS
-      ) {
-        continue;
+      let latestShortStartTimeNs: bigint | null = null;
+      for (const stream of activeStreams) {
+        const streamStart = streamStartTimesNsRef.current.get(stream);
+        if (streamStart === null || streamStart === undefined) continue;
+        const startSec = currentIndex.nsToSec(streamStart);
+        if (
+          startSec <= 0 ||
+          startSec > INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS
+        ) {
+          continue;
+        }
+        if (
+          latestShortStartTimeNs === null ||
+          streamStart > latestShortStartTimeNs
+        ) {
+          latestShortStartTimeNs = streamStart;
+        }
       }
-      if (
-        latestShortStartTimeNs === null ||
-        streamStart > latestShortStartTimeNs
-      ) {
-        latestShortStartTimeNs = streamStart;
-      }
+      if (latestShortStartTimeNs === null) return;
+      targetNs = latestShortStartTimeNs;
     }
-    if (latestShortStartTimeNs === null) return;
 
-    const tick = currentIndex.tickAt(
-      currentIndex.indexAtOrAfter(latestShortStartTimeNs),
-    );
-    if (tick === undefined) return;
+    const tick = currentIndex.tickAt(currentIndex.indexAtOrAfter(targetNs));
+    if (tick === undefined) {
+      return trace("target-past-timeline-end", {
+        recordingStartNs: String(currentIndex.startTimeNs),
+        recordingEndNs: String(currentIndex.endTimeNs),
+      });
+    }
 
     const targetSec = currentIndex.nsToSec(tick);
-    if (targetSec <= 0) return;
+    if (targetSec <= 0) {
+      return trace("target-at-or-before-start", {
+        targetSec,
+        recordingStartNs: String(currentIndex.startTimeNs),
+      });
+    }
+
+    // Deliberately unstamped: a seek issued now would clamp to a duration no
+    // stream has published yet, so leave the epoch open and let the retry
+    // below run once the recording's real length is known.
+    if (targetSec > durationRef.current) {
+      return trace("awaiting-duration", {
+        targetSec,
+        duration: durationRef.current,
+      });
+    }
 
     autoSeekSourceEpochRef.current = currentEpoch;
+    trace("seeking", { targetSec });
     lifecycleSeekInProgressRef.current = true;
     try {
       seek(targetSec);
@@ -543,10 +608,12 @@ export function useRegisterDataStream({
   ]);
 
   // This effect retries the initial auto-seek once the timeline index is
-  // committed to React state; stream bounds can resolve first.
+  // committed to React state; stream bounds can resolve first. It also retries
+  // on `duration`, which a stream publishes after the index resolves and
+  // which bounds how far the engine will let the opening seek travel.
   useEffect(() => {
     if (index) scheduleAutoSeekToFirstData();
-  }, [index, scheduleAutoSeekToFirstData]);
+  }, [duration, index, scheduleAutoSeekToFirstData]);
 
   // Contiguous [startSec, endSec] ranges where every active stream has the
   // tick cached — i.e. the stretches playback can run through without
