@@ -307,22 +307,3 @@ function normalizePositiveInteger(value: number, fallback: number): number {
 function serializeGridPosterKey(parts: readonly (string | null)[]): string {
   return JSON.stringify(parts);
 }
-
-if (import.meta.env.DEV && typeof window !== "undefined") {
-  Object.defineProperty(
-    window as Window & {
-      __FIFTYONE_GRID_POSTER_CACHE__?: {
-        clear(): void;
-        stats(): GridPosterCacheStats;
-      };
-    },
-    "__FIFTYONE_GRID_POSTER_CACHE__",
-    {
-      configurable: true,
-      value: {
-        clear: clearGridPosterCache,
-        stats: () => getGridPosterCache().stats(),
-      },
-    },
-  );
-}
