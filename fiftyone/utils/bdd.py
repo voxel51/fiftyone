@@ -402,7 +402,19 @@ def download_bdd100k_dataset(
         the number of samples added across all splits
     """
     if source_dir is not None:
-        parse_bdd100k_dataset(source_dir, dataset_dir, copy_files=copy_files)
+        try:
+            parse_bdd100k_dataset(
+                source_dir, dataset_dir, copy_files=copy_files
+            )
+        except OSError as e:
+            # The underlying error advises a manual download, which no longer
+            # applies; the chained cause carries its detail
+            raise OSError(
+                "Failed to parse the BDD100K source directory '%s'. Expected "
+                "the legacy 2018 layout described by `fiftyone zoo datasets "
+                "info bdd100k`." % source_dir
+            ) from e
+
         return _count_split_samples(dataset_dir)
 
     if scratch_dir is None:
@@ -458,14 +470,29 @@ def download_bdd100k_dataset(
             logger.info("Using existing consolidated labels '%s'", out_path)
             continue
         if not os.path.isdir(mot_dir):
-            logger.warning("MOT labels directory '%s' not found", mot_dir)
-            continue
+            # Both splits are required by the parse below, so failing here
+            # names the missing directory instead of surfacing later
+            raise OSError(
+                "Expected %s labels at '%s', but that directory does not "
+                "exist. The extracted archive at '%s' does not have the "
+                "expected layout" % (split, mot_dir, extracted_dir)
+            )
         logger.info(
             "Converting %s per-image labels to legacy layout...", split
         )
         _convert_mot_to_legacy_labels(mot_dir, out_path)
 
-    parse_bdd100k_dataset(extracted_dir, dataset_dir, copy_files=copy_files)
+    try:
+        parse_bdd100k_dataset(
+            extracted_dir, dataset_dir, copy_files=copy_files
+        )
+    except OSError as e:
+        raise OSError(
+            "Failed to parse BDD100K from the archives extracted to '%s'. "
+            "The download may be incomplete or the mirror layout may have "
+            "changed; delete '%s' to force a fresh download."
+            % (extracted_dir, scratch_dir)
+        ) from e
 
     return _count_split_samples(dataset_dir)
 
@@ -513,7 +540,7 @@ def _convert_mot_poly2d(mot_poly2d, category):
     areas (``area/*``) are closed polygons; lane markings (``lane/*``) are
     open polylines.
     """
-    vertices = [[pt[0], pt[1]] for pt in mot_poly2d]
+    vertices = [[pt[0], pt[1]] for pt in mot_poly2d if len(pt) >= 2]
     types = "".join(pt[2] for pt in mot_poly2d if len(pt) >= 3)
     return [{
         "vertices": vertices,
