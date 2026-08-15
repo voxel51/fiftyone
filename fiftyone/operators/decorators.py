@@ -10,8 +10,10 @@ import asyncio
 from cachetools.keys import hashkey
 from contextlib import contextmanager
 from functools import wraps
+import math
 import signal
 import os
+import time
 
 import fiftyone as fo
 from fiftyone.plugins.core import _iter_plugin_metadata_files
@@ -54,13 +56,21 @@ def timeout(seconds: int):
     signal.signal(
         signal.SIGALRM, lambda signum, frame: raise_timeout_error(seconds)
     )
-    signal.alarm(seconds)
+    # Arming our alarm displaces any pending outer timer; its remaining
+    # deadline is captured here and re-armed on exit
+    prior_remaining = signal.alarm(seconds)
+    start = time.monotonic()
 
     try:
         yield
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, prev_handler)
+        if prior_remaining:
+            elapsed = time.monotonic() - start
+            # Never 0 (that would cancel instead); an already-lapsed outer
+            # deadline fires as soon as possible
+            signal.alarm(max(1, math.ceil(prior_remaining - elapsed)))
 
 
 def raise_timeout_error(seconds):

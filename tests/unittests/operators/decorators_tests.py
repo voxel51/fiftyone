@@ -171,6 +171,41 @@ class TestTimeoutContextManager(unittest.TestCase):
             signal.alarm(0)
             signal.signal(signal.SIGALRM, prev_handler)
 
+    def test_a_pending_outer_alarm_is_rearmed_on_exit(self):
+        # A nested timeout() must not permanently cancel an enclosing
+        # SIGALRM-based timer; the outer deadline resumes once the inner
+        # scope exits.
+        prev_handler = signal.getsignal(signal.SIGALRM)
+        try:
+            signal.signal(signal.SIGALRM, lambda signum, frame: None)
+            signal.alarm(60)
+
+            with timeout(5):
+                pass
+
+            rearmed = signal.alarm(0)
+            self.assertGreaterEqual(rearmed, 59)
+            self.assertLessEqual(rearmed, 60)
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, prev_handler)
+
+    def test_an_outer_deadline_that_lapses_inside_still_rearms(self):
+        # The outer timer wanted to fire while it was displaced; it must be
+        # re-armed to fire as soon as possible, never cancelled outright.
+        prev_handler = signal.getsignal(signal.SIGALRM)
+        try:
+            signal.signal(signal.SIGALRM, lambda signum, frame: None)
+            signal.alarm(1)
+
+            with timeout(5):
+                time.sleep(1.2)
+
+            self.assertEqual(signal.alarm(0), 1)
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, prev_handler)
+
     def test_a_body_that_outlives_the_deadline_raises_timeout_error(self):
         prev_handler = signal.getsignal(signal.SIGALRM)
         try:

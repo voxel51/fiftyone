@@ -603,7 +603,9 @@ def _processor_output_is_ragged(transforms):
 
     A processor that resizes to a lone ``shortest_edge`` or ``longest_edge``
     with no fixed crop preserves aspect ratio, so mixed-aspect inputs produce
-    mixed-shape outputs.
+    mixed-shape outputs. Bounding both edges (DETR-style) still preserves
+    aspect ratio; only the processor's own padding makes those outputs
+    uniform within a batch.
     """
     processor = getattr(transforms, "processor", transforms)
     image_processor = getattr(processor, "image_processor", None) or getattr(
@@ -628,6 +630,11 @@ def _processor_output_is_ragged(transforms):
         return False
 
     edges = [k for k in ("shortest_edge", "longest_edge") if size.get(k)]
+    if len(edges) == 2:
+        # aspect ratio is preserved between the two bounds, so with padding
+        # disabled a mixed-aspect batch cannot be stacked
+        return not getattr(image_processor, "do_pad", False)
+
     return len(edges) == 1
 
 

@@ -694,6 +694,191 @@ describe("useSelectionBridge", () => {
     );
   });
 
+  it("reports distinct samples when a lasso's stage repeats an id", () => {
+    // Points 0 and 2 share one sample (two windows of an episode), so the
+    // resolver's Select stage carries that id twice. The pill reports
+    // samples, so occurrences must not be counted as two samples
+    const idsWithDuplicate = new Uint8Array(36);
+    idsWithDuplicate.set(IDS.subarray(0, 12), 0); // point 0: id 0
+    idsWithDuplicate.set(IDS.subarray(12, 24), 12); // point 1: id 1
+    idsWithDuplicate.set(IDS.subarray(0, 12), 24); // point 2: id 0 again
+    const loaded: Loaded = {
+      ...LOADED,
+      points: [
+        { id: idAt(idsWithDuplicate, 0), x: 0, y: 0, label: null },
+        { id: idAt(idsWithDuplicate, 1), x: 1, y: 1, label: null },
+        { id: idAt(idsWithDuplicate, 2), x: 2, y: 2, label: null },
+      ],
+      ids: idsWithDuplicate,
+      total: 3,
+    };
+    const opts = options({ loaded });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([0, 1, 2], null));
+
+    expect(opts.publishSelection).toHaveBeenCalledWith(
+      expect.objectContaining({ count: 3, sampleCount: 2 }),
+    );
+  });
+
+  it("drops the lasso's legend scope when a click supersedes it", () => {
+    const opts = options();
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([0, 1], null));
+    expect(Array.from(result.current.lassoIndices ?? [])).toEqual([0, 1]);
+
+    act(() =>
+      result.current.handlePointClick({
+        index: 0,
+        id: idAt(IDS, 0),
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    // The click's Select stage replaced the lasso's, so the legend must
+    // scope to the click, never the stale lasso
+    expect(result.current.lassoIndices).toBeNull();
+  });
+
+  it("drops the lasso's legend scope when a click deselects to empty", () => {
+    const opts = options({
+      selectedSamples: new Map([[idAt(IDS, 0), "default" as SelectionType]]),
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([0, 1], null));
+    expect(result.current.lassoIndices).not.toBeNull();
+
+    // Toggling the only selected sample off publishes an empty selection;
+    // a surviving lasso scope would keep the legend claiming a selection
+    act(() =>
+      result.current.handlePointClick({
+        index: 0,
+        id: idAt(IDS, 0),
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    expect(result.current.lassoIndices).toBeNull();
+    expect(opts.resetExtended).toHaveBeenCalled();
+  });
+
+  it("ignores a lasso response that arrives after a click", async () => {
+    let resolveLasso: (v: {
+      _cls: string;
+      kwargs: Record<string, unknown>;
+      count: number;
+    }) => void = () => undefined;
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (resolveLasso = resolve)),
+      );
+    // Partially loaded, so the lasso resolves server-side (and can be slow)
+    const opts = options({ loaded: { ...LOADED, total: 5 } });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([0], null));
+    act(() =>
+      result.current.handlePointClick({
+        index: 1,
+        id: idAt(IDS, 1),
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    await act(async () => {
+      resolveLasso({ _cls: "S", kwargs: {}, count: 1 });
+    });
+
+    // Only the click published; the late lasso response was orphaned
+    expect(opts.publishSelection).toHaveBeenCalledTimes(1);
+    expect(opts.publishSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: {
+          "fiftyone.core.stages.Select": {
+            sample_ids: [idAt(IDS, 1)],
+            ordered: false,
+          },
+        },
+      }),
+    );
+  });
+
+  it("keeps both samples when two patches clicks overlap in flight", async () => {
+    // Each patches click resolves its label to a sample asynchronously; two
+    // rapid clicks overlap, and the resolutions can even land out of order.
+    // Both toggles must accumulate rather than the later one rebuilding
+    // from the selection as it stood before the earlier one applied.
+    const pending: Array<(info: SampleInfo) => void> = [];
+    vi.mocked(fetchSampleInfo)
+      .mockClear()
+      .mockImplementation(
+        () => new Promise<SampleInfo>((resolve) => pending.push(resolve)),
+      );
+    const info = (n: number): SampleInfo => ({
+      id: `label${n}`,
+      sampleId: `sample${n}`,
+      filepath: null,
+      media: null,
+      value: null,
+    });
+    const opts = options({ patchesField: "ground_truth" });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() =>
+      result.current.handlePointClick({
+        index: 7,
+        id: "label7",
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+    act(() =>
+      result.current.handlePointClick({
+        index: 8,
+        id: "label8",
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    // Resolve out of order: the second click's sample lands first
+    await act(async () => {
+      pending[1](info(8));
+    });
+    await act(async () => {
+      pending[0](info(7));
+    });
+
+    await waitFor(() =>
+      expect(opts.setSelectedSamples).toHaveBeenCalledTimes(2),
+    );
+    expect(opts.setSelectedSamples).toHaveBeenLastCalledWith(
+      new Map([
+        ["sample8", "default"],
+        ["sample7", "default"],
+      ]),
+    );
+    // The published Select stage carries both samples too
+    const lastPublish = vi.mocked(opts.publishSelection).mock.calls.at(-1)?.[0];
+    const stage = lastPublish?.stage?.["fiftyone.core.stages.Select"] as
+      | { sample_ids: string[] }
+      | undefined;
+    expect(new Set(stage?.sample_ids)).toEqual(new Set(["sample7", "sample8"]));
+    expect(lastPublish?.sampleCount).toBe(2);
+  });
+
   it("clears every selection layer on Escape", () => {
     const opts = options();
     renderHook(() => useSelectionBridge(opts));

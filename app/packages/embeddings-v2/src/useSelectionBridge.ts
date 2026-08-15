@@ -62,7 +62,9 @@ export function stageSampleCount(
   const kwargs = stage["fiftyone.core.stages.Select"];
   if (!kwargs || typeof kwargs !== "object") return null;
   const ids = (kwargs as { sample_ids?: unknown }).sample_ids;
-  return Array.isArray(ids) ? ids.length : null;
+  // Distinct, not occurrences: a lasso's resolver emits one id per point,
+  // and one sample can own many lassoed points
+  return Array.isArray(ids) ? new Set(ids).size : null;
 }
 
 /**
@@ -112,10 +114,20 @@ export function useSelectionBridge({
   // overwrite a newer selection (or resurrect one that was cleared)
   const lassoSeq = useRef(0);
 
+  // The newest committed selection, updated synchronously by every toggle:
+  // overlapping async toggles (patches label -> sample resolutions) would
+  // otherwise each build from the same stale render's map, the second
+  // dropping the first
+  const latestSelection = useRef(selectedSamples);
+  useEffect(() => {
+    latestSelection.current = selectedSamples;
+  }, [selectedSamples]);
+
   // Stable because the Esc effect below depends on it
   const clearAll = useCallback(() => {
     lassoSeq.current++;
     resetExtended();
+    latestSelection.current = new Map();
     setSelectedSamples(new Map());
     setLassoIndices(null);
     setError(null);
@@ -264,6 +276,11 @@ export function useSelectionBridge({
   // ids — no polygon or index resolution needed, so (unlike a lasso)
   // this never leaves the client
   const publishClickSelection = (samples: Map<string, SelectionType>) => {
+    // The click's stage supersedes any lasso: drop the lasso's indices
+    // (they scope the legend counts) and orphan any still-in-flight lasso
+    // response so it cannot publish over this
+    lassoSeq.current++;
+    setLassoIndices(null);
     if (!samples.size) {
       resetExtended();
       publishSelection({
@@ -299,13 +316,16 @@ export function useSelectionBridge({
   // resolves through sample-info (clicks are human-rate)
   const toggleSample = (sampleId: string) => {
     // One concrete map feeds both writes: an updater form could fold two
-    // batched toggles into state the publish below never saw
-    const next = new Map(selectedSamples);
+    // batched toggles into state the publish below never saw. Built from
+    // the latest ref, not the render's prop, so overlapping async toggles
+    // accumulate instead of overwriting each other
+    const next = new Map(latestSelection.current);
     if (next.has(sampleId)) {
       next.delete(sampleId);
     } else {
       next.set(sampleId, "default");
     }
+    latestSelection.current = next;
     setSelectedSamples(next);
     publishClickSelection(next);
   };

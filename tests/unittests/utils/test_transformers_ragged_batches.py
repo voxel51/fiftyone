@@ -17,10 +17,13 @@ transformers = pytest.importorskip("transformers")
 from fiftyone.utils.transformers import FiftyOneTransformer
 
 
-def _image_processor(size, crop_size=None, do_center_crop=False):
+def _image_processor(size, crop_size=None, do_center_crop=False, do_pad=False):
     """A stand-in for a HuggingFace image processor's declared config."""
     return SimpleNamespace(
-        size=size, crop_size=crop_size, do_center_crop=do_center_crop
+        size=size,
+        crop_size=crop_size,
+        do_center_crop=do_center_crop,
+        do_pad=do_pad,
     )
 
 
@@ -53,9 +56,21 @@ class TestRaggedBatchesDerivation:
                 id="lone_longest_edge_no_crop",
             ),
             pytest.param(
-                _image_processor({"shortest_edge": 800, "longest_edge": 1333}),
+                _image_processor(
+                    {"shortest_edge": 800, "longest_edge": 1333}, do_pad=True
+                ),
                 False,
-                id="both_edges_detr_style",
+                id="both_edges_with_padding_detr_style",
+            ),
+            pytest.param(
+                _image_processor({"shortest_edge": 800, "longest_edge": 1333}),
+                True,
+                id="both_edges_without_padding_is_still_aspect_following",
+            ),
+            pytest.param(
+                _image_processor({"shortest_edge": 384}, do_pad=True),
+                True,
+                id="padding_does_not_rescue_a_lone_edge",
             ),
             pytest.param(
                 _image_processor({"height": 512, "width": 512}),

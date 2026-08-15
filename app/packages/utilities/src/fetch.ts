@@ -55,6 +55,13 @@ export type FetchResultType =
   | "json-stream";
 
 /**
+ * Browser HTTP cache modes callers may request. "only-if-cached" is
+ * excluded: it is only valid with mode "same-origin", and every request
+ * here is sent with mode "cors", where the fetch would throw.
+ */
+export type BrowserCacheMode = Exclude<RequestCache, "only-if-cached">;
+
+/**
  * Configuration for a `fetch` call.
  */
 export type FetchFunctionConfig<T> = {
@@ -78,7 +85,7 @@ export type FetchFunctionConfig<T> = {
    * superset block whose Content-Range does not match what was asked.
    * @default "no-cache"
    */
-  browserCache?: RequestCache;
+  browserCache?: BrowserCacheMode;
   /** Cancels the request and response-body read. */
   signal?: AbortSignal;
   /** Reports cumulative response-body bytes as they arrive. */
@@ -121,7 +128,7 @@ export interface FetchFunctionExtended {
     headers?: Record<string, string>,
     signal?: AbortSignal,
     onProgress?: (loadedBytes: number) => void,
-    browserCache?: RequestCache,
+    browserCache?: BrowserCacheMode,
   ): Promise<FetchFunctionResult<R>>;
 }
 

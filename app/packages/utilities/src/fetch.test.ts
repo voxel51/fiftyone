@@ -3,6 +3,7 @@ import {
   getFetchFunction,
   getFetchFunctionExtended,
   setFetchFunction,
+  type BrowserCacheMode,
 } from "./fetch";
 
 describe("fetch", () => {
@@ -161,5 +162,16 @@ describe("fetch", () => {
       ]),
     ).resolves.toEqual(["stream me", "stream me", "stream me", "stream me"]);
     expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("rejects the only-if-cached browser cache mode at compile time", () => {
+    // Every request is sent with mode "cors", where the Request constructor
+    // throws on "only-if-cached" — the type must not admit it
+    // @ts-expect-error -- excluded from BrowserCacheMode
+    const invalid: BrowserCacheMode = "only-if-cached";
+    void invalid;
+
+    const valid: BrowserCacheMode = "no-store";
+    expect(valid).toBe("no-store");
   });
 });
