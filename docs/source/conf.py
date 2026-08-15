@@ -335,11 +335,8 @@ def _inject_page_meta(app, pagename, templatename, context, doctree):
     description = get_meta_description(app.env, pagename)
     context["has_meta_description"] = bool(description)
     if not description:
-        description = (
-            app.config.llms_txt_description.splitlines()[0]
-            .lstrip("> ")
-            .strip()
-        )
+        lines = app.config.llms_txt_description.splitlines()
+        description = lines[0].lstrip("> ").strip() if lines else ""
     context["meta_description"] = description
     context[
         "markdown_url"

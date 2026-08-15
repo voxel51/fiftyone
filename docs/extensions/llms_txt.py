@@ -11,6 +11,7 @@ from sphinx.util import logging
 
 _BADGE_MARKER_RE = re.compile(r"__SUB_(?:NEW|BETA)__")
 _MD_LINK_RE = re.compile(r"(!?\[[^\]]*\]\()([^()\s]+)(\))")
+_URI_SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
 
 def get_meta_description(env, docname):
@@ -183,7 +184,7 @@ class LLMSTxtGenerator:
 
         def _rewrite(match):
             prefix, url, suffix = match.groups()
-            if url.startswith(("http://", "https://", "#", "mailto:", "/")):
+            if url.startswith(("#", "/")) or _URI_SCHEME_RE.match(url):
                 return match.group(0)
 
             path_part, _, fragment = url.partition("#")
