@@ -3,8 +3,28 @@ Sphinx extension for generating llms.txt from documentation.
 """
 
 import os
+import posixpath
+import re
+
 from sphinx.application import Sphinx
 from sphinx.util import logging
+
+_BADGE_MARKER_RE = re.compile(r"__SUB_(?:NEW|BETA)__")
+_MD_LINK_RE = re.compile(r"(!?\[[^\]]*\]\()([^()\s]+)(\))")
+
+
+def get_meta_description(env, docname):
+    try:
+        doctree = env.get_doctree(docname)
+    except Exception:
+        return ""
+    for node in doctree.traverse():
+        if (
+            node.__class__.__name__ == "meta"
+            and node.get("name") == "description"
+        ):
+            return node.get("content", "")
+    return ""
 
 
 class LLMSTxtGenerator:
@@ -22,20 +42,9 @@ class LLMSTxtGenerator:
                 if title_element
                 else target_doc.split("/")[-1]
             )
-        return title.strip() if title else ""
-
-    def get_page_description(self, target_doc, sphinx_env):
-        try:
-            doc_tree = sphinx_env.get_doctree(target_doc)
-            for node in doc_tree.traverse():
-                if (
-                    node.__class__.__name__ == "meta"
-                    and node.get("name") == "description"
-                ):
-                    return node.get("content", "")
-        except Exception:
-            self.logger.debug(f"Failed to get description for {target_doc}")
-        return ""
+        if not title:
+            return ""
+        return _BADGE_MARKER_RE.sub("", title).strip()
 
     def scan_document_structure(
         self, doc_name, sphinx_env, parent_section=None, nesting_level=0
@@ -69,7 +78,7 @@ class LLMSTxtGenerator:
                 desc = (
                     ""
                     if external
-                    else self.get_page_description(resolved, sphinx_env)
+                    else get_meta_description(sphinx_env, resolved)
                 )
 
                 if (
@@ -169,6 +178,77 @@ class LLMSTxtGenerator:
         except Exception as e:
             self.logger.error("llms.txt generation failed: %s", str(e))
 
+    def _absolutize_links(self, content, page_dir):
+        base_url = self.app.config.llms_txt_base_url.rstrip("/")
+
+        def _rewrite(match):
+            prefix, url, suffix = match.groups()
+            if url.startswith(("http://", "https://", "#", "mailto:", "/")):
+                return match.group(0)
+
+            path_part, _, fragment = url.partition("#")
+            resolved = posixpath.normpath(posixpath.join(page_dir, path_part))
+            new_url = f"{base_url}/{resolved}"
+            if fragment:
+                new_url += f"#{fragment}"
+
+            return f"{prefix}{new_url}{suffix}"
+
+        return _MD_LINK_RE.sub(_rewrite, content)
+
+    def generate_llms_full_txt_file(self, app, exception):
+        if exception:
+            return
+
+        if app.builder.name != "markdown":
+            return
+
+        excluded_prefixes = tuple(self.app.config.llms_txt_full_excludes)
+
+        parts = [f"# {self.app.config.llms_txt_title}", ""]
+        if self.app.config.llms_txt_description:
+            parts.extend([self.app.config.llms_txt_description, ""])
+
+        seen = set()
+        for (
+            path,
+            title,
+            external,
+            _section,
+            _desc,
+            _level,
+        ) in self.collected_pages:
+            if external or path in seen or path.startswith(excluded_prefixes):
+                continue
+            seen.add(path)
+
+            md_path = os.path.join(app.outdir, path + app.builder.out_suffix)
+            try:
+                with open(md_path, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+            except OSError:
+                self.logger.debug(f"Failed to read markdown for {path}")
+                continue
+
+            if not content:
+                continue
+
+            content = self._absolutize_links(content, posixpath.dirname(path))
+
+            parts.extend(
+                [f"<!-- Page: {title} -->", "", content, "", "---", ""]
+            )
+
+        try:
+            out_path = os.path.join(
+                app.outdir, self.app.config.llms_txt_full_filename
+            )
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(parts))
+            self.logger.info("llms-full.txt generated successfully")
+        except Exception as e:
+            self.logger.error("llms-full.txt generation failed: %s", str(e))
+
 
 def setup(app: Sphinx):
     app.add_config_value("llms_txt_title", "FiftyOne documentation", "env")
@@ -185,9 +265,24 @@ def setup(app: Sphinx):
     app.add_config_value(
         "llms_txt_optional", "- [All docs](https://docs.voxel51.com/)", "env"
     )
+    app.add_config_value("llms_txt_full_filename", "llms-full.txt", "env")
+    app.add_config_value(
+        "llms_txt_full_excludes",
+        [
+            "api/",
+            "plugins/plugins_ecosystem/",
+            "labs/labs_ecosystem/",
+            "agents/skills_ecosystem/",
+            "model_zoo/models/",
+            "dataset_zoo/datasets/",
+            "dataset_zoo/datasets_hf/",
+        ],
+        "env",
+    )
 
     generator = LLMSTxtGenerator(app)
     app.connect("env-updated", generator.collect_toctree_entries)
     app.connect("build-finished", generator.generate_llms_txt_file)
+    app.connect("build-finished", generator.generate_llms_full_txt_file)
 
     return {"version": "0.1", "parallel_read_safe": True}

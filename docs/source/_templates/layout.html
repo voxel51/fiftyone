@@ -1,5 +1,16 @@
 {% extends "!layout.html" %} {% block extrahead %}
+<link rel="alternate" type="text/markdown" href="{{ markdown_url }}" />
+{% if not has_meta_description %}
+<meta name="description" content="{{ meta_description }}" />
+{% endif %}
+<meta property="og:title" content="{{ title }}" />
+<meta property="og:description" content="{{ meta_description }}" />
+<meta property="og:url" content="{{ pageurl }}" />
+<meta property="og:type" content="article" />
 <meta property="og:image" content="{{og_image}}" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ title }}" />
+<meta name="twitter:description" content="{{ meta_description }}" />
 
 <!-- Preload webfonts so text renders in Geist at first paint -->
 <link rel="preload" href="{{ pathto('_static/fonts/geist-v3-latin-regular.woff2', 1) }}" as="font" type="font/woff2" crossorigin />
