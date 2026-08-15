@@ -8,6 +8,7 @@ Unit tests for operators/decorators.
 import asyncio
 import os
 import shutil
+import signal
 import tempfile
 import unittest
 import time
@@ -16,6 +17,7 @@ from unittest.mock import patch
 from fiftyone.operators.decorators import (
     coroutine_timeout,
     dir_state,
+    timeout,
 )
 
 
@@ -148,3 +150,35 @@ class TestCoroutineTimeoutDecorator(unittest.TestCase):
         decorated_function = coroutine_timeout(0.2)(non_coroutine_fn)
         with self.assertRaises(TypeError):
             asyncio.run(decorated_function())
+
+
+class TestTimeoutContextManager(unittest.TestCase):
+    def test_prior_sigalrm_handler_is_restored_and_no_alarm_is_pending(self):
+        # The context manager must hand the process back exactly as it found
+        # it; installing SIG_IGN on exit would silently disarm every other
+        # SIGALRM-based timeout in the process.
+        def sentinel_handler(signum, frame):
+            pass
+
+        prev_handler = signal.signal(signal.SIGALRM, sentinel_handler)
+        try:
+            with timeout(60):
+                pass
+
+            self.assertIs(signal.getsignal(signal.SIGALRM), sentinel_handler)
+            self.assertEqual(signal.alarm(0), 0)
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, prev_handler)
+
+    def test_a_body_that_outlives_the_deadline_raises_timeout_error(self):
+        prev_handler = signal.getsignal(signal.SIGALRM)
+        try:
+            with self.assertRaises(TimeoutError):
+                with timeout(1):
+                    time.sleep(2)
+
+            self.assertIs(signal.getsignal(signal.SIGALRM), prev_handler)
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, prev_handler)
