@@ -152,6 +152,14 @@ export class ModalPom {
     await this.locator.getByTestId("select-sample-checkbox").click();
   }
 
+  async selectMediaField(field: string) {
+    const radio = this.page.getByTestId(`radio-button-${field}`);
+    if (!(await radio.isVisible())) {
+      await this.toggleDisplayOptionsButton.click();
+    }
+    await radio.click();
+  }
+
   async navigateSample(
     direction: "forward" | "backward",
     allowErrorInfo = false,

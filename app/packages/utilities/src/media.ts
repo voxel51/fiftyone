@@ -1,4 +1,5 @@
 import { PathType, determinePathType, getBasename } from "./paths";
+import mime from "mime";
 
 export const MEDIA_TYPE_IMAGE = "image";
 export const MEDIA_TYPE_VIDEO = "video";
@@ -140,6 +141,34 @@ export const getSamplePathExtension = (
   }
 
   return null;
+};
+
+type MimeSample = {
+  filepath: string;
+  metadata?: { mime_type?: string } | null;
+};
+
+/**
+ * Returns the MIME type for a sample or an explicitly selected media path.
+ *
+ * Sample metadata describes the root ``filepath`` only, so alternate media
+ * paths are inferred independently from their normalized extension.
+ */
+export const getMimeType = (
+  sample: MimeSample,
+  selectedMediaPath?: string | null,
+): string | null => {
+  if (selectedMediaPath != null) {
+    const extension = getSamplePathExtension(selectedMediaPath);
+    return extension ? (mime.getType(extension) ?? null) : null;
+  }
+
+  if (sample.metadata?.mime_type) {
+    return sample.metadata.mime_type;
+  }
+
+  const extension = getSamplePathExtension(sample.filepath);
+  return extension ? (mime.getType(extension) ?? null) : null;
 };
 
 /**
