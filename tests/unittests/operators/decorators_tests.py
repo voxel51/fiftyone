@@ -153,58 +153,71 @@ class TestCoroutineTimeoutDecorator(unittest.TestCase):
 
 
 class TestTimeoutContextManager(unittest.TestCase):
-    def test_prior_sigalrm_handler_is_restored_and_no_alarm_is_pending(self):
+    # Every test disarms the shared ITIMER_REAL timer and restores the
+    # handler it found, so no test can leak an armed timer into another
+    def setUp(self):
+        self._prev_handler = signal.getsignal(signal.SIGALRM)
+
+    def tearDown(self):
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, self._prev_handler)
+
+    def test_prior_sigalrm_handler_is_restored_and_no_timer_is_pending(self):
         # The context manager must hand the process back exactly as it found
         # it; installing SIG_IGN on exit would silently disarm every other
         # SIGALRM-based timeout in the process.
         def sentinel_handler(signum, frame):
             pass
 
-        prev_handler = signal.signal(signal.SIGALRM, sentinel_handler)
-        try:
-            with timeout(60):
-                pass
+        signal.signal(signal.SIGALRM, sentinel_handler)
 
-            self.assertIs(signal.getsignal(signal.SIGALRM), sentinel_handler)
-            self.assertEqual(signal.alarm(0), 0)
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, prev_handler)
+        with timeout(60):
+            pass
 
-    def test_a_pending_outer_alarm_is_rearmed_on_exit(self):
+        self.assertIs(signal.getsignal(signal.SIGALRM), sentinel_handler)
+        self.assertEqual(signal.setitimer(signal.ITIMER_REAL, 0), (0.0, 0.0))
+
+    def test_a_pending_outer_timer_is_rearmed_on_exit(self):
         # A nested timeout() must not permanently cancel an enclosing
         # SIGALRM-based timer; the outer deadline resumes once the inner
         # scope exits.
-        prev_handler = signal.getsignal(signal.SIGALRM)
-        try:
-            signal.signal(signal.SIGALRM, lambda signum, frame: None)
-            signal.alarm(60)
+        signal.signal(signal.SIGALRM, lambda signum, frame: None)
+        signal.setitimer(signal.ITIMER_REAL, 60)
 
-            with timeout(5):
-                pass
+        with timeout(5):
+            pass
 
-            rearmed = signal.alarm(0)
-            self.assertGreaterEqual(rearmed, 59)
-            self.assertLessEqual(rearmed, 60)
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, prev_handler)
+        delay, interval = signal.setitimer(signal.ITIMER_REAL, 0)
+        self.assertGreater(delay, 55)
+        self.assertLessEqual(delay, 60)
+        self.assertEqual(interval, 0)
 
-    def test_an_outer_deadline_that_lapses_inside_still_rearms(self):
+    def test_a_repeating_outer_timer_keeps_its_interval(self):
+        # A periodic ITIMER_REAL timer carries a repeat interval that
+        # alarm() cannot see; the context manager must restore both values.
+        signal.signal(signal.SIGALRM, lambda signum, frame: None)
+        signal.setitimer(signal.ITIMER_REAL, 60, 5)
+
+        with timeout(1):
+            pass
+
+        delay, interval = signal.setitimer(signal.ITIMER_REAL, 0)
+        self.assertGreater(delay, 55)
+        self.assertLessEqual(delay, 60)
+        self.assertEqual(interval, 5.0)
+
+    def test_an_outer_deadline_that_lapses_inside_fires_after_exit(self):
         # The outer timer wanted to fire while it was displaced; it must be
         # re-armed to fire as soon as possible, never cancelled outright.
-        prev_handler = signal.getsignal(signal.SIGALRM)
-        try:
-            signal.signal(signal.SIGALRM, lambda signum, frame: None)
-            signal.alarm(1)
+        fired = []
+        signal.signal(signal.SIGALRM, lambda signum, frame: fired.append(1))
+        signal.setitimer(signal.ITIMER_REAL, 0.2)
 
-            with timeout(5):
-                time.sleep(1.2)
+        with timeout(5):
+            time.sleep(0.4)
 
-            self.assertEqual(signal.alarm(0), 1)
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, prev_handler)
+        time.sleep(0.05)
+        self.assertTrue(fired)
 
     def test_a_body_that_outlives_the_deadline_raises_timeout_error(self):
         prev_handler = signal.getsignal(signal.SIGALRM)

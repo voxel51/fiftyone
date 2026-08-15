@@ -4,6 +4,12 @@ vi.mock("recoil-relay");
 vi.mock("../recoil/atoms", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../recoil/atoms")>()),
   clearExtendedSelectionMirror: vi.fn(),
+  // Distinct sentinels: with recoil auto-mocked the real atoms evaluate to
+  // undefined, and both reset assertions below would match one call
+  extendedSelection: { key: "extendedSelection" } as never,
+  extendedSelectionOverrideStage: {
+    key: "extendedSelectionOverrideStage",
+  } as never,
 }));
 
 import {
@@ -26,6 +32,7 @@ describe("resetExtendedSelectionTransaction", () => {
       unregister();
     }
 
+    expect(cb.reset).toHaveBeenCalledTimes(2);
     expect(cb.reset).toHaveBeenCalledWith(extendedSelection);
     expect(cb.reset).toHaveBeenCalledWith(extendedSelectionOverrideStage);
     // A transaction reset never fires the atoms' onSet effects, so unless

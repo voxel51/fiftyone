@@ -10,7 +10,6 @@ import asyncio
 from cachetools.keys import hashkey
 from contextlib import contextmanager
 from functools import wraps
-import math
 import signal
 import os
 import time
@@ -56,21 +55,26 @@ def timeout(seconds: int):
     signal.signal(
         signal.SIGALRM, lambda signum, frame: raise_timeout_error(seconds)
     )
-    # Arming our alarm displaces any pending outer timer; its remaining
-    # deadline is captured here and re-armed on exit
-    prior_remaining = signal.alarm(seconds)
+    # Arming our deadline displaces any outer ITIMER_REAL timer; setitimer
+    # is used over alarm() because it returns BOTH the outer timer's
+    # remaining delay and its repeat interval, so a periodic timer survives.
+    prior_delay, prior_interval = signal.setitimer(signal.ITIMER_REAL, seconds)
     start = time.monotonic()
 
     try:
         yield
     finally:
-        signal.alarm(0)
+        signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, prev_handler)
-        if prior_remaining:
+        if prior_delay:
             elapsed = time.monotonic() - start
-            # Never 0 (that would cancel instead); an already-lapsed outer
-            # deadline fires as soon as possible
-            signal.alarm(max(1, math.ceil(prior_remaining - elapsed)))
+            # Never 0 (that would disarm); an already-lapsed outer deadline
+            # fires as soon as possible, keeping its repeat interval
+            signal.setitimer(
+                signal.ITIMER_REAL,
+                max(prior_delay - elapsed, 1e-6),
+                prior_interval,
+            )
 
 
 def raise_timeout_error(seconds):
