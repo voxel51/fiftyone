@@ -10,6 +10,10 @@ from types import SimpleNamespace
 
 import pytest
 
+# Importing fiftyone.utils.transformers runs ensure_package("transformers")
+# at module scope, so the whole module must skip where it is not installed.
+transformers = pytest.importorskip("transformers")
+
 from fiftyone.utils.transformers import FiftyOneTransformer
 
 
