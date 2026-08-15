@@ -40,6 +40,17 @@ def coroutine_timeout(seconds):
 
 @contextmanager
 def timeout(seconds: int):
+    """Context manager that raises a ``TimeoutError`` if its body runs for
+    longer than the given number of seconds.
+
+    Must be entered from the main thread of the main interpreter, because it
+    installs a ``SIGALRM`` handler and ``signal.signal()`` raises a
+    ``ValueError`` in any other thread.
+
+    Args:
+        seconds: the timeout, in seconds
+    """
+    prev_handler = signal.getsignal(signal.SIGALRM)
     signal.signal(
         signal.SIGALRM, lambda signum, frame: raise_timeout_error(seconds)
     )
@@ -48,7 +59,8 @@ def timeout(seconds: int):
     try:
         yield
     finally:
-        signal.signal(signal.SIGALRM, signal.SIG_IGN)
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, prev_handler)
 
 
 def raise_timeout_error(seconds):
