@@ -737,6 +737,7 @@ function HeaderActions({
 function DelayedTransitionStatus({ active }: { readonly active: boolean }) {
   const [visible, setVisible] = useState(false);
 
+  // This effect delays transition copy so fast sample swaps stay quiet.
   useEffect(() => {
     if (!active) {
       setVisible(false);
