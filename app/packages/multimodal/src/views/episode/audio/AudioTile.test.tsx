@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   pcmResult: {
     waveformPeaks: null as unknown,
     hasAudio: false,
-    decodeStatus: "idle" as string,
+    status: "idle" as string,
   },
 }));
 
@@ -56,7 +56,7 @@ describe("AudioTile", () => {
     cleanup();
     vi.clearAllMocks();
     mocks.sources = [];
-    mocks.pcmResult = { waveformPeaks: null, hasAudio: false, decodeStatus: "idle" };
+    mocks.pcmResult = { waveformPeaks: null, hasAudio: false, status: "idle" };
   });
 
   it("sets the tile title", () => {
@@ -81,7 +81,9 @@ describe("AudioTile", () => {
   it("labels the waveform from a real source when one is available, without registering a placeholder", () => {
     mocks.sources = [{ id: "topic-1", label: "Mic 1", type: "audio" }];
     render(<AudioTile />);
-    const metadata = screen.getByTestId("audio-tile").querySelector(".metadata");
+    const metadata = screen
+      .getByTestId("audio-tile")
+      .querySelector(".metadata");
     expect(within(metadata as HTMLElement).getByText("Mic 1")).toBeTruthy();
     expect(screen.queryByText(/placeholder/i)).toBeNull();
     expect(mocks.registerAudioTrack).not.toHaveBeenCalled();
@@ -89,14 +91,22 @@ describe("AudioTile", () => {
 
   it("shows a decoding status while a real source's PCM hasn't resolved yet", () => {
     mocks.sources = [{ id: "topic-1", label: "Mic 1", type: "audio" }];
-    mocks.pcmResult = { waveformPeaks: null, hasAudio: false, decodeStatus: "loading" };
+    mocks.pcmResult = {
+      waveformPeaks: null,
+      hasAudio: false,
+      status: "loading",
+    };
     render(<AudioTile />);
     expect(screen.getByText("Decoding…")).toBeTruthy();
   });
 
   it("shows an unsupported-codec status when the browser cannot decode it", () => {
     mocks.sources = [{ id: "topic-1", label: "Mic 1", type: "audio" }];
-    mocks.pcmResult = { waveformPeaks: null, hasAudio: true, decodeStatus: "unsupported" };
+    mocks.pcmResult = {
+      waveformPeaks: null,
+      hasAudio: true,
+      status: "unsupported",
+    };
     render(<AudioTile />);
     expect(
       screen.getByText("Audio codec not supported by this browser"),
@@ -105,8 +115,12 @@ describe("AudioTile", () => {
 
   it("uses the real decoded peaks once ready, instead of the synthetic placeholder", () => {
     mocks.sources = [{ id: "topic-1", label: "Mic 1", type: "audio" }];
-    const realPeaks = { levels: [], samplesPerPeak: 1, sampleRate: 1 };
-    mocks.pcmResult = { waveformPeaks: realPeaks, hasAudio: true, decodeStatus: "ready" };
+    const realPeaks = [{ levels: [], samplesPerPeak: 1, sampleRate: 1 }];
+    mocks.pcmResult = {
+      waveformPeaks: realPeaks,
+      hasAudio: true,
+      status: "ready",
+    };
     render(<AudioTile />);
     expect(screen.getByText("Ready")).toBeTruthy();
   });
