@@ -25,8 +25,8 @@ const tileTitleHighlightedAtom = atomFamily((_tileId: string) => atom(false));
 // because the bare `null` initial value matches the read-fn overload
 // first (same quirk documented in @fiftyone/playback's atoms.ts). The
 // cast preserves the writable shape so `useSetAtom` type-checks.
-const tileHeaderExtraAtom = atomFamily((_tileId: string) =>
-  atom<ReactNode>(null) as PrimitiveAtom<ReactNode>,
+const tileHeaderExtraAtom = atomFamily(
+  (_tileId: string) => atom<ReactNode>(null) as PrimitiveAtom<ReactNode>,
 );
 
 export function useTileSelection<T = unknown>(): T | null {
