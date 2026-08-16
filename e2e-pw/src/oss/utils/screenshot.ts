@@ -54,3 +54,62 @@ export const getLocatorDominantColorShare = async (
   }
   return sampled === 0 ? 0 : matches / sampled;
 };
+
+/** Pixel count and bounding-box span that differ from a captured baseline. */
+export interface LocatorScreenshotDifference {
+  readonly changedPixels: number;
+  readonly height: number;
+  readonly width: number;
+}
+
+/**
+ * Measures changed pixels and their spatial extent. This is useful for canvas
+ * regressions where DOM point counts cannot prove that geometry was drawn or
+ * that it did not collapse into one small clump.
+ */
+export const getLocatorScreenshotDifference = async (
+  locator: Locator,
+  baseline: Buffer,
+  channelTolerance = 8,
+): Promise<LocatorScreenshotDifference> => {
+  const [expectedImage, actualImage] = await Promise.all([
+    Jimp.read(baseline),
+    Jimp.read(await locator.screenshot()),
+  ]);
+  expect(actualImage.bitmap.width).toBe(expectedImage.bitmap.width);
+  expect(actualImage.bitmap.height).toBe(expectedImage.bitmap.height);
+
+  let changedPixels = 0;
+  let minX = actualImage.bitmap.width;
+  let minY = actualImage.bitmap.height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < actualImage.bitmap.height; y++) {
+    for (let x = 0; x < actualImage.bitmap.width; x++) {
+      const offset = (y * actualImage.bitmap.width + x) * 4;
+      let changed = false;
+      for (let channel = 0; channel < 4; channel++) {
+        if (
+          Math.abs(
+            actualImage.bitmap.data[offset + channel] -
+              expectedImage.bitmap.data[offset + channel],
+          ) > channelTolerance
+        ) {
+          changed = true;
+          break;
+        }
+      }
+      if (!changed) continue;
+      changedPixels += 1;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  return {
+    changedPixels,
+    height: maxY >= minY ? maxY - minY + 1 : 0,
+    width: maxX >= minX ? maxX - minX + 1 : 0,
+  };
+};
