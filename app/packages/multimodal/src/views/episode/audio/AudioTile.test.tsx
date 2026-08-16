@@ -32,8 +32,8 @@ vi.mock("../../../scene-inventory/react", () => ({
   useSceneSourcesByType: () => mocks.sources,
 }));
 
-vi.mock("../../../adapters/mcap/resource-client/use-pcm-audio-stream", () => ({
-  usePCMAudioStream: () => mocks.pcmResult,
+vi.mock("./use-mcap-audio-stream", () => ({
+  useMcapAudioStream: () => mocks.pcmResult,
 }));
 
 // AudioTile renders the waveform through `WaveformSurface` (canvas +

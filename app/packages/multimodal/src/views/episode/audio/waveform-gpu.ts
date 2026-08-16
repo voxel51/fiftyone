@@ -13,7 +13,7 @@
 // absent — this module assumes a device is available.
 // ---------------------------------------------------------------------------
 
-import { chooseLod, type PeakPyramid } from "./peak-pyramid";
+import { chooseLod, type PeakPyramid } from "../../../audio/peak-pyramid";
 
 const SHADER_SOURCE = /* wgsl */ `
 struct RowUniforms {
@@ -166,7 +166,10 @@ export class WaveformRenderer {
           {
             format,
             blend: {
-              color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha" },
+              color: {
+                srcFactor: "src-alpha",
+                dstFactor: "one-minus-src-alpha",
+              },
               alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
             },
           },
@@ -197,7 +200,10 @@ export class WaveformRenderer {
     return new WaveformRenderer(device, context, format);
   }
 
-  private texturesFor(trackId: string, pyramid: PeakPyramid): readonly GPUTexture[] {
+  private texturesFor(
+    trackId: string,
+    pyramid: PeakPyramid,
+  ): readonly GPUTexture[] {
     const cached = this.textureCache.get(trackId);
     if (cached && cached.pyramid === pyramid) {
       return cached.textures;

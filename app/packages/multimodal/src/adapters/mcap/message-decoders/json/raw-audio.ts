@@ -3,7 +3,12 @@ import { errorMessage } from "../../../../utils/errors";
 // Context-only timing helper; nothing protobuf-specific despite its home.
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { rawAudioOutput } from "../foxglove/raw-audio";
-import { base64ToBytes, decodeJsonRecord, finiteNumberField, recordField } from "./decode";
+import {
+  base64ToBytes,
+  decodeJsonRecord,
+  finiteNumberField,
+  recordField,
+} from "./decode";
 import { JSON_FOXGLOVE_RAW_AUDIO_PAYLOAD } from "./payloads";
 
 /**

@@ -21,7 +21,9 @@ const AUDIO_FORMATS = Object.freeze({
 
 export type SupportedAudioFormat = keyof typeof AUDIO_FORMATS;
 
-export function audioCodecFromFormat(format: string): SupportedAudioFormat | null {
+export function audioCodecFromFormat(
+  format: string,
+): SupportedAudioFormat | null {
   const normalized = format.trim().toLowerCase();
   for (const [codec, definition] of Object.entries(AUDIO_FORMATS) as Array<
     [SupportedAudioFormat, (typeof AUDIO_FORMATS)[SupportedAudioFormat]]
@@ -42,7 +44,10 @@ export function audioFormatLabel(format: SupportedAudioFormat): string {
   return AUDIO_FORMATS[format].label;
 }
 
-export function unsupportedAudioFormatReason(source: string, format: string): string {
+export function unsupportedAudioFormatReason(
+  source: string,
+  format: string,
+): string {
   const trimmed = format.trim();
   return trimmed
     ? `${source} format '${trimmed}' is unsupported`

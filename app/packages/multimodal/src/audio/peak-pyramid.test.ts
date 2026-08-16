@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildPeakPyramid,
-  chooseLod,
-  synthesizePeaks,
-} from "./peak-pyramid";
+import { buildPeakPyramid, chooseLod, synthesizePeaks } from "./peak-pyramid";
 
 describe("buildPeakPyramid", () => {
   it("summarizes samples into min/max buckets at the finest level", () => {

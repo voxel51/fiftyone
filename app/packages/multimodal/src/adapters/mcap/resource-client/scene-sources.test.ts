@@ -142,7 +142,12 @@ describe("mcapSceneSources", () => {
   it("classifies Foxglove RawAudio/CompressedAudio topics (protobuf + CDR) as AUDIO", () => {
     const sources = mcapSceneSources([
       createTopic("/mic/raw", "foxglove.RawAudio"),
-      createTopic("/mic/raw_cdr", "foxglove_msgs/msg/RawAudio", "cdr", "ros2msg"),
+      createTopic(
+        "/mic/raw_cdr",
+        "foxglove_msgs/msg/RawAudio",
+        "cdr",
+        "ros2msg",
+      ),
       createTopic("/mic/compressed", "foxglove.CompressedAudio"),
       createTopic(
         "/mic/compressed_cdr",

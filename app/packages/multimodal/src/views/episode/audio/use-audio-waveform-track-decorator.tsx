@@ -16,7 +16,7 @@
 import { useAudio } from "@fiftyone/playback";
 import type { Track, TimelineTrackProps } from "@fiftyone/playback";
 import { useCallback } from "react";
-import type { PeakPyramid } from "./peak-pyramid";
+import type { PeakPyramid } from "../../../audio/peak-pyramid";
 import WaveformViewer from "./WaveformViewer";
 
 /**
@@ -26,7 +26,7 @@ import WaveformViewer from "./WaveformViewer";
  * left untouched (`decorateTrack` returning `{}` is a no-op merge).
  *
  * `peaksByTrackId` supplies real decoded waveform data per track id (e.g.
- * from `usePCMAudioStream(...).waveformPeaks`) — a track with no entry
+ * from `useMcapAudioStream(...).waveformPeaks`) — a track with no entry
  * yet (still decoding, or Phase 2 not wired for that source) renders no
  * lane override, i.e. behaves like a normal track until data arrives.
  */

@@ -104,7 +104,12 @@ export type ImageVisualization =
  */
 export interface RawAudioVisualization {
   readonly kind: typeof VISUALIZATION_KIND.RAW_AUDIO;
-  readonly samples: Int8Array | Uint8Array | Int16Array | Int32Array | Float32Array;
+  readonly samples:
+    | Int8Array
+    | Uint8Array
+    | Int16Array
+    | Int32Array
+    | Float32Array;
   readonly sampleRate: number;
   readonly channels: number;
   readonly timestampNs?: bigint;

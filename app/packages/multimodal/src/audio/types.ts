@@ -36,8 +36,16 @@ export type AudioLoadFailure =
  * collapsed into `null`.
  */
 export type AudioLoadResult =
-  | { readonly ok: true; readonly data: PcmAudioData; readonly metadata?: AudioMetadata }
-  | { readonly ok: false; readonly reason: AudioLoadFailure; readonly detail?: string };
+  | {
+      readonly ok: true;
+      readonly data: PcmAudioData;
+      readonly metadata?: AudioMetadata;
+    }
+  | {
+      readonly ok: false;
+      readonly reason: AudioLoadFailure;
+      readonly detail?: string;
+    };
 
 /**
  * Descriptive facts about an audio source, surfaced in the settings
