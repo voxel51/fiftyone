@@ -22,6 +22,7 @@ vi.mock("./WaveformViewer", () => ({
   ),
 }));
 
+import { useAudioMuteTrackDecorator } from "./use-audio-mute-track-decorator";
 import { useAudioWaveformTrackDecorator } from "./use-audio-waveform-track-decorator";
 
 describe("useAudioWaveformTrackDecorator", () => {
@@ -68,5 +69,44 @@ describe("useAudioWaveformTrackDecorator", () => {
 
     render(<>{decoration.laneOverride}</>);
     expect(screen.getByTestId("stub-waveform-viewer").textContent).toBe("Mic");
+  });
+});
+
+describe("useAudioMuteTrackDecorator", () => {
+  it("swaps the pin button for a mute toggle on matching rows only", () => {
+    const setMuted = vi.fn();
+    mocks.tracks = [
+      { id: "a", label: "A", muted: false, setMuted },
+    ] as unknown as typeof mocks.tracks;
+
+    const { result } = renderHook(() => useAudioMuteTrackDecorator());
+    const decorated = result.current(
+      { id: "a", label: "A", color: "#fff", events: [] },
+      false,
+    );
+    expect(decorated.muted).toBe(false);
+    decorated.onMuteClick?.();
+    expect(setMuted).toHaveBeenCalledWith(true);
+
+    // A row with no matching audio track keeps its pin button.
+    expect(
+      result.current(
+        { id: "other", label: "O", color: "#fff", events: [] },
+        false,
+      ),
+    ).toEqual({});
+  });
+
+  it("adds no lane override, unlike the waveform decorator", () => {
+    mocks.tracks = [
+      { id: "a", label: "A", muted: true, setMuted: vi.fn() },
+    ] as unknown as typeof mocks.tracks;
+    const { result } = renderHook(() => useAudioMuteTrackDecorator());
+    const decorated = result.current(
+      { id: "a", label: "A", color: "#fff", events: [] },
+      false,
+    );
+    expect(decorated.laneOverride).toBeUndefined();
+    expect(decorated.muted).toBe(true);
   });
 });

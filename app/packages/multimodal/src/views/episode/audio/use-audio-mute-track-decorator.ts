@@ -10,6 +10,7 @@
 import { useAudio } from "@fiftyone/playback";
 import type { Track, TimelineTrackProps } from "@fiftyone/playback";
 import { useCallback } from "react";
+import { muteDecoration } from "./mute-decoration";
 
 /**
  * Returns a `decorateTrack` function that swaps the pin button for a mute
@@ -25,13 +26,7 @@ export function useAudioMuteTrackDecorator(): (
   return useCallback(
     (track: Track): Partial<TimelineTrackProps> => {
       const audioTrack = tracks.find((candidate) => candidate.id === track.id);
-      if (!audioTrack) {
-        return {};
-      }
-      return {
-        muted: audioTrack.muted,
-        onMuteClick: () => audioTrack.setMuted(!audioTrack.muted),
-      };
+      return audioTrack ? muteDecoration(audioTrack) : {};
     },
     [tracks],
   );
