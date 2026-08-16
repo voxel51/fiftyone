@@ -7,6 +7,7 @@ import {
   getTrackMuted,
   getTrackVolume,
   registerAudioTrack,
+  setTrackVolume,
 } from "../../lib/playback/store-access";
 import type { PlaybackStore } from "../../lib/playback/types";
 import MixedAudioDropdown from "./MixedAudioDropdown";
@@ -63,23 +64,39 @@ describe("MixedAudioDropdown", () => {
     expect(screen.getByText("Track B")).toBeTruthy();
   });
 
-  it("writes each row's controls to that track's own atoms only — no cross-track bleed", () => {
+  it("writes each row's mute to that track's own atom only — no cross-track bleed", () => {
     renderDropdown([
       { id: "a", label: "Track A" },
       { id: "b", label: "Track B" },
     ]);
     fireEvent.click(screen.getByTestId("timeline-controls-mixed"));
 
-    const volumeA = screen.getByTestId("timeline-mixed-track-a-volume");
-    fireEvent.change(volumeA, { target: { value: "0.25" } });
-
-    expect(getTrackVolume(store as PlaybackStore, "a")).toBeCloseTo(0.25);
-    // Track B's own fader (default unity) is untouched by A's slider.
-    expect(getTrackVolume(store as PlaybackStore, "b")).toBe(1);
-
-    const muteB = screen.getByTestId("timeline-mixed-track-b-mute");
-    fireEvent.click(muteB);
+    fireEvent.click(screen.getByTestId("timeline-mixed-track-b-mute"));
     expect(getTrackMuted(store as PlaybackStore, "b")).toBe(true);
     expect(getTrackMuted(store as PlaybackStore, "a")).toBe(false);
+
+    fireEvent.click(screen.getByTestId("timeline-mixed-track-a-mute"));
+    expect(getTrackMuted(store as PlaybackStore, "a")).toBe(true);
+    expect(getTrackMuted(store as PlaybackStore, "b")).toBe(true);
+  });
+
+  it("renders each track's own volume, not a shared one", () => {
+    // Drives the atoms directly rather than the slider: voodo's
+    // `SingleValueSlider` puts our `data-testid` on a wrapper element, not
+    // on an input with a value setter, so `fireEvent.change` cannot reach
+    // it. What matters here is that each row is bound to its OWN track's
+    // state, which the rendered readouts show.
+    renderDropdown([
+      { id: "a", label: "Track A" },
+      { id: "b", label: "Track B" },
+    ]);
+    fireEvent.click(screen.getByTestId("timeline-controls-mixed"));
+
+    setTrackVolume(store as PlaybackStore, "a", 0.25);
+
+    expect(getTrackVolume(store as PlaybackStore, "a")).toBeCloseTo(0.25);
+    expect(getTrackVolume(store as PlaybackStore, "b")).toBe(1);
+    expect(screen.getByText("25%")).toBeTruthy();
+    expect(screen.getByText("100%")).toBeTruthy();
   });
 });
