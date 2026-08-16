@@ -65,19 +65,25 @@ export interface LocatorScreenshotDifference {
 /**
  * Measures changed pixels and their spatial extent. This is useful for canvas
  * regressions where DOM point counts cannot prove that geometry was drawn or
- * that it did not collapse into one small clump.
+ * that it did not collapse into one small clump. Returns null while the
+ * locator and baseline dimensions differ so polling callers can retry a
+ * transient resize without treating it as visual evidence.
  */
 export const getLocatorScreenshotDifference = async (
   locator: Locator,
   baseline: Buffer,
   channelTolerance = 8,
-): Promise<LocatorScreenshotDifference> => {
+): Promise<LocatorScreenshotDifference | null> => {
   const [expectedImage, actualImage] = await Promise.all([
     Jimp.read(baseline),
     Jimp.read(await locator.screenshot()),
   ]);
-  expect(actualImage.bitmap.width).toBe(expectedImage.bitmap.width);
-  expect(actualImage.bitmap.height).toBe(expectedImage.bitmap.height);
+  if (
+    actualImage.bitmap.width !== expectedImage.bitmap.width ||
+    actualImage.bitmap.height !== expectedImage.bitmap.height
+  ) {
+    return null;
+  }
 
   let changedPixels = 0;
   let minX = actualImage.bitmap.width;

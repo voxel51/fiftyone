@@ -272,6 +272,10 @@ export function WebGpuCanvas({
 
   // This effect disposes the graphics renderer and clears lifecycle refs on unmount.
   useEffect(() => {
+    // React StrictMode replays effects without recreating refs. Restore the
+    // mounted state so async renderer initialization from the replayed mount
+    // remains eligible to publish its runtime.
+    mountedRef.current = true;
     // The map instance is created once per component and never replaced,
     // so capturing it here keeps the cleanup read stable.
     const registrations = registrationsRef.current;

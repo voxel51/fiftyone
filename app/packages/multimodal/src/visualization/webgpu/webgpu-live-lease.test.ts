@@ -23,7 +23,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** Registers `count` fake devices so the page sits at that live total. */
+/** Reserves `count` possible WebGPU devices while fake renderers initialize. */
 function fillDeviceRegistry(count: number) {
   return Array.from({ length: count }, () =>
     registerGraphicsRenderer("modal-3d"),

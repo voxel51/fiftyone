@@ -111,6 +111,7 @@ describe("GPU pointcloud projection resources", () => {
     );
     const firstVersion = firstCamera.version;
     expect(Array.from(firstCamera.array.slice(0, 3))).toEqual([1, 0, 0]);
+    expect(firstCamera.updateRanges).toEqual([{ count: 3, start: 0 }]);
 
     const secondCamera = prepareWebGlPointCloudProjectionColorAttribute(
       resource,
@@ -121,6 +122,10 @@ describe("GPU pointcloud projection resources", () => {
     expect(secondCamera.version).toBe(firstVersion + 1);
     expect(Array.from(secondCamera.array.slice(0, 6))).toEqual([
       1, 0, 0, 0, 1, 0,
+    ]);
+    expect(secondCamera.updateRanges).toEqual([
+      { count: 3, start: 0 },
+      { count: 3, start: 3 },
     ]);
     expect(resource.geometry.getAttribute("projectionWebGlColor")).toBe(
       secondCamera,

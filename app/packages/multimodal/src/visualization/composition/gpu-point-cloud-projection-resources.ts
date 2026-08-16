@@ -148,7 +148,9 @@ export function prepareWebGlPointCloudProjectionColorAttribute(
     );
   }
   if (targetCount > firstSample) {
-    internal.webGlColorAttribute.clearUpdateRanges();
+    // Camera views can expand different prefixes before Three uploads this
+    // shared attribute. Preserve every pending range; Three merges and clears
+    // them after the upload.
     internal.webGlColorAttribute.addUpdateRange(
       firstSample * POINT_COMPONENT_COUNT,
       (targetCount - firstSample) * POINT_COMPONENT_COUNT,

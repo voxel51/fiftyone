@@ -504,11 +504,12 @@ function PointCloudPoints({
     const pickLayer = pickLayerRef.current;
     if (pickLayer) {
       pickLayer.renderedPointCount = data.renderedPointCount;
+      pickLayer.resourceKey = resourceKey ?? pickLayer.layerId;
       pickLayer.sampledPointCount = data.renderedPointCount;
       pickerRegistry?.notify();
     }
     invalidate();
-  }, [data, geometry, invalidate, pickerRegistry]);
+  }, [data, geometry, invalidate, pickerRegistry, resourceKey]);
 
   useLayoutEffect(() => {
     const object = pointsRef.current;
@@ -537,7 +538,7 @@ function PointCloudPoints({
     };
     // Frame data mutates the registered layer in the preceding layout effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geometry, layerId, pickerRegistry, resourceKey]);
+  }, [geometry, layerId, pickerRegistry]);
 
   // This effect disposes the GPU geometry when capacity grows or on unmount.
   useEffect(() => () => geometry.dispose(), [geometry]);

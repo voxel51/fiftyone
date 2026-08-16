@@ -32,6 +32,7 @@ export interface GraphicsSurfaceStats {
 
 /** Page-wide renderer lifecycle and backend diagnostics. */
 export interface GraphicsRendererStats {
+  /** Most recent init or loss error; retained until diagnostics are reset. */
   readonly lastError: string | null;
   readonly requestedBackend: GraphicsBackendRequest;
   readonly requestedPowerPreference: typeof GRAPHICS_POWER_PREFERENCE;

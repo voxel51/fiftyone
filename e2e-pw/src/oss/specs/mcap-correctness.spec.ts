@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { ConsoleMessage } from "@playwright/test";
 import { test as base, expect, Locator } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { McapExplorerPom } from "src/oss/poms/multimodal/mcap-explorer";
@@ -18,6 +19,7 @@ const alternateMediaDatasetName = getUniqueDatasetNameWithPrefix(
 );
 const fixtureDir = path.join(os.tmpdir(), datasetName);
 const originalMultimodalFlag = process.env.VFF_MULTIMODAL;
+const RENDERER_ERROR_PATTERN = /(?:webgpu|webgl|graphics renderer|gpu device)/i;
 const { long, sidebar, tinyA, tinyB, unsupported } = MCAP_FIXTURE_CONTRACT;
 const fixturePaths = {
   episodeA: path.join(fixtureDir, tinyA.fileName),
@@ -72,6 +74,7 @@ const test = base.extend<{
   graphicsBackend: "auto" | "webgl2";
   grid: GridPom;
   modal: ModalPom;
+  rendererErrors: string[];
   targetDatasetName: string;
 }>({
   explorer: async ({ page }, use) => {
@@ -85,6 +88,27 @@ const test = base.extend<{
   },
   modal: async ({ eventUtils, page }, use) => {
     await use(new ModalPom(page, eventUtils));
+  },
+  rendererErrors: async ({ page }, use) => {
+    const errors: string[] = [];
+    const recordConsoleError = (message: ConsoleMessage) => {
+      if (
+        message.type() === "error" &&
+        RENDERER_ERROR_PATTERN.test(message.text())
+      ) {
+        errors.push(message.text());
+      }
+    };
+    const recordPageError = (error: Error) => {
+      if (RENDERER_ERROR_PATTERN.test(error.message)) {
+        errors.push(error.message);
+      }
+    };
+    page.on("console", recordConsoleError);
+    page.on("pageerror", recordPageError);
+    await use(errors);
+    page.off("console", recordConsoleError);
+    page.off("pageerror", recordPageError);
   },
   targetDatasetName: datasetName,
 });
@@ -209,7 +233,14 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
   });
 
   test.beforeEach(
-    async ({ fiftyoneLoader, graphicsBackend, page, targetDatasetName }) => {
+    async ({
+      fiftyoneLoader,
+      graphicsBackend,
+      page,
+      rendererErrors,
+      targetDatasetName,
+    }) => {
+      rendererErrors.length = 0;
       await fiftyoneLoader.waitUntilGridVisible(page, targetDatasetName, {
         searchParams:
           graphicsBackend === "webgl2"
@@ -797,23 +828,8 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
       grid,
       modal,
       page,
+      rendererErrors,
     }) => {
-      const rendererErrors: string[] = [];
-      page.on("console", (message) => {
-        if (
-          message.type() === "error" &&
-          /(?:webgpu|webgl|graphics renderer|gpu device)/i.test(message.text())
-        ) {
-          rendererErrors.push(message.text());
-        }
-      });
-      page.on("pageerror", (error) => {
-        if (
-          /(?:webgpu|webgl|graphics renderer|gpu device)/i.test(error.message)
-        ) {
-          rendererErrors.push(error.message);
-        }
-      });
       expect(new URL(page.url()).searchParams.get("graphicsBackend")).toBe(
         "webgl2",
       );
@@ -1004,23 +1020,18 @@ async function expectPixelDifference(
           locator,
           baseline,
         );
-        return difference.changedPixels;
+        return {
+          changed:
+            difference !== null &&
+            difference.changedPixels >= minimumChangedPixels,
+          spanned:
+            difference !== null &&
+            Math.max(difference.width, difference.height) >= minimumSpan,
+        };
       },
       { timeout: 20_000 },
     )
-    .toBeGreaterThanOrEqual(minimumChangedPixels);
-  await expect
-    .poll(
-      async () => {
-        const difference = await getLocatorScreenshotDifference(
-          locator,
-          baseline,
-        );
-        return Math.max(difference.width, difference.height);
-      },
-      { timeout: 20_000 },
-    )
-    .toBeGreaterThanOrEqual(minimumSpan);
+    .toEqual({ changed: true, spanned: true });
 }
 
 async function expectStatsRow(

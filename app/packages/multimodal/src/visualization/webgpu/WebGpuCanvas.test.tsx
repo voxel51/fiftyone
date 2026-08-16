@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { forwardRef, useEffect, useRef } from "react";
+import { forwardRef, StrictMode, useEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WebGpuCanvas } from "./WebGpuCanvas";
@@ -125,6 +125,10 @@ vi.mock("@react-three/fiber", () => ({
     _ref: unknown,
   ) {
     const createdRef = useRef(false);
+    const glRef = useRef(gl);
+    const onCreatedRef = useRef(onCreated);
+    glRef.current = gl;
+    onCreatedRef.current = onCreated;
     // This effect emulates R3F Canvas construction: run the gl factory
     // once on mount, then surface the created root state.
     useEffect(() => {
@@ -132,12 +136,16 @@ vi.mock("@react-three/fiber", () => ({
         return;
       }
       createdRef.current = true;
-      if (gl) {
-        harness.glFactories.push(gl);
+      if (glRef.current) {
+        harness.glFactories.push(glRef.current);
       }
-      const renderer = gl?.(document.createElement("canvas"));
-      onCreated?.({ gl: renderer, invalidate: () => undefined });
-    }, [gl, onCreated]);
+      const renderer = glRef.current?.(document.createElement("canvas"));
+      onCreatedRef.current?.({ gl: renderer, invalidate: () => undefined });
+      return () => {
+        // R3F recreates its root renderer when StrictMode replays effects.
+        createdRef.current = false;
+      };
+    }, []);
 
     return (
       <div
@@ -218,6 +226,27 @@ describe("WebGpuCanvas device registration", () => {
       webGpuDevices: { live: 0, reserved: 0 },
     });
     expect(latestRenderer().disposeCalls).toBe(1);
+  });
+
+  it("accepts async initialization after StrictMode replays effects", async () => {
+    harness.initMode = "manual";
+    render(
+      <StrictMode>
+        <WebGpuCanvas surface="strict-surface">
+          <RuntimeSurface />
+        </WebGpuCanvas>
+      </StrictMode>,
+    );
+
+    expect(harness.pendingInits).toHaveLength(2);
+    for (const resolveInit of harness.pendingInits) {
+      resolveInit();
+    }
+
+    expect((await screen.findByTestId("runtime-surface")).textContent).toBe(
+      "strict-surface",
+    );
+    expect(latestRenderer().disposeCalls).toBe(0);
   });
 
   it("tags the default surface when none is provided", () => {
