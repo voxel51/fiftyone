@@ -22,6 +22,8 @@ export interface WebGlPointCloudProjectionPickLayer {
   readonly renderedPointCount: number;
   readonly resourceKey: string;
   readonly rotation: ProjectionRotation;
+  /** Full decoded frame bound for sampled source identities. */
+  readonly sourcePointCount: number;
   readonly translation: ProjectionTranslation;
 }
 
@@ -94,10 +96,7 @@ export function pickWebGlPointCloudProjection(
         continue;
       }
       const sourceIndex = payload.sourceIndices[sampleIndex];
-      if (
-        payload.sourcePointCount !== undefined &&
-        sourceIndex >= payload.sourcePointCount
-      ) {
+      if (sourceIndex >= layer.sourcePointCount) {
         continue;
       }
       const offset = sampleIndex * 3;

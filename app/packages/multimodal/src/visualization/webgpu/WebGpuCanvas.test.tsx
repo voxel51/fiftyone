@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { forwardRef, StrictMode, useEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -333,13 +333,12 @@ describe("WebGpuCanvas device registration", () => {
     });
     expect(latestRenderer().disposeCalls).toBe(1);
 
-    // Now the pending init resolves: the superseded-renderer guard
-    // disposes again, but the instance-keyed registration must not
-    // double-release.
+    // The late init resolution sees that ownership was already retired and
+    // must not dispose the same renderer again.
     for (const resolveInit of harness.pendingInits) {
       resolveInit();
     }
-    await waitFor(() => expect(latestRenderer().disposeCalls).toBe(2));
+    await waitFor(() => expect(latestRenderer().disposeCalls).toBe(1));
 
     expect(graphicsRendererStats()).toMatchObject({
       renderers: { created: 1, disposed: 1, live: 0 },
@@ -357,14 +356,16 @@ describe("WebGpuCanvas device registration", () => {
     const firstRenderer = latestRenderer();
 
     harness.initMode = "resolve";
-    harness.glFactories.at(-1)?.(document.createElement("canvas"));
+    act(() => {
+      harness.glFactories.at(-1)?.(document.createElement("canvas"));
+    });
     expect(firstRenderer.disposeCalls).toBe(1);
     await waitFor(() =>
       expect(graphicsRendererStats().webGpuDevices.live).toBe(1),
     );
     harness.pendingInitRejects.at(-1)?.(new Error("stale init failed"));
 
-    await waitFor(() => expect(firstRenderer.disposeCalls).toBe(2));
+    await waitFor(() => expect(firstRenderer.disposeCalls).toBe(1));
     expect(onError).not.toHaveBeenCalledWith("stale init failed");
     expect(graphicsRendererStats()).toMatchObject({
       lastError: null,
@@ -383,7 +384,9 @@ describe("WebGpuCanvas device registration", () => {
     const firstRenderer = latestRenderer();
 
     harness.initMode = "manual";
-    harness.glFactories.at(-1)?.(document.createElement("canvas"));
+    act(() => {
+      harness.glFactories.at(-1)?.(document.createElement("canvas"));
+    });
 
     await waitFor(() =>
       expect(screen.queryByTestId("runtime-surface")).toBeNull(),
@@ -492,7 +495,7 @@ describe("WebGpuCanvas device registration", () => {
     });
 
     harness.pendingInitRejects.at(-1)?.(new Error("late init rejection"));
-    await waitFor(() => expect(latestRenderer().disposeCalls).toBe(2));
+    await waitFor(() => expect(latestRenderer().disposeCalls).toBe(1));
     expect(graphicsRendererStats()).toMatchObject({
       lastError: "WebGPU device lost (unknown): device removed during init",
       renderers: { deviceLosses: 1, disposed: 1, initFailures: 0 },

@@ -62,6 +62,7 @@ import {
   type GraphicsRendererRegistration,
 } from "../../webgpu/graphics-renderer-registry";
 import {
+  disposeGraphicsRenderer,
   GRAPHICS_POWER_PREFERENCE,
   graphicsBackendForRenderer,
   requestedGraphicsBackend,
@@ -134,8 +135,20 @@ export interface WebGpuSnapshotRendererHandle {
 
 /** Injectable factory for the renderer handle. */
 export interface WebGpuSnapshotBackend {
-  createRenderer(): Promise<WebGpuSnapshotRendererHandle>;
+  createRenderer(
+    onDeviceLost: (info: unknown) => void,
+  ): Promise<WebGpuSnapshotRendererHandle>;
 }
+
+interface WebGpuDeviceLossInfo {
+  readonly api?: string;
+  readonly message?: string;
+  readonly reason?: string;
+}
+
+type RendererWithDeviceLoss = {
+  onDeviceLost?: (info: WebGpuDeviceLossInfo) => void;
+};
 
 /** Counters for tests and probes. */
 export interface WebGpuSnapshotRendererStats {
@@ -149,7 +162,7 @@ export interface WebGpuSnapshotRendererStats {
 }
 
 const realBackend: WebGpuSnapshotBackend = {
-  async createRenderer() {
+  async createRenderer(onDeviceLost) {
     // three/webgpu is imported lazily: its module scope touches WebGPU
     // globals (GPUShaderStage) that only exist in real browsers, and only
     // this real backend — never the jsdom fakes — needs it.
@@ -174,6 +187,23 @@ const realBackend: WebGpuSnapshotBackend = {
       stencil: false,
     };
     const renderer = new WebGPURenderer(rendererOptions);
+    let disposed = false;
+    const disposeOnce = () => {
+      if (disposed) return;
+      disposed = true;
+      disposeGraphicsRenderer(renderer);
+    };
+    const rendererWithDeviceLoss =
+      renderer as unknown as RendererWithDeviceLoss;
+    const defaultDeviceLoss =
+      rendererWithDeviceLoss.onDeviceLost?.bind(renderer);
+    rendererWithDeviceLoss.onDeviceLost = (info) => {
+      try {
+        defaultDeviceLoss?.(info);
+      } finally {
+        onDeviceLost(info);
+      }
+    };
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     try {
       await renderer.init();
@@ -181,9 +211,7 @@ const realBackend: WebGpuSnapshotBackend = {
 
       return {
         backend,
-        dispose() {
-          renderer.dispose();
-        },
+        dispose: disposeOnce,
         async renderAndCapture(scene, camera, width, height) {
           // setSize lives on the common Renderer base, which the resolved
           // types don't surface (same cast as WebGpuCanvas.tsx). Sizes are
@@ -200,7 +228,7 @@ const realBackend: WebGpuSnapshotBackend = {
         },
       };
     } catch (error) {
-      renderer.dispose();
+      disposeOnce();
       throw error;
     }
   },
@@ -349,11 +377,42 @@ function acquireRenderer(): Promise<WebGpuSnapshotRendererHandle> {
       backendRequest,
     );
     registration = currentRegistration;
+    let createdHandle: WebGpuSnapshotRendererHandle | null = null;
+    let lostBeforeHandle = false;
+    const handleDeviceLoss = (info: unknown) => {
+      if (
+        rendererPromise !== creation ||
+        registration !== currentRegistration
+      ) {
+        return;
+      }
+
+      // A lost device cannot render again. Clear the shared identity first so
+      // the next queued job acquires a fresh renderer, then retire the exact
+      // registration/handle that owned the device.
+      cancelLinger();
+      rendererPromise = null;
+      registration = null;
+      currentRegistration.markLost(info);
+      currentRegistration.release();
+      rendererDisposals += 1;
+      if (createdHandle) {
+        createdHandle.dispose();
+      } else {
+        lostBeforeHandle = true;
+      }
+    };
     // Normalize synchronous factory throws into the same rejection path as
     // asynchronous adapter/init failures so accounting and retries agree.
-    const creation = Promise.resolve().then(() =>
-      activeBackend.createRenderer(),
-    );
+    const creation = Promise.resolve()
+      .then(() => activeBackend.createRenderer(handleDeviceLoss))
+      .then((handle) => {
+        createdHandle = handle;
+        if (lostBeforeHandle) {
+          handle.dispose();
+        }
+        return handle;
+      });
     rendererPromise = creation;
     creation.then(
       (handle) => {

@@ -25,6 +25,11 @@ interface ThreeRendererWithBackend {
   readonly backend?: ThreeRendererBackend;
 }
 
+interface ThreeRendererWithAnimationLoop {
+  dispose(): void;
+  setAnimationLoop?: (callback: unknown) => unknown;
+}
+
 /**
  * Reads Three's authoritative post-init backend decision. Keep this access to
  * Three internals in one compatibility seam rather than duplicating casts in
@@ -39,6 +44,36 @@ export function graphicsBackendForRenderer(renderer: unknown): GraphicsBackend {
     return "webgl2";
   }
   throw new Error("Three renderer initialized without a recognized backend");
+}
+
+/**
+ * Disposes a Three renderer while absorbing its ignored async animation-loop
+ * shutdown. Three's synchronous dispose method does not return the promise
+ * created by setAnimationLoop(null), so a failed init can otherwise surface as
+ * an unhandled rejection.
+ */
+export function disposeGraphicsRenderer(renderer: { dispose(): void }): void {
+  const candidate = renderer as ThreeRendererWithAnimationLoop;
+  const setAnimationLoop = candidate.setAnimationLoop;
+  if (typeof setAnimationLoop !== "function") {
+    renderer.dispose();
+    return;
+  }
+
+  candidate.setAnimationLoop = (callback) => {
+    try {
+      return Promise.resolve(setAnimationLoop.call(renderer, callback)).catch(
+        () => undefined,
+      );
+    } catch {
+      return Promise.resolve();
+    }
+  };
+  try {
+    renderer.dispose();
+  } finally {
+    candidate.setAnimationLoop = setAnimationLoop;
+  }
 }
 
 /**

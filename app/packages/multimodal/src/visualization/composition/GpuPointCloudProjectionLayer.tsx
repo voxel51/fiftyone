@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
@@ -63,6 +63,11 @@ type ProjectionPointsMaterial = PointsNodeMaterial & {
 
 type ProjectionSensorNode = CameraProjectionNode & PointCloudPositionNode;
 
+interface WebGlColorBinding {
+  readonly attribute: THREE.InstancedBufferAttribute;
+  readonly resource: GpuPointCloudProjectionResource;
+}
+
 /** Rendering inputs for one shader-projected point-cloud layer. */
 export interface GpuPointCloudProjectionLayerProps {
   readonly calibrationHeight: number;
@@ -96,7 +101,65 @@ export interface GpuPointCloudProjectionLayerProps {
  * shader performs sensor-to-camera and camera-to-pixel projection and moves
  * invalid instances outside the clip volume.
  */
-export function GpuPointCloudProjectionLayer({
+export function GpuPointCloudProjectionLayer(
+  props: GpuPointCloudProjectionLayerProps,
+) {
+  const { color, renderedPointCount, resource } = props;
+  const { backend } = useGraphicsRuntime();
+  const invalidate = useThree((state) => state.invalidate);
+  const drawCount = Math.min(
+    resource.sampledPointCount,
+    renderedPointCount ?? resource.sampledPointCount,
+  );
+  const [webGlBinding, setWebGlBinding] = useState<WebGlColorBinding | null>(
+    null,
+  );
+  const webGlColorAttribute =
+    backend === "webgl2" && webGlBinding?.resource === resource
+      ? webGlBinding.attribute
+      : null;
+
+  // WebGL color expansion mutates a shared resource and must happen only for
+  // committed frames. Gate the visible child until its stable attribute is
+  // prepared, then update the same binding in place on later frames.
+  useLayoutEffect(() => {
+    if (backend !== "webgl2") return;
+    const attribute = prepareWebGlPointCloudProjectionColorAttribute(
+      resource,
+      color,
+      drawCount,
+    );
+    setWebGlBinding((current) =>
+      current?.resource === resource && current.attribute === attribute
+        ? current
+        : { attribute, resource },
+    );
+    invalidate();
+    // contentKey is mutable on the grow-only resource and identifies the
+    // committed frame whose ordinary colors need to be refreshed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backend, color, drawCount, invalidate, resource, resource.contentKey]);
+
+  // Pin topic attributes for the full wrapper lifetime, including the first
+  // WebGL commit while its ordinary color attribute is being prepared.
+  useLayoutEffect(
+    () => retainGpuPointCloudProjectionResource(resource),
+    [resource],
+  );
+
+  if (backend === "webgl2" && !webGlColorAttribute) {
+    return null;
+  }
+  return (
+    <GpuPointCloudProjectionLayerContent
+      {...props}
+      drawCount={drawCount}
+      webGlColorAttribute={webGlColorAttribute}
+    />
+  );
+}
+
+function GpuPointCloudProjectionLayerContent({
   calibrationHeight,
   calibrationWidth,
   color,
@@ -109,32 +172,17 @@ export function GpuPointCloudProjectionLayer({
   pointSizeScale = 1,
   projection,
   renderOrder = DEFAULT_RENDER_ORDER,
-  renderedPointCount,
+  drawCount,
   resource,
   viewTransform,
-}: GpuPointCloudProjectionLayerProps) {
-  const { backend } = useGraphicsRuntime();
+  webGlColorAttribute,
+}: GpuPointCloudProjectionLayerProps & {
+  readonly drawCount: number;
+  readonly webGlColorAttribute: THREE.InstancedBufferAttribute | null;
+}) {
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
   const colorNodeKey = gpuPointCloudColorNodeKey(color);
-  const drawCount = Math.min(
-    resource.sampledPointCount,
-    renderedPointCount ?? resource.sampledPointCount,
-  );
-  const webGlColorAttribute = useMemo(
-    () =>
-      backend === "webgl2"
-        ? prepareWebGlPointCloudProjectionColorAttribute(
-            resource,
-            color,
-            drawCount,
-          )
-        : null,
-    // contentKey is mutable on the grow-only resource and identifies the
-    // frame whose ordinary WebGL2 colors need to be refreshed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [backend, color, drawCount, resource, resource.contentKey],
-  );
   const imagePlaneSize = useMemo(
     () =>
       fittedImagePlaneSize({
@@ -185,13 +233,6 @@ export function GpuPointCloudProjectionLayer({
     next.renderOrder = renderOrder;
     return next;
   }, [renderOrder, resource.geometry, shader.material]);
-
-  // This layout effect retains topic attributes while the scene references
-  // them, so retired geometry survives until every camera view releases it.
-  useLayoutEffect(
-    () => retainGpuPointCloudProjectionResource(resource),
-    [resource],
-  );
 
   // This layout effect binds projection uniforms before the frame is rendered.
   useLayoutEffect(() => {

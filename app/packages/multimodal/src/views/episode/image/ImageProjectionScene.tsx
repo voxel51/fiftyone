@@ -175,6 +175,8 @@ const ImageProjectionScene = forwardRef<
           pointBudget.get(layer.stream) ?? resource.sampledPointCount,
         resourceKey,
         rotation: layer.rotation,
+        sourcePointCount:
+          layer.payload.sourcePointCount ?? layer.frame.pointCount,
         translation: layer.translation,
       })),
     [pointBudget, renderedLayers],

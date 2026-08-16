@@ -177,6 +177,33 @@ describe("renderPointCloudSnapshot", () => {
     expect(webGpuSnapshotRendererStats().rendererAlive).toBe(false);
   });
 
+  it("retires a lost device and creates a fresh renderer for the next job", async () => {
+    const first = renderPointCloudSnapshot(job());
+    await flushMicrotasks();
+    fake.captures[0].resolve(fakeBitmap());
+    await first;
+
+    fake.loseLatest({
+      api: "WebGPU",
+      message: "device removed",
+      reason: "unknown",
+    });
+
+    expect(fake.handles[0].dispose).toHaveBeenCalledTimes(1);
+    expect(webGpuSnapshotRendererStats().rendererAlive).toBe(false);
+    expect(webGpuSnapshotRendererStats().rendererDisposals).toBe(1);
+    expect(graphicsRendererStats().renderers.deviceLosses).toBe(1);
+    expect(graphicsRendererStats().renderers.live).toBe(0);
+    expect(graphicsRendererStats().lastError).toContain("device removed");
+
+    const second = renderPointCloudSnapshot(job());
+    await flushMicrotasks();
+    expect(fake.createRenderer).toHaveBeenCalledTimes(2);
+    fake.captures[1].resolve(fakeBitmap());
+    expect(await second).not.toBeNull();
+    expect(webGpuSnapshotRendererStats().rendererCreations).toBe(2);
+  });
+
   it("disposes per-job geometry and material before the job resolves", async () => {
     const result = renderPointCloudSnapshot(job());
     await flushMicrotasks();
@@ -378,10 +405,11 @@ interface FakeCapture {
 function createFakeBackend() {
   const captures: FakeCapture[] = [];
   const handles: Array<{ dispose: ReturnType<typeof vi.fn> }> = [];
+  const lossHandlers: Array<(info: unknown) => void> = [];
   let failNext: Error | null = null;
   let throwNext: Error | null = null;
 
-  const createRenderer = vi.fn(() => {
+  const createRenderer = vi.fn((onDeviceLost: (info: unknown) => void) => {
     if (throwNext) {
       const error = throwNext;
       throwNext = null;
@@ -406,6 +434,7 @@ function createFakeBackend() {
         }),
     };
     handles.push(handle);
+    lossHandlers.push(onDeviceLost);
     return Promise.resolve(handle);
   });
 
@@ -419,6 +448,9 @@ function createFakeBackend() {
       failNext = error;
     },
     handles,
+    loseLatest: (info: unknown) => {
+      lossHandlers.at(-1)?.(info);
+    },
     throwNextCreate: (error: Error) => {
       throwNext = error;
     },

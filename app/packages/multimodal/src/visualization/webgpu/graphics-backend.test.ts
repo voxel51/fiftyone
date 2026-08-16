@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  disposeGraphicsRenderer,
   GRAPHICS_BACKEND_QUERY_PARAMETER,
   graphicsBackendForRenderer,
   requestedGraphicsBackend,
@@ -29,5 +30,23 @@ describe("graphics backend compatibility", () => {
     expect(requestedGraphicsBackend("?graphicsBackend=webgpu")).toBe("auto");
     expect(requestedGraphicsBackend("?graphicsBackend=WEBGL2")).toBe("auto");
     expect(requestedGraphicsBackend("?other=webgl2")).toBe("auto");
+  });
+
+  it("absorbs the ignored animation-loop rejection during disposal", async () => {
+    const setAnimationLoop = vi
+      .fn()
+      .mockRejectedValue(new Error("init already failed"));
+    const renderer = {
+      dispose() {
+        void this.setAnimationLoop(null);
+      },
+      setAnimationLoop,
+    };
+
+    disposeGraphicsRenderer(renderer);
+    await Promise.resolve();
+
+    expect(setAnimationLoop).toHaveBeenCalledWith(null);
+    expect(renderer.setAnimationLoop).toBe(setAnimationLoop);
   });
 });

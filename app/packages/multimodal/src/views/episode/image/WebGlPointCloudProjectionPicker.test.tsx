@@ -61,11 +61,9 @@ describe("WebGL pointcloud projection picker", () => {
     ).toBeNull();
 
     const outOfBoundsMapping = pickerScene();
-    Object.defineProperty(
-      outOfBoundsMapping.layers[0].payload,
-      "sourcePointCount",
-      { value: 1 },
-    );
+    Object.defineProperty(outOfBoundsMapping.layers[0], "sourcePointCount", {
+      value: 1,
+    });
     expect(
       pickWebGlPointCloudProjection(outOfBoundsMapping, {
         radiusPx: 3,
@@ -87,6 +85,14 @@ describe("WebGL pointcloud projection picker", () => {
     ref.current?.invalidate();
 
     await expect(pending).resolves.toBeNull();
+    await expect(
+      ref.current?.pick({ radiusPx: 3, targetU: 60, targetV: 50 }),
+    ).resolves.toEqual({
+      layerIndex: 0,
+      resourceKey: "frame",
+      sampleIndex: 1,
+      sourceIndex: 1,
+    });
   });
 });
 
@@ -103,6 +109,7 @@ function pickerScene(
         renderedPointCount,
         resourceKey: "frame",
         rotation: { w: 1, x: 0, y: 0, z: 0 },
+        sourcePointCount: 2,
         translation: { x: 0, y: 0, z: 0 },
       },
     ],

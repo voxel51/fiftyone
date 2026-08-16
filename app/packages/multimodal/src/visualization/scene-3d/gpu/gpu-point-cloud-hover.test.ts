@@ -39,5 +39,10 @@ describe("GPU point-cloud rendered hover", () => {
       sampleIndex: 2,
     });
     expect(resolveGpuPointCloudRenderedHover(layer, data, 3)).toBeNull();
+
+    Object.defineProperty(payload, "sourcePointCount", {
+      value: payload.sourceIndices[2],
+    });
+    expect(resolveGpuPointCloudRenderedHover(layer, data, 2)).toBeNull();
   });
 });

@@ -708,7 +708,7 @@ describe("GridRenderer", () => {
     // The page is already at the device budget before the hover (say, a
     // heavy modal layout owns every slot).
     for (let i = 0; i < WEBGPU_DEVICE_BUDGET; i += 1) {
-      registerGraphicsRenderer("modal-3d");
+      registerGraphicsRenderer("modal-3d", "auto");
     }
 
     render(<GridRenderer ctx={rendererCtx()} />);

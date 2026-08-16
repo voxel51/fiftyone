@@ -11,6 +11,7 @@ import {
 } from "./graphics-renderer-registry";
 import {
   GRAPHICS_POWER_PREFERENCE,
+  disposeGraphicsRenderer,
   graphicsBackendForRenderer,
   requestedGraphicsBackend,
   type GraphicsBackend,
@@ -173,8 +174,10 @@ export function WebGpuCanvas({
     const renderer = new THREE.WebGPURenderer(rendererOptions);
     const previousRenderer = rendererRef.current;
     if (previousRenderer) {
-      releaseRendererRegistration(registrationsRef.current, previousRenderer);
-      previousRenderer.dispose();
+      disposeRegisteredGraphicsRenderer(
+        registrationsRef.current,
+        previousRenderer,
+      );
     }
     setRuntime(null);
     rendererRef.current = renderer;
@@ -208,8 +211,7 @@ export function WebGpuCanvas({
       // lifecycle accounting and browser resources before dropping the last
       // active identity.
       registrationsRef.current.get(renderer)?.markLost(info);
-      releaseRendererRegistration(registrationsRef.current, renderer);
-      renderer.dispose();
+      disposeRegisteredGraphicsRenderer(registrationsRef.current, renderer);
       rendererRef.current = null;
       rendererReadyRef.current = false;
       setRuntime(null);
@@ -228,8 +230,7 @@ export function WebGpuCanvas({
       .init()
       .then(() => {
         if (!mountedRef.current || rendererRef.current !== renderer) {
-          releaseRendererRegistration(registrationsRef.current, renderer);
-          renderer.dispose();
+          disposeRegisteredGraphicsRenderer(registrationsRef.current, renderer);
           return;
         }
 
@@ -246,8 +247,7 @@ export function WebGpuCanvas({
         // A rejected init can leave GPU/browser resources behind even if R3F
         // superseded the renderer while the promise was pending.
         registrationsRef.current.get(renderer)?.markFailed(error);
-        releaseRendererRegistration(registrationsRef.current, renderer);
-        renderer.dispose();
+        disposeRegisteredGraphicsRenderer(registrationsRef.current, renderer);
         if (!isCurrent) {
           return;
         }
@@ -284,8 +284,7 @@ export function WebGpuCanvas({
       canvasStateRef.current = null;
       readyNotifiedRef.current = false;
       rendererReadyRef.current = false;
-      releaseRendererRegistration(registrations, rendererRef.current);
-      rendererRef.current?.dispose();
+      disposeRegisteredGraphicsRenderer(registrations, rendererRef.current);
       rendererRef.current = null;
     };
   }, []);
@@ -336,11 +335,10 @@ export function WebGpuCanvas({
 }
 
 /**
- * Releases a renderer's graphics-registry registration exactly once: the
- * instance-keyed map entry is deleted on the first call, so overlapping
- * dispose sites (e.g. unmount racing a pending init) cannot double-release.
+ * Releases and disposes a renderer exactly once. The instance-keyed map entry
+ * is the ownership token shared by every overlapping retirement path.
  */
-function releaseRendererRegistration(
+function disposeRegisteredGraphicsRenderer(
   registrations: Map<THREE.WebGPURenderer, GraphicsRendererRegistration>,
   renderer: THREE.WebGPURenderer | null,
 ): void {
@@ -355,6 +353,7 @@ function releaseRendererRegistration(
 
   registrations.delete(renderer);
   registration.release();
+  disposeGraphicsRenderer(renderer);
 }
 
 function prepareGraphicsRenderer(
