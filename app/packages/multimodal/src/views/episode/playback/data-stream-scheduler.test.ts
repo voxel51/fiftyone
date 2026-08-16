@@ -63,10 +63,11 @@ beforeEach(() => {
 });
 
 describe("DataStreamScheduler", () => {
-  it("admits one atomic current-frame read across image and 3D streams", () => {
+  it("admits one stable union across active current-tick demand", () => {
     const streams = ["/camera/left", "/lidar", "/camera/right"];
     const harness = createSchedulerHarness({
       activeStreams: streams,
+      blockingStreams: ["/camera/left", "/lidar"],
     });
 
     harness.scheduler.prefetchLookaheadFrom(0);
@@ -75,10 +76,11 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
       0n,
       streams,
+      ["/camera/left", "/lidar"],
     );
   });
 
-  it("keeps current-frame reads atomic when no image split applies", () => {
+  it("keeps the presentation read atomic without overlay demand", () => {
     const harness = createSchedulerHarness({
       activeStreams: ["/camera/left", "/camera/right"],
     });
@@ -86,10 +88,11 @@ describe("DataStreamScheduler", () => {
     harness.scheduler.prefetchLookaheadFrom(0);
 
     expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledOnce();
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(0n, [
-      "/camera/left",
-      "/camera/right",
-    ]);
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
+      0n,
+      ["/camera/left", "/camera/right"],
+      ["/camera/left", "/camera/right"],
+    );
   });
 
   it("keeps playback prefetch batches atomic across all active streams", () => {
@@ -524,6 +527,7 @@ describe("DataStreamScheduler", () => {
 
 function createSchedulerHarness({
   activeStreams: configuredActiveStreams = ["/camera"],
+  blockingStreams: configuredBlockingStreams = configuredActiveStreams,
   byteTimeline = [
     {
       cumulativeCompressedBytes: 1_024,
@@ -536,6 +540,7 @@ function createSchedulerHarness({
   policy = {},
 }: {
   readonly activeStreams?: string[];
+  readonly blockingStreams?: readonly string[];
   readonly byteTimeline?: readonly ByteTimelinePoint[];
   readonly deferredBatchAdmission?: boolean;
   readonly fillCache?: boolean;
@@ -582,7 +587,7 @@ function createSchedulerHarness({
     getActiveStreams: () => [...activeStreams],
     getBackgroundLookaheadSeconds: () => 2,
     getByteTimeline: () => byteTimeline,
-    getBlockingStreams: () => new Set(activeStreams),
+    getBlockingStreams: () => new Set(configuredBlockingStreams),
     getIndex: () => index,
     getLastSeekAtMs: () => null,
     hasDeferredBatchAdmission: () => deferredBatchAdmission,

@@ -5,6 +5,7 @@ import {
   getLoopEnd,
   getLoopStart,
   getPlayhead,
+  setStreamValue,
   subscribeCurrentTime,
   subscribeIsPlayPending,
   type PlaybackStore,
@@ -86,7 +87,11 @@ export interface DataStreamPrefetcher {
     activeStreams: string[],
     operation: DataOperation,
   ): boolean;
-  fetchCurrentFrame(tick: bigint, activeStreams: string[]): boolean;
+  fetchCurrentFrame(
+    tick: bigint,
+    activeStreams: string[],
+    earlyDeliveryStreams?: readonly string[],
+  ): boolean;
   isStreamPending(tickKey: string, stream: string): boolean;
 }
 
@@ -275,6 +280,35 @@ export function createDataStreamPrefetcher({
     handleFetchFailure(error, ticks, streams);
   };
 
+  const deliverProgressWindow = ({
+    sourceEpoch,
+    streams,
+    window,
+  }: {
+    readonly sourceEpoch: number;
+    readonly streams: readonly string[];
+    readonly window: Parameters<typeof decodeFailuresByStream>[0][number];
+  }): void => {
+    if (getSourceEpoch() !== sourceEpoch) return;
+    for (const stream of activeStreamsInCaches(caches, streams)) {
+      if (!isStreamTimeAvailable(stream, window.timeNs)) continue;
+      const message = window.framesByStream[stream]?.[0];
+      const visualization = message?.output.visualization;
+      if (!message || visualization == null) continue;
+      const frame: StreamPlaybackFrame<unknown> = {
+        ageNs:
+          window.timeNs >= message.timestampNs
+            ? window.timeNs - message.timestampNs
+            : 0n,
+        contentTimeNs: message.timestampNs,
+        frame: visualization,
+        requestedTimeNs: window.timeNs,
+      };
+      lastFrames.set(stream, frame);
+      setStreamValue(store, stream, frame);
+    }
+  };
+
   const fetchBatch: DataStreamPrefetcher["fetchBatch"] = (
     ticks,
     activeStreams,
@@ -343,6 +377,7 @@ export function createDataStreamPrefetcher({
   const fetchCurrentFrame: DataStreamPrefetcher["fetchCurrentFrame"] = (
     tick,
     activeStreams,
+    earlyDeliveryStreams,
   ) => {
     if (activeStreams.length === 0) return false;
 
@@ -358,6 +393,31 @@ export function createDataStreamPrefetcher({
     const controller = createReadController();
     void playback
       .readSynchronized({
+        earlyDeliveryStreams: earlyDeliveryStreams?.filter((stream) =>
+          streamsToFetch.includes(stream),
+        ),
+        onProgress: (window) => {
+          if (
+            controller.signal.aborted ||
+            getSourceEpoch() !== sourceEpoch ||
+            window.timeNs !== tick ||
+            getIndex()?.nearestTick(getPlayhead(store)) !== tick
+          ) {
+            return;
+          }
+          const progressedStreams = Object.keys(window.framesByStream).filter(
+            (stream) => streamsToFetch.includes(stream),
+          );
+          if (progressedStreams.length === 0) return;
+          deliverProgressWindow({
+            sourceEpoch,
+            streams: progressedStreams,
+            window,
+          });
+          // The full union retains pending and readiness ownership. The store
+          // update can paint this surface without publishing an intermediate
+          // lifecycle state that remounts other consumers.
+        },
         pointCloudColorBy: getPointCloudColorBy(),
         streamPolicies: getStreamPolicies(),
         streams: streamsToFetch,
@@ -637,11 +697,7 @@ export class DataStreamScheduler {
     const activeBlockingStreams = activeStreams.filter((stream) =>
       blockingSet.has(stream),
     );
-    const overlayStreams =
-      activeBlockingStreams.length > 0
-        ? activeStreams.filter((stream) => !blockingSet.has(stream))
-        : [];
-    const heavyStreams =
+    const startupStreams =
       activeBlockingStreams.length > 0 ? activeBlockingStreams : activeStreams;
     const tick = index.nearestTick(timeSec);
     if (tick !== undefined) {
@@ -653,15 +709,16 @@ export class DataStreamScheduler {
         options.store,
         options.failedStreams,
       );
-      options.prefetcher.fetchCurrentFrame(tick, heavyStreams);
-      if (overlayStreams.length > 0) {
-        options.prefetcher.fetchCurrentFrame(tick, overlayStreams);
-      }
+      options.prefetcher.fetchCurrentFrame(
+        tick,
+        activeStreams,
+        activeBlockingStreams,
+      );
     }
     fillMissingStartupBufferFrom({
-      activeStreams: heavyStreams,
+      activeStreams: startupStreams,
       collectMissingTicks: (startSec, endSec, maxTicks) =>
-        this.collectStartupTicks(startSec, endSec, maxTicks, heavyStreams),
+        this.collectStartupTicks(startSec, endSec, maxTicks, startupStreams),
       fetchBatch: options.prefetcher.fetchBatch,
       policy: options.policy,
       timeSec,

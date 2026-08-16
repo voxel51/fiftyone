@@ -115,13 +115,22 @@ interface ResourceClient {
     },
     options?: { readonly priority?: "bulk" | "current" | "idle" | "playback" },
   ): Promise<readonly SynchronizedMessageWindow[]>;
-  readSynchronizedMessages(request: {
-    readonly activeTimeline?: "log";
-    readonly source: ByteSourceDescriptor;
-    readonly streamPolicies?: StreamSyncPolicies;
-    readonly timeNs: bigint;
-    readonly topics: readonly string[];
-  }): Promise<SynchronizedMessageWindow>;
+  readSynchronizedMessages(
+    request: {
+      readonly activeTimeline?: "log";
+      readonly earlyDeliveryTopics?: readonly string[];
+      readonly source: ByteSourceDescriptor;
+      readonly streamPolicies?: StreamSyncPolicies;
+      readonly timeNs: bigint;
+      readonly topics: readonly string[];
+    },
+    options?: {
+      readonly onSynchronizedProgress?: (
+        window: SynchronizedMessageWindow,
+      ) => void;
+      readonly signal?: AbortSignal;
+    },
+  ): Promise<SynchronizedMessageWindow>;
   readTimelineRange(request: {
     readonly activeTimeline?: "log";
     readonly source: ByteSourceDescriptor;
@@ -894,8 +903,10 @@ describe("useRegisterDataStream", () => {
     const storeCapture = capturePlaybackStore();
     const cancelRunway = vi.fn();
     const readSynchronizedMessageBatch = vi.fn(async () => []);
-    const readSynchronizedMessages = vi.fn(async (request) =>
-      createEmptyWindow(request.timeNs),
+    const readSynchronizedMessages = vi.fn(
+      async (
+        request: Parameters<ResourceClient["readSynchronizedMessages"]>[0],
+      ) => createEmptyWindow(request.timeNs),
     );
     const client = createClient({
       cancelRunwayReads: cancelRunway,
@@ -1096,18 +1107,17 @@ describe("stream status + buffering feedback", () => {
     expect(firstBatch?.[1]?.priority).toBe("playback");
 
     await waitFor(() => {
-      expect(client.readSynchronizedMessages).toHaveBeenCalled();
+      expect(client.readSynchronizedMessages).toHaveBeenCalledOnce();
     });
-    const firstCurrentFrame = vi.mocked(client.readSynchronizedMessages).mock
-      .calls[0]?.[0];
-    expect(firstCurrentFrame?.topics).toEqual([
+    const currentFrames = vi.mocked(client.readSynchronizedMessages).mock.calls;
+    expect(currentFrames[0]?.[0].topics).toEqual([
       LIDAR_STREAM,
       RADAR_STREAM,
       STREAM,
     ]);
   });
 
-  it("queues blocking current-frame data before non-blocking map overlays", async () => {
+  it("keeps startup blocking while current-tick demand is one union", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
@@ -1131,11 +1141,371 @@ describe("stream status + buffering feedback", () => {
     );
 
     await waitFor(() => {
-      expect(client.readSynchronizedMessages).toHaveBeenCalledTimes(2);
+      expect(client.readSynchronizedMessages).toHaveBeenCalledOnce();
+      expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
     });
-    const calls = vi.mocked(client.readSynchronizedMessages).mock.calls;
-    expect(calls[0]?.[0].topics).toEqual([STREAM]);
-    expect(calls[1]?.[0].topics).toEqual([MAP_STREAM]);
+    const currentCalls = vi.mocked(client.readSynchronizedMessages).mock.calls;
+    expect(currentCalls[0]?.[0].topics).toEqual([MAP_STREAM, STREAM]);
+    expect(
+      vi.mocked(client.readSynchronizedMessageBatch).mock.calls[0]?.[0].topics,
+    ).toEqual([STREAM]);
+  });
+
+  it.each([
+    ["forward", [STREAM, LIDAR_STREAM, MAP_STREAM]],
+    ["reverse", [MAP_STREAM, LIDAR_STREAM, STREAM]],
+  ] as const)(
+    "derives one stable current-tick union for a %s subscription batch",
+    async (_direction, subscriptionOrder) => {
+      const allStreams = [STREAM, LIDAR_STREAM, MAP_STREAM] as const;
+      const source = createSource(`subscription-${_direction}`);
+      const storeCapture = capturePlaybackStore();
+      let dataStream: DataStream | null = null;
+      const readSynchronizedMessages = vi.fn(
+        (_request: Parameters<ResourceClient["readSynchronizedMessages"]>[0]) =>
+          new Promise<SynchronizedMessageWindow>(() => undefined),
+      );
+      const client = createClient({
+        readSynchronizedMessageBatch: vi.fn(async () => []),
+        readSynchronizedMessages,
+        readTimelineRange: vi.fn(async () => createTimelineRange()),
+      });
+
+      render(
+        <Harness
+          allStreams={allStreams}
+          blockingStreams={[STREAM, LIDAR_STREAM]}
+          client={client}
+          onDataStream={(next) => {
+            dataStream = next;
+          }}
+          onStore={storeCapture.onStore}
+          source={source}
+          subscribe={false}
+        />,
+        { wrapper: TestProviders },
+      );
+
+      await waitFor(() => {
+        expect(dataStream?.getTimelineIndex()).not.toBeNull();
+      });
+      const currentDataStream = dataStream as DataStream | null;
+      if (!currentDataStream) throw new Error("data stream was not registered");
+
+      act(() => {
+        for (const stream of subscriptionOrder) {
+          currentDataStream.subscribeToStream(stream);
+        }
+      });
+
+      await waitFor(() => {
+        expect(readSynchronizedMessages).toHaveBeenCalledOnce();
+      });
+      expect(readSynchronizedMessages.mock.calls[0]?.[0].topics).toEqual([
+        STREAM,
+        LIDAR_STREAM,
+        MAP_STREAM,
+      ]);
+    },
+  );
+
+  it("reflushes idempotently and reads only genuinely late demand", async () => {
+    const allStreams = [STREAM, LIDAR_STREAM, MAP_STREAM] as const;
+    const source = createSource("subscription-delta");
+    const storeCapture = capturePlaybackStore();
+    let dataStream: DataStream | null = null;
+    const readSynchronizedMessages = vi.fn(
+      (_request: Parameters<ResourceClient["readSynchronizedMessages"]>[0]) =>
+        new Promise<SynchronizedMessageWindow>(() => undefined),
+    );
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages,
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        allStreams={allStreams}
+        blockingStreams={allStreams}
+        client={client}
+        onDataStream={(next) => {
+          dataStream = next;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+        subscribe={false}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(dataStream?.getTimelineIndex()).not.toBeNull();
+    });
+    const currentDataStream = dataStream as DataStream | null;
+    if (!currentDataStream) throw new Error("data stream was not registered");
+
+    act(() => {
+      currentDataStream.subscribeToStream(STREAM);
+      currentDataStream.subscribeToStream(LIDAR_STREAM);
+    });
+    await waitFor(() => {
+      expect(readSynchronizedMessages).toHaveBeenCalledOnce();
+    });
+    expect(readSynchronizedMessages.mock.calls[0]?.[0].topics).toEqual([
+      STREAM,
+      LIDAR_STREAM,
+    ]);
+
+    act(() => {
+      currentDataStream.subscribeToStream(STREAM);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(readSynchronizedMessages).toHaveBeenCalledOnce();
+
+    act(() => {
+      currentDataStream.subscribeToStream(MAP_STREAM);
+    });
+    await waitFor(() => {
+      expect(readSynchronizedMessages).toHaveBeenCalledTimes(2);
+    });
+    expect(readSynchronizedMessages.mock.calls[1]?.[0].topics).toEqual([
+      MAP_STREAM,
+    ]);
+  });
+
+  it("retries live demand when the timeline index becomes ready", async () => {
+    const timeline = deferred<TimelineRange>();
+    const source = createSource("index-ready-flush");
+    const storeCapture = capturePlaybackStore();
+    const readSynchronizedMessages = vi.fn(async (request) =>
+      createEmptyWindow(request.timeNs),
+    );
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages,
+      readTimelineRange: vi.fn(() => timeline.promise),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(readSynchronizedMessages).not.toHaveBeenCalled();
+
+    await act(async () => {
+      timeline.resolve(createTimelineRange());
+      await timeline.promise;
+    });
+
+    await waitFor(() => {
+      expect(readSynchronizedMessages).toHaveBeenCalledOnce();
+    });
+    expect(readSynchronizedMessages.mock.calls[0]?.[0]).toMatchObject({
+      source,
+      topics: [STREAM],
+    });
+  });
+
+  it("rejects old current-tick delivery after a rapid source commit", async () => {
+    const sourceA = createSource("queued-source-a");
+    const sourceB = createSource("queued-source-b");
+    const storeCapture = capturePlaybackStore();
+    let dataStream: DataStream | null = null;
+    const sourceARead = deferred<SynchronizedMessageWindow>();
+    let sourceAProgress:
+      | ((window: SynchronizedMessageWindow) => void)
+      | undefined;
+    const readSynchronizedMessages = vi.fn((request, options) => {
+      if (request.source.sourceId === sourceA.sourceId) {
+        sourceAProgress = options?.onSynchronizedProgress;
+        return sourceARead.promise;
+      }
+      return new Promise<SynchronizedMessageWindow>(() => undefined);
+    });
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages,
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+    const props = {
+      client,
+      onDataStream: (next: DataStream | null) => {
+        dataStream = next;
+      },
+      onStore: storeCapture.onStore,
+      subscribe: false,
+    } as const;
+
+    const { rerender } = render(<Harness {...props} source={sourceA} />, {
+      wrapper: TestProviders,
+    });
+    await waitFor(() => {
+      expect(dataStream?.getTimelineIndex()).not.toBeNull();
+    });
+    const sourceADataStream = dataStream as DataStream | null;
+    if (!sourceADataStream) throw new Error("data stream was not registered");
+    readSynchronizedMessages.mockClear();
+
+    act(() => {
+      sourceADataStream.subscribeToStream(STREAM);
+    });
+    await waitFor(() => {
+      expect(readSynchronizedMessages).toHaveBeenCalledOnce();
+    });
+    rerender(<Harness {...props} source={null} />);
+    await act(async () => {
+      sourceAProgress?.(createMultiStreamWindow(0n, [STREAM]));
+      sourceARead.resolve(
+        createWindow({
+          timeNs: 0n,
+          visualization: {
+            bytes: new Uint8Array([1]),
+            kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+          },
+        }),
+      );
+      await Promise.resolve();
+    });
+    expect(getStreamValue(storeCapture.store(), STREAM)).toBeNull();
+
+    rerender(<Harness {...props} source={sourceB} />);
+    await waitFor(() => {
+      expect(readSynchronizedMessages).toHaveBeenCalledTimes(2);
+    });
+    expect(readSynchronizedMessages.mock.calls[1]?.[0].source).toEqual(sourceB);
+  });
+
+  it("publishes first surface and blocking readiness atomically before startup continuation", async () => {
+    const presentation = deferred<SynchronizedMessageWindow>();
+    const source = createSource("blocking-first-surface-delivery");
+    const storeCapture = capturePlaybackStore();
+    const onPlayheadDataReady = vi.fn();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
+      ),
+      readSynchronizedMessages: vi.fn(() => presentation.promise),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        allStreams={[STREAM, LIDAR_STREAM]}
+        blockingStreams={[STREAM, LIDAR_STREAM]}
+        client={client}
+        onPlayheadDataReady={onPlayheadDataReady}
+        onStore={storeCapture.onStore}
+        source={source}
+        subscribedStreams={[STREAM, LIDAR_STREAM]}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessages).toHaveBeenCalledOnce();
+      expect(client.readSynchronizedMessageBatch).toHaveBeenCalledOnce();
+    });
+    expect(getStreamValue(store, STREAM)).toBeNull();
+    expect(getStreamValue(store, LIDAR_STREAM)).toBeNull();
+    expect(onPlayheadDataReady).not.toHaveBeenCalled();
+
+    await act(async () => {
+      presentation.resolve(createMultiStreamWindow(0n, [STREAM, LIDAR_STREAM]));
+      await presentation.promise;
+    });
+    await waitFor(() => {
+      expect(getStreamValue(store, STREAM)).not.toBeNull();
+      expect(getStreamValue(store, LIDAR_STREAM)).not.toBeNull();
+      expect(onPlayheadDataReady).toHaveBeenCalled();
+    });
+  });
+
+  it("publishes one early surface before final blocking readiness", async () => {
+    const current = deferred<SynchronizedMessageWindow>();
+    const source = createSource("atomic-current-delivery");
+    const storeCapture = capturePlaybackStore();
+    const onPlayheadDataReady = vi.fn();
+    let publishProgress:
+      | ((window: SynchronizedMessageWindow) => void)
+      | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
+      ),
+      readSynchronizedMessages: vi.fn((_request, options) => {
+        publishProgress = options?.onSynchronizedProgress;
+        return current.promise;
+      }),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        allStreams={[STREAM, LIDAR_STREAM, MAP_STREAM]}
+        blockingStreams={[STREAM, LIDAR_STREAM]}
+        client={client}
+        onPlayheadDataReady={onPlayheadDataReady}
+        onStore={storeCapture.onStore}
+        source={source}
+        subscribedStreams={[STREAM, LIDAR_STREAM, MAP_STREAM]}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessages).toHaveBeenCalledOnce();
+    });
+    expect(client.readSynchronizedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        earlyDeliveryTopics: [STREAM, LIDAR_STREAM],
+        topics: [STREAM, LIDAR_STREAM, MAP_STREAM],
+      }),
+      expect.objectContaining({
+        onSynchronizedProgress: expect.any(Function),
+      }),
+    );
+    expect(getStreamValue(store, STREAM)).toBeNull();
+    expect(getStreamValue(store, LIDAR_STREAM)).toBeNull();
+    expect(getStreamValue(store, MAP_STREAM)).toBeNull();
+    expect(onPlayheadDataReady).not.toHaveBeenCalled();
+
+    await act(async () => {
+      publishProgress?.(createMultiStreamWindow(0n, [STREAM]));
+    });
+    await waitFor(() => {
+      expect(getStreamValue(store, STREAM)).not.toBeNull();
+    });
+    expect(getStreamValue(store, LIDAR_STREAM)).toBeNull();
+    expect(getStreamValue(store, MAP_STREAM)).toBeNull();
+    expect(onPlayheadDataReady).not.toHaveBeenCalled();
+
+    await act(async () => {
+      current.resolve(
+        createMultiStreamWindow(0n, [STREAM, LIDAR_STREAM, MAP_STREAM]),
+      );
+      await current.promise;
+    });
+    await waitFor(() => {
+      expect(getStreamValue(store, STREAM)).not.toBeNull();
+      expect(getStreamValue(store, LIDAR_STREAM)).not.toBeNull();
+      expect(getStreamValue(store, MAP_STREAM)).not.toBeNull();
+      expect(onPlayheadDataReady).toHaveBeenCalled();
+    });
   });
 
   it("does not queue idle background lookahead while startup data is still in flight", async () => {
@@ -2791,6 +3161,7 @@ function Harness({
   blockingStreams = DEFAULT_TEST_STREAMS,
   client,
   initialSeekTimeNs,
+  onPlayheadDataReady,
   onStore,
   onApi,
   onDataStream,
@@ -2806,6 +3177,7 @@ function Harness({
   readonly blockingStreams?: readonly string[];
   readonly client: ResourceClient;
   readonly initialSeekTimeNs?: bigint | null;
+  readonly onPlayheadDataReady?: () => void;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
   readonly onDataStream?: (dataStream: DataStream | null) => void;
@@ -2835,6 +3207,7 @@ function Harness({
     blockingStreams,
     endBoundedStreams: [],
     initialSeekTimeNs,
+    onPlayheadDataReady,
     session,
     source,
     staleWarningStreams,
@@ -2984,13 +3357,22 @@ function useTestSession(
                     })),
                   readSynchronized: async (request) =>
                     toWindow(
-                      await client.readSynchronizedMessages({
-                        activeTimeline: "log",
-                        source,
-                        streamPolicies: request.streamPolicies,
-                        timeNs: request.timeNs,
-                        topics: request.streams,
-                      }),
+                      await client.readSynchronizedMessages(
+                        {
+                          activeTimeline: "log",
+                          earlyDeliveryTopics: request.earlyDeliveryStreams,
+                          source,
+                          streamPolicies: request.streamPolicies,
+                          timeNs: request.timeNs,
+                          topics: request.streams,
+                        },
+                        {
+                          onSynchronizedProgress: request.onProgress
+                            ? (window) => request.onProgress?.(toWindow(window))
+                            : undefined,
+                          signal: request.signal,
+                        },
+                      ),
                     ),
                   readSynchronizedBatch: async (request, options) =>
                     (
@@ -3146,6 +3528,33 @@ function createEmptyWindow(timeNs: bigint): SynchronizedMessageWindow {
     endTimeNs: timeNs,
     messages: [],
     messagesByTopic: {},
+    startTimeNs: timeNs,
+    streamPolicies: {},
+    timeNs,
+  };
+}
+
+function createMultiStreamWindow(
+  timeNs: bigint,
+  streams: readonly string[],
+): SynchronizedMessageWindow {
+  const messages = streams.map((stream) =>
+    createDecodedMessage({
+      stream,
+      timeNs,
+      visualization: {
+        bytes: new Uint8Array([1]),
+        kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+      },
+    }),
+  );
+  return {
+    activeTimeline: "log",
+    endTimeNs: timeNs,
+    messages,
+    messagesByTopic: Object.fromEntries(
+      messages.map((message) => [message.topic, [message]]),
+    ),
     startTimeNs: timeNs,
     streamPolicies: {},
     timeNs,

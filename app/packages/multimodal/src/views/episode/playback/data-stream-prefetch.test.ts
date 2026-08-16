@@ -167,6 +167,69 @@ describe("data stream prefetcher", () => {
     expect(harness.caches.get(IMAGE)?.has(0n)).toBe(false);
   });
 
+  it("publishes one preview without releasing union ownership", async () => {
+    const terminal = deferred<SynchronizedFrameWindow>();
+    let publishProgress:
+      | ((window: SynchronizedFrameWindow) => void)
+      | undefined;
+    const harness = createHarness({
+      readSynchronized: vi.fn((request) => {
+        publishProgress = request.onProgress;
+        return terminal.promise;
+      }),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+    harness.caches.get(LIDAR)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE, LIDAR], [IMAGE, LIDAR]),
+    ).toBe(true);
+    expect(publishProgress).toBeTypeOf("function");
+    if (!publishProgress) throw new Error("expected progress callback");
+    publishProgress(windowAt(0n, [frame(IMAGE, 0n)]));
+
+    expect(getStreamValue(harness.store, IMAGE)).not.toBeNull();
+    expect(getStreamValue(harness.store, LIDAR)).toBeNull();
+    expect(harness.caches.get(IMAGE)?.has(0n)).toBe(false);
+    expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(true);
+    expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(true);
+
+    terminal.resolve(windowAt(0n, [frame(IMAGE, 0n), frame(LIDAR, 0n)]));
+    await settle();
+
+    expect(harness.caches.get(IMAGE)?.has(0n)).toBe(true);
+    expect(harness.caches.get(LIDAR)?.has(0n)).toBe(true);
+    expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
+    expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(false);
+  });
+
+  it("does not preview a current-frame result after the playhead moves", async () => {
+    const terminal = deferred<SynchronizedFrameWindow>();
+    let publishProgress:
+      | ((window: SynchronizedFrameWindow) => void)
+      | undefined;
+    const harness = createHarness({
+      readSynchronized: vi.fn((request) => {
+        publishProgress = request.onProgress;
+        return terminal.promise;
+      }),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+
+    expect(harness.prefetcher.fetchCurrentFrame(0n, [IMAGE], [IMAGE])).toBe(
+      true,
+    );
+    harness.store.set(playheadAtom, 0.5);
+    expect(publishProgress).toBeTypeOf("function");
+    if (!publishProgress) throw new Error("expected progress callback");
+    publishProgress(windowAt(0n, [frame(IMAGE, 0n)]));
+    expect(getStreamValue(harness.store, IMAGE)).toBeNull();
+
+    terminal.resolve(windowAt(0n, [frame(IMAGE, 0n)]));
+    await settle();
+    expect(getStreamValue(harness.store, IMAGE)).toBeNull();
+  });
+
   it("returns late loop-continuation reads to ordinary cache ownership", async () => {
     const lateRead = deferred<readonly SynchronizedFrameWindow[]>();
     const harness = createHarness({
