@@ -147,7 +147,10 @@ describe("useMcapAudioStream", () => {
     ).toBeLessThanOrEqual(1);
   });
 
-  it("marks unsupported when only compressed audio is present (no PCM decode yet)", async () => {
+  it("reports unsupported when the browser exposes no AudioDecoder", async () => {
+    // jsdom has no WebCodecs, so `hasAudioDecoder()` is false here. This
+    // asserts the graceful-degradation path, NOT that compressed audio is
+    // undecodable — the decode-path coverage is the test below.
     mocks.dataStream = {
       getTimelineIndex: () => ({ endTimeNs: 1000n, startTimeNs: 0n }),
       readStreamFrames: vi.fn(async () => ({
@@ -217,5 +220,74 @@ describe("useMcapAudioStream", () => {
       result.current.pause();
     });
     expect(source.stop).toHaveBeenCalled();
+  });
+
+  it("closes its AudioContext on unmount", async () => {
+    // Browsers cap concurrent AudioContexts per page; a leak here
+    // eventually makes construction fail, which presents as silence.
+    mocks.dataStream = {
+      getTimelineIndex: () => ({ endTimeNs: 1000n, startTimeNs: 0n }),
+      readStreamFrames: vi.fn(async () => ({
+        frames: [rawAudioFrame(0n, [1, 2, 3, 4])],
+        stopReason: "complete",
+      })),
+    };
+
+    const { result, unmount } = renderPcm();
+    await waitFor(() => expect(result.current.result.status).toBe("ready"));
+    const audioContext = audioContextInstances[0];
+
+    unmount();
+    expect(audioContext.close).toHaveBeenCalled();
+  });
+
+  it("decodes compressed audio when the browser has an AudioDecoder", async () => {
+    // Minimal WebCodecs stand-ins: one AudioData frame of stereo silence.
+    class FakeAudioData {
+      sampleRate = 48_000;
+      numberOfChannels = 2;
+      numberOfFrames = 2;
+      copyTo = vi.fn();
+      close = vi.fn();
+    }
+    class FakeAudioDecoder {
+      constructor(private init: { output: (d: FakeAudioData) => void }) {}
+      configure = vi.fn();
+      decode = vi.fn(() => this.init.output(new FakeAudioData()));
+      flush = vi.fn(async () => undefined);
+      close = vi.fn();
+    }
+    vi.stubGlobal("AudioDecoder", FakeAudioDecoder);
+    vi.stubGlobal(
+      "EncodedAudioChunk",
+      class {
+        constructor(public init: unknown) {}
+      },
+    );
+
+    mocks.dataStream = {
+      getTimelineIndex: () => ({ endTimeNs: 1000n, startTimeNs: 0n }),
+      readStreamFrames: vi.fn(async () => ({
+        frames: [
+          {
+            output: {
+              visualization: {
+                bytes: Uint8Array.of(1, 2, 3),
+                format: "opus",
+                kind: VISUALIZATION_KIND.COMPRESSED_AUDIO,
+              },
+            },
+            streamId: "audio-1",
+            timestampNs: 0n,
+          },
+        ],
+        stopReason: "complete",
+      })),
+    };
+
+    const { result } = renderPcm();
+    await waitFor(() => expect(result.current.result.status).toBe("ready"));
+    expect(result.current.result.channels).toBe(2);
+    expect(result.current.result.metadata?.sampleRate).toBe(48_000);
   });
 });

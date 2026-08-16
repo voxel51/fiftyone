@@ -81,10 +81,10 @@ describe("AudioTile", () => {
   it("labels the waveform from a real source when one is available, without registering a placeholder", () => {
     mocks.sources = [{ id: "topic-1", label: "Mic 1", type: "audio" }];
     render(<AudioTile />);
-    const metadata = screen
-      .getByTestId("audio-tile")
-      .querySelector(".metadata");
-    expect(within(metadata as HTMLElement).getByText("Mic 1")).toBeTruthy();
+    // Query by testid, not a CSS-module class: those are hashed in a real
+    // build, so `.metadata` matches nothing outside the local dev config.
+    const metadata = screen.getByTestId("audio-tile-metadata");
+    expect(within(metadata).getByText("Mic 1")).toBeTruthy();
     expect(screen.queryByText(/placeholder/i)).toBeNull();
     expect(mocks.registerAudioTrack).not.toHaveBeenCalled();
   });

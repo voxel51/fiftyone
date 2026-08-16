@@ -131,7 +131,7 @@ const AudioTile: React.FC<EpisodeTileProps> = () => {
 
   return (
     <Stack className={styles.root} data-testid="audio-tile">
-      <div className={styles.metadata}>
+      <div className={styles.metadata} data-testid="audio-tile-metadata">
         <Text color={TextColor.Primary} variant={TextVariant.Sm}>
           {waveformTracks[0]?.label}
         </Text>
