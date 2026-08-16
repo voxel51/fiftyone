@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -149,7 +155,9 @@ describe("VolumeControl", () => {
     expect(getMasterMuted(store as PlaybackStore)).toBe(false);
     expect(getAudioMuted(store as PlaybackStore)).toBe(false);
 
-    setMasterMuted(store as PlaybackStore, true);
+    // Direct store writes bypass fireEvent's implicit act(), so React has
+    // not re-rendered the popover yet when the assertion runs.
+    act(() => setMasterMuted(store as PlaybackStore, true));
     expect(getAudioMuted(store as PlaybackStore)).toBe(true);
     expect(muteButton("Unmute")).toBeTruthy();
 
