@@ -455,9 +455,7 @@ describe("TimelineTrack", () => {
     it("renders with the 'Unmute track' label when muted", () => {
       const onMuteClick = vi.fn();
       renderTrack({ track: { labelWidth: 150, onMuteClick, muted: true } });
-      expect(
-        screen.getByRole("button", { name: "Unmute track" }),
-      ).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Unmute track" })).toBeTruthy();
     });
 
     it("invokes onMuteClick when clicked, without propagating to the lane", () => {
