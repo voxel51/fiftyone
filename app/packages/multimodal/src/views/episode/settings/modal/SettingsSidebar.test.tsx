@@ -410,7 +410,7 @@ describe("SettingsSidebar", () => {
     expect(screen.getByText("Performance diagnostics")).toBeTruthy();
     expect(screen.getAllByText("Playback").length).toBeGreaterThan(0);
     expect(screen.getByText("Rendering")).toBeTruthy();
-    expect(screen.getByText("WebGPU")).toBeTruthy();
+    expect(screen.getByText("Graphics")).toBeTruthy();
     expect(screen.getByText("Grid & snapshots")).toBeTruthy();
     expect(screen.getByText("GPU resources")).toBeTruthy();
     expect(screen.getByText("Browser")).toBeTruthy();

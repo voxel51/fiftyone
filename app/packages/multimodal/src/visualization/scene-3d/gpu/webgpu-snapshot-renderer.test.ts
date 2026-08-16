@@ -21,9 +21,9 @@ import { buildPointCloudRenderData } from "../point-cloud-colors";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../panel-ui/style-tokens";
 import { DEFAULT_MAX_RENDERED_POINTS } from "../../webgpu/point-cloud-canvas-budget";
 import {
-  resetWebGpuDeviceRegistryForTests,
-  webGpuDeviceStats,
-} from "../../webgpu/webgpu-device-registry";
+  graphicsRendererStats,
+  resetGraphicsRendererRegistryForTests,
+} from "../../webgpu/graphics-renderer-registry";
 import {
   WEBGPU_SNAPSHOT_SURFACE,
   renderPointCloudSnapshot,
@@ -38,7 +38,7 @@ const LINGER_MS = 30_000;
 let fake: ReturnType<typeof createFakeBackend>;
 
 beforeEach(() => {
-  resetWebGpuDeviceRegistryForTests();
+  resetGraphicsRendererRegistryForTests();
   resetWebGpuSnapshotRendererForTests();
   fake = createFakeBackend();
   setWebGpuSnapshotBackendForTests(fake.backend);
@@ -48,7 +48,7 @@ afterEach(async () => {
   // Let any in-flight queue turns settle before tearing shared state down.
   await flushMicrotasks();
   resetWebGpuSnapshotRendererForTests();
-  resetWebGpuDeviceRegistryForTests();
+  resetGraphicsRendererRegistryForTests();
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -120,7 +120,10 @@ describe("renderPointCloudSnapshot", () => {
     const first = renderPointCloudSnapshot(job());
     await flushMicrotasks();
     // Live device visible to the registry while the renderer is warm.
-    expect(webGpuDeviceStats().bySurface[WEBGPU_SNAPSHOT_SURFACE]).toBe(1);
+    expect(
+      graphicsRendererStats().renderers.bySurface[WEBGPU_SNAPSHOT_SURFACE]
+        ?.webgpu,
+    ).toBe(1);
     fake.captures[0].resolve(fakeBitmap());
     await first;
     expect(webGpuSnapshotRendererStats().rendererAlive).toBe(true);
@@ -135,14 +138,17 @@ describe("renderPointCloudSnapshot", () => {
     expect(webGpuSnapshotRendererStats().rendererAlive).toBe(false);
     expect(webGpuSnapshotRendererStats().rendererDisposals).toBe(1);
     expect(
-      webGpuDeviceStats().bySurface[WEBGPU_SNAPSHOT_SURFACE],
+      graphicsRendererStats().renderers.bySurface[WEBGPU_SNAPSHOT_SURFACE],
     ).toBeUndefined();
 
     // The next job re-creates the renderer from scratch.
     const second = renderPointCloudSnapshot(job());
     await flushMicrotasks();
     expect(fake.createRenderer).toHaveBeenCalledTimes(2);
-    expect(webGpuDeviceStats().bySurface[WEBGPU_SNAPSHOT_SURFACE]).toBe(1);
+    expect(
+      graphicsRendererStats().renderers.bySurface[WEBGPU_SNAPSHOT_SURFACE]
+        ?.webgpu,
+    ).toBe(1);
     fake.captures[1].resolve(fakeBitmap());
     expect(await second).not.toBeNull();
     expect(webGpuSnapshotRendererStats().rendererCreations).toBe(2);
@@ -305,7 +311,7 @@ describe("renderPointCloudSnapshot", () => {
     expect(webGpuSnapshotRendererStats().jobsFailed).toBe(1);
     // The failed device registration is released, not leaked.
     expect(
-      webGpuDeviceStats().bySurface[WEBGPU_SNAPSHOT_SURFACE],
+      graphicsRendererStats().renderers.bySurface[WEBGPU_SNAPSHOT_SURFACE],
     ).toBeUndefined();
 
     // The next job retries creation instead of inheriting the rejection.
@@ -314,6 +320,25 @@ describe("renderPointCloudSnapshot", () => {
     expect(failingOnce.createRenderer).toHaveBeenCalledTimes(2);
     failingOnce.captures[0].resolve(fakeBitmap());
     expect(await second).not.toBeNull();
+  });
+
+  it("recovers when the renderer factory throws synchronously", async () => {
+    const throwingOnce = createFakeBackend();
+    throwingOnce.throwNextCreate(new Error("factory crashed"));
+    setWebGpuSnapshotBackendForTests(throwingOnce.backend);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    expect(await renderPointCloudSnapshot(job())).toBeNull();
+    expect(webGpuSnapshotRendererStats().jobsFailed).toBe(1);
+    expect(
+      graphicsRendererStats().renderers.bySurface[WEBGPU_SNAPSHOT_SURFACE],
+    ).toBeUndefined();
+
+    const retry = renderPointCloudSnapshot(job());
+    await flushMicrotasks();
+    expect(throwingOnce.createRenderer).toHaveBeenCalledTimes(2);
+    throwingOnce.captures[0].resolve(fakeBitmap());
+    expect(await retry).not.toBeNull();
   });
 });
 
@@ -354,12 +379,18 @@ function createFakeBackend() {
   const captures: FakeCapture[] = [];
   const handles: Array<{ dispose: ReturnType<typeof vi.fn> }> = [];
   let failNext: Error | null = null;
+  let throwNext: Error | null = null;
 
-  const createRenderer = vi.fn(async () => {
+  const createRenderer = vi.fn(() => {
+    if (throwNext) {
+      const error = throwNext;
+      throwNext = null;
+      throw error;
+    }
     if (failNext) {
       const error = failNext;
       failNext = null;
-      throw error;
+      return Promise.reject(error);
     }
 
     const handle = {
@@ -375,7 +406,7 @@ function createFakeBackend() {
         }),
     };
     handles.push(handle);
-    return handle;
+    return Promise.resolve(handle);
   });
 
   const backend: WebGpuSnapshotBackend = { createRenderer };
@@ -388,6 +419,9 @@ function createFakeBackend() {
       failNext = error;
     },
     handles,
+    throwNextCreate: (error: Error) => {
+      throwNext = error;
+    },
   };
 }
 

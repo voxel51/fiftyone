@@ -12,9 +12,9 @@ import { publishMcapEmbeddingSelection } from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   WEBGPU_DEVICE_BUDGET,
-  registerWebGpuRenderer,
-  resetWebGpuDeviceRegistryForTests,
-} from "../../../visualization/webgpu/webgpu-device-registry";
+  registerGraphicsRenderer,
+  resetGraphicsRendererRegistryForTests,
+} from "../../../visualization/webgpu/graphics-renderer-registry";
 import {
   acquireGridLiveLease,
   gridLiveLeaseStats,
@@ -230,7 +230,7 @@ afterEach(() => {
   publishMcapEmbeddingSelection(null);
   vi.useRealTimers();
   resetGridLiveLeasesForTests();
-  resetWebGpuDeviceRegistryForTests();
+  resetGraphicsRendererRegistryForTests();
   bitmapHostHarness.lastBitmap = null;
   bitmapHostHarness.onCanvasCommitted = null;
   bitmapViewHarness.lastProps = null;
@@ -708,7 +708,7 @@ describe("GridRenderer", () => {
     // The page is already at the device budget before the hover (say, a
     // heavy modal layout owns every slot).
     for (let i = 0; i < WEBGPU_DEVICE_BUDGET; i += 1) {
-      registerWebGpuRenderer("modal-3d");
+      registerGraphicsRenderer("modal-3d");
     }
 
     render(<GridRenderer ctx={rendererCtx()} />);

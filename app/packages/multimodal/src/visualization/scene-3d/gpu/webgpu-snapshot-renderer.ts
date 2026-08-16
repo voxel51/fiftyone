@@ -58,11 +58,17 @@ import type {
 } from "../types";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../panel-ui/style-tokens";
 import {
-  registerWebGpuRenderer,
-  type WebGpuRendererRegistration,
-} from "../../webgpu/webgpu-device-registry";
+  registerGraphicsRenderer,
+  type GraphicsRendererRegistration,
+} from "../../webgpu/graphics-renderer-registry";
+import {
+  GRAPHICS_POWER_PREFERENCE,
+  graphicsBackendForRenderer,
+  requestedGraphicsBackend,
+  type GraphicsBackend,
+} from "../../webgpu/graphics-backend";
 
-/** Device-registry surface tag for the shared snapshot renderer. */
+/** Graphics-registry surface tag for the shared snapshot renderer. */
 export const WEBGPU_SNAPSHOT_SURFACE = "snapshot";
 
 /**
@@ -110,6 +116,8 @@ export interface PointCloudSnapshotJob {
  * `THREE.WebGPURenderer` on an `OffscreenCanvas`; tests inject fakes.
  */
 export interface WebGpuSnapshotRendererHandle {
+  /** Backend selected by Three. Injected test handles default to WebGPU. */
+  readonly backend?: GraphicsBackend;
   dispose(): void;
   /**
    * Renders `scene` once at `width`x`height` and captures the frame.
@@ -153,18 +161,24 @@ const realBackend: WebGpuSnapshotBackend = {
     const canvas = new OffscreenCanvas(1, 1);
     // Same construction parameters as `WebGpuCanvas.tsx`'s renderer so
     // snapshot output matches the live panels (antialias, opaque, sRGB).
-    const renderer = new WebGPURenderer({
+    const backendRequest = requestedGraphicsBackend();
+    const rendererOptions: ConstructorParameters<typeof WebGPURenderer>[0] & {
+      readonly forceWebGL?: boolean;
+    } = {
       alpha: false,
       antialias: true,
       canvas: canvas as unknown as HTMLCanvasElement,
       depth: true,
-      powerPreference: "high-performance",
+      forceWebGL: backendRequest === "webgl2",
+      powerPreference: GRAPHICS_POWER_PREFERENCE,
       stencil: false,
-    });
+    };
+    const renderer = new WebGPURenderer(rendererOptions);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     await renderer.init();
 
     return {
+      backend: graphicsBackendForRenderer(renderer),
       dispose() {
         renderer.dispose();
       },
@@ -188,7 +202,7 @@ const realBackend: WebGpuSnapshotBackend = {
 
 let activeBackend: WebGpuSnapshotBackend = realBackend;
 let rendererPromise: Promise<WebGpuSnapshotRendererHandle> | null = null;
-let registration: WebGpuRendererRegistration | null = null;
+let registration: GraphicsRendererRegistration | null = null;
 let queueTail: Promise<unknown> = Promise.resolve();
 let pendingJobs = 0;
 let lingerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -321,20 +335,40 @@ async function runJob(job: PointCloudSnapshotJob): Promise<ImageBitmap | null> {
 function acquireRenderer(): Promise<WebGpuSnapshotRendererHandle> {
   if (!rendererPromise) {
     rendererCreations += 1;
-    // Register while the device is being acquired so the registry never
-    // undercounts a live device; released wherever the renderer dies.
-    registration = registerWebGpuRenderer(WEBGPU_SNAPSHOT_SURFACE);
-    const creation = activeBackend.createRenderer();
+    const backendRequest = requestedGraphicsBackend();
+    // Reserve while the backend is being acquired, then resolve to the
+    // backend Three actually selected.
+    const currentRegistration = registerGraphicsRenderer(
+      WEBGPU_SNAPSHOT_SURFACE,
+      backendRequest,
+    );
+    registration = currentRegistration;
+    // Normalize synchronous factory throws into the same rejection path as
+    // asynchronous adapter/init failures so accounting and retries agree.
+    const creation = Promise.resolve().then(() =>
+      activeBackend.createRenderer(),
+    );
     rendererPromise = creation;
-    creation.catch(() => {
-      // A failed creation must not poison later jobs: drop the rejected
-      // promise so the next job retries, and release the registration.
-      if (rendererPromise === creation) {
-        rendererPromise = null;
-        registration?.release();
-        registration = null;
-      }
-    });
+    creation.then(
+      (handle) => {
+        if (
+          rendererPromise === creation &&
+          registration === currentRegistration
+        ) {
+          currentRegistration.markReady(handle.backend ?? "webgpu");
+        }
+      },
+      (error: unknown) => {
+        // A failed creation must not poison later jobs: drop the rejected
+        // promise so the next job retries, and release the registration.
+        if (rendererPromise === creation) {
+          rendererPromise = null;
+          currentRegistration.markFailed(error);
+          currentRegistration.release();
+          registration = null;
+        }
+      },
+    );
   }
 
   return rendererPromise;

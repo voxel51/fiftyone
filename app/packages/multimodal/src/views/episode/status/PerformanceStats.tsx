@@ -30,7 +30,7 @@ import {
 } from "react";
 import { gpuPointCloudProjectionResourceStats } from "../../../visualization/composition/gpu-point-cloud-projection-resources";
 import { gridLiveLeaseStats } from "../../../visualization/webgpu/webgpu-live-lease";
-import { webGpuDeviceStats } from "../../../visualization/webgpu/webgpu-device-registry";
+import { graphicsRendererStats } from "../../../visualization/webgpu/graphics-renderer-registry";
 import { webGpuSnapshotRendererStats } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
 import { imageTextureCacheStats } from "../../../visualization/media-2d/image-texture-cache";
 import { gpuPointCloudColormapTextureStats } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
@@ -145,7 +145,7 @@ function LivePerformanceStats({
     map,
     projection,
     snapshotRenderer,
-    webGpu,
+    graphics,
   } = snapshotBase;
 
   return (
@@ -205,19 +205,63 @@ function LivePerformanceStats({
         />
         <StatsGroup
           rows={[
-            ["WebGPU devices", `${webGpu.total} / ${webGpu.budget}`],
-            ["Device high-water", formatInteger(webGpu.highWaterMark)],
             [
-              "Registered / released",
-              `${webGpu.totalRegistered} / ${webGpu.totalReleased}`,
+              "Requested backend",
+              graphics.requestedBackend === "webgl2"
+                ? "WebGL2 (diagnostic override)"
+                : "Auto",
             ],
-            ["Over budget", webGpu.overBudget ? "Yes" : "No"],
-            ...Object.entries(webGpu.bySurface).map(
-              ([surface, count]) =>
-                [`Surface · ${surface}`, formatInteger(count)] as const,
+            [
+              "WebGPU API",
+              graphics.webGpuApiAvailable ? "Available" : "Unavailable",
+            ],
+            [
+              "Active backends",
+              `${graphics.renderers.byBackend.webgpu} WebGPU / ${graphics.renderers.byBackend.webgl2} WebGL2 / ${graphics.renderers.initializing} initializing`,
+            ],
+            [
+              "WebGPU devices",
+              `${graphics.webGpuDevices.live} / ${graphics.webGpuDevices.budget}`,
+            ],
+            [
+              "WebGPU reservations",
+              formatInteger(graphics.webGpuDevices.reserved),
+            ],
+            [
+              "Device high-water",
+              formatInteger(graphics.webGpuDevices.highWaterMark),
+            ],
+            [
+              "Renderers created / disposed",
+              `${graphics.renderers.created} / ${graphics.renderers.disposed}`,
+            ],
+            [
+              "WebGL fallbacks",
+              formatInteger(graphics.renderers.webGlFallbacks),
+            ],
+            [
+              "WebGL diagnostic overrides",
+              formatInteger(graphics.renderers.webGlOverrides),
+            ],
+            [
+              "Init failures / device losses",
+              `${graphics.renderers.initFailures} / ${graphics.renderers.deviceLosses}`,
+            ],
+            ["Over budget", graphics.webGpuDevices.overBudget ? "Yes" : "No"],
+            ...(graphics.lastError
+              ? ([
+                  ["Last renderer error", graphics.lastError] as const,
+                ] as const)
+              : []),
+            ...Object.entries(graphics.renderers.bySurface).map(
+              ([surface, counts]) =>
+                [
+                  "Surface · " + surface,
+                  formatSurfaceBackends(counts),
+                ] as const,
             ),
           ]}
-          title="WebGPU"
+          title="Graphics"
         />
         <StatsGroup
           rows={[
@@ -429,8 +473,27 @@ function readRuntimeStats() {
     map: mapPerformanceStats(),
     projection: gpuPointCloudProjectionResourceStats(),
     snapshotRenderer: webGpuSnapshotRendererStats(),
-    webGpu: webGpuDeviceStats(),
+    graphics: {
+      ...graphicsRendererStats(),
+      webGpuApiAvailable: typeof navigator.gpu !== "undefined",
+    },
   } as const;
+}
+
+function formatSurfaceBackends({
+  initializing,
+  webgl2,
+  webgpu,
+}: {
+  readonly initializing: number;
+  readonly webgl2: number;
+  readonly webgpu: number;
+}): string {
+  const values: string[] = [];
+  if (webgpu > 0) values.push(`${webgpu} WebGPU`);
+  if (webgl2 > 0) values.push(`${webgl2} WebGL2`);
+  if (initializing > 0) values.push(`${initializing} initializing`);
+  return values.join(" / ") || "Idle";
 }
 
 function finiteOrNull(value: number | undefined): number | null {
