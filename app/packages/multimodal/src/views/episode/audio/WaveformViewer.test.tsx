@@ -2,12 +2,14 @@ import { PlaybackProvider } from "@fiftyone/playback";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { synthesizePeaks } from "./peak-pyramid";
+import { synthesizePeaks } from "../../../audio/peak-pyramid";
 import WaveformViewer from "./WaveformViewer";
 
 afterEach(cleanup);
 
-function renderViewer(overrides: Partial<React.ComponentProps<typeof WaveformViewer>> = {}) {
+function renderViewer(
+  overrides: Partial<React.ComponentProps<typeof WaveformViewer>> = {},
+) {
   const track = {
     trackId: "a",
     label: "Track A",

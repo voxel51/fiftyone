@@ -24,5 +24,6 @@ export function audioProbe(
   entries.push({ event, ...detail });
   // Bounded: a long session with repeated seeks would otherwise grow this
   // without limit.
-  if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES);
+  if (entries.length > MAX_ENTRIES)
+    entries.splice(0, entries.length - MAX_ENTRIES);
 }

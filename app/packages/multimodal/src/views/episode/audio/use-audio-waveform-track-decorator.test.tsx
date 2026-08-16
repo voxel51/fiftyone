@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { synthesizePeaks } from "./peak-pyramid";
+import { synthesizePeaks } from "../../../audio/peak-pyramid";
 
 const mocks = vi.hoisted(() => ({
   tracks: [] as Array<{
@@ -54,9 +54,7 @@ describe("useAudioWaveformTrackDecorator", () => {
 
   it("supplies muted/onMuteClick and a waveform laneOverride once both exist", () => {
     const setMuted = vi.fn();
-    mocks.tracks = [
-      { id: "audio-1", label: "Mic", muted: false, setMuted },
-    ];
+    mocks.tracks = [{ id: "audio-1", label: "Mic", muted: false, setMuted }];
     const peaks = { "audio-1": synthesizePeaks({ durationSec: 1 }) };
     const { result } = renderHook(() => useAudioWaveformTrackDecorator(peaks));
     const decoration = result.current(

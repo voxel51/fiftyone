@@ -1,4 +1,9 @@
-import { usePlayback, usePlayhead, useViewEnd, useViewStart } from "@fiftyone/playback";
+import {
+  usePlayback,
+  usePlayhead,
+  useViewEnd,
+  useViewStart,
+} from "@fiftyone/playback";
 import React, { useCallback, useRef, useState } from "react";
 import WaveformViewer, { type WaveformTrackSpec } from "./WaveformViewer";
 import styles from "./WaveformSurface.module.css";
@@ -41,7 +46,10 @@ const WaveformSurface: React.FC<WaveformSurfaceProps> = ({
       if (!element || !(span > 0)) return null;
       const rect = element.getBoundingClientRect();
       if (rect.width === 0) return null;
-      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      const ratio = Math.min(
+        1,
+        Math.max(0, (clientX - rect.left) / rect.width),
+      );
       return viewStart + ratio * span;
     },
     [span, viewStart],

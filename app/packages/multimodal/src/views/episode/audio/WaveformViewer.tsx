@@ -1,7 +1,7 @@
 import { useViewEnd, useViewStart } from "@fiftyone/playback";
 import clsx from "clsx";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { PeakPyramid } from "./peak-pyramid";
+import type { PeakPyramid } from "../../../audio/peak-pyramid";
 import { WaveformRenderer, type WaveformRowSpec } from "./waveform-gpu";
 import styles from "./WaveformViewer.module.css";
 
@@ -25,10 +25,14 @@ export interface WaveformViewerProps {
   ) => Promise<Pick<WaveformRenderer, "render" | "dispose">>;
 }
 
-const DEFAULT_COLOR: readonly [number, number, number, number] = [0.4, 0.7, 1, 1];
+const DEFAULT_COLOR: readonly [number, number, number, number] = [
+  0.4, 0.7, 1, 1,
+];
 
 function hasWebGpu(): boolean {
-  return typeof navigator !== "undefined" && "gpu" in navigator && !!navigator.gpu;
+  return (
+    typeof navigator !== "undefined" && "gpu" in navigator && !!navigator.gpu
+  );
 }
 
 /**
@@ -49,9 +53,10 @@ const WaveformViewer: React.FC<WaveformViewerProps> = ({
   const viewStart = useViewStart();
   const viewEnd = useViewEnd();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const rendererRef = useRef<Pick<WaveformRenderer, "render" | "dispose"> | null>(
-    null,
-  );
+  const rendererRef = useRef<Pick<
+    WaveformRenderer,
+    "render" | "dispose"
+  > | null>(null);
   const [gpuAvailable] = useState(hasWebGpu);
   const [ready, setReady] = useState(false);
   // Bumped whenever the canvas's backing buffer is resized. Assigning
@@ -65,7 +70,8 @@ const WaveformViewer: React.FC<WaveformViewerProps> = ({
       return undefined;
     }
     let cancelled = false;
-    const factory = createRenderer ?? ((canvas) => WaveformRenderer.create(canvas));
+    const factory =
+      createRenderer ?? ((canvas) => WaveformRenderer.create(canvas));
     factory(canvasRef.current).then((renderer) => {
       if (cancelled) {
         renderer.dispose();
@@ -129,7 +135,10 @@ const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
   if (!gpuAvailable) {
     return (
-      <div className={styles.unsupported} data-testid="waveform-viewer-unsupported">
+      <div
+        className={styles.unsupported}
+        data-testid="waveform-viewer-unsupported"
+      >
         Waveform requires WebGPU
       </div>
     );
