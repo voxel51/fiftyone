@@ -145,6 +145,9 @@ export function isMcapPlaybackWorkerStreamRequest(
 export function runMcapPlaybackWorkerUnaryRequest(
   client: McapPlaybackWorkerResourceClient,
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>,
+  onSynchronizedProgress?: (
+    window: McapPlaybackWorkerResultByType["readSynchronizedMessages"],
+  ) => void,
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
   switch (message.type) {
     case "enumerateNumericFields":
@@ -194,7 +197,10 @@ export function runMcapPlaybackWorkerUnaryRequest(
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":
-      return client.readSynchronizedMessages(message.payload);
+      return client.readSynchronizedMessages(
+        message.payload,
+        onSynchronizedProgress,
+      );
     case "readTimelineRange":
       return client.readTimelineRange(message.payload);
     case "readTransformTopology":

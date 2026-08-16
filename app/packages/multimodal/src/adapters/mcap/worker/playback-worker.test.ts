@@ -6,17 +6,23 @@ import {
 
 type WorkerClientMock = {
   readonly dispose: Mock;
+  readonly readSynchronizedMessages: Mock;
   readonly readTopics: Mock;
 };
 
 const workerResourceClientMock = vi.hoisted(() => ({
   clients: [] as WorkerClientMock[],
+  synchronizedResult: null as unknown,
 }));
 
 vi.mock("./worker-resource-client", () => ({
   createWorkerResourceClient: vi.fn(() => {
     const client: WorkerClientMock = {
       dispose: vi.fn(),
+      readSynchronizedMessages: vi.fn(async (_request, onProgress) => {
+        onProgress?.(workerResourceClientMock.synchronizedResult);
+        return workerResourceClientMock.synchronizedResult;
+      }),
       readTopics: vi.fn(async () => ({
         recordingFacts: { format: "mcap" },
         streams: [],
@@ -38,6 +44,7 @@ describe("MCAP playback worker lifecycle", () => {
     vi.unstubAllGlobals();
     vi.resetModules();
     workerResourceClientMock.clients.length = 0;
+    workerResourceClientMock.synchronizedResult = null;
   });
 
   it("releases active and parked source clients while keeping the worker alive", async () => {
@@ -69,7 +76,84 @@ describe("MCAP playback worker lifecycle", () => {
     expect(workerResourceClientMock.clients).toHaveLength(5);
     expect(workerResourceClientMock.clients[4]).not.toBe(parked);
   });
+
+  it("clones progress without detaching the terminal union", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    workerResourceClientMock.synchronizedResult = synchronizedWindow(bytes);
+    const workerScope: WorkerScopeMock = {
+      close: vi.fn(),
+      onmessage: null,
+      postMessage: vi.fn((response, transferables?: Transferable[]) => {
+        structuredClone(response, { transfer: transferables ?? [] });
+      }),
+    };
+    vi.stubGlobal("self", workerScope);
+    await import("./playback-worker");
+
+    dispatch(workerScope, {
+      id: 1,
+      payload: {
+        earlyDeliveryTopics: ["/camera"],
+        source: { sizeBytes: "1024", sourceId: "source:1", url: "mcap://1" },
+        timeNs: 1n,
+        topics: ["/camera", "/lidar"],
+      },
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      sourceKey: "source:1",
+      type: "readSynchronizedMessages",
+    } as McapPlaybackWorkerRequest);
+
+    await vi.waitFor(() => {
+      expect(workerScope.postMessage).toHaveBeenCalledTimes(2);
+    });
+    expect(workerScope.postMessage.mock.calls[0]).toEqual([
+      expect.objectContaining({ ok: true, progress: true }),
+      [],
+    ]);
+    expect(workerScope.postMessage.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ id: 1, ok: true }),
+    );
+    expect(workerScope.postMessage.mock.calls[1]?.[0]).not.toHaveProperty(
+      "progress",
+    );
+    expect(workerScope.postMessage.mock.calls[1]?.[1]).toHaveLength(1);
+    expect(
+      workerScope.postMessage.mock.calls.some(
+        ([response]) => response.ok === false,
+      ),
+    ).toBe(false);
+  });
 });
+
+function synchronizedWindow(bytes: Uint8Array) {
+  const message = {
+    activeTimeline: "log" as const,
+    channelId: 1,
+    decoded: {
+      decoderId: "decoder",
+      decoderVersion: "1",
+      output: {
+        attributes: {},
+        resourceHints: { transferables: [bytes.buffer] },
+      },
+      payload: { encoding: "protobuf" },
+    },
+    logTimeNs: 1n,
+    publishTimeNs: 1n,
+    sequence: 1,
+    timelineTimeNs: 1n,
+    topic: "/camera",
+  };
+  return {
+    activeTimeline: "log" as const,
+    endTimeNs: 1n,
+    messages: [message],
+    messagesByTopic: { "/camera": [message] },
+    startTimeNs: 1n,
+    streamPolicies: {},
+    timeNs: 1n,
+  };
+}
 
 async function readTopics(
   workerScope: WorkerScopeMock,

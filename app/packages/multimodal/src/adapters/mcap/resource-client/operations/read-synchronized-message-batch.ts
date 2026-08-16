@@ -168,6 +168,7 @@ export async function readMcapSynchronizedMessageBatch<
   readSignal,
   request,
   reuseIndexedMessage,
+  onWindowProgress,
   timeline,
 }: {
   readonly decodeClient: DecodeClient;
@@ -176,6 +177,11 @@ export async function readMcapSynchronizedMessageBatch<
   readonly readSignal?: { readonly current: AbortSignal | null };
   readonly request: McapReadSynchronizedMessageBatchRequest;
   readonly reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>;
+  readonly onWindowProgress?: (
+    window: McapSynchronizedMessageWindowWithMessages<
+      McapDecodedMessage | ReusedMessage
+    >,
+  ) => void;
   readonly timeline: McapTimelineStrategy;
 }): Promise<
   readonly McapSynchronizedMessageWindowWithMessages<
@@ -271,6 +277,21 @@ export async function readMcapSynchronizedMessageBatch<
           source: request.source,
           timeline,
         }),
+      earlyDeliveryTopics: request.earlyDeliveryTopics,
+      estimateCandidateBytes: async (candidate) => {
+        const identity = indexedCandidateReuseIdentity({
+          candidate,
+          pointCloudColorBy:
+            request.pointCloudColorByByTopic?.[candidate.topic],
+          timeline,
+        });
+        if (reusedIndexedMessages.has(identity.recordId)) return 0;
+        const materialized = await selectedRawCandidates;
+        return (
+          materialized?.get(candidate)?.message.data.byteLength ??
+          Number.MAX_SAFE_INTEGER
+        );
+      },
       // Selected candidates name their chunks exactly, so the byte layer can
       // pipeline those chunk fetches while decoding walks them serially.
       onCandidatesSelected: (selected) => {
@@ -296,6 +317,7 @@ export async function readMcapSynchronizedMessageBatch<
           });
         }
       },
+      onWindowProgress,
       selectTieBreaker: compareIndexedCandidateTieBreaker,
       timeline,
       topics: request.topics,
@@ -330,6 +352,9 @@ export async function readMcapSynchronizedMessageBatch<
         source: request.source,
         timeline,
       }),
+    earlyDeliveryTopics: request.earlyDeliveryTopics,
+    estimateCandidateBytes: (candidate) => candidate.message.data.byteLength,
+    onWindowProgress,
     selectTieBreaker: compareRawCandidateTieBreaker,
     timeline,
     topics: request.topics,
@@ -537,7 +562,10 @@ async function decodeWindowsFromCandidates<
 >({
   candidates,
   decodeCandidate,
+  earlyDeliveryTopics,
+  estimateCandidateBytes,
   onCandidatesSelected,
+  onWindowProgress,
   selectTieBreaker,
   throwIfAborted,
   timeline,
@@ -546,7 +574,14 @@ async function decodeWindowsFromCandidates<
 }: {
   readonly candidates: ReadonlyMap<string, readonly Candidate[]>;
   readonly decodeCandidate: (candidate: Candidate) => Promise<Message>;
+  readonly earlyDeliveryTopics?: readonly string[];
+  readonly estimateCandidateBytes?: (
+    candidate: Candidate,
+  ) => number | Promise<number>;
   readonly onCandidatesSelected?: (selected: readonly Candidate[]) => void;
+  readonly onWindowProgress?: (
+    window: McapSynchronizedMessageWindowWithMessages<Message>,
+  ) => void;
   readonly selectTieBreaker: (left: Candidate, right: Candidate) => number;
   readonly throwIfAborted?: () => void;
   readonly timeline: McapTimelineStrategy;
@@ -609,8 +644,23 @@ async function decodeWindowsFromCandidates<
         readonly McapTopicDecodeDiagnostic[]
       > = {};
       const messages: Message[] = [];
+      const earlyDeliveryTopic = await selectEarlyDeliveryTopic({
+        earlyDeliveryTopics,
+        estimateCandidateBytes,
+        selectedByTopic,
+      });
+      const decodeOrder = earlyDeliveryTopic
+        ? [
+            ...selectedByTopic.filter(
+              ([topic]) => topic === earlyDeliveryTopic,
+            ),
+            ...selectedByTopic.filter(
+              ([topic]) => topic !== earlyDeliveryTopic,
+            ),
+          ]
+        : selectedByTopic;
 
-      for (const [topic, selected] of selectedByTopic) {
+      for (const [topic, selected] of decodeOrder) {
         throwIfAborted?.();
         const settled: readonly McapSettledTopicDecode<Message>[] =
           await Promise.all(
@@ -676,6 +726,18 @@ async function decodeWindowsFromCandidates<
           .map((result) => result.decoded);
         messagesByTopic[topic] = decoded;
         messages.push(...decoded);
+
+        if (topic === earlyDeliveryTopic && decoded.length > 0) {
+          onWindowProgress?.({
+            activeTimeline: timeline.id,
+            endTimeNs: streamPolicies[topic].endTimeNs,
+            messages: decoded,
+            messagesByTopic: { [topic]: decoded },
+            startTimeNs: streamPolicies[topic].startTimeNs ?? 0n,
+            streamPolicies: { [topic]: streamPolicies[topic] },
+            timeNs,
+          });
+        }
       }
 
       messages.sort((left, right) => {
@@ -706,6 +768,40 @@ async function decodeWindowsFromCandidates<
       };
     }),
   );
+}
+
+export async function selectEarlyDeliveryTopic<Candidate>({
+  earlyDeliveryTopics,
+  estimateCandidateBytes,
+  selectedByTopic,
+}: {
+  readonly earlyDeliveryTopics?: readonly string[];
+  readonly estimateCandidateBytes?: (
+    candidate: Candidate,
+  ) => number | Promise<number>;
+  readonly selectedByTopic: readonly (readonly [
+    string,
+    readonly Candidate[],
+  ])[];
+}): Promise<string | undefined> {
+  if (!estimateCandidateBytes || !earlyDeliveryTopics?.length) return undefined;
+  const eligible = new Set(earlyDeliveryTopics);
+  const costs = await Promise.all(
+    selectedByTopic
+      .filter(([topic, selected]) => eligible.has(topic) && selected.length > 0)
+      .map(async ([topic, selected]) => ({
+        cost: (await Promise.all(selected.map(estimateCandidateBytes))).reduce(
+          (total, bytes) => total + bytes,
+          0,
+        ),
+        topic,
+      })),
+  );
+  costs.sort(
+    (left, right) =>
+      left.cost - right.cost || left.topic.localeCompare(right.topic),
+  );
+  return costs[0]?.topic;
 }
 
 async function collectIndexedCandidates({

@@ -350,6 +350,49 @@ describe("worker-backed MCAP resource client", () => {
     await expect(transforms).resolves.toEqual({ samples: [] });
   });
 
+  it("publishes one synchronized surface without settling the union", async () => {
+    const { client, workers } = createClientHarness();
+    const onSynchronizedProgress = vi.fn();
+    let settled = false;
+    const current = client
+      .readSynchronizedMessages(
+        {
+          earlyDeliveryTopics: ["/camera", "/lidar"],
+          source: createSource("source:1"),
+          timeNs: 15n,
+          topics: ["/camera", "/lidar"],
+        },
+        { onSynchronizedProgress },
+      )
+      .finally(() => {
+        settled = true;
+      });
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      payload: { earlyDeliveryTopics: ["/camera", "/lidar"] },
+      type: "readSynchronizedMessages",
+    });
+
+    const progress = createSynchronizedWindow(15n);
+    worker.respond({
+      id: 1,
+      ok: true,
+      progress: true,
+      result: progress,
+    });
+    await Promise.resolve();
+
+    expect(onSynchronizedProgress).toHaveBeenCalledOnce();
+    expect(onSynchronizedProgress).toHaveBeenCalledWith(progress);
+    expect(settled).toBe(false);
+
+    const complete = createSynchronizedWindow(15n);
+    worker.respond({ id: 1, ok: true, result: complete });
+    await expect(current).resolves.toEqual(complete);
+    expect(settled).toBe(true);
+  });
+
   it("cancels placement transforms superseded by a newer playhead", async () => {
     const { client, workers } = createClientHarness();
     const source = createSource("source:1");

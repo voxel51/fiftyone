@@ -13,6 +13,7 @@ import type {
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapResourceClient,
+  McapSynchronizedMessagesReadOptions,
 } from "../contracts/index";
 import type {
   McapPlaybackWorkerFetchParameters,
@@ -29,6 +30,9 @@ export type McapPlaybackWorkerResourceClient = Omit<
   ): Promise<readonly McapPlaybackWorkerSynchronizedWindow[]>;
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
+    optionsOrProgress?:
+      | McapSynchronizedMessagesReadOptions
+      | ((window: McapPlaybackWorkerSynchronizedWindow) => void),
   ): Promise<McapPlaybackWorkerSynchronizedWindow>;
 };
 
@@ -109,11 +113,19 @@ export function createWorkerResourceClient({
         request,
         reuseRetainedDecodedMessage,
       ),
-    readSynchronizedMessages: (request) =>
-      client.readSynchronizedMessagesWithReuse(
+    readSynchronizedMessages: (request, optionsOrProgress) => {
+      if (
+        optionsOrProgress !== undefined &&
+        typeof optionsOrProgress !== "function"
+      ) {
+        return client.readSynchronizedMessages(request, optionsOrProgress);
+      }
+      return client.readSynchronizedMessagesWithReuse(
         request,
         reuseRetainedDecodedMessage,
-      ),
+        optionsOrProgress,
+      );
+    },
   };
 }
 

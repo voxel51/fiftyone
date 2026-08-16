@@ -23,6 +23,9 @@ type PendingRequest<
 > = {
   cancelled?: boolean;
   readonly cleanup?: () => void;
+  readonly onProgress?: (
+    result: McapPlaybackWorkerResultByType["readSynchronizedMessages"],
+  ) => void;
   readonly reject: (error: Error) => void;
   readonly resolve: (result: McapPlaybackWorkerResultByType[Type]) => void;
   readonly sourceKey: string;
@@ -65,6 +68,9 @@ export class McapPlaybackWorkerTransport {
     supersessionKeys: readonly string[] = [],
     signal?: AbortSignal,
     retainedDecodedRecordIds?: readonly string[],
+    onProgress?: (
+      result: McapPlaybackWorkerResultByType["readSynchronizedMessages"],
+    ) => void,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
     const message = createRpcRequest(
@@ -112,6 +118,7 @@ export class McapPlaybackWorkerTransport {
               cleanup: () => signal.removeEventListener("abort", cancel),
             }
           : {}),
+        ...(onProgress ? { onProgress } : {}),
         reject,
         resolve: resolve as PendingRequest["resolve"],
         sourceKey,
@@ -256,12 +263,17 @@ export class McapPlaybackWorkerTransport {
       this.onTransport?.(response.transport);
     }
 
+    const pending = this.pending.get(response.id);
+    if (pending && response.ok && "progress" in response) {
+      pending.onProgress?.(response.result);
+      return;
+    }
+
     if (response.ok && "stream" in response) {
       this.handleStreamResponse(response);
       return;
     }
 
-    const pending = this.pending.get(response.id);
     if (pending) {
       // A response can arrive after the client has moved to another source.
       // It still owns this request id, so settle and remove it instead of

@@ -52,6 +52,7 @@ import type {
   McapReadSynchronizedMessagesRequest,
   McapRecordingInventory,
   McapResourceReadOptions,
+  McapSynchronizedMessagesReadOptions,
   McapReadTopicsRequest,
   McapReadTopicTimeBoundsRequest,
   McapReadTimelineRangeRequest,
@@ -404,7 +405,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
-    options?: McapResourceReadOptions,
+    options?: McapSynchronizedMessagesReadOptions,
   ): Promise<McapSynchronizedMessageWindow> {
     let lease: DecodedRecordLease;
     try {
@@ -418,6 +419,16 @@ class WorkerMcapResourceClient implements McapResourceClient {
       undefined,
       options?.signal,
       lease.recordIds,
+      options?.onSynchronizedProgress
+        ? (progress) => {
+            const hydrated = hydrateSynchronizedWindows(
+              [progress],
+              lease,
+              this.decodedRecords,
+            )[0];
+            if (hydrated) options.onSynchronizedProgress?.(hydrated);
+          }
+        : undefined,
     )
       .then(
         (window) =>
@@ -481,6 +492,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
     priority?: McapPlaybackWorkerPriority,
     signal?: AbortSignal,
     retainedDecodedRecordIds?: readonly string[],
+    onProgress?: (
+      result: McapPlaybackWorkerResultByType["readSynchronizedMessages"],
+    ) => void,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     if (this.disposed) {
       return Promise.reject(new Error("MCAP worker client is disposed"));
@@ -524,6 +538,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       supersessionKeys,
       signal,
       retainedDecodedRecordIds,
+      onProgress,
     );
   }
 

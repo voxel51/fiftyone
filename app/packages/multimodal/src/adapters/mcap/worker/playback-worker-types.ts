@@ -229,6 +229,14 @@ export type McapPlaybackWorkerUnaryResponse = {
   readonly transport?: McapTransportSnapshot;
 };
 
+/** One early topic result for a still-running synchronized union read. */
+export type McapPlaybackWorkerProgressResponse = {
+  readonly id: number;
+  readonly ok: true;
+  readonly progress: true;
+  readonly result: McapPlaybackWorkerResultByType["readSynchronizedMessages"];
+};
+
 /**
  * Incremental or terminal success response for one streaming worker RPC.
  */
@@ -283,6 +291,7 @@ export type McapPlaybackWorkerTransportResponse = {
  */
 export type McapPlaybackWorkerResponse =
   | McapPlaybackWorkerUnaryResponse
+  | McapPlaybackWorkerProgressResponse
   | McapPlaybackWorkerStreamResponse
   | McapPlaybackWorkerErrorResponse
   | McapPlaybackWorkerTransportResponse;

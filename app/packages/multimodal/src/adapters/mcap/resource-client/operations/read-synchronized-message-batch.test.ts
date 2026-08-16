@@ -4,6 +4,7 @@ import {
   INDEXED_RECORD_ID_OPTION_PART_COUNT,
   mintIndexedRecordIdentity,
   parseIndexedRecordIdentity,
+  selectEarlyDeliveryTopic,
 } from "./read-synchronized-message-batch";
 
 describe("indexed record identity", () => {
@@ -43,4 +44,40 @@ describe("indexed record identity", () => {
       ),
     ).toThrow("cannot contain NUL bytes");
   });
+});
+
+describe("early synchronized delivery", () => {
+  it.each([
+    [
+      "forward",
+      [
+        ["/large", [{ bytes: 100 }]],
+        ["/small", [{ bytes: 10 }]],
+        ["/support", [{ bytes: 1 }]],
+      ],
+    ],
+    [
+      "reverse",
+      [
+        ["/support", [{ bytes: 1 }]],
+        ["/small", [{ bytes: 10 }]],
+        ["/large", [{ bytes: 100 }]],
+      ],
+    ],
+  ] as const)(
+    "selects the cheapest eligible surface for %s request order",
+    async (_direction, selectedByTopic) => {
+      const candidates: readonly (readonly [
+        string,
+        readonly { readonly bytes: number }[],
+      ])[] = selectedByTopic;
+      await expect(
+        selectEarlyDeliveryTopic({
+          earlyDeliveryTopics: ["/large", "/small"],
+          estimateCandidateBytes: (candidate) => candidate.bytes,
+          selectedByTopic: candidates,
+        }),
+      ).resolves.toBe("/small");
+    },
+  );
 });

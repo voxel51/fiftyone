@@ -274,6 +274,10 @@ export interface TransformPlacementReadResult {
 /** One synchronized playback read around a single presentation time. */
 export interface SynchronizedPlaybackReadRequest {
   readonly defaultStreamPolicy?: StreamSyncPolicy;
+  /** Active surfaces eligible for one cost-selected early delivery. */
+  readonly earlyDeliveryStreams?: readonly StreamId[];
+  /** Receives at most one usable surface while the shared read continues. */
+  readonly onProgress?: (window: SynchronizedFrameWindow) => void;
   /** Active point-cloud color source requested per stream. */
   readonly pointCloudColorBy?: Readonly<Record<StreamId, string>>;
   readonly streamPolicies?: StreamSyncPolicies;

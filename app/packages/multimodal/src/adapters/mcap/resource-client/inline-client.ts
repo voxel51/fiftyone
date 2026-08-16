@@ -78,6 +78,7 @@ import {
   type McapReadTimelineRangeRequest,
   type McapResourceClient,
   type McapResourceReadOptions,
+  type McapSynchronizedMessagesReadOptions,
   type McapSynchronizedMessageWindow,
   type McapTimelineRange,
   type McapTopicNumericFields,
@@ -110,6 +111,11 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
   >(
     request: McapReadSynchronizedMessageBatchRequest,
     reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>,
+    onWindowProgress?: (
+      window: McapSynchronizedMessageWindowWithMessages<
+        McapDecodedMessage | ReusedMessage
+      >,
+    ) => void,
   ): Promise<
     readonly McapSynchronizedMessageWindowWithMessages<
       McapDecodedMessage | ReusedMessage
@@ -123,6 +129,11 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
   >(
     request: McapReadSynchronizedMessagesRequest,
     reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>,
+    onWindowProgress?: (
+      window: McapSynchronizedMessageWindowWithMessages<
+        McapDecodedMessage | ReusedMessage
+      >,
+    ) => void,
   ): Promise<
     McapSynchronizedMessageWindowWithMessages<
       McapDecodedMessage | ReusedMessage
@@ -527,7 +538,11 @@ export function createInlineMcapResourceClient(
       );
     },
 
-    async readSynchronizedMessageBatchWithReuse(request, reuseIndexedMessage) {
+    async readSynchronizedMessageBatchWithReuse(
+      request,
+      reuseIndexedMessage,
+      onWindowProgress,
+    ) {
       if (request.timeNs.length === 0) {
         return [];
       }
@@ -541,6 +556,7 @@ export function createInlineMcapResourceClient(
         predecessorStore: predecessorStoreForSource(sourceKey),
         reader,
         readSignal: options.readSignal,
+        onWindowProgress,
         request,
         reuseIndexedMessage,
         timeline,
@@ -549,21 +565,45 @@ export function createInlineMcapResourceClient(
 
     async readSynchronizedMessages(
       request: McapReadSynchronizedMessagesRequest,
-      readOptions?: McapResourceReadOptions,
+      readOptions?: McapSynchronizedMessagesReadOptions,
     ): Promise<McapSynchronizedMessageWindow> {
-      const windows = await client.readSynchronizedMessageBatch(
-        { ...request, timeNs: [request.timeNs] },
-        readOptions,
+      if (!readOptions?.signal) {
+        return client.readSynchronizedMessagesWithReuse(
+          request,
+          undefined,
+          readOptions?.onSynchronizedProgress,
+        );
+      }
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const sourceKey = byteSourceAccessKey(request.source);
+      const windows = await withRequestReader(
+        request.source,
+        readOptions.signal,
+        (reader) =>
+          readMcapSynchronizedMessageBatch({
+            decodeClient,
+            predecessorStore: predecessorStoreForSource(sourceKey),
+            reader,
+            readSignal: { current: readOptions.signal ?? null },
+            onWindowProgress: readOptions.onSynchronizedProgress,
+            request: { ...request, timeNs: [request.timeNs] },
+            timeline,
+          }),
       );
       const window = windows[0];
       if (!window) throw new Error("Expected synchronized MCAP window");
       return window;
     },
 
-    async readSynchronizedMessagesWithReuse(request, reuseIndexedMessage) {
+    async readSynchronizedMessagesWithReuse(
+      request,
+      reuseIndexedMessage,
+      onWindowProgress,
+    ) {
       const windows = await client.readSynchronizedMessageBatchWithReuse(
         { ...request, timeNs: [request.timeNs] },
         reuseIndexedMessage,
+        onWindowProgress,
       );
       const window = windows[0];
       if (!window) {
