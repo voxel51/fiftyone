@@ -33,6 +33,9 @@ const VolumeControl: React.FC = () => {
     <AudioPopover
       icon={isOff ? VolumeOffIcon : VolumeUpIcon}
       ariaLabel={errored ? ERROR_TITLE : "Volume"}
+      // Audio failed to load: there is nothing to adjust, so the popover
+      // cannot be opened at all rather than offering dead controls.
+      disabled={errored}
       triggerClassName={clsx({
         [styles.muteButtonOn]: !isOff,
         [styles.muteButtonOff]: isOff,

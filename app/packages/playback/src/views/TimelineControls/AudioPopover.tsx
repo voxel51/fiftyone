@@ -14,6 +14,11 @@ export interface AudioPopoverProps {
   /** Extra classes for the panel (width lives here). */
   panelClassName?: string;
   /**
+   * Disables the trigger so the panel cannot be opened — used when audio
+   * has failed and there is nothing meaningful to adjust.
+   */
+  disabled?: boolean;
+  /**
    * Renders an explicit close button in the panel corner. Worth it for a
    * dense panel like the mixer; noise for a single-fader popover, which
    * closes fine on outside click / Escape.
@@ -44,6 +49,7 @@ const AudioPopover: React.FC<AudioPopoverProps> = ({
   ariaLabel,
   triggerClassName,
   panelClassName,
+  disabled = false,
   closable = false,
   "data-testid": testId,
   children,
@@ -127,12 +133,13 @@ const AudioPopover: React.FC<AudioPopoverProps> = ({
         leadingIcon={icon}
         aria-label={ariaLabel}
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => {
           updateAnchorRect();
           setOpen((current) => !current);
         }}
       />
-      {open && anchorRect
+      {open && !disabled && anchorRect
         ? createPortal(
             <div
               ref={panelRef}
