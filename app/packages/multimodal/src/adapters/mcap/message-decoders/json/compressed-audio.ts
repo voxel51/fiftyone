@@ -3,7 +3,12 @@ import { errorMessage } from "../../../../utils/errors";
 // Context-only timing helper; nothing protobuf-specific despite its home.
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { compressedAudioOutput } from "../foxglove/compressed-audio";
-import { base64ToBytes, decodeJsonRecord, finiteNumberField, recordField } from "./decode";
+import {
+  base64ToBytes,
+  decodeJsonRecord,
+  finiteNumberField,
+  recordField,
+} from "./decode";
 import { JSON_FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD } from "./payloads";
 
 /**
@@ -30,7 +35,10 @@ export const jsonFoxgloveCompressedAudioDecoder: Decoder = {
 
     const encoded = message.data;
     if (typeof encoded !== "string") {
-      return degraded(context, "JSON CompressedAudio message has no base64 data");
+      return degraded(
+        context,
+        "JSON CompressedAudio message has no base64 data",
+      );
     }
 
     let data: Uint8Array;
@@ -53,7 +61,8 @@ export const jsonFoxgloveCompressedAudioDecoder: Decoder = {
       messageTimestamp:
         sec === undefined
           ? undefined
-          : BigInt(Math.trunc(sec)) * 1_000_000_000n + BigInt(Math.trunc(nsec ?? 0)),
+          : BigInt(Math.trunc(sec)) * 1_000_000_000n +
+            BigInt(Math.trunc(nsec ?? 0)),
       timingContext: context,
     });
   },

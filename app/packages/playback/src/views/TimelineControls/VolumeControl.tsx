@@ -15,8 +15,13 @@ const ERROR_TITLE = "Audio failed to load";
  * unless an audio integration has published `audioAvailableAtom`.
  */
 const VolumeControl: React.FC = () => {
-  const { availability, masterMuted, masterVolume, setMasterMuted, setMasterVolume } =
-    useAudio();
+  const {
+    availability,
+    masterMuted,
+    masterVolume,
+    setMasterMuted,
+    setMasterVolume,
+  } = useAudio();
 
   if (availability === "unavailable") {
     return null;

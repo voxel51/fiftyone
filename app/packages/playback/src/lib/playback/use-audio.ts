@@ -17,7 +17,11 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useMemo } from "react";
-import type { AudioAvailability, AudioSourceKind, AudioTrackDescriptor } from "./atoms";
+import type {
+  AudioAvailability,
+  AudioSourceKind,
+  AudioTrackDescriptor,
+} from "./atoms";
 import { effectiveVolume } from "./audio-math";
 import { usePlaybackStore } from "./playback-store-context";
 import {
@@ -93,8 +97,10 @@ export function useAudio(): AudioContextValue {
           masterVolume,
           masterMuted,
         }),
-        setVolume: (next: number) => setTrackVolumeImpl(store, snapshot.id, next),
-        setMuted: (next: boolean) => setTrackMutedImpl(store, snapshot.id, next),
+        setVolume: (next: number) =>
+          setTrackVolumeImpl(store, snapshot.id, next),
+        setMuted: (next: boolean) =>
+          setTrackMutedImpl(store, snapshot.id, next),
       })),
     [store, snapshots, masterVolume, masterMuted],
   );
@@ -108,7 +114,8 @@ export function useAudio(): AudioContextValue {
     [store],
   );
   const registerAudioTrack = useCallback(
-    (descriptor: AudioTrackDescriptor) => registerAudioTrackImpl(store, descriptor),
+    (descriptor: AudioTrackDescriptor) =>
+      registerAudioTrackImpl(store, descriptor),
     [store],
   );
 

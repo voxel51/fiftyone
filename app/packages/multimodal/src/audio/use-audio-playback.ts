@@ -31,11 +31,8 @@ import {
   type AudioSourceKind,
   type PlaybackStream,
 } from "@fiftyone/playback";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  buildChannelPeakPyramids,
-  type PeakPyramid,
-} from "../views/episode/audio/peak-pyramid";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { buildChannelPeakPyramids, type PeakPyramid } from "./peak-pyramid";
 import type { AudioLoader, AudioMetadata } from "./types";
 import { audioProbe } from "./probe";
 
@@ -112,6 +109,73 @@ export function useAudioPlayback({
     engineTime: number;
   } | null>(null);
 
+  // Stable callbacks: the transport effects below depend on these, so a
+  // per-render identity would either re-run them (restarting playback on
+  // every render) or force a stale closure to be captured.
+  const stopPlayback = useCallback((): void => {
+    const source = sourceNodeRef.current;
+    sourceNodeRef.current = null;
+    startOffsetRef.current = null;
+    if (!source) return;
+    try {
+      source.stop();
+    } catch {
+      // `stop()` throws on a node that was never started; the desired end
+      // state is the same either way.
+    }
+    source.disconnect();
+  }, []);
+
+  const ensureAudioGraph = useCallback((): {
+    audioContext: AudioContext;
+    gain: GainNode;
+  } | null => {
+    const audioContext = audioContextRef.current;
+    if (!audioContext) return null;
+    // A context constructed outside a user gesture starts suspended and is
+    // silent until resumed; play is the gesture that permits this.
+    if (audioContext.state === "suspended") {
+      void audioContext.resume();
+    }
+    const gain =
+      gainNodeRef.current ?? (gainNodeRef.current = audioContext.createGain());
+    gain.gain.value = getEffectiveTrackVolume(store, trackId);
+    // Tracked explicitly: `numberOfOutputs` is a node-type constant, not a
+    // live connection count, so it can't answer "am I connected?".
+    if (!gainConnectedRef.current) {
+      gain.connect(audioContext.destination);
+      gainConnectedRef.current = true;
+    }
+    return { audioContext, gain };
+  }, [store, trackId]);
+
+  const startPlayback = useCallback(
+    (time: number): void => {
+      const buffer = audioBufferRef.current;
+      const graph = ensureAudioGraph();
+      if (!buffer || !graph) return;
+      stopPlayback();
+      const { audioContext, gain } = graph;
+      audioProbe("startPlayback", {
+        trackId,
+        time,
+        contextState: audioContext.state,
+        gain: gain.gain.value,
+        gainConnected: gainConnectedRef.current,
+      });
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(gain);
+      source.start(0, Math.min(Math.max(time, 0), buffer.duration));
+      sourceNodeRef.current = source;
+      startOffsetRef.current = {
+        contextTime: audioContext.currentTime,
+        engineTime: time,
+      };
+    },
+    [ensureAudioGraph, stopPlayback, trackId],
+  );
+
   // Load + prepare. One pass: PCM -> per-channel peaks -> AudioBuffer.
   useEffect(() => {
     if (!load) return undefined;
@@ -170,8 +234,11 @@ export function useAudioPlayback({
         const AudioContextCtor =
           typeof window !== "undefined"
             ? (window.AudioContext ??
-              (window as unknown as { webkitAudioContext?: typeof AudioContext })
-                .webkitAudioContext)
+              (
+                window as unknown as {
+                  webkitAudioContext?: typeof AudioContext;
+                }
+              ).webkitAudioContext)
             : undefined;
         if (!AudioContextCtor) {
           setStatus("unsupported");
@@ -211,7 +278,7 @@ export function useAudioPlayback({
       cancelled = true;
       controller.abort();
     };
-  }, [load, playback]);
+  }, [load, playback, trackId]);
 
   // Mixer roster. Registered as soon as a track id exists, NOT gated on a
   // successful decode: a source that fails to decode should still appear
@@ -261,7 +328,15 @@ export function useAudioPlayback({
       unregister();
       stopPlayback();
     };
-  }, [playback, status, registerStream, subscribeStream, trackId]);
+  }, [
+    playback,
+    status,
+    registerStream,
+    subscribeStream,
+    trackId,
+    startPlayback,
+    stopPlayback,
+  ]);
 
   // Transport.
   useEffect(() => {
@@ -279,7 +354,7 @@ export function useAudioPlayback({
       stopPlayback();
     }
     return undefined;
-  }, [playback, status, isPlaying, store]);
+  }, [playback, status, isPlaying, store, startPlayback, stopPlayback]);
 
   // Discontinuous jumps (scrub, step, loop wrap) restart from the new
   // position while playing; a paused seek waits for the next play.
@@ -291,67 +366,6 @@ export function useAudioPlayback({
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seekEvent?.seq]);
-
-  function ensureAudioGraph(): {
-    audioContext: AudioContext;
-    gain: GainNode;
-  } | null {
-    const audioContext = audioContextRef.current;
-    if (!audioContext) return null;
-    // A context constructed outside a user gesture starts suspended and is
-    // silent until resumed; play is the gesture that permits this.
-    if (audioContext.state === "suspended") {
-      void audioContext.resume();
-    }
-    const gain =
-      gainNodeRef.current ?? (gainNodeRef.current = audioContext.createGain());
-    gain.gain.value = getEffectiveTrackVolume(store, trackId);
-    // Tracked explicitly: `numberOfOutputs` is a node-type constant, not a
-    // live connection count, so it can't answer "am I connected?".
-    if (!gainConnectedRef.current) {
-      gain.connect(audioContext.destination);
-      gainConnectedRef.current = true;
-    }
-    return { audioContext, gain };
-  }
-
-  function startPlayback(time: number): void {
-    const buffer = audioBufferRef.current;
-    const graph = ensureAudioGraph();
-    if (!buffer || !graph) return;
-    stopPlayback();
-    const { audioContext, gain } = graph;
-    audioProbe("startPlayback", {
-      trackId,
-      time,
-      contextState: audioContext.state,
-      gain: gain.gain.value,
-      gainConnected: gainConnectedRef.current,
-    });
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(gain);
-    source.start(0, Math.min(Math.max(time, 0), buffer.duration));
-    sourceNodeRef.current = source;
-    startOffsetRef.current = {
-      contextTime: audioContext.currentTime,
-      engineTime: time,
-    };
-  }
-
-  function stopPlayback(): void {
-    const source = sourceNodeRef.current;
-    sourceNodeRef.current = null;
-    startOffsetRef.current = null;
-    if (!source) return;
-    try {
-      source.stop();
-    } catch {
-      // `stop()` throws on a node that was never started; the desired end
-      // state is the same either way.
-    }
-    source.disconnect();
-  }
 
   // Volume/mute apply live without restarting playback.
   const effectiveVolume = useEffectiveTrackVolume(trackId);
@@ -373,7 +387,9 @@ export function useAudioPlayback({
       audioContextRef.current = null;
       void audioContext?.close().catch(() => undefined);
     },
-    [],
+    // `stopPlayback` is `useCallback(…, [])`, so its identity is stable and
+    // listing it cannot cause this teardown to run before unmount.
+    [stopPlayback],
   );
 
   return useMemo(

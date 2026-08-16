@@ -86,29 +86,23 @@ describe("effectiveMuted", () => {
   });
 
   it("is true if the track is muted", () => {
-    expect(effectiveMuted({ trackMuted: true, masterMuted: false })).toBe(
-      true,
-    );
+    expect(effectiveMuted({ trackMuted: true, masterMuted: false })).toBe(true);
   });
 
   it("is true if the master is muted", () => {
-    expect(effectiveMuted({ trackMuted: false, masterMuted: true })).toBe(
-      true,
-    );
+    expect(effectiveMuted({ trackMuted: false, masterMuted: true })).toBe(true);
   });
 
   it("is true if both are muted", () => {
-    expect(effectiveMuted({ trackMuted: true, masterMuted: true })).toBe(
-      true,
-    );
+    expect(effectiveMuted({ trackMuted: true, masterMuted: true })).toBe(true);
   });
 });
 
 describe("volumeMagnitude", () => {
   it("multiplies track and master volume, ignoring mute entirely", () => {
-    expect(volumeMagnitude({ trackVolume: 0.5, masterVolume: 0.5 })).toBeCloseTo(
-      0.25,
-    );
+    expect(
+      volumeMagnitude({ trackVolume: 0.5, masterVolume: 0.5 }),
+    ).toBeCloseTo(0.25);
   });
 
   it("clamps out-of-range inputs before multiplying", () => {

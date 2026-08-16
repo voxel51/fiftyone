@@ -55,7 +55,12 @@ export function useEffectiveTrackVolume(trackId: string): number {
   const trackMuted = useTrackMuted(trackId);
   const masterVolume = useMasterVolume();
   const masterMuted = useMasterMuted();
-  return effectiveVolume({ trackVolume, trackMuted, masterVolume, masterMuted });
+  return effectiveVolume({
+    trackVolume,
+    trackMuted,
+    masterVolume,
+    masterMuted,
+  });
 }
 
 /**

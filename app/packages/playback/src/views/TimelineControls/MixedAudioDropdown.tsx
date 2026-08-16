@@ -7,7 +7,10 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import React from "react";
-import { DEFAULT_AUDIO_VOLUME, DEFAULT_TRACK_VOLUME } from "../../lib/playback/atoms";
+import {
+  DEFAULT_AUDIO_VOLUME,
+  DEFAULT_TRACK_VOLUME,
+} from "../../lib/playback/atoms";
 import { useAudio } from "../../lib/playback/use-audio";
 import { SlidersIcon } from "../stableIcons";
 import AudioPopover from "./AudioPopover";
