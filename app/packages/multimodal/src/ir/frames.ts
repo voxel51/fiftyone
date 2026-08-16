@@ -95,6 +95,39 @@ export type ImageVisualization =
   | EncodedImageVisualization
   | RawImageVisualization;
 
+/**
+ * PCM samples decoded from a `foxglove.RawAudio` message. Typed-array
+ * element type follows the message's own `format` field (`pcm-s16` →
+ * `Int16Array`, etc.) — never force-normalized to `Float32Array` at this
+ * layer, matching how `EncodedImage`/`RawImage` stay distinct rather than
+ * being decoded eagerly here.
+ */
+export interface RawAudioVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.RAW_AUDIO;
+  readonly samples: Int8Array | Uint8Array | Int16Array | Int32Array | Float32Array;
+  readonly sampleRate: number;
+  readonly channels: number;
+  readonly timestampNs?: bigint;
+}
+
+/**
+ * Compressed audio bytes decoded from a `foxglove.CompressedAudio`
+ * message, still in their source codec (e.g. "opus", "mp3", "aac") — PCM
+ * decode happens downstream (Web Audio / WebCodecs `AudioDecoder`), not
+ * in this decoder layer.
+ */
+export interface CompressedAudioVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.COMPRESSED_AUDIO;
+  readonly bytes: Uint8Array;
+  readonly format: string;
+  readonly timestampNs?: bigint;
+}
+
+/** Audio visualizations accepted by the timeline's audio track pipeline. */
+export type AudioVisualization =
+  | RawAudioVisualization
+  | CompressedAudioVisualization;
+
 /** Camera content routed to either the still ImagePanel or dedicated VideoPanel. */
 export type CameraVisualization =
   | ImageVisualization
@@ -622,6 +655,7 @@ export interface ImageAnnotationsVisualization {
  * contribute metadata, transforms, annotations, or other nonvisual state.
  */
 export type DecodedVisualization =
+  | AudioVisualization
   | CameraCalibrationVisualization
   | EncodedVideoVisualization
   | ImageVisualization

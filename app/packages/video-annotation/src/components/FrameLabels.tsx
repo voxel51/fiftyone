@@ -18,6 +18,7 @@ import {
 import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
+  AudioControls,
   TimelineWithTracks,
   TrackProvider,
   type TimelineTracksScroller,
@@ -684,6 +685,7 @@ export const FrameLabelsTracks: React.FC<{
         maxSize={maxSize}
         drawerOpen={drawerOpen}
         onDrawerOpenChange={setDrawerOpen}
+        trailingActions={<AudioControls />}
       />
     </TrackProvider>
   );
