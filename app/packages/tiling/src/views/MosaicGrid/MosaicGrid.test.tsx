@@ -360,6 +360,29 @@ describe("MosaicGrid component", () => {
       expect(screen.getByTestId("fake-mute")).toBeTruthy();
     });
 
+    it("clears the header extra when the publishing tile unmounts", () => {
+      const PublishHeaderExtra = () => {
+        const setHeaderExtra = useSetTileHeaderExtra();
+        useEffect(() => {
+          setHeaderExtra(<button data-testid="fake-mute" />);
+          return () => setHeaderExtra(null);
+        }, [setHeaderExtra]);
+        return <div />;
+      };
+      const audioTiles = {
+        "audio-1": { title: "Audio", render: () => <PublishHeaderExtra /> },
+      };
+      const view = renderGrid(
+        <MosaicGrid tiles={audioTiles} value="audio-1" onChange={noop} />,
+      );
+      expect(screen.getByTestId("fake-mute")).toBeTruthy();
+
+      // The cleanup path is what keeps a stale control out of the next
+      // tile's header; without it the button would outlive its tile.
+      view.unmount();
+      expect(screen.queryByTestId("fake-mute")).toBeNull();
+    });
+
     it("leaves other tile types' headers unaffected — no header-extra published", () => {
       renderGrid(<MosaicGrid tiles={tiles} value="cam-1" onChange={noop} />);
       expect(screen.queryByTestId("fake-mute")).toBeNull();
