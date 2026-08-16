@@ -168,6 +168,10 @@
   box-sizing: border-box;
   padding: 14px 16px 16px;
   position: fixed;
+  /* Many registered tracks would otherwise push the panel past the top of
+     the viewport, where it cannot be scrolled to. */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   /* The design system's portalled-above-modal tier — the same token voodo's
      own Dropdown uses for its portalled panel. */
   z-index: var(--z-above-modal);
@@ -248,6 +252,12 @@
   display: flex;
   gap: 8px;
   min-width: 0;
+}
+
+/* An errored channel's fader is inert rather than merely aria-disabled. */
+.faderDisabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .trackFaderSlider {

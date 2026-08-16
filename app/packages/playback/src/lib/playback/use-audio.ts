@@ -33,6 +33,7 @@ import {
 } from "./store-access";
 import {
   useAudioTrackSnapshots,
+  useHasRegisteredAudioTracks,
   useMasterMuted,
   useMasterVolume,
 } from "./use-audio-state";
@@ -85,7 +86,19 @@ export function useAudio(): AudioContextValue {
   const snapshots = useAudioTrackSnapshots();
   const masterVolume = useMasterVolume();
   const masterMuted = useMasterMuted();
-  const availability = useAudioAvailable();
+  const publishedAvailability = useAudioAvailable();
+  const hasTracks = useHasRegisteredAudioTracks();
+  // A registered track means audio exists, whatever the master flag says.
+  // The flag is a single shared value that every source writes, so a source
+  // unmounting would otherwise mark audio unavailable while other tracks
+  // are still registered and audible. `"error"` still wins: it reports a
+  // real failure the viewer should see.
+  const availability: AudioAvailability =
+    publishedAvailability === "error"
+      ? "error"
+      : hasTracks
+        ? "available"
+        : publishedAvailability;
 
   const tracks = useMemo<AudioTrackHandle[]>(
     () =>
@@ -119,13 +132,26 @@ export function useAudio(): AudioContextValue {
     [store],
   );
 
-  return {
-    tracks,
-    masterVolume,
-    masterMuted,
-    availability,
-    setMasterVolume,
-    setMasterMuted,
-    registerAudioTrack,
-  };
+  // Memoized: consumers spread this into dependency arrays (e.g.
+  // `useMasterChannel`), and a fresh object each render defeats them.
+  return useMemo(
+    () => ({
+      tracks,
+      masterVolume,
+      masterMuted,
+      availability,
+      setMasterVolume,
+      setMasterMuted,
+      registerAudioTrack,
+    }),
+    [
+      tracks,
+      masterVolume,
+      masterMuted,
+      availability,
+      setMasterVolume,
+      setMasterMuted,
+      registerAudioTrack,
+    ],
+  );
 }

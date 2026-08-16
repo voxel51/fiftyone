@@ -43,7 +43,7 @@ console.log(
       trace: window.__foAudio ?? null,
       controls: {
         play: Boolean(document.querySelector('[data-testid="timeline-controls-play-pause"]')),
-        volume: Boolean(document.querySelector('[data-testid="timeline-controls-volume"]')),
+        volume: Boolean(document.querySelector('[data-testid="timeline-controls-volume-toggle"]')),
         mixer: Boolean(document.querySelector('[data-testid="timeline-controls-mixed"]')),
         trailing: Boolean(document.querySelector('[data-testid="timeline-controls-trailing-actions"]')),
         audioTile: document.querySelector('[data-testid="audio-tile-status"]')?.textContent ?? null,

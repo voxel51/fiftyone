@@ -58,6 +58,8 @@ const WaveformViewer: React.FC<WaveformViewerProps> = ({
     "render" | "dispose"
   > | null>(null);
   const [gpuAvailable] = useState(hasWebGpu);
+  // Set when the renderer fails to initialize despite `navigator.gpu`.
+  const [unavailable, setUnavailable] = useState(false);
   const [ready, setReady] = useState(false);
   // Bumped whenever the canvas's backing buffer is resized. Assigning
   // `canvas.width`/`height` RESETS the drawing surface, so a resize that
@@ -72,14 +74,23 @@ const WaveformViewer: React.FC<WaveformViewerProps> = ({
     let cancelled = false;
     const factory =
       createRenderer ?? ((canvas) => WaveformRenderer.create(canvas));
-    factory(canvasRef.current).then((renderer) => {
-      if (cancelled) {
-        renderer.dispose();
-        return;
-      }
-      rendererRef.current = renderer;
-      setReady(true);
-    });
+    factory(canvasRef.current)
+      .then((renderer) => {
+        if (cancelled) {
+          renderer.dispose();
+          return;
+        }
+        rendererRef.current = renderer;
+        setReady(true);
+      })
+      .catch(() => {
+        // `WaveformRenderer.create` rejects when `requestAdapter()` or
+        // `getContext("webgpu")` returns null — both reachable even though
+        // `navigator.gpu` exists. Without this the promise rejects
+        // unhandled and the canvas stays permanently blank, since
+        // `gpuAvailable` is still true and the placeholder never shows.
+        if (!cancelled) setUnavailable(true);
+      });
     return () => {
       cancelled = true;
       rendererRef.current?.dispose();
@@ -133,7 +144,7 @@ const WaveformViewer: React.FC<WaveformViewerProps> = ({
     renderer.render({ viewStart, viewEnd, canvas, rows });
   }, [ready, tracks, viewStart, viewEnd, surfaceEpoch]);
 
-  if (!gpuAvailable) {
+  if (!gpuAvailable || unavailable) {
     return (
       <div
         className={styles.unsupported}

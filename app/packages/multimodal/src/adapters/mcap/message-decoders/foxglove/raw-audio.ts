@@ -8,6 +8,7 @@ import type {
 } from "../../../../ir/index";
 import { VISUALIZATION_KIND } from "../../../../ir/index";
 import {
+  pcmBytesPerSample,
   pcmFormatFromString,
   pcmFormatLabel,
   samplesFromPcmBytes,
@@ -119,6 +120,19 @@ export function rawAudioOutput({
     attributes.unsupportedReason = !pcmFormat
       ? unsupportedPcmFormatReason(format)
       : "Foxglove RawAudio requires a positive sample rate and channel count";
+    return {
+      attributes,
+      resourceHints: resourceHintsForArrayBufferViews(data),
+      timing: timingFromContext(timingContext, messageTimestamp),
+    };
+  }
+
+  // A payload that is not a whole number of samples is malformed; the
+  // typed-array view would silently drop the trailing partial sample.
+  const bytesPerSample = pcmBytesPerSample(pcmFormat);
+  if (data.byteLength % (bytesPerSample * numberOfChannels) !== 0) {
+    attributes.unsupportedReason =
+      "Foxglove RawAudio payload is not a whole number of frames";
     return {
       attributes,
       resourceHints: resourceHintsForArrayBufferViews(data),

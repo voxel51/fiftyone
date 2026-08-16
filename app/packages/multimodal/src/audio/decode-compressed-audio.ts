@@ -61,7 +61,7 @@ export async function decodeCompressedAudio(
   let channels = 0;
   let failure: Error | null = null;
 
-  const AudioDataCtor = (
+  const EncodedAudioChunkCtor = (
     globalThis as unknown as {
       AudioDecoder: new (init: {
         output: (data: AudioDataLike) => void;
@@ -124,7 +124,7 @@ export async function decodeCompressedAudio(
     for (const chunk of ordered) {
       if (signal?.aborted) break;
       decoder.decode(
-        new AudioDataCtor({
+        new EncodedAudioChunkCtor({
           type: "key",
           // EncodedAudioChunk timestamps are microseconds, relative to the
           // stream start so the first chunk lands at 0.

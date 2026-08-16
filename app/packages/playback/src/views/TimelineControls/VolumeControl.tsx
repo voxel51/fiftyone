@@ -1,10 +1,10 @@
 import clsx from "clsx";
 import React from "react";
-import { DEFAULT_AUDIO_VOLUME } from "../../lib/playback/atoms";
 import { useAudio } from "../../lib/playback/use-audio";
 import { VolumeOffIcon, VolumeUpIcon } from "../stableIcons";
 import AudioPopover from "./AudioPopover";
 import ChannelStrip from "./ChannelStrip";
+import { useMasterChannel } from "./use-master-channel";
 import styles from "./TimelineControls.module.css";
 
 const ERROR_TITLE = "Audio failed to load";
@@ -15,13 +15,8 @@ const ERROR_TITLE = "Audio failed to load";
  * unless an audio integration has published `audioAvailableAtom`.
  */
 const VolumeControl: React.FC = () => {
-  const {
-    availability,
-    masterMuted,
-    masterVolume,
-    setMasterMuted,
-    setMasterVolume,
-  } = useAudio();
+  const { availability, masterMuted } = useAudio();
+  const master = useMasterChannel();
 
   if (availability === "unavailable") {
     return null;
@@ -44,24 +39,11 @@ const VolumeControl: React.FC = () => {
       data-testid="timeline-controls-volume-toggle"
     >
       <ChannelStrip
+        {...master}
         label="Master"
-        value={masterVolume}
-        muted={masterMuted}
         errored={errored}
         errorTitle={ERROR_TITLE}
         testIdPrefix="timeline-controls"
-        onVolumeChange={(next) => {
-          setMasterVolume(next);
-          setMasterMuted(false);
-        }}
-        onMute={() => setMasterMuted(true)}
-        onUnmute={() => {
-          // never unmute into silence
-          if (masterVolume === 0) {
-            setMasterVolume(DEFAULT_AUDIO_VOLUME);
-          }
-          setMasterMuted(false);
-        }}
       />
     </AudioPopover>
   );

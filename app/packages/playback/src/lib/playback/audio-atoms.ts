@@ -105,6 +105,20 @@ export const audioTrackMutedAtom = atomFamily((trackId: string) =>
  */
 export const audioTracksAtom = atom<readonly AudioTrackDescriptor[]>([]);
 
+/**
+ * Whether ANY audio track is registered — the roster-derived half of
+ * master availability.
+ *
+ * Availability must be derived rather than written per source: every audio
+ * hook instance shares one master flag, so an instance that wrote
+ * `"unavailable"` on unmount would hide the volume control while other
+ * tracks were still playing. Registration is already reference-counted by
+ * the roster, so ask the roster instead.
+ */
+export const hasRegisteredAudioTracksAtom = atom(
+  (get) => get(audioTracksAtom).length > 0,
+);
+
 /** One track's roster metadata plus its own (not master-combined) volume/mute. */
 export interface AudioTrackSnapshot extends AudioTrackDescriptor {
   readonly volume: number;

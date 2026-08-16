@@ -72,6 +72,11 @@ export function samplesFromPcmBytes(
   }
 }
 
+/** Bytes per single sample for a supported PCM format. */
+export function pcmBytesPerSample(format: SupportedPcmFormat): number {
+  return PCM_FORMATS[format].bytesPerSample;
+}
+
 export function pcmFormatLabel(format: SupportedPcmFormat): string {
   return PCM_FORMATS[format].label;
 }

@@ -147,6 +147,22 @@ export class WaveformRenderer {
     string,
     { pyramid: PeakPyramid; textures: readonly GPUTexture[] }
   >();
+  // One reusable uniform buffer per row slot. Every row's uniform block is
+  // the same fixed size, and `render` runs on every pan/zoom/playhead
+  // change — allocating a fresh buffer per row per frame (and never
+  // destroying it) grew GPU memory for the lifetime of the tile.
+  private readonly uniformBuffers: GPUBuffer[] = [];
+
+  private uniformBufferFor(index: number, byteLength: number): GPUBuffer {
+    const existing = this.uniformBuffers[index];
+    if (existing) return existing;
+    const buffer = this.device.createBuffer({
+      size: byteLength,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    this.uniformBuffers[index] = buffer;
+    return buffer;
+  }
 
   private constructor(
     device: GPUDevice,
@@ -236,6 +252,12 @@ export class WaveformRenderer {
       );
       return texture;
     });
+    // Destroy whatever this track had before: replacing the cache entry
+    // without destroying leaks a full texture set per pyramid change.
+    const superseded = this.textureCache.get(trackId);
+    if (superseded) {
+      for (const texture of superseded.textures) texture.destroy();
+    }
     this.textureCache.set(trackId, { pyramid, textures });
     return textures;
   }
@@ -258,13 +280,16 @@ export class WaveformRenderer {
 
     const canvasHeight = args.canvas.height;
     const viewDuration = args.viewEnd - args.viewStart;
-    for (const row of args.rows) {
+    for (const [rowIndex, row] of args.rows.entries()) {
       const textures = this.texturesFor(row.trackId, row.pyramid);
 
       // LOD 0's peak count * samplesPerPeak / sampleRate is the track's
       // total duration — every coarser level covers the same span with
       // fewer peaks, so this is level-independent.
       const lod0 = row.pyramid.levels[0];
+      // A pyramid with no levels (empty/failed decode) has nothing to draw;
+      // indexing it would throw inside the render loop.
+      if (!lod0) continue;
       const trackDurationSec =
         (lod0.min.length * row.pyramid.samplesPerPeak) / row.pyramid.sampleRate;
 
@@ -298,10 +323,10 @@ export class WaveformRenderer {
         0,
         ...row.color,
       ]);
-      const uniformBuffer = this.device.createBuffer({
-        size: uniformData.byteLength,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      });
+      const uniformBuffer = this.uniformBufferFor(
+        rowIndex,
+        uniformData.byteLength,
+      );
       this.device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
       const bindGroup = this.device.createBindGroup({
@@ -324,5 +349,7 @@ export class WaveformRenderer {
       for (const texture of textures) texture.destroy();
     }
     this.textureCache.clear();
+    for (const buffer of this.uniformBuffers) buffer.destroy();
+    this.uniformBuffers.length = 0;
   }
 }

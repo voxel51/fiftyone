@@ -332,11 +332,11 @@ export function setMasterMuted(store: PlaybackStore, muted: boolean): void {
  * without ever overriding a deliberate mute.
  */
 export function isMasterMuteAtSessionDefault(): boolean {
+  // No window (SSR) means no stored preference either — the same answer as
+  // an empty store, not `false`, which would wrongly imply a deliberate mute.
+  if (typeof window === "undefined") return true;
   try {
-    return (
-      typeof window !== "undefined" &&
-      window.sessionStorage.getItem(MASTER_MUTED_STORAGE_KEY) === null
-    );
+    return window.sessionStorage.getItem(MASTER_MUTED_STORAGE_KEY) === null;
   } catch {
     // Storage can throw in sandboxed/blocked contexts; treat an
     // unreadable store as "the viewer has expressed no preference".

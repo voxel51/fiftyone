@@ -21,7 +21,6 @@ import {
   getEffectiveTrackVolume,
   getPlayhead,
   isMasterMuteAtSessionDefault,
-  setAudioAvailable,
   setMasterMuted,
   usePlayback,
   usePlaybackStore,
@@ -292,13 +291,11 @@ export function useAudioPlayback({
     });
   }, [store, trackId, label, kind]);
 
-  // Master-level availability gates whether the volume control renders at
-  // all. Same rationale as the roster: presence, not decode success.
-  useEffect(() => {
-    if (!trackId) return undefined;
-    setAudioAvailable(store, "available");
-    return () => setAudioAvailable(store, "unavailable");
-  }, [store, trackId]);
+  // NOTE: master availability is deliberately NOT written here. It is a
+  // single shared flag, so writing it per instance meant the first track to
+  // unmount hid the volume control while other tracks were still playing.
+  // `useAudio()` derives availability from the track roster instead, which
+  // is already reference-counted by register/unregister above.
 
   // Engine registration. Fully buffered by "ready", so it never blocks the
   // barrier (`blocking: false`).

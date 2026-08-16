@@ -13,6 +13,7 @@ import {
   audioTrackMutedAtom,
   audioTracksAtom,
   audioTrackSnapshotsAtom,
+  hasRegisteredAudioTracksAtom,
   audioTrackVolumeAtom,
 } from "./atoms";
 import { effectiveVolume } from "./audio-math";
@@ -29,6 +30,16 @@ export function useAudioTracks(): readonly AudioTrackDescriptor[] {
  * re-renders on roster changes AND on any individual track's fader
  * changing (unlike an imperative snapshot via `store-access.ts`'s getters).
  */
+/**
+ * Whether any audio track is currently registered. Reactive, store-bound —
+ * see `hasRegisteredAudioTracksAtom` for why availability is derived from
+ * the roster rather than written per source.
+ */
+export function useHasRegisteredAudioTracks(): boolean {
+  const store = usePlaybackStore();
+  return useAtomValue(hasRegisteredAudioTracksAtom, { store });
+}
+
 export function useAudioTrackSnapshots(): readonly AudioTrackSnapshot[] {
   const store = usePlaybackStore();
   return useAtomValue(audioTrackSnapshotsAtom, { store });
