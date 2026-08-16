@@ -43,7 +43,7 @@ export function unsupportedPcmFormatReason(format: string): string {
 export function samplesFromPcmBytes(
   format: SupportedPcmFormat,
   data: Uint8Array,
-): Int8Array | Uint8Array | Int16Array | Int32Array | Float32Array {
+): Uint8Array | Int16Array | Int32Array | Float32Array {
   // Views require the underlying buffer to be aligned; `data` is decoder
   // output (freshly sliced from message bytes), so copy defensively rather
   // than assume alignment.

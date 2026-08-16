@@ -53,11 +53,34 @@ export function useSceneInventory(): readonly SceneSource[] {
 }
 
 /**
+ * Read the scene inventory when one is mounted, or an empty list when it
+ * is not.
+ *
+ * For AMBIENT consumers only — components mounted unconditionally beside a
+ * scene (e.g. the audio registrar) that have nothing to do when no
+ * inventory exists. A component whose whole purpose depends on the
+ * inventory should use `useSceneInventory()` and fail loudly instead.
+ */
+export function useOptionalSceneInventory(): readonly SceneSource[] {
+  return useContext(SceneInventoryContext)?.sources ?? EMPTY_SOURCES;
+}
+
+const EMPTY_SOURCES: readonly SceneSource[] = [];
+
+/**
  * Read the scene-inventory sources matching `type`. Filtered subset
  * of `useSceneInventory()` — convenient for tile settings that need
  * the dropdown options for their own kind.
  */
 export function useSceneSourcesByType(type: string): readonly SceneSource[] {
   const sources = useSceneInventory();
+  return useMemo(() => sources.filter((s) => s.type === type), [sources, type]);
+}
+
+/** `useSceneSourcesByType` for ambient consumers — see `useOptionalSceneInventory`. */
+export function useOptionalSceneSourcesByType(
+  type: string,
+): readonly SceneSource[] {
+  const sources = useOptionalSceneInventory();
   return useMemo(() => sources.filter((s) => s.type === type), [sources, type]);
 }

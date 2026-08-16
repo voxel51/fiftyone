@@ -78,7 +78,7 @@ export type AudioLoader = (signal?: AbortSignal) => Promise<AudioLoadResult>;
 
 /** Normalizes any PCM sample array to interleaved float in [-1, 1]. */
 export function pcmToFloat32(
-  samples: Int8Array | Uint8Array | Int16Array | Int32Array | Float32Array,
+  samples: Uint8Array | Int16Array | Int32Array | Float32Array,
 ): Float32Array {
   if (samples instanceof Float32Array) {
     return samples;

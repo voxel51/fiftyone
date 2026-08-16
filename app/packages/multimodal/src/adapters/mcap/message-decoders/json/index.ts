@@ -10,7 +10,7 @@ import { jsonRosDecoders } from "./ros";
 export { jsonPoseDecoder } from "./pose";
 
 /**
- * JSON Foxglove RawAudio decoder export.
+ * JSON Foxglove audio decoder exports (RawAudio and CompressedAudio).
  */
 export { jsonFoxgloveCompressedAudioDecoder } from "./compressed-audio";
 export { jsonFoxgloveRawAudioDecoder } from "./raw-audio";
