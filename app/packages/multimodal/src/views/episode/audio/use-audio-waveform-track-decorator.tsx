@@ -15,9 +15,9 @@
 
 import { useAudio } from "@fiftyone/playback";
 import type { Track, TimelineTrackProps } from "@fiftyone/playback";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import type { PeakPyramid } from "../../../audio/peak-pyramid";
-import WaveformViewer from "./WaveformViewer";
+import WaveformViewer, { type WaveformTrackSpec } from "./WaveformViewer";
 
 /**
  * Returns a `decorateTrack` function that overrides one row's lane with a
@@ -35,6 +35,13 @@ export function useAudioWaveformTrackDecorator(
 ): (track: Track, pinned: boolean) => Partial<TimelineTrackProps> {
   const { tracks } = useAudio();
 
+  // `WaveformViewer` lists `tracks` in its render-effect deps, so a fresh
+  // array literal per call would re-encode a full WebGPU pass on every
+  // parent render. Cache one spec per (track, pyramid) pair.
+  const specCache = useRef(
+    new Map<string, { pyramid: PeakPyramid; spec: WaveformTrackSpec[] }>(),
+  );
+
   return useCallback(
     (track: Track): Partial<TimelineTrackProps> => {
       const audioTrack = tracks.find((candidate) => candidate.id === track.id);
@@ -42,20 +49,24 @@ export function useAudioWaveformTrackDecorator(
       if (!audioTrack || !peaks) {
         return {};
       }
-      return {
-        muted: audioTrack.muted,
-        onMuteClick: () => audioTrack.setMuted(!audioTrack.muted),
-        laneOverride: (
-          <WaveformViewer
-            tracks={[
+      const cached = specCache.current.get(track.id);
+      const spec =
+        cached && cached.pyramid === peaks
+          ? cached.spec
+          : [
               {
                 label: audioTrack.label,
                 pyramid: peaks,
                 trackId: audioTrack.id,
               },
-            ]}
-          />
-        ),
+            ];
+      if (!cached || cached.pyramid !== peaks) {
+        specCache.current.set(track.id, { pyramid: peaks, spec });
+      }
+      return {
+        muted: audioTrack.muted,
+        onMuteClick: () => audioTrack.setMuted(!audioTrack.muted),
+        laneOverride: <WaveformViewer tracks={spec} />,
       };
     },
     [tracks, peaksByTrackId],
