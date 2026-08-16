@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   setHeaderExtra: vi.fn(),
   registerAudioTrack: vi.fn(() => vi.fn()),
   sources: [] as Array<{ id: string; label: string; type: string }>,
+  waveformTracks: [] as Array<{ pyramid: unknown }>,
   pcmResult: {
     waveformPeaks: null as unknown,
     hasAudio: false,
@@ -40,8 +41,15 @@ vi.mock("./use-mcap-audio-stream", () => ({
 // playhead/hover overlay + scrub handling); stubbing it keeps this a unit
 // test of AudioTile's own logic.
 vi.mock("./WaveformSurface", () => ({
-  default: (props: { tracks: Array<{ trackId: string; label: string }> }) => (
-    <div data-testid="stub-waveform-viewer">
+  default: (props: {
+    tracks: Array<{ trackId: string; label: string; pyramid: unknown }>;
+  }) => (
+    <div
+      data-testid="stub-waveform-viewer"
+      ref={() => {
+        mocks.waveformTracks = props.tracks;
+      }}
+    >
       {props.tracks.map((t) => (
         <span key={t.trackId}>{t.label}</span>
       ))}
@@ -123,5 +131,8 @@ describe("AudioTile", () => {
     };
     render(<AudioTile />);
     expect(screen.getByText("Ready")).toBeTruthy();
+    // Asserting the caption alone would still pass if the tile kept
+    // feeding the synthetic placeholder to the waveform.
+    expect(mocks.waveformTracks[0]?.pyramid).toBe(realPeaks[0]);
   });
 });
