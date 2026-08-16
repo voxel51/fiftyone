@@ -95,11 +95,27 @@ class FakeAudioContext {
   }
 }
 
+/** Captures every stream handed to the engine, for registration assertions. */
+const registeredStreams: Array<{
+  id: string;
+  blocking: boolean;
+  bufferState: () => string;
+}> = [];
+
 function renderPcm(streamId = "audio-1") {
   return renderHook(
     () => {
       const store = usePlaybackStore();
-      const { play, pause } = usePlayback();
+      const playback = usePlayback();
+      const { play, pause } = playback;
+      const registerStream = playback.registerStream;
+      // Wrap registerStream so the test can inspect what was registered.
+      playback.registerStream = ((stream: never) => {
+        registeredStreams.push(
+          stream as unknown as (typeof registeredStreams)[number],
+        );
+        return registerStream(stream);
+      }) as typeof registerStream;
       const result = useMcapAudioStream(streamId);
       return { result, store, play, pause };
     },
@@ -126,6 +142,7 @@ describe("useMcapAudioStream", () => {
     vi.unstubAllGlobals();
     mocks.dataStream = null;
     audioContextInstances.length = 0;
+    registeredStreams.length = 0;
   });
 
   it("accumulates PCM chunks in time order regardless of read order", async () => {
@@ -193,6 +210,14 @@ describe("useMcapAudioStream", () => {
     expect(getAudioTracks(result.current.store)).toEqual([
       { id: "audio-1", label: "audio-1", kind: "pcm" },
     ]);
+
+    // The engine stream is the other half of registration, and the name of
+    // this test promised it: non-blocking (the buffer is fully decoded by
+    // now, so it must never gate the barrier) and reporting ready.
+    const registered = registeredStreams.find((s) => s.id === "audio-1");
+    expect(registered).toBeDefined();
+    expect(registered?.blocking).toBe(false);
+    expect(registered?.bufferState()).toBe("ready");
   });
 
   it("starts a buffer source on play and stops it on pause", async () => {
