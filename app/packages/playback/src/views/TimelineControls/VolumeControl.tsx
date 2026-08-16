@@ -38,7 +38,7 @@ const VolumeControl: React.FC = () => {
         [styles.muteButtonOff]: isOff,
       })}
       panelClassName={styles.volumePopup}
-      data-testid="timeline-controls-volume"
+      data-testid="timeline-controls-volume-toggle"
     >
       <ChannelStrip
         label="Master"
