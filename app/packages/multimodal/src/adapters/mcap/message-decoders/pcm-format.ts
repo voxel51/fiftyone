@@ -16,7 +16,14 @@ export type SupportedPcmFormat = keyof typeof PCM_FORMATS;
 /** Normalizes a RawAudio `format` string into a supported PCM format, or `null`. */
 export function pcmFormatFromString(format: string): SupportedPcmFormat | null {
   const normalized = format.trim().toLowerCase();
-  return normalized in PCM_FORMATS ? (normalized as SupportedPcmFormat) : null;
+  // `Object.hasOwn`, not `in`: the `in` operator also matches inherited
+  // `Object.prototype` keys, so a recorded message with
+  // `format: "constructor"` (or "toString"/"valueOf") would be accepted as
+  // a supported format, then fall through `samplesFromPcmBytes`' switch and
+  // emit a RAW_AUDIO visualization with `samples: undefined`.
+  return Object.hasOwn(PCM_FORMATS, normalized)
+    ? (normalized as SupportedPcmFormat)
+    : null;
 }
 
 /** Legible reason a RawAudio message's format can't be decoded. */

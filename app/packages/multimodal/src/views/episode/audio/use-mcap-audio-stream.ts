@@ -76,87 +76,101 @@ export function useMcapAudioStream(
   const readStreamFrames = dataStream?.readStreamFrames;
   const getTimelineIndex = dataStream?.getTimelineIndex;
 
-  const load = useCallback(async (): Promise<AudioLoadResult> => {
-    if (!readStreamFrames || !getTimelineIndex) {
-      return { ok: false, reason: "empty" };
-    }
-    const timeline = getTimelineIndex();
-    if (!timeline) {
-      return { ok: false, reason: "empty" };
-    }
-
-    const result = await readStreamFrames({
-      budget: oneShotBudget(),
-      endTimeNs: timeline.endTimeNs,
-      startTimeNs: timeline.startTimeNs,
-      stream: streamId,
-    });
-    if (!result) return { ok: false, reason: "empty" };
-
-    const rawChunks: Array<PcmAudioData & { timestampNs: bigint }> = [];
-    const compressedChunks: CompressedAudioChunk[] = [];
-    let encodedBytes = 0;
-    let format: string | undefined;
-
-    for (const frame of result.frames) {
-      const visualization = frame.output.visualization;
-      if (visualization?.kind === VISUALIZATION_KIND.RAW_AUDIO) {
-        rawChunks.push({
-          channels: visualization.channels,
-          sampleRate: visualization.sampleRate,
-          samples: pcmToFloat32(visualization.samples),
-          timestampNs: frame.timestampNs,
-        });
-        format ??= String(frame.output.attributes?.format ?? "");
-        encodedBytes += Number(frame.output.attributes?.byteLength ?? 0);
-      } else if (visualization?.kind === VISUALIZATION_KIND.COMPRESSED_AUDIO) {
-        compressedChunks.push({
-          bytes: visualization.bytes,
-          format: visualization.format,
-          timestampNs: frame.timestampNs,
-        });
-        format ??= visualization.format;
-        encodedBytes += visualization.bytes.byteLength;
+  const load = useCallback(
+    async (signal?: AbortSignal): Promise<AudioLoadResult> => {
+      if (!readStreamFrames || !getTimelineIndex) {
+        return { ok: false, reason: "empty" };
       }
-    }
+      const timeline = getTimelineIndex();
+      if (!timeline) {
+        return { ok: false, reason: "empty" };
+      }
 
-    // Compressed chunks decode to the same interleaved float layout the
-    // raw branch produces, so everything downstream is codec-agnostic.
-    if (rawChunks.length === 0 && compressedChunks.length > 0) {
-      const decoded = await decodeCompressedAudio(compressedChunks);
-      if (!decoded) {
-        // A codec this browser cannot decode is not a broken recording.
+      const result = await readStreamFrames({
+        budget: oneShotBudget(),
+        endTimeNs: timeline.endTimeNs,
+        startTimeNs: timeline.startTimeNs,
+        stream: streamId,
+      });
+      if (!result || signal?.aborted) return { ok: false, reason: "empty" };
+
+      const rawChunks: Array<PcmAudioData & { timestampNs: bigint }> = [];
+      const compressedChunks: CompressedAudioChunk[] = [];
+      let encodedBytes = 0;
+      let format: string | undefined;
+
+      for (const frame of result.frames) {
+        const visualization = frame.output.visualization;
+        if (visualization?.kind === VISUALIZATION_KIND.RAW_AUDIO) {
+          rawChunks.push({
+            channels: visualization.channels,
+            sampleRate: visualization.sampleRate,
+            samples: pcmToFloat32(visualization.samples),
+            timestampNs: frame.timestampNs,
+          });
+          format ??= String(frame.output.attributes?.format ?? "");
+          encodedBytes += Number(frame.output.attributes?.byteLength ?? 0);
+        } else if (
+          visualization?.kind === VISUALIZATION_KIND.COMPRESSED_AUDIO
+        ) {
+          compressedChunks.push({
+            bytes: visualization.bytes,
+            format: visualization.format,
+            timestampNs: frame.timestampNs,
+          });
+          format ??= visualization.format;
+          encodedBytes += visualization.bytes.byteLength;
+        }
+      }
+
+      // Compressed chunks decode to the same interleaved float layout the
+      // raw branch produces, so everything downstream is codec-agnostic.
+      if (rawChunks.length === 0 && compressedChunks.length > 0) {
+        const decoded = await decodeCompressedAudio(compressedChunks, signal);
+        if (signal?.aborted) return { ok: false, reason: "empty" };
+        if (!decoded) {
+          // A codec this browser cannot decode is not a broken recording.
+          return {
+            ok: false,
+            reason: "unsupported",
+            detail: compressedChunks[0]?.format,
+          };
+        }
+        rawChunks.push({
+          ...decoded,
+          timestampNs: compressedChunks[0].timestampNs,
+        });
+      }
+
+      if (rawChunks.length === 0) {
+        return { ok: false, reason: "empty" };
+      }
+
+      rawChunks.sort((a, b) => (a.timestampNs < b.timestampNs ? -1 : 1));
+      const data = concatPcmChunks(rawChunks);
+      if (!data) {
+        // Non-uniform sample rate/channel count across chunks — see
+        // `concatPcmChunks`. Report it rather than emit corrupt audio.
         return {
           ok: false,
-          reason: "unsupported",
-          detail: compressedChunks[0]?.format,
+          reason: "error",
+          detail: "audio format changes mid-stream",
         };
       }
-      rawChunks.push({
-        ...decoded,
-        timestampNs: compressedChunks[0].timestampNs,
-      });
-    }
 
-    if (rawChunks.length === 0) {
-      return { ok: false, reason: "empty" };
-    }
-
-    rawChunks.sort((a, b) => (a.timestampNs < b.timestampNs ? -1 : 1));
-    const data = concatPcmChunks(rawChunks);
-    if (!data) return { ok: false, reason: "empty" };
-
-    const metadata: AudioMetadata = {
-      byteLength: encodedBytes || undefined,
-      channels: data.channels,
-      chunkCount: rawChunks.length + compressedChunks.length,
-      durationSec:
-        data.samples.length / Math.max(1, data.channels) / data.sampleRate,
-      format: format || undefined,
-      sampleRate: data.sampleRate,
-    };
-    return { ok: true, data, metadata };
-  }, [getTimelineIndex, readStreamFrames, streamId]);
+      const metadata: AudioMetadata = {
+        byteLength: encodedBytes || undefined,
+        channels: data.channels,
+        chunkCount: rawChunks.length + compressedChunks.length,
+        durationSec:
+          data.samples.length / Math.max(1, data.channels) / data.sampleRate,
+        format: format || undefined,
+        sampleRate: data.sampleRate,
+      };
+      return { ok: true, data, metadata };
+    },
+    [getTimelineIndex, readStreamFrames, streamId],
+  );
 
   return useAudioPlayback({
     kind: "pcm",
