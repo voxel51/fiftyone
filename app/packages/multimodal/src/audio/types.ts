@@ -98,11 +98,24 @@ export function pcmToFloat32(
   return out;
 }
 
-/** Concatenates time-ordered PCM chunks into one interleaved buffer. */
+/**
+ * Concatenates time-ordered PCM chunks into one interleaved buffer.
+ *
+ * Every chunk must share the first chunk's sample rate and channel count.
+ * Concatenating mismatched chunks would interleave the buffer incorrectly
+ * and play it at the wrong rate, so a format change mid-stream returns
+ * `null` (the caller reports it) rather than silently producing corrupt
+ * audio.
+ */
 export function concatPcmChunks(
   chunks: readonly PcmAudioData[],
 ): PcmAudioData | null {
   if (chunks.length === 0) return null;
+  const { sampleRate, channels } = chunks[0];
+  const uniform = chunks.every(
+    (chunk) => chunk.sampleRate === sampleRate && chunk.channels === channels,
+  );
+  if (!uniform) return null;
   const total = chunks.reduce((sum, chunk) => sum + chunk.samples.length, 0);
   const samples = new Float32Array(total);
   let offset = 0;
@@ -110,9 +123,5 @@ export function concatPcmChunks(
     samples.set(chunk.samples, offset);
     offset += chunk.samples.length;
   }
-  return {
-    samples,
-    sampleRate: chunks[0].sampleRate,
-    channels: chunks[0].channels,
-  };
+  return { samples, sampleRate, channels };
 }
