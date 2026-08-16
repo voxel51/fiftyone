@@ -70,6 +70,16 @@ const AudioPopover: React.FC<AudioPopoverProps> = ({
     if (trigger) setAnchorRect(trigger.getBoundingClientRect());
   }, []);
 
+  // Move focus into the panel when it opens, and back to the trigger when
+  // it closes, so the popover is reachable and escapable by keyboard.
+  useEffect(() => {
+    if (open) {
+      panelRef.current?.focus();
+      return undefined;
+    }
+    return undefined;
+  }, [open, anchorRect]);
+
   // Re-anchor while open: the timeline moves when the track drawer opens
   // or the window resizes, and a `fixed` panel doesn't follow on its own.
   useEffect(() => {
@@ -145,6 +155,11 @@ const AudioPopover: React.FC<AudioPopoverProps> = ({
               ref={panelRef}
               className={clsx(styles.popoverPanel, panelClassName)}
               role="dialog"
+              // Portalled to the end of <body>, so without an explicit
+              // focus move a keyboard user would Tab past the trigger into
+              // the rest of the toolbar rather than into the panel.
+              aria-label={ariaLabel}
+              tabIndex={-1}
               // Right-aligned to the trigger and opening upward, in
               // viewport coordinates since this is `position: fixed`.
               style={{
