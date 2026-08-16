@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
@@ -92,7 +98,9 @@ describe("MixedAudioDropdown", () => {
     ]);
     fireEvent.click(screen.getByTestId("timeline-controls-mixed"));
 
-    setTrackVolume(store as PlaybackStore, "a", 0.25);
+    // Wrapped in act(): a direct store write has no fireEvent around it,
+    // so React would not have re-rendered the rows before the assertions.
+    act(() => setTrackVolume(store as PlaybackStore, "a", 0.25));
 
     expect(getTrackVolume(store as PlaybackStore, "a")).toBeCloseTo(0.25);
     expect(getTrackVolume(store as PlaybackStore, "b")).toBe(1);
