@@ -49,6 +49,9 @@ import type {
   PointCloudRenderData,
 } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
+import { useGraphicsRuntime } from "../webgpu/graphics-runtime-context";
+import { buildWebGlPointCloudRenderData } from "./webgl-point-cloud-render-data";
+import { POINT_PICK_LAYER_ID_KEY } from "./point-picking";
 
 export {
   createPointCloudSpriteMaterial,
@@ -90,6 +93,7 @@ export const PointCloudSceneLayer = memo(function PointCloudSceneLayer({
   readonly layer: PointCloudPanelLayer;
   readonly pointSize: number;
 }) {
+  const { backend } = useGraphicsRuntime();
   const { frameTransform, hoveredPoint } = layer;
   const objectTransform = useMemo(
     () => pointCloudObjectTransform(frameTransform),
@@ -97,13 +101,25 @@ export const PointCloudSceneLayer = memo(function PointCloudSceneLayer({
   );
 
   useInvalidateOn([objectTransform, hoveredPoint]);
+  const webGlData = useMemo(
+    () =>
+      backend === "webgl2" && gpu
+        ? buildWebGlPointCloudRenderData({
+            color: gpu.color,
+            maxRenderedPoints: gpu.renderedPointCount,
+            payload: gpu.payload,
+          })
+        : data,
+    [backend, data, gpu],
+  );
+  const useGpuPointPath = backend === "webgpu" && gpu !== undefined;
 
   return (
     <group
       position={objectTransform.position}
       quaternion={objectTransform.quaternion}
     >
-      {gpu ? (
+      {useGpuPointPath ? (
         <GpuPointCloudPoints
           gpu={gpu}
           layerId={layer.onHoverPoint ? layer.id : undefined}
@@ -111,9 +127,11 @@ export const PointCloudSceneLayer = memo(function PointCloudSceneLayer({
         />
       ) : (
         <PointCloudPoints
-          data={data}
+          data={webGlData}
+          enableRaycast={backend === "webgl2"}
           layerId={layer.onHoverPoint ? layer.id : undefined}
           pointSize={pointSize}
+          resourceKey={gpu?.resourceKey}
         />
       )}
       {hoveredPoint ? (
@@ -441,13 +459,17 @@ const POINT_PICK_POSITION_ATTRIBUTE = "pointPickPosition";
 
 function PointCloudPoints({
   data,
+  enableRaycast,
   layerId,
   pointSize,
+  resourceKey,
 }: {
   readonly data: PointCloudRenderData;
+  readonly enableRaycast: boolean;
   /** Set only when the layer is pickable. */
   readonly layerId?: string;
   readonly pointSize: number;
+  readonly resourceKey?: string;
 }) {
   const invalidate = useThree((state) => state.invalidate);
   const pickerRegistry = useContext(GpuPointCloud3dPickerRegistryContext);
@@ -502,7 +524,7 @@ function PointCloudPoints({
       ) as THREE.BufferAttribute,
       positionLayout: "flat",
       renderedPointCount: data.renderedPointCount,
-      resourceKey: layerId,
+      resourceKey: resourceKey ?? layerId,
       sampledPointCount: data.renderedPointCount,
     };
     pickLayerRef.current = pickLayer;
@@ -515,7 +537,7 @@ function PointCloudPoints({
     };
     // Frame data mutates the registered layer in the preceding layout effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geometry, layerId, pickerRegistry]);
+  }, [geometry, layerId, pickerRegistry, resourceKey]);
 
   // This effect disposes the GPU geometry when capacity grows or on unmount.
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -524,12 +546,13 @@ function PointCloudPoints({
   // geometry, so a geometry is never swapped into a live three object.
   return (
     <points
+      {...(enableRaycast ? {} : { raycast: NOOP_RAYCAST })}
       key={capacity}
       frustumCulled={false}
-      raycast={NOOP_RAYCAST}
       ref={(object) => {
         pointsRef.current = object as unknown as THREE.Points | null;
       }}
+      userData={layerId ? { [POINT_PICK_LAYER_ID_KEY]: layerId } : undefined}
     >
       <primitive attach="geometry" object={geometry} />
       <pointsMaterial {...POINT_CLOUD_POINTS_MATERIAL_PROPS} size={pointSize} />
