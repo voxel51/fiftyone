@@ -69,7 +69,12 @@ describe("foxgloveRawAudioDecoder", () => {
     new DataView(data.buffer).setFloat32(0, 0.5, true);
     new DataView(data.buffer).setFloat32(4, -0.5, true);
     mockDecode.mockReturnValue(
-      rawAudioMessage({ data, format: "pcm-f32", numberOfChannels: 1, sampleRate: 16_000 }),
+      rawAudioMessage({
+        data,
+        format: "pcm-f32",
+        numberOfChannels: 1,
+        sampleRate: 16_000,
+      }),
     );
 
     const audio = expectRawAudio(

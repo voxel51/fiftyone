@@ -10,7 +10,7 @@
 import {
   audioCodecFromFormat,
   webCodecForAudioFormat,
-} from "../message-decoders/audio-format";
+} from "../codecs/audio-format";
 
 export interface CompressedAudioChunk {
   readonly bytes: Uint8Array;
@@ -61,30 +61,34 @@ export async function decodeCompressedAudio(
   let channels = 0;
   let failure: Error | null = null;
 
-  const AudioDataCtor = (globalThis as unknown as {
-    AudioDecoder: new (init: {
-      output: (data: AudioDataLike) => void;
-      error: (error: Error) => void;
-    }) => AudioDecoderLike;
-    EncodedAudioChunk: new (init: {
-      type: "key";
-      timestamp: number;
-      data: Uint8Array;
-    }) => unknown;
-  }).EncodedAudioChunk;
-  const AudioDecoderCtor = (globalThis as unknown as {
-    AudioDecoder: {
-      new (init: {
+  const AudioDataCtor = (
+    globalThis as unknown as {
+      AudioDecoder: new (init: {
         output: (data: AudioDataLike) => void;
         error: (error: Error) => void;
-      }): AudioDecoderLike;
-      isConfigSupported?: (config: {
-        codec: string;
-        sampleRate: number;
-        numberOfChannels: number;
-      }) => Promise<{ supported?: boolean }>;
-    };
-  }).AudioDecoder;
+      }) => AudioDecoderLike;
+      EncodedAudioChunk: new (init: {
+        type: "key";
+        timestamp: number;
+        data: Uint8Array;
+      }) => unknown;
+    }
+  ).EncodedAudioChunk;
+  const AudioDecoderCtor = (
+    globalThis as unknown as {
+      AudioDecoder: {
+        new (init: {
+          output: (data: AudioDataLike) => void;
+          error: (error: Error) => void;
+        }): AudioDecoderLike;
+        isConfigSupported?: (config: {
+          codec: string;
+          sampleRate: number;
+          numberOfChannels: number;
+        }) => Promise<{ supported?: boolean }>;
+      };
+    }
+  ).AudioDecoder;
 
   const decoder = new AudioDecoderCtor({
     output: (data) => {
@@ -111,7 +115,11 @@ export async function decodeCompressedAudio(
   });
 
   try {
-    decoder.configure({ codec: webCodec, sampleRate: 48_000, numberOfChannels: 2 });
+    decoder.configure({
+      codec: webCodec,
+      sampleRate: 48_000,
+      numberOfChannels: 2,
+    });
 
     for (const chunk of ordered) {
       if (signal?.aborted) break;

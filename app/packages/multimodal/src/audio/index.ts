@@ -17,3 +17,12 @@ export type {
   AudioMetadata,
   PcmAudioData,
 } from "./types";
+export {
+  buildChannelPeakPyramids,
+  buildPeakPyramid,
+  channelLabel,
+  chooseLod,
+  synthesizePeaks,
+  DEFAULT_SAMPLES_PER_PEAK,
+} from "./peak-pyramid";
+export type { PeakLevel, PeakPyramid } from "./peak-pyramid";

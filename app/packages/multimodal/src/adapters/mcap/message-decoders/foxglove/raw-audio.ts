@@ -2,7 +2,10 @@ import {
   resourceHintsForArrayBufferViews,
   type Decoder,
 } from "../../../../decoders/index";
-import type { DecodedAttributeValue, DecodedOutput } from "../../../../ir/index";
+import type {
+  DecodedAttributeValue,
+  DecodedOutput,
+} from "../../../../ir/index";
 import { VISUALIZATION_KIND } from "../../../../ir/index";
 import {
   pcmFormatFromString,
@@ -10,12 +13,23 @@ import {
   samplesFromPcmBytes,
   unsupportedPcmFormatReason,
 } from "../pcm-format";
-import { bytesField, numberField as rosNumberField, recordField, rosTimestampNs, stringField } from "../ros/common";
+import {
+  bytesField,
+  numberField as rosNumberField,
+  recordField,
+  rosTimestampNs,
+  stringField,
+} from "../ros/common";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { FOXGLOVE_RAW_AUDIO_CDR_PAYLOADS } from "./payloads";
 import { decodeProtobufMessage } from "./protobuf/index";
 import { FOXGLOVE_RAW_AUDIO_PAYLOAD } from "./protobuf/payloads";
-import { numberField, optionalRecord, optionalString, requiredBytes } from "./protobuf/records";
+import {
+  numberField,
+  optionalRecord,
+  optionalString,
+  requiredBytes,
+} from "./protobuf/records";
 import { timestampNs, timingFromContext } from "./protobuf/timing";
 
 /**
@@ -27,12 +41,21 @@ export const foxgloveRawAudioDecoder: Decoder = {
   version: "1",
 
   decode(bytes, context) {
-    const message = decodeProtobufMessage(bytes, FOXGLOVE_RAW_AUDIO_PAYLOAD, context);
+    const message = decodeProtobufMessage(
+      bytes,
+      FOXGLOVE_RAW_AUDIO_PAYLOAD,
+      context,
+    );
     return rawAudioOutput({
       data: requiredBytes(message, "data"),
       format: optionalString(message, "format") ?? "",
       messageTimestamp: timestampNs(optionalRecord(message, "timestamp")),
-      numberOfChannels: numberField(message, "numberOfChannels", "number_of_channels", 1),
+      numberOfChannels: numberField(
+        message,
+        "numberOfChannels",
+        "number_of_channels",
+        1,
+      ),
       sampleRate: numberField(message, "sampleRate", "sample_rate"),
       timingContext: context,
     });
@@ -110,7 +133,9 @@ export function rawAudioOutput({
       kind: VISUALIZATION_KIND.RAW_AUDIO,
       sampleRate,
       samples,
-      ...(messageTimestamp !== undefined ? { timestampNs: messageTimestamp } : {}),
+      ...(messageTimestamp !== undefined
+        ? { timestampNs: messageTimestamp }
+        : {}),
     },
   };
 }

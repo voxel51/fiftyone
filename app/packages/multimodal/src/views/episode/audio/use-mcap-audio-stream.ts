@@ -1,11 +1,17 @@
 // ---------------------------------------------------------------------------
-// MCAP -> format-neutral audio adapter.
+// MCAP -> format-neutral audio binding.
 //
-// This module's ONLY job is to turn MCAP frames into `PcmAudioData`. All
-// playback, mixing, peak, and engine behavior lives in the container-neutral
-// `src/audio/` layer, so a non-MCAP audio dataset (bare .wav/.mp3 files, a
-// different container, a remote stream) reuses that path by supplying its
-// own `AudioLoader` — nothing here needs to be generalized again.
+// This module's ONLY job is to turn MCAP frames into `PcmAudioData` and
+// hand them to `useAudioPlayback`. All playback, mixing, peak, and engine
+// behavior lives in the container-neutral `src/audio/` layer, so a
+// non-MCAP audio dataset (bare .wav/.mp3 files, a different container, a
+// remote stream) reuses that path by supplying its own `AudioLoader` —
+// nothing here needs to be generalized again.
+//
+// It lives under `views/` rather than `adapters/` because it is a React
+// hook: the MCAP adapter layers are required to stay headless (see
+// `mcap-core-layers-are-headless` in .dependency-cruiser.cjs), and this
+// needs `useDataStream()` from the view layer.
 //
 // SIMPLIFICATION: reads the stream's full time range once
 // (`readStreamFrames`) instead of paging against playhead demand. Audio is
@@ -25,11 +31,11 @@ import {
 } from "../../../audio";
 import { VISUALIZATION_KIND } from "../../../ir/index";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
-import { useDataStream } from "../../../views/episode/playback/data-stream-context";
+import { useDataStream } from "../playback/data-stream-context";
 import {
   decodeCompressedAudio,
   type CompressedAudioChunk,
-} from "./decode-compressed-audio";
+} from "../../../audio/decode-compressed-audio";
 
 // `deadlineMs` is an ABSOLUTE timestamp that the reader converts into a
 // `setTimeout` delay, and a non-finite delay is coerced to 0 by the HTML
@@ -45,9 +51,9 @@ function oneShotBudget() {
   } as const;
 }
 
-export type { UseAudioPlaybackResult as UsePCMAudioStreamResult };
+export type { UseAudioPlaybackResult as UseMcapAudioStreamResult };
 
-export interface UsePCMAudioStreamOptions {
+export interface UseMcapAudioStreamOptions {
   /** Display name for the mixer row / tile header. */
   readonly label?: string;
   /**
@@ -62,9 +68,9 @@ export interface UsePCMAudioStreamOptions {
  * Drives one audio track from an MCAP stream carrying Foxglove RawAudio or
  * CompressedAudio messages.
  */
-export function usePCMAudioStream(
+export function useMcapAudioStream(
   streamId: string,
-  { label, playback = true }: UsePCMAudioStreamOptions = {},
+  { label, playback = true }: UseMcapAudioStreamOptions = {},
 ): UseAudioPlaybackResult {
   const dataStream = useDataStream();
   const readStreamFrames = dataStream?.readStreamFrames;

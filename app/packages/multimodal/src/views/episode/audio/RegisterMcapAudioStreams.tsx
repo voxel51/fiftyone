@@ -1,16 +1,20 @@
-import { useAudio, usePlaybackStore, setAudioAvailable } from "@fiftyone/playback";
+import {
+  useAudio,
+  usePlaybackStore,
+  setAudioAvailable,
+} from "@fiftyone/playback";
 import React, { useEffect } from "react";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
-import { usePCMAudioStream } from "../../../adapters/mcap/resource-client/use-pcm-audio-stream";
+import { useMcapAudioStream } from "./use-mcap-audio-stream";
 
 /**
- * Decodes and registers one audio scene source's `usePCMAudioStream()` —
+ * Decodes and registers one audio scene source's `useMcapAudioStream()` —
  * a component per source so a dynamic-length source list doesn't violate
  * the rules of hooks (can't call a variable number of hooks in a loop).
  */
 const AudioSourceRegistrar: React.FC<{ sourceId: string }> = ({ sourceId }) => {
-  usePCMAudioStream(sourceId);
+  useMcapAudioStream(sourceId);
   return null;
 };
 
@@ -45,7 +49,7 @@ const StubAudioTrack: React.FC = () => {
  * Ambient audio registrar for the MCAP scene viewer — mirrors
  * `video-annotation`'s `RegisterTimelineAudio`, which mounts unconditionally
  * alongside the video so native audio plays/mixes regardless of which tile
- * (if any) is open. Without this, `usePCMAudioStream()` only ever ran
+ * (if any) is open. Without this, `useMcapAudioStream()` only ever ran
  * inside a manually-added Audio tile, so a recording with real audio
  * topics would show no volume/mixer controls at all until a user happened
  * to add that tile.
@@ -53,7 +57,7 @@ const StubAudioTrack: React.FC = () => {
  * Mount as a `PlaybackShell` child (see `SourcePlayback.tsx`) — that's
  * inside `PlaybackProvider`/`SceneInventoryProvider`, and `DataStreamProvider`
  * wraps `PlaybackShell` from the outside in `SourcePlayback.tsx`, so both
- * `useSceneSourcesByType` and `usePCMAudioStream`'s `useDataStream()` are
+ * `useSceneSourcesByType` and `useMcapAudioStream`'s `useDataStream()` are
  * available here.
  */
 const RegisterMcapAudioStreams: React.FC = () => {

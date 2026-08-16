@@ -351,7 +351,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   // The transitioning gate clears when `onPlayheadDataReady` fires, which
   // requires a stream registered with the demand-driven buffered-read system
   // to cover the playhead. Audio sources decode through their own one-shot
-  // read (`usePCMAudioStream`) and never participate, so a recording whose
+  // read (`useMcapAudioStream`) and never participate, so a recording whose
   // only sources are audio has nothing that can ever satisfy that signal and
   // would stay masked forever. There is also nothing to preview in that case.
   const hasPreviewableSource = useMemo(

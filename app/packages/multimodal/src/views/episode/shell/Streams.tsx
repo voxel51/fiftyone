@@ -127,7 +127,7 @@ export function Streams({
             s.type !== SCENE_SOURCE_TYPE.POSE &&
             s.type !== SCENE_SOURCE_TYPE.LOCATION &&
             s.type !== SCENE_SOURCE_TYPE.LOG &&
-            // `usePCMAudioStream` does its own one-shot `readStreamFrames`
+            // `useMcapAudioStream` does its own one-shot `readStreamFrames`
             // fetch outside this demand-driven buffered-read system, so an
             // audio source never "covers the playhead" from its
             // perspective — counting it as blocking here means

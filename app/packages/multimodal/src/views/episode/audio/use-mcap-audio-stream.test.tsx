@@ -7,7 +7,7 @@ import { getAudioTracks } from "@fiftyone/playback";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VISUALIZATION_KIND } from "../../../ir/index";
-import { usePCMAudioStream } from "./use-pcm-audio-stream";
+import { useMcapAudioStream } from "./use-mcap-audio-stream";
 
 const mocks = vi.hoisted(() => ({ dataStream: null as unknown }));
 
@@ -100,7 +100,7 @@ function renderPcm(streamId = "audio-1") {
     () => {
       const store = usePlaybackStore();
       const { play, pause } = usePlayback();
-      const result = usePCMAudioStream(streamId);
+      const result = useMcapAudioStream(streamId);
       return { result, store, play, pause };
     },
     {
@@ -113,7 +113,7 @@ function renderPcm(streamId = "audio-1") {
   );
 }
 
-describe("usePCMAudioStream", () => {
+describe("useMcapAudioStream", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "AudioContext",

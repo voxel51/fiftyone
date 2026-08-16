@@ -11,11 +11,11 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React, { useEffect, useMemo } from "react";
-import { usePCMAudioStream } from "../../../adapters/mcap/resource-client/use-pcm-audio-stream";
+import { useMcapAudioStream } from "./use-mcap-audio-stream";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import type { EpisodeTileProps } from "../tiles/tile-types";
-import { channelLabel, synthesizePeaks } from "./peak-pyramid";
+import { channelLabel, synthesizePeaks } from "../../../audio/peak-pyramid";
 import styles from "./AudioTile.module.css";
 import WaveformSurface from "./WaveformSurface";
 import { type WaveformTrackSpec } from "./WaveformViewer";
@@ -47,7 +47,7 @@ const AudioTile: React.FC<EpisodeTileProps> = () => {
   // Waveform only: `RegisterMcapAudioStreams` owns audible playback for
   // every audio source, so this instance must not build a second audio
   // graph for the same stream (see `UsePCMAudioStreamOptions.playback`).
-  const pcm = usePCMAudioStream(primarySourceId ?? "", { playback: false });
+  const pcm = useMcapAudioStream(primarySourceId ?? "", { playback: false });
 
   // Placeholder path: no real audio scene source exists yet (e.g. this
   // tile was added manually before Phase 2 decoding produced one, or in a

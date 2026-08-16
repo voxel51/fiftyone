@@ -2,15 +2,30 @@ import {
   resourceHintsForArrayBufferViews,
   type Decoder,
 } from "../../../../decoders/index";
-import type { DecodedAttributeValue, DecodedOutput } from "../../../../ir/index";
+import type {
+  DecodedAttributeValue,
+  DecodedOutput,
+} from "../../../../ir/index";
 import { VISUALIZATION_KIND } from "../../../../ir/index";
-import { audioCodecFromFormat, unsupportedAudioFormatReason } from "../audio-format";
-import { bytesField, recordField, rosTimestampNs, stringField } from "../ros/common";
+import {
+  audioCodecFromFormat,
+  unsupportedAudioFormatReason,
+} from "../../../../codecs/audio-format";
+import {
+  bytesField,
+  recordField,
+  rosTimestampNs,
+  stringField,
+} from "../ros/common";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { FOXGLOVE_COMPRESSED_AUDIO_CDR_PAYLOADS } from "./payloads";
 import { decodeProtobufMessage } from "./protobuf/index";
 import { FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD } from "./protobuf/payloads";
-import { optionalRecord, optionalString, requiredBytes } from "./protobuf/records";
+import {
+  optionalRecord,
+  optionalString,
+  requiredBytes,
+} from "./protobuf/records";
 import { timestampNs, timingFromContext } from "./protobuf/timing";
 
 const SOURCE = "Foxglove CompressedAudio";
@@ -93,7 +108,9 @@ export function compressedAudioOutput({
       bytes: data,
       format: displayFormat,
       kind: VISUALIZATION_KIND.COMPRESSED_AUDIO,
-      ...(messageTimestamp !== undefined ? { timestampNs: messageTimestamp } : {}),
+      ...(messageTimestamp !== undefined
+        ? { timestampNs: messageTimestamp }
+        : {}),
     },
   };
 }
