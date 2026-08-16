@@ -108,7 +108,9 @@ export function useMcapAudioStream(
             samples: pcmToFloat32(visualization.samples),
             timestampNs: frame.timestampNs,
           });
-          format ??= String(frame.output.attributes?.format ?? "");
+          // `??=` would latch an empty string forever (it is not nullish),
+          // so only accept a non-empty format.
+          format ||= String(frame.output.attributes?.format ?? "");
           encodedBytes += Number(frame.output.attributes?.byteLength ?? 0);
         } else if (
           visualization?.kind === VISUALIZATION_KIND.COMPRESSED_AUDIO
@@ -118,7 +120,7 @@ export function useMcapAudioStream(
             format: visualization.format,
             timestampNs: frame.timestampNs,
           });
-          format ??= visualization.format;
+          format ||= visualization.format;
           encodedBytes += visualization.bytes.byteLength;
         }
       }

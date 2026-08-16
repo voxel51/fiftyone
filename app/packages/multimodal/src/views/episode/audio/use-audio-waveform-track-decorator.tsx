@@ -17,6 +17,7 @@ import { useAudio } from "@fiftyone/playback";
 import type { Track, TimelineTrackProps } from "@fiftyone/playback";
 import { useCallback, useRef } from "react";
 import type { PeakPyramid } from "../../../audio/peak-pyramid";
+import { muteDecoration } from "./mute-decoration";
 import WaveformViewer, { type WaveformTrackSpec } from "./WaveformViewer";
 
 /**
@@ -64,8 +65,7 @@ export function useAudioWaveformTrackDecorator(
         specCache.current.set(track.id, { pyramid: peaks, spec });
       }
       return {
-        muted: audioTrack.muted,
-        onMuteClick: () => audioTrack.setMuted(!audioTrack.muted),
+        ...muteDecoration(audioTrack),
         laneOverride: <WaveformViewer tracks={spec} />,
       };
     },
