@@ -6,10 +6,12 @@ import {
   getGpuPointCloudProjectionResource,
   GPU_PROJECTION_RESOURCE_RETENTION_CAP,
   gpuPointCloudProjectionResourceStats,
+  prepareWebGlPointCloudProjectionColorAttribute,
   releaseGpuPointCloudProjectionResourcesForSource,
   resetGpuPointCloudProjectionResourcesForTests,
   retainGpuPointCloudProjectionResource,
 } from "./gpu-point-cloud-projection-resources";
+import { resolveGpuPointCloudColor } from "../scene-3d/gpu/gpu-point-cloud-color";
 
 afterEach(() => resetGpuPointCloudProjectionResourcesForTests());
 
@@ -88,6 +90,41 @@ describe("GPU pointcloud projection resources", () => {
       totalFrameUpdates: 1,
       totalResourceAllocations: 1,
     });
+  });
+
+  it("shares progressively expanded WebGL2 colors across camera views", () => {
+    const payload = buildPointCloudRenderPayload({
+      colors: new Float32Array([1, 0, 0, 0, 1, 0]),
+      positions: new Float32Array([0, 0, 1, 1, 0, 1]),
+    });
+    const resource = getGpuPointCloudProjectionResource({
+      contentKey: "frame",
+      payload,
+      streamKey: "points",
+    });
+    const color = resolveGpuPointCloudColor(payload, { colorBy: "rgb" });
+
+    const firstCamera = prepareWebGlPointCloudProjectionColorAttribute(
+      resource,
+      color,
+      1,
+    );
+    const firstVersion = firstCamera.version;
+    expect(Array.from(firstCamera.array.slice(0, 3))).toEqual([1, 0, 0]);
+
+    const secondCamera = prepareWebGlPointCloudProjectionColorAttribute(
+      resource,
+      color,
+      2,
+    );
+    expect(secondCamera).toBe(firstCamera);
+    expect(secondCamera.version).toBe(firstVersion + 1);
+    expect(Array.from(secondCamera.array.slice(0, 6))).toEqual([
+      1, 0, 0, 0, 1, 0,
+    ]);
+    expect(resource.geometry.getAttribute("projectionWebGlColor")).toBe(
+      secondCamera,
+    );
   });
 
   it("removes optional attributes omitted by a replacement frame", () => {

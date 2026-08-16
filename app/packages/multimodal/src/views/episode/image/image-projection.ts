@@ -5,9 +5,9 @@ import type { PointCloudColorWriter } from "../../../visualization/scene-3d";
  * Pure math for the pointcloud→camera projection overlay: transforms
  * decoded sensor-frame points into the camera frame, projects through
  * a pinhole projection matrix (`P` when present, `K` otherwise). The GPU
- * renderer and shared camera-model module own the production path; these
- * CPU reference helpers remain deterministic test oracles for pinhole sampling,
- * color alignment, and picking behavior only.
+ * renderer and shared camera-model module own visible production projection;
+ * these helpers remain deterministic pinhole test oracles. WebGL2 dwell
+ * picking uses the shared camera-model math directly over the sampled payload.
  */
 
 /** Projection budget: dense lidar frames are stride-sampled beyond this. */
