@@ -1,6 +1,7 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
 import type { TilingLayoutMetrics } from "@fiftyone/tiling";
 import {
+  AudioControls,
   usePlaybackStore,
   type TemporalTagTimelineProps,
   type Track,
@@ -16,10 +17,12 @@ import React, {
   useState,
 } from "react";
 import PlaybackShell from "./PlaybackShell";
-import type {
-  ByteSourceDescriptor,
-  EpisodeRecordingFacts,
-  StreamDescriptor,
+import RegisterMcapAudioStreams from "../audio/RegisterMcapAudioStreams";
+import {
+  SCENE_SOURCE_TYPE,
+  type ByteSourceDescriptor,
+  type EpisodeRecordingFacts,
+  type StreamDescriptor,
 } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection/scene-sources";
@@ -320,6 +323,42 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const shellInventory = destinationInventory ?? retainedShellInventory;
   const shellSources = shellInventory?.sources ?? sources;
   const shellStreams = shellInventory?.streams ?? streams;
+  // Audio scene sources become `Track` rows in the MAIN timeline
+  // (`TrackProvider`'s `tracks`), not just entries in `useAudio()`'s
+  // separate per-source roster — `TimelineWithTracks` gates its entire
+  // Drawer (drag handle, chevron, trailingActions/AudioControls) on
+  // `tracks.length > 0`, and audio registering only with `useAudio()`
+  // never touches that count. Without a Track here, a recording whose
+  // ONLY streams are audio (no detections, no temporal tags) would never
+  // show ANY timeline chrome at all, no matter how correctly audio itself
+  // decodes and registers.
+  const audioTracks = useMemo<Track[]>(
+    () =>
+      shellSources
+        .filter((source) => source.type === SCENE_SOURCE_TYPE.AUDIO)
+        .map((source) => ({
+          id: source.id,
+          label: source.label,
+          color: "#4a9eff",
+          events: [],
+        })),
+    [shellSources],
+  );
+  const mergedTracks = useMemo<Track[]>(
+    () => [...(tracks ?? []), ...audioTracks],
+    [tracks, audioTracks],
+  );
+  // The transitioning gate clears when `onPlayheadDataReady` fires, which
+  // requires a stream registered with the demand-driven buffered-read system
+  // to cover the playhead. Audio sources decode through their own one-shot
+  // read (`usePCMAudioStream`) and never participate, so a recording whose
+  // only sources are audio has nothing that can ever satisfy that signal and
+  // would stay masked forever. There is also nothing to preview in that case.
+  const hasPreviewableSource = useMemo(
+    () =>
+      shellSources.some((source) => source.type !== SCENE_SOURCE_TYPE.AUDIO),
+    [shellSources],
+  );
   const resolvedTimelineMode = useMemo(
     () => resolveTimelineMode(shellStreams),
     [shellStreams],
@@ -455,7 +494,10 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const transitioning =
     navigationPending ||
     readyInventory === null ||
-    presentedSourceKey !== sourceKey;
+    // See `hasPreviewableSource`: an audio-only recording never publishes a
+    // playhead-data-ready tick, so this would otherwise latch "transitioning"
+    // forever.
+    (hasPreviewableSource && presentedSourceKey !== sourceKey);
 
   return (
     <div
@@ -530,6 +572,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                   <AddTileMenu tileTypes={availableTileTypes} />
                                 }
                                 timelineExtraActions={<TimestampReadout />}
+                                timelineTrailingActions={<AudioControls />}
                                 sceneSources={shellSources}
                                 mode={playbackTimelineMode}
                                 deselectFocusedTileOnRepeatSelect={false}
@@ -544,8 +587,8 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 resetManualTileTitles={EMPTY_MANUAL_TILE_TITLES}
                                 resetLayoutStrategy={autoLayoutStrategy}
                                 tracks={
-                                  tracks && tracks.length > 0
-                                    ? [...tracks]
+                                  mergedTracks.length > 0
+                                    ? mergedTracks
                                     : undefined
                                 }
                                 defaultPinnedTrackIds={
@@ -612,6 +655,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 <NetworkHealthTracker
                                   playback={session?.playback ?? null}
                                 />
+                                <RegisterMcapAudioStreams />
                                 <SelectionHotkeys />
                                 <ExtensionRuntimeBoundary>
                                   {children}

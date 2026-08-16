@@ -443,6 +443,51 @@ describe("TimelineTrack", () => {
     });
   });
 
+  describe("mute button (mutually exclusive with pin, same slot)", () => {
+    it("renders instead of the pin button when onMuteClick is set", () => {
+      const onPinClick = vi.fn();
+      const onMuteClick = vi.fn();
+      renderTrack({ track: { labelWidth: 150, onPinClick, onMuteClick } });
+      expect(screen.queryByRole("button", { name: "Pin track" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Mute track" })).toBeTruthy();
+    });
+
+    it("renders with the 'Unmute track' label when muted", () => {
+      const onMuteClick = vi.fn();
+      renderTrack({ track: { labelWidth: 150, onMuteClick, muted: true } });
+      expect(
+        screen.getByRole("button", { name: "Unmute track" }),
+      ).toBeTruthy();
+    });
+
+    it("invokes onMuteClick when clicked, without propagating to the lane", () => {
+      const onMuteClick = vi.fn();
+      renderTrack({ track: { labelWidth: 150, onMuteClick } });
+      fireEvent.click(screen.getByRole("button", { name: "Mute track" }), {
+        clientX: 500,
+      });
+      expect(onMuteClick).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+  });
+
+  describe("laneOverride", () => {
+    it("replaces the normal bar/events with the override content", () => {
+      renderTrack({
+        track: { laneOverride: <div data-testid="waveform-stub" /> },
+      });
+      expect(screen.getByTestId("waveform-stub")).toBeTruthy();
+      expect(document.querySelector(`.${styles.bar}`)).toBeNull();
+      expect(document.querySelector(`.${styles.event}`)).toBeNull();
+    });
+
+    it("renders the normal bar/events when omitted", () => {
+      renderTrack();
+      expect(screen.queryByTestId("waveform-stub")).toBeNull();
+      expect(document.querySelector(`.${styles.bar}`)).not.toBeNull();
+    });
+  });
+
   describe("onContextMenu", () => {
     it("wires onContextMenu to the root container", () => {
       const onContextMenu = vi.fn();

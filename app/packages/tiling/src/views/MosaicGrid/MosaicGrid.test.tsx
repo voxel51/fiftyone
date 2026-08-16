@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TilingProvider, useTiling } from "../../lib/TilingProvider";
+import { useSetTileHeaderExtra } from "../../lib/use-tile-state";
 import { useTileRegistry } from "../../lib/use-tile-registry";
 import MosaicGrid, {
   addTileToLayout,
@@ -339,6 +340,29 @@ describe("MosaicGrid component", () => {
       fireEvent.contextMenu(screen.getByTestId("tile-header"));
       fireEvent.click(screen.getByText("Close others"));
       expect(onCloseOtherTiles).toHaveBeenCalledWith("cam-1");
+    });
+
+    it("renders a tile body's published header-extra content in its header", () => {
+      const PublishHeaderExtra: React.FC = () => {
+        const setHeaderExtra = useSetTileHeaderExtra();
+        React.useEffect(() => {
+          setHeaderExtra(<button data-testid="fake-mute">Mute</button>);
+          return () => setHeaderExtra(null);
+        }, [setHeaderExtra]);
+        return <div />;
+      };
+      const audioTiles = {
+        "audio-1": { title: "Audio", render: () => <PublishHeaderExtra /> },
+      };
+      renderGrid(
+        <MosaicGrid tiles={audioTiles} value="audio-1" onChange={noop} />,
+      );
+      expect(screen.getByTestId("fake-mute")).toBeTruthy();
+    });
+
+    it("leaves other tile types' headers unaffected — no header-extra published", () => {
+      renderGrid(<MosaicGrid tiles={tiles} value="cam-1" onChange={noop} />);
+      expect(screen.queryByTestId("fake-mute")).toBeNull();
     });
 
     it("offers rename in the header context menu", () => {

@@ -40,6 +40,14 @@ export interface TileHeaderProps {
   className?: string;
   /** Render the title with transient cross-panel emphasis. */
   highlighted?: boolean;
+  /**
+   * Extra content the tile body wants persistently in its own header
+   * (e.g. an Audio tile's mute button) — published via
+   * `useSetTileHeaderExtra()` since the tile body and header render as
+   * separate trees under `MosaicGrid`. `null`/absent for every tile type
+   * that never calls that setter.
+   */
+  headerExtra?: React.ReactNode;
 }
 
 /**
@@ -65,6 +73,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
   onSelect,
   className,
   highlighted = false,
+  headerExtra,
 }) => {
   const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Fullscreen";
   const fullscreenIcon = isFullscreen
@@ -222,6 +231,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
             </div>
           </div>
         )}
+        {headerExtra}
         <Button
           variant={Variant.Borderless}
           size={Size.Xs}

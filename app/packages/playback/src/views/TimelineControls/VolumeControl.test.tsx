@@ -10,11 +10,15 @@ import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import {
   getAudioMuted,
   getAudioVolume,
+  getMasterMuted,
+  getMasterVolume,
   setAudioAvailable,
   setAudioVolume,
+  setMasterMuted,
 } from "../../lib/playback/store-access";
 import type { PlaybackStore } from "../../lib/playback/types";
 import TimelineControls from "./TimelineControls";
+import VolumeControl from "./VolumeControl";
 
 let store: PlaybackStore | null = null;
 
@@ -36,7 +40,11 @@ function renderControls(opts: { availability?: AudioAvailability } = {}) {
   return render(
     <PlaybackProvider duration={10} stepInterval={1 / 30}>
       <Capture availability={opts.availability} />
-      <TimelineControls />
+      {/* VolumeControl is no longer rendered inline by TimelineControls —
+          it's the caller's `trailingActions`, e.g. via `AudioControls`.
+          Render it that way here too, so this suite keeps testing the
+          integrated shape. */}
+      <TimelineControls trailingActions={<VolumeControl />} />
     </PlaybackProvider>,
   );
 }
@@ -112,6 +120,21 @@ describe("VolumeControl", () => {
     renderControls();
     expect(getAudioMuted(store as PlaybackStore)).toBe(false);
     expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.42);
+  });
+
+  it("reads and writes through useAudio()'s master accessors (same atoms as the legacy names)", () => {
+    renderControls();
+    fireEvent.click(screen.getByRole("button", { name: "Unmute" }));
+    expect(getMasterMuted(store as PlaybackStore)).toBe(false);
+    expect(getAudioMuted(store as PlaybackStore)).toBe(false);
+
+    setMasterMuted(store as PlaybackStore, true);
+    expect(getAudioMuted(store as PlaybackStore)).toBe(true);
+    expect(screen.getByRole("button", { name: "Unmute" })).toBeTruthy();
+
+    expect(getMasterVolume(store as PlaybackStore)).toBe(
+      getAudioVolume(store as PlaybackStore),
+    );
   });
 
   it("a new session starts muted but keeps the persisted volume", () => {
