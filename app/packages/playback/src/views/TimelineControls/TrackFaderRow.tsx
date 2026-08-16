@@ -10,25 +10,8 @@ import {
 import clsx from "clsx";
 import React from "react";
 import { VolumeOffIcon, VolumeUpIcon } from "../stableIcons";
+import { channelState, type ChannelProps } from "./channel-contract";
 import styles from "./TimelineControls.module.css";
-
-export interface TrackFaderRowProps {
-  label: string;
-  /** Current volume, in [0, 1]. */
-  value: number;
-  muted: boolean;
-  errored?: boolean;
-  errorTitle?: string;
-  onVolumeChange(next: number): void;
-  onMute(): void;
-  /**
-   * Kept distinct from `onVolumeChange`'s implicit unmute so the caller can
-   * apply "never unmute into silence" (restore a default level) only for
-   * this explicit gesture.
-   */
-  onUnmute(): void;
-  testIdPrefix: string;
-}
 
 /**
  * One mixer row: label on top, then a mute toggle (leftmost, orange while
@@ -36,28 +19,17 @@ export interface TrackFaderRowProps {
  * numeric readout — shared by the Mixer dialog's Master row and every
  * per-track row.
  */
-const TrackFaderRow: React.FC<TrackFaderRowProps> = ({
-  label,
-  value,
-  muted,
-  errored = false,
-  errorTitle,
-  onVolumeChange,
-  onMute,
-  onUnmute,
-  testIdPrefix,
-}) => {
-  const shown = errored || muted ? 0 : value;
-  const isOff = errored || muted;
-  const muteLabel = muted ? `Unmute ${label}` : `Mute ${label}`;
-
-  const handleChange = (next: number) => {
-    if (next <= 0) {
-      onMute();
-      return;
-    }
-    onVolumeChange(next);
-  };
+const TrackFaderRow: React.FC<ChannelProps> = (props) => {
+  const {
+    label,
+    errored = false,
+    errorTitle,
+    muted,
+    onMute,
+    onUnmute,
+    testIdPrefix,
+  } = props;
+  const { isOff, shown, muteLabel, handleChange } = channelState(props);
 
   return (
     <div
@@ -89,7 +61,12 @@ const TrackFaderRow: React.FC<TrackFaderRowProps> = ({
         />
         <SingleValueSlider
           bare
-          className={styles.trackFaderSlider}
+          // Matches ChannelStrip: an errored channel's fader is inert, not
+          // merely labelled as such. voodo's slider has no `disabled` prop,
+          // so the class removes pointer events.
+          className={clsx(styles.trackFaderSlider, {
+            [styles.faderDisabled]: errored,
+          })}
           data-testid={`${testIdPrefix}-volume`}
           aria-label={`${label} volume`}
           aria-disabled={errored}

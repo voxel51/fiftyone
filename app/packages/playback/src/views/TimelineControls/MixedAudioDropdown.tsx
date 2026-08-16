@@ -7,30 +7,32 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import React from "react";
-import {
-  DEFAULT_AUDIO_VOLUME,
-  DEFAULT_TRACK_VOLUME,
-} from "../../lib/playback/atoms";
+import { DEFAULT_TRACK_VOLUME } from "../../lib/playback/atoms";
 import { useAudio } from "../../lib/playback/use-audio";
 import { SlidersIcon } from "../stableIcons";
 import AudioPopover from "./AudioPopover";
 import styles from "./TimelineControls.module.css";
 import TrackFaderRow from "./TrackFaderRow";
+import { useMasterChannel } from "./use-master-channel";
 
 /** Per-track audio mixer: a Master row plus one row per registered track. */
 const MixedAudioDropdown: React.FC = () => {
-  const { tracks, masterMuted, masterVolume, setMasterMuted, setMasterVolume } =
-    useAudio();
+  const { availability, tracks, masterMuted } = useAudio();
+  const master = useMasterChannel();
 
-  if (tracks.length === 0) {
+  if (tracks.length === 0 || availability === "unavailable") {
     return null;
   }
+  // Audio failed to load: keep the button visible so the failure is
+  // discoverable, but disabled — every control inside would be inert.
+  const errored = availability === "error";
 
   return (
     <AudioPopover
       icon={SlidersIcon}
-      ariaLabel="Audio mixer"
       panelClassName={styles.mixedPanel}
+      disabled={errored}
+      ariaLabel={errored ? "Audio failed to load" : "Audio mixer"}
       closable
       data-testid="timeline-controls-mixed"
     >
@@ -40,22 +42,9 @@ const MixedAudioDropdown: React.FC = () => {
             Master
           </Text>
           <TrackFaderRow
+            {...master}
             label="Master"
-            value={masterVolume}
-            muted={masterMuted}
             testIdPrefix="timeline-mixed-master"
-            onVolumeChange={(next) => {
-              setMasterVolume(next);
-              setMasterMuted(false);
-            }}
-            onMute={() => setMasterMuted(true)}
-            onUnmute={() => {
-              // never unmute into silence
-              if (masterVolume === 0) {
-                setMasterVolume(DEFAULT_AUDIO_VOLUME);
-              }
-              setMasterMuted(false);
-            }}
           />
         </Stack>
 
