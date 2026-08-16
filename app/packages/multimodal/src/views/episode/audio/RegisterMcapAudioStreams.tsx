@@ -13,8 +13,13 @@ import { useMcapAudioStream } from "./use-mcap-audio-stream";
  * a component per source so a dynamic-length source list doesn't violate
  * the rules of hooks (can't call a variable number of hooks in a loop).
  */
-const AudioSourceRegistrar: React.FC<{ sourceId: string }> = ({ sourceId }) => {
-  useMcapAudioStream(sourceId);
+const AudioSourceRegistrar: React.FC<{
+  sourceId: string;
+  label: string;
+}> = ({ sourceId, label }) => {
+  // Pass the scene-source label through: without it the mixer row and tile
+  // header fall back to the raw stream id ("0", "1").
+  useMcapAudioStream(sourceId, { label });
   return null;
 };
 
@@ -72,7 +77,11 @@ const RegisterMcapAudioStreams: React.FC = () => {
         <StubAudioTrack />
       ) : (
         sources.map((source) => (
-          <AudioSourceRegistrar key={source.id} sourceId={source.id} />
+          <AudioSourceRegistrar
+            key={source.id}
+            label={source.label}
+            sourceId={source.id}
+          />
         ))
       )}
     </>

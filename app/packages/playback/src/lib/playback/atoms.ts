@@ -251,6 +251,7 @@ export {
   audioTracksAtom,
   audioTrackSnapshotsAtom,
   audioTrackVolumeAtom,
+  hasRegisteredAudioTracksAtom,
   DEFAULT_TRACK_VOLUME,
   type AudioSourceKind,
   type AudioTrackDescriptor,

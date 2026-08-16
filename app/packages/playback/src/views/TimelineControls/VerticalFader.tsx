@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import styles from "./TimelineControls.module.css";
 
 export interface VerticalFaderProps {
@@ -51,12 +51,19 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({
       const handleMove = (moveEvent: PointerEvent) => {
         onChange(valueFromClientY(moveEvent.clientY));
       };
-      const handleUp = () => {
+      const release = () => {
         document.removeEventListener("pointermove", handleMove);
-        document.removeEventListener("pointerup", handleUp);
+        document.removeEventListener("pointerup", release);
+        // `pointercancel` fires instead of `pointerup` when the browser
+        // takes over the gesture (touch interruption, scroll takeover);
+        // without it the drag never ends.
+        document.removeEventListener("pointercancel", release);
+        releaseDragRef.current = null;
       };
+      releaseDragRef.current = release;
       document.addEventListener("pointermove", handleMove);
-      document.addEventListener("pointerup", handleUp);
+      document.addEventListener("pointerup", release);
+      document.addEventListener("pointercancel", release);
     },
     [disabled, onChange, valueFromClientY],
   );
