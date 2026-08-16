@@ -234,4 +234,17 @@ describe("graphics-renderer-registry", () => {
     registrations.at(-1)?.markReady("webgl2");
     expect(graphicsRendererStats().webGpuDevices.overBudget).toBe(false);
   });
+
+  it("warns when an unreserved request unexpectedly resolves to WebGPU", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    Array.from({ length: WEBGPU_DEVICE_BUDGET }, () =>
+      registerGraphicsRenderer("grid-preview"),
+    );
+    const diagnosticRequest = registerGraphicsRenderer("modal-3d", "webgl2");
+
+    diagnosticRequest.markReady("webgpu");
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(graphicsRendererStats().webGpuDevices.overBudget).toBe(true);
+  });
 });

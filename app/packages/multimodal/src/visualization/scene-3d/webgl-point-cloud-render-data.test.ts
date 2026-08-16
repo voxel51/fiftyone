@@ -116,6 +116,40 @@ describe("buildWebGlPointCloudRenderData", () => {
     expect(data.bounds.max.toArray()).toEqual([10, 20, 30]);
   });
 
+  it("reuses caller-owned color storage until the active prefix grows", () => {
+    const payload = buildPointCloudRenderPayload({
+      positions: new Float32Array([0, 0, 0, 1, 1, 1, 2, 2, 2]),
+    });
+    const color = resolveGpuPointCloudColor(payload, {});
+    const scratch = { colors: new Float32Array(0) };
+    const first = buildWebGlPointCloudRenderData({
+      color,
+      maxRenderedPoints: 2,
+      payload,
+      scratch,
+    });
+    const firstColorBuffer = first.colors.buffer;
+
+    const smaller = buildWebGlPointCloudRenderData({
+      color,
+      maxRenderedPoints: 1,
+      payload,
+      scratch,
+    });
+    expect(smaller.colors.buffer).toBe(firstColorBuffer);
+    expect(smaller.colors).toHaveLength(3);
+    expect(smaller.positions.buffer).toBe(payload.positions.buffer);
+
+    const larger = buildWebGlPointCloudRenderData({
+      color,
+      maxRenderedPoints: 3,
+      payload,
+      scratch,
+    });
+    expect(larger.colors.buffer).not.toBe(firstColorBuffer);
+    expect(larger.colors).toHaveLength(9);
+  });
+
   it("returns safe bounds and empty attributes when no point is finite", () => {
     const payload = buildPointCloudRenderPayload({
       positions: new Float32Array([Number.NaN, 0, 0]),

@@ -894,7 +894,7 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
         "Requested backend",
         "WebGL2 (diagnostic override)",
       );
-      await expectStatsRow(modal.episode.scope, "WebGPU devices", "0 / 16");
+      await expectStatsRow(modal.episode.scope, "WebGPU devices", /^0 \/ \d+$/);
       await expectStatsRow(
         modal.episode.scope,
         "Surface · modal-3d",
@@ -1037,8 +1037,8 @@ async function expectPixelDifference(
 async function expectStatsRow(
   scope: Locator,
   label: string,
-  value: string,
+  value: string | RegExp,
 ): Promise<void> {
-  const row = scope.getByText(label, { exact: true }).locator("..");
-  await expect(row).toContainText(value);
+  const row = scope.locator(`[data-stats-row=${JSON.stringify(label)}]`);
+  await expect(row.locator("span").last()).toHaveText(value);
 }

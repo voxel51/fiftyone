@@ -443,7 +443,7 @@ function StatsGroup({
       </Text>
       <div className={styles.statsRows}>
         {rows.map(([label, value]) => (
-          <div className={styles.statsRow} key={label}>
+          <div className={styles.statsRow} data-stats-row={label} key={label}>
             <span>{label}</span>
             <span className={styles.statsValue}>{value}</span>
           </div>

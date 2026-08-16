@@ -184,6 +184,9 @@ export function registerGraphicsRenderer(
           webGlFallbacks += 1;
         }
       }
+      // Usually a reservation simply becomes a live device. Keep the warning
+      // correct even if a renderer resolves to WebGPU after a WebGL2 request.
+      maybeWarnOverBudget();
       notifySubscribers();
     },
     release() {
@@ -198,8 +201,12 @@ export function registerGraphicsRenderer(
   };
 }
 
-/** Grid-live policy budgets possible devices, not WebGL renderer objects. */
-/** Returns whether a renderer class may reserve another possible WebGPU device. */
+/**
+ * Returns whether a renderer class may reserve another possible WebGPU device.
+ * Grid-live surfaces are budgeted; the UI permits one modal at a time, and
+ * snapshot jobs share one serialized renderer, so those bounded classes may
+ * acquire outside the grid budget.
+ */
 export function canAcquireWebGpuDevice(cls: WebGpuAcquisitionClass): boolean {
   if (cls === "modal" || cls === "snapshot") return true;
   return reservedOrLiveWebGpuDevices() < WEBGPU_DEVICE_BUDGET;

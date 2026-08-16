@@ -26,7 +26,7 @@ afterEach(() => {
 /** Reserves `count` possible WebGPU devices while fake renderers initialize. */
 function fillDeviceRegistry(count: number) {
   return Array.from({ length: count }, () =>
-    registerGraphicsRenderer("modal-3d"),
+    registerGraphicsRenderer("modal-3d", "auto"),
   );
 }
 

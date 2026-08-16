@@ -175,28 +175,34 @@ const realBackend: WebGpuSnapshotBackend = {
     };
     const renderer = new WebGPURenderer(rendererOptions);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    await renderer.init();
+    try {
+      await renderer.init();
+      const backend = graphicsBackendForRenderer(renderer);
 
-    return {
-      backend: graphicsBackendForRenderer(renderer),
-      dispose() {
-        renderer.dispose();
-      },
-      async renderAndCapture(scene, camera, width, height) {
-        // setSize lives on the common Renderer base, which the resolved
-        // types don't surface (same cast as WebGpuCanvas.tsx). Sizes are
-        // pre-clamped >= 1 by the queue — a zero-size swapchain poisons
-        // every later command buffer.
-        (
-          renderer as unknown as {
-            setSize(w: number, h: number, updateStyle?: boolean): void;
-          }
-        ).setSize(width, height, false);
-        await renderer.renderAsync(scene, camera);
-        // Same-task capture, immediately after the awaited render.
-        return canvas.transferToImageBitmap();
-      },
-    };
+      return {
+        backend,
+        dispose() {
+          renderer.dispose();
+        },
+        async renderAndCapture(scene, camera, width, height) {
+          // setSize lives on the common Renderer base, which the resolved
+          // types don't surface (same cast as WebGpuCanvas.tsx). Sizes are
+          // pre-clamped >= 1 by the queue — a zero-size swapchain poisons
+          // every later command buffer.
+          (
+            renderer as unknown as {
+              setSize(w: number, h: number, updateStyle?: boolean): void;
+            }
+          ).setSize(width, height, false);
+          await renderer.renderAsync(scene, camera);
+          // Same-task capture, immediately after the awaited render.
+          return canvas.transferToImageBitmap();
+        },
+      };
+    } catch (error) {
+      renderer.dispose();
+      throw error;
+    }
   },
 };
 

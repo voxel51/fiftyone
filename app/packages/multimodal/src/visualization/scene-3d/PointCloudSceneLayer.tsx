@@ -50,7 +50,10 @@ import type {
 } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
 import { useGraphicsRuntime } from "../webgpu/graphics-runtime-context";
-import { buildWebGlPointCloudRenderData } from "./webgl-point-cloud-render-data";
+import {
+  buildWebGlPointCloudRenderData,
+  type WebGlPointCloudRenderScratch,
+} from "./webgl-point-cloud-render-data";
 import { POINT_PICK_LAYER_ID_KEY } from "./point-picking";
 
 export {
@@ -99,6 +102,10 @@ export const PointCloudSceneLayer = memo(function PointCloudSceneLayer({
     () => pointCloudObjectTransform(frameTransform),
     [frameTransform],
   );
+  const webGlScratch = useMemo<WebGlPointCloudRenderScratch>(
+    () => ({ colors: new Float32Array(0) }),
+    [],
+  );
 
   useInvalidateOn([objectTransform, hoveredPoint]);
   const webGlData = useMemo(
@@ -108,9 +115,10 @@ export const PointCloudSceneLayer = memo(function PointCloudSceneLayer({
             color: gpu.color,
             maxRenderedPoints: gpu.renderedPointCount,
             payload: gpu.payload,
+            scratch: webGlScratch,
           })
         : data,
-    [backend, data, gpu],
+    [backend, data, gpu, webGlScratch],
   );
   const useGpuPointPath = backend === "webgpu" && gpu !== undefined;
 
