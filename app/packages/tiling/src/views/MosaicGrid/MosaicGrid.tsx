@@ -27,6 +27,7 @@ import { TileIdScope } from "../../lib/TilingProvider";
 import type { TilingLayoutMetrics } from "../../lib/types";
 import {
   useSetTileTitle,
+  useTileHeaderExtra,
   useTileTitle,
   useTileTitleHighlighted,
   useTileTypes,
@@ -135,6 +136,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
 }) => {
   const titleOverride = useTileTitle();
   const titleHighlighted = useTileTitleHighlighted();
+  const headerExtra = useTileHeaderExtra();
   const setTileTitle = useSetTileTitle();
   const tileTypes = useTileTypes();
   const [renameRequest, setRenameRequest] = useState(0);
@@ -242,6 +244,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
               onTitleChange={(nextTitle) => setTileTitle(nextTitle)}
               renameRequest={renameRequest}
               onSelect={onFocus}
+              headerExtra={headerExtra}
             />
           </ContextMenu>
         </div>

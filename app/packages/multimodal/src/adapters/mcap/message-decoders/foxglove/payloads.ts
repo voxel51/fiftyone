@@ -47,6 +47,22 @@ export const FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS = Object.freeze(
 );
 
 /**
+ * Payload identities for foxglove_msgs/msg/RawAudio messages carried over
+ * ROS 2 CDR encodings.
+ */
+export const FOXGLOVE_RAW_AUDIO_CDR_PAYLOADS = Object.freeze(
+  foxgloveCdrPayloads("RawAudio"),
+);
+
+/**
+ * Payload identities for foxglove_msgs/msg/CompressedAudio messages carried
+ * over ROS 2 CDR encodings.
+ */
+export const FOXGLOVE_COMPRESSED_AUDIO_CDR_PAYLOADS = Object.freeze(
+  foxgloveCdrPayloads("CompressedAudio"),
+);
+
+/**
  * Payload identities for foxglove_msgs/msg/Grid messages carried over ROS 2
  * CDR encodings.
  */
