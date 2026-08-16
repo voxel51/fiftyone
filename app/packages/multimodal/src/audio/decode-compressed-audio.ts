@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // WebCodecs decode for `foxglove.CompressedAudio` chunks.
 //
-// Turns encoded chunks (opus/aac/mp3/flac/pcm) into the SAME interleaved
+// Turns encoded Opus chunks into the SAME interleaved
 // `Float32Array` shape the RawAudio path produces, so everything downstream
 // — peak pyramid, AudioBuffer, GainNode playback — stays codec-agnostic and
 // needs no branch on how the audio arrived.
@@ -11,6 +11,9 @@ import {
   audioCodecFromFormat,
   webCodecForAudioFormat,
 } from "../codecs/audio-format";
+
+/** Opus' fixed internal rate; see `decoder.configure` below. */
+const OPUS_SAMPLE_RATE = 48_000;
 
 export interface CompressedAudioChunk {
   readonly bytes: Uint8Array;
@@ -115,9 +118,13 @@ export async function decodeCompressedAudio(
   });
 
   try {
+    // Opus is the only supported codec (see `audio-format.ts`), and it
+    // always runs at 48 kHz internally, so this fixed configuration is
+    // correct rather than a guess. The real channel count comes back on
+    // the first decoded `AudioData`.
     decoder.configure({
       codec: webCodec,
-      sampleRate: 48_000,
+      sampleRate: OPUS_SAMPLE_RATE,
       numberOfChannels: 2,
     });
 

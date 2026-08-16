@@ -9,14 +9,20 @@
  * Foxglove's free-form `format` field and the browser API.
  */
 const AUDIO_FORMATS = Object.freeze({
+  // Opus only, deliberately.
+  //
+  // `AudioDecoder.configure()` needs the stream's real sample rate and
+  // channel count, and `foxglove.CompressedAudio` carries neither — it has
+  // only a `format` string. Opus is decodable regardless because it always
+  // operates at 48 kHz internally, so a fixed config is correct for it.
+  //
+  // AAC/MP3/FLAC would each need their true rate (and AAC an
+  // AudioSpecificConfig `description`) to configure a decoder, so listing
+  // them here would claim support that fails at runtime. They degrade to
+  // metadata-only with an "unsupported" reason instead. Adding one means
+  // sourcing that configuration — from the container or by parsing the
+  // first frame header — and verifying it against a real fixture.
   opus: { exact: ["opus"], label: "Opus", webCodec: "opus" },
-  aac: { exact: ["aac", "mp4a", "m4a"], label: "AAC", webCodec: "mp4a.40.2" },
-  mp3: { exact: ["mp3", "mpeg", "mpga"], label: "MP3", webCodec: "mp3" },
-  flac: { exact: ["flac"], label: "FLAC", webCodec: "flac" },
-  // Uncompressed PCM occasionally arrives on a CompressedAudio topic;
-  // WebCodecs decodes it through the same path rather than needing the
-  // RawAudio branch.
-  pcm: { exact: ["pcm", "pcm-s16", "lpcm"], label: "PCM", webCodec: "pcm-s16" },
 } as const);
 
 export type SupportedAudioFormat = keyof typeof AUDIO_FORMATS;
