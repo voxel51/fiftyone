@@ -28,10 +28,7 @@ export interface PeakPyramid {
 /** Default bucket size for the finest LOD — see plan §6/§8. */
 export const DEFAULT_SAMPLES_PER_PEAK = 256;
 
-function finestLevel(
-  samples: Float32Array,
-  samplesPerPeak: number,
-): PeakLevel {
+function finestLevel(samples: Float32Array, samplesPerPeak: number): PeakLevel {
   const peakCount = Math.max(1, Math.ceil(samples.length / samplesPerPeak));
   const min = new Float32Array(peakCount);
   const max = new Float32Array(peakCount);
@@ -60,8 +57,14 @@ function coarserLevel(level: PeakLevel): PeakLevel {
   for (let i = 0; i < peakCount; i++) {
     const a = i * 2;
     const b = a + 1;
-    min[i] = b < level.min.length ? Math.min(level.min[a], level.min[b]) : level.min[a];
-    max[i] = b < level.max.length ? Math.max(level.max[a], level.max[b]) : level.max[a];
+    min[i] =
+      b < level.min.length
+        ? Math.min(level.min[a], level.min[b])
+        : level.min[a];
+    max[i] =
+      b < level.max.length
+        ? Math.max(level.max[a], level.max[b])
+        : level.max[a];
   }
   return { min, max };
 }
@@ -81,6 +84,42 @@ export function buildPeakPyramid(
     levels.push(coarserLevel(levels[levels.length - 1]));
   }
   return { levels, samplesPerPeak, sampleRate: options.sampleRate };
+}
+
+/**
+ * Builds one pyramid PER CHANNEL from an interleaved buffer.
+ *
+ * Peaks must be computed per channel: a stereo buffer interleaves L and R,
+ * so summarizing it directly mixes the two channels inside every bucket
+ * and yields a waveform that belongs to neither. Deinterleaving first
+ * gives one honest pyramid per channel, which the viewer renders as
+ * stacked rows (L above R).
+ */
+export function buildChannelPeakPyramids(
+  interleaved: Float32Array,
+  options: { channels: number; samplesPerPeak?: number; sampleRate: number },
+): readonly PeakPyramid[] {
+  const channels = Math.max(1, options.channels);
+  if (channels === 1) {
+    return [buildPeakPyramid(interleaved, options)];
+  }
+  const frames = Math.floor(interleaved.length / channels);
+  const pyramids: PeakPyramid[] = [];
+  for (let channel = 0; channel < channels; channel++) {
+    const planar = new Float32Array(frames);
+    for (let frame = 0; frame < frames; frame++) {
+      planar[frame] = interleaved[frame * channels + channel];
+    }
+    pyramids.push(buildPeakPyramid(planar, options));
+  }
+  return pyramids;
+}
+
+/** Conventional short labels for the first channels of a stream. */
+export function channelLabel(index: number, channels: number): string {
+  if (channels === 1) return "Mono";
+  if (channels === 2) return index === 0 ? "L" : "R";
+  return `Ch ${index + 1}`;
 }
 
 /**
