@@ -272,7 +272,7 @@
   background: var(--color-content-border-default);
   border-radius: 3px;
   cursor: pointer;
-  height: 96px;
+  height: 160px;
   position: relative;
   touch-action: none;
   width: 6px;

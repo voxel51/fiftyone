@@ -1,8 +1,5 @@
 import { TimelineRuler, useAudio } from "@fiftyone/playback";
-import {
-  useSetTileHeaderExtra,
-  useSetTileTitle,
-} from "@fiftyone/tiling";
+import { useSetTileHeaderExtra, useSetTileTitle } from "@fiftyone/tiling";
 import {
   Button,
   IconName,
@@ -18,7 +15,7 @@ import { usePCMAudioStream } from "../../../adapters/mcap/resource-client/use-pc
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import type { EpisodeTileProps } from "../tiles/tile-types";
-import { synthesizePeaks } from "./peak-pyramid";
+import { channelLabel, synthesizePeaks } from "./peak-pyramid";
 import styles from "./AudioTile.module.css";
 import WaveformSurface from "./WaveformSurface";
 import { type WaveformTrackSpec } from "./WaveformViewer";
@@ -93,17 +90,24 @@ const AudioTile: React.FC<EpisodeTileProps> = () => {
   // Synthetic fallback only for the placeholder path (no real source) or
   // while a real source hasn't produced peaks yet — computed once, not
   // per render, since it's a ~480k-sample buffer.
-  const placeholderPyramid = useMemo(() => synthesizePeaks({ durationSec: 10 }), []);
+  const placeholderPyramid = useMemo(
+    () => synthesizePeaks({ durationSec: 10 }),
+    [],
+  );
 
+  // One waveform row per channel (L above R), so stereo reads honestly
+  // instead of collapsing both channels into a single mixed trace.
   const waveformTracks = useMemo<WaveformTrackSpec[]>(() => {
     const label = sources[0]?.label ?? "Audio";
-    return [
-      {
-        trackId: boundTrackId,
-        label,
-        pyramid: pcm.waveformPeaks ?? placeholderPyramid,
-      },
-    ];
+    const pyramids = pcm.waveformPeaks ?? [placeholderPyramid];
+    return pyramids.map((pyramid, index) => ({
+      trackId: `${boundTrackId}:${index}`,
+      label:
+        pyramids.length > 1
+          ? `${label} ${channelLabel(index, pyramids.length)}`
+          : label,
+      pyramid,
+    }));
   }, [boundTrackId, sources, pcm.waveformPeaks, placeholderPyramid]);
 
   // Silence has several distinct causes (still decoding, unsupported
@@ -111,13 +115,13 @@ const AudioTile: React.FC<EpisodeTileProps> = () => {
   // from "broken" without saying which — so name the actual reason.
   const statusCaption = !primarySourceId
     ? "Waveform (placeholder — no audio source selected)"
-    : pcm.decodeStatus === "idle"
+    : pcm.status === "idle"
       ? "No audio decoded from this source"
-      : pcm.decodeStatus === "loading"
+      : pcm.status === "loading"
         ? "Decoding…"
-        : pcm.decodeStatus === "unsupported"
+        : pcm.status === "unsupported"
           ? "Audio codec not supported by this browser"
-          : pcm.decodeStatus === "error"
+          : pcm.status === "error"
             ? "Failed to decode audio"
             : boundTrack?.muted
               ? "Muted (this track)"

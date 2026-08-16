@@ -16,7 +16,11 @@
 // ---------------------------------------------------------------------------
 
 import { atom } from "jotai/vanilla";
-import { atomFamily, atomWithStorage, createJSONStorage } from "jotai/vanilla/utils";
+import {
+  atomFamily,
+  atomWithStorage,
+  createJSONStorage,
+} from "jotai/vanilla/utils";
 
 /**
  * Where a registered audio track's samples originate. Extend this union as
@@ -24,7 +28,10 @@ import { atomFamily, atomWithStorage, createJSONStorage } from "jotai/vanilla/ut
  * explicit member so switch-based consumers stay exhaustive).
  */
 export type AudioSourceKind =
+  /** A hidden <audio> element muxed with a video (video-annotation). */
   | "native-element"
+  /** Decoded PCM driven through Web Audio, whatever container it came from. */
+  | "pcm"
   | "foxglove-raw"
   | "foxglove-compressed";
 

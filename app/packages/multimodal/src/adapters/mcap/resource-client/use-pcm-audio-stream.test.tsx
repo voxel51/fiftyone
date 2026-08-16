@@ -115,7 +115,10 @@ function renderPcm(streamId = "audio-1") {
 
 describe("usePCMAudioStream", () => {
   beforeEach(() => {
-    vi.stubGlobal("AudioContext", FakeAudioContext as unknown as typeof AudioContext);
+    vi.stubGlobal(
+      "AudioContext",
+      FakeAudioContext as unknown as typeof AudioContext,
+    );
   });
 
   afterEach(() => {
@@ -129,18 +132,19 @@ describe("usePCMAudioStream", () => {
     mocks.dataStream = {
       getTimelineIndex: () => ({ endTimeNs: 1000n, startTimeNs: 0n }),
       readStreamFrames: vi.fn(async () => ({
-        frames: [
-          rawAudioFrame(200n, [3, 4]),
-          rawAudioFrame(0n, [1, 2]),
-        ],
+        frames: [rawAudioFrame(200n, [3, 4]), rawAudioFrame(0n, [1, 2])],
         stopReason: "complete",
       })),
     };
 
     const { result } = renderPcm();
-    await waitFor(() => expect(result.current.result.decodeStatus).toBe("ready"));
+    await waitFor(() => expect(result.current.result.status).toBe("ready"));
     expect(result.current.result.hasAudio).toBe(true);
-    expect(result.current.result.waveformPeaks?.levels[0].min[0]).toBeLessThanOrEqual(1);
+    // One pyramid per channel; this fixture is mono.
+    expect(result.current.result.waveformPeaks).toHaveLength(1);
+    expect(
+      result.current.result.waveformPeaks?.[0].levels[0].min[0],
+    ).toBeLessThanOrEqual(1);
   });
 
   it("marks unsupported when only compressed audio is present (no PCM decode yet)", async () => {
@@ -166,7 +170,7 @@ describe("usePCMAudioStream", () => {
 
     const { result } = renderPcm();
     await waitFor(() =>
-      expect(result.current.result.decodeStatus).toBe("unsupported"),
+      expect(result.current.result.status).toBe("unsupported"),
     );
     expect(result.current.result.hasAudio).toBe(true);
   });
@@ -181,10 +185,10 @@ describe("usePCMAudioStream", () => {
     };
 
     const { result } = renderPcm();
-    await waitFor(() => expect(result.current.result.decodeStatus).toBe("ready"));
+    await waitFor(() => expect(result.current.result.status).toBe("ready"));
 
     expect(getAudioTracks(result.current.store)).toEqual([
-      { id: "audio-1", label: "audio-1", kind: "foxglove-raw" },
+      { id: "audio-1", label: "audio-1", kind: "pcm" },
     ]);
   });
 
@@ -198,7 +202,7 @@ describe("usePCMAudioStream", () => {
     };
 
     const { result } = renderPcm();
-    await waitFor(() => expect(result.current.result.decodeStatus).toBe("ready"));
+    await waitFor(() => expect(result.current.result.status).toBe("ready"));
 
     const audioContext = audioContextInstances[0];
 
