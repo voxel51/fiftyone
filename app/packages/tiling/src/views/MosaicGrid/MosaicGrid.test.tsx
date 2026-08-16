@@ -363,7 +363,7 @@ describe("MosaicGrid component", () => {
     it("clears the header extra when the publishing tile unmounts", () => {
       const PublishHeaderExtra = () => {
         const setHeaderExtra = useSetTileHeaderExtra();
-        useEffect(() => {
+        React.useEffect(() => {
           setHeaderExtra(<button data-testid="fake-mute" />);
           return () => setHeaderExtra(null);
         }, [setHeaderExtra]);
