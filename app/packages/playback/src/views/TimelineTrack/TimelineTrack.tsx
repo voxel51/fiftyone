@@ -19,7 +19,13 @@ import {
 import clsx from "clsx";
 import React, { useRef, useState } from "react";
 import styles from "./TimelineTrack.module.css";
-import { ChevronBottomIcon, ChevronRightIcon, PinIcon } from "../stableIcons";
+import {
+  ChevronBottomIcon,
+  ChevronRightIcon,
+  PinIcon,
+  VolumeOffIcon,
+  VolumeUpIcon,
+} from "../stableIcons";
 
 /**
  * One event on a track. A `number` is shorthand for a point at that
@@ -132,6 +138,21 @@ export interface TimelineTrackProps {
   labelWidth?: number;
   pinned?: boolean;
   onPinClick?: () => void;
+  /**
+   * Mutually exclusive with the pin button, in the same JSX slot: a row
+   * that supplies `onMuteClick` renders a mute toggle there instead of the
+   * pin button (e.g. a waveform track — see `decorateTrack` in
+   * `TimelineWithTracksProps`). `onPinClick` is ignored when this is set.
+   */
+  muted?: boolean;
+  onMuteClick?: () => void;
+  /**
+   * Replaces this row's normal event bars/markers with arbitrary content
+   * filling the lane (e.g. a waveform canvas). The lane keeps its own
+   * click-to-seek behavior; the override is responsible for its own time
+   * axis via the same shared `viewStart`/`viewEnd` this track reads.
+   */
+  laneOverride?: React.ReactNode;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
   className?: string;
   /** Fired on the row root. Used for cross-component hover linking. */
@@ -206,6 +227,9 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   labelWidth = 0,
   pinned = false,
   onPinClick,
+  muted = false,
+  onMuteClick,
+  laneOverride,
   onContextMenu,
   className,
   onMouseEnter,
@@ -497,22 +521,41 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               {labelText}
             </Text>
           </Tooltip>
-          {onPinClick && !isChild && (
+          {onMuteClick && !isChild ? (
             <Button
               variant={Variant.Icon}
               size={Size.Xs}
-              data-testid={`timeline-track-pin-${id}`}
-              leadingIcon={PinIcon}
-              aria-label={pinned ? "Unpin track" : "Pin track"}
-              aria-pressed={pinned}
+              data-testid={`timeline-track-mute-${id}`}
+              leadingIcon={muted ? VolumeOffIcon : VolumeUpIcon}
+              aria-label={muted ? "Unmute track" : "Mute track"}
+              aria-pressed={muted}
               className={clsx(styles.pinButton, {
-                [styles.pinButtonActive]: pinned,
+                [styles.pinButtonActive]: muted,
               })}
               onClick={(e) => {
                 e.stopPropagation();
-                onPinClick();
+                onMuteClick();
               }}
             />
+          ) : (
+            onPinClick &&
+            !isChild && (
+              <Button
+                variant={Variant.Icon}
+                size={Size.Xs}
+                data-testid={`timeline-track-pin-${id}`}
+                leadingIcon={PinIcon}
+                aria-label={pinned ? "Unpin track" : "Pin track"}
+                aria-pressed={pinned}
+                className={clsx(styles.pinButton, {
+                  [styles.pinButtonActive]: pinned,
+                })}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPinClick();
+                }}
+              />
+            )
           )}
         </div>
       )}
@@ -559,7 +602,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           );
         }}
       >
-        {barVisible && (
+        {laneOverride}
+        {!laneOverride && barVisible && (
           <div
             className={styles.bar}
             style={{
@@ -570,7 +614,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
             }}
           />
         )}
-        {events
+        {!laneOverride &&
+        events
           .map((event, originalIndex) => ({
             event: normalizeEvent(event),
             originalIndex,

@@ -26,6 +26,8 @@ import {
   FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS,
   foxgloveCameraCalibrationCdrDecoders,
   foxgloveCameraCalibrationDecoder,
+  foxgloveCompressedAudioCdrDecoders,
+  foxgloveCompressedAudioDecoder,
   foxgloveCompressedImageCdrDecoders,
   foxgloveCompressedImageDecoder,
   foxgloveCompressedVideoCdrDecoders,
@@ -44,6 +46,8 @@ import {
   foxglovePointCloudDecoder,
   foxglovePoseInFrameCdrDecoders,
   foxglovePoseInFrameDecoder,
+  foxgloveRawAudioCdrDecoders,
+  foxgloveRawAudioDecoder,
   foxgloveRawImageCdrDecoders,
   foxgloveRawImageDecoder,
   foxgloveSceneUpdateCdrDecoders,
@@ -127,6 +131,28 @@ describe("Foxglove decoder registry and stream classification", () => {
     expect(registry.find(foxgloveImageAnnotationsDecoder.payload)).toBe(
       foxgloveImageAnnotationsDecoder,
     );
+    expect(registry.find(foxgloveRawAudioDecoder.payload)).toBe(
+      foxgloveRawAudioDecoder,
+    );
+    for (const decoder of foxgloveRawAudioCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
+    expect(registry.find(foxgloveCompressedAudioDecoder.payload)).toBe(
+      foxgloveCompressedAudioDecoder,
+    );
+    for (const decoder of foxgloveCompressedAudioCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
+  });
+
+  it("gives the audio decoders unique ids, no collisions with each other or existing decoders", () => {
+    const ids = [
+      foxgloveRawAudioDecoder.id,
+      ...foxgloveRawAudioCdrDecoders.map((d) => d.id),
+      foxgloveCompressedAudioDecoder.id,
+      ...foxgloveCompressedAudioCdrDecoders.map((d) => d.id),
+    ];
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("classifies Foxglove ROS2 CDR streams with the same payload descriptors the registry uses", () => {
