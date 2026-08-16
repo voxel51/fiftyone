@@ -1,14 +1,8 @@
 import type { Decoder } from "../../../../decoders/index";
-import { errorMessage } from "../../../../utils/errors";
 // Context-only timing helper; nothing protobuf-specific despite its home.
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { rawAudioOutput } from "../foxglove/raw-audio";
-import {
-  base64ToBytes,
-  decodeJsonRecord,
-  finiteNumberField,
-  recordField,
-} from "./decode";
+import { decodeJsonMediaMessage, finiteNumberField } from "./decode";
 import { JSON_FOXGLOVE_RAW_AUDIO_PAYLOAD } from "./payloads";
 
 /**
@@ -28,40 +22,19 @@ export const jsonFoxgloveRawAudioDecoder: Decoder = {
   version: "1",
 
   decode(bytes, context) {
-    let message: Record<string, unknown>;
-    try {
-      message = decodeJsonRecord(bytes);
-    } catch (error) {
-      return degraded(context, errorMessage(error, "Invalid JSON message"));
+    const decoded = decodeJsonMediaMessage(bytes, "RawAudio");
+    if (!decoded.ok) {
+      return {
+        attributes: { decodeError: decoded.reason },
+        timing: timingFromContext(context, undefined),
+      };
     }
 
-    const encoded = message.data;
-    if (typeof encoded !== "string") {
-      return degraded(context, "JSON RawAudio message has no base64 data");
-    }
-
-    let data: Uint8Array;
-    try {
-      data = base64ToBytes(encoded);
-    } catch (error) {
-      return degraded(
-        context,
-        errorMessage(error, "JSON RawAudio data is not valid base64"),
-      );
-    }
-
-    const timestamp = recordField(message, "timestamp");
-    const sec = finiteNumberField(timestamp, "sec");
-    const nsec = finiteNumberField(timestamp, "nsec");
-
+    const { message } = decoded;
     return rawAudioOutput({
-      data,
+      data: decoded.data,
       format: typeof message.format === "string" ? message.format : "",
-      messageTimestamp:
-        sec === undefined
-          ? undefined
-          : BigInt(Math.trunc(sec)) * 1_000_000_000n +
-            BigInt(Math.trunc(nsec ?? 0)),
+      messageTimestamp: decoded.timestampNs,
       numberOfChannels:
         finiteNumberField(message, "number_of_channels") ??
         finiteNumberField(message, "numberOfChannels") ??
@@ -74,13 +47,3 @@ export const jsonFoxgloveRawAudioDecoder: Decoder = {
     });
   },
 } as const;
-
-function degraded(
-  context: Parameters<typeof timingFromContext>[0],
-  decodeError: string,
-) {
-  return {
-    attributes: { decodeError },
-    timing: timingFromContext(context, undefined),
-  };
-}

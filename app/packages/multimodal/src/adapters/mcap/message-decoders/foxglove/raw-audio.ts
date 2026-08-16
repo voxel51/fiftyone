@@ -110,7 +110,12 @@ export function rawAudioOutput({
   };
 
   const pcmFormat = pcmFormatFromString(format);
-  if (!pcmFormat || sampleRate <= 0 || numberOfChannels <= 0) {
+  // NaN/Infinity fail every comparison, so `<= 0` alone would let a
+  // non-finite rate through and produce an AudioBuffer of nonsense length.
+  const validRate = Number.isFinite(sampleRate) && sampleRate > 0;
+  const validChannels =
+    Number.isFinite(numberOfChannels) && numberOfChannels > 0;
+  if (!pcmFormat || !validRate || !validChannels) {
     attributes.unsupportedReason = !pcmFormat
       ? unsupportedPcmFormatReason(format)
       : "Foxglove RawAudio requires a positive sample rate and channel count";
@@ -122,11 +127,16 @@ export function rawAudioOutput({
   }
 
   attributes.pcmFormat = pcmFormatLabel(pcmFormat);
+  // `samplesFromPcmBytes` COPIES `data` (it must, to guarantee alignment),
+  // so `samples.buffer` is a different ArrayBuffer. Hinting `data.buffer`
+  // here would transfer the buffer nobody consumes while structure-cloning
+  // the one that is actually needed — a second full copy of every PCM
+  // payload on a hot path.
   const samples = samplesFromPcmBytes(pcmFormat, data);
 
   return {
     attributes,
-    resourceHints: resourceHintsForArrayBufferViews(data),
+    resourceHints: resourceHintsForArrayBufferViews(samples),
     timing: timingFromContext(timingContext, messageTimestamp),
     visualization: {
       channels: numberOfChannels,

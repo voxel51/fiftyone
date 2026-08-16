@@ -1,14 +1,8 @@
 import type { Decoder } from "../../../../decoders/index";
-import { errorMessage } from "../../../../utils/errors";
 // Context-only timing helper; nothing protobuf-specific despite its home.
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { compressedAudioOutput } from "../foxglove/compressed-audio";
-import {
-  base64ToBytes,
-  decodeJsonRecord,
-  finiteNumberField,
-  recordField,
-} from "./decode";
+import { decodeJsonMediaMessage } from "./decode";
 import { JSON_FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD } from "./payloads";
 
 /**
@@ -16,9 +10,7 @@ import { JSON_FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD } from "./payloads";
  * base64 rather than raw bytes and `timestamp` is `{sec, nsec}`, matching
  * the Foxglove JSON schema registry.
  *
- * Degrades to attributes-only on a shape mismatch, like its JSON siblings —
- * the synchronized-batch read path has no per-message error isolation, so a
- * throwing decoder would reject whole playback windows.
+ * Degrades to attributes-only on a shape mismatch, like its JSON siblings.
  */
 export const jsonFoxgloveCompressedAudioDecoder: Decoder = {
   id: "json.foxglove.compressed-audio",
@@ -26,54 +18,20 @@ export const jsonFoxgloveCompressedAudioDecoder: Decoder = {
   version: "1",
 
   decode(bytes, context) {
-    let message: Record<string, unknown>;
-    try {
-      message = decodeJsonRecord(bytes);
-    } catch (error) {
-      return degraded(context, errorMessage(error, "Invalid JSON message"));
+    const decoded = decodeJsonMediaMessage(bytes, "CompressedAudio");
+    if (!decoded.ok) {
+      return {
+        attributes: { decodeError: decoded.reason },
+        timing: timingFromContext(context, undefined),
+      };
     }
 
-    const encoded = message.data;
-    if (typeof encoded !== "string") {
-      return degraded(
-        context,
-        "JSON CompressedAudio message has no base64 data",
-      );
-    }
-
-    let data: Uint8Array;
-    try {
-      data = base64ToBytes(encoded);
-    } catch (error) {
-      return degraded(
-        context,
-        errorMessage(error, "JSON CompressedAudio data is not valid base64"),
-      );
-    }
-
-    const timestamp = recordField(message, "timestamp");
-    const sec = finiteNumberField(timestamp, "sec");
-    const nsec = finiteNumberField(timestamp, "nsec");
-
+    const format = decoded.message.format;
     return compressedAudioOutput({
-      data,
-      format: typeof message.format === "string" ? message.format : "",
-      messageTimestamp:
-        sec === undefined
-          ? undefined
-          : BigInt(Math.trunc(sec)) * 1_000_000_000n +
-            BigInt(Math.trunc(nsec ?? 0)),
+      data: decoded.data,
+      format: typeof format === "string" ? format : "",
+      messageTimestamp: decoded.timestampNs,
       timingContext: context,
     });
   },
 } as const;
-
-function degraded(
-  context: Parameters<typeof timingFromContext>[0],
-  decodeError: string,
-) {
-  return {
-    attributes: { decodeError },
-    timing: timingFromContext(context, undefined),
-  };
-}

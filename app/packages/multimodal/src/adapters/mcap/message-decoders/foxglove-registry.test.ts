@@ -13,6 +13,7 @@ import {
   streamTopics,
 } from "../resource-client/stream-topics";
 import { createMcapDecoderRegistry } from ".";
+import { foxgloveDecoders } from "./foxglove/index";
 import {
   FOXGLOVE_CAMERA_CALIBRATION_CDR_PAYLOADS,
   FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS,
@@ -146,13 +147,22 @@ describe("Foxglove decoder registry and stream classification", () => {
   });
 
   it("gives the audio decoders unique ids, no collisions with each other or existing decoders", () => {
-    const ids = [
+    // Checked against the WHOLE built-in set, not just the audio decoders:
+    // a collision with a pre-existing decoder is exactly what this guards,
+    // and comparing the new ids only to each other cannot catch it.
+    const audioIds = [
       foxgloveRawAudioDecoder.id,
       ...foxgloveRawAudioCdrDecoders.map((d) => d.id),
       foxgloveCompressedAudioDecoder.id,
       ...foxgloveCompressedAudioCdrDecoders.map((d) => d.id),
     ];
-    expect(new Set(ids).size).toBe(ids.length);
+    expect(new Set(audioIds).size).toBe(audioIds.length);
+
+    const allIds = foxgloveDecoders.map((decoder) => decoder.id);
+    expect(new Set(allIds).size).toBe(allIds.length);
+    for (const id of audioIds) {
+      expect(allIds).toContain(id);
+    }
   });
 
   it("classifies Foxglove ROS2 CDR streams with the same payload descriptors the registry uses", () => {
