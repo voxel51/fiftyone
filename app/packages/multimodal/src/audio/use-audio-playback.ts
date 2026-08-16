@@ -180,7 +180,14 @@ export function useAudioPlayback({
     if (!load) return undefined;
     const controller = new AbortController();
     let cancelled = false;
+    // Clear the previous source before loading the next: keeping its peaks
+    // and metadata would draw the old waveform (and report the old rate)
+    // under the new track's label until the new load resolved.
     setStatus("loading");
+    setWaveformPeaks(null);
+    setMetadata(null);
+    setChannels(0);
+    setHasAudio(false);
 
     void (async () => {
       const result = await load(controller.signal);
