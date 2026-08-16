@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/playback";
 import React, { useEffect } from "react";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
-import { useSceneSourcesByType } from "../../../scene-inventory/react";
+import { useOptionalSceneSourcesByType } from "../../../scene-inventory/react";
 import { useMcapAudioStream } from "./use-mcap-audio-stream";
 
 /**
@@ -61,7 +61,11 @@ const StubAudioTrack: React.FC = () => {
  * available here.
  */
 const RegisterMcapAudioStreams: React.FC = () => {
-  const sources = useSceneSourcesByType(SCENE_SOURCE_TYPE.AUDIO);
+  // Optional inventory: this registrar mounts unconditionally beside every
+  // scene, including shells rendered without a `SceneInventoryProvider`
+  // (tests, bootstrap states). With no inventory there is simply no audio
+  // to register — it must not take the shell down.
+  const sources = useOptionalSceneSourcesByType(SCENE_SOURCE_TYPE.AUDIO);
   return (
     <>
       {sources.length === 0 ? (

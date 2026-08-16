@@ -145,7 +145,10 @@ export async function decodeCompressedAudio(
     }
   }
 
-  if (failure || blocks.length === 0 || sampleRate === 0) {
+  // An aborted decode returns null, not the partial buffer it managed to
+  // produce: the caller cannot tell a truncated result from a complete one,
+  // and would otherwise store audio for a component that has unmounted.
+  if (signal?.aborted || failure || blocks.length === 0 || sampleRate === 0) {
     return null;
   }
 

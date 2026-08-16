@@ -104,12 +104,10 @@ export type ImageVisualization =
  */
 export interface RawAudioVisualization {
   readonly kind: typeof VISUALIZATION_KIND.RAW_AUDIO;
-  readonly samples:
-    | Int8Array
-    | Uint8Array
-    | Int16Array
-    | Int32Array
-    | Float32Array;
+  // Mirrors the PCM formats `samplesFromPcmBytes` produces (pcm-u8/s16/
+  // s32/f32). No decoder emits Int8Array, so it is deliberately absent —
+  // including it would widen the type for every consumer without cause.
+  readonly samples: Uint8Array | Int16Array | Int32Array | Float32Array;
   readonly sampleRate: number;
   readonly channels: number;
   readonly timestampNs?: bigint;
