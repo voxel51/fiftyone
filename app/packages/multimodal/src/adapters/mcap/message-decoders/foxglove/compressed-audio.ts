@@ -6,7 +6,7 @@ import type {
   DecodedAttributeValue,
   DecodedOutput,
 } from "../../../../ir/index";
-import { VISUALIZATION_KIND } from "../../../../ir/index";
+import { VISUALIZATION_KIND } from "../../../../ir/visualization-kinds";
 import {
   audioCodecFromFormat,
   unsupportedAudioFormatReason,

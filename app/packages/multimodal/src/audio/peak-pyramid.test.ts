@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildPeakPyramid, chooseLod, synthesizePeaks } from "./peak-pyramid";
+import {
+  buildChannelPeakPyramids,
+  buildPeakPyramid,
+  chooseLod,
+  synthesizePeaks,
+} from "./peak-pyramid";
 
 describe("buildPeakPyramid", () => {
   it("summarizes samples into min/max buckets at the finest level", () => {
@@ -94,5 +99,38 @@ describe("synthesizePeaks", () => {
       for (const v of level.min) expect(v).toBeGreaterThanOrEqual(-1);
       for (const v of level.max) expect(v).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe("buildChannelPeakPyramids", () => {
+  it("splits an interleaved stereo buffer into one pyramid per channel", () => {
+    // L is a constant +0.5, R a constant -0.5. Summarizing the interleaved
+    // buffer directly would put both into every bucket, so each channel's
+    // min/max proves the deinterleave arithmetic.
+    const frames = 512;
+    const interleaved = new Float32Array(frames * 2);
+    for (let i = 0; i < frames; i++) {
+      interleaved[i * 2] = 0.5;
+      interleaved[i * 2 + 1] = -0.5;
+    }
+
+    const [left, right] = buildChannelPeakPyramids(interleaved, {
+      channels: 2,
+      sampleRate: 48_000,
+    });
+
+    expect(left.levels[0].min[0]).toBeCloseTo(0.5);
+    expect(left.levels[0].max[0]).toBeCloseTo(0.5);
+    expect(right.levels[0].min[0]).toBeCloseTo(-0.5);
+    expect(right.levels[0].max[0]).toBeCloseTo(-0.5);
+  });
+
+  it("returns a single pyramid for mono without copying", () => {
+    const samples = Float32Array.from({ length: 64 }, (_, i) => i / 64);
+    const pyramids = buildChannelPeakPyramids(samples, {
+      channels: 1,
+      sampleRate: 8000,
+    });
+    expect(pyramids).toHaveLength(1);
   });
 });

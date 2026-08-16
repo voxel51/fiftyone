@@ -22,30 +22,39 @@ function renderViewer(
   );
 }
 
+/** Stubs `navigator.gpu`; jsdom has none, so every case sets it explicitly. */
+function setGpu(value: unknown) {
+  Object.defineProperty(navigator, "gpu", { value, configurable: true });
+}
+
 describe("WaveformViewer", () => {
+  // Captured once and restored after every case: a stub left behind would
+  // silently leak into any test added after these.
+  const originalGpu = (navigator as { gpu?: unknown }).gpu;
+  afterEach(() => setGpu(originalGpu));
+
   it("renders a placeholder when WebGPU is unavailable", () => {
-    const originalGpu = (navigator as { gpu?: unknown }).gpu;
-    // jsdom has no `navigator.gpu` by default; ensure the branch is exercised
-    // deterministically regardless of the host environment.
-    Object.defineProperty(navigator, "gpu", {
-      value: undefined,
-      configurable: true,
-    });
+    setGpu(undefined);
     renderViewer();
     expect(screen.getByTestId("waveform-viewer-unsupported")).toBeTruthy();
     expect(screen.queryByTestId("waveform-viewer-canvas")).toBeNull();
+  });
 
-    Object.defineProperty(navigator, "gpu", {
-      value: originalGpu,
-      configurable: true,
+  it("shows the placeholder when the renderer fails to initialize", async () => {
+    setGpu({});
+    const createRenderer = vi.fn(async () => {
+      throw new Error("no adapter");
     });
+    renderViewer({ createRenderer });
+    // `navigator.gpu` exists, so without a rejection handler this would be
+    // an unhandled rejection and a permanently blank canvas.
+    await waitFor(() =>
+      expect(screen.getByTestId("waveform-viewer-unsupported")).toBeTruthy(),
+    );
   });
 
   it("mounts a canvas and drives a mocked renderer without a real GPU", async () => {
-    Object.defineProperty(navigator, "gpu", {
-      value: {},
-      configurable: true,
-    });
+    setGpu({});
 
     const render_ = vi.fn();
     const dispose = vi.fn();

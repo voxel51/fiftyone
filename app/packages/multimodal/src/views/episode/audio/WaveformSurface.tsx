@@ -77,6 +77,29 @@ const WaveformSurface: React.FC<WaveformSurfaceProps> = ({
     [seek, timeFromClientX],
   );
 
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!(span > 0)) return;
+      // One step is 1/50th of the visible window, so the gesture stays
+      // proportional at any zoom level.
+      const step = span / 50;
+      const delta =
+        event.key === "ArrowRight"
+          ? step
+          : event.key === "ArrowLeft"
+            ? -step
+            : event.key === "Home"
+              ? viewStart - playhead
+              : event.key === "End"
+                ? viewEnd - playhead
+                : 0;
+      if (delta === 0) return;
+      event.preventDefault();
+      seek(Math.min(viewEnd, Math.max(viewStart, playhead + delta)));
+    },
+    [playhead, seek, span, viewEnd, viewStart],
+  );
+
   const playheadPct = pct(playhead);
   const hoverPct = hoverSec === null ? null : pct(hoverSec);
 
@@ -85,6 +108,15 @@ const WaveformSurface: React.FC<WaveformSurfaceProps> = ({
       ref={surfaceRef}
       className={`${styles.surface} ${className ?? ""}`}
       data-testid="waveform-surface"
+      // Seeking is otherwise pointer-only, which leaves keyboard users no
+      // way to move the playhead from the waveform.
+      role="slider"
+      tabIndex={0}
+      aria-label="Seek within the waveform"
+      aria-valuemin={viewStart}
+      aria-valuemax={viewEnd}
+      aria-valuenow={playhead}
+      onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerLeave={() => setHoverSec(null)}
