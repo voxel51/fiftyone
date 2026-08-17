@@ -243,6 +243,7 @@ async function* streamSynchronizedMessages(
   const queued: McapPlaybackWorkerStreamItemByType["readSynchronizedMessages"][] =
     [];
   let complete = false;
+  let failed = false;
   let failure: unknown;
   let wake: (() => void) | undefined;
   const notify = () => {
@@ -260,6 +261,7 @@ async function* streamSynchronizedMessages(
       notify();
     },
     (error) => {
+      failed = true;
       failure = error;
       complete = true;
       notify();
@@ -278,7 +280,7 @@ async function* streamSynchronizedMessages(
       if (item) yield item;
     }
   }
-  if (failure !== undefined) throw failure;
+  if (failed) throw failure;
 }
 
 /**

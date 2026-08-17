@@ -322,7 +322,7 @@ describe("MCAP playback worker transport", () => {
     expect(transport.isIdle()).toBe(true);
   });
 
-  it("finishes inactive streams instead of leaving readers pending", async () => {
+  it("cancels inactive streams instead of leaving readers pending", async () => {
     const worker = createWorker();
     const transport = new McapPlaybackWorkerTransport(() => false);
     const stream = transport.stream(worker, "source:1", "readDecodedMessages", {
@@ -339,10 +339,8 @@ describe("MCAP playback worker transport", () => {
       stream: true,
     });
 
-    await expect(next).resolves.toEqual({
-      done: true,
-      value: undefined,
-    });
+    await expect(next).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(transport.isIdle()).toBe(true);
   });
 
   it("yields batched worker stream items in order", async () => {

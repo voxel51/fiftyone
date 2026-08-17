@@ -132,6 +132,66 @@ describe("session read policy", () => {
     });
   });
 
+  it("settles generic current reads in explicit priority order", async () => {
+    const streamIds = ["camera", "lidar"];
+    const read = vi.fn(async function* (readRequest: ReadRequest) {
+      const stream = readRequest.streams[0];
+      if (!stream) return;
+      yield {
+        frames: [
+          {
+            output: { resourceHints: { transferables: [] } },
+            streamId: stream,
+            timestampNs: 5n,
+          },
+        ],
+        stream,
+      };
+    });
+    const base = sessionWithBatches([]);
+    const session: EpisodeSession = {
+      ...base,
+      manifest: {
+        ...base.manifest,
+        streams: streamIds.map((id) => ({
+          id,
+          kind: "unknown" as const,
+          payload: { encoding: "fixture" },
+          sourceName: `/${id}`,
+          timeRange: request.window,
+        })),
+      },
+      read,
+    };
+    const deliveryGroups: string[][] = [];
+    const singularDeliveries: string[] = [];
+
+    const windows = await readSynchronizedPlaybackBatchFallback(
+      session,
+      { streams: streamIds, timeNs: [5n] },
+      {},
+      {
+        onStreamSettlement: ({ stream }) => singularDeliveries.push(stream),
+        onStreamSettlements: (settlements) =>
+          deliveryGroups.push(settlements.map(({ stream }) => stream)),
+        settlementPriorityStreams: ["lidar", "camera", "lidar", "absent"],
+      },
+    );
+
+    expect(read.mock.calls.map(([readRequest]) => readRequest.streams)).toEqual(
+      [["lidar"], ["camera"]],
+    );
+    expect(deliveryGroups).toEqual([["lidar"], ["camera"]]);
+    expect(singularDeliveries).toEqual(["lidar", "camera"]);
+    expect(windows[0]).toMatchObject({
+      framesByStream: {
+        camera: [expect.objectContaining({ timestampNs: 5n })],
+        lidar: [expect.objectContaining({ timestampNs: 5n })],
+      },
+      timeNs: 5n,
+    });
+  });
+
   it("returns the correct latest predecessor at the generic boundary", async () => {
     const frames = Array.from(
       { length: GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM },

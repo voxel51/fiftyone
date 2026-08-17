@@ -399,9 +399,10 @@ export class McapPlaybackWorkerTransport {
       return;
     }
     if (!this.isActiveSource(stream.sourceKey)) {
-      // Stale stream success has no active consumer anymore. Finish it so any
-      // awaiting iterator observes completion and the stream entry is released.
-      this.finishStream(response.id, stream);
+      // A synchronized stream without its terminal is incomplete. Surface a
+      // stale-source completion through the ordinary cancellation path so an
+      // owner never mistakes it for a protocol failure or retries it.
+      this.failStream(response.id, stream, new EpisodeReadCancelledError());
       return;
     }
 

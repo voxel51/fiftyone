@@ -341,11 +341,12 @@ function prioritizedStreams(
   priorityStreams: readonly string[] | undefined,
 ): string[] {
   if (!priorityStreams?.length) return [...streams];
-  const eligible = new Set(priorityStreams);
-  return [
-    ...streams.filter((stream) => eligible.has(stream)),
-    ...streams.filter((stream) => !eligible.has(stream)),
-  ];
+  const requested = new Set(streams);
+  const priority = [...new Set(priorityStreams)].filter((stream) =>
+    requested.has(stream),
+  );
+  const prioritized = new Set(priority);
+  return [...priority, ...streams.filter((stream) => !prioritized.has(stream))];
 }
 
 interface ResolvedPlaybackWindow {
