@@ -26,8 +26,6 @@ Includes all updates from :ref:`FiftyOne 1.21.0 <release-notes-v1.21.0>`, plus:
   guided onboarding and interaction modes in the workflow canvas, and
   clearer error messages when a task action fails
 - Fixed an error that could prevent auto labeling runs from starting
-- Upgraded dependencies to mitigate CVEs
-
 .. _release-notes-v1.21.0:
 
 FiftyOne 1.21.0
@@ -103,8 +101,6 @@ Security
 ^^^^^^^^
 - Fixed an XSS vulnerability in the App via field descriptions
   `#8117 <https://github.com/voxel51/fiftyone/pull/8117>`_
-- Upgraded dependencies to mitigate CVEs
-
 Plugins
 ^^^^^^^
 - Added a `reload_plugins` operator to refresh installed plugins without
