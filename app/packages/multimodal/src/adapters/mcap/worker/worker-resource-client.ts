@@ -121,13 +121,11 @@ export function createWorkerResourceClient({
         reuseRetainedDecodedMessage,
       ),
     readSynchronizedMessages: (request, options) => {
-      if (options?.signal) {
-        return client.readSynchronizedMessages(request, options);
-      }
       return client.readSynchronizedMessagesWithReuse(
         request,
         reuseRetainedDecodedMessage,
         options?.onSynchronizedProgress,
+        options,
       );
     },
   };

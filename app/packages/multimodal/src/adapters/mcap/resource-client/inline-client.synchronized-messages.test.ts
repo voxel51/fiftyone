@@ -431,7 +431,7 @@ describe("MCAP synchronized messages", () => {
     });
   });
 
-  it("reuses an indexed decoded record before chunk materialization", async () => {
+  it("reuses an indexed decoded record with a per-request signal", async () => {
     const indexed = createIndexedMessageTime("/topic", 7, 90n, 900n);
     const readIndexedMessageTimes = vi.fn(async function* () {
       yield indexed;
@@ -460,7 +460,8 @@ describe("MCAP synchronized messages", () => {
       }) => ({ kind: "retained" as const, ...identity }),
     );
 
-    const [window] = await client.readSynchronizedMessageBatchWithReuse(
+    const controller = new AbortController();
+    const window = await client.readSynchronizedMessagesWithReuse(
       {
         defaultStreamPolicy: {
           mode: PlaybackSyncMode.NEAREST,
@@ -469,10 +470,12 @@ describe("MCAP synchronized messages", () => {
         },
         pointCloudColorByByTopic: { "/topic": "intensity" },
         source: createMcapSourceDescriptor(),
-        timeNs: [100n],
+        timeNs: 100n,
         topics: ["/topic"],
       },
       reuse,
+      undefined,
+      { signal: controller.signal },
     );
 
     expect(window.messages[0]).toMatchObject({

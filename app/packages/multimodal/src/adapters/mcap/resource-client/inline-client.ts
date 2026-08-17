@@ -116,6 +116,7 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
         McapDecodedMessage | ReusedMessage
       >,
     ) => void,
+    readOptions?: McapResourceReadOptions,
   ): Promise<
     readonly McapSynchronizedMessageWindowWithMessages<
       McapDecodedMessage | ReusedMessage
@@ -134,6 +135,7 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
         McapDecodedMessage | ReusedMessage
       >,
     ) => void,
+    readOptions?: McapResourceReadOptions,
   ): Promise<
     McapSynchronizedMessageWindowWithMessages<
       McapDecodedMessage | ReusedMessage
@@ -542,25 +544,28 @@ export function createInlineMcapResourceClient(
       request,
       reuseIndexedMessage,
       onWindowProgress,
+      readOptions,
     ) {
       if (request.timeNs.length === 0) {
         return [];
       }
 
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
-      const reader = await readerStore.get(request.source);
       const sourceKey = byteSourceAccessKey(request.source);
+      const signal = readOptions?.signal;
 
-      return readMcapSynchronizedMessageBatch({
-        decodeClient,
-        predecessorStore: predecessorStoreForSource(sourceKey),
-        reader,
-        readSignal: options.readSignal,
-        onWindowProgress,
-        request,
-        reuseIndexedMessage,
-        timeline,
-      });
+      return withRequestReader(request.source, signal, (reader) =>
+        readMcapSynchronizedMessageBatch({
+          decodeClient,
+          predecessorStore: predecessorStoreForSource(sourceKey),
+          reader,
+          readSignal: signal ? { current: signal } : options.readSignal,
+          onWindowProgress,
+          request,
+          reuseIndexedMessage,
+          timeline,
+        }),
+      );
     },
 
     async readSynchronizedMessages(
@@ -599,11 +604,13 @@ export function createInlineMcapResourceClient(
       request,
       reuseIndexedMessage,
       onWindowProgress,
+      readOptions,
     ) {
       const windows = await client.readSynchronizedMessageBatchWithReuse(
         { ...request, timeNs: [request.timeNs] },
         reuseIndexedMessage,
         onWindowProgress,
+        readOptions,
       );
       const window = windows[0];
       if (!window) {
