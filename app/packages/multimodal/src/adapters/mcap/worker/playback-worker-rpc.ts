@@ -11,6 +11,7 @@ import {
 import { dehydrateMcapFrameTransformSet } from "../transforms/wire";
 import type { McapResourceClient } from "../contracts/index";
 import type { McapPlaybackWorkerResourceClient } from "./worker-resource-client";
+import type { McapPlaybackWorkerSynchronizedWindow } from "./playback-worker-types";
 
 /**
  * Worker operation descriptor for one unary MCAP RPC.
@@ -100,7 +101,7 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
   },
   readSynchronizedMessages: {
-    kind: "unary",
+    kind: "stream",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
   },
   readTimelineRange: {
@@ -193,8 +194,6 @@ export function runMcapPlaybackWorkerUnaryRequest(
       return client.readMessageIndexWindow(message.payload);
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
-    case "readSynchronizedMessages":
-      return client.readSynchronizedMessages(message.payload);
     case "readTimelineRange":
       return client.readTimelineRange(message.payload);
     case "readTransformTopology":
@@ -215,7 +214,8 @@ export function runMcapPlaybackWorkerUnaryRequest(
  * Streams results for one streaming MCAP worker request.
  */
 export async function* runMcapPlaybackWorkerStreamRequest(
-  client: Pick<McapResourceClient, "readDecodedMessages">,
+  client: Pick<McapResourceClient, "readDecodedMessages"> &
+    Pick<McapPlaybackWorkerResourceClient, "readSynchronizedMessages">,
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
 ): AsyncGenerator<
   McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType],
@@ -226,5 +226,104 @@ export async function* runMcapPlaybackWorkerStreamRequest(
     case "readDecodedMessages":
       yield* client.readDecodedMessages(message.payload);
       return;
+    case "readSynchronizedMessages":
+      yield* streamSynchronizedMessages(client, message.payload);
+      return;
   }
+}
+
+async function* streamSynchronizedMessages(
+  client: Pick<McapPlaybackWorkerResourceClient, "readSynchronizedMessages">,
+  request: McapPlaybackWorkerRpcRequest<"readSynchronizedMessages">["payload"],
+): AsyncGenerator<
+  McapPlaybackWorkerStreamItemByType["readSynchronizedMessages"],
+  void,
+  void
+> {
+  const queued: McapPlaybackWorkerStreamItemByType["readSynchronizedMessages"][] =
+    [];
+  let complete = false;
+  let failed = false;
+  let failure: unknown;
+  let wake: (() => void) | undefined;
+  const notify = () => {
+    const resolve = wake;
+    wake = undefined;
+    resolve?.();
+  };
+
+  void runMcapPlaybackWorkerSynchronizedRequest(client, request, (item) => {
+    queued.push(item);
+    notify();
+  }).then(
+    () => {
+      complete = true;
+      notify();
+    },
+    (error) => {
+      failed = true;
+      failure = error;
+      complete = true;
+      notify();
+    },
+  );
+
+  while (!complete || queued.length > 0) {
+    if (queued.length === 0) {
+      await new Promise<void>((resolve) => {
+        if (complete || queued.length > 0) resolve();
+        else wake = resolve;
+      });
+    }
+    while (queued.length > 0) {
+      const item = queued.shift();
+      if (item) yield item;
+    }
+  }
+  if (failed) throw failure;
+}
+
+/**
+ * Pushes synchronized stream items directly from their decode boundary.
+ *
+ * The worker uses this callback form so an authoritative settlement can cross
+ * the worker boundary before the decoder resumes with the next topic. The
+ * async-generator adapter above remains available to ordinary stream callers.
+ */
+export async function runMcapPlaybackWorkerSynchronizedRequest(
+  client: Pick<McapPlaybackWorkerResourceClient, "readSynchronizedMessages">,
+  request: McapPlaybackWorkerRpcRequest<"readSynchronizedMessages">["payload"],
+  onItem: (
+    item: McapPlaybackWorkerStreamItemByType["readSynchronizedMessages"],
+  ) => void,
+): Promise<void> {
+  const settledTopics = new Set<string>();
+  const window = await client.readSynchronizedMessages(request, {
+    onTopicSettlement: ({ topic, window }) => {
+      if (settledTopics.has(topic)) return;
+      settledTopics.add(topic);
+      onItem({ kind: "topic-settlement", topic, window });
+    },
+  });
+  onItem({
+    kind: "terminal",
+    window: withoutSettledTopicPayloads(window, settledTopics),
+  });
+}
+
+function withoutSettledTopicPayloads(
+  window: McapPlaybackWorkerSynchronizedWindow,
+  settledTopics: ReadonlySet<string>,
+): McapPlaybackWorkerSynchronizedWindow {
+  return {
+    ...window,
+    messages: window.messages.filter(
+      (message) => !settledTopics.has(message.topic),
+    ),
+    messagesByTopic: Object.fromEntries(
+      Object.entries(window.messagesByTopic).filter(
+        ([topic]) => !settledTopics.has(topic),
+      ),
+    ),
+  };
 }
