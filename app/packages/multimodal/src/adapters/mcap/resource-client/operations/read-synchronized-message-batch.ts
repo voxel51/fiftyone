@@ -279,20 +279,6 @@ export async function readMcapSynchronizedMessageBatch<
           timeline,
         }),
       settlementPriorityTopics: request.settlementPriorityTopics,
-      estimateCandidateBytes: async (candidate) => {
-        const identity = indexedCandidateReuseIdentity({
-          candidate,
-          pointCloudColorBy:
-            request.pointCloudColorByByTopic?.[candidate.topic],
-          timeline,
-        });
-        if (reusedIndexedMessages.has(identity.recordId)) return 0;
-        const materialized = await selectedRawCandidates;
-        return (
-          materialized?.get(candidate)?.message.data.byteLength ??
-          Number.MAX_SAFE_INTEGER
-        );
-      },
       // Selected candidates name their chunks exactly, so the byte layer can
       // pipeline those chunk fetches while decoding walks them serially.
       onCandidatesSelected: (selected) => {
@@ -354,7 +340,6 @@ export async function readMcapSynchronizedMessageBatch<
         timeline,
       }),
     settlementPriorityTopics: request.settlementPriorityTopics,
-    estimateCandidateBytes: (candidate) => candidate.message.data.byteLength,
     onTopicSettlement,
     selectTieBreaker: compareRawCandidateTieBreaker,
     timeline,
@@ -564,7 +549,6 @@ async function decodeWindowsFromCandidates<
   candidates,
   decodeCandidate,
   settlementPriorityTopics,
-  estimateCandidateBytes,
   onCandidatesSelected,
   onTopicSettlement,
   selectTieBreaker,
@@ -576,9 +560,6 @@ async function decodeWindowsFromCandidates<
   readonly candidates: ReadonlyMap<string, readonly Candidate[]>;
   readonly decodeCandidate: (candidate: Candidate) => Promise<Message>;
   readonly settlementPriorityTopics?: readonly string[];
-  readonly estimateCandidateBytes?: (
-    candidate: Candidate,
-  ) => number | Promise<number>;
   readonly onCandidatesSelected?: (selected: readonly Candidate[]) => void;
   readonly onTopicSettlement?: (settlement: {
     readonly topic: string;
@@ -647,7 +628,6 @@ async function decodeWindowsFromCandidates<
       > = {};
       const messages: Message[] = [];
       const settlementTopics = await selectSettlementTopics({
-        estimateCandidateBytes,
         settlementPriorityTopics,
         selectedByTopic,
       });
@@ -789,64 +769,22 @@ async function decodeWindowsFromCandidates<
   );
 }
 
-export async function selectFirstSettlementTopic<Candidate>({
-  estimateCandidateBytes,
+/** Preserves the caller's stable presentation order ahead of stragglers. */
+export function selectSettlementTopics<Candidate>({
   settlementPriorityTopics,
   selectedByTopic,
 }: {
-  readonly estimateCandidateBytes?: (
-    candidate: Candidate,
-  ) => number | Promise<number>;
   readonly settlementPriorityTopics?: readonly string[];
   readonly selectedByTopic: readonly (readonly [
     string,
     readonly Candidate[],
   ])[];
-}): Promise<string | undefined> {
-  return (
-    await selectSettlementTopics({
-      estimateCandidateBytes,
-      settlementPriorityTopics,
-      selectedByTopic,
-    })
-  )[0];
-}
-
-/** Orders every priority topic ahead of non-blocking settlement work. */
-export async function selectSettlementTopics<Candidate>({
-  estimateCandidateBytes,
-  settlementPriorityTopics,
-  selectedByTopic,
-}: {
-  readonly estimateCandidateBytes?: (
-    candidate: Candidate,
-  ) => number | Promise<number>;
-  readonly settlementPriorityTopics?: readonly string[];
-  readonly selectedByTopic: readonly (readonly [
-    string,
-    readonly Candidate[],
-  ])[];
-}): Promise<readonly string[]> {
+}): readonly string[] {
   if (!settlementPriorityTopics?.length) return [];
-  const eligible = new Set(settlementPriorityTopics);
-  const costs = await Promise.all(
-    selectedByTopic
-      .filter(([topic]) => eligible.has(topic))
-      .map(async ([topic, selected]) => ({
-        cost: estimateCandidateBytes
-          ? (await Promise.all(selected.map(estimateCandidateBytes))).reduce(
-              (total, bytes) => total + bytes,
-              0,
-            )
-          : 0,
-        topic,
-      })),
+  const selectedTopics = new Set(selectedByTopic.map(([topic]) => topic));
+  return [...new Set(settlementPriorityTopics)].filter((topic) =>
+    selectedTopics.has(topic),
   );
-  costs.sort(
-    (left, right) =>
-      left.cost - right.cost || left.topic.localeCompare(right.topic),
-  );
-  return costs.map(({ topic }) => topic);
 }
 
 async function collectIndexedCandidates({

@@ -68,6 +68,7 @@ describe("DataStreamScheduler", () => {
     const harness = createSchedulerHarness({
       activeStreams: streams,
       blockingStreams: ["/camera/left", "/lidar"],
+      settlementPriorityStreams: ["/lidar", "/camera/left"],
     });
 
     harness.scheduler.prefetchLookaheadFrom(0);
@@ -76,7 +77,7 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
       0n,
       streams,
-      ["/camera/left", "/lidar"],
+      ["/lidar", "/camera/left"],
     );
   });
 
@@ -538,6 +539,8 @@ function createSchedulerHarness({
   deferredBatchAdmission = false,
   fillCache = true,
   policy = {},
+  settlementPriorityStreams:
+    configuredSettlementPriorityStreams = configuredBlockingStreams,
 }: {
   readonly activeStreams?: string[];
   readonly blockingStreams?: readonly string[];
@@ -545,6 +548,7 @@ function createSchedulerHarness({
   readonly deferredBatchAdmission?: boolean;
   readonly fillCache?: boolean;
   readonly policy?: Partial<PlaybackPolicy>;
+  readonly settlementPriorityStreams?: readonly string[];
 } = {}) {
   const index = createTimelineIndex({
     endNs: 10_000_000_000n,
@@ -596,6 +600,9 @@ function createSchedulerHarness({
     getBlockingStreams: () => new Set(configuredBlockingStreams),
     getIndex: () => index,
     getLastSeekAtMs: () => null,
+    getSettlementPriorityStreams: () => [
+      ...configuredSettlementPriorityStreams,
+    ],
     hasDeferredBatchAdmission: () => deferredBatchAdmission,
     isSourceAvailable: () => true,
     lastFrames: new Map(),

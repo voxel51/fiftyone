@@ -4,7 +4,6 @@ import {
   INDEXED_RECORD_ID_OPTION_PART_COUNT,
   mintIndexedRecordIdentity,
   parseIndexedRecordIdentity,
-  selectFirstSettlementTopic,
   selectSettlementTopics,
 } from "./read-synchronized-message-batch";
 
@@ -66,26 +65,18 @@ describe("synchronized settlement order", () => {
       ],
     ],
   ] as const)(
-    "selects the cheapest eligible surface for %s request order",
-    async (_direction, selectedByTopic) => {
+    "preserves explicit presentation priority for %s candidate order",
+    (_direction, selectedByTopic) => {
       const candidates: readonly (readonly [
         string,
         readonly { readonly bytes: number }[],
       ])[] = selectedByTopic;
-      await expect(
-        selectFirstSettlementTopic({
-          estimateCandidateBytes: (candidate) => candidate.bytes,
-          settlementPriorityTopics: ["/large", "/small"],
-          selectedByTopic: candidates,
-        }),
-      ).resolves.toBe("/small");
-      await expect(
+      expect(
         selectSettlementTopics({
-          estimateCandidateBytes: (candidate) => candidate.bytes,
-          settlementPriorityTopics: ["/large", "/small"],
+          settlementPriorityTopics: ["/small", "/large"],
           selectedByTopic: candidates,
         }),
-      ).resolves.toEqual(["/small", "/large"]);
+      ).toEqual(["/small", "/large"]);
     },
   );
 });

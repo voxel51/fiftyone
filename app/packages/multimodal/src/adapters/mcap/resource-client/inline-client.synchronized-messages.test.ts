@@ -165,7 +165,7 @@ describe("MCAP synchronized messages", () => {
         },
       );
 
-      expect(settlements).toEqual(["/lidar", "/camera"]);
+      expect(settlements).toEqual(["/camera", "/lidar"]);
       expect(Object.keys(window.messagesByTopic).sort()).toEqual([
         "/camera",
         "/lidar",

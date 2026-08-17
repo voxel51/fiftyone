@@ -131,6 +131,21 @@ export function Streams({
         .map((s) => s.id),
     [sources],
   );
+  const settlementPriorityStreams = useMemo(
+    () => [
+      ...sources
+        .filter((source) => source.type === SCENE_SOURCE_TYPE.IMAGE)
+        .map((source) => source.id),
+      ...blockingStreams.filter(
+        (stream) =>
+          !sources.some(
+            (source) =>
+              source.id === stream && source.type === SCENE_SOURCE_TYPE.IMAGE,
+          ),
+      ),
+    ],
+    [blockingStreams, sources],
+  );
   const poseStreams = useMemo(
     () =>
       requestedPoseHistoryStreams.filter((stream) =>
@@ -169,6 +184,7 @@ export function Streams({
     endBoundedStreams,
     initialSeekTimeNs,
     onPlayheadDataReady,
+    settlementPriorityStreams,
     session,
     source,
     allStreams,

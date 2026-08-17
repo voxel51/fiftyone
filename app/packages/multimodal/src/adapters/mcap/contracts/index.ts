@@ -827,7 +827,7 @@ export interface McapTimelineRange {
 export interface McapReadSynchronizedMessagesRequest {
   /** Active point-cloud color source requested per MCAP topic. */
   readonly pointCloudColorByByTopic?: Readonly<Record<string, string>>;
-  /** Topics eligible for one cost-selected first settlement. */
+  /** Stable presentation order for current-tick priority settlements. */
   readonly settlementPriorityTopics?: readonly string[];
   /**
    * Playback timeline time around which per-topic messages are selected.

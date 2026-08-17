@@ -487,6 +487,7 @@ export interface DataStreamSchedulerOptions {
   readonly getBlockingStreams: () => ReadonlySet<string>;
   readonly getIndex: () => TimelineIndex | null;
   readonly getLastSeekAtMs: () => number | null;
+  readonly getSettlementPriorityStreams?: () => string[];
   readonly hasDeferredBatchAdmission: () => boolean;
   readonly isSourceAvailable: () => boolean;
   readonly lastFrames: Map<string, StreamPlaybackFrame<unknown>>;
@@ -700,7 +701,7 @@ export class DataStreamScheduler {
       options.prefetcher.fetchCurrentFrame(
         tick,
         activeStreams,
-        activeBlockingStreams,
+        options.getSettlementPriorityStreams?.() ?? activeBlockingStreams,
       );
     }
     fillMissingStartupBufferFrom({

@@ -288,7 +288,7 @@ export interface SynchronizedPlaybackReadRequest {
   ) => void;
   /** Active point-cloud color source requested per stream. */
   readonly pointCloudColorBy?: Readonly<Record<StreamId, string>>;
-  /** Streams eligible for cost-based first settlement. */
+  /** Stable presentation order for streams that gate current-tick readiness. */
   readonly settlementPriorityStreams?: readonly StreamId[];
   readonly streamPolicies?: StreamSyncPolicies;
   readonly streams: readonly StreamId[];
