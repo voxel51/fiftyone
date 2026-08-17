@@ -493,6 +493,129 @@ describe("GridCustomRendererItem", () => {
     host.remove();
   });
 
+  it("shows selected on attach when isSampleSelected reports selected, without requiring hover", async () => {
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    const isSampleSelected = vi.fn(() => true);
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+      isSampleSelected,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [200, 120], 12);
+
+    await waitFor(() => {
+      expect(getSelectControl(host)?.getAttribute("title")).toBe("Selected");
+    });
+    expect(isSampleSelected).toHaveBeenCalledWith("sample-id");
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("reconciles a stale local selected flag against the true selection state on reattach from the cache", async () => {
+    // Regression test for the multimodal-grid shift-select bug: an item that
+    // scrolls offscreen stays alive in the grid's cache and stops receiving
+    // updateOptions() calls (those only reach currently shown rows), so its
+    // local `selected` flag can go stale relative to the real selection.
+    // Reattaching (e.g. scrolling back into view) must reconcile against the
+    // live source of truth instead of repainting the stale value.
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    let currentlySelected = false;
+    const isSampleSelected = vi.fn(() => currentlySelected);
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+      isSampleSelected,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [200, 120], 12);
+    await waitFor(() => {
+      expect(host.querySelector("[data-testid='renderer']")).toBeTruthy();
+    });
+    expect(getSelectControl(host)).toBeNull();
+
+    // Item scrolls offscreen (but stays cached, not destroyed) and gets
+    // selected for real while hidden — no updateOptions() call reaches it.
+    looker.detach();
+    currentlySelected = true;
+
+    // Item scrolls back into view: the cache reattaches the same instance.
+    looker.attach(host, [200, 120], 12);
+
+    await waitFor(() => {
+      expect(getSelectControl(host)?.getAttribute("title")).toBe("Selected");
+    });
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("reconciles a stale locally-selected flag back to unselected on reattach", async () => {
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    let currentlySelected = true;
+    const isSampleSelected = vi.fn(() => currentlySelected);
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+      isSampleSelected,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [200, 120], 12);
+    await waitFor(() => {
+      expect(getSelectControl(host)?.getAttribute("title")).toBe("Selected");
+    });
+
+    looker.detach();
+    currentlySelected = false;
+    looker.attach(host, [200, 120], 12);
+
+    await waitFor(() => {
+      expect(getSelectControl(host)).toBeNull();
+    });
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("does not reconcile selection on attach when isSampleSelected is not provided", async () => {
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [200, 120], 12);
+
+    await waitFor(() => {
+      expect(host.querySelector("[data-testid='renderer']")).toBeTruthy();
+    });
+    expect(getSelectControl(host)).toBeNull();
+
+    looker.destroy();
+    host.remove();
+  });
+
   it("survives a destroy() from inside a React effect cleanup", async () => {
     // How the grid actually destroys items: the looker cache evicts during a
     // render, so destroy() lands in an effect cleanup while React is mid-commit
