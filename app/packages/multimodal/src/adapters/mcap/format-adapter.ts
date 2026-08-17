@@ -1230,6 +1230,10 @@ class McapEpisodeSession implements EpisodeSession {
               defaultStreamPolicy: toMcapSyncPolicy(
                 request.defaultStreamPolicy,
               ),
+              firstUsefulSettlementTopics:
+                request.firstUsefulSettlementStreams?.map((stream) =>
+                  this.sourceNameFor(stream),
+                ),
               pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
                 request.pointCloudColorBy,
               ),

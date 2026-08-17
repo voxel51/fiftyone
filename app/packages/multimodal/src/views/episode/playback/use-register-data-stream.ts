@@ -148,6 +148,8 @@ export interface UseDataStreamOptions {
   session: EpisodeSession | null;
   /** Called whenever every blocking stream covers the current playhead. */
   onPlayheadDataReady?: () => void;
+  /** Streams eligible for the first independently useful settlement. */
+  firstUsefulSettlementStreams?: readonly string[];
   /** Stable presentation-first order for authoritative current-tick delivery. */
   settlementPriorityStreams?: readonly string[];
   source: ByteSourceDescriptor | null;
@@ -177,6 +179,7 @@ export function useRegisterDataStream({
   blockingStreams,
   endBoundedStreams,
   initialSeekTimeNs,
+  firstUsefulSettlementStreams = [],
   session,
   onPlayheadDataReady,
   settlementPriorityStreams = blockingStreams,
@@ -315,6 +318,7 @@ export function useRegisterDataStream({
   const blockingStreamsRef = useRef<ReadonlySet<string>>(
     new Set(blockingStreams),
   );
+  const firstUsefulSettlementStreamsRef = useRef(firstUsefulSettlementStreams);
   const settlementPriorityStreamsRef = useRef(settlementPriorityStreams);
   const endBoundedStreamsRef = useRef<ReadonlySet<string>>(
     new Set(endBoundedStreams),
@@ -333,6 +337,9 @@ export function useRegisterDataStream({
   useEffect(() => {
     blockingStreamsRef.current = new Set(blockingStreams);
   }, [blockingStreams]);
+  useEffect(() => {
+    firstUsefulSettlementStreamsRef.current = firstUsefulSettlementStreams;
+  }, [firstUsefulSettlementStreams]);
   useEffect(() => {
     settlementPriorityStreamsRef.current = settlementPriorityStreams;
   }, [settlementPriorityStreams]);
@@ -379,6 +386,12 @@ export function useRegisterDataStream({
     );
     return prioritized.length > 0 ? prioritized : activeBlockingStreams;
   }, [getActiveBlockingStreams]);
+  const getActiveFirstUsefulSettlementStreams = useCallback((): string[] => {
+    const activeStreams = new Set(getActiveStreams());
+    return firstUsefulSettlementStreamsRef.current.filter((stream) =>
+      activeStreams.has(stream),
+    );
+  }, [getActiveStreams]);
 
   const clearPausedIdleWarmupTimer = useCallback(() => {
     if (pausedIdleWarmupTimerRef.current === null) return;
@@ -846,6 +859,8 @@ export function useRegisterDataStream({
                 ? byteTimelineRef.current
                 : null,
             getBlockingStreams: () => blockingStreamsRef.current,
+            getFirstUsefulSettlementStreams:
+              getActiveFirstUsefulSettlementStreams,
             getIndex: () => indexRef.current,
             getLastSeekAtMs: () => lastSeekAtMsRef.current,
             getSettlementPriorityStreams: getActiveSettlementPriorityStreams,
@@ -864,6 +879,7 @@ export function useRegisterDataStream({
       computeBufferedRanges,
       fetchState,
       getActiveBlockingStreams,
+      getActiveFirstUsefulSettlementStreams,
       getActiveStreams,
       getActiveSettlementPriorityStreams,
       prefetcher,

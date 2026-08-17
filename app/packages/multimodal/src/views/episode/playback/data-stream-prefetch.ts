@@ -93,6 +93,7 @@ export interface DataStreamPrefetcher {
     tick: bigint,
     activeStreams: string[],
     settlementPriorityStreams?: readonly string[],
+    firstUsefulSettlementStreams?: readonly string[],
   ): boolean;
   isStreamPending(tickKey: string, stream: string): boolean;
 }
@@ -354,6 +355,7 @@ export function createDataStreamPrefetcher({
     tick,
     activeStreams,
     settlementPriorityStreams,
+    firstUsefulSettlementStreams,
   ) => {
     if (activeStreams.length === 0) return false;
 
@@ -372,6 +374,13 @@ export function createDataStreamPrefetcher({
       filteredSettlementPriorityStreams?.length
         ? filteredSettlementPriorityStreams
         : undefined;
+    const firstUsefulSettlementStreamsToFetch =
+      firstUsefulSettlementStreams?.filter((stream) =>
+        streamsToFetchSet.has(stream),
+      ) ?? [];
+    const settlementPriorityStreamSet = new Set(
+      settlementPriorityStreamsToFetch ?? [],
+    );
     const unsettledStreams = new Set(streamsToFetch);
     let deliveredCurrentFrame = false;
 
@@ -426,6 +435,7 @@ export function createDataStreamPrefetcher({
     const controller = createReadController();
     void playback
       .readSynchronized({
+        firstUsefulSettlementStreams: firstUsefulSettlementStreamsToFetch,
         onStreamSettlement: (settlement) => acceptSettlements([settlement]),
         onStreamSettlements: acceptSettlements,
         pointCloudColorBy: getPointCloudColorBy(),
@@ -515,6 +525,7 @@ export interface DataStreamSchedulerOptions {
   readonly getBackgroundLookaheadSeconds: () => number;
   readonly getByteTimeline: () => readonly ByteTimelinePoint[] | null;
   readonly getBlockingStreams: () => ReadonlySet<string>;
+  readonly getFirstUsefulSettlementStreams?: () => string[];
   readonly getIndex: () => TimelineIndex | null;
   readonly getLastSeekAtMs: () => number | null;
   readonly getSettlementPriorityStreams?: () => string[];
@@ -676,7 +687,12 @@ export class DataStreamScheduler {
         options.caches.get(stream)?.has(currentTick),
       )
     ) {
-      options.prefetcher.fetchCurrentFrame(currentTick, activeBlockingStreams);
+      options.prefetcher.fetchCurrentFrame(
+        currentTick,
+        activeBlockingStreams,
+        options.getSettlementPriorityStreams?.() ?? activeBlockingStreams,
+        options.getFirstUsefulSettlementStreams?.(),
+      );
       // Keep the cadence alive while this read is pending. A cancellation
       // clears pending ownership asynchronously, so stopping here would leave
       // no later pass to retry the uncovered current frame.
@@ -732,6 +748,7 @@ export class DataStreamScheduler {
         tick,
         activeStreams,
         options.getSettlementPriorityStreams?.() ?? activeBlockingStreams,
+        options.getFirstUsefulSettlementStreams?.(),
       );
     }
     fillMissingStartupBufferFrom({

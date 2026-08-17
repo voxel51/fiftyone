@@ -78,6 +78,7 @@ describe("DataStreamScheduler", () => {
       0n,
       streams,
       ["/lidar", "/camera/left"],
+      undefined,
     );
   });
 
@@ -93,6 +94,7 @@ describe("DataStreamScheduler", () => {
       0n,
       ["/camera/left", "/camera/right"],
       ["/camera/left", "/camera/right"],
+      undefined,
     );
   });
 
@@ -470,6 +472,8 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
       0n,
       streams,
+      streams,
+      undefined,
     );
     expect(harness.prefetcher.fetchBatch).not.toHaveBeenCalled();
   });

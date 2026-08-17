@@ -279,6 +279,21 @@ export async function readMcapSynchronizedMessageBatch<
           timeline,
         }),
       settlementPriorityTopics: request.settlementPriorityTopics,
+      firstUsefulSettlementTopics: request.firstUsefulSettlementTopics,
+      estimateCandidateBytes: async (candidate) => {
+        const identity = indexedCandidateReuseIdentity({
+          candidate,
+          pointCloudColorBy:
+            request.pointCloudColorByByTopic?.[candidate.topic],
+          timeline,
+        });
+        if (reusedIndexedMessages.has(identity.recordId)) return 0;
+        const materialized = await selectedRawCandidates;
+        return (
+          materialized?.get(candidate)?.message.data.byteLength ??
+          Number.MAX_SAFE_INTEGER
+        );
+      },
       // Selected candidates name their chunks exactly, so the byte layer can
       // pipeline those chunk fetches while decoding walks them serially.
       onCandidatesSelected: (selected) => {
@@ -340,6 +355,8 @@ export async function readMcapSynchronizedMessageBatch<
         timeline,
       }),
     settlementPriorityTopics: request.settlementPriorityTopics,
+    firstUsefulSettlementTopics: request.firstUsefulSettlementTopics,
+    estimateCandidateBytes: (candidate) => candidate.message.data.byteLength,
     onTopicSettlement,
     selectTieBreaker: compareRawCandidateTieBreaker,
     timeline,
@@ -548,7 +565,9 @@ async function decodeWindowsFromCandidates<
 >({
   candidates,
   decodeCandidate,
+  firstUsefulSettlementTopics,
   settlementPriorityTopics,
+  estimateCandidateBytes,
   onCandidatesSelected,
   onTopicSettlement,
   selectTieBreaker,
@@ -559,7 +578,11 @@ async function decodeWindowsFromCandidates<
 }: {
   readonly candidates: ReadonlyMap<string, readonly Candidate[]>;
   readonly decodeCandidate: (candidate: Candidate) => Promise<Message>;
+  readonly firstUsefulSettlementTopics?: readonly string[];
   readonly settlementPriorityTopics?: readonly string[];
+  readonly estimateCandidateBytes?: (
+    candidate: Candidate,
+  ) => number | Promise<number>;
   readonly onCandidatesSelected?: (selected: readonly Candidate[]) => void;
   readonly onTopicSettlement?: (settlement: {
     readonly topic: string;
@@ -628,6 +651,8 @@ async function decodeWindowsFromCandidates<
       > = {};
       const messages: Message[] = [];
       const settlementTopics = await selectSettlementTopics({
+        estimateCandidateBytes,
+        firstUsefulSettlementTopics,
         settlementPriorityTopics,
         selectedByTopic,
       });
@@ -770,21 +795,55 @@ async function decodeWindowsFromCandidates<
 }
 
 /** Preserves the caller's stable presentation order ahead of stragglers. */
-export function selectSettlementTopics<Candidate>({
+export async function selectSettlementTopics<Candidate>({
+  estimateCandidateBytes,
+  firstUsefulSettlementTopics,
   settlementPriorityTopics,
   selectedByTopic,
 }: {
+  readonly estimateCandidateBytes?: (
+    candidate: Candidate,
+  ) => number | Promise<number>;
+  readonly firstUsefulSettlementTopics?: readonly string[];
   readonly settlementPriorityTopics?: readonly string[];
   readonly selectedByTopic: readonly (readonly [
     string,
     readonly Candidate[],
   ])[];
-}): readonly string[] {
+}): Promise<readonly string[]> {
   if (!settlementPriorityTopics?.length) return [];
   const selectedTopics = new Set(selectedByTopic.map(([topic]) => topic));
-  return [...new Set(settlementPriorityTopics)].filter((topic) =>
+  const explicitOrder = [...new Set(settlementPriorityTopics)].filter((topic) =>
     selectedTopics.has(topic),
   );
+  if (!estimateCandidateBytes || !firstUsefulSettlementTopics?.length) {
+    return explicitOrder;
+  }
+
+  const selectedByTopicMap = new Map(selectedByTopic);
+  const firstUsefulSet = new Set(firstUsefulSettlementTopics);
+  const firstUsefulOrder = explicitOrder.filter((topic) =>
+    firstUsefulSet.has(topic),
+  );
+  if (firstUsefulOrder.length === 0) return explicitOrder;
+  const costs = await Promise.all(
+    firstUsefulOrder.map(async (topic) => ({
+      cost: (
+        await Promise.all(
+          (selectedByTopicMap.get(topic) ?? []).map(estimateCandidateBytes),
+        )
+      ).reduce((total, bytes) => total + bytes, 0),
+      topic,
+    })),
+  );
+  costs.sort(
+    (left, right) =>
+      left.cost - right.cost || left.topic.localeCompare(right.topic),
+  );
+  const firstTopic = costs[0]?.topic;
+  return firstTopic
+    ? [firstTopic, ...explicitOrder.filter((topic) => topic !== firstTopic)]
+    : explicitOrder;
 }
 
 async function collectIndexedCandidates({

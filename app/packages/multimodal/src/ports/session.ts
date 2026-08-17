@@ -282,6 +282,8 @@ export interface SynchronizedStreamSettlement {
 /** One synchronized playback read around a single presentation time. */
 export interface SynchronizedPlaybackReadRequest {
   readonly defaultStreamPolicy?: StreamSyncPolicy;
+  /** Streams eligible for the first independently useful settlement. */
+  readonly firstUsefulSettlementStreams?: readonly StreamId[];
   /** Receives ordered, authoritative per-stream ownership settlements. */
   readonly onStreamSettlement?: (
     settlement: SynchronizedStreamSettlement,

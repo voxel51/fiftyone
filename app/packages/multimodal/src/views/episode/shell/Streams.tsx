@@ -131,11 +131,16 @@ export function Streams({
         .map((s) => s.id),
     [sources],
   );
-  const settlementPriorityStreams = useMemo(
-    () => [
-      ...sources
+  const firstUsefulSettlementStreams = useMemo(
+    () =>
+      sources
         .filter((source) => source.type === SCENE_SOURCE_TYPE.IMAGE)
         .map((source) => source.id),
+    [sources],
+  );
+  const settlementPriorityStreams = useMemo(
+    () => [
+      ...firstUsefulSettlementStreams,
       ...blockingStreams.filter(
         (stream) =>
           !sources.some(
@@ -144,7 +149,7 @@ export function Streams({
           ),
       ),
     ],
-    [blockingStreams, sources],
+    [blockingStreams, firstUsefulSettlementStreams, sources],
   );
   const poseStreams = useMemo(
     () =>
@@ -182,6 +187,7 @@ export function Streams({
   useRegisterDataStream({
     blockingStreams,
     endBoundedStreams,
+    firstUsefulSettlementStreams,
     initialSeekTimeNs,
     onPlayheadDataReady,
     settlementPriorityStreams,

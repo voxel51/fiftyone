@@ -66,17 +66,25 @@ describe("synchronized settlement order", () => {
     ],
   ] as const)(
     "preserves explicit presentation priority for %s candidate order",
-    (_direction, selectedByTopic) => {
+    async (_direction, selectedByTopic) => {
       const candidates: readonly (readonly [
         string,
         readonly { readonly bytes: number }[],
       ])[] = selectedByTopic;
-      expect(
+      await expect(
         selectSettlementTopics({
           settlementPriorityTopics: ["/small", "/large"],
           selectedByTopic: candidates,
         }),
-      ).toEqual(["/small", "/large"]);
+      ).resolves.toEqual(["/small", "/large"]);
+      await expect(
+        selectSettlementTopics({
+          estimateCandidateBytes: (candidate) => candidate.bytes,
+          firstUsefulSettlementTopics: ["/large", "/small"],
+          settlementPriorityTopics: ["/large", "/small"],
+          selectedByTopic: candidates,
+        }),
+      ).resolves.toEqual(["/small", "/large"]);
     },
   );
 });
