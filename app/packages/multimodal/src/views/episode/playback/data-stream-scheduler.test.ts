@@ -577,13 +577,19 @@ function createSchedulerHarness({
   const unsubscribeStream = vi.fn();
   const cancelIdle = vi.fn();
   const activeStreams = [...configuredActiveStreams];
+  const getActiveBlockingStreams = () => {
+    const blockingStreams = activeStreams.filter((stream) =>
+      configuredBlockingStreams.includes(stream),
+    );
+    return blockingStreams.length > 0 ? blockingStreams : [...activeStreams];
+  };
   let registeredStream: PlaybackStream | null = null;
   const scheduler = new DataStreamScheduler({
     caches,
     cancelIdle,
     computeBufferedRanges: () => [[0, 10]],
     failedStreams: new Set(),
-    getActiveBlockingStreams: () => [...activeStreams],
+    getActiveBlockingStreams,
     getActiveStreams: () => [...activeStreams],
     getBackgroundLookaheadSeconds: () => 2,
     getByteTimeline: () => byteTimeline,
