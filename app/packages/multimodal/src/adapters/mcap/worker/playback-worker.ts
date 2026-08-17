@@ -199,6 +199,7 @@ async function streamRequest(
         )
       : null;
   let holdingPrioritySettlements = (pendingPriorityTopics?.size ?? 0) > 0;
+  let deliveredFirstPrioritySettlement = false;
 
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
     throwIfWorkerRequestCancelled(signal);
@@ -208,6 +209,22 @@ async function streamRequest(
     // postMessage lets the playback store publish readiness in one browser
     // turn and transfers every payload exactly once.
     if (holdingPrioritySettlements) {
+      if (
+        !deliveredFirstPrioritySettlement &&
+        isSynchronizedTopicSettlement(item) &&
+        pendingPriorityTopics?.has(item.topic)
+      ) {
+        // The first presentation-priority surface is useful independently of
+        // the remaining blocking group. Transfer it as soon as it is decoded;
+        // the rest of the prefix still shares one readiness boundary.
+        postStreamBatch(message.id, [item]);
+        pendingPriorityTopics.delete(item.topic);
+        deliveredFirstPrioritySettlement = true;
+        if (pendingPriorityTopics.size === 0) {
+          holdingPrioritySettlements = false;
+        }
+        continue;
+      }
       batch.push(item);
       batchBytes += estimateMcapStreamItemBytes(item);
       if (isSynchronizedTopicSettlement(item)) {

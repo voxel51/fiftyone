@@ -149,7 +149,7 @@ describe("MCAP playback worker lifecycle", () => {
     ).toBe(false);
   });
 
-  it("delivers the complete blocking prefix in one transferable batch", async () => {
+  it("delivers the first useful settlement before the remaining blocking group", async () => {
     const cameraBytes = new Uint8Array([1, 2, 3]);
     const lidarBytes = new Uint8Array([4, 5, 6]);
     const diagnosticBytes = new Uint8Array([7, 8, 9]);
@@ -187,7 +187,7 @@ describe("MCAP playback worker lifecycle", () => {
     } as McapPlaybackWorkerRequest);
 
     await vi.waitFor(() => {
-      expect(workerScope.postMessage).toHaveBeenCalledTimes(3);
+      expect(workerScope.postMessage).toHaveBeenCalledTimes(4);
     });
     expect(workerScope.postMessage.mock.calls[0]).toEqual([
       expect.objectContaining({
@@ -196,15 +196,22 @@ describe("MCAP playback worker lifecycle", () => {
             kind: "topic-settlement",
             topic: "/camera",
           }),
+        ],
+      }),
+      expect.arrayContaining([cameraBytes.buffer]),
+    ]);
+    expect(workerScope.postMessage.mock.calls[1]).toEqual([
+      expect.objectContaining({
+        items: [
           expect.objectContaining({
             kind: "topic-settlement",
             topic: "/lidar",
           }),
         ],
       }),
-      expect.arrayContaining([cameraBytes.buffer, lidarBytes.buffer]),
+      expect.arrayContaining([lidarBytes.buffer]),
     ]);
-    expect(workerScope.postMessage.mock.calls[1]).toEqual([
+    expect(workerScope.postMessage.mock.calls[2]).toEqual([
       expect.objectContaining({
         items: [
           expect.objectContaining({
