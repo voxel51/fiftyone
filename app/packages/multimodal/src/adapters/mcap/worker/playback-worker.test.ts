@@ -19,8 +19,10 @@ vi.mock("./worker-resource-client", () => ({
   createWorkerResourceClient: vi.fn(() => {
     const client: WorkerClientMock = {
       dispose: vi.fn(),
-      readSynchronizedMessages: vi.fn(async (_request, onProgress) => {
-        onProgress?.(workerResourceClientMock.synchronizedResult);
+      readSynchronizedMessages: vi.fn(async (_request, options) => {
+        options?.onSynchronizedProgress?.(
+          workerResourceClientMock.synchronizedResult,
+        );
         return workerResourceClientMock.synchronizedResult;
       }),
       readTopics: vi.fn(async () => ({
@@ -117,6 +119,46 @@ describe("MCAP playback worker lifecycle", () => {
       "progress",
     );
     expect(workerScope.postMessage.mock.calls[1]?.[1]).toHaveLength(1);
+    expect(
+      workerScope.postMessage.mock.calls.some(
+        ([response]) => response.ok === false,
+      ),
+    ).toBe(false);
+  });
+
+  it("returns the terminal union when progress delivery fails", async () => {
+    workerResourceClientMock.synchronizedResult = synchronizedWindow(
+      new Uint8Array([1, 2, 3]),
+    );
+    const workerScope: WorkerScopeMock = {
+      close: vi.fn(),
+      onmessage: null,
+      postMessage: vi.fn((response) => {
+        if (response.progress) throw new DOMException("clone failed");
+      }),
+    };
+    vi.stubGlobal("self", workerScope);
+    await import("./playback-worker");
+
+    dispatch(workerScope, {
+      id: 1,
+      payload: {
+        earlyDeliveryTopics: ["/camera"],
+        source: { sizeBytes: "1024", sourceId: "source:1", url: "mcap://1" },
+        timeNs: 1n,
+        topics: ["/camera", "/lidar"],
+      },
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      sourceKey: "source:1",
+      type: "readSynchronizedMessages",
+    } as McapPlaybackWorkerRequest);
+
+    await vi.waitFor(() => {
+      expect(workerScope.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1, ok: true }),
+        expect.any(Array),
+      );
+    });
     expect(
       workerScope.postMessage.mock.calls.some(
         ([response]) => response.ok === false,

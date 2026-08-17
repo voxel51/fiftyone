@@ -21,6 +21,15 @@ import type {
   McapRetainedDecodedMessageReference,
 } from "./playback-worker-types";
 
+type McapPlaybackWorkerSynchronizedMessagesReadOptions = Omit<
+  McapSynchronizedMessagesReadOptions,
+  "onSynchronizedProgress"
+> & {
+  readonly onSynchronizedProgress?: (
+    window: McapPlaybackWorkerSynchronizedWindow,
+  ) => void;
+};
+
 export type McapPlaybackWorkerResourceClient = Omit<
   McapResourceClient,
   "readSynchronizedMessageBatch" | "readSynchronizedMessages"
@@ -30,9 +39,7 @@ export type McapPlaybackWorkerResourceClient = Omit<
   ): Promise<readonly McapPlaybackWorkerSynchronizedWindow[]>;
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
-    optionsOrProgress?:
-      | McapSynchronizedMessagesReadOptions
-      | ((window: McapPlaybackWorkerSynchronizedWindow) => void),
+    options?: McapPlaybackWorkerSynchronizedMessagesReadOptions,
   ): Promise<McapPlaybackWorkerSynchronizedWindow>;
 };
 
@@ -113,17 +120,14 @@ export function createWorkerResourceClient({
         request,
         reuseRetainedDecodedMessage,
       ),
-    readSynchronizedMessages: (request, optionsOrProgress) => {
-      if (
-        optionsOrProgress !== undefined &&
-        typeof optionsOrProgress !== "function"
-      ) {
-        return client.readSynchronizedMessages(request, optionsOrProgress);
+    readSynchronizedMessages: (request, options) => {
+      if (options?.signal) {
+        return client.readSynchronizedMessages(request, options);
       }
       return client.readSynchronizedMessagesWithReuse(
         request,
         reuseRetainedDecodedMessage,
-        optionsOrProgress,
+        options?.onSynchronizedProgress,
       );
     },
   };

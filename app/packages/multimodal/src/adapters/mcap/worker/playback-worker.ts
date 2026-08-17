@@ -151,15 +151,20 @@ async function runAndRespond(
             postedProgress = true;
             // Clone the single early surface so the worker retains ownership
             // of every buffer until the complete union transfers normally.
-            postResponse(
-              {
-                id: message.id,
-                ok: true,
-                progress: true,
-                result: progress,
-              },
-              [],
-            );
+            try {
+              postResponse(
+                {
+                  id: message.id,
+                  ok: true,
+                  progress: true,
+                  result: progress,
+                },
+                [],
+              );
+            } catch {
+              // Progress is best effort; the terminal union remains
+              // authoritative when an intermediate clone cannot be posted.
+            }
           }
         : undefined,
     );

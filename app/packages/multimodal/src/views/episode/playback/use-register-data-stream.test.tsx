@@ -1326,13 +1326,18 @@ describe("stream status + buffering feedback", () => {
     let sourceAProgress:
       | ((window: SynchronizedMessageWindow) => void)
       | undefined;
-    const readSynchronizedMessages = vi.fn((request, options) => {
-      if (request.source.sourceId === sourceA.sourceId) {
-        sourceAProgress = options?.onSynchronizedProgress;
-        return sourceARead.promise;
-      }
-      return new Promise<SynchronizedMessageWindow>(() => undefined);
-    });
+    const readSynchronizedMessages = vi.fn(
+      (
+        request: Parameters<ResourceClient["readSynchronizedMessages"]>[0],
+        options?: Parameters<ResourceClient["readSynchronizedMessages"]>[1],
+      ) => {
+        if (request.source.sourceId === sourceA.sourceId) {
+          sourceAProgress = options?.onSynchronizedProgress;
+          return sourceARead.promise;
+        }
+        return new Promise<SynchronizedMessageWindow>(() => undefined);
+      },
+    );
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(async () => []),
       readSynchronizedMessages,
@@ -1446,10 +1451,15 @@ describe("stream status + buffering feedback", () => {
         () =>
           new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
       ),
-      readSynchronizedMessages: vi.fn((_request, options) => {
-        publishProgress = options?.onSynchronizedProgress;
-        return current.promise;
-      }),
+      readSynchronizedMessages: vi.fn(
+        (
+          _request: Parameters<ResourceClient["readSynchronizedMessages"]>[0],
+          options?: Parameters<ResourceClient["readSynchronizedMessages"]>[1],
+        ) => {
+          publishProgress = options?.onSynchronizedProgress;
+          return current.promise;
+        },
+      ),
       readTimelineRange: vi.fn(async () => createTimelineRange()),
     });
 

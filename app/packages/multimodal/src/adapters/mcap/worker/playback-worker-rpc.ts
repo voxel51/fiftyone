@@ -197,10 +197,9 @@ export function runMcapPlaybackWorkerUnaryRequest(
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":
-      return client.readSynchronizedMessages(
-        message.payload,
+      return client.readSynchronizedMessages(message.payload, {
         onSynchronizedProgress,
-      );
+      });
     case "readTimelineRange":
       return client.readTimelineRange(message.payload);
     case "readTransformTopology":
