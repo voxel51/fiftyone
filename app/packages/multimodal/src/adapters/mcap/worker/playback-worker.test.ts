@@ -11,6 +11,7 @@ type WorkerClientMock = {
 };
 
 const workerResourceClientMock = vi.hoisted(() => ({
+  afterTopicSettlement: undefined as ((topic: string) => void) | undefined,
   clients: [] as WorkerClientMock[],
   synchronizedSettlements: [] as Array<{
     readonly topic: string;
@@ -35,6 +36,7 @@ vi.mock("./worker-resource-client", () => ({
             ];
         for (const settlement of settlements) {
           options?.onTopicSettlement?.(settlement);
+          workerResourceClientMock.afterTopicSettlement?.(settlement.topic);
         }
         return workerResourceClientMock.synchronizedResult;
       }),
@@ -59,6 +61,7 @@ describe("MCAP playback worker lifecycle", () => {
     vi.unstubAllGlobals();
     vi.resetModules();
     workerResourceClientMock.clients.length = 0;
+    workerResourceClientMock.afterTopicSettlement = undefined;
     workerResourceClientMock.synchronizedSettlements.length = 0;
     workerResourceClientMock.synchronizedResult = null;
   });
@@ -172,6 +175,10 @@ describe("MCAP playback worker lifecycle", () => {
     };
     vi.stubGlobal("self", workerScope);
     await import("./playback-worker");
+    const postCountsAfterSettlement: number[] = [];
+    workerResourceClientMock.afterTopicSettlement = () => {
+      postCountsAfterSettlement.push(workerScope.postMessage.mock.calls.length);
+    };
 
     dispatch(workerScope, {
       id: 1,
@@ -223,6 +230,7 @@ describe("MCAP playback worker lifecycle", () => {
       }),
       expect.arrayContaining([diagnosticBytes.buffer]),
     ]);
+    expect(postCountsAfterSettlement).toEqual([1, 2, 2]);
   });
 
   it("keeps the terminal event payload-free after topic settlement", async () => {

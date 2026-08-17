@@ -4,6 +4,7 @@ import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
 import {
   isMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerStreamRequest,
+  runMcapPlaybackWorkerSynchronizedRequest,
   runMcapPlaybackWorkerUnaryRequest,
 } from "./playback-worker-rpc";
 import {
@@ -201,7 +202,9 @@ async function streamRequest(
   let holdingPrioritySettlements = (pendingPriorityTopics?.size ?? 0) > 0;
   let deliveredFirstPrioritySettlement = false;
 
-  for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
+  const acceptItem = (
+    item: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType],
+  ): void => {
     throwIfWorkerRequestCancelled(signal);
     const transferables = transferablesForMcapResult(item);
     // The complete blocking prefix is one delivery boundary. Its ordered
@@ -223,7 +226,7 @@ async function streamRequest(
         if (pendingPriorityTopics.size === 0) {
           holdingPrioritySettlements = false;
         }
-        continue;
+        return;
       }
       batch.push(item);
       batchBytes += estimateMcapStreamItemBytes(item);
@@ -236,7 +239,7 @@ async function streamRequest(
         batchBytes = 0;
         holdingPrioritySettlements = false;
       }
-      continue;
+      return;
     }
     // A synchronized current-tick read has one more ownership boundary after
     // the blocking prefix: unresolved stragglers plus the payload-free
@@ -245,7 +248,7 @@ async function streamRequest(
     if (message.type === "readSynchronizedMessages") {
       batch.push(item);
       batchBytes += estimateMcapStreamItemBytes(item);
-      continue;
+      return;
     }
     // Outside the explicit priority boundary, transferable buffers keep their
     // per-item ownership boundary. Plain decoded records can share one
@@ -264,7 +267,7 @@ async function streamRequest(
         },
         transferables,
       );
-      continue;
+      return;
     }
 
     const itemBytes = estimateMcapStreamItemBytes(item);
@@ -291,6 +294,21 @@ async function streamRequest(
       postStreamBatch(message.id, batch);
       batch = [];
       batchBytes = 0;
+    }
+  };
+
+  if (message.type === "readSynchronizedMessages") {
+    await runMcapPlaybackWorkerSynchronizedRequest(
+      mcap,
+      message.payload,
+      acceptItem,
+    );
+  } else {
+    for await (const item of runMcapPlaybackWorkerStreamRequest(
+      mcap,
+      message,
+    )) {
+      acceptItem(item);
     }
   }
   throwIfWorkerRequestCancelled(signal);

@@ -242,10 +242,8 @@ async function* streamSynchronizedMessages(
 > {
   const queued: McapPlaybackWorkerStreamItemByType["readSynchronizedMessages"][] =
     [];
-  const settledTopics = new Set<string>();
   let complete = false;
   let failure: unknown;
-  let terminal: McapPlaybackWorkerSynchronizedWindow | undefined;
   let wake: (() => void) | undefined;
   const notify = () => {
     const resolve = wake;
@@ -253,27 +251,20 @@ async function* streamSynchronizedMessages(
     resolve?.();
   };
 
-  void client
-    .readSynchronizedMessages(request, {
-      onTopicSettlement: ({ topic, window }) => {
-        if (settledTopics.has(topic)) return;
-        settledTopics.add(topic);
-        queued.push({ kind: "topic-settlement", topic, window });
-        notify();
-      },
-    })
-    .then(
-      (window) => {
-        terminal = withoutSettledTopicPayloads(window, settledTopics);
-        complete = true;
-        notify();
-      },
-      (error) => {
-        failure = error;
-        complete = true;
-        notify();
-      },
-    );
+  void runMcapPlaybackWorkerSynchronizedRequest(client, request, (item) => {
+    queued.push(item);
+    notify();
+  }).then(
+    () => {
+      complete = true;
+      notify();
+    },
+    (error) => {
+      failure = error;
+      complete = true;
+      notify();
+    },
+  );
 
   while (!complete || queued.length > 0) {
     if (queued.length === 0) {
@@ -288,8 +279,34 @@ async function* streamSynchronizedMessages(
     }
   }
   if (failure !== undefined) throw failure;
-  if (!terminal) throw new Error("Expected synchronized MCAP terminal window");
-  yield { kind: "terminal", window: terminal };
+}
+
+/**
+ * Pushes synchronized stream items directly from their decode boundary.
+ *
+ * The worker uses this callback form so an authoritative settlement can cross
+ * the worker boundary before the decoder resumes with the next topic. The
+ * async-generator adapter above remains available to ordinary stream callers.
+ */
+export async function runMcapPlaybackWorkerSynchronizedRequest(
+  client: Pick<McapPlaybackWorkerResourceClient, "readSynchronizedMessages">,
+  request: McapPlaybackWorkerRpcRequest<"readSynchronizedMessages">["payload"],
+  onItem: (
+    item: McapPlaybackWorkerStreamItemByType["readSynchronizedMessages"],
+  ) => void,
+): Promise<void> {
+  const settledTopics = new Set<string>();
+  const window = await client.readSynchronizedMessages(request, {
+    onTopicSettlement: ({ topic, window }) => {
+      if (settledTopics.has(topic)) return;
+      settledTopics.add(topic);
+      onItem({ kind: "topic-settlement", topic, window });
+    },
+  });
+  onItem({
+    kind: "terminal",
+    window: withoutSettledTopicPayloads(window, settledTopics),
+  });
 }
 
 function withoutSettledTopicPayloads(
