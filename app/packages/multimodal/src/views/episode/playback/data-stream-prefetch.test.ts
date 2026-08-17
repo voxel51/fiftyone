@@ -198,6 +198,8 @@ describe("data stream prefetcher", () => {
     expect(harness.caches.get(IMAGE)?.get(0n)).toBe(settledImage);
     expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
     expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(true);
+    expect(harness.publishStreamStatuses).toHaveBeenLastCalledWith([IMAGE]);
+    expect(harness.rebalanceDecodedCaches).not.toHaveBeenCalled();
 
     terminal.resolve(windowAt(0n, [frame(IMAGE, 0n), frame(LIDAR, 0n)]));
     await settle();
@@ -206,6 +208,8 @@ describe("data stream prefetcher", () => {
     expect(harness.caches.get(LIDAR)?.has(0n)).toBe(true);
     expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
     expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(false);
+    expect(harness.publishStreamStatuses).toHaveBeenLastCalledWith([LIDAR]);
+    expect(harness.rebalanceDecodedCaches).toHaveBeenCalledOnce();
   });
 
   it("does not preview a current-frame result after the playhead moves", async () => {
@@ -525,6 +529,7 @@ function createHarness({
   const fetchState = createDataStreamFetchState();
   const lastFrames = new Map<string, StreamPlaybackFrame<unknown>>();
   const rebalanceDecodedCaches = vi.fn();
+  const publishStreamStatuses = vi.fn();
   const index = createTimelineIndex({ endNs: 1_000_000_000n, startNs: 0n }, 2);
   const harness = {
     caches,
@@ -534,6 +539,7 @@ function createHarness({
     prefetcher: undefined as unknown as ReturnType<
       typeof createDataStreamPrefetcher
     >,
+    publishStreamStatuses,
     rebalanceDecodedCaches,
     sourceEpoch: 0,
     store,
@@ -550,7 +556,7 @@ function createHarness({
       readSynchronized,
       readSynchronizedBatch,
     },
-    publishStreamStatuses: vi.fn(),
+    publishStreamStatuses,
     rebalanceDecodedCaches,
     shouldAdmitBatch,
     store,

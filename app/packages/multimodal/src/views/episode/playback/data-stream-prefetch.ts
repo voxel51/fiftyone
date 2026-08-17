@@ -127,7 +127,7 @@ export function createDataStreamPrefetcher({
     PlaybackReadCapability,
     "readSynchronized" | "readSynchronizedBatch"
   >;
-  readonly publishStreamStatuses: () => void;
+  readonly publishStreamStatuses: (updatedStreams?: readonly string[]) => void;
   readonly rebalanceDecodedCaches: () => void;
   /**
    * Admission boundary for speculative batch work. Returning false leaves the
@@ -215,27 +215,27 @@ export function createDataStreamPrefetcher({
   ): void => {
     if (getSourceEpoch() !== sourceEpoch) return;
     clearStreamsPending(tickKeys, streams);
-    publishStreamStatuses();
+    publishStreamStatuses(streams);
   };
 
   const deliverWindows = ({
-    activeStreams,
+    rebalance = true,
     sourceEpoch,
     streams,
     windows,
   }: {
-    readonly activeStreams: readonly string[];
+    readonly rebalance?: boolean;
     readonly sourceEpoch: number;
     readonly streams: readonly string[];
     readonly windows: Parameters<typeof decodeFailuresByStream>[0];
-  }): void => {
-    if (getSourceEpoch() !== sourceEpoch) return;
+  }): boolean => {
+    if (getSourceEpoch() !== sourceEpoch) return false;
     const decodeFailures = decodeFailuresByStream(windows);
     const streamSet = new Set(streams);
     handleFetchSuccess(streams.filter((stream) => !decodeFailures.has(stream)));
 
     const activeFetchedStreams = activeStreamsInCaches(caches, streams);
-    if (activeFetchedStreams.length === 0) return;
+    if (activeFetchedStreams.length === 0) return false;
 
     for (const window of windows) {
       distributeWindowToCaches(
@@ -255,12 +255,12 @@ export function createDataStreamPrefetcher({
         [stream],
       );
     }
-    rebalanceDecodedCaches();
+    if (rebalance) rebalanceDecodedCaches();
     const currentIndex = getIndex();
     const currentTick = currentIndex?.nearestTick(getPlayhead(store));
     if (currentTick !== undefined) {
       pushTickToStore(
-        activeStreamsInCaches(caches, activeStreams),
+        activeFetchedStreams,
         currentTick,
         caches,
         lastFrames,
@@ -268,6 +268,7 @@ export function createDataStreamPrefetcher({
         fetchState.failedStreams,
       );
     }
+    return true;
   };
 
   const handleRejectedFetch = (
@@ -324,7 +325,6 @@ export function createDataStreamPrefetcher({
       )
       .then((windows) => {
         deliverWindows({
-          activeStreams,
           sourceEpoch,
           streams: streamsToFetch,
           windows,
@@ -369,6 +369,7 @@ export function createDataStreamPrefetcher({
         ? filteredSettlementPriorityStreams
         : undefined;
     const unsettledStreams = new Set(streamsToFetch);
+    let deliveredCurrentFrame = false;
 
     markStreamsPending([tickKey], streamsToFetch);
     const controller = createReadController();
@@ -386,12 +387,13 @@ export function createDataStreamPrefetcher({
           }
           unsettledStreams.delete(stream);
           try {
-            deliverWindows({
-              activeStreams,
-              sourceEpoch,
-              streams: [stream],
-              windows: [window],
-            });
+            deliveredCurrentFrame =
+              deliverWindows({
+                rebalance: false,
+                sourceEpoch,
+                streams: [stream],
+                windows: [window],
+              }) || deliveredCurrentFrame;
           } finally {
             finishFetch(sourceEpoch, [tickKey], [stream]);
           }
@@ -406,18 +408,22 @@ export function createDataStreamPrefetcher({
       .then((window) => {
         const terminalStreams = [...unsettledStreams];
         if (terminalStreams.length === 0) return;
-        deliverWindows({
-          activeStreams,
-          sourceEpoch,
-          streams: terminalStreams,
-          windows: [window],
-        });
+        deliveredCurrentFrame =
+          deliverWindows({
+            rebalance: false,
+            sourceEpoch,
+            streams: terminalStreams,
+            windows: [window],
+          }) || deliveredCurrentFrame;
       })
       .catch((error) =>
         handleRejectedFetch(error, sourceEpoch, [tick], [...unsettledStreams]),
       )
       .finally(() => {
         activeControllers.delete(controller);
+        if (deliveredCurrentFrame && getSourceEpoch() === sourceEpoch) {
+          rebalanceDecodedCaches();
+        }
         finishFetch(sourceEpoch, [tickKey], [...unsettledStreams]);
         unsettledStreams.clear();
       });

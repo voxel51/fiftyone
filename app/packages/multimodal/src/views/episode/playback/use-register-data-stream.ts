@@ -705,43 +705,47 @@ export function useRegisterDataStream({
     startupCushionPlanner.resetPendingPlan();
   }, [isPlaying, startupCushionPlanner]);
 
-  const publishStreamStatuses = useCallback(() => {
-    publishDataStreamStatuses({
-      activeBlockingStreams: getActiveBlockingStreams(),
-      activeStreams: getActiveStreams(),
-      caches: streamCachesRef.current,
-      failedStreams: fetchState.failedStreams,
-      index: indexRef.current,
-      onPlayheadDataReady: onPlayheadDataReadyRef.current,
-      policy: playbackPolicy,
+  const publishStreamStatuses = useCallback(
+    (updatedStreams?: readonly string[]) => {
+      publishDataStreamStatuses({
+        activeBlockingStreams: getActiveBlockingStreams(),
+        activeStreams: getActiveStreams(),
+        caches: streamCachesRef.current,
+        failedStreams: fetchState.failedStreams,
+        index: indexRef.current,
+        onPlayheadDataReady: onPlayheadDataReadyRef.current,
+        policy: playbackPolicy,
+        publishBufferedRangesNow,
+        pushCurrentTick: (activeStreams, tick) =>
+          pushTickToStore(
+            [...activeStreams],
+            tick,
+            streamCachesRef.current,
+            lastFrameRef.current,
+            store,
+            fetchState.failedStreams,
+          ),
+        resolveStartupCushion,
+        scheduleBufferedRangesPublish,
+        schedulePausedIdleWarmup: (delayMs) =>
+          schedulePausedIdleWarmupRef.current?.(delayMs),
+        staleWarningStreams: staleWarningStreamsRef.current,
+        streamNames: streamNamesRef.current,
+        store,
+        updatedStreams,
+      });
+    },
+    [
+      fetchState,
+      getActiveBlockingStreams,
+      getActiveStreams,
       publishBufferedRangesNow,
-      pushCurrentTick: (activeStreams, tick) =>
-        pushTickToStore(
-          [...activeStreams],
-          tick,
-          streamCachesRef.current,
-          lastFrameRef.current,
-          store,
-          fetchState.failedStreams,
-        ),
+      playbackPolicy,
       resolveStartupCushion,
       scheduleBufferedRangesPublish,
-      schedulePausedIdleWarmup: (delayMs) =>
-        schedulePausedIdleWarmupRef.current?.(delayMs),
-      staleWarningStreams: staleWarningStreamsRef.current,
-      streamNames: streamNamesRef.current,
       store,
-    });
-  }, [
-    fetchState,
-    getActiveBlockingStreams,
-    getActiveStreams,
-    publishBufferedRangesNow,
-    playbackPolicy,
-    resolveStartupCushion,
-    scheduleBufferedRangesPublish,
-    store,
-  ]);
+    ],
+  );
 
   const rebalanceDecodedCaches = useCallback(() => {
     backgroundLookaheadSecondsRef.current = applyDecodedCachePolicy({
