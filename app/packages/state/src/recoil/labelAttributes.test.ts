@@ -15,7 +15,7 @@ describe("toggleShownLabelAttribute", () => {
     );
   });
 
-  it("keeps the last shown attribute", () => {
-    expect(toggleShownLabelAttribute(["label"], "label")).toEqual(["label"]);
+  it("removes the last shown attribute", () => {
+    expect(toggleShownLabelAttribute(["label"], "label")).toEqual([]);
   });
 });

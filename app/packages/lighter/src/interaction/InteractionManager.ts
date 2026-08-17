@@ -81,6 +81,8 @@ function isSelfManagedInteractiveHandler(handler: InteractionHandler): boolean {
 export interface KeypointMutationHandler {
   getSelectedPointIndex(): number | null;
   removePoint(index: number): void;
+  /** Optional: how many points the overlay currently has. */
+  getPointCount?(): number;
 }
 
 function hasKeypointMutation(
@@ -1011,7 +1013,12 @@ export class InteractionManager {
         const handler = this.handlers.find((h) => h.id === selectedId);
         if (handler && hasKeypointMutation(handler)) {
           const idx = handler.getSelectedPointIndex();
-          if (idx !== null && idx >= 0) {
+          // Removing the *last* remaining point would leave a geometry-less
+          // overlay (and, on video, a track that renders nothing but still
+          // exists). Deleting the only vertex IS deleting the label, so leave
+          // the event for the label-delete keybinding to handle.
+          const count = handler.getPointCount?.() ?? Number.POSITIVE_INFINITY;
+          if (idx !== null && idx >= 0 && count > 1) {
             handler.removePoint(idx);
             event.preventDefault();
           }
