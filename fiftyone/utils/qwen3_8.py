@@ -10,7 +10,7 @@ Model Zoo.
 import json
 import logging
 import re
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -36,6 +36,9 @@ def _ensure_qwen3_8() -> None:
 transformers = fou.lazy_import("transformers", callback=_ensure_qwen3_8)
 
 from PIL import Image as PILImage
+
+# Anything fout.to_rgb_pil accepts
+ImageLike = Union[str, np.ndarray, torch.Tensor, PILImage.Image]
 
 DEFAULT_QWEN3_8_MODEL = "Qwen/Qwen3.8-27B"
 
@@ -393,7 +396,7 @@ class Qwen38Model(fout.TorchImageModel):
 
         return results
 
-    def _prepare_image(self, img: Any) -> PILImage.Image:
+    def _prepare_image(self, img: ImageLike) -> PILImage.Image:
         """Converts image-like input to an RGB PIL image for the processor.
 
         ``fout.to_rgb_pil`` reads float arrays as 0-1 and wraps anything

@@ -6,6 +6,8 @@ Tests for fiftyone/utils/qwen3_8.py output processor and parsing.
 |
 """
 
+from typing import Tuple
+
 import numpy as np
 import pytest
 import torch
@@ -14,6 +16,7 @@ from PIL import Image as PILImage
 import fiftyone.core.labels as fol
 from fiftyone.utils.qwen3_8 import (
     DEFAULT_DETECTION_PROMPT,
+    ImageLike,
     Qwen38Model,
     Qwen38ModelConfig,
     Qwen38OutputProcessor,
@@ -46,7 +49,7 @@ FENCED_TRANSCRIPT = (
 class TestQwen38AnswerExtraction:
     """Test extraction of the committed answer past the reasoning block"""
 
-    def test_answer_wins_over_reasoning(self):
+    def test_answer_wins_over_reasoning(self) -> None:
         """Only the committed answer is parsed, not the rehearsed candidate"""
         processor = Qwen38OutputProcessor()
         detections = processor._parse_detections(
@@ -61,7 +64,7 @@ class TestQwen38AnswerExtraction:
         assert bbox[2] == pytest.approx(1.0)
         assert bbox[3] == pytest.approx(0.9)
 
-    def test_truncated_reasoning_yields_empty(self):
+    def test_truncated_reasoning_yields_empty(self) -> None:
         """A generation that exhausted its budget mid-reasoning commits
         nothing, even though the reasoning contains parseable JSON"""
         processor = Qwen38OutputProcessor()
@@ -70,7 +73,7 @@ class TestQwen38AnswerExtraction:
         assert answer == ""
         assert processor._parse_detections(answer, (1000, 1000)) == []
 
-    def test_turn_terminator_stripped(self):
+    def test_turn_terminator_stripped(self) -> None:
         """The terminator survives decoding with special tokens retained,
         and must not reach the JSON parser"""
         processor = Qwen38OutputProcessor()
@@ -79,7 +82,7 @@ class TestQwen38AnswerExtraction:
         assert "<|im_end|>" not in answer
         assert answer.endswith("]")
 
-    def test_fenced_answer_with_terminator(self):
+    def test_fenced_answer_with_terminator(self) -> None:
         """A fenced answer followed by the terminator still parses; the
         trailing fence is only stripped once the terminator is gone"""
         processor = Qwen38OutputProcessor()
@@ -90,7 +93,7 @@ class TestQwen38AnswerExtraction:
         assert len(detections) == 1
         assert detections[0].label == "bird"
 
-    def test_multiple_reasoning_blocks(self):
+    def test_multiple_reasoning_blocks(self) -> None:
         """Every closed reasoning block is stripped, not just the first"""
         processor = Qwen38OutputProcessor()
         raw = (
@@ -106,7 +109,7 @@ class TestQwen38AnswerExtraction:
         assert len(detections) == 1
         assert detections[0].label == "dog"
 
-    def test_unclosed_reasoning_yields_empty(self):
+    def test_unclosed_reasoning_yields_empty(self) -> None:
         """Text with no closing tag never left the reasoning block, even
         when it carries no opening tag either"""
         processor = Qwen38OutputProcessor()
@@ -114,13 +117,13 @@ class TestQwen38AnswerExtraction:
 
         assert processor._extract_answer(raw) == ""
 
-    def test_empty_output(self):
+    def test_empty_output(self) -> None:
         processor = Qwen38OutputProcessor()
 
         assert processor._extract_answer("") == ""
         assert processor._extract_answer(None) == ""
 
-    def test_reasoning_closed_with_empty_answer(self):
+    def test_reasoning_closed_with_empty_answer(self) -> None:
         """Closed reasoning followed by nothing commits no labels"""
         processor = Qwen38OutputProcessor()
         raw = (
@@ -133,7 +136,7 @@ class TestQwen38AnswerExtraction:
 class TestQwen38DetectionParsing:
     """Test parsing of bbox JSON into detections"""
 
-    def test_parse_multiple_detections(self):
+    def test_parse_multiple_detections(self) -> None:
         processor = Qwen38OutputProcessor()
         raw = (
             '[{"label": "cat", "bbox_2d": [0, 0, 500, 500]}, '
@@ -144,7 +147,7 @@ class TestQwen38DetectionParsing:
         assert len(detections) == 2
         assert [d.label for d in detections] == ["cat", "dog"]
 
-    def test_parse_single_object_json(self):
+    def test_parse_single_object_json(self) -> None:
         processor = Qwen38OutputProcessor()
         raw = '{"label": "cat", "bbox_2d": [0, 0, 500, 500]}'
 
@@ -153,17 +156,17 @@ class TestQwen38DetectionParsing:
     @pytest.mark.parametrize(
         "raw", ["", "none", "There are none.", "no objects detected", "[]"]
     )
-    def test_parse_empty_responses(self, raw):
+    def test_parse_empty_responses(self, raw: str) -> None:
         processor = Qwen38OutputProcessor()
 
         assert processor._parse_detections(raw, (1000, 1000)) == []
 
-    def test_parse_invalid_json(self):
+    def test_parse_invalid_json(self) -> None:
         processor = Qwen38OutputProcessor()
 
         assert processor._parse_detections("[{broken", (1000, 1000)) == []
 
-    def test_parse_missing_bbox(self):
+    def test_parse_missing_bbox(self) -> None:
         processor = Qwen38OutputProcessor()
         raw = '[{"label": "cat"}]'
 
@@ -172,21 +175,21 @@ class TestQwen38DetectionParsing:
     @pytest.mark.parametrize(
         "bbox", ["[0, 0, 500]", '"0,0,500,500"', "null", "{}", "5"]
     )
-    def test_parse_malformed_bbox(self, bbox):
+    def test_parse_malformed_bbox(self, bbox: str) -> None:
         """A bbox that is not a four-element sequence is skipped"""
         processor = Qwen38OutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": %s}]' % bbox
 
         assert processor._parse_detections(raw, (1000, 1000)) == []
 
-    def test_parse_non_numeric_bbox_elements(self):
+    def test_parse_non_numeric_bbox_elements(self) -> None:
         processor = Qwen38OutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": ["a", "b", "c", "d"]}]'
 
         assert processor._parse_detections(raw, (1000, 1000)) == []
 
     @pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity"])
-    def test_parse_non_finite_coordinates(self, literal):
+    def test_parse_non_finite_coordinates(self, literal: str) -> None:
         """JSON permits NaN and Infinity literals; NaN also passes the
         positive-area check, so it must be rejected explicitly"""
         processor = Qwen38OutputProcessor()
@@ -194,20 +197,20 @@ class TestQwen38DetectionParsing:
 
         assert processor._parse_detections(raw, (1000, 1000)) == []
 
-    def test_clamp_out_of_range(self):
+    def test_clamp_out_of_range(self) -> None:
         processor = Qwen38OutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [-100, -100, 1500, 1500]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
 
         assert detections[0].bounding_box == [0.0, 0.0, 1.0, 1.0]
 
-    def test_skip_inverted_bbox(self):
+    def test_skip_inverted_bbox(self) -> None:
         processor = Qwen38OutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [500, 500, 100, 100]}]'
 
         assert processor._parse_detections(raw, (1000, 1000)) == []
 
-    def test_standard_conversion(self):
+    def test_standard_conversion(self) -> None:
         """bbox_2d is a 0-1000 scale with x first"""
         processor = Qwen38OutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [100, 200, 300, 600]}]'
@@ -222,7 +225,7 @@ class TestQwen38DetectionParsing:
 class TestQwen38OutputProcessorCall:
     """Test the batch entry point"""
 
-    def test_process_batch(self):
+    def test_process_batch(self) -> None:
         processor = Qwen38OutputProcessor()
         output = [
             FULL_TRANSCRIPT,
@@ -239,7 +242,7 @@ class TestQwen38OutputProcessorCall:
 class TestQwen38ModelConfig:
     """Test config parsing and validation"""
 
-    def test_default_config(self):
+    def test_default_config(self) -> None:
         config = Qwen38ModelConfig({})
 
         assert config.name_or_path == "Qwen/Qwen3.8-27B"
@@ -248,7 +251,7 @@ class TestQwen38ModelConfig:
         assert config.load_in_4bit is True
         assert config.raw_inputs is True
 
-    def test_custom_config(self):
+    def test_custom_config(self) -> None:
         config = Qwen38ModelConfig(
             {
                 "classes": ["person", "car"],
@@ -264,7 +267,7 @@ class TestQwen38ModelConfig:
         assert config.load_in_4bit is False
 
     @pytest.mark.parametrize("effort", ["high", "none", "XHIGH", ""])
-    def test_rejects_unsupported_reasoning_effort(self, effort):
+    def test_rejects_unsupported_reasoning_effort(self, effort: str) -> None:
         """The chat template raises on anything outside xhigh/medium/low,
         so the config rejects it before a generation is attempted"""
         with pytest.raises(ValueError, match="reasoning_effort"):
@@ -274,20 +277,20 @@ class TestQwen38ModelConfig:
 class TestQwen38PrepareImage:
     """Test image normalization to PIL, which needs no model"""
 
-    def _prepare(self, img):
+    def _prepare(self, img: ImageLike) -> PILImage.Image:
         return Qwen38Model._prepare_image(None, img)
 
-    def test_channel_first_tensor_is_transposed(self):
+    def test_channel_first_tensor_is_transposed(self) -> None:
         img = torch.zeros(3, 40, 60, dtype=torch.uint8)
 
         assert self._prepare(img).size == (60, 40)
 
-    def test_channel_last_array_is_left_alone(self):
+    def test_channel_last_array_is_left_alone(self) -> None:
         img = np.zeros((40, 60, 3), dtype=np.uint8)
 
         assert self._prepare(img).size == (60, 40)
 
-    def test_unit_float_array_is_scaled(self):
+    def test_unit_float_array_is_scaled(self) -> None:
         img = np.full((8, 8, 3), 0.5, dtype=np.float32)
         out = np.asarray(self._prepare(img))
 
@@ -297,7 +300,9 @@ class TestQwen38PrepareImage:
     @pytest.mark.parametrize(
         "value,expected", [(200.0, 200), (255.0, 255), (300.0, 255)]
     )
-    def test_wide_float_array_is_clipped(self, value, expected):
+    def test_wide_float_array_is_clipped(
+        self, value: float, expected: int
+    ) -> None:
         """A 0-255 float array is clipped, not wrapped"""
         img = np.full((8, 8, 3), value, dtype=np.float32)
         out = np.asarray(self._prepare(img))
@@ -305,7 +310,7 @@ class TestQwen38PrepareImage:
         assert out.dtype == np.uint8
         assert out.max() == expected
 
-    def test_singleton_channel_is_widened_to_rgb(self):
+    def test_singleton_channel_is_widened_to_rgb(self) -> None:
         """The processor takes RGB, so a single channel is widened"""
         img = np.zeros((8, 8, 1), dtype=np.uint8)
         out = self._prepare(img)
@@ -313,7 +318,7 @@ class TestQwen38PrepareImage:
         assert out.mode == "RGB"
         assert out.size == (8, 8)
 
-    def test_pil_image_is_preserved(self):
+    def test_pil_image_is_preserved(self) -> None:
         img = PILImage.new("RGB", (12, 9), color=(10, 20, 30))
         out = self._prepare(img)
 
@@ -325,21 +330,21 @@ class TestQwen38PrepareImage:
 class TestQwen38Prompt:
     """Test prompt selection, which needs no model"""
 
-    def _prompt(self, d):
+    def _prompt(self, d: dict) -> str:
         model = Qwen38Model.__new__(Qwen38Model)
         model.config = Qwen38ModelConfig(d)
         return Qwen38Model._get_prompt(model)
 
-    def test_default_prompt(self):
+    def test_default_prompt(self) -> None:
         assert self._prompt({}) == DEFAULT_DETECTION_PROMPT
 
-    def test_classes_are_named_in_the_prompt(self):
+    def test_classes_are_named_in_the_prompt(self) -> None:
         prompt = self._prompt({"classes": ["person", "car", "dog"]})
 
         assert "person, car, dog" in prompt
         assert "bbox_2d" in prompt
 
-    def test_explicit_prompt_wins_over_classes(self):
+    def test_explicit_prompt_wins_over_classes(self) -> None:
         prompt = self._prompt(
             {"prompt": "Find the cats.", "classes": ["person"]}
         )
@@ -353,7 +358,9 @@ class TestQwen38FrameSizeIndependence:
     @pytest.mark.parametrize(
         "frame_size", [(1000, 1000), (640, 480), (1920, 1080), (100, 800)]
     )
-    def test_non_square_frames_give_the_same_box(self, frame_size):
+    def test_non_square_frames_give_the_same_box(
+        self, frame_size: Tuple[int, int]
+    ) -> None:
         processor = Qwen38OutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [100, 200, 300, 600]}]'
         bbox = processor._parse_detections(raw, frame_size)[0].bounding_box
