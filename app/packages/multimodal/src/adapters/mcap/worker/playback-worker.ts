@@ -191,6 +191,13 @@ async function streamRequest(
   let batch: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][] =
     [];
   let batchBytes = 0;
+  let batchTransferables: Transferable[] = [];
+  const flushBatch = (): void => {
+    postStreamBatch(message.id, batch, batchTransferables);
+    batch = [];
+    batchBytes = 0;
+    batchTransferables = [];
+  };
   const pendingPriorityTopics =
     message.type === "readSynchronizedMessages"
       ? new Set(
@@ -220,7 +227,7 @@ async function streamRequest(
         // The first presentation-priority surface is useful independently of
         // the remaining blocking group. Transfer it as soon as it is decoded;
         // the rest of the prefix still shares one readiness boundary.
-        postStreamBatch(message.id, [item]);
+        postStreamBatch(message.id, [item], transferables);
         pendingPriorityTopics.delete(item.topic);
         deliveredFirstPrioritySettlement = true;
         if (pendingPriorityTopics.size === 0) {
@@ -230,13 +237,12 @@ async function streamRequest(
       }
       batch.push(item);
       batchBytes += estimateMcapStreamItemBytes(item);
+      batchTransferables.push(...transferables);
       if (isSynchronizedTopicSettlement(item)) {
         pendingPriorityTopics?.delete(item.topic);
       }
       if ((pendingPriorityTopics?.size ?? 0) === 0) {
-        postStreamBatch(message.id, batch);
-        batch = [];
-        batchBytes = 0;
+        flushBatch();
         holdingPrioritySettlements = false;
       }
       return;
@@ -248,15 +254,14 @@ async function streamRequest(
     if (message.type === "readSynchronizedMessages") {
       batch.push(item);
       batchBytes += estimateMcapStreamItemBytes(item);
+      batchTransferables.push(...transferables);
       return;
     }
     // Outside the explicit priority boundary, transferable buffers keep their
     // per-item ownership boundary. Plain decoded records can share one
     // postMessage to reduce main-thread churn.
     if (transferables.length > 0) {
-      postStreamBatch(message.id, batch);
-      batch = [];
-      batchBytes = 0;
+      flushBatch();
       postResponse(
         {
           done: false,
@@ -278,9 +283,7 @@ async function streamRequest(
         nextItemBytes: itemBytes,
       })
     ) {
-      postStreamBatch(message.id, batch);
-      batch = [];
-      batchBytes = 0;
+      flushBatch();
     }
 
     batch.push(item);
@@ -291,9 +294,7 @@ async function streamRequest(
         batchItems: batch.length,
       })
     ) {
-      postStreamBatch(message.id, batch);
-      batch = [];
-      batchBytes = 0;
+      flushBatch();
     }
   };
 
@@ -312,7 +313,7 @@ async function streamRequest(
     }
   }
   throwIfWorkerRequestCancelled(signal);
-  postStreamBatch(message.id, batch);
+  flushBatch();
 
   postResponse({
     done: true,
@@ -346,18 +347,22 @@ function throwIfWorkerRequestCancelled(signal: AbortSignal): void {
 function postStreamBatch(
   id: number,
   items: readonly McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][],
+  transferables?: readonly Transferable[],
 ) {
   if (items.length === 0) {
     return;
   }
 
-  postResponse({
-    done: false,
-    id,
-    items,
-    ok: true,
-    stream: true,
-  });
+  postResponse(
+    {
+      done: false,
+      id,
+      items,
+      ok: true,
+      stream: true,
+    },
+    transferables,
+  );
 }
 
 // Adjacent-sample navigation flips between a small set of sources; a parked
@@ -433,7 +438,7 @@ function maybePostTransportProgress() {
 
 function postResponse(
   response: McapPlaybackWorkerResponse,
-  transferables = transferablesForResponse(response),
+  transferables: readonly Transferable[] = transferablesForResponse(response),
 ) {
   workerScope.postMessage(response, transferables);
 }
