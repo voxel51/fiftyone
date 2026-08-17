@@ -3,7 +3,6 @@ import {
   useSetTileTitle,
   useTileDuplicator,
   useTileId,
-  useTiling,
 } from "@fiftyone/tiling";
 import { useIsPlaying } from "@fiftyone/playback";
 import { useStore } from "jotai";
@@ -100,7 +99,6 @@ const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
 /** Renders one image stream with labels, projections, and camera controls. */
 const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const tileId = useTileId();
-  const { expandedTileId } = useTiling();
   const isPlaying = useIsPlaying();
   const [imageDims, setImageDims] = useState<{
     width: number;
@@ -285,15 +283,6 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     })
       ? sourcePoster.frame
       : null;
-  // This layout effect registers only a visible tile whose stream can consume
-  // the poster, allowing the shell to keep its fallback overlay otherwise.
-  useLayoutEffect(() => {
-    const isVisible = expandedTileId === null || expandedTileId === tileId;
-    if (!isVisible || !tileId || !sourcePoster || !destinationPoster) {
-      return undefined;
-    }
-    return sourcePoster.registerConsumer(tileId);
-  }, [destinationPoster, expandedTileId, sourcePoster, tileId]);
   const posterSessionKey = useMemo(
     () => `${sourcePoster?.sourceKey ?? ""}\n${stream}`,
     [sourcePoster?.sourceKey, stream],
