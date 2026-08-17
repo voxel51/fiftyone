@@ -382,6 +382,42 @@ describe("MCAP playback worker transport", () => {
     });
     await expect(done).resolves.toEqual({ done: true, value: undefined });
   });
+
+  it("preserves a worker response batch when requested by the owner", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const stream = transport.stream(
+      worker,
+      "source:1",
+      "readDecodedMessages",
+      { source: createSource(), topics: ["/diagnostics"] },
+      undefined,
+      undefined,
+      undefined,
+      [],
+      true,
+    );
+    const items = [createDecodedMessage(1n), createDecodedMessage(2n)];
+    const next = stream.next();
+
+    transport.handleResponse({
+      done: false,
+      id: 1,
+      items,
+      ok: true,
+      stream: true,
+    });
+
+    await expect(next).resolves.toEqual({ done: false, value: items });
+    const done = stream.next();
+    transport.handleResponse({
+      done: true,
+      id: 1,
+      ok: true,
+      stream: true,
+    });
+    await expect(done).resolves.toEqual({ done: true, value: undefined });
+  });
 });
 
 function createWorker(): Worker {

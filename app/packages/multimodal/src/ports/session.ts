@@ -286,6 +286,14 @@ export interface SynchronizedPlaybackReadRequest {
   readonly onStreamSettlement?: (
     settlement: SynchronizedStreamSettlement,
   ) => void;
+  /**
+   * Receives one ordered transport delivery group. Every member remains an
+   * independent authoritative stream settlement; the group lets consumers
+   * publish simultaneously available presentation surfaces in one store turn.
+   */
+  readonly onStreamSettlements?: (
+    settlements: readonly SynchronizedStreamSettlement[],
+  ) => void;
   /** Active point-cloud color source requested per stream. */
   readonly pointCloudColorBy?: Readonly<Record<StreamId, string>>;
   /** Stable presentation order for streams that gate current-tick readiness. */

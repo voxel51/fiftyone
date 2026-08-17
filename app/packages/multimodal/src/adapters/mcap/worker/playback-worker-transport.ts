@@ -38,6 +38,7 @@ type PendingStream = {
   readonly supersessionKeys: readonly string[];
   readonly type: McapPlaybackWorkerStreamType;
   readonly values: unknown[];
+  readonly yieldResponseBatches: boolean;
   done: boolean;
   error?: Error;
 };
@@ -203,6 +204,32 @@ export class McapPlaybackWorkerTransport {
   /**
    * Sends one streaming worker RPC and yields incremental response payloads.
    */
+  stream<Type extends McapPlaybackWorkerStreamType>(
+    worker: Worker,
+    sourceKey: string,
+    type: Type,
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
+    signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
+    supersessionKeys?: readonly string[],
+    yieldResponseBatches?: false,
+  ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void>;
+  stream<Type extends McapPlaybackWorkerStreamType>(
+    worker: Worker,
+    sourceKey: string,
+    type: Type,
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority: McapPlaybackWorkerPriority | undefined,
+    signal: AbortSignal | undefined,
+    retainedDecodedRecordIds: readonly string[] | undefined,
+    supersessionKeys: readonly string[],
+    yieldResponseBatches: true,
+  ): AsyncGenerator<
+    readonly McapPlaybackWorkerStreamItemByType[Type][],
+    void,
+    void
+  >;
   async *stream<Type extends McapPlaybackWorkerStreamType>(
     worker: Worker,
     sourceKey: string,
@@ -212,7 +239,13 @@ export class McapPlaybackWorkerTransport {
     signal?: AbortSignal,
     retainedDecodedRecordIds?: readonly string[],
     supersessionKeys: readonly string[] = [],
-  ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
+    yieldResponseBatches = false,
+  ): AsyncGenerator<
+    | McapPlaybackWorkerStreamItemByType[Type]
+    | readonly McapPlaybackWorkerStreamItemByType[Type][],
+    void,
+    void
+  > {
     const id = this.nextRequestId++;
     const message = createRpcRequest(
       id,
@@ -246,6 +279,7 @@ export class McapPlaybackWorkerTransport {
       supersessionKeys,
       type,
       values: [],
+      yieldResponseBatches,
     };
 
     signal?.addEventListener("abort", cancel, { once: true });
@@ -375,8 +409,12 @@ export class McapPlaybackWorkerTransport {
       this.finishStream(response.id, stream);
     } else {
       const items = "items" in response ? response.items : [response.item];
-      for (const item of items) {
-        pushStreamValue(stream, item);
+      if (stream.yieldResponseBatches) {
+        pushStreamValue(stream, items);
+      } else {
+        for (const item of items) {
+          pushStreamValue(stream, item);
+        }
       }
     }
   }

@@ -354,6 +354,7 @@ describe("worker-backed MCAP resource client", () => {
   it("streams authoritative topic settlements before the terminal union", async () => {
     const { client, workers } = createClientHarness();
     const onTopicSettlement = vi.fn();
+    const onTopicSettlements = vi.fn();
     let settled = false;
     const current = client
       .readSynchronizedMessages(
@@ -363,7 +364,7 @@ describe("worker-backed MCAP resource client", () => {
           timeNs: 15n,
           topics: ["/camera", "/lidar"],
         },
-        { onTopicSettlement },
+        { onTopicSettlement, onTopicSettlements },
       )
       .finally(() => {
         settled = true;
@@ -394,6 +395,9 @@ describe("worker-backed MCAP resource client", () => {
       topic: "/camera",
       window: settlement,
     });
+    expect(onTopicSettlements).toHaveBeenCalledWith([
+      { topic: "/camera", window: settlement },
+    ]);
     expect(settled).toBe(false);
 
     const complete = createSynchronizedWindow(15n);

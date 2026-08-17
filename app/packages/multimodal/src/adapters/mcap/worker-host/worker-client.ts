@@ -60,6 +60,7 @@ import type {
   McapTransformTopologyResult,
   McapResourceClient,
   McapSynchronizedMessageWindow,
+  McapSynchronizedTopicSettlement,
   McapTimelineRange,
   McapTopicNumericFields,
   McapTopicTimeBounds,
@@ -416,25 +417,37 @@ class WorkerMcapResourceClient implements McapResourceClient {
     const read = async () => {
       const settlements = new Map<string, McapSynchronizedMessageWindow>();
       let terminal: McapSynchronizedMessageWindow | undefined;
-      for await (const item of this.streamRequest(
+      for await (const items of this.streamRequest(
         "readSynchronizedMessages",
         request,
         undefined,
         options?.signal,
         lease.recordIds,
+        true,
       )) {
-        const window = hydrateSynchronizedWindows(
-          [item.window],
-          lease,
-          this.decodedRecords,
-        )[0];
-        if (!window) throw new Error("Expected synchronized MCAP stream item");
-        if (item.kind === "topic-settlement") {
-          if (settlements.has(item.topic)) continue;
-          settlements.set(item.topic, window);
-          options?.onTopicSettlement?.({ topic: item.topic, window });
-        } else {
-          terminal = window;
+        const deliverySettlements: McapSynchronizedTopicSettlement[] = [];
+        for (const item of items) {
+          const window = hydrateSynchronizedWindows(
+            [item.window],
+            lease,
+            this.decodedRecords,
+          )[0];
+          if (!window)
+            throw new Error("Expected synchronized MCAP stream item");
+          if (item.kind === "topic-settlement") {
+            if (settlements.has(item.topic)) continue;
+            const settlement = { topic: item.topic, window };
+            settlements.set(item.topic, window);
+            deliverySettlements.push(settlement);
+          } else {
+            terminal = window;
+          }
+        }
+        if (deliverySettlements.length > 0) {
+          options?.onTopicSettlements?.(deliverySettlements);
+          for (const settlement of deliverySettlements) {
+            options?.onTopicSettlement?.(settlement);
+          }
         }
       }
       if (!terminal)
@@ -551,13 +564,39 @@ class WorkerMcapResourceClient implements McapResourceClient {
     );
   }
 
+  private streamRequest<Type extends McapPlaybackWorkerStreamType>(
+    type: Type,
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
+    signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
+    yieldResponseBatches?: false,
+  ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void>;
+  private streamRequest<Type extends McapPlaybackWorkerStreamType>(
+    type: Type,
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority: McapPlaybackWorkerPriority | undefined,
+    signal: AbortSignal | undefined,
+    retainedDecodedRecordIds: readonly string[] | undefined,
+    yieldResponseBatches: true,
+  ): AsyncGenerator<
+    readonly McapPlaybackWorkerStreamItemByType[Type][],
+    void,
+    void
+  >;
   private async *streamRequest<Type extends McapPlaybackWorkerStreamType>(
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
     signal?: AbortSignal,
     retainedDecodedRecordIds?: readonly string[],
-  ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
+    yieldResponseBatches = false,
+  ): AsyncGenerator<
+    | McapPlaybackWorkerStreamItemByType[Type]
+    | readonly McapPlaybackWorkerStreamItemByType[Type][],
+    void,
+    void
+  > {
     if (this.disposed) {
       throw new Error("MCAP worker client is disposed");
     }
@@ -590,16 +629,30 @@ class WorkerMcapResourceClient implements McapResourceClient {
       if (cancelledIds.length > 0) this.cancelIdleReads();
     }
     try {
-      yield* lane.transport.stream(
-        this.workerForLane(lane, sourceKey),
-        sourceKey,
-        type,
-        payload,
-        effectivePriority,
-        signal,
-        retainedDecodedRecordIds,
-        supersessionKeys,
-      );
+      if (yieldResponseBatches) {
+        yield* lane.transport.stream(
+          this.workerForLane(lane, sourceKey),
+          sourceKey,
+          type,
+          payload,
+          effectivePriority,
+          signal,
+          retainedDecodedRecordIds,
+          supersessionKeys,
+          true,
+        );
+      } else {
+        yield* lane.transport.stream(
+          this.workerForLane(lane, sourceKey),
+          sourceKey,
+          type,
+          payload,
+          effectivePriority,
+          signal,
+          retainedDecodedRecordIds,
+          supersessionKeys,
+        );
+      }
     } finally {
       this.maybeReleaseBulkLane(lane);
     }

@@ -1244,6 +1244,15 @@ class McapEpisodeSession implements EpisodeSession {
               ),
             },
             {
+              onTopicSettlements: request.onStreamSettlements
+                ? (settlements) =>
+                    request.onStreamSettlements?.(
+                      settlements.map(({ topic, window }) => ({
+                        stream: this.streamIdFor(topic),
+                        window: this.fromMcapWindow(window),
+                      })),
+                    )
+                : undefined,
               onTopicSettlement: request.onStreamSettlement
                 ? ({ topic, window }) =>
                     request.onStreamSettlement?.({

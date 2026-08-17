@@ -12,7 +12,10 @@ import {
 } from "@fiftyone/playback";
 
 import type { ByteTimelinePoint, StreamSyncPolicies } from "../../../ir";
-import type { PlaybackReadCapability } from "../../../ports";
+import type {
+  PlaybackReadCapability,
+  SynchronizedStreamSettlement,
+} from "../../../ports";
 import { isEpisodeReadCancelledError } from "../../../ports";
 import { type EpisodeStreamCache, type TimelineIndex } from "../../../runtime";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
@@ -220,11 +223,13 @@ export function createDataStreamPrefetcher({
 
   const deliverWindows = ({
     rebalance = true,
+    pushCurrentTick = true,
     sourceEpoch,
     streams,
     windows,
   }: {
     readonly rebalance?: boolean;
+    readonly pushCurrentTick?: boolean;
     readonly sourceEpoch: number;
     readonly streams: readonly string[];
     readonly windows: Parameters<typeof decodeFailuresByStream>[0];
@@ -256,9 +261,8 @@ export function createDataStreamPrefetcher({
       );
     }
     if (rebalance) rebalanceDecodedCaches();
-    const currentIndex = getIndex();
-    const currentTick = currentIndex?.nearestTick(getPlayhead(store));
-    if (currentTick !== undefined) {
+    const currentTick = getIndex()?.nearestTick(getPlayhead(store));
+    if (pushCurrentTick && currentTick !== undefined) {
       pushTickToStore(
         activeFetchedStreams,
         currentTick,
@@ -371,33 +375,59 @@ export function createDataStreamPrefetcher({
     const unsettledStreams = new Set(streamsToFetch);
     let deliveredCurrentFrame = false;
 
+    const acceptSettlements = (
+      settlements: readonly SynchronizedStreamSettlement[],
+    ): void => {
+      const accepted: SynchronizedStreamSettlement[] = [];
+      for (const settlement of settlements) {
+        const { stream, window } = settlement;
+        if (
+          controller.signal.aborted ||
+          getSourceEpoch() !== sourceEpoch ||
+          window.timeNs !== tick ||
+          getIndex()?.nearestTick(getPlayhead(store)) !== tick ||
+          !unsettledStreams.has(stream)
+        ) {
+          continue;
+        }
+        unsettledStreams.delete(stream);
+        accepted.push(settlement);
+      }
+      if (accepted.length === 0) return;
+
+      const acceptedStreams: string[] = [];
+      for (const { stream, window } of accepted) {
+        acceptedStreams.push(stream);
+        deliveredCurrentFrame =
+          deliverWindows({
+            pushCurrentTick: false,
+            rebalance: false,
+            sourceEpoch,
+            streams: [stream],
+            windows: [window],
+          }) || deliveredCurrentFrame;
+      }
+
+      const currentTick = getIndex()?.nearestTick(getPlayhead(store));
+      if (currentTick === tick) {
+        pushTickToStore(
+          activeStreamsInCaches(caches, acceptedStreams),
+          tick,
+          caches,
+          lastFrames,
+          store,
+          fetchState.failedStreams,
+        );
+      }
+      finishFetch(sourceEpoch, [tickKey], acceptedStreams);
+    };
+
     markStreamsPending([tickKey], streamsToFetch);
     const controller = createReadController();
     void playback
       .readSynchronized({
-        onStreamSettlement: ({ stream, window }) => {
-          if (
-            controller.signal.aborted ||
-            getSourceEpoch() !== sourceEpoch ||
-            window.timeNs !== tick ||
-            getIndex()?.nearestTick(getPlayhead(store)) !== tick ||
-            !unsettledStreams.has(stream)
-          ) {
-            return;
-          }
-          unsettledStreams.delete(stream);
-          try {
-            deliveredCurrentFrame =
-              deliverWindows({
-                rebalance: false,
-                sourceEpoch,
-                streams: [stream],
-                windows: [window],
-              }) || deliveredCurrentFrame;
-          } finally {
-            finishFetch(sourceEpoch, [tickKey], [stream]);
-          }
-        },
+        onStreamSettlement: (settlement) => acceptSettlements([settlement]),
+        onStreamSettlements: acceptSettlements,
         pointCloudColorBy: getPointCloudColorBy(),
         settlementPriorityStreams: settlementPriorityStreamsToFetch,
         streamPolicies: getStreamPolicies(),

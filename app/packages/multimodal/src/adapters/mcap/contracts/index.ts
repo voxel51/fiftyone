@@ -907,6 +907,10 @@ export interface McapSynchronizedMessagesReadOptions extends McapResourceReadOpt
   readonly onTopicSettlement?: (
     settlement: McapSynchronizedTopicSettlement,
   ) => void;
+  /** Receives one ordered worker delivery group of authoritative settlements. */
+  readonly onTopicSettlements?: (
+    settlements: readonly McapSynchronizedTopicSettlement[],
+  ) => void;
 }
 
 /**

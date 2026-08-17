@@ -181,6 +181,7 @@ export async function readSynchronizedPlaybackFallback(
     { priority: "current", signal: request.signal },
     {
       onStreamSettlement: request.onStreamSettlement,
+      onStreamSettlements: request.onStreamSettlements,
       settlementPriorityStreams: request.settlementPriorityStreams,
     },
   );
@@ -194,6 +195,7 @@ export async function readSynchronizedPlaybackBatchFallback(
   options: SynchronizedPlaybackReadOptions = {},
   settlementOptions: {
     readonly onStreamSettlement?: SynchronizedPlaybackReadRequest["onStreamSettlement"];
+    readonly onStreamSettlements?: SynchronizedPlaybackReadRequest["onStreamSettlements"];
     readonly settlementPriorityStreams?: readonly string[];
   } = {},
 ): Promise<readonly SynchronizedFrameWindow[]> {
@@ -224,32 +226,36 @@ export async function readSynchronizedPlaybackBatchFallback(
     priority: options.priority,
     session,
     signal: options.signal,
-    onStreamComplete: settlementOptions.onStreamSettlement
-      ? (stream, streamBatches) => {
-          const window = resolved[0];
-          if (!window) return;
-          const policy = window.streamPolicies[stream];
-          settlementOptions.onStreamSettlement?.({
-            stream,
-            window: selectPlaybackWindow(
-              collectFramesByStream(streamBatches, [stream]),
-              [stream],
-              sourceNames,
-              {
-                endNs: policy.endNs,
-                startNs: readStartForPolicy(
-                  session.manifest.timeRange.startNs,
-                  streamsById,
-                  stream,
-                  policy,
-                ),
-                streamPolicies: { [stream]: policy },
-                timeNs: window.timeNs,
-              },
-            ),
-          });
-        }
-      : undefined,
+    onStreamComplete:
+      settlementOptions.onStreamSettlement ||
+      settlementOptions.onStreamSettlements
+        ? (stream, streamBatches) => {
+            const window = resolved[0];
+            if (!window) return;
+            const policy = window.streamPolicies[stream];
+            const settlement = {
+              stream,
+              window: selectPlaybackWindow(
+                collectFramesByStream(streamBatches, [stream]),
+                [stream],
+                sourceNames,
+                {
+                  endNs: policy.endNs,
+                  startNs: readStartForPolicy(
+                    session.manifest.timeRange.startNs,
+                    streamsById,
+                    stream,
+                    policy,
+                  ),
+                  streamPolicies: { [stream]: policy },
+                  timeNs: window.timeNs,
+                },
+              ),
+            };
+            settlementOptions.onStreamSettlements?.([settlement]);
+            settlementOptions.onStreamSettlement?.(settlement);
+          }
+        : undefined,
     streams: readStreams,
     windowForStream: (stream) => ({
       endNs: maxBigInt(resolved.map((window) => window.endNs)),

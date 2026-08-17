@@ -574,11 +574,23 @@ export function createInlineMcapResourceClient(
       request: McapReadSynchronizedMessagesRequest,
       readOptions?: McapSynchronizedMessagesReadOptions,
     ): Promise<McapSynchronizedMessageWindow> {
+      const onTopicSettlement = readOptions
+        ? (
+            settlement: Parameters<
+              NonNullable<
+                McapSynchronizedMessagesReadOptions["onTopicSettlement"]
+              >
+            >[0],
+          ) => {
+            readOptions.onTopicSettlements?.([settlement]);
+            readOptions.onTopicSettlement?.(settlement);
+          }
+        : undefined;
       if (!readOptions?.signal) {
         return client.readSynchronizedMessagesWithReuse(
           request,
           undefined,
-          readOptions?.onTopicSettlement,
+          onTopicSettlement,
         );
       }
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
@@ -592,7 +604,7 @@ export function createInlineMcapResourceClient(
             predecessorStore: predecessorStoreForSource(sourceKey),
             reader,
             readSignal: { current: readOptions.signal ?? null },
-            onTopicSettlement: readOptions.onTopicSettlement,
+            onTopicSettlement,
             request: { ...request, timeNs: [request.timeNs] },
             timeline,
           }),
