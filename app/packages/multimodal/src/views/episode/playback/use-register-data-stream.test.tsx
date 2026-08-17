@@ -1280,8 +1280,10 @@ describe("stream status + buffering feedback", () => {
     const timeline = deferred<TimelineRange>();
     const source = createSource("index-ready-flush");
     const storeCapture = capturePlaybackStore();
-    const readSynchronizedMessages = vi.fn(async (request) =>
-      createEmptyWindow(request.timeNs),
+    const readSynchronizedMessages = vi.fn(
+      async (
+        request: Parameters<ResourceClient["readSynchronizedMessages"]>[0],
+      ) => createEmptyWindow(request.timeNs),
     );
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(async () => []),

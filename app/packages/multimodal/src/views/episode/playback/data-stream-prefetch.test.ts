@@ -219,7 +219,9 @@ describe("data stream prefetcher", () => {
     expect(harness.prefetcher.fetchCurrentFrame(0n, [IMAGE], [IMAGE])).toBe(
       true,
     );
-    harness.store.set(playheadAtom, 0.5);
+    const movedTick = harness.index.tickAt(1);
+    if (movedTick === undefined) throw new Error("expected a second tick");
+    harness.store.set(playheadAtom, harness.index.nsToSec(movedTick));
     expect(publishProgress).toBeTypeOf("function");
     if (!publishProgress) throw new Error("expected progress callback");
     publishProgress(windowAt(0n, [frame(IMAGE, 0n)]));
@@ -445,9 +447,11 @@ function createHarness({
   const fetchState = createDataStreamFetchState();
   const lastFrames = new Map<string, StreamPlaybackFrame<unknown>>();
   const rebalanceDecodedCaches = vi.fn();
+  const index = createTimelineIndex({ endNs: 1_000_000_000n, startNs: 0n }, 2);
   const harness = {
     caches,
     fetchState,
+    index,
     lastFrames,
     prefetcher: undefined as unknown as ReturnType<
       typeof createDataStreamPrefetcher
@@ -459,8 +463,7 @@ function createHarness({
   harness.prefetcher = createDataStreamPrefetcher({
     caches,
     fetchState,
-    getIndex: () =>
-      createTimelineIndex({ endNs: 1_000_000_000n, startNs: 0n }, 2),
+    getIndex: () => index,
     getSourceEpoch: () => harness.sourceEpoch,
     getStreamPolicies: () => ({}) as StreamSyncPolicies,
     isStreamTimeAvailable,

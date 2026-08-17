@@ -303,7 +303,6 @@ export function useRegisterDataStream({
   // The passive source effect below still owns the actual cache/session reset.
   useLayoutEffect(() => {
     sourceEpochRef.current += 1;
-    currentTickFlushScheduleEpochRef.current = null;
   }, [playback, source, timelineSamplingRateHz]);
 
   // Hold the most recent `allStreams` / `streamPolicies` in refs so the
@@ -543,7 +542,6 @@ export function useRegisterDataStream({
     streamStartTimesNsRef.current.clear();
     streamEndTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
-    autoSeekScheduleEpochRef.current = null;
     deferredBatchAdmissionRef.current = false;
     lastSeekAtMsRef.current = null;
     startupCushionPlanner.resetPendingPlan();

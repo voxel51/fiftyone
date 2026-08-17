@@ -388,14 +388,19 @@ export function createDataStreamPrefetcher({
         !caches.get(stream)?.has(tick) && !isStreamPending(tickKey, stream),
     );
     if (streamsToFetch.length === 0) return false;
+    const streamsToFetchSet = new Set(streamsToFetch);
+    const filteredEarlyDeliveryStreams = earlyDeliveryStreams?.filter(
+      (stream) => streamsToFetchSet.has(stream),
+    );
+    const earlyDeliveryStreamsToFetch = filteredEarlyDeliveryStreams?.length
+      ? filteredEarlyDeliveryStreams
+      : undefined;
 
     markStreamsPending([tickKey], streamsToFetch);
     const controller = createReadController();
     void playback
       .readSynchronized({
-        earlyDeliveryStreams: earlyDeliveryStreams?.filter((stream) =>
-          streamsToFetch.includes(stream),
-        ),
+        earlyDeliveryStreams: earlyDeliveryStreamsToFetch,
         onProgress: (window) => {
           if (
             controller.signal.aborted ||
@@ -406,7 +411,7 @@ export function createDataStreamPrefetcher({
             return;
           }
           const progressedStreams = Object.keys(window.framesByStream).filter(
-            (stream) => streamsToFetch.includes(stream),
+            (stream) => streamsToFetchSet.has(stream),
           );
           if (progressedStreams.length === 0) return;
           deliverProgressWindow({
