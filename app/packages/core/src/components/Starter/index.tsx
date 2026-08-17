@@ -1,10 +1,11 @@
 import { CodeTabs, Loading, scrollable } from "@fiftyone/components";
-import { OperatorCore, useOperators } from "@fiftyone/operators";
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
-  useOperatorBrowser,
-  useOperatorExecutor,
-  usePromptOperatorInput,
-} from "@fiftyone/operators/src/state";
+  OperatorCore,
+  OperatorPromptTrigger,
+  useOperators,
+} from "@fiftyone/operators";
+import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import { datasetName as datasetNameAtom } from "@fiftyone/state";
 import {
   Button,
@@ -17,7 +18,7 @@ import {
 } from "@mui/material";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { CONTENT_BY_MODE } from "./content";
+import { ADD_SAMPLE_CLOUD_CODE, CONTENT_BY_MODE } from "./content";
 
 const CREATE_DATASET_OPERATOR = "@voxel51/utils/create_dataset";
 const IMPORT_SAMPLES_OPERATOR = "@voxel51/io/import_samples";
@@ -32,6 +33,9 @@ export function Starter(props: StarterPropsType) {
   const { mode } = props;
   const { isLoading } = useOperators(true);
   const datasetName = useRecoilValue(datasetNameAtom);
+  const { isEnabled: upgradedImportEnabled } = useFeature({
+    feature: FeatureFlag.VFF_UPGRADED_IMPORT,
+  });
 
   if (!mode) return null;
 
@@ -41,7 +45,12 @@ export function Starter(props: StarterPropsType) {
     CONTENT_BY_MODE[mode];
 
   const codeWithDataset = code.replace("$CURRENT_DATASET_NAME", datasetName);
+  const cloudCodeWithDataset = ADD_SAMPLE_CLOUD_CODE.replace(
+    "$CURRENT_DATASET_NAME",
+    datasetName,
+  );
   const isSelectDataset = mode === "SELECT_DATASET";
+  const showCloudTab = mode === "ADD_SAMPLE" && upgradedImportEnabled;
 
   return (
     <>
@@ -105,7 +114,18 @@ export function Starter(props: StarterPropsType) {
             )}
           </Typography>
           <CodeTabs
-            tabs={[{ id: "python", label: "Python", code: codeWithDataset }]}
+            tabs={[
+              { id: "python", label: "Python", code: codeWithDataset },
+              ...(showCloudTab
+                ? [
+                    {
+                      id: "cloud",
+                      label: "Cloud bucket",
+                      code: cloudCodeWithDataset,
+                    },
+                  ]
+                : []),
+            ]}
           />
         </Stack>
       </Stack>
@@ -117,6 +137,9 @@ export function StarterSubtitle(props: StarterPropsType) {
   const { mode } = props;
   const browser = useOperatorBrowser();
   const isAddSample = mode === "ADD_SAMPLE";
+  const { isEnabled: upgradedImportEnabled } = useFeature({
+    feature: FeatureFlag.VFF_UPGRADED_IMPORT,
+  });
 
   const hasOperator = useCallback(
     (uri: string) => {
@@ -164,7 +187,27 @@ export function StarterSubtitle(props: StarterPropsType) {
     <Typography color="text.secondary">
       {hasRequiredOperator ? (
         <>
-          <OperatorLauncher uri={OPERATOR_URI} />
+          {isAddSample && upgradedImportEnabled ? (
+            <>
+              <OperatorPromptTrigger
+                operatorUri={OPERATOR_URI}
+                params={{ import_from: "local" }}
+              >
+                <ButtonLink>From local machine</ButtonLink>
+              </OperatorPromptTrigger>
+              &nbsp;or&nbsp;
+              <OperatorPromptTrigger
+                operatorUri={OPERATOR_URI}
+                params={{ import_from: "cloud" }}
+              >
+                <ButtonLink>from cloud bucket</ButtonLink>
+              </OperatorPromptTrigger>
+            </>
+          ) : (
+            <OperatorPromptTrigger operatorUri={OPERATOR_URI}>
+              <ButtonLink>Click here</ButtonLink>
+            </OperatorPromptTrigger>
+          )}
           to {clickActionLabel}
         </>
       ) : (
@@ -184,22 +227,6 @@ export function StarterSubtitle(props: StarterPropsType) {
   );
 }
 
-// todo: generalize and re-use elsewhere
-export function OperatorLauncher(props: OperatorLauncherPropsType) {
-  const { uri, prompt = true } = props;
-  const promptForInput = usePromptOperatorInput();
-  const { execute } = useOperatorExecutor(uri);
-
-  const handleClick = useCallback(() => {
-    if (prompt) {
-      promptForInput(uri);
-    } else {
-      execute({});
-    }
-  }, [prompt, promptForInput, uri, execute]);
-
-  return <ButtonLink onClick={handleClick}>Click here</ButtonLink>;
-}
 // todo: generalize and re-use elsewhere
 export function ButtonLink(props: ButtonProps) {
   return (
@@ -235,9 +262,4 @@ export function InvertedUnderlineLink(props: LinkProps) {
 
 type StarterPropsType = {
   mode: "SELECT_DATASET" | "ADD_DATASET" | "ADD_SAMPLE";
-};
-
-type OperatorLauncherPropsType = {
-  uri: string;
-  prompt?: boolean;
 };

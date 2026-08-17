@@ -1,6 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useCallback, useMemo, useRef } from "react";
-import pLimit from "p-limit";
 import { createFetchTransport } from "./client";
 import type {
   FileUploadItem,
@@ -11,8 +10,10 @@ import type {
 import {
   buildDeleteUrl,
   buildUploadUrl,
+  createConcurrencyLimiter,
   errorMessage,
   resolveHeaders,
+  type ConcurrencyLimiter,
 } from "./utils";
 
 export interface UploadManagerDeps {
@@ -43,10 +44,11 @@ export function useUploadManager({
   const transportRef = useRef(transport ?? createFetchTransport());
   if (transport) transportRef.current = transport;
 
+  const DEFAULT_MAX_CONCURRENT = 6;
+
   // Stable limiter — recreated only when maxConcurrent changes
-  const limiter = useMemo(
-    () =>
-      typeof maxConcurrent === "number" ? pLimit(maxConcurrent) : undefined,
+  const limiter: ConcurrencyLimiter = useMemo(
+    () => createConcurrencyLimiter(maxConcurrent ?? DEFAULT_MAX_CONCURRENT),
     [maxConcurrent],
   );
 

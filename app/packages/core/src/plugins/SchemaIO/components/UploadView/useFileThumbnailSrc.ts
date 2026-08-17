@@ -12,9 +12,9 @@ export function useFileThumbnailSrc(file: File) {
   const hasBeenVisible = useRef(false);
 
   useEffect(() => {
-    if (!isImage || hasBeenVisible.current) return;
+    if (!isImage || hasBeenVisible.current) return undefined;
     const el = containerRef.current;
-    if (!el) return;
+    if (!el) return undefined;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -30,7 +30,7 @@ export function useFileThumbnailSrc(file: File) {
   }, [isImage]);
 
   useEffect(() => {
-    if (!isImage || !hasBeenVisible.current) return;
+    if (!isImage || !hasBeenVisible.current) return undefined;
     const controller = new AbortController();
     queueThumbnail(file, controller.signal)
       .then(setSrc)

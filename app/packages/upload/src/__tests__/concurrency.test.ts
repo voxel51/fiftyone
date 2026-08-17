@@ -35,9 +35,8 @@ describe("upload — concurrency", () => {
     });
 
     let uploadPromise: Promise<void>;
-    await act(async () => {
+    act(() => {
       uploadPromise = result.current.upload({ destination: "/uploads" });
-      await new Promise((r) => setTimeout(r, 0));
     });
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -100,9 +99,8 @@ describe("upload — concurrency", () => {
     });
 
     let uploadPromise: Promise<void>;
-    await act(async () => {
+    act(() => {
       uploadPromise = result.current.upload({ destination: "/uploads" });
-      await new Promise((r) => setTimeout(r, 0));
     });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);

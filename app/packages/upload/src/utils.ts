@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import type {
   FileUploadItem,
   HeadersOption,
@@ -8,8 +7,10 @@ import type {
 
 // ── ID generation ──────────────────────────────────────────────────────
 
+let nextId = 0;
+
 export function generateId(): string {
-  return uuidv4();
+  return `upload-${++nextId}-${Date.now()}`;
 }
 
 // ── File fingerprinting ────────────────────────────────────────────────
@@ -43,7 +44,7 @@ export function validateFile(
   if (accept && !matchesAccept(file, accept)) {
     return `"${file.name}" does not match accepted types: ${accept.join(", ")}`;
   }
-  if (typeof maxSize === "number" && file.size > maxSize) {
+  if (maxSize != null && file.size > maxSize) {
     return maxSizeMessage ?? `"${file.name}" exceeds the maximum file size`;
   }
   if (validate) {
@@ -148,4 +149,33 @@ export async function resolveHeaders(
   if (!headers) return undefined;
   if (typeof headers === "function") return await headers();
   return headers;
+}
+
+// ── Concurrency limiter ────────────────────────────────────────────────
+
+export type ConcurrencyLimiter = <T>(fn: () => Promise<T>) => Promise<T>;
+
+export function createConcurrencyLimiter(max: number): ConcurrencyLimiter {
+  let active = 0;
+  const queue: (() => void)[] = [];
+
+  function next() {
+    while (queue.length > 0 && active < max) {
+      active++;
+      queue.shift()!();
+    }
+  }
+
+  return <T>(fn: () => Promise<T>): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      queue.push(() =>
+        fn()
+          .then(resolve, reject)
+          .finally(() => {
+            active--;
+            next();
+          }),
+      );
+      next();
+    });
 }

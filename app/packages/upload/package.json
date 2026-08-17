@@ -34,10 +34,6 @@
         "vite": "^5.4.21",
         "vitest": "^1.6.0"
     },
-    "dependencies": {
-        "p-limit": "^7.3.0",
-        "uuid": "^8.3.2"
-    },
     "peerDependencies": {
         "react": "*",
         "react-dom": "*"

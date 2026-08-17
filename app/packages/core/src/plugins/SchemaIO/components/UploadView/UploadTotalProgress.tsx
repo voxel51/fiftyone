@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, LinearProgress, Typography } from "@mui/material";
 import type { FileUploadItem } from "@fiftyone/upload";
 import { computeTotalProgress } from "./utils";

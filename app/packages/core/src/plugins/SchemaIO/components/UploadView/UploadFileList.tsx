@@ -1,4 +1,3 @@
-import React from "react";
 import { Box } from "@mui/material";
 import type { FileUploadItem } from "@fiftyone/upload";
 import UploadFileItem from "./UploadFileItem";

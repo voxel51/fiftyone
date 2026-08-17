@@ -2801,10 +2801,8 @@ __metadata:
     cors: "npm:^2.8.5"
     express: "npm:^4.18.2"
     jsdom: "npm:^26.0.0"
-    p-limit: "npm:^7.3.0"
     tsx: "npm:^4.7.0"
     typescript: "npm:^5.5.4"
-    uuid: "npm:^8.3.2"
     vite: "npm:^5.4.21"
     vitest: "npm:^1.6.0"
   peerDependencies:
@@ -16904,15 +16902,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"p-limit@npm:^7.3.0":
-  version: 7.3.1
-  resolution: "p-limit@npm:7.3.1"
-  dependencies:
-    yocto-queue: "npm:^1.2.1"
-  checksum: 10/ba8830e0780f994cb5ada4073cd905d1111c3443ec971286cadbe09e65c8753466939c883d70f64d371f5dee5c7a124accc3cc0b42f52a08b2e2c78323bb2d6b
-  languageName: node
-  linkType: hard
-
 "p-locate@npm:^5.0.0":
   version: 5.0.0
   resolution: "p-locate@npm:5.0.0"
@@ -22565,7 +22554,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yocto-queue@npm:^1.0.0, yocto-queue@npm:^1.2.1":
+"yocto-queue@npm:^1.0.0":
   version: 1.2.2
   resolution: "yocto-queue@npm:1.2.2"
   checksum: 10/92dd9880c324dbc94ff4b677b7d350ba8d835619062b7102f577add7a59ab4d87f40edc5a03d77d369dfa9d11175b1b2ec4a06a6f8a5d8ce5d1306713f66ee41

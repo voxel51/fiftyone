@@ -11,5 +11,6 @@ from typing import Literal
 
 FeatureFlag = Literal[
     "VFF_MULTIMODAL",
+    "VFF_UPGRADED_IMPORT",
 ]
 """Enumeration of active feature flags."""
