@@ -221,6 +221,15 @@ async function streamRequest(
       }
       continue;
     }
+    // A synchronized current-tick read has one more ownership boundary after
+    // the blocking prefix: unresolved stragglers plus the payload-free
+    // terminal. Keep that remainder together even when it owns transferable
+    // buffers, so the host can accept it in one store turn without copying.
+    if (message.type === "readSynchronizedMessages") {
+      batch.push(item);
+      batchBytes += estimateMcapStreamItemBytes(item);
+      continue;
+    }
     // Outside the explicit priority boundary, transferable buffers keep their
     // per-item ownership boundary. Plain decoded records can share one
     // postMessage to reduce main-thread churn.

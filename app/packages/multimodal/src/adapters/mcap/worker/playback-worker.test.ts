@@ -152,11 +152,14 @@ describe("MCAP playback worker lifecycle", () => {
   it("delivers the complete blocking prefix in one transferable batch", async () => {
     const cameraBytes = new Uint8Array([1, 2, 3]);
     const lidarBytes = new Uint8Array([4, 5, 6]);
+    const diagnosticBytes = new Uint8Array([7, 8, 9]);
     const camera = synchronizedWindow(cameraBytes, "/camera");
     const lidar = synchronizedWindow(lidarBytes, "/lidar");
+    const diagnostics = synchronizedWindow(diagnosticBytes, "/diagnostics");
     workerResourceClientMock.synchronizedSettlements.push(
       { topic: "/camera", window: camera },
       { topic: "/lidar", window: lidar },
+      { topic: "/diagnostics", window: diagnostics },
     );
     workerResourceClientMock.synchronizedResult = synchronizedWindow(
       new Uint8Array([]),
@@ -200,6 +203,18 @@ describe("MCAP playback worker lifecycle", () => {
         ],
       }),
       expect.arrayContaining([cameraBytes.buffer, lidarBytes.buffer]),
+    ]);
+    expect(workerScope.postMessage.mock.calls[1]).toEqual([
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            kind: "topic-settlement",
+            topic: "/diagnostics",
+          }),
+          expect.objectContaining({ kind: "terminal" }),
+        ],
+      }),
+      expect.arrayContaining([diagnosticBytes.buffer]),
     ]);
   });
 
