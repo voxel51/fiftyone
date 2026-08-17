@@ -111,6 +111,13 @@ Plugins
   restarting the App
   `#8118 <https://github.com/voxel51/fiftyone/pull/8118>`_
 
+Brain
+^^^^^
+- Incremental embedding updates now work across environments with
+  different Python versions, and failures surface actionable errors
+  `#304 <https://github.com/voxel51/fiftyone-brain/pull/304>`_,
+  `#301 <https://github.com/voxel51/fiftyone-brain/pull/301>`_
+
 
 FiftyOne Enterprise 2.23.1
 --------------------------
