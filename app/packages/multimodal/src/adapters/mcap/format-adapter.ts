@@ -1230,11 +1230,11 @@ class McapEpisodeSession implements EpisodeSession {
               defaultStreamPolicy: toMcapSyncPolicy(
                 request.defaultStreamPolicy,
               ),
-              earlyDeliveryTopics: request.earlyDeliveryStreams?.map((stream) =>
-                this.sourceNameFor(stream),
-              ),
               pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
                 request.pointCloudColorBy,
+              ),
+              settlementPriorityTopics: request.settlementPriorityStreams?.map(
+                (stream) => this.sourceNameFor(stream),
               ),
               source: this.source,
               streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
@@ -1244,9 +1244,12 @@ class McapEpisodeSession implements EpisodeSession {
               ),
             },
             {
-              onSynchronizedProgress: request.onProgress
-                ? (progress) =>
-                    request.onProgress?.(this.fromMcapWindow(progress))
+              onTopicSettlement: request.onStreamSettlement
+                ? ({ topic, window }) =>
+                    request.onStreamSettlement?.({
+                      stream: this.streamIdFor(topic),
+                      window: this.fromMcapWindow(window),
+                    })
                 : undefined,
               signal: request.signal,
             },

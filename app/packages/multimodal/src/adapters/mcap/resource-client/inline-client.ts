@@ -111,11 +111,12 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
   >(
     request: McapReadSynchronizedMessageBatchRequest,
     reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>,
-    onWindowProgress?: (
-      window: McapSynchronizedMessageWindowWithMessages<
+    onTopicSettlement?: (settlement: {
+      readonly topic: string;
+      readonly window: McapSynchronizedMessageWindowWithMessages<
         McapDecodedMessage | ReusedMessage
-      >,
-    ) => void,
+      >;
+    }) => void,
     readOptions?: McapResourceReadOptions,
   ): Promise<
     readonly McapSynchronizedMessageWindowWithMessages<
@@ -130,11 +131,12 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
   >(
     request: McapReadSynchronizedMessagesRequest,
     reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>,
-    onWindowProgress?: (
-      window: McapSynchronizedMessageWindowWithMessages<
+    onTopicSettlement?: (settlement: {
+      readonly topic: string;
+      readonly window: McapSynchronizedMessageWindowWithMessages<
         McapDecodedMessage | ReusedMessage
-      >,
-    ) => void,
+      >;
+    }) => void,
     readOptions?: McapResourceReadOptions,
   ): Promise<
     McapSynchronizedMessageWindowWithMessages<
@@ -543,7 +545,7 @@ export function createInlineMcapResourceClient(
     async readSynchronizedMessageBatchWithReuse(
       request,
       reuseIndexedMessage,
-      onWindowProgress,
+      onTopicSettlement,
       readOptions,
     ) {
       if (request.timeNs.length === 0) {
@@ -560,7 +562,7 @@ export function createInlineMcapResourceClient(
           predecessorStore: predecessorStoreForSource(sourceKey),
           reader,
           readSignal: signal ? { current: signal } : options.readSignal,
-          onWindowProgress,
+          onTopicSettlement,
           request,
           reuseIndexedMessage,
           timeline,
@@ -576,7 +578,7 @@ export function createInlineMcapResourceClient(
         return client.readSynchronizedMessagesWithReuse(
           request,
           undefined,
-          readOptions?.onSynchronizedProgress,
+          readOptions?.onTopicSettlement,
         );
       }
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
@@ -590,7 +592,7 @@ export function createInlineMcapResourceClient(
             predecessorStore: predecessorStoreForSource(sourceKey),
             reader,
             readSignal: { current: readOptions.signal ?? null },
-            onWindowProgress: readOptions.onSynchronizedProgress,
+            onTopicSettlement: readOptions.onTopicSettlement,
             request: { ...request, timeNs: [request.timeNs] },
             timeline,
           }),
@@ -603,13 +605,13 @@ export function createInlineMcapResourceClient(
     async readSynchronizedMessagesWithReuse(
       request,
       reuseIndexedMessage,
-      onWindowProgress,
+      onTopicSettlement,
       readOptions,
     ) {
       const windows = await client.readSynchronizedMessageBatchWithReuse(
         { ...request, timeNs: [request.timeNs] },
         reuseIndexedMessage,
-        onWindowProgress,
+        onTopicSettlement,
         readOptions,
       );
       const window = windows[0];

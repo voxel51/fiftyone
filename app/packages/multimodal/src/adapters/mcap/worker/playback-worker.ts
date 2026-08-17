@@ -139,35 +139,7 @@ async function runAndRespond(
       return;
     }
 
-    let postedProgress = false;
-    const result = await runMcapPlaybackWorkerUnaryRequest(
-      mcap,
-      message,
-      message.type === "readSynchronizedMessages" &&
-        message.payload.earlyDeliveryTopics?.length
-        ? (progress) => {
-            if (postedProgress) return;
-            throwIfWorkerRequestCancelled(context.signal);
-            postedProgress = true;
-            // Clone the single early surface so the worker retains ownership
-            // of every buffer until the complete union transfers normally.
-            try {
-              postResponse(
-                {
-                  id: message.id,
-                  ok: true,
-                  progress: true,
-                  result: progress,
-                },
-                [],
-              );
-            } catch {
-              // Progress is best effort; the terminal union remains
-              // authoritative when an intermediate clone cannot be posted.
-            }
-          }
-        : undefined,
-    );
+    const result = await runMcapPlaybackWorkerUnaryRequest(mcap, message);
     if (
       context.signal.aborted &&
       message.type === "readBoundedMessages" &&

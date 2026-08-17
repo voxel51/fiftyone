@@ -168,7 +168,7 @@ export async function readMcapSynchronizedMessageBatch<
   readSignal,
   request,
   reuseIndexedMessage,
-  onWindowProgress,
+  onTopicSettlement,
   timeline,
 }: {
   readonly decodeClient: DecodeClient;
@@ -177,11 +177,12 @@ export async function readMcapSynchronizedMessageBatch<
   readonly readSignal?: { readonly current: AbortSignal | null };
   readonly request: McapReadSynchronizedMessageBatchRequest;
   readonly reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>;
-  readonly onWindowProgress?: (
-    window: McapSynchronizedMessageWindowWithMessages<
+  readonly onTopicSettlement?: (settlement: {
+    readonly topic: string;
+    readonly window: McapSynchronizedMessageWindowWithMessages<
       McapDecodedMessage | ReusedMessage
-    >,
-  ) => void;
+    >;
+  }) => void;
   readonly timeline: McapTimelineStrategy;
 }): Promise<
   readonly McapSynchronizedMessageWindowWithMessages<
@@ -277,7 +278,7 @@ export async function readMcapSynchronizedMessageBatch<
           source: request.source,
           timeline,
         }),
-      earlyDeliveryTopics: request.earlyDeliveryTopics,
+      settlementPriorityTopics: request.settlementPriorityTopics,
       estimateCandidateBytes: async (candidate) => {
         const identity = indexedCandidateReuseIdentity({
           candidate,
@@ -317,7 +318,7 @@ export async function readMcapSynchronizedMessageBatch<
           });
         }
       },
-      onWindowProgress,
+      onTopicSettlement,
       selectTieBreaker: compareIndexedCandidateTieBreaker,
       timeline,
       topics: request.topics,
@@ -352,9 +353,9 @@ export async function readMcapSynchronizedMessageBatch<
         source: request.source,
         timeline,
       }),
-    earlyDeliveryTopics: request.earlyDeliveryTopics,
+    settlementPriorityTopics: request.settlementPriorityTopics,
     estimateCandidateBytes: (candidate) => candidate.message.data.byteLength,
-    onWindowProgress,
+    onTopicSettlement,
     selectTieBreaker: compareRawCandidateTieBreaker,
     timeline,
     topics: request.topics,
@@ -562,10 +563,10 @@ async function decodeWindowsFromCandidates<
 >({
   candidates,
   decodeCandidate,
-  earlyDeliveryTopics,
+  settlementPriorityTopics,
   estimateCandidateBytes,
   onCandidatesSelected,
-  onWindowProgress,
+  onTopicSettlement,
   selectTieBreaker,
   throwIfAborted,
   timeline,
@@ -574,14 +575,15 @@ async function decodeWindowsFromCandidates<
 }: {
   readonly candidates: ReadonlyMap<string, readonly Candidate[]>;
   readonly decodeCandidate: (candidate: Candidate) => Promise<Message>;
-  readonly earlyDeliveryTopics?: readonly string[];
+  readonly settlementPriorityTopics?: readonly string[];
   readonly estimateCandidateBytes?: (
     candidate: Candidate,
   ) => number | Promise<number>;
   readonly onCandidatesSelected?: (selected: readonly Candidate[]) => void;
-  readonly onWindowProgress?: (
-    window: McapSynchronizedMessageWindowWithMessages<Message>,
-  ) => void;
+  readonly onTopicSettlement?: (settlement: {
+    readonly topic: string;
+    readonly window: McapSynchronizedMessageWindowWithMessages<Message>;
+  }) => void;
   readonly selectTieBreaker: (left: Candidate, right: Candidate) => number;
   readonly throwIfAborted?: () => void;
   readonly timeline: McapTimelineStrategy;
@@ -644,18 +646,18 @@ async function decodeWindowsFromCandidates<
         readonly McapTopicDecodeDiagnostic[]
       > = {};
       const messages: Message[] = [];
-      const earlyDeliveryTopic = await selectEarlyDeliveryTopic({
-        earlyDeliveryTopics,
+      const firstSettlementTopic = await selectFirstSettlementTopic({
         estimateCandidateBytes,
+        settlementPriorityTopics,
         selectedByTopic,
       });
-      const decodeOrder = earlyDeliveryTopic
+      const decodeOrder = firstSettlementTopic
         ? [
             ...selectedByTopic.filter(
-              ([topic]) => topic === earlyDeliveryTopic,
+              ([topic]) => topic === firstSettlementTopic,
             ),
             ...selectedByTopic.filter(
-              ([topic]) => topic !== earlyDeliveryTopic,
+              ([topic]) => topic !== firstSettlementTopic,
             ),
           ]
         : selectedByTopic;
@@ -712,6 +714,19 @@ async function decodeWindowsFromCandidates<
               ),
             ).values(),
           ];
+          onTopicSettlement?.({
+            topic,
+            window: {
+              activeTimeline: timeline.id,
+              decodeErrorsByTopic: { [topic]: decodeErrorsByTopic[topic] },
+              endTimeNs: streamPolicies[topic].endTimeNs,
+              messages: [],
+              messagesByTopic: { [topic]: [] },
+              startTimeNs: streamPolicies[topic].startTimeNs ?? 0n,
+              streamPolicies: { [topic]: streamPolicies[topic] },
+              timeNs,
+            },
+          });
           continue;
         }
         const decoded = settled
@@ -727,8 +742,9 @@ async function decodeWindowsFromCandidates<
         messagesByTopic[topic] = decoded;
         messages.push(...decoded);
 
-        if (topic === earlyDeliveryTopic && decoded.length > 0) {
-          onWindowProgress?.({
+        onTopicSettlement?.({
+          topic,
+          window: {
             activeTimeline: timeline.id,
             endTimeNs: streamPolicies[topic].endTimeNs,
             messages: decoded,
@@ -736,8 +752,8 @@ async function decodeWindowsFromCandidates<
             startTimeNs: streamPolicies[topic].startTimeNs ?? 0n,
             streamPolicies: { [topic]: streamPolicies[topic] },
             timeNs,
-          });
-        }
+          },
+        });
       }
 
       messages.sort((left, right) => {
@@ -770,22 +786,24 @@ async function decodeWindowsFromCandidates<
   );
 }
 
-export async function selectEarlyDeliveryTopic<Candidate>({
-  earlyDeliveryTopics,
+export async function selectFirstSettlementTopic<Candidate>({
   estimateCandidateBytes,
+  settlementPriorityTopics,
   selectedByTopic,
 }: {
-  readonly earlyDeliveryTopics?: readonly string[];
   readonly estimateCandidateBytes?: (
     candidate: Candidate,
   ) => number | Promise<number>;
+  readonly settlementPriorityTopics?: readonly string[];
   readonly selectedByTopic: readonly (readonly [
     string,
     readonly Candidate[],
   ])[];
 }): Promise<string | undefined> {
-  if (!estimateCandidateBytes || !earlyDeliveryTopics?.length) return undefined;
-  const eligible = new Set(earlyDeliveryTopics);
+  if (!estimateCandidateBytes || !settlementPriorityTopics?.length) {
+    return undefined;
+  }
+  const eligible = new Set(settlementPriorityTopics);
   const costs = await Promise.all(
     selectedByTopic
       .filter(([topic, selected]) => eligible.has(topic) && selected.length > 0)

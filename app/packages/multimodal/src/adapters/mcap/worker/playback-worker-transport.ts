@@ -23,9 +23,6 @@ type PendingRequest<
 > = {
   cancelled?: boolean;
   readonly cleanup?: () => void;
-  readonly onProgress?: (
-    result: McapPlaybackWorkerResultByType["readSynchronizedMessages"],
-  ) => void;
   readonly reject: (error: Error) => void;
   readonly resolve: (result: McapPlaybackWorkerResultByType[Type]) => void;
   readonly sourceKey: string;
@@ -38,6 +35,8 @@ type PendingStream = {
   readonly rejectors: Array<(error: Error) => void>;
   readonly resolvers: Array<(result: IteratorResult<unknown, void>) => void>;
   readonly sourceKey: string;
+  readonly supersessionKeys: readonly string[];
+  readonly type: McapPlaybackWorkerStreamType;
   readonly values: unknown[];
   done: boolean;
   error?: Error;
@@ -68,9 +67,6 @@ export class McapPlaybackWorkerTransport {
     supersessionKeys: readonly string[] = [],
     signal?: AbortSignal,
     retainedDecodedRecordIds?: readonly string[],
-    onProgress?: (
-      result: McapPlaybackWorkerResultByType["readSynchronizedMessages"],
-    ) => void,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
     const message = createRpcRequest(
@@ -118,7 +114,6 @@ export class McapPlaybackWorkerTransport {
               cleanup: () => signal.removeEventListener("abort", cancel),
             }
           : {}),
-        ...(onProgress ? { onProgress } : {}),
         reject,
         resolve: resolve as PendingRequest["resolve"],
         sourceKey,
@@ -178,8 +173,26 @@ export class McapPlaybackWorkerTransport {
    * no response, so local settlement is what keeps consumers from hanging.
    */
   cancelStreams(): number[] {
+    return this.cancelPendingStreams(() => true);
+  }
+
+  /** Cancels matching pending streams while preserving unrelated lanes. */
+  cancelPendingStreams(
+    filter: (pending: {
+      readonly supersessionKeys: readonly string[];
+      readonly type: McapPlaybackWorkerStreamType;
+    }) => boolean,
+  ): number[] {
     const cancelledIds: number[] = [];
     for (const [id, stream] of [...this.streams]) {
+      if (
+        !filter({
+          supersessionKeys: stream.supersessionKeys,
+          type: stream.type,
+        })
+      ) {
+        continue;
+      }
       this.failStream(id, stream, new EpisodeReadCancelledError());
       cancelledIds.push(id);
     }
@@ -197,9 +210,18 @@ export class McapPlaybackWorkerTransport {
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
     signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
+    supersessionKeys: readonly string[] = [],
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     const id = this.nextRequestId++;
-    const message = createRpcRequest(id, sourceKey, type, payload, priority);
+    const message = createRpcRequest(
+      id,
+      sourceKey,
+      type,
+      payload,
+      priority,
+      retainedDecodedRecordIds,
+    );
     const cancel = () => {
       const pending = this.streams.get(id);
       if (!pending) return;
@@ -221,6 +243,8 @@ export class McapPlaybackWorkerTransport {
       rejectors: [],
       resolvers: [],
       sourceKey,
+      supersessionKeys,
+      type,
       values: [],
     };
 
@@ -263,17 +287,12 @@ export class McapPlaybackWorkerTransport {
       this.onTransport?.(response.transport);
     }
 
-    const pending = this.pending.get(response.id);
-    if (pending && response.ok && "progress" in response) {
-      pending.onProgress?.(response.result);
-      return;
-    }
-
     if (response.ok && "stream" in response) {
       this.handleStreamResponse(response);
       return;
     }
 
+    const pending = this.pending.get(response.id);
     if (pending) {
       // A response can arrive after the client has moved to another source.
       // It still owns this request id, so settle and remove it instead of

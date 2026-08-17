@@ -118,16 +118,17 @@ interface ResourceClient {
   readSynchronizedMessages(
     request: {
       readonly activeTimeline?: "log";
-      readonly earlyDeliveryTopics?: readonly string[];
+      readonly settlementPriorityTopics?: readonly string[];
       readonly source: ByteSourceDescriptor;
       readonly streamPolicies?: StreamSyncPolicies;
       readonly timeNs: bigint;
       readonly topics: readonly string[];
     },
     options?: {
-      readonly onSynchronizedProgress?: (
-        window: SynchronizedMessageWindow,
-      ) => void;
+      readonly onTopicSettlement?: (settlement: {
+        readonly topic: string;
+        readonly window: SynchronizedMessageWindow;
+      }) => void;
       readonly signal?: AbortSignal;
     },
   ): Promise<SynchronizedMessageWindow>;
@@ -1325,8 +1326,11 @@ describe("stream status + buffering feedback", () => {
     const storeCapture = capturePlaybackStore();
     let dataStream: DataStream | null = null;
     const sourceARead = deferred<SynchronizedMessageWindow>();
-    let sourceAProgress:
-      | ((window: SynchronizedMessageWindow) => void)
+    let sourceASettlement:
+      | ((settlement: {
+          readonly topic: string;
+          readonly window: SynchronizedMessageWindow;
+        }) => void)
       | undefined;
     const readSynchronizedMessages = vi.fn(
       (
@@ -1334,7 +1338,7 @@ describe("stream status + buffering feedback", () => {
         options?: Parameters<ResourceClient["readSynchronizedMessages"]>[1],
       ) => {
         if (request.source.sourceId === sourceA.sourceId) {
-          sourceAProgress = options?.onSynchronizedProgress;
+          sourceASettlement = options?.onTopicSettlement;
           return sourceARead.promise;
         }
         return new Promise<SynchronizedMessageWindow>(() => undefined);
@@ -1372,7 +1376,10 @@ describe("stream status + buffering feedback", () => {
     });
     rerender(<Harness {...props} source={null} />);
     await act(async () => {
-      sourceAProgress?.(createMultiStreamWindow(0n, [STREAM]));
+      sourceASettlement?.({
+        topic: STREAM,
+        window: createMultiStreamWindow(0n, [STREAM]),
+      });
       sourceARead.resolve(
         createWindow({
           timeNs: 0n,
@@ -1440,13 +1447,16 @@ describe("stream status + buffering feedback", () => {
     });
   });
 
-  it("publishes one early surface before final blocking readiness", async () => {
+  it("becomes blocking-ready before a non-blocking settlement", async () => {
     const current = deferred<SynchronizedMessageWindow>();
     const source = createSource("atomic-current-delivery");
     const storeCapture = capturePlaybackStore();
     const onPlayheadDataReady = vi.fn();
-    let publishProgress:
-      | ((window: SynchronizedMessageWindow) => void)
+    let publishSettlement:
+      | ((settlement: {
+          readonly topic: string;
+          readonly window: SynchronizedMessageWindow;
+        }) => void)
       | undefined;
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(
@@ -1458,7 +1468,7 @@ describe("stream status + buffering feedback", () => {
           _request: Parameters<ResourceClient["readSynchronizedMessages"]>[0],
           options?: Parameters<ResourceClient["readSynchronizedMessages"]>[1],
         ) => {
-          publishProgress = options?.onSynchronizedProgress;
+          publishSettlement = options?.onTopicSettlement;
           return current.promise;
         },
       ),
@@ -1484,11 +1494,11 @@ describe("stream status + buffering feedback", () => {
     });
     expect(client.readSynchronizedMessages).toHaveBeenCalledWith(
       expect.objectContaining({
-        earlyDeliveryTopics: [STREAM, LIDAR_STREAM],
+        settlementPriorityTopics: [STREAM, LIDAR_STREAM],
         topics: [STREAM, LIDAR_STREAM, MAP_STREAM],
       }),
       expect.objectContaining({
-        onSynchronizedProgress: expect.any(Function),
+        onTopicSettlement: expect.any(Function),
       }),
     );
     expect(getStreamValue(store, STREAM)).toBeNull();
@@ -1497,7 +1507,10 @@ describe("stream status + buffering feedback", () => {
     expect(onPlayheadDataReady).not.toHaveBeenCalled();
 
     await act(async () => {
-      publishProgress?.(createMultiStreamWindow(0n, [STREAM]));
+      publishSettlement?.({
+        topic: STREAM,
+        window: createMultiStreamWindow(0n, [STREAM]),
+      });
     });
     await waitFor(() => {
       expect(getStreamValue(store, STREAM)).not.toBeNull();
@@ -1505,6 +1518,18 @@ describe("stream status + buffering feedback", () => {
     expect(getStreamValue(store, LIDAR_STREAM)).toBeNull();
     expect(getStreamValue(store, MAP_STREAM)).toBeNull();
     expect(onPlayheadDataReady).not.toHaveBeenCalled();
+
+    await act(async () => {
+      publishSettlement?.({
+        topic: LIDAR_STREAM,
+        window: createMultiStreamWindow(0n, [LIDAR_STREAM]),
+      });
+    });
+    await waitFor(() => {
+      expect(getStreamValue(store, LIDAR_STREAM)).not.toBeNull();
+      expect(onPlayheadDataReady).toHaveBeenCalled();
+    });
+    expect(getStreamValue(store, MAP_STREAM)).toBeNull();
 
     await act(async () => {
       current.resolve(
@@ -3372,15 +3397,20 @@ function useTestSession(
                       await client.readSynchronizedMessages(
                         {
                           activeTimeline: "log",
-                          earlyDeliveryTopics: request.earlyDeliveryStreams,
+                          settlementPriorityTopics:
+                            request.settlementPriorityStreams,
                           source,
                           streamPolicies: request.streamPolicies,
                           timeNs: request.timeNs,
                           topics: request.streams,
                         },
                         {
-                          onSynchronizedProgress: request.onProgress
-                            ? (window) => request.onProgress?.(toWindow(window))
+                          onTopicSettlement: request.onStreamSettlement
+                            ? ({ topic, window }) =>
+                                request.onStreamSettlement?.({
+                                  stream: topic,
+                                  window: toWindow(window),
+                                })
                             : undefined,
                           signal: request.signal,
                         },

@@ -20,9 +20,10 @@ vi.mock("./worker-resource-client", () => ({
     const client: WorkerClientMock = {
       dispose: vi.fn(),
       readSynchronizedMessages: vi.fn(async (_request, options) => {
-        options?.onSynchronizedProgress?.(
-          workerResourceClientMock.synchronizedResult,
-        );
+        options?.onTopicSettlement?.({
+          topic: "/camera",
+          window: workerResourceClientMock.synchronizedResult,
+        });
         return workerResourceClientMock.synchronizedResult;
       }),
       readTopics: vi.fn(async () => ({
@@ -79,7 +80,7 @@ describe("MCAP playback worker lifecycle", () => {
     expect(workerResourceClientMock.clients[4]).not.toBe(parked);
   });
 
-  it("clones progress without detaching the terminal union", async () => {
+  it("transfers settled payloads once and omits them from the terminal item", async () => {
     const bytes = new Uint8Array([1, 2, 3]);
     workerResourceClientMock.synchronizedResult = synchronizedWindow(bytes);
     const workerScope: WorkerScopeMock = {
@@ -95,7 +96,7 @@ describe("MCAP playback worker lifecycle", () => {
     dispatch(workerScope, {
       id: 1,
       payload: {
-        earlyDeliveryTopics: ["/camera"],
+        settlementPriorityTopics: ["/camera"],
         source: { sizeBytes: "1024", sourceId: "source:1", url: "mcap://1" },
         timeNs: 1n,
         topics: ["/camera", "/lidar"],
@@ -106,19 +107,28 @@ describe("MCAP playback worker lifecycle", () => {
     } as McapPlaybackWorkerRequest);
 
     await vi.waitFor(() => {
-      expect(workerScope.postMessage).toHaveBeenCalledTimes(2);
+      expect(workerScope.postMessage).toHaveBeenCalledTimes(3);
     });
     expect(workerScope.postMessage.mock.calls[0]).toEqual([
-      expect.objectContaining({ ok: true, progress: true }),
-      [],
+      expect.objectContaining({
+        item: expect.objectContaining({ kind: "topic-settlement" }),
+        ok: true,
+        stream: true,
+      }),
+      expect.any(Array),
     ]);
+    expect(workerScope.postMessage.mock.calls[0]?.[1]).toHaveLength(1);
     expect(workerScope.postMessage.mock.calls[1]?.[0]).toEqual(
-      expect.objectContaining({ id: 1, ok: true }),
+      expect.objectContaining({
+        items: [expect.objectContaining({ kind: "terminal" })],
+        ok: true,
+        stream: true,
+      }),
     );
-    expect(workerScope.postMessage.mock.calls[1]?.[0]).not.toHaveProperty(
-      "progress",
+    expect(workerScope.postMessage.mock.calls[1]?.[1]).toEqual([]);
+    expect(workerScope.postMessage.mock.calls[2]?.[0]).toEqual(
+      expect.objectContaining({ done: true, ok: true, stream: true }),
     );
-    expect(workerScope.postMessage.mock.calls[1]?.[1]).toHaveLength(1);
     expect(
       workerScope.postMessage.mock.calls.some(
         ([response]) => response.ok === false,
@@ -126,16 +136,14 @@ describe("MCAP playback worker lifecycle", () => {
     ).toBe(false);
   });
 
-  it("returns the terminal union when progress delivery fails", async () => {
+  it("keeps the terminal event payload-free after topic settlement", async () => {
     workerResourceClientMock.synchronizedResult = synchronizedWindow(
       new Uint8Array([1, 2, 3]),
     );
     const workerScope: WorkerScopeMock = {
       close: vi.fn(),
       onmessage: null,
-      postMessage: vi.fn((response) => {
-        if (response.progress) throw new DOMException("clone failed");
-      }),
+      postMessage: vi.fn(),
     };
     vi.stubGlobal("self", workerScope);
     await import("./playback-worker");
@@ -143,7 +151,7 @@ describe("MCAP playback worker lifecycle", () => {
     dispatch(workerScope, {
       id: 1,
       payload: {
-        earlyDeliveryTopics: ["/camera"],
+        settlementPriorityTopics: ["/camera"],
         source: { sizeBytes: "1024", sourceId: "source:1", url: "mcap://1" },
         timeNs: 1n,
         topics: ["/camera", "/lidar"],
@@ -154,11 +162,15 @@ describe("MCAP playback worker lifecycle", () => {
     } as McapPlaybackWorkerRequest);
 
     await vi.waitFor(() => {
-      expect(workerScope.postMessage).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 1, ok: true }),
-        expect.any(Array),
-      );
+      expect(workerScope.postMessage).toHaveBeenCalledTimes(3);
     });
+    const terminalItems = workerScope.postMessage.mock.calls[1]?.[0].items;
+    expect(terminalItems).toEqual([
+      expect.objectContaining({
+        kind: "terminal",
+        window: expect.objectContaining({ messages: [], messagesByTopic: {} }),
+      }),
+    ]);
     expect(
       workerScope.postMessage.mock.calls.some(
         ([response]) => response.ok === false,

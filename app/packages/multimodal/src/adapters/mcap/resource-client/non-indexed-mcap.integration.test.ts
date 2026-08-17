@@ -52,22 +52,22 @@ describe("non-indexed MCAP production contract", () => {
       },
       registry: createMcapDecoderRegistry(),
     });
-    const progress: string[][] = [];
+    const settlements: string[][] = [];
     const windows = await readMcapSynchronizedMessageBatch({
       decodeClient,
-      onWindowProgress: (window) => {
-        progress.push(Object.keys(window.messagesByTopic));
+      onTopicSettlement: ({ window }) => {
+        settlements.push(Object.keys(window.messagesByTopic));
       },
       reader,
       request: {
-        earlyDeliveryTopics: ["/pose"],
+        settlementPriorityTopics: ["/pose"],
         source,
         timeNs: [2_000_000_000n],
         topics: ["/pose"],
       },
       timeline,
     });
-    expect(progress).toEqual([["/pose"]]);
+    expect(settlements).toEqual([["/pose"]]);
     expect(windows[0]?.messagesByTopic["/pose"]?.[0]?.timelineTimeNs).toBe(0n);
 
     const transforms = await readMcapFrameTransformWindow({

@@ -413,31 +413,39 @@ class WorkerMcapResourceClient implements McapResourceClient {
     } catch (error) {
       return Promise.reject(error);
     }
-    return this.request(
-      "readSynchronizedMessages",
-      request,
-      undefined,
-      options?.signal,
-      lease.recordIds,
-      options?.onSynchronizedProgress
-        ? (progress) => {
-            const hydrated = hydrateSynchronizedWindows(
-              [progress],
-              lease,
-              this.decodedRecords,
-            )[0];
-            if (hydrated) options.onSynchronizedProgress?.(hydrated);
-          }
-        : undefined,
-    )
-      .then(
-        (window) =>
-          hydrateSynchronizedWindows([window], lease, this.decodedRecords)[0],
-      )
-      .then((window) => {
-        if (!window) throw new Error("Expected synchronized MCAP window");
-        return window;
-      })
+    const read = async () => {
+      const settlements = new Map<string, McapSynchronizedMessageWindow>();
+      let terminal: McapSynchronizedMessageWindow | undefined;
+      for await (const item of this.streamRequest(
+        "readSynchronizedMessages",
+        request,
+        undefined,
+        options?.signal,
+        lease.recordIds,
+      )) {
+        const window = hydrateSynchronizedWindows(
+          [item.window],
+          lease,
+          this.decodedRecords,
+        )[0];
+        if (!window) throw new Error("Expected synchronized MCAP stream item");
+        if (item.kind === "topic-settlement") {
+          if (settlements.has(item.topic)) continue;
+          settlements.set(item.topic, window);
+          options?.onTopicSettlement?.({ topic: item.topic, window });
+        } else {
+          terminal = window;
+        }
+      }
+      if (!terminal)
+        throw new Error("Expected synchronized MCAP terminal window");
+      return mergeSynchronizedTopicSettlements(
+        request.topics,
+        settlements,
+        terminal,
+      );
+    };
+    return read()
       .catch((error) => {
         if (error instanceof RetainedDecodedRecordProtocolError) {
           this.decodedRecords.clear();
@@ -492,9 +500,6 @@ class WorkerMcapResourceClient implements McapResourceClient {
     priority?: McapPlaybackWorkerPriority,
     signal?: AbortSignal,
     retainedDecodedRecordIds?: readonly string[],
-    onProgress?: (
-      result: McapPlaybackWorkerResultByType["readSynchronizedMessages"],
-    ) => void,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     if (this.disposed) {
       return Promise.reject(new Error("MCAP worker client is disposed"));
@@ -517,12 +522,17 @@ class WorkerMcapResourceClient implements McapResourceClient {
       type,
     });
     if (supersessionKeys.length > 0) {
-      const cancelledIds = lane.transport.cancelPending((pending) =>
+      const overlaps = (pending: {
+        readonly supersessionKeys: readonly string[];
+      }) =>
         haveMcapSupersessionKeyOverlap(
           pending.supersessionKeys,
           supersessionKeys,
-        ),
-      );
+        );
+      const cancelledIds = [
+        ...lane.transport.cancelPending(overlaps),
+        ...lane.transport.cancelPendingStreams(overlaps),
+      ];
       this.postCancelRequests(lane, cancelledIds);
       // A burst of obsolete presentation work is also a seek/scrub signal.
       // Give the byte link back to the newest foreground frame immediately;
@@ -538,7 +548,6 @@ class WorkerMcapResourceClient implements McapResourceClient {
       supersessionKeys,
       signal,
       retainedDecodedRecordIds,
-      onProgress,
     );
   }
 
@@ -547,6 +556,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
     signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     if (this.disposed) {
       throw new Error("MCAP worker client is disposed");
@@ -557,6 +567,28 @@ class WorkerMcapResourceClient implements McapResourceClient {
     const sourceKey = byteSourceAccessKey(payload.source);
     this.ensureActiveSource(sourceKey);
     const lane = this.laneForPriority(effectivePriority);
+    const supersessionKeys = mcapForegroundSupersessionKeys({
+      generation: this.foregroundGeneration,
+      payload,
+      priority: effectivePriority,
+      sourceKey,
+      type,
+    });
+    if (supersessionKeys.length > 0) {
+      const overlaps = (pending: {
+        readonly supersessionKeys: readonly string[];
+      }) =>
+        haveMcapSupersessionKeyOverlap(
+          pending.supersessionKeys,
+          supersessionKeys,
+        );
+      const cancelledIds = [
+        ...lane.transport.cancelPending(overlaps),
+        ...lane.transport.cancelPendingStreams(overlaps),
+      ];
+      this.postCancelRequests(lane, cancelledIds);
+      if (cancelledIds.length > 0) this.cancelIdleReads();
+    }
     try {
       yield* lane.transport.stream(
         this.workerForLane(lane, sourceKey),
@@ -565,6 +597,8 @@ class WorkerMcapResourceClient implements McapResourceClient {
         payload,
         effectivePriority,
         signal,
+        retainedDecodedRecordIds,
+        supersessionKeys,
       );
     } finally {
       this.maybeReleaseBulkLane(lane);
@@ -738,6 +772,30 @@ function hydrateSynchronizedWindows(
       ]),
     ),
   }));
+}
+
+function mergeSynchronizedTopicSettlements(
+  topics: readonly string[],
+  settlements: ReadonlyMap<string, McapSynchronizedMessageWindow>,
+  terminal: McapSynchronizedMessageWindow,
+): McapSynchronizedMessageWindow {
+  const messagesByTopic: Record<string, readonly McapDecodedMessage[]> = {
+    ...terminal.messagesByTopic,
+  };
+  for (const topic of topics) {
+    const settlement = settlements.get(topic);
+    if (settlement) {
+      messagesByTopic[topic] = settlement.messagesByTopic[topic] ?? [];
+    }
+  }
+  const messages = Object.values(messagesByTopic)
+    .flat()
+    .sort((left, right) => {
+      if (left.timelineTimeNs < right.timelineTimeNs) return -1;
+      if (left.timelineTimeNs > right.timelineTimeNs) return 1;
+      return left.topic.localeCompare(right.topic);
+    });
+  return { ...terminal, messages, messagesByTopic };
 }
 
 function resourcePriorityToWorkerPriority(

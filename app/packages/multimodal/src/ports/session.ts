@@ -271,15 +271,25 @@ export interface TransformPlacementReadResult {
   readonly samples: readonly TransformSample[];
 }
 
+/** One authoritative stream result within a synchronized presentation read. */
+export interface SynchronizedStreamSettlement {
+  /** The only stream whose ownership is settled by this window. */
+  readonly stream: StreamId;
+  /** Authoritative payload, empty result, or diagnostics for `stream`. */
+  readonly window: SynchronizedFrameWindow;
+}
+
 /** One synchronized playback read around a single presentation time. */
 export interface SynchronizedPlaybackReadRequest {
   readonly defaultStreamPolicy?: StreamSyncPolicy;
-  /** Active surfaces eligible for one cost-selected early delivery. */
-  readonly earlyDeliveryStreams?: readonly StreamId[];
-  /** Receives at most one usable surface while the shared read continues. */
-  readonly onProgress?: (window: SynchronizedFrameWindow) => void;
+  /** Receives ordered, authoritative per-stream ownership settlements. */
+  readonly onStreamSettlement?: (
+    settlement: SynchronizedStreamSettlement,
+  ) => void;
   /** Active point-cloud color source requested per stream. */
   readonly pointCloudColorBy?: Readonly<Record<StreamId, string>>;
+  /** Streams eligible for cost-based first settlement. */
+  readonly settlementPriorityStreams?: readonly StreamId[];
   readonly streamPolicies?: StreamSyncPolicies;
   readonly streams: readonly StreamId[];
   readonly signal?: AbortSignal;

@@ -6,6 +6,7 @@ import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerRequest,
   type McapPlaybackWorkerResponse,
+  type McapPlaybackWorkerSynchronizedWindow,
 } from "../worker/playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
 import { dehydrateMcapFrameTransformSet } from "../transforms/wire";
@@ -339,7 +340,7 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     const currentWindow = createSynchronizedWindow(15n);
-    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    respondSynchronizedTerminal(workers[1], 1, currentWindow);
     await expect(current).resolves.toEqual(currentWindow);
 
     workers[0].respond({
@@ -350,19 +351,19 @@ describe("worker-backed MCAP resource client", () => {
     await expect(transforms).resolves.toEqual({ samples: [] });
   });
 
-  it("publishes one synchronized surface without settling the union", async () => {
+  it("streams authoritative topic settlements before the terminal union", async () => {
     const { client, workers } = createClientHarness();
-    const onSynchronizedProgress = vi.fn();
+    const onTopicSettlement = vi.fn();
     let settled = false;
     const current = client
       .readSynchronizedMessages(
         {
-          earlyDeliveryTopics: ["/camera", "/lidar"],
+          settlementPriorityTopics: ["/camera", "/lidar"],
           source: createSource("source:1"),
           timeNs: 15n,
           topics: ["/camera", "/lidar"],
         },
-        { onSynchronizedProgress },
+        { onTopicSettlement },
       )
       .finally(() => {
         settled = true;
@@ -370,26 +371,37 @@ describe("worker-backed MCAP resource client", () => {
     const worker = workers[0];
 
     expect(worker.messages[1]).toMatchObject({
-      payload: { earlyDeliveryTopics: ["/camera", "/lidar"] },
+      payload: { settlementPriorityTopics: ["/camera", "/lidar"] },
       type: "readSynchronizedMessages",
     });
 
-    const progress = createSynchronizedWindow(15n);
+    const settlement = createSynchronizedWindow(15n);
     worker.respond({
+      done: false,
       id: 1,
+      item: {
+        kind: "topic-settlement",
+        topic: "/camera",
+        window: settlement,
+      },
       ok: true,
-      progress: true,
-      result: progress,
+      stream: true,
     });
-    await Promise.resolve();
-
-    expect(onSynchronizedProgress).toHaveBeenCalledOnce();
-    expect(onSynchronizedProgress).toHaveBeenCalledWith(progress);
+    await vi.waitFor(() => {
+      expect(onTopicSettlement).toHaveBeenCalledOnce();
+    });
+    expect(onTopicSettlement).toHaveBeenCalledWith({
+      topic: "/camera",
+      window: settlement,
+    });
     expect(settled).toBe(false);
 
     const complete = createSynchronizedWindow(15n);
-    worker.respond({ id: 1, ok: true, result: complete });
-    await expect(current).resolves.toEqual(complete);
+    respondSynchronizedTerminal(worker, 1, complete);
+    await expect(current).resolves.toEqual({
+      ...complete,
+      messagesByTopic: { "/camera": [] },
+    });
     expect(settled).toBe(true);
   });
 
@@ -562,11 +574,11 @@ describe("worker-backed MCAP resource client", () => {
       timelineTimeNs: decoded.timelineTimeNs,
       topic: decoded.topic,
     };
-    interactiveWorker.respond({
-      id: 1,
-      ok: true,
-      result: createSynchronizedWindowWithMessage(reference),
-    });
+    respondSynchronizedTerminal(
+      interactiveWorker,
+      1,
+      createSynchronizedWindowWithMessage(reference),
+    );
 
     await expect(scrub).resolves.toMatchObject({ messages: [decoded] });
     expect((await scrub).messages[0]).toBe(playbackWindow?.messages[0]);
@@ -870,7 +882,7 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     const currentWindow = createSynchronizedWindow(1n);
-    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    respondSynchronizedTerminal(workers[1], 1, currentWindow);
     await expect(current).resolves.toEqual(currentWindow);
 
     workers[0].respond({ id: 1, ok: true, result: [] });
@@ -920,7 +932,7 @@ describe("worker-backed MCAP resource client", () => {
     ]);
 
     const currentWindow = createSynchronizedWindow(1n);
-    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    respondSynchronizedTerminal(workers[1], 1, currentWindow);
     await expect(current).resolves.toEqual(currentWindow);
 
     workers[0].respond({ id: 1, ok: true, result: [] });
@@ -957,7 +969,7 @@ describe("worker-backed MCAP resource client", () => {
     ]);
 
     const window = createSynchronizedWindow(2n);
-    worker.respond({ id: 2, ok: true, result: window });
+    respondSynchronizedTerminal(worker, 2, window);
     await expect(latest).resolves.toEqual(window);
   });
 
@@ -1508,6 +1520,21 @@ function createTopic(topic: string) {
     },
     streamId: topic,
   });
+}
+
+function respondSynchronizedTerminal(
+  worker: MockWorker,
+  id: number,
+  window: McapPlaybackWorkerSynchronizedWindow,
+) {
+  worker.respond({
+    done: false,
+    id,
+    item: { kind: "terminal", window },
+    ok: true,
+    stream: true,
+  });
+  worker.respond({ done: true, id, ok: true, stream: true });
 }
 
 class MockWorker {

@@ -827,8 +827,8 @@ export interface McapTimelineRange {
 export interface McapReadSynchronizedMessagesRequest {
   /** Active point-cloud color source requested per MCAP topic. */
   readonly pointCloudColorByByTopic?: Readonly<Record<string, string>>;
-  /** Topics eligible for one cost-selected early delivery. */
-  readonly earlyDeliveryTopics?: readonly string[];
+  /** Topics eligible for one cost-selected first settlement. */
+  readonly settlementPriorityTopics?: readonly string[];
   /**
    * Playback timeline time around which per-topic messages are selected.
    */
@@ -893,11 +893,19 @@ export interface McapResourceReadOptions {
   readonly signal?: AbortSignal;
 }
 
+/** One authoritative topic result from a synchronized union read. */
+export interface McapSynchronizedTopicSettlement {
+  /** The only topic whose ownership is settled by this window. */
+  readonly topic: string;
+  /** Authoritative payload, empty result, or diagnostics for `topic`. */
+  readonly window: McapSynchronizedMessageWindow;
+}
+
 /** Options for one synchronized current-frame read. */
 export interface McapSynchronizedMessagesReadOptions extends McapResourceReadOptions {
-  /** Receives at most one topic-complete window before the union settles. */
-  readonly onSynchronizedProgress?: (
-    window: McapSynchronizedMessageWindow,
+  /** Receives ordered, authoritative per-topic ownership settlements. */
+  readonly onTopicSettlement?: (
+    settlement: McapSynchronizedTopicSettlement,
   ) => void;
 }
 

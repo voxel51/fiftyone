@@ -23,11 +23,12 @@ import type {
 
 type McapPlaybackWorkerSynchronizedMessagesReadOptions = Omit<
   McapSynchronizedMessagesReadOptions,
-  "onSynchronizedProgress"
+  "onTopicSettlement"
 > & {
-  readonly onSynchronizedProgress?: (
-    window: McapPlaybackWorkerSynchronizedWindow,
-  ) => void;
+  readonly onTopicSettlement?: (settlement: {
+    readonly topic: string;
+    readonly window: McapPlaybackWorkerSynchronizedWindow;
+  }) => void;
 };
 
 export type McapPlaybackWorkerResourceClient = Omit<
@@ -124,7 +125,7 @@ export function createWorkerResourceClient({
       return client.readSynchronizedMessagesWithReuse(
         request,
         reuseRetainedDecodedMessage,
-        options?.onSynchronizedProgress,
+        options?.onTopicSettlement,
         options,
       );
     },

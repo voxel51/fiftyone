@@ -4,7 +4,7 @@ import {
   INDEXED_RECORD_ID_OPTION_PART_COUNT,
   mintIndexedRecordIdentity,
   parseIndexedRecordIdentity,
-  selectEarlyDeliveryTopic,
+  selectFirstSettlementTopic,
 } from "./read-synchronized-message-batch";
 
 describe("indexed record identity", () => {
@@ -46,7 +46,7 @@ describe("indexed record identity", () => {
   });
 });
 
-describe("early synchronized delivery", () => {
+describe("synchronized settlement order", () => {
   it.each([
     [
       "forward",
@@ -72,9 +72,9 @@ describe("early synchronized delivery", () => {
         readonly { readonly bytes: number }[],
       ])[] = selectedByTopic;
       await expect(
-        selectEarlyDeliveryTopic({
-          earlyDeliveryTopics: ["/large", "/small"],
+        selectFirstSettlementTopic({
           estimateCandidateBytes: (candidate) => candidate.bytes,
+          settlementPriorityTopics: ["/large", "/small"],
           selectedByTopic: candidates,
         }),
       ).resolves.toBe("/small");

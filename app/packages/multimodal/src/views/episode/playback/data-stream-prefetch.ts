@@ -5,7 +5,6 @@ import {
   getLoopEnd,
   getLoopStart,
   getPlayhead,
-  setStreamValue,
   subscribeCurrentTime,
   subscribeIsPlayPending,
   type PlaybackStore,
@@ -90,7 +89,7 @@ export interface DataStreamPrefetcher {
   fetchCurrentFrame(
     tick: bigint,
     activeStreams: string[],
-    earlyDeliveryStreams?: readonly string[],
+    settlementPriorityStreams?: readonly string[],
   ): boolean;
   isStreamPending(tickKey: string, stream: string): boolean;
 }
@@ -232,6 +231,7 @@ export function createDataStreamPrefetcher({
   }): void => {
     if (getSourceEpoch() !== sourceEpoch) return;
     const decodeFailures = decodeFailuresByStream(windows);
+    const streamSet = new Set(streams);
     handleFetchSuccess(streams.filter((stream) => !decodeFailures.has(stream)));
 
     const activeFetchedStreams = activeStreamsInCaches(caches, streams);
@@ -248,6 +248,7 @@ export function createDataStreamPrefetcher({
       );
     }
     for (const [stream, failure] of decodeFailures) {
+      if (!streamSet.has(stream)) continue;
       handleFetchFailure(
         new Error(failure.messages.join("; ")),
         failure.ticks,
@@ -278,35 +279,6 @@ export function createDataStreamPrefetcher({
     if (getSourceEpoch() !== sourceEpoch) return;
     if (isEpisodeReadCancelledError(error)) return;
     handleFetchFailure(error, ticks, streams);
-  };
-
-  const deliverProgressWindow = ({
-    sourceEpoch,
-    streams,
-    window,
-  }: {
-    readonly sourceEpoch: number;
-    readonly streams: readonly string[];
-    readonly window: Parameters<typeof decodeFailuresByStream>[0][number];
-  }): void => {
-    if (getSourceEpoch() !== sourceEpoch) return;
-    for (const stream of activeStreamsInCaches(caches, streams)) {
-      if (!isStreamTimeAvailable(stream, window.timeNs)) continue;
-      const message = window.framesByStream[stream]?.[0];
-      const visualization = message?.output.visualization;
-      if (!message || visualization == null) continue;
-      const frame: StreamPlaybackFrame<unknown> = {
-        ageNs:
-          window.timeNs >= message.timestampNs
-            ? window.timeNs - message.timestampNs
-            : 0n,
-        contentTimeNs: message.timestampNs,
-        frame: visualization,
-        requestedTimeNs: window.timeNs,
-      };
-      lastFrames.set(stream, frame);
-      setStreamValue(store, stream, frame);
-    }
   };
 
   const fetchBatch: DataStreamPrefetcher["fetchBatch"] = (
@@ -377,7 +349,7 @@ export function createDataStreamPrefetcher({
   const fetchCurrentFrame: DataStreamPrefetcher["fetchCurrentFrame"] = (
     tick,
     activeStreams,
-    earlyDeliveryStreams,
+    settlementPriorityStreams,
   ) => {
     if (activeStreams.length === 0) return false;
 
@@ -389,60 +361,65 @@ export function createDataStreamPrefetcher({
     );
     if (streamsToFetch.length === 0) return false;
     const streamsToFetchSet = new Set(streamsToFetch);
-    const filteredEarlyDeliveryStreams = earlyDeliveryStreams?.filter(
+    const filteredSettlementPriorityStreams = settlementPriorityStreams?.filter(
       (stream) => streamsToFetchSet.has(stream),
     );
-    const earlyDeliveryStreamsToFetch = filteredEarlyDeliveryStreams?.length
-      ? filteredEarlyDeliveryStreams
-      : undefined;
+    const settlementPriorityStreamsToFetch =
+      filteredSettlementPriorityStreams?.length
+        ? filteredSettlementPriorityStreams
+        : undefined;
+    const unsettledStreams = new Set(streamsToFetch);
 
     markStreamsPending([tickKey], streamsToFetch);
     const controller = createReadController();
     void playback
       .readSynchronized({
-        earlyDeliveryStreams: earlyDeliveryStreamsToFetch,
-        onProgress: (window) => {
+        onStreamSettlement: ({ stream, window }) => {
           if (
             controller.signal.aborted ||
             getSourceEpoch() !== sourceEpoch ||
             window.timeNs !== tick ||
-            getIndex()?.nearestTick(getPlayhead(store)) !== tick
+            getIndex()?.nearestTick(getPlayhead(store)) !== tick ||
+            !unsettledStreams.has(stream)
           ) {
             return;
           }
-          const progressedStreams = Object.keys(window.framesByStream).filter(
-            (stream) => streamsToFetchSet.has(stream),
-          );
-          if (progressedStreams.length === 0) return;
-          deliverProgressWindow({
-            sourceEpoch,
-            streams: progressedStreams,
-            window,
-          });
-          // The full union retains pending and readiness ownership. The store
-          // update can paint this surface without publishing an intermediate
-          // lifecycle state that remounts other consumers.
+          unsettledStreams.delete(stream);
+          try {
+            deliverWindows({
+              activeStreams,
+              sourceEpoch,
+              streams: [stream],
+              windows: [window],
+            });
+          } finally {
+            finishFetch(sourceEpoch, [tickKey], [stream]);
+          }
         },
         pointCloudColorBy: getPointCloudColorBy(),
+        settlementPriorityStreams: settlementPriorityStreamsToFetch,
         streamPolicies: getStreamPolicies(),
         streams: streamsToFetch,
         signal: controller.signal,
         timeNs: tick,
       })
       .then((window) => {
+        const terminalStreams = [...unsettledStreams];
+        if (terminalStreams.length === 0) return;
         deliverWindows({
           activeStreams,
           sourceEpoch,
-          streams: streamsToFetch,
+          streams: terminalStreams,
           windows: [window],
         });
       })
       .catch((error) =>
-        handleRejectedFetch(error, sourceEpoch, [tick], streamsToFetch),
+        handleRejectedFetch(error, sourceEpoch, [tick], [...unsettledStreams]),
       )
       .finally(() => {
         activeControllers.delete(controller);
-        finishFetch(sourceEpoch, [tickKey], streamsToFetch);
+        finishFetch(sourceEpoch, [tickKey], [...unsettledStreams]);
+        unsettledStreams.clear();
       });
 
     return true;

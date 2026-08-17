@@ -114,6 +114,66 @@ describe("MCAP synchronized messages", () => {
     ]);
   });
 
+  it.each([
+    ["forward", ["/camera", "/lidar"]],
+    ["reverse", ["/lidar", "/camera"]],
+  ] as const)(
+    "settles every topic from one union read independent of %s request order",
+    async (_direction, topics) => {
+      const messages = [
+        createMessage(new Uint8Array(100), {
+          channelId: 7,
+          logTime: 100n,
+          publishTime: 101n,
+        }),
+        createMessage(new Uint8Array(10), {
+          channelId: 8,
+          logTime: 100n,
+          publishTime: 101n,
+        }),
+      ];
+      const readMessages = vi.fn(async function* () {
+        for (const message of messages) yield message;
+      });
+      const client = createInlineMcapResourceClient({
+        byteClient: { readBytes: vi.fn() },
+        decodeClient: createTestDecodeClient(),
+        readerFactory: vi.fn(async () =>
+          createReader({
+            channelsById: new Map([
+              [7, createChannel({ id: 7, topic: "/camera" })],
+              [8, createChannel({ id: 8, topic: "/lidar" })],
+            ]),
+            readMessages,
+          }),
+        ),
+      });
+      const settlements: string[] = [];
+
+      const window = await client.readSynchronizedMessages(
+        {
+          settlementPriorityTopics: ["/camera", "/lidar"],
+          source: createMcapSourceDescriptor(),
+          timeNs: 100n,
+          topics,
+        },
+        {
+          onTopicSettlement: ({ topic, window: settledWindow }) => {
+            settlements.push(topic);
+            expect(Object.keys(settledWindow.messagesByTopic)).toEqual([topic]);
+          },
+        },
+      );
+
+      expect(settlements).toEqual(["/lidar", "/camera"]);
+      expect(Object.keys(window.messagesByTopic).sort()).toEqual([
+        "/camera",
+        "/lidar",
+      ]);
+      expect(readMessages).toHaveBeenCalledOnce();
+    },
+  );
+
   it("contains payload decode failures to their topic and preserves shared decode work", async () => {
     const source = createMcapSourceDescriptor();
     const messages = [
