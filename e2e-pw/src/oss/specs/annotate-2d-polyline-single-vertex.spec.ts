@@ -99,6 +99,10 @@ const reopenSample = async (
 /** Draw the single-vertex polyline and class it `lane`. */
 const drawAndClass = async (modal: ModalPom) => {
   await modal.sidebar.annotate.polylineMode();
+  // the toolbar toggle installs the creation handler via an effect, so gate
+  // the click on its crosshair — with exactly one click, a swallowed click
+  // has no later vertex to self-heal on
+  await modal.sampleCanvas.move(...VERTEX, "crosshair");
   await modal.sampleCanvas.click(...VERTEX);
   await modal.sidebar.edit.selectFieldChoice("label", "lane");
   await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
