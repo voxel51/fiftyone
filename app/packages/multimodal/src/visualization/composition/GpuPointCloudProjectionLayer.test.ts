@@ -5,6 +5,7 @@ import { buildPointCloudRenderPayload } from "../../runtime/point-cloud-render-p
 import { createGpuPointCloudProjectionMaterial } from "./GpuPointCloudProjectionLayer";
 import {
   getGpuPointCloudProjectionResource,
+  prepareWebGlPointCloudProjectionColorAttribute,
   resetGpuPointCloudProjectionResourcesForTests,
 } from "./gpu-point-cloud-projection-resources";
 import { resolveGpuPointCloudColor } from "../scene-3d/gpu/gpu-point-cloud-color";
@@ -80,6 +81,43 @@ describe("GPU pointcloud projection material", () => {
     });
 
     expect(shader.material.colorNode).not.toBeNull();
+    shader.material.dispose();
+  });
+
+  it("binds ordinary expanded colors for the WebGL2 material path", () => {
+    const payload = buildPointCloudRenderPayload({
+      colors: new Float32Array([1, 0.5, 0]),
+      positions: new Float32Array([0, 0, 1]),
+    });
+    const color = resolveGpuPointCloudColor(payload, { colorBy: "rgb" });
+    const resource = getGpuPointCloudProjectionResource({
+      contentKey: "webgl-frame",
+      payload,
+      streamKey: "webgl-points",
+    });
+    const webGlColorAttribute = prepareWebGlPointCloudProjectionColorAttribute(
+      resource,
+      color,
+      1,
+    );
+    const shader = createGpuPointCloudProjectionMaterial({
+      calibrationHeight: 100,
+      calibrationWidth: 100,
+      color,
+      projection: {
+        kind: "pinhole",
+        projectionMatrix: new THREE.Matrix4(),
+      },
+      resource,
+      webGlColorAttribute,
+    });
+
+    expect(shader.material.colorNode).not.toBeNull();
+    expect(Array.from(webGlColorAttribute.array.slice(0, 3))).toEqual([
+      1,
+      expect.closeTo(0.5, 2),
+      0,
+    ]);
     shader.material.dispose();
   });
 

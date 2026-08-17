@@ -1210,7 +1210,10 @@ describe("stream status + buffering feedback", () => {
 
     await waitFor(
       () => {
-        expect(readSynchronizedMessages).toHaveBeenCalledTimes(2);
+        // Recovery intentionally stays live while STREAM remains a gap. Under
+        // load, a later scheduled retry can run before waitFor observes this
+        // one.
+        expect(readSynchronizedMessages.mock.calls[1]).toBeDefined();
       },
       { timeout: 2_000 },
     );

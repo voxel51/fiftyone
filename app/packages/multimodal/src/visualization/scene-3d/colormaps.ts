@@ -116,7 +116,7 @@ export function createPointCloudColormapLookup(
 }
 
 export function writeColormapLookupColor(
-  target: Float32Array,
+  target: Float32Array | number[],
   offset: number,
   lookup: PointCloudColormapLookup,
   t: number,
