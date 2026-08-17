@@ -9,7 +9,6 @@ type SourcePosterImage = Extract<
 
 export interface SourcePosterValue {
   readonly frame: SourcePosterImage["image"];
-  readonly registerConsumer: (consumerId: string) => () => void;
   readonly sourceKey: string;
   readonly streamId: string | null;
 }

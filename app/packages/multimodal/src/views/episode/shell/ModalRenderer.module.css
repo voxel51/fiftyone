@@ -23,6 +23,12 @@
   font-size: 11px;
 }
 
+.transitionStatus {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .playbackRoot {
   height: 100%;
   position: relative;
@@ -38,16 +44,6 @@
 .playbackRoot[data-episode-source-transitioning="true"] :global(img),
 .playbackRoot[data-episode-source-transitioning="true"] :global(video) {
   visibility: hidden;
-}
-
-/* Grid entry intentionally carries its target poster through this interval. */
-.playbackRoot[data-episode-source-transitioning="true"]
-  .posterOverlay
-  :global(canvas),
-.playbackRoot[data-episode-source-transitioning="true"]
-  .posterOverlay
-  :global(img) {
-  visibility: visible;
 }
 
 /* A grid-captured poster belongs to the incoming source, so it is safe to
@@ -170,18 +166,8 @@
   top: 30px;
 }
 
-.posterOverlay {
-  display: grid;
-  grid-template-columns: minmax(280px, 2fr) minmax(160px, 1fr);
-  inset: 6px;
-  pointer-events: none;
-  position: absolute;
-  z-index: 5;
-}
-
 @media (max-width: 760px) {
-  .preparingTiles,
-  .posterOverlay {
+  .preparingTiles {
     grid-template-columns: 1fr;
   }
 

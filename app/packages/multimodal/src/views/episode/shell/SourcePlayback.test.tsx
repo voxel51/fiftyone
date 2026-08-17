@@ -6,13 +6,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BYTE_SOURCE_READ_PROFILE,
@@ -39,7 +33,6 @@ import { SourcePlayback } from "./SourcePlayback";
 const playbackHarness = vi.hoisted(() => {
   const harness = {
     nextShellId: 0,
-    posterConsumerEnabled: true,
     sceneInventory: {
       error: null as string | null,
       sources: [] as Array<{ id: string; label: string; type: string }>,
@@ -76,6 +69,7 @@ vi.mock("./PlaybackShell", () => {
   const MockPlaybackShell = ({
     children,
     fileName,
+    headerActions,
     leftSidebar,
     mainOverlay,
     sceneSources,
@@ -83,6 +77,7 @@ vi.mock("./PlaybackShell", () => {
   }: {
     readonly children?: ReactNode;
     readonly fileName: string;
+    readonly headerActions?: ReactNode;
     readonly leftSidebar?: ReactNode;
     readonly mainOverlay?: ReactNode;
     readonly sceneSources?: readonly { id: string }[];
@@ -114,6 +109,7 @@ vi.mock("./PlaybackShell", () => {
               .sort()
               .join(",")}
           </span>
+          <div data-testid="shell-header-actions">{headerActions}</div>
           <button
             data-testid="shell-state"
             onClick={() => setShellState((value) => value + 1)}
@@ -174,11 +170,6 @@ vi.mock("./Streams", () => ({
     source: ByteSourceDescriptor | null;
   }) => {
     const sourcePoster = useSourcePoster();
-    const posterConsumerEnabled = playbackHarness.posterConsumerEnabled;
-    useLayoutEffect(() => {
-      if (!posterConsumerEnabled || !sourcePoster?.streamId) return undefined;
-      return sourcePoster.registerConsumer("mock-image-tile");
-    }, [posterConsumerEnabled, sourcePoster]);
     return (
       <>
         <span data-testid="stream-source">{source?.sourceId ?? "none"}</span>
@@ -214,7 +205,6 @@ describe("SourcePlayback", () => {
       streamCount: 3,
     };
     playbackHarness.nextShellId = 0;
-    playbackHarness.posterConsumerEnabled = true;
     playbackHarness.shellMounts = 0;
     playbackHarness.shellUnmounts = 0;
     playbackHarness.modalLayoutResult = {
@@ -237,7 +227,10 @@ describe("SourcePlayback", () => {
     playbackHarness.useSceneInventoryState.mockClear();
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   it("treats unsupported recordings as opened files with no previewable streams", () => {
     const session = {
@@ -349,6 +342,89 @@ describe("SourcePlayback", () => {
     expect(screen.getByTestId("stream-source-poster").textContent).toBe("none");
   });
 
+  it("keeps a bootstrap-only shell mounted while an unwarmed destination opens", () => {
+    const firstSource = createSource("bootstrap-a");
+    const secondSource = createSource("bootstrap-b");
+    publishSourceBootstrap(firstSource, {
+      manifest: bootstrapManifest("/camera/a"),
+      poster: bootstrapPoster(),
+      posterStreamId: "/camera/a",
+    });
+    playbackHarness.sceneInventory = {
+      error: null,
+      sources: [],
+      status: "loading",
+      streams: [],
+      streamCount: 0,
+    };
+
+    const view = render(
+      <SourcePlayback
+        session={null}
+        fileName="bootstrap-a.mcap"
+        source={firstSource}
+      />,
+    );
+    const shellInstance = screen
+      .getByTestId("playback-shell")
+      .getAttribute("data-instance-id");
+    fireEvent.click(screen.getByTestId("shell-state"));
+
+    view.rerender(
+      <SourcePlayback
+        session={null}
+        fileName="bootstrap-b.mcap"
+        source={secondSource}
+      />,
+    );
+
+    expect(screen.queryByTestId("episode-preparing-scaffold")).toBeNull();
+    expect(
+      screen.getByTestId("playback-shell").getAttribute("data-instance-id"),
+    ).toBe(shellInstance);
+    expect(screen.getByTestId("shell-state").textContent).toBe("1");
+    expect(screen.getByTestId("shell-file-name").textContent).toBe(
+      "bootstrap-b.mcap",
+    );
+    expect(screen.getByTestId("shell-sources").textContent).toBe("/camera/a");
+    expect(screen.getByTestId("stream-source").textContent).toBe("none");
+    expect(screen.getByTestId("stream-source-poster").textContent).toBe("none");
+
+    act(() => {
+      publishSourceBootstrap(secondSource, {
+        manifest: bootstrapManifest("/camera/b"),
+      });
+    });
+    expect(screen.getByTestId("shell-sources").textContent).toBe("/camera/b");
+    expect(
+      screen.getByTestId("playback-shell").getAttribute("data-instance-id"),
+    ).toBe(shellInstance);
+  });
+
+  it("shows compact transition feedback only after the loading delay", () => {
+    vi.useFakeTimers();
+    playbackHarness.sceneInventory = readyInventory("/camera");
+
+    render(
+      <SourcePlayback
+        session={{ activate: vi.fn() } as unknown as EpisodeSession}
+        fileName="sample.mcap"
+        source={createSource("sample")}
+      />,
+    );
+
+    expect(screen.queryByTestId("episode-transition-status")).toBeNull();
+    act(() => vi.advanceTimersByTime(199));
+    expect(screen.queryByTestId("episode-transition-status")).toBeNull();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByTestId("episode-transition-status").textContent).toBe(
+      "Loading sample…",
+    );
+
+    fireEvent.click(screen.getByTestId("stream-ready"));
+    expect(screen.queryByTestId("episode-transition-status")).toBeNull();
+  });
+
   it("does not build an empty shell from unclassified bootstrap streams", () => {
     const source = createSource("unclassified-bootstrap");
     const manifest = bootstrapManifest("/unknown");
@@ -381,9 +457,8 @@ describe("SourcePlayback", () => {
     expect(screen.queryByTestId("playback-shell")).toBeNull();
   });
 
-  it("keeps the fallback overlay when no tile can consume the poster", () => {
+  it("never promotes an unconsumed poster into a global overlay", () => {
     const source = createSource("poster-without-image-tile");
-    playbackHarness.posterConsumerEnabled = false;
     publishSourceBootstrap(source, {
       manifest: bootstrapManifest("/camera/front"),
       poster: bootstrapPoster(),
@@ -405,7 +480,10 @@ describe("SourcePlayback", () => {
       />,
     );
 
-    expect(screen.getByTestId("episode-poster-overlay")).toBeTruthy();
+    expect(screen.queryByTestId("episode-poster-overlay")).toBeNull();
+    expect(screen.getByTestId("stream-source-poster").textContent).toBe(
+      "/camera/front:encoded-image",
+    );
   });
 
   it("reseeds only with authoritative capabilities and timeline mode", () => {
@@ -545,7 +623,7 @@ describe("SourcePlayback", () => {
     );
   });
 
-  it("keeps the initial poster overlay when its stream is unknown", () => {
+  it("keeps an unidentified poster out of the global viewport", () => {
     const source = createSource("grid-poster-without-stream");
     publishSourceBootstrap(source, {
       manifest: bootstrapManifest("/camera/front"),
@@ -569,7 +647,10 @@ describe("SourcePlayback", () => {
 
     expect(screen.queryByTestId("episode-preparing-scaffold")).toBeNull();
     expect(screen.getByTestId("playback-shell")).toBeTruthy();
-    expect(screen.getByTestId("episode-poster-overlay")).toBeTruthy();
+    expect(screen.queryByTestId("episode-poster-overlay")).toBeNull();
+    expect(screen.getByTestId("stream-source-poster").textContent).toBe(
+      "null:encoded-image",
+    );
   });
 
   it("never applies retained recording facts to a different source", () => {
@@ -599,6 +680,9 @@ describe("SourcePlayback", () => {
     expect(screen.getByTestId("settings-recording-facts").textContent).toBe(
       "1:100",
     );
+    const shellInstance = screen
+      .getByTestId("playback-shell")
+      .getAttribute("data-instance-id");
 
     playbackHarness.sceneInventory = {
       error: null,
@@ -614,8 +698,14 @@ describe("SourcePlayback", () => {
         source={secondSource}
       />,
     );
-    expect(screen.queryByTestId("settings-recording-facts")).toBeNull();
-    expect(screen.getByTestId("episode-preparing-scaffold")).toBeTruthy();
+    expect(screen.getByTestId("settings-recording-facts").textContent).toBe(
+      "none",
+    );
+    expect(screen.queryByTestId("episode-preparing-scaffold")).toBeNull();
+    expect(screen.getByTestId("shell-sources").textContent).toBe("/camera/a");
+    expect(
+      screen.getByTestId("playback-shell").getAttribute("data-instance-id"),
+    ).toBe(shellInstance);
 
     act(() => {
       publishSourceBootstrap(secondSource, {
@@ -628,6 +718,9 @@ describe("SourcePlayback", () => {
     expect(screen.getByTestId("settings-recording-facts").textContent).toBe(
       "2:200",
     );
+    expect(
+      screen.getByTestId("playback-shell").getAttribute("data-instance-id"),
+    ).toBe(shellInstance);
 
     playbackHarness.sceneInventory = readyInventory("/camera/b");
     view.rerender(
