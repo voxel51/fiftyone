@@ -44,4 +44,25 @@ describe("decodedOutputSizeBytes", () => {
       } as DecodedOutput),
     ).toBe(256);
   });
+
+  it("deduplicates shared binary stores without a declared size", () => {
+    const buffer = new ArrayBuffer(256);
+    expect(
+      decodedOutputSizeBytes({
+        resourceHints: { transferables: [buffer] },
+        visualization: { bytes: new Uint8Array(buffer) },
+      } as unknown as DecodedOutput),
+    ).toBe(256);
+  });
+
+  it("does not recount hinted binary metadata", () => {
+    const buffer = new ArrayBuffer(256);
+    expect(
+      decodedOutputSizeBytes({
+        attributes: { bytes: new Uint8Array(buffer) },
+        resourceHints: { sizeBytes: 1, transferables: [buffer] },
+        timing: { bytes: new Uint8Array(buffer) },
+      } as unknown as DecodedOutput),
+    ).toBe(256);
+  });
 });

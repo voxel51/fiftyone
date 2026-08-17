@@ -376,36 +376,60 @@ describe("worker-backed MCAP resource client", () => {
       type: "readSynchronizedMessages",
     });
 
-    const settlement = createSynchronizedWindow(15n);
+    const cameraSettlement = createSynchronizedWindow(15n);
+    const lidarSettlement = createSynchronizedWindow(15n);
+    worker.respond({
+      done: false,
+      id: 1,
+      items: [
+        {
+          kind: "topic-settlement",
+          topic: "/camera",
+          window: cameraSettlement,
+        },
+        {
+          kind: "topic-settlement",
+          topic: "/lidar",
+          window: lidarSettlement,
+        },
+      ],
+      ok: true,
+      stream: true,
+    });
+    await vi.waitFor(() => {
+      expect(onTopicSettlement).toHaveBeenCalledTimes(2);
+    });
+    expect(onTopicSettlement.mock.calls).toEqual([
+      [{ topic: "/camera", window: cameraSettlement }],
+      [{ topic: "/lidar", window: lidarSettlement }],
+    ]);
+    expect(onTopicSettlements).toHaveBeenCalledOnce();
+    expect(onTopicSettlements).toHaveBeenCalledWith([
+      { topic: "/camera", window: cameraSettlement },
+      { topic: "/lidar", window: lidarSettlement },
+    ]);
+    expect(settled).toBe(false);
+
     worker.respond({
       done: false,
       id: 1,
       item: {
         kind: "topic-settlement",
         topic: "/camera",
-        window: settlement,
+        window: createSynchronizedWindow(15n),
       },
       ok: true,
       stream: true,
     });
-    await vi.waitFor(() => {
-      expect(onTopicSettlement).toHaveBeenCalledOnce();
-    });
-    expect(onTopicSettlement).toHaveBeenCalledWith({
-      topic: "/camera",
-      window: settlement,
-    });
-    expect(onTopicSettlements).toHaveBeenCalledWith([
-      { topic: "/camera", window: settlement },
-    ]);
-    expect(settled).toBe(false);
 
     const complete = createSynchronizedWindow(15n);
     respondSynchronizedTerminal(worker, 1, complete);
     await expect(current).resolves.toEqual({
       ...complete,
-      messagesByTopic: { "/camera": [] },
+      messagesByTopic: { "/camera": [], "/lidar": [] },
     });
+    expect(onTopicSettlement).toHaveBeenCalledTimes(2);
+    expect(onTopicSettlements).toHaveBeenCalledOnce();
     expect(settled).toBe(true);
   });
 

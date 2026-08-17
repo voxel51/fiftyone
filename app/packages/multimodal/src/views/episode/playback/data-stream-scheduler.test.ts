@@ -77,8 +77,10 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
       0n,
       streams,
-      ["/lidar", "/camera/left"],
-      undefined,
+      {
+        firstUsefulSettlementStreams: [],
+        settlementPriorityStreams: ["/lidar", "/camera/left"],
+      },
     );
   });
 
@@ -93,8 +95,10 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
       0n,
       ["/camera/left", "/camera/right"],
-      ["/camera/left", "/camera/right"],
-      undefined,
+      {
+        firstUsefulSettlementStreams: [],
+        settlementPriorityStreams: ["/camera/left", "/camera/right"],
+      },
     );
   });
 
@@ -102,6 +106,7 @@ describe("DataStreamScheduler", () => {
     const streams = ["/camera/left", "/lidar", "/camera/right"];
     const harness = createSchedulerHarness({
       activeStreams: streams,
+      firstUsefulSettlementStreams: ["/camera/left"],
     });
     const cleanup = harness.register();
 
@@ -110,6 +115,10 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
       0n,
       streams,
+      {
+        firstUsefulSettlementStreams: ["/camera/left"],
+        settlementPriorityStreams: streams,
+      },
     );
     expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
       expect.any(Array),
@@ -472,8 +481,10 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
       0n,
       streams,
-      streams,
-      undefined,
+      {
+        firstUsefulSettlementStreams: [],
+        settlementPriorityStreams: streams,
+      },
     );
     expect(harness.prefetcher.fetchBatch).not.toHaveBeenCalled();
   });
@@ -542,6 +553,7 @@ function createSchedulerHarness({
   ],
   deferredBatchAdmission = false,
   fillCache = true,
+  firstUsefulSettlementStreams = [],
   policy = {},
   settlementPriorityStreams:
     configuredSettlementPriorityStreams = configuredBlockingStreams,
@@ -551,6 +563,7 @@ function createSchedulerHarness({
   readonly byteTimeline?: readonly ByteTimelinePoint[];
   readonly deferredBatchAdmission?: boolean;
   readonly fillCache?: boolean;
+  readonly firstUsefulSettlementStreams?: readonly string[];
   readonly policy?: Partial<PlaybackPolicy>;
   readonly settlementPriorityStreams?: readonly string[];
 } = {}) {
@@ -601,6 +614,7 @@ function createSchedulerHarness({
     getActiveStreams: () => [...activeStreams],
     getBackgroundLookaheadSeconds: () => 2,
     getByteTimeline: () => byteTimeline,
+    getFirstUsefulSettlementStreams: () => [...firstUsefulSettlementStreams],
     getBlockingStreams: () => new Set(configuredBlockingStreams),
     getIndex: () => index,
     getLastSeekAtMs: () => null,

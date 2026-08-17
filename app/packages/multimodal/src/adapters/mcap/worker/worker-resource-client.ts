@@ -23,7 +23,7 @@ import type {
 
 type McapPlaybackWorkerSynchronizedMessagesReadOptions = Omit<
   McapSynchronizedMessagesReadOptions,
-  "onTopicSettlement"
+  "onTopicSettlement" | "onTopicSettlements"
 > & {
   readonly onTopicSettlement?: (settlement: {
     readonly topic: string;

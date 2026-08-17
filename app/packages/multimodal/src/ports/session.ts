@@ -284,7 +284,11 @@ export interface SynchronizedPlaybackReadRequest {
   readonly defaultStreamPolicy?: StreamSyncPolicy;
   /** Streams eligible for the first independently useful settlement. */
   readonly firstUsefulSettlementStreams?: readonly StreamId[];
-  /** Receives ordered, authoritative per-stream ownership settlements. */
+  /**
+   * Receives ordered, authoritative per-stream ownership settlements.
+   * Adapters may also report the same settlement through
+   * `onStreamSettlements`, so consumers registering both must be idempotent.
+   */
   readonly onStreamSettlement?: (
     settlement: SynchronizedStreamSettlement,
   ) => void;
@@ -292,6 +296,7 @@ export interface SynchronizedPlaybackReadRequest {
    * Receives one ordered transport delivery group. Every member remains an
    * independent authoritative stream settlement; the group lets consumers
    * publish simultaneously available presentation surfaces in one store turn.
+   * Members may also be reported through `onStreamSettlement` when registered.
    */
   readonly onStreamSettlements?: (
     settlements: readonly SynchronizedStreamSettlement[],

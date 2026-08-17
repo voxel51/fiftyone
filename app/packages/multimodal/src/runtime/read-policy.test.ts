@@ -192,6 +192,22 @@ describe("session read policy", () => {
     });
   });
 
+  it("does not emit single-tick settlements for a multi-tick batch", async () => {
+    const onStreamSettlement = vi.fn();
+    const onStreamSettlements = vi.fn();
+
+    const windows = await readSynchronizedPlaybackBatchFallback(
+      longHistorySession([1n, 2n]),
+      { streams: ["stream"], timeNs: [1n, 2n] },
+      {},
+      { onStreamSettlement, onStreamSettlements },
+    );
+
+    expect(windows).toHaveLength(2);
+    expect(onStreamSettlement).not.toHaveBeenCalled();
+    expect(onStreamSettlements).not.toHaveBeenCalled();
+  });
+
   it("returns the correct latest predecessor at the generic boundary", async () => {
     const frames = Array.from(
       { length: GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM },

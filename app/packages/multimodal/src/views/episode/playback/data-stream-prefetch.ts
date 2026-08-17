@@ -57,6 +57,12 @@ export interface DataStreamFetchState {
   readonly pendingStreamsByTick: Map<string, Set<string>>;
 }
 
+/** Presentation ordering for one synchronized current-tick acquisition. */
+interface CurrentFrameFetchOptions {
+  readonly firstUsefulSettlementStreams?: readonly string[];
+  readonly settlementPriorityStreams?: readonly string[];
+}
+
 /** Creates isolated request bookkeeping for an episode data stream. */
 export function createDataStreamFetchState(): DataStreamFetchState {
   return {
@@ -92,8 +98,7 @@ export interface DataStreamPrefetcher {
   fetchCurrentFrame(
     tick: bigint,
     activeStreams: string[],
-    settlementPriorityStreams?: readonly string[],
-    firstUsefulSettlementStreams?: readonly string[],
+    options?: CurrentFrameFetchOptions,
   ): boolean;
   isStreamPending(tickKey: string, stream: string): boolean;
 }
@@ -354,10 +359,11 @@ export function createDataStreamPrefetcher({
   const fetchCurrentFrame: DataStreamPrefetcher["fetchCurrentFrame"] = (
     tick,
     activeStreams,
-    settlementPriorityStreams,
-    firstUsefulSettlementStreams,
+    options = {},
   ) => {
     if (activeStreams.length === 0) return false;
+
+    const { firstUsefulSettlementStreams, settlementPriorityStreams } = options;
 
     const sourceEpoch = getSourceEpoch();
     const tickKey = tick.toString();
@@ -384,8 +390,14 @@ export function createDataStreamPrefetcher({
     const firstUsefulSettlementStreamSet = new Set(
       firstUsefulSettlementStreamsToFetch,
     );
+    const unsettledFirstUsefulStreams = new Set(
+      firstUsefulSettlementStreamsToFetch,
+    );
     const deferredPresentationStreams = new Set<string>();
     let publishedFirstUsefulSettlement = false;
+    // If every preferred surface is an authoritative gap, the next priority
+    // stream becomes the fallback useful paint instead of waiting on terminal.
+    let publishPriorityAfterEmptyFirstUseful = false;
     const unsettledStreams = new Set(streamsToFetch);
     let deliveredCurrentFrame = false;
 
@@ -435,6 +447,7 @@ export function createDataStreamPrefetcher({
       const acceptedStreams: string[] = [];
       for (const { stream, window } of accepted) {
         acceptedStreams.push(stream);
+        unsettledFirstUsefulStreams.delete(stream);
         deliveredCurrentFrame =
           deliverWindows({
             pushCurrentTick: false,
@@ -450,10 +463,17 @@ export function createDataStreamPrefetcher({
           firstUsefulSettlementStreamSet.has(stream) &&
           (window.framesByStream[stream]?.length ?? 0) > 0,
       );
+      const exhaustedEmptyFirstUseful =
+        unsettledFirstUsefulStreams.size === 0 &&
+        !publishedFirstUsefulSettlement &&
+        !includesPresentFirstUsefulSettlement;
       const includesNonPrioritySettlement = acceptedStreams.some(
         (stream) => !settlementPriorityStreamSet.has(stream),
       );
-      if (firstUsefulSettlementStreamSet.size === 0) {
+      if (
+        firstUsefulSettlementStreamSet.size === 0 ||
+        publishPriorityAfterEmptyFirstUseful
+      ) {
         publishCurrentTickStreams(acceptedStreams);
       } else if (
         !publishedFirstUsefulSettlement &&
@@ -465,7 +485,13 @@ export function createDataStreamPrefetcher({
         for (const stream of acceptedStreams) {
           deferredPresentationStreams.add(stream);
         }
-        if (includesNonPrioritySettlement) flushDeferredPresentation();
+        if (exhaustedEmptyFirstUseful) {
+          publishPriorityAfterEmptyFirstUseful = true;
+          publishedFirstUsefulSettlement = true;
+        }
+        if (includesNonPrioritySettlement || exhaustedEmptyFirstUseful) {
+          flushDeferredPresentation();
+        }
       }
       finishFetch(sourceEpoch, [tickKey], acceptedStreams);
     };
@@ -729,12 +755,12 @@ export class DataStreamScheduler {
         options.caches.get(stream)?.has(currentTick),
       )
     ) {
-      options.prefetcher.fetchCurrentFrame(
-        currentTick,
-        activeBlockingStreams,
-        options.getSettlementPriorityStreams?.() ?? activeBlockingStreams,
-        options.getFirstUsefulSettlementStreams?.(),
-      );
+      options.prefetcher.fetchCurrentFrame(currentTick, activeBlockingStreams, {
+        firstUsefulSettlementStreams:
+          options.getFirstUsefulSettlementStreams?.(),
+        settlementPriorityStreams:
+          options.getSettlementPriorityStreams?.() ?? activeBlockingStreams,
+      });
       // Keep the cadence alive while this read is pending. A cancellation
       // clears pending ownership asynchronously, so stopping here would leave
       // no later pass to retry the uncovered current frame.
@@ -786,12 +812,12 @@ export class DataStreamScheduler {
         options.store,
         options.failedStreams,
       );
-      options.prefetcher.fetchCurrentFrame(
-        tick,
-        activeStreams,
-        options.getSettlementPriorityStreams?.() ?? activeBlockingStreams,
-        options.getFirstUsefulSettlementStreams?.(),
-      );
+      options.prefetcher.fetchCurrentFrame(tick, activeStreams, {
+        firstUsefulSettlementStreams:
+          options.getFirstUsefulSettlementStreams?.(),
+        settlementPriorityStreams:
+          options.getSettlementPriorityStreams?.() ?? activeBlockingStreams,
+      });
     }
     fillMissingStartupBufferFrom({
       activeStreams: startupStreams,
@@ -864,7 +890,13 @@ export class DataStreamScheduler {
         const activeStreams = options.getActiveStreams();
         const tick = index.nearestTick(startSec);
         if (tick !== undefined) {
-          options.prefetcher.fetchCurrentFrame(tick, activeStreams);
+          options.prefetcher.fetchCurrentFrame(tick, activeStreams, {
+            firstUsefulSettlementStreams:
+              options.getFirstUsefulSettlementStreams?.(),
+            settlementPriorityStreams:
+              options.getSettlementPriorityStreams?.() ??
+              options.getActiveBlockingStreams(),
+          });
         }
         for (
           let batch = 0;

@@ -68,7 +68,7 @@ export function serializeCacheKey(parts: readonly (string | null)[]): string {
 /**
  * Estimates nested decoded payload size for cache eviction.
  */
-function estimateFieldSize(
+function estimateStructuralFieldSize(
   value: unknown,
   visited = new WeakSet<object>(),
 ): number {
@@ -76,10 +76,10 @@ function estimateFieldSize(
     return 0;
   }
   if (value instanceof ArrayBuffer) {
-    return value.byteLength;
+    return 0;
   }
   if (ArrayBuffer.isView(value)) {
-    return value.byteLength;
+    return 0;
   }
   if (typeof value === "string") {
     // Cache sizing is an eviction heuristic, not exact encoded-byte accounting.
@@ -102,13 +102,13 @@ function estimateFieldSize(
   }
   if (Array.isArray(value)) {
     return value.reduce(
-      (size, item) => size + estimateFieldSize(item, visited),
+      (size, item) => size + estimateStructuralFieldSize(item, visited),
       0,
     );
   }
   if (typeof value === "object") {
     return Object.values(value).reduce(
-      (size, item) => size + estimateFieldSize(item, visited),
+      (size, item) => size + estimateStructuralFieldSize(item, visited),
       0,
     );
   }
@@ -129,12 +129,13 @@ export function decodedOutputSizeBytes(output: DecodedOutput): number {
   const binaryBytes = estimateUniqueBinaryBytes(output);
   const payloadBytes = Math.max(hintedBytes ?? 0, binaryBytes);
   const auxiliaryBytes =
-    estimateFieldSize(output.attributes) + estimateFieldSize(output.timing);
+    estimateStructuralFieldSize(output.attributes) +
+    estimateStructuralFieldSize(output.timing);
   const bytes =
     hint === undefined
-      ? estimateFieldSize(output)
+      ? estimateStructuralFieldSize(output) + binaryBytes
       : hintedBytes === undefined
-        ? binaryBytes
+        ? binaryBytes + auxiliaryBytes
         : payloadBytes > 0
           ? payloadBytes + auxiliaryBytes
           : 0;

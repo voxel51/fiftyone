@@ -81,7 +81,7 @@ describe("publishDataStreamStatuses", () => {
 
     setIsBuffering(store, true);
     lidar.set(0n, null);
-    publishDataStreamStatuses(common);
+    publishDataStreamStatuses({ ...common, updatedStreams: [LIDAR] });
     expect(getStreamStatus(store, LIDAR)).toBe("gap");
     expect(getBufferingDetail(store)).toBeNull();
     expect(getBufferingStreams(store)).toEqual([]);

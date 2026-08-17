@@ -129,6 +129,12 @@ interface ResourceClient {
         readonly topic: string;
         readonly window: SynchronizedMessageWindow;
       }) => void;
+      readonly onTopicSettlements?: (
+        settlements: readonly {
+          readonly topic: string;
+          readonly window: SynchronizedMessageWindow;
+        }[],
+      ) => void;
       readonly signal?: AbortSignal;
     },
   ): Promise<SynchronizedMessageWindow>;
@@ -1262,7 +1268,7 @@ describe("stream status + buffering feedback", () => {
       currentDataStream.subscribeToStream(STREAM);
     });
     await act(async () => {
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(readSynchronizedMessages).toHaveBeenCalledOnce();
 
@@ -1452,11 +1458,13 @@ describe("stream status + buffering feedback", () => {
     const source = createSource("atomic-current-delivery");
     const storeCapture = capturePlaybackStore();
     const onPlayheadDataReady = vi.fn();
-    let publishSettlement:
-      | ((settlement: {
-          readonly topic: string;
-          readonly window: SynchronizedMessageWindow;
-        }) => void)
+    let publishSettlements:
+      | ((
+          settlements: readonly {
+            readonly topic: string;
+            readonly window: SynchronizedMessageWindow;
+          }[],
+        ) => void)
       | undefined;
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(
@@ -1468,7 +1476,7 @@ describe("stream status + buffering feedback", () => {
           _request: Parameters<ResourceClient["readSynchronizedMessages"]>[0],
           options?: Parameters<ResourceClient["readSynchronizedMessages"]>[1],
         ) => {
-          publishSettlement = options?.onTopicSettlement;
+          publishSettlements = options?.onTopicSettlements;
           return current.promise;
         },
       ),
@@ -1498,7 +1506,7 @@ describe("stream status + buffering feedback", () => {
         topics: [STREAM, LIDAR_STREAM, MAP_STREAM],
       }),
       expect.objectContaining({
-        onTopicSettlement: expect.any(Function),
+        onTopicSettlements: expect.any(Function),
       }),
     );
     expect(getStreamValue(store, STREAM)).toBeNull();
@@ -1507,25 +1515,19 @@ describe("stream status + buffering feedback", () => {
     expect(onPlayheadDataReady).not.toHaveBeenCalled();
 
     await act(async () => {
-      publishSettlement?.({
-        topic: STREAM,
-        window: createMultiStreamWindow(0n, [STREAM]),
-      });
+      publishSettlements?.([
+        {
+          topic: STREAM,
+          window: createMultiStreamWindow(0n, [STREAM]),
+        },
+        {
+          topic: LIDAR_STREAM,
+          window: createMultiStreamWindow(0n, [LIDAR_STREAM]),
+        },
+      ]);
     });
     await waitFor(() => {
       expect(getStreamValue(store, STREAM)).not.toBeNull();
-    });
-    expect(getStreamValue(store, LIDAR_STREAM)).toBeNull();
-    expect(getStreamValue(store, MAP_STREAM)).toBeNull();
-    expect(onPlayheadDataReady).not.toHaveBeenCalled();
-
-    await act(async () => {
-      publishSettlement?.({
-        topic: LIDAR_STREAM,
-        window: createMultiStreamWindow(0n, [LIDAR_STREAM]),
-      });
-    });
-    await waitFor(() => {
       expect(getStreamValue(store, LIDAR_STREAM)).not.toBeNull();
       expect(onPlayheadDataReady).toHaveBeenCalled();
     });
@@ -3405,6 +3407,15 @@ function useTestSession(
                           topics: request.streams,
                         },
                         {
+                          onTopicSettlements: request.onStreamSettlements
+                            ? (settlements) =>
+                                request.onStreamSettlements?.(
+                                  settlements.map(({ topic, window }) => ({
+                                    stream: topic,
+                                    window: toWindow(window),
+                                  })),
+                                )
+                            : undefined,
                           onTopicSettlement: request.onStreamSettlement
                             ? ({ topic, window }) =>
                                 request.onStreamSettlement?.({

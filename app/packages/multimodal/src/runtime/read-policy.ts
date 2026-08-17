@@ -227,8 +227,11 @@ export async function readSynchronizedPlaybackBatchFallback(
     session,
     signal: options.signal,
     onStreamComplete:
-      settlementOptions.onStreamSettlement ||
-      settlementOptions.onStreamSettlements
+      (settlementOptions.onStreamSettlement ||
+        settlementOptions.onStreamSettlements) &&
+      // Per-stream settlements describe one tick. Batched multi-tick reads
+      // have no single authoritative window to report.
+      request.timeNs.length === 1
         ? (stream, streamBatches) => {
             const window = resolved[0];
             if (!window) return;

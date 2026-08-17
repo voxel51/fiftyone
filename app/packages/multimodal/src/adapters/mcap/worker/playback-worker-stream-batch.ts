@@ -38,7 +38,9 @@ function isMcapDecodedMessage(item: unknown): item is McapDecodedMessage {
     "decoded" in item &&
     typeof item.decoded === "object" &&
     item.decoded !== null &&
-    "output" in item.decoded
+    "output" in item.decoded &&
+    typeof item.decoded.output === "object" &&
+    item.decoded.output !== null
   );
 }
 

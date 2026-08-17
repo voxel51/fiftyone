@@ -893,6 +893,7 @@ class McapEpisodeSession implements EpisodeSession {
   private returnedBatches = 0;
   private budgetAllowance?: ReadWorkBudget;
   private budgetLedger?: SourceReadBudgetLedger;
+  private readonly streamIdsBySourceName: ReadonlyMap<string, string>;
   private readonly sourceNamesById: ReadonlyMap<string, string>;
 
   constructor(
@@ -920,6 +921,14 @@ class McapEpisodeSession implements EpisodeSession {
     this.sourceNamesById = new Map(
       manifest.streams.map((stream) => [stream.id, stream.sourceName]),
     );
+    const streamIdsBySourceName = new Map<string, string>();
+    for (const stream of manifest.streams) {
+      // Preserve the former Array.find behavior for duplicate source names.
+      if (!streamIdsBySourceName.has(stream.sourceName)) {
+        streamIdsBySourceName.set(stream.sourceName, stream.id);
+      }
+    }
+    this.streamIdsBySourceName = streamIdsBySourceName;
     this.boundedRead = {
       openAccount: (allowance) => this.openBoundedReadAccount(allowance),
     };
@@ -1567,10 +1576,7 @@ class McapEpisodeSession implements EpisodeSession {
   }
 
   private streamIdFor(sourceName: string): string {
-    return (
-      this.manifest.streams.find((stream) => stream.sourceName === sourceName)
-        ?.id ?? sourceName
-    );
+    return this.streamIdsBySourceName.get(sourceName) ?? sourceName;
   }
 
   private toMcapSyncPolicies(
