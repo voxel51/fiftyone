@@ -138,7 +138,11 @@ test("Backspace on the lone vertex deletes the label", async ({
   // clicking the vertex is a point hit — it sub-selects the lone point, the
   // exact state where Backspace previously deferred to vertex removal. The
   // sub-selection is set synchronously in the overlay's pointer handler, so
-  // the keydown that follows always observes it.
+  // the keydown that follows always observes it. Gate the click on the grab
+  // cursor: the hover state is seconds stale by now, and a click that misses
+  // the point hit-test lands in crosshair territory, where polyline mode adds
+  // a vertex — Backspace then removes that vertex instead of the label.
+  await modal.sampleCanvas.move(...VERTEX, "grab");
   await modal.sampleCanvas.click(...VERTEX);
   await page.keyboard.press("Backspace");
 
