@@ -29,8 +29,6 @@ def _ensure_qwen3_8() -> None:
     # Qwen3.8 reports model_type "qwen3_5"
     fou.ensure_package("transformers>=5.8.0")
     fou.ensure_package("accelerate")
-    # 4-bit NF4 loading; the model is 55.6 GB at bf16
-    fou.ensure_package("bitsandbytes")
 
 
 transformers = fou.lazy_import("transformers", callback=_ensure_qwen3_8)
@@ -303,6 +301,10 @@ class Qwen38Model(fout.TorchImageModel):
         kwargs = {"dtype": torch.bfloat16}
 
         if self._using_gpu and config.load_in_4bit:
+            # Only the 4-bit path needs bitsandbytes; the model is 55.6 GB
+            # at bf16
+            fou.ensure_package("bitsandbytes")
+
             # bitsandbytes dispatches through accelerate, so quantized loads
             # always use a device map. The vision tower stays bf16: its
             # forward casts pixels to its own weight dtype, which 4-bit
