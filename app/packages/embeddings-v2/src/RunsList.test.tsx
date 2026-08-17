@@ -47,6 +47,26 @@ describe("RunsList", () => {
     expect(screen.getByText("ground_truth patches")).toBeDefined();
   });
 
+  // The card spec: source segment "model (METHOD)" with a precomputed
+  // fallback, and a fixed-format "last updated MM/DD/YYYY"
+  it("describes each run's embeddings source and freshness", () => {
+    render(
+      <RunsList
+        runs={[
+          run("viz_model", { timestamp: "2026-08-11T18:00:00Z" }),
+          run("viz_precomputed", { model: null }),
+        ]}
+        actionError={null}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("clip-vit-base32-torch (UMAP)")).toBeDefined();
+    expect(screen.getByText("pre-computed embeddings (UMAP)")).toBeDefined();
+    expect(screen.getByText("last updated 08/11/2026")).toBeDefined();
+  });
+
   // Runs with 3D points are listed and open in the 2D plot; guards
   // against filtering them out of the list
   it("lists 3D runs and opens runs on click", () => {

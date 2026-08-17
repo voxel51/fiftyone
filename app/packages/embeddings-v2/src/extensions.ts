@@ -168,6 +168,8 @@ export interface SharedPlotProps {
   onHover: (hit: HoverHit | null) => void;
   onKeepHover: () => void;
   hover: HoverContent | null;
+  /** The live hovered hit, before the card's dwell — anchors the ring. */
+  hoverHit: HoverHit | null;
   hoverAction: HoverAction | null;
   registerChart: (key: string, handle: EmbeddingsViewHandle | null) => void;
 }
