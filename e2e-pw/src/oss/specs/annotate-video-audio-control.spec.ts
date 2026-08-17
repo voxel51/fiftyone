@@ -70,20 +70,23 @@ const openAnnotate = async (
 
 test.describe("timeline audio controls", () => {
   // playback renders `data-testid`; this suite's `getByTestId` is `data-cy`
-  const volumeGroup = (page: import("src/oss/fixtures").Page) =>
-    page.locator('[data-testid="timeline-controls-volume-group"]');
+  const volumeToggle = (page: import("src/oss/fixtures").Page) =>
+    page.locator('[data-testid="timeline-controls-volume-toggle"]');
 
-  test("a video with an audio track shows the volume group, muted by default", async ({
+  test("a video with an audio track shows the volume control, muted by default", async ({
     fiftyoneLoader,
     modal,
     page,
   }) => {
     await openAnnotate(fiftyoneLoader, modal, page, audibleId);
 
-    await expect(volumeGroup(page)).toBeVisible();
+    // The toolbar button opens a popover; the mute toggle and fader live
+    // inside it, and the button is labelled by its channel ("Master").
+    await expect(volumeToggle(page)).toBeVisible();
+    await volumeToggle(page).click();
 
     const mute = page.locator('[data-testid="timeline-controls-mute"]');
-    await expect(mute).toHaveAttribute("aria-label", "Unmute");
+    await expect(mute).toHaveAttribute("aria-label", "Unmute Master");
     await expect(mute).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -94,10 +97,10 @@ test.describe("timeline audio controls", () => {
   }) => {
     await openAnnotate(fiftyoneLoader, modal, page, silentId);
 
-    // controls render; the volume group never mounts
+    // controls render; the volume control never mounts
     await expect(
       page.locator('[data-testid="timeline-controls-root"]').first(),
     ).toBeVisible();
-    await expect(volumeGroup(page)).toHaveCount(0);
+    await expect(volumeToggle(page)).toHaveCount(0);
   });
 });
