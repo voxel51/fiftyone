@@ -5,12 +5,13 @@
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import { INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { distanceFromLineSegment, getRenderedScale } from "../util";
+import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import {
   getInstanceStrokeStyles,
   getLabelAttributesText,
   resolveLabelSelectionVisuals,
+  sizeInImagePixels,
   t,
 } from "./util";
 
@@ -33,12 +34,7 @@ export default class PolylineOverlay<
       return CONTAINS.BORDER;
     }
 
-    const tolerance =
-      (state.strokeWidth * TOLERANCE) /
-      getRenderedScale(
-        [state.windowBBox[2], state.windowBBox[3]],
-        state.dimensions,
-      );
+    const tolerance = sizeInImagePixels(state, state.strokeWidth * TOLERANCE);
     const minDistance = this.getMouseDistance(state);
     if (minDistance <= tolerance) {
       return CONTAINS.BORDER;
@@ -235,17 +231,18 @@ export default class PolylineOverlay<
   /**
    * The cursor's hit against a single-vertex shape, or `null` when it isn't over
    * one. Mirrors `KeypointOverlay.getDistanceAndMaybePoint`: the radius is
-   * `state.pointRadius * TOLERANCE`, doubled while selected, so the target
-   * always matches the dot actually drawn. Distances are in image-pixel space
-   * (`dimensions`-scaled vs `pixelCoordinates`) — NOT the `t()` draw space, which
-   * is a different coordinate system and silently never matches.
+   * `state.pointRadius * TOLERANCE`, doubled while selected, converted to the
+   * image-pixel space of the distances (`dimensions`-scaled vs
+   * `pixelCoordinates`) so the target always matches the dot actually drawn.
    */
   private loneVertexHit(
     state: Readonly<State>,
   ): { coordinates: Coordinates; index: number } | null {
-    const radius =
+    const radius = sizeInImagePixels(
+      state,
       (this.isSelected(state) ? state.pointRadius * 2 : state.pointRadius) *
-      TOLERANCE;
+        TOLERANCE,
+    );
     const [w, h] = state.dimensions;
     const [x, y] = state.pixelCoordinates;
     const shapes = this.label.points || [];
