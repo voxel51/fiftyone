@@ -93,7 +93,7 @@ import {
 import { EpisodeSourceReadyProvider } from "../playback/source-ready-context";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
-const TRANSITION_STATUS_DELAY_MS = 200;
+export const TRANSITION_STATUS_DELAY_MS = 200;
 
 interface ReadyInventory {
   readonly hasNumericSeries: boolean;

@@ -28,7 +28,7 @@ import {
 } from "../../../runtime";
 import { useSourcePoster } from "../image/source-poster-context";
 import { TILE_TYPE } from "../tiles/tile-types";
-import { SourcePlayback } from "./SourcePlayback";
+import { SourcePlayback, TRANSITION_STATUS_DELAY_MS } from "./SourcePlayback";
 
 const playbackHarness = vi.hoisted(() => {
   const harness = {
@@ -414,7 +414,7 @@ describe("SourcePlayback", () => {
     );
 
     expect(screen.queryByTestId("episode-transition-status")).toBeNull();
-    act(() => vi.advanceTimersByTime(199));
+    act(() => vi.advanceTimersByTime(TRANSITION_STATUS_DELAY_MS - 1));
     expect(screen.queryByTestId("episode-transition-status")).toBeNull();
     act(() => vi.advanceTimersByTime(1));
     expect(screen.getByTestId("episode-transition-status").textContent).toBe(

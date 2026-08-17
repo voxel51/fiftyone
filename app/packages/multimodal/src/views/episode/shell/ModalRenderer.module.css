@@ -25,7 +25,10 @@
 
 .transitionStatus {
   color: var(--color-content-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
