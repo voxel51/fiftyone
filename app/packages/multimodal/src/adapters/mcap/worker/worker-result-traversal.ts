@@ -16,6 +16,10 @@ export function messagesFromMcapWorkerResult<Message>(
       messagesFromMcapWorkerResult(item, isMessage),
     );
   }
+  const window = recordFromUnknown(result)?.window;
+  if (window !== undefined) {
+    return messagesFromMcapWorkerResult(window, isMessage);
+  }
   return [];
 }
 

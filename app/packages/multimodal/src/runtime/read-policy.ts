@@ -179,6 +179,11 @@ export async function readSynchronizedPlaybackFallback(
     session,
     { ...request, timeNs: [request.timeNs] },
     { priority: "current", signal: request.signal },
+    {
+      onStreamSettlement: request.onStreamSettlement,
+      onStreamSettlements: request.onStreamSettlements,
+      settlementPriorityStreams: request.settlementPriorityStreams,
+    },
   );
   return windows[0] ?? emptyPlaybackWindow(request.timeNs);
 }
@@ -188,6 +193,11 @@ export async function readSynchronizedPlaybackBatchFallback(
   session: EpisodeSession,
   request: SynchronizedPlaybackBatchReadRequest,
   options: SynchronizedPlaybackReadOptions = {},
+  settlementOptions: {
+    readonly onStreamSettlement?: SynchronizedPlaybackReadRequest["onStreamSettlement"];
+    readonly onStreamSettlements?: SynchronizedPlaybackReadRequest["onStreamSettlements"];
+    readonly settlementPriorityStreams?: readonly string[];
+  } = {},
 ): Promise<readonly SynchronizedFrameWindow[]> {
   if (request.timeNs.length === 0) return [];
   if (request.streams.length === 0) {
@@ -203,13 +213,53 @@ export async function readSynchronizedPlaybackBatchFallback(
       timeNs,
     }),
   );
+  const sourceNames = new Map(
+    session.manifest.streams.map((stream) => [stream.id, stream.sourceName]),
+  );
+  const readStreams = prioritizedStreams(
+    request.streams,
+    settlementOptions.settlementPriorityStreams,
+  );
   const batches = await readCompleteBoundedStreams({
     maxMessagesPerStream: GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM,
     operation: "generic-playback-fallback",
     priority: options.priority,
     session,
     signal: options.signal,
-    streams: request.streams,
+    onStreamComplete:
+      (settlementOptions.onStreamSettlement ||
+        settlementOptions.onStreamSettlements) &&
+      // Per-stream settlements describe one tick. Batched multi-tick reads
+      // have no single authoritative window to report.
+      request.timeNs.length === 1
+        ? (stream, streamBatches) => {
+            const window = resolved[0];
+            if (!window) return;
+            const policy = window.streamPolicies[stream];
+            const settlement = {
+              stream,
+              window: selectPlaybackWindow(
+                collectFramesByStream(streamBatches, [stream]),
+                [stream],
+                sourceNames,
+                {
+                  endNs: policy.endNs,
+                  startNs: readStartForPolicy(
+                    session.manifest.timeRange.startNs,
+                    streamsById,
+                    stream,
+                    policy,
+                  ),
+                  streamPolicies: { [stream]: policy },
+                  timeNs: window.timeNs,
+                },
+              ),
+            };
+            settlementOptions.onStreamSettlements?.([settlement]);
+            settlementOptions.onStreamSettlement?.(settlement);
+          }
+        : undefined,
+    streams: readStreams,
     windowForStream: (stream) => ({
       endNs: maxBigInt(resolved.map((window) => window.endNs)),
       startNs: minBigInt(
@@ -225,9 +275,6 @@ export async function readSynchronizedPlaybackBatchFallback(
     }),
   });
   const framesByStream = collectFramesByStream(batches, request.streams);
-  const sourceNames = new Map(
-    session.manifest.streams.map((stream) => [stream.id, stream.sourceName]),
-  );
   return resolved.map((window) =>
     selectPlaybackWindow(framesByStream, request.streams, sourceNames, window),
   );
@@ -236,6 +283,7 @@ export async function readSynchronizedPlaybackBatchFallback(
 async function readCompleteBoundedStreams({
   maxMessagesPerStream,
   operation,
+  onStreamComplete,
   priority,
   session,
   signal,
@@ -244,6 +292,10 @@ async function readCompleteBoundedStreams({
 }: {
   readonly maxMessagesPerStream: number;
   readonly operation: string;
+  readonly onStreamComplete?: (
+    stream: string,
+    batches: readonly FrameBatch[],
+  ) => void;
   readonly priority: ReadRequest["priority"];
   readonly session: EpisodeSession;
   readonly signal?: AbortSignal;
@@ -254,6 +306,7 @@ async function readCompleteBoundedStreams({
   for (const stream of streams) {
     throwIfAborted(signal);
     let messageCount = 0;
+    const streamBatches: FrameBatch[] = [];
     for await (const batch of session.read({
       // The extra message is a completeness probe. It is never published.
       limit: maxMessagesPerStream + 1,
@@ -275,10 +328,28 @@ async function readCompleteBoundedStreams({
         }
         admitted.push(frame);
       }
-      if (admitted.length > 0) batches.push({ frames: admitted, stream });
+      if (admitted.length > 0) {
+        const admittedBatch = { frames: admitted, stream };
+        batches.push(admittedBatch);
+        streamBatches.push(admittedBatch);
+      }
     }
+    onStreamComplete?.(stream, streamBatches);
   }
   return batches;
+}
+
+function prioritizedStreams(
+  streams: readonly string[],
+  priorityStreams: readonly string[] | undefined,
+): string[] {
+  if (!priorityStreams?.length) return [...streams];
+  const requested = new Set(streams);
+  const priority = [...new Set(priorityStreams)].filter((stream) =>
+    requested.has(stream),
+  );
+  const prioritized = new Set(priority);
+  return [...priority, ...streams.filter((stream) => !prioritized.has(stream))];
 }
 
 interface ResolvedPlaybackWindow {

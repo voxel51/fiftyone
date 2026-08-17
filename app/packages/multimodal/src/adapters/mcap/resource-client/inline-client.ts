@@ -78,6 +78,7 @@ import {
   type McapReadTimelineRangeRequest,
   type McapResourceClient,
   type McapResourceReadOptions,
+  type McapSynchronizedMessagesReadOptions,
   type McapSynchronizedMessageWindow,
   type McapTimelineRange,
   type McapTopicNumericFields,
@@ -110,6 +111,13 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
   >(
     request: McapReadSynchronizedMessageBatchRequest,
     reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>,
+    onTopicSettlement?: (settlement: {
+      readonly topic: string;
+      readonly window: McapSynchronizedMessageWindowWithMessages<
+        McapDecodedMessage | ReusedMessage
+      >;
+    }) => void,
+    readOptions?: McapResourceReadOptions,
   ): Promise<
     readonly McapSynchronizedMessageWindowWithMessages<
       McapDecodedMessage | ReusedMessage
@@ -123,6 +131,13 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
   >(
     request: McapReadSynchronizedMessagesRequest,
     reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>,
+    onTopicSettlement?: (settlement: {
+      readonly topic: string;
+      readonly window: McapSynchronizedMessageWindowWithMessages<
+        McapDecodedMessage | ReusedMessage
+      >;
+    }) => void,
+    readOptions?: McapResourceReadOptions,
   ): Promise<
     McapSynchronizedMessageWindowWithMessages<
       McapDecodedMessage | ReusedMessage
@@ -527,43 +542,89 @@ export function createInlineMcapResourceClient(
       );
     },
 
-    async readSynchronizedMessageBatchWithReuse(request, reuseIndexedMessage) {
+    async readSynchronizedMessageBatchWithReuse(
+      request,
+      reuseIndexedMessage,
+      onTopicSettlement,
+      readOptions,
+    ) {
       if (request.timeNs.length === 0) {
         return [];
       }
 
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
-      const reader = await readerStore.get(request.source);
       const sourceKey = byteSourceAccessKey(request.source);
+      const signal = readOptions?.signal;
 
-      return readMcapSynchronizedMessageBatch({
-        decodeClient,
-        predecessorStore: predecessorStoreForSource(sourceKey),
-        reader,
-        readSignal: options.readSignal,
-        request,
-        reuseIndexedMessage,
-        timeline,
-      });
+      return withRequestReader(request.source, signal, (reader) =>
+        readMcapSynchronizedMessageBatch({
+          decodeClient,
+          predecessorStore: predecessorStoreForSource(sourceKey),
+          reader,
+          readSignal: signal ? { current: signal } : options.readSignal,
+          onTopicSettlement,
+          request,
+          reuseIndexedMessage,
+          timeline,
+        }),
+      );
     },
 
     async readSynchronizedMessages(
       request: McapReadSynchronizedMessagesRequest,
-      readOptions?: McapResourceReadOptions,
+      readOptions?: McapSynchronizedMessagesReadOptions,
     ): Promise<McapSynchronizedMessageWindow> {
-      const windows = await client.readSynchronizedMessageBatch(
-        { ...request, timeNs: [request.timeNs] },
-        readOptions,
+      const onTopicSettlement = readOptions
+        ? (
+            settlement: Parameters<
+              NonNullable<
+                McapSynchronizedMessagesReadOptions["onTopicSettlement"]
+              >
+            >[0],
+          ) => {
+            readOptions.onTopicSettlements?.([settlement]);
+            readOptions.onTopicSettlement?.(settlement);
+          }
+        : undefined;
+      if (!readOptions?.signal) {
+        return client.readSynchronizedMessagesWithReuse(
+          request,
+          undefined,
+          onTopicSettlement,
+        );
+      }
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const sourceKey = byteSourceAccessKey(request.source);
+      const windows = await withRequestReader(
+        request.source,
+        readOptions.signal,
+        (reader) =>
+          readMcapSynchronizedMessageBatch({
+            decodeClient,
+            predecessorStore: predecessorStoreForSource(sourceKey),
+            reader,
+            readSignal: { current: readOptions.signal ?? null },
+            onTopicSettlement,
+            request: { ...request, timeNs: [request.timeNs] },
+            timeline,
+          }),
       );
       const window = windows[0];
       if (!window) throw new Error("Expected synchronized MCAP window");
       return window;
     },
 
-    async readSynchronizedMessagesWithReuse(request, reuseIndexedMessage) {
+    async readSynchronizedMessagesWithReuse(
+      request,
+      reuseIndexedMessage,
+      onTopicSettlement,
+      readOptions,
+    ) {
       const windows = await client.readSynchronizedMessageBatchWithReuse(
         { ...request, timeNs: [request.timeNs] },
         reuseIndexedMessage,
+        onTopicSettlement,
+        readOptions,
       );
       const window = windows[0];
       if (!window) {
