@@ -246,6 +246,45 @@ describe("data stream prefetcher", () => {
     await settle();
   });
 
+  it("settles remaining blocking ownership before terminal presentation", async () => {
+    const terminal = deferred<SynchronizedFrameWindow>();
+    let publishSettlements:
+      | ((settlements: readonly SynchronizedStreamSettlement[]) => void)
+      | undefined;
+    const harness = createHarness({
+      readSynchronized: vi.fn((request) => {
+        publishSettlements = request.onStreamSettlements;
+        return terminal.promise;
+      }),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+    harness.caches.get(LIDAR)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(
+        0n,
+        [IMAGE, LIDAR],
+        [IMAGE, LIDAR],
+        [IMAGE],
+      ),
+    ).toBe(true);
+    publishSettlements?.([
+      { stream: IMAGE, window: windowAt(0n, [frame(IMAGE, 0n)]) },
+    ]);
+    publishSettlements?.([
+      { stream: LIDAR, window: windowAt(0n, [frame(LIDAR, 0n)]) },
+    ]);
+
+    expect(harness.caches.get(LIDAR)?.has(0n)).toBe(true);
+    expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(false);
+    expect(getStreamValue(harness.store, IMAGE)).not.toBeNull();
+    expect(getStreamValue(harness.store, LIDAR)).toBeNull();
+
+    terminal.resolve(windowAt(0n, []));
+    await settle();
+    expect(getStreamValue(harness.store, LIDAR)).not.toBeNull();
+  });
+
   it("does not preview a current-frame result after the playhead moves", async () => {
     const terminal = deferred<SynchronizedFrameWindow>();
     let publishSettlement:

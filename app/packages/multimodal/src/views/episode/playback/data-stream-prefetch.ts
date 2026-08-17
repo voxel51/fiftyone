@@ -381,8 +381,37 @@ export function createDataStreamPrefetcher({
     const settlementPriorityStreamSet = new Set(
       settlementPriorityStreamsToFetch ?? [],
     );
+    const firstUsefulSettlementStreamSet = new Set(
+      firstUsefulSettlementStreamsToFetch,
+    );
+    const deferredPresentationStreams = new Set<string>();
+    let publishedFirstUsefulSettlement = false;
     const unsettledStreams = new Set(streamsToFetch);
     let deliveredCurrentFrame = false;
+
+    const publishCurrentTickStreams = (streams: readonly string[]): void => {
+      if (
+        streams.length === 0 ||
+        controller.signal.aborted ||
+        getSourceEpoch() !== sourceEpoch ||
+        getIndex()?.nearestTick(getPlayhead(store)) !== tick
+      ) {
+        return;
+      }
+      pushTickToStore(
+        activeStreamsInCaches(caches, streams),
+        tick,
+        caches,
+        lastFrames,
+        store,
+        fetchState.failedStreams,
+      );
+    };
+    const flushDeferredPresentation = (): void => {
+      const streams = [...deferredPresentationStreams];
+      deferredPresentationStreams.clear();
+      publishCurrentTickStreams(streams);
+    };
 
     const acceptSettlements = (
       settlements: readonly SynchronizedStreamSettlement[],
@@ -417,16 +446,27 @@ export function createDataStreamPrefetcher({
           }) || deliveredCurrentFrame;
       }
 
-      const currentTick = getIndex()?.nearestTick(getPlayhead(store));
-      if (currentTick === tick) {
-        pushTickToStore(
-          activeStreamsInCaches(caches, acceptedStreams),
-          tick,
-          caches,
-          lastFrames,
-          store,
-          fetchState.failedStreams,
-        );
+      const includesPresentFirstUsefulSettlement = accepted.some(
+        ({ stream, window }) =>
+          firstUsefulSettlementStreamSet.has(stream) &&
+          (window.framesByStream[stream]?.length ?? 0) > 0,
+      );
+      const includesNonPrioritySettlement = acceptedStreams.some(
+        (stream) => !settlementPriorityStreamSet.has(stream),
+      );
+      if (firstUsefulSettlementStreamSet.size === 0) {
+        publishCurrentTickStreams(acceptedStreams);
+      } else if (
+        !publishedFirstUsefulSettlement &&
+        includesPresentFirstUsefulSettlement
+      ) {
+        publishedFirstUsefulSettlement = true;
+        publishCurrentTickStreams(acceptedStreams);
+      } else {
+        for (const stream of acceptedStreams) {
+          deferredPresentationStreams.add(stream);
+        }
+        if (includesNonPrioritySettlement) flushDeferredPresentation();
       }
       finishFetch(sourceEpoch, [tickKey], acceptedStreams);
     };
@@ -447,14 +487,16 @@ export function createDataStreamPrefetcher({
       })
       .then((window) => {
         const terminalStreams = [...unsettledStreams];
-        if (terminalStreams.length === 0) return;
-        deliveredCurrentFrame =
-          deliverWindows({
-            rebalance: false,
-            sourceEpoch,
-            streams: terminalStreams,
-            windows: [window],
-          }) || deliveredCurrentFrame;
+        if (terminalStreams.length > 0) {
+          deliveredCurrentFrame =
+            deliverWindows({
+              rebalance: false,
+              sourceEpoch,
+              streams: terminalStreams,
+              windows: [window],
+            }) || deliveredCurrentFrame;
+        }
+        flushDeferredPresentation();
       })
       .catch((error) =>
         handleRejectedFetch(error, sourceEpoch, [tick], [...unsettledStreams]),
@@ -464,6 +506,7 @@ export function createDataStreamPrefetcher({
         if (deliveredCurrentFrame && getSourceEpoch() === sourceEpoch) {
           rebalanceDecodedCaches();
         }
+        flushDeferredPresentation();
         finishFetch(sourceEpoch, [tickKey], [...unsettledStreams]);
         unsettledStreams.clear();
       });
