@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
@@ -17,6 +17,7 @@ import {
   imagePlaneViewportRect as fittedImagePlaneViewportRect,
 } from "../media-2d/image-plane-viewport";
 import {
+  prepareWebGlPointCloudProjectionColorAttribute,
   retainGpuPointCloudProjectionResource,
   type GpuPointCloudProjectionResource,
 } from "./gpu-point-cloud-projection-resources";
@@ -41,6 +42,7 @@ import type {
   PointCloudProjectionTslFacade,
   PointCloudProjectionUniformNode,
 } from "../tsl-chainables";
+import { useGraphicsRuntime } from "../webgpu/graphics-runtime-context";
 
 const CULLED_POSITION = 1e9;
 const MIN_VIEW_SCALE = 1e-6;
@@ -61,7 +63,12 @@ type ProjectionPointsMaterial = PointsNodeMaterial & {
 
 type ProjectionSensorNode = CameraProjectionNode & PointCloudPositionNode;
 
-/** Rendering inputs for one GPU-projected point-cloud layer. */
+interface WebGlColorBinding {
+  readonly attribute: THREE.InstancedBufferAttribute;
+  readonly resource: GpuPointCloudProjectionResource;
+}
+
+/** Rendering inputs for one shader-projected point-cloud layer. */
 export interface GpuPointCloudProjectionLayerProps {
   readonly calibrationHeight: number;
   readonly calibrationWidth: number;
@@ -89,12 +96,70 @@ export interface GpuPointCloudProjectionLayerProps {
 }
 
 /**
- * GPU-native pointcloud projection layer for the orthographic image scene.
+ * Backend-aware pointcloud projection layer for the orthographic image scene.
  * One instanced screen-space quad is submitted per prepared point; the vertex
  * shader performs sensor-to-camera and camera-to-pixel projection and moves
  * invalid instances outside the clip volume.
  */
-export function GpuPointCloudProjectionLayer({
+export function GpuPointCloudProjectionLayer(
+  props: GpuPointCloudProjectionLayerProps,
+) {
+  const { color, renderedPointCount, resource } = props;
+  const { backend } = useGraphicsRuntime();
+  const invalidate = useThree((state) => state.invalidate);
+  const drawCount = Math.min(
+    resource.sampledPointCount,
+    renderedPointCount ?? resource.sampledPointCount,
+  );
+  const [webGlBinding, setWebGlBinding] = useState<WebGlColorBinding | null>(
+    null,
+  );
+  const webGlColorAttribute =
+    backend === "webgl2" && webGlBinding?.resource === resource
+      ? webGlBinding.attribute
+      : null;
+
+  // WebGL color expansion mutates a shared resource and must happen only for
+  // committed frames. Gate the visible child until its stable attribute is
+  // prepared, then update the same binding in place on later frames.
+  useLayoutEffect(() => {
+    if (backend !== "webgl2") return;
+    const attribute = prepareWebGlPointCloudProjectionColorAttribute(
+      resource,
+      color,
+      drawCount,
+    );
+    setWebGlBinding((current) =>
+      current?.resource === resource && current.attribute === attribute
+        ? current
+        : { attribute, resource },
+    );
+    invalidate();
+    // contentKey is mutable on the grow-only resource and identifies the
+    // committed frame whose ordinary colors need to be refreshed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backend, color, drawCount, invalidate, resource, resource.contentKey]);
+
+  // Pin topic attributes for the full wrapper lifetime, including the first
+  // WebGL commit while its ordinary color attribute is being prepared.
+  useLayoutEffect(
+    () => retainGpuPointCloudProjectionResource(resource),
+    [resource],
+  );
+
+  if (backend === "webgl2" && !webGlColorAttribute) {
+    return null;
+  }
+  return (
+    <GpuPointCloudProjectionLayerContent
+      {...props}
+      drawCount={drawCount}
+      webGlColorAttribute={webGlColorAttribute}
+    />
+  );
+}
+
+function GpuPointCloudProjectionLayerContent({
   calibrationHeight,
   calibrationWidth,
   color,
@@ -107,10 +172,14 @@ export function GpuPointCloudProjectionLayer({
   pointSizeScale = 1,
   projection,
   renderOrder = DEFAULT_RENDER_ORDER,
-  renderedPointCount,
+  drawCount,
   resource,
   viewTransform,
-}: GpuPointCloudProjectionLayerProps) {
+  webGlColorAttribute,
+}: GpuPointCloudProjectionLayerProps & {
+  readonly drawCount: number;
+  readonly webGlColorAttribute: THREE.InstancedBufferAttribute | null;
+}) {
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
   const colorNodeKey = gpuPointCloudColorNodeKey(color);
@@ -146,11 +215,12 @@ export function GpuPointCloudProjectionLayer({
         circular,
         projection,
         resource,
+        webGlColorAttribute,
       }),
     // Matrix, viewport, point size, and color ranges update mutable uniforms
     // below. Only resource/color-source topology rebuilds the TSL graph.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [circular, colorNodeKey, projection.kind, resource],
+    [circular, colorNodeKey, projection.kind, resource, webGlColorAttribute],
   );
   const sprite = useMemo(() => {
     const next = new THREE.Sprite(
@@ -164,19 +234,9 @@ export function GpuPointCloudProjectionLayer({
     return next;
   }, [renderOrder, resource.geometry, shader.material]);
 
-  // This layout effect retains topic attributes while the scene references
-  // them, so retired geometry survives until every camera view releases it.
-  useLayoutEffect(
-    () => retainGpuPointCloudProjectionResource(resource),
-    [resource],
-  );
-
   // This layout effect binds projection uniforms before the frame is rendered.
   useLayoutEffect(() => {
-    sprite.count = Math.min(
-      resource.sampledPointCount,
-      renderedPointCount ?? resource.sampledPointCount,
-    );
+    sprite.count = drawCount;
     updateGpuPointCloudColorUniforms(shader.colorUniforms, color);
     updateGpuCameraProjectionBindings(shader.cameraProjection, projection);
     shader.dimensions.value.set(calibrationWidth, calibrationHeight);
@@ -212,12 +272,12 @@ export function GpuPointCloudProjectionLayer({
     imageRect.right,
     imageRect.top,
     color,
+    drawCount,
     invalidate,
     minScreenPointSize,
     pointSize,
     pointSizeScale,
     projection,
-    renderedPointCount,
     resource,
     shader,
     sprite,
@@ -248,6 +308,7 @@ export function createGpuPointCloudProjectionMaterial({
   imageRect = new THREE.Vector4(0, 0, 1, 1),
   projection,
   resource,
+  webGlColorAttribute = null,
 }: {
   readonly calibrationHeight: number;
   readonly calibrationWidth: number;
@@ -256,6 +317,8 @@ export function createGpuPointCloudProjectionMaterial({
   readonly imageRect?: THREE.Vector4;
   readonly projection: GpuCameraProjection;
   readonly resource: GpuPointCloudProjectionResource;
+  /** Ordinary instance colors used when Three selected WebGL2. */
+  readonly webGlColorAttribute?: THREE.InstancedBufferAttribute | null;
 }): GpuPointCloudProjectionMaterial {
   const material = new PointsNodeMaterial({
     sizeAttenuation: false,
@@ -273,7 +336,6 @@ export function createGpuPointCloudProjectionMaterial({
     resource.positionAttribute,
     "vec3",
   );
-  const sampleIndex = gpuPointCloudSampleIndexNode();
   // Direct vertex projection avoids a per-camera compute pass and UV buffer.
   // The shared camera-model graph returns calibration-pixel coordinates.
   const projected = createGpuCameraProjectionNodes(sensorPosition, projection);
@@ -303,24 +365,14 @@ export function createGpuPointCloudProjectionMaterial({
     projectionTsl.vec2(1, 1),
     projectionTsl.vec2(0, 0),
   );
-  const rgbNode = resource.colorChannel
-    ? gpuPointCloudRgbNode(resource.colorChannel, sampleIndex)
-    : null;
-  const scalarNodes = new Map<string, TSL.Node>();
-  for (const [name, channel] of resource.scalarChannels) {
-    scalarNodes.set(name, gpuPointCloudChannelValueNode(channel, sampleIndex));
-  }
-  const colorNode = createGpuPointCloudColorNode(
-    color,
-    {
-      color: null,
-      colorNode: rgbNode,
-      positionNode: sensorPosition,
-      scalar: EMPTY_PROJECTION_CHANNEL_ATTRIBUTES,
-      scalarNodes,
-    },
-    colorUniforms,
-  );
+  const colorNode = webGlColorAttribute
+    ? TSL.instancedBufferAttribute(webGlColorAttribute, "vec3")
+    : createStoragePointCloudColorNode(
+        color,
+        colorUniforms,
+        resource,
+        sensorPosition,
+      );
   material.colorNode = colorNode;
   // Sprite quads can straddle the fitted image edge even when their centers
   // are valid. Fragment clipping prevents dots from bleeding into letterbox
@@ -349,6 +401,34 @@ export function createGpuPointCloudProjectionMaterial({
     imageRect: imageRectUniform,
     material,
   };
+}
+
+/** Builds the compact storage-buffer color graph used only by WebGPU. */
+function createStoragePointCloudColorNode(
+  color: ResolvedGpuPointCloudColor,
+  colorUniforms: GpuPointCloudColorUniforms,
+  resource: GpuPointCloudProjectionResource,
+  sensorPosition: ProjectionSensorNode,
+): TSL.Node {
+  const sampleIndex = gpuPointCloudSampleIndexNode();
+  const rgbNode = resource.colorChannel
+    ? gpuPointCloudRgbNode(resource.colorChannel, sampleIndex)
+    : null;
+  const scalarNodes = new Map<string, TSL.Node>();
+  for (const [name, channel] of resource.scalarChannels) {
+    scalarNodes.set(name, gpuPointCloudChannelValueNode(channel, sampleIndex));
+  }
+  return createGpuPointCloudColorNode(
+    color,
+    {
+      color: null,
+      colorNode: rgbNode,
+      positionNode: sensorPosition,
+      scalar: EMPTY_PROJECTION_CHANNEL_ATTRIBUTES,
+      scalarNodes,
+    },
+    colorUniforms,
+  );
 }
 
 export default GpuPointCloudProjectionLayer;

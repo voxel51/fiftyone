@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   WEBGPU_DEVICE_BUDGET,
-  registerWebGpuRenderer,
-  resetWebGpuDeviceRegistryForTests,
-} from "./webgpu-device-registry";
+  registerGraphicsRenderer,
+  resetGraphicsRendererRegistryForTests,
+} from "./graphics-renderer-registry";
 import {
   GRID_LIVE_RENDERER_CAP,
   acquireGridLiveLease,
@@ -14,19 +14,19 @@ import {
 
 beforeEach(() => {
   resetGridLiveLeasesForTests();
-  resetWebGpuDeviceRegistryForTests();
+  resetGraphicsRendererRegistryForTests();
 });
 
 afterEach(() => {
   resetGridLiveLeasesForTests();
-  resetWebGpuDeviceRegistryForTests();
+  resetGraphicsRendererRegistryForTests();
   vi.restoreAllMocks();
 });
 
-/** Registers `count` fake devices so the page sits at that live total. */
+/** Reserves `count` possible WebGPU devices while fake renderers initialize. */
 function fillDeviceRegistry(count: number) {
   return Array.from({ length: count }, () =>
-    registerWebGpuRenderer("modal-3d"),
+    registerGraphicsRenderer("modal-3d", "auto"),
   );
 }
 
