@@ -14,7 +14,7 @@ describe("decodedOutputSizeBytes", () => {
     ).toBe(139);
   });
 
-  it("falls back to structural sizing and saturates oversized totals", () => {
+  it("falls back to structural sizing and clamps oversized totals", () => {
     expect(decodedOutputSizeBytes({ attributes: { x: 1 } })).toBe(8);
     expect(
       decodedOutputSizeBytes({
@@ -27,5 +27,21 @@ describe("decodedOutputSizeBytes", () => {
         timing: { decodeMs: 1 },
       } as DecodedOutput),
     ).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it("counts each retained binary backing store once", () => {
+    const buffer = new ArrayBuffer(256);
+    expect(
+      decodedOutputSizeBytes({
+        resourceHints: {
+          sizeBytes: 1,
+          transferables: [buffer],
+        },
+        visualization: {
+          bytes: new Uint8Array(buffer, 0, 16),
+          kind: "encoded-image",
+        },
+      } as DecodedOutput),
+    ).toBe(256);
   });
 });
