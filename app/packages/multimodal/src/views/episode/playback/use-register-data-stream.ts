@@ -553,8 +553,8 @@ export function useRegisterDataStream({
     // speculative idle work as well so the old cadence stops consuming I/O.
     cancelIdleReads(session);
     for (const cache of streamCachesRef.current.values()) {
-      cache.resize(playbackPolicy.streamCacheMaxEntries);
       cache.reset();
+      cache.resize(playbackPolicy.streamCacheMaxEntries);
     }
     for (const stream of streamCachesRef.current.keys()) {
       setStreamValue(store, stream, null);
