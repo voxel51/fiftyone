@@ -949,6 +949,13 @@ export class KeypointOverlay
   }
 
   /**
+   * The number of points currently in this overlay.
+   */
+  getPointCount(): number {
+    return this.#points.length;
+  }
+
+  /**
    * Removes the point at the given index.
    */
   removePoint(index: number): void {

@@ -6,7 +6,9 @@ import {
   PolylineEmptyHitAction,
   PolylineEmptyHitContext,
   PolylineOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
+  useLighterEventBus,
 } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
 import { POLYLINE } from "@fiftyone/utilities";
@@ -36,6 +38,9 @@ const is2dPolylineSelected = (
  * polyline overlay installs an {@link InteractivePolylineHandler} on it; the
  * handler is torn down on selection change or mode deactivation.
  */
+/** Frame-level field paths (`frames.<field>`) — i.e. video. */
+const FRAMES_PREFIX = "frames.";
+
 const polylineModeActiveAtom = atom<boolean>(false);
 export { polylineModeActiveAtom as _unsafePolylineModeActiveAtom };
 
@@ -141,6 +146,9 @@ export const usePolylineModeInstaller = (): void => {
   const polylineModeActive = useAtomValue(polylineModeActiveAtom);
   const setPolylineModeActive = useSetAtom(polylineModeActiveAtom);
   const { scene } = useLighter();
+  const eventBus = useLighterEventBus(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
+  );
   const { selected, createNew } = useAnnotationContext();
 
   // The handler currently installed via scene.enterInteractiveMode, or null
@@ -253,13 +261,44 @@ export const usePolylineModeInstaller = (): void => {
       id: "interactive-polyline-creation-handler",
       onCreate: (worldPoint) => {
         const rel = scene.absolutePointToRelative(worldPoint);
-        createPolylineRef.current({ origin: [rel.x, rel.y] });
+        const created = createPolylineRef.current({ origin: [rel.x, rel.y] });
+
+        // A drawn shape on video has to announce itself so the video surface can
+        // establish the track — first keyframe plus the auto-extend filler — which
+        // is what makes "draw on one frame, scrub forward, drag the point" work
+        // without extending the track by hand every time. A drawn detection gets
+        // this from the interaction manager's SETTING pointer-up path; the polyline
+        // creation flow (creation handler -> createNew -> polyline handler) has no
+        // equivalent, so without this a drawn polyline never became a track.
+        //
+        // Frame-level fields only: an image polyline is already committed by
+        // `createNew`'s vertex seeding, and re-announcing it would only
+        // re-commit the same label. On video the seeding commit also ran
+        // (frame-stamped), so the bridge's establish commit is a value-equal
+        // no-op — the undo stack drops it — but the establish is still what
+        // stashes the gesture key and hands the draw to the video surface.
+        // Lighter records no undo command of its own here (the annotation engine
+        // holds undo authority while mounted), so this pushes no duplicate.
+        if (created?.path?.startsWith(FRAMES_PREFIX)) {
+          // The video handler reads geometry from the engine anchor, not from
+          // this payload, so a zero rect is enough to satisfy the event shape.
+          const bounds = { x: 0, y: 0, width: 0, height: 0 };
+
+          eventBus.dispatch("lighter:overlay-establish", {
+            id: handler.id,
+            overlayId: created.data._id as string,
+            handler,
+            startBounds: bounds,
+            startPosition: { x: bounds.x, y: bounds.y },
+            bounds,
+          });
+        }
       },
     });
 
     scene.enterInteractiveMode(handler);
     installedHandlerRef.current = handler;
-  }, [exitInstalledHandler, polylineModeActive, scene, selected]);
+  }, [eventBus, exitInstalledHandler, polylineModeActive, scene, selected]);
 
   // Tear down on unmount (e.g., scene swap, modal close).
   useEffect(() => {

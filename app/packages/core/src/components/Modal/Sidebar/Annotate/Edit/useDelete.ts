@@ -22,20 +22,28 @@ import useExit from "./useExit";
 
 interface KeypointVertexSelection {
   getSelectedPointIndex(): number | null;
+  getRelativePoints(): [number, number][];
 }
 
-/** True while a specific polyline/keypoint vertex is sub-selected on the canvas. */
+/**
+ * True while a canvas vertex is sub-selected and removing it would leave
+ * geometry behind. Removing the only point removes the label, so Delete
+ * falls through to the whole-label delete.
+ */
 const isVertexSubSelected = (overlay: unknown): boolean => {
+  const selection = overlay as KeypointVertexSelection;
   if (
     !overlay ||
-    typeof (overlay as KeypointVertexSelection).getSelectedPointIndex !==
-      "function"
+    typeof selection.getSelectedPointIndex !== "function" ||
+    typeof selection.getRelativePoints !== "function"
   ) {
     return false;
   }
 
-  const index = (overlay as KeypointVertexSelection).getSelectedPointIndex();
-  return index != null && index >= 0;
+  const index = selection.getSelectedPointIndex();
+  return (
+    index != null && index >= 0 && selection.getRelativePoints().length > 1
+  );
 };
 
 export default function useDelete() {

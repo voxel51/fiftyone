@@ -13,6 +13,7 @@
 import type { Scene2D } from "@fiftyone/lighter";
 import {
   DetectionOverlay,
+  PolylineOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
@@ -165,6 +166,19 @@ export const useLighterEngineBridge = ({
     (event: { overlayId: string }) => {
       const overlay = (scene as Scene2D).getOverlay(event.overlayId);
 
+      // An emptied polyline has nothing to commit — delete it. The delete
+      // is not a surface write, so the change loop unmounts the overlay.
+      if (
+        overlay instanceof PolylineOverlay &&
+        overlay.getRelativePoints().length === 0
+      ) {
+        surface.deleteLabel(
+          stampFrame({ path: overlay.field, instanceId: overlay.id }, frameOf),
+        );
+        surface.selectHandle(undefined);
+        return;
+      }
+
       // No edit-commit consumer (image / 3D): plain commit, its own undo unit.
       if (!onEditCommit) {
         surface.commit(overlay);
@@ -178,7 +192,7 @@ export const useLighterEngineBridge = ({
       surface.commit(overlay, { undoKey });
       onEditCommit(event.overlayId, overlay?.field ?? "", undoKey);
     },
-    [engine, onEditCommit, scene, surface],
+    [engine, frameOf, onEditCommit, scene, surface],
   );
 
   // Gesture coalescing: drawing a masked detection commits in several steps —

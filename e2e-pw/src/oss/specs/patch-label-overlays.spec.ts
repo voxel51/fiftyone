@@ -69,7 +69,7 @@ test("patch tiles show the patch label as a tag bubble", async ({ grid }) => {
   await grid.assert.nthSampleHasTagValue(1, "predictions", "dog");
 });
 
-test("attribute eyes control bubble text; the last shown attribute locks", async ({
+test("attribute eyes control bubble text; all attributes can be hidden", async ({
   grid,
   sidebar,
 }) => {
@@ -80,14 +80,16 @@ test("attribute eyes control bubble text; the last shown attribute locks", async
 
   await sidebar.clickFieldDropdown("predictions");
 
-  // `label` is the only shown attribute by default, so its eye is locked
-  await expect(labelEye).toBeDisabled();
-
   await confidenceEye.click();
   await grid.assert.nthSampleHasTagValue(0, "predictions", "cat, 0.9");
-  await expect(labelEye).toBeEnabled();
 
   await labelEye.click();
   await grid.assert.nthSampleHasTagValue(0, "predictions", "0.9");
-  await expect(confidenceEye).toBeDisabled();
+
+  // hiding the last shown attribute removes the bubble entirely
+  await confidenceEye.click();
+  await grid.assert.nthSampleHasNoTag(0, "predictions");
+
+  await labelEye.click();
+  await grid.assert.nthSampleHasTagValue(0, "predictions", "cat");
 });

@@ -25,17 +25,14 @@ const Icon = ({
     return null;
   }
 
-  const { attribute, isShown, locked } = toggle;
-  const title = locked
-    ? "At least one attribute must be shown in overlays"
-    : `${isShown ? "Hide" : "Show"} ${attribute} in overlays`;
+  const { attribute, isShown } = toggle;
+  const title = `${isShown ? "Hide" : "Show"} ${attribute} in overlays`;
   const Eye = isShown ? VisibilityIcon : VisibilityOffIcon;
 
   return (
     <button
       aria-label={title}
       data-cy={`shown-attribute-${path}`}
-      disabled={locked}
       onClick={(event) => {
         event.stopPropagation();
         toggle.toggle();
@@ -43,7 +40,7 @@ const Icon = ({
       style={{
         background: "none",
         border: "none",
-        cursor: locked ? "not-allowed" : "pointer",
+        cursor: "pointer",
         display: "inline-flex",
         margin: 0,
         padding: 0,
