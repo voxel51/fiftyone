@@ -40,7 +40,7 @@ const PROJECTION_PICK_RADIUS_SCREEN_PX = 6;
 const PROJECTION_HOVER_OWNER = "image-projection";
 
 /**
- * DOM interaction surface for GPU pointcloud projections. Rendering and hit
+ * DOM interaction surface for pointcloud projections. Rendering and hit
  * testing live in the image's R3F scene; this component owns only dwell
  * timing, coordinate conversion, tooltip UI, and cross-pane hover state.
  */
@@ -95,7 +95,7 @@ const ImageProjectionOverlay = ({
 
   const clearOwnHover = useCallback(() => {
     // Pointer cancellation cannot cancel mapAsync itself. Bump both the DOM
-    // generation and controller generation so a late integer texel is inert.
+    // generation and picker generation so a late result is inert.
     requestGenerationRef.current += 1;
     pickerRef.current?.invalidate();
     setDwellTooltip(null);
@@ -121,7 +121,7 @@ const ImageProjectionOverlay = ({
       const shouldRetire = !imageStillCurrent || !pointStillCurrent;
       if (shouldRetire) {
         // Keep invalidation ahead of shared-state retraction, matching pointer
-        // cancellation and making late GPU readback inert before publication.
+        // cancellation and making late picker results inert before publication.
         requestGenerationRef.current += 1;
         pickerRef.current?.invalidate();
         setDwellTooltip(null);

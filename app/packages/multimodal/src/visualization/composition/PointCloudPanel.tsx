@@ -284,6 +284,11 @@ export function PointCloudPanel({
       radius: size.length() / 2,
     } as const;
   }, [frameFitBounds]);
+  const sceneBoundsSize = useMemo(() => {
+    if (!frameFitBounds) return null;
+    const size = frameFitBounds.getSize(new THREE.Vector3());
+    return [size.x, size.y, size.z] as const;
+  }, [frameFitBounds]);
   const [initialFitPose, setInitialFitPose] =
     useState<PointCloudCameraPose | null>(null);
   const [appliedFitResetKey, setAppliedFitResetKey] = useState(fitResetKey);
@@ -381,6 +386,10 @@ export function PointCloudPanel({
     (sum, layer) => sum + layer.data.finitePointCount,
     0,
   );
+  const renderedPointCount = renderLayers.reduce(
+    (sum, layer) => sum + layer.data.renderedPointCount,
+    0,
+  );
   const declaredPointCount = layers.reduce(
     (sum, layer) => sum + layer.frame.pointCount,
     0,
@@ -438,10 +447,7 @@ export function PointCloudPanel({
         frustumLayerCount: frustumLayers.length,
         gridLayerCount: gridLayers.length,
         layerCount: layers.length,
-        renderedPointCount: renderLayers.reduce(
-          (sum, layer) => sum + layer.data.renderedPointCount,
-          0,
-        ),
+        renderedPointCount,
         ...(sceneBoundsSummary ? { sceneBounds: sceneBoundsSummary } : {}),
       });
     });
@@ -462,6 +468,7 @@ export function PointCloudPanel({
     layers.length,
     onRenderStats,
     renderLayers,
+    renderedPointCount,
     sceneBoundsSummary,
   ]);
   const showControlStack =
@@ -470,7 +477,12 @@ export function PointCloudPanel({
     Boolean(controls || frameFitPose || measureReadout);
 
   return (
-    <div className={className} style={{ ...styles.panel, ...style }}>
+    <div
+      className={className}
+      data-point-cloud-bounds-size={sceneBoundsSize?.join(",")}
+      data-point-cloud-rendered-count={renderedPointCount}
+      style={{ ...styles.panel, ...style }}
+    >
       <PointCloudCanvas
         annotationCubeRenderPlan={annotationCubeRenderPlan}
         background={background}
