@@ -646,18 +646,21 @@ async function decodeWindowsFromCandidates<
         readonly McapTopicDecodeDiagnostic[]
       > = {};
       const messages: Message[] = [];
-      const firstSettlementTopic = await selectFirstSettlementTopic({
+      const settlementTopics = await selectSettlementTopics({
         estimateCandidateBytes,
         settlementPriorityTopics,
         selectedByTopic,
       });
-      const decodeOrder = firstSettlementTopic
+      const settlementTopicSet = new Set(settlementTopics);
+      const selectedByTopicMap = new Map(selectedByTopic);
+      const decodeOrder = settlementTopics.length
         ? [
+            ...settlementTopics.flatMap((topic) => {
+              const selected = selectedByTopicMap.get(topic);
+              return selected ? ([[topic, selected]] as const) : [];
+            }),
             ...selectedByTopic.filter(
-              ([topic]) => topic === firstSettlementTopic,
-            ),
-            ...selectedByTopic.filter(
-              ([topic]) => topic !== firstSettlementTopic,
+              ([topic]) => !settlementTopicSet.has(topic),
             ),
           ]
         : selectedByTopic;
@@ -800,18 +803,42 @@ export async function selectFirstSettlementTopic<Candidate>({
     readonly Candidate[],
   ])[];
 }): Promise<string | undefined> {
-  if (!estimateCandidateBytes || !settlementPriorityTopics?.length) {
-    return undefined;
-  }
+  return (
+    await selectSettlementTopics({
+      estimateCandidateBytes,
+      settlementPriorityTopics,
+      selectedByTopic,
+    })
+  )[0];
+}
+
+/** Orders every priority topic ahead of non-blocking settlement work. */
+export async function selectSettlementTopics<Candidate>({
+  estimateCandidateBytes,
+  settlementPriorityTopics,
+  selectedByTopic,
+}: {
+  readonly estimateCandidateBytes?: (
+    candidate: Candidate,
+  ) => number | Promise<number>;
+  readonly settlementPriorityTopics?: readonly string[];
+  readonly selectedByTopic: readonly (readonly [
+    string,
+    readonly Candidate[],
+  ])[];
+}): Promise<readonly string[]> {
+  if (!settlementPriorityTopics?.length) return [];
   const eligible = new Set(settlementPriorityTopics);
   const costs = await Promise.all(
     selectedByTopic
-      .filter(([topic, selected]) => eligible.has(topic) && selected.length > 0)
+      .filter(([topic]) => eligible.has(topic))
       .map(async ([topic, selected]) => ({
-        cost: (await Promise.all(selected.map(estimateCandidateBytes))).reduce(
-          (total, bytes) => total + bytes,
-          0,
-        ),
+        cost: estimateCandidateBytes
+          ? (await Promise.all(selected.map(estimateCandidateBytes))).reduce(
+              (total, bytes) => total + bytes,
+              0,
+            )
+          : 0,
         topic,
       })),
   );
@@ -819,7 +846,7 @@ export async function selectFirstSettlementTopic<Candidate>({
     (left, right) =>
       left.cost - right.cost || left.topic.localeCompare(right.topic),
   );
-  return costs[0]?.topic;
+  return costs.map(({ topic }) => topic);
 }
 
 async function collectIndexedCandidates({

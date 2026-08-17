@@ -5,6 +5,7 @@ import {
   mintIndexedRecordIdentity,
   parseIndexedRecordIdentity,
   selectFirstSettlementTopic,
+  selectSettlementTopics,
 } from "./read-synchronized-message-batch";
 
 describe("indexed record identity", () => {
@@ -78,6 +79,13 @@ describe("synchronized settlement order", () => {
           selectedByTopic: candidates,
         }),
       ).resolves.toBe("/small");
+      await expect(
+        selectSettlementTopics({
+          estimateCandidateBytes: (candidate) => candidate.bytes,
+          settlementPriorityTopics: ["/large", "/small"],
+          selectedByTopic: candidates,
+        }),
+      ).resolves.toEqual(["/small", "/large"]);
     },
   );
 });

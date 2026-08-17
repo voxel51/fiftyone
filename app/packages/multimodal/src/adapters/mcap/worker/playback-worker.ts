@@ -190,12 +190,40 @@ async function streamRequest(
   let batch: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][] =
     [];
   let batchBytes = 0;
+  const pendingPriorityTopics =
+    message.type === "readSynchronizedMessages"
+      ? new Set(
+          (message.payload.settlementPriorityTopics ?? []).filter((topic) =>
+            message.payload.topics.includes(topic),
+          ),
+        )
+      : null;
+  let holdingPrioritySettlements = (pendingPriorityTopics?.size ?? 0) > 0;
 
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
     throwIfWorkerRequestCancelled(signal);
     const transferables = transferablesForMcapResult(item);
-    // Transferable buffers must keep their per-item ownership boundary. Plain
-    // decoded records can share one postMessage to reduce main-thread churn.
+    // The complete blocking prefix is one delivery boundary. Its ordered
+    // per-topic items still hydrate independently on the host, while one
+    // postMessage lets the playback store publish readiness in one browser
+    // turn and transfers every payload exactly once.
+    if (holdingPrioritySettlements) {
+      batch.push(item);
+      batchBytes += estimateMcapStreamItemBytes(item);
+      if (isSynchronizedTopicSettlement(item)) {
+        pendingPriorityTopics?.delete(item.topic);
+      }
+      if ((pendingPriorityTopics?.size ?? 0) === 0) {
+        postStreamBatch(message.id, batch);
+        batch = [];
+        batchBytes = 0;
+        holdingPrioritySettlements = false;
+      }
+      continue;
+    }
+    // Outside the explicit priority boundary, transferable buffers keep their
+    // per-item ownership boundary. Plain decoded records can share one
+    // postMessage to reduce main-thread churn.
     if (transferables.length > 0) {
       postStreamBatch(message.id, batch);
       batch = [];
@@ -249,6 +277,20 @@ async function streamRequest(
     stream: true,
     transport: transportMeter.snapshot(),
   });
+}
+
+function isSynchronizedTopicSettlement(
+  item: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType],
+): item is Extract<
+  McapPlaybackWorkerStreamItemByType["readSynchronizedMessages"],
+  { readonly kind: "topic-settlement" }
+> {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    "kind" in item &&
+    item.kind === "topic-settlement"
+  );
 }
 
 function throwIfWorkerRequestCancelled(signal: AbortSignal): void {

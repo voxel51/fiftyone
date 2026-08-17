@@ -12,6 +12,10 @@ type WorkerClientMock = {
 
 const workerResourceClientMock = vi.hoisted(() => ({
   clients: [] as WorkerClientMock[],
+  synchronizedSettlements: [] as Array<{
+    readonly topic: string;
+    readonly window: unknown;
+  }>,
   synchronizedResult: null as unknown,
 }));
 
@@ -20,10 +24,18 @@ vi.mock("./worker-resource-client", () => ({
     const client: WorkerClientMock = {
       dispose: vi.fn(),
       readSynchronizedMessages: vi.fn(async (_request, options) => {
-        options?.onTopicSettlement?.({
-          topic: "/camera",
-          window: workerResourceClientMock.synchronizedResult,
-        });
+        const settlements = workerResourceClientMock.synchronizedSettlements
+          .length
+          ? workerResourceClientMock.synchronizedSettlements
+          : [
+              {
+                topic: "/camera",
+                window: workerResourceClientMock.synchronizedResult,
+              },
+            ];
+        for (const settlement of settlements) {
+          options?.onTopicSettlement?.(settlement);
+        }
         return workerResourceClientMock.synchronizedResult;
       }),
       readTopics: vi.fn(async () => ({
@@ -47,6 +59,7 @@ describe("MCAP playback worker lifecycle", () => {
     vi.unstubAllGlobals();
     vi.resetModules();
     workerResourceClientMock.clients.length = 0;
+    workerResourceClientMock.synchronizedSettlements.length = 0;
     workerResourceClientMock.synchronizedResult = null;
   });
 
@@ -111,7 +124,7 @@ describe("MCAP playback worker lifecycle", () => {
     });
     expect(workerScope.postMessage.mock.calls[0]).toEqual([
       expect.objectContaining({
-        item: expect.objectContaining({ kind: "topic-settlement" }),
+        items: [expect.objectContaining({ kind: "topic-settlement" })],
         ok: true,
         stream: true,
       }),
@@ -134,6 +147,60 @@ describe("MCAP playback worker lifecycle", () => {
         ([response]) => response.ok === false,
       ),
     ).toBe(false);
+  });
+
+  it("delivers the complete blocking prefix in one transferable batch", async () => {
+    const cameraBytes = new Uint8Array([1, 2, 3]);
+    const lidarBytes = new Uint8Array([4, 5, 6]);
+    const camera = synchronizedWindow(cameraBytes, "/camera");
+    const lidar = synchronizedWindow(lidarBytes, "/lidar");
+    workerResourceClientMock.synchronizedSettlements.push(
+      { topic: "/camera", window: camera },
+      { topic: "/lidar", window: lidar },
+    );
+    workerResourceClientMock.synchronizedResult = synchronizedWindow(
+      new Uint8Array([]),
+      "/terminal",
+    );
+    const workerScope: WorkerScopeMock = {
+      close: vi.fn(),
+      onmessage: null,
+      postMessage: vi.fn(),
+    };
+    vi.stubGlobal("self", workerScope);
+    await import("./playback-worker");
+
+    dispatch(workerScope, {
+      id: 1,
+      payload: {
+        settlementPriorityTopics: ["/camera", "/lidar"],
+        source: { sizeBytes: "1024", sourceId: "source:1", url: "mcap://1" },
+        timeNs: 1n,
+        topics: ["/camera", "/lidar", "/terminal"],
+      },
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      sourceKey: "source:1",
+      type: "readSynchronizedMessages",
+    } as McapPlaybackWorkerRequest);
+
+    await vi.waitFor(() => {
+      expect(workerScope.postMessage).toHaveBeenCalledTimes(3);
+    });
+    expect(workerScope.postMessage.mock.calls[0]).toEqual([
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            kind: "topic-settlement",
+            topic: "/camera",
+          }),
+          expect.objectContaining({
+            kind: "topic-settlement",
+            topic: "/lidar",
+          }),
+        ],
+      }),
+      expect.arrayContaining([cameraBytes.buffer, lidarBytes.buffer]),
+    ]);
   });
 
   it("keeps the terminal event payload-free after topic settlement", async () => {
@@ -179,7 +246,7 @@ describe("MCAP playback worker lifecycle", () => {
   });
 });
 
-function synchronizedWindow(bytes: Uint8Array) {
+function synchronizedWindow(bytes: Uint8Array, topic = "/camera") {
   const message = {
     activeTimeline: "log" as const,
     channelId: 1,
@@ -196,13 +263,13 @@ function synchronizedWindow(bytes: Uint8Array) {
     publishTimeNs: 1n,
     sequence: 1,
     timelineTimeNs: 1n,
-    topic: "/camera",
+    topic,
   };
   return {
     activeTimeline: "log" as const,
     endTimeNs: 1n,
     messages: [message],
-    messagesByTopic: { "/camera": [message] },
+    messagesByTopic: { [topic]: [message] },
     startTimeNs: 1n,
     streamPolicies: {},
     timeNs: 1n,
