@@ -1,4 +1,11 @@
 .. customcarditem::
+    :header: 2026 Humanoid IKEA Assembly Challenge
+    :description: Six humanoid furniture-assembly episodes in native MCAP format, with stereo head and wrist cameras, infrared, 35-motor telemetry, odometry, and annotated subtasks.
+    :link: datasets/humanoid_ikea_assembly_challenge.html
+    :image: ../_images/2026-humanoid-ikea-assembly-challenge.png
+    :tags: multimodal,mcap,robotics,humanoid
+
+.. customcarditem::
     :header: ABC-130k
     :description: 40 bimanual robot teleoperation episodes from the ABC-130k corpus in native MCAP format, with synchronized multi-camera video and robot telemetry on the timeline.
     :link: datasets/abc_130k.html
@@ -256,6 +263,13 @@
     :link: datasets/sama_coco.html
     :image: ../_images/sama-coco-validation.png
     :tags: image,detection,segmentation
+
+.. customcarditem::
+    :header: SEW Multimodal AMR
+    :description: 55 autonomous mobile robot sessions in native MCAP format, with RGB, thermal, time-of-flight, 4D radar, laser scanners, and ultrasonic across seasons, weather, and lighting.
+    :link: datasets/sew_multimodal_amr.html
+    :image: ../_images/sew-multimodal-amr.png
+    :tags: multimodal,mcap,robotics,thermal
 
 .. customcarditem::
     :header: TartanGround

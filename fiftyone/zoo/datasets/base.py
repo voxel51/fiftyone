@@ -3742,7 +3742,118 @@ class TreeScopeMultimodalDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class HumanoidIKEAAssemblyChallengeDataset(FiftyOneDataset):
+    """Six episodes from the 2026 Humanoid IKEA Assembly Challenge, one per
+    recording day, as native ``.mcap`` episodes.
+
+    Each episode carries a side-by-side stereo head camera, both wrist
+    cameras with their infrared pairs, whole-body and gripper telemetry with
+    timeline plot channels, base odometry, and the human-annotated subtask
+    sequence.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset(
+            "2026-humanoid-ikea-assembly-challenge"
+        )
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        9.75 GB
+    """
+
+    _REPO_ID = "Voxel51/2026-Humanoid-IKEA-Assembly-Challenge"
+
+    @property
+    def name(self):
+        return "2026-humanoid-ikea-assembly-challenge"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "humanoid", "manipulation")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(self._REPO_ID, dataset_dir)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class SEWMultimodalAMRDataset(FiftyOneDataset):
+    """The labeled test set of the SEW-EURODRIVE Multimodal AMR dataset, as
+    native ``.mcap`` episodes.
+
+    Six sensing modalities ride one autonomous mobile robot: RGB, thermal,
+    time-of-flight, 4D radar, two 2D laser scanners, and an ultrasonic
+    array. The 3,151 labeled frames are split into 55 episodes, one per
+    source recording session, spanning three seasons, six weather
+    conditions, and day, dawn, and night. KITTI cuboids and YOLO boxes ride
+    the timeline as scene and image annotations.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("sew-multimodal-amr")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        3.97 GB
+    """
+
+    _REPO_ID = "Voxel51/SEW-Multimodal-AMR"
+
+    @property
+    def name(self):
+        return "sew-multimodal-amr"
+
+    @property
+    def license(self):
+        return "CC-BY-SA-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "thermal", "radar")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(self._REPO_ID, dataset_dir)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
+    "2026-humanoid-ikea-assembly-challenge": (
+        HumanoidIKEAAssemblyChallengeDataset
+    ),
     "abc-130k": ABC130kDataset,
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3775,6 +3886,7 @@ AVAILABLE_DATASETS = {
     "quickstart-3d": Quickstart3DDataset,
     "robomind": RoboMINDDataset,
     "sama-coco": SamaCOCODataset,
+    "sew-multimodal-amr": SEWMultimodalAMRDataset,
     "tartanground": TartanGroundDataset,
     "treescope-multimodal": TreeScopeMultimodalDataset,
     "ucf101": UCF101Dataset,
