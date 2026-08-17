@@ -392,7 +392,6 @@ export function createDataStreamPrefetcher({
     const publishCurrentTickStreams = (streams: readonly string[]): void => {
       if (
         streams.length === 0 ||
-        controller.signal.aborted ||
         getSourceEpoch() !== sourceEpoch ||
         getIndex()?.nearestTick(getPlayhead(store)) !== tick
       ) {

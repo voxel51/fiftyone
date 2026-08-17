@@ -359,29 +359,39 @@ describe("data stream prefetcher", () => {
 
   it("keeps a partial settlement authoritative when the union is cancelled", async () => {
     const terminal = deferred<SynchronizedFrameWindow>();
-    let publishSettlement:
-      | ((settlement: SynchronizedStreamSettlement) => void)
+    let publishSettlements:
+      | ((settlements: readonly SynchronizedStreamSettlement[]) => void)
       | undefined;
     const harness = createHarness({
       readSynchronized: vi.fn((request) => {
-        publishSettlement = request.onStreamSettlement;
+        publishSettlements = request.onStreamSettlements;
         return terminal.promise;
       }),
     });
     harness.caches.get(IMAGE)?.subscribe();
     harness.caches.get(LIDAR)?.subscribe();
 
-    expect(harness.prefetcher.fetchCurrentFrame(0n, [IMAGE, LIDAR])).toBe(true);
+    expect(
+      harness.prefetcher.fetchCurrentFrame(
+        0n,
+        [IMAGE, LIDAR],
+        [IMAGE, LIDAR],
+        [IMAGE],
+      ),
+    ).toBe(true);
     const image = frame(IMAGE, 0n);
-    publishSettlement?.({
-      stream: IMAGE,
-      window: windowAt(0n, [image]),
-    });
+    const lidar = frame(LIDAR, 0n);
+    publishSettlements?.([{ stream: IMAGE, window: windowAt(0n, [image]) }]);
+    publishSettlements?.([{ stream: LIDAR, window: windowAt(0n, [lidar]) }]);
+    expect(getStreamValue(harness.store, LIDAR)).toBeNull();
+
+    harness.prefetcher.cancel();
     terminal.reject(new EpisodeReadCancelledError());
     await settle();
 
     expect(harness.caches.get(IMAGE)?.get(0n)).toBe(image);
-    expect(harness.caches.get(LIDAR)?.has(0n)).toBe(false);
+    expect(harness.caches.get(LIDAR)?.get(0n)).toBe(lidar);
+    expect(getStreamValue(harness.store, LIDAR)).not.toBeNull();
     expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
     expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(false);
     expect(harness.fetchState.failureStreaks).toEqual(new Map());
