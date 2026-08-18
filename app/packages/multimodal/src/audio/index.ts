@@ -4,6 +4,14 @@
  * tomorrow) only implement an `AudioLoader`.
  */
 export { useAudioPlayback } from "./use-audio-playback";
+export { useAudioStreamPlayback } from "./use-audio-stream-playback";
+export type {
+  AudioStreamSource,
+  UseAudioStreamPlaybackOptions,
+  UseAudioStreamPlaybackResult,
+} from "./use-audio-stream-playback";
+export { canUseSharedRingBuffer } from "./ring-buffer";
+export type { AudioWindowReader } from "./audio-stream-pump";
 export type {
   AudioPlaybackStatus,
   UseAudioPlaybackOptions,
