@@ -94,6 +94,47 @@ type TrackDecoration = BaseTrackDecoration & {
 /** Row height (px) for a dynamic-attribute sub-track — shorter than a parent. */
 const SUB_TRACK_ROW_HEIGHT = 22;
 
+/**
+ * Most "Merge into …" entries to offer on one track's menu.
+ *
+ * A merge target has to be a different track of the same class on the same
+ * field, which on a densely tracked sample can be thousands of rows — a menu
+ * nobody can use, and one whose element tree we'd rebuild on every render of
+ * the row. Capping keeps the common case (a handful of fragments of the same
+ * object) intact; past that the menu stops being the right tool and the user
+ * wants the merge dialog.
+ */
+const MAX_MERGE_TARGETS = 12;
+
+/** Bucket key gating merge: same field path AND same class. */
+const mergeGroupKey = (
+  path: string | null,
+  classLabel: string | null,
+): string => `${path ?? ""}\u0000${classLabel ?? ""}`;
+
+/**
+ * The merge targets offered for `track`: its own bucket, minus itself, capped
+ * at {@link MAX_MERGE_TARGETS}.
+ */
+function mergeTargetsFor(
+  groups: ReadonlyMap<string, { id: string; label: string }[]>,
+  track: Track,
+): { id: string; label: string }[] {
+  const bucket = groups.get(
+    mergeGroupKey(objectTrackPathOf(track), objectTrackClassOf(track)),
+  );
+  if (!bucket) return [];
+
+  const targets: { id: string; label: string }[] = [];
+  for (const candidate of bucket) {
+    if (candidate.id === track.id) continue;
+    targets.push(candidate);
+    if (targets.length === MAX_MERGE_TARGETS) break;
+  }
+
+  return targets;
+}
+
 /** Resolves the row color for a temporal-detection track. */
 type TemporalDetectionColorResolver = (
   path: string,
@@ -342,20 +383,30 @@ function useTrackDecorator({
   // implicit context).
   const splitFrameRef = useRef(1);
 
-  // id + label + class of every object track, the universe of merge targets;
-  // each row filters itself out and to its own class below.
-  const mergeCandidates = useMemo(
-    () =>
-      objectTracks
-        .filter((t) => !parseSubTrackId(t.id))
-        .map((t) => ({
-          id: t.id,
-          label: t.label,
-          classLabel: objectTrackClassOf(t),
-          path: objectTrackPathOf(t),
-        })),
-    [objectTracks],
-  );
+  // Merge targets, bucketed by the pair that gates them — same class, same
+  // field. Grouping once turns the per-row lookup into a map hit; the previous
+  // shape was a flat list every row re-filtered, which is O(tracks) per
+  // rendered row and showed up as scroll cost on big samples.
+  const mergeCandidatesByGroup = useMemo(() => {
+    const groups = new Map<string, { id: string; label: string }[]>();
+
+    for (const track of objectTracks) {
+      if (parseSubTrackId(track.id)) continue;
+
+      const key = mergeGroupKey(
+        objectTrackPathOf(track),
+        objectTrackClassOf(track),
+      );
+      const bucket = groups.get(key);
+      if (bucket) {
+        bucket.push({ id: track.id, label: track.label });
+      } else {
+        groups.set(key, [{ id: track.id, label: track.label }]);
+      }
+    }
+
+    return groups;
+  }, [objectTracks]);
 
   return useCallback(
     (track: Track): TrackDecoration => {
@@ -397,16 +448,10 @@ function useTrackDecorator({
           // the track's own frames field — the per-frame ops address it directly,
           // so a track on a non-primary field still deletes / splits / merges
           trackPath: objectTrackPathOf(track),
-          // merge only into a different track OF THE SAME CLASS on the SAME field
-          // (a cross-field merge is meaningless)
-          mergeTargets: mergeCandidates
-            .filter(
-              (c) =>
-                c.id !== track.id &&
-                c.classLabel === objectTrackClassOf(track) &&
-                c.path === objectTrackPathOf(track),
-            )
-            .map((c) => ({ id: c.id, label: c.label })),
+          // merge only into a different track OF THE SAME CLASS on the SAME
+          // field (a cross-field merge is meaningless), capped so a class with
+          // thousands of instances doesn't build — or show — a menu that long
+          mergeTargets: mergeTargetsFor(mergeCandidatesByGroup, track),
         });
 
         if (!expandableParentIds.has(track.id)) {
@@ -445,7 +490,7 @@ function useTrackDecorator({
       actions,
       stream,
       getCurrentFrame,
-      mergeCandidates,
+      mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
     ],

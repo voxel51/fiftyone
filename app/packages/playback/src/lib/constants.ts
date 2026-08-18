@@ -43,11 +43,16 @@ export const TIMELINE_DRAWER_MAX_SIZE = 600;
 export const TIMELINE_TRACK_ROW_HEIGHT = 28;
 /**
  * Extra pixels of rows the virtualizer keeps mounted above and below the
- * visible tracks region. Wide enough that a flick-scroll lands on rendered
- * rows rather than blank space, small enough that a 1000-track timeline still
- * only mounts a couple of dozen rows.
+ * visible tracks region — the trade between blank space on a flick-scroll and
+ * how many rows are mounted at rest.
+ *
+ * Kept deliberately small (~3 rows either side). Rows here are not cheap:
+ * every event on a row mounts its own context menu, so overscan is paid per
+ * event, not per row. Raise it only if scrolling shows blank bands; lower it
+ * to 0 to mount strictly what's visible. Overridable per surface via
+ * `TimelineWithTracksProps.overscanPx`.
  */
-export const TIMELINE_TRACK_OVERSCAN_PX = 240;
+export const TIMELINE_TRACK_OVERSCAN_PX = 96;
 
 export const PLAYHEAD_STATE_PLAYING = "playing";
 export const PLAYHEAD_STATE_PAUSED = "paused";

@@ -25,6 +25,7 @@ import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
 import TimelineTrack, {
+  type NormalizedEvent,
   type TimelineTrackProps,
   type TrackEventMenuItem,
 } from "../TimelineTrack/TimelineTrack";
@@ -126,6 +127,14 @@ export interface TimelineWithTracksProps {
    * through the DOM.
    */
   scrollerRef?: React.MutableRefObject<TimelineTracksScroller | null>;
+  /**
+   * Pixels of extra rows the virtualizer keeps mounted above and below the
+   * visible region. `0` mounts strictly what's on screen — cheapest, at the
+   * cost of a blank band during a fast flick. Raise it for smoother scrolling
+   * on surfaces whose rows are light.
+   * @default TIMELINE_TRACK_OVERSCAN_PX
+   */
+  overscanPx?: number;
 }
 
 /**
@@ -161,6 +170,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   trailingActions,
   decorateTrack,
   scrollerRef,
+  overscanPx = TIMELINE_TRACK_OVERSCAN_PX,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -314,6 +324,52 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     />
   ) : null;
 
+  // One callback for every row rather than one per row: `TimelineTrack` is
+  // memoized, and a fresh closure per render would miss on every comparison.
+  const handlePinClick = useCallback(
+    (id: string) => togglePin(id),
+    [togglePin],
+  );
+  const handleEventClick = useCallback(
+    (event: NormalizedEvent) => seekSnapped(event.startSec),
+    [seekSnapped],
+  );
+
+  /**
+   * Per-track decoration cache, cleared whenever `decorateTrack` changes
+   * identity.
+   *
+   * Decorations are derived from more than the track (hover, selection,
+   * expansion, the merge-candidate set), and a caller expresses all of that
+   * through the identity of the `decorateTrack` callback itself — so that
+   * identity is exactly the right cache key, and the returned object can be
+   * handed back by reference in between. Without this the decorator ran per
+   * row per render and returned a new object each time, which both cost real
+   * work on every scroll frame and guaranteed the row memo never hit.
+   */
+  const decorationsRef = useRef({
+    decorate: decorateTrack,
+    cache: new Map<string, Partial<TimelineTrackProps> | null>(),
+  });
+  if (decorationsRef.current.decorate !== decorateTrack) {
+    decorationsRef.current = { decorate: decorateTrack, cache: new Map() };
+  }
+
+  const decorationFor = (
+    track: Track,
+    pinned: boolean,
+  ): Partial<TimelineTrackProps> | null => {
+    if (!decorateTrack) return null;
+
+    const { cache } = decorationsRef.current;
+    const key = `${pinned ? "p" : "u"}:${track.id}`;
+    if (cache.has(key)) return cache.get(key) ?? null;
+
+    const decoration = decorateTrack(track, pinned);
+    cache.set(key, decoration);
+    return decoration;
+  };
+
   const renderPinnedTrack = (track: Track) => (
     <TimelineTrack
       key={track.id}
@@ -323,15 +379,15 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       events={track.events}
       labelWidth={labelWidth}
       pinned
-      onPinClick={() => togglePin(track.id)}
-      onEventClick={(e) => seekSnapped(e.startSec)}
+      onPinClick={handlePinClick}
+      onEventClick={handleEventClick}
       eventMenuItems={eventMenuItems}
-      {...(decorateTrack ? decorateTrack(track, true) : null)}
+      {...decorationFor(track, true)}
     />
   );
 
   const renderUnpinnedTrack = (track: Track) => {
-    const extra = decorateTrack ? decorateTrack(track, false) : null;
+    const extra = decorationFor(track, false);
     return (
       <TimelineTrack
         id={track.id}
@@ -340,8 +396,8 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         events={track.events}
         labelWidth={labelWidth}
         pinned={false}
-        onPinClick={() => togglePin(track.id)}
-        onEventClick={(e) => seekSnapped(e.startSec)}
+        onPinClick={handlePinClick}
+        onEventClick={handleEventClick}
         eventMenuItems={eventMenuItems}
         {...extra}
         className={clsx(styles.unpinnedTrack, extra?.className)}
@@ -494,7 +550,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             computeItemKey={(_, track) => track.id}
             defaultItemHeight={TIMELINE_TRACK_ROW_HEIGHT}
             initialItemCount={initialItemCountRef.current}
-            increaseViewportBy={TIMELINE_TRACK_OVERSCAN_PX}
+            increaseViewportBy={overscanPx}
             totalListHeightChanged={setMeasuredListHeight}
             rangeChanged={handleRangeChanged}
             itemContent={(_, track) => renderUnpinnedTrack(track)}

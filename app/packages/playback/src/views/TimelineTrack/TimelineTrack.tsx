@@ -18,6 +18,7 @@ import {
 } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { TIMELINE_TRACK_ROW_HEIGHT } from "../../lib/constants";
 import styles from "./TimelineTrack.module.css";
 import { ChevronBottomIcon, ChevronRightIcon, PinIcon } from "../stableIcons";
@@ -132,7 +133,12 @@ export interface TimelineTrackProps {
   height?: number;
   labelWidth?: number;
   pinned?: boolean;
-  onPinClick?: () => void;
+  /**
+   * Receives the row's {@link id}, so a list can hand every row the same
+   * callback instead of minting a closure per row — which would defeat the
+   * memoization on this component.
+   */
+  onPinClick?: (id: string) => void;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
   className?: string;
   /** Fired on the row root. Used for cross-component hover linking. */
@@ -257,6 +263,19 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
    * lane's lane-click handler would seek to the drop point).
    */
   const justDraggedRef = useRef(false);
+
+  /**
+   * Index of the event the row's context menu currently describes, or `null`
+   * before the first right-click.
+   *
+   * The row mounts exactly ONE `ContextMenu`, over the whole lane, and swaps
+   * its contents to whichever event was right-clicked. It used to mount one
+   * per event, which meant a headless-ui menu (plus the full menu element
+   * tree, including every consumer-supplied item) per bar — so a 40-bar row
+   * paid for 40 menus it would never open, and the virtualized window paid
+   * that on every row it mounted. This is the single biggest cost in a row.
+   */
+  const [menuEventIndex, setMenuEventIndex] = useState<number | null>(null);
 
   const labelText = label ?? id;
 
@@ -403,6 +422,91 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         }
       : null;
 
+  /**
+   * Point the row's one menu at whichever event sits under the cursor, read
+   * off the `data-event-index` the markers and their resize handles carry.
+   */
+  const handleLaneContextMenu = (
+    ev: React.MouseEvent<HTMLDivElement>,
+  ): void => {
+    const holder = (ev.target as HTMLElement).closest<HTMLElement>(
+      "[data-event-index]",
+    );
+    const index = holder ? Number(holder.dataset.eventIndex) : Number.NaN;
+
+    if (!Number.isInteger(index) || index < 0 || index >= events.length) {
+      // Empty lane — there's nothing to act on. Preventing default is what
+      // tells voodo's ContextMenu to stand down (it bails on a
+      // `defaultPrevented` event); without it the menu would open showing
+      // whichever event was targeted last.
+      ev.preventDefault();
+      return;
+    }
+
+    // Synchronous on purpose: ContextMenu opens the menu by clicking a hidden
+    // button at the tail of this same handler, so the `menu` prop has to
+    // already describe this event by the time that runs. A queued update
+    // would land a frame late, opening the previous event's menu.
+    flushSync(() => setMenuEventIndex(index));
+  };
+
+  // Only the row that has actually been right-clicked builds a menu tree, and
+  // only for the one event it points at.
+  const menuEvent =
+    menuEventIndex !== null && menuEventIndex < events.length
+      ? normalizeEvent(events[menuEventIndex])
+      : null;
+  const menuEventIsInterval = menuEvent?.endSec !== undefined;
+
+  const laneMenu = menuEvent ? (
+    <>
+      <MenuTextItem onClick={() => seek(menuEvent.startSec)}>
+        Move to start
+      </MenuTextItem>
+      <MenuTextItem
+        disabled={!menuEventIsInterval}
+        onClick={() => menuEventIsInterval && seek(menuEvent.endSec!)}
+      >
+        Move to end
+      </MenuTextItem>
+      <MenuSeparator />
+      <MenuTextItem
+        disabled={!menuEventIsInterval}
+        onClick={() =>
+          menuEventIsInterval && setLoop(menuEvent.startSec, menuEvent.endSec!)
+        }
+      >
+        Shrink window to fit
+      </MenuTextItem>
+      {eventMenuItems && eventMenuItems.length > 0 && (
+        <>
+          <MenuSeparator />
+          {eventMenuItems.map((item, i) => (
+            <MenuTextItem
+              key={i}
+              destructive={item.destructive}
+              disabled={item.disabled}
+              onClick={(ev) => {
+                // Stop the click bubbling to the row's `onClick`
+                // (`onTrackClick`).
+                ev.stopPropagation();
+
+                if (!item.disabled) {
+                  item.onSelect(menuEvent, {
+                    x: ev.clientX,
+                    y: ev.clientY,
+                  });
+                }
+              }}
+            >
+              {item.label}
+            </MenuTextItem>
+          ))}
+        </>
+      )}
+    </>
+  ) : null;
+
   return (
     <div
       className={clsx(styles.root, { [styles.childRow]: isChild }, className)}
@@ -511,193 +615,152 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               })}
               onClick={(e) => {
                 e.stopPropagation();
-                onPinClick();
+                onPinClick(id);
               }}
             />
           )}
         </div>
       )}
 
-      <div
-        ref={laneRef}
-        className={styles.lane}
-        onClick={(e) => {
-          // Right-click opens the context menu via a separate handler.
-          // Don't seek the playhead as a side-effect.
-          if (e.button !== 0) return;
-
-          // voodo's ContextMenu opens by calling `HTMLElement.click()`
-          // on a hidden anchor that sits inside this lane's DOM subtree
-          // (so the DOM-containment check below can't reject it). That
-          // programmatic click has `detail === 0`; real user clicks
-          // always have `detail >= 1`. Skip the synthetic case so
-          // right-clicking an event doesn't seek to that x-position as
-          // a side-effect of opening its menu.
-          if (e.detail === 0) return;
-
-          // Suppress the synthetic click the browser fires immediately
-          // after a real drag so the drop point doesn't double as a seek.
-          if (justDraggedRef.current) return;
-
-          // Portal-rendered context-menu items bubble through the React tree
-          // but live outside this element's DOM subtree — ignore them so
-          // dismissing the menu doesn't fire an unintended seek.
-          if (!e.currentTarget.contains(e.target as Node)) return;
-
-          const target = e.target as HTMLElement;
-          // Event markers / bars own their own click — don't seek twice.
-          if (
-            target.classList.contains(styles.event) ||
-            target.classList.contains(styles.intervalBar) ||
-            target.classList.contains(styles.resizeHandle)
-          )
-            return;
-
-          const rect = e.currentTarget.getBoundingClientRect();
-          seek(
-            viewStart +
-              ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart),
-          );
-        }}
+      <ContextMenu
+        className={styles.laneMenuHost}
+        menu={laneMenu}
+        onContextMenu={handleLaneContextMenu}
       >
-        {barVisible && (
-          <div
-            className={styles.bar}
-            style={{
-              left: pct(clippedStart),
-              width: `${((clippedEnd - clippedStart) / viewDuration) * 100}%`,
-              background: bg ?? `${color}55`,
-              border: `1px solid ${color}88`,
-            }}
-          />
-        )}
-        {events
-          .map((event, originalIndex) => ({
-            event: normalizeEvent(event),
-            originalIndex,
-          }))
-          .filter(({ event }) =>
-            event.endSec !== undefined
-              ? event.endSec >= viewStart && event.startSec <= viewEnd
-              : event.startSec >= viewStart && event.startSec <= viewEnd,
-          )
-          .map(({ event, originalIndex }) => {
-            const handleClick = (ev: React.MouseEvent) => {
-              // Only left-button clicks should move the playhead.
-              // Right-click is reserved for the context menu; without
-              // this gate the synthetic click that some browsers /
-              // ContextMenu portals dispatch on right-mouse-up would
-              // seek the playhead as a side-effect of opening the menu.
-              if (ev.button !== 0) return;
+        <div
+          ref={laneRef}
+          className={styles.lane}
+          onClick={(e) => {
+            // Right-click opens the context menu via a separate handler.
+            // Don't seek the playhead as a side-effect.
+            if (e.button !== 0) return;
 
-              // Synthetic clicks dispatched by `HTMLElement.click()`
-              // (e.g. voodo's ContextMenu opening its menu) report
-              // `button === 0` like every programmatic click. The
-              // `detail` count is the reliable signal: real user clicks
-              // are always >= 1, programmatic clicks are 0. Skip those
-              // so opening an event's context menu doesn't also seek.
-              if (ev.detail === 0) return;
+            // voodo's ContextMenu opens by calling `HTMLElement.click()`
+            // on a hidden anchor that sits inside this lane's DOM subtree
+            // (so the DOM-containment check below can't reject it). That
+            // programmatic click has `detail === 0`; real user clicks
+            // always have `detail >= 1`. Skip the synthetic case so
+            // right-clicking an event doesn't seek to that x-position as
+            // a side-effect of opening its menu.
+            if (e.detail === 0) return;
 
-              // Suppress the synthetic click that pointerup fires
-              // right after a resize / move drag — otherwise the drop
-              // point seeks unexpectedly.
-              if (justDraggedRef.current) return;
+            // Suppress the synthetic click the browser fires immediately
+            // after a real drag so the drop point doesn't double as a seek.
+            if (justDraggedRef.current) return;
 
-              // Deliberately no stopPropagation. The click bubbles to
-              // the row root so `onTrackClick` fires for marker / interval-bar
-              // clicks too. The lane's onClick filters by target class so seek
-              // doesn't double-fire.
-              const lane = laneRef.current;
-              if (lane) {
-                const rect = lane.getBoundingClientRect();
-                const t =
-                  viewStart +
-                  Math.max(
-                    0,
-                    Math.min(1, (ev.clientX - rect.left) / rect.width),
-                  ) *
-                    viewDuration;
-                seek(t);
-              }
-              onEventClick?.(event);
-            };
-            const isInterval = event.endSec !== undefined;
-            const isResizable = Boolean(
-              isInterval && event.resizable && onEventEdit,
+            // Portal-rendered context-menu items bubble through the React tree
+            // but live outside this element's DOM subtree — ignore them so
+            // dismissing the menu doesn't fire an unintended seek.
+            if (!e.currentTarget.contains(e.target as Node)) return;
+
+            const target = e.target as HTMLElement;
+            // Event markers / bars own their own click — don't seek twice.
+            if (
+              target.classList.contains(styles.event) ||
+              target.classList.contains(styles.intervalBar) ||
+              target.classList.contains(styles.resizeHandle)
+            )
+              return;
+
+            const rect = e.currentTarget.getBoundingClientRect();
+            seek(
+              viewStart +
+                ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart),
             );
-            // Per-event override (value-segmented sub-tracks) or track color.
-            const eventColor = event.color ?? color;
+          }}
+        >
+          {barVisible && (
+            <div
+              className={styles.bar}
+              style={{
+                left: pct(clippedStart),
+                width: `${((clippedEnd - clippedStart) / viewDuration) * 100}%`,
+                background: bg ?? `${color}55`,
+                border: `1px solid ${color}88`,
+              }}
+            />
+          )}
+          {events
+            .map((event, originalIndex) => ({
+              event: normalizeEvent(event),
+              originalIndex,
+            }))
+            .filter(({ event }) =>
+              event.endSec !== undefined
+                ? event.endSec >= viewStart && event.startSec <= viewEnd
+                : event.startSec >= viewStart && event.startSec <= viewEnd,
+            )
+            .map(({ event, originalIndex }) => {
+              const handleClick = (ev: React.MouseEvent) => {
+                // Only left-button clicks should move the playhead.
+                // Right-click is reserved for the context menu; without
+                // this gate the synthetic click that some browsers /
+                // ContextMenu portals dispatch on right-mouse-up would
+                // seek the playhead as a side-effect of opening the menu.
+                if (ev.button !== 0) return;
 
-            // While a drag is in progress, render with the override
-            // position so the bar tracks the cursor. Outside of drag,
-            // use the event's own start / end.
-            const override =
-              dragOverride && dragOverride.index === originalIndex
-                ? dragOverride
-                : null;
-            const displayStart = override ? override.startSec : event.startSec;
-            const displayEnd = override
-              ? override.endSec
-              : (event.endSec as number);
+                // Synthetic clicks dispatched by `HTMLElement.click()`
+                // (e.g. voodo's ContextMenu opening its menu) report
+                // `button === 0` like every programmatic click. The
+                // `detail` count is the reliable signal: real user clicks
+                // are always >= 1, programmatic clicks are 0. Skip those
+                // so opening an event's context menu doesn't also seek.
+                if (ev.detail === 0) return;
 
-            const menu = (
-              <>
-                <MenuTextItem onClick={() => seek(event.startSec)}>
-                  Move to start
-                </MenuTextItem>
-                <MenuTextItem
-                  disabled={!isInterval}
-                  onClick={() => isInterval && seek(event.endSec!)}
-                >
-                  Move to end
-                </MenuTextItem>
-                <MenuSeparator />
-                <MenuTextItem
-                  disabled={!isInterval}
-                  onClick={() =>
-                    isInterval && setLoop(event.startSec, event.endSec!)
-                  }
-                >
-                  Shrink window to fit
-                </MenuTextItem>
-                {eventMenuItems && eventMenuItems.length > 0 && (
-                  <>
-                    <MenuSeparator />
-                    {eventMenuItems.map((item, i) => (
-                      <MenuTextItem
-                        key={i}
-                        destructive={item.destructive}
-                        disabled={item.disabled}
-                        onClick={(ev) => {
-                          // Stop the click bubbling to the row's `onClick`
-                          // (`onTrackClick`).
-                          ev.stopPropagation();
+                // Suppress the synthetic click that pointerup fires
+                // right after a resize / move drag — otherwise the drop
+                // point seeks unexpectedly.
+                if (justDraggedRef.current) return;
 
-                          if (!item.disabled) {
-                            item.onSelect(event, {
-                              x: ev.clientX,
-                              y: ev.clientY,
-                            });
-                          }
-                        }}
-                      >
-                        {item.label}
-                      </MenuTextItem>
-                    ))}
-                  </>
-                )}
-              </>
-            );
-            if (isInterval) {
-              const left = pct(Math.max(displayStart, viewStart));
-              const right = Math.min(displayEnd, viewEnd);
-              const width = `${
-                ((right - Math.max(displayStart, viewStart)) / viewDuration) *
-                100
-              }%`;
-              return (
-                <ContextMenu key={originalIndex} menu={menu}>
+                // Deliberately no stopPropagation. The click bubbles to
+                // the row root so `onTrackClick` fires for marker / interval-bar
+                // clicks too. The lane's onClick filters by target class so seek
+                // doesn't double-fire.
+                const lane = laneRef.current;
+                if (lane) {
+                  const rect = lane.getBoundingClientRect();
+                  const t =
+                    viewStart +
+                    Math.max(
+                      0,
+                      Math.min(1, (ev.clientX - rect.left) / rect.width),
+                    ) *
+                      viewDuration;
+                  seek(t);
+                }
+                onEventClick?.(event);
+              };
+              const isInterval = event.endSec !== undefined;
+              const isResizable = Boolean(
+                isInterval && event.resizable && onEventEdit,
+              );
+              // Per-event override (value-segmented sub-tracks) or track color.
+              const eventColor = event.color ?? color;
+
+              // While a drag is in progress, render with the override
+              // position so the bar tracks the cursor. Outside of drag,
+              // use the event's own start / end.
+              const override =
+                dragOverride && dragOverride.index === originalIndex
+                  ? dragOverride
+                  : null;
+              const displayStart = override
+                ? override.startSec
+                : event.startSec;
+              const displayEnd = override
+                ? override.endSec
+                : (event.endSec as number);
+
+              if (isInterval) {
+                const left = pct(Math.max(displayStart, viewStart));
+                const right = Math.min(displayEnd, viewEnd);
+                const width = `${
+                  ((right - Math.max(displayStart, viewStart)) / viewDuration) *
+                  100
+                }%`;
+                return (
                   <div
+                    key={originalIndex}
                     className={styles.intervalBar}
                     data-event-index={originalIndex}
                     style={{
@@ -773,22 +836,22 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                       </>
                     )}
                   </div>
-                </ContextMenu>
-              );
-            }
-            // Offset points inside the dragged bar's original span by the
-            // live move delta so they track the bar. `1e-6` absorbs float
-            // drift; original event/interval bounds are otherwise exact.
-            const pointSec =
-              movePointShift &&
-              event.startSec >= movePointShift.fromSec - 1e-6 &&
-              event.startSec <= movePointShift.toSec + 1e-6
-                ? event.startSec + movePointShift.delta
-                : event.startSec;
-            return (
-              <ContextMenu key={originalIndex} menu={menu}>
+                );
+              }
+              // Offset points inside the dragged bar's original span by the
+              // live move delta so they track the bar. `1e-6` absorbs float
+              // drift; original event/interval bounds are otherwise exact.
+              const pointSec =
+                movePointShift &&
+                event.startSec >= movePointShift.fromSec - 1e-6 &&
+                event.startSec <= movePointShift.toSec + 1e-6
+                  ? event.startSec + movePointShift.delta
+                  : event.startSec;
+              return (
                 <div
+                  key={originalIndex}
                   className={styles.event}
+                  data-event-index={originalIndex}
                   style={{ left: pct(pointSec), background: eventColor }}
                   title={
                     event.label
@@ -797,12 +860,22 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                   }
                   onClick={handleClick}
                 />
-              </ContextMenu>
-            );
-          })}
-      </div>
+              );
+            })}
+        </div>
+      </ContextMenu>
     </div>
   );
 };
 
-export default TimelineTrack;
+/**
+ * Rows are memoized because the virtualized list re-renders on every scroll
+ * frame: without this, each frame re-rendered every mounted row (and, before
+ * the menu consolidation above, every menu on it). Callers have to hold their
+ * per-row props steady for this to bite — see `TimelineWithTracks`, which
+ * hoists its row callbacks and caches decorations per track id.
+ *
+ * View-window changes still repaint every row, as they must: `useViewStart` /
+ * `useViewEnd` are read inside the component, and hooks are not gated by memo.
+ */
+export default React.memo(TimelineTrack);

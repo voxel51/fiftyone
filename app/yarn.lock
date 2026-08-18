@@ -1845,7 +1845,6 @@ __metadata:
   resolution: "@fiftyone/embeddings-v2@workspace:packages/embeddings-v2"
   dependencies:
     "@fiftyone/components": "npm:*"
-    "@fiftyone/keymap": "npm:*"
     "@fiftyone/operators": "npm:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/spaces": "npm:*"
