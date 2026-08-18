@@ -19,9 +19,12 @@
 // make full-buffer decode too slow or memory-heavy.
 // ---------------------------------------------------------------------------
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useAudioPlayback,
+  useAudioStreamPlayback,
+  type AudioStreamSource,
+  type AudioWindowReader,
   type AudioLoadResult,
   type AudioMetadata,
   type PcmAudioData,
@@ -30,6 +33,8 @@ import {
   pcmToFloat32,
 } from "../../../audio";
 import { VISUALIZATION_KIND } from "../../../ir/index";
+import { canUseSharedRingBuffer } from "../../../audio";
+import type { DecodedFrame } from "../../../ir";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
 import { useDataStream } from "../playback/data-stream-context";
 import {
@@ -43,12 +48,124 @@ import {
 // zero frames. Always a finite budget, computed per call.
 const ONE_SHOT_READ_TIMEOUT_MS = 60_000;
 
+/**
+ * One window is orders of magnitude smaller than the whole recording, so
+ * these bounds are tight — a window that cannot be read inside them is a
+ * starved ring, and failing fast lets the pump retry rather than block.
+ */
+function windowBudget() {
+  return {
+    deadlineMs: monotonicNowMs() + 15_000,
+    maxMessages: 20_000,
+    maxObservedPayloadBytes: 64 * 1024 * 1024,
+  } as const;
+}
+
+/**
+ * Length of the discovery read. The engine needs the real sample rate and
+ * channel count before it can build a context, and only the decoded audio
+ * knows them — `foxglove.CompressedAudio` carries neither in its manifest.
+ */
+const PROBE_SECONDS = 0.5;
+
 function oneShotBudget() {
   return {
     deadlineMs: monotonicNowMs() + ONE_SHOT_READ_TIMEOUT_MS,
     maxMessages: 100_000,
     maxObservedPayloadBytes: 256 * 1024 * 1024,
   } as const;
+}
+
+/**
+ * Folds one read's frames into a single interleaved PCM block. Shared by
+ * both transports: the buffered path calls it once over the whole
+ * recording, the streaming path once per window, and neither should have
+ * its own copy of the RawAudio/CompressedAudio handling.
+ */
+async function framesToPcm(
+  frames: readonly DecodedFrame[],
+  signal?: AbortSignal,
+): Promise<AudioLoadResult> {
+  const rawChunks: Array<PcmAudioData & { timestampNs: bigint }> = [];
+  const compressedChunks: CompressedAudioChunk[] = [];
+  let encodedBytes = 0;
+  let format: string | undefined;
+
+  for (const frame of frames) {
+    const visualization = frame.output.visualization;
+    if (visualization?.kind === VISUALIZATION_KIND.RAW_AUDIO) {
+      rawChunks.push({
+        channels: visualization.channels,
+        sampleRate: visualization.sampleRate,
+        samples: pcmToFloat32(visualization.samples),
+        timestampNs: frame.timestampNs,
+      });
+      // `??=` would latch an empty string forever (it is not nullish),
+      // so only accept a non-empty format.
+      format ||= String(frame.output.attributes?.format ?? "");
+      encodedBytes += Number(frame.output.attributes?.byteLength ?? 0);
+    } else if (visualization?.kind === VISUALIZATION_KIND.COMPRESSED_AUDIO) {
+      compressedChunks.push({
+        bytes: visualization.bytes,
+        format: visualization.format,
+        timestampNs: frame.timestampNs,
+      });
+      format ||= visualization.format;
+      encodedBytes += visualization.bytes.byteLength;
+    }
+  }
+
+  // Count the source messages, not the intermediate buffers: the
+  // compressed branch below pushes its single decoded block into
+  // `rawChunks`, so reading their lengths after that point would
+  // double-count.
+  const sourceChunkCount = rawChunks.length + compressedChunks.length;
+
+  // Compressed chunks decode to the same interleaved float layout the
+  // raw branch produces, so everything downstream is codec-agnostic.
+  if (rawChunks.length === 0 && compressedChunks.length > 0) {
+    const decoded = await decodeCompressedAudio(compressedChunks, signal);
+    if (signal?.aborted) return { ok: false, reason: "empty" };
+    if (!decoded) {
+      // A codec this browser cannot decode is not a broken recording.
+      return {
+        ok: false,
+        reason: "unsupported",
+        detail: compressedChunks[0]?.format,
+      };
+    }
+    rawChunks.push({
+      ...decoded,
+      timestampNs: compressedChunks[0].timestampNs,
+    });
+  }
+
+  if (rawChunks.length === 0) {
+    return { ok: false, reason: "empty" };
+  }
+
+  rawChunks.sort((a, b) => (a.timestampNs < b.timestampNs ? -1 : 1));
+  const data = concatPcmChunks(rawChunks);
+  if (!data) {
+    // Non-uniform sample rate/channel count across chunks — see
+    // `concatPcmChunks`. Report it rather than emit corrupt audio.
+    return {
+      ok: false,
+      reason: "error",
+      detail: "audio format changes mid-stream",
+    };
+  }
+
+  const metadata: AudioMetadata = {
+    byteLength: encodedBytes || undefined,
+    channels: data.channels,
+    chunkCount: sourceChunkCount,
+    durationSec:
+      data.samples.length / Math.max(1, data.channels) / data.sampleRate,
+    format: format || undefined,
+    sampleRate: data.sampleRate,
+  };
+  return { ok: true, data, metadata };
 }
 
 export type { UseAudioPlaybackResult as UseMcapAudioStreamResult };
@@ -94,97 +211,129 @@ export function useMcapAudioStream(
       });
       if (!result || signal?.aborted) return { ok: false, reason: "empty" };
 
-      const rawChunks: Array<PcmAudioData & { timestampNs: bigint }> = [];
-      const compressedChunks: CompressedAudioChunk[] = [];
-      let encodedBytes = 0;
-      let format: string | undefined;
-
-      for (const frame of result.frames) {
-        const visualization = frame.output.visualization;
-        if (visualization?.kind === VISUALIZATION_KIND.RAW_AUDIO) {
-          rawChunks.push({
-            channels: visualization.channels,
-            sampleRate: visualization.sampleRate,
-            samples: pcmToFloat32(visualization.samples),
-            timestampNs: frame.timestampNs,
-          });
-          // `??=` would latch an empty string forever (it is not nullish),
-          // so only accept a non-empty format.
-          format ||= String(frame.output.attributes?.format ?? "");
-          encodedBytes += Number(frame.output.attributes?.byteLength ?? 0);
-        } else if (
-          visualization?.kind === VISUALIZATION_KIND.COMPRESSED_AUDIO
-        ) {
-          compressedChunks.push({
-            bytes: visualization.bytes,
-            format: visualization.format,
-            timestampNs: frame.timestampNs,
-          });
-          format ||= visualization.format;
-          encodedBytes += visualization.bytes.byteLength;
-        }
-      }
-
-      // Count the source messages, not the intermediate buffers: the
-      // compressed branch below pushes its single decoded block into
-      // `rawChunks`, so reading their lengths after that point would
-      // double-count.
-      const sourceChunkCount = rawChunks.length + compressedChunks.length;
-
-      // Compressed chunks decode to the same interleaved float layout the
-      // raw branch produces, so everything downstream is codec-agnostic.
-      if (rawChunks.length === 0 && compressedChunks.length > 0) {
-        const decoded = await decodeCompressedAudio(compressedChunks, signal);
-        if (signal?.aborted) return { ok: false, reason: "empty" };
-        if (!decoded) {
-          // A codec this browser cannot decode is not a broken recording.
-          return {
-            ok: false,
-            reason: "unsupported",
-            detail: compressedChunks[0]?.format,
-          };
-        }
-        rawChunks.push({
-          ...decoded,
-          timestampNs: compressedChunks[0].timestampNs,
-        });
-      }
-
-      if (rawChunks.length === 0) {
-        return { ok: false, reason: "empty" };
-      }
-
-      rawChunks.sort((a, b) => (a.timestampNs < b.timestampNs ? -1 : 1));
-      const data = concatPcmChunks(rawChunks);
-      if (!data) {
-        // Non-uniform sample rate/channel count across chunks — see
-        // `concatPcmChunks`. Report it rather than emit corrupt audio.
-        return {
-          ok: false,
-          reason: "error",
-          detail: "audio format changes mid-stream",
-        };
-      }
-
-      const metadata: AudioMetadata = {
-        byteLength: encodedBytes || undefined,
-        channels: data.channels,
-        chunkCount: sourceChunkCount,
-        durationSec:
-          data.samples.length / Math.max(1, data.channels) / data.sampleRate,
-        format: format || undefined,
-        sampleRate: data.sampleRate,
-      };
-      return { ok: true, data, metadata };
+      return framesToPcm(result.frames, signal);
     },
     [getTimelineIndex, readStreamFrames, streamId],
   );
 
-  return useAudioPlayback({
+  // Reads one window of the recording. Time is expressed relative to the
+  // timeline origin, which is what the pump and the playhead both use.
+  const readWindowDetailed = useCallback(
+    async (
+      startSec: number,
+      endSec: number,
+      signal: AbortSignal,
+    ): Promise<AudioLoadResult> => {
+      if (!readStreamFrames || !getTimelineIndex) {
+        return { ok: false, reason: "empty" };
+      }
+      const timeline = getTimelineIndex();
+      if (!timeline) return { ok: false, reason: "empty" };
+
+      const result = await readStreamFrames({
+        budget: windowBudget(),
+        startTimeNs: timeline.secToNs(startSec),
+        endTimeNs: timeline.secToNs(endSec),
+        stream: streamId,
+        signal,
+      });
+      if (!result || signal.aborted) return { ok: false, reason: "empty" };
+
+      return framesToPcm(result.frames, signal);
+    },
+    [getTimelineIndex, readStreamFrames, streamId],
+  );
+
+  // The pump only wants PCM; the probe below also wants the metadata the
+  // same decode already produced, hence the two layers.
+  const readWindow = useCallback<AudioWindowReader>(
+    async (startSec, endSec, signal) => {
+      const decoded = await readWindowDetailed(startSec, endSec, signal);
+      return decoded.ok ? decoded.data : null;
+    },
+    [readWindowDetailed],
+  );
+
+  // Discover the stream's real geometry before building an audio graph for
+  // it. Only decoded audio knows the sample rate and channel count, so this
+  // reads a short head window rather than trusting the manifest.
+  const [streamSource, setStreamSource] = useState<AudioStreamSource | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!streamId || !canUseSharedRingBuffer() || !getTimelineIndex) {
+      setStreamSource(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+
+    void (async () => {
+      const timeline = getTimelineIndex();
+      if (!timeline) return;
+      const probed = await readWindowDetailed(
+        0,
+        PROBE_SECONDS,
+        controller.signal,
+      );
+      if (cancelled) return;
+      if (
+        !probed.ok ||
+        probed.data.sampleRate <= 0 ||
+        probed.data.channels <= 0
+      ) {
+        // Nothing decodable at the head: let the buffered path report why,
+        // including "unsupported codec", which it distinguishes properly.
+        setStreamSource(null);
+        return;
+      }
+      setStreamSource({
+        channels: probed.data.channels,
+        durationSec: timeline.durationSec,
+        read: readWindow,
+        sampleRate: probed.data.sampleRate,
+        // Byte and chunk counts describe the probe window only, so they are
+        // dropped rather than reported as totals for the whole recording.
+        metadata: {
+          channels: probed.data.channels,
+          codecLabel: probed.metadata?.codecLabel,
+          durationSec: timeline.durationSec,
+          format: probed.metadata?.format,
+          sampleRate: probed.data.sampleRate,
+        },
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [getTimelineIndex, readWindow, readWindowDetailed, streamId]);
+
+  // Both transports are called unconditionally with one of them disabled —
+  // a conditional hook call would break the rules of hooks, and the choice
+  // can flip once at runtime when streaming turns out to be unavailable.
+  const streaming = useAudioStreamPlayback({
     kind: "pcm",
     label,
-    load: useMemo(() => (streamId ? load : null), [load, streamId]),
+    playback,
+    source: streamSource,
+    trackId: streamId,
+  });
+  const streamingActive = Boolean(streamSource) && streaming.available;
+
+  const buffered = useAudioPlayback({
+    kind: "pcm",
+    label,
+    // Disabled while streaming owns the track: two transports decoding the
+    // same source would build two audio graphs and double the signal.
+    load: useMemo(
+      () => (streamId && !streamingActive ? load : null),
+      [load, streamId, streamingActive],
+    ),
     playback,
     trackId: streamId,
   });
+
+  return streamingActive ? streaming : buffered;
 }
