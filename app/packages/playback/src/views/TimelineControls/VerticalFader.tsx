@@ -31,6 +31,13 @@ const VerticalFader: React.FC<VerticalFaderProps> = ({
   "data-testid": testId,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
+  // Holds the in-flight drag's teardown so unmount can run it. `AudioPopover`
+  // closes on an outside `pointerdown`, so this component can unmount mid-drag;
+  // without this the document listeners would outlive it and keep calling
+  // `onChange` for the rest of the page's life.
+  const releaseDragRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => releaseDragRef.current?.(), []);
 
   const valueFromClientY = useCallback((clientY: number): number => {
     const track = trackRef.current;
