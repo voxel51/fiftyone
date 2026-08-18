@@ -20,6 +20,7 @@ import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
   TimelineWithTracks,
   TrackProvider,
+  type TimelineTracksScroller,
   type Track,
   type TrackEventMenuItem,
   useActivateStream,
@@ -541,7 +542,10 @@ export const FrameLabelsTracks: React.FC<{
   // tracks land, leaving frame tracks unpinned.
   const ready = frameTracksResolved;
 
-  useScrollTrackToAnchor();
+  // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
+  // row has to go through the list rather than the DOM.
+  const timelineScroller = useRef<TimelineTracksScroller | null>(null);
+  useScrollTrackToAnchor(timelineScroller);
   const decorateTrack = useTrackDecorator({
     sample,
     objectTracks: frameTracks,
@@ -558,6 +562,7 @@ export const FrameLabelsTracks: React.FC<{
     >
       <TimelineWithTracks
         decorateTrack={decorateTrack}
+        scrollerRef={timelineScroller}
         extraControls={<VideoAnnotationToolbar />}
         loaded={timelineLoaded}
         maxSize={maxSize}

@@ -2242,6 +2242,7 @@ __metadata:
     react: "catalog:"
     react-dom: "catalog:"
     react-is: "catalog:"
+    react-virtuoso: "npm:^4"
     typescript: "catalog:"
     typescript-eslint: "catalog:eslint9"
     vite: "catalog:"
@@ -16761,6 +16762,16 @@ __metadata:
   version: 1.0.3
   resolution: "react-uuid@npm:1.0.3"
   checksum: 10/364d23d07908927d0db80a8236752d7e6ee148eeccffa3e8f961410a2a2d4dd1315def0015d594775b56f9c1fbe4f2838ec08e2ae5149f992aad3ec2a3c29a62
+  languageName: node
+  linkType: hard
+
+"react-virtuoso@npm:^4":
+  version: 4.18.12
+  resolution: "react-virtuoso@npm:4.18.12"
+  peerDependencies:
+    react: ">=16 || >=17 || >= 18 || >= 19"
+    react-dom: ">=16 || >=17 || >= 18 || >=19"
+  checksum: 10/b619bdadcbe1eae5c043b5524f76424d014848be763cc35cde237e5712fa020efcb4ff4076e4c126e07e5576379213c560d73ca2161c1f46fb3d54674d372746
   languageName: node
   linkType: hard
 

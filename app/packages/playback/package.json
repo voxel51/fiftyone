@@ -22,6 +22,7 @@
         "jotai": "catalog:",
         "jotai-optics": "^0.4.0",
         "optics-ts": "^2.4.1",
+        "react-virtuoso": "^4",
         "vite-plugin-svgr": "catalog:"
     },
     "peerDependencies": {

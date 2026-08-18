@@ -18,6 +18,7 @@ import {
 } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useRef, useState } from "react";
+import { TIMELINE_TRACK_ROW_HEIGHT } from "../../lib/constants";
 import styles from "./TimelineTrack.module.css";
 import { ChevronBottomIcon, ChevronRightIcon, PinIcon } from "../stableIcons";
 
@@ -202,7 +203,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   onEventClick,
   eventMenuItems,
   label,
-  height = 28,
+  height = TIMELINE_TRACK_ROW_HEIGHT,
   labelWidth = 0,
   pinned = false,
   onPinClick,

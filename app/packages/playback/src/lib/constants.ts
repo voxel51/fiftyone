@@ -32,6 +32,22 @@ export const TIMELINE_LABEL_WIDTH = 180;
 export const TIMELINE_DEFAULT_DRAWER_SIZE = 220;
 /** Hard ceiling on the timeline drawer height in px (independent of content). */
 export const TIMELINE_DRAWER_MAX_SIZE = 600;
+/**
+ * Height of a top-level track row (px), and `TimelineTrack`'s default. Also
+ * the size `TimelineWithTracks` hands the virtualizer for rows it hasn't
+ * measured yet, so it doubles as the estimate that sizes the drawer before the
+ * first batch of rows mounts. Sub-rows render shorter (their decoration sets
+ * `height`), which only ever makes the estimate an overestimate — the drawer
+ * settles onto the measured total as soon as the rows commit.
+ */
+export const TIMELINE_TRACK_ROW_HEIGHT = 28;
+/**
+ * Extra pixels of rows the virtualizer keeps mounted above and below the
+ * visible tracks region. Wide enough that a flick-scroll lands on rendered
+ * rows rather than blank space, small enough that a 1000-track timeline still
+ * only mounts a couple of dozen rows.
+ */
+export const TIMELINE_TRACK_OVERSCAN_PX = 240;
 
 export const PLAYHEAD_STATE_PLAYING = "playing";
 export const PLAYHEAD_STATE_PAUSED = "paused";
