@@ -145,7 +145,7 @@ export class WaveformRenderer {
   // upstream).
   private readonly textureCache = new Map<
     string,
-    { pyramid: PeakPyramid; textures: readonly GPUTexture[] }
+    { pyramid: PeakPyramid; textures: readonly (GPUTexture | null)[] }
   >();
   // One reusable uniform buffer per row slot. Every row's uniform block is
   // the same fixed size, and `render` runs on every pan/zoom/playhead
@@ -219,14 +219,26 @@ export class WaveformRenderer {
   private texturesFor(
     trackId: string,
     pyramid: PeakPyramid,
-  ): readonly GPUTexture[] {
+  ): readonly (GPUTexture | null)[] {
     const cached = this.textureCache.get(trackId);
     if (cached && cached.pyramid === pyramid) {
       return cached.textures;
     }
+    // Destroy whatever this track had before: replacing the cache entry
+    // without destroying leaks a full texture set per pyramid change.
     for (const texture of cached?.textures ?? []) {
-      texture.destroy();
+      texture?.destroy();
     }
+
+    // A 1-row texture is still bounded by `maxTextureDimension2D`, whose
+    // guaranteed floor is 8192. LOD 0 holds one texel per `samplesPerPeak`
+    // samples, so at 256 samples/peak and 48 kHz anything past ~44 seconds
+    // overflows it and `createTexture` throws. Levels are each half the
+    // width of the one before, so the fix is simply to not build the ones
+    // that do not fit — `render` falls through to the first coarser level
+    // that does. Every level spans the whole track, so the time->U mapping
+    // is unaffected; a long track just starts at a coarser LOD.
+    const maxWidth = this.device.limits.maxTextureDimension2D;
 
     // Each level's [min, max] pair goes in the R/G channels of a texel in
     // its own 1-row texture — see plan §6/§8 for why hardware mip
@@ -234,6 +246,7 @@ export class WaveformRenderer {
     // incorrectly average min/max pairs across levels).
     const textures = pyramid.levels.map((level) => {
       const width = Math.max(1, level.min.length);
+      if (width > maxWidth) return null;
       const data = new Float32Array(width * 2);
       for (let col = 0; col < level.min.length; col++) {
         data[col * 2] = level.min[col];
@@ -252,12 +265,6 @@ export class WaveformRenderer {
       );
       return texture;
     });
-    // Destroy whatever this track had before: replacing the cache entry
-    // without destroying leaks a full texture set per pyramid change.
-    const superseded = this.textureCache.get(trackId);
-    if (superseded) {
-      for (const texture of superseded.textures) texture.destroy();
-    }
     this.textureCache.set(trackId, { pyramid, textures });
     return textures;
   }
@@ -305,7 +312,17 @@ export class WaveformRenderer {
         viewDurationSec: rowViewEnd - rowViewStart,
         pixelWidth: args.canvas.width,
       });
-      const texture = textures[lod] ?? textures[textures.length - 1];
+      // Levels coarser than `lod` (higher index) are narrower, so if the
+      // requested one was skipped for exceeding the texture-width limit the
+      // next one along is the best available detail.
+      let texture: GPUTexture | null = null;
+      for (let level = lod; level < textures.length; level++) {
+        const candidate = textures[level];
+        if (candidate) {
+          texture = candidate;
+          break;
+        }
+      }
       if (!texture) continue;
 
       // NDC Y: canvas top is +1, bottom is -1.
@@ -346,7 +363,7 @@ export class WaveformRenderer {
 
   dispose(): void {
     for (const { textures } of this.textureCache.values()) {
-      for (const texture of textures) texture.destroy();
+      for (const texture of textures) texture?.destroy();
     }
     this.textureCache.clear();
     for (const buffer of this.uniformBuffers) buffer.destroy();

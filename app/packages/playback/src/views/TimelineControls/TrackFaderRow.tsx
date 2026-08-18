@@ -34,6 +34,7 @@ const TrackFaderRow: React.FC<ChannelProps> = (props) => {
   return (
     <div
       className={styles.trackFaderRow}
+      data-testid={testIdPrefix}
       title={errored ? errorTitle : undefined}
     >
       <Text
