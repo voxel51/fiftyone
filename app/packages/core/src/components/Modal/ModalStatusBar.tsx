@@ -17,9 +17,9 @@ import styled from "styled-components";
 
 export type StatusContent = {
   /**
-   * Live state the user cannot read anywhere else — a vertex count, inference
-   * progress, an error. Keep it to a few words: instructions belong in `help`,
-   * not here, so the bar stays clear of the panel tabs to its left.
+   * Live state the user cannot read anywhere else — inference progress, a
+   * chosen merge target, an error. Keep it to a few words: instructions belong
+   * in `help`, not here, so the bar stays clear of the panel tabs to its left.
    */
   status?: ReactElement;
   /** Instructions for the active mode, revealed by the help affordance. */

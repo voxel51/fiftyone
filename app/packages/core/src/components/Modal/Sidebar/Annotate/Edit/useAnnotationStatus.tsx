@@ -87,7 +87,7 @@ export const useAnnotationStatus = () => {
 
     if (polylineModeActive) {
       if (vertexCount === 0) return polylineEntryStatus();
-      return polylineProgressStatus(vertexCount);
+      return polylineProgressStatus();
     }
 
     return null;

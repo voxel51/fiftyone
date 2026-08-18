@@ -130,12 +130,7 @@ const POLYLINE_PROGRESS_HELP: StatusHelpEntry[] = [
   },
 ];
 
-export const polylineProgressStatus = (vertexCount: number): StatusContent => ({
-  status: (
-    <StatusText>
-      {`${vertexCount} ${vertexCount === 1 ? "vertex" : "vertices"}`}
-    </StatusText>
-  ),
+export const polylineProgressStatus = (): StatusContent => ({
   help: <StatusHelp title="Polyline" entries={POLYLINE_PROGRESS_HELP} />,
 });
 
