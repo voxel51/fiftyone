@@ -1,4 +1,6 @@
 export { VideoAnnotationSurface } from "./src/components/VideoAnnotationSurface";
+export { HoverPopover } from "./src/components/HoverPopover";
+export type { HoverPopoverProps } from "./src/components/HoverPopover";
 export { SyntheticLabelStream } from "./src/streams/SyntheticLabelStream";
 export type {
   FrameLabelSnapshot,
