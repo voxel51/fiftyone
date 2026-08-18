@@ -10,6 +10,7 @@ export function useFileDrop(onFiles: (files: File[]) => void) {
 
   const onDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    if (e.currentTarget?.contains(e.relatedTarget as Node)) return;
     setIsDragActive(false);
   }, []);
 

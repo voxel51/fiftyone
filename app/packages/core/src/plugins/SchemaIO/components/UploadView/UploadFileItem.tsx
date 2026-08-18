@@ -15,12 +15,14 @@ interface UploadFileItemProps {
   item: FileUploadItem;
   onCancel: (id: string) => void;
   onRetry: (id: string) => void;
+  readOnly?: boolean;
 }
 
 export default function UploadFileItem({
   item,
   onCancel,
   onRetry,
+  readOnly,
 }: UploadFileItemProps) {
   const isInProgress =
     item.status === "uploading" || item.status === "selected";
@@ -73,18 +75,20 @@ export default function UploadFileItem({
           </Box>
         )}
       </Box>
-      {item.status === "error" && (
+      {item.status === "error" && !readOnly && (
         <Tooltip title="Retry">
           <IconButton size="small" onClick={() => onRetry(item.id)}>
             <Replay sx={{ fontSize: 18 }} />
           </IconButton>
         </Tooltip>
       )}
-      <Tooltip title={isInProgress ? "Cancel" : "Remove"}>
-        <IconButton size="small" onClick={() => onCancel(item.id)}>
-          <Close sx={{ fontSize: 18 }} />
-        </IconButton>
-      </Tooltip>
+      {!readOnly && (
+        <Tooltip title={isInProgress ? "Cancel" : "Remove"}>
+          <IconButton size="small" onClick={() => onCancel(item.id)}>
+            <Close sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
+      )}
     </Box>
   );
 }

@@ -67,6 +67,11 @@ export function createThumbnail(
   const quality = options.quality ?? DEFAULT_QUALITY;
 
   return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+
     const blobUrl = URL.createObjectURL(file);
     const img = new Image();
 

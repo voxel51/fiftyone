@@ -4,6 +4,7 @@ import { useFileUpload } from "../useFileUpload";
 import {
   createFile,
   createMockTransport,
+  deferred,
   setupFetchMock,
   type TransportPostOptions,
 } from "./helpers";
@@ -33,12 +34,15 @@ function flushRAF() {
 describe("upload — progress", () => {
   it("starts progress at 0 when upload begins", async () => {
     const { transport, post } = createMockTransport();
+    const { promise: uploadResponse, resolve: completeUpload } = deferred<{
+      path: string;
+    }>();
     let capturedOnProgress: ((p: number) => void) | undefined;
 
     post.mockImplementation(
-      async (_url: string, _file: File, options: TransportPostOptions) => {
+      (_url: string, _file: File, options: TransportPostOptions) => {
         capturedOnProgress = options.onProgress;
-        return { path: "/uploads/a.png" };
+        return uploadResponse;
       },
     );
 
@@ -48,11 +52,18 @@ describe("upload — progress", () => {
       result.current.addFiles([createFile("a.png", 100, "image/png")]);
     });
 
-    await act(async () => {
-      await result.current.upload({ destination: "/uploads" });
+    let uploadPromise: Promise<void>;
+    act(() => {
+      uploadPromise = result.current.upload({ destination: "/uploads" });
     });
 
     expect(capturedOnProgress).toBeDefined();
+    expect(result.current.files[0].progress).toBe(0);
+
+    await act(async () => {
+      completeUpload({ path: "/uploads/a.png" });
+      await uploadPromise!;
+    });
   });
 
   it("reflects intermediate progress from the transport", async () => {

@@ -285,7 +285,9 @@ class Object(BaseType):
             max_concurrent=max_concurrent,
             **kwargs,
         )
-        return self.define_property(name, List(File()), view=upload_view)
+        return self.define_property(
+            name, List(File()), view=upload_view, **kwargs
+        )
 
     def view(self, name, view, **kwargs):
         """Defines a view-only property.

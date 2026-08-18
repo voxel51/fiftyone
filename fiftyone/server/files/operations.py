@@ -84,10 +84,12 @@ async def stream_upload(
     # call to avoid TOCTOU races between concurrent uploads.  Each chunk
     # write is also offloaded so the event loop stays free.
     resolved_path = normalized
+    created_path = None
     try:
         resolved_path, fh = await anyio.to_thread.run_sync(
             lambda: _sync_resolve_and_open(normalized)
         )
+        created_path = resolved_path
         try:
             async for chunk in stream:
                 await anyio.to_thread.run_sync(lambda c=chunk: fh.write(c))
@@ -96,19 +98,22 @@ async def stream_upload(
     except FileOperationError:
         raise
     except Exception as e:
-        await anyio.to_thread.run_sync(lambda: _sync_try_remove(resolved_path))
+        if created_path is not None:
+            await anyio.to_thread.run_sync(
+                lambda: _sync_try_remove(created_path)
+            )
         if isinstance(e, OSError):
             if e.errno == errno.ENOSPC:
                 raise FileOperationError(
                     code=FileOperationErrorCode.STORAGE_FULL,
                     message="No space left on device.",
                     details={"path": resolved_path},
-                )
+                ) from e
         raise FileOperationError(
             code=FileOperationErrorCode.WRITE_FAILED,
             message=f"Failed to write file: {e}",
             details={"path": resolved_path},
-        )
+        ) from e
 
     return resolved_path
 

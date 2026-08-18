@@ -6,10 +6,9 @@ Upload files operator.
 |
 """
 
+import fiftyone as fo
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
-
-DEFAULT_DESTINATION = "/tmp"
 
 
 class UploadFiles(foo.Operator):
@@ -23,6 +22,7 @@ class UploadFiles(foo.Operator):
 
     def resolve_input(self, ctx):
         inputs = types.Object()
+        default_destination = fo.config.browser_file_operations_dir
 
         file_explorer = types.FileExplorerView(
             choose_dir=True,
@@ -31,7 +31,7 @@ class UploadFiles(foo.Operator):
         )
         inputs.file(
             "destination",
-            default={"absolute_path": DEFAULT_DESTINATION},
+            default={"absolute_path": default_destination},
             label="Destination",
             description="Choose the upload directory",
             view=file_explorer,
@@ -39,7 +39,7 @@ class UploadFiles(foo.Operator):
 
         destination = (
             ctx.params.get("destination", {}).get("absolute_path")
-            or DEFAULT_DESTINATION
+            or default_destination
         )
 
         inputs.uploads(

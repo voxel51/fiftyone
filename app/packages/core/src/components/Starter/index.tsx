@@ -1,5 +1,6 @@
 import {
   CodeTabs,
+  ENTERPRISE_LEARN_MORE_URL,
   EnterpriseUpsellCallout,
   Loading,
   scrollable,
@@ -11,7 +12,7 @@ import {
   useOperators,
 } from "@fiftyone/operators";
 import { useOperatorBrowser } from "@fiftyone/operators/src/state";
-import { datasetName as datasetNameAtom } from "@fiftyone/state";
+import { useDatasetName } from "@fiftyone/state";
 import { constants } from "@fiftyone/utilities";
 import { HoverPopover } from "@fiftyone/video-annotation";
 import {
@@ -32,7 +33,6 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useCallback, useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import { ADD_SAMPLE_CLOUD_CODE, CONTENT_BY_MODE } from "./content";
 
 const CREATE_DATASET_OPERATOR = "@voxel51/utils/create_dataset";
@@ -47,7 +47,7 @@ const INSTALL_IO_PLUGIN_LABEL = "@voxel51/io";
 export function Starter(props: StarterPropsType) {
   const { mode } = props;
   const { isLoading } = useOperators(true);
-  const datasetName = useRecoilValue(datasetNameAtom);
+  const datasetName = useDatasetName();
   const { isEnabled: upgradedImportEnabled } = useFeature({
     feature: FeatureFlag.VFF_UPGRADED_IMPORT,
   });
@@ -60,10 +60,9 @@ export function Starter(props: StarterPropsType) {
     CONTENT_BY_MODE[mode];
 
   const codeWithDataset = code.replace("$CURRENT_DATASET_NAME", datasetName);
-  const cloudCodeWithDataset = ADD_SAMPLE_CLOUD_CODE.replace(
-    "$CURRENT_DATASET_NAME",
-    datasetName,
-  );
+  const cloudCodeWithDataset = constants.IS_APP_MODE_FIFTYONE
+    ? `# Importing from a cloud bucket requires FiftyOne Enterprise.\n# Learn more: ${ENTERPRISE_LEARN_MORE_URL}`
+    : ADD_SAMPLE_CLOUD_CODE.replace("$CURRENT_DATASET_NAME", datasetName);
   const isSelectDataset = mode === "SELECT_DATASET";
   const showCloudTab = mode === "ADD_SAMPLE" && upgradedImportEnabled;
 

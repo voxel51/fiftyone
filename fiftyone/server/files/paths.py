@@ -114,7 +114,7 @@ def check_and_resolve_path(path: str) -> str:
             code=FileOperationErrorCode.PATH_INVALID,
             message=f"Invalid path: {e}",
             details={"path": path},
-        )
+        ) from e
 
     try:
         inside = os.path.commonpath([base, normalized]) == base

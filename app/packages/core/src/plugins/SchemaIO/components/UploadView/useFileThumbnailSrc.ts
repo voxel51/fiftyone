@@ -9,17 +9,17 @@ export function useFileThumbnailSrc(file: File) {
   const isImage = isImageFile(file);
   const [src, setSrc] = useState<string>();
   const containerRef = useRef<HTMLDivElement>(null);
-  const hasBeenVisible = useRef(false);
+  const [hasBeenVisible, setHasBeenVisible] = useState(false);
 
   useEffect(() => {
-    if (!isImage || hasBeenVisible.current) return undefined;
+    if (!isImage || hasBeenVisible) return undefined;
     const el = containerRef.current;
     if (!el) return undefined;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          hasBeenVisible.current = true;
+          setHasBeenVisible(true);
           observer.disconnect();
         }
       },
@@ -27,16 +27,16 @@ export function useFileThumbnailSrc(file: File) {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [isImage]);
+  }, [isImage, hasBeenVisible]);
 
   useEffect(() => {
-    if (!isImage || !hasBeenVisible.current) return undefined;
+    if (!isImage || !hasBeenVisible) return undefined;
     const controller = new AbortController();
     queueThumbnail(file, controller.signal)
       .then(setSrc)
       .catch(() => {});
     return () => controller.abort();
-  }, [file, isImage, hasBeenVisible.current]);
+  }, [file, isImage, hasBeenVisible]);
 
   return { src, containerRef };
 }

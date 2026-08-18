@@ -40,9 +40,12 @@ export function useUploadManager({
   const lastActionRef = useRef<UploadAction | null>(null);
   const abortControllersRef = useRef(new Map<string, AbortController>());
 
-  // Stable transport reference — avoid re-creating default on every render
-  const transportRef = useRef(transport ?? createFetchTransport());
-  if (transport) transportRef.current = transport;
+  // Lazily create the default transport once; never reassigned afterward.
+  const defaultTransportRef = useRef<UploadTransport>();
+  if (!defaultTransportRef.current) {
+    defaultTransportRef.current = createFetchTransport();
+  }
+  const activeTransport = transport ?? defaultTransportRef.current;
 
   const DEFAULT_MAX_CONCURRENT = 6;
 
@@ -66,7 +69,7 @@ export function useUploadManager({
       abortControllersRef.current.set(item.id, controller);
 
       try {
-        const { path } = await transportRef.current.post(url, item.file, {
+        const { path } = await activeTransport.post(url, item.file, {
           signal: controller.signal,
           onProgress: (p) => updateFile(item.id, { progress: p }),
           headers: resolvedHeaders,
@@ -91,7 +94,7 @@ export function useUploadManager({
         abortControllersRef.current.delete(item.id);
       }
     },
-    [updateFile, onFileSuccess, onFileError],
+    [activeTransport, updateFile, onFileSuccess, onFileError],
   );
 
   const upload = useCallback(
@@ -134,11 +137,15 @@ export function useUploadManager({
         );
         const resolved =
           headers != null ? await resolveHeaders(headers) : undefined;
-        await transportRef.current.delete(url, { headers: resolved });
+        try {
+          await activeTransport.delete(url, { headers: resolved });
+        } catch {
+          // Remote cleanup is best-effort; still drop the item locally.
+        }
       }
       setFiles((prev) => prev.filter((f) => f.id !== id));
     },
-    [filesRef, setFiles, headers],
+    [activeTransport, filesRef, setFiles, headers],
   );
 
   const retry = useCallback(
@@ -147,11 +154,12 @@ export function useUploadManager({
       if (!action) return;
       const file = filesRef.current.find((f) => f.id === id);
       if (!file || file.status !== "error") return;
+      updateFile(id, { status: "uploading", progress: 0, error: undefined });
       const resolved =
         headers != null ? await resolveHeaders(headers) : undefined;
-      await uploadOne(file, action, resolved);
+      await limiter(() => uploadOne(file, action, resolved));
     },
-    [filesRef, uploadOne, headers],
+    [filesRef, updateFile, uploadOne, limiter, headers],
   );
 
   const cancelAll = useCallback(async () => {
@@ -164,15 +172,15 @@ export function useUploadManager({
     const toDelete = snapshot.filter(
       (f) => f.status === "success" && f.remotePath,
     );
-    await Promise.all(
+    await Promise.allSettled(
       toDelete.map((f) =>
-        transportRef.current.delete(
+        activeTransport.delete(
           buildDeleteUrl(lastActionRef.current?.endpoint, f.remotePath!),
           { headers: resolved },
         ),
       ),
     );
-  }, [filesRef, setFiles, headers]);
+  }, [activeTransport, filesRef, setFiles, headers]);
 
   /**
    * Aborts every in-flight upload, sends DELETE requests for all
@@ -195,13 +203,13 @@ export function useUploadManager({
     const toDelete = snapshot.filter((f) => f.remotePath);
     await Promise.allSettled(
       toDelete.map((f) =>
-        transportRef.current.delete(
+        activeTransport.delete(
           buildDeleteUrl(lastActionRef.current?.endpoint, f.remotePath!),
           { headers: resolved },
         ),
       ),
     );
-  }, [filesRef, setFiles, headers]);
+  }, [activeTransport, filesRef, setFiles, headers]);
 
   return { upload, cancel, retry, cancelAll, deleteAll };
 }

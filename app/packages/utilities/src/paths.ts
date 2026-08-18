@@ -35,7 +35,27 @@ export function getSeparator(pathType: PathType): string {
   }
 }
 
-export function joinPaths(...paths: string[]): string {
+function isAbsoluteSegment(path: string): boolean {
+  const pathType = determinePathType(path);
+  if (pathType === PathType.URL) return true;
+  if (pathType === PathType.WINDOWS) return win32.isAbsolute(path);
+  return pathUtils.isAbsolute(path);
+}
+
+function lastIndexWhere(
+  items: string[],
+  predicate: (item: string) => boolean,
+): number {
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (predicate(items[i])) return i;
+  }
+  return -1;
+}
+
+export function joinPaths(...segments: string[]): string {
+  const lastAbsolute = lastIndexWhere(segments, isAbsoluteSegment);
+  const paths = lastAbsolute > 0 ? segments.slice(lastAbsolute) : segments;
+
   const pathType = determinePathType(paths[0]);
   if (pathType === PathType.URL) {
     const url = new URL(paths[0]);

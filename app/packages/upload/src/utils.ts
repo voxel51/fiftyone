@@ -156,11 +156,12 @@ export async function resolveHeaders(
 export type ConcurrencyLimiter = <T>(fn: () => Promise<T>) => Promise<T>;
 
 export function createConcurrencyLimiter(max: number): ConcurrencyLimiter {
+  const limit = Number.isFinite(max) && max > 0 ? Math.floor(max) : 1;
   let active = 0;
   const queue: (() => void)[] = [];
 
   function next() {
-    while (queue.length > 0 && active < max) {
+    while (queue.length > 0 && active < limit) {
       active++;
       queue.shift()!();
     }
@@ -168,14 +169,18 @@ export function createConcurrencyLimiter(max: number): ConcurrencyLimiter {
 
   return <T>(fn: () => Promise<T>): Promise<T> =>
     new Promise<T>((resolve, reject) => {
-      queue.push(() =>
-        fn()
-          .then(resolve, reject)
-          .finally(() => {
-            active--;
-            next();
-          }),
-      );
+      queue.push(() => {
+        let result: Promise<T>;
+        try {
+          result = fn();
+        } catch (err) {
+          result = Promise.reject(err);
+        }
+        return result.then(resolve, reject).finally(() => {
+          active--;
+          next();
+        });
+      });
       next();
     });
 }

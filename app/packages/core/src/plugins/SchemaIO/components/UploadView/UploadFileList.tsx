@@ -8,12 +8,14 @@ interface UploadFileListProps {
   files: FileUploadItem[];
   onCancel: (id: string) => void;
   onRetry: (id: string) => void;
+  readOnly?: boolean;
 }
 
 export default function UploadFileList({
   files,
   onCancel,
   onRetry,
+  readOnly,
 }: UploadFileListProps) {
   const {
     sortedFiles,
@@ -54,7 +56,12 @@ export default function UploadFileList({
               alignItems: "center",
             }}
           >
-            <UploadFileItem item={item} onCancel={onCancel} onRetry={onRetry} />
+            <UploadFileItem
+              item={item}
+              onCancel={onCancel}
+              onRetry={onRetry}
+              readOnly={readOnly}
+            />
           </Box>
         ))}
       </Box>

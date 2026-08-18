@@ -79,10 +79,12 @@ export default function UploadView(props) {
               files={files}
               onCancel={handleCancel}
               onRetry={retry}
+              readOnly={readOnly}
             />
             <UploadActions
               showAddMore={!dropZoneVisible && !readOnly && !atFileLimit}
-              showCancelAll={isUploading}
+              showCancelAll={isUploading && !readOnly}
+              showDeleteAll={!readOnly}
               onAddMore={() => setAddMoreOpen(true)}
               onCancelAll={handleCancelAll}
               onDeleteAll={handleDeleteAll}

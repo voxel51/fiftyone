@@ -67,6 +67,11 @@ function xhrPost(
   options: TransportPostOptions,
 ): Promise<{ path: string }> {
   return new Promise((resolve, reject) => {
+    if (options.signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+
     const xhr = new XMLHttpRequest();
 
     const onSignalAbort = () => xhr.abort();

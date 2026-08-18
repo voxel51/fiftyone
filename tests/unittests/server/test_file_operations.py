@@ -33,11 +33,17 @@ from fiftyone.server.files import (
 
 @pytest.fixture
 def enable_file_ops(tmp_path):
-    """Enable browser file operations with tmp_path as the allowed directory."""
+    """Enable browser file operations with tmp_path as the allowed directory.
+
+    Yields the resolved path so assertions match what
+    ``check_and_resolve_path`` returns even when the OS temp directory is
+    reached through a symlink (e.g. macOS's ``/tmp`` -> ``/private/tmp``).
+    """
+    resolved = fos.realpath(str(tmp_path))
     with patch(
         "fiftyone.config.allow_browser_file_operations", new=True
-    ), patch("fiftyone.config.browser_file_operations_dir", new=str(tmp_path)):
-        yield tmp_path
+    ), patch("fiftyone.config.browser_file_operations_dir", new=resolved):
+        yield tmp_path.__class__(resolved)
 
 
 # =============================================================================
@@ -383,6 +389,30 @@ class TestPartialWriteCleanup:
         assert fos.read_file(str(existing), binary=True) == b"original content"
         # Incremented file should not exist
         assert not fos.exists(str(enable_file_ops / "photo_1.png"))
+
+    @pytest.mark.asyncio
+    async def test_existing_file_not_deleted_when_open_fails(
+        self, enable_file_ops
+    ):
+        """If opening the destination itself raises (e.g. a permission
+        error), before any file has been created for this request, the
+        pre-existing file at the caller-supplied path is not deleted.
+        """
+        existing = enable_file_ops / "photo.png"
+        existing.write_bytes(b"original content")
+
+        async def stream():
+            yield b"data"
+
+        with patch(
+            "fiftyone.core.storage.open_file",
+            side_effect=PermissionError("mock failure"),
+        ):
+            with pytest.raises(FileOperationError) as exc_info:
+                await stream_upload(stream(), str(existing))
+
+        assert exc_info.value.code == FileOperationErrorCode.WRITE_FAILED
+        assert fos.read_file(str(existing), binary=True) == b"original content"
 
 
 # =============================================================================

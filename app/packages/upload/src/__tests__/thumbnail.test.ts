@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   isImageFile,
   isVideoFile,
@@ -74,6 +74,10 @@ describe("createThumbnail", () => {
   let mockDrawImage: ReturnType<typeof vi.fn>;
   let mockToDataURL: ReturnType<typeof vi.fn>;
 
+  const originalCreateElement = document.createElement.bind(document);
+  const originalCreateObjectURL = globalThis.URL.createObjectURL;
+  const originalRevokeObjectURL = globalThis.URL.revokeObjectURL;
+
   beforeEach(() => {
     mockDrawImage = vi.fn();
     mockToDataURL = vi.fn().mockReturnValue(FAKE_DATA_URL);
@@ -90,8 +94,14 @@ describe("createThumbnail", () => {
           toDataURL: mockToDataURL,
         } as unknown as HTMLCanvasElement;
       }
-      return document.createElement(tag);
+      return originalCreateElement(tag);
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    globalThis.URL.createObjectURL = originalCreateObjectURL;
+    globalThis.URL.revokeObjectURL = originalRevokeObjectURL;
   });
 
   function stubImage(width: number, height: number) {

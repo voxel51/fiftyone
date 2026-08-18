@@ -39,7 +39,7 @@ export const OperatorPromptTrigger = ({
   }, [onClick, promptForInput, operatorUri, params]);
 
   return (
-    <Box onClick={handleClick} {...props}>
+    <Box component="span" onClick={handleClick} {...props}>
       {children}
     </Box>
   );

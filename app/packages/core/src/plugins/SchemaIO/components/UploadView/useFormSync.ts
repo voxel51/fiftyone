@@ -24,7 +24,9 @@ export function useFormSync({ path, data, onChange }: UseFormSyncOptions) {
     (item: FileUploadItem) => {
       const current = dataRef.current ?? [];
       const fileValue = fileValueFromUploadItem(item);
-      onChange(path, [...current, fileValue]);
+      const next = [...current, fileValue];
+      dataRef.current = next;
+      onChange(path, next);
     },
     [path, onChange],
   );
@@ -32,10 +34,9 @@ export function useFormSync({ path, data, onChange }: UseFormSyncOptions) {
   const removeFileByPath = useCallback(
     (remotePath: string) => {
       const current = dataRef.current ?? [];
-      onChange(
-        path,
-        current.filter((f) => f.absolute_path !== remotePath),
-      );
+      const next = current.filter((f) => f.absolute_path !== remotePath);
+      dataRef.current = next;
+      onChange(path, next);
     },
     [path, onChange],
   );

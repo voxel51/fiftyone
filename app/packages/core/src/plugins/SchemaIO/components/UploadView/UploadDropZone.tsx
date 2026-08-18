@@ -18,7 +18,7 @@ export default function UploadDropZone({
 
   return (
     <Box
-      {...domDropProps}
+      {...(disabled ? {} : domDropProps)}
       onClick={disabled ? undefined : browse}
       sx={{
         p: 3,
@@ -39,7 +39,7 @@ export default function UploadDropZone({
         }),
       }}
     >
-      <input {...inputProps} />
+      <input {...inputProps} disabled={disabled} />
       <CloudUpload sx={{ fontSize: 32, mb: 0.5, color: "text.secondary" }} />
       <Box>
         <Typography
