@@ -3,13 +3,14 @@ import { Box, Tab, Tabs } from "@mui/material";
 import { ReactNode, useMemo, useState } from "react";
 import { CodeBlockProps } from "../CodeBlock";
 
-type CodeTab = Omit<CodeBlockProps, "text"> & {
+type CodeTabBase = Omit<CodeBlockProps, "text"> & {
   id: string;
-  code?: string;
   label: string;
-  /** Renders instead of the code block when provided. */
-  content?: ReactNode;
 };
+
+type CodeTab =
+  | (CodeTabBase & { code: string; content?: never })
+  | (CodeTabBase & { code?: never; content: ReactNode });
 
 type CodeTabsProps = {
   tabs: Array<CodeTab>;
@@ -57,7 +58,7 @@ export default function CodeTabs(props: CodeTabsProps) {
       <Box mt={1} sx={{ minWidth: 720 }}>
         {tabProps.content ?? (
           <Box sx={{ cursor: "pointer" }}>
-            <CodeBlock {...tabProps} text={tabProps.code} />
+            <CodeBlock {...tabProps} text={tabProps.code ?? ""} />
           </Box>
         )}
       </Box>
