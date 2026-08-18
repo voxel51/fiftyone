@@ -32,6 +32,7 @@ import {
 } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
+import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
 
 // The grid mounts custom renderers under a RecoilBridge, which is what lets
 // the tile read the embeddings panel's published match for its episode.
@@ -698,6 +699,24 @@ describe("GridRenderer", () => {
 
     rerender(<GridRenderer ctx={rendererCtx()} isGridActive />);
     expect(snapshotHarness.requests).toHaveLength(1);
+  });
+
+  it("withdraws preview demand as soon as modal activation makes the grid inactive", async () => {
+    const { rerender } = render(
+      <GridRenderer ctx={rendererCtx()} isGridActive />,
+    );
+    await waitFor(() =>
+      expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+        enabled: true,
+      }),
+    );
+
+    rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      enabled: false,
+    });
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
   });
 
   it("stays on the snapshot when the device budget denies going live", () => {

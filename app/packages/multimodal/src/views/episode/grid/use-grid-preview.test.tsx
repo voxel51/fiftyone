@@ -170,6 +170,50 @@ describe("useGridPreview", () => {
     expect(signal.aborted).toBe(true);
   });
 
+  it("cancels pending demand and starts no replacement while the grid is inactive", async () => {
+    const pending = deferred<EpisodePreviewReadResult>();
+    const onReadResult = vi.fn();
+    sessionHarness.session.read.mockReturnValueOnce(pending.promise);
+    const source = sourceForId("modal-activation");
+    const { rerender } = render(
+      <PreviewHarness
+        enabled
+        id="modal-activation"
+        onReadResult={onReadResult}
+        source={source}
+      />,
+    );
+    await waitFor(() =>
+      expect(sessionHarness.session.read).toHaveBeenCalledOnce(),
+    );
+    const signal = sessionHarness.session.read.mock.calls[0]?.[1]
+      ?.signal as AbortSignal;
+
+    // Opening the modal marks every grid renderer inactive. Its outstanding
+    // demand must be preempted, and prop churn from the retained grid must not
+    // start replacement work behind the modal's current-frame reads.
+    rerender(
+      <PreviewHarness
+        enabled={false}
+        hovered
+        id="modal-activation"
+        onReadResult={onReadResult}
+        selectedSourceName="/camera/rear"
+        source={source}
+      />,
+    );
+
+    expect(signal.aborted).toBe(true);
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+
+    pending.resolve(readyResult({ bytes: [9] }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onReadResult).not.toHaveBeenCalled();
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+  });
+
   it("promotes a pending initial frame when its tile is hovered", async () => {
     const background = deferred<EpisodePreviewReadResult>();
     const foreground = deferred<EpisodePreviewReadResult>();
