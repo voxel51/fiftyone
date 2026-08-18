@@ -13,13 +13,13 @@
         "test": "vitest"
     },
     "devDependencies": {
-        "@testing-library/dom": "^10.4.0",
-        "@testing-library/react": "^16.2.0",
-        "@vitejs/plugin-react": "^4.2.1",
+        "@testing-library/dom": "catalog:",
+        "@testing-library/react": "catalog:",
+        "@vitejs/plugin-react": "catalog:",
         "jsdom": "^26.0.0",
-        "typescript": "^5.5.4",
-        "vite": "^5.4.21",
-        "vitest": "^1.6.0"
+        "typescript": "catalog:",
+        "vite": "catalog:",
+        "vitest": "catalog:"
     },
     "peerDependencies": {
         "react": "*",

@@ -10,7 +10,7 @@ type CodeTabBase = Omit<CodeBlockProps, "text"> & {
 
 type CodeTab =
   | (CodeTabBase & { code: string; content?: never })
-  | (CodeTabBase & { code?: never; content: ReactNode });
+  | (CodeTabBase & { code?: never; content: NonNullable<ReactNode> });
 
 type CodeTabsProps = {
   tabs: Array<CodeTab>;
