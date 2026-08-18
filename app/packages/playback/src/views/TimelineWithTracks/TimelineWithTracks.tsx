@@ -403,7 +403,14 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     />
   );
 
-  const renderUnpinnedTrack = (track: Track) => {
+  const renderUnpinnedTrack = (track: Track | undefined) => {
+    // Virtuoso can ask for an index that the latest `data` no longer holds —
+    // it renders from the range it last measured, so a list that shrinks (the
+    // final track deleted, a filter applied) transiently addresses rows past
+    // the new end. Reading through an undefined row here took the whole tree
+    // down with it.
+    if (!track) return null;
+
     const extra = decorationFor(track, false);
     return (
       <TimelineTrack
@@ -579,7 +586,10 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             ref={virtuosoRef}
             className={styles.tracksArea}
             data={unpinned}
-            computeItemKey={(_, track) => track.id}
+            // Index fallback for the same shrinking-list window described in
+            // `renderUnpinnedTrack` — the row is on its way out either way, so
+            // the key only has to be stable for the frame it survives.
+            computeItemKey={(index, track) => track?.id ?? index}
             defaultItemHeight={TIMELINE_TRACK_ROW_HEIGHT}
             initialItemCount={initialItemCountRef.current}
             increaseViewportBy={overscanPx}
