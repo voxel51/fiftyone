@@ -14,7 +14,7 @@ const TOTALS_KEY = "totals";
 const STORED_ENTRY_VERSION = 1;
 
 const DEFAULT_MAX_ENTRIES = 4_096;
-const DEFAULT_MAX_SIZE_BYTES = 256 * MIB;
+const DEFAULT_MAX_SIZE_BYTES = 512 * MIB;
 
 interface StoredGridPosterEntry extends Omit<GridPosterCacheEntry, "bytes"> {
   readonly bytes: Blob;
