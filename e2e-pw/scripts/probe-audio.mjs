@@ -6,11 +6,17 @@
  *
  * Usage: node scripts/probe-audio.mjs <dataset> <sampleId> [devServerUrl]
  */
-import { chromium } from "playwright-core";
+// `@playwright/test` is the direct devDependency here and re-exports the
+// browser types, so this needs no separate `playwright`/`playwright-core`
+// entry that could drift from the pinned test-runner version.
+import { chromium } from "@playwright/test";
 
-const [dataset, sampleId, base = "http://localhost:5173"] = process.argv.slice(2);
+const [dataset, sampleId, base = "http://localhost:5173"] =
+  process.argv.slice(2);
 if (!dataset || !sampleId) {
-  console.error("usage: node scripts/probe-audio.mjs <dataset> <sampleId> [url]");
+  console.error(
+    "usage: node scripts/probe-audio.mjs <dataset> <sampleId> [url]",
+  );
   process.exit(1);
 }
 
@@ -19,7 +25,9 @@ const browser = await chromium.launch({
   args: ["--no-sandbox", "--autoplay-policy=no-user-gesture-required"],
 });
 const page = await browser.newPage();
-page.on("pageerror", (e) => console.log("[pageerror]", String(e).slice(0, 300)));
+page.on("pageerror", (e) =>
+  console.log("[pageerror]", String(e).slice(0, 300)),
+);
 
 await page.goto(`${base}/datasets/${dataset}?id=${sampleId}`, {
   waitUntil: "domcontentloaded",
@@ -42,11 +50,27 @@ console.log(
     await page.evaluate(() => ({
       trace: window.__foAudio ?? null,
       controls: {
-        play: Boolean(document.querySelector('[data-testid="timeline-controls-play-pause"]')),
-        volume: Boolean(document.querySelector('[data-testid="timeline-controls-volume-toggle"]')),
-        mixer: Boolean(document.querySelector('[data-testid="timeline-controls-mixed"]')),
-        trailing: Boolean(document.querySelector('[data-testid="timeline-controls-trailing-actions"]')),
-        audioTile: document.querySelector('[data-testid="audio-tile-status"]')?.textContent ?? null,
+        play: Boolean(
+          document.querySelector(
+            '[data-testid="timeline-controls-play-pause"]',
+          ),
+        ),
+        volume: Boolean(
+          document.querySelector(
+            '[data-testid="timeline-controls-volume-toggle"]',
+          ),
+        ),
+        mixer: Boolean(
+          document.querySelector('[data-testid="timeline-controls-mixed"]'),
+        ),
+        trailing: Boolean(
+          document.querySelector(
+            '[data-testid="timeline-controls-trailing-actions"]',
+          ),
+        ),
+        audioTile:
+          document.querySelector('[data-testid="audio-tile-status"]')
+            ?.textContent ?? null,
       },
     })),
     null,

@@ -125,6 +125,12 @@ export function useMcapAudioStream(
         }
       }
 
+      // Count the source messages, not the intermediate buffers: the
+      // compressed branch below pushes its single decoded block into
+      // `rawChunks`, so reading their lengths after that point would
+      // double-count.
+      const sourceChunkCount = rawChunks.length + compressedChunks.length;
+
       // Compressed chunks decode to the same interleaved float layout the
       // raw branch produces, so everything downstream is codec-agnostic.
       if (rawChunks.length === 0 && compressedChunks.length > 0) {
@@ -163,7 +169,7 @@ export function useMcapAudioStream(
       const metadata: AudioMetadata = {
         byteLength: encodedBytes || undefined,
         channels: data.channels,
-        chunkCount: rawChunks.length + compressedChunks.length,
+        chunkCount: sourceChunkCount,
         durationSec:
           data.samples.length / Math.max(1, data.channels) / data.sampleRate,
         format: format || undefined,
