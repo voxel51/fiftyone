@@ -27,7 +27,13 @@ export type AudioWindowReader = (
 export interface AudioStreamPumpOptions {
   readonly engine: Pick<
     AudioStreamEngine,
-    "push" | "availableWrite" | "seek" | "markEnded" | "sampleRate" | "channels"
+    | "push"
+    | "availableWrite"
+    | "bufferedFrames"
+    | "seek"
+    | "markEnded"
+    | "sampleRate"
+    | "channels"
   >;
   readonly read: AudioWindowReader;
   /** Total media duration; the pump stops reading past it. */
@@ -96,16 +102,19 @@ export function createAudioStreamPump({
     return false;
   };
 
-  /** Wait proportional to what is buffered, so the loop idles when full. */
+  /**
+   * Back off in proportion to the runway the render thread still has. This
+   * must key off buffered audio, not free space: those are inverses, and
+   * using free space would sleep longest exactly when the ring is empty and
+   * about to underrun.
+   */
   const waitAndResume = () => {
     if (stopped) return;
-    const bufferedFrames = Math.max(0, engine.availableWrite());
-    // Re-check after roughly half the remaining headroom has drained; floor
-    // keeps a nearly-full ring from spinning.
-    const delayMs = Math.max(
-      20,
-      Math.min(500, (bufferedFrames / sampleRate) * 500),
-    );
+    const bufferedSec = Math.max(0, engine.bufferedFrames()) / sampleRate;
+    // Re-check after roughly half the runway is gone. The floor keeps a
+    // still-full ring from spinning; the ceiling bounds seek latency when
+    // the ring is full and waiting on the render thread's flush ack.
+    const delayMs = Math.max(5, Math.min(250, bufferedSec * 500));
     schedule(() => void pumpLoop(), delayMs);
   };
 
