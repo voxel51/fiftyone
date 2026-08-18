@@ -55,9 +55,14 @@ class AudioStreamProcessorImpl extends AudioWorkletProcessor {
   private readonly channelScratch: (Float32Array | undefined)[];
   private starved = false;
 
-  constructor(options?: { processorOptions?: AudioStreamProcessorOptions }) {
+  // `unknown` rather than the option shape: `registerProcessor` hands the
+  // constructor whatever the main thread put in `processorOptions`, so the
+  // narrowing belongs here rather than in a signature the host cannot honor.
+  constructor(options?: unknown) {
     super();
-    const layout = options?.processorOptions?.layout;
+    const layout = (
+      options as { processorOptions?: AudioStreamProcessorOptions } | undefined
+    )?.processorOptions?.layout;
     if (!layout) {
       throw new Error("AudioStreamProcessor requires a ring buffer layout");
     }
