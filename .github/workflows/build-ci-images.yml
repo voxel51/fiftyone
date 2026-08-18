@@ -16,7 +16,7 @@ on:
       python-versions:
         description: >-
           JSON array of python versions to build test images for
-        default: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+        default: '["3.10", "3.11", "3.12", "3.13"]'
       build-e2e-image:
         description: Also rebuild the e2e image
         type: boolean
@@ -75,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ${{ fromJSON(inputs.python-versions || '["3.10", "3.11", "3.12", "3.13", "3.14"]') }}
+        python: ${{ fromJSON(inputs.python-versions || '["3.10", "3.11", "3.12", "3.13"]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
