@@ -12,6 +12,20 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import settingsStyles from "../tiles/Tile.settings.module.css";
 
+// Release-only workaround: `sampleFields` currently merges the Mongo schema
+// with multimodal projection fields. Until FOEPD-4553 exposes the Mongo schema
+// separately, keep paths rooted in multimodal projection grains out of this
+// sample-document view.
+const MULTIMODAL_PROJECTION_GRAINS = new Set([
+  "events",
+  "labels",
+  "summaries",
+  "signals",
+]);
+
+const isMultimodalProjectionField = (path: string): boolean =>
+  MULTIMODAL_PROJECTION_GRAINS.has(path.split(".", 1)[0]);
+
 /**
  * The raw sample doc keys some fields by their Mongo `dbField` rather than
  * their schema path — most commonly `id` (schema path) / `_id` (actual key).
@@ -112,7 +126,10 @@ const FieldsSidebar: React.FC = () => {
   const hiddenPaths = new Set(fvStage?.kwargs?.field_names ?? []);
   const nonPrivateFields = sampleFields.filter(
     (field) =>
-      field && !field.path.startsWith("_") && !hiddenPaths.has(field.path),
+      field &&
+      !field.path.startsWith("_") &&
+      !isMultimodalProjectionField(field.path) &&
+      !hiddenPaths.has(field.path),
   );
 
   if (nonPrivateFields.length === 0) {

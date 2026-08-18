@@ -89,6 +89,50 @@ describe("FieldsSidebar", () => {
     expect(body.textContent).not.toContain("_media_type");
   });
 
+  it("filters out multimodal projection grain fields independently of field visibility", () => {
+    setFields([
+      { path: "events", ftype: "fiftyone.core.fields.EmbeddedDocumentField" },
+      {
+        path: "events.drive_events.event",
+        ftype: "fiftyone.core.fields.StringField",
+      },
+      {
+        path: "labels.camera_labels.label",
+        ftype: "fiftyone.core.fields.StringField",
+      },
+      {
+        path: "summaries.episode_summary.duration",
+        ftype: "fiftyone.core.fields.FloatField",
+      },
+      {
+        path: "signals.imu.angular_velocity",
+        ftype: "fiftyone.core.fields.FloatField",
+      },
+      {
+        path: "metadata.labels",
+        ftype: "fiftyone.core.fields.StringField",
+      },
+      {
+        path: "event_count",
+        ftype: "fiftyone.core.fields.IntField",
+      },
+    ]);
+    useActiveModalSample.mockReturnValue({
+      event_count: 4,
+      metadata: { labels: "release" },
+    });
+
+    renderFieldsSidebar(<FieldsSidebar />);
+
+    const body = screen.getByTestId("episode-fields-body");
+    expect(body.textContent).not.toContain("events");
+    expect(body.textContent).not.toContain("camera_labels");
+    expect(body.textContent).not.toContain("episode_summary");
+    expect(body.textContent).not.toContain("angular_velocity");
+    expect(body.textContent).toContain("metadata.labels");
+    expect(body.textContent).toContain("event_count");
+  });
+
   it("renders a plain string field's actual value, not its schema type", () => {
     setFields([
       { path: "filepath", ftype: "fiftyone.core.fields.StringField" },
