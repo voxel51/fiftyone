@@ -375,6 +375,32 @@ describe("EpisodeStreamCache", () => {
     ]);
   });
 
+  it("accepts a new source timeline after reset", () => {
+    const first = createTimelineIndex(
+      { endNs: 2_000_000_000n, startNs: 0n },
+      1,
+    );
+    const second = createTimelineIndex(
+      { endNs: 12_000_000_000n, startNs: 10_000_000_000n },
+      1,
+    );
+    const cache = new EpisodeStreamCache();
+    cache.configureTimeline(first);
+    cache.set(0n, MESSAGE);
+
+    cache.reset();
+    cache.set(10_000_000_000n, {
+      ...MESSAGE,
+      timestampNs: 10_000_000_000n,
+    });
+
+    expect(cache.has(0n)).toBe(false);
+    expect(cache.has(10_000_000_000n)).toBe(true);
+    expect(cache.cachedTickIndexRanges(second)).toEqual([
+      { endIndex: 0, startIndex: 0 },
+    ]);
+  });
+
   it("bounds metadata-only placements and canonicalizes repeated payloads", () => {
     const shared = { ...MESSAGE, recordId: "shared" };
     const cache = new EpisodeStreamCache(3);

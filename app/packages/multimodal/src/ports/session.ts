@@ -271,11 +271,40 @@ export interface TransformPlacementReadResult {
   readonly samples: readonly TransformSample[];
 }
 
+/** One authoritative stream result within a synchronized presentation read. */
+export interface SynchronizedStreamSettlement {
+  /** The only stream whose ownership is settled by this window. */
+  readonly stream: StreamId;
+  /** Authoritative payload, empty result, or diagnostics for `stream`. */
+  readonly window: SynchronizedFrameWindow;
+}
+
 /** One synchronized playback read around a single presentation time. */
 export interface SynchronizedPlaybackReadRequest {
   readonly defaultStreamPolicy?: StreamSyncPolicy;
+  /** Streams eligible for the first independently useful settlement. */
+  readonly firstUsefulSettlementStreams?: readonly StreamId[];
+  /**
+   * Receives ordered, authoritative per-stream ownership settlements.
+   * Adapters may also report the same settlement through
+   * `onStreamSettlements`, so consumers registering both must be idempotent.
+   */
+  readonly onStreamSettlement?: (
+    settlement: SynchronizedStreamSettlement,
+  ) => void;
+  /**
+   * Receives one ordered transport delivery group. Every member remains an
+   * independent authoritative stream settlement; the group lets consumers
+   * publish simultaneously available presentation surfaces in one store turn.
+   * Members may also be reported through `onStreamSettlement` when registered.
+   */
+  readonly onStreamSettlements?: (
+    settlements: readonly SynchronizedStreamSettlement[],
+  ) => void;
   /** Active point-cloud color source requested per stream. */
   readonly pointCloudColorBy?: Readonly<Record<StreamId, string>>;
+  /** Stable presentation order for streams that gate current-tick readiness. */
+  readonly settlementPriorityStreams?: readonly StreamId[];
   readonly streamPolicies?: StreamSyncPolicies;
   readonly streams: readonly StreamId[];
   readonly signal?: AbortSignal;

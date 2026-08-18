@@ -15,6 +15,15 @@ describe("MCAP worker stream batching", () => {
     expect(estimateMcapStreamItemBytes(message())).toBe(256);
   });
 
+  it("falls back safely when an unknown decoded output is nullish", () => {
+    expect(
+      estimateMcapStreamItemBytes({ decoded: { output: undefined } }),
+    ).toBe(256);
+    expect(estimateMcapStreamItemBytes({ decoded: { output: null } })).toBe(
+      256,
+    );
+  });
+
   it("flushes before an item would cross the byte cap", () => {
     expect(
       wouldOverflowMcapStreamBatch({
