@@ -1,5 +1,6 @@
 import JSONViewer from "@fiftyone/components/src/components/JSONViewer";
 import {
+  fieldVisibilityStage,
   useActiveModalSample,
   useSampleFields,
   useTimeZone,
@@ -8,6 +9,7 @@ import { formatPrimitive } from "@fiftyone/utilities";
 import { getNestedField } from "@fiftyone/utilities/src/sample/pointer";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React from "react";
+import { useRecoilValue } from "recoil";
 import settingsStyles from "../tiles/Tile.settings.module.css";
 
 /**
@@ -106,8 +108,11 @@ const FieldsSidebar: React.FC = () => {
   const sampleFields = useSampleFields();
   const activeSample = useActiveModalSample();
   const timeZone = useTimeZone();
+  const fvStage = useRecoilValue(fieldVisibilityStage);
+  const hiddenPaths = new Set(fvStage?.kwargs?.field_names ?? []);
   const nonPrivateFields = sampleFields.filter(
-    (field) => field && !field.path.startsWith("_"),
+    (field) =>
+      field && !field.path.startsWith("_") && !hiddenPaths.has(field.path),
   );
 
   if (nonPrivateFields.length === 0) {
