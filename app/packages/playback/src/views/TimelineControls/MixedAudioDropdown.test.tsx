@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -104,7 +105,14 @@ describe("MixedAudioDropdown", () => {
 
     expect(getTrackVolume(store as PlaybackStore, "a")).toBeCloseTo(0.25);
     expect(getTrackVolume(store as PlaybackStore, "b")).toBe(1);
-    expect(screen.getByText("25%")).toBeTruthy();
-    expect(screen.getByText("100%")).toBeTruthy();
+    // Scoped to each row: asserting the readouts globally would still pass
+    // if both rows read the same track's atoms and merely happened to render
+    // one "25%" and one "100%" somewhere in the popover.
+    const rowA = screen.getByTestId("timeline-mixed-track-a");
+    const rowB = screen.getByTestId("timeline-mixed-track-b");
+    expect(within(rowA).getByText("25%")).toBeTruthy();
+    expect(within(rowB).getByText("100%")).toBeTruthy();
+    expect(within(rowA).queryByText("100%")).toBeNull();
+    expect(within(rowB).queryByText("25%")).toBeNull();
   });
 });

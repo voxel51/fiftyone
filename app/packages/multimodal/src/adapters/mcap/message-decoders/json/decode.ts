@@ -71,21 +71,23 @@ const NS_PER_SEC = 1_000_000_000;
  * Converts a Foxglove JSON `{sec, nsec}` record to nanoseconds, or
  * `undefined` when absent or out of range.
  *
- * Foxglove `Time` requires `0 <= nsec < 1e9` and a non-negative `sec`. A
- * message outside that range would otherwise yield a timestamp for a
- * different instant, silently shifting audio alignment — better to report
- * no timestamp than a wrong one.
+ * Foxglove `Time` requires `0 <= nsec < 1e9`, a non-negative `sec`, and
+ * integers for both. A message outside that range would otherwise yield a
+ * timestamp for a different instant, silently shifting audio alignment —
+ * better to report no timestamp than a wrong one. Fractional values are
+ * rejected for the same reason: truncating `sec: 1.9` to `1` moves the
+ * instant by nearly a second without reporting an invalid message.
  */
 export function jsonTimestampNs(
   timestamp: Record<string, unknown> | undefined,
 ): bigint | undefined {
   const sec = finiteNumberField(timestamp, "sec");
-  if (sec === undefined || sec < 0) return undefined;
+  if (sec === undefined || !Number.isInteger(sec) || sec < 0) return undefined;
   const nsec = finiteNumberField(timestamp, "nsec") ?? 0;
-  if (nsec < 0 || nsec >= NS_PER_SEC) return undefined;
-  return (
-    BigInt(Math.trunc(sec)) * BigInt(NS_PER_SEC) + BigInt(Math.trunc(nsec))
-  );
+  if (!Number.isInteger(nsec) || nsec < 0 || nsec >= NS_PER_SEC) {
+    return undefined;
+  }
+  return BigInt(sec) * BigInt(NS_PER_SEC) + BigInt(nsec);
 }
 
 /**
