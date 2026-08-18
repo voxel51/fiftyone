@@ -330,10 +330,6 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
    * The right-clicked event, feeding the lane's single delegated context menu.
    * Stamped on right-click and flushed before voodo opens the menu, so one
    * shared `<ContextMenu>` covers every event on the lane.
-   *
-   * Snapshotting the event itself (rather than its index) keeps an open menu
-   * pointed at what the user actually clicked even if `events` is rebuilt
-   * underneath it.
    */
   const [ctxEvent, setCtxEvent] = useState<NormalizedEvent | null>(null);
 
@@ -849,6 +845,9 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                   ? event.startSec + movePointShift.delta
                   : event.startSec;
               return (
+                // Keyframe diamonds are plain divs; the lane's single delegated
+                // <ContextMenu> owns their right-click menu (one menu per lane,
+                // not one per diamond — see LaneEventMenu).
                 <div
                   key={originalIndex}
                   className={styles.event}
