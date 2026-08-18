@@ -101,6 +101,7 @@ export function GridRenderer({
         ? gridPosterCacheKey({
             datasetId: ctx.dataset.datasetId,
             mediaField: ctx.media?.field,
+            mediaPath: ctx.media?.path,
             posterSourceName: firstMatch?.stream,
             posterStartTimeNs: firstMatch?.startNs,
             selectedSourceName,
@@ -110,6 +111,7 @@ export function GridRenderer({
     [
       ctx.dataset.datasetId,
       ctx.media?.field,
+      ctx.media?.path,
       firstMatch?.startNs,
       firstMatch?.stream,
       selectedSourceName,

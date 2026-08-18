@@ -1,7 +1,6 @@
 import { LRUCache } from "lru-cache";
 
 import type { ByteSourceDescriptor } from "../../../ir";
-import { episodeSourceAccessKey } from "../../../runtime/episode-resources";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 
 const MIB = 1024 * 1024;
@@ -10,7 +9,7 @@ const MIN_BUDGET_BYTES = 32 * MIB;
 const MAX_BUDGET_BYTES = 128 * MIB;
 const DEFAULT_MAX_ENTRIES = 2_048;
 const ENTRY_METADATA_BYTES = 256;
-const CACHE_SCHEMA_VERSION = "grid-poster-v1";
+const CACHE_SCHEMA_VERSION = "grid-poster-v2";
 const PREVIEW_SELECTION_POLICY_VERSION = "preview-selection-v1";
 const SNAPSHOT_RENDERER_POLICY_VERSION = "point-cloud-snapshot-v1";
 export const GRID_POSTER_AUTO_SOURCE = "__AUTO__";
@@ -79,6 +78,7 @@ export interface GridPosterCacheOptions {
 export interface GridPosterKeyParts {
   readonly datasetId: string;
   readonly mediaField: string | null | undefined;
+  readonly mediaPath?: string | null | undefined;
   readonly posterSourceName?: string | null | undefined;
   readonly posterStartTimeNs?: bigint | null | undefined;
   readonly selectedSourceName: string | null | undefined;
@@ -150,6 +150,7 @@ export function createGridPosterCache(
 export function gridPosterCacheKey({
   datasetId,
   mediaField,
+  mediaPath,
   posterSourceName,
   posterStartTimeNs,
   selectedSourceName,
@@ -159,12 +160,34 @@ export function gridPosterCacheKey({
     CACHE_SCHEMA_VERSION,
     datasetId,
     mediaField ?? null,
-    episodeSourceAccessKey(source),
+    source.sourceId,
+    stableMediaFilename(mediaPath ?? source.url),
+    source.sizeBytes ?? null,
+    source.etag ?? null,
     selectedSourceName ?? GRID_POSTER_AUTO_SOURCE,
     posterSourceName ?? null,
     posterStartTimeNs?.toString() ?? null,
     PREVIEW_SELECTION_POLICY_VERSION,
   ]);
+}
+
+/**
+ * Extracts a reload-stable file identity without retaining signed URL query
+ * parameters. Dataset, media field, and source/sample ID remain the primary
+ * namespace; the filename guards a sample whose backing media path changes.
+ */
+function stableMediaFilename(pathOrUrl: string): string {
+  const filepath = encodedQueryValue(pathOrUrl, "filepath");
+  const path = (filepath ?? pathOrUrl)
+    .split(/[?#]/, 1)[0]
+    .replaceAll("\\", "/");
+  const encodedName = path.slice(path.lastIndexOf("/") + 1);
+  if (!encodedName) return "";
+  try {
+    return decodeURIComponent(encodedName);
+  } catch {
+    return encodedName;
+  }
 }
 
 export function pointCloudPoseKey(pose: PointCloudCameraPose | null): string {
@@ -306,4 +329,14 @@ function normalizePositiveInteger(value: number, fallback: number): number {
 
 function serializeGridPosterKey(parts: readonly (string | null)[]): string {
   return JSON.stringify(parts);
+}
+
+function encodedQueryValue(value: string, name: string): string | null {
+  const match = new RegExp(`(?:[?&])${name}=([^&#]*)`).exec(value);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
 }
