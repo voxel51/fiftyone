@@ -486,9 +486,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
 
     if (!Number.isInteger(idx) || idx < 0 || idx >= events.length) {
       // Right-click on empty lane space — suppress the event-less menu voodo
-      // would otherwise open. Preventing default is what tells ContextMenu to
-      // stand down; it also means no native browser menu here, and the event
-      // reaches the row root already `defaultPrevented`.
+      // would otherwise open.
       e.preventDefault();
       return;
     }
@@ -844,10 +842,10 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 event.startSec <= movePointShift.toSec + 1e-6
                   ? event.startSec + movePointShift.delta
                   : event.startSec;
+              // Keyframe diamonds are plain divs; the lane's single delegated
+              // <ContextMenu> owns their right-click menu (one menu per lane,
+              // not one per diamond — see LaneEventMenu).
               return (
-                // Keyframe diamonds are plain divs; the lane's single delegated
-                // <ContextMenu> owns their right-click menu (one menu per lane,
-                // not one per diamond — see LaneEventMenu).
                 <div
                   key={originalIndex}
                   className={styles.event}
