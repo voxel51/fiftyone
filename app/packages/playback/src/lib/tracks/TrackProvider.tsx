@@ -7,7 +7,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { generateSpoofTracks, readSpoofConfig } from "./spoofTracks";
 
 /**
  * A single time-stamped event inside a {@link Track}. When `endSec` is
@@ -148,22 +147,12 @@ function writePersistedPinnedIds(key: string, ids: ReadonlySet<string>): void {
  * provider when the user opens that recording.
  */
 export const TrackProvider: React.FC<TrackProviderProps> = ({
-  tracks: realTracks = [],
+  tracks = [],
   initialPinnedIds = [],
   autoPinNewTracks = true,
   persistKey,
   children,
 }) => {
-  // TEMPORARY DEV HARNESS — delete before merging. Off unless `?spoofTracks=N`
-  // is on the URL, in which case N synthetic rows (plus their sub-rows) are
-  // appended so the timeline can be driven at a scale no real sample reaches.
-  // Read once: re-reading per render would regenerate 10k objects each time.
-  const spoofConfigRef = useRef(readSpoofConfig());
-  const tracks = useMemo(() => {
-    const spoofed = generateSpoofTracks(realTracks, spoofConfigRef.current);
-    return spoofed.length > 0 ? [...realTracks, ...spoofed] : realTracks;
-  }, [realTracks]);
-
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(() => {
     if (persistKey) {
       const persisted = readPersistedPinnedIds(persistKey);

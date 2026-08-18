@@ -262,6 +262,8 @@ function Harness({
   );
 
   const scrollToRandom = useCallback(() => {
+    if (tracks.length === 0) return;
+
     const target = tracks[Math.floor(Math.random() * tracks.length)];
     scroller.current?.scrollToTrack(target.id);
     // eslint-disable-next-line no-console

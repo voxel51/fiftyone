@@ -46,11 +46,11 @@ export const TIMELINE_TRACK_ROW_HEIGHT = 28;
  * visible tracks region — the trade between blank space on a flick-scroll and
  * how many rows are mounted at rest.
  *
- * Kept deliberately small (~3 rows either side). Rows here are not cheap:
- * every event on a row mounts its own context menu, so overscan is paid per
- * event, not per row. Raise it only if scrolling shows blank bands; lower it
- * to 0 to mount strictly what's visible. Overridable per surface via
- * `TimelineWithTracksProps.overscanPx`.
+ * Kept deliberately small (~3 rows either side): a row still paints a marker
+ * per event in view, so a wide overscan on an event-dense timeline buys smooth
+ * flick-scrolling with real layout work. Raise it if scrolling shows blank
+ * bands; lower it to 0 to mount strictly what's visible. Overridable per
+ * surface via `TimelineWithTracksProps.overscanPx`.
  */
 export const TIMELINE_TRACK_OVERSCAN_PX = 96;
 

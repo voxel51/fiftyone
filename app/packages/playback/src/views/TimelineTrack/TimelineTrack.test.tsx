@@ -514,6 +514,95 @@ describe("TimelineTrack", () => {
       expect(screen.getByText("Merge into B")).toBeTruthy();
     });
 
+    // The row mounts ONE ContextMenu and retargets it, rather than one per
+    // event — so "which event is this menu about" is now state, and these
+    // cover the ways that state can go wrong.
+    it("retargets the menu when a different event is right-clicked", () => {
+      const onSelect = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [
+            { startSec: 1, endSec: 2 },
+            { startSec: 7, endSec: 8 },
+          ],
+          eventMenuItems: [{ label: "Delete track", onSelect }],
+        },
+      });
+      const bars = container.querySelectorAll(`.${styles.intervalBar}`);
+      expect(bars).toHaveLength(2);
+
+      fireEvent.contextMenu(bars[0]);
+      fireEvent.click(screen.getByText("Delete track"));
+      expect(onSelect.mock.calls[0][0]).toMatchObject({
+        startSec: 1,
+        endSec: 2,
+      });
+
+      fireEvent.contextMenu(bars[1]);
+      fireEvent.click(screen.getByText("Delete track"));
+      expect(onSelect).toHaveBeenCalledTimes(2);
+      expect(onSelect.mock.calls[1][0]).toMatchObject({
+        startSec: 7,
+        endSec: 8,
+      });
+    });
+
+    it("opens no menu when the right-click misses every event", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 4, endSec: 6 }],
+          eventMenuItems: [{ label: "Delete track", onSelect: vi.fn() }],
+        },
+      });
+      const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
+
+      fireEvent.contextMenu(lane, { clientX: 900 });
+      expect(screen.queryByText("Delete track")).toBeNull();
+      expect(screen.queryByText("Move to start")).toBeNull();
+    });
+
+    it("drops the open menu's target when the events array is replaced", () => {
+      // An index alone would slide onto the neighbouring event when an earlier
+      // one is removed, handing onSelect the wrong payload.
+      const onSelect = vi.fn();
+      const first = { startSec: 1, endSec: 2 };
+      const second = { startSec: 7, endSec: 8 };
+      const { container, rerender } = render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineTrack
+            {...baseTrack}
+            start={0}
+            end={10}
+            events={[first, second]}
+            eventMenuItems={[{ label: "Delete track", onSelect }]}
+          />
+        </PlaybackProvider>,
+      );
+
+      const bars = container.querySelectorAll(`.${styles.intervalBar}`);
+      fireEvent.contextMenu(bars[1]);
+      expect(screen.getByText("Delete track")).toBeTruthy();
+
+      rerender(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineTrack
+            {...baseTrack}
+            start={0}
+            end={10}
+            events={[second]}
+            eventMenuItems={[{ label: "Delete track", onSelect }]}
+          />
+        </PlaybackProvider>,
+      );
+
+      // Target dropped rather than silently re-resolved against the new array.
+      expect(screen.queryByText("Delete track")).toBeNull();
+    });
+
     it("does not fire onSelect for a disabled item", () => {
       const onSelect = vi.fn();
       const { container } = renderTrack({

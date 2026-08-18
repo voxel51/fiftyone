@@ -112,27 +112,51 @@ const mergeGroupKey = (
   classLabel: string | null,
 ): string => `${path ?? ""}\u0000${classLabel ?? ""}`;
 
+/** A merge candidate plus where it sits in time, for proximity ranking. */
+interface MergeCandidate {
+  id: string;
+  label: string;
+  /** Start of the track's first presence bar; its position on the timeline. */
+  startSec: number;
+}
+
+/** Where a track begins, for ranking merge candidates against it. */
+const trackStartSec = (track: Track): number => track.events[0]?.startSec ?? 0;
+
 /**
- * The merge targets offered for `track`: its own bucket, minus itself, capped
- * at {@link MAX_MERGE_TARGETS}.
+ * The merge targets offered for `track`: its own bucket, minus itself, nearest
+ * first, capped at {@link MAX_MERGE_TARGETS}, plus how many the cap dropped.
+ *
+ * Ranked by distance in time rather than list position. Merging almost always
+ * means rejoining fragments of one object that got split, and those sit next
+ * to each other on the timeline — taking the head of the bucket instead would
+ * offer a late-ordered track twelve unrelated candidates and silently omit its
+ * actual neighbour.
  */
 function mergeTargetsFor(
-  groups: ReadonlyMap<string, { id: string; label: string }[]>,
+  groups: ReadonlyMap<string, MergeCandidate[]>,
   track: Track,
-): { id: string; label: string }[] {
+): { mergeTargets: { id: string; label: string }[]; omitted: number } {
   const bucket = groups.get(
     mergeGroupKey(objectTrackPathOf(track), objectTrackClassOf(track)),
   );
-  if (!bucket) return [];
+  if (!bucket) return { mergeTargets: [], omitted: 0 };
 
-  const targets: { id: string; label: string }[] = [];
-  for (const candidate of bucket) {
-    if (candidate.id === track.id) continue;
-    targets.push(candidate);
-    if (targets.length === MAX_MERGE_TARGETS) break;
-  }
+  const from = trackStartSec(track);
+  const ranked = bucket
+    .filter((candidate) => candidate.id !== track.id)
+    .sort(
+      (a, b) =>
+        Math.abs(a.startSec - from) - Math.abs(b.startSec - from) ||
+        a.id.localeCompare(b.id),
+    );
 
-  return targets;
+  return {
+    mergeTargets: ranked
+      .slice(0, MAX_MERGE_TARGETS)
+      .map(({ id, label }) => ({ id, label })),
+    omitted: Math.max(0, ranked.length - MAX_MERGE_TARGETS),
+  };
 }
 
 /** Resolves the row color for a temporal-detection track. */
@@ -388,7 +412,7 @@ function useTrackDecorator({
   // shape was a flat list every row re-filtered, which is O(tracks) per
   // rendered row and showed up as scroll cost on big samples.
   const mergeCandidatesByGroup = useMemo(() => {
-    const groups = new Map<string, { id: string; label: string }[]>();
+    const groups = new Map<string, MergeCandidate[]>();
 
     for (const track of objectTracks) {
       if (parseSubTrackId(track.id)) continue;
@@ -397,36 +421,82 @@ function useTrackDecorator({
         objectTrackPathOf(track),
         objectTrackClassOf(track),
       );
+      const candidate: MergeCandidate = {
+        id: track.id,
+        label: track.label,
+        startSec: trackStartSec(track),
+      };
       const bucket = groups.get(key);
       if (bucket) {
-        bucket.push({ id: track.id, label: track.label });
+        bucket.push(candidate);
       } else {
-        groups.set(key, [{ id: track.id, label: track.label }]);
+        groups.set(key, [candidate]);
       }
     }
 
     return groups;
   }, [objectTracks]);
 
+  /**
+   * Row decorations, keyed on the track object and validated against the
+   * interaction decoration it was built from.
+   *
+   * `baseDecorate` changes identity on every hover and selection move (it
+   * closes over the id sets), which would otherwise re-mint every mounted
+   * row's decoration on the hottest interaction there is. It hands back a
+   * stable object per row when that row's own state hasn't changed, so
+   * comparing it is enough to reuse the whole decoration — and the memoized
+   * rows then skip re-rendering. Everything else the decoration reads resets
+   * the cache through the dependency list below.
+   */
+  const cache = useMemo(
+    () =>
+      new WeakMap<
+        Track,
+        { base: BaseTrackDecoration; built: TrackDecoration }
+      >(),
+    [
+      fps,
+      snapStepSec,
+      actions,
+      stream,
+      getCurrentFrame,
+      mergeCandidatesByGroup,
+      expansion,
+      expandableParentIds,
+    ],
+  );
+
   return useCallback(
     (track: Track): TrackDecoration => {
       // A sub-track row links its hover / selection to the PARENT instance and
       // renders as an indented child; it owns no presence-bar edits.
       const sub = parseSubTrackId(track.id);
+      const base = sub
+        ? baseDecorate({ ...track, id: sub.parentId })
+        : baseDecorate(track);
+
+      const cached = cache.get(track);
+      if (cached && cached.base === base) return cached.built;
+
+      const remember = (built: TrackDecoration): TrackDecoration => {
+        cache.set(track, { base, built });
+        return built;
+      };
+
       if (sub) {
-        const parentLink = baseDecorate({ ...track, id: sub.parentId });
-        return {
+        const parentLink = base;
+        return remember({
           ...parentLink,
           expansionGutter: true,
           depth: 1,
           isChild: true,
           height: SUB_TRACK_ROW_HEIGHT,
-        };
+        });
       }
 
-      const base = baseDecorate(track);
       if (!fps) {
-        return { ...base, expansionGutter: true };
+        return remember({ ...base, expansionGutter: true });
       }
 
       // A TD row is identified by its structured event payload; anything else
@@ -451,28 +521,28 @@ function useTrackDecorator({
           // merge only into a different track OF THE SAME CLASS on the SAME
           // field (a cross-field merge is meaningless), capped so a class with
           // thousands of instances doesn't build — or show — a menu that long
-          mergeTargets: mergeTargetsFor(mergeCandidatesByGroup, track),
+          ...mergeTargetsFor(mergeCandidatesByGroup, track),
         });
 
         if (!expandableParentIds.has(track.id)) {
-          return { ...decorated, expansionGutter: true };
+          return remember({ ...decorated, expansionGutter: true });
         }
 
-        return {
+        return remember({
           ...decorated,
           expansionGutter: true,
           expandable: true,
           expanded: expansion.isExpanded(track.id),
           onToggleExpand: () => expansion.toggle(track.id),
-        };
+        });
       }
 
       // Object track with no stream yet: can't wire frame edits — base only.
       if (isObjectTrack) {
-        return { ...base, expansionGutter: true };
+        return remember({ ...base, expansionGutter: true });
       }
 
-      return {
+      return remember({
         ...decorateTemporalDetectionTrack({
           tdEvent: tdEvent as TemporalDetectionEventData,
           base,
@@ -481,9 +551,10 @@ function useTrackDecorator({
           actions,
         }),
         expansionGutter: true,
-      };
+      });
     },
     [
+      cache,
       baseDecorate,
       fps,
       snapStepSec,
@@ -629,6 +700,7 @@ function decorateObjectTrack({
   splitFrameRef,
   trackPath,
   mergeTargets,
+  omitted,
 }: {
   track: Track;
   base: BaseTrackDecoration;
@@ -640,6 +712,8 @@ function decorateObjectTrack({
   splitFrameRef: React.MutableRefObject<number>;
   trackPath: string | null;
   mergeTargets: { id: string; label: string }[];
+  /** Same-class targets dropped by the cap, so the menu can say so. */
+  omitted: number;
 }): TrackDecoration {
   // Address the track's own frames field so a non-primary-field track still
   // operates; `undefined` falls back to the stream's primary field in the action.
@@ -670,6 +744,16 @@ function decorateObjectTrack({
       onSelect: () => actions.mergeTracks(track.id, target.id, fieldPath),
     })),
   ];
+
+  // Say so rather than let the list look complete — a silently truncated menu
+  // reads as "there is nothing else to merge into".
+  if (omitted > 0) {
+    menuItems.push({
+      label: `…and ${omitted} more not shown`,
+      disabled: true,
+      onSelect: () => undefined,
+    });
+  }
 
   return {
     ...base,

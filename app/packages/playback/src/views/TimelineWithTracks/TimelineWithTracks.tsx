@@ -116,6 +116,13 @@ export interface TimelineWithTracksProps {
    * Called only for the rows the virtualizer currently has mounted, so it may
    * run again for the same track on scroll — keep it cheap and side-effect
    * free.
+   *
+   * **Results are cached per `(callback identity, track object)`.** Anything
+   * else a decoration depends on — hover, selection, expansion — must
+   * therefore change this callback's identity when it changes, or rows will
+   * render stale. In practice that means listing every such input in the
+   * `useCallback` dependencies that produce it; a decorator memoized with `[]`
+   * is only safe if its output is constant.
    */
   decorateTrack?: (
     track: Track,
@@ -245,13 +252,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     [],
   );
 
-  /**
-   * Inputs the current {@link maxLabelWidth} was measured against. A change
-   * means the row set itself changed, so the accumulated ceiling is stale and
-   * the next measurement starts from scratch instead of merging.
-   */
-  const measuredAgainstRef = useRef<unknown[]>([]);
-
   // Widest label across every mounted row. `scrollWidth` reports the full
   // text width even while it's ellipsised, and the chrome (padding, indent,
   // dot, pin button, border) is whatever the column holds beyond the text —
@@ -263,18 +263,19 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   //
   // Virtualization means "every mounted row" is only the visible window, so
   // the ceiling is accumulated: it takes the running maximum as more rows
-  // scroll into view, and resets when the row set changes. A label that has
-  // never been on screen therefore can't widen the column yet — measuring it
-  // would mean mounting every row, which is exactly what we're avoiding.
+  // scroll into view. A label that has never been on screen can't widen the
+  // column yet — measuring it would mean mounting every row, which is exactly
+  // what we're avoiding.
+  //
+  // It deliberately does NOT reset when the row set changes. Resetting made
+  // sense while every row was mounted (the recompute saw the same labels), but
+  // under virtualization it recomputes from only the ~20 visible rows — so
+  // pinning a row, or dragging a presence bar, would collapse a column the
+  // user had widened to fit a long label further down the list. Only a change
+  // in the caller's requested width lowers the ceiling.
   useLayoutEffect(() => {
     const host = containerRef.current;
     if (!host) return;
-
-    const inputs = [tracks, drawerOpen, pinnedIds, requestedLabelWidth];
-    const sameRows =
-      measuredAgainstRef.current.length === inputs.length &&
-      measuredAgainstRef.current.every((value, i) => value === inputs[i]);
-    measuredAgainstRef.current = inputs;
 
     let widest = 0;
     host.querySelectorAll<HTMLElement>("[data-track-label]").forEach((text) => {
@@ -286,10 +287,14 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       widest = Math.max(widest, Math.ceil(text.scrollWidth + chrome) + 1);
     });
 
-    setMaxLabelWidth((prev) =>
-      Math.max(requestedLabelWidth, widest, sameRows ? prev : 0),
-    );
+    setMaxLabelWidth((prev) => Math.max(requestedLabelWidth, widest, prev));
   }, [tracks, drawerOpen, pinnedIds, requestedLabelWidth, renderedRange]);
+
+  // A narrower caller request is the one thing that legitimately lowers the
+  // ceiling; drop the accumulated maximum so it can be rebuilt against it.
+  useLayoutEffect(() => {
+    setMaxLabelWidth(requestedLabelWidth);
+  }, [requestedLabelWidth]);
 
   // Width when the current drag began — `useDragDelta` reports the running
   // delta from pointer-down, not per-move increments.
@@ -336,23 +341,33 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   );
 
   /**
-   * Per-track decoration cache, cleared whenever `decorateTrack` changes
-   * identity.
+   * Per-track decoration cache. Keyed on the `Track` object itself, and thrown
+   * away whenever `decorateTrack` changes identity — the two inputs the
+   * decorator is handed.
    *
-   * Decorations are derived from more than the track (hover, selection,
-   * expansion, the merge-candidate set), and a caller expresses all of that
-   * through the identity of the `decorateTrack` callback itself — so that
-   * identity is exactly the right cache key, and the returned object can be
-   * handed back by reference in between. Without this the decorator ran per
-   * row per render and returned a new object each time, which both cost real
-   * work on every scroll frame and guaranteed the row memo never hit.
+   * Keying on the object rather than `track.id` matters: a decorator may read
+   * anything off the track (its events drive row height, edit handlers and
+   * menu items), so a rebuilt track with the same id has to re-decorate. The
+   * remaining inputs — hover, selection, expansion, merge candidates — reach
+   * the decorator through its closure, which is why its identity is the other
+   * half of the key. See the invalidation contract on
+   * {@link TimelineWithTracksProps.decorateTrack}.
+   *
+   * Without this the decorator ran per row per render and returned a fresh
+   * object every time, which cost real work on every scroll frame and
+   * guaranteed the row memo never hit.
    */
   const decorationsRef = useRef({
     decorate: decorateTrack,
-    cache: new Map<string, Partial<TimelineTrackProps> | null>(),
+    pinned: new WeakMap<Track, Partial<TimelineTrackProps>>(),
+    unpinned: new WeakMap<Track, Partial<TimelineTrackProps>>(),
   });
   if (decorationsRef.current.decorate !== decorateTrack) {
-    decorationsRef.current = { decorate: decorateTrack, cache: new Map() };
+    decorationsRef.current = {
+      decorate: decorateTrack,
+      pinned: new WeakMap(),
+      unpinned: new WeakMap(),
+    };
   }
 
   const decorationFor = (
@@ -361,12 +376,14 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   ): Partial<TimelineTrackProps> | null => {
     if (!decorateTrack) return null;
 
-    const { cache } = decorationsRef.current;
-    const key = `${pinned ? "p" : "u"}:${track.id}`;
-    if (cache.has(key)) return cache.get(key) ?? null;
+    const cache = pinned
+      ? decorationsRef.current.pinned
+      : decorationsRef.current.unpinned;
+    const cached = cache.get(track);
+    if (cached) return cached;
 
     const decoration = decorateTrack(track, pinned);
-    cache.set(key, decoration);
+    cache.set(track, decoration);
     return decoration;
   };
 
@@ -414,10 +431,17 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
    * covers that gap (and any rows the virtualizer hasn't measured), so the
    * drawer opens at roughly the right size and settles on the exact one.
    */
-  const [measuredListHeight, setMeasuredListHeight] = useState(0);
+  const [measuredListHeight, setMeasuredListHeight] = useState<number | null>(
+    null,
+  );
+  // Uniform-row estimate, used only until the first real measurement. It reads
+  // every row as full height, so a list of shorter sub-rows opens a touch tall
+  // and settles one commit later. `null` rather than `0` for "not yet
+  // measured": a list that genuinely measures 0 must stay collapsed instead of
+  // snapping back up to the estimate.
   const estimatedListHeight = unpinned.length * TIMELINE_TRACK_ROW_HEIGHT;
   const tracksBodyHeight = Math.min(
-    measuredListHeight || estimatedListHeight,
+    measuredListHeight ?? estimatedListHeight,
     maxSize,
   );
 
@@ -430,12 +454,20 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
    * jsdom (and SSR) every element reports zero height, so without a seed
    * Virtuoso concludes nothing fits and renders an empty list — the tracks
    * would silently vanish from every test that renders this component.
-   * Read once, at mount: the drawer isn't rendered at all until tracks exist,
-   * so the list never mounts against an empty `unpinned`.
+   *
+   * Seeded on the first render that actually HAS rows, not at mount. A ref
+   * initializer runs on the component's first render, which is above the
+   * empty-tracks bail-out below — so seeding there latched `0` on any surface
+   * whose tracks arrive after mount without a remount (the multimodal episode
+   * viewer does exactly that), and Virtuoso discards a zero seed outright.
    */
-  const initialItemCountRef = useRef(
-    Math.min(unpinned.length, Math.ceil(maxSize / TIMELINE_TRACK_ROW_HEIGHT)),
-  );
+  const initialItemCountRef = useRef(0);
+  if (initialItemCountRef.current === 0 && unpinned.length > 0) {
+    initialItemCountRef.current = Math.min(
+      unpinned.length,
+      Math.ceil(maxSize / TIMELINE_TRACK_ROW_HEIGHT),
+    );
+  }
 
   // Publish the imperative scroll seam. Rebuilt whenever the unpinned order
   // changes, since a track's index in that list is what the virtualizer takes.

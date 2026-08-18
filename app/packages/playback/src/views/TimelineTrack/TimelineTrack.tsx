@@ -275,7 +275,16 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
    * paid for 40 menus it would never open, and the virtualized window paid
    * that on every row it mounted. This is the single biggest cost in a row.
    */
-  const [menuEventIndex, setMenuEventIndex] = useState<number | null>(null);
+  const [menuTarget, setMenuTarget] = useState<{
+    index: number;
+    /**
+     * The `events` array the index was resolved against. An index is only
+     * meaningful against the array it came from — an edit that removes an
+     * earlier event silently slides every later one down, which would retarget
+     * an open menu onto its neighbour and hand `onSelect` the wrong event.
+     */
+    source: readonly TimelineTrackEvent[];
+  } | null>(null);
 
   const labelText = label ?? id;
 
@@ -439,6 +448,12 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       // tells voodo's ContextMenu to stand down (it bails on a
       // `defaultPrevented` event); without it the menu would open showing
       // whichever event was targeted last.
+      //
+      // Two knock-on effects, both intended but easy to trip over: the
+      // browser's native menu no longer appears over empty lane space (it did
+      // before, when only the markers themselves were wrapped), and the event
+      // reaches the row root already `defaultPrevented`, so a row-level
+      // consumer that gates on that will not see lane right-clicks.
       ev.preventDefault();
       return;
     }
@@ -447,14 +462,15 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
     // button at the tail of this same handler, so the `menu` prop has to
     // already describe this event by the time that runs. A queued update
     // would land a frame late, opening the previous event's menu.
-    flushSync(() => setMenuEventIndex(index));
+    flushSync(() => setMenuTarget({ index, source: events }));
   };
 
   // Only the row that has actually been right-clicked builds a menu tree, and
-  // only for the one event it points at.
+  // only for the one event it points at. Dropped as soon as `events` is
+  // replaced, rather than re-resolved against the new array — see `source`.
   const menuEvent =
-    menuEventIndex !== null && menuEventIndex < events.length
-      ? normalizeEvent(events[menuEventIndex])
+    menuTarget && menuTarget.source === events
+      ? normalizeEvent(events[menuTarget.index])
       : null;
   const menuEventIsInterval = menuEvent?.endSec !== undefined;
 
