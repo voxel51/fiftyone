@@ -1,8 +1,4 @@
-import { DetectionIcon } from "@fiftyone/components";
 import ErrorOutline from "@mui/icons-material/ErrorOutline";
-import Brush from "@mui/icons-material/Brush";
-import CallMerge from "@mui/icons-material/CallMerge";
-import Timeline from "@mui/icons-material/Timeline";
 import {
   Align,
   Orientation,
@@ -15,7 +11,11 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import { ReactElement } from "react";
-import { StatusItem } from "../../../ModalStatusBar";
+import {
+  StatusContent,
+  StatusHelp,
+  StatusHelpEntry,
+} from "../../../ModalStatusBar";
 import {
   InferenceError,
   InferenceProgress,
@@ -23,86 +23,145 @@ import {
 } from "@fiftyone/annotation/src/agents";
 import { ProviderErrorKind } from "@fiftyone/annotation";
 
-const DETECTION_2D_STATUS_LABEL = "Click and drag to create a bounding box";
-const DETECTION_3D_STATUS_LABEL =
-  "Press C to toggle cuboid creation · T/R/S for translate/rotate/scale · Shift + hover to crop";
-
-export const DetectionStatus = ({
-  isCuboid = false,
+const StatusText = ({
+  children,
+  color = TextColor.Secondary,
 }: {
-  isCuboid?: boolean;
+  children: string;
+  color?: TextColor;
 }): ReactElement => (
-  <StatusItem
-    icon={<DetectionIcon />}
-    label={isCuboid ? DETECTION_3D_STATUS_LABEL : DETECTION_2D_STATUS_LABEL}
-  />
+  <Text variant={TextVariant.Sm} color={color}>
+    {children}
+  </Text>
 );
 
-export const BrushStatus = (): ReactElement => (
-  <StatusItem
-    icon={<Brush fontSize="small" />}
-    label="Paint to create a mask"
-  />
-);
+const DETECTION_2D_HELP: StatusHelpEntry[] = [
+  { gesture: "Click and drag", description: "Draw a new bounding box" },
+  {
+    gesture: "Right click",
+    description: "Stop editing this box; again to leave the tool",
+  },
+];
 
-export const PenStatus = (): ReactElement => (
-  <StatusItem
-    icon={<Timeline fontSize="small" />}
-    label="Draw freeform to create a filled mask"
-  />
-);
+const DETECTION_3D_HELP: StatusHelpEntry[] = [
+  { gesture: "C", description: "Toggle cuboid creation on and off" },
+  {
+    gesture: "Three clicks",
+    description: "Set the first corner, then the orientation, then the width",
+  },
+  {
+    gesture: "T / R / S",
+    description: "Translate, rotate, or scale the selection",
+  },
+  {
+    gesture: "Shift + hover",
+    description: "Crop the side panels to the point under the cursor",
+  },
+  // Right click is reserved for camera panning in 3D, so Escape is the only
+  // cancel/exit gesture here.
+  {
+    gesture: "Escape",
+    description: "Cancel the cuboid you are creating, or exit edit mode",
+  },
+];
 
-export const PolylineEntryStatus = (): ReactElement => (
-  <StatusItem
-    icon={<Timeline fontSize="small" />}
-    label="Click to start a new polyline"
-  />
-);
+export const detectionStatus = (isCuboid = false): StatusContent => ({
+  help: isCuboid ? (
+    <StatusHelp title="Cuboid" entries={DETECTION_3D_HELP} />
+  ) : (
+    <StatusHelp title="Bounding box" entries={DETECTION_2D_HELP} />
+  ),
+});
 
-export const PolylineProgressStatus = ({
-  vertexCount,
-}: {
-  vertexCount: number;
-}): ReactElement => {
-  const instructions = [
-    `${vertexCount} ${vertexCount === 1 ? "vertex" : "vertices"}`,
-    "Click to add a point",
-    "Ctrl + click to swap segment endpoints",
-    "Shift + click to start a new segment",
-    "Alt + click to delete a point",
-    "Right click to exit",
-  ];
+const BRUSH_HELP: StatusHelpEntry[] = [
+  { gesture: "Click and drag", description: "Paint a mask" },
+  {
+    gesture: "Right click",
+    description: "Stop editing this mask; again to leave the tool",
+  },
+];
 
-  return (
-    <Stack orientation={Orientation.Row} spacing={Spacing.Md}>
-      {instructions.map((text, idx) => (
-        <>
-          <Text color={TextColor.Secondary}>{text}</Text>
-          {idx < instructions.length - 1 && <Separator />}
-        </>
-      ))}
-    </Stack>
-  );
-};
+export const brushStatus = (): StatusContent => ({
+  help: <StatusHelp title="Brush" entries={BRUSH_HELP} />,
+});
 
-export const MergeInitialStatus = (): ReactElement => (
-  <StatusItem
-    icon={<CallMerge fontSize="small" />}
-    label={
-      <>
-        Click the <strong>primary</strong> polygon first · its properties will
-        be kept
-      </>
-    }
-  />
-);
+const PEN_HELP: StatusHelpEntry[] = [
+  {
+    gesture: "Click or drag",
+    description:
+      "Click to place a series of connected points, or drag to draw a continuous shape",
+  },
+  {
+    gesture: "Right click",
+    description: "Commit the shape you are drawing",
+  },
+  {
+    gesture: "Right click again",
+    description: "Stop editing this mask, then leave the tool",
+  },
+];
 
-export const MergeTargetSetStatus = (): ReactElement => (
-  <StatusItem
-    icon={<CallMerge fontSize="small" />}
-    label="Primary set · click a polygon to merge into it"
-  />
-);
+export const penStatus = (): StatusContent => ({
+  help: <StatusHelp title="Pen" entries={PEN_HELP} />,
+});
+
+const POLYLINE_ENTRY_HELP: StatusHelpEntry[] = [
+  { gesture: "Click", description: "Place the first vertex of a new polyline" },
+  { gesture: "Right click", description: "Leave polyline mode" },
+];
+
+export const polylineEntryStatus = (): StatusContent => ({
+  help: <StatusHelp title="Polyline" entries={POLYLINE_ENTRY_HELP} />,
+});
+
+const POLYLINE_PROGRESS_HELP: StatusHelpEntry[] = [
+  { gesture: "Click", description: "Add a point to the current segment" },
+  { gesture: "Drag a point", description: "Move that vertex" },
+  { gesture: "Click an edge", description: "Insert a vertex on that edge" },
+  {
+    gesture: "Ctrl + click",
+    description: "Extend from the other end of the current segment",
+  },
+  { gesture: "Shift + click", description: "Start a new, separate segment" },
+  { gesture: "Alt + click", description: "Delete the point you clicked" },
+  {
+    gesture: "Right click",
+    description: "Finish this polyline; again to leave polyline mode",
+  },
+];
+
+export const polylineProgressStatus = (vertexCount: number): StatusContent => ({
+  status: (
+    <StatusText>
+      {`${vertexCount} ${vertexCount === 1 ? "vertex" : "vertices"}`}
+    </StatusText>
+  ),
+  help: <StatusHelp title="Polyline" entries={POLYLINE_PROGRESS_HELP} />,
+});
+
+const MERGE_HELP: StatusHelpEntry[] = [
+  {
+    gesture: "First click",
+    description: "Pick the primary mask — its properties are kept",
+  },
+  {
+    gesture: "Second click",
+    description:
+      "Merge that mask into the primary; the source label is removed",
+  },
+  { gesture: "Right click", description: "Clear the primary and leave merge" },
+];
+
+const mergeHelp = <StatusHelp title="Merge masks" entries={MERGE_HELP} />;
+
+export const mergeInitialStatus = (): StatusContent => ({
+  help: mergeHelp,
+});
+
+export const mergeTargetSetStatus = (): StatusContent => ({
+  status: <StatusText>Primary set</StatusText>,
+  help: mergeHelp,
+});
 
 const STATUS_LABELS: Record<InferenceStatus, string> = {
   idle: "No inference running",
@@ -140,15 +199,6 @@ const formatProgressLabel = (
   return `${base} (${pct}%)`;
 };
 
-const formatErrorLabel = (error: InferenceError): string => {
-  if (!error) {
-    return STATUS_LABELS.error;
-  }
-
-  const prefix = ERROR_KIND_LABELS[error.kind] ?? STATUS_LABELS.error;
-  return error.message ? `${prefix}: ${error.message}` : prefix;
-};
-
 const AIInferringStatus = ({
   status,
   progress,
@@ -161,10 +211,8 @@ const AIInferringStatus = ({
     align={Align.Center}
     spacing={Spacing.Sm}
   >
-    <Spinner size={Size.Md} color={TextColor.Secondary} />
-    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-      {formatProgressLabel(status, progress)}
-    </Text>
+    <Spinner size={Size.Sm} color={TextColor.Secondary} />
+    <StatusText>{formatProgressLabel(status, progress)}</StatusText>
   </Stack>
 );
 
@@ -175,16 +223,10 @@ const AIErrorStatus = ({ error }: { error: InferenceError }): ReactElement => (
     spacing={Spacing.Sm}
   >
     <ErrorOutline fontSize="small" color="error" />
-    <Text variant={TextVariant.Md} color={TextColor.Destructive}>
-      {formatErrorLabel(error)}
-    </Text>
+    <StatusText color={TextColor.Destructive}>
+      {error ? ERROR_KIND_LABELS[error.kind] : STATUS_LABELS.error}
+    </StatusText>
   </Stack>
-);
-
-const AIFirstClickStatus = (): ReactElement => (
-  <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-    Click on an object to segment it
-  </Text>
 );
 
 const Marker = ({ color, label }: { color: TextColor; label: string }) => (
@@ -193,73 +235,98 @@ const Marker = ({ color, label }: { color: TextColor; label: string }) => (
     align={Align.Center}
     spacing={Spacing.Xs}
   >
-    <Text variant={TextVariant.Md} color={color}>
+    <Text variant={TextVariant.Sm} color={color}>
       ●
     </Text>
-    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
       {label}
     </Text>
   </Stack>
 );
 
-const Separator = () => (
-  <Text variant={TextVariant.Md} color={TextColor.Tertiary}>
-    ·
-  </Text>
-);
+const AI_SEGMENTATION_HELP: StatusHelpEntry[] = [
+  {
+    gesture: "Click",
+    description:
+      "Add a point prompt. Clicking an empty region adds a positive point, which includes the region in the resulting mask. Clicking on an existing masked region adds a negative point, which removes the region from the resulting mask",
+  },
+  {
+    gesture: "Shift + click",
+    description: "Invert positive/negative for that click",
+  },
+  { gesture: "Click a marker", description: "Remove that prompt point" },
+  {
+    gesture: "Right click",
+    description: "Commit the mask and start a new one",
+  },
+  {
+    gesture: "Right click again",
+    description: "Deselect the mask, then leave the tool",
+  },
+];
 
-const AIPromptStatus = (): ReactElement => (
-  <Stack
-    orientation={Orientation.Row}
-    align={Align.Center}
-    spacing={Spacing.Md}
-  >
-    <Marker color={TextColor.Success} label="Positive prompt" />
-    <Marker color={TextColor.Destructive} label="Negative prompt" />
-    <Separator />
-    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-      Hold shift to invert positive/negative selection
-    </Text>
-    <Separator />
-    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-      Click marker to remove
-    </Text>
+const aiSegmentationHelp = (
+  <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+    <StatusHelp title="AI segmentation" entries={AI_SEGMENTATION_HELP} />
+    <Stack
+      orientation={Orientation.Row}
+      align={Align.Center}
+      spacing={Spacing.Md}
+    >
+      <Marker color={TextColor.Success} label="Positive prompt" />
+      <Marker color={TextColor.Destructive} label="Negative prompt" />
+    </Stack>
   </Stack>
 );
 
+// The message is only ever shown here: the inline status carries the short
+// error kind so it cannot crowd the panel tabs.
+const aiErrorHelp = (error: InferenceError): ReactElement | undefined => {
+  if (!error || !error.message) return undefined;
+
+  return (
+    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+      <Text variant={TextVariant.Label} color={TextColor.Primary}>
+        {ERROR_KIND_LABELS[error.kind] ?? STATUS_LABELS.error}
+      </Text>
+      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+        {error.message}
+      </Text>
+    </Stack>
+  );
+};
+
 /**
- * Single status-bar component for the AI segmentation tool.
+ * Status content for the AI segmentation tool.
  *
- * Picks the right sub-state based on inference status, download progress,
- * terminal error, and whether the user has placed any prompt points:
- *
- * - `"error"`            → {@link AIErrorStatus} with a readable message
- * - active inference     → {@link AIInferringStatus} with progress %
- * - no prompt points yet → {@link AIFirstClickStatus}
- * - prompt points placed → {@link AIPromptStatus}
+ * Only machine state goes inline — download progress, a short error kind — so
+ * the gesture table stays behind the help affordance in every state. The help
+ * content is deliberately identical across idle and inference states: the
+ * gestures do not change, and swapping it would make the affordance flicker
+ * while the model works.
  */
-export const AISegmentationStatus = ({
+export const aiSegmentationStatus = ({
   status,
   progress,
   error,
-  hasPoints,
 }: {
   status: InferenceStatus;
   progress: InferenceProgress;
   error: InferenceError;
-  hasPoints: boolean;
-}): ReactElement => {
+}): StatusContent => {
   if (status === "error") {
-    return <AIErrorStatus error={error} />;
+    return {
+      status: <AIErrorStatus error={error} />,
+      help: aiErrorHelp(error),
+    };
   }
 
   if (isActiveStatus(status)) {
-    return <AIInferringStatus status={status} progress={progress} />;
+    return {
+      status: <AIInferringStatus status={status} progress={progress} />,
+      help: aiSegmentationHelp,
+    };
   }
 
-  if (!hasPoints) {
-    return <AIFirstClickStatus />;
-  }
-
-  return <AIPromptStatus />;
+  return { help: aiSegmentationHelp };
 };
