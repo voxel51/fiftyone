@@ -365,6 +365,22 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     maxSize,
   );
 
+  /**
+   * How many rows to render before the virtualizer has measured anything —
+   * a full drawer's worth, which is what it would settle on anyway, so this
+   * costs nothing on first paint and just avoids a blank frame.
+   *
+   * It also keeps the list honest where measurement never happens at all: in
+   * jsdom (and SSR) every element reports zero height, so without a seed
+   * Virtuoso concludes nothing fits and renders an empty list — the tracks
+   * would silently vanish from every test that renders this component.
+   * Read once, at mount: the drawer isn't rendered at all until tracks exist,
+   * so the list never mounts against an empty `unpinned`.
+   */
+  const initialItemCountRef = useRef(
+    Math.min(unpinned.length, Math.ceil(maxSize / TIMELINE_TRACK_ROW_HEIGHT)),
+  );
+
   // Publish the imperative scroll seam. Rebuilt whenever the unpinned order
   // changes, since a track's index in that list is what the virtualizer takes.
   useEffect(() => {
@@ -459,7 +475,10 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
           </TimelineHeader>
         )}
       >
-        <div className={styles.tracksOuter} style={{ height: tracksBodyHeight }}>
+        <div
+          className={styles.tracksOuter}
+          style={{ height: tracksBodyHeight }}
+        >
           {/* Unpinned rows only — pinned ones stay in the header above so the
               drawer's height is the single thing that changes on toggle.
               Virtualized: this list is every track the user hasn't pinned,
@@ -474,6 +493,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             data={unpinned}
             computeItemKey={(_, track) => track.id}
             defaultItemHeight={TIMELINE_TRACK_ROW_HEIGHT}
+            initialItemCount={initialItemCountRef.current}
             increaseViewportBy={TIMELINE_TRACK_OVERSCAN_PX}
             totalListHeightChanged={setMeasuredListHeight}
             rangeChanged={handleRangeChanged}

@@ -381,8 +381,7 @@ function useTrackDecorator({
       // A TD row is identified by its structured event payload; anything else
       // is an engine-addressed object track (row id == instanceId).
       const tdEvent = track.events[0]?.data as
-        | TemporalDetectionEventData
-        | undefined;
+        TemporalDetectionEventData | undefined;
       const isObjectTrack = tdEvent?.detectionId === undefined;
 
       if (isObjectTrack && stream) {
