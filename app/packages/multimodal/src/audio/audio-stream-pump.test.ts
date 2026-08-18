@@ -18,6 +18,10 @@ function fakeEngine(capacity = 1_000_000) {
   let seeks = 0;
   let ended = 0;
   let room = capacity;
+  // Frames written but not yet "rendered". The pump backs off on this, so a
+  // fake that always reported 0 would make it retry at the floor delay and
+  // hide any regression in the backoff.
+  let buffered = 0;
   return {
     pushed,
     get seeks() {
@@ -29,6 +33,11 @@ function fakeEngine(capacity = 1_000_000) {
     setRoom(frames: number) {
       room = frames;
     },
+    /** Simulates the render thread consuming `frames`. */
+    drain(frames: number) {
+      buffered = Math.max(0, buffered - frames);
+    },
+    bufferedFrames: () => buffered,
     sampleRate: SAMPLE_RATE,
     channels: CHANNELS,
     availableWrite: () => room,
@@ -39,10 +48,12 @@ function fakeEngine(capacity = 1_000_000) {
         pushed.push(interleaved[(offsetFrames + f) * CHANNELS]);
       }
       room -= accepted;
+      buffered += accepted;
       return accepted;
     },
     seek: () => {
       seeks += 1;
+      buffered = 0;
     },
     markEnded: () => {
       ended += 1;
