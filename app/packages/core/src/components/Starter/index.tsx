@@ -1,6 +1,5 @@
 import {
   CodeTabs,
-  ENTERPRISE_LEARN_MORE_URL,
   EnterpriseUpsellCallout,
   Loading,
   scrollable,
@@ -60,9 +59,10 @@ export function Starter(props: StarterPropsType) {
     CONTENT_BY_MODE[mode];
 
   const codeWithDataset = code.replace("$CURRENT_DATASET_NAME", datasetName);
-  const cloudCodeWithDataset = constants.IS_APP_MODE_FIFTYONE
-    ? `# Importing from a cloud bucket requires FiftyOne Enterprise.\n# Learn more: ${ENTERPRISE_LEARN_MORE_URL}`
-    : ADD_SAMPLE_CLOUD_CODE.replace("$CURRENT_DATASET_NAME", datasetName);
+  const cloudCodeWithDataset = ADD_SAMPLE_CLOUD_CODE.replace(
+    "$CURRENT_DATASET_NAME",
+    datasetName,
+  );
   const isSelectDataset = mode === "SELECT_DATASET";
   const showCloudTab = mode === "ADD_SAMPLE" && upgradedImportEnabled;
 
@@ -132,11 +132,22 @@ export function Starter(props: StarterPropsType) {
               { id: "python", label: "Python", code: codeWithDataset },
               ...(showCloudTab
                 ? [
-                    {
-                      id: "cloud",
-                      label: "Cloud bucket",
-                      code: cloudCodeWithDataset,
-                    },
+                    constants.IS_APP_MODE_FIFTYONE
+                      ? {
+                          id: "cloud",
+                          label: "Cloud bucket",
+                          content: (
+                            <EnterpriseUpsellCallout
+                              title="Import from cloud storage"
+                              description="Import samples directly from S3, GCS, Azure, or MinIO buckets in FiftyOne Enterprise."
+                            />
+                          ),
+                        }
+                      : {
+                          id: "cloud",
+                          label: "Cloud bucket",
+                          code: cloudCodeWithDataset,
+                        },
                   ]
                 : []),
             ]}
