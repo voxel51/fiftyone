@@ -58,6 +58,8 @@ export interface AudioStreamEngine {
   readonly sampleRate: number;
   /** Frames the ring can accept right now. */
   availableWrite(): number;
+  /** Frames queued and not yet emitted — how much runway the render thread has. */
+  bufferedFrames(): number;
   /**
    * Queues interleaved PCM starting at `offsetFrames`. Returns frames
    * accepted, which is short whenever the ring is nearly full — the caller
@@ -153,6 +155,7 @@ export async function createAudioStreamEngine(
     channels,
     sampleRate,
     availableWrite: () => ring.availableWrite(),
+    bufferedFrames: () => ring.availableRead(),
     push: (interleaved, offsetFrames = 0) =>
       ring.write(interleaved, offsetFrames),
     seek: () => {
