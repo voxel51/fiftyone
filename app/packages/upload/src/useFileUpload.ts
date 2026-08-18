@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import type { UseFileUploadOptions } from "./types";
-import { errorMessage } from "./utils";
 import { useFileDrop } from "./useFileDrop";
 import { useFileInput } from "./useFileInput";
 import { useFileManager } from "./useFileManager";
@@ -46,21 +45,9 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
   // Auto-upload: as soon as new files land in "selected" status, start uploading
   useEffect(() => {
     if (autoUpload && files.some((f) => f.status === "selected")) {
-      upload(autoUpload).catch((err) => {
-        // `upload` marks files "uploading" before resolving headers, so a
-        // rejection there (e.g. an async headers factory that throws) would
-        // otherwise leave them stuck "uploading" forever with no feedback.
-        const msg = errorMessage(err);
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.status === "uploading"
-              ? { ...f, status: "error", error: msg }
-              : f,
-          ),
-        );
-      });
+      upload(autoUpload).catch(() => {});
     }
-  }, [autoUpload, files, upload, setFiles]);
+  }, [autoUpload, files, upload]);
 
   return {
     files,

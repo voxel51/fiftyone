@@ -40,7 +40,6 @@ export function useUploadManager({
   const lastActionRef = useRef<UploadAction | null>(null);
   const abortControllersRef = useRef(new Map<string, AbortController>());
 
-  // Lazily create the default transport once; never reassigned afterward.
   const defaultTransportRef = useRef<UploadTransport>();
   if (!defaultTransportRef.current) {
     defaultTransportRef.current = createFetchTransport();
@@ -114,12 +113,25 @@ export function useUploadManager({
         ),
       );
 
-      const resolved =
-        headers != null ? await resolveHeaders(headers) : undefined;
+      let resolved: Record<string, string> | undefined;
+      try {
+        resolved = headers != null ? await resolveHeaders(headers) : undefined;
+      } catch (err) {
+        const msg = errorMessage(err);
+        const ids = new Set(toUpload.map((f) => f.id));
+        setFiles((prev) =>
+          prev.map((f) =>
+            ids.has(f.id) ? { ...f, status: "error" as const, error: msg } : f,
+          ),
+        );
+        toUpload.forEach((f) => onFileError?.(f, msg));
+        return;
+      }
+
       const run = (item: FileUploadItem) => uploadOne(item, action, resolved);
       await Promise.all(toUpload.map((item) => limiter(() => run(item))));
     },
-    [filesRef, setFiles, uploadOne, limiter, headers],
+    [filesRef, setFiles, uploadOne, limiter, headers, onFileError],
   );
 
   const cancel = useCallback(
@@ -139,9 +151,7 @@ export function useUploadManager({
           headers != null ? await resolveHeaders(headers) : undefined;
         try {
           await activeTransport.delete(url, { headers: resolved });
-        } catch {
-          // Remote cleanup is best-effort; still drop the item locally.
-        }
+        } catch {}
       }
       setFiles((prev) => prev.filter((f) => f.id !== id));
     },
@@ -155,11 +165,20 @@ export function useUploadManager({
       const file = filesRef.current.find((f) => f.id === id);
       if (!file || file.status !== "error") return;
       updateFile(id, { status: "uploading", progress: 0, error: undefined });
-      const resolved =
-        headers != null ? await resolveHeaders(headers) : undefined;
+
+      let resolved: Record<string, string> | undefined;
+      try {
+        resolved = headers != null ? await resolveHeaders(headers) : undefined;
+      } catch (err) {
+        const msg = errorMessage(err);
+        updateFile(id, { status: "error", error: msg });
+        onFileError?.(file, msg);
+        return;
+      }
+
       await limiter(() => uploadOne(file, action, resolved));
     },
-    [filesRef, updateFile, uploadOne, limiter, headers],
+    [filesRef, updateFile, uploadOne, limiter, headers, onFileError],
   );
 
   const cancelAll = useCallback(async () => {

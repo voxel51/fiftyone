@@ -18,7 +18,7 @@ export function determinePathType(path: string): PathType {
     return PathType.URL;
   }
   // backslashes = windows
-  if (path?.includes("\\")) {
+  if (path?.includes("\\") || /^[A-Za-z]:[\\/]/.test(path)) {
     return PathType.WINDOWS;
   }
   // linux by default
