@@ -120,17 +120,6 @@
   opacity: 1;
 }
 
-/* Transparent host for the row's single ContextMenu. voodo's ContextMenu owns
-   the element it attaches the right-click handler to, so the lane can't be
-   that element itself (it needs its own ref for hit-testing) — this stands in
-   as a layout-neutral parent that hands its whole box to the lane. */
-.laneMenuHost {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-}
-
 .lane {
   flex: 1;
   position: relative;

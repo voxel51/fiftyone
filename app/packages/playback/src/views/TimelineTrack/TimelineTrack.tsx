@@ -199,6 +199,68 @@ const DEPTH_INDENT_PX = 14;
 /** Base left padding of the label column (matches the CSS). */
 const LABEL_BASE_PADDING_PX = 10;
 
+/**
+ * Content of the lane's single, delegated context menu. `event` is the
+ * right-clicked event (`null` closes to nothing). One shared menu serves the
+ * whole lane so a track with hundreds of keyframe diamonds mounts one
+ * HeadlessUI menu, not one per diamond.
+ */
+const LaneEventMenu: React.FC<{
+  event: NormalizedEvent | null;
+  seek: (t: number) => void;
+  setLoop: (start: number, end: number) => void;
+  eventMenuItems?: TrackEventMenuItem[];
+}> = ({ event, seek, setLoop, eventMenuItems }) => {
+  if (!event) {
+    return null;
+  }
+
+  const isInterval = event.endSec !== undefined;
+
+  return (
+    <>
+      <MenuTextItem onClick={() => seek(event.startSec)}>
+        Move to start
+      </MenuTextItem>
+      <MenuTextItem
+        disabled={!isInterval}
+        onClick={() => isInterval && seek(event.endSec!)}
+      >
+        Move to end
+      </MenuTextItem>
+      <MenuSeparator />
+      <MenuTextItem
+        disabled={!isInterval}
+        onClick={() => isInterval && setLoop(event.startSec, event.endSec!)}
+      >
+        Shrink window to fit
+      </MenuTextItem>
+      {eventMenuItems && eventMenuItems.length > 0 && (
+        <>
+          <MenuSeparator />
+          {eventMenuItems.map((item, i) => (
+            <MenuTextItem
+              key={i}
+              destructive={item.destructive}
+              disabled={item.disabled}
+              onClick={(ev) => {
+                // Don't let the click bubble to the row's `onTrackClick`.
+                ev.stopPropagation();
+
+                if (!item.disabled) {
+                  item.onSelect(event, { x: ev.clientX, y: ev.clientY });
+                }
+              }}
+            >
+              {item.label}
+            </MenuTextItem>
+          ))}
+        </>
+      )}
+    </>
+  );
+};
+
 const TimelineTrack: React.FC<TimelineTrackProps> = ({
   id,
   color,
@@ -265,26 +327,15 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   const justDraggedRef = useRef(false);
 
   /**
-   * Index of the event the row's context menu currently describes, or `null`
-   * before the first right-click.
+   * The right-clicked event, feeding the lane's single delegated context menu.
+   * Stamped on right-click and flushed before voodo opens the menu, so one
+   * shared `<ContextMenu>` covers every event on the lane.
    *
-   * The row mounts exactly ONE `ContextMenu`, over the whole lane, and swaps
-   * its contents to whichever event was right-clicked. It used to mount one
-   * per event, which meant a headless-ui menu (plus the full menu element
-   * tree, including every consumer-supplied item) per bar — so a 40-bar row
-   * paid for 40 menus it would never open, and the virtualized window paid
-   * that on every row it mounted. This is the single biggest cost in a row.
+   * Snapshotting the event itself (rather than its index) keeps an open menu
+   * pointed at what the user actually clicked even if `events` is rebuilt
+   * underneath it.
    */
-  const [menuTarget, setMenuTarget] = useState<{
-    index: number;
-    /**
-     * The `events` array the index was resolved against. An index is only
-     * meaningful against the array it came from — an edit that removes an
-     * earlier event silently slides every later one down, which would retarget
-     * an open menu onto its neighbour and hand `onSelect` the wrong event.
-     */
-    source: readonly TimelineTrackEvent[];
-  } | null>(null);
+  const [ctxEvent, setCtxEvent] = useState<NormalizedEvent | null>(null);
 
   const labelText = label ?? id;
 
@@ -431,97 +482,25 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         }
       : null;
 
-  /**
-   * Point the row's one menu at whichever event sits under the cursor, read
-   * off the `data-event-index` the markers and their resize handles carry.
-   */
-  const handleLaneContextMenu = (
-    ev: React.MouseEvent<HTMLDivElement>,
-  ): void => {
-    const holder = (ev.target as HTMLElement).closest<HTMLElement>(
+  const handleLaneContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    const hit = (e.target as HTMLElement).closest<HTMLElement>(
       "[data-event-index]",
     );
-    const index = holder ? Number(holder.dataset.eventIndex) : Number.NaN;
+    const idx = hit ? Number(hit.dataset.eventIndex) : NaN;
 
-    if (!Number.isInteger(index) || index < 0 || index >= events.length) {
-      // Empty lane — there's nothing to act on. Preventing default is what
-      // tells voodo's ContextMenu to stand down (it bails on a
-      // `defaultPrevented` event); without it the menu would open showing
-      // whichever event was targeted last.
-      //
-      // Two knock-on effects, both intended but easy to trip over: the
-      // browser's native menu no longer appears over empty lane space (it did
-      // before, when only the markers themselves were wrapped), and the event
-      // reaches the row root already `defaultPrevented`, so a row-level
-      // consumer that gates on that will not see lane right-clicks.
-      ev.preventDefault();
+    if (!Number.isInteger(idx) || idx < 0 || idx >= events.length) {
+      // Right-click on empty lane space — suppress the event-less menu voodo
+      // would otherwise open. Preventing default is what tells ContextMenu to
+      // stand down; it also means no native browser menu here, and the event
+      // reaches the row root already `defaultPrevented`.
+      e.preventDefault();
       return;
     }
 
-    // Synchronous on purpose: ContextMenu opens the menu by clicking a hidden
-    // button at the tail of this same handler, so the `menu` prop has to
-    // already describe this event by the time that runs. A queued update
-    // would land a frame late, opening the previous event's menu.
-    flushSync(() => setMenuTarget({ index, source: events }));
+    // voodo opens the menu synchronously once this handler returns, so the
+    // `menu` prop must already name this event — flush the state update now.
+    flushSync(() => setCtxEvent(normalizeEvent(events[idx])));
   };
-
-  // Only the row that has actually been right-clicked builds a menu tree, and
-  // only for the one event it points at. Dropped as soon as `events` is
-  // replaced, rather than re-resolved against the new array — see `source`.
-  const menuEvent =
-    menuTarget && menuTarget.source === events
-      ? normalizeEvent(events[menuTarget.index])
-      : null;
-  const menuEventIsInterval = menuEvent?.endSec !== undefined;
-
-  const laneMenu = menuEvent ? (
-    <>
-      <MenuTextItem onClick={() => seek(menuEvent.startSec)}>
-        Move to start
-      </MenuTextItem>
-      <MenuTextItem
-        disabled={!menuEventIsInterval}
-        onClick={() => menuEventIsInterval && seek(menuEvent.endSec!)}
-      >
-        Move to end
-      </MenuTextItem>
-      <MenuSeparator />
-      <MenuTextItem
-        disabled={!menuEventIsInterval}
-        onClick={() =>
-          menuEventIsInterval && setLoop(menuEvent.startSec, menuEvent.endSec!)
-        }
-      >
-        Shrink window to fit
-      </MenuTextItem>
-      {eventMenuItems && eventMenuItems.length > 0 && (
-        <>
-          <MenuSeparator />
-          {eventMenuItems.map((item, i) => (
-            <MenuTextItem
-              key={i}
-              destructive={item.destructive}
-              disabled={item.disabled}
-              onClick={(ev) => {
-                // Stop the click bubbling to the row's `onClick`
-                // (`onTrackClick`).
-                ev.stopPropagation();
-
-                if (!item.disabled) {
-                  item.onSelect(menuEvent, {
-                    x: ev.clientX,
-                    y: ev.clientY,
-                  });
-                }
-              }}
-            >
-              {item.label}
-            </MenuTextItem>
-          ))}
-        </>
-      )}
-    </>
-  ) : null;
 
   return (
     <div
@@ -638,64 +617,70 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         </div>
       )}
 
-      <ContextMenu
-        className={styles.laneMenuHost}
-        menu={laneMenu}
-        onContextMenu={handleLaneContextMenu}
+      <div
+        ref={laneRef}
+        className={styles.lane}
+        onClick={(e) => {
+          // Right-click opens the context menu via a separate handler.
+          // Don't seek the playhead as a side-effect.
+          if (e.button !== 0) return;
+
+          // voodo's ContextMenu opens by calling `HTMLElement.click()`
+          // on a hidden anchor that sits inside this lane's DOM subtree
+          // (so the DOM-containment check below can't reject it). That
+          // programmatic click has `detail === 0`; real user clicks
+          // always have `detail >= 1`. Skip the synthetic case so
+          // right-clicking an event doesn't seek to that x-position as
+          // a side-effect of opening its menu.
+          if (e.detail === 0) return;
+
+          // Suppress the synthetic click the browser fires immediately
+          // after a real drag so the drop point doesn't double as a seek.
+          if (justDraggedRef.current) return;
+
+          // Portal-rendered context-menu items bubble through the React tree
+          // but live outside this element's DOM subtree — ignore them so
+          // dismissing the menu doesn't fire an unintended seek.
+          if (!e.currentTarget.contains(e.target as Node)) return;
+
+          const target = e.target as HTMLElement;
+          // Event markers / bars own their own click — don't seek twice.
+          if (
+            target.classList.contains(styles.event) ||
+            target.classList.contains(styles.intervalBar) ||
+            target.classList.contains(styles.resizeHandle)
+          )
+            return;
+
+          const rect = e.currentTarget.getBoundingClientRect();
+          seek(
+            viewStart +
+              ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart),
+          );
+        }}
       >
-        <div
-          ref={laneRef}
-          className={styles.lane}
-          onClick={(e) => {
-            // Right-click opens the context menu via a separate handler.
-            // Don't seek the playhead as a side-effect.
-            if (e.button !== 0) return;
-
-            // voodo's ContextMenu opens by calling `HTMLElement.click()`
-            // on a hidden anchor that sits inside this lane's DOM subtree
-            // (so the DOM-containment check below can't reject it). That
-            // programmatic click has `detail === 0`; real user clicks
-            // always have `detail >= 1`. Skip the synthetic case so
-            // right-clicking an event doesn't seek to that x-position as
-            // a side-effect of opening its menu.
-            if (e.detail === 0) return;
-
-            // Suppress the synthetic click the browser fires immediately
-            // after a real drag so the drop point doesn't double as a seek.
-            if (justDraggedRef.current) return;
-
-            // Portal-rendered context-menu items bubble through the React tree
-            // but live outside this element's DOM subtree — ignore them so
-            // dismissing the menu doesn't fire an unintended seek.
-            if (!e.currentTarget.contains(e.target as Node)) return;
-
-            const target = e.target as HTMLElement;
-            // Event markers / bars own their own click — don't seek twice.
-            if (
-              target.classList.contains(styles.event) ||
-              target.classList.contains(styles.intervalBar) ||
-              target.classList.contains(styles.resizeHandle)
-            )
-              return;
-
-            const rect = e.currentTarget.getBoundingClientRect();
-            seek(
-              viewStart +
-                ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart),
-            );
-          }}
-        >
-          {barVisible && (
-            <div
-              className={styles.bar}
-              style={{
-                left: pct(clippedStart),
-                width: `${((clippedEnd - clippedStart) / viewDuration) * 100}%`,
-                background: bg ?? `${color}55`,
-                border: `1px solid ${color}88`,
-              }}
+        {barVisible && (
+          <div
+            className={styles.bar}
+            style={{
+              left: pct(clippedStart),
+              width: `${((clippedEnd - clippedStart) / viewDuration) * 100}%`,
+              background: bg ?? `${color}55`,
+              border: `1px solid ${color}88`,
+            }}
+          />
+        )}
+        <ContextMenu
+          menu={
+            <LaneEventMenu
+              event={ctxEvent}
+              seek={seek}
+              setLoop={setLoop}
+              eventMenuItems={eventMenuItems}
             />
-          )}
+          }
+          onContextMenu={handleLaneContextMenu}
+        >
           {events
             .map((event, originalIndex) => ({
               event: normalizeEvent(event),
@@ -878,8 +863,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 />
               );
             })}
-        </div>
-      </ContextMenu>
+        </ContextMenu>
+      </div>
     </div>
   );
 };

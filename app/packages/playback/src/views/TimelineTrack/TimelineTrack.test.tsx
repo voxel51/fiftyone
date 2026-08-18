@@ -565,9 +565,10 @@ describe("TimelineTrack", () => {
       expect(screen.queryByText("Move to start")).toBeNull();
     });
 
-    it("drops the open menu's target when the events array is replaced", () => {
-      // An index alone would slide onto the neighbouring event when an earlier
-      // one is removed, handing onSelect the wrong payload.
+    it("keeps the open menu on the clicked event when events are replaced", () => {
+      // The menu snapshots the event it was opened on, so a rebuild of the
+      // array underneath it can't slide the menu onto a neighbour — which is
+      // what an index would have done once an earlier event was removed.
       const onSelect = vi.fn();
       const first = { startSec: 1, endSec: 2 };
       const second = { startSec: 7, endSec: 8 };
@@ -599,8 +600,13 @@ describe("TimelineTrack", () => {
         </PlaybackProvider>,
       );
 
-      // Target dropped rather than silently re-resolved against the new array.
-      expect(screen.queryByText("Delete track")).toBeNull();
+      // Still the event the user actually right-clicked, not its neighbour.
+      fireEvent.click(screen.getByText("Delete track"));
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(onSelect.mock.calls[0][0]).toMatchObject({
+        startSec: 7,
+        endSec: 8,
+      });
     });
 
     it("does not fire onSelect for a disabled item", () => {
