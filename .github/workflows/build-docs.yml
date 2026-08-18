@@ -19,7 +19,7 @@ on:
       - "**.rst"
   pull_request:
     branches:
-      - develop
+      - main
       - release/*
     paths:
       - .github/workflows/build-docs.yml
@@ -83,18 +83,18 @@ jobs:
                 fi
                 ;;
               dev-docs-publish)
-                DEVELOP_SHA=$(git rev-parse origin/develop)
-                if [[ "${DEVELOP_SHA}" == "${TAG_SHA}" ]]; then
-                  echo "branch_name=develop" >> "${GITHUB_OUTPUT}"
+                MAIN_SHA=$(git rev-parse origin/main)
+                if [[ "${MAIN_SHA}" == "${TAG_SHA}" ]]; then
+                  echo "branch_name=main" >> "${GITHUB_OUTPUT}"
                 else
-                  echo "dev-docs-publish should only be performed on 'develop'"
+                  echo "dev-docs-publish should only be performed on 'main'"
                   exit 1
                 fi
                 ;;
             esac
           else
             case "${{ github.ref_name }}" in
-              main|develop)
+              main)
                 echo "branch_name=${{ github.ref_name }}" >> "${GITHUB_OUTPUT}"
                 ;;
               *)
@@ -203,7 +203,7 @@ jobs:
   dev-publish:
     needs: [build]
     if: |
-      needs.build.outputs.branch_name == 'develop' &&
+      needs.build.outputs.branch_name == 'main' &&
       github.ref == 'refs/tags/dev-docs-publish'
     runs-on: ubuntu-latest
     steps:
