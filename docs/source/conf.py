@@ -168,6 +168,12 @@ nbsphinx_prolog = """
     ref,
 )
 
+# Don't add copy buttons to ``.. code-block:: text`` blocks, which we use
+# to show the output of code snippets rather than copyable code. Sphinx
+# wraps these blocks in a ``div.highlight-text`` parent, which we exclude
+# from the default ``div.highlight pre`` selector
+copybutton_selector = ":not(.highlight-text) > div.highlight pre"
+
 # Path to the redirects file, relative to `source/`
 redirects_file = "redirects"
 
