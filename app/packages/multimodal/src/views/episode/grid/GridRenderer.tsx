@@ -48,6 +48,10 @@ import {
 } from "./grid-poster-cache";
 import { captureGridPoster } from "./grid-poster-codec";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
+import {
+  useGridPosterCache,
+  type GridPosterCacheLookupStatus,
+} from "./use-grid-poster-cache";
 
 const IMAGE_FIT = "cover";
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
@@ -118,24 +122,24 @@ export function GridRenderer({
       source,
     ],
   );
-  const cachedPosterRef = useRef<{
-    readonly entry: GridPosterCacheEntry | null;
-    readonly key: string | null;
-  }>({ entry: null, key: null });
-  if (cachedPosterRef.current.key !== cacheKey) {
-    cachedPosterRef.current = {
-      entry: cacheKey ? getGridPosterCache().peek(cacheKey) : null,
-      key: cacheKey,
-    };
-  }
-  const cachedPoster = cachedPosterRef.current.entry;
+  const { entry: cachedPoster, status: cacheLookupStatus } = useGridPosterCache(
+    cacheKey,
+    visible,
+  );
   const recordedCacheLookupKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!cacheKey || recordedCacheLookupKeyRef.current === cacheKey) return;
+    if (
+      !cacheKey ||
+      cacheLookupStatus === "idle" ||
+      cacheLookupStatus === "loading" ||
+      recordedCacheLookupKeyRef.current === cacheKey
+    ) {
+      return;
+    }
     recordedCacheLookupKeyRef.current = cacheKey;
     if (cachedPoster) getGridPosterCache().touch(cacheKey);
     recordGridPosterDiagnostic(cachedPoster ? "hits" : "misses");
-  }, [cacheKey, cachedPoster]);
+  }, [cacheKey, cacheLookupStatus, cachedPoster]);
   const [cameraPose, setCameraPose] = useGridCameraPose(
     gridCameraScopeKey,
     visible,
@@ -151,6 +155,7 @@ export function GridRenderer({
   );
   const previewSessionDemand = usePreviewSessionDemand({
     cacheKey,
+    cacheLookupStatus,
     cachedPoster,
     freshness,
     hovered,
@@ -471,12 +476,14 @@ function useElementCssSize(
 
 function usePreviewSessionDemand({
   cacheKey,
+  cacheLookupStatus,
   cachedPoster,
   freshness,
   hovered,
   visible,
 }: {
   readonly cacheKey: string | null;
+  readonly cacheLookupStatus: GridPosterCacheLookupStatus;
   readonly cachedPoster: GridPosterCacheEntry | null;
   readonly freshness: GridPosterFreshness | null;
   readonly hovered: boolean;
@@ -512,7 +519,11 @@ function usePreviewSessionDemand({
   }, [cacheKey, cachedPoster, freshness, visible]);
 
   if (!visible) return false;
-  if (!cachedPoster) return true;
+  if (!cachedPoster) {
+    // A disk hit is much cheaper than opening an MCAP preview session. Hover
+    // bypasses the wait so direct interaction always wins over cache I/O.
+    return hovered || cacheLookupStatus !== "loading";
+  }
   if (latched || hovered) return true;
   if (freshness === null) return false;
   return freshness !== "fresh";

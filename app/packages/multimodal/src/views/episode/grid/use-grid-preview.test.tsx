@@ -75,6 +75,32 @@ describe("useGridPreview", () => {
     expect(latest.current?.status).toBe("loading");
   });
 
+  it("adopts a same-key poster that hydrates after mount", async () => {
+    const latest = { current: null as GridPreviewState | null };
+    const source = sourceForId("persisted");
+    const renderState = (poster: GridPosterCacheEntry | null) => (
+      <PreviewHarness
+        cacheRequestKey="persisted-key"
+        cachedPoster={poster}
+        id="persisted"
+        onState={(state) => {
+          latest.current = state;
+        }}
+        previewSession={null}
+        source={source}
+      />
+    );
+    const { rerender } = render(renderState(null));
+    expect(latest.current?.status).toBe("loading");
+
+    rerender(renderState(cachedPoster()));
+
+    await waitFor(() => expect(latest.current?.status).toBe("ready"));
+    expect(latest.current?.cachedPoster?.bytes[0]).toBe(7);
+    expect(latest.current?.streamSourceNames).toEqual(["/camera/cached"]);
+    expect(sessionHarness.session.read).not.toHaveBeenCalled();
+  });
+
   it("preserves a cached poster when the preview session fails", async () => {
     const latest = { current: null as GridPreviewState | null };
     render(
