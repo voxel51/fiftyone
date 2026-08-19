@@ -473,19 +473,13 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
    * Virtuoso concludes nothing fits and renders an empty list — the tracks
    * would silently vanish from every test that renders this component.
    *
-   * Seeded on the first render that actually HAS rows, not at mount. A ref
-   * initializer runs on the component's first render, which is above the
-   * empty-tracks bail-out below — so seeding there latched `0` on any surface
-   * whose tracks arrive after mount without a remount (the multimodal episode
-   * viewer does exactly that), and Virtuoso discards a zero seed outright.
+   * Deliberately NOT capped to the current row count. Virtuoso reads this once
+   * at mount and renders at most what the data holds, so an over-sized seed is
+   * free — while a seed sized to the list at mount would freeze the visible
+   * set wherever nothing can be measured, and rows revealed later (a search
+   * hit, tracks that arrive late) would never appear.
    */
-  const initialItemCountRef = useRef(0);
-  if (initialItemCountRef.current === 0 && unpinned.length > 0) {
-    initialItemCountRef.current = Math.min(
-      unpinned.length,
-      Math.ceil(maxSize / estimatedRowHeight),
-    );
-  }
+  const initialItemCount = Math.ceil(maxSize / estimatedRowHeight);
 
   // Publish the imperative scroll seam. Rebuilt whenever the unpinned order
   // changes, since a track's index in that list is what the virtualizer takes.
@@ -601,7 +595,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             // `renderUnpinnedTrack` — the row is on its way out either way, so
             // the key only has to be stable for the frame it survives.
             computeItemKey={(index, track) => track?.id ?? index}
-            initialItemCount={initialItemCountRef.current}
+            initialItemCount={initialItemCount}
             increaseViewportBy={overscanPx}
             totalListHeightChanged={setMeasuredListHeight}
             rangeChanged={handleRangeChanged}
