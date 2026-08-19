@@ -13,10 +13,12 @@
 // `mcap-core-layers-are-headless` in .dependency-cruiser.cjs), and this
 // needs `useDataStream()` from the view layer.
 //
-// SIMPLIFICATION: reads the stream's full time range once
-// (`readStreamFrames`) instead of paging against playhead demand. Audio is
-// far smaller than video per unit time; revisit if very long recordings
-// make full-buffer decode too slow or memory-heavy.
+// Two transports are wired here. The streaming path pages windowed reads
+// into a bounded ring and is preferred; the buffered path reads the full
+// time range once and stays as the fallback for contexts without
+// `SharedArrayBuffer` (notebook/Colab embeds, Safari). Both hooks are
+// called unconditionally with one disabled — the choice can flip at
+// runtime, and a conditional call would break the rules of hooks.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useState } from "react";
