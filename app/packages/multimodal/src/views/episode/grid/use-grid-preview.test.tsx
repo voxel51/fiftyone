@@ -75,6 +75,32 @@ describe("useGridPreview", () => {
     expect(latest.current?.status).toBe("loading");
   });
 
+  it("adopts a same-key poster that hydrates after mount", async () => {
+    const latest = { current: null as GridPreviewState | null };
+    const source = sourceForId("persisted");
+    const renderState = (poster: GridPosterCacheEntry | null) => (
+      <PreviewHarness
+        cacheRequestKey="persisted-key"
+        cachedPoster={poster}
+        id="persisted"
+        onState={(state) => {
+          latest.current = state;
+        }}
+        previewSession={null}
+        source={source}
+      />
+    );
+    const { rerender } = render(renderState(null));
+    expect(latest.current?.status).toBe("loading");
+
+    rerender(renderState(cachedPoster()));
+
+    await waitFor(() => expect(latest.current?.status).toBe("ready"));
+    expect(latest.current?.cachedPoster?.bytes[0]).toBe(7);
+    expect(latest.current?.streamSourceNames).toEqual(["/camera/cached"]);
+    expect(sessionHarness.session.read).not.toHaveBeenCalled();
+  });
+
   it("preserves a cached poster when the preview session fails", async () => {
     const latest = { current: null as GridPreviewState | null };
     render(
@@ -168,6 +194,50 @@ describe("useGridPreview", () => {
     unmount();
 
     expect(signal.aborted).toBe(true);
+  });
+
+  it("cancels pending demand and starts no replacement while the grid is inactive", async () => {
+    const pending = deferred<EpisodePreviewReadResult>();
+    const onReadResult = vi.fn();
+    sessionHarness.session.read.mockReturnValueOnce(pending.promise);
+    const source = sourceForId("modal-activation");
+    const { rerender } = render(
+      <PreviewHarness
+        enabled
+        id="modal-activation"
+        onReadResult={onReadResult}
+        source={source}
+      />,
+    );
+    await waitFor(() =>
+      expect(sessionHarness.session.read).toHaveBeenCalledOnce(),
+    );
+    const signal = sessionHarness.session.read.mock.calls[0]?.[1]
+      ?.signal as AbortSignal;
+
+    // Opening the modal marks every grid renderer inactive. Its outstanding
+    // demand must be preempted, and prop churn from the retained grid must not
+    // start replacement work behind the modal's current-frame reads.
+    rerender(
+      <PreviewHarness
+        enabled={false}
+        hovered
+        id="modal-activation"
+        onReadResult={onReadResult}
+        selectedSourceName="/camera/rear"
+        source={source}
+      />,
+    );
+
+    expect(signal.aborted).toBe(true);
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+
+    pending.resolve(readyResult({ bytes: [9] }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onReadResult).not.toHaveBeenCalled();
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
   });
 
   it("promotes a pending initial frame when its tile is hovered", async () => {

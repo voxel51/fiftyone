@@ -48,6 +48,10 @@ import {
 } from "./grid-poster-cache";
 import { captureGridPoster } from "./grid-poster-codec";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
+import {
+  useGridPosterCache,
+  type GridPosterCacheLookupStatus,
+} from "./use-grid-poster-cache";
 
 const IMAGE_FIT = "cover";
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
@@ -101,6 +105,7 @@ export function GridRenderer({
         ? gridPosterCacheKey({
             datasetId: ctx.dataset.datasetId,
             mediaField: ctx.media?.field,
+            mediaPath: ctx.media?.path,
             posterSourceName: firstMatch?.stream,
             posterStartTimeNs: firstMatch?.startNs,
             selectedSourceName,
@@ -110,30 +115,31 @@ export function GridRenderer({
     [
       ctx.dataset.datasetId,
       ctx.media?.field,
+      ctx.media?.path,
       firstMatch?.startNs,
       firstMatch?.stream,
       selectedSourceName,
       source,
     ],
   );
-  const cachedPosterRef = useRef<{
-    readonly entry: GridPosterCacheEntry | null;
-    readonly key: string | null;
-  }>({ entry: null, key: null });
-  if (cachedPosterRef.current.key !== cacheKey) {
-    cachedPosterRef.current = {
-      entry: cacheKey ? getGridPosterCache().peek(cacheKey) : null,
-      key: cacheKey,
-    };
-  }
-  const cachedPoster = cachedPosterRef.current.entry;
+  const { entry: cachedPoster, status: cacheLookupStatus } = useGridPosterCache(
+    cacheKey,
+    visible,
+  );
   const recordedCacheLookupKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!cacheKey || recordedCacheLookupKeyRef.current === cacheKey) return;
+    if (
+      !cacheKey ||
+      cacheLookupStatus === "idle" ||
+      cacheLookupStatus === "loading" ||
+      recordedCacheLookupKeyRef.current === cacheKey
+    ) {
+      return;
+    }
     recordedCacheLookupKeyRef.current = cacheKey;
     if (cachedPoster) getGridPosterCache().touch(cacheKey);
     recordGridPosterDiagnostic(cachedPoster ? "hits" : "misses");
-  }, [cacheKey, cachedPoster]);
+  }, [cacheKey, cacheLookupStatus, cachedPoster]);
   const [cameraPose, setCameraPose] = useGridCameraPose(
     gridCameraScopeKey,
     visible,
@@ -149,9 +155,11 @@ export function GridRenderer({
   );
   const previewSessionDemand = usePreviewSessionDemand({
     cacheKey,
+    cacheLookupStatus,
     cachedPoster,
     freshness,
     hovered,
+    sourceId: source?.sourceId ?? null,
     visible,
   });
   const gridVideoPlayback = useGridVideoPlayback(source?.sourceId ?? null);
@@ -469,19 +477,27 @@ function useElementCssSize(
 
 function usePreviewSessionDemand({
   cacheKey,
+  cacheLookupStatus,
   cachedPoster,
   freshness,
   hovered,
+  sourceId,
   visible,
 }: {
   readonly cacheKey: string | null;
+  readonly cacheLookupStatus: GridPosterCacheLookupStatus;
   readonly cachedPoster: GridPosterCacheEntry | null;
   readonly freshness: GridPosterFreshness | null;
   readonly hovered: boolean;
+  readonly sourceId: string | null;
   readonly visible: boolean;
 }): boolean {
   const [latched, setLatched] = useState(false);
   const diagnosticRef = useRef<string | null>(null);
+  const committedDemandRef = useRef<{
+    readonly demanded: boolean;
+    readonly sourceId: string | null;
+  }>({ demanded: false, sourceId: null });
   useEffect(() => {
     setLatched(false);
     diagnosticRef.current = null;
@@ -509,11 +525,31 @@ function usePreviewSessionDemand({
     }
   }, [cacheKey, cachedPoster, freshness, visible]);
 
-  if (!visible) return false;
-  if (!cachedPoster) return true;
-  if (latched || hovered) return true;
-  if (freshness === null) return false;
-  return freshness !== "fresh";
+  let demanded = false;
+  if (!visible) {
+    demanded = false;
+  } else if (!cachedPoster) {
+    // A disk hit is much cheaper than opening an MCAP preview session. Hover
+    // bypasses the wait so direct interaction always wins over cache I/O. An
+    // already-demanded same-source session stays open across key transitions.
+    demanded =
+      hovered ||
+      cacheLookupStatus !== "loading" ||
+      (committedDemandRef.current.demanded &&
+        committedDemandRef.current.sourceId === sourceId);
+  } else if (latched || hovered) {
+    demanded = true;
+  } else if (freshness !== null) {
+    demanded = freshness !== "fresh";
+  }
+
+  // This effect remembers committed demand so a new key can check persistent
+  // storage without disposing a reusable preview session for the same source.
+  useEffect(() => {
+    committedDemandRef.current = { demanded, sourceId };
+  }, [demanded, sourceId]);
+
+  return demanded;
 }
 
 function usePlaybackHoverIntent(

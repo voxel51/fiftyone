@@ -69,11 +69,6 @@ export interface EpisodePreviewSession {
   ): Promise<EpisodePreviewReadResult>;
 }
 
-/** Advisory warm-up controls for a likely next episode. */
-export interface EpisodePrewarmOptions {
-  readonly signal?: AbortSignal;
-}
-
 /** Cancellation controls for opening one episode session resource. */
 export interface EpisodeOpenOptions {
   readonly signal?: AbortSignal;
@@ -93,10 +88,4 @@ export interface FormatAdapter {
     io: ByteResources,
     options?: EpisodeOpenOptions,
   ): Promise<EpisodePreviewSession>;
-  /** Optional byte-level startup warm-up for likely navigation targets. */
-  prewarm?(
-    source: EpisodeSource,
-    io: ByteResources,
-    options?: EpisodePrewarmOptions,
-  ): Promise<void>;
 }
