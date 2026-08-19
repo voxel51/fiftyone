@@ -275,18 +275,22 @@ const aiSegmentationHelp = (
 );
 
 // The message is only ever shown here: the inline status carries the short
-// error kind so it cannot crowd the panel tabs.
-const aiErrorHelp = (error: InferenceError): ReactElement | undefined => {
-  if (!error || !error.message) return undefined;
+// error kind so it cannot crowd the panel tabs. The gestures still work while
+// an error is up, so they stay below the detail rather than being replaced.
+const aiErrorHelp = (error: InferenceError): ReactElement => {
+  if (!error || !error.message) return aiSegmentationHelp;
 
   return (
-    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-      <Text variant={TextVariant.Label} color={TextColor.Primary}>
-        {ERROR_KIND_LABELS[error.kind] ?? STATUS_LABELS.error}
-      </Text>
-      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-        {error.message}
-      </Text>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
+      <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+        <Text variant={TextVariant.Label} color={TextColor.Primary}>
+          {ERROR_KIND_LABELS[error.kind] ?? STATUS_LABELS.error}
+        </Text>
+        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          {error.message}
+        </Text>
+      </Stack>
+      {aiSegmentationHelp}
     </Stack>
   );
 };
@@ -295,10 +299,10 @@ const aiErrorHelp = (error: InferenceError): ReactElement | undefined => {
  * Status content for the AI segmentation tool.
  *
  * Only machine state goes inline — download progress, a short error kind — so
- * the gesture table stays behind the help affordance in every state. The help
- * content is deliberately identical across idle and inference states: the
- * gestures do not change, and swapping it would make the affordance flicker
- * while the model works.
+ * the gesture table stays behind the help affordance in every state. It is
+ * deliberately the same table throughout: the gestures never change, and
+ * swapping it would make the affordance flicker while the model works. An
+ * error adds its detail above that table instead of replacing it.
  */
 export const aiSegmentationStatus = ({
   status,
