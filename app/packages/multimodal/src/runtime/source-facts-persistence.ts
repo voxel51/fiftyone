@@ -35,7 +35,7 @@ export interface StoredSourceFactsRecency {
 /** Best-effort durable repository for validated source-facts values. */
 export interface SourceFactsPersistence {
   clear(): Promise<void>;
-  delete(key: string): Promise<void>;
+  delete(key: string, expectedCreatedAt?: number): Promise<void>;
   get(key: string): Promise<StoredSourceFactsV1 | null>;
   put(key: string, entry: StoredSourceFactsV1): Promise<SourceFactsWriteResult>;
 }
@@ -129,12 +129,12 @@ export function createIndexedDbSourceFactsPersistence(
       );
     },
 
-    async delete(key) {
+    async delete(key, expectedCreatedAt) {
       const database = await open();
       if (!database) return;
-      await enqueueMutation(() => deleteEntry(database, key)).catch(
-        () => undefined,
-      );
+      await enqueueMutation(() =>
+        deleteEntry(database, key, expectedCreatedAt),
+      ).catch(() => undefined);
     },
 
     get(key) {
@@ -322,12 +322,27 @@ async function touchEntry(
   }
 }
 
-async function deleteEntry(database: IDBDatabase, key: string): Promise<void> {
+async function deleteEntry(
+  database: IDBDatabase,
+  key: string,
+  expectedCreatedAt?: number,
+): Promise<void> {
   const transaction = database.transaction(
     [ENTRY_STORE, RECENCY_STORE],
     "readwrite",
   );
-  transaction.objectStore(ENTRY_STORE).delete(key);
+  const entries = transaction.objectStore(ENTRY_STORE);
+  if (expectedCreatedAt !== undefined) {
+    const envelope = await requestResult<unknown>(entries.get(key));
+    const current = validEnvelope(envelope)
+      ? decodeStoredSourceFacts(envelope.encoded)
+      : null;
+    if (current?.createdAt !== expectedCreatedAt) {
+      await transactionDone(transaction);
+      return;
+    }
+  }
+  entries.delete(key);
   transaction.objectStore(RECENCY_STORE).delete(key);
   await transactionDone(transaction);
 }

@@ -1,12 +1,14 @@
-import type {
-  EpisodeManifest,
-  EpisodeRecordingFacts,
-  EpisodeTimeline,
-  StreamCalibration,
-  StreamDescriptor,
-  TimeDomain,
-  TimeWindow,
-  TransformTopology,
+import {
+  BYTE_SOURCE_READ_PROFILE,
+  STREAM_KIND,
+  type EpisodeManifest,
+  type EpisodeRecordingFacts,
+  type EpisodeTimeline,
+  type StreamCalibration,
+  type StreamDescriptor,
+  type TimeDomain,
+  type TimeWindow,
+  type TransformTopology,
 } from "../ir";
 import {
   SOURCE_FACTS_SCHEMA_VERSION,
@@ -19,23 +21,9 @@ import {
 
 const BIGINT_TAG = "__fiftyone_source_facts_bigint_v1__";
 const DECIMAL_INTEGER = /^\d+$/;
-const STREAM_KINDS = new Set([
-  "camera-calibration",
-  "grid",
-  "image",
-  "image-annotations",
-  "location",
-  "log",
-  "point-cloud",
-  "pose",
-  "scalar",
-  "scene-update",
-  "transform",
-  "unknown",
-  "video",
-]);
+const STREAM_KINDS = new Set<string>(Object.values(STREAM_KIND));
 const TIME_DOMAIN_KINDS = new Set(["duration", "sequence", "timestamp"]);
-const READ_PROFILES = new Set(["local", "remote"]);
+const READ_PROFILES = new Set<string>(Object.values(BYTE_SOURCE_READ_PROFILE));
 const MESSAGE_INDEX_STATUSES = new Set([
   "absent",
   "complete",

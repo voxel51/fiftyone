@@ -70,6 +70,19 @@ describe("source facts identity", () => {
     expect(locator).toBe("https://example.com/a/b/run.mcap");
     expect(locator).not.toMatch(/bearer|secret|signature|private|fragment/);
   });
+
+  it("removes credentials from URL-shaped source ids at the facts boundary", () => {
+    const identity = sourceFactsIdentity({
+      sourceId:
+        "remote-url:https://bearer:secret@example.com/run.mcap?signature=private#fragment",
+      url: "https://example.com/run.mcap?signature=private",
+    });
+
+    expect(identity.sourceId).toBe("remote-url:https://example.com/run.mcap");
+    expect(JSON.stringify(identity)).not.toMatch(
+      /bearer|secret|signature|private|fragment/,
+    );
+  });
 });
 
 describe("source facts codec", () => {

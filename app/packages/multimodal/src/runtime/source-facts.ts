@@ -74,7 +74,7 @@ export function sourceFactsIdentity(
 ): SourceFactsIdentity {
   return {
     canonicalLocator: canonicalSourceFactsLocator(source.url),
-    sourceId: source.sourceId,
+    sourceId: credentialFreeSourceFactsSourceId(source.sourceId),
   };
 }
 
@@ -187,6 +187,14 @@ function normalizeCredentialFreeLocator(locator: string): string {
   }
   const withoutCredentials = value.split(/[?#]/, 1)[0];
   return normalizePath(withoutCredentials);
+}
+
+function credentialFreeSourceFactsSourceId(sourceId: string): string {
+  const embeddedUrl = /[a-z][a-z\d+.-]*:\/\//i.exec(sourceId);
+  if (!embeddedUrl || embeddedUrl.index === undefined) return sourceId;
+  return `${sourceId.slice(0, embeddedUrl.index)}${normalizeCredentialFreeLocator(
+    sourceId.slice(embeddedUrl.index),
+  )}`;
 }
 
 function normalizePath(path: string): string {

@@ -43,6 +43,8 @@ export interface SourceSessionHints {
 interface DurableFactLane {
   readonly adapterId: string;
   readonly facts: SourceFactsPayload;
+  /** Opaque identity of the disk entry that produced this lane. */
+  readonly revision?: object;
   readonly trust: Exclude<SourceFactsTrust, "current">;
 }
 
@@ -134,6 +136,28 @@ export function publishDurableSourceFacts(
     ...(current ?? { posterBytes: 0 }),
     durableFacts: { ...lane, facts: normalized },
   });
+}
+
+/** Removes durable UI facts only when they still belong to one disk read. */
+export function retractDurableSourceFacts(
+  source: ByteSourceDescriptor,
+  revision: object,
+): void {
+  const key = sourceBootstrapKey(source);
+  const entry = entries.get(key);
+  if (!entry || entry.durableFacts?.revision !== revision) return;
+  removeEntry(key);
+  const { durableFacts: _durableFacts, ...retained } = entry;
+  if (
+    retained.currentFacts ||
+    retained.poster ||
+    retained.posterStreamId ||
+    retained.previewReadComplete
+  ) {
+    storeEntry(key, retained);
+  } else {
+    notifySourceListeners(key);
+  }
 }
 
 /** Publishes every reusable fact learned by one lightweight preview read. */

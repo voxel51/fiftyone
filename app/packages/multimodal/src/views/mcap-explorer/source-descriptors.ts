@@ -94,20 +94,12 @@ function createResolvedRemoteMcapSourceDescriptor(
     fileName: sourceDisplayName(sourceIdentity) ?? "remote.mcap",
     source: {
       readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
-      sourceId: `remote-url:${credentialFreeSourceIdentity(sourceIdentity)}`,
+      // Byte caches need the complete access identity. Source-facts storage
+      // applies its credential-free identity at its own boundary.
+      sourceId: `remote-url:${sourceIdentity}`,
       url: href,
     },
   };
-}
-
-function credentialFreeSourceIdentity(value: string): string {
-  if (!/^https?:\/\//i.test(value)) return value.split(/[?#]/, 1)[0];
-  const url = new URL(value);
-  url.username = "";
-  url.password = "";
-  url.search = "";
-  url.hash = "";
-  return url.toString();
 }
 
 function parseHttpUrl(

@@ -175,6 +175,23 @@ describe("source facts service", () => {
     expect(getSourceSessionHints(source, "mcap")).toBeNull();
   });
 
+  it("retracts provisional UI facts when background validation proves them stale", async () => {
+    const source = createSource();
+    vi.mocked(persistence.get).mockResolvedValue(entry(source));
+    byteClientHarness.stat.mockResolvedValue({
+      ...source,
+      etag: "different",
+      sizeBytes: "100",
+    });
+
+    await resolveSourceFactsHints(source, SCOPE, "mcap");
+    await vi.waitFor(() =>
+      expect(persistence.delete).toHaveBeenCalledWith(expect.any(String), 1),
+    );
+
+    expect(peekSourceBootstrap(source)).toBeNull();
+  });
+
   it("persists preview and direct-session facts off their ready paths", async () => {
     const source = createSource({ etag: "abc", sizeBytes: "100" });
     recordPreviewSourceFacts(source, SCOPE, {

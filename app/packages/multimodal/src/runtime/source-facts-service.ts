@@ -9,6 +9,7 @@ import {
   getSourceSessionHints,
   publishCurrentSourceFacts,
   publishDurableSourceFacts,
+  retractDurableSourceFacts,
 } from "./source-bootstrap-cache";
 import {
   normalizeSourceFactsPayload,
@@ -118,24 +119,25 @@ export async function resolveSourceFactsHints(
     !sameScope(result.scope, scope)
   ) {
     recordLookup("invalid", durationMs);
-    void getSourceFactsPersistence().delete(key);
+    void getSourceFactsPersistence().delete(key, result.createdAt);
     return null;
   }
   if (result.adapterId !== adapterId) {
     recordLookup("stale", durationMs);
-    void getSourceFactsPersistence().delete(key);
+    void getSourceFactsPersistence().delete(key, result.createdAt);
     return null;
   }
 
   const validation = validateSourceFactsContent(result.validator, source);
   if (validation === "stale") {
     recordLookup("stale", durationMs);
-    void getSourceFactsPersistence().delete(key);
+    void getSourceFactsPersistence().delete(key, result.createdAt);
     return null;
   }
   publishDurableSourceFacts(source, {
     adapterId,
     facts: result.facts,
+    revision: result,
     trust: validation,
   });
   recordLookup(
@@ -340,13 +342,15 @@ async function validateRemoteFactsInBackground({
   totalValidationDurationMs += nowMs() - startedAt;
   const validation = validateSourceFactsContent(entry.validator, resolved);
   if (validation === "stale") {
-    await getSourceFactsPersistence().delete(key);
+    retractDurableSourceFacts(source, entry);
+    await getSourceFactsPersistence().delete(key, entry.createdAt);
     return;
   }
   if (validation !== "validated" || signal?.aborted) return;
   publishDurableSourceFacts(source, {
     adapterId: entry.adapterId,
     facts: entry.facts,
+    revision: entry,
     trust: "validated",
   });
 }

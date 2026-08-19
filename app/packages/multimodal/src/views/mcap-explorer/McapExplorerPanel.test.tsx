@@ -77,7 +77,8 @@ describe("McapExplorerPanel", () => {
     });
     expect(viewerHarness.lastPlaybackProps?.source).toEqual({
       readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
-      sourceId: "remote-url:https://example.com/path/recording.mcap",
+      sourceId:
+        "remote-url:https://example.com/path/recording.mcap?signature=1",
       url: "https://example.com/path/recording.mcap?signature=1",
     });
     expect(screen.queryByText("Drag & drop an MCAP file")).toBeNull();

@@ -14,6 +14,7 @@ import {
   publishDurableSourceFacts,
   publishEpisodePreviewBootstrap,
   publishSourceBootstrap,
+  retractDurableSourceFacts,
   resetSourceBootstrapCacheForTests,
   subscribeSourceBootstrap,
 } from "./source-bootstrap-cache";
@@ -263,6 +264,24 @@ describe("source bootstrap cache", () => {
     });
 
     expect(getEpisodeTimeRange(source.sourceId)).toBeNull();
+  });
+
+  it("retracts only the durable lane produced by the expected disk read", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("retracted-durable");
+    const revision = {};
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest: createManifest("stale") },
+      revision,
+      trust: "provisional",
+    });
+
+    retractDurableSourceFacts(source, {});
+    expect(peekSourceBootstrap(source)?.manifest).toBeDefined();
+
+    retractDurableSourceFacts(source, revision);
+    expect(peekSourceBootstrap(source)).toBeNull();
   });
 });
 
