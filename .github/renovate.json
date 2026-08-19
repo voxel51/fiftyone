@@ -21,6 +21,7 @@
     },
     "ignoreDeps": [
         "pymongo",
+        "motor",
         "mongoengine",
         "fiftyone-brain",
         "fiftyone-db",

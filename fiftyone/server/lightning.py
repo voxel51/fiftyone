@@ -14,7 +14,7 @@ import typing as t
 
 import asyncio
 from bson import ObjectId
-from pymongo.asynchronous.collection import AsyncCollection
+from motor.motor_asyncio import AsyncIOMotorCollection
 import strawberry as gql
 
 import fiftyone as fo
@@ -181,10 +181,9 @@ class DistinctQuery:
 def _resolve_lightning_path_queries(
     path: LightningPathInput, dataset: fo.Dataset, info: Info
 ) -> t.Tuple[
-    AsyncCollection,
+    AsyncIOMotorCollection,
     t.Union[DistinctQuery, t.List[t.Dict]],
     t.Callable,
-    bool,
 ]:
     field_path = path.path
     field = dataset.get_field(field_path)
@@ -341,7 +340,7 @@ async def _do_async_pooled_queries(
     dataset: fo.Dataset,
     queries: t.List[
         t.Tuple[
-            AsyncCollection,
+            AsyncIOMotorCollection,
             t.Union[DistinctQuery, t.List[t.Dict]],
             bool,
         ]
@@ -364,7 +363,7 @@ async def _do_async_pooled_queries(
 
 async def _do_async_query(
     dataset: fo.Dataset,
-    collection: AsyncCollection,
+    collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
     match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
@@ -377,17 +376,16 @@ async def _do_async_query(
     if match_filter:
         query.insert(0, {"$match": match_filter})
 
-    cursor = await collection.aggregate(query)
-    return [i async for i in cursor]
+    return [i async for i in collection.aggregate(query)]
 
 
 async def _do_distinct_queries(
     dataset: fo.Dataset,
-    collection: AsyncCollection,
+    collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
     match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
-) -> t.List[t.Any]:
+):
     if query.filters or not query.index:
         return await _do_distinct_lazy_pipeline(
             dataset, collection, query, match_filter, is_frames
@@ -402,7 +400,7 @@ async def _do_distinct_queries(
 
 
 async def _do_list_distinct_query(
-    collection: AsyncCollection,
+    collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
 ):
     match = None
@@ -442,7 +440,7 @@ async def _do_list_distinct_query(
 
 async def _do_distinct_lazy_pipeline(
     dataset: fo.Dataset,
-    collection: AsyncCollection,
+    collection: AsyncIOMotorCollection,
     query: DistinctQuery,
     match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
@@ -465,7 +463,7 @@ async def _do_distinct_lazy_pipeline(
 
 async def _do_distinct_grouped_pipeline(
     dataset: fo.Dataset,
-    collection: AsyncCollection,
+    collection: AsyncIOMotorCollection,
     query: DistinctQuery,
     match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
@@ -597,7 +595,7 @@ def _handle_nonfinites(sort: t.Union[t.Literal[-1], t.Literal[1]]):
 async def _handle_pipeline(
     pipeline,
     dataset: fo.Dataset,
-    collection: AsyncCollection,
+    collection: AsyncIOMotorCollection,
     query: DistinctQuery,
     is_frames: bool,
     disable_limit=False,
@@ -626,7 +624,7 @@ async def _handle_pipeline(
     exclude = set(query.exclude or [])
     kwargs = {"hint": query.index} if query.index else {}
 
-    async for value in await collection.aggregate(pipeline, **kwargs):
+    async for value in collection.aggregate(pipeline, **kwargs):
         value = value.get("_id", None)
         if value is None or value in exclude:
             continue
