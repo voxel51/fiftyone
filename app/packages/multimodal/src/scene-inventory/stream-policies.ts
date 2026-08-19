@@ -9,9 +9,14 @@ import type { SceneSource } from "../ir";
 
 const LATEST_POLICY: StreamSyncPolicy = { mode: STREAM_SYNC_MODE.LATEST };
 
+// Total by construction: every scene source type resolves to a policy, so a
+// new type cannot silently fall through to the read layer's implicit default.
+// Mirrors `SYNC_POLICY_BY_TYPE` in the MCAP resource client, which is already
+// total — the two must agree.
 const POLICY_BY_SOURCE_TYPE: Readonly<
-  Partial<Record<SceneSourceType, StreamSyncPolicy>>
+  Record<SceneSourceType, StreamSyncPolicy>
 > = {
+  [SCENE_SOURCE_TYPE.AUDIO]: LATEST_POLICY,
   [SCENE_SOURCE_TYPE.CAMERA_CALIBRATION]: LATEST_POLICY,
   [SCENE_SOURCE_TYPE.IMAGE]: LATEST_POLICY,
   [SCENE_SOURCE_TYPE.IMAGE_ANNOTATION]: LATEST_POLICY,
@@ -21,12 +26,6 @@ const POLICY_BY_SOURCE_TYPE: Readonly<
   [SCENE_SOURCE_TYPE.POINT_CLOUD]: LATEST_POLICY,
   [SCENE_SOURCE_TYPE.POSE]: LATEST_POLICY,
   [SCENE_SOURCE_TYPE.SCENE_ANNOTATION]: LATEST_POLICY,
-  // SCENE_SOURCE_TYPE.AUDIO is deliberately absent. These policies drive
-  // playhead-demand frame selection in the buffered-read system; audio does
-  // not participate in it at all — `useMcapAudioStream` reads the stream's
-  // full time range once and decodes it up front (see that module's header).
-  // An entry here would register audio for per-playhead selection it never
-  // consumes, so omission is the correct behavior, not an oversight.
 };
 
 /** Derives format-neutral playback selection policies from scene semantics. */
