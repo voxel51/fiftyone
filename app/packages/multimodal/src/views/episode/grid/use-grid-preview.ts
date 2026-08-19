@@ -164,6 +164,14 @@ export function useGridPreview({
     setState(seededSnapshot(source, cachedPosterRef.current));
   }, [cacheRequestKey, finishBuffering, selectedSourceName, source]);
 
+  // IndexedDB hydration completes after the cache key is already mounted.
+  // Adopt that same-key poster in place without resetting a live frame or
+  // starting a second preview read.
+  useEffect(() => {
+    if (!cachedPoster || stateOwnerKey !== cacheRequestKey) return;
+    setState((current) => adoptCachedPoster(current, cachedPoster));
+  }, [cacheRequestKey, cachedPoster, stateOwnerKey]);
+
   // This effect surfaces adapter failures and unsupported preview providers
   // without exposing format details to the grid.
   useEffect(() => {
@@ -425,6 +433,27 @@ function preservingCachedPoster(
   return current.cachedPoster
     ? current
     : { ...IDLE_PREVIEW_STATE, status: fallbackStatus };
+}
+
+function adoptCachedPoster(
+  current: GridPreviewSnapshot,
+  cachedPoster: GridPosterCacheEntry,
+): GridPreviewSnapshot {
+  if (current.cachedPoster === cachedPoster) return current;
+  return {
+    ...current,
+    cachedPoster,
+    error: current.frame ? current.error : null,
+    hasPreviewStreams:
+      current.hasPreviewStreams || cachedPoster.streamSourceNames.length > 0,
+    streamId: current.streamId ?? cachedPoster.streamId,
+    streamSourceName: current.streamSourceName ?? cachedPoster.streamSourceName,
+    streamSourceNames:
+      current.streamSourceNames.length > 0
+        ? current.streamSourceNames
+        : cachedPoster.streamSourceNames,
+    status: current.frame ? current.status : "ready",
+  };
 }
 
 function resultPreservingCachedPoster(

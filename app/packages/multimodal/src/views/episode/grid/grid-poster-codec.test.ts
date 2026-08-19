@@ -5,8 +5,15 @@ import {
   resetGridPosterCacheForTests,
 } from "./grid-poster-cache";
 import { createGridPosterEncoder } from "./grid-poster-codec";
+import {
+  resetGridPosterPersistenceForTests,
+  type GridPosterPersistence,
+} from "./grid-poster-persistence";
 
-afterEach(() => resetGridPosterCacheForTests());
+afterEach(() => {
+  resetGridPosterCacheForTests();
+  resetGridPosterPersistenceForTests();
+});
 
 describe("grid poster codec", () => {
   it("encodes WebP and falls back to PNG when the browser rejects it", async () => {
@@ -171,6 +178,28 @@ describe("grid poster codec", () => {
 
     expect(cloneCanvas).not.toHaveBeenCalled();
     expect(encode).not.toHaveBeenCalled();
+  });
+
+  it("persists completed encodes after the memory tier accepts them", async () => {
+    resetGridPosterCacheForTests({ maxSizeBytes: 10_000 });
+    const persistence: GridPosterPersistence = {
+      get: vi.fn().mockResolvedValue(null),
+      put: vi.fn().mockResolvedValue(undefined),
+    };
+    resetGridPosterPersistenceForTests(persistence);
+    const encoder = createGridPosterEncoder({
+      cloneCanvas: () => ownedCanvas(),
+      encode: vi.fn().mockResolvedValue(encodedBlob([4, 5], "image/webp")),
+    });
+
+    encoder.capture(capture("persistent"));
+
+    await vi.waitFor(() =>
+      expect(persistence.put).toHaveBeenCalledWith(
+        "persistent",
+        expect.objectContaining({ bytes: new Uint8Array([4, 5]) }),
+      ),
+    );
   });
 });
 
