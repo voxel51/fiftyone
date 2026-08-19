@@ -28,7 +28,7 @@
         "@chainner/node-path": "^0.1.1",
         "@microsoft/fetch-event-source": "catalog:",
         "fast-json-patch": "catalog:",
-        "fetch-retry": "^5.0.3",
+        "fetch-retry": "^6.0.0",
         "lodash": "catalog:",
         "lru-cache": "catalog:",
         "luxon": "^3.6.1",

@@ -7,7 +7,7 @@
         "@voxel51/voodo": "catalog:",
         "clsx": "^2.1.1",
         "jotai": "catalog:",
-        "react-mosaic-component": "^6.1.1"
+        "react-mosaic-component": "^7.0.0"
     },
     "devDependencies": {
         "react": "catalog:",

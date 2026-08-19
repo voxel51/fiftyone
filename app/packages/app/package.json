@@ -38,7 +38,7 @@
         "react": "catalog:",
         "react-dom": "catalog:",
         "react-error-boundary": "catalog:",
-        "react-ga4": "^2.1.0",
+        "react-ga4": "^3.0.0",
         "react-is": "catalog:",
         "react-relay": "catalog:",
         "react-use-measure": "catalog:",

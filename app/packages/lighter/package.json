@@ -21,8 +21,8 @@
         "pixi.js": "^8.13.1"
     },
     "devDependencies": {
-        "@typescript-eslint/eslint-plugin": "^6.0.0",
-        "@typescript-eslint/parser": "^6.0.0",
+        "@typescript-eslint/eslint-plugin": "^8.0.0",
+        "@typescript-eslint/parser": "^8.0.0",
         "eslint": "catalog:",
         "typescript": "catalog:"
     },
@@ -30,7 +30,7 @@
         "@fiftyone/commands": "*",
         "@fiftyone/events": "*",
         "jotai": "*",
-        "react": "^18.0.0",
-        "react-dom": "^18.0.0"
+        "react": "^18.0.0 || ^19.0.0",
+        "react-dom": "^18.0.0 || ^19.0.0"
     }
 }

@@ -15,10 +15,10 @@
     "devDependencies": {
         "@testing-library/dom": "catalog:",
         "@testing-library/react": "catalog:",
-        "@typescript-eslint/eslint-plugin": "^6.0.0",
-        "@typescript-eslint/parser": "^6.0.0",
+        "@typescript-eslint/eslint-plugin": "^8.0.0",
+        "@typescript-eslint/parser": "^8.0.0",
         "eslint": "catalog:",
-        "jsdom": "^26.0.0",
+        "jsdom": "^30.0.0",
         "react": "catalog:",
         "react-dom": "catalog:",
         "typescript": "catalog:",
