@@ -59,7 +59,6 @@ import type {
   AudioPlaybackStatus,
   UseAudioPlaybackResult,
 } from "./use-audio-playback";
-import { audioProbe } from "./probe";
 
 /**
  * Stand-in for the engine when a consumer wants the waveform but no sound.
@@ -210,12 +209,6 @@ export function useAudioStreamPlayback({
 
         anchorSecRef.current = getPlayhead(store);
         pumpRef.current.start(anchorSecRef.current);
-        audioProbe("stream-engine-ready", {
-          trackId,
-          playback,
-          channels: source.channels,
-          sampleRate: source.sampleRate,
-        });
         setStatus("ready");
       } catch (error) {
         if (cancelled) return;
