@@ -9,7 +9,9 @@ import { getEpisodeTimeRange } from "./episode-time-range-registry";
 import {
   getSourceBootstrap,
   getSourceBootstrapSnapshot,
+  getSourceSessionHints,
   peekSourceBootstrap,
+  publishDurableSourceFacts,
   publishEpisodePreviewBootstrap,
   publishSourceBootstrap,
   resetSourceBootstrapCacheForTests,
@@ -174,6 +176,94 @@ describe("source bootstrap cache", () => {
     ).toEqual(createManifest("initial"));
     expect(peekSourceBootstrap(replacement)).toBeNull();
   });
+
+  it("shows provisional durable facts to the UI but never to the adapter", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("provisional");
+    const manifest = createManifest("/camera");
+
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest },
+      trust: "provisional",
+    });
+    publishSourceBootstrap(source, { poster: createPoster([1]) });
+
+    expect(peekSourceBootstrap(source)?.manifest).toBe(manifest);
+    expect(getSourceSessionHints(source, "mcap")).toBeNull();
+  });
+
+  it("drops the provisional lane when a partial live fact is published", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("partial-current");
+    const timeRange = createTimeRange();
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest: createManifest("stale") },
+      trust: "provisional",
+    });
+
+    publishSourceBootstrap(source, { timeRange });
+
+    expect(peekSourceBootstrap(source)).toEqual({ timeRange });
+    expect(getSourceSessionHints(source, "mcap")).toBeNull();
+  });
+
+  it("uses validated durable hints only for their adapter", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("validated");
+    const manifest = createManifest("/camera", "log");
+    const timeline = {
+      endNs: 30n,
+      startNs: 10n,
+      timeDomainId: "log",
+    } as const;
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest, timeline },
+      trust: "validated",
+    });
+
+    expect(getSourceSessionHints(source, "mcap")).toEqual({
+      manifestHint: manifest,
+      playbackHint: timeline,
+    });
+    expect(getSourceSessionHints(source, "fixture")).toBeNull();
+  });
+
+  it("never treats a non-log MCAP timeline as a playback hint", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("publish-time");
+    const manifest = createManifest("/camera", "publish");
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: {
+        manifest,
+        timeline: {
+          endNs: 20n,
+          startNs: 10n,
+          timeDomainId: "publish",
+        },
+      },
+      trust: "validated",
+    });
+
+    expect(getSourceSessionHints(source, "mcap")).toEqual({
+      manifestHint: manifest,
+    });
+  });
+
+  it("does not publish durable hydration into the grid time-range registry", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("durable-grid-range");
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { timeRange: createTimeRange() },
+      trust: "provisional",
+    });
+
+    expect(getEpisodeTimeRange(source.sourceId)).toBeNull();
+  });
 });
 
 function createTimeRange(): TimeWindow {
@@ -184,7 +274,10 @@ function createSource(sourceId: string, etag?: string): ByteSourceDescriptor {
   return { sourceId, url: `memory://${sourceId}.mcap`, etag };
 }
 
-function createManifest(streamId: string): EpisodeManifest {
+function createManifest(
+  streamId: string,
+  timeDomainId = "recording",
+): EpisodeManifest {
   return {
     episodeId: "episode",
     streams: [
@@ -196,7 +289,7 @@ function createManifest(streamId: string): EpisodeManifest {
         timeRange: createTimeRange(),
       },
     ],
-    timeDomain: { id: "recording", kind: "timestamp" },
+    timeDomain: { id: timeDomainId, kind: "timestamp" },
     timeRange: createTimeRange(),
   };
 }
