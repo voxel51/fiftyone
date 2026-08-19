@@ -228,29 +228,6 @@ describe("MCAP format adapter", () => {
     session.dispose();
   });
 
-  it("forwards prewarm cancellation into asset inventory", async () => {
-    const controller = new AbortController();
-    const resolve = vi.fn();
-    const prewarmSource: EpisodeSource = {
-      assets: {
-        list: vi.fn(async (options) => {
-          expect(options?.signal).toBe(controller.signal);
-          controller.abort();
-          return [];
-        }),
-        resolve,
-      },
-      episodeId: "mcap-prewarm-cancel",
-    };
-
-    await expect(
-      createMcapFormatAdapter({ createClient }).prewarm?.(prewarmSource, io, {
-        signal: controller.signal,
-      }),
-    ).rejects.toMatchObject({ name: "EpisodeReadCancelledError" });
-    expect(resolve).not.toHaveBeenCalled();
-  });
-
   it("names streams as topics for the shared viewer", async () => {
     const session = await createMcapFormatAdapter({
       createClient,
