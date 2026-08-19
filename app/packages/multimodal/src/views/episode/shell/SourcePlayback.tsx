@@ -24,6 +24,8 @@ import type {
 import type { SceneSource } from "../../../scene-inventory";
 import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection/scene-sources";
 import { episodeSourceAccessKey } from "../../../runtime/episode-resources";
+import { recordSessionSourceFacts } from "../../../runtime/source-facts-service";
+import type { SourceFactsScope } from "../../../runtime/source-facts";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react/playback-store-context";
 import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
 import { createScheduledSourceReadBudgetAccount } from "../../../runtime/scheduled-read-budget-account";
@@ -138,6 +140,7 @@ export interface SourcePlaybackProps {
   /** Optional maximum expanded track-body height. */
   readonly timelineDrawerMaxSize?: number;
   readonly source: ByteSourceDescriptor | null;
+  readonly sourceFactsScope?: SourceFactsScope;
   readonly tracks?: readonly Track[];
 }
 
@@ -164,6 +167,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   session,
   sessionError = null,
   source,
+  sourceFactsScope,
   tracks,
 }) => {
   const imageAspectRatiosRef = useRef<Record<string, number>>({});
@@ -198,6 +202,13 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       releaseRetainedImageTextures();
     };
   }, []);
+
+  // This effect records authoritative session metadata off the ready path.
+  useEffect(() => {
+    if (session && source && sourceFactsScope) {
+      recordSessionSourceFacts(source, sourceFactsScope, session);
+    }
+  }, [session, source, sourceFactsScope]);
 
   const { status, error, sources, streams, streamCount } =
     useSceneInventoryState({

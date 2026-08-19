@@ -46,8 +46,7 @@ describe("any MCAP source descriptors", () => {
       fileName: "drive.mcap",
       source: {
         readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
-        sourceId:
-          "remote-url:https://example.com/recordings/drive.mcap?signature=1",
+        sourceId: "remote-url:https://example.com/recordings/drive.mcap",
         url: "https://example.com/recordings/drive.mcap?signature=1",
       },
     });

@@ -14,6 +14,10 @@ import {
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { hasMcapCloudSourceResolver } from "../../extensions/mcap-explorer";
 import type { ByteSourceDescriptor } from "../../ir/index";
+import {
+  OSS_SOURCE_FACTS_CACHE_PARTITION,
+  type SourceFactsScope,
+} from "../../runtime";
 import { diagnosticMessage } from "../../utils/errors";
 import { episodeSourceFromByteSource } from "../session/episode-source";
 import { useEpisodeSession } from "../session/use-episode-session";
@@ -35,6 +39,12 @@ type ViewerError = {
   readonly target: "file" | "url";
 };
 
+const EXPLORER_SOURCE_FACTS_SCOPE: SourceFactsScope = {
+  cachePartition: OSS_SOURCE_FACTS_CACHE_PARTITION,
+  datasetId: "mcap-explorer",
+  mediaField: null,
+};
+
 const McapExplorerPanel: React.FC = () => {
   const [active, setActive] = useState<ActiveAnyMcapSource | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -44,7 +54,13 @@ const McapExplorerPanel: React.FC = () => {
   const dragDepthRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const episodeSource = useMemo(
-    () => (active ? episodeSourceFromByteSource(active.source) : null),
+    () =>
+      active
+        ? episodeSourceFromByteSource(
+            active.source,
+            EXPLORER_SOURCE_FACTS_SCOPE,
+          )
+        : null,
     [active],
   );
   const sessionState = useEpisodeSession(
@@ -209,6 +225,7 @@ const McapExplorerPanel: React.FC = () => {
             session={sessionState.session}
             sessionError={sessionState.error}
             source={active.source}
+            sourceFactsScope={EXPLORER_SOURCE_FACTS_SCOPE}
           />
         </div>
       ) : (

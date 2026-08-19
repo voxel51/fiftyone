@@ -94,10 +94,20 @@ function createResolvedRemoteMcapSourceDescriptor(
     fileName: sourceDisplayName(sourceIdentity) ?? "remote.mcap",
     source: {
       readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
-      sourceId: `remote-url:${sourceIdentity}`,
+      sourceId: `remote-url:${credentialFreeSourceIdentity(sourceIdentity)}`,
       url: href,
     },
   };
+}
+
+function credentialFreeSourceIdentity(value: string): string {
+  if (!/^https?:\/\//i.test(value)) return value.split(/[?#]/, 1)[0];
+  const url = new URL(value);
+  url.username = "";
+  url.password = "";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
 }
 
 function parseHttpUrl(
