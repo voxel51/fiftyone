@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.24.0
 --------------------------
-*Released August 18, 2026*
+*Released August 19, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.21.0 <release-notes-v1.21.0>`, plus:
 
@@ -18,6 +18,10 @@ Includes all updates from :ref:`FiftyOne 1.21.0 <release-notes-v1.21.0>`, plus:
   field names in the App
 - Embedding visualizations for multimodal datasets are discovered directly
   from MCAP inventories
+- A new Discussion panel in the episode sidebar lets teams discuss
+  multimodal episodes without leaving the viewer
+- License seat limits are now displayed and enforced accurately, including
+  unlimited license pools and downgrade confirmations
 - Labelers now only have access to samples included in a task assigned to
   them, and restricted viewers no longer see the History, Runs, and Manage
   tabs
@@ -26,11 +30,12 @@ Includes all updates from :ref:`FiftyOne 1.21.0 <release-notes-v1.21.0>`, plus:
   guided onboarding and interaction modes in the workflow canvas, and
   clearer error messages when a task action fails
 - Fixed an error that could prevent auto labeling runs from starting
+
 .. _release-notes-v1.21.0:
 
 FiftyOne 1.21.0
 ---------------
-*Released August 18, 2026*
+*Released August 19, 2026*
 
 App
 ^^^
@@ -68,9 +73,11 @@ App
   `#8220 <https://github.com/voxel51/fiftyone/pull/8220>`_,
   `#8189 <https://github.com/voxel51/fiftyone/pull/8189>`_,
   `#8222 <https://github.com/voxel51/fiftyone/pull/8222>`_
-- Annotation improvements: drag a cuboid's heading arrow to a different
-  face, 2D labels render on 3D annotate camera slices, and date pickers
-  use the App timezone
+- Annotation improvements: single-vertex polylines, fully hideable label
+  attributes, drag a cuboid's heading arrow to a different face, 2D labels
+  render on 3D annotate camera slices, and date pickers use the App
+  timezone
+  `#8242 <https://github.com/voxel51/fiftyone/pull/8242>`_,
   `#8146 <https://github.com/voxel51/fiftyone/pull/8146>`_,
   `#8151 <https://github.com/voxel51/fiftyone/pull/8151>`_,
   `#8092 <https://github.com/voxel51/fiftyone/pull/8092>`_
@@ -92,8 +99,6 @@ Performance
 
 Core
 ^^^^
-- Added Python 3.14 support, powered by a migration to PyMongo's async API
-  `#8212 <https://github.com/voxel51/fiftyone/pull/8212>`_
 - Operator view targets now handle group slices consistently
   `#8210 <https://github.com/voxel51/fiftyone/pull/8210>`_
 
@@ -101,6 +106,7 @@ Security
 ^^^^^^^^
 - Fixed an XSS vulnerability in the App via field descriptions
   `#8117 <https://github.com/voxel51/fiftyone/pull/8117>`_
+
 Plugins
 ^^^^^^^
 - Added a `reload_plugins` operator to refresh installed plugins without
@@ -113,7 +119,6 @@ Brain
   different Python versions, and failures surface actionable errors
   `#304 <https://github.com/voxel51/fiftyone-brain/pull/304>`_,
   `#301 <https://github.com/voxel51/fiftyone-brain/pull/301>`_
-
 
 FiftyOne Enterprise 2.23.1
 --------------------------
