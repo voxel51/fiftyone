@@ -38,17 +38,3 @@ export async function openEpisodePreviewSession(
   const adapter = await loadFormatAdapter(sample, options);
   return adapter?.openPreview?.(source, episodeByteResources, options) ?? null;
 }
-
-/** Advises an adapter to warm likely startup bytes when it supports prewarm. */
-export async function prewarmEpisodeSource(
-  sample: SampleDescriptor,
-  source: EpisodeSource,
-  signal?: AbortSignal,
-): Promise<boolean> {
-  const adapter = await loadFormatAdapter(sample, { signal });
-  if (!adapter?.prewarm) {
-    return false;
-  }
-  await adapter.prewarm(source, episodeByteResources, { signal });
-  return true;
-}

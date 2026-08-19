@@ -13,12 +13,12 @@ import type { ByteCacheBlockSizeBytes, ByteRangeReadRequest } from "./types";
  * by offset instead of adapting over time: edges fill small, the body
  * fills large.
  *
- * Zoning must be a pure function of offset (never of history) — every
- * worker lane, the prewarm client, and every session must agree on fill
- * shapes, because the fill locks and the persistent cache dedupe on exact
- * ranges. A count-based ramp was measured re-fetching 21% of wire bytes
- * purely from mixed 8/32 MiB grids; deterministic zones cannot mix. Zone
- * boundaries are multiples of the large block so the grids never overlap.
+ * Zoning must be a pure function of offset (never of history) — every worker
+ * lane and session must agree on fill shapes, because the fill locks and the
+ * persistent cache dedupe on exact ranges. A count-based ramp was measured
+ * re-fetching 21% of wire bytes purely from mixed 8/32 MiB grids;
+ * deterministic zones cannot mix. Zone boundaries are multiples of the
+ * large block so the grids never overlap.
  */
 
 const SMALL_ZONE_BLOCK_SIZE_BYTES = 8 * 1024 * 1024;
