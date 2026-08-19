@@ -10,10 +10,12 @@
 // plain .wav fetch, or a test double are all equally valid sources, which
 // is what lets a non-MCAP audio dataset reuse this whole path.
 //
-// SIMPLIFICATION: the loader is called once for the source's full extent
-// rather than paged against playhead demand. Audio is orders of magnitude
-// smaller than video per unit time; revisit with incremental loading if
-// very long recordings make full-buffer decode too slow or memory-heavy.
+// The loader is called once for the source's full extent, so memory scales
+// with recording length. This is the FALLBACK transport: prefer
+// `useAudioStreamPlayback`, which pages windowed reads through a bounded
+// ring. This path stays for contexts where streaming cannot run (no
+// `SharedArrayBuffer` off cross-origin isolation) and becomes deletable
+// once a port-transfer transport covers them.
 // ---------------------------------------------------------------------------
 
 import {
@@ -33,7 +35,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildChannelPeakPyramids, type PeakPyramid } from "./peak-pyramid";
 import type { AudioLoader, AudioMetadata } from "./types";
-import { audioProbe } from "./probe";
 
 /** Tolerance before the audio clock is re-anchored to the engine clock. */
 const DRIFT_TOLERANCE_S = 0.15;
@@ -155,13 +156,6 @@ export function useAudioPlayback({
       if (!buffer || !graph) return;
       stopPlayback();
       const { audioContext, gain } = graph;
-      audioProbe("startPlayback", {
-        trackId,
-        time,
-        contextState: audioContext.state,
-        gain: gain.gain.value,
-        gainConnected: gainConnectedRef.current,
-      });
       const source = audioContext.createBufferSource();
       source.buffer = buffer;
       source.connect(gain);
@@ -172,7 +166,7 @@ export function useAudioPlayback({
         engineTime: time,
       };
     },
-    [ensureAudioGraph, stopPlayback, trackId],
+    [ensureAudioGraph, stopPlayback],
   );
 
   // Load + prepare. One pass: PCM -> per-channel peaks -> AudioBuffer.
@@ -192,19 +186,6 @@ export function useAudioPlayback({
     void (async () => {
       const result = await load(controller.signal);
       if (cancelled) return;
-
-      audioProbe("load", {
-        trackId,
-        playback,
-        ok: result.ok,
-        ...(result.ok
-          ? {
-              channels: result.data.channels,
-              sampleRate: result.data.sampleRate,
-              samples: result.data.samples.length,
-            }
-          : { reason: result.reason, detail: result.detail }),
-      });
 
       if (!result.ok) {
         setHasAudio(result.reason !== "empty");
@@ -269,11 +250,6 @@ export function useAudioPlayback({
           }
         }
         audioBufferRef.current = buffer;
-        audioProbe("prepared", {
-          trackId,
-          bufferDuration: buffer.duration,
-          contextState: audioContext.state,
-        });
         setStatus("ready");
       } catch {
         setStatus("error");
