@@ -5,7 +5,9 @@ FiftyOne run-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import unittest
+from unittest import mock
 
 import fiftyone as fo
 
@@ -188,6 +190,155 @@ class RunTests(unittest.TestCase):
         run_info2 = dataset2.get_run_info("test")
 
         self.assertTrue(run_info1.timestamp < run_info2.timestamp)
+
+
+class ReferenceConnectionBootstrapTests(unittest.TestCase):
+    """Accessing a dataset document's references (runs, saved views,
+    workspaces) must bootstrap the DB connection before dereferencing — the
+    access may occur in a process without an established connection (e.g. a
+    cold process in API mode, or a worker that disconnected), and
+    mongoengine's dereference machinery does not establish the default
+    connection on its own.
+    """
+
+    @classmethod
+    def _field_classes(cls):
+        import fiftyone.core.fields as fof
+        import fiftyone.core.odm.dataset as food
+
+        # pylint: disable=no-member
+        return (
+            (food._ConnectedReferencesDictField, fof.DictField),
+            (food._ConnectedReferencesListField, fof.ListField),
+        )
+
+    def test_connected_fields_bootstrap_connection_first(self):
+        import fiftyone.core.odm.dataset as food
+
+        for field_cls, base_cls in self._field_classes():
+            manager = mock.Mock()
+            field = field_cls()
+
+            with (
+                mock.patch.object(
+                    food, "ensure_connection", manager.ensure_connection
+                ),
+                mock.patch.object(
+                    base_cls, "__get__", manager.super_get, create=True
+                ),
+            ):
+                field_cls.__get__(field, object(), object)
+
+            calls = [name for name, _, _ in manager.mock_calls]
+            self.assertIn("super_get", calls)
+            self.assertEqual(
+                calls[0],
+                "ensure_connection",
+                f"connection must be established before dereferencing; got {calls}",
+            )
+
+    def test_connected_fields_skip_class_access(self):
+        import fiftyone.core.odm.dataset as food
+
+        for field_cls, base_cls in self._field_classes():
+            manager = mock.Mock()
+            field = field_cls()
+
+            with (
+                mock.patch.object(
+                    food, "ensure_connection", manager.ensure_connection
+                ),
+                mock.patch.object(
+                    base_cls, "__get__", manager.super_get, create=True
+                ),
+            ):
+                field_cls.__get__(field, None, object)
+
+            calls = [name for name, _, _ in manager.mock_calls]
+            self.assertNotIn("ensure_connection", calls)
+
+    def test_dataset_reference_fields_use_connected_fields(self):
+        import fiftyone.core.odm.dataset as food
+
+        # pylint: disable=no-member
+        fields = food.DatasetDocument._fields
+
+        for name in (
+            "annotation_runs",
+            "brain_methods",
+            "evaluations",
+            "runs",
+        ):
+            self.assertIsInstance(
+                fields[name], food._ConnectedReferencesDictField, name
+            )
+
+        for name in ("saved_views", "workspaces"):
+            self.assertIsInstance(
+                fields[name], food._ConnectedReferencesListField, name
+            )
+
+    def _disconnect(self):
+        """Puts the process in the state a cold or freshly-forked worker sees
+        (fiftyone.core.map.process, fiftyone.utils.torch): mongoengine's
+        connection registry is empty and FiftyOne will reconnect lazily.
+
+        Unlike ``fiftyone.core.odm.database._disconnect()``, this does not
+        close the pymongo client, so handles held by other tests sharing this
+        process (e.g. package-scoped fixtures) keep working.
+        """
+        import mongoengine
+
+        import fiftyone.core.odm.database as fodb
+
+        mongoengine.disconnect_all()
+        fodb._client = None
+
+    @drop_datasets
+    def test_run_access_after_disconnect(self):
+        dataset = fo.Dataset()
+
+        config = dataset.init_run(foo="bar")
+        dataset.register_run("test", config)
+
+        results = dataset.init_run_results("test", spam="eggs")
+        dataset.save_run_results("test", results, cache=False)
+
+        # Reset the in-memory doc so the run references are raw DBRefs again
+        dataset.reload()
+
+        self._disconnect()
+
+        self.assertListEqual(dataset.list_runs(), ["test"])
+
+        # Disconnect again so that loading results also starts cold
+        dataset.reload()
+        self._disconnect()
+
+        results = dataset.load_run_results("test", cache=False)
+        self.assertEqual(results.spam, "eggs")
+
+    @drop_datasets
+    def test_saved_view_access_after_disconnect(self):
+        dataset = fo.Dataset()
+        dataset.save_view("test", dataset.limit(1))
+
+        dataset.reload()
+        self._disconnect()
+
+        self.assertListEqual(dataset.list_saved_views(), ["test"])
+        dataset.load_saved_view("test")
+
+    @drop_datasets
+    def test_workspace_access_after_disconnect(self):
+        dataset = fo.Dataset()
+        dataset.save_workspace("test", fo.Space())
+
+        dataset.reload()
+        self._disconnect()
+
+        self.assertListEqual(dataset.list_workspaces(), ["test"])
+        dataset.load_workspace("test")
 
 
 if __name__ == "__main__":
