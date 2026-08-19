@@ -3,6 +3,123 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.24.0
+--------------------------
+*Released August 19, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.21.0 <release-notes-v1.21.0>`, plus:
+
+- **Data Quality on every dataset shape**: the Data Quality panel now
+  supports patches views and grouped datasets — one board scans all image
+  slices — and loads dramatically faster on large datasets
+- **Automatic multimodal projections**: multimodal datasets no longer
+  require a projection manifest — SIGNALS and LABELS projections are
+  generated automatically, with organization-level defaults and readable
+  field names in the App
+- Embedding visualizations for multimodal datasets are discovered directly
+  from MCAP inventories
+- A new Discussion panel in the episode sidebar lets teams discuss
+  multimodal episodes without leaving the viewer
+- License seat limits are now displayed and enforced accurately, including
+  unlimited license pools and downgrade confirmations
+- Labelers now only have access to samples included in a task assigned to
+  them, and restricted viewers no longer see the History, Runs, and Manage
+  tabs
+- Annotation workflow improvements: task membership is frozen when a
+  workflow is created for all source types, a streamlined assignee picker,
+  guided onboarding and interaction modes in the workflow canvas, and
+  clearer error messages when a task action fails
+- Fixed an error that could prevent auto labeling runs from starting
+
+.. _release-notes-v1.21.0:
+
+FiftyOne 1.21.0
+---------------
+*Released August 19, 2026*
+
+App
+^^^
+- **Multimodal viewer upgrades**: a new right sidebar with Inspect and
+  Fields tabs, navigable transform graphs, alternate media field
+  rendering, live point-cloud counts, and faster sample navigation
+  `#8199 <https://github.com/voxel51/fiftyone/pull/8199>`_,
+  `#8227 <https://github.com/voxel51/fiftyone/pull/8227>`_,
+  `#8249 <https://github.com/voxel51/fiftyone/pull/8249>`_,
+  `#8244 <https://github.com/voxel51/fiftyone/pull/8244>`_,
+  `#8266 <https://github.com/voxel51/fiftyone/pull/8266>`_
+- Multimodal point clouds now render on machines without WebGPU via a
+  WebGL2 fallback
+  `#8276 <https://github.com/voxel51/fiftyone/pull/8276>`_
+- **Timeline playback**: sequence and absolute time modes, audio playback,
+  and a resizable track label column
+  `#8110 <https://github.com/voxel51/fiftyone/pull/8110>`_,
+  `#8040 <https://github.com/voxel51/fiftyone/pull/8040>`_,
+  `#8204 <https://github.com/voxel51/fiftyone/pull/8204>`_
+- **3D viewer**: Gaussian splat support, persistent render preferences
+  including node visibility, and batched cuboid rendering for large scenes
+  `#8062 <https://github.com/voxel51/fiftyone/pull/8062>`_,
+  `#8150 <https://github.com/voxel51/fiftyone/pull/8150>`_,
+  `#8124 <https://github.com/voxel51/fiftyone/pull/8124>`_
+- Patch label overlays in the grid and modal, with per-attribute
+  visibility toggles
+  `#8114 <https://github.com/voxel51/fiftyone/pull/8114>`_
+- Embeddings panel improvements: selection-scoped legend counts, legend
+  filtering for patch embeddings, run cards that distinguish sample and
+  patch runs, smoother pan/zoom, and color scheme support in the color-by
+  dropdown. Requires `fiftyone-brain>=0.24`
+  `#8221 <https://github.com/voxel51/fiftyone/pull/8221>`_,
+  `#8209 <https://github.com/voxel51/fiftyone/pull/8209>`_,
+  `#8218 <https://github.com/voxel51/fiftyone/pull/8218>`_,
+  `#8220 <https://github.com/voxel51/fiftyone/pull/8220>`_,
+  `#8189 <https://github.com/voxel51/fiftyone/pull/8189>`_,
+  `#8222 <https://github.com/voxel51/fiftyone/pull/8222>`_
+- Annotation improvements: single-vertex polylines, fully hideable label
+  attributes, drag a cuboid's heading arrow to a different face, 2D labels
+  render on 3D annotate camera slices, and date pickers use the App
+  timezone
+  `#8242 <https://github.com/voxel51/fiftyone/pull/8242>`_,
+  `#8146 <https://github.com/voxel51/fiftyone/pull/8146>`_,
+  `#8151 <https://github.com/voxel51/fiftyone/pull/8151>`_,
+  `#8092 <https://github.com/voxel51/fiftyone/pull/8092>`_
+- Wide embedded-document fields are now readable in the sidebar
+  `#8217 <https://github.com/voxel51/fiftyone/pull/8217>`_
+- A friendly error panel now appears when WebGL fails to initialize
+  `#7326 <https://github.com/voxel51/fiftyone/pull/7326>`_
+- Fixed a phantom last frame in video annotation playback
+  `#8202 <https://github.com/voxel51/fiftyone/pull/8202>`_
+- Fixed the grid flickering when rearranging panels
+  `#8192 <https://github.com/voxel51/fiftyone/pull/8192>`_
+- Fixed the patches modal briefly showing a full-App loading screen
+  `#8115 <https://github.com/voxel51/fiftyone/pull/8115>`_
+
+Performance
+^^^^^^^^^^^
+- Faster sidebar filters via parallelized aggregation reads
+  `#8121 <https://github.com/voxel51/fiftyone/pull/8121>`_
+
+Core
+^^^^
+- Operator view targets now handle group slices consistently
+  `#8210 <https://github.com/voxel51/fiftyone/pull/8210>`_
+
+Security
+^^^^^^^^
+- Fixed an XSS vulnerability in the App via field descriptions
+  `#8117 <https://github.com/voxel51/fiftyone/pull/8117>`_
+
+Plugins
+^^^^^^^
+- Added a `reload_plugins` operator to refresh installed plugins without
+  restarting the App
+  `#8118 <https://github.com/voxel51/fiftyone/pull/8118>`_
+
+Brain
+^^^^^
+- Incremental embedding updates now work across environments with
+  different Python versions, and failures surface actionable errors
+  `#304 <https://github.com/voxel51/fiftyone-brain/pull/304>`_,
+  `#301 <https://github.com/voxel51/fiftyone-brain/pull/301>`_
+
 FiftyOne Enterprise 2.23.1
 --------------------------
 *Released August 5, 2026*
