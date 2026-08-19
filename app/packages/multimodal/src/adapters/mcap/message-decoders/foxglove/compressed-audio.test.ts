@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { VISUALIZATION_KIND } from "../../../../ir/index";
-import type { CompressedAudioVisualization } from "../../../../ir/index";
+import type { EncodedAudioVisualization } from "../../../../ir/index";
 import {
   foxgloveCompressedAudioCdrDecoders,
   foxgloveCompressedAudioDecoder,
@@ -117,9 +117,9 @@ function compressedAudioMessage({
 
 function expectCompressedAudio(
   visualization: unknown,
-): CompressedAudioVisualization {
-  const audio = visualization as CompressedAudioVisualization | undefined;
-  if (audio?.kind !== VISUALIZATION_KIND.COMPRESSED_AUDIO) {
+): EncodedAudioVisualization {
+  const audio = visualization as EncodedAudioVisualization | undefined;
+  if (audio?.kind !== VISUALIZATION_KIND.ENCODED_AUDIO) {
     throw new Error("Expected compressed audio visualization");
   }
   return audio;
