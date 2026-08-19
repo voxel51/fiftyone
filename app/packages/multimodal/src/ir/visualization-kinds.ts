@@ -1,7 +1,7 @@
 /** Stable visual artifact kinds emitted by decoders. */
 export const VISUALIZATION_KIND = Object.freeze({
   CAMERA_CALIBRATION: "camera-calibration",
-  COMPRESSED_AUDIO: "compressed-audio",
+  ENCODED_AUDIO: "encoded-audio",
   ENCODED_IMAGE: "encoded-image",
   ENCODED_VIDEO: "encoded-video",
   GRID: "grid",
