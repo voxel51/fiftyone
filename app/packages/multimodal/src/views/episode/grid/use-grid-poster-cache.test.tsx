@@ -32,6 +32,24 @@ describe("useGridPosterCache", () => {
     expect(persistence.get).not.toHaveBeenCalled();
   });
 
+  it("falls back to persistence when a visible memory hit is evicted", async () => {
+    const persistence = persistenceHarness();
+    resetGridPosterPersistenceForTests(persistence);
+    resetGridPosterCacheForTests({ maxSizeBytes: 10_000 });
+    getGridPosterCache().put("evicted", entry([1]));
+
+    const { rerender, result } = renderHook(() =>
+      useGridPosterCache("evicted", true),
+    );
+    expect(result.current.status).toBe("hit");
+
+    getGridPosterCache().clear();
+    rerender();
+
+    await waitFor(() => expect(result.current.status).toBe("miss"));
+    expect(persistence.get).toHaveBeenCalledWith("evicted");
+  });
+
   it("hydrates visible misses and promotes the poster into memory", async () => {
     const read = deferred<GridPosterCacheEntry | null>();
     const persistence = persistenceHarness();

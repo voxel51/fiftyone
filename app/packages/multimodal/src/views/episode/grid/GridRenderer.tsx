@@ -159,6 +159,7 @@ export function GridRenderer({
     cachedPoster,
     freshness,
     hovered,
+    sourceId: source?.sourceId ?? null,
     visible,
   });
   const gridVideoPlayback = useGridVideoPlayback(source?.sourceId ?? null);
@@ -480,6 +481,7 @@ function usePreviewSessionDemand({
   cachedPoster,
   freshness,
   hovered,
+  sourceId,
   visible,
 }: {
   readonly cacheKey: string | null;
@@ -487,10 +489,15 @@ function usePreviewSessionDemand({
   readonly cachedPoster: GridPosterCacheEntry | null;
   readonly freshness: GridPosterFreshness | null;
   readonly hovered: boolean;
+  readonly sourceId: string | null;
   readonly visible: boolean;
 }): boolean {
   const [latched, setLatched] = useState(false);
   const diagnosticRef = useRef<string | null>(null);
+  const committedDemandRef = useRef<{
+    readonly demanded: boolean;
+    readonly sourceId: string | null;
+  }>({ demanded: false, sourceId: null });
   useEffect(() => {
     setLatched(false);
     diagnosticRef.current = null;
@@ -518,15 +525,31 @@ function usePreviewSessionDemand({
     }
   }, [cacheKey, cachedPoster, freshness, visible]);
 
-  if (!visible) return false;
-  if (!cachedPoster) {
+  let demanded = false;
+  if (!visible) {
+    demanded = false;
+  } else if (!cachedPoster) {
     // A disk hit is much cheaper than opening an MCAP preview session. Hover
-    // bypasses the wait so direct interaction always wins over cache I/O.
-    return hovered || cacheLookupStatus !== "loading";
+    // bypasses the wait so direct interaction always wins over cache I/O. An
+    // already-demanded same-source session stays open across key transitions.
+    demanded =
+      hovered ||
+      cacheLookupStatus !== "loading" ||
+      (committedDemandRef.current.demanded &&
+        committedDemandRef.current.sourceId === sourceId);
+  } else if (latched || hovered) {
+    demanded = true;
+  } else if (freshness !== null) {
+    demanded = freshness !== "fresh";
   }
-  if (latched || hovered) return true;
-  if (freshness === null) return false;
-  return freshness !== "fresh";
+
+  // This effect remembers committed demand so a new key can check persistent
+  // storage without disposing a reusable preview session for the same source.
+  useEffect(() => {
+    committedDemandRef.current = { demanded, sourceId };
+  }, [demanded, sourceId]);
+
+  return demanded;
 }
 
 function usePlaybackHoverIntent(

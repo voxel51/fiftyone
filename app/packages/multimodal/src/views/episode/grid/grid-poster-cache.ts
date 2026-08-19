@@ -332,11 +332,12 @@ function serializeGridPosterKey(parts: readonly (string | null)[]): string {
 }
 
 function encodedQueryValue(value: string, name: string): string | null {
-  const match = new RegExp(`(?:[?&])${name}=([^&#]*)`).exec(value);
-  if (!match) return null;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
+  const queryStart = value.indexOf("?");
+  if (queryStart < 0) return null;
+  const fragmentStart = value.indexOf("#", queryStart);
+  const query = value.slice(
+    queryStart + 1,
+    fragmentStart < 0 ? undefined : fragmentStart,
+  );
+  return new URLSearchParams(query).get(name);
 }

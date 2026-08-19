@@ -51,8 +51,16 @@ function createIndexedDbGridPosterPersistence(): GridPosterPersistence {
   let evictionChain = Promise.resolve();
 
   const open = () => {
-    databasePromise ??= openDatabase();
-    return databasePromise;
+    if (databasePromise) return databasePromise;
+    const invalidate = () => {
+      if (databasePromise === current) databasePromise = null;
+    };
+    const current = openDatabase(invalidate).then((database) => {
+      if (!database) invalidate();
+      return database;
+    });
+    databasePromise = current;
+    return current;
   };
 
   const read = async (
@@ -95,7 +103,13 @@ function createIndexedDbGridPosterPersistence(): GridPosterPersistence {
       const database = await open();
       if (!database) return;
       try {
-        await writeStoredEntry(database, key, entry, Date.now());
+        const totals = await writeStoredEntry(database, key, entry, Date.now());
+        if (
+          totals.entryCount <= DEFAULT_MAX_ENTRIES &&
+          totals.sizeBytes <= DEFAULT_MAX_SIZE_BYTES
+        ) {
+          return;
+        }
         // Serialize budget enforcement so a burst of poster captures cannot
         // race totals or run several cursor sweeps at once.
         evictionChain = evictionChain
@@ -128,7 +142,7 @@ export function resetGridPosterPersistenceForTests(
   singleton = persistence ?? createIndexedDbGridPosterPersistence();
 }
 
-function openDatabase(): Promise<IDBDatabase | null> {
+function openDatabase(onClose: () => void): Promise<IDBDatabase | null> {
   const factory = (globalThis as typeof globalThis & { indexedDB?: IDBFactory })
     .indexedDB;
   if (!factory) return Promise.resolve(null);
@@ -167,7 +181,11 @@ function openDatabase(): Promise<IDBDatabase | null> {
     };
     request.onsuccess = () => {
       const database = request.result;
-      database.onversionchange = () => database.close();
+      database.onclose = onClose;
+      database.onversionchange = () => {
+        database.close();
+        onClose();
+      };
       finish(database);
     };
     request.onerror = () => finish(null);
@@ -193,7 +211,7 @@ async function writeStoredEntry(
   key: GridPosterCacheKey,
   entry: GridPosterCacheEntry,
   lastAccessedAt: number,
-): Promise<void> {
+): Promise<StoredGridPosterTotals> {
   const transaction = database.transaction(
     [ENTRY_STORE, RECENCY_STORE, STATE_STORE],
     "readwrite",
@@ -211,7 +229,7 @@ async function writeStoredEntry(
   );
   const stored: StoredGridPosterEntry = {
     ...entry,
-    bytes: new Blob([entry.bytes.slice()], { type: entry.mimeType }),
+    bytes: new Blob([entry.bytes], { type: entry.mimeType }),
     streamSourceNames: [...entry.streamSourceNames],
     version: STORED_ENTRY_VERSION,
   };
@@ -221,15 +239,14 @@ async function writeStoredEntry(
     key,
     lastAccessedAt,
   } satisfies StoredGridPosterRecency);
-  state.put(
-    {
-      entryCount: totals.entryCount + (previous ? 0 : 1),
-      sizeBytes:
-        totals.sizeBytes - (previous?.byteLength ?? 0) + entry.bytes.byteLength,
-    } satisfies StoredGridPosterTotals,
-    TOTALS_KEY,
-  );
+  const nextTotals = {
+    entryCount: totals.entryCount + (previous ? 0 : 1),
+    sizeBytes:
+      totals.sizeBytes - (previous?.byteLength ?? 0) + entry.bytes.byteLength,
+  } satisfies StoredGridPosterTotals;
+  state.put(nextTotals, TOTALS_KEY);
   await transactionDone(transaction);
+  return nextTotals;
 }
 
 async function touchStoredEntry(

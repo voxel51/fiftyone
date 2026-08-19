@@ -94,6 +94,10 @@ const sourceHarness = vi.hoisted(() => ({
   byteSource: null as ByteSourceDescriptor | null,
 }));
 
+const gridStreamHarness = vi.hoisted(() => ({
+  selected: "__auto__",
+}));
+
 interface SnapshotRequest {
   readonly job: {
     readonly cameraPose?: unknown;
@@ -164,7 +168,7 @@ vi.mock("../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer", () => ({
 
 vi.mock("./grid-stream-state", () => ({
   GRID_STREAM_AUTO: "__auto__",
-  useGridSelectedStream: vi.fn(() => ["__auto__", vi.fn()]),
+  useGridSelectedStream: vi.fn(() => [gridStreamHarness.selected, vi.fn()]),
   useRegisterGridStreams: vi.fn(() => vi.fn()),
 }));
 
@@ -250,6 +254,7 @@ afterEach(() => {
   snapshotHarness.requests.length = 0;
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
+  gridStreamHarness.selected = "__auto__";
 });
 
 describe("GridRenderer", () => {
@@ -717,6 +722,22 @@ describe("GridRenderer", () => {
       enabled: false,
     });
     expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+  });
+
+  it("keeps same-source preview demand while a new stream key checks persistence", async () => {
+    sourceHarness.byteSource = {
+      sourceId: "stream-switch",
+      url: "https://example.test/stream-switch.mcap",
+    };
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    await waitFor(() =>
+      expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(true),
+    );
+
+    gridStreamHarness.selected = "/camera/rear";
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(true);
   });
 
   it("stays on the snapshot when the device budget denies going live", () => {

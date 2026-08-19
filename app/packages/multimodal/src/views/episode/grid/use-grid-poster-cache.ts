@@ -63,7 +63,7 @@ export function useGridPosterCache(
     return () => {
       active = false;
     };
-  }, [enabled, key]);
+  }, [enabled, key, memoryEntry]);
 
   if (!key || !enabled) return { entry: memoryEntry, status: "idle" };
   if (memoryEntry) return { entry: memoryEntry, status: "hit" };
