@@ -528,6 +528,14 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         // setActive — which downstream of the video tile's onLoadedData
         // re-seek manifested as a playhead jump to 0.
         if (e.detail === 0) return;
+        // The lane's own menu renders in a portal, so its items bubble up
+        // through the React tree while living outside this element's DOM
+        // subtree. A real left-click on "Move to start" therefore reached
+        // here and selected the track as a side-effect of seeking. The lane
+        // has always filtered these by containment; the row has to as well,
+        // and doing it here covers every menu item rather than asking each
+        // one to remember to stop propagating.
+        if (!e.currentTarget.contains(e.target as Node)) return;
         onTrackClick?.(e);
       }}
       data-track-id={id}

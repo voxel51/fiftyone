@@ -609,6 +609,51 @@ describe("TimelineTrack", () => {
       });
     });
 
+    // Menu items render in a portal: they bubble through the React tree while
+    // sitting outside the row's DOM subtree, so a real left-click on one used
+    // to reach the row root and select the track as a side-effect of seeking.
+    it("does not fire onTrackClick when a built-in menu item is clicked", () => {
+      const onTrackClick = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [interval],
+          onTrackClick,
+          eventMenuItems: [{ label: "Delete track", onSelect: vi.fn() }],
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+
+      fireEvent.contextMenu(bar);
+      fireEvent.click(screen.getByText("Move to start"), { detail: 1 });
+      expect(onTrackClick).not.toHaveBeenCalled();
+    });
+
+    it("does not fire onTrackClick when a custom menu item is clicked", () => {
+      const onTrackClick = vi.fn();
+      const onSelect = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [interval],
+          onTrackClick,
+          eventMenuItems: [{ label: "Delete track", onSelect }],
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+
+      fireEvent.contextMenu(bar);
+      fireEvent.click(screen.getByText("Delete track"), { detail: 1 });
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(onTrackClick).not.toHaveBeenCalled();
+    });
+
     it("does not fire onSelect for a disabled item", () => {
       const onSelect = vi.fn();
       const { container } = renderTrack({

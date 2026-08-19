@@ -2242,7 +2242,7 @@ __metadata:
     react: "catalog:"
     react-dom: "catalog:"
     react-is: "catalog:"
-    react-virtuoso: "npm:^4"
+    react-virtuoso: "npm:^4.12.5"
     typescript: "catalog:"
     typescript-eslint: "catalog:eslint9"
     vite: "catalog:"
@@ -16765,7 +16765,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-virtuoso@npm:^4":
+"react-virtuoso@npm:^4.12.5":
   version: 4.18.12
   resolution: "react-virtuoso@npm:4.18.12"
   peerDependencies:
