@@ -107,7 +107,7 @@ export function compressedAudioOutput({
     visualization: {
       bytes: data,
       format: displayFormat,
-      kind: VISUALIZATION_KIND.COMPRESSED_AUDIO,
+      kind: VISUALIZATION_KIND.ENCODED_AUDIO,
       ...(messageTimestamp !== undefined
         ? { timestampNs: messageTimestamp }
         : {}),

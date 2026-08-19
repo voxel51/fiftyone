@@ -104,7 +104,7 @@ async function framesToPcm(
       // so only accept a non-empty format.
       format ||= String(frame.output.attributes?.format ?? "");
       encodedBytes += Number(frame.output.attributes?.byteLength ?? 0);
-    } else if (visualization?.kind === VISUALIZATION_KIND.COMPRESSED_AUDIO) {
+    } else if (visualization?.kind === VISUALIZATION_KIND.ENCODED_AUDIO) {
       compressedChunks.push({
         bytes: visualization.bytes,
         format: visualization.format,

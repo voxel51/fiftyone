@@ -177,7 +177,7 @@ describe("useMcapAudioStream", () => {
               visualization: {
                 bytes: Uint8Array.of(1, 2, 3),
                 format: "opus",
-                kind: VISUALIZATION_KIND.COMPRESSED_AUDIO,
+                kind: VISUALIZATION_KIND.ENCODED_AUDIO,
               },
             },
             streamId: "audio-1",
@@ -299,7 +299,7 @@ describe("useMcapAudioStream", () => {
               visualization: {
                 bytes: Uint8Array.of(1, 2, 3),
                 format: "opus",
-                kind: VISUALIZATION_KIND.COMPRESSED_AUDIO,
+                kind: VISUALIZATION_KIND.ENCODED_AUDIO,
               },
             },
             streamId: "audio-1",

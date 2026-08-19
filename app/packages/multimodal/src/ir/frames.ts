@@ -96,17 +96,18 @@ export type ImageVisualization =
   | RawImageVisualization;
 
 /**
- * PCM samples decoded from a `foxglove.RawAudio` message. Typed-array
- * element type follows the message's own `format` field (`pcm-s16` →
- * `Int16Array`, etc.) — never force-normalized to `Float32Array` at this
- * layer, matching how `EncodedImage`/`RawImage` stay distinct rather than
- * being decoded eagerly here.
+ * Interleaved PCM samples decoded from one message. Typed-array element type
+ * follows the source PCM layout (signed 16-bit → `Int16Array`, etc.) — never
+ * force-normalized to `Float32Array` at this layer, matching how
+ * `EncodedImage`/`RawImage` stay distinct rather than being decoded eagerly
+ * here.
  */
 export interface RawAudioVisualization {
   readonly kind: typeof VISUALIZATION_KIND.RAW_AUDIO;
-  // Mirrors the PCM formats `samplesFromPcmBytes` produces (pcm-u8/s16/
-  // s32/f32). No decoder emits Int8Array, so it is deliberately absent —
-  // including it would widen the type for every consumer without cause.
+  // Mirrors the PCM layouts decoders actually produce (unsigned 8-bit,
+  // signed 16/32-bit, 32-bit float). No decoder emits Int8Array, so it is
+  // deliberately absent — including it would widen the type for every
+  // consumer without cause.
   readonly samples: Uint8Array | Int16Array | Int32Array | Float32Array;
   readonly sampleRate: number;
   readonly channels: number;
@@ -114,13 +115,18 @@ export interface RawAudioVisualization {
 }
 
 /**
- * Compressed audio bytes decoded from a `foxglove.CompressedAudio`
- * message, still in their source codec (e.g. "opus", "mp3", "aac") — PCM
- * decode happens downstream (Web Audio / WebCodecs `AudioDecoder`), not
- * in this decoder layer.
+ * Encoded audio access unit decoded from one message, still in its source
+ * codec (e.g. "opus", "mp3", "aac"). PCM decode happens downstream (Web Audio
+ * / WebCodecs `AudioDecoder`), not in this decoder layer — the same
+ * bytes-plus-`format` contract `EncodedVideoVisualization` uses.
+ *
+ * Deliberately flat: `EncodedVideoVisualization` carries a `codec`
+ * discriminant only because H.264 needs SPS/PPS alongside the bytes. No audio
+ * codec needs per-codec fields today, so adding one here would be
+ * speculative.
  */
-export interface CompressedAudioVisualization {
-  readonly kind: typeof VISUALIZATION_KIND.COMPRESSED_AUDIO;
+export interface EncodedAudioVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.ENCODED_AUDIO;
   readonly bytes: Uint8Array;
   readonly format: string;
   readonly timestampNs?: bigint;
@@ -129,7 +135,7 @@ export interface CompressedAudioVisualization {
 /** Audio visualizations accepted by the timeline's audio track pipeline. */
 export type AudioVisualization =
   | RawAudioVisualization
-  | CompressedAudioVisualization;
+  | EncodedAudioVisualization;
 
 /** Camera content routed to either the still ImagePanel or dedicated VideoPanel. */
 export type CameraVisualization =
