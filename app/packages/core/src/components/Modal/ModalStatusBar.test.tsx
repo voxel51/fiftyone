@@ -4,7 +4,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
-import { ThemeProvider } from "styled-components";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   ModalStatusBar,
@@ -12,13 +11,6 @@ import {
   StatusHelp,
   useModalStatusBar,
 } from "./ModalStatusBar";
-
-const theme = {
-  text: {
-    primary: "#fff",
-    secondary: "#aaa",
-  },
-};
 
 const helpContent = (
   <StatusHelp
@@ -40,10 +32,10 @@ const Registrar = ({ content }: { content: StatusContent }) => {
 
 const renderBar = (content: StatusContent) =>
   render(
-    <ThemeProvider theme={theme}>
+    <>
       <Registrar content={content} />
       <ModalStatusBar />
-    </ThemeProvider>,
+    </>,
   );
 
 describe("ModalStatusBar", () => {
