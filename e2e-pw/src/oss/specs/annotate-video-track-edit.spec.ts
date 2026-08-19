@@ -227,6 +227,8 @@ test.describe.serial("video annotation track editing", () => {
     // the editor opened — selection worked — but more than one autosave cycle
     // (3s) elapses with zero round-trips: a select is not an edit
     await expect(modal.sidebar.edit.backButton).toBeVisible();
+    // proving a negative requires outwaiting the autosave cycle
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(4000);
     expect(persists).toBe(0);
 

@@ -151,7 +151,8 @@ test.describe.serial("quickstart-groups", () => {
       await expect(modal.carousel).toBeVisible();
     });
 
-    // TODO FOEPD-3898 re-enable this test once its flakiness is resolved
+    // Flaky: the pcd canvas intermittently renders zero pixels after the
+    // explore -> annotate refresh
     test.skip("annotate pcd slice renders after refreshing from explore mode", async ({
       modal,
       grid,

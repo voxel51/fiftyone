@@ -107,7 +107,7 @@ export const PlaneCoordinateInputs = ({
         position: newPosition,
       }));
     },
-    [annotationPlane.position],
+    [annotationPlane.position, setAnnotationPlane],
   );
 
   const handleRotationChange = useCallback(
@@ -134,7 +134,7 @@ export const PlaneCoordinateInputs = ({
         quaternion: newQuaternion,
       }));
     },
-    [annotationPlane.quaternion],
+    [annotationPlane.quaternion, setAnnotationPlane],
   );
 
   if (!annotationPlane.enabled) {
@@ -238,7 +238,7 @@ export const VertexCoordinateInputs = ({
 
   const points3d = useMemo(() => {
     if (workingLabel && isPolyline3dOverlay(workingLabel)) {
-      return workingLabel.points3d;
+      return workingLabel.data.points3d;
     }
     return null;
   }, [workingLabel]);

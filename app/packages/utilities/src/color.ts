@@ -314,3 +314,175 @@ export const default_app_color = [
   "#cc33cc",
   "#777799",
 ];
+
+/**
+ * The App's curated continuous ramps, tuned for a dark canvas. The single
+ * home for these definitions: consumers (e.g. the embeddings plot's palette
+ * picker) read them from here and write a pick into the color scheme as a
+ * plain `{ value, color }` list — the same wire shape the color settings
+ * modal's list tab writes and the server resolves to rgb.
+ *
+ * None of these clip: the ends of a ramp are the true extremes. What a ramp
+ * changes is WHERE the perceptual contrast sits, which is the whole point
+ * when the interesting values are the rare ones at the edges.
+ */
+export interface ContinuousRamp {
+  label: string;
+  hint: string;
+  /** Evenly-spaced stops, 0-1 floats per channel. */
+  stops: readonly RGB[];
+  /** Anchors the MIDDLE stop at zero by making the consumer's value domain
+   * symmetric (±max(|min|, |max|)). Without it zero lands wherever it
+   * happens to fall, so a left turn and a right turn of equal size read as
+   * the same colour. */
+  diverging?: boolean;
+}
+
+export const CONTINUOUS_RAMPS = {
+  blueOrange: {
+    label: "Blue → orange",
+    hint: "Two-tone; extremes at the ends",
+    stops: [
+      [0.15, 0.4, 0.9],
+      [1.0, 0.65, 0.0],
+    ],
+  },
+  coolWarm: {
+    label: "Diverging (zero-centered)",
+    hint: "Signed data: zero is neutral, each direction its own hue",
+    diverging: true,
+    stops: [
+      [0.23, 0.3, 0.75],
+      [0.87, 0.87, 0.87],
+      [0.71, 0.02, 0.15],
+    ],
+  },
+  viridis: {
+    label: "Viridis",
+    hint: "Even contrast throughout; best when most values sit mid-range",
+    // Viridis sampled from its upper three quarters, not from zero. A dark
+    // canvas swallows canonical viridis' near-black start, and the lowest
+    // values — a whole end of the range — simply would not be there.
+    stops: [
+      [0.229, 0.322, 0.545],
+      [0.147, 0.47, 0.558],
+      [0.216, 0.667, 0.5],
+      [0.612, 0.858, 0.286],
+      [0.993, 0.906, 0.144],
+    ],
+  },
+  cool: {
+    label: "Cool",
+    hint: "Cyan → magenta; saturated at both ends",
+    stops: [
+      [0.0, 0.9, 1.0],
+      [1.0, 0.2, 0.95],
+    ],
+  },
+  spring: {
+    label: "Spring",
+    hint: "Magenta → yellow; saturated at both ends",
+    stops: [
+      [1.0, 0.1, 0.85],
+      [1.0, 0.95, 0.2],
+    ],
+  },
+  rainbow: {
+    label: "Rainbow",
+    hint: "Most separation between nearby values; ranks poorly by eye",
+    // Full-hue sweep, but lifted off pure red and pure blue: those are the
+    // two dark corners of a canonical rainbow (luminance 0.21 and 0.07) and
+    // they are what makes its ends vanish on a dark canvas.
+    //
+    // Brightness does NOT track value here — it rises, falls and rises
+    // again — so this shows WHICH values differ, not which is greater. That
+    // is the trade a rainbow makes, and the reason it is not the default.
+    stops: [
+      [1.0, 0.25, 0.25],
+      [1.0, 0.85, 0.1],
+      [0.25, 0.95, 0.35],
+      [0.2, 0.85, 1.0],
+      [0.55, 0.45, 1.0],
+    ],
+  },
+} satisfies Record<string, ContinuousRamp>;
+
+export type ContinuousRampId = keyof typeof CONTINUOUS_RAMPS;
+
+export const CONTINUOUS_RAMP_IDS = Object.keys(
+  CONTINUOUS_RAMPS,
+) as ContinuousRampId[];
+
+const rampChannelHex = (channel: number): string =>
+  Math.round(channel * 255)
+    .toString(16)
+    .padStart(2, "0");
+
+const rampStopHex = ([r, g, b]: RGB): string =>
+  `#${rampChannelHex(r)}${rampChannelHex(g)}${rampChannelHex(b)}`;
+
+/** A ramp's stops in the color scheme's `list` wire shape (evenly spaced). */
+export function rampList(
+  rampId: ContinuousRampId,
+): { value: number; color: string }[] {
+  const stops = CONTINUOUS_RAMPS[rampId].stops;
+  const span = Math.max(1, stops.length - 1);
+  return stops.map((stop, i) => ({
+    value: i / span,
+    color: rampStopHex(stop),
+  }));
+}
+
+/** A left-to-right CSS gradient of a whole ramp — one color stop per ramp
+ * stop, so the bar a picker row draws is the ramp the consumer gets. */
+export function rampGradient(rampId: ContinuousRampId): string {
+  const parts = rampList(rampId).map(
+    ({ value, color }) => `${color} ${value * 100}%`,
+  );
+  return `linear-gradient(90deg, ${parts.join(", ")})`;
+}
+
+/** Which ramp a scheme colorscale entry is, or null for a custom or absent
+ * one (e.g. a named scale or hand-edited list in the color settings modal). */
+export function rampIdForEntry(entry: unknown): ContinuousRampId | null {
+  const list = (entry as { list?: unknown } | null | undefined)?.list;
+  if (!Array.isArray(list)) return null;
+  for (const rampId of CONTINUOUS_RAMP_IDS) {
+    const stops = rampList(rampId);
+    if (
+      list.length === stops.length &&
+      stops.every(
+        (stop, i) =>
+          list[i] &&
+          Number(list[i].value) === stop.value &&
+          String(list[i].color).toLowerCase() === stop.color,
+      )
+    ) {
+      return rampId;
+    }
+  }
+  return null;
+}
+
+/** The domain a zero-centered read maps signed values through: symmetric
+ * (±max(|min|, |max|)) so the ramp's MIDDLE stop is zero. Untouched for
+ * data that does not cross zero. */
+export function divergingDomain(min: number, max: number): [number, number] {
+  if (min < 0 && max > 0) {
+    const m = Math.max(Math.abs(min), Math.abs(max)) || 1;
+    return [-m, m];
+  }
+  return [min, max];
+}
+
+/** The values a ramp's two ends stand for: a diverging ramp is symmetric
+ * about zero so its middle stop IS zero; every other ramp spans min..max.
+ * A legend reads its labels from here, so it cannot name a value at an end
+ * that end was never given. */
+export function rampDomain(
+  lo: number,
+  hi: number,
+  ramp: ContinuousRamp,
+): [number, number] {
+  return ramp.diverging ? divergingDomain(lo, hi) : [lo, hi];
+}

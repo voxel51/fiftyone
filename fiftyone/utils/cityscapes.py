@@ -424,7 +424,32 @@ def _parse_bbox_file(json_path):
         label = obj["label"]
         x, y, w, h = obj["bbox"]
         bounding_box = [x / width, y / height, w / width, h / height]
-        detection = fol.Detection(label=label, bounding_box=bounding_box)
+
+        attributes = {}
+
+        instance_id = obj.get("instanceId", None)
+        if instance_id is not None:
+            # Note: this is the raw Cityscapes annotation ID, which is
+            # unrelated to FiftyOne's own `instance` label tracking concept
+            attributes["cityscapes_instance_id"] = instance_id
+
+        bbox_vis = obj.get("bboxVis", None)
+        if bbox_vis is not None:
+            vx, vy, vw, vh = bbox_vis
+            attributes["visible_bounding_box"] = [
+                vx / width,
+                vy / height,
+                vw / width,
+                vh / height,
+            ]
+
+            full_area = w * h
+            if full_area > 0:
+                attributes["visibility_ratio"] = (vw * vh) / full_area
+
+        detection = fol.Detection(
+            label=label, bounding_box=bounding_box, **attributes
+        )
         detections.append(detection)
 
     return fol.Detections(detections=detections)

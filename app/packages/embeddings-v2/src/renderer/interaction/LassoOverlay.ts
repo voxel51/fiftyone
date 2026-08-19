@@ -1,5 +1,32 @@
-import { LASSO_COLOR } from "../constants";
+import { LASSO_COLOR, LASSO_MIN_EXTENT_PX } from "../constants";
 import type { Polygon } from "../types";
+
+/**
+ * Whether a finished gesture enclosed enough area to be a lasso. Three points
+ * is as few as can bound anything, but at the 3px move threshold that is ~6px
+ * of travel — inside the jitter of an ordinary click, which must stay a click.
+ */
+function isLassoGesture(polygon: Polygon): boolean {
+  if (polygon.length < 3) return false;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  // Twice the polygon's signed area (shoelace formula); zero means every
+  // point is collinear, so the "polygon" has no interior to select with
+  let signedArea2 = 0;
+  for (let i = 0; i < polygon.length; i++) {
+    const [x, y] = polygon[i];
+    const [nx, ny] = polygon[(i + 1) % polygon.length];
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+    signedArea2 += x * ny - nx * y;
+  }
+  if (signedArea2 === 0) return false;
+  return Math.hypot(maxX - minX, maxY - minY) >= LASSO_MIN_EXTENT_PX;
+}
 
 interface LassoCallbacks {
   /** Which pointer-downs begin a lasso (the camera adapter decides) */
@@ -91,7 +118,7 @@ export class LassoOverlay {
         this.polygon = [];
         this.path.setAttribute("d", "");
         callbacks.onComplete(
-          polygon.length >= 3 ? polygon : null,
+          isLassoGesture(polygon) ? polygon : null,
           event.offsetX,
           event.offsetY,
         );

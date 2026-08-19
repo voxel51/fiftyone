@@ -6,26 +6,58 @@
     "types": "./src/index.ts",
     "exports": {
         ".": "./src/index.ts",
+        "./ir": "./src/ir/index.ts",
+        "./ports": "./src/ports/index.ts",
+        "./runtime": "./src/runtime/index.ts",
+        "./runtime/react": "./src/runtime/react/index.ts",
+        "./scene-inventory": "./src/scene-inventory/index.ts",
+        "./scene-inventory/react": "./src/scene-inventory/react/index.ts",
         "./query": "./src/query/index.ts",
         "./query/bytes": "./src/query/bytes/index.ts",
-        "./query/decode": "./src/query/decode/index.ts",
+        "./query/decoding": "./src/query/decoding/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./temporal-tags": "./src/temporal-tags/index.ts",
+        "./temporal-tags/grid-overlay": "./src/temporal-tags/TemporalTagGridOverlay.tsx",
         "./inject": "./src/inject/index.ts",
-        "./adapters/mcap": "./src/adapters/mcap/index.ts",
-        "./adapters/mcap/react/TemporalTagGridOverlay": "./src/adapters/mcap/react/TemporalTagGridOverlay.tsx",
+        "./extensions/mcap-explorer": "./src/extensions/mcap-explorer/index.ts",
+        "./extensions/timeline": "./src/extensions/timeline/index.ts",
+        "./extensions/timeline/runtime": "./src/extensions/timeline/runtime.ts",
+        "./extensions/tiles": "./src/extensions/tiles/index.ts",
+        "./extensions/tiles/runtime": "./src/extensions/tiles/runtime.ts",
         "./schemas/v1": "./src/schemas/v1/index.ts",
         "./visualization": "./src/visualization/index.ts",
-        "./visualization/panels/image": "./src/visualization/panels/image.tsx",
-        "./visualization/panels/point-cloud": "./src/visualization/panels/point-cloud/index.ts"
+        "./visualization/composition": "./src/visualization/composition/index.ts",
+        "./visualization/media-2d": "./src/visualization/media-2d/ImagePanel.tsx",
+        "./visualization/scene-3d": "./src/visualization/scene-3d/index.ts"
     },
     "typesVersions": {
         "*": {
+            "ir": [
+                "src/ir/index.ts"
+            ],
+            "ports": [
+                "src/ports/index.ts"
+            ],
+            "runtime": [
+                "src/runtime/index.ts"
+            ],
+            "runtime/react": [
+                "src/runtime/react/index.ts"
+            ],
+            "scene-inventory": [
+                "src/scene-inventory/index.ts"
+            ],
+            "scene-inventory/react": [
+                "src/scene-inventory/react/index.ts"
+            ],
             "decoders": [
                 "src/decoders/index.ts"
             ],
             "temporal-tags": [
                 "src/temporal-tags/index.ts"
+            ],
+            "temporal-tags/grid-overlay": [
+                "src/temporal-tags/TemporalTagGridOverlay.tsx"
             ],
             "query": [
                 "src/query/index.ts"
@@ -33,17 +65,26 @@
             "query/bytes": [
                 "src/query/bytes/index.ts"
             ],
-            "query/decode": [
-                "src/query/decode/index.ts"
+            "query/decoding": [
+                "src/query/decoding/index.ts"
             ],
             "inject": [
                 "src/inject/index.ts"
             ],
-            "adapters/mcap": [
-                "src/adapters/mcap/index.ts"
+            "extensions/mcap-explorer": [
+                "src/extensions/mcap-explorer/index.ts"
             ],
-            "adapters/mcap/react/TemporalTagGridOverlay": [
-                "src/adapters/mcap/react/TemporalTagGridOverlay.tsx"
+            "extensions/timeline": [
+                "src/extensions/timeline/index.ts"
+            ],
+            "extensions/timeline/runtime": [
+                "src/extensions/timeline/runtime.ts"
+            ],
+            "extensions/tiles": [
+                "src/extensions/tiles/index.ts"
+            ],
+            "extensions/tiles/runtime": [
+                "src/extensions/tiles/runtime.ts"
             ],
             "schemas/v1": [
                 "src/schemas/v1/index.ts"
@@ -51,17 +92,22 @@
             "visualization": [
                 "src/visualization/index.ts"
             ],
-            "visualization/panels/image": [
-                "src/visualization/panels/image.tsx"
+            "visualization/composition": [
+                "src/visualization/composition/index.ts"
             ],
-            "visualization/panels/point-cloud": [
-                "src/visualization/panels/point-cloud/index.ts"
+            "visualization/media-2d": [
+                "src/visualization/media-2d/ImagePanel.tsx"
+            ],
+            "visualization/scene-3d": [
+                "src/visualization/scene-3d/index.ts"
             ]
         }
     },
     "scripts": {
         "lint": "yarn check",
-        "check": "yarn check:lint && yarn check:deps && yarn check:types",
+        "check": "concurrently -g \"yarn:check:lint\" \"yarn:check:deps\" \"yarn:check:architecture\" \"yarn:check:bounded-reads\" \"yarn:check:types\"",
+        "check:architecture": "node ./scripts/check-architecture.mjs",
+        "check:bounded-reads": "node ./scripts/check-bounded-reads.mjs",
         "check:types": "node ./scripts/check-types.mjs",
         "check:lint": "node ./scripts/check-lint.mjs",
         "check:deps": "node ./scripts/check-deps.mjs"
@@ -70,32 +116,51 @@
         "@bufbuild/protobuf": "^2.11.0",
         "@date-fns/tz": "^1.5.0",
         "@fiftyone/components": "*",
+        "@fiftyone/playback": "workspace:*",
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",
         "@fiftyone/tiling": "*",
         "@fiftyone/utilities": "*",
+        "@foxglove/crc": "^0.0.3",
         "@foxglove/ros2idl-parser": "^0.3.6",
         "@foxglove/rosmsg": "^5.0.5",
         "@foxglove/rosmsg-serialization": "^2.1.2",
         "@foxglove/rosmsg2-serialization": "^3.1.2",
-        "@mcap/core": "^2.2.1",
+        "@mcap/core": "patch:@mcap/core@npm%3A2.2.1#~/.yarn/patches/@mcap-core-npm-2.2.1-fdbe7fc61b.patch",
         "@mcap/support": "^1.1.0",
+        "@mui/icons-material": "catalog:",
         "@react-three/drei": "9.105.4",
-        "@react-three/fiber": "^8.18.0",
-        "@voxel51/voodo": "^0.1.0",
-        "buffer": "^6.0.3",
-        "colormap": "^2.3.2",
+        "@react-three/fiber": "catalog:",
+        "@voxel51/voodo": "catalog:",
+        "@xyflow/react": "^12.4.4",
+        "buffer": "catalog:",
+        "colormap": "catalog:",
         "date-fns": "^4.1.0",
-        "jotai": "^2.9.3",
-        "lru-cache": "^11.0.1",
+        "hyparquet": "^1.26.2",
+        "jotai": "catalog:",
+        "lru-cache": "catalog:",
         "maplibre-gl": "^4.7.1",
         "meshoptimizer": "^0.22.0",
+        "mp4box": "^2.4.1",
         "protobufjs": "^7.6.4",
         "three": "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch",
         "uplot": "^1.6.32"
     },
     "devDependencies": {
+        "@types/react": "catalog:",
         "@types/three": "^0.182.0",
-        "vite-plugin-relay": "^2.0.0"
+        "babel-plugin-relay": "catalog:",
+        "concurrently": "^7.2.1",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-error-boundary": "catalog:",
+        "react-is": "catalog:",
+        "react-relay": "catalog:",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "catalog:",
+        "styled-components": "catalog:",
+        "vite": "catalog:",
+        "vite-plugin-relay": "catalog:"
     }
 }

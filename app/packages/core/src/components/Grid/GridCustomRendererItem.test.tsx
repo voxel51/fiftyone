@@ -1,13 +1,20 @@
-import { fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import {
   __resetGridCustomRendererFailoverForTests,
   getGridCustomRendererFailover,
   modalSelector,
 } from "@fiftyone/state";
+import { registerMcapGridOverlay } from "@fiftyone/multimodal/extensions/timeline";
 import React from "react";
 import { RecoilRoot } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
+
+// The multimodal guard also mounts the temporal-tag overlay, which reaches
+// for an mcap source these tests do not build
+vi.mock("@fiftyone/multimodal/temporal-tags/grid-overlay", () => ({
+  TemporalTagGridOverlay: () => null,
+}));
 
 vi.mock("./GridTagBubbles", () => ({
   default: ({ sample }: { sample?: { filepath?: string } }) => (
@@ -64,6 +71,120 @@ describe("GridCustomRendererItem", () => {
   afterEach(() => {
     __resetGridCustomRendererFailoverForTests();
     consoleErrorSpy.mockRestore();
+  });
+
+  it("renders registered mcap overlays inside the multimodal guard", async () => {
+    const unregister = registerMcapGridOverlay(() => (
+      <div data-testid="registered-overlay" />
+    ));
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    let looker: GridCustomRendererItem | undefined;
+    try {
+      looker = new GridCustomRendererItem({
+        pluginName: "mcap-renderer",
+        Renderer: () => <div data-testid="renderer" />,
+        RecoilBridge: TestBridge,
+        ctx: {
+          ...BASE_CTX,
+          media: { ...BASE_CTX.media, mediaType: "multimodal" },
+        } as any,
+        symbol: BASE_SYMBOL,
+      });
+      looker.attach(host, [200, 120], 12);
+
+      await waitFor(() => {
+        expect(
+          host.querySelector("[data-testid='registered-overlay']"),
+        ).toBeTruthy();
+      });
+    } finally {
+      looker?.destroy();
+      unregister();
+      host.remove();
+    }
+  });
+
+  it("renders no edition overlay before anything registers", async () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    let looker: GridCustomRendererItem | undefined;
+    try {
+      looker = new GridCustomRendererItem({
+        pluginName: "mcap-renderer",
+        Renderer: () => <div data-testid="renderer" />,
+        RecoilBridge: TestBridge,
+        ctx: {
+          ...BASE_CTX,
+          media: { ...BASE_CTX.media, mediaType: "multimodal" },
+        } as any,
+        symbol: BASE_SYMBOL,
+      });
+      looker.attach(host, [200, 120], 12);
+
+      await waitFor(() => {
+        expect(host.querySelector("[data-testid='renderer']")).toBeTruthy();
+      });
+      expect(
+        host.querySelector("[data-testid='registered-overlay']"),
+      ).toBeNull();
+    } finally {
+      looker?.destroy();
+      host.remove();
+    }
+  });
+
+  it("keeps a still-registered overlay mounted when an earlier one unregisters", async () => {
+    const secondMounts = vi.fn();
+    const First = () => <div data-testid="overlay-first" />;
+    const Second = () => {
+      React.useEffect(() => {
+        secondMounts();
+      }, []);
+      return <div data-testid="overlay-second" />;
+    };
+    const unregisterFirst = registerMcapGridOverlay(First);
+    const unregisterSecond = registerMcapGridOverlay(Second);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    let looker: GridCustomRendererItem | undefined;
+    try {
+      looker = new GridCustomRendererItem({
+        pluginName: "mcap-renderer",
+        Renderer: () => <div data-testid="renderer" />,
+        RecoilBridge: TestBridge,
+        ctx: {
+          ...BASE_CTX,
+          media: { ...BASE_CTX.media, mediaType: "multimodal" },
+        } as any,
+        symbol: BASE_SYMBOL,
+      });
+      looker.attach(host, [200, 120], 12);
+
+      await waitFor(() => {
+        expect(
+          host.querySelector("[data-testid='overlay-second']"),
+        ).toBeTruthy();
+      });
+      // Settle any renders unrelated to the registry change below before
+      // taking the baseline — this asserts no ADDITIONAL mount happens once
+      // the first overlay unregisters, not that mounting never happens at all
+      const mountsBeforeUnregister = secondMounts.mock.calls.length;
+
+      unregisterFirst();
+
+      await waitFor(() => {
+        expect(host.querySelector("[data-testid='overlay-first']")).toBeNull();
+      });
+      expect(host.querySelector("[data-testid='overlay-second']")).toBeTruthy();
+      // An index-keyed list would shift the second overlay into the first's
+      // old slot and remount it; a reference-keyed one does not
+      expect(secondMounts).toHaveBeenCalledTimes(mountsBeforeUnregister);
+    } finally {
+      looker?.destroy();
+      unregisterSecond();
+      host.remove();
+    }
   });
 
   it("mounts plugin renderer and leaves dataset fail-open disabled on success", async () => {
@@ -369,6 +490,179 @@ describe("GridCustomRendererItem", () => {
     ).toBe(false);
 
     looker.destroy();
+    host.remove();
+  });
+
+  it("shows selected on attach when isSampleSelected reports selected, without requiring hover", async () => {
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    const isSampleSelected = vi.fn(() => true);
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+      isSampleSelected,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [200, 120], 12);
+
+    await waitFor(() => {
+      expect(getSelectControl(host)?.getAttribute("title")).toBe("Selected");
+    });
+    expect(isSampleSelected).toHaveBeenCalledWith("sample-id");
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("reconciles a stale local selected flag against the true selection state on reattach from the cache", async () => {
+    // Regression test for the multimodal-grid shift-select bug: an item that
+    // scrolls offscreen stays alive in the grid's cache and stops receiving
+    // updateOptions() calls (those only reach currently shown rows), so its
+    // local `selected` flag can go stale relative to the real selection.
+    // Reattaching (e.g. scrolling back into view) must reconcile against the
+    // live source of truth instead of repainting the stale value.
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    let currentlySelected = false;
+    const isSampleSelected = vi.fn(() => currentlySelected);
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+      isSampleSelected,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [200, 120], 12);
+    await waitFor(() => {
+      expect(host.querySelector("[data-testid='renderer']")).toBeTruthy();
+    });
+    expect(getSelectControl(host)).toBeNull();
+
+    // Item scrolls offscreen (but stays cached, not destroyed) and gets
+    // selected for real while hidden — no updateOptions() call reaches it.
+    looker.detach();
+    currentlySelected = true;
+
+    // Item scrolls back into view: the cache reattaches the same instance.
+    looker.attach(host, [200, 120], 12);
+
+    await waitFor(() => {
+      expect(getSelectControl(host)?.getAttribute("title")).toBe("Selected");
+    });
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("reconciles a stale locally-selected flag back to unselected on reattach", async () => {
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    let currentlySelected = true;
+    const isSampleSelected = vi.fn(() => currentlySelected);
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+      isSampleSelected,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [200, 120], 12);
+    await waitFor(() => {
+      expect(getSelectControl(host)?.getAttribute("title")).toBe("Selected");
+    });
+
+    looker.detach();
+    currentlySelected = false;
+    looker.attach(host, [200, 120], 12);
+
+    await waitFor(() => {
+      expect(getSelectControl(host)).toBeNull();
+    });
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("does not reconcile selection on attach when isSampleSelected is not provided", async () => {
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [200, 120], 12);
+
+    await waitFor(() => {
+      expect(host.querySelector("[data-testid='renderer']")).toBeTruthy();
+    });
+    expect(getSelectControl(host)).toBeNull();
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("survives a destroy() from inside a React effect cleanup", async () => {
+    // How the grid actually destroys items: the looker cache evicts during a
+    // render, so destroy() lands in an effect cleanup while React is mid-commit
+    // — unmounting the plugin's own root from there warned and raced the commit
+    const rendererUnmounted = vi.fn();
+    const TestRenderer = () => {
+      React.useEffect(() => () => rendererUnmounted(), [rendererUnmounted]);
+      return <div data-testid="rendered" />;
+    };
+    const looker = new GridCustomRendererItem({
+      pluginName: "renderer",
+      Renderer: TestRenderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    looker.attach(host, [320, 180], 14);
+
+    await waitFor(() =>
+      expect(host.querySelector("[data-testid='rendered']")).toBeTruthy(),
+    );
+
+    const Evictor = () => {
+      React.useEffect(() => () => looker.destroy(), []);
+      return <div data-testid="evictor" />;
+    };
+    const { unmount } = render(
+      <TestBridge>
+        <Evictor />
+      </TestBridge>,
+    );
+
+    unmount();
+    // The deferred unmount has to actually happen, not merely be postponed
+    await waitFor(() => expect(rendererUnmounted).toHaveBeenCalledTimes(1));
+
+    expect(
+      consoleErrorSpy.mock.calls.some((call) =>
+        call.some(
+          (arg) =>
+            typeof arg === "string" && arg.includes("synchronously unmount"),
+        ),
+      ),
+    ).toBe(false);
+
     host.remove();
   });
 });

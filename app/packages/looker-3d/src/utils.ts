@@ -10,6 +10,7 @@ import {
   Plane,
   Quaternion,
   type Raycaster,
+  type Vector2,
   type Scene,
   Vector3,
   type Vector3Tuple,
@@ -118,6 +119,7 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
 
   let meshCount = 0;
   let pointcloudCount = 0;
+  let splatCount = 0;
   let shapeCount = 0;
   let unknownCount = 0;
 
@@ -126,6 +128,8 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
       meshCount += 1;
     } else if (child._type.endsWith("PointCloud")) {
       pointcloudCount += 1;
+    } else if (child._type === "GaussianSplat") {
+      splatCount += 1;
     } else if (child._type.endsWith("Geometry")) {
       shapeCount += 1;
     } else {
@@ -136,6 +140,7 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
       const childSummary = getFiftyoneSceneSummary(child);
       meshCount += childSummary.meshCount;
       pointcloudCount += childSummary.pointcloudCount;
+      splatCount += childSummary.splatCount;
       shapeCount += childSummary.shapeCount;
       unknownCount += childSummary.unknownCount;
     }
@@ -144,6 +149,7 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
   return {
     meshCount,
     pointcloudCount,
+    splatCount,
     shapeCount,
     unknownCount,
   };
@@ -419,7 +425,7 @@ export function getPlaneIntersection(
   ndc: { x: number; y: number },
   plane: Plane,
 ): Vector3 | null {
-  raycaster.setFromCamera(ndc as any, camera);
+  raycaster.setFromCamera(ndc as Vector2, camera);
   const point = new Vector3();
   if (raycaster.ray.intersectPlane(plane, point)) {
     return point;

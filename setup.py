@@ -10,7 +10,7 @@ Installs FiftyOne.
 import os
 from setuptools import setup, find_packages
 
-VERSION = "1.20.1"
+VERSION = "1.21.0"
 
 
 def get_version():
@@ -96,9 +96,9 @@ setup(
         "scikit-image<1",
         "scipy<2",
         # internal packages
-        "fiftyone-brain>=0.23.0,<0.24",
+        "fiftyone-brain>=0.24.0,<0.25",
         "fiftyone-db>=0.4,<2.0",
-        "voxel51-eta>=0.16.0,<0.17",
+        "voxel51-eta>=0.17,<0.18",
     ],
     include_package_data=True,
     classifiers=[

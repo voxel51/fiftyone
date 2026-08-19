@@ -13,6 +13,7 @@ import Similarity from "../../Actions/Similarity";
 import Tag from "../../Actions/Tag";
 import ToggleSidebar from "../../Actions/ToggleSidebar";
 import { useModalContext } from "../hooks";
+import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import GroupVisibility from "./GroupVisibility";
 import HiddenLabels from "./HiddenLabels";
 import ToggleFullscreen from "./ToggleFullscreen";
@@ -78,6 +79,7 @@ export default () => {
   const isActualGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
   const isFullScreen = useRecoilValue(fos.fullscreen);
+  const isMultimodal = fos.useIsMediaType(MEDIA_TYPE_MULTIMODAL);
   const mode = useAtomValue(modalMode);
   const isGroup = useMemo(
     () => isActualGroup || isDynamicGroup,
@@ -111,7 +113,9 @@ export default () => {
         <BrowseOperations modal />
         <OperatorPlacements modal place={types.Places.SAMPLES_VIEWER_ACTIONS} />
         <ToggleFullscreen />
-        <ToggleSidebar modal />
+        {/* multimodal owns its own right panel and never mounts the classic
+            sidebar, so there's nothing for this to toggle there */}
+        {!isMultimodal && <ToggleSidebar modal />}
       </Container>
     </Draggable>
   );

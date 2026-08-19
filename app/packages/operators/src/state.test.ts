@@ -34,7 +34,7 @@ vi.mock("@fiftyone/state", async () => {
     useBrowserStorage: (_key: string, defaultValue: unknown) =>
       useState(defaultValue),
     useNotification: vi.fn(() => vi.fn()),
-    getBrowserStorageEffectForKey: vi.fn(() => () => {}),
+    getBrowserStorageEffectForKey: vi.fn(() => () => undefined),
     modal: null,
     datasetName: null,
     view: null,

@@ -6,7 +6,8 @@ import {
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { TemporalTagGridOverlay } from "@fiftyone/multimodal/adapters/mcap/react/TemporalTagGridOverlay";
+import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/timeline";
+import { TemporalTagGridOverlay } from "@fiftyone/multimodal/temporal-tags/grid-overlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
@@ -22,6 +23,13 @@ type GridCustomRendererItemConfig = {
   ctx: SampleRendererRenderContext;
   clickBehavior?: SampleRendererGridClickBehavior;
   symbol: ID;
+  /**
+   * Synchronous lookup against the true `selectedSamples` source of truth,
+   * used to reconcile this item's local `selected` flag when it's reattached
+   * from the cache (`attach()`), since offscreen cached items don't receive
+   * `updateOptions()` calls while hidden.
+   */
+  isSampleSelected?: (sampleId: string) => boolean;
 };
 
 /** Dimensions as [width, height] in pixels. */
@@ -228,6 +236,40 @@ const GridCustomRendererWrapper = ({
   );
 };
 
+// Keyed by the overlay's own reference (stable per registration), not its
+// position in the registry's array — an earlier overlay unregistering must
+// not shift a later one's key and force it to remount.
+const overlayIds = new WeakMap<
+  React.ComponentType<SampleRendererProps>,
+  number
+>();
+let nextOverlayId = 0;
+function overlayKey(overlay: React.ComponentType<SampleRendererProps>): number {
+  let id = overlayIds.get(overlay);
+  if (id === undefined) {
+    id = nextOverlayId++;
+    overlayIds.set(overlay, id);
+  }
+  return id;
+}
+
+/** Edition-registered grid-tile overlays (rendered inside the multimodal
+ * guard); nothing renders before anything registers. */
+const McapGridOverlays = ({
+  ctx,
+}: {
+  readonly ctx: SampleRendererRenderContext;
+}) => {
+  const overlays = useMcapGridOverlays();
+  return (
+    <>
+      {overlays.map((Overlay) => (
+        <Overlay key={overlayKey(Overlay)} ctx={ctx} />
+      ))}
+    </>
+  );
+};
+
 const GridCustomRenderer = ({
   Renderer,
   ctx,
@@ -353,7 +395,10 @@ export class GridCustomRendererItem {
             <div style={FOOTER_STYLES}>
               <GridTagBubbles sample={sample} />
               {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
-                <TemporalTagGridOverlay ctx={ctx} />
+                <>
+                  <TemporalTagGridOverlay ctx={ctx} />
+                  <McapGridOverlays ctx={ctx} />
+                </>
               ) : null}
             </div>
           </GridCustomRendererWrapper>
@@ -362,10 +407,14 @@ export class GridCustomRendererItem {
     );
   }
 
+  private getSampleId(): string {
+    const sample = this.config.ctx.sample?.sample;
+    return sample?._id ?? sample?.["id"] ?? this.config.symbol.description;
+  }
+
   private getSelectionPayload(event: React.MouseEvent<HTMLButtonElement>) {
     const sample = this.config.ctx.sample?.sample;
-    const sampleId =
-      sample?._id ?? sample?.["id"] ?? this.config.symbol.description;
+    const sampleId = this.getSampleId();
 
     return buildThumbnailSelectionDetail({
       id: sampleId,
@@ -455,6 +504,26 @@ export class GridCustomRendererItem {
       resolvedElement.replaceChildren(this.hostElement);
     }
 
+    // Reconcile against the true selection state on (re)attach: while this
+    // item was scrolled offscreen it stayed alive in the grid's cache but
+    // stopped receiving updateOptions() calls (those only reach currently
+    // shown rows), so its local `selected` flag can be stale relative to the
+    // real selectedSamples atom.
+    //
+    // Known trade-off: the selection click handler applies its toggle to
+    // `this.selected` optimistically, before the Recoil write it dispatches
+    // has actually committed (that round-trip is async). If this exact
+    // instance were detached and reattached inside that narrow window, this
+    // reconciliation would read the not-yet-committed snapshot and revert the
+    // optimistic toggle. In practice a reattach is driven by scroll/relayout,
+    // which cannot happen inside the same microtask window as the click, so
+    // this hasn't been observed — flagging for future readers rather than
+    // guarding against it, since a guard would have to reintroduce the same
+    // staleness this reconciliation exists to fix.
+    if (this.config.isSampleSelected) {
+      this.selected = this.config.isSampleSelected(this.getSampleId());
+    }
+
     this.renderPluginRenderer();
     this.loaded = true;
     this.dispatchEvent("load");
@@ -478,8 +547,20 @@ export class GridCustomRendererItem {
   }
 
   private unmountPluginRenderer() {
-    this.pluginRoot?.unmount();
+    const root = this.pluginRoot;
     this.pluginRoot = null;
+
+    if (!root) {
+      return;
+    }
+
+    // Deferred out of the caller's stack: destroy() runs from the grid cache's
+    // eviction, which fires inside a React effect cleanup, and unmounting
+    // another root from there races the commit React is still finishing
+    // ("Attempted to synchronously unmount a root while React was already
+    // rendering"). The host element is detached before this, so nothing of the
+    // renderer is on screen while the unmount waits.
+    setTimeout(() => root.unmount(), 0);
   }
 
   updateOptions(options: unknown, disableReload?: boolean) {

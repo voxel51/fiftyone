@@ -1,8 +1,10 @@
 import { setFetchFunction } from "@fiftyone/utilities";
-import { MCAP_READ_CANCELLED_MESSAGE, mcapErrorMessage } from "../errors";
+import { errorMessage } from "../../../utils/errors";
+import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
 import {
   isMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerStreamRequest,
+  runMcapPlaybackWorkerSynchronizedRequest,
   runMcapPlaybackWorkerUnaryRequest,
 } from "./playback-worker-rpc";
 import {
@@ -10,6 +12,11 @@ import {
   type McapPlaybackWorkerRunContext,
 } from "./playback-worker-scheduler";
 import type { ByteReadDebugLog } from "../../../query/bytes";
+import {
+  emptyMcapBoundedReadUsage,
+  isMcapBoundedReadCancelledError,
+  McapBoundedReadCancelledError,
+} from "../reader/bounded-read-cancellation";
 import { createMcapTransportMeter } from "./transport-meter";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
 import {
@@ -44,6 +51,9 @@ const TRANSPORT_PROGRESS_INTERVAL_MS = 500;
 // the active request's abort signal without threading it through the
 // reader stack (@mcap/core reads carry no signal parameter).
 const activeReadSignal: { current: AbortSignal | null } = { current: null };
+const activeRetainedDecodedRecordIds: {
+  current: ReadonlySet<string> | null;
+} = { current: null };
 let lastTransportProgressAtMs = -Infinity;
 
 let activeSourceKey = "";
@@ -70,7 +80,22 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
   }
 
   if (message.type === "cancel") {
-    scheduler.cancel(message.id);
+    const cancellation = scheduler.cancel(message.id);
+    if (cancellation.state === "queued") {
+      postResponse({
+        ...(cancellation.operation === "readBoundedMessages"
+          ? {
+              boundedReadCancellation: {
+                usage: emptyMcapBoundedReadUsage(),
+              },
+            }
+          : {}),
+        error: EPISODE_READ_CANCELLED_MESSAGE,
+        id: message.id,
+        ok: false,
+        transport: transportMeter.snapshot(),
+      });
+    }
     return;
   }
 
@@ -78,6 +103,13 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
     scheduler.dispose();
     disposeAllClients();
     workerScope.close();
+    return;
+  }
+
+  if (message.type === "releaseRetainedResources") {
+    disposeAllClients();
+    activeSourceKey = "";
+    mcap = createMcapClient();
     return;
   }
 
@@ -95,15 +127,28 @@ async function runAndRespond(
   context: McapPlaybackWorkerRunContext,
 ) {
   activeReadSignal.current = context.signal;
+  activeRetainedDecodedRecordIds.current =
+    message.retainedDecodedRecordIds === undefined
+      ? null
+      : new Set(message.retainedDecodedRecordIds);
 
   try {
+    throwIfWorkerRequestCancelled(context.signal);
     ensureActiveSource(message.sourceKey);
     if (isMcapPlaybackWorkerStreamRequest(message)) {
-      await streamRequest(message);
+      await streamRequest(message, context.signal);
       return;
     }
 
     const result = await runMcapPlaybackWorkerUnaryRequest(mcap, message);
+    if (
+      context.signal.aborted &&
+      message.type === "readBoundedMessages" &&
+      "usage" in result
+    ) {
+      throw new McapBoundedReadCancelledError(result.usage);
+    }
+    throwIfWorkerRequestCancelled(context.signal);
     const transferables = transferablesForMcapResult(result);
     postResponse(
       {
@@ -117,35 +162,106 @@ async function runAndRespond(
   } catch (error) {
     // A cancelled request reports the canonical marker no matter which read
     // the abort surfaced through, so consumers can treat it as benign.
-    const errorMessage = context.signal.aborted
-      ? MCAP_READ_CANCELLED_MESSAGE
-      : mcapErrorMessage(error);
+    const messageText = context.signal.aborted
+      ? EPISODE_READ_CANCELLED_MESSAGE
+      : errorMessage(error);
     postResponse({
-      error: errorMessage,
+      ...(isMcapBoundedReadCancelledError(error)
+        ? {
+            boundedReadCancellation: {
+              usage: error.usage,
+            },
+          }
+        : {}),
+      error: messageText,
       id: message.id,
       ok: false,
       transport: transportMeter.snapshot(),
     });
   } finally {
     activeReadSignal.current = null;
+    activeRetainedDecodedRecordIds.current = null;
   }
 }
 
 async function streamRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
+  signal: AbortSignal,
 ) {
   let batch: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][] =
     [];
   let batchBytes = 0;
+  let batchTransferables: Transferable[] = [];
+  const flushBatch = (): void => {
+    postStreamBatch(message.id, batch, batchTransferables);
+    batch = [];
+    batchBytes = 0;
+    batchTransferables = [];
+  };
+  const pendingPriorityTopics =
+    message.type === "readSynchronizedMessages"
+      ? new Set(
+          (message.payload.settlementPriorityTopics ?? []).filter((topic) =>
+            message.payload.topics.includes(topic),
+          ),
+        )
+      : null;
+  let holdingPrioritySettlements = (pendingPriorityTopics?.size ?? 0) > 0;
+  let deliveredFirstPrioritySettlement = false;
 
-  for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
+  const acceptItem = (
+    item: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType],
+  ): void => {
+    throwIfWorkerRequestCancelled(signal);
     const transferables = transferablesForMcapResult(item);
-    // Transferable buffers must keep their per-item ownership boundary. Plain
-    // decoded records can share one postMessage to reduce main-thread churn.
+    // The complete blocking prefix is one delivery boundary. Its ordered
+    // per-topic items still hydrate independently on the host, while one
+    // postMessage lets the playback store publish readiness in one browser
+    // turn and transfers every payload exactly once.
+    if (holdingPrioritySettlements) {
+      if (
+        !deliveredFirstPrioritySettlement &&
+        isSynchronizedTopicSettlement(item) &&
+        pendingPriorityTopics?.has(item.topic)
+      ) {
+        // The first presentation-priority surface is useful independently of
+        // the remaining blocking group. Transfer it as soon as it is decoded;
+        // the rest of the prefix still shares one readiness boundary.
+        postStreamBatch(message.id, [item], transferables);
+        pendingPriorityTopics.delete(item.topic);
+        deliveredFirstPrioritySettlement = true;
+        if (pendingPriorityTopics.size === 0) {
+          holdingPrioritySettlements = false;
+        }
+        return;
+      }
+      batch.push(item);
+      batchBytes += estimateMcapStreamItemBytes(item);
+      batchTransferables.push(...transferables);
+      if (isSynchronizedTopicSettlement(item)) {
+        pendingPriorityTopics?.delete(item.topic);
+      }
+      if ((pendingPriorityTopics?.size ?? 0) === 0) {
+        flushBatch();
+        holdingPrioritySettlements = false;
+      }
+      return;
+    }
+    // A synchronized current-tick read has one more ownership boundary after
+    // the blocking prefix: unresolved stragglers plus the payload-free
+    // terminal. Keep that remainder together even when it owns transferable
+    // buffers, so the host can accept it in one store turn without copying.
+    if (message.type === "readSynchronizedMessages") {
+      batch.push(item);
+      batchBytes += estimateMcapStreamItemBytes(item);
+      batchTransferables.push(...transferables);
+      return;
+    }
+    // Outside the explicit priority boundary, transferable buffers keep their
+    // per-item ownership boundary. Plain decoded records can share one
+    // postMessage to reduce main-thread churn.
     if (transferables.length > 0) {
-      postStreamBatch(message.id, batch);
-      batch = [];
-      batchBytes = 0;
+      flushBatch();
       postResponse(
         {
           done: false,
@@ -156,7 +272,7 @@ async function streamRequest(
         },
         transferables,
       );
-      continue;
+      return;
     }
 
     const itemBytes = estimateMcapStreamItemBytes(item);
@@ -167,9 +283,7 @@ async function streamRequest(
         nextItemBytes: itemBytes,
       })
     ) {
-      postStreamBatch(message.id, batch);
-      batch = [];
-      batchBytes = 0;
+      flushBatch();
     }
 
     batch.push(item);
@@ -180,12 +294,26 @@ async function streamRequest(
         batchItems: batch.length,
       })
     ) {
-      postStreamBatch(message.id, batch);
-      batch = [];
-      batchBytes = 0;
+      flushBatch();
+    }
+  };
+
+  if (message.type === "readSynchronizedMessages") {
+    await runMcapPlaybackWorkerSynchronizedRequest(
+      mcap,
+      message.payload,
+      acceptItem,
+    );
+  } else {
+    for await (const item of runMcapPlaybackWorkerStreamRequest(
+      mcap,
+      message,
+    )) {
+      acceptItem(item);
     }
   }
-  postStreamBatch(message.id, batch);
+  throwIfWorkerRequestCancelled(signal);
+  flushBatch();
 
   postResponse({
     done: true,
@@ -196,21 +324,45 @@ async function streamRequest(
   });
 }
 
+function isSynchronizedTopicSettlement(
+  item: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType],
+): item is Extract<
+  McapPlaybackWorkerStreamItemByType["readSynchronizedMessages"],
+  { readonly kind: "topic-settlement" }
+> {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    "kind" in item &&
+    item.kind === "topic-settlement"
+  );
+}
+
+function throwIfWorkerRequestCancelled(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw new Error(EPISODE_READ_CANCELLED_MESSAGE);
+  }
+}
+
 function postStreamBatch(
   id: number,
   items: readonly McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][],
+  transferables?: readonly Transferable[],
 ) {
   if (items.length === 0) {
     return;
   }
 
-  postResponse({
-    done: false,
-    id,
-    items,
-    ok: true,
-    stream: true,
-  });
+  postResponse(
+    {
+      done: false,
+      id,
+      items,
+      ok: true,
+      stream: true,
+    },
+    transferables,
+  );
 }
 
 // Adjacent-sample navigation flips between a small set of sources; a parked
@@ -261,6 +413,7 @@ function createMcapClient() {
     ...(fillSlotClass ? { fillSlotClass } : {}),
     onByteRead: handleByteRead,
     readSignal: activeReadSignal,
+    retainedDecodedRecordIds: activeRetainedDecodedRecordIds,
   });
 }
 
@@ -285,7 +438,7 @@ function maybePostTransportProgress() {
 
 function postResponse(
   response: McapPlaybackWorkerResponse,
-  transferables = transferablesForResponse(response),
+  transferables: readonly Transferable[] = transferablesForResponse(response),
 ) {
   workerScope.postMessage(response, transferables);
 }

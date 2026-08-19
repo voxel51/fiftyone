@@ -3,6 +3,7 @@ import {
   type FetchFunctionConfig,
   type FetchFunctionResult,
 } from "@fiftyone/utilities";
+import { createAbortError } from "../../utils/cancellation";
 import { safeNumber } from "./bigint-utils";
 import { parseByteSize } from "./byte-size";
 import type { ByteClient } from "./types";
@@ -11,6 +12,7 @@ const DEFAULT_HTTP_BYTE_READ_RETRIES = 2;
 const DEFAULT_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS = 30_000;
 const MAX_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS = 5 * 60_000;
 const MIN_HTTP_BYTE_READ_RATE_BYTES_PER_SEC = 64 * 1024;
+const HTTP_BYTE_READ_ABORT_MESSAGE = "HTTP byte-range read aborted";
 
 type AbortableFetchFunction = <Body, Result>(
   config: FetchFunctionConfig<Body>,
@@ -71,7 +73,7 @@ export function createHttpByteClient(
         throw new Error("Byte range length must be positive");
       }
       if (request.signal?.aborted) {
-        throw abortedByteReadError();
+        throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
       }
 
       const expectedLength = safeNumber(request.range.length);
@@ -105,7 +107,7 @@ export function createHttpByteClient(
       } catch (error) {
         // Deliberate aborts must be distinguishable from transport failures.
         if (request.signal?.aborted) {
-          throw abortedByteReadError();
+          throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
         }
         throw error;
       } finally {
@@ -180,16 +182,6 @@ export function createHttpByteClient(
       };
     },
   };
-}
-
-/**
- * Rejection for reads whose caller-provided signal aborted. Named
- * "AbortError" so generic cancellation detection recognizes it.
- */
-function abortedByteReadError(): Error {
-  const error = new Error("HTTP byte-range read aborted");
-  error.name = "AbortError";
-  return error;
 }
 
 /**

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createCachedByteClient } from "./cached-byte-client";
 import { createMemoryByteRangeCache } from "./cache";
 import { BYTE_SOURCE_READ_PROFILE } from "./constants";
+import { byteFillLockName, byteFillSlotName } from "./fill-lock";
 import type {
   ByteClient,
   ByteFillLockManager,
@@ -54,7 +55,15 @@ function fillResult(forRequest: ByteRangeReadRequest): ByteRangeReadResult {
 function createFakeLockManager() {
   const tails = new Map<string, Promise<void>>();
   const queueDepth = new Map<string, number>();
+  const active = new Set<string>();
+  const events: string[] = [];
   const granted: string[] = [];
+  const record = (
+    type: "aborted" | "granted" | "queued" | "released" | "unavailable",
+    name: string,
+  ) => {
+    events.push(`${type}:${name}`);
+  };
   const abortError = () => {
     const error = new Error("The lock request was aborted.");
     error.name = "AbortError";
@@ -66,9 +75,11 @@ function createFakeLockManager() {
         throw abortError();
       }
       if (options.ifAvailable && (queueDepth.get(name) ?? 0) > 0) {
+        record("unavailable", name);
         return await callback(null);
       }
       queueDepth.set(name, (queueDepth.get(name) ?? 0) + 1);
+      record("queued", name);
       const previous = tails.get(name) ?? Promise.resolve();
       let release!: () => void;
       const held = new Promise<void>((resolve) => {
@@ -78,8 +89,9 @@ function createFakeLockManager() {
         name,
         previous.then(() => held),
       );
-      const leaveQueue = () => {
+      const leaveQueue = (event: "aborted" | "released") => {
         queueDepth.set(name, (queueDepth.get(name) ?? 1) - 1);
+        record(event, name);
         release();
       };
       try {
@@ -99,19 +111,22 @@ function createFakeLockManager() {
           await previous;
         }
       } catch (error) {
-        leaveQueue();
+        leaveQueue("aborted");
         throw error;
       }
+      active.add(name);
+      record("granted", name);
       granted.push(name);
       try {
         return await callback({ name });
       } finally {
-        leaveQueue();
+        active.delete(name);
+        leaveQueue("released");
       }
     },
   };
 
-  return { granted, manager };
+  return { active, events, granted, manager, queueDepth };
 }
 
 /** Reader whose fetches only settle when the test releases them. */
@@ -436,6 +451,48 @@ describe("createCachedByteClient sequential remote readahead", () => {
     await read;
   });
 
+  it("uses the same fill plan for admission and contained execution", async () => {
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      blockSizeBytes: 16,
+      reads: controlled.reader,
+    });
+    const boundedRequest = request({
+      cachePolicy: { readahead: false },
+      range: { length: 4n, offset: 3n },
+      source: remoteSource(),
+    });
+
+    expect(client.planRead?.(boundedRequest).range).toEqual({
+      length: 16n,
+      offset: 0n,
+    });
+    const coldRead = client.readBytes(boundedRequest);
+    await flushAsync();
+
+    // Readahead is explicitly contained to the admitted fill.
+    expect(controlled.pending).toHaveLength(1);
+    expect(controlled.pending[0].request.range).toEqual({
+      length: 16n,
+      offset: 0n,
+    });
+    controlled.pending[0].resolve(fillResult(controlled.pending[0].request));
+    const cold = await coldRead;
+    expect(cold.readUsage).toEqual({
+      cacheResult: "fetched",
+      fillRange: { length: 16n, offset: 0n },
+      transferredBytes: 16,
+    });
+
+    const warm = await client.readBytes(boundedRequest);
+    expect(warm.readUsage).toEqual({
+      cacheResult: "fill-hit",
+      fillRange: { length: 16n, offset: 0n },
+      transferredBytes: 0,
+    });
+    expect(controlled.pending).toHaveLength(1);
+  });
+
   it("does not queue readahead for non-remote sources", async () => {
     const controlled = createControlledReader();
     const { client } = createClient({
@@ -667,6 +724,48 @@ describe("createCachedByteClient remote fill slots", () => {
     );
   });
 
+  it("cancels a waiter without aborting its shared readahead fill", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      blockSizeBytes: 16,
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const sized = () =>
+      source({ readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE, sizeBytes: "32" });
+
+    const read = client.readBytes(
+      request({ range: { length: 4n, offset: 0n }, source: sized() }),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+
+    const controller = new AbortController();
+    const waiter = client.readBytes(
+      request({
+        range: { length: 4n, offset: 16n },
+        signal: controller.signal,
+        source: sized(),
+      }),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+
+    controller.abort();
+    await expect(waiter).rejects.toMatchObject({ name: "AbortError" });
+    expect(controlled.pending).toHaveLength(2);
+
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await read;
+  });
+
   it("frees the slot queue position when a waiting fill aborts", async () => {
     const { manager } = createFakeLockManager();
     const shared = createMemoryByteRangeCache({
@@ -746,6 +845,389 @@ describe("createCachedByteClient remote fill slots", () => {
       entry.resolve(fillResult(entry.request));
     }
     await Promise.all(backgroundReads);
+  });
+
+  it("admits an exact-shape priority fill while background demand waits for a slot", async () => {
+    const { active, events, manager, queueDepth } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const background = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const priority = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+
+    const occupying = [0n, 8n].map((offset) =>
+      background.client.readBytes(remoteRead(offset)),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+
+    const blockX = remoteRead(16n);
+    const backgroundX = background.client.readBytes(blockX);
+    await flushAsync();
+    const priorityX = priority.client.readBytes(blockX);
+    await flushAsync();
+
+    const shapeLock = byteFillLockName(blockX);
+    const reservedSlot = byteFillSlotName(blockX.source, 0);
+    expect({
+      reservedSlotHeld: active.has(reservedSlot),
+      reservedSlotQueueDepth: queueDepth.get(reservedSlot) ?? 0,
+      shapeLockHeld: active.has(shapeLock),
+      shapeLockQueueDepth: queueDepth.get(shapeLock) ?? 0,
+      xNetworkFetches: controlled.pending.filter(
+        (entry) => entry.request.range.offset === blockX.range.offset,
+      ).length,
+    }).toEqual({
+      reservedSlotHeld: true,
+      reservedSlotQueueDepth: 1,
+      shapeLockHeld: true,
+      shapeLockQueueDepth: 1,
+      xNetworkFetches: 1,
+    });
+    expect(events.indexOf(`granted:${shapeLock}`)).toBeLessThan(
+      events.indexOf(`granted:${reservedSlot}`),
+    );
+
+    const xFetch = controlled.pending.find(
+      (entry) => entry.request.range.offset === blockX.range.offset,
+    );
+    expect(xFetch).toBeDefined();
+    xFetch?.resolve(fillResult(xFetch.request));
+    await priorityX;
+
+    for (const entry of controlled.pending.slice(0, 2)) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await Promise.all([...occupying, backgroundX]);
+    await flushAsync();
+    expect(
+      controlled.pending.filter(
+        (entry) => entry.request.range.offset === blockX.range.offset,
+      ),
+    ).toHaveLength(1);
+    expect(active.size).toBe(0);
+    expect([...queueDepth.values()].every((depth) => depth === 0)).toBe(true);
+  });
+
+  it("keeps several slot-waiting background fills off their shape locks", async () => {
+    const { active, manager, queueDepth } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const background = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const priority = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+
+    const occupying = [0n, 8n].map((offset) =>
+      background.client.readBytes(remoteRead(offset)),
+    );
+    await flushAsync();
+    const queuedRequests = [16n, 24n, 32n, 40n].map(remoteRead);
+    const queuedReads = queuedRequests.map((readRequest) =>
+      background.client.readBytes(readRequest),
+    );
+    await flushAsync();
+
+    for (const readRequest of queuedRequests) {
+      expect(queueDepth.get(byteFillLockName(readRequest)) ?? 0).toBe(0);
+    }
+    expect(
+      queueDepth.get(byteFillSlotName(queuedRequests[0].source, 0)) ?? 0,
+    ).toBe(0);
+
+    const blockX = queuedRequests.at(-1);
+    if (!blockX) {
+      throw new Error("expected a queued block");
+    }
+    const priorityX = priority.client.readBytes(blockX);
+    await flushAsync();
+    expect(
+      controlled.pending.map((entry) => entry.request.range.offset),
+    ).toEqual([0n, 8n, 40n]);
+
+    let resolvedNetworkReads = 0;
+    let backgroundSettled = false;
+    const allBackground = Promise.all([...occupying, ...queuedReads]).then(
+      () => {
+        backgroundSettled = true;
+      },
+    );
+    for (let round = 0; round < 8 && !backgroundSettled; round += 1) {
+      const newlyStarted = controlled.pending.slice(resolvedNetworkReads);
+      resolvedNetworkReads = controlled.pending.length;
+      for (const entry of newlyStarted) {
+        entry.resolve(fillResult(entry.request));
+      }
+      await flushAsync();
+    }
+    await Promise.all([priorityX, allBackground]);
+    await flushAsync();
+
+    expect(
+      controlled.pending.filter(
+        (entry) => entry.request.range.offset === blockX.range.offset,
+      ),
+    ).toHaveLength(1);
+    expect(active.size).toBe(0);
+    expect([...queueDepth.values()].every((depth) => depth === 0)).toBe(true);
+  });
+
+  it("releases a pre-acquired slot after an under-lock persistent hit", async () => {
+    const { active, manager, queueDepth } = createFakeLockManager();
+    let persistentGets = 0;
+    const persistent: ByteRangeCache = {
+      clear: () => Promise.resolve(),
+      async get(getRequest) {
+        persistentGets += 1;
+        return persistentGets === 1 ? undefined : fillResult(getRequest);
+      },
+      put: () => Promise.resolve(),
+    };
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent,
+      reads: controlled.reader,
+    });
+
+    await expect(client.readBytes(remoteRead(16n))).resolves.toBeDefined();
+    await flushAsync();
+
+    expect(persistentGets).toBe(2);
+    expect(controlled.pending).toHaveLength(0);
+    expect(active.size).toBe(0);
+    expect([...queueDepth.values()].every((depth) => depth === 0)).toBe(true);
+  });
+
+  it("releases a background slot when an exact-shape waiter aborts", async () => {
+    const { active, manager, queueDepth } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const priority = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const background = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const blockX = remoteRead(16n);
+
+    const priorityX = priority.client.readBytes(blockX);
+    await flushAsync();
+    const controller = new AbortController();
+    const backgroundX = background.client.readBytes({
+      ...blockX,
+      signal: controller.signal,
+    });
+    await flushAsync();
+
+    expect(queueDepth.get(byteFillLockName(blockX))).toBe(2);
+    expect(
+      [1, 2].filter((slot) =>
+        active.has(byteFillSlotName(blockX.source, slot)),
+      ),
+    ).toHaveLength(1);
+
+    controller.abort();
+    await expect(backgroundX).rejects.toMatchObject({ name: "AbortError" });
+    await flushAsync();
+    expect(queueDepth.get(byteFillLockName(blockX))).toBe(1);
+    expect(
+      [1, 2].filter((slot) =>
+        active.has(byteFillSlotName(blockX.source, slot)),
+      ),
+    ).toHaveLength(0);
+
+    const followers = [0n, 8n].map((offset) =>
+      background.client.readBytes(remoteRead(offset)),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(3);
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await Promise.all([priorityX, ...followers]);
+    await flushAsync();
+    expect(
+      controlled.pending.filter(
+        (entry) => entry.request.range.offset === blockX.range.offset,
+      ),
+    ).toHaveLength(1);
+    expect(active.size).toBe(0);
+    expect([...queueDepth.values()].every((depth) => depth === 0)).toBe(true);
+  });
+
+  it("single-flights duplicate background shapes that occupy both slots", async () => {
+    const { active, manager, queueDepth } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const first = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const second = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const blockX = remoteRead(16n);
+
+    const firstX = first.client.readBytes(blockX);
+    await flushAsync();
+    const secondX = second.client.readBytes(blockX);
+    await flushAsync();
+
+    expect(controlled.pending).toHaveLength(1);
+    expect(queueDepth.get(byteFillLockName(blockX))).toBe(2);
+    expect(
+      [1, 2].filter((slot) =>
+        active.has(byteFillSlotName(blockX.source, slot)),
+      ),
+    ).toHaveLength(2);
+
+    controlled.pending[0].resolve(fillResult(controlled.pending[0].request));
+    await Promise.all([firstX, secondX]);
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(1);
+    expect(active.size).toBe(0);
+    expect([...queueDepth.values()].every((depth) => depth === 0)).toBe(true);
+  });
+
+  it("keeps distinct priority fills progressing on slot zero while duplicate backgrounds park", async () => {
+    const { active, manager, queueDepth } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const firstBackground = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const secondBackground = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const priority = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const backgroundShape = remoteRead(16n);
+
+    const firstX = firstBackground.client.readBytes(backgroundShape);
+    await flushAsync();
+    const secondX = secondBackground.client.readBytes(backgroundShape);
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(1);
+    expect(
+      [1, 2].filter((slot) =>
+        active.has(byteFillSlotName(backgroundShape.source, slot)),
+      ),
+    ).toHaveLength(2);
+
+    const priorityReads = [24n, 32n, 40n].map((offset) =>
+      priority.client.readBytes(remoteRead(offset)),
+    );
+    await flushAsync();
+    expect(
+      controlled.pending.map((entry) => entry.request.range.offset),
+    ).toEqual([16n, 24n]);
+
+    for (const offset of [24n, 32n, 40n]) {
+      const entry = controlled.pending.find(
+        (pending) => pending.request.range.offset === offset,
+      );
+      expect(entry).toBeDefined();
+      entry?.resolve(fillResult(entry.request));
+      await flushAsync();
+    }
+    await Promise.all(priorityReads);
+
+    const backgroundFetch = controlled.pending[0];
+    backgroundFetch.resolve(fillResult(backgroundFetch.request));
+    await Promise.all([firstX, secondX]);
+    await flushAsync();
+
+    expect(
+      controlled.pending.filter(
+        (entry) => entry.request.range.offset === backgroundShape.range.offset,
+      ),
+    ).toHaveLength(1);
+    expect(active.size).toBe(0);
+    expect([...queueDepth.values()].every((depth) => depth === 0)).toBe(true);
+  });
+
+  it("retries a failed background shape without leaking either slot", async () => {
+    const { active, manager, queueDepth } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const first = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const second = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const blockX = remoteRead(16n);
+
+    const firstX = first.client.readBytes(blockX);
+    await flushAsync();
+    const secondX = second.client.readBytes(blockX);
+    await flushAsync();
+
+    controlled.pending[0].reject(new Error("network down"));
+    await expect(firstX).rejects.toThrow("network down");
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+
+    controlled.pending[1].resolve(fillResult(controlled.pending[1].request));
+    await expect(secondX).resolves.toBeDefined();
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+    expect(active.size).toBe(0);
+    expect([...queueDepth.values()].every((depth) => depth === 0)).toBe(true);
   });
 
   it("passes a freed slot to the next waiter when a fetch fails", async () => {

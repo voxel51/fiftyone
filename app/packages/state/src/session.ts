@@ -162,8 +162,11 @@ export const getSessionRef = () => {
 export const useSessionSetter = () => {
   return useCallback(<K extends SetterKeys>(key: K, value: Session[K]) => {
     const setter = setters[key];
-    setter && setter(value);
-    sessionRef[key] = value;
+    if (setter) {
+      setter(value);
+    } else {
+      sessionRef[key] = value;
+    }
   }, []);
 };
 
@@ -196,9 +199,10 @@ export function sessionAtom<K extends keyof Session>(
 
         // @ts-ignore
         setters[options.key] = (value: Session[K]) => {
-          setSelf(value);
+          const resolved = value === undefined ? options.default : value;
+          setSelf(resolved);
           if (!isTest) {
-            sessionRef[options.key] = value;
+            sessionRef[options.key] = resolved;
           }
         };
 

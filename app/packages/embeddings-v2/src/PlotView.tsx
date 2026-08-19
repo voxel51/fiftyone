@@ -1,21 +1,16 @@
 /**
- * The plot view for one visualization run: fetches the run's columns
- * over the v2 protocol and renders them with the in-package renderer.
- * Header: back, title, color-by, the explore/select mode toggle, and
- * camera reset. Overlays: a mode hint or selection-count chip
- * (top-left), the color legend (top-right), and a load-progress
- * counter (bottom-left).
+ * The plot shell for one visualization run: header (color-by, mode toggle,
+ * settings, reset controls), legends, overlays, and the plot area. All
+ * per-run state (geometry, color, masks, ONE selection bridge, legend)
+ * comes from {@link useRunPlotData}.
  *
- * The component is hook composition: each concern lives in its own
- * use* module beside this file, provider-free so it renderHook-tests
- * without Recoil. Only this component touches App state — atom values
- * in, setters out. Two layers of point treatment: view stages and
- * sidebar filters HIDE points (scope); grid selections EMPHASIZE them
- * (focus). The legend is a view over the sidebar filter for the
- * color-by field — see legendFilter.ts for the click semantics.
+ * The shell renders a single full-size {@link FacetCell} over the run's
+ * shared arrays. An extension may substitute the plot area with its own
+ * layout of cells over the SAME arrays (see
+ * {@link RunFeatures.renderPlotArea}) and contribute header controls, a
+ * banner, settings sections and one extra interaction mode — the shell
+ * itself never branches on what the extension is.
  */
-import { usePanelStatePartial } from "@fiftyone/spaces";
-import * as fos from "@fiftyone/state";
 import {
   BackgroundColor,
   BorderColor,
@@ -24,7 +19,6 @@ import {
   Icon,
   IconColor,
   IconName,
-  Select,
   Size,
   Text,
   TextColor,
@@ -32,44 +26,18 @@ import {
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { useMemo, type CSSProperties } from "react";
+import { ColorByMenu } from "./ColorByMenu";
 import { ColorLegend } from "./ColorLegend";
 import { ContinuousLegend } from "./ContinuousLegend";
-import { categoryHex, MISSING_CATEGORY } from "./colors";
-import HoverCard from "./HoverCard";
-import {
-  legendLabels,
-  soloLabel,
-  toggleLabel,
-  type CategoricalFilter,
-} from "./legendFilter";
+import FacetCell from "./FacetCell";
+import type { SharedPlotProps } from "./extensions";
+import { counterLabel } from "./plotCounter";
+import { SettingsMenu } from "./SettingsMenu";
 import "./panel.css";
-import type { VisualizationRun } from "./protocol";
-import {
-  EmbeddingsView,
-  type CameraAdapterFactory,
-  type EmbeddingsViewHandle,
-  type InteractionMode,
-} from "./renderer";
-import { clearSelectionNonceState, selectionCountState } from "./state";
-import { useColorColumn } from "./useColorColumn";
-import { useHoverInfo } from "./useHoverInfo";
-import { useLocalColorMask } from "./useLocalColorMask";
-import { useMasks } from "./useMasks";
-import { useRunColumns } from "./useRunColumns";
-import { useSelectionBridge } from "./useSelectionBridge";
+import { type VisualizationRun } from "./protocol";
+import { type CameraAdapterFactory, type InteractionMode } from "./renderer";
+import { NONE_FIELD, useRunPlotData } from "./useRunPlotData";
 
 const TOKEN_VARS = {
   "--emb-bg": `var(${getColorCssVar(BackgroundColor.Background)})`,
@@ -79,9 +47,6 @@ const TOKEN_VARS = {
   "--emb-border-strong": `var(${getColorCssVar(BorderColor.Strong)})`,
   "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
 } as CSSProperties;
-
-/** Select option id for the uncolored state (fields are never empty) */
-const NONE_FIELD = "";
 
 function ModeSegment({
   active,
@@ -128,211 +93,112 @@ export default function PlotView({
   /** Loads a camera for runs whose points carry a third coordinate */
   zCamera?: () => Promise<CameraAdapterFactory>;
 }) {
-  const view = useRecoilValue(fos.view) as unknown[];
-  const filters = useRecoilValue(fos.filters);
-  const setOverrideStage = useSetRecoilState(
-    fos.extendedSelectionOverrideStage,
-  );
-  const resetExtended = fos.useResetExtendedSelection();
-  const [selectedSamples, setSelectedSamples] = useRecoilState(
-    fos.selectedSamples,
-  );
-
-  // Panel state (local: plot-only state must not reload the page query)
-  // survives the remounts that view changes cause. Values normalize to
-  // null: partials are undefined until first set
-  const [colorFieldState, setColorField] = usePanelStatePartial<string | null>(
-    "colorField",
-    null,
-    true,
-  );
-  const colorField = colorFieldState ?? null;
-  const brainKey = run.brainKey;
-
-  const plotRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<EmbeddingsViewHandle>(null);
-
-  const { loaded, error: loadError } = useRunColumns(datasetName, brainKey);
+  const data = useRunPlotData(datasetName, run);
   const {
-    choices,
-    colors,
-    values: colorValues,
-    meta: colorMeta,
-    loading: colorLoading,
-    error: colorError,
-  } = useColorColumn(datasetName, brainKey, run, colorField);
-  // The color-by field's filter evaluates client-side when provably
-  // faithful (legend clicks never wait on the masks round trip); the
-  // rest ships to the masks endpoint, identity-stable
-  const { localMask, serverFilters } = useLocalColorMask(
-    filters,
-    colorField,
-    colorValues,
-    colorMeta,
-  );
-
-  const {
-    visibleMask,
-    visibleCount,
-    error: masksError,
-  } = useMasks(
-    datasetName,
-    brainKey,
-    view,
-    serverFilters,
-    loaded?.points.length ?? 0,
-    localMask,
-  );
-  // The hover card's swatch mirrors the point's rendered color, which
-  // buildColors derives from the same class column
-  const pointSwatch = (index: number): string | null => {
-    if (colorValues?.style !== "categorical") return null;
-    const classIndex = colorValues.indices[index];
-    return classIndex === MISSING_CATEGORY ? null : categoryHex(classIndex);
-  };
-
-  const { hover, handleHover } = useHoverInfo(
-    datasetName,
-    brainKey,
-    colorField,
-    fos.getSampleSrc,
-    pointSwatch,
-  );
-  const {
-    selectedIndices,
-    selectionCount,
-    handleSelection,
-    handlePointClick,
-    clearAll,
-    error: selectionError,
-  } = useSelectionBridge({
-    datasetName,
-    brainKey,
-    view,
     loaded,
-    patchesField: run.patchesField,
-    chart: viewRef,
-    setOverrideStage,
-    resetExtended,
-    selectedSamples,
-    setSelectedSamples,
-  });
+    total,
+    loadedCount,
+    colorField,
+    setColorField,
+    choices,
+    colorOptions,
+    colorMeta,
+    colorLoading,
+    pointColors,
+    streamField,
+    coloredByStream,
+    plotVisible,
+    visibleCount,
+    selectedIndices,
+    chipCount,
+    handleLasso,
+    handlePointClick,
+    handleBackgroundClick,
+    clearAll,
+    hover,
+    hoverHit,
+    handleHover,
+    keepHover,
+    features,
+    palette,
+    colorscale,
+    rampId,
+    setRampId,
+    colorscaleTarget,
+    colorDomain,
+    scopedCounts,
+    legend,
+    handleLegendToggle,
+    handleLegendSolo,
+    resultsPartial,
+    canUpdate,
+    applyAllPoints,
+    resolvedCount,
+    mode,
+    setMode,
+    error,
+    onRendererError,
+    registerChart,
+    resetCameras,
+    resetAll,
+  } = data;
 
-  const [mode, setMode] = useState<InteractionMode>("explore");
-  const [rendererError, setRendererError] = useState<string | null>(null);
+  const extraMode = features.extraMode;
+  const inExtraMode = extraMode != null && mode === extraMode.key;
 
-  // The legend has no state of its own: which classes are on derives
-  // from the App's sidebar filter for the color-by field, and clicks
-  // write the next filter back. The masks path consumes the same
-  // fos.filters, so the plot and grid scope together. String classes
-  // only: the sidebar's numeric filters are range-shaped, not value
-  // lists, so numeric-class legends render inert
-  const fieldFilter = useRecoilValue(
-    fos.filter({ path: colorField ?? "", modal: false }),
-  );
-  const legendFilter = (fieldFilter ?? null) as CategoricalFilter | null;
-
-  const legend = useMemo(
-    () => legendLabels(colorMeta, legendFilter),
-    [colorMeta, legendFilter],
-  );
-
-  // Writes read the filter from a fresh snapshot, not the render-time
-  // value — rapid clicks must each transform the latest state, or a
-  // click can silently compute from a stale base and drop its
-  // predecessor. A dblclick arrives as click-click-dblclick; the two
-  // toggles cancel (toggle is its own inverse), then the solo lands —
-  // no click timers
-  const handleLegendClick = useRecoilCallback(
-    ({ snapshot, set, reset }) =>
-      (label: string, solo: boolean) => {
-        if (!colorField || !legend) return;
-        const filterState = fos.filter({ path: colorField, modal: false });
-        const current = (snapshot.getLoadable(filterState).valueMaybe() ??
-          null) as CategoricalFilter | null;
-        const transform = solo ? soloLabel : toggleLabel;
-        const next = transform(current, legend.labels, label);
-        if (next) {
-          set(filterState, next);
-        } else {
-          reset(filterState);
-        }
-      },
-    [colorField, legend],
-  );
-  const handleLegendToggle = (label: string) => handleLegendClick(label, false);
-  const handleLegendSolo = (label: string) => handleLegendClick(label, true);
-
-  const resetLegendFilter = useRecoilCallback(
-    ({ reset }) =>
-      () => {
-        if (colorField) {
-          reset(fos.filter({ path: colorField, modal: false }));
-        }
-      },
-    [colorField],
-  );
-
-  const error =
-    loadError ?? rendererError ?? colorError ?? masksError ?? selectionError;
-
-  const colorOptions = useMemo(
-    () => [
-      { id: NONE_FIELD, data: { label: "None" } },
-      ...choices
-        // A run's own spatial-index field colors by x-coordinate;
-        // not a useful choice
-        .filter((field) => field !== run.pointsField)
-        .map((field) => ({ id: field, data: { label: field } })),
-    ],
-    [choices, run.pointsField],
-  );
-
-  // A completed lasso returns gestures to the camera, so the
-  // selection can be explored immediately without switching modes
-  const handleLasso = (
-    indices: number[],
-    polygon?: Array<[number, number]> | null,
-  ) => {
-    handleSelection(indices, polygon);
-    if (indices.length) setMode("explore");
-  };
-
-  const chipCount = selectionCount ?? (selectedSamples.size || null);
-
-  // Background clicks clear in stages, topmost layer first: an existing
-  // selection (focus) on the first click, the color-by filter (scope)
-  // on the next. chipCount is the pre-click value — the chart clears
-  // its own lasso layer before this fires
-  const handleBackgroundClick = () => {
-    if (chipCount) {
-      clearAll();
-      return;
-    }
-    if (legendFilter) resetLegendFilter();
-  };
-
-  // The panel tab's selection pill lives outside this tree; it mirrors
-  // the chip's count through the package atom and requests clears back
-  // through a nonce
-  const publishCount = useSetRecoilState(selectionCountState);
-  useEffect(() => {
-    publishCount(chipCount);
-    return () => publishCount(null);
-  }, [chipCount, publishCount]);
-
-  const clearNonce = useRecoilValue(clearSelectionNonceState);
-  const seenClearNonce = useRef(clearNonce);
-  useEffect(() => {
-    if (clearNonce !== seenClearNonce.current) {
-      seenClearNonce.current = clearNonce;
-      clearAll();
-    }
-  }, [clearAll, clearNonce]);
+  // The renderer only knows explore/select; an extension mode uses SELECT
+  // interaction (only select fires point clicks) and routes its gestures
+  // through the shell's handlers
+  // Cast, not narrowed: `PanelMode`'s open string member defeats literal
+  // narrowing, but the guarded branch is by construction a renderer mode
+  const rendererMode: InteractionMode =
+    mode === "explore" || mode === "select"
+      ? (mode as InteractionMode)
+      : "select";
+  const cellPointClick =
+    mode === "select"
+      ? handlePointClick
+      : inExtraMode
+        ? extraMode.onPointClick
+        : undefined;
+  // An extension mode already acts on point click, so the card's action
+  // button is redundant there; explore/select reach it here
+  const hoverAction = inExtraMode ? null : features.hoverAction;
 
   const subtitle = `${run.method ?? "visualization"}${
     run.dims ? ` (${run.dims}D)` : ""
   }`;
+
+  // A cell's `visible` prop is a total mask; the plain plot's single cell is
+  // everything the plot-level mask admits (or everything, when null).
+  // Memoized so the cell's chart doesn't re-diff a fresh array every render
+  const n = loaded?.points.length ?? 0;
+  const singleCellMask = useMemo(() => {
+    if (plotVisible && plotVisible.length === n) return plotVisible;
+    return new Uint8Array(n).fill(1);
+  }, [n, plotVisible]);
+
+  const shared: SharedPlotProps | null = loaded
+    ? {
+        loaded,
+        colors: pointColors,
+        visible: plotVisible,
+        selected: selectedIndices,
+        mode: rendererMode,
+        panelMode: mode,
+        zCamera,
+        onLasso: handleLasso,
+        onPointClick: cellPointClick,
+        onBackgroundClick: handleBackgroundClick,
+        onError: onRendererError,
+        onHover: handleHover,
+        onKeepHover: keepHover,
+        hover,
+        hoverHit,
+        hoverAction,
+        registerChart,
+      }
+    : null;
 
   return (
     <div className="emb-plot" style={TOKEN_VARS}>
@@ -353,6 +219,8 @@ export default function PlotView({
           </Text>
         </div>
         <div className="emb-plot-controls">
+          {/* Extension header controls (null when it contributes none) */}
+          {features.headerControls}
           {/* Fixed-width slot so the spinner's appearance never nudges
               the control row */}
           <span className="emb-colorby-spinner">
@@ -371,21 +239,36 @@ export default function PlotView({
           >
             Color by
           </Text>
-          <div className="emb-colorby">
-            <Select
-              exclusive
-              disabled={!choices.length}
-              value={colorField ?? NONE_FIELD}
-              options={colorOptions}
-              onChange={(value) => {
-                setColorField(
-                  typeof value === "string" && value !== NONE_FIELD
-                    ? value
-                    : null,
-                );
-              }}
-            />
-          </div>
+          <ColorByMenu
+            disabled={!choices.length}
+            value={colorField ?? NONE_FIELD}
+            options={colorOptions}
+            onChange={(value) =>
+              setColorField(value !== NONE_FIELD ? value : null)
+            }
+          />
+          {streamField && (
+            <Tooltip
+              content={
+                coloredByStream
+                  ? "Coloring by stream — click legend entries to show/hide individual streams"
+                  : "Color points by stream (then toggle streams in the legend)"
+              }
+              portal
+            >
+              <Button
+                variant={coloredByStream ? Variant.Primary : Variant.Secondary}
+                size={Size.Sm}
+                leadingIcon={IconName.Sliders}
+                aria-label="Color by stream"
+                onClick={() =>
+                  setColorField(coloredByStream ? null : streamField)
+                }
+              >
+                Streams
+              </Button>
+            </Tooltip>
+          )}
           <span className="emb-plot-divider" />
           <div className="emb-mode-toggle">
             <ModeSegment
@@ -400,15 +283,37 @@ export default function PlotView({
               label="Select"
               onClick={() => setMode("select")}
             />
+            {extraMode?.control({
+              active: inExtraMode,
+              onActivate: () => setMode(extraMode.key),
+            })}
           </div>
-          {/* portal: inline rendering clips against the panel chrome */}
-          <Tooltip content="Reset view" portal>
+          <span className="emb-plot-divider" />
+          <SettingsMenu
+            rampId={rampId}
+            colorscaleTarget={colorscaleTarget}
+            onRampChange={setRampId}
+            renderBefore={features.renderSettingsBefore}
+            renderAfter={features.renderSettingsAfter}
+          />
+          {/* Two distinct actions: clear all filters/selections vs recenter
+              the cameras. portal: inline rendering clips against the chrome */}
+          <Tooltip content="Clear filters & selection" portal>
             <Button
               variant={Variant.Icon}
               size={Size.Md}
               leadingIcon={IconName.Undo}
-              aria-label="Reset view"
-              onClick={() => viewRef.current?.resetCamera()}
+              aria-label="Clear filters and selection"
+              onClick={resetAll}
+            />
+          </Tooltip>
+          <Tooltip content="Recenter plots" portal>
+            <Button
+              variant={Variant.Icon}
+              size={Size.Md}
+              leadingIcon={IconName.Fullscreen}
+              aria-label="Recenter plots"
+              onClick={resetCameras}
             />
           </Tooltip>
         </div>
@@ -420,7 +325,14 @@ export default function PlotView({
           </Text>
         </div>
       )}
-      <div ref={plotRef} className="emb-plot-scene">
+      {features.banner && (
+        <div className="emb-plot-error">
+          <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
+            {features.banner}
+          </Text>
+        </div>
+      )}
+      <div className="emb-plot-scene">
         {!loaded && !error && (
           <div className="emb-plot-loading">
             <Icon
@@ -430,41 +342,60 @@ export default function PlotView({
             />
           </div>
         )}
-        {loaded && (
-          <EmbeddingsView
-            ref={viewRef}
-            points={loaded.points}
-            colors={colors}
-            visible={visibleMask}
-            selected={selectedIndices}
-            tooltip={false}
-            mode={mode}
-            zCamera={zCamera}
-            onSelection={handleLasso}
-            onPointClick={mode === "select" ? handlePointClick : undefined}
-            onBackgroundClick={handleBackgroundClick}
-            onError={(e) => setRendererError(e.message)}
-            onHover={handleHover}
-          />
-        )}
-        {hover && (
-          <HoverCard
-            content={hover}
-            containerWidth={plotRef.current?.clientWidth ?? 0}
-            containerHeight={plotRef.current?.clientHeight ?? 0}
-          />
-        )}
+        {shared &&
+          (features.renderPlotArea ? (
+            features.renderPlotArea(shared)
+          ) : (
+            <div
+              className="emb-facet-grid"
+              data-faceted="false"
+              style={{ gridTemplateColumns: "1fr", gridTemplateRows: "1fr" }}
+            >
+              <FacetCell
+                cellKey="0:0"
+                rowLabel={null}
+                colLabel={null}
+                count={visibleCount ?? shared.loaded.points.length}
+                loaded={shared.loaded}
+                colors={shared.colors}
+                selected={shared.selected}
+                visible={singleCellMask}
+                mode={shared.mode}
+                zCamera={zCamera}
+                onLasso={shared.onLasso}
+                onPointClick={shared.onPointClick}
+                onBackgroundClick={shared.onBackgroundClick}
+                onError={shared.onError}
+                onHover={shared.onHover}
+                onKeepHover={shared.onKeepHover}
+                hoverAction={shared.hoverAction}
+                registerChart={shared.registerChart}
+                hover={shared.hover}
+                hoverHit={shared.hoverHit}
+              />
+            </div>
+          ))}
+        {/* One shared legend floating over the whole plot area — color is
+            computed once at the run level, so every rendered cell uses the
+            identical class→hue mapping and there is exactly one legend */}
         {colorField && colorMeta && colorMeta.style === "categorical" && (
           <ColorLegend
             field={colorField}
             meta={colorMeta}
+            palette={palette}
             offLabels={legend?.off ?? null}
+            scopedCounts={scopedCounts}
             onToggle={handleLegendToggle}
             onSolo={handleLegendSolo}
           />
         )}
         {colorField && colorMeta && colorMeta.style === "continuous" && (
-          <ContinuousLegend field={colorField} meta={colorMeta} />
+          <ContinuousLegend
+            field={colorField}
+            meta={colorMeta}
+            colorscale={colorscale}
+            domain={colorDomain}
+          />
         )}
         {chipCount ? (
           <div className="emb-plot-overlay emb-plot-chip">
@@ -484,25 +415,89 @@ export default function PlotView({
               onClick={clearAll}
             />
           </div>
-        ) : (
+        ) : features.renderPlotArea ? null : (
+          // The always-on hint would sit on top of a cell header in an
+          // extension layout; per-cell headers carry the context there
           <div className="emb-plot-overlay emb-plot-hint">
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
               {mode === "explore"
                 ? "Drag to pan · scroll to zoom"
-                : "Drag to lasso · click points to toggle"}
+                : mode === "select"
+                  ? "Drag to lasso · click points to toggle"
+                  : (extraMode?.hint ?? "")}
             </Text>
           </div>
         )}
         {loaded && (
           <div className="emb-plot-overlay emb-plot-counter">
+            {/* Beside the count, because the count is what a pending filter is
+                about to change — silence here reads as "nothing matched" */}
+            {features.filterLoading && (
+              <Icon
+                name={IconName.Spinner}
+                size={Size.Xs}
+                color={IconColor.Decorative}
+                aria-label="Applying filter"
+              />
+            )}
             <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
-              {loaded.points.length.toLocaleString()}
-              {loaded.points.length < loaded.total &&
-                ` / ${loaded.total.toLocaleString()}`}{" "}
-              points
-              {visibleCount !== null &&
-                ` · ${visibleCount.toLocaleString()} in view`}
+              {features.filterLoading
+                ? "filtering…"
+                : counterLabel({
+                    loaded: loadedCount,
+                    total,
+                    selected: chipCount,
+                    inView: visibleCount,
+                  })}
             </Text>
+            {resultsPartial && (
+              <button
+                type="button"
+                className="emb-update-btn"
+                disabled={!canUpdate}
+                title={
+                  canUpdate
+                    ? undefined
+                    : "Loading the rest of the run before it can be applied"
+                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  applyAllPoints();
+                }}
+              >
+                <Icon
+                  name={IconName.Refresh}
+                  size={Size.Xs}
+                  color={TextColor.Fg}
+                />
+                {canUpdate
+                  ? `Apply to all ${total.toLocaleString()}`
+                  : `Applied to ${resolvedCount.toLocaleString()} · loading…`}
+              </button>
+            )}
+          </div>
+        )}
+        {/* Extension notices are only honest if dismissible and replaced by
+            the next one, so they never linger over a result they do not
+            describe */}
+        {features.notice && (
+          <div className="emb-toast" role="status" aria-live="polite">
+            <Icon name={IconName.Info} size={Size.Sm} color={TextColor.Fg} />
+            <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+              {features.notice.text}
+            </Text>
+            <button
+              type="button"
+              className="emb-toast-close"
+              aria-label="Dismiss"
+              onClick={features.notice.dismiss}
+            >
+              <Icon
+                name={IconName.Close}
+                size={Size.Sm}
+                color={TextColor.Tertiary}
+              />
+            </button>
           </div>
         )}
       </div>

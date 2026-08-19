@@ -13,7 +13,7 @@ import { isFiniteVector3 } from "../utils";
 
 type SampleMap = Record<string, fos.ModalSample>;
 type LabelWithId = { _id?: string; id?: string };
-type SelectedLabelLike = {
+export type SelectedLabelLike = {
   field?: string;
   path?: string;
   labelId?: string;
@@ -316,13 +316,16 @@ export const resolveAnnotationLabelBoundingBox = ({
   const labelId = getLabelId(selectedLabel);
   const renderLabel = labelId
     ? [...renderModel.detections, ...renderModel.polylines].find(
-        (label) => label._id === labelId,
+        (label) => label.data._id === labelId,
       )
     : null;
 
-  return createLabelBoundingBox(renderLabel ?? selectedLabel, {
-    useLegacyCoordinates,
-  });
+  return createLabelBoundingBox(
+    renderLabel ? renderLabel.data : selectedLabel,
+    {
+      useLegacyCoordinates,
+    },
+  );
 };
 
 const ensureMinimumCameraBoxSize = (box: Box3) => {

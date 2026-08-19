@@ -528,9 +528,11 @@ export class EmbeddingsChart {
       polygon,
       this.visibleMask,
     );
-    this.applySelection(
-      this.selection.writeLasso(indices.length > 0 ? indices : null),
-    );
+    // A lasso that caught nothing is not an instruction. The host already
+    // ignores an empty selection, so clearing here only desynced the two:
+    // the canvas dropped its emphasis while the host kept the selection
+    if (!indices.length) return;
+    this.applySelection(this.selection.writeLasso(indices));
     this.callbacks.onSelection?.(
       indices,
       this.adapter?.toDataPolygon?.(polygon) ?? null,

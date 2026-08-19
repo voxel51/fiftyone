@@ -414,7 +414,12 @@ def _project_pagination_paths(
 
     selected_fields = ["_group"]  # store dynamic group values
     for path in schema:
-        if any(path.startswith(exclude) for exclude in excluded):
+        # exclude the field and its children, but not sibling fields that
+        # share a name prefix (e.g. `clip` must not exclude `clip-pred`)
+        if any(
+            path == exclude or path.startswith(exclude + ".")
+            for exclude in excluded
+        ):
             continue
 
         selected_fields.append(path)

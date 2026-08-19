@@ -16,6 +16,7 @@ from .material_3d import (
     PointCloudMaterial,
 )
 from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
+from .miris_stream import MirisStream
 from .object_3d import Object3D
 from .pointcloud import *
 from .scene_3d import *
@@ -25,6 +26,7 @@ from .shape_3d import (
     SphereGeometry,
     CylinderGeometry,
 )
+from .splat import GaussianSplat
 from .transformation import Euler, Quaternion, Vector3
 
 # This enables Sphinx refs to directly use paths imported here

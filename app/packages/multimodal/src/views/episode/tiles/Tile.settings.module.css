@@ -1,0 +1,321 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inspectorBody {
+  flex: 1;
+  min-height: 0;
+}
+
+.growField {
+  flex: 1;
+  min-height: 0;
+}
+
+.growPre {
+  flex: 1;
+  margin: 0;
+  min-height: 120px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.jsonViewer {
+  font-size: 12px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.recommendButton {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--color-content-text-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.recommendButton:hover {
+  color: var(--color-content-text);
+}
+
+.sectionHeader {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.optionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.labelGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.projectionGroups {
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 8px;
+}
+
+.colorPreview {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  height: 12px;
+  width: 100%;
+}
+
+.colorPreviewLarge {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  height: 32px;
+  width: 100%;
+}
+
+.colormapEditor {
+  background: var(--color-background-primary);
+  color: var(--color-content-text);
+  min-width: 520px;
+  padding: 16px;
+}
+
+.colorStopHeader,
+.colorStopRow {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 88px minmax(0, 1fr) 36px 72px;
+}
+
+.colorSwatchInput {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  height: 28px;
+  padding: 0;
+  width: 32px;
+}
+
+.colorSourceEditor {
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 8px;
+  margin-top: 6px;
+  padding-left: 8px;
+}
+
+.metaText,
+.emptyText {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.labelWithTooltip {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.select {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-content-text);
+  font-size: 12px;
+  line-height: 1.25;
+  min-height: 28px;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.select:disabled {
+  opacity: 0.6;
+}
+
+.tooltipIcon {
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-content-text-muted);
+  cursor: help;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 10px;
+  height: 16px;
+  justify-content: center;
+  line-height: 1;
+  width: 16px;
+}
+
+/* Row shared by list-style settings: control + trailing metadata. */
+.fieldRow {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.fieldRow > :first-child {
+  min-width: 0;
+}
+
+.sourceSelection {
+  align-items: center;
+  display: flex;
+  min-width: 0;
+}
+
+.sourceCount {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.sharedDisplayControls {
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-bottom: 10px;
+}
+
+.cameraGeometryControl {
+  flex: 0 0 104px;
+  min-width: 0;
+}
+
+.pointCloudStyleButton {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  display: grid;
+  flex: 0 0 72px;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 28px;
+  padding: 4px 6px;
+}
+
+.pointCloudStyleButton:hover,
+.pointCloudStyleButton[aria-expanded="true"] {
+  border-color: var(--color-content-border-focus);
+}
+
+.pointCloudStyleButton:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.pointCloudStyleButtonCustomized {
+  border-color: var(--color-content-border-focus);
+}
+
+.pointCloudStylePreview {
+  border-radius: 3px;
+  height: 12px;
+  width: 100%;
+}
+
+.pointCloudStyleModePreview {
+  color: var(--color-content-text-muted);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.pointCloudStyleChevron {
+  color: var(--color-content-text-muted);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.filterInput {
+  background: transparent;
+  border: 1px solid var(--color-content-border-default, #383835);
+  border-radius: 4px;
+  color: var(--color-content-text-primary);
+  font-size: 12px;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.filterInput::placeholder {
+  color: var(--color-content-text-secondary);
+}
+
+/* Native radio rows for single-select lists too rich for a dropdown. */
+.radioRow {
+  cursor: pointer;
+}
+
+.radioRow input[type="radio"] {
+  accent-color: var(--color-brand-primary);
+  cursor: pointer;
+  flex: none;
+  margin: 0;
+}
+
+.radioRowLabel {
+  color: var(--color-content-text);
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Scrubbable number field: read-only display until clicked, drag to scrub. */
+.numberFieldWrap {
+  align-items: center;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.numberField {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-content-text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  min-height: 28px;
+  min-width: 0;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.numberField[readonly]:not(:disabled) {
+  cursor: ew-resize;
+  user-select: none;
+}
+
+.numberFieldUnit {
+  color: var(--color-content-text-muted);
+  font-size: 10px;
+  line-height: 1;
+}

@@ -1,4 +1,5 @@
-import type { McapDecodedMessage } from "../types";
+import type { McapDecodedMessage } from "../contracts/index";
+import { messagesFromMcapWorkerResult } from "./worker-result-traversal";
 
 /** Maximum plain decoded records delivered in one worker message. */
 export const MCAP_STREAM_BATCH_MAX_ITEMS = 64;
@@ -13,11 +14,33 @@ const MIN_STREAM_ITEM_ESTIMATED_BYTES = 256;
  * payload size covers generic log records; decoder hints cover outputs that
  * expand materially during decoding.
  */
-export function estimateMcapStreamItemBytes(item: McapDecodedMessage): number {
+export function estimateMcapStreamItemBytes(item: unknown): number {
+  const messages = messagesFromMcapWorkerResult(item, isMcapDecodedMessage);
+  if (messages.length === 0) return MIN_STREAM_ITEM_ESTIMATED_BYTES;
   return Math.max(
     MIN_STREAM_ITEM_ESTIMATED_BYTES,
-    item.encodedPayloadBytes ?? 0,
-    item.decoded.output.resourceHints?.sizeBytes ?? 0,
+    messages.reduce(
+      (total, message) =>
+        total +
+        Math.max(
+          message.encodedPayloadBytes ?? 0,
+          message.decoded.output.resourceHints?.sizeBytes ?? 0,
+        ),
+      0,
+    ),
+  );
+}
+
+function isMcapDecodedMessage(item: unknown): item is McapDecodedMessage {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    "decoded" in item &&
+    typeof item.decoded === "object" &&
+    item.decoded !== null &&
+    "output" in item.decoded &&
+    typeof item.decoded.output === "object" &&
+    item.decoded.output !== null
   );
 }
 

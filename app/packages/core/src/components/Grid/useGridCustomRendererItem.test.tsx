@@ -1,8 +1,12 @@
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
+
+// Mutated per-test to control what the mocked `useRecoilCallback`-derived
+// selection lookup reports, without depending on a real Recoil store.
+let currentSelectedSampleIds = new Set<string>();
 
 const {
   createSampleRendererRenderContext,
@@ -51,9 +55,11 @@ vi.mock("@fiftyone/plugins", () => ({
 vi.mock("@fiftyone/state", () => ({
   isGridCustomRendererFailOpen: (...args: unknown[]) =>
     isGridCustomRendererFailOpen(...args),
+  selectedSamples: "SELECTED_SAMPLES_ATOM",
   useCurrentDataset: (...args: unknown[]) => useCurrentDataset(...args),
   useGridCustomRendererFailover: (...args: unknown[]) =>
     useGridCustomRendererFailover(...args),
+  useModalActive: () => false,
   useSampleSchema: (...args: unknown[]) => useSampleSchema(...args),
   useSelectedMediaFieldGrid: (...args: unknown[]) =>
     useSelectedMediaFieldGrid(...args),
@@ -63,11 +69,27 @@ vi.mock("@fiftyone/analytics", () => ({
   useTrackEvent: () => trackEvent,
 }));
 
+// GridTagBubbles reaches for looker/schema hooks this test's minimal
+// @fiftyone/state mock doesn't provide; it's irrelevant to selection wiring.
+vi.mock("./GridTagBubbles", () => ({
+  default: () => null,
+}));
+
 vi.mock("recoil", () => ({
   useRecoilBridgeAcrossReactRoots_UNSTABLE: vi.fn(
     () =>
       ({ children }: React.PropsWithChildren) => <>{children}</>,
   ),
+  useRecoilCallback: (
+    fn: (args: { snapshot: unknown }) => (...args: unknown[]) => unknown,
+  ) =>
+    fn({
+      snapshot: {
+        getLoadable: () => ({
+          getValue: () => currentSelectedSampleIds,
+        }),
+      },
+    }),
 }));
 
 const Renderer = ({ ctx }: { ctx: { media: { url: string | null } } }) => (
@@ -109,6 +131,7 @@ const sampleResult = {
 describe("useGridCustomRendererItem", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    currentSelectedSampleIds = new Set<string>();
     useCurrentDataset.mockReturnValue(mockDataset);
     useGridCustomRendererFailover.mockReturnValue({
       dismissBanner: vi.fn(),
@@ -147,6 +170,31 @@ describe("useGridCustomRendererItem", () => {
     expect(looker).toBeInstanceOf(GridCustomRendererItem);
     expect(createDefaultLooker.current).not.toHaveBeenCalled();
     expect(trackEvent).toHaveBeenCalledWith("grid_custom_renderer_used");
+  });
+
+  it("wires a synchronous selection lookup into the created item that reflects selectedSamples", async () => {
+    currentSelectedSampleIds = new Set(["sample-id"]);
+    const createDefaultLooker = { current: vi.fn() } as any;
+    const { result } = renderHook(() =>
+      useGridCustomRendererItem(createDefaultLooker),
+    );
+
+    const looker = result.current.createItem(
+      sampleResult,
+      { description: "sample-id" } as any,
+      12,
+    ) as GridCustomRendererItem;
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [200, 120], 12);
+
+    await waitFor(() => {
+      expect(host.querySelector("[title='Selected']")).toBeTruthy();
+    });
+
+    looker.destroy();
+    host.remove();
   });
 
   it("stays on the default path when no sample renderer matches", () => {

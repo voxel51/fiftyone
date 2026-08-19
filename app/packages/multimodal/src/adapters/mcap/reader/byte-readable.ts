@@ -1,10 +1,13 @@
 import type { McapTypes } from "@mcap/core";
 import type {
   ByteClient,
+  ByteRange,
+  ByteRangeReadRequest,
   ByteRangeReadResult,
   ByteSourceDescriptor,
 } from "../../../query/bytes";
-import { parseByteSize } from "../../../query/bytes";
+import { byteSourceAccessKey, parseByteSize } from "../../../query/bytes";
+import { createAbortError } from "../../../utils/cancellation";
 import { chunkMessageIndexRange } from "./chunk-index-ranges";
 
 export interface McapChunkReadDebugLog {
@@ -31,6 +34,26 @@ export interface ByteClientReadableOptions {
   readonly readSignal?: { readonly current: AbortSignal | null };
 }
 
+/** One contained byte read with its preplanned fill and transfer attribution. */
+export interface McapContainedByteRead {
+  readonly bytes: Uint8Array;
+  readonly fillRange: ByteRange;
+  readonly transferredBytes: number;
+}
+
+export interface McapReadableSourceRange {
+  readonly length: bigint;
+  readonly offset: bigint;
+  readonly sourceKey: string;
+}
+
+interface ReadBufferAnchor {
+  readonly byteOffset: number;
+  readonly length: number;
+  readonly sourceOffset: bigint;
+  readonly sourceKey: string;
+}
+
 /**
  * Adapts the generic byte query client to the seekable MCAP readable API.
  */
@@ -40,6 +63,10 @@ export class ByteClientReadable implements McapTypes.IReadable {
   private readonly inFlightReads = new Map<
     string,
     Promise<ByteRangeReadResult>
+  >();
+  private readonly readBufferAnchors = new WeakMap<
+    ArrayBufferLike,
+    ReadBufferAnchor[]
   >();
   private source: ByteSourceDescriptor;
   private resolvedSizeBytes?: bigint;
@@ -59,7 +86,57 @@ export class ByteClientReadable implements McapTypes.IReadable {
     this.chunkIndexes = chunkIndexes;
   }
 
+  /** Resolves a returned view or slice to its exact source byte range. */
+  sourceRangeForBytes(bytes: Uint8Array): McapReadableSourceRange | undefined {
+    const anchors = this.readBufferAnchors.get(bytes.buffer);
+    if (!anchors || bytes.buffer.byteLength === 0) {
+      return undefined;
+    }
+    const viewEnd = bytes.byteOffset + bytes.byteLength;
+    const matchingAnchors = anchors.filter(
+      (candidate) =>
+        bytes.byteOffset >= candidate.byteOffset &&
+        viewEnd <= candidate.byteOffset + candidate.length,
+    );
+    const anchor = matchingAnchors[0];
+    if (!anchor) {
+      return undefined;
+    }
+    const offset =
+      anchor.sourceOffset + BigInt(bytes.byteOffset - anchor.byteOffset);
+    if (
+      matchingAnchors.some(
+        (candidate) =>
+          candidate.sourceKey !== anchor.sourceKey ||
+          candidate.sourceOffset +
+            BigInt(bytes.byteOffset - candidate.byteOffset) !==
+            offset,
+      )
+    ) {
+      // A byte client reused one mutable backing range for different source
+      // identities. There is no collision-safe identity for this view.
+      return undefined;
+    }
+    return {
+      length: BigInt(bytes.byteLength),
+      offset,
+      sourceKey: anchor.sourceKey,
+    };
+  }
+
+  /** Source/content-version identity tied to one returned read buffer. */
+  sourceIdentityForBytes(bytes: Uint8Array): string | undefined {
+    return this.sourceRangeForBytes(bytes)?.sourceKey;
+  }
+
+  /** Current access/content identity, including a discovered validator. */
+  sourceAccessKey(): string {
+    return byteSourceAccessKey(this.source);
+  }
+
   async size(): Promise<bigint> {
+    const signal = this.options.readSignal?.current ?? undefined;
+    if (signal?.aborted) throw createAbortError("MCAP read aborted");
     const sizeBytes = sourceSizeBytes(this.source);
     if (sizeBytes !== undefined) {
       // Metadata-provided sizes can make a warm persistent-cache session
@@ -77,6 +154,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
     // Prefer cheap transport metadata before doing a tiny ranged GET; many
     // object stores allow range reads but block HEAD, so both paths are needed.
     const statSource = await this.byteClient.stat?.(this.source);
+    if (signal?.aborted) throw createAbortError("MCAP read aborted");
     if (statSource) {
       this.updateSource(statSource);
     }
@@ -87,6 +165,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
 
     const result = await this.byteClient.readBytes({
       range: { length: 1n, offset: 0n },
+      ...(signal ? { signal } : {}),
       source: this.source,
     });
     this.updateSource(result.source);
@@ -120,22 +199,90 @@ export class ByteClientReadable implements McapTypes.IReadable {
     return this.readRange(offset, size);
   }
 
-  async readExact(offset: bigint, size: bigint): Promise<Uint8Array> {
-    return this.readRange(offset, size, { blockFill: false });
+  async readExact(
+    offset: bigint,
+    size: bigint,
+    signal?: AbortSignal,
+  ): Promise<Uint8Array> {
+    return (
+      await this.readRangeResult(
+        offset,
+        size,
+        {
+          blockFill: false,
+          readahead: false,
+        },
+        signal,
+      )
+    ).bytes;
+  }
+
+  /** Plans the physical cache fill without performing the read. */
+  planReadRange(
+    offset: bigint,
+    size: bigint,
+    cachePolicy?: ByteRangeReadRequest["cachePolicy"],
+  ): ByteRange {
+    const request = {
+      ...(cachePolicy ? { cachePolicy } : {}),
+      range: { length: size, offset },
+      source: this.source,
+    };
+    return (this.byteClient.planRead?.(request) ?? request).range;
+  }
+
+  /**
+   * Executes one admitted range with autonomous readahead disabled and
+   * reports the underlying cache-fill/transport attribution.
+   */
+  async readContained(
+    offset: bigint,
+    size: bigint,
+    options: {
+      readonly exact?: boolean;
+      readonly signal?: AbortSignal;
+    } = {},
+  ): Promise<McapContainedByteRead> {
+    const cachePolicy = {
+      ...(options.exact ? { blockFill: false } : {}),
+      readahead: false,
+    } as const;
+    const fillRange = this.planReadRange(offset, size, cachePolicy);
+    const result = await this.readRangeResult(
+      offset,
+      size,
+      cachePolicy,
+      options.signal,
+    );
+    return {
+      bytes: result.bytes,
+      fillRange,
+      transferredBytes:
+        result.readUsage?.transferredBytes ?? result.bytes.byteLength,
+    };
   }
 
   private async readRange(
     offset: bigint,
     size: bigint,
-    cachePolicy?: { readonly blockFill?: boolean },
+    cachePolicy?: ByteRangeReadRequest["cachePolicy"],
   ): Promise<Uint8Array> {
+    return (await this.readRangeResult(offset, size, cachePolicy)).bytes;
+  }
+
+  private async readRangeResult(
+    offset: bigint,
+    size: bigint,
+    cachePolicy?: ByteRangeReadRequest["cachePolicy"],
+    signalOverride?: AbortSignal,
+  ): Promise<ByteRangeReadResult> {
     // Warm-cache walks (topic bounds, index scans, per-message decode reads)
     // never reach a network boundary, so a cancelled job would otherwise hold
     // its serial lane for seconds of pure CPU. Every read consults the
     // active request's signal, making cancellation effective on cache hits.
-    const activeSignal = this.options.readSignal?.current;
+    const activeSignal = signalOverride ?? this.options.readSignal?.current;
     if (activeSignal?.aborted) {
-      throw abortedReadableError();
+      throw createAbortError("MCAP read aborted");
     }
     const sourceSize = this.resolvedSizeBytes ?? sourceSizeBytes(this.source);
     if (sourceSize !== undefined && offset + size > sourceSize) {
@@ -145,21 +292,34 @@ export class ByteClientReadable implements McapTypes.IReadable {
     }
 
     if (size === 0n) {
-      return new Uint8Array();
+      return {
+        bytes: new Uint8Array(),
+        range: { length: 0n, offset },
+        source: this.source,
+      };
     }
 
     const readKey = readRangeKey(offset, size, cachePolicy);
-    const pending = this.inFlightReads.get(readKey);
+    // A signal-bound request owns its transport cancellation. It must not
+    // join, or become the shared source for, an independently-owned waiter.
+    const pending = signalOverride
+      ? undefined
+      : this.inFlightReads.get(readKey);
     const cacheResult = pending ? "coalesced" : "fetched";
-    const signal = this.options.readSignal?.current ?? undefined;
-    const result = await (pending ??
-      this.startReadRange(readKey, {
-        cachePolicy,
-        range: { length: size, offset },
-        ...(signal ? { signal } : {}),
-        source: this.source,
-      }));
+    const signal =
+      signalOverride ?? this.options.readSignal?.current ?? undefined;
+    const request = {
+      cachePolicy,
+      range: { length: size, offset },
+      ...(signal ? { signal } : {}),
+      source: this.source,
+    };
+    const result = await (signalOverride
+      ? this.byteClient.readBytes(request)
+      : (pending ?? this.startReadRange(readKey, request)));
+    if (signal?.aborted) throw createAbortError("MCAP read aborted");
     this.updateSource(result.source);
+    this.registerReadBuffer(result);
     this.logChunkRead(
       offset,
       size,
@@ -167,7 +327,32 @@ export class ByteClientReadable implements McapTypes.IReadable {
       cacheResult,
     );
 
-    return result.bytes;
+    return result;
+  }
+
+  private registerReadBuffer(result: ByteRangeReadResult): void {
+    if (result.bytes.buffer.byteLength === 0) {
+      return;
+    }
+    const anchors = this.readBufferAnchors.get(result.bytes.buffer) ?? [];
+    const anchor: ReadBufferAnchor = {
+      byteOffset: result.bytes.byteOffset,
+      length: result.bytes.byteLength,
+      sourceOffset: result.range.offset,
+      sourceKey: byteSourceAccessKey(result.source),
+    };
+    if (
+      !anchors.some(
+        (candidate) =>
+          candidate.byteOffset === anchor.byteOffset &&
+          candidate.length === anchor.length &&
+          candidate.sourceOffset === anchor.sourceOffset &&
+          candidate.sourceKey === anchor.sourceKey,
+      )
+    ) {
+      anchors.push(anchor);
+      this.readBufferAnchors.set(result.bytes.buffer, anchors);
+    }
   }
 
   private startReadRange(
@@ -217,12 +402,6 @@ export class ByteClientReadable implements McapTypes.IReadable {
       (this.options.logChunkRead ?? defaultChunkReadLogger)(entry);
     }
   }
-}
-
-function abortedReadableError(): Error {
-  const error = new Error("MCAP read aborted");
-  error.name = "AbortError";
-  return error;
 }
 
 function sourceSizeBytes(source: ByteSourceDescriptor): bigint | undefined {
@@ -345,12 +524,13 @@ function chunkReadDebugLog({
 function readRangeKey(
   offset: bigint,
   size: bigint,
-  cachePolicy: { readonly blockFill?: boolean } | undefined,
+  cachePolicy: ByteRangeReadRequest["cachePolicy"] | undefined,
 ): string {
   return [
     offset.toString(),
     size.toString(),
     cachePolicy?.blockFill === false ? "exact" : "default",
+    cachePolicy?.readahead === false ? "contained" : "readahead",
   ].join(":");
 }
 

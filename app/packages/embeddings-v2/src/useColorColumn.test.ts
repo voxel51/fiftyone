@@ -22,6 +22,7 @@ const RUN: VisualizationRun = {
   pointsField: null,
   model: null,
   ready: true,
+  error: null,
   timestamp: null,
 };
 
@@ -36,7 +37,7 @@ describe("useColorColumn", () => {
     const { result } = renderHook(() => useColorColumn("ds", "viz", RUN, null));
 
     await waitFor(() => expect(result.current.choices).toEqual(["a", "b"]));
-    expect(result.current.colors).toBeNull();
+    expect(result.current.values).toBeNull();
     expect(fetchColor).not.toHaveBeenCalled();
   });
 
@@ -55,18 +56,16 @@ describe("useColorColumn", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("builds the rgb column for the selected field", async () => {
+  it("fetches the value column and meta for the selected field", async () => {
     vi.mocked(fetchColorByChoices).mockResolvedValue(["label"]);
     vi.mocked(fetchColor).mockResolvedValue(RESPONSE);
     const { result } = renderHook(() =>
       useColorColumn("ds", "viz", RUN, "label"),
     );
 
-    await waitFor(() => expect(result.current.colors).not.toBeNull());
-    // One rgb triplet per point, same class -> same color
-    const colors = result.current.colors as Float32Array;
-    expect(colors.length).toBe(9);
-    expect([...colors.slice(0, 3)]).toEqual([...colors.slice(6, 9)]);
+    await waitFor(() => expect(result.current.values).not.toBeNull());
+    expect(result.current.values).toEqual(RESPONSE.values);
+    expect(result.current.meta).toEqual(RESPONSE.meta);
   });
 
   it("clears the column immediately when the field changes", async () => {
@@ -77,18 +76,18 @@ describe("useColorColumn", () => {
         useColorColumn("ds", "viz", RUN, field),
       { initialProps: { field: "a" as string | null } },
     );
-    await waitFor(() => expect(result.current.colors).not.toBeNull());
+    await waitFor(() => expect(result.current.values).not.toBeNull());
 
     // The next fetch never resolves; a stale column must not linger
     vi.mocked(fetchColor).mockImplementationOnce(
       () => new Promise<ColorResponse>(() => undefined),
     );
     rerender({ field: "b" });
-    expect(result.current.colors).toBeNull();
+    expect(result.current.values).toBeNull();
 
     // Deselecting also clears without fetching
     rerender({ field: null });
-    expect(result.current.colors).toBeNull();
+    expect(result.current.values).toBeNull();
   });
 
   it("reports color fetch failures", async () => {
@@ -117,7 +116,7 @@ describe("useColorColumn", () => {
     expect(result.current.loading).toBe(true);
     resolve(RESPONSE);
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.colors).not.toBeNull();
+    expect(result.current.values).not.toBeNull();
 
     // Deselecting the field never enters a loading state
     rerender({ field: null });

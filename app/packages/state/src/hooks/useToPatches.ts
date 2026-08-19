@@ -4,18 +4,20 @@ import {
   _activeFields,
   extendedStages,
   filters,
-  groupSlice,
   patching,
   selectedSamples,
   view,
   viewStateForm_INTERNAL,
 } from "../recoil";
+import resolveActiveGroupSliceForView from "./resolveActiveGroupSliceForView";
 
 export default function useToPatches() {
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (field) => {
         set(patching, true);
+        const { slice, updater } =
+          await resolveActiveGroupSliceForView(snapshot);
         set(viewStateForm_INTERNAL, {
           addStages: [
             {
@@ -26,14 +28,14 @@ export default function useToPatches() {
               ],
             },
           ],
-          slice: await snapshot.getPromise(groupSlice),
+          slice,
           filters: await snapshot.getPromise(filters),
           extended: await snapshot.getPromise(extendedStages),
           sampleIds: Array.from(
             (await snapshot.getPromise(selectedSamples)).keys(),
           ),
         });
-        set(view, (v) => v);
+        set(view, updater);
 
         const unsubscribe = subscribe((_, { reset, set, get }) => {
           reset(viewStateForm_INTERNAL);

@@ -8,6 +8,11 @@ import {
   type RefObject,
 } from "react";
 import type { SetterOrUpdater } from "recoil";
+import type {
+  LassoStageInput,
+  PublishSelection,
+  SelectionDecorator,
+} from "./extensions";
 import { buildIdIndex, fetchLassoStage, fetchSampleInfo } from "./protocol";
 import type { EmbeddingsViewHandle, HoverHit } from "./renderer";
 import type { Loaded } from "./useRunColumns";
@@ -19,23 +24,41 @@ export interface SelectionBridgeOptions {
   loaded: Loaded | null;
   /** The run's patches field; point ids are label ids when set */
   patchesField: string | null;
+  /** The run's stored points field, when a spatial stage is possible */
+  pointsField: string | null;
+  /** The plot's per-point visibility (view stages + sidebar filters);
+   * null when everything is visible. A lasso only selects visible points,
+   * so a gesture respects the active filter/view */
+  visible: Uint8Array | null;
   /** Renderer handle, for clearing the chart's local dim layer */
   chart: RefObject<EmbeddingsViewHandle | null>;
-  /** fos.extendedSelectionOverrideStage setter */
-  setOverrideStage: (stage: Record<string, unknown>) => void;
+  /** Commits stage + count + the extension's decoration in ONE batched
+   * commit, so a single lasso invalidates the App's view once rather than
+   * once per setter. */
+  publishSelection: PublishSelection;
   /** fos.useResetExtendedSelection() */
   resetExtended: () => void;
   selectedSamples: Map<string, SelectionType>;
   setSelectedSamples: SetterOrUpdater<Map<string, SelectionType>>;
+  /** Joins each publish with the extension's selection artifacts (called
+   * with the kept indices; null on clear). Null when nothing decorates. */
+  decorateSelection: ((kept: number[] | null) => SelectionDecorator) | null;
+  /** Client-side lasso → view stage. Null falls back to the server route
+   * (the lasso resolves against the full run there). */
+  resolveLassoStage:
+    | ((input: LassoStageInput) => Record<string, unknown> | null)
+    | null;
 }
 
 /**
  * Two-way selection wiring between the plot and the App. Plot -> grid:
- * a lasso resolves server-side to a view stage and lands on the grid
- * via the override stage — no id lists exist client-side or on the
- * wire; a plain click toggles the sample in the App's selection.
- * Grid -> plot: selected sample ids style the plot through a lazily
- * built id -> wire-index map. Esc (and `clearAll`) clears every layer.
+ * a lasso resolves to a view stage — client-side when the extension
+ * supplies a resolver and the run is fully loaded (zero requests per
+ * gesture), otherwise server-side — and lands on the grid via the
+ * override stage; a plain click toggles the sample in the App's
+ * selection. Grid -> plot: selected sample ids style the plot through a
+ * lazily built id -> wire-index map. Esc (and `clearAll`) clears every
+ * layer.
  */
 export function useSelectionBridge({
   datasetName,
@@ -43,15 +66,23 @@ export function useSelectionBridge({
   view,
   loaded,
   patchesField,
+  pointsField,
+  visible,
   chart,
-  setOverrideStage,
   resetExtended,
   selectedSamples,
   setSelectedSamples,
+  decorateSelection,
+  resolveLassoStage,
+  publishSelection,
 }: SelectionBridgeOptions): {
   selectedIndices: number[] | null;
-  /** Points in the last lasso selection, for chrome (null = none) */
-  selectionCount: number | null;
+  /** The live lasso's enclosed wire indices (null = no lasso). Kept
+   * client-side for selection-scoped UI like the legend counts; the
+   * grid itself is driven by the resolved stage, never these.
+   * Typed array on purpose: a lasso can enclose millions of points,
+   * and this is retained until the selection clears */
+  lassoIndices: Uint32Array | null;
   handleSelection: (
     indices: number[],
     polygon?: Array<[number, number]> | null,
@@ -61,7 +92,7 @@ export function useSelectionBridge({
   error: string | null;
 } {
   const [error, setError] = useState<string | null>(null);
-  const [selectionCount, setSelectionCount] = useState<number | null>(null);
+  const [lassoIndices, setLassoIndices] = useState<Uint32Array | null>(null);
   // Monotonic lasso-request id: a slow older response must not
   // overwrite a newer selection (or resurrect one that was cleared)
   const lassoSeq = useRef(0);
@@ -71,10 +102,24 @@ export function useSelectionBridge({
     lassoSeq.current++;
     resetExtended();
     setSelectedSamples(new Map());
-    setSelectionCount(null);
+    setLassoIndices(null);
     setError(null);
+    // The extension's artifacts clear in the same commit they were
+    // published in; the count is what the chip and the panel tab's pill
+    // both read
+    publishSelection({
+      stage: null,
+      count: null,
+      decorate: decorateSelection?.(null) ?? null,
+    });
     chart.current?.clearSelection();
-  }, [resetExtended, setSelectedSamples, chart]);
+  }, [
+    resetExtended,
+    setSelectedSamples,
+    publishSelection,
+    decorateSelection,
+    chart,
+  ]);
 
   // Esc clears every selection layer (App state + the chart's local dim)
   useEffect(() => {
@@ -114,8 +159,11 @@ export function useSelectionBridge({
     return indices.length ? indices : null;
   }, [loaded, selectedSamples]);
 
-  // Lasso -> data-space polygon -> server-resolved view stage -> the
-  // grid. The override stage alone drives the grid
+  // Lasso -> view stage -> the grid. The override stage alone drives
+  // the grid; the stage builds locally when the extension supplies a
+  // resolver and every point is loaded (the hit-test is complete),
+  // otherwise the server resolves the data-space polygon against the
+  // full run
   const handleSelection = (
     indices: number[],
     polygon?: Array<[number, number]> | null,
@@ -125,19 +173,57 @@ export function useSelectionBridge({
     // A failure banner describes the previous gesture; a new one starts
     // clean (the success path below still resets, as a race safeguard)
     setError(null);
-    if (!indices.length) {
+
+    // Keep only points passing the active filter/view. When something is
+    // hidden, a spatial shortcut can't express the filter, so resolve by
+    // id from the surviving points instead of the polygon
+    const filtered = visible != null;
+    const kept = filtered ? indices.filter((i) => visible[i]) : indices;
+    if (!kept.length) {
       resetExtended();
-      setSelectionCount(null);
+      setLassoIndices(null);
+      publishSelection({
+        stage: null,
+        count: null,
+        decorate: decorateSelection?.(null) ?? null,
+      });
       return;
     }
-    const selection = polygon?.length ? { polygon } : { indices };
+    // Synchronous, unlike any stage resolution below: the legend
+    // counts follow the gesture, not the network
+    setLassoIndices(Uint32Array.from(kept));
+
+    if (resolveLassoStage && loaded && loaded.points.length === loaded.total) {
+      const stage = resolveLassoStage({
+        indices: kept,
+        polygon: filtered ? null : (polygon ?? null),
+        ids: loaded.ids,
+        view,
+        patchesField,
+        pointsField,
+      });
+      if (stage) {
+        publishSelection({
+          stage,
+          count: kept.length,
+          decorate: decorateSelection?.(kept) ?? null,
+        });
+        return;
+      }
+    }
+
+    const selection =
+      !filtered && polygon?.length ? { polygon } : { indices: kept };
     fetchLassoStage(datasetName, brainKey, view, selection)
       .then((stage) => {
         if (seq !== lassoSeq.current) return;
         // A stale failure banner must not outlive the success after it
         setError(null);
-        setOverrideStage({ [stage._cls]: stage.kwargs });
-        setSelectionCount(stage.count ?? indices.length);
+        publishSelection({
+          stage: { [stage._cls]: stage.kwargs },
+          count: stage.count ?? kept.length,
+          decorate: decorateSelection?.(kept) ?? null,
+        });
       })
       .catch((e) => seq === lassoSeq.current && setError(String(e)));
   };
@@ -163,6 +249,7 @@ export function useSelectionBridge({
       return;
     }
     if (!datasetName || !brainKey) return;
+    // Patches point: resolve the label to its owning sample, server-side
     fetchSampleInfo(datasetName, brainKey, hit.index, null)
       .then((info) => toggleSample(info.sampleId))
       .catch(() => undefined);
@@ -170,7 +257,7 @@ export function useSelectionBridge({
 
   return {
     selectedIndices,
-    selectionCount,
+    lassoIndices,
     handleSelection,
     handlePointClick,
     clearAll,

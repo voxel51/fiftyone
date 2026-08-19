@@ -1,0 +1,57 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.headerButton {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.chevron {
+  border-right: 1.5px solid var(--color-content-text-muted);
+  border-top: 1.5px solid var(--color-content-text-muted);
+  flex: 0 0 auto;
+  height: 5px;
+  transform: rotate(45deg);
+  transition: transform 120ms ease;
+  width: 5px;
+}
+
+.chevronExpanded {
+  transform: rotate(135deg);
+}
+
+.summary {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

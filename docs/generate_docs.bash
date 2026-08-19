@@ -8,13 +8,14 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-f] [-c] [-s] [-t]
+    echo "Usage:  bash $0 [-h] [-f] [-c] [-s] [-m] [-t]
 
 Options:
 -h      Display this help message.
 -f      Perform a fast build (don't regenerate zoo/plugin docs).
 -c      Perform a clean build (deletes existing build directory).
 -s      Copy static files only (CSS, JS).
+-m      Skip the markdown build (HTML only).
 -t      Path to fiftyone-teams clone to use for Teams docs
 "
 }
@@ -25,13 +26,15 @@ SHOW_HELP=false
 FAST_BUILD=false
 CLEAN_BUILD=false
 STATIC_ONLY=false
+SKIP_MARKDOWN=false
 PATH_TO_TEAMS=""
-while getopts "hfcst:" FLAG; do
+while getopts "hfcsmt:" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         f) FAST_BUILD=true ;;
         c) CLEAN_BUILD=true ;;
         s) STATIC_ONLY=true ;;
+        m) SKIP_MARKDOWN=true ;;
         t) PATH_TO_TEAMS=$OPTARG;;
         *) usage; exit 2 ;;
     esac
@@ -137,13 +140,15 @@ fi
 
 echo "Building HTML docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
-sphinx-build -M html source build --jobs auto $SPHINXOPTS
+sphinx-build -M html source build --jobs 1 $SPHINXOPTS
 
-echo "Building Markdown docs"
-sphinx-build -M markdown source build --jobs auto $SPHINXOPTS
+if [[ ${SKIP_MARKDOWN} = false ]]; then
+    echo "Building Markdown docs"
+    sphinx-build -M markdown source build --jobs 1 $SPHINXOPTS
 
-echo "Copying markdown files to HTML output"
-cp -r build/markdown/* build/html/
+    echo "Copying markdown files to HTML output"
+    cp -r build/markdown/* build/html/
+fi
 
 
 echo "Post-processing docs"

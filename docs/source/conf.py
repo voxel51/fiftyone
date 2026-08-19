@@ -92,6 +92,10 @@ if teams_dir:
     autoapi_dirs = [os.path.join(teams_dir, "fiftyone")]
     autoapi_generate_api_docs = False
     autoapi_options = ["members", "undoc-members", "show-inheritance"]
+    # multimodal is feature-gated and excluded from public API docs; its
+    # protobuf __generated__ modules defeat astroid and spam
+    # "Cannot resolve import" warnings
+    autoapi_ignore = ["*migrations*", "*/multimodal/*"]
 
 # Types of class members to generate documentation for.
 autodoc_default_options = {

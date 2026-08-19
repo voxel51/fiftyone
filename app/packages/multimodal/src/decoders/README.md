@@ -1,0 +1,16 @@
+# decoders
+
+Decoders are pure functions that turn encoded payloads into cloneable IR
+outputs. This namespace owns the decoder contract, registration, and
+normalization needed before data can enter the shared runtime. A format adapter
+chooses which decoders apply; the decoder itself should only understand its
+payload.
+
+It's important to know that concerns like fetching bytes, scheduling playback,
+and drawing pixels belong elsewhere. Keeping those concerns out makes decoding
+deterministic and easy to move off the main thread. Decoders depend only on IR,
+low-level codecs, and domain-free utilities.
+
+The decode operation is a stateless transformation. Cached and coalesced
+requests for decoded results belong to query's decoding service; low-level
+bitstream inspection belongs to codecs.

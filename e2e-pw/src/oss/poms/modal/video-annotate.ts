@@ -123,26 +123,28 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * Expand the tracks drawer. The playback controls row is the drawer toggle
-   * (`role="button"`); focus it and press Enter so the keypress toggles the
-   * drawer rather than landing on a nested playback button. It toggles, so call
-   * only from the closed default.
+   * The tracks drawer's open/close chevron, at the right end of the playback
+   * controls row. A real `<button>`, so keyboard activation is native — the
+   * controls row itself is deliberately not a tab stop (focusing it used to
+   * ring the whole bar).
+   */
+  private tracksDrawerToggle(): Locator {
+    return this.page
+      .locator('[data-testid="timeline-controls-toggle"]')
+      .first();
+  }
+
+  /**
+   * Expand the tracks drawer via its chevron. It toggles, so call only from
+   * the closed default.
    */
   async openTracksDrawer() {
-    const toggle = this.page
-      .locator('[data-testid="timeline-controls-root"]')
-      .first();
-    await toggle.focus();
-    await toggle.press("Enter");
+    await this.tracksDrawerToggle().click();
   }
 
   /** Collapse the tracks drawer back to the closed default — see {@link openTracksDrawer}. */
   async closeTracksDrawer() {
-    const toggle = this.page
-      .locator('[data-testid="timeline-controls-root"]')
-      .first();
-    await toggle.focus();
-    await toggle.press("Enter");
+    await this.tracksDrawerToggle().click();
   }
 
   /**
@@ -389,8 +391,9 @@ export class VideoAnnotatePom {
    * toolbar action (a 1-second support window starting at the playhead frame).
    */
   async createTemporalDetection() {
-    // target the actual button — the timeline-controls wrapper is also a
-    // role="button" whose accessible name bubbles up "New TD".
+    // target the actual button by element, not by role: the toolbar slot sits
+    // inside the timeline controls row, and pinning the selector to `button`
+    // keeps it unambiguous regardless of what wraps it.
     await this.page.locator('button[aria-label="New TD"]').click();
   }
 

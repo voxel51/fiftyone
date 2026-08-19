@@ -29,6 +29,7 @@ from .utils import (
     create_implied_field,
     validate_field_name,
     validate_fields_match,
+    warn_reserved_pk_paths,
 )
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -356,6 +357,8 @@ class DatasetMixin(object):
                 is_frame_field=is_frame_field,
             )
 
+        warn_reserved_pk_paths(fof.flatten_schema(new_schema).keys())
+
         # Silently skip updating metadata of any read-only fields
         for path in list(new_metadata.keys()):
             field = cls._get_field(path, allow_missing=True)
@@ -617,6 +620,8 @@ class DatasetMixin(object):
                     dataset, path, new_path, label_schemas, new_label_schemas
                 )
 
+        warn_reserved_pk_paths(new_paths)
+
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
             cls._rename_fields_simple(_paths, _new_paths)
@@ -708,6 +713,8 @@ class DatasetMixin(object):
 
             if field is not None:
                 schema_paths.append((path, new_path))
+
+        warn_reserved_pk_paths(new_paths)
 
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)

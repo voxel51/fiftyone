@@ -1,0 +1,184 @@
+/*
+ * Timeseries chart chrome. Sibling visualization panels render on the
+ * fixed dark canvas surface regardless of app theme, so the chart uses
+ * one selected dark ink set: muted axis labels, hairline grid, series
+ * color only on marks and legend swatches — text stays in ink tokens.
+ */
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 8px 8px 4px;
+  position: relative;
+  width: 100%;
+}
+
+.plot {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  width: 100%;
+}
+
+.controls {
+  bottom: calc(var(--timeseries-legend-height, 0px) + 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: absolute;
+  right: 8px;
+  z-index: 5;
+}
+
+.controlButton {
+  align-items: center;
+  background: rgba(5, 11, 18, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 4px;
+  color: #cbd5e1;
+  cursor: pointer;
+  display: inline-flex;
+  height: 18px;
+  justify-content: center;
+  padding: 0;
+  width: 18px;
+}
+
+.controlIcon {
+  height: 10px;
+  width: 10px;
+}
+
+.controlButtonActive .controlIcon {
+  color: var(--color-brand-primary);
+}
+
+.controlButton:hover,
+.controlButton:focus-visible {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(203, 213, 225, 0.48);
+}
+
+.controlButton:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 1px;
+}
+
+.playhead {
+  bottom: 0;
+  cursor: grab;
+  left: -6px;
+  position: absolute;
+  touch-action: none;
+  top: 0;
+  width: 12px;
+  will-change: transform;
+  z-index: 2;
+}
+
+.playhead::after {
+  background: rgba(255, 255, 255, 0.65);
+  bottom: 0;
+  content: "";
+  left: 50%;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  width: 1px;
+}
+
+.playhead:hover::after,
+.playheadDragging::after {
+  background: var(--color-brand-primary);
+}
+
+.playheadDragging {
+  cursor: grabbing;
+}
+
+/* Shared hover-time caret echoed from other time-axis surfaces (other
+   plots, the timeline ruler) — dashed to stay distinct from both the
+   solid playhead and uPlot's own cursor on the hovered chart. */
+.hoverCaret {
+  border-left: 1px dashed rgba(255, 255, 255, 0.4);
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 0;
+  will-change: transform;
+  z-index: 1;
+}
+
+.coverageLayer {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.unreadBand,
+.unavailableBand {
+  bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+}
+
+.unreadBand {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.unavailableBand {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(248, 113, 113, 0.08),
+    rgba(248, 113, 113, 0.08) 4px,
+    rgba(248, 113, 113, 0.2) 4px,
+    rgba(248, 113, 113, 0.2) 6px
+  );
+  border-left: 1px solid rgba(248, 113, 113, 0.42);
+  border-right: 1px solid rgba(248, 113, 113, 0.42);
+}
+
+/* The plot area supports click-to-seek and drag-to-zoom. */
+.root :global(.u-over) {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.root :global(.u-legend) {
+  color: #c3c2b7;
+  font:
+    11px system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  margin-top: 2px;
+  text-align: left;
+}
+
+.root :global(.u-legend) .timeLegendRow {
+  display: none;
+}
+
+.root :global(.u-legend .u-marker) {
+  border-radius: 2px;
+}
+
+.root :global(.u-legend th) {
+  font-weight: 500;
+}
+
+.root :global(.u-legend .u-value) {
+  color: #898781;
+  font-variant-numeric: tabular-nums;
+}
+
+.root :global(.u-select) {
+  background: rgba(96, 165, 250, 0.16);
+  border: 1px solid rgba(147, 197, 253, 0.72);
+}

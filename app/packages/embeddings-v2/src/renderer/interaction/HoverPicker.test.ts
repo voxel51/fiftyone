@@ -8,7 +8,7 @@ import {
   type Mock,
   vi,
 } from "vitest";
-import { HOVER_DEBOUNCE_MS } from "../constants";
+import { HOVER_INTERVAL_MS } from "../constants";
 import type { HoverHit } from "../types";
 import { HoverPicker } from "./HoverPicker";
 
@@ -57,47 +57,78 @@ describe("HoverPicker", () => {
     vi.useRealTimers();
   });
 
-  it("hit-tests only after the pointer settles", () => {
+  it("hit-tests at most once per interval, with the latest pointer", () => {
     fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
+    fire(container, "pointermove", { offsetX: 7, offsetY: 8 });
     expect(pick).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
-    expect(pick).toHaveBeenCalledExactlyOnceWith(5, 6);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(pick).toHaveBeenCalledExactlyOnceWith(7, 8);
     expect(onHover).toHaveBeenCalledExactlyOnceWith(HIT);
   });
 
-  it("hides a shown hit the moment the pointer moves again", () => {
+  // The flicker bug: hand jitter over one point used to tear the hover
+  // down and remount it — the host must hear nothing at all
+  it("stays silent while the pointer jitters over the same point", () => {
     fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
-    expect(onHover).toHaveBeenLastCalledWith(HIT);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(onHover).toHaveBeenCalledExactlyOnceWith(HIT);
 
-    fire(container, "pointermove", { offsetX: 7, offsetY: 8 });
+    fire(container, "pointermove", { offsetX: 6, offsetY: 6 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    fire(container, "pointermove", { offsetX: 5, offsetY: 7 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+
+    expect(pick).toHaveBeenCalledTimes(3);
+    expect(onHover).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves between points without a null in between", () => {
+    fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+
+    const other: HoverHit = { index: 4, id: "def", label: "dog", x: 40, y: 41 };
+    pick.mockReturnValue(other);
+    fire(container, "pointermove", { offsetX: 40, offsetY: 41 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+
+    expect(onHover).toHaveBeenCalledTimes(2);
+    expect(onHover).toHaveBeenLastCalledWith(other);
+  });
+
+  it("clears once the pointer tests empty space", () => {
+    fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+
+    pick.mockReturnValue(null);
+    fire(container, "pointermove", { offsetX: 90, offsetY: 90 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
     expect(onHover).toHaveBeenLastCalledWith(null);
   });
 
   it("stays quiet when nothing is hit", () => {
     pick.mockReturnValue(null);
     fire(container, "pointermove", {});
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
     expect(onHover).not.toHaveBeenCalled();
   });
 
   it("ignores movement while buttons are down (camera drags)", () => {
     fire(container, "pointermove", { offsetX: 5, offsetY: 6, buttons: 1 });
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
     expect(pick).not.toHaveBeenCalled();
   });
 
   it("ignores movement while another interaction owns the pointer", () => {
     blocked = true;
     fire(container, "pointermove", {});
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
     expect(pick).not.toHaveBeenCalled();
   });
 
   it("clears on pointerdown and on pointerleave", () => {
     fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
     expect(onHover).toHaveBeenLastCalledWith(HIT);
 
     fire(container, "pointerdown", {});
@@ -105,28 +136,52 @@ describe("HoverPicker", () => {
 
     fire(container, "pointerup", {});
     fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
     expect(onHover).toHaveBeenLastCalledWith(HIT);
 
     fire(container, "pointerleave", {});
     expect(onHover).toHaveBeenLastCalledWith(null);
   });
 
-  it("re-tests after the view changes under a still pointer", () => {
+  // A wheel zoom moves the point under a still pointer: the same index
+  // at new screen coords must re-fire so the host re-anchors its ring
+  it("re-anchors when the camera moves under a still pointer", () => {
     fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
-    expect(pick).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(onHover).toHaveBeenLastCalledWith(HIT);
 
-    // A wheel zoom: same pointer position, new projection
+    const moved = { ...HIT, x: 20, y: 24 };
+    pick.mockReturnValue(moved);
     picker.viewChanged();
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
-    expect(pick).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(onHover).toHaveBeenLastCalledWith(moved);
+  });
+
+  // A drag moves the pointer without updating the remembered position
+  // (drag moves are filtered), so a post-drag wheel zoom used to
+  // hit-test the PRE-drag coordinate and ring the wrong point
+  it("forgets the pointer position when a drag starts", () => {
+    fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(onHover).toHaveBeenLastCalledWith(HIT);
+
+    fire(container, "pointerdown", {});
+    fire(container, "pointerup", {});
+    pick.mockClear();
+    picker.viewChanged();
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(pick).not.toHaveBeenCalled();
+
+    // The next real movement re-seeds hovering
+    fire(container, "pointermove", { offsetX: 7, offsetY: 8 });
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
+    expect(pick).toHaveBeenCalledExactlyOnceWith(7, 8);
   });
 
   it("forgets the pointer position on reset (new data)", () => {
     fire(container, "pointermove", { offsetX: 5, offsetY: 6 });
     picker.reset();
-    vi.advanceTimersByTime(HOVER_DEBOUNCE_MS);
+    vi.advanceTimersByTime(HOVER_INTERVAL_MS);
     expect(pick).not.toHaveBeenCalled();
   });
 });

@@ -129,6 +129,21 @@ export class GridPom {
   }
 
   /**
+   * Install counters for grid lifecycle events at document start — arm
+   * BEFORE navigating to the page. Counting from document start makes the
+   * baseline exact: initial page load contributes one mount and no unmount,
+   * and each grid refresh thereafter contributes one unmount and one mount.
+   * Arming after load instead would race the initial mount event, which
+   * dispatches from an effect and can land after the tiles are visible.
+   */
+  async armLifecycleCounters() {
+    return {
+      mounts: await this.eventUtils.initCounter("grid-mount"),
+      unmounts: await this.eventUtils.initCounter("grid-unmount"),
+    };
+  }
+
+  /**
    * Arm listeners for a full grid refresh (unmount then remount). Await the
    * arming BEFORE the action that refreshes the grid, then await the handle's
    * `received` after it.
@@ -171,6 +186,11 @@ class GridAsserter {
   ) {
     const tagElement = this.gridPom.getNthTile(n).getByTestId(`tag-${tagName}`);
     await expect(tagElement).toHaveText(expectedTagValue);
+  }
+
+  async nthSampleHasNoTag(n: number, tagName: string) {
+    const tagElement = this.gridPom.getNthTile(n).getByTestId(`tag-${tagName}`);
+    await expect(tagElement).toBeHidden();
   }
 
   async isSelectionCountEqualTo(n: number) {

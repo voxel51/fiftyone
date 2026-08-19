@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getMimeType,
   getSamplePathExtension,
   is3d,
   isDirect3dSamplePath,
@@ -19,6 +20,35 @@ const fo3dTypes = ["3d", "three_d"];
 const otherTypes = ["image", "video", "other", undefined];
 
 describe("media utils", () => {
+  describe("getMimeType", () => {
+    const sample = {
+      filepath: "/tmp/episode.mcap",
+      metadata: { mime_type: "application/mcap" },
+    };
+
+    it("uses root sample metadata by default", () => {
+      expect(getMimeType(sample)).toBe("application/mcap");
+    });
+
+    it("infers alternate media paths independently of root metadata", () => {
+      expect(getMimeType(sample, "/tmp/preview.webp")).toBe("image/webp");
+      expect(getMimeType(sample, "/tmp/preview.mp4")).toBe("video/mp4");
+    });
+
+    it("infers extensions from proxied media URLs", () => {
+      expect(
+        getMimeType(
+          sample,
+          "/media?filepath=%2Ftmp%2Fpreview.WEBP&X-Amz-Signature=abc",
+        ),
+      ).toBe("image/webp");
+    });
+
+    it("does not reuse root metadata for an unknown alternate path", () => {
+      expect(getMimeType(sample, "/tmp/preview")).toBeNull();
+    });
+  });
+
   describe("isFo3d", () => {
     it("should return true for FO3D types", () => {
       fo3dTypes.forEach((mt) => expect(isFo3d(mt)).toBeTruthy());
@@ -172,6 +202,11 @@ describe("media utils", () => {
         "/tmp/example/file.glb",
         "/tmp/example/file.fbx",
         "/tmp/example/file.stl",
+        "/tmp/example/file.spz",
+        "/tmp/example/file.splat",
+        "/tmp/example/file.ksplat",
+        "/tmp/example/file.sog",
+        "/tmp/example/file.rad",
       ];
 
       direct3dPaths.forEach((path) =>
@@ -212,6 +247,11 @@ describe("media utils", () => {
         "/tmp/example/file.glb",
         "/tmp/example/file.fbx",
         "/tmp/example/file.stl",
+        "/tmp/example/file.spz",
+        "/tmp/example/file.splat",
+        "/tmp/example/file.ksplat",
+        "/tmp/example/file.sog",
+        "/tmp/example/file.rad",
         "/media?filepath=/tmp/example/file.PCD",
       ];
 

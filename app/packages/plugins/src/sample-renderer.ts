@@ -1,7 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { isNativeMediaType } from "@fiftyone/utilities";
 import type { Schema } from "@fiftyone/utilities";
-import mime from "mime";
 import type React from "react";
 
 type SampleRendererSurface = "grid" | "modal";
@@ -234,26 +232,6 @@ function matchesField(allowed: string[] | undefined, value: string | null) {
   return !allowed?.length || (Boolean(value) && allowed.includes(value));
 }
 
-function getSampleMimeType(
-  sample: SampleRendererSampleLike["sample"],
-  selectedMediaPath?: string | null,
-) {
-  if (selectedMediaPath && selectedMediaPath !== sample.filepath) {
-    const mimeFromSelectedPath = mime.getType(selectedMediaPath);
-
-    if (mimeFromSelectedPath) {
-      return mimeFromSelectedPath;
-    }
-  }
-
-  if (sample.metadata?.mime_type) {
-    return sample.metadata.mime_type;
-  }
-
-  const mimeFromFilePath = mime.getType(sample.filepath);
-  return mimeFromFilePath ?? null;
-}
-
 /**
  * Returns true when a match-media config includes at least one matcher.
  */
@@ -318,12 +296,11 @@ export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
 ) {
   const urls = sample.urls ? fos.getNormalizedUrls(sample.urls) : undefined;
 
-  return (
-    urls?.[selectedMediaField] ||
-    urls?.filepath ||
-    sample.sample.filepath ||
-    null
-  );
+  return fos.resolveMediaFieldLooker({
+    mediaField: selectedMediaField,
+    sample: sample.sample,
+    urls: urls ?? {},
+  }).selectedMediaPath;
 }
 
 /**
@@ -332,7 +309,13 @@ export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
 export function createSampleRendererMediaContext<
   TSample extends SampleRendererSampleLike,
 >(sample: TSample, selectedMediaField: string): SampleRendererMediaContext {
-  const path = getSelectedMediaPath(sample, selectedMediaField);
+  const urls = sample.urls ? fos.getNormalizedUrls(sample.urls) : undefined;
+  const selectedMedia = fos.resolveMediaFieldLooker({
+    mediaField: selectedMediaField,
+    sample: sample.sample,
+    urls: urls ?? {},
+  });
+  const path = selectedMedia.selectedMediaPath;
   const mediaType =
     sample.sample.media_type ?? sample.sample._media_type ?? null;
 
@@ -341,9 +324,9 @@ export function createSampleRendererMediaContext<
     path,
     url: path ? fos.getSampleSrc(path) : null,
     extension: getFileExtension(path),
-    mimeType: getSampleMimeType(sample.sample, path),
+    mimeType: selectedMedia.mimeType,
     mediaType,
-    isNative: isNativeMediaType(mediaType ?? "unknown"),
+    isNative: selectedMedia.nativeLookerType !== null,
   };
 }
 
