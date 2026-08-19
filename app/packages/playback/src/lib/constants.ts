@@ -33,14 +33,24 @@ export const TIMELINE_DEFAULT_DRAWER_SIZE = 220;
 /** Hard ceiling on the timeline drawer height in px (independent of content). */
 export const TIMELINE_DRAWER_MAX_SIZE = 600;
 /**
- * Height of a top-level track row (px), and `TimelineTrack`'s default. Also
- * the size `TimelineWithTracks` hands the virtualizer for rows it hasn't
- * measured yet, so it doubles as the estimate that sizes the drawer before the
- * first batch of rows mounts. Sub-rows render shorter (their decoration sets
- * `height`), which only ever makes the estimate an overestimate — the drawer
- * settles onto the measured total as soon as the rows commit.
+ * `TimelineTrack`'s default row height (px). A row can be any height — callers
+ * override it per row, and video annotation's dynamic-attribute sub-rows are
+ * shorter — so this is a default, not a layout contract.
  */
 export const TIMELINE_TRACK_ROW_HEIGHT = 28;
+/**
+ * What `TimelineWithTracks` assumes a row costs *before anything is measured*:
+ * it sizes the drawer for the first paint and decides how many rows to seed
+ * the virtualizer with. Purely a first-frame guess — every row is measured
+ * once mounted, and the drawer settles onto the real total on the next commit.
+ *
+ * It starts at the standard row height because that is what a typical row is,
+ * not because rows must be that tall. A surface whose rows are mostly shorter
+ * (many expanded sub-rows, say) should say so via
+ * `TimelineWithTracksProps.estimatedRowHeight` rather than wear the drawer
+ * opening too tall and snapping down a frame later.
+ */
+export const TIMELINE_TRACK_ESTIMATED_ROW_HEIGHT = TIMELINE_TRACK_ROW_HEIGHT;
 /**
  * Extra pixels of rows the virtualizer keeps mounted above and below the
  * visible tracks region — the trade between blank space on a flick-scroll and

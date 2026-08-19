@@ -13,8 +13,8 @@ import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   TIMELINE_DRAWER_MAX_SIZE,
   TIMELINE_LABEL_WIDTH,
+  TIMELINE_TRACK_ESTIMATED_ROW_HEIGHT,
   TIMELINE_TRACK_OVERSCAN_PX,
-  TIMELINE_TRACK_ROW_HEIGHT,
 } from "../../lib/constants";
 import {
   useTrackPinning,
@@ -135,6 +135,17 @@ export interface TimelineWithTracksProps {
    */
   scrollerRef?: React.MutableRefObject<TimelineTracksScroller | null>;
   /**
+   * What a row is assumed to cost before the virtualizer has measured one.
+   * Only affects the first paint — it sizes the drawer and decides how many
+   * rows to seed — after which every mounted row is measured for real.
+   *
+   * Worth setting on a surface whose rows are mostly shorter than a standard
+   * one; leaving it at the default there opens the drawer too tall and snaps
+   * it down a frame later.
+   * @default TIMELINE_TRACK_ESTIMATED_ROW_HEIGHT
+   */
+  estimatedRowHeight?: number;
+  /**
    * Pixels of extra rows the virtualizer keeps mounted above and below the
    * visible region. `0` mounts strictly what's on screen — cheapest, at the
    * cost of a blank band during a fast flick. Raise it for smoother scrolling
@@ -178,6 +189,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   decorateTrack,
   scrollerRef,
   overscanPx = TIMELINE_TRACK_OVERSCAN_PX,
+  estimatedRowHeight = TIMELINE_TRACK_ESTIMATED_ROW_HEIGHT,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -441,12 +453,11 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const [measuredListHeight, setMeasuredListHeight] = useState<number | null>(
     null,
   );
-  // Uniform-row estimate, used only until the first real measurement. It reads
-  // every row as full height, so a list of shorter sub-rows opens a touch tall
-  // and settles one commit later. `null` rather than `0` for "not yet
-  // measured": a list that genuinely measures 0 must stay collapsed instead of
-  // snapping back up to the estimate.
-  const estimatedListHeight = unpinned.length * TIMELINE_TRACK_ROW_HEIGHT;
+  // Uniform-row estimate, used only until the first real measurement — see
+  // `estimatedRowHeight` for tuning it per surface. `null` rather than `0` for
+  // "not yet measured": a list that genuinely measures 0 must stay collapsed
+  // instead of snapping back up to the estimate.
+  const estimatedListHeight = unpinned.length * estimatedRowHeight;
   const tracksBodyHeight = Math.min(
     measuredListHeight ?? estimatedListHeight,
     maxSize,
@@ -472,7 +483,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   if (initialItemCountRef.current === 0 && unpinned.length > 0) {
     initialItemCountRef.current = Math.min(
       unpinned.length,
-      Math.ceil(maxSize / TIMELINE_TRACK_ROW_HEIGHT),
+      Math.ceil(maxSize / estimatedRowHeight),
     );
   }
 
@@ -590,7 +601,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             // `renderUnpinnedTrack` — the row is on its way out either way, so
             // the key only has to be stable for the frame it survives.
             computeItemKey={(index, track) => track?.id ?? index}
-            defaultItemHeight={TIMELINE_TRACK_ROW_HEIGHT}
             initialItemCount={initialItemCountRef.current}
             increaseViewportBy={overscanPx}
             totalListHeightChanged={setMeasuredListHeight}
