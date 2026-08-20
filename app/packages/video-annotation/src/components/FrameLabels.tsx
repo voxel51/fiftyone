@@ -50,6 +50,7 @@ import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
+import { useSetTimelineLoaded } from "../state/surfaceReveal";
 import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
   useVideoSurfaceActions,
@@ -504,6 +505,14 @@ export const FrameLabelsTracks: React.FC<{
   );
   const timelineLoaded =
     schemasLoaded && (frameTracksResolved || !hasFrameFields);
+
+  // Publish readiness so the surface's coordinated reveal (scene + timeline
+  // together) can wait on real tracks — see `surfaceReveal`.
+  const setTimelineLoaded = useSetTimelineLoaded();
+  useEffect(() => {
+    setTimelineLoaded(timelineLoaded);
+    return () => setTimelineLoaded(false);
+  }, [timelineLoaded, setTimelineLoaded]);
 
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const tracks = useMemo(

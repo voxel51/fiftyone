@@ -4,6 +4,7 @@ import { useLighterTileScene } from "../hooks/useLighterTileScene";
 import { useVfcClockSource } from "../hooks/useVfcClockSource";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
 import { VIDEO_STREAM_ID } from "../utils/ids";
+import { TileBody } from "./TileBody";
 import styles from "./VideoLighterTile.module.css";
 
 export interface VideoLighterTileProps {
@@ -50,7 +51,7 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   // Scene lifecycle (singleton canvas, pixi setup, color scheme, canonical
   // media, viewport fit). A fresh scene per `videoSrc` so a new source video
   // gets its own scene; `dims` from the <video>'s intrinsic resolution.
-  const { scene, canonicalMediaReady } = useLighterTileScene({
+  const { scene, canonicalMediaReady, revealed } = useLighterTileScene({
     hostRef: lighterHostRef,
     dims: videoDims,
     sceneIdPrefix: "video-anno",
@@ -66,7 +67,7 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   });
 
   return (
-    <div className={styles.body}>
+    <TileBody revealed={revealed} lighterHostRef={lighterHostRef}>
       <video
         ref={videoRef}
         className={styles.video}
@@ -95,7 +96,6 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
           seek(0);
         }}
       />
-      <div ref={lighterHostRef} className={styles.lighterHost} />
-    </div>
+    </TileBody>
   );
 };
