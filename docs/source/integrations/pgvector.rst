@@ -151,7 +151,7 @@ To use the pgvector backend, simply set the optional `backend` parameter of
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to
 `"pgvector"`:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import fiftyone.brain as fob
@@ -218,7 +218,7 @@ You can manually provide credentials as keyword arguments each time you call
 methods like :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
 that require connections to pgvector:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import fiftyone.brain as fob
@@ -234,7 +234,7 @@ Note that, when using this strategy, you must manually provide the credentials
 when loading an index later via
 :meth:`load_brain_results() <fiftyone.core.collections.SampleCollection.load_brain_results>`:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     pgvector_index = dataset.load_brain_results(
@@ -259,6 +259,16 @@ used to customize your similarity queries. These parameters include:
     ``("cosine", "dotproduct", "euclidean", "l1", "jaccard", "hamming")``
 -   **work_mem** (*"64MB"*): the base maximum amount of memory to be used by a query operation
     (such as a sort or hash table) before writing to temporary disk files
+-   **maintenance_work_mem** (*None*): an optional maximum amount of memory
+    available to index builds. If not provided, the server default (typically
+    64MB) is used. Increase this for high-dimensional embeddings or IVFFlat
+    indexes with many lists
+-   **vector_type** (*"vector"*): the pgvector column type used to store
+    embeddings. The supported values are ``("vector", "halfvec")``.
+    ``"halfvec"`` stores half-precision (float16) vectors and supports
+    indexes with up to 4000 dimensions, versus 2000 for ``"vector"``, and
+    requires pgvector >= 0.7.0. Note that halfvec columns only support the
+    ``("cosine", "dotproduct", "euclidean", "l1")`` metrics
 -   **index_type** (*"hnsw"*): the type of vector index to create. The
     supported values are ``("hnsw", "ivfflat")``. Note that IVFFlat indexes
     only support the ``("cosine", "dotproduct", "euclidean")`` metrics
@@ -289,6 +299,8 @@ that includes all of the available parameters:
                 "table_name": "your-table",
                 "metric": "cosine",
                 "work_mem": "64MB",
+                "maintenance_work_mem": "256MB",
+                "vector_type": "vector",
                 "index_type": "hnsw",
                 "hnsw_m": 16,
                 "hnsw_ef_construction": 64,
@@ -303,7 +315,7 @@ However, typically these parameters are directly passed to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to configure
 a specific new index:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     # A customized HNSW index
@@ -346,7 +358,7 @@ For example, you can call
 :meth:`list_brain_runs() <fiftyone.core.collections.SampleCollection.list_brain_runs>`
 to see the available brain keys on a dataset:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import fiftyone.brain as fob
@@ -368,7 +380,7 @@ Or, you can use
 :meth:`get_brain_info() <fiftyone.core.collections.SampleCollection.get_brain_info>`
 to retrieve information about the configuration of a brain run:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     info = dataset.get_brain_info(brain_key)
@@ -381,7 +393,7 @@ You can use
 :meth:`rename_brain_run() <fiftyone.core.collections.SampleCollection.rename_brain_run>`
 to rename the brain key associated with an existing similarity results run:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     dataset.rename_brain_run(brain_key, new_brain_key)
@@ -391,7 +403,7 @@ Finally, you can use
 to delete the record of a similarity index computation from your FiftyOne
 dataset:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     dataset.delete_brain_run(brain_key)
@@ -433,7 +445,7 @@ either the `embeddings` or `model` argument to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`. Here's a few
 possibilities:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import fiftyone as fo
@@ -489,7 +501,7 @@ You can also create a similarity index for
 including the `patches_field` argument to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import fiftyone as fo
@@ -516,7 +528,7 @@ for the samples or patches in your dataset, you can connect to it by passing
 the `index_name` to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import fiftyone as fo
@@ -548,7 +560,7 @@ to add and remove embeddings from an existing pgvector index.
 These methods can come in handy if you modify your FiftyOne dataset and need
 to update the pgvector index to reflect these changes:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import numpy as np
@@ -595,7 +607,7 @@ You can use
 :meth:`get_embeddings() <fiftyone.brain.similarity.SimilarityIndex.get_embeddings>`
 to retrieve embeddings from a pgvector index by ID:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import fiftyone as fo
@@ -637,7 +649,7 @@ stage to any dataset or view. The query can be any of the following:
 *   A list of IDs (samples or patches)
 *   A text prompt (if :ref:`supported by the model <brain-similarity-text>`)
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import numpy as np
@@ -695,7 +707,7 @@ Here's an example of creating a similarity index backed by a customized
 pgvector index. Just for fun, we'll specify a custom index name, use dot
 product similarity, and populate the index for only a subset of our dataset:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import fiftyone as fo
@@ -728,7 +740,7 @@ Alternatively, you can create an
 which is faster to build and uses less memory, by setting the `index_type`
 parameter:
 
-.. code:: python
+.. code-block:: python
     :linenos:
 
     import fiftyone as fo
@@ -753,3 +765,40 @@ parameter:
     IVFFlat indexes only support the ``("cosine", "dotproduct", "euclidean")``
     metrics. Increase `ivfflat_probes` to improve recall at the cost of query
     speed.
+
+High-dimensional embeddings
+---------------------------
+
+pgvector limits both HNSW and IVFFlat indexes to at most 2,000 dimensions on
+regular `vector` columns. If your embeddings exceed this limit (for example,
+2048-dimensional Qwen embeddings), set `vector_type="halfvec"` to store them
+as half-precision (float16) vectors, which support indexes with up to 4,000
+dimensions:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    embeddings = np.random.randn(len(dataset), 2048)  # >2000 dimensions
+
+    pgvector_index = fob.compute_similarity(
+        dataset,
+        embeddings=embeddings,
+        backend="pgvector",
+        brain_key="pgvector_index",
+        vector_type="halfvec",
+        maintenance_work_mem="256MB",  # high-dim index builds need more memory
+    )
+
+.. note::
+
+    The `halfvec` type requires pgvector >= 0.7.0, stores vectors at reduced
+    (float16) precision, and only supports the
+    ``("cosine", "dotproduct", "euclidean", "l1")`` metrics.
