@@ -56,17 +56,13 @@ export interface TimelineControlsProps {
    */
   onToggle?: () => void;
   /**
-   * Optional content rendered inline between the playback control buttons and
-   * the playhead time display, with no divider. Feature toolbars slot here —
-   * e.g. the video annotation surface's Mark Keyframe / Propagate actions.
-   */
-  extraControls?: ReactNode;
-  /**
-   * Optional content rendered inline after the playhead time / loop bounds,
-   * preceded by its own divider — still part of the left-hand run of
-   * controls. Readouts belong here (the multimodal surface's absolute
-   * timestamp, the temporal tag-mode button). For buttons that should sit
-   * against the right edge instead, use {@link trailingActions}.
+   * Host content for the row, rendered after the playback cluster behind its
+   * own divider. Everything up to that divider is playback (transport, speed,
+   * volume, playhead time, loop bounds) and belongs to this component;
+   * everything a surface contributes — the video annotation toolbar, the
+   * temporal tag-mode button, a timestamp readout — comes after it. For
+   * buttons that should sit against the right edge instead, use
+   * {@link trailingActions}.
    */
   extraActions?: ReactNode;
   /**
@@ -85,7 +81,6 @@ export interface TimelineControlsProps {
 
 const TimelineControls: React.FC<TimelineControlsProps> = ({
   onToggle,
-  extraControls,
   extraActions,
   trailingActions,
   expanded = false,
@@ -180,8 +175,6 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       />
       <SpeedControl />
       <VolumeControl />
-
-      {extraControls}
 
       <span
         className={styles.divider}

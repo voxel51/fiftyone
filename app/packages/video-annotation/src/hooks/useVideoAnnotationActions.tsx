@@ -94,8 +94,8 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
     return active[0] ?? null;
   }, [tdFieldPaths, visible, selectedTdField]);
   const fps = getModalSampleFrameRate(modalSample);
-  const canCreateTd =
-    !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
+  const hasUsableFps = Number.isFinite(fps) && fps !== undefined && fps > 0;
+  const canCreateTd = !!tdFieldPath && hasUsableFps;
 
   // Default class for a freshly-created TemporalDetection: schema's `default`
   // if set, else the first declared class. Mirrors `buildNewLabelData` in
@@ -126,11 +126,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
 
   // split needs one instance-track (detection / polyline) + a playhead frame
   const canSplit =
-    selectedIds.length === 1 &&
-    selectionIsInstanceTrack &&
-    Number.isFinite(fps) &&
-    !!fps &&
-    fps > 0;
+    selectedIds.length === 1 && selectionIsInstanceTrack && hasUsableFps;
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -142,10 +138,8 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             id: "create-temporal-detection",
             label: "New TD",
             icon: <Icon name={IconName.Add} size={Size.Sm} />,
-            tooltip: canCreateTd
-              ? `Create a TemporalDetection on \`${tdFieldPath}\``
-              : "No TemporalDetections field on this dataset",
-            isDisabled: !canCreateTd,
+            tooltip: `Create a TemporalDetection on \`${tdFieldPath}\``,
+            isVisible: canCreateTd,
             onClick: () => {
               if (!canCreateTd || !tdFieldPath || !fps) return;
               // Default: 1-second window starting at the playhead frame,
@@ -187,6 +181,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
               : selectedIds.length === 1 && !selectionIsInstanceTrack
                 ? "Splitting is only available for detections and polylines"
                 : "Select one track to split it at the playhead",
+            isVisible: hasUsableFps,
             isDisabled: !canSplit,
             onClick: () => {
               if (!canSplit || !fps) {
@@ -219,6 +214,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       canSplit,
       fps,
       hasSelection,
+      hasUsableFps,
       isKeyframeAtPlayhead,
       modalSample,
       playhead,

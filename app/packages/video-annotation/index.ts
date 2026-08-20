@@ -1,4 +1,12 @@
 export { VideoAnnotationSurface } from "./src/components/VideoAnnotationSurface";
+export { useVfcClockSource } from "./src/hooks/useVfcClockSource";
+// Frame-label tracks. The track data is a server index fetch; the
+// annotation engine only overlays unsaved edits, and its atom has a
+// module-level default, so these work read-only outside Annotate mode.
+export {
+  FrameLabelsTracks,
+  RegisterFrameLabels,
+} from "./src/components/FrameLabels";
 export { SyntheticLabelStream } from "./src/streams/SyntheticLabelStream";
 export type {
   FrameLabelSnapshot,

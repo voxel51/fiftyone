@@ -1,9 +1,10 @@
-import { Provider as JotaiProvider, createStore } from "jotai";
+import { Provider as JotaiProvider, createStore, useStore } from "jotai";
 import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -15,7 +16,7 @@ import {
   autoLayout as autoLayoutFn,
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
-import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
+import { registeredTilesAtom, tileScopedKey, tileSelectionAtom } from "./atoms";
 import type {
   AddTileOptions,
   SetTileTitleOptions,
@@ -37,6 +38,19 @@ const TilingContext = createContext<TilingContextValue | null>(null);
 /** Internal context carrying the current tile id down to a tile's body. */
 const TileIdContext = createContext<string | null>(null);
 
+/**
+ * Identifies which `<TilingProvider>` a subtree belongs to, so per-tile
+ * and per-registry atoms stay separate when several providers share one
+ * Jotai store (see `isolateStore`). Providers that own an isolated store
+ * still carry a scope — harmless, and it keeps the atom keys uniform.
+ */
+const TileScopeContext = createContext<string>("default");
+
+/** Scope id of the nearest `<TilingProvider>`. */
+export function useTileScopeId(): string {
+  return useContext(TileScopeContext);
+}
+
 export interface TilingProviderProps {
   /** Initial tile entries keyed by id. */
   initialTiles?: Record<string, TilingTile>;
@@ -56,6 +70,20 @@ export interface TilingProviderProps {
   resetLayout?: MosaicNode<string> | null;
   /** Optional geometry-aware builder for the Reset Layout arrangement. */
   resetLayoutStrategy?: TilingAutoLayoutStrategy;
+  /**
+   * Whether the provider owns a private Jotai store. Default `true` —
+   * the historical behavior, right for standalone surfaces (the MCAP
+   * modal, the MCAP Explorer panel, stories).
+   *
+   * Pass `false` when the shell is embedded in a host that already has
+   * modal- or app-scoped Jotai atoms its own chrome reads and writes
+   * (`fos.modalMode`, lighter scene atoms, the annotate label list). A
+   * private store would shadow those: the host's atoms would resolve
+   * against the tiling store and silently read their initial values.
+   * Tiling's own atoms stay separate via {@link useTileScopeId}, so
+   * sharing the host store is safe.
+   */
+  isolateStore?: boolean;
   children: React.ReactNode;
 }
 
@@ -80,8 +108,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   resetManualTileTitles,
   resetLayout: resetLayoutProp,
   resetLayoutStrategy,
+  isolateStore = true,
   children,
 }) => {
+  const scopeId = useId();
   const initialLayoutValueRef = useRef<MosaicNode<string> | null | undefined>(
     undefined,
   );
@@ -140,7 +170,18 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   }, [focusedTileId]);
   // Per-instance Jotai store so multiple <TilingProvider>s on the same
   // page each get isolated atom state (sources, selections, registry).
-  const jotaiStore = useMemo(() => createStore(), []);
+  // When the host opts out (`isolateStore={false}`), we read and write
+  // the surrounding store instead — `useStore()` resolves against the
+  // provider ABOVE this component, so it's the host's store either way,
+  // never the one created here.
+  const hostStore = useStore();
+  const ownStoreRef = useRef<ReturnType<typeof createStore> | null>(null);
+  if (isolateStore && ownStoreRef.current === null) {
+    ownStoreRef.current = createStore();
+  }
+  const jotaiStore = isolateStore
+    ? (ownStoreRef.current as ReturnType<typeof createStore>)
+    : hostStore;
   // Portal target the settings sidebar registers; `<TileSettingsContent>`
   // children render here when their tile is focused.
   const [settingsSlotEl, setSettingsSlotEl] = useState<HTMLElement | null>(
@@ -199,7 +240,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         // Free per-tile atomFamily entries so dynamic tile ids don't
         // accumulate in the store across long sessions.
         for (const id of idsToRemove) {
-          tileSelectionAtom.remove(id);
+          tileSelectionAtom.remove(tileScopedKey(scopeId, id));
           duplicatorsRef.current.delete(id);
         }
       }
@@ -263,7 +304,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       const type = tilesRef.current[tileId]?.type;
       if (!type) return null;
       const entry = jotaiStore
-        .get(registeredTilesAtom)
+        .get(registeredTilesAtom(scopeId))
         .find((registered) => registered.type === type);
       if (!entry) return null;
       const TileComponent = entry.Tile;
@@ -339,7 +380,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         return null;
       }
       const entry = jotaiStore
-        .get(registeredTilesAtom)
+        .get(registeredTilesAtom(scopeId))
         .find((registered) => registered.type === type);
       if (!entry) {
         return null;
@@ -362,7 +403,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       setLayoutState((prev) => (prev ? replaceTileId(prev, tileId, id) : prev));
       setFocusedTileId(id);
       setExpandedTileId((current) => (current === tileId ? id : current));
-      tileSelectionAtom.remove(tileId);
+      tileSelectionAtom.remove(tileScopedKey(scopeId, tileId));
       duplicatorsRef.current.delete(tileId);
       return id;
     },
@@ -399,7 +440,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     setManualTileTitles((prev) => omitKeys(prev, [id]));
     // Release the per-tile atomFamily entry so the store doesn't
     // grow unbounded across long sessions.
-    tileSelectionAtom.remove(id);
+    tileSelectionAtom.remove(tileScopedKey(scopeId, id));
     duplicatorsRef.current.delete(id);
   }, []);
 
@@ -446,7 +487,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     const resetTileIds = new Set(defaultTileIds);
     for (const tileId of Object.keys(tilesRef.current)) {
       if (!resetTileIds.has(tileId)) {
-        tileSelectionAtom.remove(tileId);
+        tileSelectionAtom.remove(tileScopedKey(scopeId, tileId));
         duplicatorsRef.current.delete(tileId);
       }
     }
@@ -512,10 +553,19 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     ],
   );
 
-  return (
-    <JotaiProvider store={jotaiStore}>
+  const scoped = (
+    <TileScopeContext.Provider value={scopeId}>
       <TilingContext.Provider value={value}>{children}</TilingContext.Provider>
-    </JotaiProvider>
+    </TileScopeContext.Provider>
+  );
+
+  // Only wrap in a JotaiProvider when we own the store. Wrapping with the
+  // host's own store would work but is pointless indirection; NOT wrapping
+  // is what lets the host's modal-scoped atoms resolve normally.
+  return isolateStore ? (
+    <JotaiProvider store={jotaiStore}>{scoped}</JotaiProvider>
+  ) : (
+    scoped
   );
 };
 

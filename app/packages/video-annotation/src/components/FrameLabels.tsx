@@ -61,7 +61,6 @@ import {
   type TemporalDetectionLabelLike,
 } from "../tracks/temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
-import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
 
@@ -380,8 +379,7 @@ function useTrackDecorator({
       // A TD row is identified by its structured event payload; anything else
       // is an engine-addressed object track (row id == instanceId).
       const tdEvent = track.events[0]?.data as
-        | TemporalDetectionEventData
-        | undefined;
+        TemporalDetectionEventData | undefined;
       const isObjectTrack = tdEvent?.detectionId === undefined;
 
       if (isObjectTrack && stream) {
@@ -465,7 +463,14 @@ export const FrameLabelsTracks: React.FC<{
   sample?: ModalSample;
   /** Cap on the timeline drawer body (px); it scrolls internally past this. */
   maxSize?: number;
-}> = ({ sample, maxSize }) => {
+  /**
+   * Host content for the controls row, after the playback cluster. Passed
+   * through to `TimelineWithTracks` rather than assumed here: this component
+   * renders the same read-only track data in Explore and in Annotate, and
+   * only Annotate has editing actions to offer.
+   */
+  extraActions?: React.ReactNode;
+}> = ({ sample, maxSize, extraActions }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
 
@@ -558,7 +563,7 @@ export const FrameLabelsTracks: React.FC<{
     >
       <TimelineWithTracks
         decorateTrack={decorateTrack}
-        extraControls={<VideoAnnotationToolbar />}
+        extraActions={extraActions}
         loaded={timelineLoaded}
         maxSize={maxSize}
         drawerOpen={drawerOpen}
