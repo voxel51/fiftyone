@@ -1,0 +1,28 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Positioned wrapper for the media region so the loading cover can overlay
+   it. */
+.content {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Opaque loading cover until the scene's initial viewport settles —
+   progressive loading (image decode, overlay hydration) happens underneath,
+   invisibly. Mirrors the video surface's cover. */
+.cover {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--color-content-bg-card-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
