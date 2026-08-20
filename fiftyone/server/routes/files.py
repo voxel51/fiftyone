@@ -14,6 +14,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 import fiftyone.server.files as fsf
+from fiftyone.server.decorators import route
 
 
 class FileUpload(HTTPEndpoint):
@@ -30,6 +31,7 @@ class FileUpload(HTTPEndpoint):
         4xx/5xx: ``{"error": {"code": "...", "message": "..."}}``
     """
 
+    @route(parse_body=False)
     async def post(self, request: Request) -> JSONResponse:
         path = request.query_params.get("path", "")
 
@@ -55,6 +57,7 @@ class FileDelete(HTTPEndpoint):
         4xx/5xx: ``{"error": {"code": "...", "message": "..."}}``
     """
 
+    @route(parse_body=False)
     async def delete(self, request: Request) -> Response:
         path = request.query_params.get("path", "")
 
