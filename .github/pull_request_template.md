@@ -1,7 +1,7 @@
 <!--
-Community contributors: target the `community` branch, not `develop`. PRs from
+Community contributors: target the `community` branch, not `main`. PRs from
 non-members are auto-retargeted to `community`. See CONTRIBUTING.md:
-https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md#community-pull-requests
+https://github.com/voxel51/fiftyone/blob/main/CONTRIBUTING.md#community-pull-requests
 -->
 
 ## 🔗 Related Issues
