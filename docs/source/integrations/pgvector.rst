@@ -256,7 +256,7 @@ used to customize your similarity queries. These parameters include:
     for storing vectors. If not specified, a new unique name is generated automatically
 -   **metric** (*"cosine"*): the distance/similarity metric to use when
     creating a new index. The supported values are
-    ``("cosine", "dotproduct", "euclidean", "l1", "jaccard", "hamming")``
+    ``("cosine", "dotproduct", "euclidean", "l1")``
 -   **work_mem** (*"64MB"*): the base maximum amount of memory to be used by a query operation
     (such as a sort or hash table) before writing to temporary disk files
 -   **maintenance_work_mem** (*None*): an optional maximum amount of memory
@@ -267,8 +267,7 @@ used to customize your similarity queries. These parameters include:
     embeddings. The supported values are ``("vector", "halfvec")``.
     ``"halfvec"`` stores half-precision (float16) vectors and supports
     indexes with up to 4000 dimensions, versus 2000 for ``"vector"``, and
-    requires pgvector >= 0.7.0. Note that halfvec columns only support the
-    ``("cosine", "dotproduct", "euclidean", "l1")`` metrics
+    requires pgvector >= 0.7.0
 -   **index_type** (*"hnsw"*): the type of vector index to create. The
     supported values are ``("hnsw", "ivfflat")``. Note that IVFFlat indexes
     only support the ``("cosine", "dotproduct", "euclidean")`` metrics
@@ -799,6 +798,5 @@ dimensions:
 
 .. note::
 
-    The `halfvec` type requires pgvector >= 0.7.0, stores vectors at reduced
-    (float16) precision, and only supports the
-    ``("cosine", "dotproduct", "euclidean", "l1")`` metrics.
+    The `halfvec` type requires pgvector >= 0.7.0 and stores vectors at
+    reduced (float16) precision.
