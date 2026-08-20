@@ -8,12 +8,12 @@ FiftyOne Server extensions
 import traceback
 
 from graphql import GraphQLError
-from strawberry.extensions import Extension
-from strawberry.utils.await_maybe import AwaitableOrValue
+from strawberry.extensions import SchemaExtension
 
 
-class EndSession(Extension):
-    async def on_request_end(self) -> AwaitableOrValue[None]:
+class EndSession(SchemaExtension):
+    async def on_operation(self):
+        yield
         result = self.execution_context.result
         if getattr(result, "errors", None):
             result.errors = [
