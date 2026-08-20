@@ -259,9 +259,19 @@ used to customize your similarity queries. These parameters include:
     ``("cosine", "dotproduct", "euclidean", "l1", "jaccard", "hamming")``
 -   **work_mem** (*"64MB"*): the base maximum amount of memory to be used by a query operation
     (such as a sort or hash table) before writing to temporary disk files
+-   **index_type** (*"hnsw"*): the type of vector index to create. The
+    supported values are ``("hnsw", "ivfflat")``. Note that IVFFlat indexes
+    only support the ``("cosine", "dotproduct", "euclidean")`` metrics
 -   **hnsw_m** (*16*): The max number of connections per layer in the HNSW index
--   **hnsw_ef_construction** (*64*): the size of the dynamic candidate list for constructing 
+-   **hnsw_ef_construction** (*64*): the size of the dynamic candidate list for constructing
     the graph for the HNSW index
+-   **hnsw_ef_search** (*None*): an optional size of the dynamic candidate
+    list for HNSW searches. If not provided, the server default (40) is used.
+    Larger values improve recall at the cost of speed
+-   **ivfflat_lists** (*100*): the number of inverted lists in the IVFFlat
+    index
+-   **ivfflat_probes** (*1*): the number of lists to probe during IVFFlat
+    searches. Larger values improve recall at the cost of speed
 
 For detailed information on these parameters, see the
 `pgvector index options documentation <https://github.com/pgvector/pgvector/?tab=readme-ov-file#index-options>`_.
@@ -279,8 +289,12 @@ that includes all of the available parameters:
                 "table_name": "your-table",
                 "metric": "cosine",
                 "work_mem": "64MB",
+                "index_type": "hnsw",
                 "hnsw_m": 16,
-                "hnsw_ef_construction": 64
+                "hnsw_ef_construction": 64,
+                "hnsw_ef_search": 40,
+                "ivfflat_lists": 100,
+                "ivfflat_probes": 1
             }
         }
     }
@@ -292,6 +306,7 @@ a specific new index:
 .. code:: python
     :linenos:
 
+    # A customized HNSW index
     pgvector_index = fob.compute_similarity(
         ...
         backend="pgvector",
@@ -300,8 +315,24 @@ a specific new index:
         table_name="your-table",
         metric="cosine",
         work_mem="64MB",
+        index_type="hnsw",
         hnsw_m=16,
         hnsw_ef_construction=64,
+        hnsw_ef_search=40,
+    )
+
+    # A customized IVFFlat index
+    pgvector_index = fob.compute_similarity(
+        ...
+        backend="pgvector",
+        brain_key="pgvector_index",
+        index_name="your-index",
+        table_name="your-table",
+        metric="cosine",
+        work_mem="64MB",
+        index_type="ivfflat",
+        ivfflat_lists=100,
+        ivfflat_probes=1,
     )
 
 .. _pgvector-managing-brain-runs:
@@ -688,3 +719,37 @@ product similarity, and populate the index for only a subset of our dataset:
     view = dataset.take(10)
     embeddings, sample_ids, _ = pgvector_index.compute_embeddings(view)
     pgvector_index.add_to_index(embeddings, sample_ids)
+
+By default, the pgvector backend creates an
+`HNSW index <https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw>`_,
+which offers the best query performance/recall tradeoff for most use cases.
+Alternatively, you can create an
+`IVFFlat index <https://github.com/pgvector/pgvector?tab=readme-ov-file#ivfflat>`_,
+which is faster to build and uses less memory, by setting the `index_type`
+parameter:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Create an IVFFlat-backed similarity index
+    pgvector_index = fob.compute_similarity(
+        dataset,
+        model="clip-vit-base32-torch",
+        backend="pgvector",
+        brain_key="pgvector_index",
+        index_type="ivfflat",
+        ivfflat_lists=100,  # number of inverted lists in the index
+        ivfflat_probes=10,  # number of lists to search during queries
+    )
+
+.. note::
+
+    IVFFlat indexes only support the ``("cosine", "dotproduct", "euclidean")``
+    metrics. Increase `ivfflat_probes` to improve recall at the cost of query
+    speed.
