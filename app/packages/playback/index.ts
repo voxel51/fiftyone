@@ -47,7 +47,9 @@ export {
   PlaybackProvider,
   useMode,
   usePlayback,
+  useTimelineModeControl,
 } from "./src/lib/playback/PlaybackProvider";
+export type { TimelineModeControl } from "./src/lib/playback/PlaybackProvider";
 export {
   useCurrentTime,
   useDuration,

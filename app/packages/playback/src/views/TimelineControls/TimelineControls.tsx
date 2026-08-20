@@ -56,12 +56,6 @@ export interface TimelineControlsProps {
    */
   onToggle?: () => void;
   /**
-   * Optional content rendered inline between the playback control buttons and
-   * the playhead time display, with no divider. Feature toolbars slot here —
-   * e.g. the video annotation surface's Mark Keyframe / Propagate actions.
-   */
-  extraControls?: ReactNode;
-  /**
    * Host readouts that belong with the clock — the multimodal surface's
    * absolute (UTC) timestamp. Rendered inside the speed/time group, after
    * the playhead, with no divider of its own: it reads as another way of
@@ -92,7 +86,6 @@ export interface TimelineControlsProps {
 
 const TimelineControls: React.FC<TimelineControlsProps> = ({
   onToggle,
-  extraControls,
   readouts,
   extraActions,
   trailingActions,
@@ -205,14 +198,13 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       <BufferingIndicator />
       {readouts}
 
-      {(extraControls || extraActions) && (
+      {extraActions && (
         <>
           <span
             className={styles.divider}
             data-testid="timeline-controls-divider"
             aria-hidden
           />
-          {extraControls}
           {extraActions}
         </>
       )}

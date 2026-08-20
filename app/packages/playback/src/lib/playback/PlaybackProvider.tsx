@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useMemo, useRef } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { PlaybackStoreContext } from "./playback-store-context";
 import type {
   PlaybackConfig,
@@ -33,21 +40,70 @@ function normalizeTimelineMode(mode: TimelineMode): TimelineMode {
 }
 
 /**
- * How the timeline's shared clock is presented to and driven by consumers.
- * Static for the lifetime of the provider — set once from
- * `PlaybackConfig.mode` when `PlaybackProvider` mounts. This is Context
- * rather than a Jotai atom because it's static-ish config for a bounded
- * tree, not reactive global state (see CODING_STANDARDS.md).
+ * How the timeline's shared clock is *presented* — the domain ruler ticks,
+ * the playhead readout and the loop-bound readouts render in.
+ *
+ * Seeded from `PlaybackConfig.mode` at mount, then owned by the user: the
+ * playhead readout is a button that swaps between the configured mode and
+ * plain elapsed `duration` (see {@link useTimelineModeControl}). Only
+ * presentation moves — the engine's clock domain and its `stepInterval`
+ * stay pinned to the configured mode, so stepping is still one frame per
+ * press while the ruler reads seconds.
+ *
+ * This is Context rather than a Jotai atom because it's per-tree UI state
+ * for a bounded subtree, not global state (see CODING_STANDARDS.md).
  */
 const TimelineModeContext = createContext<TimelineMode>(DEFAULT_MODE);
 
+/** Toggle affordance over {@link TimelineModeContext}. */
+export interface TimelineModeControl {
+  /** The mode display surfaces are currently rendering in. */
+  mode: TimelineMode;
+  /**
+   * The provider's configured mode — what the engine's clock math uses, and
+   * the mode {@link toggle} returns to from `duration`.
+   */
+  configuredMode: TimelineMode;
+  /**
+   * Whether there is a second mode to switch to. False when the provider was
+   * configured for `duration` in the first place: with no frame rate (or
+   * epoch anchor) there's no other domain to show.
+   */
+  canToggle: boolean;
+  /** Swap between the configured mode and plain elapsed `duration`. */
+  toggle(): void;
+  /** Set the display mode outright. */
+  setMode(mode: TimelineMode): void;
+}
+
+const NOOP_MODE_CONTROL: TimelineModeControl = {
+  mode: DEFAULT_MODE,
+  configuredMode: DEFAULT_MODE,
+  canToggle: false,
+  toggle: () => undefined,
+  setMode: () => undefined,
+};
+
+const TimelineModeControlContext =
+  createContext<TimelineModeControl>(NOOP_MODE_CONTROL);
+
 /**
- * How the timeline's shared clock is presented to and driven by consumers.
+ * How the timeline's shared clock is presented to consumers.
  * Most components should use `useTimelineDisplay()` (in `timeline-display.ts`)
  * instead of reading this directly.
  */
 export function useMode(): TimelineMode {
   return useContext(TimelineModeContext);
+}
+
+/**
+ * Read and change the display mode — for the readout that lets the user
+ * switch the timeline between frame numbers and elapsed time. Outside a
+ * `PlaybackProvider` this reports `duration` and no ability to toggle,
+ * rather than throwing, so a readout can render unconditionally.
+ */
+export function useTimelineModeControl(): TimelineModeControl {
+  return useContext(TimelineModeControlContext);
 }
 
 /**
@@ -95,15 +151,37 @@ export function PlaybackProvider({
   // Frozen at mount to match `usePlaybackEngine`'s mount-scoped store: that
   // store's `resolvedStepInterval` (derived from `mode`) is captured once in
   // a `useMemo(() => ..., [])`, so a later `mode` prop change without a
-  // remount would otherwise update this context while the engine's
-  // mode-dependent state stays stale. A caller that needs a new mode must
-  // remount the provider (e.g. keyed on the resolved mode, as
-  // `SourcePlayback` does).
+  // remount would otherwise drive the engine from a mode its own
+  // mode-dependent state hasn't seen. A caller that needs a new *engine*
+  // mode must remount the provider (e.g. keyed on the resolved mode, as
+  // `SourcePlayback` does). Switching how the clock is *displayed* needs no
+  // remount — that's `displayMode` below.
   const resolvedModeRef = useRef<TimelineMode>();
   if (resolvedModeRef.current === undefined) {
     resolvedModeRef.current = normalizeTimelineMode(mode ?? DEFAULT_MODE);
   }
   const resolvedMode = resolvedModeRef.current;
+
+  // What the ruler / readouts render in. Seeded from the configured mode and
+  // then owned by the user; the engine never reads it.
+  const [displayMode, setDisplayMode] = useState<TimelineMode>(resolvedMode);
+  const canToggleMode = resolvedMode.kind !== "duration";
+  const toggleMode = useCallback(() => {
+    if (!canToggleMode) return;
+    setDisplayMode((current) =>
+      current.kind === "duration" ? resolvedMode : DEFAULT_MODE,
+    );
+  }, [canToggleMode, resolvedMode]);
+  const modeControl = useMemo<TimelineModeControl>(
+    () => ({
+      mode: displayMode,
+      configuredMode: resolvedMode,
+      canToggle: canToggleMode,
+      toggle: toggleMode,
+      setMode: setDisplayMode,
+    }),
+    [displayMode, resolvedMode, canToggleMode, toggleMode],
+  );
   const { store, contextValue } = usePlaybackEngine({
     duration,
     stepInterval,
@@ -123,13 +201,15 @@ export function PlaybackProvider({
   // TilingProvider) used to shadow the playback store and silently
   // route every read to the wrong atoms — that's the bug this avoids.
   return (
-    <TimelineModeContext.Provider value={resolvedMode}>
-      <PlaybackStoreContext.Provider value={store}>
-        <PlaybackContextHost baseContext={contextValue}>
-          {children}
-        </PlaybackContextHost>
-      </PlaybackStoreContext.Provider>
-    </TimelineModeContext.Provider>
+    <TimelineModeControlContext.Provider value={modeControl}>
+      <TimelineModeContext.Provider value={displayMode}>
+        <PlaybackStoreContext.Provider value={store}>
+          <PlaybackContextHost baseContext={contextValue}>
+            {children}
+          </PlaybackContextHost>
+        </PlaybackStoreContext.Provider>
+      </TimelineModeContext.Provider>
+    </TimelineModeControlContext.Provider>
   );
 }
 

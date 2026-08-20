@@ -31,22 +31,20 @@ export interface TimelineHeaderProps {
    */
   rulerOverlay?: ReactNode;
   /**
-   * Optional content forwarded to {@link TimelineControls}' `extraControls` —
-   * rendered inline between the playback control buttons and the playhead time
-   * display. Feature toolbars slot here (video annotation's Mark Keyframe /
-   * Propagate actions).
-   */
-  extraControls?: ReactNode;
-  /**
-   * Optional content forwarded to {@link TimelineControls}' `extraActions` —
-   * rendered far-right after the playhead time, preceded by a divider (e.g.
-   * the temporal tag-mode button).
+   * Host content forwarded to {@link TimelineControls}' `extraActions` —
+   * rendered after the playback cluster, behind a divider (the video
+   * annotation toolbar, the temporal tag-mode button, a timestamp readout).
    */
   /**
    * Forwarded to {@link TimelineControls}' `readouts` — clock-adjacent host
    * readouts (the absolute/UTC timestamp), rendered inside the time group.
    */
   readouts?: ReactNode;
+  /**
+   * Optional content forwarded to {@link TimelineControls}' `extraActions` —
+   * rendered far-right after the playhead time, preceded by a divider (e.g.
+   * the temporal tag-mode button).
+   */
   extraActions?: ReactNode;
   /**
    * Optional content forwarded to {@link TimelineControls}' `trailingActions`
@@ -73,7 +71,6 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   onToggle,
   expanded,
   rulerOverlay,
-  extraControls,
   readouts,
   extraActions,
   trailingActions,
@@ -84,7 +81,6 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
       <TimelineControls
         onToggle={onToggle}
         expanded={expanded}
-        extraControls={extraControls}
         readouts={readouts}
         extraActions={extraActions}
         trailingActions={trailingActions}

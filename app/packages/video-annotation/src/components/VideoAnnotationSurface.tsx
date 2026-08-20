@@ -25,6 +25,7 @@ import {
   RegisterSyntheticLabels,
   SyntheticTrackTimeline,
 } from "./SyntheticLabels";
+import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 import { VideoAnnotationTopBar } from "./VideoAnnotationTopBar";
 import { VideoLighterTile } from "./VideoLighterTile";
 import styles from "./VideoAnnotationSurface.module.css";
@@ -209,7 +210,11 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
         {labelsMode === "synthetic" ? (
           <SyntheticTrackTimeline />
         ) : (
-          <FrameLabelsTracks sample={sample} maxSize={timelineMaxSize} />
+          <FrameLabelsTracks
+            sample={sample}
+            maxSize={timelineMaxSize}
+            extraActions={<VideoAnnotationToolbar />}
+          />
         )}
       </div>
     </div>

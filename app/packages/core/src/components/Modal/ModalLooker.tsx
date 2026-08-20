@@ -8,8 +8,7 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
-import { VideoLookerReact } from "./VideoLooker";
-import { VideoTimelinePoc, useIsVideoTimelinePoc } from "./VideoTimelinePoc";
+import { VideoTimelineSurface } from "./VideoTimelineSurface";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -100,14 +99,6 @@ const ModalLookerContent = React.memo(
     const isNative = selectedMedia.nativeLookerType !== null;
     const isVideo = selectedMedia.nativeLookerType === "video";
 
-    // POC opt-in: `?mmtimeline=1` swaps the video Explore surface for the
-    // player + shared timeline. See VideoTimelinePoc.tsx.
-    const isTimelinePoc = useIsVideoTimelinePoc();
-
-    if (isVideo && isTimelinePoc && !isAnnotate) {
-      return <VideoTimelinePoc sample={sample} />;
-    }
-
     if (shouldRenderImavid) {
       return (
         <ImaVidLookerReact
@@ -122,7 +113,7 @@ const ModalLookerContent = React.memo(
       return isAnnotate ? (
         <VideoAnnotationSurface sample={sample} />
       ) : (
-        <VideoLookerReact sample={sample} showControls />
+        <VideoTimelineSurface sample={sample} />
       );
     }
 

@@ -91,22 +91,16 @@ export interface TimelineWithTracksProps {
    */
   eventMenuItems?: TrackEventMenuItem[];
   /**
-   * Optional content rendered inline between the playback control buttons and
-   * the playhead time display. Forwarded to {@link TimelineHeader}'s
-   * `extraControls`; renders in both the empty-timeline and drawer layouts.
+   * Clock-adjacent host readouts (the absolute/UTC timestamp). Forwarded to
+   * {@link TimelineHeader}'s `readouts`; renders in both layouts.
    */
-  extraControls?: React.ReactNode;
+  readouts?: React.ReactNode;
   /**
    * Optional content rendered inline after the playhead time, preceded by a
    * divider. Forwarded to {@link TimelineHeader}'s `extraActions`; renders in
    * both the empty-timeline and drawer layouts. Readouts belong here — for
    * right-edge buttons use {@link trailingActions}.
    */
-  /**
-   * Clock-adjacent host readouts (the absolute/UTC timestamp). Forwarded to
-   * {@link TimelineHeader}'s `readouts`; renders in both layouts.
-   */
-  readouts?: React.ReactNode;
   extraActions?: React.ReactNode;
   /**
    * Bring-your-own buttons, pinned to the right edge of the controls row
@@ -188,7 +182,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   onDrawerOpenChange,
   rulerOverlay,
   eventMenuItems,
-  extraControls,
   readouts,
   extraActions,
   trailingActions,
@@ -533,7 +526,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
           labelWidth={labelWidth}
           zoomRef={containerRef}
           rulerOverlay={rulerOverlay}
-          extraControls={extraControls}
           readouts={readouts}
           extraActions={extraActions}
           trailingActions={trailingActions}
@@ -561,7 +553,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             onToggle={toggle}
             expanded={open}
             rulerOverlay={rulerOverlay}
-            extraControls={extraControls}
             readouts={readouts}
             extraActions={extraActions}
             trailingActions={trailingActions}
