@@ -5,15 +5,14 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.24.1
 --------------------------
-*Released August 20, 2026*
+*Released August 21, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.21.0 <release-notes-v1.21.0>`, plus:
 
-- Fixed a bug where camera streams using ROS `Image` and `CompressedImage`
-  schemas were not recognized as embeddable, preventing embeddings and
-  similarity search on those streams
-- Multimodal stream discovery is now cached and parallelized, so the
-  embeddings form opens much faster on large datasets
+- Fixed a bug that prevented embeddings and similarity search on camera
+  streams using ROS image schemas
+- Multimodal stream discovery is now cached, so the embeddings form opens
+  much faster
 
 FiftyOne Enterprise 2.24.0
 --------------------------
