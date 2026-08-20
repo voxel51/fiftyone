@@ -262,17 +262,33 @@ export function useMcapAudioStream(
   const [streamSource, setStreamSource] = useState<AudioStreamSource | null>(
     null,
   );
+  // Tri-state, not just `streamSource === null`. "Not yet known" and
+  // "streaming unavailable" are different answers, and collapsing them
+  // starts the buffered path's FULL-recording decode during every probe —
+  // the exact up-front decode streaming exists to avoid. It also renders
+  // the buffered waveform for a beat before the streaming one replaces it.
+  const [probePending, setProbePending] = useState(() =>
+    canUseSharedRingBuffer(),
+  );
   useEffect(() => {
     if (!streamId || !canUseSharedRingBuffer() || !getTimelineIndex) {
       setStreamSource(null);
+      // Streaming can never run here, so the buffered path is the answer
+      // now rather than after a probe that will not happen.
+      setProbePending(false);
       return undefined;
     }
     let cancelled = false;
     const controller = new AbortController();
+    // A new stream re-opens the question its predecessor had settled.
+    setProbePending(true);
 
     void (async () => {
       const timeline = getTimelineIndex();
-      if (!timeline) return;
+      if (!timeline) {
+        if (!cancelled) setProbePending(false);
+        return;
+      }
       const probed = await readWindowDetailed(
         0,
         PROBE_SECONDS,
@@ -287,8 +303,10 @@ export function useMcapAudioStream(
         // Nothing decodable at the head: let the buffered path report why,
         // including "unsupported codec", which it distinguishes properly.
         setStreamSource(null);
+        setProbePending(false);
         return;
       }
+      setProbePending(false);
       setStreamSource({
         channels: probed.data.channels,
         durationSec: timeline.durationSec,
@@ -329,13 +347,26 @@ export function useMcapAudioStream(
     label,
     // Disabled while streaming owns the track: two transports decoding the
     // same source would build two audio graphs and double the signal.
+    // Also disabled while the probe is still out — see `probePending`.
     load: useMemo(
-      () => (streamId && !streamingActive ? load : null),
-      [load, streamId, streamingActive],
+      () => (streamId && !streamingActive && !probePending ? load : null),
+      [load, probePending, streamId, streamingActive],
     ),
     playback,
     trackId: streamId,
   });
+
+  // While the probe is out neither transport is running, so report loading
+  // rather than letting the idle buffered result render as "no audio".
+  if (probePending && !streamingActive) {
+    return {
+      channels: 0,
+      hasAudio: false,
+      metadata: null,
+      status: "loading",
+      waveformPeaks: null,
+    };
+  }
 
   return streamingActive ? streaming : buffered;
 }
