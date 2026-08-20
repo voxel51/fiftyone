@@ -164,3 +164,29 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Clickable form of the readout, shown when the timeline has a second
+   display domain to switch to (frame numbers / timestamps <-> elapsed time).
+   Styled to match `.speedInput`: invisible at rest so the row reads as a
+   plain readout, with a border on hover to advertise that it's a control. */
+.playheadTime {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.playheadTime:hover {
+  border-color: var(--color-content-border-default);
+}
+
+.playheadTime:focus-visible {
+  border-color: var(--color-brand-primary);
+}
+
+.playheadTimeTrigger {
+  display: inline-flex;
+}

@@ -277,32 +277,7 @@ describe("TimelineControls", () => {
     });
   });
 
-  describe("extraControls", () => {
-    it("renders slotted content when provided", () => {
-      render(
-        <PlaybackProvider duration={10} stepInterval={1 / 30}>
-          <TimelineControls extraControls={<button>Custom Action</button>} />
-        </PlaybackProvider>,
-      );
-      expect(
-        screen.getByRole("button", { name: "Custom Action" }),
-      ).toBeTruthy();
-    });
-
-    it("renders the slot without introducing an extra divider", () => {
-      render(
-        <PlaybackProvider duration={10} stepInterval={1 / 30}>
-          <TimelineControls
-            extraControls={<span data-testid="slot">hi</span>}
-          />
-        </PlaybackProvider>,
-      );
-      // extraControls sits between the transport buttons and the time display;
-      // unlike extraActions it does not add its own divider.
-      const dividers = screen.getAllByTestId("timeline-controls-divider");
-      expect(dividers).toHaveLength(1);
-    });
-
+  describe("dividers", () => {
     it("renders a single divider when no slot is provided", () => {
       renderControls({});
       const dividers = screen.getAllByTestId("timeline-controls-divider");
