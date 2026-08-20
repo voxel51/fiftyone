@@ -19,7 +19,8 @@ const SHADER_SOURCE = /* wgsl */ `
 struct RowUniforms {
   // x: viewStart (sec), y: viewEnd (sec), z: trackDurationSec, w: unused
   view: vec4<f32>,
-  // x: rowTop, y: rowBottom (normalized device Y, -1..1), z/w: unused
+  // x: rowTop, y: rowBottom (normalized device Y, -1..1),
+  // z: display gain (see \`gainForPyramid\`), w: unused
   rowRect: vec4<f32>,
   color: vec4<f32>,
 };
@@ -75,9 +76,14 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
   // uv.y in [0,1] maps to the row's vertical span; the bar covers
   // [0.5 - hi/2, 0.5 - lo/2] (screen Y grows downward, sample amplitude
   // is centered at 0.5).
+  // Display gain. Raw PCM rarely approaches full scale, so an unscaled
+  // draw leaves a normal recording occupying a fraction of its row. The
+  // gain normalizes the track to its own loudest peak; clamping after it
+  // keeps an outlier transient from pushing the bar outside the row.
+  let gain = max(row.rowRect.z, 1e-6);
   let centered = 0.5 - in.uv.y;
-  let top = hi * 0.5;
-  let bottom = lo * 0.5;
+  let top = clamp(hi * gain, -1.0, 1.0) * 0.5;
+  let bottom = clamp(lo * gain, -1.0, 1.0) * 0.5;
 
   // Analytic antialiasing: fade across one pixel of vertical distance
   // rather than the hard in/out test, which aliased badly on the near-
@@ -89,13 +95,18 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     smoothstep(bottom - feather, bottom + feather, centered) *
     (1.0 - smoothstep(top - feather, top + feather, centered));
 
-  // Amplitude gradient: brighter/hotter toward the peaks, deeper toward
-  // the zero line, so loud passages read at a glance instead of the flat
-  // solid fill.
+  // Amplitude ramp: a three-stop gradient from a deep base through the
+  // row's own hue to a warm crest. Washing the peaks toward flat white
+  // loses the hue exactly where the eye is drawn; running them warm keeps
+  // loud passages legible and the two channels distinguishable at a
+  // glance. The curve is intentionally weighted low — most content sits in
+  // the bottom half of the range, so a linear ramp reads as monochrome.
   let amplitude = clamp(max(abs(top), abs(bottom)) * 2.0, 0.0, 1.0);
-  let quiet = row.color.rgb * 0.55;
-  let loud = mix(row.color.rgb, vec3<f32>(1.0, 1.0, 1.0), 0.35);
-  var rgb = mix(quiet, loud, amplitude);
+  let ramp = pow(amplitude, 0.65);
+  let deep = row.color.rgb * 0.35;
+  let crest = mix(row.color.rgb, vec3<f32>(1.0, 0.72, 0.35), 0.55);
+  var rgb = mix(deep, row.color.rgb, clamp(ramp * 2.0, 0.0, 1.0));
+  rgb = mix(rgb, crest, clamp(ramp * 2.0 - 1.0, 0.0, 1.0));
 
   // Zero-amplitude axis: the reference line that makes DC offset and
   // asymmetric clipping visible. Drawn as a subtle bright hairline, again
@@ -108,6 +119,65 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
   return vec4<f32>(rgb, row.color.a * max(alpha, axisAlpha));
 }
 `;
+
+/** Leave a little room so a normalized peak never touches the row edge. */
+const GAIN_HEADROOM = 0.92;
+/**
+ * Ceiling on the boost. Without it a near-silent track is amplified until
+ * its noise floor looks like content.
+ */
+const MAX_GAIN = 8;
+/** Below this peak a track is treated as silence and drawn unscaled. */
+const SILENCE_FLOOR = 0.02;
+
+// Keyed by pyramid identity: the coarsest level is small, but this runs per
+// row per frame and the pyramid is stable for the life of a decoded track.
+const peakCache = new WeakMap<PeakPyramid, number>();
+
+/**
+ * Loudest absolute sample in a track.
+ *
+ * Read off the COARSEST level, which is the cheapest array that still
+ * summarizes the whole track — every level covers the full duration, so
+ * the peak magnitude is the same at any LOD, and the top one is smallest.
+ */
+function peakForPyramid(pyramid: PeakPyramid): number {
+  const cached = peakCache.get(pyramid);
+  if (cached !== undefined) return cached;
+
+  const level = pyramid.levels[pyramid.levels.length - 1];
+  let peak = 0;
+  if (level) {
+    for (let i = 0; i < level.max.length; i++) {
+      const hi = Math.abs(level.max[i]);
+      if (hi > peak) peak = hi;
+    }
+    for (let i = 0; i < level.min.length; i++) {
+      const lo = Math.abs(level.min[i]);
+      if (lo > peak) peak = lo;
+    }
+  }
+
+  peakCache.set(pyramid, peak);
+  return peak;
+}
+
+/**
+ * One display gain for every row drawn together.
+ *
+ * Deliberately shared rather than per-row: the rows of a render are the
+ * channels of one source, and normalizing each to its own peak would draw
+ * a quiet-left/loud-right recording as perfectly balanced — erasing the
+ * stereo relationship the waveform exists to show.
+ */
+export function gainForRows(rows: readonly { pyramid: PeakPyramid }[]): number {
+  let peak = 0;
+  for (const row of rows) {
+    const rowPeak = peakForPyramid(row.pyramid);
+    if (rowPeak > peak) peak = rowPeak;
+  }
+  return peak < SILENCE_FLOOR ? 1 : Math.min(MAX_GAIN, GAIN_HEADROOM / peak);
+}
 
 export interface WaveformRowSpec {
   readonly trackId: string;
@@ -287,6 +357,8 @@ export class WaveformRenderer {
 
     const canvasHeight = args.canvas.height;
     const viewDuration = args.viewEnd - args.viewStart;
+    // One gain for the whole draw, so channels keep their relative levels.
+    const displayGain = gainForRows(args.rows);
     for (const [rowIndex, row] of args.rows.entries()) {
       const textures = this.texturesFor(row.trackId, row.pyramid);
 
@@ -336,7 +408,7 @@ export class WaveformRenderer {
         0,
         Math.min(topNdc, bottomNdc),
         Math.max(topNdc, bottomNdc),
-        0,
+        displayGain,
         0,
         ...row.color,
       ]);
