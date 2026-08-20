@@ -8,7 +8,7 @@ import UploadActions from "./UploadActions";
 import { useUploadOrchestration } from "./useUploadOrchestration";
 
 export default function UploadView(props) {
-  const { onChange, path, schema, data } = props;
+  const { onChange, path, schema } = props;
   const { view = {} } = schema;
   const {
     destination,
@@ -38,7 +38,6 @@ export default function UploadView(props) {
     setAddMoreOpen,
   } = useUploadOrchestration({
     path,
-    data,
     onChange,
     destination,
     accept,

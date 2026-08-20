@@ -1,52 +1,35 @@
-import { useCallback, useRef } from "react";
-import type { FileUploadItem, UseFileUploadOptions } from "@fiftyone/upload";
+import { useEffect, useRef } from "react";
+import type { FileUploadItem } from "@fiftyone/upload";
 import type { FileValue } from "./types";
 import { fileValueFromUploadItem } from "./utils";
 
 interface UseFormSyncOptions {
   path: string;
-  data: FileValue[] | undefined;
+  files: FileUploadItem[];
   onChange: (path: string, value: FileValue[]) => void;
 }
 
 /**
- * Creates `onFileSuccess` and `onFileError` callbacks that keep the operator
- * form value in sync with upload results.
+ * Keeps the operator form value in sync with the current set of
+ * successfully uploaded files.
  *
- * Completed uploads are appended to the form value as `FileValue` objects.
- * Cancelled / removed uploads are pruned by `absolute_path`.
+ * The value is recomputed from `files` on every change rather than
+ * accumulated incrementally, since `files` is the single source of truth
+ * already updated safely (via functional state updates) as uploads
+ * complete, fail, or are cancelled/removed.
  */
-export function useFormSync({ path, data, onChange }: UseFormSyncOptions) {
-  const dataRef = useRef(data);
-  dataRef.current = data;
+const EMPTY_SERIALIZED = "[]";
 
-  const appendFile = useCallback(
-    (item: FileUploadItem) => {
-      const current = dataRef.current ?? [];
-      const fileValue = fileValueFromUploadItem(item);
-      const next = [...current, fileValue];
-      dataRef.current = next;
-      onChange(path, next);
-    },
-    [path, onChange],
-  );
+export function useFormSync({ path, files, onChange }: UseFormSyncOptions) {
+  const lastSerialized = useRef(EMPTY_SERIALIZED);
 
-  const removeFileByPath = useCallback(
-    (remotePath: string) => {
-      const current = dataRef.current ?? [];
-      const next = current.filter((f) => f.absolute_path !== remotePath);
-      dataRef.current = next;
-      onChange(path, next);
-    },
-    [path, onChange],
-  );
-
-  const onFileSuccess: UseFileUploadOptions["onFileSuccess"] = useCallback(
-    (item) => {
-      appendFile(item);
-    },
-    [appendFile],
-  );
-
-  return { onFileSuccess, removeFileByPath };
+  useEffect(() => {
+    const successful = files
+      .filter((file) => file.status === "success")
+      .map(fileValueFromUploadItem);
+    const serialized = JSON.stringify(successful);
+    if (serialized === lastSerialized.current) return;
+    lastSerialized.current = serialized;
+    onChange(path, successful);
+  }, [files, path, onChange]);
 }

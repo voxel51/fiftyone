@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFileUpload, createXhrTransport } from "@fiftyone/upload";
-import type { FileValue } from "./types";
 import { useFormSync } from "./useFormSync";
 
 const transport = createXhrTransport();
 
 interface UseUploadOrchestrationOptions {
   path: string;
-  data: FileValue[] | undefined;
   onChange: (path: string, value: unknown) => void;
   destination: string;
   accept?: string[];
@@ -18,7 +16,6 @@ interface UseUploadOrchestrationOptions {
 
 export function useUploadOrchestration({
   path,
-  data,
   onChange,
   destination,
   accept,
@@ -28,12 +25,6 @@ export function useUploadOrchestration({
 }: UseUploadOrchestrationOptions) {
   const autoUploadRef = useRef({ destination, endpoint: "/files/upload" });
   autoUploadRef.current = { destination, endpoint: "/files/upload" };
-
-  const { onFileSuccess, removeFileByPath } = useFormSync({
-    path,
-    data,
-    onChange,
-  });
 
   const {
     files,
@@ -56,8 +47,9 @@ export function useUploadOrchestration({
     maxSize,
     maxConcurrent,
     transport,
-    onFileSuccess,
   });
+
+  useFormSync({ path, files, onChange });
 
   // Trigger uploads manually so we always use the latest destination from
   // the operator schema, avoiding stale closures from autoUpload memoization.
@@ -80,24 +72,18 @@ export function useUploadOrchestration({
 
   const handleCancel = useCallback(
     async (id: string) => {
-      const file = files.find((f) => f.id === id);
-      if (file?.remotePath) {
-        removeFileByPath(file.remotePath);
-      }
       await cancel(id);
     },
-    [files, cancel, removeFileByPath],
+    [cancel],
   );
 
   const handleCancelAll = useCallback(async () => {
     await cancelAll();
-    onChange(path, []);
-  }, [cancelAll, onChange, path]);
+  }, [cancelAll]);
 
   const handleDeleteAll = useCallback(async () => {
     await deleteAll();
-    onChange(path, []);
-  }, [deleteAll, onChange, path]);
+  }, [deleteAll]);
 
   const atFileLimit = maxFiles != null && files.length >= maxFiles;
 
