@@ -35,6 +35,7 @@ import {
 import { usePathFilter, useSelect3DLabelForAnnotation } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import { useThreeDLabelState } from "../state";
+import { useFo3dContext } from "../fo3d/context";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 import type { Archetype3d, PanelId } from "../types";
 import { toEulerFromDegreesArray } from "../utils";
@@ -69,6 +70,7 @@ export const ThreeDLabels = ({
   unfocusedLabelOpacity,
 }: ThreeDLabelsProps) => {
   const mode = fos.useModalMode();
+  const { directPcdWorldTransformsBySampleId } = useFo3dContext();
   const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
   const annotationSchemas = useAtomValue(activeLabelSchemas);
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
@@ -364,11 +366,8 @@ export const ThreeDLabels = ({
   const cuboidOverlays = useMemo(
     () =>
       standaloneDetections.map((overlay) => {
-        return (
+        const cuboid = (
           <DragGate3D
-            key={`cuboid-${overlay.ui.isNew ? "new-" : ""}${
-              overlay.data._id
-            }-${overlay.sampleId}`}
             dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
             onClick={(e) => handleSelect(overlay, ANNOTATION_CUBOID, e)}
           >
@@ -393,6 +392,24 @@ export const ThreeDLabels = ({
             />
           </DragGate3D>
         );
+        const worldTransform =
+          directPcdWorldTransformsBySampleId[overlay.sampleId];
+        const key = `cuboid-${overlay.ui.isNew ? "new-" : ""}${
+          overlay.data._id
+        }-${overlay.sampleId}`;
+        const content = <mesh rotation={overlayRotation}>{cuboid}</mesh>;
+
+        return worldTransform ? (
+          <group
+            key={key}
+            position={worldTransform.translation}
+            quaternion={worldTransform.quaternion}
+          >
+            {content}
+          </group>
+        ) : (
+          <group key={key}>{content}</group>
+        );
       }),
     [
       standaloneDetections,
@@ -405,6 +422,7 @@ export const ThreeDLabels = ({
       settings,
       getOverlayColor,
       showCuboidOrientation,
+      directPcdWorldTransformsBySampleId,
     ],
   );
 
@@ -419,20 +437,60 @@ export const ThreeDLabels = ({
     ? (effectiveUnfocusedLabelOpacity ?? labelAlpha)
     : labelAlpha;
 
-  const cuboidInstances =
-    instancedDetections.length > 0 ? (
-      <CuboidInstances
-        detections={instancedDetections}
-        getColor={getOverlayColor}
-        opacity={instancedOpacity}
-        lineWidth={cuboidLineWidth}
-        useLegacyCoordinates={settings.useLegacyCoordinates}
-        overlayRotationFallback={overlayRotation}
-        hoverSource={hoverSource}
-        showOrientation={showCuboidOrientation}
-        onClick={(label, e) => handleSelect(label, ANNOTATION_CUBOID, e)}
-      />
-    ) : null;
+  const cuboidInstances = useMemo(() => {
+    const batches = new Map<string, ReconciledDetection3D[]>();
+
+    for (const detection of instancedDetections) {
+      const batchKey = directPcdWorldTransformsBySampleId[detection.sampleId]
+        ? detection.sampleId
+        : "";
+      const batch = batches.get(batchKey) ?? [];
+      batch.push(detection);
+      batches.set(batchKey, batch);
+    }
+
+    return [...batches.entries()].map(([sampleId, detections]) => {
+      const worldTransform = directPcdWorldTransformsBySampleId[sampleId];
+      const instances = (
+        <mesh rotation={overlayRotation}>
+          <CuboidInstances
+            detections={detections}
+            getColor={getOverlayColor}
+            opacity={instancedOpacity}
+            lineWidth={cuboidLineWidth}
+            useLegacyCoordinates={settings.useLegacyCoordinates}
+            overlayRotationFallback={overlayRotation}
+            hoverSource={hoverSource}
+            showOrientation={showCuboidOrientation}
+            onClick={(label, e) => handleSelect(label, ANNOTATION_CUBOID, e)}
+          />
+        </mesh>
+      );
+
+      return worldTransform ? (
+        <group
+          key={sampleId}
+          position={worldTransform.translation}
+          quaternion={worldTransform.quaternion}
+        >
+          {instances}
+        </group>
+      ) : (
+        <group key="native">{instances}</group>
+      );
+    });
+  }, [
+    cuboidLineWidth,
+    directPcdWorldTransformsBySampleId,
+    getOverlayColor,
+    handleSelect,
+    hoverSource,
+    instancedDetections,
+    instancedOpacity,
+    overlayRotation,
+    settings.useLegacyCoordinates,
+    showCuboidOrientation,
+  ]);
 
   // Polylines render model -> JSX
   const polylineOverlays = useMemo(() => {
@@ -490,10 +548,8 @@ export const ThreeDLabels = ({
   return (
     <group>
       {workingStoreManager}
-      <mesh rotation={overlayRotation}>
-        {cuboidOverlays}
-        {cuboidInstances}
-      </mesh>
+      {cuboidOverlays}
+      {cuboidInstances}
       {polylineOverlays}
     </group>
   );
