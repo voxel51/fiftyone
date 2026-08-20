@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFileUpload, createXhrTransport } from "@fiftyone/upload";
-import { getFetchPathPrefix } from "@fiftyone/utilities";
+import { getFetchParameters } from "@fiftyone/utilities";
 import { useFormSync } from "./useFormSync";
 
 const transport = createXhrTransport();
@@ -24,7 +24,8 @@ export function useUploadOrchestration({
   maxFiles,
   maxConcurrent,
 }: UseUploadOrchestrationOptions) {
-  const uploadEndpoint = `${getFetchPathPrefix()}/files/upload`;
+  const { pathPrefix } = getFetchParameters();
+  const uploadEndpoint = `${pathPrefix}/files/upload`.replaceAll("//", "/");
   const autoUploadRef = useRef({ destination, endpoint: uploadEndpoint });
   autoUploadRef.current = { destination, endpoint: uploadEndpoint };
 
