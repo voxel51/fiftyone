@@ -582,7 +582,14 @@ export const FrameLabelsTracks: React.FC<{
   sample?: ModalSample;
   /** Cap on the timeline drawer body (px); it scrolls internally past this. */
   maxSize?: number;
-}> = ({ sample, maxSize }) => {
+  /**
+   * Host content for the controls row, after the playback cluster. Passed
+   * through to `TimelineWithTracks` rather than assumed here: this component
+   * renders the same read-only track data in Explore and in Annotate, and
+   * only Annotate has editing actions to offer.
+   */
+  extraActions?: React.ReactNode;
+}> = ({ sample, maxSize, extraActions }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
 
@@ -680,6 +687,7 @@ export const FrameLabelsTracks: React.FC<{
         decorateTrack={decorateTrack}
         scrollerRef={timelineScroller}
         extraControls={<VideoAnnotationToolbar />}
+        extraActions={extraActions}
         loaded={timelineLoaded}
         maxSize={maxSize}
         drawerOpen={drawerOpen}

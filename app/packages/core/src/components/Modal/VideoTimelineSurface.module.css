@@ -1,0 +1,40 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.media {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--color-content-bg-card-1);
+}
+
+.video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Docks under the media at its natural height. The separating top edge
+   belongs to `TimelineWithTracks` itself, not to this host. */
+.timeline {
+  flex: 0 0 auto;
+  background: var(--color-content-bg-card-1);
+}
+
+.empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-content-text-muted);
+}
