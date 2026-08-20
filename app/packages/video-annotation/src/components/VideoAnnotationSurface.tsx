@@ -25,7 +25,7 @@ import {
   RegisterSyntheticLabels,
   SyntheticTrackTimeline,
 } from "./SyntheticLabels";
-import { VideoAnnotationTopBar } from "./VideoAnnotationTopBar";
+import { AnnotationTopBar } from "@fiftyone/annotation";
 import { VideoLighterTile } from "./VideoLighterTile";
 import styles from "./VideoAnnotationSurface.module.css";
 
@@ -168,7 +168,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         className={styles.root}
       >
-        <VideoAnnotationTopBar sample={sample} />
+        <AnnotationTopBar sample={sample} />
         <div className={styles.media}>
           <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
         </div>
@@ -184,7 +184,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         className={styles.root}
       >
-        <VideoAnnotationTopBar sample={sample} />
+        <AnnotationTopBar sample={sample} />
         <div className={styles.media}>
           <AnnotatePrerequisiteChecking />
         </div>
@@ -201,7 +201,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
       ref={dimensions.ref as React.RefObject<HTMLDivElement>}
       className={styles.root}
     >
-      <VideoAnnotationTopBar sample={sample} />
+      <AnnotationTopBar sample={sample} />
       <div className={styles.media}>
         <Tile videoSrc={videoSrc} />
       </div>

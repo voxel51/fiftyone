@@ -1,4 +1,3 @@
-import type { ModalSample } from "@fiftyone/state";
 import {
   Align,
   Orientation,
@@ -9,14 +8,14 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import React, { useMemo } from "react";
-import styles from "./VideoAnnotationTopBar.module.css";
-import { useVideoAnnotationStatusContent } from "../state/videoAnnotationStatus";
-import { getModalSampleFrameRate } from "../utils/modalSample";
+import { useAnnotationStatusContent } from "../state/annotationStatus";
+import styles from "./AnnotationTopBar.module.css";
 
 /**
- * Media facts shown at the top-left of the bar. Resolution and codec are
- * optional — they're absent on samples whose `VideoMetadata` wasn't fully
- * populated, so the bar simply omits them rather than rendering blanks.
+ * Media facts shown at the top-left of the bar. Everything past the filename
+ * is optional — resolution/fps/codec are absent on samples whose metadata
+ * wasn't (fully) computed, and fps/codec never apply to images — so the bar
+ * simply omits them rather than rendering blanks.
  */
 interface MediaInfo {
   filename: string;
@@ -25,11 +24,25 @@ interface MediaInfo {
   codec: string | null;
 }
 
-type VideoMetadataLike = {
+type MediaMetadataLike = {
+  /** VideoMetadata resolution. */
   frame_width?: unknown;
   frame_height?: unknown;
+  /** ImageMetadata resolution. */
+  width?: unknown;
+  height?: unknown;
   encoding_str?: unknown;
 };
+
+/**
+ * Structural view of the modal sample — typed locally so this package needs
+ * no `@fiftyone/state` dependency. `frameRate` exists only on the video
+ * variant of the sample response.
+ */
+export interface AnnotationTopBarSample {
+  sample: { filepath: string; metadata?: MediaMetadataLike };
+  frameRate?: number;
+}
 
 const basename = (filepath: string): string => {
   const cleaned = filepath.replace(/[\\/]+$/, "");
@@ -46,15 +59,18 @@ const finitePositive = (value: unknown): number | null =>
 /** Format fps trimming trailing zeros: 30 → "30 fps", 29.97 → "29.97 fps". */
 const formatFps = (fps: number): string => `${Number(fps.toFixed(2))} fps`;
 
-const useMediaInfo = (sample: ModalSample): MediaInfo => {
+const useMediaInfo = (sample: AnnotationTopBarSample): MediaInfo => {
   return useMemo(() => {
-    const metadata = (
-      sample.sample as { metadata?: VideoMetadataLike } | undefined
-    )?.metadata;
+    const metadata = sample.sample.metadata;
 
-    const width = finitePositive(metadata?.frame_width);
-    const height = finitePositive(metadata?.frame_height);
-    const fps = finitePositive(getModalSampleFrameRate(sample));
+    // Video metadata carries frame_width/frame_height; image metadata
+    // carries width/height.
+    const width =
+      finitePositive(metadata?.frame_width) ?? finitePositive(metadata?.width);
+    const height =
+      finitePositive(metadata?.frame_height) ??
+      finitePositive(metadata?.height);
+    const fps = finitePositive(sample.frameRate);
     const codec =
       typeof metadata?.encoding_str === "string" && metadata.encoding_str
         ? metadata.encoding_str
@@ -82,21 +98,22 @@ const MetaItem: React.FC<{ children: React.ReactNode; muted?: boolean }> = ({
 );
 
 /**
- * Top bar for the video annotation surface. Left side shows the open sample's
- * media facts (filename, resolution, fps, codec when available); the right
- * side is a programmatically-controllable status slot driven by
- * {@link useVideoAnnotationStatus} — e.g. propagation progress.
+ * Top bar shared by the annotation surfaces (image and video). Left side
+ * shows the open sample's media facts (filename, resolution, and — for
+ * video — fps and codec when available); the right side is a
+ * programmatically-controllable status slot driven by
+ * {@link useAnnotationStatus} — e.g. propagation progress.
  *
  * Mounted as the first row of the surface layout (above the media region).
  */
-export const VideoAnnotationTopBar: React.FC<{ sample: ModalSample }> = ({
-  sample,
-}) => {
+export const AnnotationTopBar: React.FC<{
+  sample: AnnotationTopBarSample;
+}> = ({ sample }) => {
   const info = useMediaInfo(sample);
-  const status = useVideoAnnotationStatusContent();
+  const status = useAnnotationStatusContent();
 
   return (
-    <div className={styles.root} data-cy="video-annotation-top-bar">
+    <div className={styles.root} data-cy="annotation-top-bar">
       <Stack
         orientation={Orientation.Row}
         align={Align.Center}
@@ -122,7 +139,7 @@ export const VideoAnnotationTopBar: React.FC<{ sample: ModalSample }> = ({
           </>
         )}
       </Stack>
-      <div className={styles.status} data-cy="video-annotation-status-slot">
+      <div className={styles.status} data-cy="annotation-status-slot">
         {status}
       </div>
     </div>
