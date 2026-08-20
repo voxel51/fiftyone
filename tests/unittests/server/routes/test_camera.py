@@ -679,6 +679,7 @@ class TestGroupStaticTransformsRoute:
         assert response.status_code == 200
         data = json.loads(response.body)
         assert "group_id" in data
+        assert data["has_static_transforms"] is True
         assert "results" in data
 
         # Should have results for all 3 slices
@@ -690,6 +691,27 @@ class TestGroupStaticTransformsRoute:
         # left and right have staticTransform, lidar doesn't
         assert "staticTransform" in data["results"]["left"]
         assert "staticTransform" in data["results"]["right"]
+        assert data["results"]["lidar"]["staticTransform"] is None
+
+    @pytest.mark.asyncio
+    async def test_get_group_static_transforms_reports_no_configuration(
+        self,
+        group_static_transforms_endpoint,
+        mock_group_request,
+        grouped_dataset,
+    ):
+        """Tests the identity-compatible no-configuration signal."""
+        for sample in grouped_dataset:
+            if sample.has_field("static_transform"):
+                del sample["static_transform"]
+                sample.save()
+
+        request = mock_group_request(query_params={"slices": "lidar"})
+        response = await group_static_transforms_endpoint.get(request)
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        assert data["has_static_transforms"] is False
         assert data["results"]["lidar"]["staticTransform"] is None
 
     @pytest.mark.asyncio

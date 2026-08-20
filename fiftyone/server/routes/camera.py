@@ -419,6 +419,25 @@ def _has_successful_static_transform(results: dict) -> bool:
     return False
 
 
+def _has_group_static_transform_configuration(
+    dataset, group_id: str, slices: List[str]
+) -> bool:
+    """Checks whether static transforms are configured for a group request."""
+    if dataset.static_transforms:
+        return True
+
+    for slice_name in slices:
+        slice_sample, error = _get_slice_sample(dataset, group_id, slice_name)
+        if error:
+            continue
+
+        for _, value in slice_sample.iter_fields():
+            if next(_iter_static_transform_values(value), None) is not None:
+                return True
+
+    return False
+
+
 def _collect_static_transforms(
     dataset,
     group_id: str,
@@ -575,6 +594,9 @@ class GroupStaticTransforms(HTTPEndpoint):
         results = _collect_static_transforms(
             dataset, group_id, slices, source_frame, target_frame, chain_via
         )
+        has_static_transforms = _has_group_static_transform_configuration(
+            dataset, group_id, slices
+        )
 
         # If no successful transforms found and target_frame was defaulted,
         # try to find the best available target
@@ -607,6 +629,7 @@ class GroupStaticTransforms(HTTPEndpoint):
         return utils.json.JSONResponse(
             {
                 "group_id": group_id,
+                "has_static_transforms": has_static_transforms,
                 "target_frame": target_frame,
                 "results": results,
             }
