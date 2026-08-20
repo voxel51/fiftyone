@@ -1,6 +1,10 @@
 import { PillButton } from "@fiftyone/components";
-import { usePromptOperatorInput } from "@fiftyone/operators";
+import {
+  useOperatorBrowser,
+  usePromptOperatorInput,
+} from "@fiftyone/operators";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
+import { useMemo } from "react";
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 
@@ -11,6 +15,17 @@ export default ({
   modal,
 }: ActionProps & { modal?: boolean }) => {
   const promptForInput = usePromptOperatorInput();
+  const browser = useOperatorBrowser();
+
+  const hasImportSamplesOperator = useMemo(() => {
+    return Array.isArray(browser.choices)
+      ? browser.choices.some(
+          (choice) => choice?.value === IMPORT_SAMPLES_OPERATOR,
+        )
+      : false;
+  }, [browser]);
+
+  if (!hasImportSamplesOperator) return null;
 
   return (
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
