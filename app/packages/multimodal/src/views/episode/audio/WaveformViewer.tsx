@@ -25,9 +25,25 @@ export interface WaveformViewerProps {
   ) => Promise<Pick<WaveformRenderer, "render" | "dispose">>;
 }
 
-const DEFAULT_COLOR: readonly [number, number, number, number] = [
-  0.4, 0.7, 1, 1,
+/**
+ * Per-channel base hues, cycled by row index.
+ *
+ * One flat blue for every row made a stereo pair read as a single smeared
+ * band — the two channels were only separable by the gap between them.
+ * Distinct hues make left and right identifiable at a glance, and the
+ * shader ramps each toward a warm crest at peak amplitude rather than
+ * washing out to white.
+ */
+const CHANNEL_COLORS: readonly (readonly [number, number, number, number])[] = [
+  [0.29, 0.78, 0.85, 1], // teal — channel 0 / left
+  [0.62, 0.51, 0.93, 1], // violet — channel 1 / right
+  [0.35, 0.8, 0.6, 1], // green
+  [0.9, 0.55, 0.45, 1], // clay
 ];
+
+function colorForRow(index: number): readonly [number, number, number, number] {
+  return CHANNEL_COLORS[index % CHANNEL_COLORS.length];
+}
 
 function hasWebGpu(): boolean {
   return (
@@ -139,7 +155,7 @@ const WaveformViewer: React.FC<WaveformViewerProps> = ({
       pyramid: track.pyramid,
       top: index * rowHeightPx,
       height: rowHeightPx,
-      color: track.color ?? DEFAULT_COLOR,
+      color: track.color ?? colorForRow(index),
     }));
     renderer.render({ viewStart, viewEnd, canvas, rows });
   }, [ready, tracks, viewStart, viewEnd, surfaceEpoch]);
