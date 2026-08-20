@@ -1,9 +1,13 @@
+/* The root paints the annotate-area background once — media, timeline, and
+   top bar are all transparent over it. Must match the image surface's root
+   so the two modes look the same. */
 .root {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 0;
+  background: var(--color-content-bg-card-1);
 }
 
 /* Positioned wrapper for media + timeline so the loading cover can overlay
@@ -25,7 +29,6 @@
 .timeline {
   flex: 0 0 auto;
   border-top: 1px solid var(--color-content-border-subtle);
-  background: var(--color-content-bg-card-1);
 }
 
 /* Opaque loading cover over the whole content area until the coordinated
