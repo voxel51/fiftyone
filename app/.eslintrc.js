@@ -12,6 +12,15 @@ const recoilAllowlist = fs
   .map((line) => line.trim())
   .filter((line) => line && !line.startsWith("#"));
 
+// Shrinking allow-list for the MUI->Voodoo migration. See .mui-allowlist.txt
+// for the rationale; remove files from it as they're migrated instead of
+// adding to it.
+const muiAllowlist = fs
+  .readFileSync(path.join(__dirname, ".mui-allowlist.txt"), "utf-8")
+  .split("\n")
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith("#"));
+
 module.exports = {
   env: {
     browser: true,
@@ -89,6 +98,18 @@ module.exports = {
               "New recoil-relay usage is frozen during the Recoil->Jotai migration. See .recoil-allowlist.txt.",
           },
         ],
+        patterns: [
+          {
+            group: ["@mui/icons-material", "@mui/icons-material/*"],
+            message:
+              "New @mui/icons-material usage is frozen during the MUI->Voodoo migration. Use Icons from @voxel51/voodo instead. See .mui-allowlist.txt.",
+          },
+          {
+            group: ["@mui/material", "@mui/material/*"],
+            message:
+              "New @mui/material usage is frozen during the MUI->Voodoo migration. Use an existing @voxel51/voodo component, or flag a gap to the Voodoo owners if one doesn't exist yet. See .mui-allowlist.txt.",
+          },
+        ],
       },
     ],
   },
@@ -153,6 +174,14 @@ module.exports = {
       // Files not yet migrated off Recoil. Shrink .recoil-allowlist.txt as
       // each migration phase lands rather than adding to it.
       files: recoilAllowlist,
+      rules: {
+        "no-restricted-imports": "off",
+      },
+    },
+    {
+      // Files not yet migrated off MUI. Shrink .mui-allowlist.txt as files
+      // move to @voxel51/voodo rather than adding to it.
+      files: muiAllowlist,
       rules: {
         "no-restricted-imports": "off",
       },
