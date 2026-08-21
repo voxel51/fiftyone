@@ -3448,6 +3448,10 @@ class RoboLabEgoXDataset(FiftyOneDataset):
     end-effector pose, and the task instruction. Takes keep the benchmark's
     own success label, so failed rollouts sit alongside successful ones.
 
+    In 153 of the 4,000 takes the camera streams carry 80 frames while depth
+    and telemetry carry 81, so align streams by timestamp rather than by
+    index.
+
     Example usage::
 
         import fiftyone as fo
