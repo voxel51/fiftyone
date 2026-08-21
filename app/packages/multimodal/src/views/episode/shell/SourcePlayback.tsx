@@ -1,7 +1,6 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
 import type { TilingLayoutMetrics } from "@fiftyone/tiling";
 import {
-  AudioControls,
   usePlaybackStore,
   type TemporalTagTimelineProps,
   type Track,
@@ -338,31 +337,15 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const shellInventory = destinationInventory ?? retainedShellInventory;
   const shellSources = shellInventory?.sources ?? sources;
   const shellStreams = shellInventory?.streams ?? streams;
-  // Audio scene sources become `Track` rows in the MAIN timeline
-  // (`TrackProvider`'s `tracks`), not just entries in `useAudio()`'s
-  // separate per-source roster — `TimelineWithTracks` gates its entire
-  // Drawer (drag handle, chevron, trailingActions/AudioControls) on
-  // `tracks.length > 0`, and audio registering only with `useAudio()`
-  // never touches that count. Without a Track here, a recording whose
-  // ONLY streams are audio (no detections, no temporal tags) would never
-  // show ANY timeline chrome at all, no matter how correctly audio itself
-  // decodes and registers.
-  const audioTracks = useMemo<Track[]>(
-    () =>
-      shellSources
-        .filter((source) => source.type === SCENE_SOURCE_TYPE.AUDIO)
-        .map((source) => ({
-          id: source.id,
-          label: source.label,
-          color: "#4a9eff",
-          events: [],
-        })),
-    [shellSources],
-  );
-  const mergedTracks = useMemo<Track[]>(
-    () => [...(tracks ?? []), ...audioTracks],
-    [tracks, audioTracks],
-  );
+  // Audio deliberately does NOT contribute `Track` rows to the main timeline
+  // for now — audio lives in the toolbar's volume/mixer controls only, and is
+  // to be reintroduced as a timeline track later.
+  //
+  // Worth knowing when it comes back: `TimelineWithTracks` gates its whole
+  // Drawer (drag handle, chevron, trailing actions) on `tracks.length > 0`,
+  // and `useAudio()`'s roster does not feed that count. So a recording whose
+  // only streams are audio now shows no timeline chrome at all — which is the
+  // gap those synthetic rows existed to close.
   // The transitioning gate clears when `onPlayheadDataReady` fires, which
   // requires a stream registered with the demand-driven buffered-read system
   // to cover the playhead. Audio sources decode through their own one-shot
@@ -585,8 +568,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 addTileMenu={
                                   <AddTileMenu tileTypes={availableTileTypes} />
                                 }
-                                timelineExtraActions={<TimestampReadout />}
-                                timelineTrailingActions={<AudioControls />}
+                                timelineReadouts={<TimestampReadout />}
                                 sceneSources={shellSources}
                                 mode={playbackTimelineMode}
                                 deselectFocusedTileOnRepeatSelect={false}
@@ -601,8 +583,8 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 resetManualTileTitles={EMPTY_MANUAL_TILE_TITLES}
                                 resetLayoutStrategy={autoLayoutStrategy}
                                 tracks={
-                                  mergedTracks.length > 0
-                                    ? mergedTracks
+                                  tracks && tracks.length > 0
+                                    ? [...tracks]
                                     : undefined
                                 }
                                 defaultPinnedTrackIds={

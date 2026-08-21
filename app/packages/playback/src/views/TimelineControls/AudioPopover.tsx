@@ -160,11 +160,20 @@ const AudioPopover: React.FC<AudioPopoverProps> = ({
               // the rest of the toolbar rather than into the panel.
               aria-label={ariaLabel}
               tabIndex={-1}
-              // Right-aligned to the trigger and opening upward, in
-              // viewport coordinates since this is `position: fixed`.
+              // Left-aligned to the trigger and opening upward, in viewport
+              // coordinates since this is `position: fixed`.
+              //
+              // Left, not right: these triggers used to sit in the toolbar's
+              // right-hand trailing group, where pinning the panel's right
+              // edge kept a wide panel on screen. They now sit just after the
+              // transport buttons, near the left edge — pinning the right edge
+              // there throws the panel out to the left of its own button.
+              // `maxWidth` keeps the other end on screen without needing to
+              // measure the panel first.
               style={{
                 bottom: `${window.innerHeight - anchorRect.top + 6}px`,
-                right: `${window.innerWidth - anchorRect.right}px`,
+                left: `${anchorRect.left}px`,
+                maxWidth: `calc(100vw - ${Math.round(anchorRect.left)}px - 12px)`,
               }}
               onClick={stopPropagation}
               onPointerDown={stopPropagation}

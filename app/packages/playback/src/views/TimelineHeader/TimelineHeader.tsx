@@ -42,6 +42,11 @@ export interface TimelineHeaderProps {
    * rendered far-right after the playhead time, preceded by a divider (e.g.
    * the temporal tag-mode button).
    */
+  /**
+   * Forwarded to {@link TimelineControls}' `readouts` — clock-adjacent host
+   * readouts (the absolute/UTC timestamp), rendered inside the time group.
+   */
+  readouts?: ReactNode;
   extraActions?: ReactNode;
   /**
    * Optional content forwarded to {@link TimelineControls}' `trailingActions`
@@ -69,6 +74,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   expanded,
   rulerOverlay,
   extraControls,
+  readouts,
   extraActions,
   trailingActions,
   children,
@@ -79,6 +85,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
         onToggle={onToggle}
         expanded={expanded}
         extraControls={extraControls}
+        readouts={readouts}
         extraActions={extraActions}
         trailingActions={trailingActions}
       />

@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useColorScheme, useColorSeed } from "../state/accessors";
 import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
-  AudioControls,
   TimelineWithTracks,
   TrackProvider,
   useDuration,
@@ -109,7 +108,6 @@ export const SyntheticTrackTimeline: React.FC = () => {
         decorateTrack={decorateTrack}
         drawerOpen={drawerOpen}
         onDrawerOpenChange={setDrawerOpen}
-        trailingActions={<AudioControls />}
       />
     </TrackProvider>
   );

@@ -18,7 +18,6 @@ import {
 import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
-  AudioControls,
   TimelineWithTracks,
   TrackProvider,
   type TimelineTracksScroller,
@@ -503,8 +502,7 @@ function useTrackDecorator({
       // A TD row is identified by its structured event payload; anything else
       // is an engine-addressed object track (row id == instanceId).
       const tdEvent = track.events[0]?.data as
-        | TemporalDetectionEventData
-        | undefined;
+        TemporalDetectionEventData | undefined;
       const isObjectTrack = tdEvent?.detectionId === undefined;
 
       if (isObjectTrack && stream) {
@@ -685,7 +683,6 @@ export const FrameLabelsTracks: React.FC<{
         maxSize={maxSize}
         drawerOpen={drawerOpen}
         onDrawerOpenChange={setDrawerOpen}
-        trailingActions={<AudioControls />}
       />
     </TrackProvider>
   );
