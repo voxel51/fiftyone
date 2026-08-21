@@ -12,8 +12,8 @@ import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 const datasetName = getUniqueDatasetNameWithPrefix(
   "grouped-direct-pcd-world-alignment",
 );
-const leftPcdPath = `/tmp/${datasetName}-lidar-left.pcd`;
-const rightPcdPath = `/tmp/${datasetName}-lidar-right.pcd`;
+const leftPcdPath = path.join(os.tmpdir(), `${datasetName}-lidar-left.pcd`);
+const rightPcdPath = path.join(os.tmpdir(), `${datasetName}-lidar-right.pcd`);
 const TEMP_FILE_PATHS = [leftPcdPath, rightPcdPath];
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
@@ -73,7 +73,7 @@ dataset.static_transforms = {
 
 group = fo.Group()
 left = fo.Sample(
-    filepath="${leftPcdPath}",
+    filepath=${JSON.stringify(leftPcdPath)},
     media_type="point-cloud",
     group=group.element("lidar_left"),
     detections=fo.Detections(
@@ -88,7 +88,7 @@ left = fo.Sample(
     ),
 )
 right = fo.Sample(
-    filepath="${rightPcdPath}",
+    filepath=${JSON.stringify(rightPcdPath)},
     media_type="point-cloud",
     group=group.element("lidar_right"),
 )
@@ -128,7 +128,7 @@ for detection in sample.detections.detections:
         "rotation": list(detection.rotation),
     })
 
-with open("${resultFile}", "w") as f:
+with open(${JSON.stringify(resultFile)}, "w") as f:
     json.dump(cuboids, f)
   `);
 
@@ -279,7 +279,7 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
   expect(Math.abs(createdCuboid!.rotation[2])).toBeCloseTo(Math.PI / 2, 1);
   expect(createdCuboid!.dimensions.every((value) => value > 0)).toBe(true);
 
-  const persistedX = createdCuboid!.location[0].toFixed(2);
+  const persistedX = createdCuboid!.location[0];
   await modal.close();
   await grid.openFirstSample();
   await modal.sidebar.switchMode("annotate");
@@ -287,5 +287,9 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
   await modal.annotate3d.waitForSurface();
   await modal.annotate3d.assert.labelListed("world-created");
   await modal.annotate3d.selectLabel("world-created");
-  await expect(modal.annotate3d.geometryField("x")).toHaveValue(persistedX);
+  await expect
+    .poll(async () =>
+      Number(await modal.annotate3d.geometryField("x").inputValue()),
+    )
+    .toBeCloseTo(persistedX, 2);
 });
