@@ -12439,7 +12439,16 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers", "timm", "einops", "open-clip-torch", "scikit-learn", "scipy"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "einops",
+                    "open-clip-torch",
+                    "scikit-learn",
+                    "scipy"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -12447,7 +12456,14 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "heatmap", "torch", "transformer", "nvidia", "foundation"],
+            "tags": [
+                "embeddings",
+                "heatmap",
+                "torch",
+                "transformer",
+                "nvidia",
+                "foundation"
+            ],
             "training_data": [
                 {
                     "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",
@@ -12472,7 +12488,16 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers", "timm", "einops", "open-clip-torch", "scikit-learn", "scipy"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "einops",
+                    "open-clip-torch",
+                    "scikit-learn",
+                    "scipy"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -12480,7 +12505,14 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "heatmap", "torch", "transformer", "nvidia", "foundation"],
+            "tags": [
+                "embeddings",
+                "heatmap",
+                "torch",
+                "transformer",
+                "nvidia",
+                "foundation"
+            ],
             "training_data": [
                 {
                     "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",
