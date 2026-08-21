@@ -51,8 +51,9 @@ jobs:
         if: github.ref_type == 'tag'
         uses: actions/checkout@v7
         with:
-          # Fetch full history for rev-parse to work
+          # Full commit graph for rev-parse/merge-base, no historical blobs
           fetch-depth: 0
+          filter: blob:none
       - name: Clone fiftyone for branch builds
         if: github.ref_type == 'branch'
         uses: actions/checkout@v7
