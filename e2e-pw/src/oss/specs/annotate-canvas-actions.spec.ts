@@ -150,6 +150,12 @@ test.describe.serial("canvas interactions and action state", () => {
     // deactivates and Select reactivates, without selecting the label
     await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sidebar.annotate.assert.selectIsActive();
+
+    // the label list header is still showing — the click didn't open the
+    // detection for editing (the list unmounts while a label is being edited)
+    await expect(
+      modal.sidebar.locator.getByText("Edit", { exact: true }),
+    ).toBeVisible();
   });
 
   test("clicking an existing detection overlay activates detection mode", async ({

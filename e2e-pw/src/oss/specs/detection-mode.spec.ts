@@ -151,6 +151,14 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
+
+    // The drag created detection #3 rather than selecting or moving #1:
+    // after click-to-quit the label list shows all three detections
+    await modal.sampleCanvas.move(0.1, 0.1);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.up();
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(3);
   });
 
   test("draw multiple detections", async ({ modal }) => {
