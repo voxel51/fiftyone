@@ -223,10 +223,10 @@
     :tags: 3d,point-cloud,mesh,quickstart
 
 .. customcarditem::
-    :header: RoboLab-EgoX
+    :header: RoboLab
     :description: 4,000 policy rollouts on NVIDIA's RoboLab manipulation benchmark in native MCAP format, with three camera views, depth, calibration, and success labels on every take.
-    :link: datasets/robolab_egox.html
-    :image: ../_images/robolab-egox.png
+    :link: datasets/robolab.html
+    :image: ../_images/robolab.png
     :tags: multimodal,mcap,robotics,depth
 
 .. customcarditem::

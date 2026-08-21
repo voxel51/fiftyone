@@ -3439,7 +3439,7 @@ class UCF101Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
-class RoboLabEgoXDataset(FiftyOneDataset):
+class RoboLabDataset(FiftyOneDataset):
     """Policy rollouts recorded on NVIDIA's RoboLab manipulation benchmark,
     as native ``.mcap`` episodes.
 
@@ -3457,7 +3457,7 @@ class RoboLabEgoXDataset(FiftyOneDataset):
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("robolab-egox")
+        dataset = foz.load_zoo_dataset("robolab")
 
         # Rollouts the policy got right
         view = dataset.match({"success": True})
@@ -3472,7 +3472,7 @@ class RoboLabEgoXDataset(FiftyOneDataset):
 
     @property
     def name(self):
-        return "robolab-egox"
+        return "robolab"
 
     @property
     def license(self):
@@ -3531,7 +3531,7 @@ AVAILABLE_DATASETS = {
     "quickstart-trajectories": QuickstartTrajectoriesDataset,
     "quickstart-groups": QuickstartGroupsDataset,
     "quickstart-3d": Quickstart3DDataset,
-    "robolab-egox": RoboLabEgoXDataset,
+    "robolab": RoboLabDataset,
     "sama-coco": SamaCOCODataset,
     "ucf101": UCF101Dataset,
 }

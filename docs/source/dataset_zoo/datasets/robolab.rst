@@ -1,4 +1,4 @@
-.. _dataset-zoo-robolab-egox:
+.. _dataset-zoo-robolab:
 
 RoboLab-EgoX
 ------------
@@ -20,14 +20,14 @@ telemetry carry 81, so align streams by timestamp rather than by index.
 
 **Details**
 
--   Dataset name: ``robolab-egox``
+-   Dataset name: ``robolab``
 -   Dataset source: https://huggingface.co/datasets/Voxel51/RoboLab-EgoX
 -   Dataset size: 19.84 GB
 -   Dataset license: Apache-2.0
 -   Tags: ``multimodal, mcap, robotics, manipulation, depth``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
-    :class:`RoboLabEgoXDataset <fiftyone.zoo.datasets.base.RoboLabEgoXDataset>`
+    :class:`RoboLabDataset <fiftyone.zoo.datasets.base.RoboLabDataset>`
 
 **Example usage**
 
@@ -41,7 +41,7 @@ telemetry carry 81, so align streams by timestamp rather than by index.
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("robolab-egox")
+        dataset = foz.load_zoo_dataset("robolab")
 
         # Rollouts the policy got right
         view = dataset.match({"success": True})
@@ -52,10 +52,10 @@ telemetry carry 81, so align streams by timestamp rather than by index.
 
     .. code-block:: shell
 
-        fiftyone zoo datasets load robolab-egox
+        fiftyone zoo datasets load robolab
 
-        fiftyone app launch robolab-egox
+        fiftyone app launch robolab
 
-.. image:: /images/dataset_zoo/robolab-egox.png
-   :alt: robolab-egox
+.. image:: /images/dataset_zoo/robolab.png
+   :alt: robolab
    :align: center
