@@ -12422,6 +12422,41 @@
                 }
             ],
             "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "qwen3.8-27b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hybrid-attention 27B vision-language model for object detection via 2D grounding",
+            "source": "https://huggingface.co/Qwen/Qwen3.8-27B",
+            "author": "Qwen Team, Alibaba",
+            "license": "Apache 2.0",
+            "size_bytes": 55600000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.qwen3_8.Qwen38Model",
+                "config": {
+                    "name_or_path": "Qwen/Qwen3.8-27B",
+                    "output_processor_cls": "fiftyone.utils.qwen3_8.Qwen38OutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.8.0",
+                    "accelerate",
+                    "bitsandbytes"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-08-14 12:00:00"
         }
     ]
 }
