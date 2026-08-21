@@ -17,7 +17,7 @@ import {
   useIsImageDynamicGroupVideo,
   view,
 } from "@fiftyone/state";
-import { FRAMES_PREFIX } from "@fiftyone/annotation";
+import { isFrameScopedPath } from "./framePaths";
 import {
   DETECTION,
   EMBEDDED_DOCUMENT_FIELD,
@@ -135,12 +135,8 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
   return useMemo(() => {
     const fields: Record<string, LabelType> = {};
 
-    // Video: the per-frame fields under `frames.*`. ImaVid dynamic group: the
-    // sample-level fields, which are exactly the ones NOT under `frames.*`.
     const owns = (field: string): boolean =>
-      isImageDynamicGroupVideo
-        ? !field.startsWith(FRAMES_PREFIX)
-        : field.startsWith(FRAMES_PREFIX);
+      isFrameScopedPath(field, isImageDynamicGroupVideo);
 
     for (const field of detectionFields) {
       if (owns(field)) {
