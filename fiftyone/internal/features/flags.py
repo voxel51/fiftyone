@@ -8,9 +8,7 @@ FiftyOne feature flags.
 
 from typing import Literal
 
-
 FeatureFlag = Literal[
-    "VFF_DYNAMIC_GROUP_ANNOTATION",
     "VFF_MULTIMODAL",
 ]
 """Enumeration of active feature flags."""
