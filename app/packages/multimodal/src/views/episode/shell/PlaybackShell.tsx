@@ -72,12 +72,17 @@ export interface PlaybackShellProps {
    * transport buttons) — e.g. an absolute-timestamp readout. Composed
    * with the timeline's own actions, not replacing them.
    */
+  /**
+   * Clock-adjacent readout rendered beside the playhead time (the absolute
+   * UTC stamp) rather than in the trailing action run.
+   */
+  timelineReadouts?: ReactNode;
   timelineExtraActions?: ReactNode;
 
   /**
    * Buttons pinned to the right edge of the timeline's controls row,
    * behind their own divider and before the drawer chevron — e.g.
-   * `@fiftyone/playback`'s `AudioControls` (master volume + Mixed
+   * the timeline's own audio controls (master volume + Mixed
    * dropdown) for a recording with audio tracks.
    */
   timelineTrailingActions?: ReactNode;
@@ -239,6 +244,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   headerCaption,
   headerActions,
   addTileMenu,
+  timelineReadouts,
   timelineExtraActions,
   timelineTrailingActions,
   tracks,
@@ -302,6 +308,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               headerCaption={headerCaption}
               headerActions={headerActions}
               addTileMenu={addTileMenu}
+              timelineReadouts={timelineReadouts}
               timelineExtraActions={timelineExtraActions}
               timelineTrailingActions={timelineTrailingActions}
               leftSidebar={leftSidebar}
@@ -340,6 +347,11 @@ interface LayoutProps {
   headerCaption?: TilingHeaderCaption;
   headerActions?: ReactNode;
   addTileMenu?: ReactNode;
+  /**
+   * Clock-adjacent readout rendered beside the playhead time (the absolute
+   * UTC stamp) rather than in the trailing action run.
+   */
+  timelineReadouts?: ReactNode;
   timelineExtraActions?: ReactNode;
   timelineTrailingActions?: ReactNode;
   leftSidebar: ReactNode;
@@ -369,6 +381,7 @@ function Layout({
   headerCaption,
   headerActions,
   addTileMenu,
+  timelineReadouts,
   timelineExtraActions,
   timelineTrailingActions,
   leftSidebar,
@@ -599,6 +612,7 @@ function Layout({
         onDrawerOpenChange={updateTimelineTracksOpen}
         trailingActions={timelineTrailingActions}
         decorateTrack={decorateTrack}
+        readouts={timelineReadouts}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
         onTagUpdate={onTagUpdate}
