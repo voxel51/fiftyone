@@ -1932,6 +1932,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
             if doc.description and not dataset_dict.get("description", None):
                 keep_fields["description"] = doc.description
+            if doc.media_type is not None:
+                keep_fields["media_type"] = doc.media_type
 
             if doc.tags:
                 tags = doc.tags.copy()
