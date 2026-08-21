@@ -1,0 +1,101 @@
+name: Cherry-Pick to Release
+
+# Opens the release-branch PR for a merged develop PR: cherry-picks its merge
+# result with -x, which the release gate verifies against develop. Two ways in:
+# dispatch with a PR number + target branch, or label a develop PR
+# 'cherry-pick-to-release' and the release PR opens itself when the develop PR
+# merges. Conflicts fail the run and comment on the source PR — resolving is
+# a human decision, and often the signal that the fix needs the release-only
+# escape hatch instead.
+#
+# Runs as voxel51-bot (FIFTYONE_GITHUB_TOKEN) so the PRs it opens trigger CI;
+# the default Actions token's PRs would not.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Merged develop PR number to cherry-pick"
+        required: true
+      release_branch:
+        description: "Target release branch, e.g. release/v1.8.0"
+        required: true
+  # Fork PRs don't reach develop directly (community-branch flow), so plain
+  # pull_request is enough; the rare exception can use workflow_dispatch.
+  pull_request:
+    types: [closed, labeled]
+    branches:
+      - develop
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cherry-pick-to-release-branch:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       contains(github.event.pull_request.labels.*.name, 'cherry-pick-to-release'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Blobless clone: the cherry-pick needs the full commit graph for
+          # the merge-commit parent lookup, but only the blobs it touches.
+          fetch-depth: 0
+          filter: blob:none
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+      - name: Cherry-pick and open PR
+        env:
+          GH_TOKEN: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number }}
+          RELEASE_BRANCH: ${{ inputs.release_branch || '' }}
+        run: |
+          set -euo pipefail
+
+          # The labeled flow targets the live release line; there is one at a
+          # time.
+          if [ -z "$RELEASE_BRANCH" ]; then
+            RELEASE_BRANCH=$(gh api "repos/$REPO/branches" --paginate \
+              --jq '.[].name | select(startswith("release/v"))' | sort -V | tail -1)
+          fi
+          if [[ "$RELEASE_BRANCH" != release/v* ]]; then
+            echo "::error::No release/v* branch to target (got '${RELEASE_BRANCH:-none}')."
+            exit 1
+          fi
+
+          fields=$(gh pr view "$PR_NUMBER" --json state,baseRefName,mergeCommit,title \
+            --jq '[.state, .baseRefName, .mergeCommit.oid, .title] | @tsv')
+          IFS=$'\t' read -r state base sha title <<< "$fields"
+
+          if [ "$state" != "MERGED" ] || [ "$base" != "develop" ]; then
+            echo "::error::PR #$PR_NUMBER must be a merged develop PR (state=$state, base=$base)."
+            exit 1
+          fi
+
+          git fetch --quiet origin develop "$RELEASE_BRANCH"
+          git config user.name "voxel51-bot"
+          git config user.email "voxel51-bot@users.noreply.github.com"
+
+          branch="cherry-pick/${RELEASE_BRANCH#release/}/pr-$PR_NUMBER"
+          git checkout -b "$branch" "origin/$RELEASE_BRANCH"
+
+          mainline=""
+          if [ "$(git rev-list --parents -n 1 "$sha" | wc -w)" -gt 2 ]; then
+            mainline="-m 1"
+          fi
+          if ! git cherry-pick -x $mainline "$sha"; then
+            git cherry-pick --abort
+            gh pr comment "$PR_NUMBER" --body "Cherry-pick to \`$RELEASE_BRANCH\` conflicts — pick it manually with \`git cherry-pick -x\`, or use the \`release-only-fix\` escape hatch if develop has moved on."
+            echo "::error::Cherry-pick of $sha onto $RELEASE_BRANCH conflicts."
+            exit 1
+          fi
+
+          git push origin "$branch"
+          gh pr create \
+            --base "$RELEASE_BRANCH" \
+            --head "$branch" \
+            --title "[$RELEASE_BRANCH] $title" \
+            --body "Cherry-pick of #$PR_NUMBER."

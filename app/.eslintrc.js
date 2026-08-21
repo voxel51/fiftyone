@@ -1,5 +1,17 @@
 /* eslint-disable */
 
+const fs = require("fs");
+const path = require("path");
+
+// Shrinking allow-list for the Recoil->Jotai migration. See
+// .recoil-allowlist.txt for the rationale; remove files from it as they're
+// migrated instead of adding to it.
+const recoilAllowlist = fs
+  .readFileSync(path.join(__dirname, ".recoil-allowlist.txt"), "utf-8")
+  .split("\n")
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith("#"));
+
 module.exports = {
   env: {
     browser: true,
@@ -68,11 +80,88 @@ module.exports = {
       },
     ],
     "react/prop-types": 0,
+    "no-restricted-imports": [
+      "warn",
+      {
+        paths: [
+          {
+            name: "recoil",
+            message:
+              "New Recoil usage is frozen during the Recoil->Jotai migration. Use an existing @fiftyone/state accessor hook, or add a new Jotai atom. See .recoil-allowlist.txt.",
+          },
+          {
+            name: "recoil-relay",
+            message:
+              "New recoil-relay usage is frozen during the Recoil->Jotai migration. See .recoil-allowlist.txt.",
+          },
+        ],
+      },
+    ],
   },
   settings: {
     react: {
       version: "detect",
     },
   },
-  overrides: [],
+  overrides: [
+    {
+      // react-three-fiber renders three.js object properties as JSX props
+      files: ["packages/looker-3d/**"],
+      rules: {
+        "react/no-unknown-property": [
+          "warn",
+          {
+            ignore: [
+              "angle",
+              "args",
+              "attach",
+              "decay",
+              "depthTest",
+              "depthWrite",
+              "dispose",
+              "distance",
+              "emissive",
+              "emissiveIntensity",
+              "fragmentShader",
+              "geometry",
+              "glslVersion",
+              "intensity",
+              "linewidth",
+              "map",
+              "material",
+              "matrix",
+              "matrixAutoUpdate",
+              "object",
+              "onPointerMissed",
+              "penumbra",
+              "polygonOffset",
+              "polygonOffsetFactor",
+              "polygonOffsetUnits",
+              "position",
+              "quaternion",
+              "raycast",
+              "renderOrder",
+              "rotation",
+              "side",
+              "sizeAttenuation",
+              "transparent",
+              "uniforms",
+              "userData",
+              "vertexShader",
+              "visible",
+              "wireframe",
+            ],
+          },
+        ],
+      },
+    },
+    {
+      // Files not yet migrated off Recoil. Shrink .recoil-allowlist.txt as
+      // each migration phase lands rather than adding to it.
+      files: recoilAllowlist,
+      rules: {
+        "no-restricted-imports": "off",
+      },
+    },
+  ],
 };

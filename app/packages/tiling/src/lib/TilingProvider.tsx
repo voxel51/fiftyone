@@ -21,6 +21,7 @@ import type {
   SetTileTitleOptions,
   TilingAutoLayoutStrategy,
   TilingContextValue,
+  TilingLayoutMetrics,
   TilingTile,
 } from "./types";
 
@@ -47,6 +48,14 @@ export interface TilingProviderProps {
   initialLayout?: MosaicNode<string> | null;
   /** Tile id that should initially render expanded to fullscreen. */
   initialExpandedTileId?: string | null;
+  /** Tile entries restored by "Reset Layout". Defaults to `initialTiles`. */
+  resetTiles?: Record<string, TilingTile>;
+  /** Manual titles restored by "Reset Layout". Defaults to the initial titles. */
+  resetManualTileTitles?: Record<string, string>;
+  /** Layout restored by "Reset Layout". Defaults to the initial layout. */
+  resetLayout?: MosaicNode<string> | null;
+  /** Optional geometry-aware builder for the Reset Layout arrangement. */
+  resetLayoutStrategy?: TilingAutoLayoutStrategy;
   children: React.ReactNode;
 }
 
@@ -67,6 +76,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   autoLayoutStrategy,
   initialLayout,
   initialExpandedTileId,
+  resetTiles,
+  resetManualTileTitles,
+  resetLayout: resetLayoutProp,
+  resetLayoutStrategy,
   children,
 }) => {
   const initialLayoutValueRef = useRef<MosaicNode<string> | null | undefined>(
@@ -79,6 +92,27 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         : initialLayout;
   }
   const initialLayoutValue = initialLayoutValueRef.current;
+  const resetTilesValueRef = useRef(resetTiles ?? initialTiles);
+  const resetManualTileTitlesValueRef = useRef(
+    filterManualTitles(
+      resetManualTileTitles ?? initialManualTileTitles,
+      resetTilesValueRef.current,
+    ),
+  );
+  const resetLayoutValueRef = useRef<MosaicNode<string> | null | undefined>(
+    undefined,
+  );
+  if (resetLayoutValueRef.current === undefined) {
+    if (resetLayoutProp !== undefined) {
+      resetLayoutValueRef.current = resetLayoutProp;
+    } else if (resetTiles === undefined) {
+      resetLayoutValueRef.current = initialLayoutValue;
+    } else {
+      resetLayoutValueRef.current = (autoLayoutStrategy ?? autoLayoutFn)(
+        Object.keys(resetTilesValueRef.current),
+      );
+    }
+  }
   const [tiles, setTiles] = useState<Record<string, TilingTile>>(initialTiles);
   const [manualTileTitles, setManualTileTitles] = useState<
     Record<string, string>
@@ -128,6 +162,15 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   tilesRef.current = tiles;
   const autoLayoutStrategyRef = useRef(autoLayoutStrategy);
   autoLayoutStrategyRef.current = autoLayoutStrategy;
+  const resetLayoutStrategyRef = useRef(resetLayoutStrategy);
+  resetLayoutStrategyRef.current = resetLayoutStrategy;
+  const layoutMetricsRef = useRef<TilingLayoutMetrics | null>(null);
+  const setLayoutMetrics = useCallback(
+    (metrics: TilingLayoutMetrics | null) => {
+      layoutMetricsRef.current = metrics;
+    },
+    [],
+  );
   const manualTileTitlesRef = useRef(manualTileTitles);
   manualTileTitlesRef.current = manualTileTitles;
 
@@ -389,8 +432,37 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     // don't want auto-layout to silently drop it.
     // Read from ref so this callback stays stable across tile additions,
     // avoiding stale captures in useMemo consumers that suppress deps.
-    const strategy = autoLayoutStrategyRef.current ?? autoLayoutFn;
-    setLayoutState(strategy(Object.keys(tilesRef.current)));
+    const strategy: TilingAutoLayoutStrategy =
+      autoLayoutStrategyRef.current ?? autoLayoutFn;
+    const tileIds = Object.keys(tilesRef.current);
+    setLayoutState(
+      applyLayoutStrategy(strategy, tileIds, layoutMetricsRef.current),
+    );
+    setExpandedTileId(null);
+  }, []);
+
+  const resetLayout = useCallback(() => {
+    const defaultTileIds = Object.keys(resetTilesValueRef.current);
+    const resetTileIds = new Set(defaultTileIds);
+    for (const tileId of Object.keys(tilesRef.current)) {
+      if (!resetTileIds.has(tileId)) {
+        tileSelectionAtom.remove(tileId);
+        duplicatorsRef.current.delete(tileId);
+      }
+    }
+    setTiles({ ...resetTilesValueRef.current });
+    setManualTileTitles({ ...resetManualTileTitlesValueRef.current });
+    const strategy = resetLayoutStrategyRef.current;
+    setLayoutState(
+      strategy
+        ? applyLayoutStrategy(
+            strategy,
+            defaultTileIds,
+            layoutMetricsRef.current,
+          )
+        : (resetLayoutValueRef.current ?? null),
+    );
+    setFocusedTileId(null);
     setExpandedTileId(null);
   }, []);
 
@@ -406,6 +478,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       addTile,
       removeTile,
       autoLayout,
+      resetLayout,
+      setLayoutMetrics,
       splitTile,
       duplicateTile,
       changeTileType,
@@ -425,6 +499,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       addTile,
       removeTile,
       autoLayout,
+      resetLayout,
+      setLayoutMetrics,
       splitTile,
       duplicateTile,
       changeTileType,
@@ -473,6 +549,14 @@ function replaceTileId(
     first: replaceTileId(node.first, oldId, newId),
     second: replaceTileId(node.second, oldId, newId),
   };
+}
+
+function applyLayoutStrategy(
+  strategy: TilingAutoLayoutStrategy,
+  tileIds: readonly string[],
+  metrics: TilingLayoutMetrics | null,
+): MosaicNode<string> | null {
+  return metrics ? strategy(tileIds, metrics) : strategy(tileIds);
 }
 
 function filterManualTitles(

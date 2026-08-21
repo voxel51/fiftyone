@@ -16,6 +16,24 @@ import { QuickEditEntry } from "../../../Modal/Sidebar/Annotate";
 const PATH_OVERRIDES = {
   tags: "sample tags",
   _label_tags: "label tags",
+  _temporal_tags: "temporal tags",
+};
+
+/**
+ * The title shown for a sidebar path entry.
+ *
+ * A path nested under a group of its own name drops that prefix — the group
+ * header directly above it already renders it, so repeating it costs width
+ * and buries the part that distinguishes one entry from the next.
+ */
+export const sidebarEntryTitle = (path: string, group?: string): string => {
+  if (Object.hasOwn(PATH_OVERRIDES, path)) {
+    return PATH_OVERRIDES[path];
+  }
+
+  return group && path.startsWith(`${group}.`)
+    ? path.slice(group.length + 1)
+    : path;
 };
 
 const hiddenPathLabels = selectorFamily<string[], string>({
@@ -77,12 +95,14 @@ const Title = ({
   hoverTarget,
   path,
   hoverHandlers,
+  title,
 }: {
   hovering: boolean;
   modal: boolean;
   hoverTarget: React.RefObject<HTMLSpanElement>;
   path: string;
   hoverHandlers: React.HTMLAttributes<HTMLSpanElement>;
+  title: string;
 }) => {
   return (
     <span key="path" data-cy={`sidebar-field-${path}`}>
@@ -90,11 +110,11 @@ const Title = ({
         {modal ? (
           <span onMouseUp={(e) => e.stopPropagation()}>
             <QuickEditEntry enabled={hovering} path={path}>
-              {PATH_OVERRIDES[path] || path}
+              {title}
             </QuickEditEntry>
           </span>
         ) : (
-          PATH_OVERRIDES[path] || path
+          title
         )}
       </span>
     </span>
@@ -108,9 +128,11 @@ type TitleTemplateProps = {
 };
 
 const useTitleTemplate = ({
+  group,
   modal,
   path,
 }: {
+  group?: string;
   modal: boolean;
   path: string;
 }): ((props: TitleTemplateProps) => JSX.Element) => {
@@ -137,6 +159,7 @@ const useTitleTemplate = ({
           hoverTarget={hoverTarget}
           modal={modal}
           path={path}
+          title={sidebarEntryTitle(path, group)}
         />
         {modal && (
           <Suspense>

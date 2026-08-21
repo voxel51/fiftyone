@@ -1,6 +1,6 @@
 export { OPERATOR_PROMPT_AREAS, RiskLevel } from "./constants";
 export { useFirstExistingUri } from "./hooks";
-export { useOperators } from "./loader";
+export { useOperators, useRefreshOperators } from "./loader";
 export { default as OperatorBrowser } from "./OperatorBrowser";
 export { default as OperatorCore } from "./OperatorCore";
 export { default as OperatorInvocationRequestExecutor } from "./OperatorInvocationRequestExecutor";
@@ -34,3 +34,9 @@ export {
   useTriggerPanelEvent,
 } from "./usePanelEvent";
 export { validate } from "./validation";
+export {
+  useViewTargetCounts,
+  useViewTargets,
+  ViewTargetSelector,
+  type ViewTargetMeta,
+} from "./ViewTargets";

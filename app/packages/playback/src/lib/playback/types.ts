@@ -3,7 +3,7 @@
 // based timeline in use-timeline.ts / state.ts).
 // ---------------------------------------------------------------------------
 
-import type { createStore } from "jotai";
+import type { createStore } from "jotai/vanilla";
 
 /** Opaque handle to the scoped Jotai store owned by a PlaybackProvider instance. */
 export type PlaybackStore = ReturnType<typeof createStore>;
@@ -20,6 +20,16 @@ export type SeekEvent = { time: number; seq: number };
  * stream has data buffered and ready to play.
  */
 export type BufferedRanges = ReadonlyArray<readonly [number, number]>;
+
+/** Readiness detail shown when playback is waiting on blocking streams. */
+export interface BufferingStream {
+  /** Stable stream identifier supplied by the data layer. */
+  readonly id: string;
+  /** Human-readable display label supplied by the data layer. */
+  readonly label: string;
+  /** Whether this stream covers the playhead or is still being fetched. */
+  readonly state: "ready" | "waiting";
+}
 
 // ---------------------------------------------------------------------------
 // Buffer readiness
@@ -125,6 +135,14 @@ export interface PlaybackStream {
   startupBufferSeconds?: number;
 
   /**
+   * Maximum wall-clock time a play request may wait for
+   * `startupBufferSeconds` coverage. Once elapsed, the engine may start as
+   * soon as the current frame is ready, even if the wider startup window is
+   * incomplete. Omit to preserve an unbounded startup-coverage wait.
+   */
+  startupBufferMaxWaitSeconds?: number;
+
+  /**
    * How this stream resolves the best cached entry for a given time. Used
    * both in bufferState (to determine readiness) and in onCommit (to pick
    * the data to push to the reactive atom). Use resolveAtTime() from
@@ -205,6 +223,40 @@ export interface PlaybackClockSource {
 }
 
 // ---------------------------------------------------------------------------
+// Timeline mode (FOEPD-3811)
+// ---------------------------------------------------------------------------
+
+/**
+ * How the timeline's shared clock is presented to and driven by consumers.
+ * This is a display/seek-boundary concern only — the engine's internal
+ * clock domain is always a continuous number of seconds from timeline
+ * start, regardless of `mode`. See `timeline-display.ts::useTimelineDisplay`
+ * for the conversion layer this drives.
+ *
+ * - `duration`   — elapsed seconds, YouTube-style. The default; unchanged
+ *                  behavior for every existing consumer that doesn't pass
+ *                  `mode`.
+ * - `sequence`   — frame-index based (frame 0, 1, 2, ...). `fps` derives
+ *                  the engine's `nativeStepSeconds` (1/fps) and the
+ *                  seconds<->frame-number conversion.
+ * - `absolute`   — anchored to a real-world clock. `epochAnchorMs` is the
+ *                  Unix-epoch millisecond timestamp that internal second 0
+ *                  corresponds to; display converts to/from `Date`.
+ *
+ * A dataset with streams in more than one of these domains does not need a
+ * "mixed" mode: each `PlaybackStream` already privately converts its own
+ * native units (frame numbers, epoch timestamps, ...) into the engine's
+ * shared seconds domain before calling into the engine (this is exactly
+ * what `nativeStepSeconds` / `duration` do today). `mode` only governs what
+ * the *shared* timeline ruler / scrub UI displays and accepts — pick
+ * whichever representation is primary for the dataset.
+ */
+export type TimelineMode =
+  | { kind: "duration" }
+  | { kind: "sequence"; fps: number }
+  | { kind: "absolute"; epochAnchorMs: number };
+
+// ---------------------------------------------------------------------------
 // Config passed to PlaybackProvider
 // ---------------------------------------------------------------------------
 
@@ -239,6 +291,23 @@ export interface PlaybackConfig {
    * @default false
    */
   snapToFrameOnSettle?: boolean;
+  /**
+   * How the timeline's shared clock is presented to and driven by
+   * consumers. See {@link TimelineMode}.
+   * @default { kind: "duration" }
+   */
+  mode?: TimelineMode;
+  /**
+   * Trailing delay before a seek asks missing blocking streams to prefetch.
+   * The visual playhead and commits into already-buffered data stay immediate.
+   * Step, loop-wrap, play-reset, and settle-snap operations bypass the delay.
+   *
+   * This is only the provider's initial value. Long-lived playback surfaces
+   * may update it through `setSeekFetchDebounceMs()` when source locality
+   * changes.
+   * @default 0
+   */
+  seekFetchDebounceMs?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,6 +322,11 @@ export interface PlaybackContextValue {
   play: () => void;
   pause: () => void;
   seek: (time: number) => void;
+  /**
+   * Ends a human-driven scrub. Flushes any trailing seek-fetch debounce
+   * immediately and applies settle snapping when configured.
+   */
+  settleSeek: () => void;
   /**
    * Snap the playhead to the start of the displayed frame. No-op unless the
    * provider was configured with `snapToFrameOnSettle`. Call at scrub
@@ -308,4 +382,10 @@ export interface PlaybackContextValue {
    * ```
    */
   setClockSource: (source: PlaybackClockSource | null) => () => void;
+}
+
+/** Visual-only timeline marker owned by one inspection surface. */
+export interface PlaybackInspectionMarker {
+  readonly ownerId: string;
+  readonly timeSec: number;
 }

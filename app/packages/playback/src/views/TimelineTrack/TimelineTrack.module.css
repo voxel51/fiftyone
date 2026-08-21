@@ -75,6 +75,15 @@
   border-top: 1px solid var(--color-content-border-default);
 }
 
+/* The tooltip wrapper stands in for the label text as a flex child, so the
+   text still gets exactly the room it would have unwrapped. */
+.labelTooltip {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
 .labelText {
   font-size: 0.72rem;
   color: var(--color-content-text-primary);
@@ -93,8 +102,17 @@
   flex-shrink: 0;
 }
 
+.pinButton > div {
+  transition: var(--transition-preset-colors);
+}
+
 .pinButtonActive {
   opacity: 1;
+}
+
+/* Colour alone carries the pinned state. The icon deliberately does NOT
+   rotate — flipping a pin upside-down reads as "broken", not "active". */
+.pinButtonActive > div {
   color: var(--color-brand-primary);
 }
 

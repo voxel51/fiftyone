@@ -53,6 +53,9 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
+  // track created textures to ensure their removal
+  private ownedTextures = new Map<string, PIXI.Texture[]>();
+
   /** Minimum zoom scale (10%). */
   private static readonly ZOOM_MIN = 0.1;
 
@@ -73,7 +76,26 @@ export class PixiRenderer2D implements Renderer2D {
     this.eventBus = getEventBus(channelId);
   }
 
+  private static async waitForFonts(): Promise<void> {
+    const fonts = globalThis.document?.fonts;
+    if (!fonts) {
+      return;
+    }
+    try {
+      // the app's stylesheets register the face well before lighter mounts,
+      // so this waits on the specific load rather than document-wide
+      // fonts.ready, which can stall renderer startup on unrelated fonts
+      await fonts.load(`${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`);
+    } catch {
+      // draw with whatever font is available
+    }
+  }
+
   public async initializePixiJS(): Promise<void> {
+    // Text measured before the webfont loads uses fallback-font metrics,
+    // shifting label pill geometry by a few pixels
+    await PixiRenderer2D.waitForFonts();
+
     this.app = await sharedPixiApp.initialize(this.canvas);
 
     this.resizeObserver = new ResizeObserver((entries) => {
@@ -748,10 +770,12 @@ export class PixiRenderer2D implements Renderer2D {
         break;
       case "canvas":
         if (image.canvas) {
-          const texture = PIXI.Texture.from(image.canvas);
+          // 'skipCache: true'
+          const texture = PIXI.Texture.from(image.canvas, true);
           texture.source.update();
           texture.source.scaleMode = "nearest";
           sprite = new PIXI.Sprite(texture);
+          this.trackOwnedTexture(containerId, texture);
         } else {
           return;
         }
@@ -818,6 +842,10 @@ export class PixiRenderer2D implements Renderer2D {
       if (options.scaleX !== undefined || options.scaleY !== undefined) {
         sprite.scale.x = options.scaleX ?? 1;
         sprite.scale.y = options.scaleY ?? 1;
+      }
+      if (options.tint !== undefined) {
+        // GPU multiply: white texture × tint = tint, no per-pixel CPU work.
+        sprite.tint = options.tint;
       }
     }
     this.addToContainer(sprite, containerId, false);
@@ -1111,14 +1139,34 @@ export class PixiRenderer2D implements Renderer2D {
     container.addChild(element);
   }
 
+  private trackOwnedTexture(containerId: string, texture: PIXI.Texture): void {
+    const existing = this.ownedTextures.get(containerId);
+    if (existing) {
+      existing.push(texture);
+    } else {
+      this.ownedTextures.set(containerId, [texture]);
+    }
+  }
+
+  private destroyOwnedTextures(containerId: string): void {
+    const textures = this.ownedTextures.get(containerId);
+    if (textures) {
+      for (const texture of textures) {
+        texture.destroy(true);
+      }
+      this.ownedTextures.delete(containerId);
+    }
+  }
+
   /**
    * Disposes of a container
    * @param containerId - The container ID to dispose
    */
   dispose(containerId: string): void {
+    this.destroyOwnedTextures(containerId);
     const container = this.containers.get(containerId);
     if (container) {
-      container.destroy({ children: true });
+      container.destroy({ children: true, context: true });
       this.containers.delete(containerId);
     }
   }
@@ -1245,7 +1293,13 @@ export class PixiRenderer2D implements Renderer2D {
     }
 
     this.resetTickHandler();
-    this.viewport?.destroy({ children: true });
+    for (const textures of this.ownedTextures.values()) {
+      for (const texture of textures) {
+        texture.destroy(true);
+      }
+    }
+    this.ownedTextures.clear();
+    this.viewport?.destroy({ children: true, context: true });
     this.viewport?.removeChildren();
     this.containers.clear();
     this.resizeObserver?.disconnect();

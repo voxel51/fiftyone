@@ -209,12 +209,6 @@ const makeTrackOps = (
           const set = !det.keyframe;
           const update: Partial<LabelData> = { keyframe: set };
 
-          // promotion clears interpolation provenance — only when present, so
-          // an unchanged baseline doesn't accrue a no-op `propagation: null` op
-          if (set && det.propagation) {
-            update.propagation = null;
-          }
-
           actions.updateLabel({ path: labelPath, instanceId, frame }, update);
           changed.push({ trackId, instanceId, set, path: labelPath });
         }
@@ -254,12 +248,12 @@ const makeTrackOps = (
       return;
     }
 
-    // non-keyframe filler — a later propagate overwrites these in place.
-    // Deny-list the mask: filler frames share the keyframe's geometry, but a
-    // mask is per-frame pixels — copying it would paste the keyframe's mask onto
-    // every frame (and bloat storage). Every other field carries forward.
-    const { mask, mask_path, ...rest } = r.content(source);
-    const filler = { ...rest, keyframe: false };
+    // non-keyframe filler — a later propagate overwrites these in place. Carry
+    // the source frame's mask forward when it has one so an extended detection
+    // reads as segmented on every filler frame, not just the keyframe. The mask
+    // is stored relative to the (copied) bounding_box, so it stays geometrically
+    // consistent across the filler.
+    const filler = { ...r.content(source), keyframe: false };
 
     actions.transaction(
       () => {
@@ -538,6 +532,9 @@ const makeTemporalDetectionOps = (actions: SurfaceActions) => {
       ...(label !== undefined ? { label } : {}),
     });
 
+    // Select the fresh TD so it becomes the editing target
+    actions.setActive([ref]);
+
     return ref.instanceId;
   };
 
@@ -578,8 +575,8 @@ const makeTemporalDetectionOps = (actions: SurfaceActions) => {
  */
 export const useVideoSurfaceActions = (): VideoSurfaceActions => {
   const engine = useAnnotationEngine();
-  const actions = useSurfaceActions(engine, SURFACE);
   const sampleId = useActiveSampleId();
+  const actions = useSurfaceActions(engine, SURFACE, sampleId);
   const stream = useFrameLabelsStream();
   const eventBus = useAnnotationEventBus();
 

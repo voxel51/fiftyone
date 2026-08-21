@@ -5,14 +5,17 @@ import {
   ImageOptions,
   ImageOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
+  lighterInitErrorAtom,
   overlayFactory,
   useLighterEventHandler,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import type { Sample } from "@fiftyone/state";
+import type { ModalSample } from "@fiftyone/state";
 import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import React, {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -21,16 +24,19 @@ import React, {
 } from "react";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
 import { LighterToolbar } from "./LighterToolbar";
+import styles from "./LighterSampleRenderer.module.css";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
 import useRetrieveViewport from "./useRetrieveViewport";
 import useViewport from "./useViewport";
 
+const GpuErrorAnimation = lazy(() => import("./GpuErrorAnimation"));
+
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
   className?: string;
   /** Sample to display */
-  sample: Sample;
+  sample: ModalSample;
 }
 
 /**
@@ -46,6 +52,9 @@ export const LighterSampleRenderer = ({
   const [isCanvasHovered, setIsCanvasHovered] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
 
+  const initError = useAtomValue(lighterInitErrorAtom);
+  const setInitError = useSetAtom(lighterInitErrorAtom);
+
   // use a ref for the sample data, effects do not run solely because the
   // sample changed
   const sampleRef = useRef(sample);
@@ -60,6 +69,27 @@ export const LighterSampleRenderer = ({
       `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`,
     );
   }, []);
+
+  useEffect(() => {
+    // clear a stale global init error on mount so a prior failure doesn't
+    // permanently lock later valid loads out of the renderer
+    setInitError(null);
+  }, [setInitError]);
+
+  if (initError) {
+    return (
+      <div className={styles.errorPanel} role="alert" aria-live="assertive">
+        <Suspense fallback={null}>
+          <GpuErrorAnimation />
+        </Suspense>
+        <p className={styles.errorTitle}>WebGL context could not be created</p>
+        <p className={styles.errorMessage}>
+          This is usually caused by an incompatible GPU driver or a browser flag
+          blocking hardware acceleration.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -94,7 +124,7 @@ export const LighterSampleRenderer = ({
 const LighterSetupImpl = (props: {
   containerRef: React.RefObject<HTMLDivElement>;
   sceneId: string;
-  sampleRef: React.RefObject<Sample>;
+  sampleRef: React.RefObject<ModalSample>;
   onReveal: () => void;
 }) => {
   const { containerRef, sceneId, sampleRef, onReveal } = props;

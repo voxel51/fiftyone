@@ -14,11 +14,18 @@
 
 import { useAtomValue } from "jotai";
 import {
+  achievedSpeedAtom,
+  type AudioAvailability,
+  audioAvailableAtom,
+  audioMutedAtom,
+  audioVolumeAtom,
   bufferedRangesAtom,
   bufferingDetailAtom,
+  bufferingStreamsAtom,
   currentTimeAtom,
   durationAtom,
   hoverTimeAtom,
+  inspectionMarkerAtom,
   isBufferingAtom,
   isPlayPendingAtom,
   isPlayingAtom,
@@ -32,7 +39,12 @@ import {
   viewStartAtom,
 } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
-import type { BufferedRanges, SeekEvent } from "./types";
+import type {
+  BufferedRanges,
+  BufferingStream,
+  PlaybackInspectionMarker,
+  SeekEvent,
+} from "./types";
 
 /** Visual playhead position in seconds — updates every RAF tick + on scrub. */
 export function usePlayhead(): number {
@@ -48,6 +60,12 @@ export function usePlayhead(): number {
 export function useHoverTime(): number | null {
   const store = usePlaybackStore();
   return useAtomValue(hoverTimeAtom, { store });
+}
+
+/** Persistent visual inspection marker, independent of hover and playback. */
+export function useInspectionMarker(): PlaybackInspectionMarker | null {
+  const store = usePlaybackStore();
+  return useAtomValue(inspectionMarkerAtom, { store });
 }
 
 /**
@@ -74,6 +92,24 @@ export function useIsBuffering(): boolean {
   return useAtomValue(isBufferingAtom, { store });
 }
 
+/** Audio volume in [0, 1]. Write via `setAudioVolume` in store-access. */
+export function useAudioVolume(): number {
+  const store = usePlaybackStore();
+  return useAtomValue(audioVolumeAtom, { store });
+}
+
+/** Whether timeline audio is muted. Write via `setAudioMuted` in store-access. */
+export function useAudioMuted(): boolean {
+  const store = usePlaybackStore();
+  return useAtomValue(audioMutedAtom, { store });
+}
+
+/** The timeline's audio status. Write via `setAudioAvailable`. */
+export function useAudioAvailable(): AudioAvailability {
+  const store = usePlaybackStore();
+  return useAtomValue(audioAvailableAtom, { store });
+}
+
 /**
  * Optional progress detail for the buffering indicator (e.g. "3/7
  * streams"), or `null` when no stream has published one.
@@ -81,6 +117,12 @@ export function useIsBuffering(): boolean {
 export function useBufferingDetail(): string | null {
   const store = usePlaybackStore();
   return useAtomValue(bufferingDetailAtom, { store });
+}
+
+/** Blocking stream readiness behind the current buffering indicator. */
+export function useBufferingStreams(): readonly BufferingStream[] {
+  const store = usePlaybackStore();
+  return useAtomValue(bufferingStreamsAtom, { store });
 }
 
 /**
@@ -130,6 +172,12 @@ export function useLoopEnd(): number {
 export function useSpeed(): number {
   const store = usePlaybackStore();
   return useAtomValue(speedAtom, { store });
+}
+
+/** Rolling media-seconds-per-wall-second actually committed by the engine. */
+export function useAchievedSpeed(): number | null {
+  const store = usePlaybackStore();
+  return useAtomValue(achievedSpeedAtom, { store });
 }
 
 /**

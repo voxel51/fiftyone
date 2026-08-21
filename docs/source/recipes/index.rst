@@ -157,12 +157,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
-   Data Loading with Torch Datasets <fiftyone_torch_dataloader.ipynb>
-   Training on MNIST with Torch <torch-dataset-examples/simple_training_example.ipynb>
-   Speed Up FiftyOneTorchDataset with Vectorize Mode <torch-dataset-examples/the_cache_field_names_argument.ipynb>
    Creating views <creating_views.ipynb>
-   Removing duplicate images <image_deduplication.ipynb>
-   Removing duplicate objects <remove_duplicate_annos.ipynb>
    Adding classifier predictions <adding_classifications.ipynb>
    Adding object detections <adding_detections.ipynb>
    Draw labels on samples <draw_labels.ipynb>

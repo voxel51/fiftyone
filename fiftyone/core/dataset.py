@@ -10684,6 +10684,9 @@ def _clone_run(run_doc):
         run_doc.results.seek(0)
         results_bytes = run_doc.results.read()
         _run_doc.results.put(results_bytes, content_type="application/json")
+    else:
+        # results_meta describes results; with none copied it describes nothing
+        _run_doc.results_meta = {}
 
     return _run_doc
 

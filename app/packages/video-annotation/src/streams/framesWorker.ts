@@ -19,9 +19,13 @@
  *     { type: "fetchChunk", reqId, request }             // per chunk
  *
  *   worker → main:
- *     { type: "frameReady", reqId, frameNumber, src, bitmap, width, height }
+ *     { type: "frameReady", reqId, frameNumber, bitmap, width, height, meta: { src } }
  *     { type: "chunkDone", reqId, range }                // all frames in chunk processed
  *     { type: "chunkFailed", reqId, error }              // top-level fetch / parse failure
+ *
+ * The worker → main messages follow the shared {@link ./frameWorkerProtocol}
+ * so the `FrameBitmapStream` base can consume this and the WebCodecs worker
+ * through one contract.
  */
 
 /// <reference lib="webworker" />
@@ -31,9 +35,13 @@ import {
   getFrames,
   type GetFramesRequest,
 } from "../../../core/src/client/framesClient";
+import type {
+  FrameWorkerOutbound,
+  InitMessage as BaseInitMessage,
+} from "./frameWorkerProtocol";
 
-interface InitMessage {
-  type: "init";
+/** Source-specific `init` for the `/frames` worker: the fetch context. */
+interface InitMessage extends BaseInitMessage {
   origin: string;
   pathPrefix: string;
   headers: Record<string, string>;
@@ -46,33 +54,6 @@ interface FetchChunkMessage {
 }
 
 type InboundMessage = InitMessage | FetchChunkMessage;
-
-export interface FrameReadyMessage {
-  type: "frameReady";
-  reqId: number;
-  frameNumber: number;
-  src: string;
-  bitmap: ImageBitmap;
-  width: number;
-  height: number;
-}
-
-export interface ChunkDoneMessage {
-  type: "chunkDone";
-  reqId: number;
-  range: [number, number];
-}
-
-export interface ChunkFailedMessage {
-  type: "chunkFailed";
-  reqId: number;
-  error: string;
-}
-
-export type OutboundMessage =
-  | FrameReadyMessage
-  | ChunkDoneMessage
-  | ChunkFailedMessage;
 
 let initialized = false;
 let origin = "";
@@ -162,10 +143,10 @@ async function decodeAndDispatch(
       type: "frameReady",
       reqId,
       frameNumber: frame.frame_number,
-      src,
       bitmap,
       width: bitmap.width,
       height: bitmap.height,
+      meta: { src },
     },
     [bitmap],
   );
@@ -192,7 +173,10 @@ function joinUrl(origin: string, pathPrefix: string, suffix: string): string {
   return `${origin}${pathPrefix}${suffix}`.replace(/([^:]\/)\/+/g, "$1");
 }
 
-function postOutbound(msg: OutboundMessage, transfer?: Transferable[]): void {
+function postOutbound(
+  msg: FrameWorkerOutbound,
+  transfer?: Transferable[],
+): void {
   // self.postMessage's typing varies by lib; the cast is to the worker
   // DedicatedWorkerGlobalScope signature.
   (self as unknown as DedicatedWorkerGlobalScope).postMessage(

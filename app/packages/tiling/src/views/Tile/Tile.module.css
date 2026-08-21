@@ -27,6 +27,11 @@
   font-size: 0.8125rem;
 }
 
+.highlightedTitle {
+  color: var(--color-content-text-highlighted-pane-title, #ffd166);
+  font-weight: 600;
+}
+
 .titleInput {
   flex: 1;
   min-width: 0;
@@ -52,32 +57,49 @@
 }
 
 /* Split affordance: at rest a single direction-neutral glyph advertises
-   the action; hovering the header (or focusing into it) swaps it for
-   the real split-right / split-down pair. */
+   the action; hovering the split group itself (or focusing into it)
+   swaps it for the real split-right / split-down pair. Scoped to this
+   group rather than the whole header so drifting across the title bar
+   doesn't fire the swap.
+
+   Hint and pair share one grid cell so the group's width is the max of
+   the two. That keeps the group from collapsing out from under the
+   cursor the instant the hint hides — a collapse would drop :hover and
+   oscillate. */
+.splitGroup {
+  align-items: center;
+  display: grid;
+  grid-template-areas: "split";
+  justify-items: end;
+}
+
 .splitHint {
   color: var(--color-content-text-muted);
+  grid-area: split;
   pointer-events: none;
 }
 
-.header:hover .splitHint,
-.header:focus-within .splitHint {
-  display: none;
+/* visibility (not display) so the hidden hint still reserves its width. */
+.splitGroup:hover .splitHint,
+.splitGroup:focus-within .splitHint {
+  visibility: hidden;
 }
 
 /* Collapsed via max-width + overflow (not display) so the buttons stay
-   keyboard-focusable at rest — tabbing into one triggers the header's
+   keyboard-focusable at rest — tabbing into one triggers the group's
    :focus-within and expands the pair. */
 .splitActions {
   align-items: center;
   display: flex;
   gap: 1px;
+  grid-area: split;
   max-width: 0;
   overflow: hidden;
   transition: max-width 120ms ease;
 }
 
-.header:hover .splitActions,
-.header:focus-within .splitActions {
+.splitGroup:hover .splitActions,
+.splitGroup:focus-within .splitActions {
   max-width: 64px;
 }
 

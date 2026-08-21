@@ -15,6 +15,7 @@ import math
 import multiprocessing.dummy
 import os
 from packaging.version import Version
+import re
 import time
 import warnings
 import webbrowser
@@ -4743,6 +4744,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     attr_id_map,
                     attr_type_map,
                     _class_map_rev,
+                    skeleton_map,
                 ) = self._get_attr_class_maps(task_id)
 
                 if coerce_text_attrs:
@@ -4845,6 +4847,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             occluded_attrs=_occluded_attrs,
                             group_id_attrs=_group_id_attrs,
                             attr_type_map=attr_type_map,
+                            skeleton_map=skeleton_map,
                         )
                         label_field_results = self._merge_results(
                             label_field_results, shape_results
@@ -4879,6 +4882,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                                 occluded_attrs=_occluded_attrs,
                                 group_id_attrs=_group_id_attrs,
                                 attr_type_map=attr_type_map,
+                                skeleton_map=skeleton_map,
                             )
                             label_field_results = self._merge_results(
                                 label_field_results, track_shape_results
@@ -4920,6 +4924,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         _class_map = {}
         attr_id_map = {}
         attr_type_map = {}
+        skeleton_map = {}
         for label in labels:
             _class_map[label["id"]] = label["name"]
             attr_id_map[label["id"]] = {
@@ -4928,11 +4933,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             attr_type_map[label["id"]] = {
                 i["id"]: i.get("input_type", None) for i in label["attributes"]
             }
+            if label.get("type", None) == "skeleton":
+                node_order = _parse_skeleton_node_order(label)
+                if node_order:
+                    skeleton_map[label["id"]] = node_order
 
         # AL: not sure why we didn't just reverse keys/vals initially
         class_map_rev = {n: i for i, n in _class_map.items()}
 
-        return attr_id_map, attr_type_map, class_map_rev
+        return attr_id_map, attr_type_map, class_map_rev, skeleton_map
 
     def _get_paginated_results(self, base_url, get_page_url=None, value=None):
         results = []
@@ -5841,6 +5850,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         occluded_attrs=None,
         group_id_attrs=None,
         attr_type_map=None,
+        skeleton_map=None,
     ):
         results = {}
         prev_type = None
@@ -5882,6 +5892,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
                 attr_type_map=attr_type_map,
+                skeleton_map=skeleton_map,
             )
 
         # For non-outside tracked objects, the last track goes to the end of
@@ -5918,6 +5929,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     occluded_attrs=occluded_attrs,
                     group_id_attrs=group_id_attrs,
                     attr_type_map=attr_type_map,
+                    skeleton_map=skeleton_map,
                 )
 
         return results
@@ -5943,6 +5955,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         occluded_attrs=None,
         group_id_attrs=None,
         attr_type_map=None,
+        skeleton_map=None,
     ):
         frame = anno["frame"]
 
@@ -5986,6 +5999,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 group_id_attrs=group_id_attrs,
                 group_id=track_group_id,
                 attr_type_map=attr_type_map,
+                skeleton_map=skeleton_map,
             )
 
             # Non-keyframe annotations were interpolated from keyframes but
@@ -6052,9 +6066,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             elif shape_type == "polyline":
                 label_type = "polylines"
                 label = cvat_shape.to_polyline()
-            elif shape_type == "points":
+            elif shape_type in ("points", "skeleton"):
                 label_type = "keypoints"
                 label = cvat_shape.to_keypoint()
+            else:
+                logger.debug(
+                    "Ignoring unsupported CVAT shape type '%s'", shape_type
+                )
 
             if keyframe and label is not None:
                 label["keyframe"] = True
@@ -7216,6 +7234,9 @@ class CVATShape(CVATLabel):
             corresponding attribute linked to the CVAT group id, if any
         group_id (None): an optional group id value for this shape when it
             cannot be parsed from the label dict
+        skeleton_map (None): a dictionary mapping skeleton label IDs to their
+            sublabel IDs in node order, used to order the keypoints of
+            skeleton shapes
     """
 
     def __init__(
@@ -7231,6 +7252,7 @@ class CVATShape(CVATLabel):
         group_id_attrs=None,
         group_id=None,
         attr_type_map=None,
+        skeleton_map=None,
     ):
         super().__init__(
             label_dict,
@@ -7245,8 +7267,20 @@ class CVATShape(CVATLabel):
         if "width" in metadata and "height" in metadata:
             self.frame_size = (metadata["width"], metadata["height"])
 
-        self.points = label_dict["points"]
+        self.points = label_dict.get("points", [])
         self.index = index
+
+        # Skeleton shapes store their keypoints in an "elements" array of
+        # per-node shapes rather than in "points", which CVAT sends as an
+        # empty list
+        if label_dict.get("type", None) == "skeleton":
+            self.skeleton_elements = label_dict.get("elements", None) or []
+            self.skeleton_node_order = (skeleton_map or {}).get(
+                label_dict.get("label_id", None), None
+            )
+        else:
+            self.skeleton_elements = None
+            self.skeleton_node_order = None
 
         if "rotation" in label_dict and int(label_dict["rotation"]) != 0:
             self.attributes["rotation"] = label_dict["rotation"]
@@ -7275,6 +7309,13 @@ class CVATShape(CVATLabel):
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))
         return reshaped_points.tolist()
+
+    def _skeleton_points(self):
+        """Returns this skeleton shape's keypoints as ``(x, y)`` pairs."""
+        points = _flatten_skeleton_points(
+            self.skeleton_elements, self.skeleton_node_order
+        )
+        return self._to_pairs_of_points(points)
 
     def to_detection(self):
         """Converts this shape to a :class:`fiftyone.core.labels.Detection`.
@@ -7382,7 +7423,21 @@ class CVATShape(CVATLabel):
         Returns:
             a :class:`fiftyone.core.labels.Keypoint`
         """
-        points = self._to_pairs_of_points(self.points)
+        if self.skeleton_elements is not None:
+            if not self.skeleton_elements:
+                # Skeleton tracks store their keypoints in per-node sub-tracks
+                # that are not available here, so there is nothing to import
+                logger.warning(
+                    "Skipping skeleton %s with no elements; skeleton tracks "
+                    "are not yet supported",
+                    self.id,
+                )
+                return None
+
+            points = self._skeleton_points()
+        else:
+            points = self._to_pairs_of_points(self.points)
+
         rel_points = HasCVATPoints._to_rel_points(points, self.frame_size)
         label = fol.Keypoint(
             label=self.label, points=rel_points, index=self.index
@@ -7738,6 +7793,107 @@ def _parse_value(value, attr_type=None):
             return None
 
     return value
+
+
+def _parse_skeleton_node_order(label):
+    """Returns the sublabel IDs of a CVAT skeleton label in node order.
+
+    CVAT does not guarantee the order of the ``elements`` it returns for a
+    skeleton shape: the underlying query sorts only by frame, so elements
+    within a frame are returned in an arbitrary (albeit stable) order. The
+    authoritative node order is the ``data-node-id`` numbering in the label's
+    ``svg`` definition, which is what this method recovers.
+
+    Args:
+        label: a CVAT label dict
+
+    Returns:
+        a list of sublabel IDs in node order, or ``None`` if the order cannot
+        be determined
+    """
+    sublabel_order = [s["id"] for s in label.get("sublabels", None) or []]
+
+    svg = label.get("svg", None)
+    if svg:
+        nodes = []
+        for match in re.finditer(r"<circle\b[^>]*>", svg):
+            element = match.group(0)
+            node_id = re.search(r'data-node-id="(\d+)"', element)
+            label_id = re.search(r'data-label-id="(\d+)"', element)
+            if node_id is not None and label_id is not None:
+                nodes.append((int(node_id.group(1)), int(label_id.group(1))))
+
+        if nodes:
+            node_order = [label_id for _, label_id in sorted(nodes)]
+
+            # An svg that does not cover every declared sublabel would
+            # otherwise drop the uncovered nodes. Their position is unknown,
+            # so append them rather than lose them
+            seen = set(node_order)
+            node_order.extend(i for i in sublabel_order if i not in seen)
+
+            return node_order
+
+    # Fall back to the order in which the sublabels were reported
+    if sublabel_order:
+        return sublabel_order
+
+    return None
+
+
+def _flatten_skeleton_points(elements, node_order):
+    """Flattens the elements of a CVAT skeleton shape into a points list.
+
+    Points are emitted in ``node_order`` so that their indexes are consistent
+    across all shapes of a given skeleton label, as required by
+    :class:`fiftyone.core.odm.dataset.KeypointSkeleton`. Nodes that CVAT
+    reports as ``outside`` (not visible) and nodes with no element at all are
+    emitted as ``nan`` values, per FiftyOne's convention for missing keypoints.
+
+    Args:
+        elements: the ``elements`` list of a CVAT skeleton shape
+        node_order (None): a list of sublabel IDs in node order, as returned by
+            :meth:`_parse_skeleton_node_order`. If not provided, the elements
+            are used in the order given, which CVAT does not guarantee
+
+    Returns:
+        a flat list of ``[x1, y1, x2, y2, ...]`` coordinates
+    """
+    nan_point = [float("nan"), float("nan")]
+
+    if not node_order:
+        points = []
+        for element in elements:
+            if element.get("outside", False):
+                points.extend(nan_point)
+            else:
+                points.extend(element.get("points") or nan_point)
+
+        return points
+
+    elements_by_label = {}
+    for element in elements:
+        elements_by_label.setdefault(element["label_id"], element)
+
+    points = []
+    for label_id in node_order:
+        element = elements_by_label.pop(label_id, None)
+        if element is None or element.get("outside", False):
+            points.extend(nan_point)
+        else:
+            points.extend(element.get("points") or nan_point)
+
+    # Any elements whose sublabel is not in the skeleton definition cannot be
+    # placed at a meaningful index, so they are dropped. Warn rather than
+    # discard them silently
+    for element in elements_by_label.values():
+        logger.warning(
+            "Ignoring skeleton element with sublabel ID %s that is not in the "
+            "skeleton definition",
+            element["label_id"],
+        )
+
+    return points
 
 
 def _parse_occlusion_value(value):

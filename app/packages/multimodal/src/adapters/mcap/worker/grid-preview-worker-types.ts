@@ -1,8 +1,9 @@
 import type {
   McapGridPreviewDecodeRequest,
   McapGridPreviewResult,
-} from "../grid-preview";
+} from "../resource-client/grid-preview";
 import type { McapPlaybackWorkerFetchParameters } from "./playback-worker-types";
+import type { McapPlaybackWorkerPriority } from "./playback-worker-types";
 
 /**
  * Payload for one high-level MCAP grid preview decode request.
@@ -12,7 +13,7 @@ export type McapGridPreviewRequestPayload = McapGridPreviewDecodeRequest;
 export type {
   McapGridPreviewFrame,
   McapGridPreviewResult,
-} from "../grid-preview";
+} from "../resource-client/grid-preview";
 
 /**
  * RPC request envelope for the shared MCAP grid preview worker.
@@ -20,6 +21,7 @@ export type {
 export type McapGridPreviewWorkerRpcRequest = {
   readonly id: number;
   readonly payload: McapGridPreviewRequestPayload;
+  readonly priority: McapPlaybackWorkerPriority;
   readonly sourceKey: string;
   readonly type: "decodeGridPreview";
 };

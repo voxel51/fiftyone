@@ -1,6 +1,6 @@
 import { PointInfo, type Sample } from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
-import { atom, selector } from "recoil";
+import { atom, selector, useRecoilValue } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import type { Lookers } from "../hooks";
@@ -106,6 +106,11 @@ export const isModalActive = selector<boolean>({
   get: ({ get }) => Boolean(get(modalSelector)),
 });
 
+/** Returns whether the sample modal is currently active. */
+export function useModalActive(): boolean {
+  return useRecoilValue(isModalActive);
+}
+
 export type ModalNavigationPeek = {
   id: string;
   /**
@@ -189,7 +194,7 @@ export const modalSample = graphQLSelector<
   variables: ({ get }) => {
     const current = get(modalSelector);
 
-    if (current === null) return null;
+    if (current === null || current === undefined) return null;
 
     const slice = get(groupSlice);
     const sliceSelect = get(modalGroupSlice);
@@ -243,7 +248,7 @@ export const groupSampleAtMainSlice = graphQLSelector<
   variables: ({ get }) => {
     const current = get(modalSelector);
 
-    if (current === null) return null;
+    if (current === null || current === undefined) return null;
 
     const slice = get(groupSlice);
 

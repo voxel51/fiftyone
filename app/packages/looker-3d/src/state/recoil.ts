@@ -97,11 +97,21 @@ export const currentActionAtom = atom<Actions>({
 export const isLevaConfigPanelOnAtom = atom<boolean>({
   key: "fo3d-isLevaConfigPanelOn",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isLevaConfigPanelOn", {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 export const isStatusBarOnAtom = atom<boolean>({
   key: "fo3d-isStatusBarOn",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isStatusBarOn", {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 export type Fo3dPerformanceStats = {
@@ -143,11 +153,21 @@ export const isGridOnAtom = atom<boolean>({
 export const gridCellSizeAtom = atom<number>({
   key: "fo3d-gridCellSize",
   default: 1,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-gridCellSize", {
+      valueClass: "number",
+    }),
+  ],
 });
 
 export const gridSectionSizeAtom = atom<number>({
   key: "fo3d-gridSectionSize",
   default: 10,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-gridSectionSize", {
+      valueClass: "number",
+    }),
+  ],
 });
 
 export const isGridInfinitelyLargeAtom = atom<boolean>({
@@ -554,6 +574,54 @@ export const hoveredResizeFaceAtom = atom<{
   source: HoveredLabelSource;
 } | null>({
   key: "fo3d-hoveredResizeFace",
+  default: null,
+});
+
+/**
+ * The face the heading arrow would snap to if the in-progress heading drag
+ * were released now. Shared across panels (like {@link hoveredResizeFaceAtom})
+ * so the candidate-face highlight shows everywhere the label is drawn, and
+ * `source` records which panel owns the drag so another panel can't clear it.
+ *
+ * Set only while dragging the arrow; the relabel itself commits on release.
+ */
+export const hoveredHeadingTargetFaceAtom = atom<{
+  labelId: string;
+  face: CuboidResizeFace;
+  source: HoveredLabelSource;
+} | null>({
+  key: "fo3d-hoveredHeadingTargetFace",
+  default: null,
+});
+
+/**
+ * The face being hovered in the "Edit heading/up vector" sidebar's
+ * `HeadingUpVectorFields` — previewing where that arrow would land with no
+ * drag in progress. Unlike {@link hoveredHeadingTargetFaceAtom}
+ * (an in-progress *drag*'s candidate face, set from a pointer-captured
+ * gesture), this comes from a plain DOM `onMouseEnter`/`onMouseLeave` on a
+ * button, so there's no "source panel" to disambiguate — only one control can
+ * be hovered at a time.
+ */
+export const headingUpPreviewAtom = atom<{
+  labelId: string;
+  role: "heading" | "up";
+  face: CuboidResizeFace;
+} | null>({
+  key: "fo3d-headingUpPreview",
+  default: null,
+});
+
+/**
+ * Whether the pointer is anywhere over the "Edit heading/up vector" sidebar
+ * section as a whole — not tied to a specific face button like
+ * {@link headingUpPreviewAtom}, which goes `null` in the gaps between
+ * buttons as the pointer crosses them. Gating the gizmo/face-resize
+ * suppression on the per-face atom instead would flicker those controls back
+ * on every time the pointer passed between two buttons.
+ */
+export const headingUpEditorHoverAtom = atom<{ labelId: string } | null>({
+  key: "fo3d-headingUpEditorHover",
   default: null,
 });
 

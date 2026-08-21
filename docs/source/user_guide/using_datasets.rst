@@ -64,6 +64,10 @@ have a bad time:
 Dataset media type
 ------------------
 
+.. customavailablein::
+    :oss_version: 1.5.0
+    :enterprise_version: 2.8.0
+
 The media type of a dataset is determined by the
 :ref:`media type <using-media-type>` of the |Sample| objects that it contains.
 
@@ -324,6 +328,10 @@ Datasets can also store more specific types of ancillary information such as
 Dataset App config
 ------------------
 
+.. customavailablein::
+    :oss_version: 0.17.0
+    :enterprise_version: 1.0
+
 All |Dataset| instances have an
 :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
 contains a |DatasetAppConfig| that you can use to store dataset-specific
@@ -346,6 +354,10 @@ settings that customize how the dataset is visualized in the
 
 Multiple media fields
 ~~~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.24.0
+    :enterprise_version: 1.7.0
 
 You can declare :ref:`multiple media fields <app-multiple-media-fields>` on a
 dataset and configure which field is used by various components of the App by
@@ -386,6 +398,10 @@ sample in the grid and/or modal:
 
 Custom color scheme
 ~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.21.0
+    :enterprise_version: 1.3.0
 
 You can store a :ref:`custom color scheme <app-color-schemes>` on a dataset
 that should be used by default whenever the dataset is loaded in the App:
@@ -491,6 +507,10 @@ You can configure the default state of the
 
 Disable frame filtering
 ~~~~~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.25.0
+    :enterprise_version: 2.0.0
 
 Filtering by frame-level fields of video datasets in the App's grid view can be
 expensive when the dataset is large.
@@ -710,6 +730,10 @@ strings:
 Storing keypoint skeletons
 --------------------------
 
+.. customavailablein::
+    :oss_version: 0.15.1
+    :enterprise_version: 1.0
+
 All |Dataset| instances have
 :meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` and
 :meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
@@ -793,6 +817,10 @@ nodes:
 
 Storing camera calibration
 --------------------------
+
+.. customavailablein::
+    :oss_version: 1.12.0
+    :enterprise_version: 2.15.0
 
 All |Dataset| instances have
 :meth:`camera_intrinsics <fiftyone.core.dataset.Dataset.camera_intrinsics>` and
@@ -1579,6 +1607,10 @@ removed from every |Sample| in the dataset:
 Storing field metadata
 ----------------------
 
+.. customavailablein::
+    :oss_version: 0.18.0
+    :enterprise_version: 1.0
+
 You can store metadata such as descriptions and other info on the fields of
 your dataset.
 
@@ -1747,6 +1779,10 @@ editable at any time:
 
 Summary fields
 --------------
+
+.. customavailablein::
+    :oss_version: 1.0.0
+    :enterprise_version: 2.1.0
 
 Summary fields allow you to efficiently perform queries on large datasets where
 directly querying the underlying field is prohibitively slow due to the number
@@ -2209,10 +2245,18 @@ some workflows when it is available.
 Dates and datetimes
 ___________________
 
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
+
 .. _builtin-datetime-fields:
 
 Builtin datetime fields
 -----------------------
+
+.. customavailablein::
+    :oss_version: 1.6.0
+    :enterprise_version: 2.9.1
 
 Datasets and samples have various builtin datetime fields that are
 automatically updated when certain events occur.
@@ -3114,6 +3158,10 @@ dynamically adding new fields to each |Polyline| instance:
 Cuboids
 -------
 
+.. customavailablein::
+    :oss_version: 0.20.0
+    :enterprise_version: 1.2
+
 You can store and visualize cuboids in FiftyOne using the
 :meth:`Polyline.from_cuboid() <fiftyone.core.labels.Polyline.from_cuboid>`
 method.
@@ -3199,6 +3247,10 @@ dynamically adding new fields to each |Polyline| instance:
 Rotated bounding boxes
 ----------------------
 
+.. customavailablein::
+    :oss_version: 0.20.0
+    :enterprise_version: 1.2
+
 You can store and visualize rotated bounding boxes in FiftyOne using the
 :meth:`Polyline.from_rotated_box() <fiftyone.core.labels.Polyline.from_rotated_box>`
 method, which accepts rotated boxes described by their center coordinates,
@@ -3266,6 +3318,10 @@ bounding boxes by dynamically adding new fields to each |Polyline| instance:
 
 Keypoints
 ---------
+
+.. customavailablein::
+    :oss_version: 0.6.1
+    :enterprise_version: 1.0
 
 The |Keypoints| class represents a collection of keypoint groups in an image.
 The keypoint groups are stored in the
@@ -3399,6 +3455,10 @@ not visible for an instance, use nan values for its coordinates:
 Semantic segmentation
 ---------------------
 
+.. customavailablein::
+    :oss_version: 0.6.1
+    :enterprise_version: 1.0
+
 The |Segmentation| class represents a semantic segmentation mask for an image
 with integer values encoding the semantic labels for each pixel in the image.
 
@@ -3499,6 +3559,10 @@ colors are always used.
 
 Heatmaps
 --------
+
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
 
 The |Heatmap| class represents a continuous-valued heatmap for an image.
 
@@ -4500,6 +4564,10 @@ FiftyOne:
 Dynamic attributes
 __________________
 
+.. customavailablein::
+    :oss_version: 0.18.0
+    :enterprise_version: 1.0
+
 Any field(s) of your FiftyOne datasets that contain |DynamicEmbeddedDocument|
 values can have arbitrary custom attributes added to their instances.
 
@@ -5034,6 +5102,10 @@ To get started exploring image datasets, try loading the
 Video datasets
 ______________
 
+.. customavailablein::
+    :oss_version: 0.6.0
+    :enterprise_version: 1.0
+
 Any |Sample| whose `filepath` is a file with MIME type  `video/*` is recognized
 as a video sample, and datasets composed of video samples have media type
 `video`:
@@ -5275,6 +5347,10 @@ To get started exploring video datasets, try loading the
 Linking labels across frames
 ----------------------------
 
+.. customavailablein::
+    :oss_version: 1.5.0
+    :enterprise_version: 2.8.0
+
 When working with video datasets, you may want to represent the fact that
 multiple frame-level labels correspond to the same logical object moving
 through the video.
@@ -5325,11 +5401,16 @@ objects across the frames of a |Sample|:
 3D datasets
 ___________
 
+.. customavailablein::
+    :oss_version: 0.24.0
+    :enterprise_version: 1.7.0
+
 3D datasets have `media_type="3d"` and can be created from supported 3D asset
 files directly, or from `.fo3d` scene files.
 
 Direct assets are the simplest choice when a sample is a single
-:ref:`mesh <3d-meshes>` or :ref:`point cloud <3d-point-clouds>`:
+:ref:`mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`, or
+:ref:`Gaussian splat reconstruction <3d-gaussian-splats>`:
 
 .. code-block:: python
     :linenos:
@@ -5340,6 +5421,7 @@ Direct assets are the simplest choice when a sample is a single
         fo.Sample(filepath="/path/to/model.glb", media_type="3d"),
         fo.Sample(filepath="/path/to/point-cloud.pcd", media_type="3d"),
         fo.Sample(filepath="/path/to/mesh.ply", media_type="3d"),
+        fo.Sample(filepath="/path/to/reconstruction.spz", media_type="3d"),
     ]
 
     dataset = fo.Dataset()
@@ -5351,7 +5433,7 @@ Features such as
 :ref:`camera intrinsics and extrinsics <camera-intrinsics-extrinsics>`, camera
 frustum rendering, and :ref:`3D annotation <creating-3d-polylines>` are
 available whether your sample points directly to a
-:ref:`supported 3D asset <3d-meshes>` or to an `.fo3d` scene.
+supported 3D asset or to an `.fo3d` scene.
 
 Wrap assets in `.fo3d` when you need advanced scene customization such as
 lights, camera configuration, transformations, materials, shapes, or multiple
@@ -5361,7 +5443,8 @@ to add, remove, and manipulate 3D objects in the scene. A scene is
 internally represented as a n-ary tree of 3D objects, where each
 object is a node in the tree. A 3D object is either a
 :ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
-or a :ref:`3D shape geometry <3d-shapes>`.
+:ref:`Gaussian splat <3d-gaussian-splats>`, or
+:ref:`3D shape geometry <3d-shapes>`.
 
 A scene may be explicitly initialized with additional attributes, such as
 :class:`camera <fiftyone.core.threed.camera>`,
@@ -5516,16 +5599,18 @@ Here's how a typical PCD file is structured:
     :linenos:
 
     import numpy as np
-    import open3d as o3d
+    from pypcd4 import PointCloud
 
-    points = np.array([(x1, y1, z1), (x2, y2, z2), ...])
-    colors = np.array([(r1, g1, b1), (r2, g2, b2), ...])
+    # XYZ coordinates
+    points = np.array([(x1, y1, z1), (x2, y2, z2), ...], dtype=np.float32)
 
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    # RGB values in [0, 255]
+    colors = np.array([(r1, g1, b1), (r2, g2, b2), ...], dtype=np.uint8)
 
-    o3d.io.write_point_cloud("/path/to/point-cloud.pcd", pcd)
+    rgb = PointCloud.encode_rgb(colors)
+    pcd = PointCloud.from_xyzrgb_points(np.column_stack((points, rgb)))
+
+    pcd.save("/path/to/point-cloud.pcd")
 
 .. note::
 
@@ -5536,6 +5621,37 @@ Here's how a typical PCD file is structured:
     When coloring by intensity :ref:`in the App <app-3d-visualizer>`, the
     intensity values are automatically scaled to use the full dynamic range of
     the colorscale.
+
+.. _3d-gaussian-splats:
+
+3D Gaussian splats
+------------------
+
+FiftyOne supports Gaussian splat reconstructions in PLY, SPZ, SPLAT, KSPLAT,
+SOG, and RAD formats. Splat files can be used directly as 3D samples or added
+to FO3D scenes via
+:class:`GaussianSplat <fiftyone.core.threed.GaussianSplat>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Use a splat file directly as a 3D sample
+    sample = fo.Sample(
+        filepath="/path/to/reconstruction.spz",
+        media_type="3d",
+    )
+
+    # Or add one or more splats to an FO3D scene
+    splat = fo.GaussianSplat("reconstruction", "reconstruction.spz")
+
+    scene = fo.Scene()
+    scene.add(splat)
+    scene.write("/path/to/scene.fo3d")
+
+You can tune each splat's appearance and rendering from its settings panel in
+the App's :ref:`3D visualizer <app-3d-visualizer>`.
 
 .. _3d-shapes:
 
@@ -5620,6 +5736,10 @@ just like other primitive/label fields.
 
 Orthographic projection images
 ------------------------------
+
+.. customavailablein::
+    :oss_version: 0.20.0
+    :enterprise_version: 1.2
 
 In order to visualize 3D datasets in the App's grid view, you can use
 :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
@@ -5798,6 +5918,10 @@ which are natively visualizable by the App's
 
 Camera intrinsics and extrinsics
 ________________________________
+
+.. customavailablein::
+    :oss_version: 1.12.0
+    :enterprise_version: 2.15.0
 
 FiftyOne provides support for storing and working with camera intrinsic and
 extrinsic parameters, which are essential for 3D computer vision tasks such as
@@ -6436,6 +6560,10 @@ to manipulate the fields or subfields of embedded documents in your dataset:
 
 Save contexts
 -------------
+
+.. customavailablein::
+    :oss_version: 0.25.0
+    :enterprise_version: 2.0.0
 
 You are always free to perform arbitrary edits to a |Dataset| by iterating over
 its contents and editing the samples directly:

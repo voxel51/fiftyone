@@ -1,4 +1,5 @@
 import type { McapTypes } from "@mcap/core";
+import { compareBigInt } from "../../../ir";
 import { DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES } from "./latest-before";
 import {
   channelIdsForTopics,
@@ -15,7 +16,7 @@ import { positiveIntegerOption } from "./validation";
  * Guard against accidental fan-out: callers resolve bounds for the
  * handful of supported topics, not the whole inventory of a large file.
  */
-export const MAX_TOPIC_TIME_BOUNDS_TOPICS = 128;
+const MAX_TOPIC_TIME_BOUNDS_TOPICS = 128;
 
 /**
  * Resolves each topic's first and last indexed message log time using
@@ -190,15 +191,4 @@ function chunkHasAnyChannel(
   }
 
   return false;
-}
-
-function compareBigInt(left: bigint, right: bigint) {
-  if (left < right) {
-    return -1;
-  }
-  if (left > right) {
-    return 1;
-  }
-
-  return 0;
 }

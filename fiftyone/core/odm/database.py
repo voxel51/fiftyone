@@ -18,10 +18,10 @@ import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
 import mongoengine
-import motor.motor_asyncio as mtr
 
 from packaging.version import Version
 import pymongo
+from pymongo.asynchronous.collection import AsyncCollection
 
 from pymongo.errors import (
     BulkWriteError,
@@ -241,19 +241,11 @@ def establish_db_conn(config):
 
 
 def _is_client_closed(client):
-    # check if the pymongo or motor client is closed or None
+    # handles both sync and async pymongo clients
     if client is None:
         return True
 
-    # check pymongo client
-    if getattr(client, "_closed", False):
-        return True
-
-    # check motor client
-    if isinstance(client, mtr.AsyncIOMotorClient):
-        return getattr(client.delegate, "_closed", False)
-
-    return False
+    return getattr(client, "_closed", False)
 
 
 def _connect():
@@ -275,13 +267,27 @@ def _disconnect():
             ...
     if _async_client:
         try:
-            _async_client.close()
+            _close_async_client(_async_client)
         except Exception:
             ...
 
     _client = None
     _async_client = None
     mongoengine.disconnect_all()
+
+
+def _close_async_client(client) -> None:
+    # AsyncMongoClient.close() is a coroutine, but disconnects happen in
+    # sync contexts
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is not None:
+        loop.create_task(client.close())
+    else:
+        asyncio.run(client.close())
 
 
 def _async_connect(use_global=False):
@@ -292,7 +298,7 @@ def _async_connect(use_global=False):
     global _async_client
     if not use_global or _is_client_closed(_async_client):
         global _connection_kwargs
-        client = mtr.AsyncIOMotorClient(
+        client = pymongo.AsyncMongoClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
 
@@ -371,7 +377,7 @@ def aggregate(
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``motor.motor_asyncio.AsyncIOMotorCollection``
+            ``pymongo.asynchronous.collection.AsyncCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
         hints (None): a corresponding index hint or list of index hints for
             each pipeline
@@ -379,8 +385,10 @@ def aggregate(
 
     Returns:
         -   If a single pipeline is provided, a
-            ``pymongo.command_cursor.CommandCursor`` or
-            ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
+            ``pymongo.command_cursor.CommandCursor`` or an awaitable
+            resolving to a
+            ``pymongo.asynchronous.command_cursor.AsyncCommandCursor`` is
+            returned
 
         -   If multiple pipelines are provided, each cursor is extracted into
             a list and the list of lists is returned
@@ -399,7 +407,7 @@ def aggregate(
     if maxTimeMS:
         kwargs["maxTimeMS"] = maxTimeMS
 
-    if isinstance(collection, mtr.AsyncIOMotorCollection):
+    if isinstance(collection, AsyncCollection):
         if num_pipelines == 1 and not is_list:
             if hints[0]:
                 kwargs["hint"] = hints[0]
@@ -474,7 +482,8 @@ async def _do_async_aggregate(collection, pipeline, hint, **kwargs):
     if hint:
         next_kwargs["hint"] = hint
 
-    return [i async for i in collection.aggregate(pipeline, **next_kwargs)]
+    cursor = await collection.aggregate(pipeline, **next_kwargs)
+    return [i async for i in cursor]
 
 
 def ensure_connection():
@@ -520,7 +529,7 @@ def get_async_db_client(use_global=False):
         use_global: whether to use the global client singleton
 
     Returns:
-        a ``motor.motor_asyncio.AsyncIOMotorClient``
+        a ``pymongo.AsyncMongoClient``
     """
     return _async_connect(use_global)
 
@@ -529,7 +538,7 @@ def get_async_db_conn(use_global=False):
     """Returns an async connection to the database.
 
     Returns:
-        a ``motor.motor_asyncio.AsyncIOMotorDatabase``
+        a ``pymongo.asynchronous.database.AsyncDatabase``
     """
     db = get_async_db_client(use_global=use_global)[fo.config.database_name]
     return _apply_options(db)
@@ -1928,7 +1937,7 @@ def get_indexed_values(
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``motor.motor_asyncio.AsyncIOMotorCollection``
+            ``pymongo.asynchronous.collection.AsyncCollection``
         field_or_fields: the field name or list of field names to retrieve.
         index_key (None): the name of the index to use. If None, the default
             index name will be constructed from the field name(s).

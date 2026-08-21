@@ -545,6 +545,10 @@ Click the `+` icon next to the "Samples" tab to open a new panel:
 Using operators
 _______________
 
+.. customavailablein::
+    :oss_version: 0.21.0
+    :enterprise_version: 1.3.0
+
 Operators are a powerful feature in FiftyOne that allow plugin developers to
 define custom operations that can be executed from within the App.
 
@@ -569,6 +573,10 @@ Some Operators perform an immediate action when executed, while other Operators
 
 Executing operators via SDK
 ___________________________
+
+.. customavailablein::
+    :oss_version: 0.23.0
+    :enterprise_version: 1.5.0
 
 Many operators are intended to be executed programmatically via the SDK rather
 than (or in addition to) executing them by filling out their input form in the
@@ -805,6 +813,10 @@ operator's input modal when executing it from within the App:
 Delegating function calls
 -------------------------
 
+.. customavailablein::
+    :oss_version: 0.23.2
+    :enterprise_version: 1.5.3
+
 The
 `@voxel51/utils/delegate <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/utils>`_
 operator provides a general purpose utility for
@@ -911,6 +923,10 @@ curation, and evaluation are performed.
 
 Setting up an orchestrator
 __________________________
+
+.. customavailablein::
+    :oss_version: 1.1.0
+    :enterprise_version: 2.2.0
 
 .. _delegated-orchestrator-open-source:
 

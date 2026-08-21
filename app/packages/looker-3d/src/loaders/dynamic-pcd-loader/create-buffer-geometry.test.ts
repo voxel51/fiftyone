@@ -166,7 +166,9 @@ describe("createBufferGeometry", () => {
   });
 
   it("warns and skips fields not found in header", () => {
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const consoleSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
 
     const position: number[] = [];
     const attributes = {
@@ -185,7 +187,7 @@ describe("createBufferGeometry", () => {
 
   it("handles unknown field types by defaulting to Float32", () => {
     mockHeader.fields = ["unknown"];
-    mockHeader.type = ["X" as any];
+    mockHeader.type = ["X"] as unknown as PCDHeader["type"];
     mockHeader.size = [4];
 
     const position: number[] = [];

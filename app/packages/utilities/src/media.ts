@@ -1,4 +1,5 @@
 import { PathType, determinePathType, getBasename } from "./paths";
+import mime from "mime";
 
 export const MEDIA_TYPE_IMAGE = "image";
 export const MEDIA_TYPE_VIDEO = "video";
@@ -18,6 +19,15 @@ export type RecognizedMediaType =
   | NativeMediaType
   | typeof MEDIA_TYPE_MULTIMODAL;
 
+/** Direct-media extensions decoded by the Gaussian splat viewer. */
+export const GAUSSIAN_SPLAT_EXTENSIONS = [
+  ".spz",
+  ".splat",
+  ".ksplat",
+  ".sog",
+  ".rad",
+] as const;
+
 /**
  * Returns true if annotation is supported for the provided media type.
  *
@@ -26,7 +36,7 @@ export type RecognizedMediaType =
 export const isAnnotationSupported = (
   mediaType: string | null | undefined,
 ): boolean => {
-  return !!mediaType && !["group"].includes(mediaType);
+  return !!mediaType && !["group", "multimodal"].includes(mediaType);
 };
 
 const DIRECT_3D_SAMPLE_EXTENSIONS = new Set([
@@ -37,6 +47,7 @@ const DIRECT_3D_SAMPLE_EXTENSIONS = new Set([
   ".glb",
   ".fbx",
   ".stl",
+  ...GAUSSIAN_SPLAT_EXTENSIONS,
 ]);
 
 const WRAPPABLE_DIRECT_3D_SAMPLE_EXTENSIONS = new Set([
@@ -46,6 +57,7 @@ const WRAPPABLE_DIRECT_3D_SAMPLE_EXTENSIONS = new Set([
   ".glb",
   ".fbx",
   ".stl",
+  ...GAUSSIAN_SPLAT_EXTENSIONS,
 ]);
 
 const FO3D_SAMPLE_EXTENSION = ".fo3d";
@@ -129,6 +141,34 @@ export const getSamplePathExtension = (
   }
 
   return null;
+};
+
+type MimeSample = {
+  filepath: string;
+  metadata?: { mime_type?: string } | null;
+};
+
+/**
+ * Returns the MIME type for a sample or an explicitly selected media path.
+ *
+ * Sample metadata describes the root ``filepath`` only, so alternate media
+ * paths are inferred independently from their normalized extension.
+ */
+export const getMimeType = (
+  sample: MimeSample,
+  selectedMediaPath?: string | null,
+): string | null => {
+  if (selectedMediaPath != null) {
+    const extension = getSamplePathExtension(selectedMediaPath);
+    return extension ? (mime.getType(extension) ?? null) : null;
+  }
+
+  if (sample.metadata?.mime_type) {
+    return sample.metadata.mime_type;
+  }
+
+  const extension = getSamplePathExtension(sample.filepath);
+  return extension ? (mime.getType(extension) ?? null) : null;
 };
 
 /**

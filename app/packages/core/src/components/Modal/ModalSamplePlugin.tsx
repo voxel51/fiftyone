@@ -1,12 +1,12 @@
 import { ErrorBoundary } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { isDirect3dSamplePath } from "@fiftyone/utilities";
 import React, { Suspense, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import Group from "./Group";
 import { Sample2D } from "./Sample2D";
 import { Sample3d } from "./Sample3d";
+import { useRetainedModalSample } from "./use-modal-sample-renderer-persistence";
 
 const ContentColumn = styled.div`
   display: flex;
@@ -48,24 +48,26 @@ export const ModalSample = React.memo(() => {
   );
 });
 
-const NonGroupModalSample = ({ is3DMediaType }: { is3DMediaType: boolean }) => {
-  const sample = useRecoilValue(fos.modalSample);
+/** Routes a resolved non-group modal sample to its 2D or 3D surface. */
+export const NonGroupModalSample = ({
+  is3DMediaType,
+}: {
+  is3DMediaType: boolean;
+}) => {
+  const { sample } = useRetainedModalSample();
   const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
   const isDirect3dSampleUnknownMediaType = useMemo(() => {
-    const mediaPath = Array.isArray(sample.urls)
-      ? (sample.urls.find((url) => url.field === modalMediaField)?.url ??
-        sample.urls[0]?.url)
-      : sample.urls[modalMediaField];
+    const selectedMedia = fos.resolveMediaFieldLooker({
+      mediaField: modalMediaField,
+      sample: sample.sample,
+      urls: fos.getNormalizedUrls(sample.urls),
+    });
 
     return (
-      isDirect3dSamplePath(mediaPath) ||
-      isDirect3dSamplePath(sample.sample.filepath as string)
+      selectedMedia.isDirect3dSample ||
+      (is3DMediaType && !selectedMedia.hasAlternateMediaPath)
     );
-  }, [sample, modalMediaField]);
+  }, [is3DMediaType, sample, modalMediaField]);
 
-  return is3DMediaType || isDirect3dSampleUnknownMediaType ? (
-    <Sample3d />
-  ) : (
-    <Sample2D />
-  );
+  return isDirect3dSampleUnknownMediaType ? <Sample3d /> : <Sample2D />;
 };

@@ -3,19 +3,24 @@ import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { frameAt, usePlayhead } from "@fiftyone/playback";
+import { usePlayhead } from "@fiftyone/playback";
+import { resolveFrameCount } from "../utils/frameCount";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import {
   labelSchemaData,
   useTemporalDetectionFieldPaths,
+  useVisibleLabelSchemas,
 } from "../state/accessors";
 import {
+  useSelectedTemporalDetectionField,
   useSelectedTrackIds,
   useSelectionIsInstanceTrack,
   useSelectionIsKeyframeable,
 } from "../state/useVideoInteraction";
+import { useCurrentFrame } from "../state/useCurrentFrame";
 import { useFrameKeyframeState } from "./useFrameKeyframeState";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
+import { AiTrackUpsellButton } from "../components/AiTrackUpsellButton";
 
 /**
  * Small SVG diamond glyph used by the Mark Keyframe toolbar button. Filled
@@ -63,18 +68,31 @@ const DiamondIcon = ({ filled }: { filled: boolean }) => (
 export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const actions = useVideoSurfaceActions();
   const playhead = usePlayhead();
+  const playheadFrame = useCurrentFrame();
   const selected = useSelectedTrackIds();
   const modalSample = useModalSample();
 
-  // Resolve from the dataset schema
+  // Resolve from the dataset schema, narrowed to the schema-active set.
   const tdFieldPaths = useTemporalDetectionFieldPaths();
+  const visible = useVisibleLabelSchemas();
+  const selectedTdField = useSelectedTemporalDetectionField();
 
-  const tdFieldPath = useMemo(
+  const tdFieldPath = useMemo(() => {
     // Sample-level only — temporal detections are video-level; the create
-    // command targets a top-level field path.
-    () => tdFieldPaths.find((p) => !p.startsWith("frames.")) ?? null,
-    [tdFieldPaths],
-  );
+    // command targets a top-level field path. Honor schema activity so a
+    // deactivated field isn't a create target, matching the detection path.
+    const active = tdFieldPaths.filter(
+      (p) => !p.startsWith("frames.") && visible.has(p),
+    );
+
+    // Prefer the field of the TD the user is editing;
+    // else the first active field.
+    if (selectedTdField && active.includes(selectedTdField)) {
+      return selectedTdField;
+    }
+
+    return active[0] ?? null;
+  }, [tdFieldPaths, visible, selectedTdField]);
   const fps = getModalSampleFrameRate(modalSample);
   const canCreateTd =
     !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
@@ -130,9 +148,13 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             isDisabled: !canCreateTd,
             onClick: () => {
               if (!canCreateTd || !tdFieldPath || !fps) return;
-              // Default: 1-second window starting at the playhead frame.
-              const startFrame = frameAt(playhead, fps);
-              const endFrame = startFrame + Math.round(fps);
+              // Default: 1-second window starting at the playhead frame,
+              // capped at the video's last frame.
+              const startFrame = playheadFrame;
+              const endFrame = Math.min(
+                startFrame + Math.round(fps),
+                resolveFrameCount(modalSample, fps) ?? Infinity,
+              );
               actions.createTemporalDetection(
                 tdFieldPath,
                 [startFrame, endFrame],
@@ -171,8 +193,21 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
                 return;
               }
 
-              actions.splitTrack(selectedIds[0], frameAt(playhead, fps));
+              actions.splitTrack(selectedIds[0], playheadFrame);
             },
+          },
+          {
+            // Upsell for AI-powered object tracking (not in the OSS app): an
+            // always-present, disabled-styled button whose only action is a
+            // hover callout. Owns its own presentation via the custom-component
+            // hatch; onClick is a required no-op.
+            id: "ai-track",
+            label: "AI Track",
+            icon: <Icon name={IconName.AI} size={Size.Sm} />,
+            // Required by the item type but unreachable — the toolbar renders
+            // `customComponent` instead of wiring `onClick`.
+            onClick: () => {},
+            customComponent: <AiTrackUpsellButton />,
           },
         ],
       },
@@ -185,7 +220,9 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       fps,
       hasSelection,
       isKeyframeAtPlayhead,
+      modalSample,
       playhead,
+      playheadFrame,
       selectedIds,
       selectionIsInstanceTrack,
       selectionIsKeyframeable,

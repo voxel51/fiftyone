@@ -1,4 +1,6 @@
 import type { McapTypes } from "@mcap/core";
+import { compareBigInt } from "../../../ir";
+import { throwIfAborted } from "../../../utils/cancellation";
 import {
   channelIdsForTopics,
   compareIndexedMessageTimes,
@@ -35,6 +37,7 @@ export async function readLatestIndexedMessageTimesForReader(
   readable: McapTypes.IReadable,
   args: McapReadLatestIndexedMessageTimesRequest,
 ): Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>> {
+  throwIfAborted(args.signal);
   const limit = args.limitPerTopic ?? 1;
   if (!Number.isFinite(limit) || !Number.isInteger(limit) || limit < 1) {
     throw new Error(
@@ -60,6 +63,8 @@ export async function readLatestIndexedMessageTimesForReader(
         maxChunkProbes,
         readable,
         reader,
+        requestedChannelIds: args.channelIds,
+        signal: args.signal,
         timeNs: args.timeNs,
         topic,
       }),
@@ -74,6 +79,8 @@ async function latestEntriesForTopic({
   maxChunkProbes,
   readable,
   reader,
+  requestedChannelIds,
+  signal,
   timeNs,
   topic,
 }: {
@@ -81,10 +88,19 @@ async function latestEntriesForTopic({
   readonly maxChunkProbes: number;
   readonly readable: McapTypes.IReadable;
   readonly reader: McapIndexedReaderLike;
+  readonly requestedChannelIds?: readonly number[];
+  readonly signal?: AbortSignal;
   readonly timeNs: bigint;
   readonly topic: string;
 }): Promise<readonly McapIndexedMessageTime[]> {
-  const channelIds = channelIdsForTopics(reader.channelsById, [topic]);
+  const topicChannelIds = channelIdsForTopics(reader.channelsById, [topic]);
+  const channelIds = requestedChannelIds
+    ? new Set(
+        requestedChannelIds.filter((channelId) =>
+          topicChannelIds.has(channelId),
+        ),
+      )
+    : topicChannelIds;
   if (channelIds.size === 0) {
     return [];
   }
@@ -108,6 +124,7 @@ async function latestEntriesForTopic({
   let probes = 0;
 
   for (const chunkIndex of memberChunks) {
+    throwIfAborted(signal);
     // Strict inequality: a chunk ending exactly at the N-th best time
     // can still hold equal-time entries that win on tie-break order.
     if (
@@ -130,8 +147,10 @@ async function latestEntriesForTopic({
       endTimeNs: timeNs,
       readable,
       reader,
+      signal,
       startTimeNs: undefined,
     });
+    throwIfAborted(signal);
     if (entries.length === 0) {
       continue;
     }
@@ -155,15 +174,4 @@ function chunkHasAnyChannel(
   }
 
   return false;
-}
-
-function compareBigInt(left: bigint, right: bigint) {
-  if (left < right) {
-    return -1;
-  }
-  if (left > right) {
-    return 1;
-  }
-
-  return 0;
 }

@@ -3,12 +3,14 @@ import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
   FbxAsset,
+  GaussianSplatAsset,
   type FoMeshMaterial,
   type FoPointcloudMaterialProps,
   type FoScene,
   type FoSceneNode,
   GltfAsset,
   type MeshAsset,
+  MirisStreamAsset,
   ObjAsset,
   PcdAsset,
   PlaneGeometryAsset,
@@ -63,6 +65,11 @@ const getOptionalBooleanField = (node: FoSceneRawNode, field: string) => {
   return typeof value === "boolean" ? value : undefined;
 };
 
+const getOptionalNumberField = (node: FoSceneRawNode, field: string) => {
+  const value = (node as NodeRecord)[field];
+  return typeof value === "number" ? value : undefined;
+};
+
 const isFoPointcloudMaterial = (
   material: FoSceneRawNode["defaultMaterial"] | undefined,
 ): material is FoPointcloudMaterialProps => {
@@ -102,6 +109,24 @@ const toQuaternion = (
 const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
   const nodeType = node._type.toLowerCase();
   const material = node.defaultMaterial;
+
+  if (nodeType === "gaussiansplat" && hasStringField(node, "splatPath")) {
+    return new GaussianSplatAsset(
+      node.splatPath,
+      getOptionalStringField(node, "preTransformedSplatPath"),
+      getOptionalStringField(node, "format"),
+      getOptionalBooleanField(node, "centerGeometry") ?? true,
+      getOptionalNumberField(node, "opacity"),
+      getOptionalStringField(node, "tint"),
+    );
+  }
+
+  if (nodeType === "mirisstream" && hasStringField(node, "assetUuid")) {
+    return new MirisStreamAsset(
+      node.assetUuid,
+      getOptionalStringField(node, "viewerKey"),
+    );
+  }
 
   if (nodeType.endsWith("mesh")) {
     const meshMaterial = isFoMeshMaterial(material) ? material : undefined;
@@ -237,6 +262,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
 
 const buildSceneNode = (node: FoSceneRawNode): FoSceneNode => {
   return {
+    uuid: node.uuid,
     asset: parseAsset(node),
     name: node.name,
     visible: node.visible,

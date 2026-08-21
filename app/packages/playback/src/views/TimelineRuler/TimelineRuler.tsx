@@ -4,8 +4,12 @@ import React, { type ReactNode, useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import { setHoverTime } from "../../lib/playback/store-access";
+import type { TimelineDisplayConversion } from "../../lib/playback/timeline-display";
+import { useTimelineDisplay } from "../../lib/playback/timeline-display";
+import type { TimelineMode } from "../../lib/playback/types";
 import {
   useHoverTime,
+  useInspectionMarker,
   useLoopEnd,
   useLoopStart,
   usePlayhead,
@@ -13,16 +17,76 @@ import {
   useViewStart,
 } from "../../lib/playback/use-playback-state";
 import { clamp } from "../../lib/playback/utils";
+import { formatTimeOfDay } from "../TimelineControls/timeline-controls-utils";
 import BufferedLaneShading from "./BufferedLaneShading";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
 const CLICK_PX_THRESHOLD = 3;
+const TIMELINE_EPSILON = 1e-9;
 
-function tickLabel(t: number): string {
+// Nice tick spacings in seconds, ascending. We pick the smallest one that
+// keeps the visible tick count at or below TARGET_TICK_DIVISIONS. Without
+// this the interval capped at 1s, so a long file zoomed out crammed a label
+// into every single second.
+const TICK_INTERVALS = [
+  0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600,
+];
+// Nice tick spacings in *frames* for sequence mode — ticks should land on
+// whole frames, not arbitrary fractions of a second.
+const SEQUENCE_FRAME_INTERVALS = [
+  1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000,
+];
+const TARGET_TICK_DIVISIONS = 10;
+
+// Tick positions always stay in the engine's internal seconds domain (see
+// timeline-display.ts) — only the interval choice and the label text become
+// mode-aware.
+function chooseTickInterval(viewDuration: number, mode: TimelineMode): number {
+  if (mode.kind === "sequence") {
+    const step = 1 / mode.fps;
+    for (const frames of SEQUENCE_FRAME_INTERVALS) {
+      const interval = frames * step;
+      if (viewDuration / interval <= TARGET_TICK_DIVISIONS) return interval;
+    }
+    return SEQUENCE_FRAME_INTERVALS[SEQUENCE_FRAME_INTERVALS.length - 1] * step;
+  }
+  for (const interval of TICK_INTERVALS) {
+    if (viewDuration / interval <= TARGET_TICK_DIVISIONS) return interval;
+  }
+  return TICK_INTERVALS[TICK_INTERVALS.length - 1];
+}
+
+function durationTickLabel(t: number): string {
   const s = Math.floor(t);
   const frac = Math.round((t - s) * 10) / 10;
+  // Past a minute, seconds-only labels ("150s") get hard to read on long
+  // files; switch to m:ss. Intervals at this scale are whole seconds, so the
+  // fractional branch below only matters for sub-minute zoomed-in views.
+  if (t >= 60) {
+    const minutes = Math.floor(s / 60);
+    const seconds = s - minutes * 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  }
   return frac === 0 ? `${s}s` : `${(s + frac).toFixed(1)}s`;
+}
+
+function tickLabel(
+  t: number,
+  mode: TimelineMode,
+  conversion: TimelineDisplayConversion,
+): string {
+  if (mode.kind === "duration") return durationTickLabel(t);
+  const displayValue = conversion.toDisplay(t);
+  if (mode.kind === "sequence") return `${Math.round(displayValue as number)}`;
+  // absolute: HH:MM:SS.mmm — a full date is redundant tick-over-tick.
+  return formatTimeOfDay(displayValue as Date);
+}
+
+function isTimeInsideView(time: number, viewStart: number, viewEnd: number) {
+  return (
+    time >= viewStart - TIMELINE_EPSILON && time <= viewEnd + TIMELINE_EPSILON
+  );
 }
 
 export interface TimelineRulerProps {
@@ -49,10 +113,22 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const viewEnd = useViewEnd();
   const loopStart = useLoopStart();
   const loopEnd = useLoopEnd();
-  const { duration, seekSnapped, setView, setLoop, snapPlayheadToFrame } =
-    usePlayback();
+  const { duration, seekSnapped, setView, setLoop, settleSeek } = usePlayback();
+  const { mode, ...displayConversion } = useTimelineDisplay();
   const hoverTime = useHoverTime();
+  const inspectionMarker = useInspectionMarker();
   const store = usePlaybackStore();
+
+  // Sequence mode has no such thing as frame 2.5 — `quantizeDuringScrub`
+  // (see timeline-display.ts) says the display conversion should round
+  // mid-drag positions onto whole frames. This is mode-intrinsic and
+  // independent of `snapToFrameOnSettle` (a separate, provider-level
+  // opt-in for snapping only at drag-end), so it's applied here before
+  // handing the value to `seekSnapped` rather than left to that setting.
+  const quantizeForScrub = (seconds: number): number =>
+    displayConversion.quantizeDuringScrub
+      ? displayConversion.fromDisplay(displayConversion.toDisplay(seconds))
+      : seconds;
 
   const rulerRef = useRef<HTMLDivElement>(null);
 
@@ -135,13 +211,15 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       // playhead now tracks discrete frame numbers continuously during the
       // drag, matching the frame-indexed mental model the annotation surface
       // uses elsewhere.
-      seekSnapped(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
+      seekSnapped(
+        quantizeForScrub(
+          clamp(startValue + (delta / laneWidth) * vd, 0, duration),
+        ),
+      );
     },
-    // Redundant when `seekSnapped` already landed each mid-drag tick on a
-    // frame boundary — kept as a belt-and-suspenders settle (cheap no-op
-    // when the playhead is already aligned, thanks to the equality guard
-    // inside `snapPlayheadToFrame`).
-    onDragEnd: () => snapPlayheadToFrame(),
+    // Flush the final target immediately instead of waiting out any trailing
+    // fetch debounce; settle snapping is applied by the same action.
+    onDragEnd: settleSeek,
   });
 
   const loopStartDrag = useDragDelta({
@@ -213,7 +291,12 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const ve = dragRef.current.startVe;
       // `seekSnapped` lands the click on a frame boundary in one step when
       // snapping is enabled; falls back to a continuous seek otherwise.
-      seekSnapped(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
+      seekSnapped(
+        quantizeForScrub(
+          clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration),
+        ),
+      );
+      settleSeek();
     },
   });
 
@@ -276,12 +359,19 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const loopStartRatio = clamp((loopStart - viewStart) / viewDuration, 0, 1);
   const loopEndRatio = clamp((loopEnd - viewStart) / viewDuration, 0, 1);
 
-  const tickInterval = viewDuration <= 1 ? 0.1 : viewDuration <= 3 ? 0.5 : 1;
+  const tickInterval = chooseTickInterval(viewDuration, mode);
   const ticks: number[] = [];
-  const firstTick = Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
+  const firstTick =
+    Math.ceil(viewStart / tickInterval - TIMELINE_EPSILON) * tickInterval;
+  // `chooseTickInterval` targets ~TARGET_TICK_DIVISIONS ticks per view, but
+  // it can't fully protect against a corrupt/mismeasured duration (e.g. a
+  // scene whose streams disagree on epoch vs. elapsed time) blowing the
+  // view out to years. This cap is the last line of defense against
+  // rendering millions of tick nodes and hanging the tab.
+  const MAX_TICKS = 500;
   for (
     let t = Math.round(firstTick * 1e4) / 1e4;
-    t <= viewEnd + 1e-9;
+    t <= viewEnd + TIMELINE_EPSILON && ticks.length < MAX_TICKS;
     t = Math.round((t + tickInterval) * 1e4) / 1e4
   ) {
     ticks.push(t);
@@ -340,7 +430,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
               left: `${((t - viewStart) / viewDuration) * 100}%`,
             }}
           >
-            {tickLabel(t)}
+            {tickLabel(t, mode, displayConversion)}
           </span>
         ))}
       </div>
@@ -376,9 +466,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         }}
       />
 
-      {hoverTime !== null &&
-      hoverTime >= viewStart - 1e-9 &&
-      hoverTime <= viewEnd + 1e-9 ? (
+      {hoverTime !== null && isTimeInsideView(hoverTime, viewStart, viewEnd) ? (
         <div
           className={styles.hoverCaret}
           data-testid="timeline-hover-caret"
@@ -386,6 +474,29 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
             left: laneLeft(clamp((hoverTime - viewStart) / viewDuration, 0, 1)),
           }}
         />
+      ) : null}
+
+      {inspectionMarker !== null &&
+      isTimeInsideView(inspectionMarker.timeSec, viewStart, viewEnd) ? (
+        <div
+          aria-label="Inspected message time"
+          className={styles.inspectionCaret}
+          data-testid="timeline-inspection-caret"
+          role="img"
+          style={{
+            left: labelWidth,
+            transform: `translate3d(${
+              clamp(
+                (inspectionMarker.timeSec - viewStart) / viewDuration,
+                0,
+                1,
+              ) * 100
+            }%, 0, 0)`,
+            width: `calc(100% - ${labelWidth}px)`,
+          }}
+        >
+          <div className={styles.inspectionCaretCap} />
+        </div>
       ) : null}
 
       {/* Playhead handle + line share one translated wrapper. translate3d
@@ -402,6 +513,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         <div className={styles.playheadLine} />
         <div
           className={styles.playheadHandle}
+          data-testid="timeline-playhead-handle"
           {...playheadDrag.handleProps}
           onPointerDown={(e) => {
             e.stopPropagation();

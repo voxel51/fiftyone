@@ -19,9 +19,18 @@
 //   helpers wrap.
 // ---------------------------------------------------------------------------
 
-import { atom, type PrimitiveAtom } from "jotai";
-import { atomFamily } from "jotai/utils";
-import type { BufferedRanges, SeekEvent } from "./types";
+import { atom, type PrimitiveAtom } from "jotai/vanilla";
+import {
+  atomFamily,
+  atomWithStorage,
+  createJSONStorage,
+} from "jotai/vanilla/utils";
+import type {
+  BufferedRanges,
+  BufferingStream,
+  PlaybackInspectionMarker,
+  SeekEvent,
+} from "./types";
 
 /**
  * Per-stream reactive value atom, keyed by stream id. Lazily created on first
@@ -62,6 +71,14 @@ export const hoverTimeAtom = atom<number | null>(null) as PrimitiveAtom<
 >;
 
 /**
+ * Persistent visual inspection time, separate from hover and the engine clock.
+ * Ownership prevents a stale tile cleanup from clearing a newer publisher.
+ */
+export const inspectionMarkerAtom = atom<PlaybackInspectionMarker | null>(
+  null,
+) as PrimitiveAtom<PlaybackInspectionMarker | null>;
+
+/**
  * The last time the engine confirmed all blocking streams were ready and
  * advanced the playhead. This is the authoritative "what should I render"
  * time for data-driven consumers. Lags behind `playheadAtom` when streams
@@ -100,6 +117,13 @@ export const bufferingDetailAtom = atom<string | null>(null) as PrimitiveAtom<
 >;
 
 /**
+ * Structured readiness behind the aggregate buffering detail. Data layers
+ * publish blocking stream identifiers and their playhead readiness so the
+ * timeline can explain exactly what playback is waiting for.
+ */
+export const bufferingStreamsAtom = atom<readonly BufferingStream[]>([]);
+
+/**
  * Time ranges where every blocking stream has data buffered and ready to
  * play. Written by the data layer (e.g. the MCAP data stream, throttled);
  * rendered as shading along the timeline's top edge so users can see how
@@ -122,15 +146,90 @@ export const viewEndAtom = atom(0); // initialised to duration by PlaybackProvid
 export const loopStartAtom = atom(0);
 export const loopEndAtom = atom(0); // initialised to duration by PlaybackProvider
 
-// Static config — set once by PlaybackProvider, never changed.
+// Provider-initialized config.
 export const durationAtom = atom(0);
 export const stepIntervalAtom = atom(1 / 30);
+
+/**
+ * Trailing delay before a paused seek may ask missing blocking streams to
+ * prefetch. The visual playhead and already-buffered commits remain immediate.
+ *
+ * This is runtime-settable because a long-lived PlaybackProvider may host
+ * sources with different access costs over its lifetime. General playback
+ * defaults to zero; data layers that know a source is remote may opt in.
+ */
+export const seekFetchDebounceMsAtom = atom(0);
 
 /**
  * Playback speed multiplier. 1.0 = normal speed, 2.0 = double speed,
  * 0.5 = half speed. Applied to the dt on every RAF tick.
  */
 export const speedAtom = atom(1.0);
+
+/**
+ * Rolling media-seconds-per-wall-second actually committed by the engine.
+ * Null outside active playback and before the first measurement window.
+ */
+export const achievedSpeedAtom = atom<number | null>(null) as PrimitiveAtom<
+  number | null
+>;
+
+/** Volume restored by unmute when the user has never set a level. */
+export const DEFAULT_AUDIO_VOLUME = 0.7;
+
+// SSR (the teams app evaluates this module during Next.js prerender) has
+// no `window`, and restricted browsers (sandboxed iframes, blocked
+// cookies) throw on the storage accessor itself; `undefined` keeps the
+// atom in-memory in both cases.
+const guardedStorage = (
+  kind: "localStorage" | "sessionStorage",
+): Storage | undefined => {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  try {
+    return window[kind];
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Audio volume in [0, 1]. Independent of `audioMutedAtom` so unmute
+ * restores the prior level. Persisted per user across sessions.
+ */
+export const audioVolumeAtom = atomWithStorage(
+  "fo-playback-audio-volume",
+  DEFAULT_AUDIO_VOLUME,
+  // explicit sync storage keeps the value type `number`
+  createJSONStorage<number>(() => guardedStorage("localStorage")),
+  // the persisted value must be readable at first store.get
+  { getOnInit: true },
+);
+
+/**
+ * Whether timeline audio is muted. Session-scoped: every session starts
+ * muted (browsers reject unmuted autoplay before a user gesture), but an
+ * unmute survives sample changes — each sample mounts a fresh provider
+ * store, which would otherwise re-mute. While muted, an audio stream goes
+ * dormant (unsubscribed) so it never gates the engine's barrier.
+ */
+export const audioMutedAtom = atomWithStorage(
+  "fo-playback-audio-muted",
+  true,
+  createJSONStorage<boolean>(() => guardedStorage("sessionStorage")),
+  { getOnInit: true },
+);
+
+/**
+ * Audio status for the volume UI: "unavailable" renders no control,
+ * "available" renders it, "error" (a fatal `MediaError` on the source)
+ * renders it disabled with an explanatory tooltip. Audio integrations
+ * write it.
+ */
+export type AudioAvailability = "unavailable" | "available" | "error";
+
+export const audioAvailableAtom = atom<AudioAvailability>("unavailable");
 
 /**
  * Fired on discontinuous playhead jumps: user seek, step forward/back,
@@ -140,10 +239,10 @@ export const speedAtom = atom(1.0);
  * The `seq` counter makes each event distinguishable even when `time`
  * hasn't changed (e.g. seeking to the same position twice).
  *
- * Streams subscribe to this atom — via useSeekEvent or store.sub — to
- * flush their cache and start buffering around the new position. The
- * engine debounces updates to this atom during rapid scrubbing so streams
- * don't thrash. playheadAtom always updates immediately for smooth UI.
+ * Streams subscribe to this atom — via useSeekEvent or store.sub — to react
+ * to user intent such as cancelling obsolete speculative work. It fires
+ * immediately; missing-data fetch admission is independently controlled by
+ * seekFetchDebounceMsAtom. playheadAtom also updates immediately for smooth UI.
  */
 // See `streamValueAtom` — same null-initial-value overload quirk; the
 // cast preserves the writable shape so `store.set(seekEventAtom, ...)`

@@ -77,7 +77,7 @@ class Static(StaticFiles):
         response = await super().get_response(path, scope)
         if response.status_code == 404:
             parts = pathlib.Path(path).parts
-            path = pathlib.Path(*parts[1:])
+            path = str(pathlib.Path(*parts[1:]))
             if parts and parts[0] == "datasets":
                 full_path, stat_result = self.lookup_path(path)
                 if stat_result and stat.S_ISREG(stat_result.st_mode):
@@ -137,7 +137,14 @@ if _allowed_origins:
         Middleware(
             CORSMiddleware,
             allow_origins=_allowed_origins,
-            allow_methods=["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
+            allow_methods=[
+                "GET",
+                "PATCH",
+                "POST",
+                "DELETE",
+                "HEAD",
+                "OPTIONS",
+            ],
             allow_headers=[
                 "authorization",
                 "content-type",

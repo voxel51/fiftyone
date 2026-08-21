@@ -13,9 +13,12 @@ export * from "./src/lib/playback/use-stream";
 export * from "./src/lib/playback/store-access";
 export type {
   BufferedRanges,
+  BufferingStream,
   PlaybackStore,
+  PlaybackInspectionMarker,
   PlaybackStream,
   SeekEvent,
+  TimelineMode,
 } from "./src/lib/playback/types";
 export * from "./src/lib/tracks/TrackProvider";
 export * from "./src/views/Timeline/Timeline";
@@ -25,7 +28,10 @@ export type {
   NormalizedEvent,
   TrackEventMenuItem,
 } from "./src/views/TimelineTrack/TimelineTrack";
-export type { TemporalTagCreatePayload } from "./src/views/TemporalTag/TemporalTagContext";
+export type {
+  TemporalTagCreatePayload,
+  TemporalTagUpdatePayload,
+} from "./src/views/TemporalTag/TemporalTagContext";
 export { default as TemporalTagTimeline } from "./src/views/TemporalTag/TemporalTagTimeline";
 export type { TemporalTagTimelineProps } from "./src/views/TemporalTag/TemporalTagTimeline";
 
@@ -35,6 +41,7 @@ export type { TemporalTagTimelineProps } from "./src/views/TemporalTag/TemporalT
 // re-exported above / via the `export *` lines.)
 export {
   PlaybackProvider,
+  useMode,
   usePlayback,
 } from "./src/lib/playback/PlaybackProvider";
 export {
@@ -43,15 +50,26 @@ export {
   useIsPlaying,
   usePlayhead,
 } from "./src/lib/playback/use-playback-state";
+export {
+  createTimelineDisplayConversion,
+  useTimelineDisplay,
+} from "./src/lib/playback/timeline-display";
+export type {
+  TimelineDisplayConversion,
+  TimelineDisplayValue,
+} from "./src/lib/playback/timeline-display";
 export { usePlaybackStream } from "./src/lib/playback/use-playback-stream";
+export type { AudioAvailability } from "./src/lib/playback/atoms";
+export { useAudioStream } from "./src/lib/playback/use-audio-stream";
 export {
   usePresentedMediaTime,
   useVideoStream,
 } from "./src/lib/playback/use-video-stream";
 export { useVideoSync } from "./src/lib/playback/use-video-sync";
-export { useStream } from "./src/lib/playback/use-stream";
+export { useActivateStream, useStream } from "./src/lib/playback/use-stream";
 export { frameAt } from "./src/lib/playback/utils";
 export { PlaybackStreamBase } from "./src/lib/playback/stream-base";
 export type { BufferReadiness } from "./src/lib/playback/types";
 export { TrackProvider } from "./src/lib/tracks/TrackProvider";
 export type { Track, TrackEvent } from "./src/lib/tracks/TrackProvider";
+export * from "./src/utils/usePointerLockDrag";

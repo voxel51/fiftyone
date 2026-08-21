@@ -16,7 +16,11 @@ import React, { type ReactNode } from "react";
 import { useTileTypes } from "../../lib/use-tile-state";
 import { useTiling } from "../../lib/TilingProvider";
 import { DefaultAddTileMenuItems } from "../AddTileMenu/DefaultAddTileMenuItems";
-import { SidebarLeftIcon, SidebarRightIcon } from "./tiling-header-icons";
+import {
+  SidebarBottomIcon,
+  SidebarLeftIcon,
+  SidebarRightIcon,
+} from "./tiling-header-icons";
 import styles from "./TilingHeader.module.css";
 
 export interface TilingHeaderCaptionContext {
@@ -40,8 +44,12 @@ export interface TilingHeaderProps {
    */
   addTileMenu?: ReactNode;
   leftSidebarOpen?: boolean;
+  /** Whether the bottom timeline tracks drawer is open. */
+  timelineTracksOpen?: boolean;
   rightSidebarOpen?: boolean;
   onToggleLeftSidebar?: () => void;
+  /** Toggles the bottom timeline tracks drawer. */
+  onToggleTimelineTracks?: () => void;
   onToggleRightSidebar?: () => void;
 }
 
@@ -51,12 +59,14 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
   headerActions,
   addTileMenu,
   leftSidebarOpen,
+  timelineTracksOpen,
   rightSidebarOpen,
   onToggleLeftSidebar,
+  onToggleTimelineTracks,
   onToggleRightSidebar,
 }) => {
   const types = useTileTypes();
-  const { autoLayout, focusedTileId, tiles } = useTiling();
+  const { autoLayout, focusedTileId, resetLayout, tiles } = useTiling();
   const focusedTileTitle =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId].title : null;
   const caption =
@@ -73,6 +83,11 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         icon={IconName.Refresh}
         text="Auto Layout"
         onClick={autoLayout}
+      />
+      <MenuIconTextItem
+        icon={IconName.Undo}
+        text="Reset Layout"
+        onClick={resetLayout}
       />
     </>
   ) : null;
@@ -105,13 +120,15 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
               anchor={DropdownAnchor.BottomEnd}
               trigger={
                 <Button
-                  variant={Variant.Borderless}
+                  variant={Variant.Secondary}
                   size={Size.Xs}
                   data-testid="tiling-header-add-tile"
                   leadingIcon={IconName.GridView}
-                  aria-label="Add tile"
-                  title="Add tile"
-                />
+                  aria-label="Layout"
+                  title="Layout"
+                >
+                  Layout
+                </Button>
               }
             >
               {tileMenu}
@@ -130,6 +147,28 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
             title={leftSidebarOpen ? "Hide settings" : "Show settings"}
             onClick={onToggleLeftSidebar}
             className={clsx({ [styles.toggleActive]: leftSidebarOpen })}
+          />
+        )}
+
+        {onToggleTimelineTracks && (
+          <Button
+            variant={Variant.Borderless}
+            size={Size.Xs}
+            data-testid="tiling-header-toggle-timeline-tracks"
+            leadingIcon={SidebarBottomIcon}
+            aria-label={
+              timelineTracksOpen
+                ? "Hide timeline tracks"
+                : "Show timeline tracks"
+            }
+            aria-pressed={!!timelineTracksOpen}
+            title={
+              timelineTracksOpen
+                ? "Hide timeline tracks"
+                : "Show timeline tracks"
+            }
+            onClick={onToggleTimelineTracks}
+            className={clsx({ [styles.toggleActive]: timelineTracksOpen })}
           />
         )}
 

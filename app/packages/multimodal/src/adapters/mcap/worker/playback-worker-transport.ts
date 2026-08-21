@@ -1,5 +1,6 @@
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
-import { mcapError, mcapReadCancelledError } from "../errors";
+import { toError } from "../../../utils/errors";
+import { EpisodeReadCancelledError } from "../../../ports";
 import type {
   McapPlaybackWorkerPriority,
   McapPlaybackWorkerRequest,
@@ -13,21 +14,31 @@ import type {
   McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
 import type { McapTransportSnapshot } from "./transport-meter";
-
+import {
+  emptyMcapBoundedReadUsage,
+  McapBoundedReadCancelledError,
+} from "../reader/bounded-read-cancellation";
 type PendingRequest<
   Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType,
 > = {
+  cancelled?: boolean;
+  readonly cleanup?: () => void;
   readonly reject: (error: Error) => void;
   readonly resolve: (result: McapPlaybackWorkerResultByType[Type]) => void;
   readonly sourceKey: string;
+  readonly supersessionKeys: readonly string[];
   readonly type: McapPlaybackWorkerUnaryType;
 };
 
 type PendingStream = {
+  readonly cleanup?: () => void;
   readonly rejectors: Array<(error: Error) => void>;
   readonly resolvers: Array<(result: IteratorResult<unknown, void>) => void>;
   readonly sourceKey: string;
+  readonly supersessionKeys: readonly string[];
+  readonly type: McapPlaybackWorkerStreamType;
   readonly values: unknown[];
+  readonly yieldResponseBatches: boolean;
   done: boolean;
   error?: Error;
 };
@@ -54,45 +65,102 @@ export class McapPlaybackWorkerTransport {
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
+    supersessionKeys: readonly string[] = [],
+    signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
-    const message = createRpcRequest(id, sourceKey, type, payload, priority);
+    const message = createRpcRequest(
+      id,
+      sourceKey,
+      type,
+      payload,
+      priority,
+      retainedDecodedRecordIds,
+    );
 
     return new Promise((resolve, reject) => {
+      const cancel = () => {
+        const pending = this.pending.get(id);
+        if (!pending) {
+          return;
+        }
+        if (pending.type === "readBoundedMessages") {
+          // Keep bounded reads pending until the worker reports its
+          // best-effort partial usage at the next cancellation boundary.
+          pending.cancelled = true;
+        } else {
+          this.pending.delete(id);
+          pending.cleanup?.();
+          pending.reject(new EpisodeReadCancelledError());
+        }
+        try {
+          worker.postMessage({ id, type: "cancel" });
+        } catch {
+          if (pending.type === "readBoundedMessages") {
+            this.pending.delete(id);
+            pending.cleanup?.();
+            pending.reject(new EpisodeReadCancelledError());
+          }
+        }
+      };
+      if (signal?.aborted) {
+        reject(new EpisodeReadCancelledError());
+        return;
+      }
+      signal?.addEventListener("abort", cancel, { once: true });
       this.pending.set(id, {
+        ...(signal
+          ? {
+              cleanup: () => signal.removeEventListener("abort", cancel),
+            }
+          : {}),
         reject,
         resolve: resolve as PendingRequest["resolve"],
         sourceKey,
+        supersessionKeys,
         type,
       });
 
       try {
         worker.postMessage(message);
       } catch (error) {
+        const pending = this.pending.get(id);
         this.pending.delete(id);
-        reject(mcapError(error));
+        pending?.cleanup?.();
+        reject(toError(error));
       }
     });
   }
 
   /**
-   * Cancels matching pending unary requests: rejects each locally with the
-   * canonical cancelled error and returns their ids so the caller can tell
-   * the worker to drop or abort the matching jobs. Late worker responses
-   * for these ids are ignored by handleResponse.
+   * Cancels matching pending unary requests and returns their ids so the caller
+   * can tell the worker to drop or abort them. Ordinary reads reject locally.
+   * Bounded reads wait for the worker's partial-usage acknowledgement.
    */
   cancelPending(
     filter: (pending: {
+      readonly supersessionKeys: readonly string[];
       readonly type: McapPlaybackWorkerUnaryType;
     }) => boolean,
   ): number[] {
     const cancelledIds: number[] = [];
     for (const [id, pending] of this.pending) {
-      if (!filter({ type: pending.type })) {
+      if (
+        !filter({
+          supersessionKeys: pending.supersessionKeys,
+          type: pending.type,
+        })
+      ) {
         continue;
       }
-      this.pending.delete(id);
-      pending.reject(mcapReadCancelledError());
+      if (pending.type === "readBoundedMessages") {
+        pending.cancelled = true;
+      } else {
+        this.pending.delete(id);
+        pending.cleanup?.();
+        pending.reject(new EpisodeReadCancelledError());
+      }
       cancelledIds.push(id);
     }
 
@@ -106,9 +174,27 @@ export class McapPlaybackWorkerTransport {
    * no response, so local settlement is what keeps consumers from hanging.
    */
   cancelStreams(): number[] {
+    return this.cancelPendingStreams(() => true);
+  }
+
+  /** Cancels matching pending streams while preserving unrelated lanes. */
+  cancelPendingStreams(
+    filter: (pending: {
+      readonly supersessionKeys: readonly string[];
+      readonly type: McapPlaybackWorkerStreamType;
+    }) => boolean,
+  ): number[] {
     const cancelledIds: number[] = [];
     for (const [id, stream] of [...this.streams]) {
-      this.failStream(id, stream, mcapReadCancelledError());
+      if (
+        !filter({
+          supersessionKeys: stream.supersessionKeys,
+          type: stream.type,
+        })
+      ) {
+        continue;
+      }
+      this.failStream(id, stream, new EpisodeReadCancelledError());
       cancelledIds.push(id);
     }
 
@@ -118,34 +204,99 @@ export class McapPlaybackWorkerTransport {
   /**
    * Sends one streaming worker RPC and yields incremental response payloads.
    */
+  stream<Type extends McapPlaybackWorkerStreamType>(
+    worker: Worker,
+    sourceKey: string,
+    type: Type,
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
+    signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
+    supersessionKeys?: readonly string[],
+    yieldResponseBatches?: false,
+  ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void>;
+  stream<Type extends McapPlaybackWorkerStreamType>(
+    worker: Worker,
+    sourceKey: string,
+    type: Type,
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority: McapPlaybackWorkerPriority | undefined,
+    signal: AbortSignal | undefined,
+    retainedDecodedRecordIds: readonly string[] | undefined,
+    supersessionKeys: readonly string[],
+    yieldResponseBatches: true,
+  ): AsyncGenerator<
+    readonly McapPlaybackWorkerStreamItemByType[Type][],
+    void,
+    void
+  >;
   async *stream<Type extends McapPlaybackWorkerStreamType>(
     worker: Worker,
     sourceKey: string,
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
-  ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
+    signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
+    supersessionKeys: readonly string[] = [],
+    yieldResponseBatches = false,
+  ): AsyncGenerator<
+    | McapPlaybackWorkerStreamItemByType[Type]
+    | readonly McapPlaybackWorkerStreamItemByType[Type][],
+    void,
+    void
+  > {
     const id = this.nextRequestId++;
-    const message = createRpcRequest(id, sourceKey, type, payload, priority);
+    const message = createRpcRequest(
+      id,
+      sourceKey,
+      type,
+      payload,
+      priority,
+      retainedDecodedRecordIds,
+    );
+    const cancel = () => {
+      const pending = this.streams.get(id);
+      if (!pending) return;
+      this.failStream(id, pending, new EpisodeReadCancelledError());
+      try {
+        worker.postMessage({ id, type: "cancel" });
+      } catch {
+        // Local rejection already settled the consumer.
+      }
+    };
+    if (signal?.aborted) {
+      throw new EpisodeReadCancelledError();
+    }
     const stream: PendingStream = {
+      ...(signal
+        ? { cleanup: () => signal.removeEventListener("abort", cancel) }
+        : {}),
       done: false,
       rejectors: [],
       resolvers: [],
       sourceKey,
+      supersessionKeys,
+      type,
       values: [],
+      yieldResponseBatches,
     };
 
+    signal?.addEventListener("abort", cancel, { once: true });
     this.streams.set(id, stream);
     try {
       worker.postMessage(message);
     } catch (error) {
       this.streams.delete(id);
-      throw mcapError(error);
+      stream.cleanup?.();
+      throw toError(error);
     }
 
     try {
       while (true) {
+        if (signal?.aborted) throw new EpisodeReadCancelledError();
         const next = await nextStreamValue(stream);
+        if (signal?.aborted) throw new EpisodeReadCancelledError();
         if (next.done) {
           return;
         }
@@ -181,6 +332,21 @@ export class McapPlaybackWorkerTransport {
       // It still owns this request id, so settle and remove it instead of
       // leaving the caller's promise hanging.
       this.pending.delete(response.id);
+      pending.cleanup?.();
+      if (
+        pending.type === "readBoundedMessages" &&
+        (pending.cancelled ||
+          (!response.ok && response.boundedReadCancellation !== undefined))
+      ) {
+        const usage = response.ok
+          ? "usage" in response.result
+            ? response.result.usage
+            : emptyMcapBoundedReadUsage()
+          : (response.boundedReadCancellation?.usage ??
+            emptyMcapBoundedReadUsage());
+        pending.reject(new McapBoundedReadCancelledError(usage));
+        return;
+      }
       if (response.ok) {
         pending.resolve(response.result);
       } else {
@@ -212,10 +378,12 @@ export class McapPlaybackWorkerTransport {
   rejectAll(reason: string) {
     const error = new Error(reason);
     for (const pending of this.pending.values()) {
+      pending.cleanup?.();
       pending.reject(error);
     }
     this.pending.clear();
     for (const stream of this.streams.values()) {
+      stream.cleanup?.();
       stream.error = error;
       stream.done = true;
       rejectStream(stream, error);
@@ -231,23 +399,34 @@ export class McapPlaybackWorkerTransport {
       return;
     }
     if (!this.isActiveSource(stream.sourceKey)) {
-      // Stale stream success has no active consumer anymore. Finish it so any
-      // awaiting iterator observes completion and the stream entry is released.
-      this.finishStream(response.id, stream);
+      // A synchronized stream without its terminal is incomplete. Surface a
+      // stale-source completion through the ordinary cancellation path so an
+      // owner never mistakes it for a protocol failure or retries it.
+      this.failStream(response.id, stream, new EpisodeReadCancelledError());
       return;
     }
 
     if (response.done) {
       this.finishStream(response.id, stream);
     } else {
-      pushStreamValue(stream, response.item);
+      const items = "items" in response ? response.items : [response.item];
+      if (stream.yieldResponseBatches) {
+        pushStreamValue(stream, items);
+      } else {
+        for (const item of items) {
+          pushStreamValue(stream, item);
+        }
+      }
     }
   }
 
   private cancelStream(worker: Worker, id: number, sourceKey: string) {
-    if (!this.streams.delete(id) || !this.isActiveSource(sourceKey)) {
+    const stream = this.streams.get(id);
+    if (!stream || !this.streams.delete(id)) {
       return;
     }
+    stream.cleanup?.();
+    if (!this.isActiveSource(sourceKey)) return;
 
     worker.postMessage({ id, type: "cancel" });
   }
@@ -255,12 +434,14 @@ export class McapPlaybackWorkerTransport {
   private finishStream(id: number, stream: PendingStream) {
     stream.done = true;
     this.streams.delete(id);
+    stream.cleanup?.();
     resolveStreamDone(stream);
   }
 
   private failStream(id: number, stream: PendingStream, error: Error) {
     stream.error = error;
     this.streams.delete(id);
+    stream.cleanup?.();
     rejectStream(stream, error);
   }
 }
@@ -277,6 +458,7 @@ function createRpcRequest<Type extends McapPlaybackWorkerUnaryType>(
   type: Type,
   payload: McapPlaybackWorkerRequestPayloadByType[Type],
   priority?: McapPlaybackWorkerPriority,
+  retainedDecodedRecordIds?: readonly string[],
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest<Type extends McapPlaybackWorkerStreamType>(
   id: number,
@@ -284,6 +466,7 @@ function createRpcRequest<Type extends McapPlaybackWorkerStreamType>(
   type: Type,
   payload: McapPlaybackWorkerRequestPayloadByType[Type],
   priority?: McapPlaybackWorkerPriority,
+  retainedDecodedRecordIds?: readonly string[],
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest(
   id: number,
@@ -291,11 +474,15 @@ function createRpcRequest(
   type: McapPlaybackWorkerRpcRequest["type"],
   payload: McapPlaybackWorkerRpcRequest["payload"],
   priority?: McapPlaybackWorkerPriority,
+  retainedDecodedRecordIds?: readonly string[],
 ): McapPlaybackWorkerRequest {
   return {
     id,
     payload,
     priority: priority ?? mcapPlaybackWorkerOperation(type).priority,
+    ...(retainedDecodedRecordIds && retainedDecodedRecordIds.length > 0
+      ? { retainedDecodedRecordIds }
+      : {}),
     sourceKey,
     type,
   } as McapPlaybackWorkerRequest;

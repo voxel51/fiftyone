@@ -1,7 +1,36 @@
+import type { Controller } from "@react-spring/web";
 import * as fos from "@fiftyone/state";
 import type { InteractiveItems } from "./types";
 
 export const MARGIN = 3;
+
+/** Stops the root and every per-entry controller so they detach from react-spring's frameloop (call on unmount). */
+export const disposeInteractiveItems = (
+  controller: Controller,
+  items: InteractiveItems,
+): void => {
+  controller.stop();
+  for (const key of Object.keys(items)) {
+    items[key].controller.stop();
+  }
+};
+
+/** Stops + removes controllers for entries no longer in `order` (they'd otherwise leak); returns count pruned. */
+export const pruneInteractiveItems = (
+  items: InteractiveItems,
+  order: string[],
+): number => {
+  const live = new Set(order);
+  let pruned = 0;
+  for (const key of Object.keys(items)) {
+    if (!live.has(key)) {
+      items[key].controller.stop();
+      delete items[key];
+      pruned++;
+    }
+  }
+  return pruned;
+};
 
 export enum Direction {
   UP = "UP",

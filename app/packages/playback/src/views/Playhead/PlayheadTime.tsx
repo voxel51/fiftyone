@@ -1,8 +1,9 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
+import { useTimelineDisplay } from "../../lib/playback/timeline-display";
 import { usePlayhead } from "../../lib/playback/use-playback-state";
-import { formatTime } from "../TimelineControls/timeline-controls-utils";
+import { formatDisplayValue } from "../TimelineControls/timeline-controls-utils";
 
 /**
  * Live playhead time readout, displayed as `currentTime / duration`.
@@ -12,6 +13,7 @@ import { formatTime } from "../TimelineControls/timeline-controls-utils";
 const PlayheadTime: React.FC = () => {
   const playhead = usePlayhead();
   const { duration } = usePlayback();
+  const { mode, toDisplay } = useTimelineDisplay();
   // `duration` is optional on the context (the engine can be mounted
   // without a fallback prop and before any stream has registered); guard
   // here so the readout never shows `NaN`.
@@ -26,7 +28,7 @@ const PlayheadTime: React.FC = () => {
           "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
       }}
     >
-      {`${formatTime(safePlayhead)} / ${formatTime(safeDuration)}`}
+      {`${formatDisplayValue(toDisplay(safePlayhead), mode)} / ${formatDisplayValue(toDisplay(safeDuration), mode)}`}
     </Text>
   );
 };

@@ -6,7 +6,13 @@ import {
   MenuSeparator,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Mosaic,
   MosaicBranch,
@@ -18,9 +24,11 @@ import {
 } from "react-mosaic-component";
 import "react-mosaic-component/react-mosaic-component.css";
 import { TileIdScope } from "../../lib/TilingProvider";
+import type { TilingLayoutMetrics } from "../../lib/types";
 import {
   useSetTileTitle,
   useTileTitle,
+  useTileTitleHighlighted,
   useTileTypes,
 } from "../../lib/use-tile-state";
 import { TileHeader } from "../Tile/Tile";
@@ -88,6 +96,8 @@ export interface MosaicGridProps {
    * make the empty canvas a spawn point.
    */
   zeroStateView?: React.ReactElement;
+  /** Reports measured canvas and tile-chrome geometry for auto-layout. */
+  onLayoutMetricsChange?: (metrics: TilingLayoutMetrics | null) => void;
   className?: string;
 }
 
@@ -124,6 +134,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
   onCloseOthers,
 }) => {
   const titleOverride = useTileTitle();
+  const titleHighlighted = useTileTitleHighlighted();
   const setTileTitle = useSetTileTitle();
   const tileTypes = useTileTypes();
   const [renameRequest, setRenameRequest] = useState(0);
@@ -221,6 +232,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
         <div className={styles.toolbarHeader} onContextMenu={onActionFocus}>
           <ContextMenu className={styles.toolbarContextMenu} menu={contextMenu}>
             <TileHeader
+              highlighted={titleHighlighted}
               title={title}
               onClose={onClose}
               onFullscreen={onFullscreen}
@@ -267,8 +279,10 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   expandedTileId,
   onExpandedTileIdChange,
   zeroStateView,
+  onLayoutMetricsChange,
   className,
 }) => {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [localExpandedTileId, setLocalExpandedTileId] = useState<string | null>(
     null,
   );
@@ -295,12 +309,33 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
       ? updateTree(value, [createExpandUpdate(expandedPath, 100)])
       : value;
 
-  // Clear stale fullscreen state if its tile no longer exists in the layout.
+  // This effect clears fullscreen state when its tile leaves the layout.
   useEffect(() => {
     if (activeExpandedTileId !== null && !isExpandedActive) {
       setActiveExpandedTileId(null);
     }
   }, [activeExpandedTileId, isExpandedActive, setActiveExpandedTileId]);
+
+  // This layout effect measures canvas and tile chrome before browser paint.
+  useLayoutEffect(() => {
+    if (!onLayoutMetricsChange || !rootRef.current) return undefined;
+    const root = rootRef.current;
+    const report = () => {
+      const metrics = measureMosaicLayoutMetrics(root);
+      onLayoutMetricsChange(
+        metrics.width > 0 && metrics.height > 0 ? metrics : null,
+      );
+    };
+    report();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(report);
+    observer.observe(root);
+    const tileWindow = root.querySelector<HTMLElement>(".mosaic-window");
+    const tileBody = root.querySelector<HTMLElement>(".mosaic-window-body");
+    if (tileWindow) observer.observe(tileWindow);
+    if (tileBody) observer.observe(tileBody);
+    return () => observer.disconnect();
+  }, [onLayoutMetricsChange, tiles, value]);
 
   const handleExpand = (id: string) => {
     if (activeExpandedTileId === id) {
@@ -377,7 +412,11 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   };
 
   return (
-    <div className={clsx(styles.root, className)} data-testid="mosaic-grid">
+    <div
+      className={clsx(styles.root, className)}
+      data-testid="mosaic-grid"
+      ref={rootRef}
+    >
       <Mosaic<string>
         className={styles.mosaic}
         value={displayValue}
@@ -401,6 +440,45 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     </div>
   );
 };
+
+/** Measures the usable mosaic canvas and fixed per-leaf layout insets. */
+export function measureMosaicLayoutMetrics(
+  root: HTMLElement,
+): TilingLayoutMetrics {
+  const rootRect = root.getBoundingClientRect();
+  const tile = root.querySelector<HTMLElement>(".mosaic-tile");
+  const tileWindow = tile?.querySelector<HTMLElement>(".mosaic-window");
+  const tileBody = tile?.querySelector<HTMLElement>(".mosaic-window-body");
+  if (!tile || !tileWindow || !tileBody) {
+    return {
+      width: rootRect.width,
+      height: rootRect.height,
+      tileHorizontalInset: 0,
+      tileVerticalInset: 0,
+    };
+  }
+
+  const style = getComputedStyle(tile);
+  const windowRect = tileWindow.getBoundingClientRect();
+  const bodyRect = tileBody.getBoundingClientRect();
+  const horizontalMargins =
+    pixelValue(style.marginLeft) + pixelValue(style.marginRight);
+  const verticalMargins =
+    pixelValue(style.marginTop) + pixelValue(style.marginBottom);
+  return {
+    width: rootRect.width,
+    height: rootRect.height,
+    tileHorizontalInset:
+      horizontalMargins + Math.max(0, windowRect.width - bodyRect.width),
+    tileVerticalInset:
+      verticalMargins + Math.max(0, windowRect.height - bodyRect.height),
+  };
+}
+
+function pixelValue(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 /**
  * Build a balanced binary tree layout from a flat list of tile ids.

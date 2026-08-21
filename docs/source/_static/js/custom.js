@@ -531,6 +531,41 @@ const initKapaAI = () => {
     mcpEnabled: "true",
     mcpServerUrl: "https://voxel51.mcp.kapa.ai",
     customizationId: "79381c29-919b-4c49-82eb-a90fd89b5501",
+    handoffEmail: "support@voxel51.com",
+    handoffButtonText: "Get enterprise",
+    handoffTriggers: "conversation-length",
+    handoffConversationLengthThreshold: "1",
+    handoffButtonBackgroundColor: "#ff6d04",
+    handoffButtonHoverBackgroundColor: "#e85a00",
+    handoffButtonColor: "#ffffff",
+    handoffButtonHoverColor: "#ffffff",
+  });
+
+  script.addEventListener("load", () => {
+    if (!window.Kapa) return;
+
+    window.dataLayer = window.dataLayer || [];
+    const trackHandoffEvent = (event, payload) => {
+      window.dataLayer.push({
+        event,
+        handoffThreadId: payload.threadId,
+        handoffQuestionAnswerId: payload.questionAnswerId,
+        handoffTriggersMatched: payload.triggersMatched,
+        ...(payload.noteLength !== undefined && {
+          handoffNoteLength: payload.noteLength,
+        }),
+      });
+    };
+
+    window.Kapa("onAskAIHandoffOpen", (payload) =>
+      trackHandoffEvent("kapa_handoff_open", payload)
+    );
+    window.Kapa("onAskAIHandoffSubmit", (payload) =>
+      trackHandoffEvent("kapa_handoff_submit", payload)
+    );
+    window.Kapa("onAskAIHandoffCancel", (payload) =>
+      trackHandoffEvent("kapa_handoff_cancel", payload)
+    );
   });
 
   document.head.appendChild(script);
@@ -812,12 +847,6 @@ function initScrollSpyFix() {
   updateActiveSection();
 }
 
-function initNavIcons() {
-  document.querySelectorAll(".nav.bd-sidenav a.reference").forEach((a) => {
-    if (a.textContent.trim() === "FiftyOne Labs") a.classList.add("nav-labs");
-  });
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initSlidingNavBar();
@@ -830,7 +859,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initDynamicCTAs();
   initDirectAgentAccess();
   initAIChatButtons();
-  initNavIcons();
 });
 
 /* ScrollSpy initializes on window.load, so we must run after it */

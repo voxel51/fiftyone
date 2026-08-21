@@ -4,6 +4,7 @@ import {
   useAnnotationEventHandler,
   useSurfaceActions,
 } from "@fiftyone/annotation";
+import type { LabelData } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { useVideoPropagate } from "./useVideoPropagate";
@@ -65,7 +66,7 @@ export const useAutoInterpolate = (): void => {
   const sampleId = useActiveSampleId();
   const stream = useFrameLabelsStream();
   const propagate = useVideoPropagate();
-  const actions = useSurfaceActions(engine, SURFACE);
+  const actions = useSurfaceActions(engine, SURFACE, sampleId);
 
   useAnnotationEventHandler(
     "annotation:keyframeChanged",
@@ -139,11 +140,25 @@ export const useAutoInterpolate = (): void => {
           });
           const hasNextKeyframe = keyframeFrames.some((kf) => kf > frame);
 
-          if (
-            anchor &&
-            Array.isArray(anchor.bounding_box) &&
-            !hasNextKeyframe
-          ) {
+          // Whichever geometry the track carries. A polyline's filler has to be
+          // refreshed the same way a box's is: the frames forward of the only
+          // keyframe were filled when the shape was first drawn (one vertex), so
+          // without this every vertex added afterwards would live on the drawn
+          // frame alone and the rest of the track would keep the stale shape.
+          const held: Partial<LabelData> | null = !anchor
+            ? null
+            : Array.isArray(anchor.bounding_box)
+              ? { bounding_box: anchor.bounding_box }
+              : Array.isArray(anchor.points) &&
+                  (anchor.points as unknown[]).length > 0
+                ? {
+                    points: anchor.points,
+                    closed: anchor.closed,
+                    filled: anchor.filled,
+                  }
+                : null;
+
+          if (held && !hasNextKeyframe) {
             const tailFrames = presentFrames.filter((f) => f > frame);
 
             if (tailFrames.length > 0) {
@@ -164,7 +179,7 @@ export const useAutoInterpolate = (): void => {
 
                     actions.updateLabel(
                       { path, instanceId, frame: tailFrame },
-                      { bounding_box: anchor.bounding_box, keyframe: false },
+                      { ...held, keyframe: false },
                     );
                   }
                 },

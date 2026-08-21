@@ -8,8 +8,15 @@ import {
   usePlaybackStore,
 } from "../../lib/playback/PlaybackProvider";
 import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
-import { setHoverTime } from "../../lib/playback/store-access";
-import { useHoverTime } from "../../lib/playback/use-playback-state";
+import {
+  publishInspectionMarker,
+  setHoverTime,
+} from "../../lib/playback/store-access";
+import type { TimelineMode } from "../../lib/playback/types";
+import {
+  useHoverTime,
+  usePlayhead,
+} from "../../lib/playback/use-playback-state";
 import TimelineRuler from "./TimelineRuler";
 import styles from "./TimelineRuler.module.css";
 
@@ -34,6 +41,12 @@ function HoverReadout() {
   );
 }
 
+// Renders the playhead so tests can assert on it after a drag/click-to-seek.
+function PlayheadReadout() {
+  const playhead = usePlayhead();
+  return <span data-testid="playhead">{playhead.toFixed(2)}</span>;
+}
+
 function Seeker({ time }: { time: number }) {
   const { seek } = usePlayback();
   useEffect(() => {
@@ -54,6 +67,15 @@ function ViewSetter({ start, end }: { start: number; end: number }) {
   return null;
 }
 
+function InspectionMarkerPublisher({ time }: { time: number }) {
+  const store = usePlaybackStore();
+  // This effect publishes the marker value under test into the scoped store.
+  useEffect(() => {
+    publishInspectionMarker(store, "test-owner", time);
+  }, [store, time]);
+  return null;
+}
+
 interface RenderOpts {
   duration?: number;
   labelWidth?: number;
@@ -62,6 +84,8 @@ interface RenderOpts {
   viewEnd?: number;
   defaultLoopStart?: number;
   defaultLoopEnd?: number;
+  mode?: TimelineMode;
+  markerTime?: number;
 }
 
 /** Renders the ruler inside a positioned outer so getBoundingClientRect-driven math works. */
@@ -74,6 +98,8 @@ function renderRuler(opts: RenderOpts = {}) {
     viewEnd,
     defaultLoopStart,
     defaultLoopEnd,
+    mode,
+    markerTime,
   } = opts;
   return render(
     <PlaybackProvider
@@ -81,14 +107,19 @@ function renderRuler(opts: RenderOpts = {}) {
       stepInterval={1 / 30}
       defaultLoopStart={defaultLoopStart}
       defaultLoopEnd={defaultLoopEnd}
+      mode={mode}
     >
       {viewStart !== undefined && viewEnd !== undefined ? (
         <ViewSetter start={viewStart} end={viewEnd} />
       ) : null}
       {seekTo !== undefined ? <Seeker time={seekTo} /> : null}
+      {markerTime !== undefined ? (
+        <InspectionMarkerPublisher time={markerTime} />
+      ) : null}
       <TimelineRuler labelWidth={labelWidth} />
       <ViewReadout />
       <HoverReadout />
+      <PlayheadReadout />
     </PlaybackProvider>,
   );
 }
@@ -120,6 +151,7 @@ describe("TimelineRuler", () => {
   // Save the original so afterEach can restore Element.prototype — otherwise
   // the stub leaks into later test suites that share the test runner.
   const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
+  const originalSetPointerCapture = Element.prototype.setPointerCapture;
 
   beforeEach(() => {
     // The wheel handler reads getBoundingClientRect to convert the cursor's
@@ -135,11 +167,15 @@ describe("TimelineRuler", () => {
       height: 24,
       toJSON: () => ({}),
     }));
+    // useDragDelta calls setPointerCapture on drag start; jsdom doesn't
+    // implement it.
+    Element.prototype.setPointerCapture = vi.fn();
   });
 
   afterEach(() => {
     cleanup();
     Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    Element.prototype.setPointerCapture = originalSetPointerCapture;
   });
 
   describe("structure", () => {
@@ -255,6 +291,165 @@ describe("TimelineRuler", () => {
       expect(inlineStyle(ticks[0])).toContain("left: 0%");
       expect(inlineStyle(ticks[ticks.length - 1])).toContain("left: 100%");
     });
+
+    it("widens the interval on long files so ticks stay uncramped", () => {
+      // A 60s file zoomed all the way out used to render one label per second
+      // (61 ticks). It now scales up to a nicer interval.
+      const { container } = renderRuler({
+        duration: 60,
+        viewStart: 0,
+        viewEnd: 60,
+      });
+      const ticks = container.querySelectorAll(`.${styles.tick}`);
+      // 10s spacing → 7 ticks (0..60), well under the old crush.
+      expect(ticks).toHaveLength(7);
+    });
+
+    it("keeps a bounded tick count regardless of duration", () => {
+      const { container } = renderRuler({
+        duration: 300,
+        viewStart: 0,
+        viewEnd: 300,
+      });
+      const ticks = container.querySelectorAll(`.${styles.tick}`);
+      // 30s spacing → 11 ticks (0..300), never hundreds.
+      expect(ticks.length).toBeLessThanOrEqual(12);
+    });
+
+    it("labels ticks past a minute as m:ss", () => {
+      const { container } = renderRuler({
+        duration: 120,
+        viewStart: 0,
+        viewEnd: 120,
+      });
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
+      // Sub-minute ticks stay in seconds; minute+ ticks read as m:ss.
+      expect(labels).toContain("30s");
+      expect(labels).toContain("1:00");
+      expect(labels).toContain("1:30");
+      expect(labels).toContain("2:00");
+    });
+  });
+
+  describe("mode-aware ticks", () => {
+    it("labels sequence-mode ticks as frame numbers, spaced on frame boundaries", () => {
+      const { container } = renderRuler({
+        duration: 1,
+        viewStart: 0,
+        viewEnd: 1,
+        mode: { kind: "sequence", fps: 10 },
+      });
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
+      // 1s at 10fps = frames 0..10, one tick per frame (smallest interval).
+      expect(labels).toEqual([
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+      ]);
+    });
+
+    it("labels absolute-mode ticks as HH:MM:SS.mmm wall-clock time", () => {
+      const { container } = renderRuler({
+        duration: 2,
+        viewStart: 0,
+        viewEnd: 2,
+        // 1970-01-01T00:00:10.000Z
+        mode: { kind: "absolute", epochAnchorMs: 10_000 },
+      });
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
+      expect(labels[0]).toBe("00:00:10.000");
+      expect(labels[labels.length - 1]).toBe("00:00:12.000");
+    });
+
+    it("caps the tick count instead of hanging on a corrupt/huge duration", () => {
+      // A mismeasured scene (e.g. streams disagreeing on epoch vs. elapsed
+      // time) can blow the duration out to years; the ruler must degrade
+      // gracefully rather than render millions of ticks.
+      const { container } = renderRuler({
+        duration: 1_600_000_000,
+        viewStart: 0,
+        viewEnd: 1_600_000_000,
+        mode: { kind: "sequence", fps: 12 },
+      });
+      const ticks = container.querySelectorAll(`.${styles.tick}`);
+      expect(ticks.length).toBeLessThanOrEqual(500);
+    });
+  });
+
+  describe("scrub quantization", () => {
+    // Sequence mode has no such thing as frame 2.5 — click-to-seek and
+    // playhead drag should quantize onto whole frames, independent of the
+    // (unrelated) snapToFrameOnSettle provider option, which defaults off
+    // here and is never set in these tests.
+    //
+    // jsdom's PointerEvent constructor doesn't propagate clientX from an
+    // init object the way `fireEvent.pointerDown(el, { clientX })` expects
+    // (same class of issue as the offsetX note in SimplePlaybackBar's
+    // tests) — build a plain MouseEvent instead, matching the convention
+    // already used for pointermove in the hover-caret tests below.
+    const pointerDownAt = (el: Element, clientX: number) =>
+      fireEvent(el, new MouseEvent("pointerdown", { bubbles: true, clientX }));
+    const pointerUpAt = (el: Element, clientX: number) =>
+      fireEvent(el, new MouseEvent("pointerup", { bubbles: true, clientX }));
+    const pointerMoveAt = (el: Element, clientX: number) =>
+      fireEvent(el, new MouseEvent("pointermove", { bubbles: true, clientX }));
+
+    it("quantizes a lane click to the nearest frame in sequence mode", () => {
+      const { getByTestId } = renderRuler({
+        duration: 10,
+        viewStart: 0,
+        viewEnd: 10,
+        mode: { kind: "sequence", fps: 10 },
+      });
+      const ruler = getByTestId("timeline-ruler");
+      // Lane is 1000px wide (stubbed) for a 10s view → clientX=533 is 5.33s,
+      // which at 10fps (0.1s/frame) quantizes to frame 53 → 5.3s exactly.
+      pointerDownAt(ruler, 533);
+      pointerUpAt(ruler, 533);
+      expect(getByTestId("playhead").textContent).toBe("5.30");
+    });
+
+    it("does not quantize a lane click in duration mode", () => {
+      const { getByTestId } = renderRuler({
+        duration: 10,
+        viewStart: 0,
+        viewEnd: 10,
+      });
+      const ruler = getByTestId("timeline-ruler");
+      pointerDownAt(ruler, 533);
+      pointerUpAt(ruler, 533);
+      expect(getByTestId("playhead").textContent).toBe("5.33");
+    });
+
+    it("quantizes a playhead drag to the nearest frame in sequence mode", () => {
+      const { getByTestId } = renderRuler({
+        duration: 10,
+        viewStart: 0,
+        viewEnd: 10,
+        seekTo: 0,
+        mode: { kind: "sequence", fps: 10 },
+      });
+      const handle = document.querySelector(`.${styles.playheadHandle}`)!;
+      pointerDownAt(handle, 0);
+      // +533px of delta over a 1000px/10s lane → +5.33s from the seekTo=0
+      // start, which quantizes to frame 53 → 5.3s exactly.
+      pointerMoveAt(handle, 533);
+      expect(getByTestId("playhead").textContent).toBe("5.30");
+    });
   });
 
   describe("playhead positioning", () => {
@@ -280,6 +475,64 @@ describe("TimelineRuler", () => {
       });
       const group = container.querySelector(`.${styles.playheadGroup}`);
       expect(inlineStyle(group!)).toContain("translate3d(25%");
+    });
+  });
+
+  describe("inspection marker", () => {
+    it("renders the exact marker inside the viewport", () => {
+      const { container } = renderRuler({
+        duration: 10,
+        markerTime: 5.123456,
+      });
+      const marker = screen.getByRole("img", {
+        name: "Inspected message time",
+      });
+      expect(
+        container.querySelector(`.${styles.inspectionCaretCap}`),
+      ).not.toBeNull();
+      expect(inlineStyle(marker)).toContain("translate3d(51.2345");
+    });
+
+    it("gates the marker outside the viewport", () => {
+      renderRuler({
+        duration: 10,
+        markerTime: 2,
+        viewEnd: 8,
+        viewStart: 4,
+      });
+      expect(screen.queryByTestId("timeline-inspection-caret")).toBeNull();
+    });
+
+    it("includes both viewport boundaries", () => {
+      const start = renderRuler({
+        duration: 10,
+        markerTime: 4,
+        viewEnd: 8,
+        viewStart: 4,
+      });
+      expect(screen.getByTestId("timeline-inspection-caret")).toBeTruthy();
+      start.unmount();
+
+      renderRuler({
+        duration: 10,
+        markerTime: 8,
+        viewEnd: 8,
+        viewStart: 4,
+      });
+      expect(screen.getByTestId("timeline-inspection-caret")).toBeTruthy();
+    });
+
+    it("coexists with hover and the real playhead", () => {
+      const { container } = renderRuler({ markerTime: 4, seekTo: 6 });
+      fireEvent(
+        screen.getByTestId("timeline-ruler"),
+        new MouseEvent("pointermove", { bubbles: true, clientX: 200 }),
+      );
+      expect(screen.getByTestId("timeline-inspection-caret")).toBeTruthy();
+      expect(screen.getByTestId("timeline-hover-caret")).toBeTruthy();
+      expect(
+        container.querySelector(`.${styles.playheadGroup}`),
+      ).not.toBeNull();
     });
   });
 

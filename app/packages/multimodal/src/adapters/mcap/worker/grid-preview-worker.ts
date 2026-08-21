@@ -1,9 +1,15 @@
 import { setFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
-import { mcapErrorMessage } from "../errors";
-import { decodeGridPreview, type McapGridPreviewEntry } from "../grid-preview";
-import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
-import { MCAP_PLAYBACK_WORKER_PRIORITY } from "./playback-worker-types";
+import { throwIfAborted } from "../../../utils/cancellation";
+import { errorMessage } from "../../../utils/errors";
+import {
+  decodeGridPreview,
+  type McapGridPreviewEntry,
+} from "../resource-client/grid-preview";
+import {
+  McapPlaybackWorkerScheduler,
+  type McapPlaybackWorkerRunContext,
+} from "./playback-worker-scheduler";
 import { createWorkerResourceClient } from "./worker-resource-client";
 import type {
   McapGridPreviewWorkerRequest,
@@ -11,6 +17,9 @@ import type {
   McapGridPreviewWorkerRpcRequest,
 } from "./grid-preview-worker-types";
 
+// Visibility-gated loading keeps the active set near one dense viewport. A
+// 24-source limit still covers the observed one-worker viewport while bounding
+// reader/index and per-client byte-cache memory to 120 sources across 5 lanes.
 const GRID_PREVIEW_SOURCE_CACHE_LIMIT = 24;
 
 type McapGridPreviewWorkerScope = {
@@ -26,6 +35,12 @@ type McapGridPreviewWorkerScope = {
 
 const workerScope = self as unknown as McapGridPreviewWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
+// Grid requests are serialized by `scheduler`, so all cached source readers
+// can safely consult one mutable request-signal slot. Cancellation then stops
+// request-owned demand reads without rebuilding the per-source reader cache.
+// The byte cache's bounded autonomous readahead intentionally omits this
+// signal: it remains background-only and reusable by a same-range modal read.
+const activeReadSignal: { current: AbortSignal | null } = { current: null };
 let fillSlotClass: "background" | "priority" | undefined;
 // Each grid preview slot serves many sources (one per visible grid cell), so
 // keep a bounded per-source cache of readers and stream selections.
@@ -63,18 +78,24 @@ workerScope.onmessage = (event: MessageEvent<McapGridPreviewWorkerRequest>) => {
 
   scheduler.enqueue({
     id: message.id,
-    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-    run: () => runAndRespond(message),
+    priority: message.priority,
+    run: (context) => runAndRespond(message, context),
     sourceKey: message.sourceKey,
   });
 };
 
-async function runAndRespond(message: McapGridPreviewWorkerRpcRequest) {
+async function runAndRespond(
+  message: McapGridPreviewWorkerRpcRequest,
+  context: McapPlaybackWorkerRunContext,
+) {
+  activeReadSignal.current = context.signal;
   try {
+    throwIfAborted(context.signal);
     const result = await decodeGridPreview(
       entryForSource(message.sourceKey),
       message.payload,
     );
+    throwIfAborted(context.signal);
 
     postResponse({
       id: message.id,
@@ -83,10 +104,12 @@ async function runAndRespond(message: McapGridPreviewWorkerRpcRequest) {
     });
   } catch (error) {
     postResponse({
-      error: mcapErrorMessage(error),
+      error: errorMessage(error),
       id: message.id,
       ok: false,
     });
+  } finally {
+    activeReadSignal.current = null;
   }
 }
 
@@ -97,7 +120,10 @@ function entryForSource(sourceKey: string): McapGridPreviewEntry {
   }
 
   const entry = {
-    client: createWorkerResourceClient(fillSlotClass ? { fillSlotClass } : {}),
+    client: createWorkerResourceClient({
+      ...(fillSlotClass ? { fillSlotClass } : {}),
+      readSignal: activeReadSignal,
+    }),
   };
   entries.set(sourceKey, entry);
 
@@ -117,7 +143,11 @@ function transferablesForResponse(
 
   const frame = response.result.state.frame;
   if (frame?.kind === "image") {
-    return transferableBuffers(frame.image.bytes);
+    return transferableBuffers(
+      frame.image.kind === "raw-image"
+        ? (frame.image.depth?.values ?? frame.image.rgba)
+        : frame.image.bytes,
+    );
   }
 
   if (frame?.kind === "point-cloud") {
@@ -125,6 +155,12 @@ function transferablesForResponse(
       frame.pointCloud.positions,
       frame.pointCloud.colors,
       ...(frame.pointCloud.scalarFields?.map((field) => field.values) ?? []),
+      frame.pointCloud.renderPayload?.positions,
+      frame.pointCloud.renderPayload?.rgb?.values,
+      frame.pointCloud.renderPayload?.sourceIndices,
+      ...(frame.pointCloud.renderPayload?.scalarFields.map(
+        (field) => field.values,
+      ) ?? []),
     );
   }
 

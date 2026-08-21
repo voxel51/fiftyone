@@ -73,6 +73,7 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
         src={videoSrc}
         preload="auto"
         playsInline
+        // pixels only
         muted
         onLoadedMetadata={(e) => {
           const v = e.currentTarget;

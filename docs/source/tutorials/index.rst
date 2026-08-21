@@ -246,8 +246,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
-   Building Annotation Workflows and Ontologies __SUB_NEW__ <fiftyone_annotation_workflows.ipynb>
-   Using FiftyOne Skills with Gemini CLI __SUB_NEW__ <gemini_fiftyone_skills.ipynb>   
+   Using FiftyOne Skills with Gemini CLI __SUB_NEW__ <gemini_fiftyone_skills.ipynb>
    Integrating NVIDIA Cosmos-Transfer with FiftyOne __SUB_NEW__ <cosmos-transfer-integration.ipynb>
    Google Gemini Vision in FiftyOne __SUB_NEW__ <gemini_vision.ipynb>
    Exploring Kaputt Dataset <kaputt_dataset.ipynb>
@@ -255,21 +254,11 @@ your datasets and turn your good models into *great models*.
    pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>
    Evaluating a classifier <evaluate_classifications.ipynb>
-   Using image embeddings <image_embeddings.ipynb>
-   Annotating with CVAT <cvat_annotation.ipynb>
-   Annotating with Labelbox <labelbox_annotation.ipynb>
    Working with Open Images <open_images.ipynb>
-   Training with Detectron2 <detectron2.ipynb>
-   Exploring image uniqueness <uniqueness.ipynb>
-   Finding class mistakes <classification_mistakes.ipynb>
-   Finding detection mistakes <detection_mistakes.ipynb>
    Embeddings with Qdrant <qdrant.ipynb>
-   Fine-tuning YOLOv8 models <yolov8.ipynb>
    3D point clouds with Point-E <pointe.ipynb>
    Monocular depth estimation <monocular_depth_estimation.ipynb>
-   Dimensionality reduction <dimension_reduction.ipynb>
    Zero-shot classification <zero_shot_classification.ipynb>
    Data augmentation <data_augmentation.ipynb>
-   Clustering images <clustering.ipynb>
    Detecting small objects <small_object_detection.ipynb>
    Anomaly detection <anomaly_detection.ipynb>

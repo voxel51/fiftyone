@@ -1,7 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { isNativeMediaType } from "@fiftyone/utilities";
 import type { Schema } from "@fiftyone/utilities";
-import mime from "mime";
 import type React from "react";
 
 type SampleRendererSurface = "grid" | "modal";
@@ -62,6 +60,12 @@ export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
   SampleRendererMatchContext<TSample> & {
     dataset: fos.State.Dataset;
     schema: Schema;
+    /**
+     * The modal selected a new sample whose record is still resolving. A
+     * persistent renderer may keep shell state mounted, but must not present
+     * source-backed content from the retained sample.
+     */
+    transitioning?: boolean;
   };
 
 /**
@@ -69,6 +73,10 @@ export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
  */
 export type SampleRendererProps = {
   ctx: SampleRendererRenderContext<SampleRendererSampleLike>;
+  /** Whether a grid renderer is both mounted and unobscured by the modal. */
+  isGridActive?: boolean;
+  /** Reports renderer-owned retained bytes to the grid's hidden-item LRU. */
+  onRetainedBytesChange?: (retainedBytes: number) => void;
 };
 
 /**
@@ -82,11 +90,45 @@ export type SampleRendererGridSlot =
   (typeof SAMPLE_RENDERER_GRID_SLOT)[keyof typeof SAMPLE_RENDERER_GRID_SLOT];
 
 /**
+ * Controls how otherwise-unhandled grid-tile activation events are routed.
+ *
+ * - `"renderer"` (default) keeps click and context-menu events inside the
+ *   sample renderer. Users open the sample modal with the grid's explicit
+ *   open-modal control.
+ * - `"passthrough"` allows those events to bubble to the host grid, where a
+ *   normal tile click opens the sample modal. Renderer-owned interactive
+ *   regions can still call `stopPropagation()` to retain their interactions.
+ *
+ * This option does not disable pointer events or affect hover behavior,
+ * renderer-owned controls, the sample-selection checkbox, or the explicit
+ * open-modal control.
+ */
+export type SampleRendererGridClickBehavior = "renderer" | "passthrough";
+
+/**
  * Grid-specific renderer behavior, including enablement and optional override.
  */
 export type GridConfig = {
+  /**
+   * Enables the sample renderer on the grid surface. Grid rendering is
+   * disabled unless this is explicitly set to `true`.
+   */
   enabled?: boolean;
+  /**
+   * Optional component used only on the grid surface. When omitted, the
+   * renderer's canonical component is used in both the grid and modal.
+   */
   overrideComponent?: React.FunctionComponent<SampleRendererProps>;
+  /**
+   * Controls whether otherwise-unhandled tile activation events stay within
+   * the renderer or pass through to the host grid. Defaults to `"renderer"`.
+   *
+   * Use `"passthrough"` for non-interactive previews that should behave like
+   * native grid tiles. A renderer that mixes interactive and non-interactive
+   * regions may opt into passthrough and call `stopPropagation()` only from
+   * the interactive regions.
+   */
+  clickBehavior?: SampleRendererGridClickBehavior;
   /**
    * Components rendered in named grid slots while this renderer is active.
    */
@@ -190,26 +232,6 @@ function matchesField(allowed: string[] | undefined, value: string | null) {
   return !allowed?.length || (Boolean(value) && allowed.includes(value));
 }
 
-function getSampleMimeType(
-  sample: SampleRendererSampleLike["sample"],
-  selectedMediaPath?: string | null,
-) {
-  if (selectedMediaPath && selectedMediaPath !== sample.filepath) {
-    const mimeFromSelectedPath = mime.getType(selectedMediaPath);
-
-    if (mimeFromSelectedPath) {
-      return mimeFromSelectedPath;
-    }
-  }
-
-  if (sample.metadata?.mime_type) {
-    return sample.metadata.mime_type;
-  }
-
-  const mimeFromFilePath = mime.getType(sample.filepath);
-  return mimeFromFilePath ?? null;
-}
-
 /**
  * Returns true when a match-media config includes at least one matcher.
  */
@@ -274,12 +296,11 @@ export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
 ) {
   const urls = sample.urls ? fos.getNormalizedUrls(sample.urls) : undefined;
 
-  return (
-    urls?.[selectedMediaField] ||
-    urls?.filepath ||
-    sample.sample.filepath ||
-    null
-  );
+  return fos.resolveMediaFieldLooker({
+    mediaField: selectedMediaField,
+    sample: sample.sample,
+    urls: urls ?? {},
+  }).selectedMediaPath;
 }
 
 /**
@@ -288,7 +309,13 @@ export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
 export function createSampleRendererMediaContext<
   TSample extends SampleRendererSampleLike,
 >(sample: TSample, selectedMediaField: string): SampleRendererMediaContext {
-  const path = getSelectedMediaPath(sample, selectedMediaField);
+  const urls = sample.urls ? fos.getNormalizedUrls(sample.urls) : undefined;
+  const selectedMedia = fos.resolveMediaFieldLooker({
+    mediaField: selectedMediaField,
+    sample: sample.sample,
+    urls: urls ?? {},
+  });
+  const path = selectedMedia.selectedMediaPath;
   const mediaType =
     sample.sample.media_type ?? sample.sample._media_type ?? null;
 
@@ -297,9 +324,9 @@ export function createSampleRendererMediaContext<
     path,
     url: path ? fos.getSampleSrc(path) : null,
     extension: getFileExtension(path),
-    mimeType: getSampleMimeType(sample.sample, path),
+    mimeType: selectedMedia.mimeType,
     mediaType,
-    isNative: isNativeMediaType(mediaType ?? "unknown"),
+    isNative: selectedMedia.nativeLookerType !== null,
   };
 }
 

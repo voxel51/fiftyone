@@ -580,16 +580,140 @@ describe("TilingProvider", () => {
       });
       expect(result.current.expandedTileId).toBeNull();
     });
+
+    it("passes measured mosaic geometry to the custom strategy", () => {
+      const metrics = {
+        width: 1200,
+        height: 700,
+        tileHorizontalInset: 6,
+        tileVerticalInset: 34,
+      };
+      const autoLayoutStrategy = vi.fn(() => "a-1");
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            autoLayoutStrategy={autoLayoutStrategy}
+            initialLayout="a-1"
+            initialTiles={{ "a-1": makeTile("a") }}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      act(() => {
+        result.current.setLayoutMetrics(metrics);
+        result.current.autoLayout();
+      });
+
+      expect(autoLayoutStrategy).toHaveBeenCalledWith(["a-1"], metrics);
+    });
+  });
+
+  describe("resetLayout", () => {
+    it("restores the initial tile set and arrangement by default", () => {
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const initialLayout = {
+        direction: "column" as const,
+        first: "a-1",
+        second: "b-1",
+        splitPercentage: 30,
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialLayout={initialLayout}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      act(() => {
+        result.current.removeTile("a-1");
+        result.current.setTileTitle("b-1", "renamed");
+        result.current.resetLayout();
+      });
+
+      expect(result.current.tiles).toEqual(initialTiles);
+      expect(result.current.manualTileTitles).toEqual({});
+      expect(result.current.layout).toEqual(initialLayout);
+      expect(result.current.focusedTileId).toBeNull();
+      expect(result.current.expandedTileId).toBeNull();
+    });
+
+    it("can restore host defaults instead of a persisted initial layout", () => {
+      const persistedTiles = { "image-9": makeTile("persisted") };
+      const defaultTiles = {
+        "image-1": makeTile("front"),
+        "image-2": makeTile("rear"),
+      };
+      const defaultLayout = {
+        direction: "row" as const,
+        first: "image-1",
+        second: "image-2",
+        splitPercentage: 50,
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={persistedTiles}
+            initialLayout="image-9"
+            resetTiles={defaultTiles}
+            resetLayout={defaultLayout}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      act(() => result.current.resetLayout());
+
+      expect(result.current.tiles).toEqual(defaultTiles);
+      expect(result.current.layout).toEqual(defaultLayout);
+    });
+
+    it("can rebuild host defaults from current mosaic geometry", () => {
+      const metrics = {
+        width: 1200,
+        height: 700,
+        tileHorizontalInset: 6,
+        tileVerticalInset: 34,
+      };
+      const resetLayoutStrategy = vi.fn(() => "image-1");
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialLayout="image-9"
+            initialTiles={{ "image-9": makeTile("persisted") }}
+            resetLayoutStrategy={resetLayoutStrategy}
+            resetTiles={{ "image-1": makeTile("default") }}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      act(() => {
+        result.current.setLayoutMetrics(metrics);
+        result.current.resetLayout();
+      });
+
+      expect(resetLayoutStrategy).toHaveBeenCalledWith(["image-1"], metrics);
+      expect(result.current.layout).toBe("image-1");
+    });
   });
 
   describe("useTiling guard", () => {
     it("throws when called outside a TilingProvider", () => {
-      const consoleError = console.error;
-      console.error = () => {};
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
       expect(() => renderHook(() => useTiling())).toThrow(
         "useTiling must be used inside <TilingProvider>",
       );
-      console.error = consoleError;
+      consoleError.mockRestore();
     });
   });
 
@@ -704,6 +828,7 @@ const KindTile: React.FC = () => <div data-testid="kind-body" />;
 /** Registers a `camera` tile kind for spawn-op tests. */
 function RegisterCameraKind() {
   const { registerTile } = useTileRegistry();
+  // This effect registers the camera tile kind for spawn-operation tests.
   useEffect(
     () =>
       registerTile({
@@ -719,6 +844,7 @@ function RegisterCameraKind() {
 
 function RegisterLidarKind() {
   const { registerTile } = useTileRegistry();
+  // This effect registers the lidar tile kind for spawn-operation tests.
   useEffect(
     () =>
       registerTile({

@@ -131,12 +131,14 @@ describe("useTemporal", () => {
 });
 
 describe("useSurfaceActions", () => {
-  it("writes through the ambient sample scope", () => {
+  it("writes through the given sample scope", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
 
-    const { result } = renderHook(() => useSurfaceActions(engine, "sidebar"));
+    const { result } = renderHook(() =>
+      useSurfaceActions(engine, "sidebar", "sample-1"),
+    );
 
     act(() => {
       result.current.updateLabel(
@@ -152,7 +154,7 @@ describe("useSurfaceActions", () => {
   it("is referentially stable across re-renders", () => {
     const { engine } = makeEngine();
     const { result, rerender } = renderHook(() =>
-      useSurfaceActions(engine, "sidebar"),
+      useSurfaceActions(engine, "sidebar", "sample-1"),
     );
     const first = result.current;
 

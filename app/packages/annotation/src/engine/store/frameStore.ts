@@ -5,8 +5,11 @@
  * other.
  *
  * Identity: `instanceId` is the TRACK's `instance._id`, not the per-frame
- * document `_id`. So `(instanceId, frameN)` and `(instanceId, frameM)` are
- * distinct refs (the same track's box on two frames), and
+ * document `_id` — or, for an instance-less label carrying a persisted track
+ * `index`, the synthetic `track-<index>` (see `addressIdOf`), so a track that
+ * groups its frames by `index` alone still coalesces. So `(instanceId, frameN)`
+ * and `(instanceId, frameM)` are distinct refs (the same track's box on two
+ * frames), and
  * `linkageKey === instanceId` aggregates the whole track — one canvas handle per
  * track, the playhead choosing which frame's geometry it shows. The per-frame
  * document `_id` is minted on create, preserved on edit, and round-tripped as a
@@ -34,6 +37,7 @@ import {
 } from "@fiftyone/utilities";
 
 import { toSchemaField } from "../identity/framePath";
+import { addressIdOf, indexFromAddressId } from "../identity/ref";
 import type { LabelRef } from "../identity/ref";
 import type {
   ChangeListener,
@@ -62,10 +66,20 @@ export interface FrameStoreOptions {
   data?: FramesData;
 }
 
-/** Track identity is `instance._id`; fall back to the doc `_id` (legacy, no instance). */
-const addressIdOf = (label: LabelData): string | undefined => {
-  const instance = label.instance as { _id?: string } | undefined;
-  return instance?._id ?? label._id;
+/**
+ * The identity fields a freshly-born or replayed label carries so it addresses
+ * back to `ref.instanceId`: an index-based track stamps its `index` (no
+ * synthetic `instance._id` gets persisted); everything else stamps the
+ * `instance._id`, which for an untracked detection is its own doc `_id`.
+ */
+const identityFields = (instanceId: string): Partial<LabelData> => {
+  const index = indexFromAddressId(instanceId);
+
+  if (index !== undefined) {
+    return { index };
+  }
+
+  return { instance: { _id: instanceId, _cls: "Instance" } };
 };
 
 export class FrameStore implements LabelStore {
@@ -125,10 +139,7 @@ export class FrameStore implements LabelStore {
 
         for (const label of this.listAt(frame, path)) {
           const instanceId = addressIdOf(label);
-
-          if (instanceId !== undefined) {
-            refs.push({ sample: this.sample, path, instanceId, frame });
-          }
+          refs.push({ sample: this.sample, path, instanceId, frame });
         }
       }
     }
@@ -166,8 +177,10 @@ export class FrameStore implements LabelStore {
     // exact value (undo/redo replays) but identity survives the round-trip
     this.writeFrame(ref, (existing) => ({
       ...value,
+      ...(existing?.instance
+        ? { instance: existing.instance }
+        : identityFields(ref.instanceId)),
       _id: existing?._id ?? objectId(),
-      instance: existing?.instance ?? { _id: ref.instanceId, _cls: "Instance" },
     }));
   }
 
@@ -413,11 +426,7 @@ export class FrameStore implements LabelStore {
       const byId = new Map<string, LabelData>();
 
       for (const label of this.listAt(frame, path)) {
-        const instanceId = addressIdOf(label);
-
-        if (instanceId !== undefined) {
-          byId.set(instanceId, label);
-        }
+        byId.set(addressIdOf(label), label);
       }
 
       byPath.set(path, byId);
@@ -539,12 +548,12 @@ export class FrameStore implements LabelStore {
     this.emit([{ ref, kind: "update" }]);
   }
 
-  /** A freshly born element: minted doc id, instance stamped from the track ref. */
+  /** A freshly born element: minted doc id, identity stamped from the track ref. */
   private born(ref: LabelRef, partial: Partial<LabelData>): LabelData {
     return {
       ...partial,
+      ...identityFields(ref.instanceId),
       _id: objectId(),
-      instance: { _id: ref.instanceId, _cls: "Instance" },
     };
   }
 

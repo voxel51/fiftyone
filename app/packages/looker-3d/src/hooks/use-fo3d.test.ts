@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import type { ModalSample } from "@fiftyone/state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FiftyoneSceneRawJson } from "../utils";

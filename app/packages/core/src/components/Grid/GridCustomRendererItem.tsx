@@ -1,14 +1,19 @@
 import { buildThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import {
+  type SampleRendererGridClickBehavior,
   type SampleRendererProps,
   type SampleRendererRenderContext,
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/timeline";
+import { TemporalTagGridOverlay } from "@fiftyone/multimodal/temporal-tags/grid-overlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
+import classes from "./GridCustomRendererItem.module.css";
 import GridTagBubbles from "./GridTagBubbles";
 
 type GridCustomRendererItemConfig = {
@@ -16,7 +21,15 @@ type GridCustomRendererItemConfig = {
   Renderer: React.ComponentType<SampleRendererProps>;
   RecoilBridge: React.ComponentType<React.PropsWithChildren>;
   ctx: SampleRendererRenderContext;
+  clickBehavior?: SampleRendererGridClickBehavior;
   symbol: ID;
+  /**
+   * Synchronous lookup against the true `selectedSamples` source of truth,
+   * used to reconcile this item's local `selected` flag when it's reattached
+   * from the cache (`attach()`), since offscreen cached items don't receive
+   * `updateOptions()` calls while hidden.
+   */
+  isSampleSelected?: (sampleId: string) => boolean;
 };
 
 /** Dimensions as [width, height] in pixels. */
@@ -27,11 +40,6 @@ type GridSizeHintSample = {
   metadata?: {
     size_bytes?: number | null;
   } | null;
-};
-
-type GridSelectionSample = {
-  _id?: string;
-  id?: string;
 };
 
 /** Error boundary for a sample renderer with fallback behavior. */
@@ -90,11 +98,26 @@ const OPEN_MODAL_BUTTON_STYLES: React.CSSProperties = {
   background: "rgba(18, 18, 18, 0.72)",
   color: "#f5f5f5",
   fontSize: "14px",
-  lineHeight: "20px",
-  textAlign: "center",
+  alignItems: "center",
+  display: "flex",
+  justifyContent: "center",
   padding: 0,
   cursor: "pointer",
   zIndex: 20,
+};
+
+// Bottom chrome for a tile: stacks the tag bubbles and (for multimodal) the
+// temporal-tag overlay in a column so they don't overlap. Anchored to the
+// bottom; children flow (bubbles on top, overlay beneath).
+const FOOTER_STYLES: React.CSSProperties = {
+  position: "absolute",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  display: "flex",
+  flexDirection: "column",
+  pointerEvents: "none",
+  zIndex: 10,
 };
 
 const SELECT_SAMPLE_BUTTON_STYLES: React.CSSProperties = {
@@ -153,6 +176,7 @@ function getSourceSizeHintBytes(
 }
 
 type GridCustomRendererWrapperProps = React.PropsWithChildren<{
+  clickBehavior?: SampleRendererGridClickBehavior;
   selected: boolean;
   onOpenModal: React.MouseEventHandler<HTMLButtonElement>;
   onSelect: React.MouseEventHandler<HTMLButtonElement>;
@@ -166,21 +190,29 @@ const stopGridActivationPropagation: React.MouseEventHandler<HTMLElement> = (
 
 const GridCustomRendererWrapper = ({
   children,
+  clickBehavior = "renderer",
   selected,
   onOpenModal,
   onSelect,
 }: GridCustomRendererWrapperProps) => {
   const [hovering, setHovering] = React.useState(false);
   const showSelectionControl = hovering || selected;
+  const passThroughGridActivation = clickBehavior === "passthrough";
 
   return (
     <div
+      className={classes.container}
       style={CONTAINER_STYLES}
+      data-cy="grid-custom-renderer"
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
-      onClick={stopGridActivationPropagation}
-      onContextMenu={stopGridActivationPropagation}
+      onClick={
+        passThroughGridActivation ? undefined : stopGridActivationPropagation
+      }
+      onContextMenu={
+        passThroughGridActivation ? undefined : stopGridActivationPropagation
+      }
     >
       {children}
       {showSelectionControl && (
@@ -191,18 +223,70 @@ const GridCustomRendererWrapper = ({
           onClick={onSelect}
         />
       )}
-      {hovering && (
-        <>
-          <button
-            title="Open sample modal"
-            onClick={onOpenModal}
-            style={OPEN_MODAL_BUTTON_STYLES}
-          >
-            ↩
-          </button>
-        </>
-      )}
+      <button
+        aria-label="Open sample modal"
+        className={classes.openModalButton}
+        title="Open sample modal"
+        onClick={onOpenModal}
+        style={OPEN_MODAL_BUTTON_STYLES}
+      >
+        <OpenInFullIcon fontSize="inherit" />
+      </button>
     </div>
+  );
+};
+
+// Keyed by the overlay's own reference (stable per registration), not its
+// position in the registry's array — an earlier overlay unregistering must
+// not shift a later one's key and force it to remount.
+const overlayIds = new WeakMap<
+  React.ComponentType<SampleRendererProps>,
+  number
+>();
+let nextOverlayId = 0;
+function overlayKey(overlay: React.ComponentType<SampleRendererProps>): number {
+  let id = overlayIds.get(overlay);
+  if (id === undefined) {
+    id = nextOverlayId++;
+    overlayIds.set(overlay, id);
+  }
+  return id;
+}
+
+/** Edition-registered grid-tile overlays (rendered inside the multimodal
+ * guard); nothing renders before anything registers. */
+const McapGridOverlays = ({
+  ctx,
+}: {
+  readonly ctx: SampleRendererRenderContext;
+}) => {
+  const overlays = useMcapGridOverlays();
+  return (
+    <>
+      {overlays.map((Overlay) => (
+        <Overlay key={overlayKey(Overlay)} ctx={ctx} />
+      ))}
+    </>
+  );
+};
+
+const GridCustomRenderer = ({
+  Renderer,
+  ctx,
+  onRetainedBytesChange,
+}: {
+  readonly Renderer: React.ComponentType<SampleRendererProps>;
+  readonly ctx: SampleRendererRenderContext;
+  readonly onRetainedBytesChange: (retainedBytes: number) => void;
+}) => {
+  const modalActive = fos.useModalActive();
+
+  return (
+    <Renderer
+      ctx={ctx}
+      isGridActive={!modalActive}
+      onRetainedBytesChange={onRetainedBytesChange}
+    />
   );
 };
 
@@ -229,6 +313,7 @@ export class GridCustomRendererItem {
   private destroyed = false;
   private selected = false;
   private inSelectionMode = false;
+  private retainedSizeBytes?: number;
   private dimensions?: GridItemDimensions;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
@@ -257,6 +342,16 @@ export class GridCustomRendererItem {
   private dispatchEvent(eventType: string, detail?: unknown) {
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
+
+  private handleRetainedBytesChange = (retainedBytes: number) => {
+    const normalized = getFiniteSizeBytes(retainedBytes);
+    if (this.retainedSizeBytes === normalized) {
+      return;
+    }
+
+    this.retainedSizeBytes = normalized;
+    this.dispatchEvent("refresh");
+  };
 
   private isDatasetFailOpen() {
     return fos.isGridCustomRendererFailOpen(this.config.ctx.dataset.name);
@@ -287,22 +382,39 @@ export class GridCustomRendererItem {
           key={ctx.media.url ?? this.config.pluginName}
         >
           <GridCustomRendererWrapper
+            clickBehavior={this.config.clickBehavior}
             selected={this.selected}
             onOpenModal={this.handleOpenModalClick}
             onSelect={this.handleSelectSampleClick}
           >
-            <Renderer ctx={ctx} />
-            <GridTagBubbles sample={sample} />
+            <GridCustomRenderer
+              Renderer={Renderer}
+              ctx={ctx}
+              onRetainedBytesChange={this.handleRetainedBytesChange}
+            />
+            <div style={FOOTER_STYLES}>
+              <GridTagBubbles sample={sample} />
+              {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
+                <>
+                  <TemporalTagGridOverlay ctx={ctx} />
+                  <McapGridOverlays ctx={ctx} />
+                </>
+              ) : null}
+            </div>
           </GridCustomRendererWrapper>
         </GridCustomRendererErrorBoundary>
       </RecoilBridge>,
     );
   }
 
+  private getSampleId(): string {
+    const sample = this.config.ctx.sample?.sample;
+    return sample?._id ?? sample?.["id"] ?? this.config.symbol.description;
+  }
+
   private getSelectionPayload(event: React.MouseEvent<HTMLButtonElement>) {
     const sample = this.config.ctx.sample?.sample;
-    const sampleId =
-      sample?._id ?? sample?.["id"] ?? this.config.symbol.description;
+    const sampleId = this.getSampleId();
 
     return buildThumbnailSelectionDetail({
       id: sampleId,
@@ -392,6 +504,26 @@ export class GridCustomRendererItem {
       resolvedElement.replaceChildren(this.hostElement);
     }
 
+    // Reconcile against the true selection state on (re)attach: while this
+    // item was scrolled offscreen it stayed alive in the grid's cache but
+    // stopped receiving updateOptions() calls (those only reach currently
+    // shown rows), so its local `selected` flag can be stale relative to the
+    // real selectedSamples atom.
+    //
+    // Known trade-off: the selection click handler applies its toggle to
+    // `this.selected` optimistically, before the Recoil write it dispatches
+    // has actually committed (that round-trip is async). If this exact
+    // instance were detached and reattached inside that narrow window, this
+    // reconciliation would read the not-yet-committed snapshot and revert the
+    // optimistic toggle. In practice a reattach is driven by scroll/relayout,
+    // which cannot happen inside the same microtask window as the click, so
+    // this hasn't been observed — flagging for future readers rather than
+    // guarding against it, since a guard would have to reintroduce the same
+    // staleness this reconciliation exists to fix.
+    if (this.config.isSampleSelected) {
+      this.selected = this.config.isSampleSelected(this.getSampleId());
+    }
+
     this.renderPluginRenderer();
     this.loaded = true;
     this.dispatchEvent("load");
@@ -415,8 +547,20 @@ export class GridCustomRendererItem {
   }
 
   private unmountPluginRenderer() {
-    this.pluginRoot?.unmount();
+    const root = this.pluginRoot;
     this.pluginRoot = null;
+
+    if (!root) {
+      return;
+    }
+
+    // Deferred out of the caller's stack: destroy() runs from the grid cache's
+    // eviction, which fires inside a React effect cleanup, and unmounting
+    // another root from there races the commit React is still finishing
+    // ("Attempted to synchronously unmount a root while React was already
+    // rendering"). The host element is detached before this, so nothing of the
+    // renderer is on screen while the unmount waits.
+    setTimeout(() => root.unmount(), 0);
   }
 
   updateOptions(options: unknown, disableReload?: boolean) {
@@ -478,13 +622,12 @@ export class GridCustomRendererItem {
       isSampleFile && safeSample
         ? getFiniteSizeBytes(safeSample.metadata?.size_bytes)
         : 0;
-    const sourceSizeHintBytes = getSourceSizeHintBytes(
-      sourceSizeBytes,
-      this.config.ctx.media.mediaType,
-    );
+    const retainedSizeBytes =
+      this.retainedSizeBytes ??
+      getSourceSizeHintBytes(sourceSizeBytes, this.config.ctx.media.mediaType);
 
     return Math.ceil(
-      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + sourceSizeHintBytes,
+      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + retainedSizeBytes,
     );
   }
 }

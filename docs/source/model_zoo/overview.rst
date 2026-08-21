@@ -5,6 +5,10 @@ Model Zoo Overview
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.7.0
+    :enterprise_version: 1.0
+
 The FiftyOne Model Zoo provides a powerful interface for downloading models
 and applying them to your FiftyOne datasets.
 

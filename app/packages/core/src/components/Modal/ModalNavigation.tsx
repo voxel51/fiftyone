@@ -10,6 +10,7 @@ import styled from "styled-components";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
+import { useShowClassicSidebar } from "./hooks";
 import {
   KnownCommands,
   KnownContexts,
@@ -63,7 +64,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   );
   const clearUndo = useUndoRedo(KnownContexts.ModalAnnotate).clear;
   const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const isSidebarVisible = useShowClassicSidebar();
 
   const countLoadable = useRecoilValueLoadable(
     fos.count({ path: "", extended: true, modal: false }),
@@ -90,13 +91,15 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
             clearUndo();
-            return await navigation.next(offset).then((s) => {
+            return await navigation.next(offset).then((selector) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s);
+              setModal(selector);
             });
           }
         },
-        onNavigationStart: closePanels,
+        onNavigationStart: () => {
+          closePanels();
+        },
         debounceTime: 150,
       }),
     [closePanels, setModal, clearUndo],
@@ -110,13 +113,15 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
             clearUndo();
-            return await navigation.previous(offset).then((s) => {
+            return await navigation.previous(offset).then((selector) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s);
+              setModal(selector);
             });
           }
         },
-        onNavigationStart: closePanels,
+        onNavigationStart: () => {
+          closePanels();
+        },
         debounceTime: 150,
       }),
     [closePanels, setModal, clearUndo],

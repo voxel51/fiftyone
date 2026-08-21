@@ -4,21 +4,28 @@ on:
   pull_request:
     # `edited` catches base changes — notably GitHub auto-retargeting a stacked
     # PR to develop when the PR below it merges — so the heavy suite runs before
-    # it can land (no `synchronize` fires on an auto-retarget).
-    types: [opened, synchronize, reopened, closed, edited]
+    # it can land (no `synchronize` fires on an auto-retarget). No `closed`:
+    # nothing here runs on it, and its no-op run races the suite still testing
+    # the just-merged SHA, leaving a spurious red X on the merged PR.
+    types: [opened, synchronize, reopened, ready_for_review, edited]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Only cancel an in-progress run when the new run will actually run CI.
-  # A PR title/body edit fires an `edited` event (no base change) that skips
-  # every heavy job; letting it cancel the running suite would leave the PR
-  # falsely green, since `all-tests` treats skipped jobs as a pass.
-  cancel-in-progress: ${{ github.event.action != 'edited' || github.event.changes.base != null }}
+  # A PR title/body edit is a no-op run (run-ci=false). It gets its own group:
+  # `cancel-in-progress: false` can't protect a *queued* real run — GitHub
+  # allows only one queued run per group — so a shared group lets an edit
+  # displace the suite run before it starts.
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{
+    (github.event.action == 'edited' && github.event.changes.base == null)
+    && 'noop' || 'ci' }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
   pull-requests: read
   checks: read
+  # job containers pull the prebaked CI images (private in fiftyone-teams)
+  packages: read
 
 jobs:
   modified-files:
@@ -47,6 +54,7 @@ jobs:
               - '.github/workflows/build.yml'
             e2e-pw:
               - 'e2e-pw/**'
+              - '.github/scripts/**'
               - '.github/workflows/e2e.yml'
             fiftyone:
               - 'fiftyone/**'
@@ -89,7 +97,7 @@ jobs:
           heavy=false
           if [ "$run_ci" = "true" ]; then
             case "$BASE_REF" in
-              develop|main|release/*) heavy=true ;;
+              develop|release/*|community) heavy=true ;;
             esac
           fi
           echo "run-ci=$run_ci" >> "$GITHUB_OUTPUT"
@@ -98,7 +106,6 @@ jobs:
   build:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
@@ -106,21 +113,29 @@ jobs:
 
   e2e:
     needs: modified-files
+    # Drafts skip the e2e suite (mirroring enterprise-sync); it runs when
+    # the PR is marked ready for review. all-tests treats skipped as green.
     if: >-
-      github.event.action != 'closed' &&
-      needs.modified-files.outputs.heavy == 'true' && (
+      needs.modified-files.outputs.heavy == 'true' &&
+      github.event.pull_request.draft != true && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.e2e-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/e2e.yml
-    secrets:
-      docker-username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
-      docker-password: ${{ secrets.RO_DOCKERHUB_PAT }}
+    permissions:
+      contents: read
+      checks: read
+      # the comment's sibling-suite table reads the run's jobs; public repos
+      # allow this implicitly but private fiftyone-teams requires the grant
+      actions: read
+      # job containers pull the prebaked CI images (private in fiftyone-teams)
+      packages: read
+      # the e2e verdict job upserts the authoritative CI results comment
+      pull-requests: write
 
   lint:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.run-ci == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true' ||
@@ -130,7 +145,6 @@ jobs:
   test:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
@@ -139,12 +153,11 @@ jobs:
       python-versions: >-
         ${{ (github.base_ref == 'develop' ||
         startsWith(github.base_ref, 'feat/'))
-        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
+        && '["3.10", "3.14"]' || '["3.10", "3.11", "3.12", "3.13", "3.14"]' }}
 
   test-windows:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' &&
       needs.modified-files.outputs.fiftyone-changes == 'true'
     uses: ./.github/workflows/windows-test.yml
@@ -152,20 +165,105 @@ jobs:
       python-versions: >-
         ${{ (github.base_ref == 'develop' ||
         startsWith(github.base_ref, 'feat/'))
-        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
+        && '["3.10", "3.14"]' || '["3.10", "3.11", "3.12", "3.13", "3.14"]' }}
+
+  ci-comment:
+    # Every PR gets an authoritative CI comment. When the e2e pipeline ran,
+    # it posted the comment — this job re-renders its sibling-suite rows
+    # once every suite has concluded (suites that outlast e2e, like
+    # test-windows, would freeze at ⏳) and settles the python section. When
+    # e2e was skipped (drafts, docs-only changes, stacked PRs), this job
+    # creates a suites-only comment instead; the e2e pipeline upgrades it in
+    # place if it runs later.
+    runs-on: ubuntu-latest
+    needs: [modified-files, build, lint, test, test-windows, e2e]
+    if: >-
+      always() &&
+      needs.modified-files.outputs.run-ci == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      # reads the run's jobs; implicit on public repos, required on private
+      # fiftyone-teams
+      actions: read
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Download pytest results
+        # junit reports for the comment's python section; empty when the
+        # python matrix was skipped or died before uploading
+        run: |
+          mkdir -p pytest-junit
+          gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | startswith("pytest-results-")) | [.id, .name] | @tsv' |
+          while IFS=$'\t' read -r id name; do
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$name.zip"
+            # -o: reruns list every attempt's artifact under the same name;
+            # an interactive replace prompt would fail the job
+            unzip -o -q -d "pytest-junit/$name" "$name.zip"
+            printf '%s\t%s\n' "$name" \
+              "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts/$id" \
+              >> pytest-junit/artifact-urls.tsv
+          done
+      - name: Refresh suite rows on the CI comment
+        run: |
+          case "$GITHUB_REPOSITORY" in
+            */fiftyone-teams) FLAVOR=FOE ;;
+            *) FLAVOR=OSS ;;
+          esac
+          CID=$(gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" \
+            --jq ".[] | select(.body | contains(\"ci-report:$FLAVOR\")) | .id" \
+            | head -1)
+          gh api \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+            > run-jobs.json
+          if [ -z "$CID" ]; then
+            # e2e never posted one (skipped pipeline); every PR still gets a
+            # suites-only comment
+            node .github/scripts/refresh-suite-rows.mjs run-jobs.json --new pytest-junit > new-body.md
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+              -F body=@new-body.md
+            exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CID" --jq .body > body.md
+          node .github/scripts/refresh-suite-rows.mjs run-jobs.json body.md pytest-junit > new-body.md
+          if cmp -s body.md new-body.md; then
+            echo "suite rows already final"
+            exit 0
+          fi
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$CID" \
+            -F body=@new-body.md
 
   all-tests:
     runs-on: ubuntu-latest
     needs: [modified-files, build, lint, test, e2e]
-    if: always()
+    # not `always()`: a concurrency-cancelled run (an edit displaced by the
+    # next edit) must conclude cancelled, not turn the failed gate into a
+    # red `all-tests` on a SHA it never tested.
+    if: ${{ !cancelled() }}
+    permissions:
+      # the mirror lists the SHA's workflow runs to find the run testing it;
+      # implicit on public repos, required on private fiftyone-teams
+      actions: read
+      # the mirror reads the SHA's all-tests check runs for the verdict
+      checks: read
     env:
-      # A run that skipped the suite (no-op body edit, `closed`, or a failed
-      # gate) must not aggregate its skipped needs into a vacuous green that
+      # A run that skipped the suite (a no-op body edit, or a failed gate)
+      # must not aggregate its skipped needs into a vacuous green that
       # becomes the latest `all-tests` for a SHA whose real suite failed.
       NO_OP: >-
         ${{ needs.modified-files.result == 'success' &&
-        (needs.modified-files.outputs.run-ci != 'true' ||
-        github.event.action == 'closed') }}
+        needs.modified-files.outputs.run-ci != 'true' }}
     steps:
       - name: Fail when the CI gate did not complete
         if: needs.modified-files.result != 'success'
@@ -175,23 +273,136 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const { data } = await github.rest.checks.listForRef({
+            // A no-op edit usually lands while the run actually testing this
+            // SHA is still in flight. Its all-tests check run doesn't exist
+            // until its needs finish, so watch this workflow's *runs* on the
+            // SHA instead: stay pending while one is live, then mirror its
+            // verdict. Completed check runs only count as a verdict when
+            // their workflow run finished uncancelled — a run displaced by
+            // concurrency reds its always() gate without testing anything.
+            const sha = context.payload.pull_request.head.sha;
+            const { data: self } = await github.rest.actions.getWorkflowRun({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: context.payload.pull_request.head.sha,
-              check_name: 'all-tests',
-              per_page: 100,
+              run_id: context.runId,
             });
-            const prior = data.check_runs
-              .filter((c) => c.status === 'completed')
-              .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
-            if (!prior) {
-              core.setFailed('No completed all-tests for this commit yet — deferring to the run testing it.');
-            } else if (prior.conclusion === 'success') {
-              core.info('Mirroring the previous all-tests result: success');
-            } else {
-              core.setFailed(`Mirroring the previous all-tests result: ${prior.conclusion}`);
+            const deadline = Date.now() + 90 * 60 * 1000;
+            let emptyPolls = 0;
+            for (;;) {
+              const runs = await github.paginate(
+                github.rest.actions.listWorkflowRunsForRepo,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  head_sha: sha,
+                  per_page: 100,
+                },
+              );
+              const candidates = runs.filter(
+                (r) =>
+                  r.workflow_id === self.workflow_id &&
+                  r.id !== context.runId &&
+                  r.status !== 'completed',
+              );
+              // A fellow no-op mirror is not testing this SHA. Without this
+              // check, concurrent no-op runs (an event burst on one commit)
+              // wait on each other until the deadline and conclude red. A run
+              // counts as a mirror only when its gate passed and every suite
+              // job it spawned was skipped; anything ambiguous (gate still
+              // running, jobs not yet listed) stays blocking.
+              const SUITE = /^(build|lint|test|test-windows|e2e)\b/;
+              const live = [];
+              for (const r of candidates) {
+                const jobs = await github.paginate(
+                  github.rest.actions.listJobsForWorkflowRun,
+                  {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: r.id,
+                    per_page: 100,
+                  },
+                );
+                const gate = jobs.find((j) => j.name === 'modified-files');
+                const suite = jobs.filter((j) => SUITE.test(j.name));
+                const isMirror =
+                  gate?.status === 'completed' &&
+                  gate?.conclusion === 'success' &&
+                  suite.length > 0 &&
+                  suite.every(
+                    (j) => j.status === 'completed' && j.conclusion === 'skipped',
+                  );
+                if (!isMirror) {
+                  live.push(r);
+                }
+              }
+              const finished = new Set(
+                runs
+                  .filter((r) => r.status === 'completed' && r.conclusion !== 'cancelled')
+                  .map((r) => `/runs/${r.id}/`),
+              );
+              const { data } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: sha,
+                check_name: 'all-tests',
+                // `latest` (the default) returns only the newest run per name —
+                // this job's own in_progress run — hiding the completed verdict.
+                filter: 'all',
+                per_page: 100,
+              });
+              const prior = data.check_runs
+                .filter(
+                  (c) =>
+                    c.status === 'completed' &&
+                    (c.conclusion === 'success' || c.conclusion === 'failure') &&
+                    [...finished].some((p) => (c.details_url ?? '').includes(p)),
+                )
+                .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
+              // Never mirror while another suite run is in flight — a stale
+              // completed verdict (e.g. a draft-era run, or the attempt a
+              // rerun is replacing) must not shadow the run testing this SHA.
+              if (live.length === 0 && prior) {
+                if (prior.conclusion === 'success') {
+                  core.info(`Mirroring the real all-tests result: success — ${prior.details_url}`);
+                } else {
+                  core.setFailed(`Mirroring the real all-tests result: failure — see ${prior.details_url}`);
+                }
+                return;
+              }
+              if (live.length > 0) {
+                emptyPolls = 0;
+                if (Date.now() >= deadline) {
+                  core.setFailed(`Still waiting on ${live[0].html_url} after 90 minutes — re-run this job once it completes.`);
+                  return;
+                }
+                core.info(`Waiting on the run testing this SHA: ${live.map((r) => r.html_url).join(', ')}`);
+              } else {
+                // Nothing is testing the SHA and no verdict exists (e.g.
+                // every real run was cancelled). Give races a short grace,
+                // then defer to a human rather than inventing a verdict.
+                if (++emptyPolls >= 3) {
+                  core.setFailed('No run is testing this SHA and no completed all-tests verdict exists — re-run the Pull Request workflow.');
+                  return;
+                }
+                core.info('No verdict and no live run for this SHA yet — waiting.');
+              }
+              await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
             }
+      - name: Fail when a draft deferred the e2e suite
+        # A draft run must not publish a successful merge-authoritative
+        # aggregate for a SHA whose e2e never ran; it goes green after
+        # ready_for_review.
+        if: >-
+          env.NO_OP != 'true' &&
+          github.event.pull_request.draft == true &&
+          needs.e2e.result == 'skipped' &&
+          needs.modified-files.outputs.heavy == 'true' && (
+          needs.modified-files.outputs.app-changes == 'true' ||
+          needs.modified-files.outputs.e2e-changes == 'true' ||
+          needs.modified-files.outputs.fiftyone-changes == 'true')
+        run: |
+          echo "draft PR — e2e deferred until ready_for_review"
+          exit 1
       - name: Aggregate suite results
         if: env.NO_OP != 'true'
         run: sh -c ${{

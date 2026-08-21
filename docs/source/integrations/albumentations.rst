@@ -5,7 +5,11 @@ Albumentations Integration
 
 .. default-role:: code
 
-The `Albumentations <https://albumentations.ai/docs/>`_ library is 
+.. customavailablein::
+    :oss_version: 0.23.7
+    :enterprise_version: 1.5.8
+
+The `Albumentations <https://albumentations.ai/docs/>`_ library is
 the leading open-source library for image augmentation in machine learning. 
 It is widely used in the computer vision community and is known for its
 extensive collection of augmentations and its high performance.

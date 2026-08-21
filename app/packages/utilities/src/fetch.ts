@@ -1,3 +1,4 @@
+/// <reference path="./env.d.ts" />
 import {
   EventSourceMessage,
   fetchEventSource,
@@ -50,6 +51,7 @@ export type FetchResultType =
   | "blob"
   | "text"
   | "arrayBuffer"
+  | "response"
   | "json-stream";
 
 /**
@@ -70,6 +72,10 @@ export type FetchFunctionConfig<T> = {
    * @default false
    */
   cache?: boolean;
+  /** Cancels the request and response-body read. */
+  signal?: AbortSignal;
+  /** Reports cumulative response-body bytes as they arrive. */
+  onProgress?: (loadedBytes: number) => void;
 };
 
 /**
@@ -106,6 +112,8 @@ export interface FetchFunctionExtended {
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
     headers?: Record<string, string>,
+    signal?: AbortSignal,
+    onProgress?: (loadedBytes: number) => void,
   ): Promise<FetchFunctionResult<R>>;
 }
 
@@ -178,8 +186,8 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
     headers?: Record<string, string>,
-  ): Promise<R> =>
-    withCache(buildCacheKey(method, path, body), () =>
+  ): Promise<R> => {
+    const fetchResult = () =>
       fetchFunctionSingleton<A, R>(
         method,
         path,
@@ -189,8 +197,12 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
         retryCodes,
         errorHandler,
         headers,
-      ),
-    );
+      );
+
+    return result === "response"
+      ? fetchResult()
+      : withCache(buildCacheKey(method, path, body), fetchResult);
+  };
 };
 
 /**
@@ -212,9 +224,11 @@ export const getFetchFunctionExtended =
         config.retryCodes,
         config.errorHandler,
         config.headers,
+        config.signal,
+        config.onProgress,
       );
 
-    if (config.cache) {
+    if (config.cache && config.result !== "response") {
       return withCache(
         buildCacheKey(config.method, config.path, config.body),
         doFetch,
@@ -302,6 +316,34 @@ export const getFetchParameters = () => {
   };
 };
 
+// Identical GraphQL QUERIES that are in flight at the same moment share one
+// request. Several independent subscribers commonly derive the same
+// dataset-level aggregation from one view change, and each duplicate costs a
+// full server resolve. Only reads are shared: a mutation is never coalesced,
+// and the entry is dropped the moment the request settles, so nothing is
+// cached across gestures.
+const inFlightQueries = new Map<string, Promise<unknown>>();
+
+const graphqlQueryKey = (
+  method: string,
+  path: string,
+  body: unknown,
+): string | null => {
+  if (method.toUpperCase() !== "POST" || !body || typeof body !== "object") {
+    return null;
+  }
+
+  const query = (body as { query?: unknown }).query;
+  if (
+    typeof query !== "string" ||
+    !/^\s*query\s+aggregationsQuery\b/.test(query)
+  ) {
+    return null;
+  }
+
+  return `${path}:${JSON.stringify(body)}`;
+};
+
 export const setFetchFunction = (
   origin: string,
   defaultHeaders: HeadersInit = {},
@@ -318,6 +360,8 @@ export const setFetchFunction = (
     retryCodes = [502, 503, 504],
     errorHandler,
     headers,
+    signal,
+    onProgress,
   ) => {
     let url: string;
     const controller = new AbortController();
@@ -366,7 +410,7 @@ export const setFetchFunction = (
       headers,
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
-      signal: controller.signal,
+      signal: signal ?? controller.signal,
       referrerPolicy: "same-origin",
     });
 
@@ -420,6 +464,22 @@ export const setFetchFunction = (
       };
     }
 
+    if (result === "response") {
+      return {
+        response,
+        headers: response.headers,
+      };
+    }
+
+    if (result === "arrayBuffer" && onProgress) {
+      return {
+        response: asFetchResult(
+          await readResponseArrayBuffer(response, onProgress),
+        ),
+        headers: response.headers,
+      };
+    }
+
     return {
       response: await response[result](),
       headers: response.headers,
@@ -438,18 +498,74 @@ export const setFetchFunction = (
     retryCodes: number[] = [502, 503, 504],
     errorHandler: (response: Response) => void | Promise<void>,
     headers: Record<string, string>,
-  ) =>
-    fetchFunctionExtended<A, R>(
-      method,
-      path,
-      body,
-      result,
-      retries,
-      retryCodes,
-      errorHandler,
-      headers,
-    ).then((res) => res.response);
+  ) => {
+    const send = () =>
+      fetchFunctionExtended<A, R>(
+        method,
+        path,
+        body,
+        result,
+        retries,
+        retryCodes,
+        errorHandler,
+        headers,
+        undefined,
+        undefined,
+      ).then((res) => res.response);
+
+    const key = result === "json" ? graphqlQueryKey(method, path, body) : null;
+    if (key === null) {
+      return send();
+    }
+
+    const pending = inFlightQueries.get(key);
+    if (pending) {
+      return pending as Promise<R>;
+    }
+
+    const request = send().finally(() => inFlightQueries.delete(key));
+    inFlightQueries.set(key, request);
+    return request;
+  };
 };
+
+// FetchFunctionExtended predates result-type discrimination and lets callers
+// select the generic response type. Keep that boundary in one place for the
+// progress-aware array-buffer path instead of leaking an `any` assertion.
+function asFetchResult<Result>(value: unknown): Result {
+  return value as Result;
+}
+
+async function readResponseArrayBuffer(
+  response: Response,
+  onProgress: (loadedBytes: number) => void,
+): Promise<ArrayBuffer> {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const buffer = await response.arrayBuffer();
+    onProgress(buffer.byteLength);
+    return buffer;
+  }
+
+  const chunks: Uint8Array[] = [];
+  let loadedBytes = 0;
+  onProgress(loadedBytes);
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loadedBytes += value.byteLength;
+    onProgress(loadedBytes);
+  }
+
+  const bytes = new Uint8Array(loadedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes.buffer;
+}
 
 class JSONStreamParser {
   constructor(
