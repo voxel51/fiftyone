@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -59,6 +60,14 @@ function renderControls(opts: { availability?: AudioAvailability } = {}) {
  * width open on hover — so nothing has to be opened before driving it.
  */
 
+/**
+ * The fader's knob — voodo puts the ARIA slider contract and the keyboard
+ * handling there, not on the wrapper, so key events have to land on it.
+ */
+function knob() {
+  return screen.getByRole("slider");
+}
+
 /** The mute button, labelled by its channel ("Master"). */
 function muteButton(name: "Mute" | "Unmute") {
   return screen.getByRole("button", { name: `${name} Master` });
@@ -107,11 +116,31 @@ describe("VolumeControl", () => {
     expect(getAudioMuted(store as PlaybackStore)).toBe(false);
   });
 
-  // NOTE: arrow-key volume control was lost in the move from `VerticalFader`
-  // to voodo's `SingleValueSlider`, which ships no keyboard handling (its
-  // knob has `role="slider"` and `tabindex="0"` but no `onKeyDown`). The
-  // mixer's faders have the same gap. Tests for it removed with the
-  // capability; restore both together.
+  // The slider updates its own knob synchronously but emits `onChange`
+  // through a debounce, so the store write lands a tick later even at
+  // `debounceDelay={0}` — these have to wait for it rather than read
+  // straight after the keypress.
+  it("arrow keys raise the volume and unmute", async () => {
+    renderControls();
+    fireEvent.keyDown(knob(), { key: "ArrowUp" });
+    await waitFor(() =>
+      expect(getAudioMuted(store as PlaybackStore)).toBe(false),
+    );
+    expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.05);
+  });
+
+  it("stepping down to zero mutes but preserves the stored volume", async () => {
+    renderControls();
+    fireEvent.keyDown(knob(), { key: "ArrowUp" }); // unmuted at 0.05
+    await waitFor(() =>
+      expect(getAudioMuted(store as PlaybackStore)).toBe(false),
+    );
+    fireEvent.keyDown(knob(), { key: "ArrowDown" }); // back to 0 -> mute
+    await waitFor(() =>
+      expect(getAudioMuted(store as PlaybackStore)).toBe(true),
+    );
+    expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.05);
+  });
 
   it("unmute and volume survive a provider swap within the session", () => {
     const first = renderControls();
