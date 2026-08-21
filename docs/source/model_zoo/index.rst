@@ -5,6 +5,11 @@ Model Zoo
 
 .. default-role:: code
 
+.. meta::
+    :description: Browse the FiftyOne Model Zoo, a collection of
+        pre-trained models you can load and run on your datasets with a
+        single line of code.
+
 .. customavailablein::
     :oss_version: 0.7.0
     :enterprise_version: 1.0
