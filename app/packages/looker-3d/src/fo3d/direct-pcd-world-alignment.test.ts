@@ -4,6 +4,7 @@ import type { GroupStaticTransformResponse } from "../frustum/types";
 import {
   resolveDirectPcdWorldAlignment,
   transformCuboidToNativeFrame,
+  transformCuboidToWorldFrame,
 } from "./direct-pcd-world-alignment";
 
 describe("resolveDirectPcdWorldAlignment", () => {
@@ -114,6 +115,34 @@ describe("transformCuboidToNativeFrame", () => {
     expect(native.dimensions).toEqual([4, 5, 6]);
     expect(native.quaternion).toEqual(
       expectCloseToTuple(nativeQuaternion.toArray()),
+    );
+  });
+
+  it("round-trips a native cuboid through its world display frame", () => {
+    const native = {
+      location: [1, 2, 3] as [number, number, number],
+      dimensions: [4, 5, 6] as [number, number, number],
+      rotation: [Math.PI / 3, 0, 0] as [number, number, number],
+    };
+    const nativeToWorld = {
+      translation: [10, -4, 2] as [number, number, number],
+      quaternion: new Quaternion()
+        .setFromEuler(new Euler(0, 0, Math.PI / 2))
+        .toArray(),
+      source_frame: "lidar_top",
+      target_frame: "world",
+    };
+
+    const world = transformCuboidToWorldFrame(native, nativeToWorld);
+    const roundTrip = transformCuboidToNativeFrame(world, nativeToWorld);
+
+    expect(world.location).toEqual(expectCloseToTuple([8, -3, 5]));
+    expect(roundTrip.location).toEqual(expectCloseToTuple(native.location));
+    expect(roundTrip.dimensions).toEqual(native.dimensions);
+    expect(roundTrip.quaternion).toEqual(
+      expectCloseToTuple(
+        new Quaternion().setFromEuler(new Euler(...native.rotation)).toArray(),
+      ),
     );
   });
 });

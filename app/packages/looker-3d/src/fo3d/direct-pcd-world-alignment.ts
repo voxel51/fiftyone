@@ -92,6 +92,39 @@ export const resolveDirectPcdWorldAlignment = (
   };
 };
 
+const getCuboidQuaternion = (cuboid: CuboidTransformData) =>
+  cuboid.quaternion
+    ? new Quaternion(...cuboid.quaternion)
+    : new Quaternion().setFromEuler(
+        new Euler(...(cuboid.rotation ?? [0, 0, 0])),
+      );
+
+/** Converts a sensor-local cuboid into the aligned world display frame. */
+export const transformCuboidToWorldFrame = (
+  cuboid: CuboidTransformData,
+  nativeToWorld: StaticTransform,
+): CuboidTransformData => {
+  const frameQuaternion = new Quaternion(
+    ...nativeToWorld.quaternion,
+  ).normalize();
+  const worldLocation = new Vector3(...cuboid.location)
+    .applyQuaternion(frameQuaternion)
+    .add(new Vector3(...nativeToWorld.translation));
+  const worldQuaternion = frameQuaternion
+    .clone()
+    .multiply(getCuboidQuaternion(cuboid))
+    .normalize();
+  const worldEuler = new Euler().setFromQuaternion(worldQuaternion);
+
+  return {
+    ...cuboid,
+    location: worldLocation.toArray() as CuboidTransformData["location"],
+    dimensions: [...cuboid.dimensions] as CuboidTransformData["dimensions"],
+    rotation: [worldEuler.x, worldEuler.y, worldEuler.z],
+    quaternion: worldQuaternion.toArray() as CuboidTransformData["quaternion"],
+  };
+};
+
 /**
  * Converts a cuboid manipulated in the aligned world display back into the
  * writable PCD slice's native sensor frame.
@@ -108,11 +141,7 @@ export const transformCuboidToNativeFrame = (
     .sub(new Vector3(...nativeToWorld.translation))
     .applyQuaternion(worldToNativeQuaternion);
 
-  const worldQuaternion = cuboid.quaternion
-    ? new Quaternion(...cuboid.quaternion)
-    : new Quaternion().setFromEuler(
-        new Euler(...(cuboid.rotation ?? [0, 0, 0])),
-      );
+  const worldQuaternion = getCuboidQuaternion(cuboid);
   const nativeQuaternion = worldToNativeQuaternion
     .clone()
     .multiply(worldQuaternion)

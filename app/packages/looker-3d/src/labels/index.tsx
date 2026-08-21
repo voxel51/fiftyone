@@ -19,6 +19,7 @@ import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
+import { Euler, Quaternion, type Vector3Tuple, type Vector4Tuple } from "three";
 import { useIsWorkingInitialized, useRenderModel } from "../annotation/store";
 import type {
   ReconciledDetection3D,
@@ -51,6 +52,16 @@ import { WorkingStoreManager } from "./WorkingStoreManager";
 // color (e.g. coloring metadata is missing/non-string). Newly created labels
 // take their color from getLabelColor instead.
 const DEFAULT_OVERLAY_COLOR = "#ffffff";
+const NATIVE_CUBOID_BATCH = Symbol("native-cuboid-batch");
+
+const composeParentWorldQuaternion = (
+  nativeToWorldQuaternion: Vector4Tuple | undefined,
+  overlayRotation: Vector3Tuple,
+): Vector4Tuple =>
+  new Quaternion(...(nativeToWorldQuaternion ?? [0, 0, 0, 1]))
+    .multiply(new Quaternion().setFromEuler(new Euler(...overlayRotation)))
+    .normalize()
+    .toArray();
 
 export interface ThreeDLabelsProps {
   sampleMap: Parameters<typeof load3dOverlays>[0];
@@ -366,6 +377,8 @@ export const ThreeDLabels = ({
   const cuboidOverlays = useMemo(
     () =>
       standaloneDetections.map((overlay) => {
+        const worldTransform =
+          directPcdWorldTransformsBySampleId[overlay.sampleId];
         const cuboid = (
           <DragGate3D
             dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
@@ -389,11 +402,13 @@ export const ThreeDLabels = ({
               enableHeadingEdit
               hoverSource={hoverSource}
               showOrientation={showCuboidOrientation}
+              parentWorldQuaternion={composeParentWorldQuaternion(
+                worldTransform?.quaternion,
+                overlayRotation,
+              )}
             />
           </DragGate3D>
         );
-        const worldTransform =
-          directPcdWorldTransformsBySampleId[overlay.sampleId];
         const key = `cuboid-${overlay.ui.isNew ? "new-" : ""}${
           overlay.data._id
         }-${overlay.sampleId}`;
@@ -438,19 +453,26 @@ export const ThreeDLabels = ({
     : labelAlpha;
 
   const cuboidInstances = useMemo(() => {
-    const batches = new Map<string, ReconciledDetection3D[]>();
+    const batches = new Map<
+      string | typeof NATIVE_CUBOID_BATCH,
+      ReconciledDetection3D[]
+    >();
 
     for (const detection of instancedDetections) {
       const batchKey = directPcdWorldTransformsBySampleId[detection.sampleId]
         ? detection.sampleId
-        : "";
+        : NATIVE_CUBOID_BATCH;
       const batch = batches.get(batchKey) ?? [];
       batch.push(detection);
       batches.set(batchKey, batch);
     }
 
-    return [...batches.entries()].map(([sampleId, detections]) => {
-      const worldTransform = directPcdWorldTransformsBySampleId[sampleId];
+    return [...batches.entries()].map(([batchKey, detections]) => {
+      const isNativeBatch = batchKey === NATIVE_CUBOID_BATCH;
+      const sampleId = isNativeBatch ? null : batchKey;
+      const worldTransform = sampleId
+        ? directPcdWorldTransformsBySampleId[sampleId]
+        : undefined;
       const instances = (
         <mesh rotation={overlayRotation}>
           <CuboidInstances
