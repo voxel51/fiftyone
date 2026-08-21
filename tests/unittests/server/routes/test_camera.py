@@ -670,7 +670,6 @@ class TestGroupStaticTransformsRoute:
         self,
         group_static_transforms_endpoint,
         mock_group_request,
-        grouped_dataset,
     ):
         """Tests retrieving static transforms for all slices in a group."""
         request = mock_group_request()
@@ -701,7 +700,8 @@ class TestGroupStaticTransformsRoute:
         grouped_dataset,
     ):
         """Tests the identity-compatible no-configuration signal."""
-        for sample in grouped_dataset:
+        group_id = grouped_dataset.first().group.id
+        for sample in grouped_dataset.get_group(group_id).values():
             if sample.has_field("static_transform"):
                 del sample["static_transform"]
                 sample.save()
@@ -713,6 +713,47 @@ class TestGroupStaticTransformsRoute:
         data = json.loads(response.body)
         assert data["has_static_transforms"] is False
         assert data["results"]["lidar"]["staticTransform"] is None
+
+    @pytest.mark.asyncio
+    async def test_get_group_static_transforms_detects_configuration_on_other_slice(
+        self,
+        group_static_transforms_endpoint,
+        mock_group_request,
+    ):
+        """Tests that configuration detection covers the entire group."""
+        request = mock_group_request(query_params={"slices": "lidar"})
+        response = await group_static_transforms_endpoint.get(request)
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        assert data["has_static_transforms"] is True
+        assert data["results"]["lidar"]["staticTransform"] is None
+
+    @pytest.mark.asyncio
+    async def test_get_group_static_transforms_normalizes_implicit_world_target(
+        self,
+        group_static_transforms_endpoint,
+        mock_group_request,
+        grouped_dataset,
+    ):
+        """Tests that an omitted transform target serializes as world."""
+        lidar_sample = grouped_dataset.select_group_slices("lidar").first()
+        lidar_sample["static_transform"] = StaticTransform(
+            translation=[2.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="lidar",
+        )
+        lidar_sample.save()
+
+        request = mock_group_request(query_params={"slices": "lidar"})
+        response = await group_static_transforms_endpoint.get(request)
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        transform = data["results"]["lidar"]["staticTransform"]
+        assert transform["source_frame"] == "lidar"
+        assert transform["target_frame"] == "world"
+        assert transform["translation"] == [2.0, 0.0, 0.0]
 
     @pytest.mark.asyncio
     async def test_get_group_static_transforms_specific_slices(
