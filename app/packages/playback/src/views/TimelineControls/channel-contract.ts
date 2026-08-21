@@ -1,13 +1,12 @@
 import type React from "react";
 
 /**
- * The contract every mixer channel shares, whatever its orientation.
+ * The contract every mixer channel shares.
  *
- * `ChannelStrip` (vertical, volume popover) and `TrackFaderRow`
- * (horizontal, mixer dialog) render the same channel: label, mute toggle,
- * fader, readout. Keeping the props and the derived state in one place
- * stops the two from drifting — they already had, with only one disabling
- * its fader on `errored`.
+ * `VolumeControl` (the toolbar's master fader) and `TrackFaderRow` (a row
+ * in the mixer) render the same channel: label, mute toggle, fader,
+ * readout. Keeping the props and the derived state in one place stops the
+ * two from drifting.
  */
 export interface ChannelProps {
   label: string;

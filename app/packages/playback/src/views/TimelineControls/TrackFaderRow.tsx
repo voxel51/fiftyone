@@ -76,9 +76,9 @@ const TrackFaderRow: React.FC<ChannelProps> = (props) => {
         />
         <SingleValueSlider
           bare
-          // Matches ChannelStrip: an errored channel's fader is inert, not
-          // merely labelled as such. voodo's slider has no `disabled` prop,
-          // so the class removes pointer events.
+          // An errored channel's fader is inert, not merely labelled as
+          // such. voodo's slider has no `disabled` prop, so the class
+          // removes pointer events.
           className={clsx(styles.trackFaderSlider, {
             [styles.faderDisabled]: errored,
           })}
