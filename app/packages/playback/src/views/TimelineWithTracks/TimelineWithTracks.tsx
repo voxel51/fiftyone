@@ -102,6 +102,11 @@ export interface TimelineWithTracksProps {
    * both the empty-timeline and drawer layouts. Readouts belong here — for
    * right-edge buttons use {@link trailingActions}.
    */
+  /**
+   * Clock-adjacent host readouts (the absolute/UTC timestamp). Forwarded to
+   * {@link TimelineHeader}'s `readouts`; renders in both layouts.
+   */
+  readouts?: React.ReactNode;
   extraActions?: React.ReactNode;
   /**
    * Bring-your-own buttons, pinned to the right edge of the controls row
@@ -184,6 +189,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   rulerOverlay,
   eventMenuItems,
   extraControls,
+  readouts,
   extraActions,
   trailingActions,
   decorateTrack,
@@ -528,6 +534,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
           zoomRef={containerRef}
           rulerOverlay={rulerOverlay}
           extraControls={extraControls}
+          readouts={readouts}
           extraActions={extraActions}
           trailingActions={trailingActions}
         />
@@ -555,6 +562,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             expanded={open}
             rulerOverlay={rulerOverlay}
             extraControls={extraControls}
+            readouts={readouts}
             extraActions={extraActions}
             trailingActions={trailingActions}
           >
