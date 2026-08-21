@@ -3470,6 +3470,10 @@ class RoboLabDataset(FiftyOneDataset):
 
     _REPO_ID = "Voxel51/RoboLab-EgoX"
 
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "2d58122a556de08bf8e0598d31d4160bab15cc6d"
+
     @property
     def name(self):
         return "robolab"
@@ -3491,6 +3495,7 @@ class RoboLabDataset(FiftyOneDataset):
         hfh.snapshot_download(
             repo_id=self._REPO_ID,
             repo_type="dataset",
+            revision=self._REVISION,
             local_dir=dataset_dir,
         )
 
