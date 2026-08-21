@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React, { useEffect } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type AudioAvailability,
   DEFAULT_AUDIO_VOLUME,
@@ -32,11 +32,13 @@ const Capture: React.FC<{ availability?: AudioAvailability }> = ({
   return null;
 };
 
-function renderControls(opts: { availability?: AudioAvailability } = {}) {
+function renderControls(
+  opts: { availability?: AudioAvailability; onToggle?: () => void } = {},
+) {
   return render(
     <PlaybackProvider duration={10} stepInterval={1 / 30}>
       <Capture availability={opts.availability} />
-      <TimelineControls />
+      <TimelineControls onToggle={opts.onToggle} />
     </PlaybackProvider>,
   );
 }
@@ -68,6 +70,14 @@ describe("VolumeControl", () => {
     expect(screen.getByTestId("timeline-controls-volume-group")).toBeTruthy();
     const mute = screen.getByRole("button", { name: "Unmute" });
     expect(mute.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("clicks on the volume group never toggle the tracks drawer", () => {
+    const onToggle = vi.fn();
+    renderControls({ onToggle });
+    fireEvent.click(screen.getByTestId("timeline-controls-volume-group"));
+    fireEvent.click(screen.getByTestId("timeline-controls-volume"));
+    expect(onToggle).not.toHaveBeenCalled();
   });
 
   it("unmuting restores the default volume on first ever use", () => {

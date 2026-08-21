@@ -57,6 +57,12 @@ export const isWholeSampleReset = (change: LabelChange): boolean =>
 export interface LabelStore {
   readonly sample: string;
 
+  /** True while the store's source seed is still in flight — present reads
+   *  are provisional and an empty result means "loading", not "no labels".
+   *  Absent ≡ never loading (synchronously-seeded stores). Implementations
+   *  must notify display subscribers when this flips. */
+  isLoading?(): boolean;
+
   // resolution
   getLabel(ref: LabelRef): LabelData | undefined;
   listLabels(path: string, frame?: number): LabelData[];

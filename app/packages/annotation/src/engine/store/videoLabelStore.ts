@@ -59,6 +59,13 @@ export class VideoLabelStore implements LabelStore {
     this.sampleLevel = sampleLevel;
   }
 
+  isLoading(): boolean {
+    return (
+      (this.frames.isLoading?.() ?? false) ||
+      (this.sampleLevel.isLoading?.() ?? false)
+    );
+  }
+
   // ---- resolution ----
 
   getLabel(ref: LabelRef): LabelData | undefined {

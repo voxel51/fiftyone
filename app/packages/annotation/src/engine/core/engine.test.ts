@@ -7,6 +7,8 @@ import {
   makeStore,
   ref,
 } from "../testing/fixtures";
+import { AnnotationEngine } from "./engine";
+import { FrameStore } from "../store/frameStore";
 import { isWholeSampleReset } from "../store/types";
 import type {
   PresenceEvent,
@@ -560,5 +562,45 @@ describe("store unregistration sweep", () => {
 
     expect(changes).not.toHaveBeenCalled();
     expect(interaction).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("engine sample readiness", () => {
+  it("is not ready before a store registers, ready after, not ready again on unregister", () => {
+    const { engine, unregister } = makeEngine("s1");
+
+    expect(engine.isSampleReady("s1")).toBe(true);
+    expect(engine.isSampleReady("s2")).toBe(false);
+
+    unregister();
+    expect(engine.isSampleReady("s1")).toBe(false);
+  });
+
+  it("notifies display subscribers on register and unregister", () => {
+    const engine = new AnnotationEngine();
+    const display = vi.fn();
+    engine.subscribe(display);
+
+    const { store } = makeStore("s1");
+    const unregister = engine.registerStore(store);
+    expect(display).toHaveBeenCalledTimes(1);
+
+    unregister();
+    expect(display).toHaveBeenCalledTimes(2);
+  });
+
+  it("reflects a store's isLoading and recomputes when the flag flips", () => {
+    const engine = new AnnotationEngine();
+    const frames = new FrameStore("s1", { labelTypes: {}, loading: true });
+    engine.registerStore(frames);
+
+    expect(engine.isSampleReady("s1")).toBe(false);
+
+    const display = vi.fn();
+    engine.subscribe(display);
+    frames.setLoading(false);
+
+    expect(engine.isSampleReady("s1")).toBe(true);
+    expect(display).toHaveBeenCalledTimes(1);
   });
 });

@@ -82,6 +82,10 @@ const VolumeControl: React.FC = () => {
       data-testid="timeline-controls-volume-group"
       title={errored ? ERROR_TITLE : undefined}
       onKeyDown={handleKeyDown}
+      // The voodo slider's track is bare divs no interactive-element
+      // selector can recognize, so the whole group opts out of the
+      // controls row's click-anywhere-to-toggle.
+      data-toggle-exempt=""
     >
       <Button
         variant={Variant.Icon}

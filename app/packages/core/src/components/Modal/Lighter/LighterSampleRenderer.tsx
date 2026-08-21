@@ -4,11 +4,10 @@
 import {
   ImageOptions,
   ImageOverlay,
-  UNDEFINED_LIGHTER_SCENE_ID,
   lighterInitErrorAtom,
   overlayFactory,
-  useLighterEventHandler,
   useLighterSetupWithPixi,
+  useViewportInitReveal,
 } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
@@ -27,6 +26,7 @@ import { LighterToolbar } from "./LighterToolbar";
 import styles from "./LighterSampleRenderer.module.css";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
+import { useExposeMediaBoundsForTest } from "./useExposeMediaBoundsForTest";
 import useRetrieveViewport from "./useRetrieveViewport";
 import useViewport from "./useViewport";
 
@@ -37,6 +37,9 @@ export interface LighterSampleRendererProps {
   className?: string;
   /** Sample to display */
   sample: ModalSample;
+  /** Notified when the scene becomes safe to show (initial viewport settled
+   * on-canvas) — lets a host drive a loading cover over this renderer. */
+  onRevealChange?: (revealed: boolean) => void;
 }
 
 /**
@@ -45,6 +48,7 @@ export interface LighterSampleRendererProps {
 export const LighterSampleRenderer = ({
   className = "",
   sample,
+  onRevealChange,
 }: LighterSampleRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   // unique scene id allows us to destroy/recreate scenes reliably
@@ -61,6 +65,10 @@ export const LighterSampleRenderer = ({
   sampleRef.current = sample;
 
   const onReveal = useCallback(() => setIsRevealed(true), []);
+
+  useEffect(() => {
+    onRevealChange?.(isRevealed);
+  }, [isRevealed, onRevealChange]);
 
   useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
@@ -176,10 +184,14 @@ const LighterSetupImpl = (props: {
     scene.setCanonicalMedia(mediaOverlay);
   }, [scene, sceneId]);
 
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
-  );
-  useEventHandler("lighter:viewport-init-complete", onReveal, { once: true });
+  const revealed = useViewportInitReveal(scene);
+  useEffect(() => {
+    if (revealed) {
+      onReveal();
+    }
+  }, [revealed, onReveal]);
+
+  useExposeMediaBoundsForTest(scene);
 
   useViewport(sampleId);
 
