@@ -6,6 +6,7 @@ export { default as OperatorCore } from "./OperatorCore";
 export { default as OperatorInvocationRequestExecutor } from "./OperatorInvocationRequestExecutor";
 export { default as OperatorIO } from "./OperatorIO";
 export { default as OperatorExecutionButton } from "./components/OperatorExecutionButton";
+export { default as OperatorPromptTrigger } from "./components/OperatorPromptTrigger";
 export {
   OperatorPlacementWithErrorBoundary,
   default as OperatorPlacements,

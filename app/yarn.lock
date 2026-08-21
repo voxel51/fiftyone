@@ -1764,6 +1764,7 @@ __metadata:
     "@fiftyone/operators": "npm:*"
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
+    "@fiftyone/upload": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@monaco-editor/react": "npm:^4.5.0"
     "@mui/icons-material": "catalog:"
@@ -2411,6 +2412,23 @@ __metadata:
     react: "*"
     react-dom: "*"
     react-is: "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/upload@npm:*, @fiftyone/upload@workspace:packages/upload":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/upload@workspace:packages/upload"
+  dependencies:
+    "@testing-library/dom": "catalog:"
+    "@testing-library/react": "catalog:"
+    "@vitejs/plugin-react": "catalog:"
+    jsdom: "npm:^26.0.0"
+    typescript: "catalog:"
+    vite: "catalog:"
+    vitest: "catalog:"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
   languageName: unknown
   linkType: soft
 

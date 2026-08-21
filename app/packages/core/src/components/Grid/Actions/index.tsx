@@ -10,6 +10,7 @@ import { Box } from "@mui/material";
 import { useMemo } from "react";
 import BrowseOperationsAction from "../../Actions/BrowseOperations";
 import ColorSchemeAction from "../../Actions/ColorScheme";
+import ImportAction from "../../Actions/Import";
 import OptionsAction from "../../Actions/Options";
 import SelectedAction from "../../Actions/Selected";
 import SimilarityAction from "../../Actions/Similarity";
@@ -25,6 +26,10 @@ const ToggleSidebar = (props: AdaptiveMenuItemComponentPropsType) => (
 
 const ColorScheme = (props: AdaptiveMenuItemComponentPropsType) => (
   <ColorSchemeAction modal={false} adaptiveMenuItemProps={props} />
+);
+
+const Import = (props: AdaptiveMenuItemComponentPropsType) => (
+  <ImportAction adaptiveMenuItemProps={props} />
 );
 
 const Tag = (props: AdaptiveMenuItemComponentPropsType) => (
@@ -68,6 +73,10 @@ export default () => {
         id: "toggle-sidebar",
         Component: ToggleSidebar,
         priority: 1, // always show this first
+      },
+      {
+        id: "import",
+        Component: Import,
       },
       {
         id: "colors",
