@@ -19,7 +19,7 @@
  *     { type: "fetchChunk", reqId, request }             // per chunk
  *
  *   worker → main:
- *     { type: "frameReady", reqId, frameNumber, bitmap, width, height, meta: { src } }
+ *     { type: "frameReady", reqId, frameNumber, bitmap, width, height, meta: { src, filepath } }
  *     { type: "chunkDone", reqId, range }                // all frames in chunk processed
  *     { type: "chunkFailed", reqId, error }              // top-level fetch / parse failure
  *
@@ -117,9 +117,12 @@ async function decodeAndDispatch(
 
   let bitmap: ImageBitmap;
   try {
-    // Match `<img src>` semantics for the media GET: no custom
-    // headers, default credentials
-    const r = await fetch(src, { mode: "cors" });
+    // CORS fetch (createImageBitmap needs a readable, non-opaque response).
+    // `cache: "reload"` bypasses any opaque cache entry the same media URL may
+    // already hold from an `<img>` load (e.g. the legacy ImaVid Explore looker
+    // loads frames crossOrigin-less, caching an opaque response); reusing that
+    // here would fail the CORS check with a missing Access-Control-Allow-Origin.
+    const r = await fetch(src, { mode: "cors", cache: "reload" });
 
     if (!r.ok) {
       throw new Error(`image fetch failed: ${r.status}`);
@@ -146,7 +149,9 @@ async function decodeAndDispatch(
       bitmap,
       width: bitmap.width,
       height: bitmap.height,
-      meta: { src },
+      // filepath: each ImaVid "frame" is its own image sample — the header
+      // filename tracks the frame under the playhead.
+      meta: { src, filepath: frame.filepath },
     },
     [bitmap],
   );

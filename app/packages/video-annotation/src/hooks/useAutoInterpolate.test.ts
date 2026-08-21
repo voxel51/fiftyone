@@ -47,7 +47,11 @@ vi.mock("@fiftyone/annotation", () => ({
 
 const { streamRef } = vi.hoisted(() => ({
   streamRef: {
-    current: { labelsField: "detections", totalFrames: 3 } as unknown,
+    current: {
+      labelsField: "detections",
+      labelsPath: "frames.detections",
+      totalFrames: 3,
+    } as unknown,
   },
 }));
 
@@ -69,7 +73,11 @@ beforeEach(() => {
   propagate.mockReset();
   updateLabel.mockReset();
   transaction.mockClear();
-  streamRef.current = { labelsField: "detections", totalFrames: 3 };
+  streamRef.current = {
+    labelsField: "detections",
+    labelsPath: "frames.detections",
+    totalFrames: 3,
+  };
   getLabelImpl.current = ({ frame }: { frame: number }) =>
     frame === 1 || frame === 3 ? { keyframe: true } : null;
 });
@@ -155,7 +163,11 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
   it("step-holds non-keyframe filler after the edited last keyframe, coalesced under the edit's undo key", () => {
     // 5 frames: keyframes at 1 and 3 (3 is the last keyframe); 4 and 5 are
     // non-keyframe filler with stale geometry.
-    streamRef.current = { labelsField: "detections", totalFrames: 5 };
+    streamRef.current = {
+      labelsField: "detections",
+      labelsPath: "frames.detections",
+      totalFrames: 5,
+    };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1) return { keyframe: true, bounding_box: [0, 0, 1, 1] };
       if (frame === 3)
@@ -207,7 +219,11 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
   });
 
   it("step-holds all subsequent frames on a single-keyframe track", () => {
-    streamRef.current = { labelsField: "detections", totalFrames: 3 };
+    streamRef.current = {
+      labelsField: "detections",
+      labelsPath: "frames.detections",
+      totalFrames: 3,
+    };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1)
         return { keyframe: true, bounding_box: [0, 0, 0.5, 0.5] };
@@ -312,7 +328,11 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
   });
 
   it("does not step-hold on a keyframe removal", () => {
-    streamRef.current = { labelsField: "detections", totalFrames: 3 };
+    streamRef.current = {
+      labelsField: "detections",
+      labelsPath: "frames.detections",
+      totalFrames: 3,
+    };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1) return { keyframe: true, bounding_box: [0, 0, 1, 1] };
       if (frame === 2)

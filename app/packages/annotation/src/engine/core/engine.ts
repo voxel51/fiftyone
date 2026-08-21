@@ -9,6 +9,7 @@ import type {
   DisplayListener,
   LabelChange,
   LabelStore,
+  PersistenceAdapter,
   StoreSnapshot,
 } from "../store/types";
 import { wholeSampleReset } from "../store/types";
@@ -82,6 +83,7 @@ export class AnnotationEngine {
   private signals: SignalPipe;
 
   private stores = new Map<string, LabelStore>();
+  private persistenceAdapters = new Map<string, PersistenceAdapter>();
   private displayListeners = new Set<DisplayListener>();
   private changeListeners = new Set<ChangeListener>();
   private bookkeepingHooks = new Set<BookkeepingHook>();
@@ -213,17 +215,61 @@ export class AnnotationEngine {
     this.stores.set(store.sample, store);
     const unsubscribeDisplay = store.subscribe(this.onStoreDisplay);
     const unsubscribeChanges = store.subscribeChanges(this.onStoreChanges);
+    // a store appearing changes what resolves — nudge display subscribers
+    // (same contract as attachTemporal)
+    this.notifyDisplay();
 
     return () => {
       this.stores.delete(store.sample);
       unsubscribeDisplay();
       unsubscribeChanges();
+      this.notifyDisplay();
       this.interaction.gc(
         [wholeSampleReset(store.sample)],
         (ref) => this.getLabel(ref) !== undefined,
       );
       this.emitUndoDrop(this.undos.dropSample(store.sample));
     };
+  }
+
+  /**
+   * Whether a sample's labels are readable as truth: its store is registered
+   * and not mid-seed. False means "loading" — an empty present read for the
+   * sample is provisional, not "no labels". Recomputes with the display
+   * channel (registration and {@link LabelStore.isLoading} flips notify it).
+   */
+  isSampleReady(sample: string): boolean {
+    const store = this.stores.get(sample);
+    return store !== undefined && !(store.isLoading?.() ?? false);
+  }
+
+  /**
+   * Register a custom persistence transport for a store's deltas
+   * (mount-scoped, like the store itself). Persistence routes a dirty
+   * store's patch through its adapter when one is registered; otherwise it
+   * falls back to the standard modal-sample PATCH. Lets a surface whose
+   * store spans multiple documents (e.g. a dynamic group played as video,
+   * one document per frame) own the fan-out without the engine knowing.
+   */
+  registerPersistenceAdapter(
+    sample: string,
+    adapter: PersistenceAdapter,
+  ): () => void {
+    if (this.persistenceAdapters.has(sample)) {
+      throw new Error(
+        `a persistence adapter for sample '${sample}' is registered`,
+      );
+    }
+
+    this.persistenceAdapters.set(sample, adapter);
+
+    return () => {
+      this.persistenceAdapters.delete(sample);
+    };
+  }
+
+  getPersistenceAdapter(sample: string): PersistenceAdapter | undefined {
+    return this.persistenceAdapters.get(sample);
   }
 
   // ---- routed reads ----

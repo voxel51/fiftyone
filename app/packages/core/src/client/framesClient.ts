@@ -28,6 +28,13 @@ export type GetFramesRequest = {
   frameCount: number;
   /** Group slice name, when the dataset is grouped. */
   slice?: string | null;
+  /**
+   * Dynamic-group value, when the clip is a dynamic group rather than a video
+   * sample. The server returns that group's ordered samples as frames (the
+   * ImaVid case for an image dataset grouped into a video, which has no
+   * `frames` field to unwind).
+   */
+  dynamicGroup?: string | null;
   /** Optional extended view stages. */
   extended?: unknown;
   /**

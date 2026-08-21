@@ -6,7 +6,7 @@ import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
-import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
+import { ImageAnnotationSurface } from "./Lighter/ImageAnnotationSurface";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
@@ -125,7 +125,7 @@ const ModalLookerContent = React.memo(
             position: "absolute",
           }}
         >
-          <LighterSampleRenderer sample={sample} />
+          <ImageAnnotationSurface sample={sample} />
         </div>
       ) : (
         <ModalLookerNoTimeline sample={sample} showControls />

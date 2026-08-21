@@ -4,8 +4,11 @@
 
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
+  dispatchAfterPaintSettle,
+  useLighterEventBus,
   useLighterEventHandler,
   useLighterSetupWithPixi,
+  useViewportInitReveal,
 } from "@fiftyone/lighter";
 import { useModalLookerOptions } from "@fiftyone/state";
 import {
@@ -113,11 +116,19 @@ function useCanonicalMediaInstall(
  * world coordinates. Bounds arrive via ResizeObserver after layout, so we gate
  * on the `bounds-changed` event rather than renderer-ready alone (which races
  * a zero-size scene).
+ *
+ * After the reset settles on-canvas, dispatches
+ * `lighter:viewport-init-complete` — the same reveal signal the image modal's
+ * `useViewport` emits — so tiles can stay hidden until overlays are painted at
+ * their final transform.
  */
 function useViewportReset(scene: LighterScene, sceneId: string): void {
   const [rendererReady, setRendererReady] = useState(false);
   const [mediaBoundsReady, setMediaBoundsReady] = useState(false);
   const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
+  );
+  const eventBus = useLighterEventBus(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
@@ -146,7 +157,10 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
     }
 
     scene.resetZoomPan();
-  }, [scene, sceneId, rendererReady, mediaBoundsReady]);
+    dispatchAfterPaintSettle(scene, () =>
+      eventBus.dispatch("lighter:viewport-init-complete", {}),
+    );
+  }, [scene, sceneId, rendererReady, mediaBoundsReady, eventBus]);
 }
 
 /**
@@ -160,7 +174,10 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
  * source; pass nothing for a once-per-mount scene).
  *
  * Returns the scene plus whether its canonical media is installed; feed
- * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}.
+ * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}. `revealed`
+ * flips true once the initial viewport has settled on-canvas — tiles keep
+ * their media + overlay output hidden until then (the same reveal contract as
+ * the image modal's `LighterSampleRenderer`).
  */
 export function useLighterTileScene({
   hostRef,
@@ -175,6 +192,7 @@ export function useLighterTileScene({
 }): {
   scene: LighterScene;
   canonicalMediaReady: boolean;
+  revealed: boolean;
 } {
   const canvas = useAttachedSingletonCanvas(hostRef);
 
@@ -195,6 +213,7 @@ export function useLighterTileScene({
   useSceneColorScheme(scene, sceneId);
   const canonicalMediaReady = useCanonicalMediaInstall(scene, sceneId, dims);
   useViewportReset(scene, sceneId);
+  const revealed = useViewportInitReveal(scene, sceneId);
 
-  return { scene, canonicalMediaReady };
+  return { scene, canonicalMediaReady, revealed };
 }
