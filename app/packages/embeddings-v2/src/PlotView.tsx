@@ -111,6 +111,7 @@ export default function PlotView({
     visibleCount,
     selectedIndices,
     chipCount,
+    chipSampleCount,
     handleLasso,
     handlePointClick,
     handleBackgroundClick,
@@ -405,7 +406,19 @@ export default function PlotView({
               color={TextColor.Secondary}
             />
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              <strong>{chipCount.toLocaleString()}</strong> selected
+              {/* Samples when knowable — the footer already counts points,
+                  and one sample can own many points, so an unlabeled point
+                  count here reads as a wrong sample count */}
+              {chipSampleCount != null ? (
+                <>
+                  <strong>{chipSampleCount.toLocaleString()}</strong>{" "}
+                  {chipSampleCount === 1 ? "sample" : "samples"}
+                </>
+              ) : (
+                <>
+                  <strong>{chipCount.toLocaleString()}</strong> selected
+                </>
+              )}
             </Text>
             <Button
               variant={Variant.Icon}

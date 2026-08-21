@@ -88,13 +88,22 @@ export function useColorColumn(
 
     const currentSource = sourceRef.current;
     if (currentSource) {
+      // Releases this hook's interest in the column when the field is
+      // superseded or the host unmounts, so a cancellable source can stop
+      // working on a color nobody wants anymore
+      const interest = new AbortController();
       currentSource
-        .resolve(colorField, (partial) => !stale && apply(partial))
+        .resolve(
+          colorField,
+          (partial) => !stale && apply(partial),
+          interest.signal,
+        )
         .then((final) => !stale && apply(final))
         .catch((e) => !stale && setError(String(e)))
         .finally(() => !stale && setLoading(false));
       return () => {
         stale = true;
+        interest.abort();
       };
     }
 

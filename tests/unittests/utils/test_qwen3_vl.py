@@ -52,10 +52,10 @@ class TestQwen3VLOutputProcessor:
     def test_parse_multiple_detections(self):
         """Test parsing multiple detections"""
         processor = Qwen3VLOutputProcessor()
-        raw = '''[
+        raw = """[
             {"label": "cat", "bbox_2d": [0, 0, 500, 500]},
             {"label": "dog", "bbox_2d": [500, 500, 1000, 1000]}
-        ]'''
+        ]"""
         detections = processor._parse_detections(raw, (1000, 1000))
 
         assert len(detections) == 2
@@ -203,7 +203,7 @@ class TestQwen3VLOutputProcessorCall:
         outputs = [
             '[{"label": "cat", "bbox_2d": [0, 0, 500, 500]}]',
             '[{"label": "dog", "bbox_2d": [100, 100, 600, 600]}]',
-            '[]',
+            "[]",
         ]
 
         results = processor(outputs, (1000, 1000))
@@ -233,11 +233,13 @@ class TestQwen3VLModelConfig:
 
     def test_custom_config(self):
         """Test custom configuration values"""
-        config = Qwen3VLModelConfig({
-            "name_or_path": "Qwen/Qwen3-VL-8B-Instruct",
-            "classes": ["person", "car"],
-            "max_new_tokens": 2048,
-        })
+        config = Qwen3VLModelConfig(
+            {
+                "name_or_path": "Qwen/Qwen3-VL-8B-Instruct",
+                "classes": ["person", "car"],
+                "max_new_tokens": 2048,
+            }
+        )
 
         assert config.name_or_path == "Qwen/Qwen3-VL-8B-Instruct"
         assert config.classes == ["person", "car"]
@@ -245,11 +247,13 @@ class TestQwen3VLModelConfig:
 
     def test_embedding_config(self):
         """Test embedding-specific configuration"""
-        config = Qwen3VLModelConfig({
-            "name_or_path": "Qwen/Qwen3-VL-Embedding-2B",
-            "embedding_dim": 512,
-            "normalize_embeddings": False,
-        })
+        config = Qwen3VLModelConfig(
+            {
+                "name_or_path": "Qwen/Qwen3-VL-Embedding-2B",
+                "embedding_dim": 512,
+                "normalize_embeddings": False,
+            }
+        )
 
         assert config.name_or_path == "Qwen/Qwen3-VL-Embedding-2B"
         assert config.embedding_dim == 512
@@ -272,7 +276,9 @@ class TestQwen3VLPromptGeneration:
     def test_custom_classes_prompt(self):
         """Test prompt with custom classes"""
         model = Qwen3VLModel.__new__(Qwen3VLModel)
-        model.config = Qwen3VLModelConfig({"classes": ["person", "car", "dog"]})
+        model.config = Qwen3VLModelConfig(
+            {"classes": ["person", "car", "dog"]}
+        )
 
         prompt = model._get_prompt()
 
@@ -426,9 +432,7 @@ class TestQwen3VLAutoMode:
         model = self._make_mock_model()
         ds = fo.Dataset()
         ds.media_type = "video"
-        ds.add_sample(fo.Sample(
-            filepath=str(tmp_path / "test_video.mp4")
-        ))
+        ds.add_sample(fo.Sample(filepath=str(tmp_path / "test_video.mp4")))
         mock_reader = mock.MagicMock()
         with mock.patch(
             "fiftyone.core.models.etav.FFmpegVideoReader",
@@ -452,25 +456,23 @@ class TestQwen3VLAutoMode:
         model.mode = "image"
         embed_calls = []
         _orig_embed = model.embed
+
         def _tracking_embed(arg):
             embed_calls.append(type(arg).__name__)
             return _orig_embed(arg)
+
         model.embed = _tracking_embed
 
         ds = fo.Dataset()
         ds.media_type = "video"
-        ds.add_sample(fo.Sample(
-            filepath=str(tmp_path / "test_video.mp4")
-        ))
+        ds.add_sample(fo.Sample(filepath=str(tmp_path / "test_video.mp4")))
         mock_reader = mock.MagicMock()
         fake_frame = np.random.randint(0, 255, (64, 64, 3), dtype=np.uint8)
         mock_reader.__iter__ = mock.Mock(
             return_value=iter([fake_frame, fake_frame])
         )
         mock_reader.total_frame_count = 2
-        type(mock_reader).frame_number = mock.PropertyMock(
-            side_effect=[1, 2]
-        )
+        type(mock_reader).frame_number = mock.PropertyMock(side_effect=[1, 2])
         with mock.patch(
             "fiftyone.core.models.etav.FFmpegVideoReader",
             return_value=mock_reader,
@@ -563,11 +565,13 @@ class TestPromptMixinMocked:
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model._output_processor = None
         model._mode = None
-        model.config = Qwen3VLModelConfig({
-            "name_or_path": "Qwen/Qwen3-VL-Embedding-2B",
-            "embedding_dim": None,
-            "normalize_embeddings": True,
-        })
+        model.config = Qwen3VLModelConfig(
+            {
+                "name_or_path": "Qwen/Qwen3-VL-Embedding-2B",
+                "embedding_dim": None,
+                "normalize_embeddings": True,
+            }
+        )
 
         fake_hidden = torch.randn(1, 10, 2048)
         mock_outputs = mock.MagicMock()
@@ -835,6 +839,115 @@ class TestQwen3VLEmbedFrames:
         # subsampling and a sane, non-negative fps reported to the model
         assert len(captured["frames"]) == 5
         assert captured["fps"] == 2.0
+
+    def test_metadata_names_every_frame_of_the_clip(self):
+        metadata = Qwen3VLModel._video_metadata(4, 2.0)
+
+        assert _frames_indices_of(metadata) == [0, 1, 2, 3]
+
+    def test_the_processor_is_told_not_to_resample(self):
+        # without this the video processor resamples the clip toward ITS
+        # default rate, and builds timestamps from the 24fps it assumes
+        # when no metadata rides along
+        model = self._make_model()
+        model.config.video_fps = 2.0
+
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
+            mock_qvu.process_vision_info.return_value = (None, ["<video>"])
+            model.embed_frames(self._frames(8), fps=8.0)
+
+        kwargs = model._processor.call_args.kwargs
+        assert kwargs["do_sample_frames"] is False
+        # ...and the timestamps are built from the clip's REAL effective
+        # rate, not the 24fps the processor assumes absent metadata
+        meta = kwargs["video_metadata"][0]
+        fps = getattr(meta, "fps", None)
+        if fps is None:
+            fps = meta["fps"]
+        assert fps == 2.0
+
+    def test_an_older_processor_without_the_flag_still_embeds(self):
+        model = self._make_model()
+        inputs = model._processor.return_value
+
+        def _strict(*args, **kwargs):
+            if "do_sample_frames" in kwargs:
+                raise TypeError(
+                    "got an unexpected keyword argument 'do_sample_frames'"
+                )
+            return inputs
+
+        model._processor = mock.MagicMock(side_effect=_strict)
+        model._processor.apply_chat_template = mock.MagicMock(
+            return_value="<chat-text>"
+        )
+
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
+            mock_qvu.process_vision_info.return_value = (None, ["<video>"])
+            result = model.embed_frames(self._frames(3), fps=3.0)
+
+        assert isinstance(result, np.ndarray)
+        assert result.ndim == 1
+
+    def test_a_metadata_rejecting_processor_falls_through_and_latches(self):
+        model = self._make_model()
+        inputs = model._processor.return_value
+        calls = []
+
+        def _rejecting(*args, **kwargs):
+            calls.append(
+                {
+                    k: kwargs[k]
+                    for k in ("do_sample_frames", "video_metadata")
+                    if k in kwargs
+                }
+            )
+            if "video_metadata" in kwargs:
+                raise AttributeError("unexpected metadata shape")
+            return inputs
+
+        model._processor = mock.MagicMock(side_effect=_rejecting)
+        model._processor.apply_chat_template = mock.MagicMock(
+            return_value="<chat-text>"
+        )
+
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
+            mock_qvu.process_vision_info.return_value = (None, ["<video>"])
+            result = model.embed_frames(self._frames(3), fps=3.0)
+            # the convention is a fact about the processor version, so the
+            # failed richer attempt is not retried for the next clip
+            model.embed_frames(self._frames(3), fps=3.0)
+
+        assert isinstance(result, np.ndarray)
+        # the convention that succeeded still suppresses resampling
+        assert calls[1] == {"do_sample_frames": False}
+        assert calls[2:] == [{"do_sample_frames": False}]
+
+    def test_embedding_falls_back_to_last_hidden_state(self):
+        # a model that does not populate the hidden-state stack reports the
+        # final layer only via last_hidden_state
+        model = self._make_model()
+        outputs = mock.MagicMock()
+        outputs.hidden_states = None
+        outputs.last_hidden_state = torch.randn(1, 10, 2048)
+
+        embedding = model._postprocess_embedding(outputs)
+
+        assert embedding.shape == (1, 2048)
+
+
+def _frames_indices_of(metadata):
+    indices = getattr(metadata, "frames_indices", None)
+    if indices is None and isinstance(metadata, dict):
+        indices = metadata.get("frames_indices")
+
+    return indices
 
 
 if __name__ == "__main__":

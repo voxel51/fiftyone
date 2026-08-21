@@ -49,9 +49,14 @@ export type GeometryLoader = (
 export interface ColorColumnSource {
   /** The fields offered for color-by. */
   choices: string[];
+  /** `signal` (when the host passes one) releases this resolve's interest in
+   * the column — the host superseded the field or unmounted. Sources may
+   * ignore it; sources with cancellable work stop when every interested
+   * caller has released. */
   resolve: (
     field: string,
     onPartial: (partial: ColorResponse) => void,
+    signal?: AbortSignal,
   ) => Promise<ColorResponse>;
   /** Changes whenever the source's SEMANTICS change (its choices or what
    * `resolve` would answer) under the same dataset and run — e.g. a run
@@ -87,7 +92,10 @@ export type SelectionDecorator = (
  * commit (see useRunPlotData). */
 export type PublishSelection = (next: {
   stage?: Record<string, unknown> | null;
+  /** Selected points. One sample can own many points. */
   count?: number | null;
+  /** Distinct selected samples; null when only points are knowable. */
+  sampleCount?: number | null;
   decorate?: SelectionDecorator | null;
 }) => void;
 

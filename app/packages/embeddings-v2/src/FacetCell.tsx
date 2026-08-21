@@ -110,7 +110,12 @@ export default function FacetCell({
     <div className="emb-facet-cell">
       {label && (
         <div className="emb-facet-cell-header">
-          <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+          <Text
+            variant={TextVariant.Sm}
+            color={TextColor.Fg}
+            className="emb-facet-cell-header-label"
+            title={label}
+          >
             {label}
           </Text>
           <span className="emb-facet-cell-header-end">

@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from functools import wraps
 import signal
 import os
+import time
 
 import fiftyone as fo
 from fiftyone.plugins.core import _iter_plugin_metadata_files
@@ -40,15 +41,40 @@ def coroutine_timeout(seconds):
 
 @contextmanager
 def timeout(seconds: int):
+    """Context manager that raises a ``TimeoutError`` if its body runs for
+    longer than the given number of seconds.
+
+    Must be entered from the main thread of the main interpreter, because it
+    installs a ``SIGALRM`` handler and ``signal.signal()`` raises a
+    ``ValueError`` in any other thread.
+
+    Args:
+        seconds: the timeout, in seconds
+    """
+    prev_handler = signal.getsignal(signal.SIGALRM)
     signal.signal(
         signal.SIGALRM, lambda signum, frame: raise_timeout_error(seconds)
     )
-    signal.alarm(seconds)
+    # Arming our deadline displaces any outer ITIMER_REAL timer; setitimer
+    # is used over alarm() because it returns BOTH the outer timer's
+    # remaining delay and its repeat interval, so a periodic timer survives.
+    prior_delay, prior_interval = signal.setitimer(signal.ITIMER_REAL, seconds)
+    start = time.monotonic()
 
     try:
         yield
     finally:
-        signal.signal(signal.SIGALRM, signal.SIG_IGN)
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, prev_handler)
+        if prior_delay:
+            elapsed = time.monotonic() - start
+            # Never 0 (that would disarm); an already-lapsed outer deadline
+            # fires as soon as possible, keeping its repeat interval
+            signal.setitimer(
+                signal.ITIMER_REAL,
+                max(prior_delay - elapsed, 1e-6),
+                prior_interval,
+            )
 
 
 def raise_timeout_error(seconds):

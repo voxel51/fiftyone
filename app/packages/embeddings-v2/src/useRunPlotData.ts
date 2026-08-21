@@ -54,7 +54,11 @@ import {
 } from "./legendFilter";
 import { type ColorMeta, type VisualizationRun } from "./protocol";
 import type { EmbeddingsViewHandle, HoverHit } from "./renderer";
-import { clearSelectionNonceState, selectionCountState } from "./state";
+import {
+  clearSelectionNonceState,
+  selectionCountState,
+  selectionSampleCountState,
+} from "./state";
 import {
   getEmbeddingsPanelExtension,
   useFallbackRunFeatures,
@@ -118,6 +122,8 @@ export interface RunPlotData {
   selectedSamples: Map<string, SelectionType>;
   selectionCount: number | null;
   chipCount: number | null;
+  /** Distinct selected samples; null when only points are knowable. */
+  chipSampleCount: number | null;
   handleLasso: (
     indices: number[],
     polygon?: Array<[number, number]> | null,
@@ -204,6 +210,9 @@ export function useRunPlotData(
         }
         if (next.count !== undefined) {
           set(selectionCountState, next.count as never);
+        }
+        if (next.sampleCount !== undefined) {
+          set(selectionSampleCountState, next.sampleCount as never);
         }
         next.decorate?.({ set, reset });
       },
@@ -477,13 +486,17 @@ export function useRunPlotData(
     // Don't mutate the shared mask from useMasks
     const out = base === visibleMask ? base.slice() : base;
     const classes = colorMeta.classes ?? [];
+    // Probed per class, not per point: stringifying a label and hashing it
+    // into the off-set once per point was the loop's whole cost
+    const hidden = new Uint8Array(classes.length);
+    for (let ci = 0; ci < classes.length; ci++) {
+      if (off.has(String(classes[ci]?.label))) hidden[ci] = 1;
+    }
     const indices = colorValues.indices;
     const limit = Math.min(n, indices.length);
     for (let i = 0; i < limit; i++) {
       const ci = indices[i];
-      if (ci === MISSING_CATEGORY) continue;
-      const label = classes[ci]?.label;
-      if (label !== undefined && off.has(String(label))) out[i] = 0;
+      if (ci !== MISSING_CATEGORY && hidden[ci]) out[i] = 0;
     }
     return out;
   }, [
@@ -572,6 +585,21 @@ export function useRunPlotData(
     resolveLassoStage: features.resolveLassoStage,
     publishSelection,
   });
+
+  // Selection lives in global singletons (see the module docstring above)
+  // that outlive this run — `fos.selectedSamples` is a session atom, so it
+  // survives even a page reload. Without this, opening a different run
+  // inherits whatever was left selected from an unrelated one.
+  const seenRun = useRef<string | null>(null);
+  useEffect(() => {
+    // Keyed by dataset AND brain key: two datasets can hold same-named runs
+    const runId = `${datasetName ?? ""}\0${brainKey}`;
+    if (seenRun.current === runId) return;
+    seenRun.current = runId;
+    clearAll();
+    // Mount (a fresh run we've never scoped) and every later change
+    // both need the reset; only a same-run re-render should skip it
+  }, [datasetName, brainKey, clearAll]);
 
   // Focus (selection) wins over scope (view + filters); null means
   // nothing to scope by, and the legend shows the run's full counts.
@@ -730,6 +758,11 @@ export function useRunPlotData(
   // appeared for anything but a grid checkbox.
   const publishedCount = useRecoilValue(selectionCountState);
   const chipCount = publishedCount ?? (selectedSamples.size || null);
+  const publishedSampleCount = useRecoilValue(selectionSampleCountState);
+  // In the unpublished (grid-checkbox) fallback, the selection size IS a
+  // sample count
+  const chipSampleCount =
+    publishedCount == null ? chipCount : publishedSampleCount;
 
   // chipCount is the pre-click value — the chart clears its own lasso layer
   // before this fires. See backgroundClickAction for which layer comes off
@@ -783,6 +816,7 @@ export function useRunPlotData(
     selectedSamples,
     selectionCount: chipCount,
     chipCount,
+    chipSampleCount,
     handleLasso,
     handlePointClick,
     handleBackgroundClick,

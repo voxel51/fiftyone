@@ -551,6 +551,15 @@
   background: var(--emb-card-bg);
 }
 
+/* Truncate, never wrap: a wrapped label grows the header and pushes the
+   count + actions past the cell's clipped edge */
+.emb-facet-cell-header-label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* Count + caller-supplied actions cluster at the header's right edge */
 .emb-facet-cell-header-end {
   display: inline-flex;
