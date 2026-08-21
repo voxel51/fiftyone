@@ -13,6 +13,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
@@ -30,6 +31,11 @@ import fiftyone.utils.sama as fous
 import fiftyone.utils.places as foup
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
+
+hfh = fou.lazy_import(
+    "huggingface_hub",
+    callback=lambda: fou.ensure_package("huggingface_hub>=0.20.0"),
+)
 
 
 logger = logging.getLogger(__name__)
@@ -3433,6 +3439,75 @@ class UCF101Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class RoboLabDataset(FiftyOneDataset):
+    """Policy rollouts recorded on NVIDIA's RoboLab manipulation benchmark,
+    as native ``.mcap`` episodes.
+
+    Each take carries three synchronized camera views with a matching 16-bit
+    depth stream, per-camera intrinsics, joint positions, actions,
+    end-effector pose, and the task instruction. Takes keep the benchmark's
+    own success label, so failed rollouts sit alongside successful ones.
+
+    In 153 of the 4,000 takes the camera streams carry 80 frames while depth
+    and telemetry carry 81, so align streams by timestamp rather than by
+    index.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("robolab")
+
+        # Rollouts the policy got right
+        view = dataset.match({"success": True})
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        19.84 GB
+    """
+
+    _REPO_ID = "Voxel51/RoboLab-EgoX"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "2d58122a556de08bf8e0598d31d4160bab15cc6d"
+
+    @property
+    def name(self):
+        return "robolab"
+
+    @property
+    def license(self):
+        return "Apache-2.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "manipulation", "depth")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3461,6 +3536,7 @@ AVAILABLE_DATASETS = {
     "quickstart-trajectories": QuickstartTrajectoriesDataset,
     "quickstart-groups": QuickstartGroupsDataset,
     "quickstart-3d": Quickstart3DDataset,
+    "robolab": RoboLabDataset,
     "sama-coco": SamaCOCODataset,
     "ucf101": UCF101Dataset,
 }
