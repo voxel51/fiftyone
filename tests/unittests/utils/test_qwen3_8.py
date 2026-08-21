@@ -369,3 +369,65 @@ class TestQwen38FrameSizeIndependence:
         assert bbox[1] == pytest.approx(0.2)
         assert bbox[2] == pytest.approx(0.2)
         assert bbox[3] == pytest.approx(0.4)
+
+
+class TestQwen38ImageLayout:
+    """Layouts and dtypes that reach _prepare_image before the shared helper"""
+
+    def _prepare(self, img: ImageLike) -> PILImage.Image:
+        return Qwen38Model._prepare_image(None, img)
+
+    def test_channel_first_array_is_transposed(self) -> None:
+        """fout.to_rgb_pil rejects a (C, H, W) array outright"""
+        out = self._prepare(np.zeros((3, 40, 60), dtype=np.uint8))
+
+        assert out.size == (60, 40)
+
+    def test_channel_first_tensor_is_transposed(self) -> None:
+        out = self._prepare(torch.zeros(3, 40, 60, dtype=torch.uint8))
+
+        assert out.size == (60, 40)
+
+    def test_channel_last_array_is_left_alone(self) -> None:
+        out = self._prepare(np.zeros((40, 60, 3), dtype=np.uint8))
+
+        assert out.size == (60, 40)
+
+    def test_ambiguous_square_channel_count_is_left_alone(self) -> None:
+        """A (3, 224, 3) array is channel-last; transposing would corrupt it"""
+        out = self._prepare(np.zeros((3, 224, 3), dtype=np.uint8))
+
+        assert out.size == (224, 3)
+
+    @pytest.mark.parametrize(
+        "value,expected", [(0.5, 127), (200.0, 200), (300.0, 255)]
+    )
+    def test_float_tensor_is_scaled_and_clipped(
+        self, value: float, expected: int
+    ) -> None:
+        """A float tensor takes the same 0-1 versus 0-255 handling as an
+        array; to_rgb_pil would wrap anything above 1.0"""
+        img = torch.full((3, 8, 8), value, dtype=torch.float32)
+        out = np.asarray(self._prepare(img))
+
+        assert out.dtype == np.uint8
+        assert out.max() == expected
+
+
+class TestQwen38LoadGuards:
+    """Configuration combinations rejected before the model is loaded"""
+
+    @pytest.mark.parametrize("value", [0, -1, -4096])
+    def test_rejects_non_positive_max_new_tokens(self, value: int) -> None:
+        with pytest.raises(ValueError, match="max_new_tokens"):
+            Qwen38ModelConfig({"max_new_tokens": value})
+
+    def test_four_bit_without_gpu_is_rejected(self) -> None:
+        """Without a GPU both load branches are skipped, which would load
+        the 55.6 GB bfloat16 weights instead of quantizing"""
+        model = Qwen38Model.__new__(Qwen38Model)
+        model._using_gpu = False
+        config = Qwen38ModelConfig({"load_in_4bit": True})
+
+        with pytest.raises(ValueError, match="requires a GPU"):
+            Qwen38Model._load_model(model, config)

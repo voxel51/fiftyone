@@ -238,6 +238,10 @@ class Qwen38ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.prompt = self.parse_string(d, "prompt", default=None)
         self.classes = self.parse_array(d, "classes", default=None)
         self.max_new_tokens = self.parse_int(d, "max_new_tokens", default=4096)
+        if self.max_new_tokens <= 0:
+            raise ValueError(
+                "max_new_tokens must be positive; got %s" % self.max_new_tokens
+            )
         self.reasoning_effort = self.parse_string(
             d, "reasoning_effort", default="low"
         )
@@ -299,6 +303,12 @@ class Qwen38Model(fout.TorchImageModel):
         model_cls = transformers.AutoModelForMultimodalLM
 
         kwargs = {"dtype": torch.bfloat16}
+
+        if config.load_in_4bit and not self._using_gpu:
+            raise ValueError(
+                "load_in_4bit=True requires a GPU; set it to False to "
+                "load the 55.6 GB bfloat16 weights"
+            )
 
         if self._using_gpu and config.load_in_4bit:
             # Only the 4-bit path needs bitsandbytes; the model is 55.6 GB
@@ -401,13 +411,25 @@ class Qwen38Model(fout.TorchImageModel):
     def _prepare_image(self, img: ImageLike) -> PILImage.Image:
         """Converts image-like input to an RGB PIL image for the processor.
 
-        ``fout.to_rgb_pil`` reads float arrays as 0-1 and wraps anything
-        above that range, so floats are scaled and clipped to uint8 first.
+        ``fout.to_rgb_pil`` expects channel-last layout and reads float
+        arrays as 0-1, wrapping anything above it, so tensors are converted
+        and channel-first or 0-255 float input is normalized first.
         """
-        if isinstance(img, np.ndarray) and np.issubdtype(
-            img.dtype, np.floating
-        ):
-            scale = 255.0 if img.max() <= 1.0 else 1.0
-            img = np.clip(img * scale, 0, 255).astype(np.uint8)
+        if isinstance(img, torch.Tensor):
+            img = img.detach().cpu().numpy()
+
+        if isinstance(img, np.ndarray):
+            # Transpose CHW to HWC when the first dim is channels and the
+            # last cannot be
+            if (
+                img.ndim == 3
+                and img.shape[0] in (1, 3, 4)
+                and img.shape[2] not in (1, 3, 4)
+            ):
+                img = np.transpose(img, (1, 2, 0))
+
+            if np.issubdtype(img.dtype, np.floating):
+                scale = 255.0 if img.max() <= 1.0 else 1.0
+                img = np.clip(img * scale, 0, 255).astype(np.uint8)
 
         return fout.to_rgb_pil(img)
