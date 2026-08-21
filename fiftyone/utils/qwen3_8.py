@@ -300,15 +300,17 @@ class Qwen38Model(fout.TorchImageModel):
         pass
 
     def _load_model(self, config: "Qwen38ModelConfig") -> torch.nn.Module:
-        model_cls = transformers.AutoModelForMultimodalLM
-
-        kwargs = {"dtype": torch.bfloat16}
-
+        # Checked before transformers is resolved, so an invalid
+        # configuration does not first pull in the library
         if config.load_in_4bit and not self._using_gpu:
             raise ValueError(
                 "load_in_4bit=True requires a GPU; set it to False to "
                 "load the 55.6 GB bfloat16 weights"
             )
+
+        model_cls = transformers.AutoModelForMultimodalLM
+
+        kwargs = {"dtype": torch.bfloat16}
 
         if self._using_gpu and config.load_in_4bit:
             # Only the 4-bit path needs bitsandbytes; the model is 55.6 GB
