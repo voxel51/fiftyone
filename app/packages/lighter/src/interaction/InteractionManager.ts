@@ -296,11 +296,8 @@ export class InteractionManager {
   }
 
   /**
-   * Whether a label-creation tool is active: detection (bbox) mode, or a
-   * segmentation painting tool. While drawing, unselected overlays under the
-   * cursor are treated as empty canvas so a new label can be started anywhere;
-   * labels are only selectable via the Select tool. The Merge tool is excluded
-   * because it picks its sources by selecting overlays.
+   * While a creation tool is active, unselected overlays are treated as empty
+   * canvas. Merge is excluded because it picks sources by selecting overlays.
    */
   private isDrawModeActive(): boolean {
     if (detectionModeBridge.isActive()) {
@@ -388,10 +385,8 @@ export class InteractionManager {
         TypeGuards.isSelectable(handler) &&
         !this.selectionManager.isSelected(handler.id);
 
-      // While a draw tool is active, an unselected overlay under the cursor
-      // never claims the click — the click starts a new label instead, so
-      // dense scenes stay drawable. The selected overlay still wins the hit
-      // test, keeping drag/resize of the label being edited intact.
+      // While drawing, unselected overlays never claim the click; the
+      // selected overlay still wins the hit test so drag/resize works
       const drawOverOverlay = isUnselectedOverlay && this.isDrawModeActive();
 
       if (isUnselectedOverlay && !drawOverOverlay) {
@@ -498,8 +493,7 @@ export class InteractionManager {
       return;
     }
 
-    // While a draw tool is active, unselected overlays don't claim clicks, so
-    // don't advertise selection with a 'pointer' — show the mode cursor.
+    // unselected overlays aren't clickable while drawing — show the mode cursor
     const isUnselectedOverlay =
       TypeGuards.isSelectable(handler) && !handler.isSelected?.();
 

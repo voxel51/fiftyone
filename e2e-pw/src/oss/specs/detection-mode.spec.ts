@@ -143,17 +143,14 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
 
-    // Unselected detection #1 doesn't claim the pointer while drawing: the
-    // cursor stays a crosshair over it, and dragging inside it draws
-    // detection #3 instead of selecting or moving #1
+    // Unselected #1 doesn't claim the pointer: dragging inside it draws #3
     await modal.sampleCanvas.move(0.3, 0.3, "crosshair");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
 
-    // The drag created detection #3 rather than selecting or moving #1:
-    // after click-to-quit the label list shows all three detections
+    // Quit, then the label list shows all three (#3 was created, #1 untouched)
     await modal.sampleCanvas.move(0.1, 0.1);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();

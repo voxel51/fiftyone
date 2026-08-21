@@ -140,19 +140,16 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sidebar.annotate.assert.detectionModeIsActive();
 
-    // The existing detection at (0.4-0.6, 0.4-0.6) doesn't claim the pointer
-    // while a draw tool is active — the cursor stays a crosshair over it
+    // the existing detection at (0.4-0.6, 0.4-0.6) doesn't claim the click
     await modal.sampleCanvas.move(0.5, 0.5, "crosshair");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
 
-    // click-to-quit applies over overlays like empty canvas: detection mode
-    // deactivates and Select reactivates, without selecting the label
+    // click-to-quit applies over overlays like empty canvas
     await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sidebar.annotate.assert.selectIsActive();
 
-    // the label list header is still showing — the click didn't open the
-    // detection for editing (the list unmounts while a label is being edited)
+    // the "Edit" header belongs to the label list, which unmounts while editing
     await expect(
       modal.sidebar.locator.getByText("Edit", { exact: true }),
     ).toBeVisible();
