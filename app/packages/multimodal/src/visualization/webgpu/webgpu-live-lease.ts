@@ -18,7 +18,7 @@
  * (dependency-cruiser enforces it).
  */
 
-import { canAcquireWebGpuDevice } from "./webgpu-device-registry";
+import { canAcquireWebGpuDevice } from "./graphics-renderer-registry";
 
 /**
  * Bounds simultaneous live grid renderers (and so grid `GPUDevice`s).

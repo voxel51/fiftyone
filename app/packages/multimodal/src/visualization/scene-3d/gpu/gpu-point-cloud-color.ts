@@ -134,32 +134,52 @@ export function gpuPointCloudColorAtSample(
     return null;
   }
 
+  // Preserve the policy's number values for hover/diagnostics. Render buffers
+  // intentionally quantize through their Float32Array target instead.
+  const target: [number, number, number] = [0, 0, 0];
+  writeGpuPointCloudColorAtSample(target, 0, color, payload, sampleIndex);
+  return target;
+}
+
+/**
+ * Writes one canonical sample's resolved color without allocating. Shared by
+ * hover readback and the WebGL2 vertex-attribute fallback builder.
+ */
+export function writeGpuPointCloudColorAtSample(
+  target: Float32Array | number[],
+  targetOffset: number,
+  color: ResolvedGpuPointCloudColor,
+  payload: PointCloudRenderPayload,
+  sampleIndex: number,
+): void {
   const { source } = color;
   if (source.kind === "uniform") {
-    return source.color;
+    target[targetOffset] = source.color[0];
+    target[targetOffset + 1] = source.color[1];
+    target[targetOffset + 2] = source.color[2];
+    return;
   }
   if (source.kind === "rgb") {
     const offset = sampleIndex * RGB_COMPONENT_COUNT;
-    return [
-      clamp01(
-        decodePointCloudChannelValue(
-          source.rgb.encoding,
-          source.rgb.values[offset],
-        ),
+    target[targetOffset] = clamp01(
+      decodePointCloudChannelValue(
+        source.rgb.encoding,
+        source.rgb.values[offset],
       ),
-      clamp01(
-        decodePointCloudChannelValue(
-          source.rgb.encoding,
-          source.rgb.values[offset + 1],
-        ),
+    );
+    target[targetOffset + 1] = clamp01(
+      decodePointCloudChannelValue(
+        source.rgb.encoding,
+        source.rgb.values[offset + 1],
       ),
-      clamp01(
-        decodePointCloudChannelValue(
-          source.rgb.encoding,
-          source.rgb.values[offset + 2],
-        ),
+    );
+    target[targetOffset + 2] = clamp01(
+      decodePointCloudChannelValue(
+        source.rgb.encoding,
+        source.rgb.values[offset + 2],
       ),
-    ];
+    );
+    return;
   }
 
   const value =
@@ -170,17 +190,18 @@ export function gpuPointCloudColorAtSample(
           source.field.values[sampleIndex],
         );
   if (!Number.isFinite(value)) {
-    return NEUTRAL_GPU_POINT_COLOR;
+    target[targetOffset] = NEUTRAL_GPU_POINT_COLOR[0];
+    target[targetOffset + 1] = NEUTRAL_GPU_POINT_COLOR[1];
+    target[targetOffset + 2] = NEUTRAL_GPU_POINT_COLOR[2];
+    return;
   }
 
-  const target = new Float32Array(RGB_COMPONENT_COUNT);
   writeColormapLookupColor(
     target,
-    0,
+    targetOffset,
     colormapLookup(color.colormap),
     normalizePointCloudColorValue(value, source.minValue, source.maxValue),
   );
-  return [target[0], target[1], target[2]];
 }
 
 function colorRampForSource(

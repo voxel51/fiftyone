@@ -34,6 +34,8 @@ import {
   DEFAULT_MAX_RENDERED_POINTS,
 } from "../../../visualization/webgpu/point-cloud-canvas-budget";
 import { useWebGpuViewPointCloudBudget } from "../../../visualization/webgpu/WebGpuViewStage";
+import { useGraphicsRuntime } from "../../../visualization/webgpu/graphics-runtime-context";
+import { WebGlPointCloudProjectionPicker } from "./WebGlPointCloudProjectionPicker";
 
 /** Inputs required to render and inspect projected point clouds for one image. */
 export interface ImageProjectionSceneProps {
@@ -63,7 +65,7 @@ const HOVER_ECHO_ANIMATION_MS = 150;
 const HOVER_ECHO_MIN_SCREEN_PX = 8;
 const HOVER_ECHO_RENDER_ORDER = 9_000;
 
-/** GPU scene content and on-demand picker for one camera tile. */
+/** Backend-aware scene content and on-demand picker for one camera tile. */
 const ImageProjectionScene = forwardRef<
   GpuPointCloudProjectionPickerHandle,
   ImageProjectionSceneProps
@@ -82,6 +84,7 @@ const ImageProjectionScene = forwardRef<
   },
   pickerRef,
 ) {
+  const { backend } = useGraphicsRuntime();
   const preparedLayers = useMemo(
     () =>
       layers.flatMap((layer): readonly PreparedProjectionLayer[] => {
@@ -164,6 +167,20 @@ const ImageProjectionScene = forwardRef<
       })),
     [pointBudget, renderedLayers],
   );
+  const webGlPickLayers = useMemo(
+    () =>
+      renderedLayers.map(({ layer, resource, resourceKey }) => ({
+        payload: layer.payload,
+        renderedPointCount:
+          pointBudget.get(layer.stream) ?? resource.sampledPointCount,
+        resourceKey,
+        rotation: layer.rotation,
+        sourcePointCount:
+          layer.payload.sourcePointCount ?? layer.frame.pointCount,
+        translation: layer.translation,
+      })),
+    [pointBudget, renderedLayers],
+  );
 
   return (
     <>
@@ -183,12 +200,20 @@ const ImageProjectionScene = forwardRef<
           viewTransform={viewTransform}
         />
       ))}
-      <GpuPointCloudProjectionPicker
-        calibrationHeight={cameraModel.height}
-        calibrationWidth={cameraModel.width}
-        layers={pickLayers}
-        ref={pickerRef}
-      />
+      {backend === "webgpu" ? (
+        <GpuPointCloudProjectionPicker
+          calibrationHeight={cameraModel.height}
+          calibrationWidth={cameraModel.width}
+          layers={pickLayers}
+          ref={pickerRef}
+        />
+      ) : (
+        <WebGlPointCloudProjectionPicker
+          cameraModel={cameraModel}
+          layers={webGlPickLayers}
+          ref={pickerRef}
+        />
+      )}
       <ProjectedHoverMarker
         cameraModel={cameraModel}
         fit={fit}

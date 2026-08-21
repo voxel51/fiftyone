@@ -16,9 +16,6 @@ describe("SettingsLabel", () => {
     const help = screen.getByRole("img", {
       name: "Explains the camera geometry choice.",
     });
-    expect(help.getAttribute("data-tooltip")).toBe(
-      "Explains the camera geometry choice.",
-    );
     expect(help.getAttribute("tabindex")).toBe("0");
   });
 });

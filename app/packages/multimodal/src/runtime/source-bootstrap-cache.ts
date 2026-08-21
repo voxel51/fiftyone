@@ -2,13 +2,18 @@ import type {
   ByteSourceDescriptor,
   EpisodeManifest,
   EpisodePosterFrame,
+  EpisodePreviewReadResult,
   EpisodeTimeline,
   TimeWindow,
 } from "../ir";
 import { byteSourceAccessKey } from "../query/bytes";
+import { publishEpisodeTimeRange } from "./episode-time-range-registry";
 
-/** Keep enough nearby grid samples for first-open and short navigation runs. */
-const MAX_SOURCE_ENTRIES = 32;
+/**
+ * Keep a full grid viewport plus virtualization overscan for first-open and
+ * short navigation runs. Poster bytes retain their independent hard ceiling.
+ */
+const MAX_SOURCE_ENTRIES = 64;
 /** Poster data is bounded independently because point-cloud previews can be large. */
 const MAX_POSTER_BYTES = 32 * 1024 * 1024;
 
@@ -17,6 +22,8 @@ export interface SourceBootstrap {
   readonly manifest?: EpisodeManifest;
   readonly poster?: EpisodePosterFrame;
   readonly posterStreamId?: string;
+  /** A lightweight preview read completed, even if it found no poster. */
+  readonly previewReadComplete?: boolean;
   readonly timeline?: EpisodeTimeline;
   readonly timeRange?: TimeWindow;
 }
@@ -55,10 +62,13 @@ export function publishSourceBootstrap(
   const manifest = bootstrap.manifest ?? current?.manifest;
   const timeline = bootstrap.timeline ?? current?.timeline;
   const timeRange = bootstrap.timeRange ?? current?.timeRange;
+  const previewReadComplete =
+    bootstrap.previewReadComplete ?? current?.previewReadComplete;
   const next: CacheEntry = {
     ...(manifest ? { manifest } : {}),
     ...(poster ? { poster } : {}),
     ...(posterStreamId ? { posterStreamId } : {}),
+    ...(previewReadComplete ? { previewReadComplete } : {}),
     ...(timeRange ? { timeRange } : {}),
     ...(timeline ? { timeline } : {}),
     posterBytes: retainedBinaryBytes(poster ?? null),
@@ -74,6 +84,32 @@ export function publishSourceBootstrap(
       notifySourceListeners(evictedKey);
     }
   }
+}
+
+/** Publishes every reusable fact learned by one lightweight preview read. */
+export function publishEpisodePreviewBootstrap(
+  source: ByteSourceDescriptor,
+  result: EpisodePreviewReadResult,
+): void {
+  const timeRange = result.bootstrapTimeline
+    ? {
+        endNs: result.bootstrapTimeline.endNs,
+        startNs: result.bootstrapTimeline.startNs,
+      }
+    : result.bootstrapTimeRange;
+  publishSourceBootstrap(source, {
+    ...(result.bootstrapManifest ? { manifest: result.bootstrapManifest } : {}),
+    ...(result.bootstrapTimeline ? { timeline: result.bootstrapTimeline } : {}),
+    ...(timeRange ? { timeRange } : {}),
+    ...(result.frame
+      ? {
+          poster: result.frame,
+          ...(result.streamId ? { posterStreamId: result.streamId } : {}),
+        }
+      : {}),
+    previewReadComplete: true,
+  });
+  if (timeRange) publishEpisodeTimeRange(source.sourceId, timeRange);
 }
 
 /** Returns the current source bootstrap without changing its LRU position. */
@@ -132,6 +168,9 @@ function copyEntry(entry: CacheEntry | undefined): SourceBootstrap | null {
     ...(entry.manifest ? { manifest: entry.manifest } : {}),
     ...(entry.poster ? { poster: entry.poster } : {}),
     ...(entry.posterStreamId ? { posterStreamId: entry.posterStreamId } : {}),
+    ...(entry.previewReadComplete
+      ? { previewReadComplete: entry.previewReadComplete }
+      : {}),
     ...(entry.timeRange ? { timeRange: entry.timeRange } : {}),
     ...(entry.timeline ? { timeline: entry.timeline } : {}),
   };

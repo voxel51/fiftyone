@@ -4,7 +4,7 @@ import {
   useIsImageDynamicGroupVideo,
 } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useEndPointSessionOnFrameChange } from "../hooks/useEndPointSessionOnFrameChange";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
@@ -13,6 +13,10 @@ import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameCloc
 import { useDynamicGroupPersistence } from "../hooks/useDynamicGroupPersistence";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
+import {
+  useSetTimelineLoaded,
+  useSurfaceRevealed,
+} from "../state/surfaceReveal";
 import { useFollowAnchorFrame } from "../state/useVideoInteraction";
 import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useDecodeStrategy } from "../hooks/useDecodeStrategy";
@@ -135,6 +139,19 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   const labelsMode = useLabelsMode();
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const prerequisites = useAnnotatePrerequisites(sample);
+  const surfaceRevealed = useSurfaceRevealed();
+
+  // Synthetic labels have no loading phase, so satisfy the reveal's timeline
+  // half directly — `FrameLabelsTracks` (the real-mode writer) never mounts.
+  const setTimelineLoaded = useSetTimelineLoaded();
+  useEffect(() => {
+    if (labelsMode !== "synthetic") {
+      return undefined;
+    }
+
+    setTimelineLoaded(true);
+    return () => setTimelineLoaded(false);
+  }, [labelsMode, setTimelineLoaded]);
 
   // ImaVid write path: frame edits fan out to the group's member samples
   // under one group version token. Inert for native video.
@@ -221,20 +238,36 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   const Tile = STRATEGY_TILE[strategy];
   const Registrar = STRATEGY_REGISTRAR[strategy];
 
+  // The degenerate no-media `html` tile renders a notice instead of a scene,
+  // so the scene half of the reveal can never fire — don't cover it.
+  const canReveal = strategy !== "html" || Boolean(videoSrc);
+
   const layout = (
     <div
       ref={dimensions.ref as React.RefObject<HTMLDivElement>}
       className={styles.root}
     >
       <VideoAnnotationTopBar sample={sample} />
-      <div className={styles.media}>
-        <Tile videoSrc={videoSrc} />
-      </div>
-      <div className={styles.timeline}>
-        {labelsMode === "synthetic" ? (
-          <SyntheticTrackTimeline />
-        ) : (
-          <FrameLabelsTracks sample={sample} maxSize={timelineMaxSize} />
+      <div className={styles.content}>
+        <div className={styles.media}>
+          <Tile videoSrc={videoSrc} />
+        </div>
+        <div className={styles.timeline}>
+          {labelsMode === "synthetic" ? (
+            <SyntheticTrackTimeline />
+          ) : (
+            <FrameLabelsTracks sample={sample} maxSize={timelineMaxSize} />
+          )}
+        </div>
+        {/* Opaque cover over media + timeline until the coordinated reveal —
+            scene viewport settled AND tracks loaded (see `surfaceReveal`).
+            Everything mounts and lays out underneath (streams register, the
+            timeline's pin-bootstrap re-key happens invisibly); the cover then
+            drops in one frame with both regions at their final state. */}
+        {canReveal && !surfaceRevealed && (
+          <div className={styles.cover}>
+            <AnnotatePrerequisiteChecking />
+          </div>
         )}
       </div>
     </div>

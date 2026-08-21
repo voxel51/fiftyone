@@ -1,7 +1,7 @@
 import type {
   McapPlaybackWorkerPriority,
   McapPlaybackWorkerRequestPayloadByType,
-  McapPlaybackWorkerUnaryType,
+  McapPlaybackWorkerRpcType,
 } from "./playback-worker-types";
 import { MCAP_PLAYBACK_WORKER_PRIORITY } from "./playback-worker-types";
 
@@ -14,7 +14,7 @@ const SUPERSESSION_KEY_SEPARATOR = "\0";
  * Playback runway and unrelated RPCs deliberately return no keys.
  */
 export function mcapForegroundSupersessionKeys<
-  Type extends McapPlaybackWorkerUnaryType,
+  Type extends McapPlaybackWorkerRpcType,
 >({
   generation,
   payload,

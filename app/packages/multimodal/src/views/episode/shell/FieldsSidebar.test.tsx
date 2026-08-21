@@ -1,5 +1,19 @@
+import {
+  Experimental_CssVarsProvider as CssVarsProvider,
+  experimental_extendTheme as extendMuiTheme,
+} from "@mui/material";
 import { cleanup, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// `JSONViewer` (used for non-empty object/array fields) reads the color
+// scheme via MUI's `useColorScheme`, which throws outside a
+// `CssVarsProvider` — the real app supplies one at its root
+// (`ThemeProvider`), but this unit test renders `FieldsSidebar` standalone.
+const muiTestTheme = extendMuiTheme();
+function renderFieldsSidebar(ui: ReactElement) {
+  return render(<CssVarsProvider theme={muiTestTheme}>{ui}</CssVarsProvider>);
+}
 
 interface FakeField {
   path: string;
@@ -8,18 +22,29 @@ interface FakeField {
   dbField?: string | null;
 }
 
-const { fakeFields, useActiveModalSample, useSampleFields, useTimeZone } =
-  vi.hoisted(() => ({
-    fakeFields: [] as FakeField[],
-    useActiveModalSample: vi.fn(),
-    useSampleFields: vi.fn(),
-    useTimeZone: vi.fn(),
-  }));
-
-vi.mock("@fiftyone/state", () => ({
+const {
+  fakeFields,
+  fieldVisibilityStageValue,
   useActiveModalSample,
   useSampleFields,
   useTimeZone,
+} = vi.hoisted(() => ({
+  fakeFields: [] as FakeField[],
+  fieldVisibilityStageValue: { current: null as unknown },
+  useActiveModalSample: vi.fn(),
+  useSampleFields: vi.fn(),
+  useTimeZone: vi.fn(),
+}));
+
+vi.mock("@fiftyone/state", () => ({
+  fieldVisibilityStage: "fieldVisibilityStage",
+  useActiveModalSample,
+  useSampleFields,
+  useTimeZone,
+}));
+
+vi.mock("recoil", () => ({
+  useRecoilValue: () => fieldVisibilityStageValue.current,
 }));
 
 import FieldsSidebar from "./FieldsSidebar";
@@ -33,6 +58,7 @@ describe("FieldsSidebar", () => {
   beforeEach(() => {
     useSampleFields.mockImplementation(() => fakeFields);
     useTimeZone.mockReturnValue("UTC");
+    fieldVisibilityStageValue.current = null;
   });
 
   afterEach(() => {
@@ -44,7 +70,7 @@ describe("FieldsSidebar", () => {
     setFields([]);
     useActiveModalSample.mockReturnValue({});
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-empty")).toBeTruthy();
   });
@@ -56,7 +82,7 @@ describe("FieldsSidebar", () => {
     ]);
     useActiveModalSample.mockReturnValue({ filepath: "/a/b.mcap" });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     const body = screen.getByTestId("episode-fields-body");
     expect(body.textContent).toContain("filepath");
@@ -71,7 +97,7 @@ describe("FieldsSidebar", () => {
       filepath: "/data/scene-0001.mcap",
     });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     const body = screen.getByTestId("episode-fields-body");
     expect(body.textContent).toContain("/data/scene-0001.mcap");
@@ -88,7 +114,7 @@ describe("FieldsSidebar", () => {
     ]);
     useActiveModalSample.mockReturnValue({ _id: "abc123" });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
       "abc123",
@@ -103,7 +129,7 @@ describe("FieldsSidebar", () => {
       created_at: { _cls: "DateTime", datetime: 1_700_000_000_000 },
     });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     const value = screen.getByTestId("episode-fields-body").textContent ?? "";
     expect(value).not.toContain("_cls");
@@ -118,22 +144,55 @@ describe("FieldsSidebar", () => {
     ]);
     useActiveModalSample.mockReturnValue({});
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
       "—",
     );
   });
 
-  it("JSON-renders a list field's value", () => {
+  it("renders a non-empty list field's value through the JSON tree viewer", () => {
     setFields([{ path: "tags", ftype: "fiftyone.core.fields.ListField" }]);
     useActiveModalSample.mockReturnValue({ tags: ["train", "front-cam"] });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
+
+    // `JsonViewer` renders each entry as separate key/value nodes rather
+    // than one flat stringified block, so assert on the values individually.
+    const body = screen.getByTestId("episode-fields-body");
+    expect(body.textContent).toContain("train");
+    expect(body.textContent).toContain("front-cam");
+  });
+
+  it("shows a muted placeholder for an empty list field's value", () => {
+    setFields([{ path: "tags", ftype: "fiftyone.core.fields.ListField" }]);
+    useActiveModalSample.mockReturnValue({ tags: [] });
+
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
-      '["train","front-cam"]',
+      "None",
     );
+  });
+
+  it("filters out fields hidden by the field visibility stage", () => {
+    setFields([
+      { path: "filepath", ftype: "fiftyone.core.fields.StringField" },
+      { path: "secret_field", ftype: "fiftyone.core.fields.StringField" },
+    ]);
+    useActiveModalSample.mockReturnValue({
+      filepath: "/a/b.mcap",
+      secret_field: "hidden",
+    });
+    fieldVisibilityStageValue.current = {
+      kwargs: { field_names: ["secret_field"] },
+    };
+
+    render(<FieldsSidebar />);
+
+    const body = screen.getByTestId("episode-fields-body");
+    expect(body.textContent).toContain("filepath");
+    expect(body.textContent).not.toContain("secret_field");
   });
 
   it("shows a field's description when present", () => {
@@ -146,7 +205,7 @@ describe("FieldsSidebar", () => {
     ]);
     useActiveModalSample.mockReturnValue({ media_type: "multimodal" });
 
-    render(<FieldsSidebar />);
+    renderFieldsSidebar(<FieldsSidebar />);
 
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
       "The type of media for the sample.",

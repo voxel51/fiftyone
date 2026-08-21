@@ -128,6 +128,8 @@ export interface RunPlotData {
 
   // Hover
   hover: ReturnType<typeof useHoverInfo>["hover"];
+  /** The live hit, before the card's dwell — anchors the hover ring */
+  hoverHit: ReturnType<typeof useHoverInfo>["hoverHit"];
   handleHover: ReturnType<typeof useHoverInfo>["handleHover"];
   keepHover: () => void;
 
@@ -514,7 +516,7 @@ export function useRunPlotData(
       : categoryCss(palette, valueIndex);
   };
 
-  const { hover, handleHover, keepHover } = useHoverInfo(
+  const { hover, hoverHit, handleHover, keepHover } = useHoverInfo(
     datasetName,
     brainKey,
     colorField,
@@ -786,6 +788,7 @@ export function useRunPlotData(
     handleBackgroundClick,
     clearAll,
     hover,
+    hoverHit,
     handleHover,
     keepHover,
     features,

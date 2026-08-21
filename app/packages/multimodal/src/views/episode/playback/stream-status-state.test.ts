@@ -81,12 +81,55 @@ describe("publishDataStreamStatuses", () => {
 
     setIsBuffering(store, true);
     lidar.set(0n, null);
-    publishDataStreamStatuses(common);
+    publishDataStreamStatuses({ ...common, updatedStreams: [LIDAR] });
     expect(getStreamStatus(store, LIDAR)).toBe("gap");
     expect(getBufferingDetail(store)).toBeNull();
     expect(getBufferingStreams(store)).toEqual([]);
     expect(getIsBuffering(store)).toBe(false);
     expect(onPlayheadDataReady).toHaveBeenCalledOnce();
+  });
+  it("limits non-blocking settlements to their own stream state", () => {
+    const store = createStore() as PlaybackStore;
+    const camera = new EpisodeStreamCache();
+    const lidar = new EpisodeStreamCache();
+    camera.set(0n, frame(CAMERA));
+    const common = {
+      activeBlockingStreams: [CAMERA],
+      activeStreams: [CAMERA, LIDAR],
+      caches: new Map([
+        [CAMERA, camera],
+        [LIDAR, lidar],
+      ]),
+      failedStreams: new Set<string>(),
+      index: createTimelineIndex({
+        endNs: 1_000_000_000n,
+        startNs: 0n,
+      }),
+      onPlayheadDataReady: vi.fn(),
+      policy: derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY),
+      publishBufferedRangesNow: vi.fn(),
+      pushCurrentTick: vi.fn(),
+      resolveStartupCushion: () => ({
+        cushionSeconds: 0.5,
+        estimatedWaitSeconds: 0,
+      }),
+      scheduleBufferedRangesPublish: vi.fn(),
+      schedulePausedIdleWarmup: vi.fn(),
+      staleWarningStreams: new Set<string>(),
+      store,
+      streamNames: new Map<string, string>(),
+    } as const;
+
+    publishDataStreamStatuses(common);
+    vi.clearAllMocks();
+    lidar.set(0n, frame(LIDAR));
+    publishDataStreamStatuses({ ...common, updatedStreams: [LIDAR] });
+
+    expect(getStreamStatus(store, LIDAR)).toBe("ready");
+    expect(common.onPlayheadDataReady).not.toHaveBeenCalled();
+    expect(common.publishBufferedRangesNow).not.toHaveBeenCalled();
+    expect(common.scheduleBufferedRangesPublish).not.toHaveBeenCalled();
+    expect(common.schedulePausedIdleWarmup).not.toHaveBeenCalled();
   });
 });
 

@@ -20,7 +20,7 @@ import {
   useApplyPropagatedDetection,
   useApplyPropagationResult,
 } from "../propagation/useApplyPropagationResult";
-import { useVideoAnnotationStatus } from "../state/videoAnnotationStatus";
+import { useAnnotationStatus } from "@fiftyone/annotation";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 
@@ -106,7 +106,7 @@ const useSam2Propagate = () => {
   const resolveAgent = useResolveAgent();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagatedDetection = useApplyPropagatedDetection();
-  const { setContent: setStatusContent } = useVideoAnnotationStatus();
+  const { setContent: setStatusContent } = useAnnotationStatus();
 
   return useCallback(
     async (args: PropagateArgs): Promise<boolean> => {

@@ -20,6 +20,9 @@ import { PointCloudPanel } from "./PointCloudPanel";
 
 const webGpuCanvasRender = vi.hoisted(() => vi.fn());
 const threeHarness = vi.hoisted(() => ({ height: 400, width: 800 }));
+const graphicsHarness = vi.hoisted(() => ({
+  backend: "webgpu" as "webgl2" | "webgpu",
+}));
 
 vi.mock("@react-three/fiber", () => ({
   useFrame: vi.fn(),
@@ -93,8 +96,16 @@ vi.mock("../webgpu/WebGpuCanvas", () => ({
   },
 }));
 
+vi.mock("../webgpu/graphics-runtime-context", () => ({
+  useGraphicsRuntime: () => ({
+    backend: graphicsHarness.backend,
+    surface: "test",
+  }),
+}));
+
 beforeEach(() => {
   webGpuCanvasRender.mockClear();
+  graphicsHarness.backend = "webgpu";
   threeHarness.height = 400;
   threeHarness.width = 800;
   resetImageTextureCacheForTests();
@@ -255,6 +266,43 @@ describe("PointCloudPanel", () => {
     expect(directPositionAttribute?.version).toBeGreaterThan(
       versionAfterMount ?? 0,
     );
+  });
+
+  it("expands decoder payloads into ordinary attributes on WebGL2", () => {
+    graphicsHarness.backend = "webgl2";
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const setAttribute = vi.spyOn(
+      THREE.BufferGeometry.prototype,
+      "setAttribute",
+    );
+    const sampledPositions = Float32Array.from([1, 2, 3, 40, 50, 60]);
+
+    render(
+      <PointCloudPanel
+        layers={[gpuPointCloudLayer("/points", 10n, sampledPositions)]}
+        maxRenderedPoints={1}
+        showHud={false}
+      />,
+    );
+
+    expect(
+      setAttribute.mock.calls.some(
+        ([name, attribute]) =>
+          name === "pointPosition" &&
+          (attribute as THREE.BufferAttribute).array === sampledPositions,
+      ),
+    ).toBe(false);
+    const position = setAttribute.mock.calls.find(
+      ([name]) => name === "position",
+    )?.[1] as THREE.BufferAttribute | undefined;
+    const color = setAttribute.mock.calls.find(
+      ([name]) => name === "color",
+    )?.[1] as THREE.BufferAttribute | undefined;
+    expect(Array.from(position?.array.slice(0, 3) ?? [])).toEqual([1, 2, 3]);
+    expect(Array.from(color?.array.slice(0, 3) ?? [])).toHaveLength(3);
+    expect(
+      Array.from(color?.array.slice(0, 3) ?? []).every(Number.isFinite),
+    ).toBe(true);
   });
 
   it("keeps point size screen-space while updating the material size", () => {

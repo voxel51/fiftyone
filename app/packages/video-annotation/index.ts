@@ -18,8 +18,10 @@ export {
   usePublishImaVidImageStream,
 } from "./src/streams/imaVidImageStreamHandle";
 export { PropagationStatusItem } from "./src/components/PropagationStatusItem";
-export { useVideoAnnotationStatus } from "./src/state/videoAnnotationStatus";
-export type { VideoAnnotationStatusContent } from "./src/state/videoAnnotationStatus";
+// Back-compat aliases: the status slot moved to @fiftyone/annotation (it's
+// shared by the image and video annotation top bars).
+export { useAnnotationStatus as useVideoAnnotationStatus } from "@fiftyone/annotation";
+export type { AnnotationStatusContent as VideoAnnotationStatusContent } from "@fiftyone/annotation";
 export { resolvePropagationTarget } from "./src/propagation/propagationTarget";
 export type { PropagationTarget } from "./src/propagation/propagationTarget";
 export { resolveTrackExtentEdit } from "./src/tracks/trackExtentEdit";

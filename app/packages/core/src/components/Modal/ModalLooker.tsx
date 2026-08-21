@@ -1,13 +1,12 @@
 import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { isNativeMediaType } from "@fiftyone/utilities";
 import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
-import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
+import { ImageAnnotationSurface } from "./Lighter/ImageAnnotationSurface";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
@@ -89,21 +88,15 @@ const ModalLookerContent = React.memo(
     const shouldRenderImavid = useRecoilValue(
       fos.shouldRenderImaVidLooker(true),
     );
-    const isVideoDataset = useRecoilValue(fos.isVideoDataset);
-
-    const mediaType =
-      (sample.sample.media_type as unknown as string) ??
-      sample.sample._media_type;
-
-    // the root dataset media type is "group" for grouped datasets, so decide
-    // the video surface from the open sample: true for a video dataset or a
-    // grouped dataset whose active slice is a video sample
-    const video = isVideoDataset || mediaType === "video";
-
-    const isNative = isNativeMediaType(mediaType as string);
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
 
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+    const selectedMedia = fos.resolveMediaFieldLooker({
+      mediaField: modalMediaField,
+      sample: sample.sample,
+      urls: fos.getNormalizedUrls(sample.urls),
+    });
+    const isNative = selectedMedia.nativeLookerType !== null;
 
     if (shouldRenderImavid) {
       return (
@@ -115,7 +108,7 @@ const ModalLookerContent = React.memo(
       );
     }
 
-    if (video) {
+    if (selectedMedia.nativeLookerType === "video") {
       return isAnnotate ? (
         <VideoAnnotationSurface sample={sample} />
       ) : (
@@ -132,7 +125,7 @@ const ModalLookerContent = React.memo(
             position: "absolute",
           }}
         >
-          <LighterSampleRenderer sample={sample} />
+          <ImageAnnotationSurface sample={sample} />
         </div>
       ) : (
         <ModalLookerNoTimeline sample={sample} showControls />
