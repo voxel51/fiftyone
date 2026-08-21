@@ -183,7 +183,7 @@ test.describe.serial("action switching", () => {
     await modal.sidebar.annotate.assert.classificationIsActive(false);
   });
 
-  test("clicking overlay in detection mode shows pointer cursor", async ({
+  test("detection mode shows crosshair cursor over existing overlays", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
@@ -196,7 +196,8 @@ test.describe.serial("action switching", () => {
     // Move to empty space — should show crosshair
     await modal.sampleCanvas.move(0.09, 0.09, "crosshair");
 
-    // Move over an existing detection — should show pointer
-    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+    // Existing overlays don't claim clicks while a draw tool is active, so
+    // the cursor stays a crosshair over them too
+    await modal.sampleCanvas.move(0.5, 0.5, "crosshair");
   });
 });

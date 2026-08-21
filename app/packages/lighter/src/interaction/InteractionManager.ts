@@ -295,6 +295,26 @@ export class InteractionManager {
     return this.currentModifiers.shiftKey;
   }
 
+  /**
+   * Whether a label-creation tool is active: detection (bbox) mode, or a
+   * segmentation painting tool. While drawing, unselected overlays under the
+   * cursor are treated as empty canvas so a new label can be started anywhere;
+   * labels are only selectable via the Select tool. The Merge tool is excluded
+   * because it picks its sources by selecting overlays.
+   */
+  private isDrawModeActive(): boolean {
+    if (detectionModeBridge.isActive()) {
+      return true;
+    }
+
+    if (!segmentationModeBridge.isActive()) {
+      return false;
+    }
+
+    const tool = segmentationModeBridge.getActiveTool();
+    return tool !== SegmentationTool.Select && tool !== SegmentationTool.Merge;
+  }
+
   private setupEventListeners(): void {
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
@@ -368,7 +388,13 @@ export class InteractionManager {
         TypeGuards.isSelectable(handler) &&
         !this.selectionManager.isSelected(handler.id);
 
-      if (isUnselectedOverlay) {
+      // While a draw tool is active, an unselected overlay under the cursor
+      // never claims the click — the click starts a new label instead, so
+      // dense scenes stay drawable. The selected overlay still wins the hit
+      // test, keeping drag/resize of the label being edited intact.
+      const drawOverOverlay = isUnselectedOverlay && this.isDrawModeActive();
+
+      if (isUnselectedOverlay && !drawOverOverlay) {
         this.selectionManager.select(handler!.id);
 
         // Select an overlay before issuing any edits. The cursor at this point
@@ -381,13 +407,12 @@ export class InteractionManager {
 
       // Detection mode: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit detection mode.
-      // Clicking on an existing overlay selects it normally instead.
       if (detectionModeBridge.isActive() || segmentationModeBridge.isActive()) {
         const isSelectInSegmentation =
           segmentationModeBridge.isActive() &&
           segmentationModeBridge.getActiveTool() === SegmentationTool.Select;
 
-        if (isNonOverlay && !isSelectInSegmentation) {
+        if ((isNonOverlay || drawOverOverlay) && !isSelectInSegmentation) {
           this.renderer.disableZoomPan();
 
           this.pendingAction = {
@@ -473,12 +498,19 @@ export class InteractionManager {
       return;
     }
 
-    if (TypeGuards.isSelectable(handler) && !handler.isSelected?.()) {
+    // While a draw tool is active, unselected overlays don't claim clicks, so
+    // don't advertise selection with a 'pointer' — show the mode cursor.
+    const isUnselectedOverlay =
+      TypeGuards.isSelectable(handler) && !handler.isSelected?.();
+
+    if (isUnselectedOverlay && !this.isDrawModeActive()) {
       this.canvas.style.cursor = "pointer";
     } else if (segmentationModeBridge.isActive()) {
       this.canvas.style.cursor = buildBrushCursor(
         segmentationModeBridge.getToolState(scale)!,
       );
+    } else if (isUnselectedOverlay && detectionModeBridge.isActive()) {
+      this.canvas.style.cursor = "crosshair";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(
         worldPoint,
