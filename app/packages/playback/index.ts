@@ -26,6 +26,7 @@ export { default as TimelineWithTracks } from "./src/views/TimelineWithTracks/Ti
 export type { TimelineWithTracksProps } from "./src/views/TimelineWithTracks/TimelineWithTracks";
 export type {
   NormalizedEvent,
+  TimelineTrackProps,
   TrackEventMenuItem,
 } from "./src/views/TimelineTrack/TimelineTrack";
 export type {
@@ -49,6 +50,8 @@ export {
   useDuration,
   useIsPlaying,
   usePlayhead,
+  useViewEnd,
+  useViewStart,
 } from "./src/lib/playback/use-playback-state";
 export {
   createTimelineDisplayConversion,
@@ -61,6 +64,19 @@ export type {
 export { usePlaybackStream } from "./src/lib/playback/use-playback-stream";
 export type { AudioAvailability } from "./src/lib/playback/atoms";
 export { useAudioStream } from "./src/lib/playback/use-audio-stream";
+export { useAudio } from "./src/lib/playback/use-audio";
+export { useEffectiveTrackVolume } from "./src/lib/playback/use-audio-state";
+export { usePlaybackStore } from "./src/lib/playback/playback-store-context";
+export { setAudioAvailable } from "./src/lib/playback/store-access";
+export type {
+  AudioContextValue,
+  AudioSourceKind,
+  AudioTrackDescriptor,
+  AudioTrackHandle,
+} from "./src/lib/playback/use-audio";
+export { default as AudioControls } from "./src/views/TimelineControls/AudioControls";
+export { default as TimelineRuler } from "./src/views/TimelineRuler/TimelineRuler";
+export type { TimelineRulerProps } from "./src/views/TimelineRuler/TimelineRuler";
 export {
   usePresentedMediaTime,
   useVideoStream,

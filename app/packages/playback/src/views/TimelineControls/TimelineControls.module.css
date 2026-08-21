@@ -66,23 +66,6 @@
   outline: none;
 }
 
-.volumeGroup {
-  align-items: center;
-  display: inline-flex;
-  flex-shrink: 0;
-  gap: 6px;
-  margin-left: 4px;
-}
-
-.volumeSlider {
-  width: 56px;
-}
-
-.volumeSliderDisabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
 .divider {
   width: 1px;
   height: 12px;
@@ -163,4 +146,196 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Popover shell shared by the volume fader and the mixer (see
+   AudioPopover.tsx for why this isn't voodo's Dropdown). Opens upward from
+   the toolbar and is right-aligned so a wide panel doesn't run off-screen. */
+.popoverRoot {
+  display: inline-flex;
+  position: relative;
+}
+
+/* Portalled to `document.body` and `fixed`, so it escapes the stacking
+   contexts the toolbar's ancestors create — an absolutely-positioned panel
+   rendered in place lost to the mosaic regardless of z-index. `bottom`/
+   `right` are set inline from the trigger's viewport rect. */
+.popoverPanel {
+  background: var(--color-content-bg-popover);
+  border: 1px solid var(--color-content-border-default);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+  box-sizing: border-box;
+  padding: 14px 16px 16px;
+  position: fixed;
+  /* Many registered tracks would otherwise push the panel past the top of
+     the viewport, where it cannot be scrolled to. */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  /* The design system's portalled-above-modal tier — the same token voodo's
+     own Dropdown uses for its portalled panel. */
+  z-index: var(--z-above-modal);
+}
+
+.popoverClose {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+/* Explicit width: the sliders inside flex to fill it, so leaving it
+   content-sized collapsed them to nothing. */
+.mixedPanel {
+  width: 340px;
+}
+
+/* One mixer channel: label, mute toggle, vertical fader, numeric readout —
+   used by the standalone `VolumeControl` popup only; the Mixer dialog uses
+   `TrackFaderRow`'s horizontal layout instead. */
+.channelStrip {
+  flex-shrink: 0;
+  width: 64px;
+}
+
+.channelStripLabel {
+  max-width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channelStripValue {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Mute icon color: orange while audible, gray while muted/errored — the
+   on/off distinction the old plain icon-swap didn't make visually obvious. */
+.muteButtonOn {
+  color: var(--color-brand-primary) !important;
+}
+
+.muteButtonOn:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.muteButtonOff {
+  color: var(--color-content-text-secondary) !important;
+}
+
+/* Standalone master-volume popover: just the vertical fader, so it only
+   needs room for one narrow strip (plus space for the close button). */
+.volumePopup {
+  padding: 12px 10px;
+}
+
+/* One horizontal mixer row: label above, then mute icon + slider + value.
+   `min-width: 0` at every level lets the slider shrink to the panel width
+   instead of forcing overflow. */
+.trackFaderRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.trackFaderLabel {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trackFaderControls {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* An errored channel's fader is inert rather than merely aria-disabled. */
+.faderDisabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.trackFaderSlider {
+  flex: 1;
+  min-width: 0;
+}
+
+.trackFaderValue {
+  color: var(--color-content-text-secondary);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Vertical fader track: a thin column with a bottom-anchored fill and a
+   draggable knob, dragged via `clientY` (see VerticalFader.tsx — voodo's
+   Slider is horizontal-only and can't just be CSS-rotated without
+   desyncing the drag gesture). */
+.verticalFaderTrack {
+  background: var(--color-content-border-default);
+  border-radius: 3px;
+  cursor: pointer;
+  height: 160px;
+  position: relative;
+  touch-action: none;
+  width: 6px;
+}
+
+.verticalFaderDisabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.verticalFaderFill {
+  background: var(--color-brand-primary);
+  border-radius: 3px;
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.verticalFaderFillMuted {
+  background: var(--color-content-text-secondary);
+}
+
+.verticalFaderKnob {
+  background: var(--color-content-text-primary);
+  border-radius: 50%;
+  height: 12px;
+  left: 50%;
+  position: absolute;
+  transform: translate(-50%, 50%);
+  width: 12px;
+}
+
+.verticalFaderKnobMuted {
+  background: var(--color-content-text-secondary);
+}
+
+.audioControls {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+/* Icon-only transport/volume/pin buttons: a background box reads oddly at
+   Xs size packed into a 2-4px gap row — brighten instead of boxing. */
+.iconButton {
+  background-color: transparent !important;
+  transition: filter 120ms ease;
+}
+
+.iconButton:hover:not(:disabled) {
+  background-color: transparent !important;
+  filter: brightness(1.25);
 }

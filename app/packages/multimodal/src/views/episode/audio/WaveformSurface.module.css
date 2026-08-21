@@ -1,0 +1,36 @@
+/* Positioning context for the playhead/hover lines, which are absolutely
+   positioned over the canvas and span its full height. */
+.surface {
+  cursor: pointer;
+  display: flex;
+  min-height: 0;
+  position: relative;
+  touch-action: none;
+}
+
+.canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Both lines are `pointer-events: none` so they never swallow a scrub. */
+.playheadLine {
+  background: var(--color-brand-primary);
+  bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 2px;
+  z-index: 2;
+}
+
+.hoverLine {
+  background: var(--color-content-text-secondary);
+  bottom: 0;
+  opacity: 0.7;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 1px;
+  z-index: 1;
+}

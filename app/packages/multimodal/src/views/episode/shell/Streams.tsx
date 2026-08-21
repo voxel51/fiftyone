@@ -126,7 +126,14 @@ export function Streams({
             s.type !== SCENE_SOURCE_TYPE.CAMERA_CALIBRATION &&
             s.type !== SCENE_SOURCE_TYPE.POSE &&
             s.type !== SCENE_SOURCE_TYPE.LOCATION &&
-            s.type !== SCENE_SOURCE_TYPE.LOG,
+            s.type !== SCENE_SOURCE_TYPE.LOG &&
+            // `useMcapAudioStream` does its own one-shot `readStreamFrames`
+            // fetch outside this demand-driven buffered-read system, so an
+            // audio source never "covers the playhead" from its
+            // perspective — counting it as blocking here means
+            // `onPlayheadDataReady` (which clears the poster/"Preparing
+            // viewer" overlay) never fires for an audio-only recording.
+            s.type !== SCENE_SOURCE_TYPE.AUDIO,
         )
         .map((s) => s.id),
     [sources],

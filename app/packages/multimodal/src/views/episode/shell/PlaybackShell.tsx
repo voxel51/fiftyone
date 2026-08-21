@@ -74,6 +74,14 @@ export interface PlaybackShellProps {
    */
   timelineExtraActions?: ReactNode;
 
+  /**
+   * Buttons pinned to the right edge of the timeline's controls row,
+   * behind their own divider and before the drawer chevron — e.g.
+   * `@fiftyone/playback`'s `AudioControls` (master volume + Mixed
+   * dropdown) for a recording with audio tracks.
+   */
+  timelineTrailingActions?: ReactNode;
+
   /** Tracks broadcast through the embedded TrackProvider. */
   tracks?: Track[];
   /** Track ids that should start pinned to the timeline. */
@@ -232,6 +240,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   headerActions,
   addTileMenu,
   timelineExtraActions,
+  timelineTrailingActions,
   tracks,
   defaultPinnedTrackIds,
   decorateTrack,
@@ -294,6 +303,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               headerActions={headerActions}
               addTileMenu={addTileMenu}
               timelineExtraActions={timelineExtraActions}
+              timelineTrailingActions={timelineTrailingActions}
               leftSidebar={leftSidebar}
               rightSidebar={rightSidebar}
               deselectFocusedTileOnRepeatSelect={
@@ -331,6 +341,7 @@ interface LayoutProps {
   headerActions?: ReactNode;
   addTileMenu?: ReactNode;
   timelineExtraActions?: ReactNode;
+  timelineTrailingActions?: ReactNode;
   leftSidebar: ReactNode;
   rightSidebar: ReactNode;
   deselectFocusedTileOnRepeatSelect: boolean;
@@ -359,6 +370,7 @@ function Layout({
   headerActions,
   addTileMenu,
   timelineExtraActions,
+  timelineTrailingActions,
   leftSidebar,
   rightSidebar,
   deselectFocusedTileOnRepeatSelect,
@@ -585,6 +597,7 @@ function Layout({
         drawerOpen={timelineTracksOpen}
         maxSize={timelineDrawerMaxSize}
         onDrawerOpenChange={updateTimelineTracksOpen}
+        trailingActions={timelineTrailingActions}
         decorateTrack={decorateTrack}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}

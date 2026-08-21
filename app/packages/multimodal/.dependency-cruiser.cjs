@@ -17,11 +17,11 @@ const INJECT = `${SRC}inject/`;
 const INJECT_ENTRY = `${INJECT}index\\.ts$`;
 const IR = `${SRC}ir/`;
 const OBSERVABILITY = `${SRC}observability/`;
+const AUDIO = `${SRC}audio/`;
 const PORTS = `${SRC}ports/`;
 const QUERY = `${SRC}query/`;
 const RUNTIME = `${SRC}runtime/`;
-const POINT_CLOUD_RUNTIME_LEAVES =
-  `${RUNTIME}point-cloud-(channel-encoding|render-payload)\\.ts$`;
+const POINT_CLOUD_RUNTIME_LEAVES = `${RUNTIME}point-cloud-(channel-encoding|render-payload)\\.ts$`;
 const SCENE_INVENTORY = `${SRC}scene-inventory/`;
 const SCHEMAS = `${SRC}schemas/`;
 const STREAM_SELECTION = `${SRC}stream-selection/`;
@@ -219,8 +219,7 @@ module.exports = {
       from: { path: EPISODE_MAP_RENDERING, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot:
-          `${EPISODE}map/|${VISUALIZATION}|${IR}|${OBSERVABILITY}|${UTILS}`,
+        pathNot: `${EPISODE}map/|${VISUALIZATION}|${IR}|${OBSERVABILITY}|${UTILS}`,
       },
     },
     {
@@ -233,6 +232,16 @@ module.exports = {
         path: SRC,
         pathNot: `${SRC}(views/session|runtime|ports|ir|utils)/`,
       },
+    },
+
+    {
+      // Keep format-neutral audio (PCM -> peaks, Web Audio playback)
+      // independent of any container or adapter, so a non-MCAP audio dataset
+      // drives it by supplying only an `AudioLoader`.
+      name: "audio-imports-only-audio-foundations",
+      severity: "error",
+      from: { path: AUDIO, pathNot: TEST_MODULE },
+      to: { path: SRC, pathNot: `${SRC}(audio|codecs|ir|utils)/` },
     },
 
     {
@@ -378,7 +387,7 @@ module.exports = {
       from: { path: VIEWS, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(views|runtime|observability|ports|scene-inventory|visualization|video|extensions|temporal-tags|ir|stream-selection|utils)/`,
+        pathNot: `${SRC}(views|runtime|observability|ports|scene-inventory|visualization|video|extensions|temporal-tags|ir|stream-selection|utils|audio)/`,
       },
     },
     {
