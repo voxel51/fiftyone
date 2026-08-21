@@ -40,7 +40,10 @@ const VolumeControl: React.FC = () => {
     >
       <ChannelStrip
         {...master}
-        label="Master"
+        label="Volume"
+        // Still the master channel — only the visible wording changed, so
+        // the spoken name stays the one that identifies it.
+        a11yLabel="Master"
         errored={errored}
         errorTitle={ERROR_TITLE}
         testIdPrefix="timeline-controls"
