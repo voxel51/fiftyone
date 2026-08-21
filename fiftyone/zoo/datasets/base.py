@@ -3462,6 +3462,7 @@ class ABC130kDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/ABC-130k"
+    _REVISION = "9659e8ce4b39580f48369cc31bc2e47a217c40e7"
 
     @property
     def name(self):
@@ -3480,7 +3481,9 @@ class ABC130kDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_hub_dataset(self._REPO_ID, dataset_dir)
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
@@ -3514,6 +3517,7 @@ class GR00TXEmbodimentSimDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/GR00T-X-Embodiment-Sim"
+    _REVISION = "4857fe973fb3ad9fe380ec86dafaed84d76148c6"
 
     @property
     def name(self):
@@ -3532,7 +3536,9 @@ class GR00TXEmbodimentSimDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_hub_dataset(self._REPO_ID, dataset_dir)
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
@@ -3566,6 +3572,7 @@ class RoboMINDDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/RoboMIND"
+    _REVISION = "92010ba461c37476f64739ffbb71eb9b4d52e723"
 
     @property
     def name(self):
@@ -3584,7 +3591,9 @@ class RoboMINDDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_hub_dataset(self._REPO_ID, dataset_dir)
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
@@ -3617,6 +3626,7 @@ class TartanGroundDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/TartanGround"
+    _REVISION = "57308f0cf1d18b0f8c9bf2ab534aa841a39e511f"
 
     @property
     def name(self):
@@ -3635,7 +3645,9 @@ class TartanGroundDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_hub_dataset(self._REPO_ID, dataset_dir)
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
@@ -3665,6 +3677,7 @@ class CMHTAutonomousDrivingDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/cmht-autonomous-driving"
+    _REVISION = "fc33eb219ba363c12221ef1e4cd1b3563ffdbd0b"
 
     @property
     def name(self):
@@ -3683,7 +3696,9 @@ class CMHTAutonomousDrivingDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_hub_dataset(self._REPO_ID, dataset_dir)
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
@@ -3713,6 +3728,7 @@ class TreeScopeMultimodalDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/treescope-vat0723-multimodal"
+    _REVISION = "0b6d2a9775cec9cd6f9815be9790092c61cc26cc"
 
     @property
     def name(self):
@@ -3731,7 +3747,9 @@ class TreeScopeMultimodalDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_hub_dataset(self._REPO_ID, dataset_dir)
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
@@ -3767,6 +3785,7 @@ class HumanoidIKEAAssemblyChallengeDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/2026-Humanoid-IKEA-Assembly-Challenge"
+    _REVISION = "3b92cb48a13aa94560c9ee3e00ffc3f4eb6b6a36"
 
     @property
     def name(self):
@@ -3785,7 +3804,9 @@ class HumanoidIKEAAssemblyChallengeDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_hub_dataset(self._REPO_ID, dataset_dir)
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
@@ -3821,6 +3842,7 @@ class SEWMultimodalAMRDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/SEW-Multimodal-AMR"
+    _REVISION = "682755ed6c595cd1e6702c32f0c12a2b38885058"
 
     @property
     def name(self):
@@ -3839,7 +3861,9 @@ class SEWMultimodalAMRDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_hub_dataset(self._REPO_ID, dataset_dir)
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
@@ -3893,12 +3917,17 @@ AVAILABLE_DATASETS = {
 }
 
 
-def _download_hub_dataset(repo_id, dataset_dir):
-    """Downloads a FiftyOne-format dataset repo from the Hugging Face Hub."""
+def _download_hub_dataset(repo_id, dataset_dir, revision=None):
+    """Downloads a FiftyOne-format dataset repo from the Hugging Face Hub.
+
+    ``revision`` pins an immutable commit; the default branch is mutable and
+    could change media, labels or size underneath a user.
+    """
     logger.info("Downloading %s from the Hugging Face Hub", repo_id)
     hfh.snapshot_download(
         repo_id=repo_id,
         repo_type="dataset",
+        revision=revision,
         local_dir=dataset_dir,
     )
 
