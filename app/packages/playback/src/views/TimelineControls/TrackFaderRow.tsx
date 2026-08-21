@@ -25,11 +25,13 @@ const TrackFaderRow: React.FC<ChannelProps> = (props) => {
     errored = false,
     errorTitle,
     muted,
+    note,
     onMute,
     onUnmute,
     testIdPrefix,
   } = props;
-  const { isOff, shown, muteLabel, handleChange } = channelState(props);
+  const { isOff, shown, muteLabel, faderLabel, handleChange } =
+    channelState(props);
 
   return (
     <div
@@ -37,14 +39,26 @@ const TrackFaderRow: React.FC<ChannelProps> = (props) => {
       data-testid={testIdPrefix}
       title={errored ? errorTitle : undefined}
     >
-      <Text
-        className={styles.trackFaderLabel}
-        color={TextColor.Primary}
-        title={label}
-        variant={TextVariant.Xs}
-      >
-        {label}
-      </Text>
+      <div className={styles.trackFaderLabelRow}>
+        <Text
+          className={styles.trackFaderLabel}
+          color={TextColor.Primary}
+          title={label}
+          variant={TextVariant.Xs}
+        >
+          {label}
+        </Text>
+        {note ? (
+          <Text
+            className={styles.trackFaderNote}
+            color={TextColor.Secondary}
+            data-testid={`${testIdPrefix}-note`}
+            variant={TextVariant.Caption}
+          >
+            {note}
+          </Text>
+        ) : null}
+      </div>
       <div className={styles.trackFaderControls}>
         <Button
           variant={Variant.Icon}
@@ -69,7 +83,7 @@ const TrackFaderRow: React.FC<ChannelProps> = (props) => {
             [styles.faderDisabled]: errored,
           })}
           data-testid={`${testIdPrefix}-volume`}
-          aria-label={`${label} volume`}
+          aria-label={faderLabel}
           aria-disabled={errored}
           min={0}
           max={1}

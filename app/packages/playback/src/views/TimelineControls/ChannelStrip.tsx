@@ -18,10 +18,10 @@ import styles from "./TimelineControls.module.css";
 import VerticalFader from "./VerticalFader";
 
 /**
- * One mixer channel: label on top, a mute toggle (orange when audible, gray
- * when muted), a vertical fader, and a numeric readout underneath — the
- * shared shape for both the "Master" row and every per-track row in the
- * Mixed dropdown.
+ * The vertical channel used by the volume popover: label on top, then the
+ * fader, its numeric readout, and a mute toggle at the bottom (orange when
+ * audible, gray when muted). `TrackFaderRow` is the horizontal counterpart
+ * used by the mixer; both derive their state from `channelState`.
  */
 const ChannelStrip: React.FC<ChannelProps> = (props) => {
   const {
@@ -33,7 +33,8 @@ const ChannelStrip: React.FC<ChannelProps> = (props) => {
     onUnmute,
     testIdPrefix,
   } = props;
-  const { isOff, shown, muteLabel, handleChange } = channelState(props);
+  const { isOff, shown, muteLabel, faderLabel, handleChange } =
+    channelState(props);
 
   return (
     <Stack
@@ -51,6 +52,21 @@ const ChannelStrip: React.FC<ChannelProps> = (props) => {
       >
         {label}
       </Text>
+      <VerticalFader
+        value={shown}
+        muted={isOff}
+        disabled={errored}
+        onChange={handleChange}
+        ariaLabel={faderLabel}
+        data-testid={`${testIdPrefix}-volume`}
+      />
+      <Text
+        className={styles.channelStripValue}
+        color={TextColor.Secondary}
+        variant={TextVariant.Caption}
+      >
+        {Math.round(shown * 100)}%
+      </Text>
       <Button
         variant={Variant.Icon}
         size={Size.Xs}
@@ -65,21 +81,6 @@ const ChannelStrip: React.FC<ChannelProps> = (props) => {
         aria-pressed={muted}
         onClick={muted ? onUnmute : onMute}
       />
-      <VerticalFader
-        value={shown}
-        muted={isOff}
-        disabled={errored}
-        onChange={handleChange}
-        ariaLabel={`${label} volume`}
-        data-testid={`${testIdPrefix}-volume`}
-      />
-      <Text
-        className={styles.channelStripValue}
-        color={TextColor.Secondary}
-        variant={TextVariant.Caption}
-      >
-        {Math.round(shown * 100)}%
-      </Text>
     </Stack>
   );
 };
