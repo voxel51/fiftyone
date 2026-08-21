@@ -201,27 +201,6 @@
   width: 340px;
 }
 
-/* One mixer channel: label, mute toggle, vertical fader, numeric readout —
-   used by the standalone `VolumeControl` popup only; the Mixer dialog uses
-   `TrackFaderRow`'s horizontal layout instead. */
-.channelStrip {
-  flex-shrink: 0;
-  width: 64px;
-}
-
-.channelStripLabel {
-  max-width: 100%;
-  overflow: hidden;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.channelStripValue {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 /* Mute icon color: orange while audible, gray while muted/errored — the
    on/off distinction the old plain icon-swap didn't make visually obvious. */
 .muteButtonOn {
@@ -374,53 +353,6 @@
   min-width: 30px;
   text-align: right;
   white-space: nowrap;
-}
-
-/* Vertical fader track: a thin column with a bottom-anchored fill and a
-   draggable knob, dragged via `clientY` (see VerticalFader.tsx — voodo's
-   Slider is horizontal-only and can't just be CSS-rotated without
-   desyncing the drag gesture). */
-.verticalFaderTrack {
-  background: var(--color-content-border-default);
-  border-radius: 3px;
-  cursor: pointer;
-  height: 160px;
-  position: relative;
-  touch-action: none;
-  width: 6px;
-}
-
-.verticalFaderDisabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.verticalFaderFill {
-  background: var(--color-brand-primary);
-  border-radius: 3px;
-  bottom: 0;
-  left: 0;
-  position: absolute;
-  right: 0;
-}
-
-.verticalFaderFillMuted {
-  background: var(--color-content-text-secondary);
-}
-
-.verticalFaderKnob {
-  background: var(--color-content-text-primary);
-  border-radius: 50%;
-  height: 12px;
-  left: 50%;
-  position: absolute;
-  transform: translate(-50%, 50%);
-  width: 12px;
-}
-
-.verticalFaderKnobMuted {
-  background: var(--color-content-text-secondary);
 }
 
 .audioControls {

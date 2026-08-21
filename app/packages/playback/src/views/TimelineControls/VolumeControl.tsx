@@ -116,6 +116,10 @@ const VolumeControl: React.FC = () => {
           min={0}
           max={1}
           step={0.01}
+          // A finer step is right for dragging but unusable from the
+          // keyboard — 100 presses to cross the range. Matches the step the
+          // fader this replaced used.
+          keyboardStep={0.05}
           debounceDelay={0}
           value={shown}
           onChange={handleChange}
