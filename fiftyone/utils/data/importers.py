@@ -826,7 +826,9 @@ class ImportPathsMixin(object):
         return labels_path
 
     @staticmethod
-    def _load_data_map(data_path, ignore_exts=False, recursive=False):
+    def _load_data_map(
+        data_path, ignore_exts=False, skip_exts=None, recursive=False
+    ):
         """Helper function that parses either a data directory or a data
         manifest file into a UUID -> filepath map.
         """
@@ -835,8 +837,20 @@ class ImportPathsMixin(object):
         else:
             to_uuid = lambda p: fos.normpath(p)
 
+        if skip_exts is not None:
+            if etau.is_container(skip_exts):
+                skip_exts = tuple(skip_exts)
+
+            match = lambda v: not v.endswith(skip_exts)
+        else:
+            match = lambda v: True
+
         if isinstance(data_path, dict):
-            return {to_uuid(k): fos.normpath(v) for k, v in data_path.items()}
+            return {
+                to_uuid(k): fos.normpath(v)
+                for k, v in data_path.items()
+                if match(v)
+            }
 
         if not data_path:
             return {}
@@ -849,9 +863,11 @@ class ImportPathsMixin(object):
 
             data_map = etas.read_json(data_path)
             data_root = os.path.dirname(data_path)
+
             return {
                 to_uuid(k): fos.normpath(os.path.join(data_root, v))
                 for k, v in data_map.items()
+                if match(v)
             }
 
         if not os.path.isdir(data_path):
@@ -860,6 +876,7 @@ class ImportPathsMixin(object):
         return {
             to_uuid(p): fos.normpath(os.path.join(data_path, p))
             for p in etau.list_files(data_path, recursive=recursive)
+            if match(p)
         }
 
 
