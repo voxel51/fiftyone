@@ -37,16 +37,21 @@ const MixedAudioDropdown: React.FC = () => {
       data-testid="timeline-controls-mixed"
     >
       <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
-        <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-          <Text color={TextColor.Primary} variant={TextVariant.Label}>
-            Master
-          </Text>
-          <TrackFaderRow
-            {...master}
-            label="Master"
-            testIdPrefix="timeline-mixed-master"
-          />
-        </Stack>
+        {/* No section heading: it only ever held one row, and "Master" over
+            a row also labelled "Master" said the same word twice. The row
+            names itself instead. */}
+        <TrackFaderRow
+          {...master}
+          label="Master Volume"
+          // Beside the header, not under the panel: as a trailing block it
+          // appeared and vanished with the mute state and resized the popover
+          // under the cursor.
+          note={masterMuted ? "muted — tracks are silent" : undefined}
+          // "Master Volume volume" is what the fader would otherwise
+          // announce — keep the spoken name to the channel itself.
+          a11yLabel="Master"
+          testIdPrefix="timeline-mixed-master"
+        />
 
         <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
           <Text color={TextColor.Primary} variant={TextVariant.Label}>
@@ -60,7 +65,13 @@ const MixedAudioDropdown: React.FC = () => {
                 value={track.volume}
                 muted={track.muted}
                 testIdPrefix={`timeline-mixed-track-${track.id}`}
-                onVolumeChange={(next) => track.setVolume(next)}
+                onVolumeChange={(next) => {
+                  // Dragging up off zero is an unmute gesture — without
+                  // clearing the flag the row reads 0 and the knob snaps
+                  // back. Mirrors `useMasterChannel.onVolumeChange`.
+                  track.setVolume(next);
+                  track.setMuted(false);
+                }}
                 onMute={() => track.setMuted(true)}
                 onUnmute={() => {
                   // never unmute into silence
@@ -73,12 +84,6 @@ const MixedAudioDropdown: React.FC = () => {
             ))}
           </Stack>
         </Stack>
-
-        {masterMuted ? (
-          <Text color={TextColor.Secondary} variant={TextVariant.Caption}>
-            Master is muted — unmute to hear these tracks.
-          </Text>
-        ) : null}
       </Stack>
     </AudioPopover>
   );

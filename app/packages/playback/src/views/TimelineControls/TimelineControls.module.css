@@ -240,10 +240,25 @@
   min-width: 0;
 }
 
+/* Label line of a mixer row. The note shares this existing line rather than
+   adding one, so a channel's height never changes as its status appears and
+   disappears; the label truncates first if the pair gets tight. */
+.trackFaderLabelRow {
+  align-items: baseline;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
 .trackFaderLabel {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trackFaderNote {
+  flex-shrink: 0;
   white-space: nowrap;
 }
 
