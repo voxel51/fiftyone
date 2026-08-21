@@ -50,6 +50,11 @@
             "matchManagers": ["npm"],
             "matchDepNames": ["minimatch", "brace-expansion"],
             "enabled": false
+        },
+        {
+            "matchManagers": ["npm"],
+            "matchUpdateTypes": ["major"],
+            "enabled": false
         }
     ],
     "vulnerabilityAlerts": {
