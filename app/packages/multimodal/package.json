@@ -151,6 +151,7 @@
         "@types/three": "^0.182.0",
         "babel-plugin-relay": "catalog:",
         "concurrently": "^7.2.1",
+        "fake-indexeddb": "^6.2.5",
         "react": "catalog:",
         "react-dom": "catalog:",
         "react-error-boundary": "catalog:",

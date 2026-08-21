@@ -23,8 +23,9 @@ import {
 
 const byteClientHarness = vi.hoisted(() => ({ stat: vi.fn() }));
 
-vi.mock("../query/bytes", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../query/bytes")>();
+vi.mock("../query/bytes/default-byte-client", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("../query/bytes/default-byte-client")>();
   return {
     ...original,
     createDefaultByteClient: () => ({
@@ -300,6 +301,45 @@ describe("source facts service", () => {
     await Promise.resolve();
 
     expect(persistence.put).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let a late preview replace an authoritative session write", async () => {
+    let resolveStat!: (source: ByteSourceDescriptor) => void;
+    byteClientHarness.stat.mockImplementation(
+      () =>
+        new Promise<ByteSourceDescriptor>((resolve) => {
+          resolveStat = resolve;
+        }),
+    );
+    const source = createSource();
+    recordSessionSourceFacts(source, SCOPE, {
+      dispose: vi.fn(),
+      manifest: manifest(),
+      playback: { timeline: timeline() },
+      read: vi.fn(),
+    } as unknown as EpisodeSession);
+
+    recordPreviewSourceFacts(source, SCOPE, {
+      bootstrapManifest: { ...manifest(), streams: [] },
+      frame: null,
+      status: "ready",
+      streamId: null,
+      streamSourceName: null,
+      streamSourceNames: [],
+    });
+    resolveStat({ ...source, etag: "abc", sizeBytes: "100" });
+
+    await vi.waitFor(() => expect(persistence.put).toHaveBeenCalledTimes(1));
+    expect(persistence.put).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        facts: expect.objectContaining({
+          manifest: manifest(),
+          timeline: timeline(),
+        }),
+        validator: { etag: "abc", kind: "etag", sizeBytes: "100" },
+      }),
+    );
   });
 
   it("records unavailable persistence as an invisible write failure", async () => {

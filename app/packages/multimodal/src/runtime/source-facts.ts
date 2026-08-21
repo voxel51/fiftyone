@@ -151,7 +151,13 @@ export function validateSourceFactsContent(
     return "stale";
   }
   if (current?.kind === "etag" && stored?.kind === "etag") {
-    return current.etag === normalizedEtag(stored.etag) ? "validated" : "stale";
+    const storedEtag = normalizedEtag(stored.etag);
+    if (!storedEtag || etagValue(current.etag) !== etagValue(storedEtag)) {
+      return "stale";
+    }
+    return isWeakEtag(current.etag) || isWeakEtag(storedEtag)
+      ? "provisional"
+      : "validated";
   }
   return "provisional";
 }
@@ -219,10 +225,20 @@ function hasExplicitScheme(value: string): boolean {
 
 function normalizedEtag(value: string | undefined): string | undefined {
   if (!value) return undefined;
-  const trimmed = value.trim().replace(/^W\//i, "");
+  const trimmed = value.trim();
+  const weak = isWeakEtag(trimmed);
+  const opaque = weak ? trimmed.slice(2).trim() : trimmed;
   const unquoted =
-    trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2
-      ? trimmed.slice(1, -1)
-      : trimmed;
-  return unquoted || undefined;
+    opaque.startsWith('"') && opaque.endsWith('"') && opaque.length >= 2
+      ? opaque.slice(1, -1)
+      : opaque;
+  return unquoted ? `${weak ? "W/" : ""}${unquoted}` : undefined;
+}
+
+function isWeakEtag(value: string): boolean {
+  return /^W\//i.test(value);
+}
+
+function etagValue(value: string): string {
+  return isWeakEtag(value) ? value.slice(2) : value;
 }

@@ -4,7 +4,7 @@ import type {
   EpisodeSession,
   EpisodeSourceHints,
 } from "../ports";
-import { createDefaultByteClient } from "../query/bytes";
+import { createDefaultByteClient } from "../query/bytes/default-byte-client";
 import {
   getSourceSessionHints,
   publishCurrentSourceFacts,
@@ -256,6 +256,13 @@ function recordSourceFacts(
     if (
       (current.active && sameWriteFacts(current.active, normalizedRequest)) ||
       (current.latest && sameWriteFacts(current.latest, normalizedRequest))
+    ) {
+      return;
+    }
+    if (
+      !normalizedRequest.resolveRemoteValidator &&
+      (current.active?.resolveRemoteValidator ||
+        current.latest?.resolveRemoteValidator)
     ) {
       return;
     }

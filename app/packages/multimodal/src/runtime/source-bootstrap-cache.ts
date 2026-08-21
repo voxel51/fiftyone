@@ -229,12 +229,8 @@ export function getSourceSessionHints(
   };
 }
 
-/** Returns a stable cache snapshot suitable for `useSyncExternalStore`. */
-export function getSourceBootstrapSnapshot(
-  source: ByteSourceDescriptor,
-): SourceBootstrap | null {
-  return copyEntry(entries.get(sourceBootstrapKey(source)));
-}
+/** Stable cache snapshot reader suitable for `useSyncExternalStore`. */
+export const getSourceBootstrapSnapshot = peekSourceBootstrap;
 
 /** Subscribes to one source's bootstrap publishes. */
 export function subscribeSourceBootstrap(

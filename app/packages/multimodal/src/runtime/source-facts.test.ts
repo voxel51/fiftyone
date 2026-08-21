@@ -105,6 +105,23 @@ describe("source facts codec", () => {
     ).toEqual(entry);
   });
 
+  it("round-trips empty metadata and signed recording timestamps", () => {
+    const entry = storedEntry({
+      manifest: {
+        ...manifest(),
+        metadata: {},
+        recordingFacts: {
+          format: "mcap",
+          startTimeNs: "-1",
+        },
+      },
+    });
+
+    expect(
+      decodeStoredSourceFacts(encodeStoredSourceFacts(entry)?.value),
+    ).toEqual(entry);
+  });
+
   it("rejects malformed versions, ranges, domains, duplicates, and empty facts", () => {
     const encoded = encodeStoredSourceFacts(storedEntry());
     if (!encoded) throw new Error("Expected a valid source-facts fixture");
@@ -143,11 +160,19 @@ describe("source facts codec", () => {
 });
 
 describe("source facts validators", () => {
-  it("validates matching ETags and rejects ETag or size changes", () => {
+  it("validates strong ETags, keeps weak matches provisional, and rejects changes", () => {
     const validator = { kind: "etag", etag: "abc", sizeBytes: "100" } as const;
     expect(
       validateSourceFactsContent(validator, {
         etag: 'W/"abc"',
+        sizeBytes: "100",
+        sourceId: "sample-a",
+        url: "/run.mcap",
+      }),
+    ).toBe("provisional");
+    expect(
+      validateSourceFactsContent(validator, {
+        etag: '"abc"',
         sizeBytes: "100",
         sourceId: "sample-a",
         url: "/run.mcap",

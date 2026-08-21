@@ -17,7 +17,7 @@ import type { ByteSourceDescriptor } from "../../ir/index";
 import {
   OSS_SOURCE_FACTS_CACHE_PARTITION,
   type SourceFactsScope,
-} from "../../runtime";
+} from "../../runtime/source-facts";
 import { diagnosticMessage } from "../../utils/errors";
 import { episodeSourceFromByteSource } from "../session/episode-source";
 import { useEpisodeSession } from "../session/use-episode-session";

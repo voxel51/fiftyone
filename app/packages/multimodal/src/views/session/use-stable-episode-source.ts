@@ -3,11 +3,11 @@ import { useMemo, useRef } from "react";
 
 import type { ByteSourceDescriptor } from "../../ir";
 import type { EpisodeSource } from "../../ports";
+import { episodeSourceAccessKey } from "../../runtime/episode-resources";
 import {
-  episodeSourceAccessKey,
   OSS_SOURCE_FACTS_CACHE_PARTITION,
   type SourceFactsScope,
-} from "../../runtime";
+} from "../../runtime/source-facts";
 import {
   episodeByteSourceFromContext,
   episodeSourceFromByteSource,

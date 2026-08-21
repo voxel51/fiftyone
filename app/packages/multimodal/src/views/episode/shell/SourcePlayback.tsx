@@ -205,7 +205,12 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
 
   // This effect records authoritative session metadata off the ready path.
   useEffect(() => {
-    if (session && source && sourceFactsScope) {
+    if (
+      session &&
+      source &&
+      sourceFactsScope &&
+      session.manifest.episodeId === source.sourceId
+    ) {
       recordSessionSourceFacts(source, sourceFactsScope, session);
     }
   }, [session, source, sourceFactsScope]);

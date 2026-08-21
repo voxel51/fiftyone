@@ -11,6 +11,7 @@ import {
   getSourceBootstrapSnapshot,
   getSourceSessionHints,
   peekSourceBootstrap,
+  publishCurrentSourceFacts,
   publishDurableSourceFacts,
   publishEpisodePreviewBootstrap,
   publishSourceBootstrap,
@@ -208,6 +209,25 @@ describe("source bootstrap cache", () => {
 
     expect(peekSourceBootstrap(source)).toEqual({ timeRange });
     expect(getSourceSessionHints(source, "mcap")).toBeNull();
+  });
+
+  it("replaces validated durable hints with authoritative current facts", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("authoritative-current");
+    const durableManifest = createManifest("durable", "log");
+    const currentManifest = createManifest("current", "log");
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest: durableManifest },
+      trust: "validated",
+    });
+
+    publishCurrentSourceFacts(source, { manifest: currentManifest });
+
+    expect(getSourceSessionHints(source, "mcap")).toEqual({
+      manifestHint: currentManifest,
+    });
+    expect(peekSourceBootstrap(source)?.manifest).toBe(currentManifest);
   });
 
   it("uses validated durable hints only for their adapter", () => {

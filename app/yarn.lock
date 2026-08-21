@@ -2181,6 +2181,7 @@ __metadata:
     colormap: "catalog:"
     concurrently: "npm:^7.2.1"
     date-fns: "npm:^4.1.0"
+    fake-indexeddb: "npm:^6.2.5"
     hyparquet: "npm:^1.26.2"
     jotai: "catalog:"
     lru-cache: "catalog:"
@@ -10712,6 +10713,13 @@ __metadata:
   version: 3.0.2
   resolution: "extend@npm:3.0.2"
   checksum: 10/59e89e2dc798ec0f54b36d82f32a27d5f6472c53974f61ca098db5d4648430b725387b53449a34df38fd0392045434426b012f302b3cc049a6500ccf82877e4e
+  languageName: node
+  linkType: hard
+
+"fake-indexeddb@npm:^6.2.5":
+  version: 6.2.5
+  resolution: "fake-indexeddb@npm:6.2.5"
+  checksum: 10/a0b6a81413a8dd40d3ae31d6158ffa8a3d113981b11644e206874847c454d5a1519a9fe2b6008d8f66d5630ba96b3da43789a20b6462a0e7cadc008caea15ae8
   languageName: node
   linkType: hard
 

@@ -21,6 +21,7 @@ import {
 
 const BIGINT_TAG = "__fiftyone_source_facts_bigint_v1__";
 const DECIMAL_INTEGER = /^\d+$/;
+const SIGNED_DECIMAL_INTEGER = /^-?\d+$/;
 const STREAM_KINDS = new Set<string>(Object.values(STREAM_KIND));
 const TIME_DOMAIN_KINDS = new Set(["duration", "sequence", "timestamp"]);
 const READ_PROFILES = new Set<string>(Object.values(BYTE_SOURCE_READ_PROFILE));
@@ -63,7 +64,10 @@ export function decodeStoredSourceFacts(
   if (typeof value !== "string") return null;
   try {
     const parsed: unknown = JSON.parse(value, (_key, child: unknown) => {
-      if (!recordWithKeys(child, [BIGINT_TAG])) return child;
+      if (!isRecord(child) || !(BIGINT_TAG in child)) return child;
+      if (!hasOnlyKeys(child, [BIGINT_TAG])) {
+        throw new Error("Invalid source-facts bigint");
+      }
       const encoded = child[BIGINT_TAG];
       if (typeof encoded !== "string" || !/^-?\d+$/.test(encoded)) {
         throw new Error("Invalid source-facts bigint");
@@ -620,5 +624,8 @@ function optionalByteSize(value: unknown): boolean {
 }
 
 function optionalDecimal(value: unknown): boolean {
-  return value === undefined || byteSize(value);
+  return (
+    value === undefined ||
+    (typeof value === "string" && SIGNED_DECIMAL_INTEGER.test(value))
+  );
 }

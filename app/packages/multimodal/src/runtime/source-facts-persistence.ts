@@ -62,7 +62,7 @@ export interface SourceFactsPersistenceOptions {
 export function createIndexedDbSourceFactsPersistence(
   options: SourceFactsPersistenceOptions = {},
 ): SourceFactsPersistence {
-  const factory =
+  const resolveFactory = (): IDBFactory | null | undefined =>
     options.factory === undefined
       ? (globalThis as typeof globalThis & { indexedDB?: IDBFactory }).indexedDB
       : options.factory;
@@ -78,10 +78,12 @@ export function createIndexedDbSourceFactsPersistence(
     const invalidate = () => {
       if (databasePromise === current) databasePromise = null;
     };
-    const current = openDatabase(factory, invalidate).then((database) => {
-      if (!database) invalidate();
-      return database;
-    });
+    const current = openDatabase(resolveFactory(), invalidate).then(
+      (database) => {
+        if (!database) invalidate();
+        return database;
+      },
+    );
     databasePromise = current;
     return current;
   };
