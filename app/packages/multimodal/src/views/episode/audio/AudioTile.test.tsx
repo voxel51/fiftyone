@@ -33,8 +33,11 @@ vi.mock("../../../scene-inventory/react", () => ({
   useSceneSourcesByType: () => mocks.sources,
 }));
 
-vi.mock("./use-mcap-audio-stream", () => ({
-  useMcapAudioStream: () => mocks.pcmResult,
+// The tile observes the shared per-source state now rather than starting
+// its own reader, so that is what this stubs.
+vi.mock("../../../audio/audio-source-registry", () => ({
+  useAudioSourceState: () => mocks.pcmResult,
+  useRequestAudio: () => undefined,
 }));
 
 // AudioTile renders the waveform through `WaveformSurface` (canvas +
