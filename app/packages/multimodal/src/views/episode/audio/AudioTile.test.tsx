@@ -17,6 +17,13 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@fiftyone/tiling", () => ({
   useSetTileTitle: () => mocks.setTileTitle,
   useSetTileHeaderExtra: () => mocks.setHeaderExtra,
+  useTileId: () => "audio-tile-1",
+}));
+
+// The tile publishes a source picker to the sidebar; registering it needs a
+// provider this unit test has no reason to mount.
+vi.mock("../tiles/tile-settings-context", () => ({
+  useRegisterTileSettings: () => undefined,
 }));
 
 vi.mock("@fiftyone/playback", () => ({
