@@ -514,6 +514,7 @@ describe("MCAP indexed message times", () => {
   });
 
   it("uses byte client stat when descriptor size is missing", async () => {
+    const controller = new AbortController();
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
       stat: vi.fn(async (source) => ({
@@ -527,13 +528,17 @@ describe("MCAP indexed message times", () => {
         url: "mcap-source://sample",
       },
       byteClient,
+      { readSignal: { current: controller.signal } },
     );
 
     await expect(readable.size()).resolves.toBe(128n);
-    expect(byteClient.stat).toHaveBeenCalledWith({
-      sourceId: "source:1",
-      url: "mcap-source://sample",
-    });
+    expect(byteClient.stat).toHaveBeenCalledWith(
+      {
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      controller.signal,
+    );
     expect(byteClient.readBytes).not.toHaveBeenCalled();
   });
 
@@ -558,7 +563,7 @@ describe("MCAP indexed message times", () => {
     const readable = new ByteClientReadable(source, byteClient);
 
     await expect(readable.size()).resolves.toBe(128n);
-    expect(byteClient.stat).toHaveBeenCalledWith(source);
+    expect(byteClient.stat).toHaveBeenCalledWith(source, undefined);
     expect(byteClient.readBytes).toHaveBeenCalledWith({
       range: { length: 1n, offset: 0n },
       source,
