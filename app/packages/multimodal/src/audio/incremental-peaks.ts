@@ -83,6 +83,12 @@ export function createIncrementalPeaks({
 }: IncrementalPeakOptions): IncrementalPeakAccumulator {
   const channelCount = Math.max(1, channels);
   let peakCount = Math.max(1, Math.ceil(totalFrames / samplesPerPeak));
+  /**
+   * The horizontal extent the waveform represents. Fixed from the caller's
+   * expected length, and only ever extended if real audio overruns it — so
+   * the axis does not move as buffers are over-allocated or grown.
+   */
+  let axisFrames = Math.max(1, totalFrames);
 
   // One min/max pair per bucket per channel.
   let mins = Array.from(
@@ -97,6 +103,19 @@ export function createIncrementalPeaks({
   // silence, which is not the same as a bucket never read.
   let filled = new Uint8Array(peakCount);
   let filledCount = 0;
+  /**
+   * Frames folded into each bucket so far. A bucket is FROZEN once this
+   * reaches `samplesPerPeak` — every sample it summarizes has been seen, so
+   * nothing a later read could add is new.
+   *
+   * A plain filled/not-filled flag could not express this. Windows do not
+   * align to bucket boundaries, so a bucket at a window edge was marked
+   * filled after seeing only part of its samples; the next pass folded in
+   * the rest and widened its peaks. Since display gain is derived from the
+   * loudest peak across all rows, one widened bucket rescaled the entire
+   * waveform — which is what made it shift every time playback looped.
+   */
+  let covered = new Uint16Array(peakCount);
   /** One past the furthest bucket written — the decoded extent. */
   let writtenBuckets = 0;
 
@@ -127,6 +146,9 @@ export function createIncrementalPeaks({
     const grownFilled = new Uint8Array(next);
     grownFilled.set(filled);
     filled = grownFilled;
+    const grownCovered = new Uint16Array(next);
+    grownCovered.set(covered);
+    covered = grownCovered;
     peakCount = next;
   }
 
@@ -141,6 +163,7 @@ export function createIncrementalPeaks({
       // Furthest extent reached, so `decodedDurationSec` reports what the
       // audio actually covers rather than what was estimated for it.
       if (endBucket > writtenBuckets) writtenBuckets = endBucket;
+      if (startFrame + frames > axisFrames) axisFrames = startFrame + frames;
       let frame = 0;
       while (frame < frames && bucket < peakCount) {
         // Fold only up to this bucket's boundary, so a window that starts
@@ -148,8 +171,17 @@ export function createIncrementalPeaks({
         const bucketEndFrame = (bucket + 1) * samplesPerPeak - startFrame;
         const stop = Math.min(frames, bucketEndFrame);
 
-        // A re-read overwrites: seed from the first frame rather than the
-        // stored value, or replaying a region would widen its peaks forever.
+        // Complete buckets are frozen: skip rather than re-folding. Reading
+        // the same audio again can only ever widen min/max, never correct
+        // them, so a loop would keep nudging the picture.
+        if (covered[bucket] >= samplesPerPeak) {
+          frame = stop;
+          bucket += 1;
+          continue;
+        }
+
+        // Partial coverage within a bucket still folds — the remaining
+        // frames arrive in the next window and are genuinely new.
         const fresh = filled[bucket] === 0;
         for (let channel = 0; channel < channelCount; channel++) {
           let lo = fresh ? Number.POSITIVE_INFINITY : mins[channel][bucket];
@@ -162,9 +194,15 @@ export function createIncrementalPeaks({
           if (Number.isFinite(lo)) mins[channel][bucket] = lo;
           if (Number.isFinite(hi)) maxs[channel][bucket] = hi;
         }
-        if (fresh && stop > frame) {
-          filled[bucket] = 1;
-          filledCount += 1;
+        if (stop > frame) {
+          if (fresh) {
+            filled[bucket] = 1;
+            filledCount += 1;
+          }
+          covered[bucket] = Math.min(
+            samplesPerPeak,
+            covered[bucket] + (stop - frame),
+          );
         }
         frame = stop;
         bucket += 1;
@@ -177,6 +215,7 @@ export function createIncrementalPeaks({
         levels: reduceLevels({ min, max: maxs[channel] }),
         samplesPerPeak,
         sampleRate,
+        durationSec: axisFrames / Math.max(1, sampleRate),
       }));
     },
     decodedDurationSec() {

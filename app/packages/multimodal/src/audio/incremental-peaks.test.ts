@@ -83,6 +83,58 @@ describe("incremental peaks", () => {
     expect(Array.from(acc.pyramids()[0].levels[0].max)).toEqual(first);
   });
 
+  it("does not widen peaks when windows straddle bucket boundaries", () => {
+    // The replay test above feeds one window covering whole buckets, so a
+    // re-read folds identical values in and cannot be seen to widen. Real
+    // paging does not align to buckets: a bucket is completed across two
+    // windows, and marking it filled after the first left the second pass
+    // free to widen it. That is what made the waveform shift on every loop.
+    const frames = 1024;
+    const all = signal(frames, 1);
+    const acc = createIncrementalPeaks({
+      channels: 1,
+      sampleRate: SAMPLE_RATE,
+      totalFrames: frames,
+    });
+
+    const WINDOW = 100; // deliberately coprime with the 256-frame bucket
+    for (let start = 0; start < frames; start += WINDOW) {
+      acc.add(all.slice(start, Math.min(start + WINDOW, frames)), start);
+    }
+    const first = Array.from(acc.pyramids()[0].levels[0].max);
+
+    for (let start = 0; start < frames; start += WINDOW) {
+      acc.add(all.slice(start, Math.min(start + WINDOW, frames)), start);
+    }
+    expect(Array.from(acc.pyramids()[0].levels[0].max)).toEqual(first);
+  });
+
+  it("holds its time axis steady as the buffer grows", () => {
+    // The axis is the declared span, not the allocation. Deriving it from
+    // the buffer's length meant every growth restretched it and slid the
+    // waveform sideways while it filled.
+    const acc = createIncrementalPeaks({
+      channels: 1,
+      sampleRate: SAMPLE_RATE,
+      totalFrames: SAMPLE_RATE,
+    });
+    acc.add(signal(256, 1), 0);
+    expect(acc.pyramids()[0].durationSec).toBeCloseTo(1);
+
+    acc.add(signal(SAMPLE_RATE, 1), 0);
+    expect(acc.pyramids()[0].durationSec).toBeCloseTo(1);
+  });
+
+  it("extends its axis only when audio overruns the expected length", () => {
+    const acc = createIncrementalPeaks({
+      channels: 1,
+      sampleRate: SAMPLE_RATE,
+      totalFrames: SAMPLE_RATE,
+    });
+    acc.add(signal(SAMPLE_RATE * 2, 1), 0);
+    expect(acc.pyramids()[0].durationSec).toBeCloseTo(2);
+  });
+
   it("fills only the region visited when playback starts mid-track", () => {
     const acc = createIncrementalPeaks({
       channels: 1,

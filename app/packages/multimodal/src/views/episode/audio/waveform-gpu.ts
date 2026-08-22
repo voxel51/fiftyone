@@ -372,15 +372,16 @@ export class WaveformRenderer {
     for (const [rowIndex, row] of args.rows.entries()) {
       const textures = this.texturesFor(row.trackId, row.pyramid);
 
-      // LOD 0's peak count * samplesPerPeak / sampleRate is the track's
-      // total duration — every coarser level covers the same span with
-      // fewer peaks, so this is level-independent.
-      const lod0 = row.pyramid.levels[0];
       // A pyramid with no levels (empty/failed decode) has nothing to draw;
       // indexing it would throw inside the render loop.
+      const lod0 = row.pyramid.levels[0];
       if (!lod0) continue;
-      const trackDurationSec =
-        (lod0.min.length * row.pyramid.samplesPerPeak) / row.pyramid.sampleRate;
+      // The pyramid's declared extent, NOT `lod0.min.length * samplesPerPeak
+      // / sampleRate`. Array length is capacity: a progressively-filled
+      // pyramid over-allocates and can grow, and deriving the axis from it
+      // restretched the time axis on every growth, sliding the whole
+      // waveform sideways as it filled.
+      const trackDurationSec = row.pyramid.durationSec;
 
       // Before the ruler establishes a view window (and on any degenerate
       // range) `viewEnd - viewStart` is 0, which makes the time->U mapping
