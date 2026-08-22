@@ -137,6 +137,14 @@ export function useAudioStreamPlayback({
   const [available, setAvailable] = useState(supported);
   const [waveformPeaks, setWaveformPeaks] =
     useState<UseAudioPlaybackResult["waveformPeaks"]>(null);
+  /**
+   * Seconds of audio actually decoded. The source's own `durationSec` is an
+   * estimate supplied before anything was read — on the MCAP path it is the
+   * recording's message-timestamp span, which is shorter than the audio
+   * whenever the final message carries samples past its own timestamp. Once
+   * real samples exist they are the authority.
+   */
+  const [decodedDurationSec, setDecodedDurationSec] = useState(0);
 
   const engineRef = useRef<AudioStreamEngine | null>(null);
   const pumpRef = useRef<AudioStreamPump | null>(null);
@@ -160,6 +168,7 @@ export function useAudioStreamPlayback({
     let cancelled = false;
     setStatus("loading");
     setWaveformPeaks(null);
+    setDecodedDurationSec(0);
 
     const accumulator = createIncrementalPeaks({
       channels: source.channels,
@@ -251,7 +260,11 @@ export function useAudioStreamPlayback({
     if (status !== "ready") return undefined;
     const timer = setInterval(() => {
       const accumulator = peaksRef.current;
-      if (accumulator?.hasData()) setWaveformPeaks(accumulator.pyramids());
+      if (!accumulator?.hasData()) return;
+      setWaveformPeaks(accumulator.pyramids());
+      setDecodedDurationSec((current) =>
+        Math.max(current, accumulator.decodedDurationSec()),
+      );
     }, PEAK_REFRESH_MS);
     return () => clearInterval(timer);
   }, [status]);
@@ -347,10 +360,20 @@ export function useAudioStreamPlayback({
       available,
       channels: source?.channels ?? 0,
       hasAudio: Boolean(source) && status !== "idle",
-      metadata: source?.metadata ?? null,
+      metadata: source?.metadata
+        ? {
+            ...source.metadata,
+            // Never shorter than what has been decoded: an estimate that
+            // undershoots would report a clip as ending before it does.
+            durationSec: Math.max(
+              source.metadata.durationSec ?? 0,
+              decodedDurationSec,
+            ),
+          }
+        : null,
       status,
       waveformPeaks,
     }),
-    [available, source, status, waveformPeaks],
+    [available, decodedDurationSec, source, status, waveformPeaks],
   );
 }

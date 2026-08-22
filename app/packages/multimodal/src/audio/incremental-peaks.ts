@@ -23,6 +23,11 @@ import {
 export interface IncrementalPeakOptions {
   readonly channels: number;
   readonly sampleRate: number;
+  /**
+   * Expected length, used to size the initial allocation. Treated as an
+   * estimate, not a bound: audio that runs past it grows the buffers rather
+   * than being dropped.
+   */
   readonly totalFrames: number;
   readonly samplesPerPeak?: number;
 }
@@ -41,6 +46,13 @@ export interface IncrementalPeakAccumulator {
   coverage(): number;
   /** Snapshot with coarser levels reduced from LOD 0. */
   pyramids(): readonly PeakPyramid[];
+  /**
+   * Seconds of audio actually folded in so far, measured from the furthest
+   * frame written — NOT from the `totalFrames` estimate. This is what makes
+   * the decoded audio, rather than the recording's message timestamps, the
+   * authority on how long a source is.
+   */
+  decodedDurationSec(): number;
 }
 
 /** Coarser levels, each halving the peak count, down to a single bucket. */
@@ -70,21 +82,53 @@ export function createIncrementalPeaks({
   samplesPerPeak = DEFAULT_SAMPLES_PER_PEAK,
 }: IncrementalPeakOptions): IncrementalPeakAccumulator {
   const channelCount = Math.max(1, channels);
-  const peakCount = Math.max(1, Math.ceil(totalFrames / samplesPerPeak));
+  let peakCount = Math.max(1, Math.ceil(totalFrames / samplesPerPeak));
 
-  // One min/max pair per bucket per channel, allocated once.
-  const mins = Array.from(
+  // One min/max pair per bucket per channel.
+  let mins = Array.from(
     { length: channelCount },
     () => new Float32Array(peakCount),
   );
-  const maxs = Array.from(
+  let maxs = Array.from(
     { length: channelCount },
     () => new Float32Array(peakCount),
   );
   // Tracked separately from the values: a bucket whose true peaks are 0 is
   // silence, which is not the same as a bucket never read.
-  const filled = new Uint8Array(peakCount);
+  let filled = new Uint8Array(peakCount);
   let filledCount = 0;
+  /** One past the furthest bucket written — the decoded extent. */
+  let writtenBuckets = 0;
+
+  /**
+   * Grows to hold `needed` buckets.
+   *
+   * The initial size comes from a caller's estimate, and on the MCAP path
+   * that estimate is the recording's message-timestamp span — which can be
+   * shorter than the audio itself, since the last message carries samples
+   * that continue past its own timestamp. Bounding writes by the estimate
+   * silently truncated that tail; growing keeps the audio authoritative.
+   */
+  function ensureCapacity(needed: number): void {
+    if (needed <= peakCount) return;
+    // Over-allocate so a stream that overruns by a little does not copy on
+    // every window.
+    const next = Math.max(needed, Math.ceil(peakCount * 1.5));
+    mins = mins.map((prev) => {
+      const grown = new Float32Array(next);
+      grown.set(prev);
+      return grown;
+    });
+    maxs = maxs.map((prev) => {
+      const grown = new Float32Array(next);
+      grown.set(prev);
+      return grown;
+    });
+    const grownFilled = new Uint8Array(next);
+    grownFilled.set(filled);
+    filled = grownFilled;
+    peakCount = next;
+  }
 
   return {
     add(interleaved, startFrame) {
@@ -92,6 +136,11 @@ export function createIncrementalPeaks({
       if (frames <= 0) return;
 
       let bucket = Math.floor(startFrame / samplesPerPeak);
+      const endBucket = Math.ceil((startFrame + frames) / samplesPerPeak);
+      ensureCapacity(endBucket);
+      // Furthest extent reached, so `decodedDurationSec` reports what the
+      // audio actually covers rather than what was estimated for it.
+      if (endBucket > writtenBuckets) writtenBuckets = endBucket;
       let frame = 0;
       while (frame < frames && bucket < peakCount) {
         // Fold only up to this bucket's boundary, so a window that starts
@@ -129,6 +178,9 @@ export function createIncrementalPeaks({
         samplesPerPeak,
         sampleRate,
       }));
+    },
+    decodedDurationSec() {
+      return (writtenBuckets * samplesPerPeak) / Math.max(1, sampleRate);
     },
   };
 }
