@@ -23,6 +23,16 @@ export interface PeakPyramid {
   /** Raw samples summarized by LOD 0's `samplesPerPeak`. */
   readonly samplesPerPeak: number;
   readonly sampleRate: number;
+  /**
+   * Seconds of audio this pyramid's horizontal extent represents.
+   *
+   * Carried explicitly rather than derived from `levels[0].min.length`,
+   * because buffer length is capacity and capacity is not time. A
+   * progressively-filled pyramid over-allocates and can grow, and deriving
+   * the time axis from its array length meant every growth restretched the
+   * axis and slid the whole waveform sideways.
+   */
+  readonly durationSec: number;
 }
 
 /** Default bucket size for the finest LOD — see plan §6/§8. */
@@ -83,7 +93,13 @@ export function buildPeakPyramid(
   while (levels[levels.length - 1].min.length > 1) {
     levels.push(coarserLevel(levels[levels.length - 1]));
   }
-  return { levels, samplesPerPeak, sampleRate: options.sampleRate };
+  return {
+    levels,
+    samplesPerPeak,
+    sampleRate: options.sampleRate,
+    // Every sample is present here, so length and time agree exactly.
+    durationSec: samples.length / Math.max(1, options.sampleRate),
+  };
 }
 
 /**
