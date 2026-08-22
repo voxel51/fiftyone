@@ -4,6 +4,7 @@ import {
   setAudioAvailable,
 } from "@fiftyone/playback";
 import React, { useEffect } from "react";
+
 import {
   useAudioDemanded,
   usePublishAudioSourceState,
@@ -36,8 +37,7 @@ const AudioSourceRegistrar: React.FC<{
   sourceId: string;
   label: string;
 }> = ({ sourceId, label }) => {
-  const store = usePlaybackStore();
-  const { masterMuted, registerAudioTrack, tracks } = useAudio();
+  const { masterMuted, tracks } = useAudio();
 
   const trackMuted =
     tracks.find((track) => track.id === sourceId)?.muted ?? false;
@@ -45,15 +45,13 @@ const AudioSourceRegistrar: React.FC<{
   const requested = useAudioDemanded(sourceId);
   const enabled = audible || requested;
 
-  // Presence. Re-registered when `enabled` flips because the transports
-  // register the same id while they own the track and unregister on the way
-  // out — without this dependency the row would vanish when demand ends.
-  // `registerAudioTrack` replaces by id, so the overlap is harmless.
-  useEffect(() => {
-    if (!sourceId) return undefined;
-    setAudioAvailable(store, "available");
-    return registerAudioTrack({ id: sourceId, kind: "pcm", label });
-  }, [enabled, label, registerAudioTrack, sourceId, store]);
+  // No presence registration here. `useMcapAudioStream` mounts
+  // `useAudioPlayback` unconditionally, and that registers the mixer row on
+  // `trackId` alone — it does not wait for a decode and does not care
+  // whether anything is reading. So the row already exists whether or not
+  // this source is enabled, and `useAudio()` derives master availability
+  // from the roster being non-empty. An extra registration here keyed on
+  // `enabled` only re-registered the row on every mute, moving it.
 
   // Pass the scene-source label through: without it the mixer row and tile
   // header fall back to the raw stream id ("0", "1").

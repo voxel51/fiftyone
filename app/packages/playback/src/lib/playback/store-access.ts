@@ -439,10 +439,16 @@ export function registerAudioTrack(
   store: PlaybackStore,
   descriptor: AudioTrackDescriptor,
 ): () => void {
-  store.set(audioTracksAtom, (current) => [
-    ...current.filter((track) => track.id !== descriptor.id),
-    descriptor,
-  ]);
+  store.set(audioTracksAtom, (current) => {
+    // Replace in place. Removing and re-appending would move a track to the
+    // end of the mixer every time it re-registered — which happens on any
+    // descriptor change — so the rows reshuffled under the user's cursor.
+    const existing = current.findIndex((track) => track.id === descriptor.id);
+    if (existing === -1) return [...current, descriptor];
+    const next = [...current];
+    next[existing] = descriptor;
+    return next;
+  });
   return () => unregisterAudioTrack(store, descriptor.id);
 }
 
