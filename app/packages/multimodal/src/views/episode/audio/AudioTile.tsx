@@ -14,7 +14,7 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useAudioSourceState,
   useRequestAudio,
@@ -23,6 +23,9 @@ import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import { channelLabel, synthesizePeaks } from "../../../audio/peak-pyramid";
+import { usePanelVisibilityScope } from "../settings/sidebar-preferences-context";
+import { semanticSourceKey } from "../settings/semantic-source";
+import { updateSidebarPreferences } from "../settings/sidebar-preferences";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import AudioTileSettings from "./AudioTileSettings";
 import styles from "./AudioTile.module.css";
@@ -48,6 +51,28 @@ const AudioTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   // passes when a tile is opened for a specific source was ignored outright.
   const [selectedSourceId, setSelectedSourceId] = useState<string | undefined>(
     () => initialSourceId ?? sources[0]?.id,
+  );
+  const preferenceScope = usePanelVisibilityScope();
+
+  // Persist the choice so it survives a refresh. Stored as a semantic key,
+  // never the runtime source id: ids are positional and get reassigned
+  // between loads, so a persisted id would restore a different topic. This
+  // is the same mechanism image tiles use for their camera.
+  const selectSource = useCallback(
+    (nextSourceId: string) => {
+      setSelectedSourceId(nextSourceId);
+      const source = sources.find((candidate) => candidate.id === nextSourceId);
+      if (!preferenceScope || !source || !tileId) return;
+      const audioSourceKey = semanticSourceKey(source);
+      updateSidebarPreferences(preferenceScope, (current) => ({
+        ...current,
+        tiles: {
+          ...current.tiles,
+          [tileId]: { ...current.tiles[tileId], audioSourceKey },
+        },
+      }));
+    },
+    [preferenceScope, sources, tileId],
   );
   // A source can disappear between recordings; fall back rather than bind to
   // an id the inventory no longer has.
@@ -118,13 +143,13 @@ const AudioTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     () => ({
       content: (
         <AudioTileSettings
-          onSelectSource={setSelectedSourceId}
+          onSelectSource={selectSource}
           sourceId={primarySourceId}
           sources={sources}
         />
       ),
     }),
-    [primarySourceId, sources],
+    [primarySourceId, selectSource, sources],
   );
   useRegisterTileSettings(tileId, settingsRegistration);
 
