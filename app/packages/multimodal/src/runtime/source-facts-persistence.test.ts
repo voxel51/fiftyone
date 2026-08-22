@@ -4,6 +4,7 @@ import {
   SOURCE_FACTS_SCHEMA_VERSION,
   type StoredSourceFactsV1,
 } from "./source-facts";
+import { requestResult, transactionDone } from "./persistence/indexeddb";
 import {
   createIndexedDbSourceFactsPersistence,
   selectSourceFactsEvictions,
@@ -111,19 +112,4 @@ async function storeCounts(factory: IDBFactory): Promise<{
   await completed;
   database.close();
   return { entries, recency };
-}
-
-function requestResult<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function transactionDone(transaction: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    transaction.onabort = () => reject(transaction.error);
-    transaction.onerror = () => reject(transaction.error);
-  });
 }

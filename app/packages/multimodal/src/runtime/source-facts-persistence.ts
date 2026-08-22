@@ -3,6 +3,11 @@ import {
   encodeStoredSourceFacts,
 } from "./source-facts-codec";
 import type { StoredSourceFactsV1 } from "./source-facts";
+import {
+  createIndexedDbConnection,
+  requestResult,
+  transactionDone,
+} from "./persistence/indexeddb";
 
 const MIB = 1024 * 1024;
 /** IndexedDB database owned by the multimodal runtime source-facts tier. */
@@ -62,31 +67,19 @@ export interface SourceFactsPersistenceOptions {
 export function createIndexedDbSourceFactsPersistence(
   options: SourceFactsPersistenceOptions = {},
 ): SourceFactsPersistence {
-  const resolveFactory = (): IDBFactory | null | undefined =>
-    options.factory === undefined
-      ? (globalThis as typeof globalThis & { indexedDB?: IDBFactory }).indexedDB
-      : options.factory;
   const maxEntries = options.maxEntries ?? SOURCE_FACTS_MAX_ENTRIES;
   const maxEntryBytes = options.maxEntryBytes ?? SOURCE_FACTS_MAX_ENTRY_BYTES;
   const maxTotalBytes = options.maxTotalBytes ?? SOURCE_FACTS_MAX_TOTAL_BYTES;
-  let databasePromise: Promise<IDBDatabase | null> | null = null;
+  const connection = createIndexedDbConnection({
+    name: SOURCE_FACTS_DATABASE_NAME,
+    ...(options.factory !== undefined
+      ? { resolveFactory: () => options.factory }
+      : {}),
+    upgrade: upgradeSourceFactsDatabase,
+    version: DATABASE_VERSION,
+  });
   const pendingReads = new Map<string, Promise<StoredSourceFactsV1 | null>>();
   let mutationChain = Promise.resolve();
-
-  const open = (): Promise<IDBDatabase | null> => {
-    if (databasePromise) return databasePromise;
-    const invalidate = () => {
-      if (databasePromise === current) databasePromise = null;
-    };
-    const current = openDatabase(resolveFactory(), invalidate).then(
-      (database) => {
-        if (!database) invalidate();
-        return database;
-      },
-    );
-    databasePromise = current;
-    return current;
-  };
 
   const enqueueMutation = (operation: () => Promise<void>): Promise<void> => {
     const pending = mutationChain.catch(() => undefined).then(operation);
@@ -95,7 +88,7 @@ export function createIndexedDbSourceFactsPersistence(
   };
 
   const read = async (key: string): Promise<StoredSourceFactsV1 | null> => {
-    const database = await open();
+    const database = await connection.open();
     if (!database) return null;
     try {
       const envelope = await readEnvelope(database, key);
@@ -124,7 +117,7 @@ export function createIndexedDbSourceFactsPersistence(
 
   return {
     async clear() {
-      const database = await open();
+      const database = await connection.open();
       if (!database) return;
       await enqueueMutation(() => clearEntries(database)).catch(
         () => undefined,
@@ -132,7 +125,7 @@ export function createIndexedDbSourceFactsPersistence(
     },
 
     async delete(key, expectedCreatedAt) {
-      const database = await open();
+      const database = await connection.open();
       if (!database) return;
       await enqueueMutation(() =>
         deleteEntry(database, key, expectedCreatedAt),
@@ -153,7 +146,7 @@ export function createIndexedDbSourceFactsPersistence(
       if (!encoded || encoded.byteLength > maxEntryBytes) {
         return { stored: false };
       }
-      const database = await open();
+      const database = await connection.open();
       if (!database) return { stored: false };
       try {
         await enqueueMutation(async () => {
@@ -211,52 +204,16 @@ export function selectSourceFactsEvictions(
   return evictions;
 }
 
-function openDatabase(
-  factory: IDBFactory | null | undefined,
-  onClose: () => void,
-): Promise<IDBDatabase | null> {
-  if (!factory) return Promise.resolve(null);
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (database: IDBDatabase | null) => {
-      if (settled) {
-        database?.close();
-        return;
-      }
-      settled = true;
-      resolve(database);
-    };
-    let request: IDBOpenDBRequest;
-    try {
-      request = factory.open(SOURCE_FACTS_DATABASE_NAME, DATABASE_VERSION);
-    } catch {
-      finish(null);
-      return;
-    }
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(ENTRY_STORE)) {
-        database.createObjectStore(ENTRY_STORE);
-      }
-      if (!database.objectStoreNames.contains(RECENCY_STORE)) {
-        const store = database.createObjectStore(RECENCY_STORE, {
-          keyPath: "key",
-        });
-        store.createIndex(RECENCY_INDEX, "lastAccessedAt");
-      }
-    };
-    request.onsuccess = () => {
-      const database = request.result;
-      database.onclose = onClose;
-      database.onversionchange = () => {
-        database.close();
-        onClose();
-      };
-      finish(database);
-    };
-    request.onerror = () => finish(null);
-    request.onblocked = () => finish(null);
-  });
+function upgradeSourceFactsDatabase(database: IDBDatabase): void {
+  if (!database.objectStoreNames.contains(ENTRY_STORE)) {
+    database.createObjectStore(ENTRY_STORE);
+  }
+  if (!database.objectStoreNames.contains(RECENCY_STORE)) {
+    const store = database.createObjectStore(RECENCY_STORE, {
+      keyPath: "key",
+    });
+    store.createIndex(RECENCY_INDEX, "lastAccessedAt");
+  }
 }
 
 async function readEnvelope(
@@ -414,24 +371,4 @@ function validRecency(value: unknown): value is StoredSourceFactsRecency {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function requestResult<T>(request: IDBRequest): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result as T);
-    request.onerror = () =>
-      reject(request.error ?? new Error("Source-facts storage request failed"));
-  });
-}
-
-function transactionDone(transaction: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    transaction.onabort = () =>
-      reject(
-        transaction.error ?? new Error("Source-facts transaction aborted"),
-      );
-    transaction.onerror = () =>
-      reject(transaction.error ?? new Error("Source-facts transaction failed"));
-  });
 }
