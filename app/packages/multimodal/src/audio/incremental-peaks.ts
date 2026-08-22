@@ -229,8 +229,22 @@ export function createIncrementalPeaks({
     coverage: () => filledCount / peakCount,
     pyramids() {
       if (cachedPyramids && cachedVersion === version) return cachedPyramids;
+      // Trim to the declared extent. The buffers are over-allocated — growth
+      // takes 1.5x headroom — and consumers build their texture from
+      // `levels[0].min.length`. Handing out the raw buffer meant the texture
+      // spanned more time than `durationSec` claimed, and the drawing was
+      // squeezed into `declared / capacity` of the row: a 10s source drew
+      // about 6.7s of waveform and then stopped. Length and duration have to
+      // describe the same span. `subarray` is a view, so this costs nothing.
+      const visiblePeaks = Math.max(
+        1,
+        Math.min(peakCount, Math.ceil(axisFrames / samplesPerPeak)),
+      );
       cachedPyramids = mins.map((min, channel) => ({
-        levels: reduceLevels({ min, max: maxs[channel] }),
+        levels: reduceLevels({
+          min: min.subarray(0, visiblePeaks),
+          max: maxs[channel].subarray(0, visiblePeaks),
+        }),
         samplesPerPeak,
         sampleRate,
         durationSec: axisFrames / Math.max(1, sampleRate),
