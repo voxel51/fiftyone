@@ -25,3 +25,13 @@
   flex: 1;
   min-height: 0;
 }
+
+/* Wraps the ruler and the waveform so wheel-zoom covers both. Must not
+   introduce a new scroll/stacking context or change the column's sizing:
+   it inherits the flex behaviour the waveform relied on from the root. */
+.zoomSurface {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
