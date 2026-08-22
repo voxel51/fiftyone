@@ -20,8 +20,7 @@ const OBSERVABILITY = `${SRC}observability/`;
 const PORTS = `${SRC}ports/`;
 const QUERY = `${SRC}query/`;
 const RUNTIME = `${SRC}runtime/`;
-const POINT_CLOUD_RUNTIME_LEAVES =
-  `${RUNTIME}point-cloud-(channel-encoding|render-payload)\\.ts$`;
+const POINT_CLOUD_RUNTIME_LEAVES = `${RUNTIME}point-cloud-(channel-encoding|render-payload)\\.ts$`;
 const SCENE_INVENTORY = `${SRC}scene-inventory/`;
 const SCHEMAS = `${SRC}schemas/`;
 const STREAM_SELECTION = `${SRC}stream-selection/`;
@@ -35,7 +34,7 @@ const VIEW_SESSION = `${VIEWS}session/`;
 const VISUALIZATION = `${SRC}visualization/`;
 
 const ENTERPRISE_SHARED_FACADES =
-  `${SRC}(extensions/(timeline|tiles)/(index|runtime)\\.ts$|` +
+  `${SRC}(extensions/(grid-posters|timeline|tiles)/(index|runtime)\\.ts$|` +
   `extensions/mcap-explorer/index\\.ts$|` +
   `query/bytes/index\\.ts$|visualization/index\\.ts$)`;
 const FORMAT_VENDORS =
@@ -219,8 +218,7 @@ module.exports = {
       from: { path: EPISODE_MAP_RENDERING, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot:
-          `${EPISODE}map/|${VISUALIZATION}|${IR}|${OBSERVABILITY}|${UTILS}`,
+        pathNot: `${EPISODE}map/|${VISUALIZATION}|${IR}|${OBSERVABILITY}|${UTILS}`,
       },
     },
     {
@@ -268,7 +266,10 @@ module.exports = {
       name: "extensions-import-only-extension-foundations",
       severity: "error",
       from: { path: EXTENSIONS, pathNot: TEST_MODULE },
-      to: { path: SRC, pathNot: `${SRC}(extensions|runtime|ports|ir)/` },
+      to: {
+        path: SRC,
+        pathNot: `${SRC}(extensions|runtime|ports|ir|stream-selection)/`,
+      },
     },
     {
       // Keep the injection namespace a composition root that wires only views,
