@@ -14,7 +14,13 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   useAudioSourceState,
   useRequestAudio,
@@ -53,6 +59,8 @@ const AudioTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     () => initialSourceId ?? sources[0]?.id,
   );
   const preferenceScope = usePanelVisibilityScope();
+  /** Wheel-zoom surface spanning the ruler and the waveform beneath it. */
+  const zoomRef = useRef<HTMLDivElement>(null);
 
   // Persist the choice so it survives a refresh. Stored as a semantic key,
   // never the runtime source id: ids are positional and get reassigned
@@ -218,8 +226,16 @@ const AudioTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           {statusCaption}
         </Text>
       </div>
-      <TimelineRuler className={styles.ruler} />
-      <WaveformSurface className={styles.waveform} tracks={waveformTracks} />
+      {/* Ruler and waveform share one zoom surface, so ctrl+scroll (and
+          horizontal wheel-pan) work anywhere over the trace rather than
+          only on the thin ruler strip. `TimelineRuler` attaches its wheel
+          handler to `zoomRef` when given one, and still measures the pivot
+          against its own rect — the same arrangement `TimelineWithTracks`
+          uses to make its whole track area zoomable. */}
+      <div className={styles.zoomSurface} ref={zoomRef}>
+        <TimelineRuler className={styles.ruler} zoomRef={zoomRef} />
+        <WaveformSurface className={styles.waveform} tracks={waveformTracks} />
+      </div>
     </Stack>
   );
 };
