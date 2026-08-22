@@ -44,7 +44,17 @@ export interface IncrementalPeakAccumulator {
   hasData(): boolean;
   /** Fraction of buckets filled, for a progress affordance. */
   coverage(): number;
-  /** Snapshot with coarser levels reduced from LOD 0. */
+  /**
+   * Snapshot with coarser levels reduced from LOD 0.
+   *
+   * Returns the SAME array and pyramid objects until something actually
+   * changes. Callers poll this, and identity is what downstream caches key
+   * on — the GPU texture cache rebuilds a track's whole mip chain whenever
+   * its pyramid instance differs. Handing back a fresh object every poll
+   * meant re-reducing every level in JS and re-uploading every texture four
+   * times a second, forever, long after the audio had finished decoding and
+   * nothing could change again.
+   */
   pyramids(): readonly PeakPyramid[];
   /**
    * Seconds of audio actually folded in so far, measured from the furthest
@@ -118,6 +128,10 @@ export function createIncrementalPeaks({
   let covered = new Uint16Array(peakCount);
   /** One past the furthest bucket written — the decoded extent. */
   let writtenBuckets = 0;
+  /** Bumped only when a fold actually changes stored peaks. */
+  let version = 0;
+  let cachedVersion = -1;
+  let cachedPyramids: readonly PeakPyramid[] | null = null;
 
   /**
    * Grows to hold `needed` buckets.
@@ -150,6 +164,8 @@ export function createIncrementalPeaks({
     grownCovered.set(covered);
     covered = grownCovered;
     peakCount = next;
+    // The cached pyramids alias the old buffers.
+    cachedPyramids = null;
   }
 
   return {
@@ -203,6 +219,7 @@ export function createIncrementalPeaks({
             samplesPerPeak,
             covered[bucket] + (stop - frame),
           );
+          version += 1;
         }
         frame = stop;
         bucket += 1;
@@ -211,12 +228,15 @@ export function createIncrementalPeaks({
     hasData: () => filledCount > 0,
     coverage: () => filledCount / peakCount,
     pyramids() {
-      return mins.map((min, channel) => ({
+      if (cachedPyramids && cachedVersion === version) return cachedPyramids;
+      cachedPyramids = mins.map((min, channel) => ({
         levels: reduceLevels({ min, max: maxs[channel] }),
         samplesPerPeak,
         sampleRate,
         durationSec: axisFrames / Math.max(1, sampleRate),
       }));
+      cachedVersion = version;
+      return cachedPyramids;
     },
     decodedDurationSec() {
       return (writtenBuckets * samplesPerPeak) / Math.max(1, sampleRate);

@@ -135,6 +135,43 @@ describe("incremental peaks", () => {
     expect(acc.pyramids()[0].durationSec).toBeCloseTo(2);
   });
 
+  it("returns the same instances once nothing new is being folded in", () => {
+    // Callers poll this, and the GPU texture cache keys on pyramid identity
+    // — a fresh object per poll rebuilt every level in JS and re-uploaded
+    // every texture, four times a second, forever.
+    const frames = 1024;
+    const all = signal(frames, 1);
+    const acc = createIncrementalPeaks({
+      channels: 1,
+      sampleRate: SAMPLE_RATE,
+      totalFrames: frames,
+    });
+    for (let start = 0; start < frames; start += 100) {
+      acc.add(all.slice(start, Math.min(start + 100, frames)), start);
+    }
+
+    const first = acc.pyramids();
+    expect(acc.pyramids()).toBe(first);
+
+    // A full replay folds in nothing new, so still no new instances.
+    for (let start = 0; start < frames; start += 100) {
+      acc.add(all.slice(start, Math.min(start + 100, frames)), start);
+    }
+    expect(acc.pyramids()).toBe(first);
+  });
+
+  it("still produces new instances while genuinely filling", () => {
+    const acc = createIncrementalPeaks({
+      channels: 1,
+      sampleRate: SAMPLE_RATE,
+      totalFrames: 4096,
+    });
+    acc.add(signal(256, 1), 0);
+    const first = acc.pyramids();
+    acc.add(signal(256, 1), 1024);
+    expect(acc.pyramids()).not.toBe(first);
+  });
+
   it("fills only the region visited when playback starts mid-track", () => {
     const acc = createIncrementalPeaks({
       channels: 1,
