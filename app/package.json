@@ -51,7 +51,7 @@
         "react-dom": "catalog:",
         "relay-compiler": "catalog:",
         "relay-runtime": "catalog:",
-        "typedoc": "^0.23.21",
+        "typedoc": "^0.28.0",
         "typescript": "catalog:",
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "catalog:",
@@ -62,7 +62,7 @@
     "workspaces": [
         "packages/*"
     ],
-    "packageManager": "yarn@4.17.1+sha512.ccbfabf7d7b6b32075088be9386fb9a2e00bb6887ef07fa56effabc890a56d53da1ccc4128d62db245fcbd3961b236d75335bdf7d5320ed6eafb7588b7ad4697",
+    "packageManager": "yarn@4.18.0+sha512.fcb8716fe7cd0eece141ffc18b92193a9df9204c1ba83189c288835223fc0bbe64af473bab0d5e9927a7daeb5caf2bb07eb2787cc9338ca040ea125f2a1f2f7e",
     "dependencies": {
         "@emotion/react": "catalog:",
         "@emotion/styled": "catalog:",
@@ -83,11 +83,11 @@
     },
     "resolutions": {
         "@types/mapbox-gl": "2.7.21",
-        "@types/react": "18.3.12",
-        "@voxel51/voodo": "^0.1.0",
+        "@types/react": "18.3.31",
+        "@voxel51/voodo": "^0.2.0",
         "brace-expansion": "^5.0.6",
         "minimatch": "9.0.7",
-        "prettier": "~3.8.4",
+        "prettier": "~3.9.0",
         "protobufjs": "^7.6.4",
         "three-stdlib": "^2.36.1",
         "uuid": "^14.0.0"
