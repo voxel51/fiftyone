@@ -33,6 +33,10 @@ import {
 import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
+import type {
+  GridPosterProviderLookupStatus,
+  ResolvedGridPosterProviderDescriptor,
+} from "./use-grid-poster-provider";
 
 // The grid mounts custom renderers under a RecoilBridge, which is what lets
 // the tile read the embeddings panel's published match for its episode.
@@ -98,6 +102,17 @@ const gridStreamHarness = vi.hoisted(() => ({
   selected: "__auto__",
 }));
 
+const providerHarness = vi.hoisted(() => ({
+  descriptor: {
+    resolved: null as ResolvedGridPosterProviderDescriptor | null,
+    status: "miss" as GridPosterProviderLookupStatus,
+  },
+  poster: {
+    entry: null as GridPosterCacheEntry | null,
+    status: "miss" as GridPosterProviderLookupStatus,
+  },
+}));
+
 interface SnapshotRequest {
   readonly job: {
     readonly cameraPose?: unknown;
@@ -148,6 +163,11 @@ vi.mock("../../session/use-episode-preview-session", () => ({
 
 vi.mock("./use-grid-preview", () => ({
   useGridPreview: vi.fn(() => previewHarness.preview),
+}));
+
+vi.mock("./use-grid-poster-provider", () => ({
+  useGridPosterProviderDescriptor: () => providerHarness.descriptor,
+  useProvidedGridPoster: () => providerHarness.poster,
 }));
 
 vi.mock("./grid-camera-state", () => ({
@@ -255,9 +275,71 @@ afterEach(() => {
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
   gridStreamHarness.selected = "__auto__";
+  providerHarness.descriptor = { resolved: null, status: "miss" };
+  providerHarness.poster = { entry: null, status: "miss" };
 });
 
 describe("GridRenderer", () => {
+  it("waits for the optional cold tier before opening a source session", () => {
+    sourceHarness.byteSource = {
+      sourceId: "cold-tier-loading",
+      url: "https://example.test/cold-tier-loading.mcap",
+    };
+    providerHarness.descriptor = { resolved: null, status: "loading" };
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+  });
+
+  it("uses a revision-keyed provided poster without opening the source", () => {
+    sourceHarness.byteSource = {
+      sourceId: "provider-hit",
+      url: "https://example.test/provider-hit.mcap",
+    };
+    const provider = {
+      id: "test:posters",
+      resolveDescriptor: vi.fn(),
+    };
+    const descriptor = {
+      cacheRevision: "source-rev",
+      select: vi.fn(() => null),
+    };
+    providerHarness.descriptor = {
+      resolved: { descriptor, provider },
+      status: "hit",
+    };
+    const providedPoster: GridPosterCacheEntry = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 288,
+      mimeType: "image/webp",
+      provider: {
+        artifactIdentity: "artifact",
+        id: provider.id,
+        mediaKind: "image",
+        policyVersion: "image-grid-poster-v1",
+        revision: "source-rev",
+        variant: "frame",
+      },
+      sourceKind: "image",
+      streamId: "camera",
+      streamSourceName: "/camera/front",
+      streamSourceNames: ["/camera/front"],
+      width: 512,
+    };
+    providerHarness.poster = { entry: providedPoster, status: "hit" };
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      cachedPoster: providedPoster,
+    });
+    expect(
+      vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey,
+    ).toContain("source-rev");
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+  });
+
   it("posters at the earliest window the embeddings panel matched", () => {
     renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
       "1": [
