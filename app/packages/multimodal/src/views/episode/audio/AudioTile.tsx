@@ -141,13 +141,21 @@ const AudioTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   // label names the channel only — the source is named once in the header
   // above, and repeating it per row just pushed the channel off the end.
   const waveformTracks = useMemo<WaveformTrackSpec[]>(() => {
-    const pyramids = pcm.waveformPeaks ?? [placeholderPyramid];
+    // The synthetic pyramid stands in ONLY when there is no real source to
+    // show — the dev/story path. It used to fill in whenever peaks were
+    // absent, which meant a real source that had not decoded yet, and every
+    // moment just after switching source, drew a convincing-looking
+    // waveform belonging to neither. Better to draw nothing and let the
+    // status caption say why.
+    const pyramids =
+      pcm.waveformPeaks ?? (primarySourceId ? null : [placeholderPyramid]);
+    if (!pyramids) return [];
     return pyramids.map((pyramid, index) => ({
       trackId: `${boundTrackId}:${index}`,
       label: channelLabel(index, pyramids.length),
       pyramid,
     }));
-  }, [boundTrackId, pcm.waveformPeaks, placeholderPyramid]);
+  }, [boundTrackId, pcm.waveformPeaks, placeholderPyramid, primarySourceId]);
 
   // Silence has several distinct causes (still decoding, unsupported
   // codec, this track muted, master muted) and they're indistinguishable
