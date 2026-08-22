@@ -99,6 +99,13 @@ export interface UseAudioStreamPlaybackOptions {
   /** `null` disables this hook entirely, for the buffered fallback. */
   readonly source: AudioStreamSource | null;
   readonly playback?: boolean;
+  /**
+   * Whether this transport owns the mixer row. Pass `false` when something
+   * else already registers the same track id — otherwise both register it,
+   * and the row churns as this transport activates and idles.
+   * @default true
+   */
+  readonly registerRoster?: boolean;
 }
 
 export interface UseAudioStreamPlaybackResult extends UseAudioPlaybackResult {
@@ -115,6 +122,7 @@ export function useAudioStreamPlayback({
   kind = "pcm",
   source,
   playback = true,
+  registerRoster = true,
 }: UseAudioStreamPlaybackOptions): UseAudioStreamPlaybackResult {
   const { registerStream, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
@@ -248,18 +256,19 @@ export function useAudioStreamPlayback({
     return () => clearInterval(timer);
   }, [status]);
 
-  // Mixer roster. Registered whenever this transport owns the track, so a
-  // source that fails to stream still appears rather than vanishing.
+  // Mixer roster. Registered only when this transport is used on its own —
+  // `useMcapAudioStream` mounts it alongside `useAudioPlayback`, which
+  // registers on `trackId` alone and so holds the row steady. Two owners
+  // meant the row was unregistered and re-registered as this transport went
+  // active and idle, which with demand gating is every mute and unmute.
   useEffect(() => {
-    // Roster membership is about audible tracks; a waveform-only instance
-    // would otherwise register a duplicate mixer row for the same source.
-    if (!active || !playback || !trackId) return undefined;
+    if (!registerRoster || !active || !playback || !trackId) return undefined;
     return registerAudioTrackImpl(store, {
       id: trackId,
       kind,
       label: label ?? trackId,
     });
-  }, [active, playback, store, trackId, label, kind]);
+  }, [active, kind, label, playback, registerRoster, store, trackId]);
 
   const seekTo = useCallback((timeSec: number) => {
     anchorSecRef.current = timeSec;

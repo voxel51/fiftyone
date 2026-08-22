@@ -358,6 +358,9 @@ export function useMcapAudioStream(
     kind: "pcm",
     label,
     playback,
+    // `useAudioPlayback` below registers the row on `trackId` alone, so it
+    // stays put across this transport's activate/idle cycles.
+    registerRoster: false,
     source: streamSource,
     trackId: streamId,
   });

@@ -15,7 +15,7 @@ import {
 } from "./store-access";
 
 describe("audio track registry", () => {
-  it("registers and unregisters tracks by id, replacing duplicates", () => {
+  it("replaces a duplicate id in place, holding the roster's order", () => {
     const store = createStore();
 
     const unregisterA = registerAudioTrack(store, {
@@ -28,7 +28,10 @@ describe("audio track registry", () => {
       label: "Track B",
       kind: "foxglove-raw",
     });
-    // Re-registering "a" should replace, not duplicate.
+    // Re-registering "a" should replace, not duplicate — and must not move
+    // it. The roster is the mixer's row order, and re-registration happens
+    // on any descriptor change, so appending would reshuffle the rows under
+    // the user as they muted tracks.
     registerAudioTrack(store, {
       id: "a",
       label: "Track A (renamed)",
@@ -36,8 +39,8 @@ describe("audio track registry", () => {
     });
 
     expect(getAudioTracks(store)).toEqual([
-      { id: "b", label: "Track B", kind: "foxglove-raw" },
       { id: "a", label: "Track A (renamed)", kind: "native-element" },
+      { id: "b", label: "Track B", kind: "foxglove-raw" },
     ]);
 
     unregisterA();
