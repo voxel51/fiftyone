@@ -11,7 +11,10 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React, { useEffect, useMemo } from "react";
-import { useMcapAudioStream } from "./use-mcap-audio-stream";
+import {
+  useAudioSourceState,
+  useRequestAudio,
+} from "../../../audio/audio-source-registry";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import type { EpisodeTileProps } from "../tiles/tile-types";
@@ -40,14 +43,18 @@ const AudioTile: React.FC<EpisodeTileProps> = () => {
     setTileTitle("Audio", { source: "auto" });
   }, [setTileTitle]);
 
-  // Real decode path: this registers the track (id = the source's stream
-  // id) and drives actual Web Audio playback once decoded. Passing "" when
-  // there's no real source yet is harmless — the hook just never resolves
-  // any frames for an empty stream id.
-  // Waveform only: `RegisterMcapAudioStreams` owns audible playback for
-  // every audio source, so this instance must not build a second audio
-  // graph for the same stream (see `UsePCMAudioStreamOptions.playback`).
-  const pcm = useMcapAudioStream(primarySourceId ?? "", { playback: false });
+  // Opening this tile is a request for the source's audio: it needs decoded
+  // samples to draw a waveform even when nothing is audible.
+  useRequestAudio(primarySourceId ?? "");
+
+  // Observe, don't read. `RegisterMcapAudioStreams` owns the single reader
+  // per source and publishes what it finds. This tile used to start its own
+  // `useMcapAudioStream` with `playback: false` — which avoided a second
+  // audio graph but not a second reader, and with playback off it used the
+  // unlimited discard sink, so it scanned toward the end of the source
+  // purely to build peaks. Opening the panel could become a whole-recording
+  // fetch on top of the one already running.
+  const pcm = useAudioSourceState(primarySourceId ?? "");
 
   // Placeholder path: no real audio scene source exists yet (e.g. this
   // tile was added manually before Phase 2 decoding produced one, or in a

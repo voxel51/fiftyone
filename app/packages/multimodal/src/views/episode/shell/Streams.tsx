@@ -127,12 +127,14 @@ export function Streams({
             s.type !== SCENE_SOURCE_TYPE.POSE &&
             s.type !== SCENE_SOURCE_TYPE.LOCATION &&
             s.type !== SCENE_SOURCE_TYPE.LOG &&
-            // `useMcapAudioStream` does its own one-shot `readStreamFrames`
-            // fetch outside this demand-driven buffered-read system, so an
-            // audio source never "covers the playhead" from its
-            // perspective — counting it as blocking here means
-            // `onPlayheadDataReady` (which clears the poster/"Preparing
-            // viewer" overlay) never fires for an audio-only recording.
+            // `useMcapAudioStream` reads outside this buffered-read system:
+            // it needs a runway of contiguous samples ahead of the playhead
+            // to keep its ring fed, which point-in-time frame selection
+            // cannot provide. So an audio source never "covers the playhead"
+            // from this system's perspective — counting it as blocking here
+            // means `onPlayheadDataReady` (which clears the poster
+            // /"Preparing viewer" overlay) never fires for an audio-only
+            // recording.
             s.type !== SCENE_SOURCE_TYPE.AUDIO,
         )
         .map((s) => s.id),

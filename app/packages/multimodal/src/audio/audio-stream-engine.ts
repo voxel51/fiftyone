@@ -93,6 +93,80 @@ declare global {
     | undefined;
 }
 
+// ---------------------------------------------------------------------------
+// Shared AudioContexts, keyed by sample rate.
+//
+// One context per engine meant one per audio source: four audio topics in a
+// recording produced four contexts, four worklets and four pumps, whether or
+// not any of them was audible. Browsers cap concurrent contexts per page, so
+// that scales into silence rather than into slowness.
+//
+// Keyed by rate rather than shared outright because an `AudioContext` has a
+// single `sampleRate` and a worklet renders at it. Sources that agree on a
+// rate — in practice all of them — share one context; a source at a
+// different rate gets its own, which is still correct and avoids resampling
+// in the render thread.
+// ---------------------------------------------------------------------------
+
+interface ContextLease {
+  readonly audioContext: AudioContext;
+  release(): Promise<void>;
+}
+
+interface SharedContext {
+  readonly audioContext: AudioContext;
+  /** Resolves once the worklet module is registered on this context. */
+  readonly ready: Promise<void>;
+  leases: number;
+}
+
+const SHARED_CONTEXTS = new Map<number, SharedContext>();
+
+async function acquireAudioContext(sampleRate: number): Promise<ContextLease> {
+  let shared = SHARED_CONTEXTS.get(sampleRate);
+  if (!shared) {
+    const audioContext = new AudioContext({ sampleRate });
+    shared = {
+      audioContext,
+      // Registered once per context, not once per engine: `addModule` is
+      // idempotent but re-awaiting it per source serialises engine startup
+      // behind a fetch that has already happened.
+      ready: audioContext.audioWorklet.addModule(workletUrl),
+      leases: 0,
+    };
+    SHARED_CONTEXTS.set(sampleRate, shared);
+  }
+  shared.leases += 1;
+
+  try {
+    await shared.ready;
+  } catch (error) {
+    // The context is unusable without its worklet — drop it so the next
+    // caller retries construction rather than inheriting the failure.
+    await releaseAudioContext(sampleRate);
+    throw error;
+  }
+
+  let released = false;
+  return {
+    audioContext: shared.audioContext,
+    release: async () => {
+      if (released) return;
+      released = true;
+      await releaseAudioContext(sampleRate);
+    },
+  };
+}
+
+async function releaseAudioContext(sampleRate: number): Promise<void> {
+  const shared = SHARED_CONTEXTS.get(sampleRate);
+  if (!shared) return;
+  shared.leases -= 1;
+  if (shared.leases > 0) return;
+  SHARED_CONTEXTS.delete(sampleRate);
+  await shared.audioContext.close().catch(() => undefined);
+}
+
 export async function createAudioStreamEngine(
   options: AudioStreamEngineOptions,
 ): Promise<AudioStreamEngine> {
@@ -116,15 +190,9 @@ export async function createAudioStreamEngine(
     throw new RangeError(`Invalid audio sample rate: ${sampleRate}`);
   }
 
-  const audioContext = new AudioContext({ sampleRate });
+  const lease = await acquireAudioContext(sampleRate);
+  const { audioContext } = lease;
   let disposed = false;
-
-  try {
-    await audioContext.audioWorklet.addModule(workletUrl);
-  } catch (error) {
-    void audioContext.close().catch(() => undefined);
-    throw error;
-  }
 
   const layout = allocateAudioRing(
     Math.max(2, Math.ceil(bufferSeconds * sampleRate)),
@@ -170,8 +238,10 @@ export async function createAudioStreamEngine(
       node.port.onmessage = null;
       node.disconnect();
       // Browsers cap concurrent AudioContexts per page; leaking them
-      // eventually makes construction fail, presenting as silence.
-      await audioContext.close().catch(() => undefined);
+      // eventually makes construction fail, presenting as silence. The
+      // context is shared, so this releases a lease rather than closing
+      // outright — it closes once the last engine on that rate is gone.
+      await lease.release();
     },
   };
 }
