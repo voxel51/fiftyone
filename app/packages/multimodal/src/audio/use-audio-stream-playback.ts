@@ -54,7 +54,7 @@ import {
   type IncrementalPeakAccumulator,
 } from "./incremental-peaks";
 import { canUseSharedRingBuffer } from "./ring-buffer";
-import type { AudioMetadata, PcmAudioData } from "./types";
+import type { AudioMetadata } from "./types";
 import type {
   AudioPlaybackStatus,
   UseAudioPlaybackResult,
@@ -138,11 +138,11 @@ export function useAudioStreamPlayback({
   const [waveformPeaks, setWaveformPeaks] =
     useState<UseAudioPlaybackResult["waveformPeaks"]>(null);
   /**
-   * Seconds of audio actually decoded. The source's own `durationSec` is an
-   * estimate supplied before anything was read — on the MCAP path it is the
-   * recording's message-timestamp span, which is shorter than the audio
-   * whenever the final message carries samples past its own timestamp. Once
-   * real samples exist they are the authority.
+   * How many seconds of audio we have actually got. The length the source
+   * reports is a guess made before anything was downloaded — for MCAP it is
+   * the span of the message timestamps, which runs short when the last
+   * message carries audio past its own timestamp. Once we have real audio,
+   * that is the truth.
    */
   const [decodedDurationSec, setDecodedDurationSec] = useState(0);
 
@@ -180,59 +180,6 @@ export function useAudioStreamPlayback({
     });
     peaksRef.current = accumulator;
 
-    // Peaks scan: one sequential pass over the source, folding each window
-    // into the accumulator and discarding it.
-    //
-    // Separate from the pump on purpose. The pump is backpressured by the
-    // ring draining — it fills roughly `PROBE + bufferSeconds` and then
-    // waits for playback to consume. That is right for playback and wrong
-    // for a waveform, which describes the whole source and must not stop at
-    // the ring's runway. Before this the tile ran a second full transport to
-    // get the same effect; this is that capability without the duplicate
-    // graph, and it only runs because something is demanding this source.
-    //
-    // Memory stays flat: one window is held, folded, and dropped.
-    const scanController = new AbortController();
-    void (async () => {
-      const windowSec = 1;
-      // A window can come back empty without the source being over — a gap
-      // between messages, a stretch the reader could not satisfy in budget.
-      // Stopping on the first one would silently end the waveform there,
-      // which is exactly how it used to stop dead partway through. Skip and
-      // carry on, and only give up after several in a row, which is what
-      // running off the end actually looks like.
-      const EMPTY_WINDOWS_BEFORE_STOP = 5;
-      let consecutiveEmpty = 0;
-      // The declared length is an estimate and audio can run a little past
-      // it, so allow a bounded overrun rather than cutting off exactly
-      // there. Bounded, not open-ended: a reader that keeps returning
-      // something would otherwise never stop.
-      const hardEnd = source.durationSec + 10 * windowSec;
-      for (let startSec = 0; startSec < hardEnd; startSec += windowSec) {
-        if (cancelled || scanController.signal.aborted) return;
-        let pcm: PcmAudioData | null = null;
-        try {
-          pcm = await source.read(
-            startSec,
-            startSec + windowSec,
-            scanController.signal,
-          );
-        } catch {
-          // One failed read is not the end of the source; the run of empties
-          // below decides that.
-          pcm = null;
-        }
-        if (cancelled || scanController.signal.aborted) return;
-        if (!pcm || pcm.samples.length === 0) {
-          consecutiveEmpty += 1;
-          if (consecutiveEmpty >= EMPTY_WINDOWS_BEFORE_STOP) return;
-          continue;
-        }
-        consecutiveEmpty = 0;
-        accumulator.add(pcm.samples, Math.round(startSec * source.sampleRate));
-      }
-    })();
-
     void (async () => {
       try {
         // Only an audible consumer builds a graph; browsers cap concurrent
@@ -257,8 +204,8 @@ export function useAudioStreamPlayback({
           gainRef.current = gain;
         }
 
-        // Peaks are folded from the same windows playback consumes, so the
-        // waveform costs no extra reads.
+        // The waveform is drawn from the same audio we download for
+        // playback, so we only ever download it once.
         const read: AudioWindowReader = async (startSec, endSec, signal) => {
           const window = await source.read(startSec, endSec, signal);
           if (window) {
@@ -295,7 +242,6 @@ export function useAudioStreamPlayback({
 
     return () => {
       cancelled = true;
-      scanController.abort();
       pumpRef.current?.stop();
       pumpRef.current = null;
       gainRef.current?.disconnect();
@@ -417,8 +363,8 @@ export function useAudioStreamPlayback({
       metadata: source?.metadata
         ? {
             ...source.metadata,
-            // Never shorter than what has been decoded: an estimate that
-            // undershoots would report a clip as ending before it does.
+            // Never shorter than what we have: a guess that runs short
+            // would say the audio ends before it does.
             durationSec: Math.max(
               source.metadata.durationSec ?? 0,
               decodedDurationSec,

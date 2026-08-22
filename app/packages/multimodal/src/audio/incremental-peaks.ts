@@ -114,16 +114,16 @@ export function createIncrementalPeaks({
   let filled = new Uint8Array(peakCount);
   let filledCount = 0;
   /**
-   * Frames folded into each bucket so far. A bucket is FROZEN once this
-   * reaches `samplesPerPeak` — every sample it summarizes has been seen, so
-   * nothing a later read could add is new.
+   * How much audio each slice has seen. A slice is FINISHED once it has seen
+   * all of it, and is then left alone — downloading the same audio again
+   * cannot tell us anything new about it.
    *
-   * A plain filled/not-filled flag could not express this. Windows do not
-   * align to bucket boundaries, so a bucket at a window edge was marked
-   * filled after seeing only part of its samples; the next pass folded in
-   * the rest and widened its peaks. Since display gain is derived from the
-   * loudest peak across all rows, one widened bucket rescaled the entire
-   * waveform — which is what made it shift every time playback looped.
+   * A simple yes/no "has data" flag was not enough. The chunks we download
+   * do not line up with the slices, so a slice at the edge of a chunk was
+   * marked as having data after seeing only part of itself; the next time
+   * round the rest arrived and made it louder. The waveform's scale comes
+   * from its loudest slice, so one slice getting louder rescaled the whole
+   * picture — which is why it shifted every time playback looped.
    */
   let covered = new Uint16Array(peakCount);
   /** One past the furthest bucket written — the decoded extent. */
@@ -187,17 +187,17 @@ export function createIncrementalPeaks({
         const bucketEndFrame = (bucket + 1) * samplesPerPeak - startFrame;
         const stop = Math.min(frames, bucketEndFrame);
 
-        // Complete buckets are frozen: skip rather than re-folding. Reading
-        // the same audio again can only ever widen min/max, never correct
-        // them, so a loop would keep nudging the picture.
+        // A finished slice is left alone. Seeing the same audio again can
+        // only make it louder, never more accurate, so looping would keep
+        // nudging the picture.
         if (covered[bucket] >= samplesPerPeak) {
           frame = stop;
           bucket += 1;
           continue;
         }
 
-        // Partial coverage within a bucket still folds — the remaining
-        // frames arrive in the next window and are genuinely new.
+        // A half-finished slice still takes more: the rest of it arrives
+        // in the next chunk and really is new.
         const fresh = filled[bucket] === 0;
         for (let channel = 0; channel < channelCount; channel++) {
           let lo = fresh ? Number.POSITIVE_INFINITY : mins[channel][bucket];

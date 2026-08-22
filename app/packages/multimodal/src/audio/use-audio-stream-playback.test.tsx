@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import React from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "@fiftyone/playback";
@@ -50,11 +50,12 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe("useAudioStreamPlayback", () => {
-  // Reads for playback are paced by the audio buffer emptying. A waveform
-  // has to cover the whole source, so it gets its own pass — otherwise,
-  // with nothing playing, drawing stopped at the probe plus the buffer
-  // (about six seconds) and never grew.
-  it("reads the whole source for the waveform even with nothing playing", async () => {
+  // The audio is downloaded once, for playback, and the waveform is drawn
+  // from those same chunks. So downloading has to follow playback: if
+  // nothing is playing, nothing should keep downloading. A recording can be
+  // hours long, and downloading it a second time just to draw it is not an
+  // option.
+  it("stops downloading when playback is not using the audio", async () => {
     const readAt: number[] = [];
     const source: AudioStreamSource = {
       channels: 1,
@@ -83,9 +84,11 @@ describe("useAudioStreamPlayback", () => {
       { wrapper },
     );
 
-    await waitFor(() => expect(readAt.length).toBeGreaterThanOrEqual(10), {
-      timeout: 5000,
-    });
-    expect(Math.max(...readAt)).toBeGreaterThanOrEqual(9);
+    // Long enough that a runaway downloader would have taken the lot.
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Some download happens — enough to fill the buffer once. What must not
+    // happen is the whole ten seconds arriving while nothing plays.
+    expect(Math.max(0, ...readAt)).toBeLessThan(DURATION - 1);
   });
 });
