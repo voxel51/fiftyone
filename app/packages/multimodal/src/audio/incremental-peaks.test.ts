@@ -172,6 +172,26 @@ describe("incremental peaks", () => {
     expect(acc.pyramids()).not.toBe(first);
   });
 
+  it("keeps peak count and duration describing the same span", () => {
+    // Consumers size their texture from `levels[0].min.length` and map time
+    // across `durationSec`. If the buffer is over-allocated and handed out
+    // raw, the texture covers more time than the duration claims and the
+    // drawing is squeezed into `declared / capacity` of the width.
+    const acc = createIncrementalPeaks({
+      channels: 1,
+      sampleRate: SAMPLE_RATE,
+      totalFrames: SAMPLE_RATE,
+    });
+    // Overrun the estimate, which triggers the 1.5x growth.
+    acc.add(signal(SAMPLE_RATE + 1000, 1), 0);
+
+    const pyramid = acc.pyramids()[0];
+    const impliedSec =
+      (pyramid.levels[0].min.length * pyramid.samplesPerPeak) /
+      pyramid.sampleRate;
+    expect(impliedSec).toBeCloseTo(pyramid.durationSec, 1);
+  });
+
   it("fills only the region visited when playback starts mid-track", () => {
     const acc = createIncrementalPeaks({
       channels: 1,

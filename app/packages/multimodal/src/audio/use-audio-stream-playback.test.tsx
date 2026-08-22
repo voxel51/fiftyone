@@ -3,7 +3,7 @@ import React from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "@fiftyone/playback";
 import { useAudioStreamPlayback } from "./use-audio-stream-playback";
-import type { AudioStreamSource } from "./types";
+import type { AudioStreamSource } from "./use-audio-stream-playback";
 
 const RATE = 8000;
 const DURATION = 10;
@@ -60,7 +60,7 @@ describe("useAudioStreamPlayback", () => {
       channels: 1,
       durationSec: DURATION,
       sampleRate: RATE,
-      read: async (startSec) => {
+      read: async (startSec: number) => {
         readAt.push(startSec);
         return {
           channels: 1,
