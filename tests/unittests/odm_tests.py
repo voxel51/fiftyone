@@ -188,3 +188,99 @@ class GetIndexedValuesTests(unittest.TestCase):
 
         finally:
             dataset.delete()
+
+
+class ConnectionBootstrapTests(unittest.TestCase):
+    """Operations that mongoengine performs natively (querysets, lazy
+    dereference of reference fields, GridFS reads) resolve the connection
+    registry directly rather than passing through FiftyOne's lazy
+    ``ensure_connection()`` checkpoints. The ``get_connection`` wrapper
+    installed by ``fiftyone.core.odm.database`` must bootstrap the default
+    connection for them.
+    """
+
+    def _disconnect(self):
+        """Puts the process in the state a cold or freshly-forked worker sees
+        (fiftyone.core.map.process, fiftyone.utils.torch): mongoengine's
+        connection registry is empty and FiftyOne will reconnect lazily.
+
+        Unlike ``fiftyone.core.odm.database._disconnect()``, this does not
+        close the pymongo client, so handles held by other tests sharing this
+        process (e.g. package-scoped fixtures) keep working.
+        """
+        import mongoengine
+
+        import fiftyone.core.odm.database as fodb
+
+        mongoengine.disconnect_all()
+        fodb._client = None
+
+    def test_wrapper_is_installed(self):
+        import mongoengine
+        from mongoengine import mongodb_support
+
+        self.assertTrue(
+            getattr(
+                mongoengine.connection.get_connection,
+                "_fiftyone_bootstrap",
+                False,
+            )
+        )
+        self.assertIs(
+            mongodb_support.get_connection,
+            mongoengine.connection.get_connection,
+        )
+
+    def test_bootstraps_default_connection(self):
+        import mongoengine
+
+        self._disconnect()
+
+        conn = mongoengine.connection.get_connection()
+        self.assertIsNotNone(conn)
+
+    def test_non_default_alias_still_raises(self):
+        import mongoengine
+        from mongoengine.connection import ConnectionFailure
+
+        with self.assertRaises(ConnectionFailure):
+            mongoengine.connection.get_connection("no-such-alias")
+
+    def test_queryset_after_disconnect(self):
+        self._disconnect()
+
+        # A direct queryset is the first DB access after teardown
+        # pylint: disable-next=no-member
+        foo.DatasetDocument.objects.first()
+
+    def test_dereference_after_disconnect(self):
+        dataset = fo.Dataset()
+
+        try:
+            config = dataset.init_run(foo="bar")
+            dataset.register_run("test", config)
+
+            results = dataset.init_run_results("test", spam="eggs")
+            dataset.save_run_results("test", results, cache=False)
+
+            # Reset the in-memory doc so the run references are raw DBRefs
+            dataset.reload()
+
+            self._disconnect()
+
+            # Dereferencing run references + reading GridFS results are the
+            # first DB accesses after teardown
+            self.assertListEqual(dataset.list_runs(), ["test"])
+
+            dataset.reload()
+            self._disconnect()
+
+            results = dataset.load_run_results("test", cache=False)
+            self.assertEqual(results.spam, "eggs")
+        finally:
+            dataset.delete()
+
+
+if __name__ == "__main__":
+    fo.config.show_progress_bars = False
+    unittest.main(verbosity=2)
