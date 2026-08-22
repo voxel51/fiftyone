@@ -54,7 +54,7 @@ import {
   type IncrementalPeakAccumulator,
 } from "./incremental-peaks";
 import { canUseSharedRingBuffer } from "./ring-buffer";
-import type { AudioMetadata } from "./types";
+import type { AudioMetadata, PcmAudioData } from "./types";
 import type {
   AudioPlaybackStatus,
   UseAudioPlaybackResult,
@@ -180,6 +180,39 @@ export function useAudioStreamPlayback({
     });
     peaksRef.current = accumulator;
 
+    // Peaks scan: one sequential pass over the source, folding each window
+    // into the accumulator and discarding it.
+    //
+    // Separate from the pump on purpose. The pump is backpressured by the
+    // ring draining — it fills roughly `PROBE + bufferSeconds` and then
+    // waits for playback to consume. That is right for playback and wrong
+    // for a waveform, which describes the whole source and must not stop at
+    // the ring's runway. Before this the tile ran a second full transport to
+    // get the same effect; this is that capability without the duplicate
+    // graph, and it only runs because something is demanding this source.
+    //
+    // Memory stays flat: one window is held, folded, and dropped.
+    const scanController = new AbortController();
+    void (async () => {
+      const windowSec = 1;
+      for (
+        let startSec = 0;
+        startSec < source.durationSec;
+        startSec += windowSec
+      ) {
+        if (cancelled || scanController.signal.aborted) return;
+        const endSec = Math.min(startSec + windowSec, source.durationSec);
+        let pcm: PcmAudioData | null = null;
+        try {
+          pcm = await source.read(startSec, endSec, scanController.signal);
+        } catch {
+          return; // a failed scan degrades the waveform, never playback
+        }
+        if (!pcm || cancelled || scanController.signal.aborted) return;
+        accumulator.add(pcm.samples, Math.round(startSec * source.sampleRate));
+      }
+    })();
+
     void (async () => {
       try {
         // Only an audible consumer builds a graph; browsers cap concurrent
@@ -242,6 +275,7 @@ export function useAudioStreamPlayback({
 
     return () => {
       cancelled = true;
+      scanController.abort();
       pumpRef.current?.stop();
       pumpRef.current = null;
       gainRef.current?.disconnect();
