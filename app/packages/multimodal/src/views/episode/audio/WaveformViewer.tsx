@@ -45,6 +45,12 @@ function colorForRow(index: number): readonly [number, number, number, number] {
   return CHANNEL_COLORS[index % CHANNEL_COLORS.length];
 }
 
+/** The row's trace colour as CSS, so its label reads as belonging to it. */
+function cssColorForRow(index: number): string {
+  const [r, g, b] = colorForRow(index);
+  return `rgb(${Math.round(r * 255)} ${Math.round(g * 255)} ${Math.round(b * 255)})`;
+}
+
 function hasWebGpu(): boolean {
   return (
     typeof navigator !== "undefined" && "gpu" in navigator && !!navigator.gpu
@@ -172,11 +178,33 @@ const WaveformViewer: React.FC<WaveformViewerProps> = ({
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={clsx(styles.canvas, className)}
-      data-testid="waveform-viewer-canvas"
-    />
+    <div className={clsx(styles.root, className)}>
+      <canvas
+        ref={canvasRef}
+        className={styles.canvas}
+        data-testid="waveform-viewer-canvas"
+      />
+      {/* Labels are HTML over the canvas rather than drawn in the shader:
+          the rows are only distinguishable by hue otherwise, which says
+          nothing about which channel is which. Positioned by the same
+          index/among fraction the renderer lays the rows out with. */}
+      <div className={styles.labels} aria-hidden={false}>
+        {tracks.map((track, index) => (
+          <span
+            className={styles.label}
+            data-testid="waveform-row-label"
+            key={track.trackId}
+            style={{
+              color: cssColorForRow(index),
+              height: `${100 / tracks.length}%`,
+              top: `${(index * 100) / tracks.length}%`,
+            }}
+          >
+            {track.label}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 };
 

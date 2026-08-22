@@ -1,5 +1,9 @@
 import { TimelineRuler, useAudio } from "@fiftyone/playback";
-import { useSetTileHeaderExtra, useSetTileTitle } from "@fiftyone/tiling";
+import {
+  useSetTileHeaderExtra,
+  useSetTileTitle,
+  useTileId,
+} from "@fiftyone/tiling";
 import {
   Button,
   IconName,
@@ -10,7 +14,7 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   useAudioSourceState,
   useRequestAudio,
@@ -19,6 +23,8 @@ import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import { channelLabel, synthesizePeaks } from "../../../audio/peak-pyramid";
+import { useRegisterTileSettings } from "../tiles/tile-settings-context";
+import AudioTileSettings from "./AudioTileSettings";
 import styles from "./AudioTile.module.css";
 import WaveformSurface from "./WaveformSurface";
 import { type WaveformTrackSpec } from "./WaveformViewer";
@@ -32,9 +38,23 @@ import { type WaveformTrackSpec } from "./WaveformViewer";
  * WebGPU rendering path, ruler, and tile-header mute button can all be
  * verified before that decode work exists.
  */
-const AudioTile: React.FC<EpisodeTileProps> = () => {
+const AudioTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const sources = useSceneSourcesByType(SCENE_SOURCE_TYPE.AUDIO);
-  const primarySourceId = sources[0]?.id;
+  const tileId = useTileId();
+
+  // Bound once, then user-switchable. This tile used to read `sources[0]`
+  // and offer no way to change it, so a recording with several audio topics
+  // could only ever show the first one — and the `initialSourceId` the host
+  // passes when a tile is opened for a specific source was ignored outright.
+  const [selectedSourceId, setSelectedSourceId] = useState<string | undefined>(
+    () => initialSourceId ?? sources[0]?.id,
+  );
+  // A source can disappear between recordings; fall back rather than bind to
+  // an id the inventory no longer has.
+  const primarySourceId =
+    sources.find((source) => source.id === selectedSourceId)?.id ??
+    sources[0]?.id;
+  const primarySource = sources.find((source) => source.id === primarySourceId);
   const setTileTitle = useSetTileTitle();
   const setHeaderExtra = useSetTileHeaderExtra();
   const { tracks, registerAudioTrack, masterMuted } = useAudio();
@@ -94,6 +114,20 @@ const AudioTile: React.FC<EpisodeTileProps> = () => {
     return () => setHeaderExtra(null);
   }, [boundTrack, setHeaderExtra]);
 
+  const settingsRegistration = useMemo(
+    () => ({
+      content: (
+        <AudioTileSettings
+          onSelectSource={setSelectedSourceId}
+          sourceId={primarySourceId}
+          sources={sources}
+        />
+      ),
+    }),
+    [primarySourceId, sources],
+  );
+  useRegisterTileSettings(tileId, settingsRegistration);
+
   // Synthetic fallback only for the placeholder path (no real source) or
   // while a real source hasn't produced peaks yet — computed once, not
   // per render, since it's a ~480k-sample buffer.
@@ -103,19 +137,17 @@ const AudioTile: React.FC<EpisodeTileProps> = () => {
   );
 
   // One waveform row per channel (L above R), so stereo reads honestly
-  // instead of collapsing both channels into a single mixed trace.
+  // instead of collapsing both channels into a single mixed trace. The row
+  // label names the channel only — the source is named once in the header
+  // above, and repeating it per row just pushed the channel off the end.
   const waveformTracks = useMemo<WaveformTrackSpec[]>(() => {
-    const label = sources[0]?.label ?? "Audio";
     const pyramids = pcm.waveformPeaks ?? [placeholderPyramid];
     return pyramids.map((pyramid, index) => ({
       trackId: `${boundTrackId}:${index}`,
-      label:
-        pyramids.length > 1
-          ? `${label} ${channelLabel(index, pyramids.length)}`
-          : label,
+      label: channelLabel(index, pyramids.length),
       pyramid,
     }));
-  }, [boundTrackId, sources, pcm.waveformPeaks, placeholderPyramid]);
+  }, [boundTrackId, pcm.waveformPeaks, placeholderPyramid]);
 
   // Silence has several distinct causes (still decoding, unsupported
   // codec, this track muted, master muted) and they're indistinguishable
@@ -139,8 +171,11 @@ const AudioTile: React.FC<EpisodeTileProps> = () => {
   return (
     <Stack className={styles.root} data-testid="audio-tile">
       <div className={styles.metadata} data-testid="audio-tile-metadata">
+        {/* The source's own name. This used to render `waveformTracks[0]`'s
+            label, which had the channel suffix appended — so a stereo
+            source's header read "…/mic_front L". */}
         <Text color={TextColor.Primary} variant={TextVariant.Sm}>
-          {waveformTracks[0]?.label}
+          {primarySource?.label ?? "Audio"}
         </Text>
         <Text
           color={TextColor.Secondary}
