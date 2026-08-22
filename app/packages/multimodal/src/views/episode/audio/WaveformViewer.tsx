@@ -148,7 +148,17 @@ const WaveformViewer: React.FC<WaveformViewerProps> = ({
   useEffect(() => {
     const renderer = rendererRef.current;
     const canvas = canvasRef.current;
-    if (!renderer || !canvas || !ready || tracks.length === 0) return;
+    if (!renderer || !canvas || !ready) return;
+
+    // Render even with nothing to draw. Returning early here left the last
+    // frame sitting on the canvas — so switching source, or a source that
+    // had not decoded yet, showed the previous one's waveform indefinitely.
+    // The render pass clears, so an empty row list is how the canvas is
+    // wiped.
+    if (tracks.length === 0) {
+      renderer.render({ viewStart, viewEnd, canvas, rows: [] });
+      return;
+    }
 
     // `row.top`/`row.height` are compared against `canvas.height` (the
     // DEVICE-pixel backing buffer) inside the renderer, so they must be in

@@ -355,6 +355,16 @@ export class WaveformRenderer {
     });
     pass.setPipeline(this.pipeline);
 
+    // Evict tracks that are no longer drawn. The cache is keyed by track id
+    // and only ever replaced per-id, so switching source left the previous
+    // source's texture set resident for the tile's lifetime.
+    const live = new Set(args.rows.map((row) => row.trackId));
+    for (const [trackId, entry] of this.textureCache) {
+      if (live.has(trackId)) continue;
+      for (const texture of entry.textures) texture?.destroy();
+      this.textureCache.delete(trackId);
+    }
+
     const canvasHeight = args.canvas.height;
     const viewDuration = args.viewEnd - args.viewStart;
     // One gain for the whole draw, so channels keep their relative levels.
