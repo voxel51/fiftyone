@@ -34,6 +34,7 @@ import {
   concatPcmChunks,
   pcmToFloat32,
 } from "../../../audio";
+import { IDLE_AUDIO_SOURCE_STATE } from "../../../audio/audio-source-registry";
 import { VISUALIZATION_KIND } from "../../../ir/index";
 import { canUseSharedRingBuffer } from "../../../audio";
 import type { DecodedFrame } from "../../../ir";
@@ -181,6 +182,18 @@ export interface UseMcapAudioStreamOptions {
    * @default true
    */
   readonly playback?: boolean;
+  /**
+   * Whether anything actually wants this source's samples. When `false` the
+   * hook reads nothing at all — no probe, no window paging, no full-range
+   * fallback — and reports the idle result.
+   *
+   * This is the difference between a recording advertising that it has audio
+   * and a recording decoding it. Mounting this hook used to be the same act
+   * as starting the reader, so opening any MCAP began decoding every audio
+   * topic in it whether or not a listener existed.
+   * @default true
+   */
+  readonly enabled?: boolean;
 }
 
 /**
@@ -189,7 +202,7 @@ export interface UseMcapAudioStreamOptions {
  */
 export function useMcapAudioStream(
   streamId: string,
-  { label, playback = true }: UseMcapAudioStreamOptions = {},
+  { label, playback = true, enabled = true }: UseMcapAudioStreamOptions = {},
 ): UseAudioPlaybackResult {
   const dataStream = useDataStream();
   const readStreamFrames = dataStream?.readStreamFrames;
@@ -271,6 +284,14 @@ export function useMcapAudioStream(
     canUseSharedRingBuffer(),
   );
   useEffect(() => {
+    if (!enabled) {
+      setStreamSource(null);
+      // Not "streaming is unavailable" — nothing has asked yet. Both
+      // transports are disabled below regardless, so settling the probe
+      // here just keeps the idle result from reporting "loading" forever.
+      setProbePending(false);
+      return undefined;
+    }
     if (!streamId || !canUseSharedRingBuffer() || !getTimelineIndex) {
       setStreamSource(null);
       // Streaming can never run here, so the buffered path is the answer
@@ -328,7 +349,7 @@ export function useMcapAudioStream(
       cancelled = true;
       controller.abort();
     };
-  }, [getTimelineIndex, readWindow, readWindowDetailed, streamId]);
+  }, [enabled, getTimelineIndex, readWindow, readWindowDetailed, streamId]);
 
   // Both transports are called unconditionally with one of them disabled —
   // a conditional hook call would break the rules of hooks, and the choice
@@ -340,7 +361,8 @@ export function useMcapAudioStream(
     source: streamSource,
     trackId: streamId,
   });
-  const streamingActive = Boolean(streamSource) && streaming.available;
+  const streamingActive =
+    enabled && Boolean(streamSource) && streaming.available;
 
   const buffered = useAudioPlayback({
     kind: "pcm",
@@ -349,12 +371,20 @@ export function useMcapAudioStream(
     // same source would build two audio graphs and double the signal.
     // Also disabled while the probe is still out — see `probePending`.
     load: useMemo(
-      () => (streamId && !streamingActive && !probePending ? load : null),
-      [load, probePending, streamId, streamingActive],
+      () =>
+        enabled && streamId && !streamingActive && !probePending ? load : null,
+      [enabled, load, probePending, streamId, streamingActive],
     ),
     playback,
     trackId: streamId,
   });
+
+  // Nothing wants this source: report idle rather than the buffered
+  // transport's "no audio", which would be a claim about the recording
+  // rather than about whether anyone asked.
+  if (!enabled) {
+    return IDLE_AUDIO_SOURCE_STATE;
+  }
 
   // While the probe is out neither transport is running, so report loading
   // rather than letting the idle buffered result render as "no audio".

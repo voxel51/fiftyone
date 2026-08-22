@@ -4,22 +4,65 @@ import {
   setAudioAvailable,
 } from "@fiftyone/playback";
 import React, { useEffect } from "react";
+import {
+  useAudioDemanded,
+  usePublishAudioSourceState,
+} from "../../../audio/audio-source-registry";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useOptionalSceneSourcesByType } from "../../../scene-inventory/react";
 import { useMcapAudioStream } from "./use-mcap-audio-stream";
 
 /**
- * Decodes and registers one audio scene source's `useMcapAudioStream()` —
- * a component per source so a dynamic-length source list doesn't violate
- * the rules of hooks (can't call a variable number of hooks in a loop).
+ * Owns one audio scene source — a component per source so a dynamic-length
+ * source list doesn't violate the rules of hooks (can't call a variable
+ * number of hooks in a loop).
+ *
+ * Presence and demand are deliberately separate here. The mixer row is
+ * registered unconditionally, because advertising that a recording has audio
+ * costs nothing and is what keeps the volume and mixer controls reachable
+ * without an Audio tile. Reading and decoding start only once something
+ * actually wants the samples.
+ *
+ * Demand is either of:
+ *   - the track is audible — master and track both unmuted;
+ *   - some consumer asked for it, e.g. an open Audio tile drawing a
+ *     waveform (`useRequestAudio`).
+ *
+ * Audibility has to be part of it because audio is muted by default: gating
+ * on playback alone would start every decoder the moment someone pressed
+ * play on a recording they had no intention of listening to.
  */
 const AudioSourceRegistrar: React.FC<{
   sourceId: string;
   label: string;
 }> = ({ sourceId, label }) => {
+  const store = usePlaybackStore();
+  const { masterMuted, registerAudioTrack, tracks } = useAudio();
+
+  const trackMuted =
+    tracks.find((track) => track.id === sourceId)?.muted ?? false;
+  const audible = !masterMuted && !trackMuted;
+  const requested = useAudioDemanded(sourceId);
+  const enabled = audible || requested;
+
+  // Presence. Re-registered when `enabled` flips because the transports
+  // register the same id while they own the track and unregister on the way
+  // out — without this dependency the row would vanish when demand ends.
+  // `registerAudioTrack` replaces by id, so the overlap is harmless.
+  useEffect(() => {
+    if (!sourceId) return undefined;
+    setAudioAvailable(store, "available");
+    return registerAudioTrack({ id: sourceId, kind: "pcm", label });
+  }, [enabled, label, registerAudioTrack, sourceId, store]);
+
   // Pass the scene-source label through: without it the mixer row and tile
   // header fall back to the raw stream id ("0", "1").
-  useMcapAudioStream(sourceId, { label });
+  const state = useMcapAudioStream(sourceId, { enabled, label });
+
+  // Republish for observers (the Audio tile's waveform) so opening a panel
+  // does not have to start a second reader over the same source.
+  usePublishAudioSourceState(sourceId, state);
+
   return null;
 };
 
