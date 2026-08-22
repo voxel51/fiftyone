@@ -195,20 +195,40 @@ export function useAudioStreamPlayback({
     const scanController = new AbortController();
     void (async () => {
       const windowSec = 1;
-      for (
-        let startSec = 0;
-        startSec < source.durationSec;
-        startSec += windowSec
-      ) {
+      // A window can come back empty without the source being over — a gap
+      // between messages, a stretch the reader could not satisfy in budget.
+      // Stopping on the first one would silently end the waveform there,
+      // which is exactly how it used to stop dead partway through. Skip and
+      // carry on, and only give up after several in a row, which is what
+      // running off the end actually looks like.
+      const EMPTY_WINDOWS_BEFORE_STOP = 5;
+      let consecutiveEmpty = 0;
+      // The declared length is an estimate and audio can run a little past
+      // it, so allow a bounded overrun rather than cutting off exactly
+      // there. Bounded, not open-ended: a reader that keeps returning
+      // something would otherwise never stop.
+      const hardEnd = source.durationSec + 10 * windowSec;
+      for (let startSec = 0; startSec < hardEnd; startSec += windowSec) {
         if (cancelled || scanController.signal.aborted) return;
-        const endSec = Math.min(startSec + windowSec, source.durationSec);
         let pcm: PcmAudioData | null = null;
         try {
-          pcm = await source.read(startSec, endSec, scanController.signal);
+          pcm = await source.read(
+            startSec,
+            startSec + windowSec,
+            scanController.signal,
+          );
         } catch {
-          return; // a failed scan degrades the waveform, never playback
+          // One failed read is not the end of the source; the run of empties
+          // below decides that.
+          pcm = null;
         }
-        if (!pcm || cancelled || scanController.signal.aborted) return;
+        if (cancelled || scanController.signal.aborted) return;
+        if (!pcm || pcm.samples.length === 0) {
+          consecutiveEmpty += 1;
+          if (consecutiveEmpty >= EMPTY_WINDOWS_BEFORE_STOP) return;
+          continue;
+        }
+        consecutiveEmpty = 0;
         accumulator.add(pcm.samples, Math.round(startSec * source.sampleRate));
       }
     })();
