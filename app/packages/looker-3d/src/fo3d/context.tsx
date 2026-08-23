@@ -3,6 +3,7 @@ import type { Box3, LoadingManager, Vector3 } from "three";
 import { DEFAULT_SELECTED_CUBOID_CROP_MARGIN } from "../constants";
 import type { Looker3dSettings } from "../settings";
 import { HoverMetadata } from "../types";
+import type { DirectPcdWorldTransforms } from "./direct-pcd-world-alignment";
 import {
   FO3D_CAMERA_LIFECYCLE,
   type Fo3dCameraLifecycleState,
@@ -32,6 +33,7 @@ interface Fo3dContextT {
   setPointCloudSettings: Dispatch<SetStateAction<Fo3dPointCloudSettings>>;
   hoverMetadata: HoverMetadata | null;
   setHoverMetadata: Dispatch<SetStateAction<HoverMetadata | null>>;
+  directPcdWorldTransformsBySampleId: DirectPcdWorldTransforms;
 }
 
 const noop = () => {
@@ -60,6 +62,7 @@ const defaultContext: Fo3dContextT = {
   setPointCloudSettings: noop,
   hoverMetadata: null,
   setHoverMetadata: noop,
+  directPcdWorldTransformsBySampleId: {},
 };
 
 export const Fo3dSceneContext = createContext<Fo3dContextT>(defaultContext);
