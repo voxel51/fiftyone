@@ -275,8 +275,9 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
     .toBeTruthy();
 
   expect(createdCuboid).toBeDefined();
-  expect(Math.hypot(...createdCuboid!.location.slice(0, 2))).toBeGreaterThan(4);
-  expect(Math.abs(createdCuboid!.rotation[2])).toBeCloseTo(Math.PI / 2, 1);
+  expect(createdCuboid!.location[0]).toBeCloseTo(2, 1);
+  expect(createdCuboid!.location[1]).toBeCloseTo(-23.15, 1);
+  expect(createdCuboid!.rotation[2]).toBeCloseTo(Math.PI / 2, 1);
   expect(createdCuboid!.dimensions.every((value) => value > 0)).toBe(true);
 
   const persistedX = createdCuboid!.location[0];
