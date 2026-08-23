@@ -8,6 +8,21 @@
   touch-action: none;
 }
 
+/* This is a real control — it takes keyboard focus and arrow keys scrub it —
+   so the focus state has to stay visible. What has to go is the browser's
+   default outline, which draws a white box around the whole waveform. A
+   brand-coloured ring set inside the bounds reads as part of the tile and
+   does not shift anything. Pointer focus is not shown at all: clicking to
+   scrub should not leave a ring behind. */
+.surface:focus {
+  outline: none;
+}
+
+.surface:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}
+
 .canvas {
   flex: 1;
   min-height: 0;
