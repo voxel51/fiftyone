@@ -92,6 +92,11 @@ import {
   SourcePosterProvider,
   type SourcePosterValue,
 } from "../image/source-poster-context";
+import { useEpisodeHeaderActions } from "../../../extensions/episode-actions";
+import {
+  VisibleStreamsProvider,
+  useVisibleStreamIds,
+} from "../stream-discovery/visible-streams";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 export const TRANSITION_STATUS_DELAY_MS = 200;
@@ -123,6 +128,11 @@ export interface SourcePlaybackProps {
   /** Per-row timeline decoration contributed by timeline sources. */
   readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
   readonly fileName: string;
+  /** Present only for the dataset sample modal, never the Explorer. */
+  readonly episodeContext?: {
+    readonly datasetId: string;
+    readonly sampleId: string;
+  };
   readonly headerActions?: React.ReactNode;
   /** Capture time to open the recording at, ahead of the first-data tick.
    * Set to an embeddings match so opening a matched tile lands on it. */
@@ -149,12 +159,19 @@ export interface SourcePlaybackProps {
  * feed it a byte source; it owns inventory loading, episode providers, tiling,
  * layout persistence, and the playback chrome around the discovered streams.
  */
-export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
+export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => (
+  <VisibleStreamsProvider>
+    <SourcePlaybackContent {...props} />
+  </VisibleStreamsProvider>
+);
+
+const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   cameraPreferenceField,
   children,
   defaultPinnedTrackIds,
   decorateTrack,
   fileName,
+  episodeContext,
   headerActions,
   initialSeekTimeNs,
   layoutScopeKey,
@@ -534,7 +551,28 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 headerCaption={headerCaption}
                                 headerActions={
                                   <HeaderActions
-                                    actions={headerActions}
+                                    actions={
+                                      episodeContext &&
+                                      session?.manifest &&
+                                      source ? (
+                                        <>
+                                          {headerActions}
+                                          <EpisodeHeaderActions
+                                            context={episodeContext}
+                                            source={source}
+                                            streams={shellStreams}
+                                            timeRange={
+                                              session.manifest.timeRange
+                                            }
+                                            transformTopology={
+                                              session.manifest.transformTopology
+                                            }
+                                          />
+                                        </>
+                                      ) : (
+                                        headerActions
+                                      )
+                                    }
                                     loading={
                                       transitioning && !hasTerminalTransition
                                     }
@@ -649,6 +687,41 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     </div>
   );
 };
+
+function EpisodeHeaderActions({
+  context,
+  source,
+  streams,
+  timeRange,
+  transformTopology,
+}: {
+  readonly context: NonNullable<SourcePlaybackProps["episodeContext"]>;
+  readonly source: ByteSourceDescriptor;
+  readonly streams: readonly StreamDescriptor[];
+  readonly timeRange: NonNullable<EpisodeSession["manifest"]>["timeRange"];
+  readonly transformTopology: NonNullable<
+    EpisodeSession["manifest"]
+  >["transformTopology"];
+}) {
+  const actions = useEpisodeHeaderActions();
+  const visibleStreamIds = useVisibleStreamIds();
+  return (
+    <>
+      {actions.map(({ Component, id }) => (
+        <Component
+          datasetId={context.datasetId}
+          key={`${context.datasetId}:${context.sampleId}:${id}`}
+          sampleId={context.sampleId}
+          source={source}
+          streams={streams}
+          timeRange={timeRange}
+          transformTopology={transformTopology}
+          visibleStreamIds={visibleStreamIds}
+        />
+      ))}
+    </>
+  );
+}
 
 /** State shared within the current dataset/media-field inspection session. */
 const PlaybackSessionStateProviders: React.FC<{
