@@ -2,6 +2,8 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  /* The first button and the last chevron sat flush against the edges. */
+  padding: 0 6px;
   user-select: none;
   border-bottom: 1px solid var(--color-content-border-default);
 }
