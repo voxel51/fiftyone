@@ -73,7 +73,9 @@ function createDiscardSink(sampleRate: number, channels: number) {
     bufferedFrames: () => 0,
     push: (interleaved: Float32Array, offsetFrames = 0) =>
       Math.max(0, Math.floor(interleaved.length / channels) - offsetFrames),
-    seek: () => undefined,
+    // No queued audio to drop and no clock to reset, so a seek is settled
+    // the moment it is asked for.
+    seek: () => 0,
     markEnded: () => undefined,
   };
 }
@@ -152,6 +154,12 @@ export function useAudioStreamPlayback({
   const gainRef = useRef<GainNode | null>(null);
   /** Media position the current ring generation started from. */
   const anchorSecRef = useRef(0);
+  /**
+   * Ticket from the last seek, or null once the audio thread has caught up.
+   * Between the two, `playedSeconds()` still counts audio from before the
+   * seek, so the position it implies is meaningless.
+   */
+  const pendingSeekRef = useRef<number | null>(null);
 
   // Not gated on `playback`: a waveform-only consumer still streams, it
   // just has no audio graph behind it.
@@ -285,6 +293,9 @@ export function useAudioStreamPlayback({
 
   const seekTo = useCallback((timeSec: number) => {
     anchorSecRef.current = timeSec;
+    // Take a ticket before the pump flushes, so the guard above is already
+    // in place by the time anything can read the clock.
+    pendingSeekRef.current = engineRef.current?.seek() ?? null;
     pumpRef.current?.seek(timeSec);
   }, []);
 
@@ -300,6 +311,16 @@ export function useAudioStreamPlayback({
       onCommit: (time) => {
         const engine = engineRef.current;
         if (!engine) return;
+        // A seek is in flight. The audio thread resets the clock on its own
+        // turn, and until it does, the clock still holds everything played
+        // before the seek — on a loop that is a whole pass. Judging drift
+        // against it would see a huge error and seek again, which is what
+        // left playback lagging after the first loop.
+        const pending = pendingSeekRef.current;
+        if (pending !== null) {
+          if (!engine.clockSettled(pending)) return;
+          pendingSeekRef.current = null;
+        }
         // The worklet's frame count is the only trustworthy position: it
         // stops advancing during starvation, where `currentTime` does not.
         const actual = anchorSecRef.current + engine.playedSeconds();

@@ -357,4 +357,25 @@ describe("shared memory topology", () => {
     producer.markEnded();
     expect(consumer.hasEnded()).toBe(true);
   });
+
+  it("does not reset the clock until the consumer acts on the flush", () => {
+    // The clock is only meaningful once the consumer has acted. Between a
+    // producer-side flush and the consumer's next turn it still holds
+    // everything played before — on a loop that is a whole pass, and reading
+    // it in that window made playback lag after the first loop.
+    const layout = allocateAudioRing(2048, 1);
+    const producer = new AudioRingBuffer(layout);
+    const consumer = new AudioRingBuffer(layout);
+
+    consumer.advancePlayed(48_000);
+    const ticket = producer.requestFlush();
+
+    expect(producer.flushAcknowledged(ticket)).toBe(false);
+    expect(producer.framesPlayed()).toBe(48_000); // still the old count
+
+    consumer.applyPendingFlush();
+
+    expect(producer.flushAcknowledged(ticket)).toBe(true);
+    expect(producer.framesPlayed()).toBe(0);
+  });
 });

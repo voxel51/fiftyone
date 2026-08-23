@@ -63,9 +63,7 @@ function rig(capacityFrames = 4096) {
     bufferedFrames: () => ring.availableRead(),
     push: (pcm: Float32Array, offsetFrames = 0) =>
       ring.write(pcm, offsetFrames),
-    seek: () => {
-      ring.requestFlush();
-    },
+    seek: () => ring.requestFlush(),
     markEnded: () => ring.markEnded(),
   };
 
