@@ -71,7 +71,18 @@ export interface AudioStreamEngine {
    * treated as the new position, so the caller need not wait for the render
    * thread to acknowledge before queueing them.
    */
-  seek(): void;
+  /**
+   * Drops queued audio and restarts the clock. Returns a ticket for
+   * {@link clockSettled}: the audio thread does the actual reset on its next
+   * turn, so the clock is meaningless until then.
+   */
+  seek(): number;
+  /**
+   * Whether the audio thread has acted on the `seek()` that returned
+   * `ticket`. Until it has, `playedSeconds()` still counts audio from before
+   * the seek and must not be used to judge position.
+   */
+  clockSettled(ticket: number): boolean;
   /** Marks the current position's audio complete, so silence is not a fault. */
   markEnded(): void;
   /** Seconds of real audio emitted since the last `seek()`. The audio clock. */
@@ -226,9 +237,8 @@ export async function createAudioStreamEngine(
     bufferedFrames: () => ring.availableRead(),
     push: (interleaved, offsetFrames = 0) =>
       ring.write(interleaved, offsetFrames),
-    seek: () => {
-      ring.requestFlush();
-    },
+    seek: () => ring.requestFlush(),
+    clockSettled: (ticket: number) => ring.flushAcknowledged(ticket),
     markEnded: () => ring.markEnded(),
     playedSeconds: () => ring.framesPlayed() / sampleRate,
     underrunFrames: () => ring.underrunFrames(),

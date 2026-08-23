@@ -54,6 +54,7 @@ function fakeEngine(capacity = 1_000_000) {
     seek: () => {
       seeks += 1;
       buffered = 0;
+      return seeks;
     },
     markEnded: () => {
       ended += 1;
