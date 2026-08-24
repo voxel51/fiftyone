@@ -306,12 +306,8 @@ jobs:
     # a failing spec.
     if: needs.prepare-e2e.outputs.burn-in-count != '0'
     # 10 repeats of several typical spec files fit this budget; a PR that
-    # adds more should land them in pieces. Sized for the shard runner spec
-    # below: on the 2-vCPU default, --workers=50% yields a single worker and
-    # a whole-file target set can outrun even this budget.
+    # adds more should land them in pieces.
     timeout-minutes: 90
-    # Same larger-runner seam as the shards: downstream repos point burn-in at
-    # a bigger spec via repo var, and --workers=50% then gets real parallelism.
     runs-on: ${{ vars.FIFTYONE_E2E_RUNNER || 'ubuntu-latest' }}
     container:
       # fiftyone-teams overrides the image name via repo var (superset deps)
