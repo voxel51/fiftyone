@@ -91,11 +91,11 @@ export function episodeSourceFromMediaReference(
   const manifestUrl = `/dataset/${encodeURIComponent(
     datasetId,
   )}/sample/${encodeURIComponent(sampleId)}/multimodal/manifest`;
-  let manifest: TransportEpisodeManifest | null = null;
+  let manifest: TransportMediaAssetManifest | null = null;
 
   const getManifest = async (
     options?: EpisodeOpenOptions,
-  ): Promise<TransportEpisodeManifest> => {
+  ): Promise<TransportMediaAssetManifest> => {
     if (manifest) return manifest;
 
     const response = await fetch(manifestUrl, {
@@ -108,7 +108,7 @@ export function episodeSourceFromMediaReference(
       );
     }
 
-    manifest = (await response.json()) as TransportEpisodeManifest;
+    manifest = (await response.json()) as TransportMediaAssetManifest;
     return manifest;
   };
 
@@ -175,11 +175,11 @@ function byteSourceFromSample(
   };
 }
 
-type TransportEpisodeManifest = {
-  readonly assets: readonly TransportEpisodeAsset[];
+type TransportMediaAssetManifest = {
+  readonly assets: readonly TransportMediaAsset[];
 };
 
-type TransportEpisodeAsset = {
+type TransportMediaAsset = {
   readonly asset_id: string;
   readonly media_type: string;
   readonly role: string;

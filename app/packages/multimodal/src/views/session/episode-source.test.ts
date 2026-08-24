@@ -63,7 +63,7 @@ describe("episodeSourceFromMediaReference", () => {
           {
             asset_id: "camera",
             media_type: "video/mp4",
-            role: "video",
+            role: "video-stream",
             size_bytes: 1234,
             url: "/dataset/d/sample/s/multimodal/assets/camera",
           },
@@ -78,13 +78,13 @@ describe("episodeSourceFromMediaReference", () => {
     const source = episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
-      version: "1",
+      version: "2",
     });
 
     expect(source.episodeId).toBe("source:17");
     expect(request).not.toHaveBeenCalled();
     await expect(source.assets.list()).resolves.toEqual([
-      { id: "camera", mediaType: "video/mp4", role: "video" },
+      { id: "camera", mediaType: "video/mp4", role: "video-stream" },
     ]);
     await expect(source.assets.resolve("camera")).resolves.toMatchObject({
       sizeBytes: "1234",
