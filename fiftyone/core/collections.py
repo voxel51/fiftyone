@@ -12751,10 +12751,18 @@ def _serialize_value(field_name, field, value, validate=True):
 
 
 def _contains_media_references(sample_collection):
+    if fod._get_media_identity_mode(sample_collection) != "reference":
+        return False
+
     return bool(
         len(
             sample_collection.match(
-                {"_media_reference": {"$exists": True}}
+                {
+                    "_media_reference.key": {
+                        "$exists": True,
+                        "$ne": None,
+                    }
+                }
             ).limit(1)
         )
     )
@@ -13541,6 +13549,9 @@ def _export(
             "kind-specific exporter"
         )
 
+    if getattr(dataset_exporter, "manages_existing_export_dir", False):
+        dataset_exporter.overwrite = overwrite
+
     # Overwrite existing directories or warn if files will be merged
     _handle_existing_dirs(
         dataset_exporter=dataset_exporter,
@@ -13666,6 +13677,9 @@ def _handle_existing_dirs(
     export_media=False,
     overwrite=False,
 ):
+    if getattr(dataset_exporter, "manages_existing_export_dir", False):
+        return
+
     if dataset_exporter is not None:
         try:
             export_dir = dataset_exporter.export_dir

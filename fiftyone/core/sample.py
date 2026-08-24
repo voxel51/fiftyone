@@ -90,9 +90,9 @@ class _SampleMixin(object):
     @property
     def filename(self):
         """The basename or logical display name of the sample's media."""
-        media_reference = self.media_reference
-        if media_reference is not None:
-            return media_reference.display_name
+        envelope = self._doc.get_field("_media_reference")
+        if envelope is not None:
+            return envelope["display_name"]
 
         return os.path.basename(self.filepath)
 
@@ -444,7 +444,8 @@ class _SampleMixin(object):
         Returns:
             a :class:`Sample`
         """
-        if self.media_reference is not None:
+        envelope = self._doc.get_field("_media_reference")
+        if envelope is not None:
             parsed_fields = self._parse_fields(
                 fields=fields, omit_fields=omit_fields
             )
@@ -459,7 +460,7 @@ class _SampleMixin(object):
                     continue
 
             return Sample._from_media_reference_envelope(
-                deepcopy(self._doc.get_field("_media_reference")),
+                deepcopy(envelope),
                 _rand=self._doc.get_field("_rand"),
                 **values,
             )
@@ -501,10 +502,9 @@ class _SampleMixin(object):
         """
         d = super().to_dict(include_private=include_private)
 
-        if self.media_reference is not None:
-            d["_media_reference"] = deepcopy(
-                self._doc.get_field("_media_reference")
-            )
+        envelope = self._doc.get_field("_media_reference")
+        if envelope is not None:
+            d["_media_reference"] = deepcopy(envelope)
             d["_media_type"] = self.media_type
             d["_rand"] = self._doc.get_field("_rand")
 
@@ -528,7 +528,7 @@ class _SampleMixin(object):
         if field_name != "filepath":
             return
 
-        if self.media_reference is not None:
+        if self._doc.get_field("_media_reference") is not None:
             raise ValueError(
                 "Cannot assign a filepath to a reference-backed sample"
             )
@@ -572,9 +572,11 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         :class:`Sample` instance.
 
     Args:
-        filepath: the path to the data on disk. The path is converted to an
-            absolute path (if necessary) via
-            :func:`fiftyone.core.storage.normalize_path`
+        filepath: the required path to the data on disk for a filepath-backed
+            sample. The path is converted to an absolute path (if necessary)
+            via :func:`fiftyone.core.storage.normalize_path`. Reference-backed
+            samples must instead be created via
+            :meth:`Sample.from_media_reference`
         tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample
@@ -762,7 +764,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         Returns:
             a :class:`Sample`
         """
-        d = deepcopy(d)
+        d = dict(d)
         d.pop("_dataset_id", None)
 
         media_type = d.get("_media_type", None)
@@ -884,10 +886,9 @@ class SampleView(_SampleMixin, DocumentView):
 
             d = {k: v for k, v in d.items() if k in field_names}
 
-        if self.media_reference is not None:
-            d["_media_reference"] = deepcopy(
-                self._doc.get_field("_media_reference")
-            )
+        envelope = self._doc.get_field("_media_reference")
+        if envelope is not None:
+            d["_media_reference"] = deepcopy(envelope)
             d["_media_type"] = self.media_type
             d["_rand"] = self._doc.get_field("_rand")
 

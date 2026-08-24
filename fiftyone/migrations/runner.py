@@ -5,6 +5,7 @@ FiftyOne migrations runner.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import bisect
 import logging
 import os
@@ -64,6 +65,29 @@ def get_dataset_revision(name):
         raise fo.DatasetNotFoundError(name)
 
     return dataset_doc.get("version", None)
+
+
+def _is_media_reference_compatibility_revision(name, revision=None):
+    from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
+
+    document = foo.get_db_conn().datasets.find_one(
+        {"name": name}, {"version": True, "media_reference_kind": True}
+    )
+    if document is None:
+        return False
+
+    stored_revision = document.get("version")
+    if revision is not None and revision != stored_revision:
+        return False
+
+    # This branch teaches the pre-media-reference client how to open the
+    # deliberately incompatible sentinel revision. Once the package catches
+    # up to that revision, normal migrations apply again.
+    return (
+        stored_revision == MEDIA_REFERENCE_DATASET_REVISION
+        and document.get("media_reference_kind") is not None
+        and Version(foc.VERSION) < Version(stored_revision)
+    )
 
 
 def get_datasets_revisions():
@@ -198,6 +222,8 @@ def needs_migration(name=None, head=None, destination=None):
     """
     if name is not None:
         head = get_dataset_revision(name)
+        if _is_media_reference_compatibility_revision(name, head):
+            return False
 
     if head is None:
         head = "0.0"
@@ -251,6 +277,9 @@ def _migrate_dataset_if_necessary(name, destination, verbose):
 
     head = get_dataset_revision(name)
     db_version = get_database_revision()
+
+    if _is_media_reference_compatibility_revision(name, head):
+        return
 
     if head is None:
         head = "0.0"

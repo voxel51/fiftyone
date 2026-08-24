@@ -304,6 +304,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         "_brain_cache",
         "_evaluation_cache",
         "_run_cache",
+        "_media_reference_capable",
+        "_media_identity_mode_cache",
         "_deleted",
     )
 
@@ -342,6 +344,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._brain_cache = cachetools.LRUCache(5)
         self._evaluation_cache = cachetools.LRUCache(5)
         self._run_cache = cachetools.LRUCache(5)
+        self._media_reference_capable = False
+        self._media_identity_mode_cache = None
 
         self._deleted = False
 
@@ -391,12 +395,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             query = {"_id": oid}
         except:
             oid = None
-            query = {
-                "$or": [
-                    {"filepath": id_filepath_slice},
-                    {"_media_reference.key": id_filepath_slice},
-                ]
-            }
+            media_mode = _get_media_identity_mode(self)
+            if media_mode == "reference":
+                query = {"_media_reference.key": id_filepath_slice}
+            elif media_mode == "mixed":
+                query = {
+                    "$or": [
+                        {"filepath": id_filepath_slice},
+                        {"_media_reference.key": id_filepath_slice},
+                    ]
+                }
+            else:
+                query = {"filepath": id_filepath_slice}
 
         d = self._sample_collection.find_one(query)
 
@@ -4139,18 +4149,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         media_mode, media_reference_kind = _preflight_media_sources(
             self, [sample]
         )
-        sample = self._transform_sample(
-            sample,
-            expand_schema=expand_schema,
-            dynamic=dynamic,
-            validate=validate,
-            copy=True,
-        )
+        with _media_reference_write_guard(
+            self, media_mode == "reference"
+        ) as inserted_ids:
+            sample = self._transform_sample(
+                sample,
+                expand_schema=expand_schema,
+                dynamic=dynamic,
+                validate=validate,
+                copy=True,
+            )
 
-        if media_mode == "reference":
-            self._mark_media_reference_capable(media_reference_kind)
+            if media_mode == "reference":
+                self._mark_media_reference_capable(media_reference_kind)
 
-        _, ids = self._add_samples_batch([sample])
+            _, ids = self._add_samples_batch([sample])
+            inserted_ids.extend(ids)
+
         return ids[0]
 
     def add_samples(
@@ -4202,9 +4217,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         media_mode, media_reference_kind = _preflight_media_sources(
             self, samples
         )
-        if media_mode == "reference":
-            self._mark_media_reference_capable(media_reference_kind)
-
         if num_samples is None:
             num_samples = original_samples
 
@@ -4226,15 +4238,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         def _do_add_samples():
-            with batcher:
-                for batch in batcher:
-                    res, ids = self._add_samples_batch(batch)
-                    if hasattr(res, "nBytes") and hasattr(
-                        batcher, "set_encoding_ratio"
-                    ):
-                        batcher.set_encoding_ratio(res.nBytes)
+            with _media_reference_write_guard(
+                self, media_mode == "reference"
+            ) as inserted_ids:
+                if media_mode == "reference":
+                    self._mark_media_reference_capable(media_reference_kind)
 
-                    yield ids
+                with batcher:
+                    for batch in batcher:
+                        res, ids = self._add_samples_batch(batch)
+                        inserted_ids.extend(ids)
+                        if hasattr(res, "nBytes") and hasattr(
+                            batcher, "set_encoding_ratio"
+                        ):
+                            batcher.set_encoding_ratio(res.nBytes)
+
+                        yield ids
 
         if generator:
             return _do_add_samples()
@@ -4286,9 +4305,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         num_samples = len(self)
+        key_field = (
+            "_media_reference.key"
+            if _get_media_identity_mode(sample_collection) == "reference"
+            else "id"
+        )
         self.merge_samples(
             sample_collection,
-            key_field="id",
+            key_field=key_field,
             skip_existing=True,
             insert_new=True,
             include_info=include_info,
@@ -4322,11 +4346,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # adds `_id` to each dict
             res = self._sample_collection.insert_many(dicts)
         except BulkWriteError as bwe:
-            inserted_ids = [d.get("_id") for d in dicts if d.get("_id")]
-            if inserted_ids:
-                self._sample_collection.delete_many(
-                    {"_id": {"$in": inserted_ids}}
-                )
+            if media_mode == "reference":
+                inserted_ids = [d.get("_id") for d in dicts if d.get("_id")]
+                if inserted_ids:
+                    self._sample_collection.delete_many(
+                        {"_id": {"$in": inserted_ids}}
+                    )
 
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
@@ -4459,10 +4484,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         ops = []
         for sample, d in samples_and_docs:
-            from fiftyone.multimodal.media import validate_media_source
-
-            validate_media_source(d.get("filepath"), d.get("_media_reference"))
-
             if sample.id:
                 ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
             else:
@@ -4510,6 +4531,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
 
         current_kind = self._doc.media_reference_kind
+        if (
+            self._media_reference_capable
+            and current_kind == kind
+            and self._doc.version == MEDIA_REFERENCE_DATASET_REVISION
+        ):
+            self._media_identity_mode_cache = "reference"
+            return
         if current_kind is not None and current_kind != kind:
             raise ValueError(
                 "A media-reference dataset cannot contain multiple "
@@ -4543,6 +4571,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "and unique"
             )
 
+        if (
+            current_kind == kind
+            and self._doc.version == MEDIA_REFERENCE_DATASET_REVISION
+            and matching_indexes
+        ):
+            self._media_reference_capable = True
+            self._media_identity_mode_cache = "reference"
+            return
+
         self._doc.version = MEDIA_REFERENCE_DATASET_REVISION
         self._doc.media_reference_kind = kind
         if not any(
@@ -4568,6 +4605,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             app_config.media_fields.append("_media_reference")
 
         self._doc.save()
+        self._media_reference_capable = True
+        self._media_identity_mode_cache = "reference"
 
     def _bulk_write(
         self, ops, ids=None, frames=False, ordered=False, progress=False
@@ -4872,9 +4911,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 _validate_reference_merge_identity(
                     key_field, key_fcn, insert_new
                 )
-
-            if media_mode == "reference" and insert_new:
-                self._mark_media_reference_capable(media_reference_kind)
         else:
             samples = list(samples)
             media_mode, media_reference_kind = _preflight_media_sources(
@@ -4891,9 +4927,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     key_field, key_fcn, insert_new
                 )
 
-            if media_mode == "reference" and insert_new:
-                self._mark_media_reference_capable(media_reference_kind)
-
         if fields is not None:
             if etau.is_str(fields):
                 fields = [fields]
@@ -4907,32 +4940,63 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 omit_fields = list(omit_fields)
 
         if isinstance(samples, foc.SampleCollection):
-            _merge_dataset_doc(
-                self,
-                samples,
-                fields=fields,
-                omit_fields=omit_fields,
-                expand_schema=expand_schema,
-                merge_info=include_info,
-                overwrite_info=overwrite_info,
+            adopting_reference = (
+                media_mode == "reference"
+                and insert_new
+                and _get_media_identity_mode(self) is None
             )
-
-            expand_schema = False
-
-        # If we're merging a collection, use aggregation pipelines
-        if isinstance(samples, foc.SampleCollection) and key_fcn is None:
-            _merge_samples_pipeline(
-                samples,
+            with _media_reference_write_guard(
                 self,
-                key_field,
-                skip_existing=skip_existing,
-                insert_new=insert_new,
-                fields=fields,
-                omit_fields=omit_fields,
-                merge_lists=merge_lists,
-                merge_embedded_docs=merge_embedded_docs,
-                overwrite=overwrite,
-            )
+                adopting_reference,
+                clear_samples_on_failure=True,
+            ):
+                if media_mode == "reference" and insert_new:
+                    self._mark_media_reference_capable(media_reference_kind)
+
+                _merge_dataset_doc(
+                    self,
+                    samples,
+                    fields=fields,
+                    omit_fields=omit_fields,
+                    expand_schema=expand_schema,
+                    merge_info=include_info,
+                    overwrite_info=overwrite_info,
+                )
+
+                # Collection merges can use an aggregation pipeline unless a
+                # custom key function requires Python iteration.
+                if key_fcn is None:
+                    _merge_samples_pipeline(
+                        samples,
+                        self,
+                        key_field,
+                        skip_existing=skip_existing,
+                        insert_new=insert_new,
+                        fields=fields,
+                        omit_fields=omit_fields,
+                        merge_lists=merge_lists,
+                        merge_embedded_docs=merge_embedded_docs,
+                        overwrite=overwrite,
+                    )
+                else:
+                    _merge_samples_python(
+                        self,
+                        samples,
+                        key_field=key_field,
+                        key_fcn=key_fcn,
+                        skip_existing=skip_existing,
+                        insert_new=insert_new,
+                        fields=fields,
+                        omit_fields=omit_fields,
+                        merge_lists=merge_lists,
+                        merge_embedded_docs=merge_embedded_docs,
+                        overwrite=overwrite,
+                        expand_schema=False,
+                        dynamic=dynamic,
+                        progress=progress,
+                        num_samples=num_samples,
+                    )
+
             return
 
         #
@@ -4971,23 +5035,36 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             return
 
-        _merge_samples_python(
-            self,
-            samples,
-            key_field=key_field,
-            key_fcn=key_fcn,
-            skip_existing=skip_existing,
-            insert_new=insert_new,
-            fields=fields,
-            omit_fields=omit_fields,
-            merge_lists=merge_lists,
-            merge_embedded_docs=merge_embedded_docs,
-            overwrite=overwrite,
-            expand_schema=expand_schema,
-            dynamic=dynamic,
-            progress=progress,
-            num_samples=num_samples,
+        adopting_reference = (
+            media_mode == "reference"
+            and insert_new
+            and _get_media_identity_mode(self) is None
         )
+        with _media_reference_write_guard(
+            self,
+            adopting_reference,
+            clear_samples_on_failure=True,
+        ):
+            if media_mode == "reference" and insert_new:
+                self._mark_media_reference_capable(media_reference_kind)
+
+            _merge_samples_python(
+                self,
+                samples,
+                key_field=key_field,
+                key_fcn=key_fcn,
+                skip_existing=skip_existing,
+                insert_new=insert_new,
+                fields=fields,
+                omit_fields=omit_fields,
+                merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
+                overwrite=overwrite,
+                expand_schema=expand_schema,
+                dynamic=dynamic,
+                progress=progress,
+                num_samples=num_samples,
+            )
 
     def delete_samples(self, samples_or_ids):
         """Deletes the given sample(s) from the dataset.
@@ -6190,6 +6267,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ops.append(DeleteMany({}))
 
         foo.bulk_write(ops, self._sample_collection)
+        self._media_identity_mode_cache = None
 
         if sample_ids is None:
             fota.delete_for_dataset_id(self._doc.id)
@@ -8163,7 +8241,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 progress=progress,
             )
         except Exception:
-            if dataset_importer is None or dataset_importer.cleanup_on_failure:
+            if dataset_importer is not None and getattr(
+                dataset_importer, "cleanup_on_failure", False
+            ):
                 dataset.delete()
 
             raise
@@ -9480,6 +9560,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _reload(self, hard=False):
         if not hard:
             self._doc.reload()
+            self._media_reference_capable = False
+            self._media_identity_mode_cache = None
             return
 
         doc, sample_doc_cls, frame_doc_cls = _load_dataset(
@@ -9491,6 +9573,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
+        self._media_reference_capable = False
+        self._media_identity_mode_cache = None
 
         if new_media_type:
             self._set_media_type(doc.media_type)
@@ -10159,19 +10243,7 @@ def _do_load_dataset(obj, name):
 
 
 def _is_media_reference_dataset(name):
-    from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
-
-    db = foo.get_db_conn()
-    dataset_doc = db.datasets.find_one(
-        {"name": name}, {"version": 1, "sample_collection_name": 1}
-    )
-    if dataset_doc is None:
-        return False
-
-    if dataset_doc.get("version") != MEDIA_REFERENCE_DATASET_REVISION:
-        return False
-
-    return True
+    return fomi._is_media_reference_compatibility_revision(name)
 
 
 def _handle_delete_generated_saved_view(dataset, view_doc):
@@ -10353,11 +10425,30 @@ def _clone_collection(
             }
         }
     )
-    if _get_media_identity_mode(sample_collection) == "reference":
+    reference_clone = (
+        _get_media_identity_mode(sample_collection) == "reference"
+    )
+    if reference_clone:
+        if dataset.has_saved_views:
+            pipeline.append({"$set": {"_clone_source_id": "$_id"}})
+
         pipeline.append({"$unset": "_id"})
 
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
+
+    sample_id_map = {}
+    if reference_clone and dataset.has_saved_views:
+        clone_collection = foo.get_db_conn()[sample_collection_name]
+        for document in clone_collection.find(
+            {"_clone_source_id": {"$exists": True}},
+            {"_id": True, "_clone_source_id": True},
+        ):
+            sample_id_map[str(document["_clone_source_id"])] = str(
+                document["_id"]
+            )
+
+        clone_collection.update_many({}, {"$unset": {"_clone_source_id": ""}})
 
     # Clone frames
     if contains_videos:
@@ -10390,7 +10481,12 @@ def _clone_collection(
         or dataset.has_evaluations
         or dataset.has_runs
     ):
-        _clone_extras(dataset, clone_dataset, now)
+        _clone_extras(
+            dataset,
+            clone_dataset,
+            now,
+            sample_id_map=sample_id_map,
+        )
 
     return clone_dataset
 
@@ -10820,17 +10916,28 @@ def register_extras_cloner(cloner):
         _extras_cloners.append(cloner)
 
 
-def _clone_extras(src_dataset, dst_dataset, now):
+def _clone_extras(src_dataset, dst_dataset, now, sample_id_map=None):
     src_doc = src_dataset._doc
     dst_doc = dst_dataset._doc
 
     # Maps source ids (dataset doc + cloned run docs) to their new clone ids,
     # so extras cloners can rewrite references that change on clone
     id_map = {str(src_doc.id): str(dst_doc.id)}
+    id_map.update(sample_id_map or {})
 
     # Clone saved views
     for _view_doc in src_doc.get_saved_views():
         view_doc = _clone_reference_doc(_view_doc)
+        if sample_id_map:
+            view_doc.view_stages = [
+                json_util.dumps(
+                    _remap_cloned_sample_ids(
+                        json_util.loads(stage), sample_id_map
+                    )
+                )
+                for stage in view_doc.view_stages
+            ]
+
         view_doc.dataset_id = dst_doc.id
         view_doc.created_at = now
         view_doc.last_modified_at = now
@@ -10902,6 +11009,29 @@ def _clone_extras(src_dataset, dst_dataset, now):
             )
 
 
+def _remap_cloned_sample_ids(value, sample_id_map):
+    if isinstance(value, ObjectId):
+        mapped = sample_id_map.get(str(value))
+        return ObjectId(mapped) if mapped is not None else value
+
+    if isinstance(value, str):
+        return sample_id_map.get(value, value)
+
+    if isinstance(value, list):
+        return [
+            _remap_cloned_sample_ids(element, sample_id_map)
+            for element in value
+        ]
+
+    if isinstance(value, dict):
+        return {
+            key: _remap_cloned_sample_ids(element, sample_id_map)
+            for key, element in value.items()
+        }
+
+    return value
+
+
 def _clone_reference_doc(ref_doc):
     _ref_doc = ref_doc.copy(new_id=True)
     return _ref_doc
@@ -10948,8 +11078,31 @@ def _add_collection_with_new_ids(
     media_mode, media_reference_kind = _preflight_collection_media(
         dataset, sample_collection, check_duplicates=True
     )
-    if media_mode == "reference":
-        dataset._mark_media_reference_capable(media_reference_kind)
+    adopting_reference = (
+        media_mode == "reference" and _get_media_identity_mode(dataset) is None
+    )
+    with _media_reference_write_guard(
+        dataset,
+        adopting_reference,
+        clear_samples_on_failure=True,
+    ):
+        if media_mode == "reference":
+            dataset._mark_media_reference_capable(media_reference_kind)
+
+        return _add_collection_with_new_ids_impl(
+            dataset,
+            sample_collection,
+            include_info=include_info,
+            overwrite_info=overwrite_info,
+        )
+
+
+def _add_collection_with_new_ids_impl(
+    dataset,
+    sample_collection,
+    include_info=True,
+    overwrite_info=False,
+):
 
     dataset._merge_doc(
         sample_collection,
@@ -12180,28 +12333,80 @@ def _get_media_identity_mode(samples):
     if not isinstance(samples, foc.SampleCollection):
         return None
 
-    has_reference = bool(
-        len(samples.match({"_media_reference": {"$exists": True}}).limit(1))
-    )
-    has_filepath = bool(
-        len(samples.match({"filepath": {"$exists": True}}).limit(1))
-    )
-
-    if has_reference and has_filepath:
-        return "mixed"
-
-    if has_reference:
-        return "reference"
-
-    if has_filepath:
-        return "filepath"
-
     from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
 
-    if samples._dataset._doc.version == MEDIA_REFERENCE_DATASET_REVISION:
-        return "reference"
+    dataset = samples._dataset
+    cached_mode = dataset._media_identity_mode_cache
+    if cached_mode is not None:
+        return cached_mode
 
-    return None
+    marked_reference = (
+        dataset._doc.media_reference_kind is not None
+        or dataset._doc.version == MEDIA_REFERENCE_DATASET_REVISION
+    )
+    document = dataset._sample_collection.find_one(
+        {}, {"filepath": True, "_media_reference": True}
+    )
+    if document is None:
+        mode = "reference" if marked_reference else None
+        dataset._media_identity_mode_cache = mode
+        return mode
+
+    has_reference = document.get("_media_reference") is not None
+    has_filepath = document.get("filepath") is not None
+    if has_reference == has_filepath:
+        return "mixed"
+
+    mode = "reference" if has_reference else "filepath"
+    if marked_reference and mode != "reference":
+        return "mixed"
+
+    dataset._media_identity_mode_cache = mode
+    return mode
+
+
+@contextlib.contextmanager
+def _media_reference_write_guard(
+    dataset, enabled, clear_samples_on_failure=False
+):
+    inserted_ids = []
+    if not enabled:
+        yield inserted_ids
+        return
+
+    database = foo.get_db_conn()
+    dataset_document = database.datasets.find_one({"_id": dataset._doc.id})
+    index_names = set(dataset._sample_collection.index_information())
+    try:
+        yield inserted_ids
+    except GeneratorExit:
+        # ``generator=True`` publishes each completed batch immediately.
+        # Closing an otherwise healthy generator preserves those batches,
+        # matching the existing filepath-backed generator contract.
+        raise
+    except BaseException:
+        object_ids = []
+        if clear_samples_on_failure:
+            dataset._sample_collection.delete_many({})
+        else:
+            object_ids = [ObjectId(sample_id) for sample_id in inserted_ids]
+
+        if object_ids:
+            dataset._sample_collection.delete_many(
+                {"_id": {"$in": object_ids}}
+            )
+
+        current_indexes = set(dataset._sample_collection.index_information())
+        for index_name in current_indexes - index_names:
+            dataset._sample_collection.drop_index(index_name)
+
+        if dataset_document is not None:
+            database.datasets.replace_one(
+                {"_id": dataset._doc.id}, dataset_document
+            )
+            dataset._reload(hard=True)
+
+        raise
 
 
 def _validate_media_field_edits(sample_collection, field_names):

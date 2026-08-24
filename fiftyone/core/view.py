@@ -28,6 +28,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 
 fost = fou.lazy_import("fiftyone.core.stages")
+fod = fou.lazy_import("fiftyone.core.dataset")
 
 
 class DatasetView(foc.SampleCollection):
@@ -121,12 +122,18 @@ class DatasetView(foc.SampleCollection):
             query = {"_id": oid}
         except:
             oid = None
-            query = {
-                "$or": [
-                    {"filepath": id_filepath_slice},
-                    {"_media_reference.key": id_filepath_slice},
-                ]
-            }
+            media_mode = fod._get_media_identity_mode(self)
+            if media_mode == "reference":
+                query = {"_media_reference.key": id_filepath_slice}
+            elif media_mode == "mixed":
+                query = {
+                    "$or": [
+                        {"filepath": id_filepath_slice},
+                        {"_media_reference.key": id_filepath_slice},
+                    ]
+                }
+            else:
+                query = {"filepath": id_filepath_slice}
 
         view = self.match(query)
 

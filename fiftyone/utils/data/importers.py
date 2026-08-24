@@ -1828,21 +1828,12 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._tags_path = None
         self._has_frames = None
         self._media_fields = None
+        self._dataset_dict = None
+        self._cleanup_on_failure = False
 
     @property
     def cleanup_on_failure(self):
-        metadata_path = os.path.join(self.dataset_dir, "metadata.json")
-        try:
-            dataset_dict = foo.import_document(metadata_path)
-        except Exception:
-            return False
-
-        from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
-
-        return (
-            dataset_dict.get("version") == MEDIA_REFERENCE_DATASET_REVISION
-            or dataset_dict.get("media_reference_kind") is not None
-        )
+        return self._cleanup_on_failure
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
@@ -1852,6 +1843,15 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._runs_dir = os.path.join(self.dataset_dir, "runs")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+        self._dataset_dict = foo.import_document(self._metadata_path)
+
+        from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
+
+        self._cleanup_on_failure = (
+            self._dataset_dict.get("version")
+            == MEDIA_REFERENCE_DATASET_REVISION
+            or self._dataset_dict.get("media_reference_kind") is not None
+        )
         self._tags_path = os.path.join(
             self.dataset_dir, fota.TAGS_EXPORT_FILENAME
         )
@@ -1876,51 +1876,57 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 self._has_frames = False
 
     def import_samples(self, dataset, tags=None, progress=None):
-        dataset_dict = foo.import_document(self._metadata_path)
+        dataset_dict = self._dataset_dict
         from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
 
         media_reference_revision = (
             dataset_dict.get("version") == MEDIA_REFERENCE_DATASET_REVISION
         )
-
-        if (
-            len(dataset) > 0
-            and not media_reference_revision
-            and fomi.needs_migration(head=dataset_dict["version"])
+        adopting_reference = media_reference_revision and not bool(dataset)
+        with fod._media_reference_write_guard(
+            dataset,
+            adopting_reference,
+            clear_samples_on_failure=True,
         ):
-            # A migration is required in order to load this dataset, and the
-            # dataset we're loading into is non-empty, so we must first load
-            # into a temporary dataset, perform the migration, and then merge
-            # into the destination dataset
-            tmp_dataset = fod.Dataset()
+            if (
+                len(dataset) > 0
+                and not media_reference_revision
+                and fomi.needs_migration(head=dataset_dict["version"])
+            ):
+                # A migration is required in order to load this dataset, and
+                # the destination is non-empty, so first migrate in a
+                # temporary dataset and then merge into the destination.
+                tmp_dataset = fod.Dataset()
 
-            try:
+                try:
+                    sample_ids = self._import_samples(
+                        tmp_dataset,
+                        dataset_dict,
+                        tags=tags,
+                        progress=progress,
+                        media_reference_revision=media_reference_revision,
+                    )
+                    dataset.add_collection(tmp_dataset)
+                finally:
+                    tmp_dataset.delete()
+
+            else:
                 sample_ids = self._import_samples(
-                    tmp_dataset,
+                    dataset,
                     dataset_dict,
                     tags=tags,
                     progress=progress,
                     media_reference_revision=media_reference_revision,
                 )
-                dataset.add_collection(tmp_dataset)
-            finally:
-                tmp_dataset.delete()
 
-        else:
-            sample_ids = self._import_samples(
+            fota.import_tags(
                 dataset,
-                dataset_dict,
-                tags=tags,
+                self._tags_path,
+                sample_ids=(
+                    sample_ids if self.max_samples is not None else None
+                ),
                 progress=progress,
-                media_reference_revision=media_reference_revision,
             )
-
-        fota.import_tags(
-            dataset,
-            self._tags_path,
-            sample_ids=sample_ids if self.max_samples is not None else None,
-            progress=progress,
-        )
 
         return sample_ids
 
@@ -1940,29 +1946,17 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         samples, num_samples = foo.import_collection(
             self._samples_path, key="samples"
         )
-        samples = list(self._preprocess_list(samples))
-        if self.max_samples is not None:
-            num_samples = self.max_samples
+        samples = self._preprocess_list(samples)
 
-        from fiftyone.multimodal.media import (
-            MEDIA_REFERENCE_DATASET_REVISION,
-            MediaReferenceError,
-        )
-
-        has_media_references = any(
-            sample.get("_media_reference") is not None for sample in samples
-        )
-        if has_media_references and not media_reference_revision:
-            raise MediaReferenceError(
-                "Native media-reference imports must declare dataset "
-                "revision %s" % MEDIA_REFERENCE_DATASET_REVISION
+        media_reference_kind = None
+        if media_reference_revision:
+            samples = list(samples)
+            num_samples = len(samples)
+            media_mode, media_reference_kind = fod._preflight_media_sources(
+                dataset, samples
             )
-
-        media_mode, media_reference_kind = fod._preflight_media_sources(
-            dataset, samples
-        )
-        if media_mode == "reference":
-            dataset_dict["media_reference_kind"] = media_reference_kind
+            if media_mode == "reference":
+                dataset_dict["media_reference_kind"] = media_reference_kind
 
         #
         # Import DatasetDocument
@@ -2035,8 +2029,12 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             new_doc = foo.DatasetDocument.from_dict(dataset_dict)
             dataset._merge_doc(new_doc)
 
-        if media_mode == "reference":
-            dataset._mark_media_reference_capable(media_reference_kind)
+        marked_kind = media_reference_kind
+        if marked_kind is None and media_reference_revision:
+            marked_kind = dataset._doc.media_reference_kind
+
+        if marked_kind is not None:
+            dataset._mark_media_reference_capable(marked_kind)
 
         if self.rel_dir is not None:
             # Prepend `rel_dir` to all relative paths

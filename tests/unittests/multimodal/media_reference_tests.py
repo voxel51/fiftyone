@@ -23,6 +23,7 @@ import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+import fiftyone.migrations as fomi
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
 from fiftyone.multimodal.media import (
@@ -644,6 +645,161 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(_reference_keys(dataset), [_make_reference(5).key])
 
     @drop_datasets
+    def test_failed_later_batch_rolls_back_capability_and_records(self):
+        dataset = fo.Dataset()
+        version = dataset._doc.version
+        app_config = dataset.app_config.to_dict()
+        indexes = dataset.get_index_information()
+        original_add_batch = fo.Dataset._add_samples_batch
+        calls = 0
+
+        def add_batch(current_dataset, batch):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return original_add_batch(current_dataset, batch)
+
+            raise ValueError("concurrent duplicate")
+
+        samples = [
+            fo.Sample.from_media_reference(_make_reference(index))
+            for index in range(3)
+        ]
+        with mock.patch.object(
+            fo.Dataset,
+            "_add_samples_batch",
+            new=add_batch,
+        ), self.assertRaisesRegex(ValueError, "concurrent duplicate"):
+            dataset.add_samples(
+                samples,
+                batcher=partial(fou.StaticBatcher, batch_size=2),
+            )
+
+        self.assertEqual(len(dataset), 0)
+        self.assertEqual(dataset._doc.version, version)
+        self.assertIsNone(dataset._doc.media_reference_kind)
+        self.assertEqual(dataset.app_config.to_dict(), app_config)
+        self.assertEqual(dataset.get_index_information(), indexes)
+
+    @drop_datasets
+    def test_closing_add_generator_preserves_completed_batches(self):
+        dataset = fo.Dataset()
+        sample_ids = dataset.add_samples(
+            [
+                fo.Sample.from_media_reference(_make_reference(index))
+                for index in range(3)
+            ],
+            batcher=partial(fou.StaticBatcher, batch_size=1),
+            generator=True,
+        )
+
+        first_batch = next(sample_ids)
+        sample_ids.close()
+
+        self.assertEqual(len(first_batch), 1)
+        self.assertEqual(len(dataset), 1)
+        self.assertEqual(
+            dataset.first().media_reference.key, _make_reference(0).key
+        )
+        self.assertEqual(
+            dataset._doc.version, MEDIA_REFERENCE_DATASET_REVISION
+        )
+
+    @drop_datasets
+    def test_failed_collection_merge_rolls_back_reference_adoption(self):
+        source = fo.Dataset()
+        source.add_sample(fo.Sample.from_media_reference(_make_reference(1)))
+        destination = fo.Dataset()
+        version = destination._doc.version
+        app_config = destination.app_config.to_dict()
+        indexes = destination.get_index_information()
+
+        def fail_after_partial_insert(samples, dataset, *args, **kwargs):
+            document = samples._sample_collection.find_one({})
+            document.pop("_id")
+            document["_dataset_id"] = dataset._doc.id
+            dataset._sample_collection.insert_one(document)
+            raise RuntimeError("merge failed")
+
+        with mock.patch(
+            "fiftyone.core.dataset._merge_samples_pipeline",
+            side_effect=fail_after_partial_insert,
+        ), self.assertRaisesRegex(RuntimeError, "merge failed"):
+            destination.merge_samples(source)
+
+        self.assertEqual(len(destination), 0)
+        self.assertEqual(destination._doc.version, version)
+        self.assertIsNone(destination._doc.media_reference_kind)
+        self.assertEqual(destination.app_config.to_dict(), app_config)
+        self.assertEqual(destination.get_index_information(), indexes)
+
+    @drop_datasets
+    def test_reference_add_collection_and_migration_compatibility(self):
+        source = fo.Dataset()
+        source.add_sample(
+            fo.Sample.from_media_reference(_make_reference(1), value="source")
+        )
+        destination = fo.Dataset()
+        destination.add_sample(
+            fo.Sample.from_media_reference(
+                _make_reference(0), value="destination"
+            )
+        )
+
+        added_ids = destination.add_collection(source)
+
+        self.assertEqual(len(added_ids), 1)
+        self.assertEqual(
+            set(_reference_keys(destination)),
+            {_make_reference(0).key, _make_reference(1).key},
+        )
+        self.assertFalse(fomi.needs_migration(name=destination.name))
+        fomi.migrate_dataset_if_necessary(destination.name)
+        self.assertEqual(
+            destination._doc.version, MEDIA_REFERENCE_DATASET_REVISION
+        )
+
+        collection = foo.get_db_conn().datasets
+        collection.update_one(
+            {"_id": destination._doc.id},
+            {"$set": {"media_reference_kind": None}},
+        )
+        with self.assertRaises(EnvironmentError):
+            fomi.needs_migration(name=destination.name)
+        collection.update_one(
+            {"_id": destination._doc.id},
+            {"$set": {"media_reference_kind": "lerobot-episode"}},
+        )
+        with mock.patch("fiftyone.migrations.runner.foc.VERSION", "2.1.0"):
+            self.assertFalse(
+                fomi._is_media_reference_compatibility_revision(
+                    destination.name
+                )
+            )
+
+    @drop_datasets
+    def test_reference_clone_remaps_saved_view_record_ids(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample.from_media_reference(_make_reference(index))
+                for index in range(2)
+            ]
+        )
+        selected = dataset.select([dataset.first().id])
+        dataset.save_view("selected", selected)
+
+        clone = dataset.clone()
+        cloned_view = clone.load_saved_view("selected")
+
+        self.assertEqual(len(cloned_view), 1)
+        self.assertEqual(
+            cloned_view.first().media_reference.key,
+            dataset.first().media_reference.key,
+        )
+        self.assertNotEqual(cloned_view.first().id, dataset.first().id)
+
+    @drop_datasets
     def test_empty_reference_dataset_reload_clone_and_legacy_index(self):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample.from_media_reference(_make_reference(0)))
@@ -658,6 +814,27 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(
             reloaded._doc.version, MEDIA_REFERENCE_DATASET_REVISION
         )
+
+        with tempfile.TemporaryDirectory() as export_dir:
+            reloaded.export(
+                export_dir=export_dir,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=True,
+            )
+            imported = fo.Dataset.from_dir(
+                dataset_dir=export_dir,
+                dataset_type=fot.FiftyOneDataset,
+            )
+            self.assertEqual(len(imported), 0)
+            self.assertEqual(
+                imported._doc.version, MEDIA_REFERENCE_DATASET_REVISION
+            )
+            self.assertEqual(imported._doc.media_reference_kind, kind)
+            reference_index = imported.get_index_information()[
+                "_media_reference.key"
+            ]
+            self.assertTrue(reference_index["unique"])
+            self.assertTrue(reference_index["sparse"])
 
         delete_last = fo.Dataset()
         delete_last.add_sample(
@@ -688,6 +865,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             ],
             cwd=os.getcwd(),
             text=True,
+            timeout=120,
         )
         self.assertEqual(output.strip().splitlines()[-1], "0")
         self.assertFalse(fo.dataset_exists(clone.name))

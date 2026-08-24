@@ -5,9 +5,11 @@ FiftyOne's migration interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 
 from .runner import (
+    _is_media_reference_compatibility_revision,
     get_database_revision,
     get_dataset_revision,
     get_datasets_revisions,
