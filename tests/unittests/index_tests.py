@@ -30,11 +30,6 @@ class ServerIndexTests(unittest.TestCase):
                 key=[IndexFields(field="filepath", type="asc")],
             ),
             Index(
-                name="_media_reference.key",
-                key=[IndexFields(field="_media_reference.key", type="asc")],
-                unique=True,
-            ),
-            Index(
                 name="created_at",
                 key=[IndexFields(field="created_at", type="asc")],
             ),
@@ -61,11 +56,6 @@ class ServerIndexTests(unittest.TestCase):
             Index(
                 name="filepath",
                 key=[IndexFields(field="filepath", type="asc")],
-            ),
-            Index(
-                name="_media_reference.key",
-                key=[IndexFields(field="_media_reference.key", type="asc")],
-                unique=True,
             ),
             Index(
                 name="created_at",
@@ -102,11 +92,6 @@ class ServerIndexTests(unittest.TestCase):
             Index(
                 name="filepath",
                 key=[IndexFields(field="filepath", type="asc")],
-            ),
-            Index(
-                name="_media_reference.key",
-                key=[IndexFields(field="_media_reference.key", type="asc")],
-                unique=True,
             ),
             Index(
                 name="created_at",

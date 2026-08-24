@@ -1801,13 +1801,7 @@ class DynamicGroupTests(unittest.TestCase):
     def test_group_by(self):
         dataset = _make_group_by_dataset()
 
-        default_indexes = {
-            "id",
-            "filepath",
-            "_media_reference.key",
-            "created_at",
-            "last_modified_at",
-        }
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
 
         sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
         counts = dataset.count_values("sample_id")
@@ -1875,13 +1869,7 @@ class DynamicGroupTests(unittest.TestCase):
     def test_group_by_ordered(self):
         dataset = _make_group_by_dataset()
 
-        default_indexes = {
-            "id",
-            "filepath",
-            "_media_reference.key",
-            "created_at",
-            "last_modified_at",
-        }
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
 
         sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
         counts = dataset.count_values("sample_id")
@@ -1994,13 +1982,7 @@ class DynamicGroupTests(unittest.TestCase):
         dataset.add_sample_field("sample_id", fo.ObjectIdField)
         dataset.add_samples(samples)
 
-        default_indexes = {
-            "id",
-            "filepath",
-            "_media_reference.key",
-            "created_at",
-            "last_modified_at",
-        }
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
 
         view = dataset.group_by(("sample_id", "device_id"))
 

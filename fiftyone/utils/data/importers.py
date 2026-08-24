@@ -933,6 +933,11 @@ class DatasetImporter(object):
         """Whether this importer produces a dataset info dictionary."""
         return False
 
+    @property
+    def cleanup_on_failure(self):
+        """Whether a failed new-dataset import must delete partial state."""
+        return False
+
     def setup(self):
         """Performs any necessary setup before importing the first sample in
         the dataset.
@@ -1824,6 +1829,21 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._has_frames = None
         self._media_fields = None
 
+    @property
+    def cleanup_on_failure(self):
+        metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+        try:
+            dataset_dict = foo.import_document(metadata_path)
+        except Exception:
+            return False
+
+        from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
+
+        return (
+            dataset_dict.get("version") == MEDIA_REFERENCE_DATASET_REVISION
+            or dataset_dict.get("media_reference_kind") is not None
+        )
+
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._fields_dir = os.path.join(self.dataset_dir, "fields")
@@ -1857,12 +1877,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
     def import_samples(self, dataset, tags=None, progress=None):
         dataset_dict = foo.import_document(self._metadata_path)
-        from fiftyone.multimodal.media import (
-            MEDIA_REFERENCE_DATASET_REVISION,
-        )
+        from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
 
         media_reference_revision = (
-            dataset_dict["version"] == MEDIA_REFERENCE_DATASET_REVISION
+            dataset_dict.get("version") == MEDIA_REFERENCE_DATASET_REVISION
         )
 
         if (
@@ -1917,6 +1935,34 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         name = dataset.name
         empty_import = not bool(dataset)
         now = datetime.utcnow()
+
+        logger.info("Importing samples...")
+        samples, num_samples = foo.import_collection(
+            self._samples_path, key="samples"
+        )
+        samples = list(self._preprocess_list(samples))
+        if self.max_samples is not None:
+            num_samples = self.max_samples
+
+        from fiftyone.multimodal.media import (
+            MEDIA_REFERENCE_DATASET_REVISION,
+            MediaReferenceError,
+        )
+
+        has_media_references = any(
+            sample.get("_media_reference") is not None for sample in samples
+        )
+        if has_media_references and not media_reference_revision:
+            raise MediaReferenceError(
+                "Native media-reference imports must declare dataset "
+                "revision %s" % MEDIA_REFERENCE_DATASET_REVISION
+            )
+
+        media_mode, media_reference_kind = fod._preflight_media_sources(
+            dataset, samples
+        )
+        if media_mode == "reference":
+            dataset_dict["media_reference_kind"] = media_reference_kind
 
         #
         # Import DatasetDocument
@@ -1989,19 +2035,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             new_doc = foo.DatasetDocument.from_dict(dataset_dict)
             dataset._merge_doc(new_doc)
 
-        #
-        # Import samples
-        #
-
-        logger.info("Importing samples...")
-        samples, num_samples = foo.import_collection(
-            self._samples_path, key="samples"
-        )
-
-        samples = self._preprocess_list(samples)
-
-        if self.max_samples is not None:
-            num_samples = self.max_samples
+        if media_mode == "reference":
+            dataset._mark_media_reference_capable(media_reference_kind)
 
         if self.rel_dir is not None:
             # Prepend `rel_dir` to all relative paths
@@ -2017,6 +2052,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             media_reference = sd.get("_media_reference")
             if media_reference is not None:
                 from fiftyone.multimodal.media import (
+                    MEDIA_REFERENCE_DATASET_REVISION,
                     MediaReferenceError,
                     validate_media_source,
                 )

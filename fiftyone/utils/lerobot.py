@@ -138,6 +138,10 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         return True
 
     @property
+    def cleanup_on_failure(self):
+        return True
+
+    @property
     def has_sample_field_schema(self):
         return True
 

@@ -9,6 +9,9 @@ Logical media-reference sample tests.
 import json
 import os
 import pickle
+from functools import partial
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -19,7 +22,9 @@ from mongoengine import ValidationError
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
+import fiftyone.utils.data as foud
 from fiftyone.multimodal.media import (
     DatasetRelativeLocation,
     InvalidMediaLocationError,
@@ -213,6 +218,7 @@ class MediaReferenceDomainTests(unittest.TestCase):
     def test_sample_native_round_trip(self):
         sample = fo.Sample.from_media_reference(_make_reference(3), value=51)
         serialized = json.loads(json.dumps(sample.to_dict()))
+        self.assertEqual(serialized["_media_reference"]["version"], "1")
         reloaded = fo.Sample.from_dict(serialized)
 
         self.assertEqual(reloaded.media_reference, sample.media_reference)
@@ -387,6 +393,48 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 dataset_type=fot.FiftyOneDataset,
             )
 
+            destination = fo.Dataset()
+            destination.add_sample(
+                fo.Sample.from_media_reference(_make_reference(99))
+            )
+            importer, _ = foud.build_dataset_importer(
+                fot.FiftyOneDataset, dataset_dir=native_dir
+            )
+            destination.add_importer(importer)
+            self.assertEqual(len(destination), 3)
+            self.assertEqual(
+                destination._doc.version, MEDIA_REFERENCE_DATASET_REVISION
+            )
+            self.assertEqual(
+                destination._doc.media_reference_kind, "lerobot-episode"
+            )
+            self.assertTrue(
+                destination.get_index_information()["_media_reference.key"][
+                    "unique"
+                ]
+            )
+
+            metadata_path = os.path.join(native_dir, "metadata.json")
+            with open(metadata_path) as file:
+                exported_metadata = json.load(file)
+
+            exported_metadata["version"] = "1.0.0"
+            with open(metadata_path, "w") as file:
+                json.dump(exported_metadata, file)
+
+            invalid_revision_name = "invalid-native-media-reference-revision"
+            with self.assertRaises(MediaReferenceError):
+                fo.Dataset.from_dir(
+                    dataset_dir=native_dir,
+                    dataset_type=fot.FiftyOneDataset,
+                    name=invalid_revision_name,
+                )
+            self.assertFalse(fo.dataset_exists(invalid_revision_name))
+
+            exported_metadata["version"] = MEDIA_REFERENCE_DATASET_REVISION
+            with open(metadata_path, "w") as file:
+                json.dump(exported_metadata, file)
+
             exported_samples[0]["filepath"] = "/tmp/injected.jpg"
             with open(samples_path, "w") as file:
                 json.dump(exported_document, file)
@@ -404,7 +452,25 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(_private_values(imported, "_rand"), expected_rand)
 
     @drop_datasets
-    def test_duplicate_merge_and_mixed_identity_guards(self):
+    def test_from_dir_cleanup_is_scoped_to_atomic_importers(self):
+        with tempfile.TemporaryDirectory() as dataset_dir:
+            name = "non-atomic-import-failure"
+            with mock.patch.object(
+                fo.Dataset,
+                "add_importer",
+                side_effect=RuntimeError("legacy importer failed"),
+            ), self.assertRaisesRegex(RuntimeError, "legacy importer failed"):
+                fo.Dataset.from_dir(
+                    dataset_dir=dataset_dir,
+                    dataset_type=fot.ImageDirectory,
+                    name=name,
+                )
+
+            self.assertTrue(fo.dataset_exists(name))
+            fo.delete_dataset(name)
+
+    @drop_datasets
+    def test_duplicate_merge_and_homogeneous_identity_guards(self):
         source = fo.Dataset()
         source.add_sample(
             fo.Sample.from_media_reference(_make_reference(1), value="source")
@@ -418,6 +484,30 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         destination.merge_samples(source)
         self.assertEqual(len(destination), 1)
         self.assertEqual(destination.first().value, "source")
+
+        destination.merge_samples(
+            [
+                fo.Sample.from_media_reference(
+                    _make_reference(1), value="generic"
+                ),
+                fo.Sample.from_media_reference(
+                    _make_reference(2), value="inserted"
+                ),
+            ]
+        )
+        self.assertEqual(len(destination), 2)
+        self.assertEqual(destination[_make_reference(1).key].value, "generic")
+        destination.merge_samples(
+            [
+                fo.Sample.from_media_reference(
+                    _make_reference(3), value="projected"
+                )
+            ],
+            fields=["value"],
+        )
+        projected = destination[_make_reference(3).key]
+        self.assertEqual(projected.media_reference, _make_reference(3))
+        self.assertEqual(projected.media_type, "multimodal")
 
         with self.assertRaises(ValueError):
             destination.add_sample(
@@ -446,12 +536,188 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             destination.merge_samples(
                 [fo.Sample(filepath="/tmp/incompatible.mcap")]
             )
-        self.assertEqual(len(destination), 1)
+        self.assertEqual(len(destination), 3)
 
-        mixed = fo.Dataset()
-        mixed.add_sample(fo.Sample.from_media_reference(_make_reference(2)))
-        mixed.add_sample(fo.Sample(filepath="/tmp/mixed.mcap"))
-        self.assertEqual(len(mixed), 2)
+        reference_dataset = fo.Dataset()
+        reference_dataset.add_sample(
+            fo.Sample.from_media_reference(_make_reference(2))
+        )
+        reference_config = reference_dataset.app_config.to_dict()
+        with self.assertRaisesRegex(ValueError, "cannot mix"):
+            reference_dataset.add_sample(fo.Sample(filepath="/tmp/mixed.mcap"))
+        self.assertEqual(len(reference_dataset), 1)
+        self.assertEqual(
+            reference_dataset.app_config.to_dict(), reference_config
+        )
+
+        filepath_dataset = fo.Dataset()
+        filepath_dataset.add_sample(fo.Sample(filepath="/tmp/mixed.mcap"))
+        filepath_config = filepath_dataset.app_config.to_dict()
+        indexes_before = filepath_dataset.get_index_information()
+        with self.assertRaisesRegex(ValueError, "cannot mix"):
+            filepath_dataset.add_sample(
+                fo.Sample.from_media_reference(_make_reference(2))
+            )
+        self.assertEqual(len(filepath_dataset), 1)
+        self.assertEqual(
+            filepath_dataset.app_config.to_dict(), filepath_config
+        )
+        self.assertEqual(
+            filepath_dataset.get_index_information(), indexes_before
+        )
+
+        other_envelope = serialize_media_reference(_make_reference(3))
+        other_envelope["kind"] = "other-reference-kind"
+        other_envelope["key"] = "other-reference-kind:3"
+        other = fo.Sample._from_media_reference_envelope(other_envelope)
+        with self.assertRaisesRegex(ValueError, "multiple reference kinds"):
+            reference_dataset.add_sample(other)
+        self.assertEqual(len(reference_dataset), 1)
+
+        destination_value = destination.first().value
+        with self.assertRaisesRegex(ValueError, "must be inserted by merging"):
+            destination.merge_samples(
+                [
+                    fo.Sample.from_media_reference(
+                        _make_reference(1), value="duplicate"
+                    )
+                ],
+                key_fcn=lambda sample: "another-record",
+            )
+        self.assertEqual(len(destination), 3)
+        self.assertEqual(destination.first().value, destination_value)
+
+        collection_source = fo.Dataset()
+        collection_source.add_sample(
+            fo.Sample.from_media_reference(
+                _make_reference(1), join_key="another-record"
+            )
+        )
+        indexes_before = destination.get_index_information()
+        with self.assertRaisesRegex(ValueError, "must be inserted by merging"):
+            destination.merge_samples(
+                collection_source,
+                key_field="join_key",
+            )
+        self.assertEqual(len(destination), 3)
+        self.assertEqual(destination.get_index_information(), indexes_before)
+
+    @drop_datasets
+    def test_duplicate_batches_fail_before_mutation(self):
+        dataset = fo.Dataset()
+        version = dataset._doc.version
+        app_config = dataset.app_config.to_dict()
+        indexes = dataset.get_index_information()
+        samples = [
+            fo.Sample.from_media_reference(_make_reference(index))
+            for index in (0, 1, 2, 0)
+        ]
+
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            dataset.add_samples(samples)
+
+        self.assertEqual(len(dataset), 0)
+        self.assertEqual(dataset._doc.version, version)
+        self.assertIsNone(dataset._doc.media_reference_kind)
+        self.assertEqual(dataset.app_config.to_dict(), app_config)
+        self.assertEqual(dataset.get_index_information(), indexes)
+
+        dataset.add_sample(fo.Sample.from_media_reference(_make_reference(5)))
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            dataset.add_samples(
+                [
+                    fo.Sample.from_media_reference(_make_reference(6)),
+                    fo.Sample.from_media_reference(_make_reference(7)),
+                    fo.Sample.from_media_reference(_make_reference(5)),
+                ],
+                batcher=partial(fou.StaticBatcher, batch_size=2),
+            )
+        self.assertEqual(_reference_keys(dataset), [_make_reference(5).key])
+
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            dataset.merge_samples(
+                (
+                    fo.Sample.from_media_reference(_make_reference(index))
+                    for index in (6, 7, 6)
+                )
+            )
+        self.assertEqual(_reference_keys(dataset), [_make_reference(5).key])
+
+    @drop_datasets
+    def test_empty_reference_dataset_reload_clone_and_legacy_index(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample.from_media_reference(_make_reference(0)))
+        name = dataset.name
+        kind = dataset._doc.media_reference_kind
+
+        dataset.clear()
+        fo.Dataset._instances.pop(name, None)
+        reloaded = fo.load_dataset(name)
+        self.assertEqual(len(reloaded), 0)
+        self.assertEqual(reloaded._doc.media_reference_kind, kind)
+        self.assertEqual(
+            reloaded._doc.version, MEDIA_REFERENCE_DATASET_REVISION
+        )
+
+        delete_last = fo.Dataset()
+        delete_last.add_sample(
+            fo.Sample.from_media_reference(_make_reference(20))
+        )
+        delete_last.delete_samples(delete_last.first().id)
+        fo.Dataset._instances.pop(delete_last.name, None)
+        delete_last = fo.load_dataset(delete_last.name)
+        self.assertEqual(len(delete_last), 0)
+        self.assertEqual(delete_last._doc.media_reference_kind, kind)
+
+        clone = reloaded.clone()
+        fo.Dataset._instances.pop(clone.name, None)
+        clone = fo.load_dataset(clone.name)
+        self.assertEqual(len(clone), 0)
+        self.assertEqual(clone._doc.media_reference_kind, kind)
+
+        output = subprocess.check_output(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import fiftyone as fo, sys; "
+                    "dataset = fo.load_dataset(sys.argv[1]); "
+                    "print(len(dataset)); dataset.delete()"
+                ),
+                clone.name,
+            ],
+            cwd=os.getcwd(),
+            text=True,
+        )
+        self.assertEqual(output.strip().splitlines()[-1], "0")
+        self.assertFalse(fo.dataset_exists(clone.name))
+
+        legacy = fo.Dataset()
+        old_revision = legacy._doc.version
+        legacy.add_sample(fo.Sample.from_media_reference(_make_reference(10)))
+        legacy._sample_collection.drop_index("_media_reference.key_1")
+        legacy._doc.version = old_revision
+        legacy._doc.media_reference_kind = None
+        legacy._doc.sample_fields = [
+            field
+            for field in legacy._doc.sample_fields
+            if field.name != "_media_reference"
+        ]
+        legacy._doc.save()
+        legacy.add_sample(fo.Sample.from_media_reference(_make_reference(11)))
+        reference_index = legacy.get_index_information()[
+            "_media_reference.key"
+        ]
+        self.assertTrue(reference_index["unique"])
+        self.assertTrue(reference_index["sparse"])
+        self.assertIn(
+            "_media_reference",
+            {field.name for field in legacy._doc.sample_fields},
+        )
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            legacy.add_sample(
+                fo.Sample.from_media_reference(_make_reference(10))
+            )
 
     @drop_datasets
     def test_guarded_file_operations_and_record_only_deletion(self):

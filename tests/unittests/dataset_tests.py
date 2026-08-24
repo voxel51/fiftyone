@@ -673,13 +673,7 @@ class DatasetTests(unittest.TestCase):
 
         info = dataset.get_index_information()
         indexes = dataset.list_indexes()
-        default_indexes = {
-            "id",
-            "filepath",
-            "_media_reference.key",
-            "created_at",
-            "last_modified_at",
-        }
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
 
         self.assertSetEqual(set(info.keys()), default_indexes)
         self.assertSetEqual(set(indexes), default_indexes)
@@ -801,7 +795,6 @@ class DatasetTests(unittest.TestCase):
         indexes = {
             "id",
             "filepath",
-            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "gt.detections.label",
@@ -872,13 +865,7 @@ class DatasetTests(unittest.TestCase):
         dataset.create_index("gt.detections.label")
         dataset.create_index([("gt.detections.id", 1), ("field", 1)])
 
-        default_indexes = {
-            "id",
-            "filepath",
-            "_media_reference.key",
-            "created_at",
-            "last_modified_at",
-        }
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
 
         # Cloning datasets includes all indexes by default
         dataset2 = dataset.clone()
@@ -4154,7 +4141,6 @@ class DatasetTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
-                "_media_reference.key",
                 "created_at",
                 "last_modified_at",
                 "frames.id",

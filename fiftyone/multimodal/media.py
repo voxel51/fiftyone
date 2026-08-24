@@ -31,7 +31,7 @@ from typing import (
 import fiftyone.core.media as fom
 
 LEROBOT_EPISODE_KIND = "lerobot-episode"
-MEDIA_REFERENCE_ENVELOPE_VERSION = "2"
+MEDIA_REFERENCE_ENVELOPE_VERSION = "1"
 MAX_MEDIA_REFERENCE_BYTES = 64 * 1024
 # Existing clients accept dataset revisions below 2.0, so reference-backed
 # datasets use the first incompatible revision and fail cleanly when opened.

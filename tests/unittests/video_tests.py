@@ -135,7 +135,6 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
-            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "frames.id",
@@ -265,7 +264,6 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
-            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "frames.id",
@@ -1907,7 +1905,6 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
-            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "sample_id",
@@ -2442,7 +2439,6 @@ class VideoTests(unittest.TestCase):
             "id",
             "sample_id",
             "filepath",
-            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "frames.id",
@@ -2746,7 +2742,6 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
-            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "sample_id",
@@ -3373,7 +3368,6 @@ class VideoTests(unittest.TestCase):
             "id",
             "sample_id",
             "filepath",
-            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "_sample_id_1_frame_number_1",
@@ -3670,7 +3664,6 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
-            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "sample_id",
@@ -3923,7 +3916,6 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
-            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "sample_id",

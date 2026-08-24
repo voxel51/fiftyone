@@ -7,6 +7,7 @@ FiftyOne datasets.
 """
 
 from collections import defaultdict
+from collections.abc import Mapping
 import copy
 from functools import partial
 import contextlib
@@ -4135,6 +4136,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the ID of the sample in the dataset
         """
+        media_mode, media_reference_kind = _preflight_media_sources(
+            self, [sample]
+        )
         sample = self._transform_sample(
             sample,
             expand_schema=expand_schema,
@@ -4142,6 +4146,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             validate=validate,
             copy=True,
         )
+
+        if media_mode == "reference":
+            self._mark_media_reference_capable(media_reference_kind)
 
         _, ids = self._add_samples_batch([sample])
         return ids[0]
@@ -4190,8 +4197,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        original_samples = samples
+        samples = list(samples)
+        media_mode, media_reference_kind = _preflight_media_sources(
+            self, samples
+        )
+        if media_mode == "reference":
+            self._mark_media_reference_capable(media_reference_kind)
+
         if num_samples is None:
-            num_samples = samples
+            num_samples = original_samples
 
         transform_fn = partial(
             self._transform_sample,
@@ -4297,20 +4312,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             -   a list of IDs of the samples that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
-        from fiftyone.multimodal.media import validate_media_source
-
-        for d in dicts:
-            validate_media_source(d.get("filepath"), d.get("_media_reference"))
+        media_mode, media_reference_kind = _preflight_media_sources(
+            self, dicts
+        )
+        if media_mode == "reference":
+            self._mark_media_reference_capable(media_reference_kind)
 
         try:
             # adds `_id` to each dict
             res = self._sample_collection.insert_many(dicts)
         except BulkWriteError as bwe:
+            inserted_ids = [d.get("_id") for d in dicts if d.get("_id")]
+            if inserted_ids:
+                self._sample_collection.delete_many(
+                    {"_id": {"$in": inserted_ids}}
+                )
+
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
-
-        if any(d.get("_media_reference") is not None for d in dicts):
-            self._mark_media_reference_capable()
 
         for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
@@ -4431,6 +4450,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples_and_docs: a list of tuples of the form ``(sample, dict)``,
                 where the dict is the sample's backing document
         """
+        dicts = [d for _, d in samples_and_docs]
+        media_mode, media_reference_kind = _preflight_media_sources(
+            self, dicts, check_duplicates=False
+        )
+        if media_mode == "reference":
+            self._mark_media_reference_capable(media_reference_kind)
+
         ops = []
         for sample, d in samples_and_docs:
             from fiftyone.multimodal.media import validate_media_source
@@ -4448,11 +4474,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
-
-        if any(
-            d.get("_media_reference") is not None for _, d in samples_and_docs
-        ):
-            self._mark_media_reference_capable()
 
         for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
@@ -4485,15 +4506,54 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return d
 
-    def _mark_media_reference_capable(self):
-        from fiftyone.multimodal.media import (
-            MEDIA_REFERENCE_DATASET_REVISION,
-        )
+    def _mark_media_reference_capable(self, kind):
+        from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
 
-        if self._doc.version == MEDIA_REFERENCE_DATASET_REVISION:
-            return
+        current_kind = self._doc.media_reference_kind
+        if current_kind is not None and current_kind != kind:
+            raise ValueError(
+                "A media-reference dataset cannot contain multiple "
+                "reference kinds"
+            )
+
+        if self._sample_collection.find_one(
+            {"filepath": {"$exists": True}}, {"_id": True}
+        ):
+            raise ValueError(
+                "A dataset cannot mix filepath-backed and "
+                "media-reference-backed samples"
+            )
+
+        indexes = self._sample_collection.index_information()
+        matching_indexes = [
+            index
+            for index in indexes.values()
+            if index.get("key") == [("_media_reference.key", 1)]
+        ]
+        if not matching_indexes:
+            self._sample_collection.create_index(
+                "_media_reference.key", sparse=True, unique=True
+            )
+        elif len(matching_indexes) != 1 or not all(
+            index.get("unique") and index.get("sparse")
+            for index in matching_indexes
+        ):
+            raise ValueError(
+                "The existing _media_reference.key index must be sparse "
+                "and unique"
+            )
 
         self._doc.version = MEDIA_REFERENCE_DATASET_REVISION
+        self._doc.media_reference_kind = kind
+        if not any(
+            field.name == "_media_reference"
+            for field in self._doc.sample_fields
+        ):
+            field = self._sample_doc_cls._fields["_media_reference"]
+            self._doc.sample_fields.append(
+                foo.SampleFieldDocument.from_field(field)
+            )
+
         app_config = self._doc.app_config
         if app_config.grid_media_field == "filepath":
             app_config.grid_media_field = "_media_reference"
@@ -4803,6 +4863,36 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             and isinstance(samples, foc.SampleCollection)
         ):
             key_field = _resolve_media_merge_key(self, samples)
+
+        if isinstance(samples, foc.SampleCollection):
+            media_mode, media_reference_kind = _preflight_collection_media(
+                self, samples
+            )
+            if media_mode == "reference":
+                _validate_reference_merge_identity(
+                    key_field, key_fcn, insert_new
+                )
+
+            if media_mode == "reference" and insert_new:
+                self._mark_media_reference_capable(media_reference_kind)
+        else:
+            samples = list(samples)
+            media_mode, media_reference_kind = _preflight_media_sources(
+                self,
+                samples,
+                check_existing_reference_keys=False,
+            )
+            if key_fcn is None and key_field == "filepath":
+                if media_mode == "reference":
+                    key_field = "_media_reference.key"
+
+            if media_mode == "reference":
+                _validate_reference_merge_identity(
+                    key_field, key_fcn, insert_new
+                )
+
+            if media_mode == "reference" and insert_new:
+                self._mark_media_reference_capable(media_reference_kind)
 
         if fields is not None:
             if etau.is_str(fields):
@@ -8055,20 +8145,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         dataset = cls(name, persistent=persistent, overwrite=overwrite)
+        dataset_importer = None
         try:
-            dataset.add_dir(
+            dataset_importer, _ = foud.build_dataset_importer(
+                dataset_type,
                 dataset_dir=dataset_dir,
-                dataset_type=dataset_type,
                 data_path=data_path,
                 labels_path=labels_path,
+                name=dataset.name,
+                **kwargs,
+            )
+            dataset.add_importer(
+                dataset_importer,
                 label_field=label_field,
                 tags=tags,
                 dynamic=dynamic,
                 progress=progress,
-                **kwargs,
             )
         except Exception:
-            dataset.delete()
+            if dataset_importer is None or dataset_importer.cleanup_on_failure:
+                dataset.delete()
+
             raise
 
         return dataset
@@ -9563,9 +9660,6 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     if sample_collection_name is not None:
         sample_collection = conn[sample_collection_name]
         sample_collection.create_index("filepath")
-        sample_collection.create_index(
-            "_media_reference.key", sparse=True, unique=True
-        )
         sample_collection.create_index("created_at")
         sample_collection.create_index("last_modified_at")
 
@@ -10077,16 +10171,7 @@ def _is_media_reference_dataset(name):
     if dataset_doc.get("version") != MEDIA_REFERENCE_DATASET_REVISION:
         return False
 
-    collection_name = dataset_doc.get("sample_collection_name")
-    if not collection_name:
-        return False
-
-    return (
-        db[collection_name].find_one(
-            {"_media_reference": {"$exists": True}}, {"_id": 1}
-        )
-        is not None
-    )
+    return True
 
 
 def _handle_delete_generated_saved_view(dataset, view_doc):
@@ -10268,7 +10353,7 @@ def _clone_collection(
             }
         }
     )
-    if _get_media_identity_mode(sample_collection) in ("reference", "mixed"):
+    if _get_media_identity_mode(sample_collection) == "reference":
         pipeline.append({"$unset": "_id"})
 
     pipeline.append({"$out": sample_collection_name})
@@ -10413,17 +10498,36 @@ def _save_view(view, fields=None):
     #
 
     pipeline = view._pipeline(detach_frames=True, detach_groups=True)
-    if _get_media_identity_mode(dataset) in ("reference", "mixed"):
-        from fiftyone.multimodal.media import validate_media_source
-
+    if _get_media_identity_mode(dataset) == "reference":
+        reference_kind = dataset._doc.media_reference_kind
         validation_pipeline = pipeline + [
-            {"$project": {"filepath": True, "_media_reference": True}}
+            {
+                "$match": {
+                    "$or": [
+                        {
+                            "filepath": {"$exists": True},
+                            "_media_reference": {"$exists": True},
+                        },
+                        {
+                            "filepath": {"$exists": False},
+                            "_media_reference": {"$exists": False},
+                        },
+                        {"_media_reference.kind": {"$ne": reference_kind}},
+                    ]
+                }
+            },
+            {"$limit": 1},
         ]
-        for sample in foo.aggregate(
-            dataset._sample_collection, validation_pipeline
-        ):
-            validate_media_source(
-                sample.get("filepath"), sample.get("_media_reference")
+        invalid = next(
+            iter(
+                foo.aggregate(dataset._sample_collection, validation_pipeline)
+            ),
+            None,
+        )
+        if invalid is not None:
+            raise ValueError(
+                "A saved view would violate the dataset media-source "
+                "invariant"
             )
 
     if sample_fields:
@@ -10841,6 +10945,12 @@ def _add_collection_with_new_ids(
     include_info=True,
     overwrite_info=False,
 ):
+    media_mode, media_reference_kind = _preflight_collection_media(
+        dataset, sample_collection, check_duplicates=True
+    )
+    if media_mode == "reference":
+        dataset._mark_media_reference_capable(media_reference_kind)
+
     dataset._merge_doc(
         sample_collection,
         merge_info=include_info,
@@ -11035,22 +11145,37 @@ def _make_merge_samples_generator(
     overwrite=True,
     expand_schema=True,
 ):
-    # When inserting new samples, `filepath` cannot be excluded
+    # When inserting new samples, their media identity cannot be excluded
     if insert_new:
+        if _get_media_identity_mode(dataset) == "reference":
+            required_fields = [
+                "_media_reference",
+                "_media_type",
+                "_rand",
+            ]
+        else:
+            required_fields = ["filepath"]
+
         if isinstance(fields, dict):
             insert_fields = fields.copy()
-            insert_fields["filepath"] = "filepath"
+            for field in required_fields:
+                insert_fields[field] = field
         elif fields is not None:
             insert_fields = fields.copy()
-            if "filepath" not in insert_fields:
-                insert_fields = ["filepath"] + insert_fields
+            insert_fields = [
+                field
+                for field in required_fields
+                if field not in insert_fields
+            ] + insert_fields
         else:
             insert_fields = None
 
         insert_omit_fields = omit_fields
         if insert_omit_fields is not None:
             insert_omit_fields = [
-                f for f in insert_omit_fields if f != "filepath"
+                field
+                for field in insert_omit_fields
+                if field not in required_fields
             ]
 
     for sample in samples:
@@ -11160,6 +11285,7 @@ def _merge_samples_pipeline(
         if insert_new:
             # Must include default fields when new samples may be inserted.
             # Any extra fields here are omitted in `when_matched` pipeline
+            project.pop("_media_reference.key", None)
             project["filepath"] = True
             project["_media_reference"] = True
             project["_rand"] = True
@@ -11882,21 +12008,8 @@ def _get_media_type(sample):
 
 
 def _resolve_media_merge_key(dataset, samples):
+    src_mode, _ = _preflight_collection_media(dataset, samples)
     dst_mode = _get_media_identity_mode(dataset)
-    src_mode = _get_media_identity_mode(samples)
-
-    if "mixed" in (dst_mode, src_mode):
-        raise ValueError(
-            "Default merge cannot mix filepath-backed and "
-            "media-reference-backed samples; provide an explicit compatible "
-            "key_field or key_fcn"
-        )
-
-    if dst_mode is not None and src_mode is not None and dst_mode != src_mode:
-        raise ValueError(
-            "Default merge requires both collections to use the same logical "
-            "media identity mode"
-        )
 
     mode = src_mode or dst_mode
     if mode == "reference":
@@ -11905,9 +12018,161 @@ def _resolve_media_merge_key(dataset, samples):
     return "filepath"
 
 
+def _preflight_collection_media(
+    dataset, sample_collection, check_duplicates=False
+):
+    mode = _get_media_identity_mode(sample_collection)
+    kind = _get_media_reference_kind(sample_collection)
+    _validate_media_source_compatibility(dataset, mode, kind)
+
+    if mode == "reference" and check_duplicates:
+        keys = sample_collection.values("_media_reference.key")
+        _validate_reference_keys(dataset, keys)
+
+    return mode, kind
+
+
+def _preflight_media_sources(
+    dataset,
+    sources,
+    check_duplicates=True,
+    check_existing_reference_keys=True,
+):
+    if not sources:
+        return None, None
+
+    from fiftyone.multimodal.media import validate_media_source
+
+    modes = set()
+    kinds = set()
+    reference_keys = []
+    for source in sources:
+        if isinstance(source, Mapping):
+            filepath = source.get("filepath")
+            envelope = source.get("_media_reference")
+        else:
+            filepath = source._doc.get_field("filepath")
+            envelope = source._doc.get_field("_media_reference")
+
+        validate_media_source(filepath, envelope)
+        if envelope is None:
+            modes.add("filepath")
+            continue
+
+        modes.add("reference")
+        kinds.add(envelope["kind"])
+        reference_keys.append(envelope["key"])
+
+    if len(modes) != 1:
+        raise ValueError(
+            "A dataset cannot mix filepath-backed and "
+            "media-reference-backed samples"
+        )
+
+    mode = next(iter(modes))
+    if len(kinds) > 1:
+        raise ValueError(
+            "A media-reference dataset cannot contain multiple reference "
+            "kinds"
+        )
+
+    kind = next(iter(kinds)) if kinds else None
+    _validate_media_source_compatibility(dataset, mode, kind)
+    if check_duplicates and reference_keys:
+        _validate_reference_keys(
+            dataset,
+            reference_keys,
+            check_existing=check_existing_reference_keys,
+        )
+
+    return mode, kind
+
+
+def _validate_media_source_compatibility(
+    dataset, incoming_mode, incoming_kind
+):
+    if incoming_mode is None:
+        return
+
+    dataset_mode = _get_media_identity_mode(dataset)
+    if "mixed" in (dataset_mode, incoming_mode):
+        raise ValueError(
+            "A dataset cannot mix filepath-backed and "
+            "media-reference-backed samples"
+        )
+
+    if dataset_mode is not None and dataset_mode != incoming_mode:
+        raise ValueError(
+            "A dataset cannot mix filepath-backed and "
+            "media-reference-backed samples"
+        )
+
+    if incoming_mode == "reference":
+        dataset_kind = _get_media_reference_kind(dataset)
+        if dataset_kind is not None and dataset_kind != incoming_kind:
+            raise ValueError(
+                "A media-reference dataset cannot contain multiple "
+                "reference kinds"
+            )
+
+
+def _validate_reference_keys(dataset, keys, check_existing=True):
+    if len(keys) != len(set(keys)):
+        raise ValueError(
+            "Cannot insert duplicate media-reference keys into a dataset"
+        )
+
+    if not check_existing:
+        return
+
+    for offset in range(0, len(keys), 1000):
+        batch = keys[offset : offset + 1000]
+        existing = dataset._sample_collection.find_one(
+            {"_media_reference.key": {"$in": batch}}, {"_id": True}
+        )
+        if existing is not None:
+            raise ValueError(
+                "Cannot insert a duplicate media-reference key into a dataset"
+            )
+
+
+def _validate_reference_merge_identity(key_field, key_fcn, insert_new):
+    if not insert_new:
+        return
+
+    if key_fcn is not None or key_field != "_media_reference.key":
+        raise ValueError(
+            "Media-reference samples must be inserted by merging on "
+            "'_media_reference.key'"
+        )
+
+
+def _get_media_reference_kind(samples):
+    if isinstance(samples, (fos.Sample, fos.SampleView)):
+        envelope = samples._doc.get_field("_media_reference")
+        return None if envelope is None else envelope.get("kind")
+
+    if not isinstance(samples, foc.SampleCollection):
+        return None
+
+    dataset = samples._dataset
+    kind = dataset._doc.media_reference_kind
+    if kind is not None:
+        return kind
+
+    document = dataset._sample_collection.find_one(
+        {"_media_reference.kind": {"$exists": True}},
+        {"_media_reference.kind": True},
+    )
+    if document is None:
+        return None
+
+    return document["_media_reference"]["kind"]
+
+
 def _get_media_identity_mode(samples):
     if isinstance(samples, (fos.Sample, fos.SampleView)):
-        if samples.media_reference is not None:
+        if samples._doc.get_field("_media_reference") is not None:
             return "reference"
 
         return "filepath"
@@ -11931,14 +12196,16 @@ def _get_media_identity_mode(samples):
     if has_filepath:
         return "filepath"
 
+    from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
+
+    if samples._dataset._doc.version == MEDIA_REFERENCE_DATASET_REVISION:
+        return "reference"
+
     return None
 
 
 def _validate_media_field_edits(sample_collection, field_names):
-    if _get_media_identity_mode(sample_collection) not in (
-        "reference",
-        "mixed",
-    ):
+    if _get_media_identity_mode(sample_collection) != "reference":
         return
 
     protected = {"filepath", "media_reference", "_media_reference"}
