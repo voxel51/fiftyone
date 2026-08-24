@@ -7531,7 +7531,7 @@ App
 Core
 
 - Added an official
-  `Dockerfile <https://github.com/voxel51/fiftyone/blob/develop/Dockerfile>`_
+  `Dockerfile <https://github.com/voxel51/fiftyone/blob/main/Dockerfile>`_
 - Changed the default implementation of
   :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` to
   assume that the user has already sampled the frames offline and stored their
@@ -9384,7 +9384,7 @@ Core
 - Added support for :ref:`importing <FiftyOneVideoLabelsDataset-import>` and
   :ref:`exporting <FiftyOneVideoLabelsDataset-export>` labeled video
   datasets in
-  `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+  `ETA VideoLabels format <https://github.com/voxel51/eta/blob/main/docs/video_labels_guide.md>`_.
 - Added support for :ref:`importing <writing-a-custom-dataset-importer>` and
   :ref:`exporting <writing-a-custom-dataset-exporter>` video datasets in
   custom formats

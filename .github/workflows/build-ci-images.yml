@@ -3,7 +3,7 @@ name: Build CI images
 on:
   push:
     branches:
-      - develop
+      - main
     paths:
       - requirements/**
       - setup.py
