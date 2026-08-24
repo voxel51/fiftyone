@@ -31,7 +31,7 @@ import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import { kindsByFtype, operatorsFrom } from "./builder/catalog";
 import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
-import { CurrentViewChip } from "./CurrentViewChip";
+import { ClearViewButton, CurrentViewChip } from "./CurrentViewChip";
 import { allowedFields } from "./fields";
 import { InsertSlot } from "./InsertSlot";
 import {
@@ -746,6 +746,20 @@ const ViewBar: React.FC<{
           overflow: "hidden",
         }}
       >
+        {/* Clearing must survive the collapse: hover expands the chip away
+            under the pointer, so the [x] holds one spot in both states */}
+        {state.stages.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              paddingLeft: 4,
+              flexShrink: 0,
+            }}
+          >
+            <ClearViewButton onClear={clearView} />
+          </div>
+        )}
         {collapsed && (
           <div
             style={{
@@ -762,7 +776,6 @@ const ViewBar: React.FC<{
               <CurrentViewChip
                 count={state.stages.length}
                 onExpand={() => setExpanded(true)}
-                onClear={clearView}
               />
             ) : (
               // An empty view has nothing to summarize; the slot is the way
@@ -780,6 +793,7 @@ const ViewBar: React.FC<{
               <div
                 style={{ flex: 1, height: "100%", cursor: "pointer" }}
                 onClick={() => setExpanded(true)}
+                onMouseEnter={() => setExpanded(true)}
                 aria-hidden="true"
               />
             )}
