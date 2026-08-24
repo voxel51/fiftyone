@@ -34,7 +34,7 @@ interface OwnedEpisodeResourceState<
   State,
 > {
   readonly enabled: boolean;
-  readonly mediaReferenceKey: string | undefined;
+  readonly mediaReferenceIdentity: string | undefined;
   readonly mediaType: string | undefined;
   readonly path: string | null | undefined;
   readonly resource: Resource | null;
@@ -53,13 +53,23 @@ export function useOwnedEpisodeResource<
   lifecycle: OwnedEpisodeResourceLifecycle<Resource, State>,
 ): State {
   const { mediaReference, mediaType, path } = sample;
+  const mediaReferenceKind = mediaReference?.kind;
+  const mediaReferenceVersion = mediaReference?.version;
   const mediaReferenceKey = mediaReference?.key;
+  const hasMediaReference = mediaReference != null;
+  const mediaReferenceIdentity = hasMediaReference
+    ? JSON.stringify([
+        mediaReferenceKind,
+        mediaReferenceVersion,
+        mediaReferenceKey,
+      ])
+    : undefined;
   const liveResourceRef = useRef<Resource | null>(null);
   const [ownedState, setOwnedState] = useState<
     OwnedEpisodeResourceState<Resource, State>
   >(() => ({
     enabled,
-    mediaReferenceKey,
+    mediaReferenceIdentity,
     mediaType,
     path,
     resource: null,
@@ -71,7 +81,7 @@ export function useOwnedEpisodeResource<
     if (!enabled || !source) {
       setOwnedState({
         enabled,
-        mediaReferenceKey,
+        mediaReferenceIdentity,
         mediaType,
         path,
         resource: null,
@@ -86,7 +96,7 @@ export function useOwnedEpisodeResource<
     const controller = new AbortController();
     setOwnedState({
       enabled,
-      mediaReferenceKey,
+      mediaReferenceIdentity,
       mediaType,
       path,
       resource: null,
@@ -94,15 +104,30 @@ export function useOwnedEpisodeResource<
       value: lifecycle.loading,
     });
     void lifecycle
-      .open({ mediaReference, mediaType, path }, source, {
-        signal: controller.signal,
-      })
+      .open(
+        {
+          mediaReference:
+            mediaReferenceKey !== undefined &&
+            mediaReferenceKind !== undefined &&
+            mediaReferenceVersion !== undefined
+              ? {
+                  key: mediaReferenceKey,
+                  kind: mediaReferenceKind,
+                  version: mediaReferenceVersion,
+                }
+              : undefined,
+          mediaType,
+          path,
+        },
+        source,
+        { signal: controller.signal },
+      )
       .then((resource) => {
         if (!resource) {
           if (active) {
             setOwnedState({
               enabled,
-              mediaReferenceKey,
+              mediaReferenceIdentity,
               mediaType,
               path,
               resource: null,
@@ -121,7 +146,7 @@ export function useOwnedEpisodeResource<
         lifecycle.activate?.(resource);
         setOwnedState({
           enabled,
-          mediaReferenceKey,
+          mediaReferenceIdentity,
           mediaType,
           path,
           resource,
@@ -140,7 +165,7 @@ export function useOwnedEpisodeResource<
         }
         setOwnedState({
           enabled,
-          mediaReferenceKey,
+          mediaReferenceIdentity,
           mediaType,
           path,
           resource: null,
@@ -161,9 +186,12 @@ export function useOwnedEpisodeResource<
     };
   }, [
     enabled,
+    hasMediaReference,
     lifecycle,
-    mediaReference,
+    mediaReferenceIdentity,
     mediaReferenceKey,
+    mediaReferenceKind,
+    mediaReferenceVersion,
     mediaType,
     path,
     source,
@@ -173,7 +201,7 @@ export function useOwnedEpisodeResource<
   // Derive ownership here so stale resources are never observable in between.
   const ownsCurrentRequest =
     ownedState.enabled === enabled &&
-    ownedState.mediaReferenceKey === mediaReferenceKey &&
+    ownedState.mediaReferenceIdentity === mediaReferenceIdentity &&
     ownedState.mediaType === mediaType &&
     ownedState.path === path &&
     ownedState.source === source;

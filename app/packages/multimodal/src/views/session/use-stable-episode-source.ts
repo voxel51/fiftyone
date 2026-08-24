@@ -18,14 +18,14 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   const next = episodeByteSourceFromContext(ctx);
   const mediaReference = ctx.media.mediaReference;
   const sourceKey = mediaReference
-    ? [
+    ? JSON.stringify([
         "media-reference",
         ctx.dataset.datasetId,
         ctx.sample.sample._id,
         mediaReference.kind,
         mediaReference.version,
         mediaReference.key,
-      ].join(":")
+      ])
     : next
       ? episodeSourceAccessKey(next)
       : "";

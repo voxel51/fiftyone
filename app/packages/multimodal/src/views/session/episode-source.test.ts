@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { setFetchFunction } from "@fiftyone/utilities";
 
 import type {
   ByteSourceDescriptor,
@@ -16,6 +17,7 @@ import {
 
 afterEach(() => {
   resetSourceBootstrapCacheForTests();
+  setFetchFunction("");
   vi.unstubAllGlobals();
 });
 
@@ -57,6 +59,7 @@ describe("episodeSourceFromByteSource", () => {
 
 describe("episodeSourceFromMediaReference", () => {
   it("deduplicates concurrent manifest-backed asset requests", async () => {
+    setFetchFunction("http://fiftyone.test", {}, "/proxy");
     const response = {
       json: async () => ({
         assets: [
@@ -93,6 +96,10 @@ describe("episodeSourceFromMediaReference", () => {
     const listed = source.assets.list();
     const resolved = source.assets.resolve("camera");
     expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith(
+      "http://fiftyone.test/proxy/dataset/d/sample/s/multimodal/manifest",
+      expect.any(Object),
+    );
     resolveRequest(response);
 
     await expect(listed).resolves.toEqual([
@@ -111,8 +118,10 @@ describe("episodeSourceFromMediaReference", () => {
       .fn()
       .mockResolvedValueOnce({
         ok: false,
-        status: 503,
-        statusText: "Unavailable",
+        status: 400,
+        statusText: "Bad Request",
+        url: "/manifest",
+        json: async () => ({}),
       })
       .mockResolvedValueOnce({
         json: async () => ({ assets: [] }),
@@ -133,5 +142,54 @@ describe("episodeSourceFromMediaReference", () => {
     );
     await expect(source.assets.list()).resolves.toEqual([]);
     expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it("isolates caller cancellation on a shared manifest request", async () => {
+    const response = {
+      json: async () => ({ assets: [] }),
+      ok: true,
+      status: 200,
+      statusText: "OK",
+    };
+    let resolveRequest: (value: typeof response) => void = () => undefined;
+    const request = vi.fn().mockImplementation(
+      () =>
+        new Promise<typeof response>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", request);
+    const source = episodeSourceFromMediaReference("d", "s", {
+      kind: "lerobot-episode",
+      key: "source:17",
+      version: "1",
+    });
+    const controller = new AbortController();
+
+    const aborted = source.assets.list({ signal: controller.signal });
+    const surviving = source.assets.list();
+    controller.abort();
+    resolveRequest(response);
+
+    await expect(aborted).rejects.toMatchObject({ name: "AbortError" });
+    await expect(surviving).resolves.toEqual([]);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fetch for an already-aborted caller", async () => {
+    const request = vi.fn();
+    vi.stubGlobal("fetch", request);
+    const source = episodeSourceFromMediaReference("d", "s", {
+      kind: "lerobot-episode",
+      key: "source:17",
+      version: "1",
+    });
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      source.assets.list({ signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(request).not.toHaveBeenCalled();
   });
 });

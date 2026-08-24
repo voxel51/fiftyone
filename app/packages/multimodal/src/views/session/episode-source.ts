@@ -4,6 +4,7 @@ import {
   type SampleRendererSampleLike,
 } from "@fiftyone/plugins";
 import { getSampleSrc } from "@fiftyone/state";
+import { getFetchFunctionExtended } from "@fiftyone/utilities";
 
 import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../../ir";
 import type {
@@ -14,6 +15,7 @@ import type {
   SampleDescriptor,
 } from "../../ports";
 import { getSourceBootstrap } from "../../runtime";
+import { createAbortError } from "../../utils/cancellation";
 
 /** Builds the format-neutral sample facts used by lazy adapter detection. */
 export function sampleDescriptorFromContext(
@@ -93,34 +95,49 @@ export function episodeSourceFromMediaReference(
   )}/sample/${encodeURIComponent(sampleId)}/multimodal/manifest`;
   let manifest: TransportMediaAssetManifest | null = null;
   let manifestPromise: Promise<TransportMediaAssetManifest> | null = null;
+  const fetchFunction = getFetchFunctionExtended();
 
   const getManifest = async (
     options?: EpisodeOpenOptions,
   ): Promise<TransportMediaAssetManifest> => {
-    if (manifest) return manifest;
-    if (manifestPromise) return manifestPromise;
-
-    const request = (async () => {
-      const response = await fetch(manifestUrl, {
-        credentials: "same-origin",
-        signal: options?.signal,
-      });
-      if (!response.ok) {
-        throw new Error(
-          `Unable to resolve episode assets (${response.status} ${response.statusText})`,
-        );
-      }
-
-      manifest = (await response.json()) as TransportMediaAssetManifest;
-      return manifest;
-    })();
-    manifestPromise = request;
-    try {
-      return await request;
-    } catch (error) {
-      if (manifestPromise === request) manifestPromise = null;
-      throw error;
+    if (options?.signal?.aborted) {
+      throw createAbortError("Episode manifest request aborted");
     }
+
+    if (manifest) {
+      return awaitCaller(
+        Promise.resolve(manifest),
+        options?.signal,
+        "Episode manifest request aborted",
+      );
+    }
+
+    if (!manifestPromise) {
+      const request = fetchFunction<undefined, TransportMediaAssetManifest>({
+        method: "GET",
+        path: manifestUrl,
+        result: "json",
+      })
+        .then(({ response }) => {
+          manifest = response;
+          return response;
+        })
+        .catch((error: unknown) => {
+          throw new Error("Unable to resolve episode assets", {
+            cause: error,
+          });
+        });
+      manifestPromise = request;
+      void request.catch(() => {
+        if (manifestPromise === request) manifestPromise = null;
+      });
+    }
+
+    return awaitCaller(
+      manifestPromise,
+      options?.signal,
+      "Episode manifest request aborted",
+    );
   };
 
   return {
@@ -142,7 +159,11 @@ export function episodeSourceFromMediaReference(
 
         return {
           readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
-          sizeBytes: Math.max(0, Math.trunc(asset.size_bytes)).toString(),
+          sizeBytes:
+            typeof asset.size_bytes === "number" &&
+            Number.isFinite(asset.size_bytes)
+              ? Math.max(0, Math.trunc(asset.size_bytes)).toString()
+              : undefined,
           sourceId: asset.asset_id,
           url: asset.url,
         };
@@ -151,6 +172,30 @@ export function episodeSourceFromMediaReference(
     episodeId: mediaReference.key,
     mediaReference,
   };
+}
+
+function awaitCaller<T>(
+  request: Promise<T>,
+  signal: AbortSignal | undefined,
+  abortMessage: string,
+): Promise<T> {
+  if (!signal) return request;
+  if (signal.aborted) return Promise.reject(createAbortError(abortMessage));
+
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(createAbortError(abortMessage));
+    signal.addEventListener("abort", abort, { once: true });
+    void request.then(
+      (value) => {
+        signal.removeEventListener("abort", abort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", abort);
+        reject(error);
+      },
+    );
+  });
 }
 
 /** Builds a manifest source for a reference-backed renderer context. */
