@@ -2732,6 +2732,21 @@ class SampleCollection(object):
                 use the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
         """
+        root_field = field_name.split(".", 1)[0]
+        if root_field in ("media_reference", "_media_reference"):
+            raise AttributeError(
+                "Media references are read-only and cannot be assigned"
+            )
+
+        if root_field == "filepath" and _contains_media_references(self):
+            from fiftyone.multimodal.media import (
+                UnsupportedMediaReferenceOperation,
+            )
+
+            raise UnsupportedMediaReferenceOperation(
+                "Cannot assign filepath values to reference-backed samples"
+            )
+
         self._set_values(
             field_name,
             values,
@@ -3625,6 +3640,16 @@ class SampleCollection(object):
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
         """
+        if _contains_media_references(self):
+            from fiftyone.multimodal.media import (
+                UnsupportedMediaReferenceOperation,
+            )
+
+            raise UnsupportedMediaReferenceOperation(
+                "Generic file metadata is unavailable for media-reference-"
+                "backed samples; use the registered episode resolver"
+            )
+
         fomt.compute_metadata(
             self,
             overwrite=overwrite,
@@ -6833,6 +6858,21 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
+        root_field = field.split(".", 1)[0]
+        if root_field in ("media_reference", "_media_reference"):
+            raise AttributeError(
+                "Media references are read-only and cannot be assigned"
+            )
+
+        if root_field == "filepath" and _contains_media_references(self):
+            from fiftyone.multimodal.media import (
+                UnsupportedMediaReferenceOperation,
+            )
+
+            raise UnsupportedMediaReferenceOperation(
+                "Cannot derive a filepath for reference-backed samples"
+            )
+
         return self._add_view_stage(
             fos.SetField(field, expr, _allow_missing=_allow_missing)
         )
@@ -10085,6 +10125,9 @@ class SampleCollection(object):
 
         # @todo consider supporting non-default fields that are indexed
         # @todo can we support some non-full collections?
+        if field == "filepath" and _contains_media_references(self):
+            return None
+
         if field in ("id", "_id", "filepath") and self._is_full_collection():
             return field
         return None
@@ -10385,6 +10428,16 @@ class SampleCollection(object):
                 this can also contain keyword arguments for
                 :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
+        if _contains_media_references(self):
+            from fiftyone.multimodal.media import (
+                UnsupportedMediaReferenceOperation,
+            )
+
+            raise UnsupportedMediaReferenceOperation(
+                "Generic export does not support media-reference-backed "
+                "samples; use a kind-specific exporter"
+            )
+
         archive_path = None
 
         # If the user requested an archive, first populate a directory
@@ -11168,6 +11221,7 @@ class SampleCollection(object):
             names = [
                 "id",
                 "filepath",
+                "_media_reference.key",
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11181,6 +11235,7 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
+                "_media_reference.key",
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11191,6 +11246,7 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
+                "_media_reference.key",
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11201,6 +11257,7 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
+                "_media_reference.key",
                 "created_at",
                 "last_modified_at",
                 gf + ".id",
@@ -11210,6 +11267,7 @@ class SampleCollection(object):
         return [
             "id",
             "filepath",
+            "_media_reference.key",
             "created_at",
             "last_modified_at",
         ]
@@ -11327,7 +11385,8 @@ class SampleCollection(object):
                 frames_path = os.path.join(frame_labels_dir, filename)
                 etas.write_json(frames, frames_path, pretty_print=pretty_print)
 
-            if rel_dir and sd["filepath"].startswith(rel_dir):
+            filepath = sd.get("filepath", None)
+            if rel_dir and filepath and filepath.startswith(rel_dir):
                 sd["filepath"] = sd["filepath"][len(rel_dir) :]
 
             samples.append(sd)
@@ -12699,6 +12758,16 @@ def _serialize_value(field_name, field, value, validate=True):
             )
 
     return field.to_mongo(value)
+
+
+def _contains_media_references(sample_collection):
+    return bool(
+        len(
+            sample_collection.match(
+                {"_media_reference": {"$exists": True}}
+            ).limit(1)
+        )
+    )
 
 
 def _unwind_values(values, level=0):

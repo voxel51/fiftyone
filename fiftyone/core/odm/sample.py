@@ -46,7 +46,9 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import OrderedDict
+import hashlib
 import random
 
 import fiftyone.core.fields as fof
@@ -57,15 +59,18 @@ import fiftyone.core.storage as fos
 from .document import Document, SerializableDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 
-
 # Use our own Random object to avoid messing with the user's seed
 _random = random.Random()
 
 
-def _generate_rand(filepath=None):
-    # @todo filepath no longer has to be unique. Should we change this?
+def _generate_rand(filepath=None, media_identity=None):
+    if media_identity is not None:
+        digest = hashlib.sha256(media_identity.encode("utf-8")).digest()
+        unit_value = int.from_bytes(digest[:8], "big") / float(2**64)
+        return unit_value * 0.001 + 0.999
+
     if filepath is not None:
-        _random.seed(filepath)
+        return random.Random(filepath).random() * 0.001 + 0.999
 
     return _random.random() * 0.001 + 0.999
 
@@ -82,19 +87,25 @@ class DatasetSampleDocument(DatasetMixin, Document):
     _is_frames_doc = False
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
-    filepath = fof.StringField(required=True)
+    filepath = fof.StringField(null=True)
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
     created_at = fof.DateTimeField(read_only=True)
     last_modified_at = fof.DateTimeField(read_only=True)
 
     _media_type = fof.StringField()
+    _media_reference = fof.DictField(null=True)
     _rand = fof.FloatField(default=_generate_rand)
     _dataset_id = fof.ObjectIdField()
 
     @property
     def media_type(self):
         return self._media_type
+
+    def clean(self):
+        from fiftyone.multimodal.media import validate_media_source
+
+        validate_media_source(self.filepath, self._media_reference)
 
     def _get_repr_fields(self):
         fields = self.field_names
@@ -113,16 +124,42 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
     )
 
     def __init__(self, **kwargs):
-        filepath = fos.normalize_path(kwargs["filepath"])
+        filepath = kwargs.get("filepath", None)
+        media_reference = kwargs.get("_media_reference", None)
+
+        if filepath is not None:
+            filepath = fos.normalize_path(filepath)
+
+        from fiftyone.multimodal.media import validate_media_source
+
+        validate_media_source(filepath, media_reference)
 
         kwargs["id"] = kwargs.get("id", None)
         kwargs["filepath"] = filepath
         kwargs["created_at"] = None
         kwargs["last_modified_at"] = None
-        kwargs["_rand"] = _generate_rand(filepath=filepath)
-        kwargs["_media_type"] = kwargs.get(
-            "media_type"
-        ) or fomm.get_media_type(filepath)
+        if kwargs.get("_rand", None) is None:
+            kwargs["_rand"] = _generate_rand(
+                filepath=filepath,
+                media_identity=(
+                    media_reference.get("key")
+                    if media_reference is not None
+                    else None
+                ),
+            )
+
+        media_type = kwargs.pop("media_type", None)
+        if media_reference is not None:
+            kwargs["_media_type"] = kwargs.get("_media_type", None) or (
+                media_reference["media_type"]
+            )
+        else:
+            kwargs["_media_type"] = (
+                kwargs.get("_media_type", None)
+                or media_type
+                or fomm.get_media_type(filepath)
+            )
+
         kwargs["_dataset_id"] = None
 
         self._data = OrderedDict()

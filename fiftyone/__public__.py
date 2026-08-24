@@ -203,6 +203,25 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
+from .multimodal.media import (
+    Episode,
+    EpisodeAsset,
+    EpisodeAssetManifest,
+    EpisodeResolver,
+    LeRobotEpisode,
+    MalformedMediaSourceError,
+    MediaReference,
+    MediaReferenceError,
+    MissingMediaRootError,
+    MovedMediaRootError,
+    StaleMediaReferenceError,
+    UnfinalizedMediaSourceError,
+    UnsupportedMediaReferenceOperation,
+    UnsupportedMediaReferenceVersionError,
+    get_episode_resolver,
+    register_episode_resolver,
+    register_media_reference,
+)
 from .core.threed import (
     BoxGeometry,
     CylinderGeometry,

@@ -5,6 +5,8 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from copy import deepcopy
 import os
 
 from bson import ObjectId
@@ -87,8 +89,27 @@ class _SampleMixin(object):
 
     @property
     def filename(self):
-        """The basename of the media's filepath."""
+        """The basename or logical display name of the sample's media."""
+        media_reference = self.media_reference
+        if media_reference is not None:
+            return media_reference.display_name
+
         return os.path.basename(self.filepath)
+
+    @property
+    def media_reference(self):
+        """The sample's hydrated media reference, or ``None``.
+
+        This property is read-only. Reference-backed samples must be created
+        via :meth:`Sample.from_media_reference`.
+        """
+        envelope = self._doc.get_field("_media_reference")
+        if envelope is None:
+            return None
+
+        from fiftyone.multimodal.media import hydrate_media_reference
+
+        return hydrate_media_reference(envelope)
 
     @property
     def media_type(self):
@@ -109,6 +130,8 @@ class _SampleMixin(object):
         validate=True,
         dynamic=False,
     ):
+        self._secure_media(field_name, value)
+
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             self.frames.clear()
             self.frames.update(
@@ -129,6 +152,12 @@ class _SampleMixin(object):
         )
 
     def clear_field(self, field_name):
+        if field_name in ("filepath", "_media_reference"):
+            raise ValueError(
+                "A sample's media source cannot be cleared; create a new "
+                "sample instead"
+            )
+
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             self.frames.clear()
             return
@@ -415,6 +444,26 @@ class _SampleMixin(object):
         Returns:
             a :class:`Sample`
         """
+        if self.media_reference is not None:
+            parsed_fields = self._parse_fields(
+                fields=fields, omit_fields=omit_fields
+            )
+            values = {}
+            for src_field, dst_field in parsed_fields.items():
+                if src_field == "filepath":
+                    continue
+
+                try:
+                    values[dst_field] = deepcopy(self[src_field])
+                except KeyError:
+                    continue
+
+            return Sample._from_media_reference_envelope(
+                deepcopy(self._doc.get_field("_media_reference")),
+                _rand=self._doc.get_field("_rand"),
+                **values,
+            )
+
         if self.media_type == fomm.VIDEO:
             (
                 fields,
@@ -452,6 +501,13 @@ class _SampleMixin(object):
         """
         d = super().to_dict(include_private=include_private)
 
+        if self.media_reference is not None:
+            d["_media_reference"] = deepcopy(
+                self._doc.get_field("_media_reference")
+            )
+            d["_media_type"] = self.media_type
+            d["_rand"] = self._doc.get_field("_rand")
+
         if self.media_type == fomm.VIDEO:
             if include_frames:
                 d["frames"] = self.frames._to_frames_dict(
@@ -463,8 +519,19 @@ class _SampleMixin(object):
         return d
 
     def _secure_media(self, field_name, value):
+        if field_name in ("media_reference", "_media_reference"):
+            raise AttributeError(
+                "Media references are read-only; use "
+                "Sample.from_media_reference()"
+            )
+
         if field_name != "filepath":
             return
+
+        if self.media_reference is not None:
+            raise ValueError(
+                "Cannot assign a filepath to a reference-backed sample"
+            )
 
         new_media_type = fomm.get_media_type(value)
         if self.media_type != new_media_type:
@@ -515,7 +582,26 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
     _NO_DATASET_DOC_CLS = foo.NoDatasetSampleDocument
 
-    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+    def __init__(self, filepath=None, tags=None, metadata=None, **kwargs):
+        private_fields = {
+            "_media_reference",
+            "media_reference",
+            "_media_type",
+            "_rand",
+        }
+        found_private = private_fields.intersection(kwargs)
+        if found_private:
+            raise AttributeError(
+                "Private media state cannot be assigned directly: %s"
+                % sorted(found_private)
+            )
+
+        if filepath is None:
+            raise ValueError(
+                "A filepath is required; use Sample.from_media_reference() "
+                "for logical media"
+            )
+
         super().__init__(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
@@ -605,6 +691,49 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         return cls(**kwargs)
 
     @classmethod
+    def from_media_reference(cls, reference, **fields):
+        """Creates a sample backed by a logical media reference.
+
+        Args:
+            reference: a :class:`fiftyone.multimodal.MediaReference`
+            **fields: sample fields to populate
+
+        Returns:
+            a :class:`Sample`
+        """
+        forbidden = {
+            "filepath",
+            "media_reference",
+            "_media_reference",
+            "_media_type",
+            "_rand",
+        }
+        found = forbidden.intersection(fields)
+        if found:
+            raise AttributeError(
+                "Media state cannot be assigned through fields: %s"
+                % sorted(found)
+            )
+
+        from fiftyone.multimodal.media import serialize_media_reference
+
+        envelope = serialize_media_reference(reference)
+        return cls._from_media_reference_envelope(envelope, **fields)
+
+    @classmethod
+    def _from_media_reference_envelope(cls, envelope, _rand=None, **fields):
+        """Trusted internal construction from a serialized envelope."""
+        kwargs = dict(fields)
+        kwargs["filepath"] = None
+        kwargs["_media_reference"] = deepcopy(envelope)
+        kwargs["_media_type"] = envelope["media_type"]
+        if _rand is not None:
+            kwargs["_rand"] = _rand
+
+        doc = cls._NO_DATASET_DOC_CLS(**kwargs)
+        return cls.from_doc(doc)
+
+    @classmethod
     def from_doc(cls, doc, dataset=None):
         """Creates a sample backed by the given document.
 
@@ -633,12 +762,14 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         Returns:
             a :class:`Sample`
         """
+        d = deepcopy(d)
         d.pop("_dataset_id", None)
 
-        media_type = d.pop("_media_type", None)
+        media_type = d.get("_media_type", None)
         if media_type is None:
             media_type = fomm.get_media_type(d.get("filepath", ""))
 
+        frames = {}
         if media_type == fomm.VIDEO:
             frames = d.pop("frames", {})
 
@@ -752,6 +883,13 @@ class SampleView(_SampleMixin, DocumentView):
                 field_names.add("frames")
 
             d = {k: v for k, v in d.items() if k in field_names}
+
+        if self.media_reference is not None:
+            d["_media_reference"] = deepcopy(
+                self._doc.get_field("_media_reference")
+            )
+            d["_media_type"] = self.media_type
+            d["_rand"] = self._doc.get_field("_rand")
 
         return d
 

@@ -5,6 +5,7 @@ FiftyOne patches-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 from datetime import datetime
 
@@ -111,6 +112,7 @@ class PatchesTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
+            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "sample_id",
@@ -424,6 +426,7 @@ class PatchesTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
+            "_media_reference.key",
             "created_at",
             "last_modified_at",
             "sample_id",
@@ -1006,6 +1009,7 @@ class PatchesTests(unittest.TestCase):
             "id",
             "sample_id",
             "filepath",
+            "_media_reference.key",
             "created_at",
             "last_modified_at",
         }
@@ -1087,6 +1091,7 @@ class PatchesTests(unittest.TestCase):
             "id",
             "sample_id",
             "filepath",
+            "_media_reference.key",
             "created_at",
             "last_modified_at",
         }

@@ -390,12 +390,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             query = {"_id": oid}
         except:
             oid = None
-            query = {"filepath": id_filepath_slice}
+            query = {
+                "$or": [
+                    {"filepath": id_filepath_slice},
+                    {"_media_reference.key": id_filepath_slice},
+                ]
+            }
 
         d = self._sample_collection.find_one(query)
 
         if d is None:
-            field = "ID" if oid is not None else "filepath"
+            field = (
+                "ID" if oid is not None else "filepath or media-reference key"
+            )
             raise KeyError(
                 "No sample found with %s '%s'" % (field, id_filepath_slice)
             )
@@ -3284,6 +3291,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _rename_sample_fields(self, field_mapping, view=None):
         sample_collection = self if view is None else view
+        _validate_media_field_edits(
+            sample_collection,
+            list(field_mapping) + list(field_mapping.values()),
+        )
 
         paths, new_paths = zip(*field_mapping.items())
         self._sample_doc_cls._rename_fields(
@@ -3369,6 +3380,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clone_sample_fields(self, field_mapping, view=None):
         sample_collection = self if view is None else view
+        _validate_media_field_edits(sample_collection, field_mapping.values())
 
         paths, new_paths = zip(*field_mapping.items())
         self._sample_doc_cls._clone_fields(sample_collection, paths, new_paths)
@@ -3455,6 +3467,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_collection = self if view is None else view
 
         field_names = _to_list(field_names)
+        _validate_media_field_edits(sample_collection, field_names)
         self._sample_doc_cls._clear_fields(sample_collection, field_names)
 
         fos.Sample._reload_docs(self._sample_collection_name)
@@ -3602,6 +3615,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _delete_sample_fields(self, field_names, error_level):
         field_names = _to_list(field_names)
+        _validate_media_field_edits(self, field_names)
         self._sample_doc_cls._delete_fields(
             field_names, error_level=error_level
         )
@@ -4283,12 +4297,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             -   a list of IDs of the samples that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
+        from fiftyone.multimodal.media import validate_media_source
+
+        for d in dicts:
+            validate_media_source(d.get("filepath"), d.get("_media_reference"))
+
         try:
             # adds `_id` to each dict
             res = self._sample_collection.insert_many(dicts)
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
+
+        if any(d.get("_media_reference") is not None for d in dicts):
+            self._mark_media_reference_capable()
 
         for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
@@ -4411,6 +4433,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         ops = []
         for sample, d in samples_and_docs:
+            from fiftyone.multimodal.media import validate_media_source
+
+            validate_media_source(d.get("filepath"), d.get("_media_reference"))
+
             if sample.id:
                 ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
             else:
@@ -4422,6 +4448,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
+
+        if any(
+            d.get("_media_reference") is not None for _, d in samples_and_docs
+        ):
+            self._mark_media_reference_capable()
 
         for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
@@ -4453,6 +4484,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             d["last_modified_at"] = last_modified_at
 
         return d
+
+    def _mark_media_reference_capable(self):
+        from fiftyone.multimodal.media import (
+            MEDIA_REFERENCE_DATASET_REVISION,
+        )
+
+        if self._doc.version == MEDIA_REFERENCE_DATASET_REVISION:
+            return
+
+        self._doc.version = MEDIA_REFERENCE_DATASET_REVISION
+        app_config = self._doc.app_config
+        if app_config.grid_media_field == "filepath":
+            app_config.grid_media_field = "_media_reference"
+
+        if app_config.modal_media_field == "filepath":
+            app_config.modal_media_field = "_media_reference"
+
+        app_config.media_fields = [
+            field for field in app_config.media_fields if field != "filepath"
+        ]
+        if "_media_reference" not in app_config.media_fields:
+            app_config.media_fields.append("_media_reference")
+
+        self._doc.save()
 
     def _bulk_write(
         self, ops, ids=None, frames=False, ordered=False, progress=False
@@ -4581,13 +4636,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dynamic (False): whether to declare dynamic embedded document
                 fields
         """
+        if key_field == "filepath":
+            key_field = _resolve_media_merge_key(self, sample)
+
+        if key_field == "_media_reference.key":
+            from fiftyone.multimodal.media import get_logical_media_identity
+
+            sample_key = get_logical_media_identity(sample)
+        else:
+            sample_key = sample[key_field]
+
         try:
             if self.media_type == fom.GROUP:
                 view = self.select_group_slices(_allow_mixed=True)
             else:
                 view = self
 
-            existing_sample = view.one(F(key_field) == sample[key_field])
+            existing_sample = view.one(F(key_field) == sample_key)
         except ValueError:
             if insert_new:
                 self.add_sample(
@@ -4732,6 +4797,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 provided, this is computed (if possible) via ``len(samples)``
                 if needed for progress tracking
         """
+        if (
+            key_fcn is None
+            and key_field == "filepath"
+            and isinstance(samples, foc.SampleCollection)
+        ):
+            key_field = _resolve_media_merge_key(self, samples)
+
         if fields is not None:
             if etau.is_str(fields):
                 fields = [fields]
@@ -7983,17 +8055,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         dataset = cls(name, persistent=persistent, overwrite=overwrite)
-        dataset.add_dir(
-            dataset_dir=dataset_dir,
-            dataset_type=dataset_type,
-            data_path=data_path,
-            labels_path=labels_path,
-            label_field=label_field,
-            tags=tags,
-            dynamic=dynamic,
-            progress=progress,
-            **kwargs,
-        )
+        try:
+            dataset.add_dir(
+                dataset_dir=dataset_dir,
+                dataset_type=dataset_type,
+                data_path=data_path,
+                labels_path=labels_path,
+                label_field=label_field,
+                tags=tags,
+                dynamic=dynamic,
+                progress=progress,
+                **kwargs,
+            )
+        except Exception:
+            dataset.delete()
+            raise
+
         return dataset
 
     @classmethod
@@ -8660,12 +8737,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset.save()
 
         def parse_sample(sd):
-            if rel_dir and not os.path.isabs(sd["filepath"]):
+            filepath = sd.get("filepath", None)
+            if rel_dir and filepath and not os.path.isabs(filepath):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
 
             if (media_type == fom.VIDEO) or (
                 media_type == fom.GROUP
-                and fom.get_media_type(sd["filepath"]) == fom.VIDEO
+                and filepath
+                and fom.get_media_type(filepath) == fom.VIDEO
             ):
                 frames = sd.pop("frames", {})
 
@@ -9198,6 +9277,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return self._frame_doc_cls.from_dict(d, extended=False)
 
     def _validate_sample(self, sample):
+        from fiftyone.multimodal.media import validate_media_source
+
+        validate_media_source(
+            sample._doc.get_field("filepath"),
+            sample._doc.get_field("_media_reference"),
+        )
+
         schema = self.get_field_schema(include_private=True)
 
         if (
@@ -9477,6 +9563,9 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     if sample_collection_name is not None:
         sample_collection = conn[sample_collection_name]
         sample_collection.create_index("filepath")
+        sample_collection.create_index(
+            "_media_reference.key", sparse=True, unique=True
+        )
         sample_collection.create_index("created_at")
         sample_collection.create_index("last_modified_at")
 
@@ -9921,7 +10010,7 @@ def _load_clips_source_dataset(frame_collection_name):
 
 
 def _load_dataset(obj, name, virtual=False):
-    if not virtual:
+    if not virtual and not _is_media_reference_dataset(name):
         fomi.migrate_dataset_if_necessary(name)
 
     try:
@@ -9973,6 +10062,31 @@ def _do_load_dataset(obj, name):
         frame_doc_cls = None
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
+
+
+def _is_media_reference_dataset(name):
+    from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
+
+    db = foo.get_db_conn()
+    dataset_doc = db.datasets.find_one(
+        {"name": name}, {"version": 1, "sample_collection_name": 1}
+    )
+    if dataset_doc is None:
+        return False
+
+    if dataset_doc.get("version") != MEDIA_REFERENCE_DATASET_REVISION:
+        return False
+
+    collection_name = dataset_doc.get("sample_collection_name")
+    if not collection_name:
+        return False
+
+    return (
+        db[collection_name].find_one(
+            {"_media_reference": {"$exists": True}}, {"_id": 1}
+        )
+        is not None
+    )
 
 
 def _handle_delete_generated_saved_view(dataset, view_doc):
@@ -10154,6 +10268,9 @@ def _clone_collection(
             }
         }
     )
+    if _get_media_identity_mode(sample_collection) in ("reference", "mixed"):
+        pipeline.append({"$unset": "_id"})
+
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
@@ -10296,6 +10413,18 @@ def _save_view(view, fields=None):
     #
 
     pipeline = view._pipeline(detach_frames=True, detach_groups=True)
+    if _get_media_identity_mode(dataset) in ("reference", "mixed"):
+        from fiftyone.multimodal.media import validate_media_source
+
+        validation_pipeline = pipeline + [
+            {"$project": {"filepath": True, "_media_reference": True}}
+        ]
+        for sample in foo.aggregate(
+            dataset._sample_collection, validation_pipeline
+        ):
+            validate_media_source(
+                sample.get("filepath"), sample.get("_media_reference")
+            )
 
     if sample_fields:
         project = {f: True for f in sample_fields}
@@ -11032,6 +11161,7 @@ def _merge_samples_pipeline(
             # Must include default fields when new samples may be inserted.
             # Any extra fields here are omitted in `when_matched` pipeline
             project["filepath"] = True
+            project["_media_reference"] = True
             project["_rand"] = True
             project["_media_type"] = True
 
@@ -11217,8 +11347,9 @@ def _merge_samples_pipeline(
     # for the case where the user will perform subsequent merges or other
     # actions that would require this index to exist. Users are free to drop
     # the index themselves via `drop_index()` if desired
-    src_dataset.create_index(in_key_field, unique=True)
-    dst_dataset.create_index(in_key_field, unique=True)
+    if in_key_field != "_media_reference.key":
+        src_dataset.create_index(in_key_field, unique=True)
+        dst_dataset.create_index(in_key_field, unique=True)
 
     # Merge samples
     src_samples._aggregate(
@@ -11748,6 +11879,77 @@ def _get_media_type(sample):
             return fom.GROUP
 
     return sample.media_type
+
+
+def _resolve_media_merge_key(dataset, samples):
+    dst_mode = _get_media_identity_mode(dataset)
+    src_mode = _get_media_identity_mode(samples)
+
+    if "mixed" in (dst_mode, src_mode):
+        raise ValueError(
+            "Default merge cannot mix filepath-backed and "
+            "media-reference-backed samples; provide an explicit compatible "
+            "key_field or key_fcn"
+        )
+
+    if dst_mode is not None and src_mode is not None and dst_mode != src_mode:
+        raise ValueError(
+            "Default merge requires both collections to use the same logical "
+            "media identity mode"
+        )
+
+    mode = src_mode or dst_mode
+    if mode == "reference":
+        return "_media_reference.key"
+
+    return "filepath"
+
+
+def _get_media_identity_mode(samples):
+    if isinstance(samples, (fos.Sample, fos.SampleView)):
+        if samples.media_reference is not None:
+            return "reference"
+
+        return "filepath"
+
+    if not isinstance(samples, foc.SampleCollection):
+        return None
+
+    has_reference = bool(
+        len(samples.match({"_media_reference": {"$exists": True}}).limit(1))
+    )
+    has_filepath = bool(
+        len(samples.match({"filepath": {"$exists": True}}).limit(1))
+    )
+
+    if has_reference and has_filepath:
+        return "mixed"
+
+    if has_reference:
+        return "reference"
+
+    if has_filepath:
+        return "filepath"
+
+    return None
+
+
+def _validate_media_field_edits(sample_collection, field_names):
+    if _get_media_identity_mode(sample_collection) not in (
+        "reference",
+        "mixed",
+    ):
+        return
+
+    protected = {"filepath", "media_reference", "_media_reference"}
+    if any(field.split(".", 1)[0] in protected for field in field_names):
+        from fiftyone.multimodal.media import (
+            UnsupportedMediaReferenceOperation,
+        )
+
+        raise UnsupportedMediaReferenceOperation(
+            "Media source fields cannot be edited on reference-backed samples"
+        )
 
 
 def _get_group_field(schema):

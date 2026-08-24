@@ -121,14 +121,21 @@ class DatasetView(foc.SampleCollection):
             query = {"_id": oid}
         except:
             oid = None
-            query = {"filepath": id_filepath_slice}
+            query = {
+                "$or": [
+                    {"filepath": id_filepath_slice},
+                    {"_media_reference.key": id_filepath_slice},
+                ]
+            }
 
         view = self.match(query)
 
         try:
             return next(iter(view))
         except StopIteration:
-            field = "ID" if oid is not None else "filepath"
+            field = (
+                "ID" if oid is not None else "filepath or media-reference key"
+            )
             raise KeyError(
                 "No sample found with %s '%s'" % (field, id_filepath_slice)
             )
