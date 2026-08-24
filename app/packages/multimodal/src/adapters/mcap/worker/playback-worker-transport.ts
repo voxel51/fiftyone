@@ -35,7 +35,10 @@ type PendingStream = {
   readonly rejectors: Array<(error: Error) => void>;
   readonly resolvers: Array<(result: IteratorResult<unknown, void>) => void>;
   readonly sourceKey: string;
+  readonly supersessionKeys: readonly string[];
+  readonly type: McapPlaybackWorkerStreamType;
   readonly values: unknown[];
+  readonly yieldResponseBatches: boolean;
   done: boolean;
   error?: Error;
 };
@@ -171,8 +174,26 @@ export class McapPlaybackWorkerTransport {
    * no response, so local settlement is what keeps consumers from hanging.
    */
   cancelStreams(): number[] {
+    return this.cancelPendingStreams(() => true);
+  }
+
+  /** Cancels matching pending streams while preserving unrelated lanes. */
+  cancelPendingStreams(
+    filter: (pending: {
+      readonly supersessionKeys: readonly string[];
+      readonly type: McapPlaybackWorkerStreamType;
+    }) => boolean,
+  ): number[] {
     const cancelledIds: number[] = [];
     for (const [id, stream] of [...this.streams]) {
+      if (
+        !filter({
+          supersessionKeys: stream.supersessionKeys,
+          type: stream.type,
+        })
+      ) {
+        continue;
+      }
       this.failStream(id, stream, new EpisodeReadCancelledError());
       cancelledIds.push(id);
     }
@@ -183,6 +204,32 @@ export class McapPlaybackWorkerTransport {
   /**
    * Sends one streaming worker RPC and yields incremental response payloads.
    */
+  stream<Type extends McapPlaybackWorkerStreamType>(
+    worker: Worker,
+    sourceKey: string,
+    type: Type,
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
+    signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
+    supersessionKeys?: readonly string[],
+    yieldResponseBatches?: false,
+  ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void>;
+  stream<Type extends McapPlaybackWorkerStreamType>(
+    worker: Worker,
+    sourceKey: string,
+    type: Type,
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority: McapPlaybackWorkerPriority | undefined,
+    signal: AbortSignal | undefined,
+    retainedDecodedRecordIds: readonly string[] | undefined,
+    supersessionKeys: readonly string[],
+    yieldResponseBatches: true,
+  ): AsyncGenerator<
+    readonly McapPlaybackWorkerStreamItemByType[Type][],
+    void,
+    void
+  >;
   async *stream<Type extends McapPlaybackWorkerStreamType>(
     worker: Worker,
     sourceKey: string,
@@ -190,9 +237,24 @@ export class McapPlaybackWorkerTransport {
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
     signal?: AbortSignal,
-  ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
+    retainedDecodedRecordIds?: readonly string[],
+    supersessionKeys: readonly string[] = [],
+    yieldResponseBatches = false,
+  ): AsyncGenerator<
+    | McapPlaybackWorkerStreamItemByType[Type]
+    | readonly McapPlaybackWorkerStreamItemByType[Type][],
+    void,
+    void
+  > {
     const id = this.nextRequestId++;
-    const message = createRpcRequest(id, sourceKey, type, payload, priority);
+    const message = createRpcRequest(
+      id,
+      sourceKey,
+      type,
+      payload,
+      priority,
+      retainedDecodedRecordIds,
+    );
     const cancel = () => {
       const pending = this.streams.get(id);
       if (!pending) return;
@@ -214,7 +276,10 @@ export class McapPlaybackWorkerTransport {
       rejectors: [],
       resolvers: [],
       sourceKey,
+      supersessionKeys,
+      type,
       values: [],
+      yieldResponseBatches,
     };
 
     signal?.addEventListener("abort", cancel, { once: true });
@@ -334,9 +399,10 @@ export class McapPlaybackWorkerTransport {
       return;
     }
     if (!this.isActiveSource(stream.sourceKey)) {
-      // Stale stream success has no active consumer anymore. Finish it so any
-      // awaiting iterator observes completion and the stream entry is released.
-      this.finishStream(response.id, stream);
+      // A synchronized stream without its terminal is incomplete. Surface a
+      // stale-source completion through the ordinary cancellation path so an
+      // owner never mistakes it for a protocol failure or retries it.
+      this.failStream(response.id, stream, new EpisodeReadCancelledError());
       return;
     }
 
@@ -344,8 +410,12 @@ export class McapPlaybackWorkerTransport {
       this.finishStream(response.id, stream);
     } else {
       const items = "items" in response ? response.items : [response.item];
-      for (const item of items) {
-        pushStreamValue(stream, item);
+      if (stream.yieldResponseBatches) {
+        pushStreamValue(stream, items);
+      } else {
+        for (const item of items) {
+          pushStreamValue(stream, item);
+        }
       }
     }
   }

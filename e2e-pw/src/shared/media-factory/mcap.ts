@@ -274,7 +274,11 @@ function sidebarPersistenceEpisode(): FixtureDefinition {
         }),
       ),
       jsonMessage(1, timeNs, cameraInfoMessage(timeNs)),
-      jsonMessage(2, timeNs, pointCloudMessage(timeNs, "map", aPoints(tick))),
+      jsonMessage(
+        2,
+        timeNs,
+        pointCloudMessage(timeNs, "camera_front", projectionPoints(tick)),
+      ),
       jsonMessage(3, timeNs, detectionMessage(timeNs, tick)),
       jsonMessage(4, timeNs, detection3dMessage(timeNs, tick)),
     );
@@ -879,6 +883,19 @@ function aPoints(tick: number): readonly (readonly [number, number, number])[] {
     [0, 1, 1],
     [-1, 0, 1],
     [0, -1, 1],
+  ];
+}
+
+/** Camera-frame points with positive depth and broad image-plane coverage. */
+function projectionPoints(
+  tick: number,
+): readonly (readonly [number, number, number])[] {
+  const shift = tick * 0.1;
+  return [
+    [-1 + shift, -0.5, 5],
+    [-0.25 + shift, 0.5, 4],
+    [0.5 + shift, -0.25, 5],
+    [1 + shift, 0.5, 6],
   ];
 }
 

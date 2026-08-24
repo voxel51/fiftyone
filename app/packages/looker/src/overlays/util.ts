@@ -4,6 +4,7 @@
 
 import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
+import { getRenderedScale } from "../util";
 import {
   INFO_COLOR,
   LABEL_SELECTION_GREEN,
@@ -26,6 +27,19 @@ export const t = (state: BaseState, x: number, y: number): Coordinates => {
   const [ctlx, ctly, cw, ch] = state.canvasBBox;
   return [ctlx + cw * x, ctly + ch * y];
 };
+
+/**
+ * Convert a draw-space length (`pointRadius`, `strokeWidth`, …) to image
+ * pixels, the space of `pixelCoordinates`/`dimensions` hit tests. Draw-space
+ * sizes are already zoom-compensated (divided by `scale` in `postProcess`),
+ * so the remaining factor is the window's fit scale.
+ */
+export const sizeInImagePixels = (state: BaseState, length: number): number =>
+  length /
+  getRenderedScale(
+    [state.windowBBox[2], state.windowBBox[3]],
+    state.dimensions,
+  );
 
 const strokeRect = (
   ctx: CanvasRenderingContext2D,

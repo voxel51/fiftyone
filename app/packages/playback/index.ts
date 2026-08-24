@@ -23,7 +23,10 @@ export type {
 export * from "./src/lib/tracks/TrackProvider";
 export * from "./src/views/Timeline/Timeline";
 export { default as TimelineWithTracks } from "./src/views/TimelineWithTracks/TimelineWithTracks";
-export type { TimelineWithTracksProps } from "./src/views/TimelineWithTracks/TimelineWithTracks";
+export type {
+  TimelineTracksScroller,
+  TimelineWithTracksProps,
+} from "./src/views/TimelineWithTracks/TimelineWithTracks";
 export type {
   NormalizedEvent,
   TrackEventMenuItem,

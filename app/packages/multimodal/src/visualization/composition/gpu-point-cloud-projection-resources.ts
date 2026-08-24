@@ -2,11 +2,16 @@ import * as THREE from "three";
 
 import type { PointCloudRenderPayload } from "../../ir";
 import { createKeyedLeaseRegistry } from "../keyed-lease-registry";
+import { pointCloudColormapKey } from "../scene-3d/colormaps";
 import {
   createGpuPointCloudChannelResource,
   updateGpuPointCloudChannelResource,
   type GpuPointCloudChannelResource,
 } from "../scene-3d/gpu/gpu-point-cloud-channel-nodes";
+import {
+  writeGpuPointCloudColorAtSample,
+  type ResolvedGpuPointCloudColor,
+} from "../scene-3d/gpu/gpu-point-cloud-color";
 
 const POINT_COMPONENT_COUNT = 3;
 
@@ -29,6 +34,8 @@ export interface GpuPointCloudProjectionResource {
   contentKey: string;
   /** Dedicated sprite quad whose disposal releases node-owned GPU buffers. */
   readonly geometry: THREE.PlaneGeometry;
+  /** Canonical sampled frame retained for WebGL2 color expansion. */
+  payload: PointCloudRenderPayload;
   readonly positionAttribute: THREE.InstancedBufferAttribute;
   sampledPointCount: number;
   readonly scalarChannels: Map<string, GpuPointCloudChannelResource>;
@@ -40,6 +47,9 @@ export interface GpuPointCloudProjectionResource {
 
 interface InternalProjectionResource extends GpuPointCloudProjectionResource {
   capacity: number;
+  webGlColorAttribute: THREE.InstancedBufferAttribute | null;
+  webGlColorKey: string | null;
+  webGlPreparedColorCount: number;
 }
 
 // This registry belongs to the shared image renderer's module lifetime. One
@@ -86,6 +96,69 @@ export function retainGpuPointCloudProjectionResource(
   return projectionResourceRegistry.retain(
     resource as InternalProjectionResource,
   );
+}
+
+/**
+ * Lazily expands the visible sampled prefix into an ordinary instance color
+ * attribute for Three's WebGL2 backend. The attribute lives on the shared
+ * topic resource, so multiple camera tiles reuse one CPU expansion and one
+ * upload for the same frame and color policy. Color settings are stream-scoped,
+ * so every tile that retains this shared resource uses the same policy.
+ */
+export function prepareWebGlPointCloudProjectionColorAttribute(
+  resource: GpuPointCloudProjectionResource,
+  color: ResolvedGpuPointCloudColor,
+  renderedPointCount: number,
+): THREE.InstancedBufferAttribute {
+  const internal = resource as InternalProjectionResource;
+  if (!internal.webGlColorAttribute) {
+    internal.webGlColorAttribute = new THREE.InstancedBufferAttribute(
+      new Float32Array(internal.capacity * POINT_COMPONENT_COUNT),
+      POINT_COMPONENT_COUNT,
+    );
+    internal.geometry.setAttribute(
+      "projectionWebGlColor",
+      internal.webGlColorAttribute,
+    );
+  }
+
+  const colorKey = `${internal.contentKey}\n${webGlColorPolicyKey(color)}`;
+  if (internal.webGlColorKey !== colorKey) {
+    internal.webGlColorKey = colorKey;
+    internal.webGlPreparedColorCount = 0;
+  }
+
+  const targetCount = Math.min(
+    internal.sampledPointCount,
+    Math.max(0, Math.floor(renderedPointCount)),
+  );
+  const firstSample = Math.min(internal.webGlPreparedColorCount, targetCount);
+  const colors = internal.webGlColorAttribute.array as Float32Array;
+  for (
+    let sampleIndex = firstSample;
+    sampleIndex < targetCount;
+    sampleIndex++
+  ) {
+    writeGpuPointCloudColorAtSample(
+      colors,
+      sampleIndex * POINT_COMPONENT_COUNT,
+      color,
+      internal.payload,
+      sampleIndex,
+    );
+  }
+  if (targetCount > firstSample) {
+    // Camera views can expand different prefixes before Three uploads this
+    // shared attribute. Preserve every pending range; Three merges and clears
+    // them after the upload.
+    internal.webGlColorAttribute.addUpdateRange(
+      firstSample * POINT_COMPONENT_COUNT,
+      (targetCount - firstSample) * POINT_COMPONENT_COUNT,
+    );
+    internal.webGlColorAttribute.needsUpdate = true;
+    internal.webGlPreparedColorCount = targetCount;
+  }
+  return internal.webGlColorAttribute;
 }
 
 /** Returns allocation and retention counters for projection resources. */
@@ -167,12 +240,16 @@ function createResource(
     colorChannel,
     contentKey,
     geometry,
+    payload,
     positionAttribute,
     sampledPointCount: normalizedSampleCount(payload),
     scalarChannels,
     sourceIndexAttribute,
     sourceIndices: payload.sourceIndices,
     streamKey,
+    webGlColorAttribute: null,
+    webGlColorKey: null,
+    webGlPreparedColorCount: 0,
   };
   return resource;
 }
@@ -187,7 +264,10 @@ function updateResource(
   // the new frame instead of one CPU projection/upload per camera.
   replaceAttributeArray(resource.positionAttribute, payload.positions);
   replaceAttributeArray(resource.sourceIndexAttribute, payload.sourceIndices);
+  resource.payload = payload;
   resource.sourceIndices = payload.sourceIndices;
+  resource.webGlColorKey = null;
+  resource.webGlPreparedColorCount = 0;
 
   if (payload.rgb) {
     if (!resource.colorChannel) {
@@ -252,6 +332,18 @@ function updateResource(
   resource.contentKey = contentKey;
   resource.sampledPointCount = normalizedSampleCount(payload);
   totalFrameUpdates += 1;
+}
+
+function webGlColorPolicyKey(color: ResolvedGpuPointCloudColor): string {
+  const source = color.source;
+  if (source.kind === "uniform") {
+    return `uniform:${source.color.join(",")}`;
+  }
+  if (source.kind === "rgb") {
+    return "rgb";
+  }
+  const field = source.kind === "height" ? "height" : source.field.name;
+  return `${source.kind}:${field}:${source.minValue}:${source.maxValue}:${pointCloudColormapKey(color.colormap)}`;
 }
 
 function replaceAttributeArray(

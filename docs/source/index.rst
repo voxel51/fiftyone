@@ -2,6 +2,11 @@
 FiftyOne
 ========
 
+.. meta::
+    :description: FiftyOne is the open-source tool for building
+        high-quality datasets and computer vision models, with dataset
+        visualization, curation, and model evaluation built in.
+
 .. raw:: html
 
   <!-- Geist Font (landing page only) -->

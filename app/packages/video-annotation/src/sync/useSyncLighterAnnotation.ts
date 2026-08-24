@@ -125,8 +125,19 @@ const useRegisterDrawEstablishHandler = ({
 
           clear();
 
-          // boxes only — a fresh draw of another label kind isn't a track
-          if (!Array.isArray(source.bounding_box)) {
+          // Geometry-bearing draws become tracks: a box, or a keypoint /
+          // polyline's `points`. `useKeyframePromotionOnEdit` already treats both
+          // as track geometry when a frame is EDITED, so gating the DRAW on boxes
+          // alone left the two halves disagreeing: editing a polyline promoted a
+          // keyframe, but drawing one never established the track in the first
+          // place — no first keyframe, no auto-extend, no timeline row. A fresh
+          // draw of a non-geometry label kind still isn't a track.
+          const hasTrackGeometry =
+            Array.isArray(source.bounding_box) ||
+            (Array.isArray(source.points) &&
+              (source.points as unknown[]).length > 0);
+
+          if (!hasTrackGeometry) {
             return;
           }
 
@@ -153,7 +164,7 @@ const useRegisterDrawEstablishHandler = ({
           }
 
           // fold the filler into the draw's undo unit (key taken above), on the
-          // field the box was actually drawn on — not the stream's primary,
+          // field the shape was actually drawn on — not the stream's primary,
           // which a draw onto a non-primary active field would miss
           surfaceActions.extendTrack(
             anchor.instanceId,

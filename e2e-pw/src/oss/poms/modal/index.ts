@@ -152,6 +152,14 @@ export class ModalPom {
     await this.locator.getByTestId("select-sample-checkbox").click();
   }
 
+  async selectMediaField(field: string) {
+    const radio = this.page.getByTestId(`radio-button-${field}`);
+    if (!(await radio.isVisible())) {
+      await this.toggleDisplayOptionsButton.click();
+    }
+    await radio.click();
+  }
+
   async navigateSample(
     direction: "forward" | "backward",
     allowErrorInfo = false,
@@ -386,11 +394,11 @@ class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
   async isClosed() {
-    await expect(this.modalPom.modalContainer).toBeHidden();
+    await expect(this.modalPom.locator).toBeHidden();
   }
 
   async isOpen() {
-    await expect(this.modalPom.modalContainer).toBeVisible();
+    await expect(this.modalPom.locator).toBeVisible();
   }
 
   async verifyModalOpenedSuccessfully() {

@@ -150,3 +150,108 @@ describe("PlanarCamera focus", () => {
     camera.destroy();
   });
 });
+
+describe("PlanarCamera cursor", () => {
+  // A drag shows the closed hand, then gives back the resting cursor,
+  // which the chart owns (crosshair in select, grab in explore)
+  it("borrows the cursor for the duration of a drag", () => {
+    const element = document.createElement("div");
+    // jsdom has no pointer capture; the pan handlers call it
+    element.setPointerCapture = vi.fn();
+    const camera = new PlanarCamera(element, vi.fn());
+    camera.setBounds(BOUNDS, 100, 100);
+    camera.setMode("explore");
+    element.style.cursor = "grab";
+
+    const pointer = (type: string, init: Record<string, unknown>) =>
+      element.dispatchEvent(Object.assign(new Event(type), init));
+
+    pointer("pointerdown", {
+      pointerId: 1,
+      button: 0,
+      offsetX: 50,
+      offsetY: 50,
+    });
+    expect(element.style.cursor).toBe("grabbing");
+
+    pointer("pointermove", { pointerId: 1, offsetX: 60, offsetY: 50 });
+    expect(element.style.cursor).toBe("grabbing");
+
+    // A second pointer mid-pan must not steal the pan: no second
+    // capture, and its release must not give the cursor back early
+    pointer("pointerdown", {
+      pointerId: 2,
+      button: 0,
+      offsetX: 60,
+      offsetY: 50,
+    });
+    expect(element.setPointerCapture).toHaveBeenCalledTimes(1);
+    pointer("pointerup", { pointerId: 2 });
+    expect(element.style.cursor).toBe("grabbing");
+
+    pointer("pointerup", { pointerId: 1 });
+    expect(element.style.cursor).toBe("grab");
+
+    // A cancelled drag (e.g. the browser reclaims the pointer) must
+    // release the cursor through the same path
+    pointer("pointerdown", { pointerId: 2, button: 0, offsetX: 50 });
+    expect(element.style.cursor).toBe("grabbing");
+    pointer("pointercancel", { pointerId: 2 });
+    expect(element.style.cursor).toBe("grab");
+
+    camera.destroy();
+  });
+
+  // The chart may re-own the cursor mid-pan (a mode change from another
+  // pointer): release must keep that newer value, not restore the
+  // pre-pan cursor over it
+  it("does not restore a pre-pan cursor over a mid-pan rewrite", () => {
+    const element = document.createElement("div");
+    element.setPointerCapture = vi.fn();
+    const camera = new PlanarCamera(element, vi.fn());
+    camera.setBounds(BOUNDS, 100, 100);
+    camera.setMode("explore");
+    element.style.cursor = "grab";
+
+    const pointer = (type: string, init: Record<string, unknown>) =>
+      element.dispatchEvent(Object.assign(new Event(type), init));
+
+    pointer("pointerdown", {
+      pointerId: 1,
+      button: 0,
+      offsetX: 50,
+      offsetY: 50,
+    });
+    expect(element.style.cursor).toBe("grabbing");
+    // What EmbeddingsChart.applyCursor does on a mid-pan mode change
+    element.style.cursor = "crosshair";
+    pointer("pointerup", { pointerId: 1 });
+    expect(element.style.cursor).toBe("crosshair");
+
+    camera.destroy();
+  });
+
+  // The container outlives the camera (adapter swaps): teardown during
+  // a pan must give the cursor back, not strand "grabbing"
+  it("restores the cursor when destroyed mid-pan", () => {
+    const element = document.createElement("div");
+    element.setPointerCapture = vi.fn();
+    const camera = new PlanarCamera(element, vi.fn());
+    camera.setBounds(BOUNDS, 100, 100);
+    camera.setMode("explore");
+    element.style.cursor = "grab";
+
+    element.dispatchEvent(
+      Object.assign(new Event("pointerdown"), {
+        pointerId: 1,
+        button: 0,
+        offsetX: 50,
+        offsetY: 50,
+      }),
+    );
+    expect(element.style.cursor).toBe("grabbing");
+
+    camera.destroy();
+    expect(element.style.cursor).toBe("grab");
+  });
+});

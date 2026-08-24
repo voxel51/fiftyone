@@ -1,6 +1,4 @@
-import { Sample as LookerSample } from "@fiftyone/looker/src/state";
 import _ from "lodash";
-import mime from "mime";
 import { Field } from "./schema";
 
 export * from "./buffer-manager";
@@ -735,17 +733,6 @@ type Mutable<T> = {
 
 export const clone = <T>(data: T): Mutable<T> => {
   return JSON.parse(JSON.stringify(data));
-};
-
-export const getMimeType = (sample: LookerSample) => {
-  if (sample.metadata && sample.metadata.mime_type) {
-    return sample.metadata.mime_type;
-  }
-
-  const mimeFromFilePath = mime.getType(sample.filepath);
-
-  // mime type is null for certain file types like point-clouds
-  return mimeFromFilePath ?? null;
 };
 
 export const toSlug = (name: string) => {

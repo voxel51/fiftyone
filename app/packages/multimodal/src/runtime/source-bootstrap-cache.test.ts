@@ -5,10 +5,12 @@ import type {
   EpisodePosterFrame,
   TimeWindow,
 } from "../ir";
+import { getEpisodeTimeRange } from "./episode-time-range-registry";
 import {
   getSourceBootstrap,
   getSourceBootstrapSnapshot,
   peekSourceBootstrap,
+  publishEpisodePreviewBootstrap,
   publishSourceBootstrap,
   resetSourceBootstrapCacheForTests,
   subscribeSourceBootstrap,
@@ -41,15 +43,15 @@ describe("source bootstrap cache", () => {
     const first = createSource("source-0");
     publishSourceBootstrap(first, { manifest: createManifest("first") });
 
-    for (let index = 1; index <= 32; index++) {
+    for (let index = 1; index <= 64; index++) {
       publishSourceBootstrap(createSource(`source-${index}`), {
         manifest: createManifest(`topic-${index}`),
       });
     }
 
     expect(getSourceBootstrap(first)).toBeNull();
-    expect(getSourceBootstrap(createSource("source-32"))?.manifest).toEqual(
-      createManifest("topic-32"),
+    expect(getSourceBootstrap(createSource("source-64"))?.manifest).toEqual(
+      createManifest("topic-64"),
     );
   });
 
@@ -63,7 +65,7 @@ describe("source bootstrap cache", () => {
       notified++;
     });
 
-    for (let index = 1; index <= 32; index++) {
+    for (let index = 1; index <= 64; index++) {
       publishSourceBootstrap(createSource(`source-${index}`), {
         manifest: createManifest(`topic-${index}`),
       });
@@ -90,6 +92,73 @@ describe("source bootstrap cache", () => {
 
     expect(peekSourceBootstrap(source)).toEqual({
       poster: replacementPoster,
+    });
+  });
+
+  it("publishes the timeline-derived range into the bootstrap cache", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("timeline-range");
+    const timeline = {
+      endNs: 30n,
+      startNs: 10n,
+      timeDomainId: "recording",
+    } as const;
+
+    publishEpisodePreviewBootstrap(source, {
+      bootstrapTimeline: timeline,
+      frame: null,
+      status: "ready",
+      streamId: null,
+      streamSourceName: null,
+      streamSourceNames: [],
+    });
+
+    expect(peekSourceBootstrap(source)?.timeRange).toEqual({
+      endNs: 30n,
+      startNs: 10n,
+    });
+    expect(peekSourceBootstrap(source)?.timeline).toBe(timeline);
+    expect(peekSourceBootstrap(source)?.previewReadComplete).toBe(true);
+    expect(getEpisodeTimeRange(source.sourceId)).toEqual({
+      endNs: 30n,
+      startNs: 10n,
+    });
+  });
+
+  it("retains a bounded marker for a completed posterless preview", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("posterless");
+
+    publishEpisodePreviewBootstrap(source, {
+      frame: null,
+      status: "empty",
+      streamId: null,
+      streamSourceName: null,
+      streamSourceNames: [],
+    });
+
+    expect(peekSourceBootstrap(source)).toEqual({
+      previewReadComplete: true,
+    });
+  });
+
+  it("publishes the explicit preview range when no timeline is available", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("explicit-preview-range");
+    const timeRange = createTimeRange();
+
+    publishEpisodePreviewBootstrap(source, {
+      bootstrapTimeRange: timeRange,
+      frame: null,
+      status: "ready",
+      streamId: null,
+      streamSourceName: null,
+      streamSourceNames: [],
+    });
+
+    expect(peekSourceBootstrap(source)).toEqual({
+      previewReadComplete: true,
+      timeRange,
     });
   });
 

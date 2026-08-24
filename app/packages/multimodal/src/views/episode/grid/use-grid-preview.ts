@@ -7,8 +7,7 @@ import {
 import type { EpisodePreviewSession } from "../../../ports";
 import {
   episodePreviewPlaybackDelayMs,
-  publishEpisodeTimeRange,
-  publishSourceBootstrap,
+  publishEpisodePreviewBootstrap,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
 import type { GridPosterCacheEntry } from "./grid-poster-cache";
@@ -165,6 +164,14 @@ export function useGridPreview({
     setState(seededSnapshot(source, cachedPosterRef.current));
   }, [cacheRequestKey, finishBuffering, selectedSourceName, source]);
 
+  // IndexedDB hydration completes after the cache key is already mounted.
+  // Adopt that same-key poster in place without resetting a live frame or
+  // starting a second preview read.
+  useEffect(() => {
+    if (!cachedPoster || stateOwnerKey !== cacheRequestKey) return;
+    setState((current) => adoptCachedPoster(current, cachedPoster));
+  }, [cacheRequestKey, cachedPoster, stateOwnerKey]);
+
   // This effect surfaces adapter failures and unsupported preview providers
   // without exposing format details to the grid.
   useEffect(() => {
@@ -230,7 +237,7 @@ export function useGridPreview({
       .then((result) => {
         if (active) {
           notifyReadResult(onReadResultRef.current, result);
-          publishGridBootstrap(source, result);
+          publishEpisodePreviewBootstrap(source, result);
           loadedRequestRef.current = {
             posterStartTimeNs,
             source,
@@ -351,7 +358,7 @@ export function useGridPreview({
           }
 
           if (!bootstrapPublished) {
-            publishGridBootstrap(source, result);
+            publishEpisodePreviewBootstrap(source, result);
             bootstrapPublished = true;
           }
 
@@ -428,6 +435,27 @@ function preservingCachedPoster(
     : { ...IDLE_PREVIEW_STATE, status: fallbackStatus };
 }
 
+function adoptCachedPoster(
+  current: GridPreviewSnapshot,
+  cachedPoster: GridPosterCacheEntry,
+): GridPreviewSnapshot {
+  if (current.cachedPoster === cachedPoster) return current;
+  return {
+    ...current,
+    cachedPoster,
+    error: current.frame ? current.error : null,
+    hasPreviewStreams:
+      current.hasPreviewStreams || cachedPoster.streamSourceNames.length > 0,
+    streamId: current.streamId ?? cachedPoster.streamId,
+    streamSourceName: current.streamSourceName ?? cachedPoster.streamSourceName,
+    streamSourceNames:
+      current.streamSourceNames.length > 0
+        ? current.streamSourceNames
+        : cachedPoster.streamSourceNames,
+    status: current.frame ? current.status : "ready",
+  };
+}
+
 function resultPreservingCachedPoster(
   current: GridPreviewSnapshot,
   result: EpisodePreviewReadResult,
@@ -490,43 +518,6 @@ function useGridPreviewBufferingIndicator() {
   );
 
   return { finish, start, visible };
-}
-
-function publishGridBootstrap(
-  source: ByteSourceDescriptor,
-  result: EpisodePreviewReadResult,
-): void {
-  if (
-    !result.bootstrapManifest &&
-    !result.bootstrapTimeline &&
-    !result.bootstrapTimeRange &&
-    !result.frame
-  ) {
-    return;
-  }
-
-  publishSourceBootstrap(source, {
-    ...(result.bootstrapManifest ? { manifest: result.bootstrapManifest } : {}),
-    ...(result.bootstrapTimeline ? { timeline: result.bootstrapTimeline } : {}),
-    ...(result.bootstrapTimeRange
-      ? { timeRange: result.bootstrapTimeRange }
-      : {}),
-    ...(result.frame
-      ? {
-          poster: result.frame,
-          ...(result.streamId ? { posterStreamId: result.streamId } : {}),
-        }
-      : {}),
-  });
-  const timeRange = result.bootstrapTimeline
-    ? {
-        endNs: result.bootstrapTimeline.endNs,
-        startNs: result.bootstrapTimeline.startNs,
-      }
-    : result.bootstrapTimeRange;
-  if (timeRange) {
-    publishEpisodeTimeRange(source.sourceId, timeRange);
-  }
 }
 
 function snapshotFromResult(

@@ -58,7 +58,6 @@ import { isEpisodeReadCancelledError } from "../../ports";
 import { throwIfAborted } from "../../utils/cancellation";
 import { compareFrameIds } from "../../utils/frame-ids";
 import type { McapGridPreviewResult } from "./resource-client/grid-preview";
-import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {
   acquireSharedMcapResourceClient,
   createMcapResourceClient,
@@ -201,10 +200,6 @@ export function createMcapFormatAdapter(
       const pool = (options.getPreviewPool ?? getMcapGridPreviewPool)();
       pool.acquire();
       return new McapEpisodePreviewSession(asset, source.episodeId, pool);
-    },
-    async prewarm(source, _io, prewarmOptions) {
-      const asset = await resolveMcapAsset(source, prewarmOptions?.signal);
-      await prewarmMcapSource(asset, { signal: prewarmOptions?.signal });
     },
   };
 }
@@ -893,6 +888,7 @@ class McapEpisodeSession implements EpisodeSession {
   private returnedBatches = 0;
   private budgetAllowance?: ReadWorkBudget;
   private budgetLedger?: SourceReadBudgetLedger;
+  private readonly streamIdsBySourceName: ReadonlyMap<string, string>;
   private readonly sourceNamesById: ReadonlyMap<string, string>;
 
   constructor(
@@ -920,6 +916,14 @@ class McapEpisodeSession implements EpisodeSession {
     this.sourceNamesById = new Map(
       manifest.streams.map((stream) => [stream.id, stream.sourceName]),
     );
+    const streamIdsBySourceName = new Map<string, string>();
+    for (const stream of manifest.streams) {
+      // Preserve the former Array.find behavior for duplicate source names.
+      if (!streamIdsBySourceName.has(stream.sourceName)) {
+        streamIdsBySourceName.set(stream.sourceName, stream.id);
+      }
+    }
+    this.streamIdsBySourceName = streamIdsBySourceName;
     this.boundedRead = {
       openAccount: (allowance) => this.openBoundedReadAccount(allowance),
     };
@@ -1230,8 +1234,15 @@ class McapEpisodeSession implements EpisodeSession {
               defaultStreamPolicy: toMcapSyncPolicy(
                 request.defaultStreamPolicy,
               ),
+              firstUsefulSettlementTopics:
+                request.firstUsefulSettlementStreams?.map((stream) =>
+                  this.sourceNameFor(stream),
+                ),
               pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
                 request.pointCloudColorBy,
+              ),
+              settlementPriorityTopics: request.settlementPriorityStreams?.map(
+                (stream) => this.sourceNameFor(stream),
               ),
               source: this.source,
               streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
@@ -1240,7 +1251,25 @@ class McapEpisodeSession implements EpisodeSession {
                 this.sourceNameFor(stream),
               ),
             },
-            { signal: request.signal },
+            {
+              onTopicSettlements: request.onStreamSettlements
+                ? (settlements) =>
+                    request.onStreamSettlements?.(
+                      settlements.map(({ topic, window }) => ({
+                        stream: this.streamIdFor(topic),
+                        window: this.fromMcapWindow(window),
+                      })),
+                    )
+                : undefined,
+              onTopicSettlement: request.onStreamSettlement
+                ? ({ topic, window }) =>
+                    request.onStreamSettlement?.({
+                      stream: this.streamIdFor(topic),
+                      window: this.fromMcapWindow(window),
+                    })
+                : undefined,
+              signal: request.signal,
+            },
           );
           return this.fromMcapWindow(window);
         } catch (error) {
@@ -1542,10 +1571,7 @@ class McapEpisodeSession implements EpisodeSession {
   }
 
   private streamIdFor(sourceName: string): string {
-    return (
-      this.manifest.streams.find((stream) => stream.sourceName === sourceName)
-        ?.id ?? sourceName
-    );
+    return this.streamIdsBySourceName.get(sourceName) ?? sourceName;
   }
 
   private toMcapSyncPolicies(

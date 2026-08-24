@@ -24,8 +24,13 @@ const TAG_OVERLAY_TYPES = new Set(
   [CLASSIFICATION, CLASSIFICATIONS].map((cls) => withPath(LABELS_PATH, cls)),
 );
 
-const BOX_HEADER_TYPES = new Set(
-  [DETECTION, DETECTIONS].map((cls) => withPath(LABELS_PATH, cls)),
+// Label types that render their attributes as overlay text in the modal:
+// detection box headers, and polyline tags (anchored on the shape's centroid,
+// or above the dot for a single-vertex polyline).
+const MODAL_LABEL_TEXT_TYPES = new Set(
+  [DETECTION, DETECTIONS, POLYLINE, POLYLINES].map((cls) =>
+    withPath(LABELS_PATH, cls),
+  ),
 );
 
 const PATCH_LABEL_TYPES = new Set(
@@ -68,9 +73,9 @@ const labelAttributeNames = selectorFamily<string[], string>({
 
 /**
  * The attribute names of a label field rendered as text in looker overlays.
- * Attributes no longer present in the schema are silently dropped; when
- * nothing valid remains, the default applies. Setting an empty list is
- * ignored so at least one attribute is always shown.
+ * An explicitly empty list renders no text. Attributes no longer present in
+ * the schema are silently dropped; when a non-empty list loses every valid
+ * entry, the default applies.
  */
 export const shownLabelAttributes = selectorFamily<string[], string>({
   key: "shownLabelAttributes",
@@ -78,8 +83,12 @@ export const shownLabelAttributes = selectorFamily<string[], string>({
     (path) =>
     ({ get }) => {
       const stored = get(shownLabelAttributesMap)[path];
-      if (!stored?.length) {
+      if (!stored) {
         return DEFAULT_SHOWN_LABEL_ATTRIBUTES;
+      }
+
+      if (!stored.length) {
+        return stored;
       }
 
       const valid = new Set(get(labelAttributeNames(path)));
@@ -89,7 +98,7 @@ export const shownLabelAttributes = selectorFamily<string[], string>({
   set:
     (path) =>
     ({ get, set }, value) => {
-      if (value instanceof DefaultValue || !value.length) {
+      if (value instanceof DefaultValue) {
         return;
       }
 
@@ -123,8 +132,8 @@ export const resolvedShownLabelAttributes = selector<Record<string, string[]>>({
 /**
  * Whether toggling shown attributes for a label field changes what is
  * rendered in the current context: classification-style tag overlays render
- * everywhere, detection box headers render in the modal, and spatial patch
- * labels render as grid tag overlays in patches views.
+ * everywhere, detection box headers and polyline tags render in the modal, and
+ * spatial patch labels render as grid tag overlays in patches views.
  */
 export const canToggleShownLabelAttributes = selectorFamily<
   boolean,
@@ -144,7 +153,7 @@ export const canToggleShownLabelAttributes = selectorFamily<
       }
 
       if (modal) {
-        return BOX_HEADER_TYPES.has(docType);
+        return MODAL_LABEL_TEXT_TYPES.has(docType);
       }
 
       return PATCH_LABEL_TYPES.has(docType) && get(isPatchesView);
@@ -195,11 +204,7 @@ export const labelAttributeRow = selectorFamily<
 export const toggleShownLabelAttribute = (
   shown: string[],
   attribute: string,
-): string[] => {
-  if (!shown.includes(attribute)) {
-    return [...shown, attribute];
-  }
-
-  const next = shown.filter((name) => name !== attribute);
-  return next.length ? next : shown;
-};
+): string[] =>
+  shown.includes(attribute)
+    ? shown.filter((name) => name !== attribute)
+    : [...shown, attribute];

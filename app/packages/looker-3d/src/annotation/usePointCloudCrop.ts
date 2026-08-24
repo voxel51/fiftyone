@@ -36,7 +36,12 @@ export const usePointCloudCrop = ({
   enabled = true,
 }: UsePointCloudCropOptions = {}) => {
   const mode = fos.useModalMode();
-  const { pluginSettings, pointCloudSettings, upVector } = useFo3dContext();
+  const {
+    directPcdWorldTransformsBySampleId,
+    pluginSettings,
+    pointCloudSettings,
+    upVector,
+  } = useFo3dContext();
   const selectedLabel = useCurrentSelected3dAnnotationLabel();
   const hoveredLabel = useHoveredLabel3d();
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
@@ -131,6 +136,7 @@ export const usePointCloudCrop = ({
         renderModel: cropRenderModel,
         labelId: raycastResult.intersectedLabelId,
         margin,
+        directPcdWorldTransformsBySampleId,
         source: "raycast-hover",
         useLegacyCoordinates,
         visibleWorldHeightAtCenter: raycastResult.visibleWorldHeightAtPoint,
@@ -161,6 +167,7 @@ export const usePointCloudCrop = ({
       renderModel: cropRenderModel,
       selectedLabelId: selectedCuboidId,
       margin,
+      directPcdWorldTransformsBySampleId,
       useLegacyCoordinates,
     });
   }, [
@@ -176,6 +183,7 @@ export const usePointCloudCrop = ({
     raycastResult.visibleWorldHeightAtPoint,
     raycastResult.worldPosition,
     cropRenderModel,
+    directPcdWorldTransformsBySampleId,
     selectedCuboidId,
     upVector,
     useLegacyCoordinates,

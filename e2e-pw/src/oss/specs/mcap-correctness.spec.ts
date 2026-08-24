@@ -1,23 +1,33 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { ConsoleMessage } from "@playwright/test";
 import { test as base, expect, Locator } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { McapExplorerPom } from "src/oss/poms/multimodal/mcap-explorer";
 import { ModalPom } from "src/oss/poms/modal";
 import { MCAP_FIXTURE_CONTRACT } from "src/shared/media-factory/mcap";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { getLocatorDominantColorShare } from "src/oss/utils/screenshot";
+import {
+  getLocatorDominantColorShare,
+  getLocatorScreenshotDifference,
+} from "src/oss/utils/screenshot";
 
 const datasetName = getUniqueDatasetNameWithPrefix("mcap-correctness");
+const alternateMediaDatasetName = getUniqueDatasetNameWithPrefix(
+  "mcap-alternate-grid-media",
+);
 const fixtureDir = path.join(os.tmpdir(), datasetName);
 const originalMultimodalFlag = process.env.VFF_MULTIMODAL;
+const RENDERER_ERROR_PATTERN = /(?:webgpu|webgl|graphics renderer|gpu device)/i;
 const { long, sidebar, tinyA, tinyB, unsupported } = MCAP_FIXTURE_CONTRACT;
 const fixturePaths = {
   episodeA: path.join(fixtureDir, tinyA.fileName),
   episodeB: path.join(fixtureDir, tinyB.fileName),
   invalid: path.join(fixtureDir, "not-an-mcap.txt"),
   long: path.join(fixtureDir, long.fileName),
+  thumbnail: path.join(fixtureDir, "episode-thumbnail.png"),
+  thumbnailB: path.join(fixtureDir, "episode-thumbnail-b.png"),
   unsupported: path.join(fixtureDir, unsupported.fileName),
 };
 const cameraPoseFileNames = [
@@ -61,26 +71,53 @@ const longExpectation = {
 
 const test = base.extend<{
   explorer: McapExplorerPom;
+  graphicsBackend: "auto" | "webgl2";
   grid: GridPom;
   modal: ModalPom;
+  rendererErrors: string[];
+  targetDatasetName: string;
 }>({
   explorer: async ({ page }, use) => {
     const explorer = new McapExplorerPom(page);
     await use(explorer);
     await explorer.closeIfOpen();
   },
+  graphicsBackend: "auto",
   grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   modal: async ({ eventUtils, page }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
+  rendererErrors: async ({ page }, use) => {
+    const errors: string[] = [];
+    const recordConsoleError = (message: ConsoleMessage) => {
+      if (
+        message.type() === "error" &&
+        RENDERER_ERROR_PATTERN.test(message.text())
+      ) {
+        errors.push(message.text());
+      }
+    };
+    const recordPageError = (error: Error) => {
+      if (RENDERER_ERROR_PATTERN.test(error.message)) {
+        errors.push(error.message);
+      }
+    };
+    page.on("console", recordConsoleError);
+    page.on("pageerror", recordPageError);
+    await use(errors);
+    page.off("console", recordConsoleError);
+    page.off("pageerror", recordPageError);
+  },
+  targetDatasetName: datasetName,
 });
 
 test.describe.serial("MCAP correctness", () => {
   test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
     process.env.VFF_MULTIMODAL = "1";
     await foWebServer.startWebServer();
+    await fs.mkdir(fixtureDir, { recursive: true });
     await Promise.all([
       mediaFactory.createMcapFixture({
         kind: tinyA.kind,
@@ -112,6 +149,20 @@ test.describe.serial("MCAP correctness", () => {
           outputPath,
         }),
       ),
+      mediaFactory.createImage({
+        fillColor: "#ff00ff",
+        height: 96,
+        hideLogs: true,
+        outputPath: fixturePaths.thumbnail,
+        width: 128,
+      }),
+      mediaFactory.createImage({
+        fillColor: "#00ffff",
+        height: 96,
+        hideLogs: true,
+        outputPath: fixturePaths.thumbnailB,
+        width: 128,
+      }),
     ]);
     await fs.writeFile(fixturePaths.invalid, "not an mcap file");
 
@@ -136,6 +187,23 @@ dataset.add_samples([
     fo.Sample(filepath=r"${sidebarPaths[2]}", name="sidebar-persistence-c"),
     fo.Sample(filepath=r"${sidebarPaths[3]}", name="sidebar-persistence-d"),
 ])
+
+alternate_media_dataset = fo.Dataset("${alternateMediaDatasetName}")
+alternate_media_dataset.persistent = True
+alternate_media_dataset.add_samples([
+    fo.Sample(
+        filepath=r"${fixturePaths.episodeA}",
+        thumbnail_path=r"${fixturePaths.thumbnail}",
+    ),
+    fo.Sample(
+        filepath=r"${fixturePaths.episodeB}",
+        thumbnail_path=r"${fixturePaths.thumbnailB}",
+    ),
+])
+alternate_media_dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
+alternate_media_dataset.app_config.grid_media_field = "thumbnail_path"
+alternate_media_dataset.app_config.modal_media_field = "filepath"
+alternate_media_dataset.save()
   `);
   });
 
@@ -149,8 +217,9 @@ dataset.add_samples([
       await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
 
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
+for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
+    if fo.dataset_exists(dataset_name):
+        fo.delete_dataset(dataset_name)
     `);
     } catch (error) {
       void error;
@@ -163,9 +232,24 @@ if fo.dataset_exists("${datasetName}"):
     await fs.rm(fixtureDir, { force: true, recursive: true });
   });
 
-  test.beforeEach(async ({ fiftyoneLoader, page }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  });
+  test.beforeEach(
+    async ({
+      fiftyoneLoader,
+      graphicsBackend,
+      page,
+      rendererErrors,
+      targetDatasetName,
+    }) => {
+      rendererErrors.length = 0;
+      await fiftyoneLoader.waitUntilGridVisible(page, targetDatasetName, {
+        searchParams:
+          graphicsBackend === "webgl2"
+            ? new URLSearchParams({ graphicsBackend })
+            : undefined,
+        withGrid: true,
+      });
+    },
+  );
 
   test.afterEach(async ({ modal }) => {
     await modal.close({ ignoreError: true });
@@ -296,6 +380,53 @@ if fo.dataset_exists("${datasetName}"):
     );
     await modal.episode.waitForReady(sidebarFileNames.at(-1)!);
     await expectRepresentativeSidebarPreferences(modal);
+  });
+
+  test.describe("alternate grid media", () => {
+    test.use({ targetDatasetName: alternateMediaDatasetName });
+
+    test("keeps alternate modal media across sample navigation", async ({
+      grid,
+      modal,
+    }) => {
+      const tile = grid.getNthTile(0);
+      await expect(tile).toHaveAttribute("data-cy", "looker");
+      await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
+
+      await openMcapModal(grid, modal, 0);
+      await modal.episode.waitForReady("tiny-episode-a.mcap");
+      await modal.episode.expectTileTitles(
+        ["camera/front", "points"],
+        ["Logs"],
+      );
+      await modal.episode.expectNoViewerError();
+
+      const lookerAttached = await modal.armLookerAttached();
+      await modal.selectMediaField("thumbnail_path");
+      await lookerAttached.received;
+      await modal.waitForSampleLoadDomAttribute();
+      await expectDominantColor(
+        modal.modalContainer.locator("canvas"),
+        [255, 0, 255],
+      );
+
+      const nextLookerAttached = await modal.armLookerAttached();
+      await modal.getSampleNavigation("forward").click();
+      await nextLookerAttached.received;
+      await modal.waitForSampleLoadDomAttribute();
+      await expectDominantColor(
+        modal.modalContainer.locator("canvas"),
+        [0, 255, 255],
+      );
+
+      await modal.selectMediaField("filepath");
+      await modal.episode.waitForReady("tiny-episode-b.mcap");
+      await modal.episode.expectTileTitles(
+        ["camera/rear", "camera/side", "scan/rear"],
+        ["Logs"],
+      );
+      await modal.episode.expectNoViewerError();
+    });
   });
 
   test("keeps paused stepping, raw values, logs, and image pixels synchronized", async ({
@@ -689,6 +820,95 @@ if fo.dataset_exists("${datasetName}"):
     );
     await modal.episode.expectRawField("msg", "LONG pre-midpoint nominal");
   });
+
+  test.describe("diagnostic backend override", () => {
+    test.use({ graphicsBackend: "webgl2" });
+
+    test("renders stable MCAP point clouds with the forced WebGL2 backend", async ({
+      grid,
+      modal,
+      page,
+      rendererErrors,
+    }) => {
+      expect(new URL(page.url()).searchParams.get("graphicsBackend")).toBe(
+        "webgl2",
+      );
+
+      await openMcapModal(grid, modal, sampleIndex.episodeA);
+      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.setSamplingRate(1);
+      const pointTile = modal.episode.tile("points");
+      const canvas = pointTile.locator('[data-graphics-surface="modal-3d"]');
+      await expect(canvas).toHaveAttribute("data-graphics-backend", "webgl2");
+
+      const pointPanel = pointTile.locator("[data-point-cloud-rendered-count]");
+      await expectPointCloudSpread(pointPanel, 4, 1);
+      const firstFramePixels = await canvas.screenshot();
+      await modal.episode.stepForward();
+      await expectPointCloudSpread(pointPanel, 4, 2);
+      await expectPixelDifference(canvas, firstFramePixels, {
+        minimumChangedPixels: 4,
+        minimumSpan: 16,
+      });
+      const secondFramePixels = await canvas.screenshot();
+      await modal.episode.stepForward();
+      await expectPointCloudSpread(pointPanel, 5, 3);
+      await expectPixelDifference(canvas, secondFramePixels, {
+        minimumChangedPixels: 4,
+        minimumSpan: 16,
+      });
+
+      await modal.close();
+      await openMcapModal(grid, modal, sampleIndex.sidebarStart);
+      await modal.episode.waitForReady(sidebarFileNames[0]);
+      await modal.episode.setSidebarToggle(
+        "camera/front",
+        "Toggle pointcloud projections",
+        false,
+      );
+      const imageCanvas = modal.episode.shell.locator(
+        '[data-graphics-surface="modal-images"]',
+      );
+      await expect(imageCanvas).toHaveAttribute(
+        "data-graphics-backend",
+        "webgl2",
+      );
+      const projectionOff = await imageCanvas.screenshot();
+      await modal.episode.setSidebarToggle(
+        "camera/front",
+        "Toggle pointcloud projections",
+        true,
+      );
+      await expectPixelDifference(imageCanvas, projectionOff, {
+        minimumChangedPixels: 4,
+        minimumSpan: 12,
+      });
+
+      await modal.episode.scope
+        .getByRole("tab", { name: "Scene", exact: true })
+        .click();
+      await modal.episode.scope.getByRole("button", { name: "Stats" }).click();
+      await expect(modal.episode.scope.getByText("Graphics")).toBeVisible();
+      await expectStatsRow(
+        modal.episode.scope,
+        "Requested backend",
+        "WebGL2 (diagnostic override)",
+      );
+      await expectStatsRow(modal.episode.scope, "WebGPU devices", /^0 \/ \d+$/);
+      await expectStatsRow(
+        modal.episode.scope,
+        "Surface · modal-3d",
+        "1 WebGL2",
+      );
+      await expectStatsRow(
+        modal.episode.scope,
+        "Surface · modal-images",
+        "1 WebGL2",
+      );
+      await modal.episode.expectNoViewerError();
+      expect(rendererErrors).toEqual([]);
+    });
+  });
 });
 
 async function openMcapModal(
@@ -754,4 +974,71 @@ async function expectDominantColor(
       timeout: 20_000,
     })
     .toBeGreaterThan(0.15);
+}
+
+async function expectPointCloudSpread(
+  panel: Locator,
+  minimumRenderedCount: number,
+  minimumSpreadAxes: number,
+): Promise<void> {
+  await expect(panel).toBeVisible();
+  await expect
+    .poll(async () => {
+      const count = Number(
+        await panel.getAttribute("data-point-cloud-rendered-count"),
+      );
+      return Number.isFinite(count) ? count : 0;
+    })
+    .toBeGreaterThanOrEqual(minimumRenderedCount);
+  await expect
+    .poll(async () => {
+      const bounds =
+        (await panel.getAttribute("data-point-cloud-bounds-size")) ?? "";
+      return bounds
+        .split(",")
+        .map(Number)
+        .filter((value) => Number.isFinite(value) && value > 0.1).length;
+    })
+    .toBeGreaterThanOrEqual(minimumSpreadAxes);
+}
+
+async function expectPixelDifference(
+  locator: Locator,
+  baseline: Buffer,
+  {
+    minimumChangedPixels,
+    minimumSpan,
+  }: {
+    readonly minimumChangedPixels: number;
+    readonly minimumSpan: number;
+  },
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const difference = await getLocatorScreenshotDifference(
+          locator,
+          baseline,
+        );
+        return {
+          changed:
+            difference !== null &&
+            difference.changedPixels >= minimumChangedPixels,
+          spanned:
+            difference !== null &&
+            Math.max(difference.width, difference.height) >= minimumSpan,
+        };
+      },
+      { timeout: 20_000 },
+    )
+    .toEqual({ changed: true, spanned: true });
+}
+
+async function expectStatsRow(
+  scope: Locator,
+  label: string,
+  value: string | RegExp,
+): Promise<void> {
+  const row = scope.locator(`[data-stats-row=${JSON.stringify(label)}]`);
+  await expect(row.locator("span").last()).toHaveText(value);
 }
