@@ -510,6 +510,13 @@ def build_dataset_exporter(
     try:
         dataset_exporter = dataset_exporter_cls(**kwargs)
     except Exception as e:
+        from fiftyone.multimodal.media import (
+            UnsupportedMediaReferenceOperation,
+        )
+
+        if isinstance(e, UnsupportedMediaReferenceOperation):
+            raise
+
         raise ValueError(
             "Failed to construct exporter of type %s using the provided "
             "parameters. See above for the error. You may need to supply "
@@ -2135,6 +2142,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             collections
     """
 
+    supports_media_references = True
+
     def __init__(
         self,
         export_dir,
@@ -2228,16 +2237,25 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         _samples = foo.aggregate(coll, pipeline)
 
         def _prep_sample(sd):
-            filepath = sd["filepath"]
-            if self.export_media is not False:
-                # Store relative path
-                _, uuid = self._media_exporter.export(filepath)
-                sd["filepath"] = os.path.join("data", uuid)
-            elif self.rel_dir is not None:
-                # Remove `rel_dir` prefix from filepath
-                sd["filepath"] = fou.safe_relpath(
-                    filepath, self.rel_dir, default=filepath
-                )
+            media_reference = sd.get("_media_reference")
+            if media_reference is not None:
+                from fiftyone.multimodal.media import validate_media_source
+
+                validate_media_source(sd.get("filepath"), media_reference)
+                # Native exports preserve thin references for every
+                # `export_media` mode. Physical source assets are external and
+                # must be rebound after import when no live binding exists.
+            else:
+                filepath = sd["filepath"]
+                if self.export_media is not False:
+                    # Store relative path
+                    _, uuid = self._media_exporter.export(filepath)
+                    sd["filepath"] = os.path.join("data", uuid)
+                elif self.rel_dir is not None:
+                    # Remove `rel_dir` prefix from filepath
+                    sd["filepath"] = fou.safe_relpath(
+                        filepath, self.rel_dir, default=filepath
+                    )
 
             if self._media_fields:
                 self._export_media_fields(sd)

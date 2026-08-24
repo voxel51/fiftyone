@@ -16,13 +16,14 @@ from starlette.requests import Request
 
 from fiftyone.multimodal.media import (
     MalformedMediaSourceError,
+    MediaSourceAuthorizationError,
     MissingMediaRootError,
     MovedMediaRootError,
     StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
     UnsupportedMediaReferenceOperation,
     UnsupportedMediaReferenceVersionError,
-    get_episode_resolver,
+    get_media_resolver,
     hydrate_media_reference,
 )
 from fiftyone.server import decorators
@@ -33,8 +34,8 @@ from fiftyone.server.utils.datasets import (
 )
 
 
-class EpisodeManifest(HTTPEndpoint):
-    """Resolves a stored episode reference into a public asset manifest."""
+class MediaAssetManifestRoute(HTTPEndpoint):
+    """Resolves a stored media reference into a public asset manifest."""
 
     @decorators.route
     async def get(self, request: Request):
@@ -52,7 +53,7 @@ class EpisodeManifest(HTTPEndpoint):
         return public
 
 
-class EpisodeAssetBytes(HTTPEndpoint):
+class MediaAssetBytes(HTTPEndpoint):
     """Range-serves one asset selected from a stored sample manifest."""
 
     @decorators.route
@@ -71,10 +72,10 @@ class EpisodeAssetBytes(HTTPEndpoint):
             raise HTTPException(
                 status_code=404,
                 detail=(
-                    "missing-episode-asset: The requested asset is not part "
+                    "missing-media-asset: The requested asset is not part "
                     "of this sample"
                 ),
-                headers={"X-FiftyOne-Error-Kind": "missing-episode-asset"},
+                headers={"X-FiftyOne-Error-Kind": "missing-media-asset"},
             )
 
         stat_result = os.stat(asset.path)
@@ -105,10 +106,13 @@ def _resolve_manifest(request):
         # and are registered only when asset resolution is requested.
         importlib.import_module("fiftyone.utils.lerobot")
         reference = hydrate_media_reference(envelope)
-        resolver = get_episode_resolver(reference)
-        manifest = resolver.resolve_assets(reference)
+        assets = reference.describe_assets()
+        resolver = get_media_resolver(reference)
+        manifest = resolver.resolve_assets(reference, assets)
     except MissingMediaRootError as exc:
         _raise_resolution_error(404, "missing-media-root", exc)
+    except MediaSourceAuthorizationError as exc:
+        _raise_resolution_error(403, "media-source-authorization", exc)
     except MovedMediaRootError as exc:
         _raise_resolution_error(409, "moved-media-root", exc)
     except StaleMediaReferenceError as exc:
@@ -133,7 +137,11 @@ def _raise_resolution_error(status_code, kind, error):
         ),
         "moved-media-root": (
             "The LeRobot source root appears to have moved; relocate the "
-            "stored media reference before retrying"
+            "server-side source binding before retrying"
+        ),
+        "media-source-authorization": (
+            "The current user is not authorized to access the configured "
+            "media source"
         ),
         "stale-media-reference": (
             "The LeRobot source changed since import; re-import the dataset "
@@ -165,10 +173,10 @@ def _raise_resolution_error(status_code, kind, error):
 MediaReferenceRoutes = [
     (
         "/dataset/{dataset_id}/sample/{sample_id}/multimodal/manifest",
-        EpisodeManifest,
+        MediaAssetManifestRoute,
     ),
     (
         "/dataset/{dataset_id}/sample/{sample_id}/multimodal/assets/{asset_id}",
-        EpisodeAssetBytes,
+        MediaAssetBytes,
     ),
 ]

@@ -10428,16 +10428,6 @@ class SampleCollection(object):
                 this can also contain keyword arguments for
                 :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
-        if _contains_media_references(self):
-            from fiftyone.multimodal.media import (
-                UnsupportedMediaReferenceOperation,
-            )
-
-            raise UnsupportedMediaReferenceOperation(
-                "Generic export does not support media-reference-backed "
-                "samples; use a kind-specific exporter"
-            )
-
         archive_path = None
 
         # If the user requested an archive, first populate a directory
@@ -13525,16 +13515,6 @@ def _export(
             "Either `dataset_type` or `dataset_exporter` must be provided"
         )
 
-    # Overwrite existing directories or warn if files will be merged
-    _handle_existing_dirs(
-        dataset_exporter=dataset_exporter,
-        export_dir=export_dir,
-        data_path=data_path,
-        labels_path=labels_path,
-        export_media=export_media,
-        overwrite=overwrite,
-    )
-
     # If no dataset exporter was provided, construct one
     if dataset_exporter is None:
         dataset_exporter, kwargs = foud.build_dataset_exporter(
@@ -13547,6 +13527,29 @@ def _export(
             rel_dir=rel_dir,
             **kwargs,
         )
+
+    if _contains_media_references(sample_collection) and not getattr(
+        dataset_exporter, "supports_media_references", False
+    ):
+        from fiftyone.multimodal.media import (
+            UnsupportedMediaReferenceOperation,
+        )
+
+        raise UnsupportedMediaReferenceOperation(
+            "The requested exporter does not support media-reference-backed "
+            "samples; use FiftyOneDataset for thin references or a registered "
+            "kind-specific exporter"
+        )
+
+    # Overwrite existing directories or warn if files will be merged
+    _handle_existing_dirs(
+        dataset_exporter=dataset_exporter,
+        export_dir=export_dir,
+        data_path=data_path,
+        labels_path=labels_path,
+        export_media=export_media,
+        overwrite=overwrite,
+    )
 
     # Get label field(s) to export
     if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):

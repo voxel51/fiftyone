@@ -833,6 +833,11 @@ class LeRobotDataset(Dataset):
 
         return foul.LeRobotDatasetImporter
 
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.lerobot_export as foule
+
+        return foule.LeRobotDatasetExporter
+
 
 class LegacyFiftyOneDataset(Dataset):
     """Legacy disk representation of an entire

@@ -7,8 +7,8 @@ LeRobotDataset v3 import and asset resolution utilities.
 """
 
 from collections import defaultdict
-from collections.abc import Mapping
 from copy import deepcopy
+from dataclasses import dataclass
 import hashlib
 import json
 import mimetypes
@@ -23,17 +23,25 @@ import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 from fiftyone.multimodal.media import (
     LEROBOT_EPISODE_KIND,
-    EpisodeAsset,
-    EpisodeAssetManifest,
-    EpisodeResolver,
+    DatasetRelativeLocation,
+    InvalidMediaLocationError,
     LeRobotEpisode,
+    LeRobotImageLocator,
+    LeRobotV3Locator,
+    LeRobotVideoLocator,
     MalformedMediaSourceError,
+    MediaAssetManifest,
+    MediaResolver,
     MissingMediaRootError,
     MovedMediaRootError,
-    register_episode_resolver,
+    RowInterval,
     StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
     UnsupportedMediaReferenceVersionError,
+    VideoTimestampInterval,
+    build_resolved_media_asset,
+    get_media_resolver,
+    register_media_resolver,
 )
 import fiftyone.utils.data.importers as foud
 
@@ -59,6 +67,25 @@ _REQUIRED_EPISODE_FIELDS = {
     "length",
     "tasks",
 }
+
+
+@dataclass(frozen=True)
+class _LocalLeRobotSourceBinding:
+    root: str
+    source_fingerprint: str
+
+
+@dataclass(frozen=True)
+class _InspectedLeRobotSource:
+    root: str
+    info: dict
+    codebase_version: str
+    rows: tuple
+    asset_fingerprints: dict
+    source_fingerprint: str
+
+
+_SOURCE_BINDINGS = {}
 
 
 class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
@@ -119,7 +146,7 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
             "episode_index": fof.IntField(),
             "task": fof.StringField(),
             "tasks": fof.ListField(fof.StringField()),
-            "frame_count": fof.IntField(),
+            "length": fof.IntField(),
             "duration": fof.FloatField(),
             "robot_type": fof.StringField(),
             "fps": fof.FloatField(),
@@ -129,35 +156,19 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         return deepcopy(self._dataset_info)
 
     def setup(self):
-        root = _validate_dataset_root(self.dataset_dir)
-        info_path = _resolve_under_root(root, "meta/info.json")
-        info, info_bytes = _load_info(info_path)
-        codebase_version = _validate_v3_info(info)
+        resolver = get_media_resolver(LEROBOT_EPISODE_KIND)
+        if not isinstance(resolver, LeRobotMediaResolver):
+            raise TypeError("Registered LeRobot resolver has the wrong type")
 
-        metadata_paths = sorted(
-            etau.list_files(
-                os.path.join(root, "meta", "episodes"),
-                recursive=True,
-                abs_paths=True,
-            )
-        )
-        metadata_paths = [
-            path for path in metadata_paths if path.endswith(".parquet")
-        ]
-        if not metadata_paths:
-            raise MalformedMediaSourceError(
-                "LeRobot source has no episode metadata Parquet shards under "
-                "meta/episodes"
-            )
-
-        rows, shard_bytes = _read_episode_metadata(root, metadata_paths)
-        asset_fingerprints = _validate_source_assets(root, info, rows)
-        source_fingerprint = _compute_source_fingerprint(
-            info, info_bytes, shard_bytes, asset_fingerprints
-        )
+        source = resolver.inspect_local_source(self.dataset_dir)
+        root = source.root
+        info = source.info
+        rows = source.rows
+        codebase_version = source.codebase_version
+        source_fingerprint = source.source_fingerprint
         source_identity = self.source_identity
         if source_identity is None:
-            source_identity = "local:sha256:%s" % source_fingerprint
+            source_identity = "local:%s" % source_fingerprint
         elif (
             not isinstance(source_identity, str) or not source_identity.strip()
         ):
@@ -192,17 +203,10 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         samples = []
         for episode_index in selected_indexes:
             row = rows_by_index[episode_index]
-            locator = _build_locator(
-                root,
-                info,
-                row,
-                rows,
-                source_fingerprint,
-                asset_fingerprints,
-            )
+            locator = resolver.build_locator(source, row)
             reference = LeRobotEpisode(
                 source_identity=source_identity,
-                dataset_root=root,
+                source_fingerprint=source_fingerprint,
                 episode_index=episode_index,
                 codebase_version=codebase_version,
                 locator=locator,
@@ -214,7 +218,7 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
                 episode_index=episode_index,
                 task=tasks[0] if tasks else None,
                 tasks=tasks,
-                frame_count=frame_count,
+                length=frame_count,
                 duration=frame_count / fps,
                 robot_type=robot_type,
                 fps=fps,
@@ -223,154 +227,189 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
 
         self.dataset_dir = root
         self._samples = samples
+        bind_lerobot_source(source_identity, root, source_fingerprint)
         self._dataset_info = {
             "lerobot": {
                 "source_identity": source_identity,
-                "dataset_root": root,
                 "format": "LeRobotDataset",
                 "format_major": 3,
                 "codebase_version": codebase_version,
                 "source_fingerprint": source_fingerprint,
+                "source_binding_required": True,
                 "episode_count": len(rows_by_index),
                 "imported_episode_count": len(samples),
             }
         }
 
 
-class LeRobotEpisodeResolver(EpisodeResolver):
-    """Resolves validated LeRobot v3 locators into episode manifests."""
+def bind_lerobot_source(source_identity, dataset_root, source_fingerprint):
+    """Binds a LeRobot source identity to an authorized local root."""
+    if not isinstance(source_identity, str) or not source_identity.strip():
+        raise ValueError("source_identity must be a non-empty string")
 
-    def resolve_assets(self, episode):
-        if not isinstance(episode, LeRobotEpisode):
-            raise TypeError("LeRobotEpisodeResolver requires a LeRobotEpisode")
+    if not dataset_root:
+        raise MissingMediaRootError("A local LeRobot dataset root is required")
 
-        _validate_declared_v3_version(episode.codebase_version)
-        root = _validate_resolver_root(episode)
+    root = os.path.realpath(fos.normalize_path(dataset_root))
+    if not isinstance(source_fingerprint, str) or not source_fingerprint:
+        raise ValueError("source_fingerprint must be a non-empty string")
+
+    _SOURCE_BINDINGS[source_identity.strip()] = _LocalLeRobotSourceBinding(
+        root=root,
+        source_fingerprint=source_fingerprint,
+    )
+
+
+def unbind_lerobot_source(source_identity):
+    """Removes the local binding for a LeRobot source identity."""
+    _SOURCE_BINDINGS.pop(source_identity, None)
+
+
+class LeRobotMediaResolver(MediaResolver):
+    """Resolves typed LeRobot v3 assets through server-side source bindings."""
+
+    def inspect_local_source(self, dataset_root):
+        """Reads and validates one local v3 source for the importer."""
+        root = _validate_dataset_root(dataset_root)
         info_path = _resolve_under_root(root, "meta/info.json")
+        info, info_bytes = _load_info(info_path)
+        codebase_version = _validate_v3_info(info)
+
+        metadata_paths = sorted(
+            etau.list_files(
+                os.path.join(root, "meta", "episodes"),
+                recursive=True,
+                abs_paths=True,
+            )
+        )
+        metadata_paths = [
+            path for path in metadata_paths if path.endswith(".parquet")
+        ]
+        if not metadata_paths:
+            raise MalformedMediaSourceError(
+                "LeRobot source has no episode metadata Parquet shards under "
+                "meta/episodes"
+            )
+
+        rows, shard_bytes = _read_episode_metadata(root, metadata_paths)
+        for relative_path in ("meta/stats.json", "meta/tasks.parquet"):
+            path = _resolve_under_root(root, relative_path)
+            if not os.path.isfile(path):
+                continue
+
+            raw = _read_bytes(path)
+            if relative_path.endswith(".parquet"):
+                _open_parquet(path, "shared metadata")
+            shard_bytes.append((relative_path, raw))
+
+        asset_fingerprints = _validate_source_assets(root, info, rows)
+        source_fingerprint = "sha256:" + _compute_source_fingerprint(
+            info, info_bytes, shard_bytes, asset_fingerprints
+        )
+        return _InspectedLeRobotSource(
+            root=root,
+            info=info,
+            codebase_version=codebase_version,
+            rows=tuple(rows),
+            asset_fingerprints=asset_fingerprints,
+            source_fingerprint=source_fingerprint,
+        )
+
+    def build_locator(self, source, row):
+        """Builds one typed locator from an inspected source snapshot."""
+        if not isinstance(source, _InspectedLeRobotSource):
+            raise TypeError("source must be an inspected LeRobot source")
+
+        return _build_locator(
+            source.root,
+            source.info,
+            row,
+            source.rows,
+            source.source_fingerprint,
+            source.asset_fingerprints,
+        )
+
+    def resolve_assets(self, reference, assets):
+        if not isinstance(reference, LeRobotEpisode):
+            raise TypeError("LeRobotMediaResolver requires a LeRobotEpisode")
+
+        described_assets = reference.describe_assets()
+        if tuple(assets) != described_assets:
+            raise InvalidMediaLocationError(
+                "LeRobot assets must come from MediaReference.describe_assets()"
+            )
+
+        _validate_declared_v3_version(reference.codebase_version)
+        root = _validate_resolver_root(reference)
+        locator = reference.locator
+        info_path = _resolve_under_root(root, locator.info_location.path)
         info, info_bytes = _load_info(info_path)
         detected_version = _validate_v3_info(info)
 
-        locator = deepcopy(dict(episode.locator))
-        _validate_locator_shape(episode, locator)
-        metadata = locator["episode_metadata"]
-        metadata_path = _resolve_under_root(root, metadata["relative_path"])
-        row_index = metadata["row_index"]
-        row = _read_episode_metadata_row(root, metadata_path, row_index)
+        metadata_path = _resolve_under_root(
+            root, locator.episode_metadata_location.path
+        )
+        row = _read_episode_metadata_row(
+            root, metadata_path, locator.episode_metadata_row
+        )
         metadata_bytes = _read_bytes(metadata_path)
-        if row["episode_index"] != episode.episode_index:
+        if row["episode_index"] != reference.episode_index:
             raise StaleMediaReferenceError(
                 "LeRobot episode metadata row now identifies another episode"
             )
 
-        current_fingerprint = _compute_locator_fingerprint(
+        current_fingerprint = "sha256:" + _compute_locator_fingerprint(
             info,
             info_bytes,
-            metadata["relative_path"],
+            locator.episode_metadata_location.path,
             metadata_bytes,
         )
-        expected_fingerprint = locator["locator_fingerprint"]
-        if current_fingerprint != expected_fingerprint:
+        if current_fingerprint != locator.locator_fingerprint:
             raise StaleMediaReferenceError(
                 "LeRobot source layout changed since import; re-import the "
                 "dataset to refresh its episode locators"
             )
 
-        assets = [
-            _make_asset(
-                episode,
-                root,
-                "info",
-                "meta/info.json",
-            )
-        ]
-        assets.append(
-            _make_asset(
-                episode,
-                root,
-                "metadata",
-                metadata["relative_path"],
-                coordinates={"row_index": row_index},
-            )
-        )
-        data = locator["data"]
         _validate_asset_fingerprint(
-            root, data["relative_path"], data["content_fingerprint"]
+            root,
+            locator.data_location.path,
+            locator.data_content_fingerprint,
         )
-        _validate_resolved_data_slice(root, episode, data)
-        assets.append(
-            _make_asset(
-                episode,
-                root,
-                "data",
-                data["relative_path"],
-                coordinates={
-                    "chunk_index": data["chunk_index"],
-                    "file_index": data["file_index"],
-                    "global_dataset_row_range": data[
-                        "global_dataset_row_range"
-                    ],
-                    "shard_row_range": data["shard_row_range"],
-                    "row_groups": data["row_groups"],
-                },
-            )
-        )
-        for feature_name, image in sorted(locator["images"].items()):
-            assets.append(
-                _make_asset(
-                    episode,
-                    root,
-                    "image",
-                    image["data_relative_path"],
-                    feature_name=feature_name,
-                    coordinates={
-                        "global_dataset_row_range": data[
-                            "global_dataset_row_range"
-                        ],
-                        "shard_row_range": data["shard_row_range"],
-                        "row_groups": data["row_groups"],
-                    },
-                )
-            )
+        for location, fingerprint in (
+            (
+                locator.statistics_location,
+                locator.statistics_content_fingerprint,
+            ),
+            (locator.tasks_location, locator.tasks_content_fingerprint),
+        ):
+            if location is not None:
+                _validate_asset_fingerprint(root, location.path, fingerprint)
 
-        for feature_name, video in sorted(locator["videos"].items()):
+        _validate_resolved_data_slice(root, reference, locator)
+        for video in locator.videos:
             _validate_asset_fingerprint(
-                root,
-                video["relative_path"],
-                video["content_fingerprint"],
-            )
-            assets.append(
-                _make_asset(
-                    episode,
-                    root,
-                    "video",
-                    video["relative_path"],
-                    feature_name=feature_name,
-                    coordinates={
-                        "chunk_index": video["chunk_index"],
-                        "file_index": video["file_index"],
-                        "episode_time_range_seconds": video[
-                            "episode_time_range_seconds"
-                        ],
-                    },
-                )
+                root, video.location.path, video.content_fingerprint
             )
 
+        resolved_assets = tuple(
+            _resolve_media_asset(reference, root, asset) for asset in assets
+        )
         tasks = tuple(row["tasks"] or [])
         fps = float(info["fps"])
         frame_count = int(row["length"])
-        time_range = _episode_time_range(row, locator["videos"], fps)
-        return EpisodeAssetManifest(
-            media_reference_key=episode.key,
-            episode_index=episode.episode_index,
-            declared_codebase_version=episode.codebase_version,
+        time_range = _episode_time_range(row, locator.videos, fps)
+        return MediaAssetManifest(
+            media_reference_key=reference.key,
+            episode_index=reference.episode_index,
+            declared_codebase_version=reference.codebase_version,
             detected_codebase_version=detected_version,
             fps=fps,
             robot_type=info.get("robot_type", None),
             task_labels=tasks,
             frame_count=frame_count,
             time_range_seconds=time_range,
-            source_fingerprint=locator["source_fingerprint"],
-            assets=tuple(assets),
+            source_fingerprint=reference.source_fingerprint,
+            assets=resolved_assets,
         )
 
 
@@ -392,15 +431,26 @@ def _validate_dataset_root(dataset_root):
     return os.path.realpath(root)
 
 
-def _validate_resolver_root(episode):
+def _validate_resolver_root(reference):
+    binding = _SOURCE_BINDINGS.get(reference.source_identity)
+    if binding is None:
+        raise MissingMediaRootError(
+            "No authorized source binding exists for this LeRobot dataset"
+        )
+
+    if binding.source_fingerprint != reference.source_fingerprint:
+        raise StaleMediaReferenceError(
+            "The LeRobot source binding fingerprint does not match the reference"
+        )
+
     try:
-        return _validate_dataset_root(episode.dataset_root)
+        return _validate_dataset_root(binding.root)
     except MissingMediaRootError as exc:
-        parent = os.path.dirname(episode.dataset_root)
+        parent = os.path.dirname(binding.root)
         if os.path.isdir(parent):
             raise MovedMediaRootError(
                 "LeRobot source root moved or was renamed; relocate the "
-                "stored media reference before resolving assets"
+                "server-side source binding before resolving assets"
             ) from exc
 
         raise
@@ -726,7 +776,7 @@ def _build_locator(
     parquet_file = _open_parquet(data_path, "episode data")
     row_groups = _overlapping_row_groups(parquet_file, shard_start, shard_end)
 
-    videos = {}
+    videos = []
     for feature_name in _video_features(info):
         prefix = "videos/%s/" % feature_name
         video_chunk_index = row[prefix + "chunk_index"]
@@ -738,186 +788,105 @@ def _build_locator(
             file_index=video_file_index,
         )
         _resolve_under_root(root, video_relative_path)
-        videos[feature_name] = {
-            "relative_path": video_relative_path,
-            "content_fingerprint": asset_fingerprints[video_relative_path],
-            "chunk_index": video_chunk_index,
-            "file_index": video_file_index,
-            "episode_time_range_seconds": {
-                "coordinate_system": "video-shard-seconds",
-                "start": float(row[prefix + "from_timestamp"]),
-                "end": float(row[prefix + "to_timestamp"]),
-                "interval": "half-open",
-            },
-        }
+        videos.append(
+            LeRobotVideoLocator(
+                feature_name=feature_name,
+                location=DatasetRelativeLocation(video_relative_path),
+                chunk_index=video_chunk_index,
+                file_index=video_file_index,
+                timestamps=VideoTimestampInterval(
+                    row[prefix + "from_timestamp"],
+                    row[prefix + "to_timestamp"],
+                ),
+                content_fingerprint=asset_fingerprints[video_relative_path],
+            )
+        )
 
-    images = {}
+    images = []
     for feature_name, feature in info["features"].items():
         if feature.get("dtype") == "image":
-            images[feature_name] = {
-                "feature_info": deepcopy(feature.get("info", {})),
-                "data_relative_path": data_relative_path,
-            }
+            images.append(
+                LeRobotImageLocator(
+                    feature_name=feature_name,
+                    location=DatasetRelativeLocation(data_relative_path),
+                )
+            )
 
     metadata_relative_path = row["_metadata_relative_path"]
     metadata_path = _resolve_under_root(root, metadata_relative_path)
     metadata_bytes = _read_bytes(metadata_path)
     info_path = _resolve_under_root(root, "meta/info.json")
     info_bytes = _read_bytes(info_path)
-    locator_fingerprint = _compute_locator_fingerprint(
+    locator_fingerprint = "sha256:" + _compute_locator_fingerprint(
         info, info_bytes, metadata_relative_path, metadata_bytes
     )
-    return {
-        "source_fingerprint": source_fingerprint,
-        "locator_fingerprint": locator_fingerprint,
-        "episode_metadata": {
-            "relative_path": metadata_relative_path,
-            "row_index": row["_metadata_row_index"],
-        },
-        "global_dataset_row_range": {
-            "coordinate_system": "dataset-global-row",
-            "start": row["dataset_from_index"],
-            "end": row["dataset_to_index"],
-            "interval": "half-open",
-        },
-        "data": {
-            "relative_path": data_relative_path,
-            "content_fingerprint": asset_fingerprints[data_relative_path],
-            "chunk_index": chunk_index,
-            "file_index": file_index,
-            "shard_global_row_base": shard_base,
-            "global_dataset_row_range": {
-                "coordinate_system": "dataset-global-row",
-                "start": row["dataset_from_index"],
-                "end": row["dataset_to_index"],
-                "interval": "half-open",
-            },
-            "shard_row_range": {
-                "coordinate_system": "parquet-shard-row",
-                "start": shard_start,
-                "end": shard_end,
-                "interval": "half-open",
-            },
-            "row_groups": row_groups,
-        },
-        "videos": videos,
-        "images": images,
-    }
-
-
-def _validate_locator_shape(episode, locator):
-    required = {
-        "data",
-        "episode_metadata",
-        "global_dataset_row_range",
-        "images",
-        "locator_fingerprint",
-        "source_fingerprint",
-        "videos",
-    }
-    if set(locator) != required:
-        raise StaleMediaReferenceError(
-            "LeRobot locator has an unsupported or malformed shape"
-        )
-
-    _validate_locator_range(
-        locator["global_dataset_row_range"], "dataset-global-row"
+    stats_path = "meta/stats.json"
+    tasks_path = "meta/tasks.parquet"
+    has_stats = os.path.isfile(_resolve_under_root(root, stats_path))
+    has_tasks = os.path.isfile(_resolve_under_root(root, tasks_path))
+    return LeRobotV3Locator(
+        schema_version=1,
+        source_fingerprint=source_fingerprint,
+        locator_fingerprint=locator_fingerprint,
+        info_location=DatasetRelativeLocation("meta/info.json"),
+        statistics_location=(
+            DatasetRelativeLocation(stats_path) if has_stats else None
+        ),
+        statistics_content_fingerprint=(
+            _sha256_file(_resolve_under_root(root, stats_path))
+            if has_stats
+            else None
+        ),
+        tasks_location=(
+            DatasetRelativeLocation(tasks_path) if has_tasks else None
+        ),
+        tasks_content_fingerprint=(
+            _sha256_file(_resolve_under_root(root, tasks_path))
+            if has_tasks
+            else None
+        ),
+        episode_metadata_location=DatasetRelativeLocation(
+            metadata_relative_path
+        ),
+        episode_metadata_row=row["_metadata_row_index"],
+        data_location=DatasetRelativeLocation(data_relative_path),
+        data_content_fingerprint=asset_fingerprints[data_relative_path],
+        data_chunk_index=chunk_index,
+        data_file_index=file_index,
+        global_dataset_rows=RowInterval(
+            "lerobot-v3-global-dataset-row",
+            row["dataset_from_index"],
+            row["dataset_to_index"],
+        ),
+        parquet_file_rows=RowInterval(
+            "parquet-file-row", shard_start, shard_end
+        ),
+        parquet_row_groups=tuple(row_groups),
+        videos=tuple(videos),
+        images=tuple(images),
     )
 
-    metadata = locator["episode_metadata"]
-    if not isinstance(metadata, Mapping) or (
-        not isinstance(metadata.get("row_index"), int)
-        or metadata["row_index"] < 0
-    ):
-        raise StaleMediaReferenceError(
-            "LeRobot locator has an invalid episode metadata row"
-        )
 
-    data = locator["data"]
-    if not isinstance(data, Mapping):
-        raise StaleMediaReferenceError(
-            "LeRobot locator has malformed data coordinates"
-        )
-
-    _validate_locator_range(
-        data.get("global_dataset_row_range"), "dataset-global-row"
-    )
-    _validate_locator_range(data.get("shard_row_range"), "parquet-shard-row")
-    row_groups = data.get("row_groups")
-    if (
-        not isinstance(row_groups, list)
-        or not row_groups
-        or any(
-            isinstance(index, bool) or not isinstance(index, int) or index < 0
-            for index in row_groups
-        )
-        or row_groups != sorted(set(row_groups))
-    ):
-        raise StaleMediaReferenceError(
-            "LeRobot locator has invalid Parquet row groups"
-        )
-
-    if not isinstance(locator["images"], Mapping) or not isinstance(
-        locator["videos"], Mapping
-    ):
-        raise StaleMediaReferenceError(
-            "LeRobot locator has malformed stream coordinates"
-        )
-
-
-def _validate_locator_range(bounds, coordinate_system):
-    if not isinstance(bounds, Mapping):
-        raise StaleMediaReferenceError(
-            "LeRobot locator has malformed %s bounds" % coordinate_system
-        )
-
-    start = bounds.get("start")
-    end = bounds.get("end")
-    if (
-        isinstance(start, bool)
-        or not isinstance(start, int)
-        or isinstance(end, bool)
-        or not isinstance(end, int)
-        or start < 0
-        or start >= end
-        or bounds.get("coordinate_system") != coordinate_system
-        or bounds.get("interval") != "half-open"
-    ):
-        raise StaleMediaReferenceError(
-            "LeRobot locator has invalid %s bounds" % coordinate_system
-        )
-
-
-def _make_asset(
-    episode,
-    root,
-    role,
-    relative_path,
-    feature_name=None,
-    coordinates=None,
-):
-    path = _resolve_under_root(root, relative_path)
+def _resolve_media_asset(reference, root, asset):
+    path = _resolve_under_root(root, asset.location.path)
     if not os.path.isfile(path):
         raise StaleMediaReferenceError(
-            "LeRobot %s asset '%s' is missing" % (role, relative_path)
+            "LeRobot %s asset '%s' is missing"
+            % (asset.role.value, asset.location.path)
         )
 
-    asset_identity = "%s\0%s\0%s" % (
-        "%s\0%s"
-        % (episode.key, episode.locator.get("source_fingerprint", "")),
-        role,
-        feature_name or relative_path,
-    )
-    asset_id = hashlib.sha256(asset_identity.encode("utf-8")).hexdigest()
-    media_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
-    return EpisodeAsset(
-        asset_id=asset_id,
-        role=role,
+    media_type = asset.media_type
+    if media_type is None:
+        media_type = (
+            mimetypes.guess_type(path)[0] or "application/octet-stream"
+        )
+
+    return build_resolved_media_asset(
+        reference,
+        asset,
         path=path,
         size_bytes=os.path.getsize(path),
         media_type=media_type,
-        feature_name=feature_name,
-        coordinates=coordinates or {},
     )
 
 
@@ -954,14 +923,8 @@ def _video_features(info):
 
 def _episode_time_range(row, videos, fps):
     if videos:
-        starts = [
-            video["episode_time_range_seconds"]["start"]
-            for video in videos.values()
-        ]
-        ends = [
-            video["episode_time_range_seconds"]["end"]
-            for video in videos.values()
-        ]
+        starts = [video.timestamps.from_timestamp for video in videos]
+        ends = [video.timestamps.to_timestamp for video in videos]
         return (min(starts), max(ends))
 
     return (0.0, row["length"] / fps)
@@ -1065,7 +1028,7 @@ def _sha256_file(path):
             "Unable to fingerprint LeRobot source asset '%s'" % path
         ) from exc
 
-    return digest.hexdigest()
+    return "sha256:" + digest.hexdigest()
 
 
 def _validate_asset_fingerprint(root, relative_path, expected):
@@ -1083,10 +1046,10 @@ def _validate_asset_fingerprint(root, relative_path, expected):
         )
 
 
-def _validate_resolved_data_slice(root, episode, data):
-    path = _resolve_under_root(root, data["relative_path"])
+def _validate_resolved_data_slice(root, episode, locator):
+    path = _resolve_under_root(root, locator.data_location.path)
     parquet_file = _open_parquet(path, "episode data")
-    row_groups = data["row_groups"]
+    row_groups = locator.parquet_row_groups
     if not row_groups:
         raise StaleMediaReferenceError(
             "LeRobot episode data locator has no Parquet row groups"
@@ -1105,9 +1068,9 @@ def _validate_resolved_data_slice(root, episode, data):
             "LeRobot episode data row groups no longer match the source"
         ) from exc
 
-    bounds = data["shard_row_range"]
-    local_start = bounds["start"] - group_start
-    length = bounds["end"] - bounds["start"]
+    bounds = locator.parquet_file_rows
+    local_start = bounds.start - group_start
+    length = bounds.end - bounds.start
     selected = table.slice(local_start, length)
     if selected.num_rows != length or any(
         value != episode.episode_index
@@ -1127,7 +1090,7 @@ def _validate_declared_v3_version(version):
         )
 
 
-register_episode_resolver(
+register_media_resolver(
     LEROBOT_EPISODE_KIND,
-    LeRobotEpisodeResolver(),
+    LeRobotMediaResolver(),
 )

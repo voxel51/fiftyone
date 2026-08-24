@@ -1857,9 +1857,18 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
     def import_samples(self, dataset, tags=None, progress=None):
         dataset_dict = foo.import_document(self._metadata_path)
+        from fiftyone.multimodal.media import (
+            MEDIA_REFERENCE_DATASET_REVISION,
+        )
 
-        if len(dataset) > 0 and fomi.needs_migration(
-            head=dataset_dict["version"]
+        media_reference_revision = (
+            dataset_dict["version"] == MEDIA_REFERENCE_DATASET_REVISION
+        )
+
+        if (
+            len(dataset) > 0
+            and not media_reference_revision
+            and fomi.needs_migration(head=dataset_dict["version"])
         ):
             # A migration is required in order to load this dataset, and the
             # dataset we're loading into is non-empty, so we must first load
@@ -1869,7 +1878,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
             try:
                 sample_ids = self._import_samples(
-                    tmp_dataset, dataset_dict, tags=tags, progress=progress
+                    tmp_dataset,
+                    dataset_dict,
+                    tags=tags,
+                    progress=progress,
+                    media_reference_revision=media_reference_revision,
                 )
                 dataset.add_collection(tmp_dataset)
             finally:
@@ -1877,7 +1890,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         else:
             sample_ids = self._import_samples(
-                dataset, dataset_dict, tags=tags, progress=progress
+                dataset,
+                dataset_dict,
+                tags=tags,
+                progress=progress,
+                media_reference_revision=media_reference_revision,
             )
 
         fota.import_tags(
@@ -1889,7 +1906,14 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         return sample_ids
 
-    def _import_samples(self, dataset, dataset_dict, tags=None, progress=None):
+    def _import_samples(
+        self,
+        dataset,
+        dataset_dict,
+        tags=None,
+        progress=None,
+        media_reference_revision=False,
+    ):
         name = dataset.name
         empty_import = not bool(dataset)
         now = datetime.utcnow()
@@ -1990,7 +2014,26 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         dataset_id = dataset._doc.id
 
         def _parse_sample(sd):
-            if not os.path.isabs(sd["filepath"]):
+            media_reference = sd.get("_media_reference")
+            if media_reference is not None:
+                from fiftyone.multimodal.media import (
+                    MediaReferenceError,
+                    validate_media_source,
+                )
+
+                if not media_reference_revision:
+                    raise MediaReferenceError(
+                        "Native media-reference imports must declare dataset "
+                        "revision %s" % MEDIA_REFERENCE_DATASET_REVISION
+                    )
+
+                validate_media_source(sd.get("filepath"), media_reference)
+                if sd.get("_media_type") != media_reference["media_type"]:
+                    raise ValueError(
+                        "Native media-reference import has inconsistent "
+                        "persisted media type"
+                    )
+            elif not os.path.isabs(sd["filepath"]):
                 sd["filepath"] = fos.normpath(
                     os.path.join(rel_dir, sd["filepath"])
                 )
@@ -2104,7 +2147,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         # Migrate dataset if necessary
         #
 
-        fomi.migrate_dataset_if_necessary(name)
+        if not media_reference_revision:
+            fomi.migrate_dataset_if_necessary(name)
         dataset._reload(hard=True)
 
         return sample_ids

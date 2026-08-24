@@ -19,22 +19,63 @@ from mongoengine import ValidationError
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.types as fot
 from fiftyone.multimodal.media import (
+    DatasetRelativeLocation,
+    InvalidMediaLocationError,
     LeRobotEpisode,
+    LeRobotV3Locator,
     MEDIA_REFERENCE_DATASET_REVISION,
+    MediaAsset,
+    MediaAssetRole,
     MediaReferenceError,
+    RowInterval,
     UnsupportedMediaReferenceOperation,
+    WholeFile,
+    get_selected_media_asset_key,
+    get_shared_media_asset_key,
     serialize_media_reference,
 )
 
+_SOURCE_FINGERPRINT = "sha256:" + "1" * 64
 
-def _make_reference(episode_index, root="/tmp/lerobot"):
+
+def _make_reference(episode_index):
+    start = episode_index * 2
     return LeRobotEpisode(
         source_identity="hub:org/dataset@revision",
-        dataset_root=root,
+        source_fingerprint=_SOURCE_FINGERPRINT,
         episode_index=episode_index,
         codebase_version="v3.2",
-        locator={"episode_index": episode_index},
+        locator=LeRobotV3Locator(
+            schema_version=1,
+            source_fingerprint=_SOURCE_FINGERPRINT,
+            locator_fingerprint="sha256:" + "2" * 64,
+            info_location=DatasetRelativeLocation("meta/info.json"),
+            statistics_location=None,
+            statistics_content_fingerprint=None,
+            tasks_location=None,
+            tasks_content_fingerprint=None,
+            episode_metadata_location=DatasetRelativeLocation(
+                "meta/episodes/part-000.parquet"
+            ),
+            episode_metadata_row=episode_index,
+            data_location=DatasetRelativeLocation(
+                "data/chunk-000/file-000.parquet"
+            ),
+            data_content_fingerprint="sha256:" + "3" * 64,
+            data_chunk_index=0,
+            data_file_index=0,
+            global_dataset_rows=RowInterval(
+                "lerobot-v3-global-dataset-row", start, start + 2
+            ),
+            parquet_file_rows=RowInterval(
+                "parquet-file-row", start, start + 2
+            ),
+            parquet_row_groups=(0,),
+            videos=(),
+            images=(),
+        ),
     )
 
 
@@ -56,21 +97,87 @@ def _private_values(dataset, field_name):
 
 class MediaReferenceDomainTests(unittest.TestCase):
     def test_stable_domain_identity_and_pickling(self):
-        first = _make_reference(17, root="/one")
-        relocated = _make_reference(17, root="/two")
-        next_episode = _make_reference(18, root="/one")
+        first = _make_reference(17)
+        same_episode = _make_reference(17)
+        next_episode = _make_reference(18)
 
-        self.assertEqual(first.key, relocated.key)
+        self.assertEqual(first.key, same_episode.key)
         self.assertNotEqual(first.key, next_episode.key)
         self.assertEqual(first.display_name, "episode-000017")
         self.assertEqual(first.media_type, "multimodal")
+        self.assertFalse(hasattr(first, "resolve_filepath"))
+        self.assertFalse(hasattr(first, "dataset_root"))
         self.assertEqual(
-            first.resolve_filepath(), os.path.join("/one", "meta", "info.json")
+            first.describe_assets()[0].location,
+            next_episode.describe_assets()[0].location,
         )
         self.assertEqual(
-            first.resolve_filepath(), next_episode.resolve_filepath()
+            get_shared_media_asset_key(first, first.describe_assets()[0]),
+            get_shared_media_asset_key(
+                next_episode, next_episode.describe_assets()[0]
+            ),
+        )
+        self.assertNotEqual(
+            get_selected_media_asset_key(first, first.describe_assets()[-1]),
+            get_selected_media_asset_key(
+                next_episode, next_episode.describe_assets()[-1]
+            ),
         )
         self.assertEqual(pickle.loads(pickle.dumps(first)), first)
+
+    def test_typed_asset_description_validation(self):
+        reference = _make_reference(3)
+        assets = reference.describe_assets()
+        self.assertTrue(all(isinstance(asset, MediaAsset) for asset in assets))
+        self.assertEqual(assets[0].role, MediaAssetRole.DATASET_INFO)
+
+        invalid_paths = (
+            "/absolute/file.json",
+            "../outside.json",
+            "meta//info.json",
+            "C:/dataset/info.json",
+            "meta\\info.json",
+        )
+        for path in invalid_paths:
+            with self.subTest(path=path), self.assertRaises(
+                InvalidMediaLocationError
+            ):
+                DatasetRelativeLocation(path)
+
+        with self.assertRaises(MediaReferenceError):
+            RowInterval("unknown-rows", 0, 1)
+        with self.assertRaises(MediaReferenceError):
+            RowInterval("parquet-file-row", 1, 1)
+        with self.assertRaises(TypeError):
+            MediaAsset(
+                "other",
+                DatasetRelativeLocation("meta/info.json"),
+                WholeFile(),
+            )
+
+        shared_location = DatasetRelativeLocation(
+            "data/chunk-000/file-000.parquet"
+        )
+        left = MediaAsset(
+            MediaAssetRole.IMAGE_PAYLOAD,
+            shared_location,
+            RowInterval("parquet-file-row", 0, 2),
+            feature_name="observation.images.left",
+        )
+        right = MediaAsset(
+            MediaAssetRole.IMAGE_PAYLOAD,
+            shared_location,
+            RowInterval("parquet-file-row", 0, 2),
+            feature_name="observation.images.right",
+        )
+        self.assertEqual(
+            get_shared_media_asset_key(reference, left),
+            get_shared_media_asset_key(reference, right),
+        )
+        self.assertNotEqual(
+            get_selected_media_asset_key(reference, left),
+            get_selected_media_asset_key(reference, right),
+        )
 
     def test_public_construction_and_assignment_guards(self):
         sample = fo.Sample.from_media_reference(_make_reference(1), value=1)
@@ -162,8 +269,8 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
         with mock.patch.object(
             LeRobotEpisode,
-            "resolve_filepath",
-            side_effect=AssertionError("iteration resolved physical media"),
+            "describe_assets",
+            side_effect=AssertionError("iteration described physical media"),
         ):
             loaded = list(dataset.iter_samples())
             selected = list(
@@ -253,6 +360,49 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(_reference_keys(from_json), expected_keys)
         self.assertEqual(_private_values(from_json, "_rand"), expected_rand)
 
+        with tempfile.TemporaryDirectory() as export_dir:
+            native_dir = os.path.join(export_dir, "native")
+            dataset.export(
+                export_dir=native_dir,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=True,
+            )
+            samples_path = os.path.join(native_dir, "samples.json")
+            with open(samples_path) as file:
+                exported_document = json.load(file)
+
+            exported_samples = exported_document["samples"]
+
+            self.assertTrue(
+                all("filepath" not in sample for sample in exported_samples)
+            )
+            self.assertTrue(
+                all(
+                    "_media_reference" in sample for sample in exported_samples
+                )
+            )
+
+            imported = fo.Dataset.from_dir(
+                dataset_dir=native_dir,
+                dataset_type=fot.FiftyOneDataset,
+            )
+
+            exported_samples[0]["filepath"] = "/tmp/injected.jpg"
+            with open(samples_path, "w") as file:
+                json.dump(exported_document, file)
+
+            malformed_name = "malformed-native-media-reference"
+            with self.assertRaises(MediaReferenceError):
+                fo.Dataset.from_dir(
+                    dataset_dir=native_dir,
+                    dataset_type=fot.FiftyOneDataset,
+                    name=malformed_name,
+                )
+            self.assertFalse(fo.dataset_exists(malformed_name))
+
+        self.assertEqual(_reference_keys(imported), expected_keys)
+        self.assertEqual(_private_values(imported, "_rand"), expected_rand)
+
     @drop_datasets
     def test_duplicate_merge_and_mixed_identity_guards(self):
         source = fo.Dataset()
@@ -313,7 +463,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
             dataset = fo.Dataset()
             dataset.add_sample(
-                fo.Sample.from_media_reference(_make_reference(1, root=root))
+                fo.Sample.from_media_reference(_make_reference(1))
             )
             self.assertEqual(dataset.values("filepath"), [None])
 
@@ -328,14 +478,15 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             with self.assertRaises(UnsupportedMediaReferenceOperation):
                 dataset.compute_metadata()
             with self.assertRaises(UnsupportedMediaReferenceOperation):
-                dataset.export(export_dir=os.path.join(root, "export"))
+                dataset.export(
+                    export_dir=os.path.join(root, "export"),
+                    dataset_type=fot.ImageDirectory,
+                )
 
             live = dataset.first()
             dataset.delete_samples(live.id)
             self.assertFalse(live.in_dataset)
-            self.assertEqual(
-                live.media_reference.key, _make_reference(1, root=root).key
-            )
+            self.assertEqual(live.media_reference.key, _make_reference(1).key)
             self.assertTrue(os.path.isfile(anchor))
 
 

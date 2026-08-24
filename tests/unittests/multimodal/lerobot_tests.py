@@ -7,7 +7,6 @@ LeRobotDataset v3 importer and episode asset transport tests.
 """
 
 import asyncio
-from copy import deepcopy
 import json
 import os
 import shutil
@@ -31,6 +30,7 @@ from fiftyone.multimodal.media import (
     MovedMediaRootError,
     StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
+    UnsupportedLeRobotExportModeError,
     UnsupportedMediaReferenceVersionError,
 )
 from fiftyone.server import utils as fosu
@@ -38,7 +38,11 @@ from fiftyone.server.routes.groups import _filter_dict_by_fields
 from fiftyone.server.routes.media_reference import MediaReferenceRoutes
 from fiftyone.server.routes.sample import SampleRoutes, generate_sample_etag
 from fiftyone.server.samples import _create_sample_item
-from fiftyone.utils.lerobot import LeRobotEpisodeResolver
+from fiftyone.utils.lerobot import (
+    bind_lerobot_source,
+    LeRobotMediaResolver,
+    unbind_lerobot_source,
+)
 
 _VIDEO_FEATURE = "observation.images.front"
 
@@ -57,12 +61,22 @@ def _write_v3_source(root, version="v3.2", episodes=10):
         "fps": 10,
         "robot_type": "so101",
         "total_episodes": episodes,
+        "total_frames": episodes * 2,
+        "total_tasks": episodes,
         "video_path": (
             "videos/chunk-{chunk_index:03d}/{video_key}/"
             "file-{file_index:03d}.mp4"
         ),
     }
     _write_json(os.path.join(root, "meta", "info.json"), info)
+    _write_json(os.path.join(root, "meta", "stats.json"), {})
+    _write_parquet(
+        os.path.join(root, "meta", "tasks.parquet"),
+        [
+            {"task_index": index, "task": "task-%d" % index}
+            for index in range(episodes)
+        ],
+    )
 
     rows = []
     episode_indexes = []
@@ -80,7 +94,7 @@ def _write_v3_source(root, version="v3.2", episodes=10):
                 "length": 2,
                 "tasks": ["task-%d" % episode_index],
                 "videos/%s/chunk_index" % _VIDEO_FEATURE: 0,
-                "videos/%s/file_index" % _VIDEO_FEATURE: 0,
+                "videos/%s/file_index" % _VIDEO_FEATURE: 5,
                 "videos/%s/from_timestamp" % _VIDEO_FEATURE: start / 10,
                 "videos/%s/to_timestamp" % _VIDEO_FEATURE: end / 10,
             }
@@ -112,7 +126,7 @@ def _write_v3_source(root, version="v3.2", episodes=10):
         "videos",
         "chunk-000",
         _VIDEO_FEATURE,
-        "file-000.mp4",
+        "file-005.mp4",
     )
     os.makedirs(os.path.dirname(video_path), exist_ok=True)
     with open(video_path, "wb") as file:
@@ -166,9 +180,20 @@ class LeRobotImporterTests(unittest.TestCase):
             )
             self.assertEqual(
                 len(
-                    {reference.resolve_filepath() for reference in references}
+                    {
+                        asset.location.path
+                        for reference in references
+                        for asset in reference.describe_assets()
+                        if asset.role.value == "video-stream"
+                    }
                 ),
                 1,
+            )
+            self.assertTrue(
+                all(
+                    not hasattr(reference, "dataset_root")
+                    for reference in references
+                )
             )
             self.assertEqual(dataset.info["lerobot"]["format_major"], 3)
             self.assertEqual(
@@ -177,19 +202,18 @@ class LeRobotImporterTests(unittest.TestCase):
 
             locator = references[7].locator
             self.assertEqual(
-                locator["global_dataset_row_range"],
-                {
-                    "coordinate_system": "dataset-global-row",
-                    "end": 16,
-                    "interval": "half-open",
-                    "start": 14,
-                },
+                (
+                    locator.global_dataset_rows.coordinate_system,
+                    locator.global_dataset_rows.start,
+                    locator.global_dataset_rows.end,
+                ),
+                ("lerobot-v3-global-dataset-row", 14, 16),
             )
-            self.assertIn("shard_row_range", locator["data"])
-            self.assertIn("row_groups", locator["data"])
-            self.assertIn(_VIDEO_FEATURE, locator["videos"])
+            self.assertEqual(locator.parquet_file_rows.start, 14)
+            self.assertTrue(locator.parquet_row_groups)
+            self.assertEqual(locator.videos[0].feature_name, _VIDEO_FEATURE)
             self.assertTrue(
-                locator["episode_metadata"]["relative_path"].endswith(
+                locator.episode_metadata_location.path.endswith(
                     "part-001.parquet"
                 )
             )
@@ -200,17 +224,21 @@ class LeRobotImporterTests(unittest.TestCase):
             relocated_root = root + "-relocated"
             shutil.copytree(root, relocated_root)
             try:
-                relocated = LeRobotEpisode(
-                    source_identity=references[7].source_identity,
-                    dataset_root=relocated_root,
-                    episode_index=references[7].episode_index,
-                    codebase_version=references[7].codebase_version,
-                    locator=references[7].locator,
+                bind_lerobot_source(
+                    references[7].source_identity,
+                    relocated_root,
+                    references[7].source_fingerprint,
                 )
-                self.assertEqual(relocated.key, references[7].key)
-                manifest = LeRobotEpisodeResolver().resolve_assets(relocated)
+                manifest = LeRobotMediaResolver().resolve_assets(
+                    references[7], references[7].describe_assets()
+                )
                 self.assertEqual(manifest.episode_index, 7)
             finally:
+                bind_lerobot_source(
+                    references[7].source_identity,
+                    root,
+                    references[7].source_fingerprint,
+                )
                 shutil.rmtree(relocated_root)
 
     @drop_datasets
@@ -225,7 +253,9 @@ class LeRobotImporterTests(unittest.TestCase):
             second = _import(root, max_samples=1).first().media_reference
             self.assertNotEqual(first.source_identity, second.source_identity)
             with self.assertRaises(StaleMediaReferenceError):
-                LeRobotEpisodeResolver().resolve_assets(first)
+                LeRobotMediaResolver().resolve_assets(
+                    first, first.describe_assets()
+                )
 
     @drop_datasets
     def test_atomic_version_and_structure_rejection(self):
@@ -276,44 +306,148 @@ class LeRobotImporterTests(unittest.TestCase):
             self.assertFalse(fo.dataset_exists(name))
 
     @drop_datasets
-    def test_typed_root_and_traversal_errors(self):
+    def test_typed_missing_and_moved_binding_errors(self):
         with tempfile.TemporaryDirectory() as root:
             _write_v3_source(root)
             dataset = _import(root, max_samples=1)
             reference = dataset.first().media_reference
-            resolver = LeRobotEpisodeResolver()
+            resolver = LeRobotMediaResolver()
 
-            moved = LeRobotEpisode(
+            bind_lerobot_source(
                 reference.source_identity,
                 os.path.join(root, "moved"),
-                reference.episode_index,
-                reference.codebase_version,
-                reference.locator,
+                reference.source_fingerprint,
             )
             with self.assertRaises(MovedMediaRootError):
-                resolver.resolve_assets(moved)
+                resolver.resolve_assets(reference, reference.describe_assets())
 
-            missing = LeRobotEpisode(
-                reference.source_identity,
-                "/path/whose/parents/do/not/exist/source",
-                reference.episode_index,
-                reference.codebase_version,
-                reference.locator,
-            )
+            unbind_lerobot_source(reference.source_identity)
             with self.assertRaises(MissingMediaRootError):
-                resolver.resolve_assets(missing)
+                resolver.resolve_assets(reference, reference.describe_assets())
 
-            locator = deepcopy(reference.locator)
-            locator["data"]["relative_path"] = "../../outside.parquet"
-            traversal = LeRobotEpisode(
-                reference.source_identity,
-                root,
-                reference.episode_index,
-                reference.codebase_version,
-                locator,
+
+class LeRobotExporterTests(unittest.TestCase):
+    @drop_datasets
+    def test_self_contained_selected_episode_export(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            export_root = os.path.join(temp_dir, "export")
+            source_video = _write_v3_source(source_root, episodes=4)
+            dataset = _import(source_root)
+            selected = dataset.select(
+                dataset.match({"episode_index": {"$in": [1, 3]}}).values("id")
             )
-            with self.assertRaises(MalformedMediaSourceError):
-                resolver.resolve_assets(traversal)
+
+            selected.export(
+                export_dir=export_root,
+                dataset_type=fot.LeRobotDataset,
+                export_media=True,
+            )
+
+            exported = _import(export_root)
+            self.assertEqual(exported.values("episode_index"), [0, 1])
+            self.assertEqual(exported.values("length"), [2, 2])
+            with open(os.path.join(export_root, "meta", "info.json")) as file:
+                info = json.load(file)
+
+            self.assertEqual(info["total_episodes"], 2)
+            self.assertEqual(info["total_frames"], 4)
+            data_path = info["data_path"].format(chunk_index=0, file_index=0)
+            data = papq.read_table(os.path.join(export_root, data_path))
+            self.assertEqual(data["index"].to_pylist(), [0, 1, 2, 3])
+            self.assertEqual(data["episode_index"].to_pylist(), [0, 0, 1, 1])
+            self.assertEqual(data["frame_index"].to_pylist(), [0, 1, 0, 1])
+            with open(os.path.join(export_root, "meta", "stats.json")) as file:
+                statistics = json.load(file)
+
+            self.assertIn("observation.state", statistics)
+            self.assertEqual(statistics["index"]["min"], [0])
+
+            episodes = papq.read_table(
+                os.path.join(
+                    export_root, "meta", "episodes", "part-000.parquet"
+                )
+            )
+            self.assertEqual(
+                episodes["videos/%s/file_index" % _VIDEO_FEATURE].to_pylist(),
+                [0, 0],
+            )
+            self.assertIn("stats/index/min", episodes.column_names)
+
+            exported_video = os.path.join(
+                export_root,
+                "videos",
+                "chunk-000",
+                _VIDEO_FEATURE,
+                "file-000.mp4",
+            )
+            with open(source_video, "rb") as source_file, open(
+                exported_video, "rb"
+            ) as exported_file:
+                self.assertEqual(exported_file.read(), source_file.read())
+
+    @drop_datasets
+    def test_export_modes_and_preflight_are_atomic(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = os.path.join(temp_dir, "source")
+            _write_v3_source(root, episodes=2)
+            dataset = _import(root)
+
+            modes = (False, "move", "symlink", "manifest")
+            for index, mode in enumerate(modes):
+                destination = os.path.join(temp_dir, "mode-%d" % index)
+                with self.subTest(mode=mode), self.assertRaisesRegex(
+                    UnsupportedLeRobotExportModeError,
+                    "export_media=.*export_media=True",
+                ):
+                    dataset.export(
+                        export_dir=destination,
+                        dataset_type=fot.LeRobotDataset,
+                        export_media=mode,
+                    )
+                self.assertFalse(os.path.exists(destination))
+
+            first, second = [sample.media_reference for sample in dataset]
+            mixed = fo.Dataset()
+            mixed.add_samples(
+                [
+                    fo.Sample.from_media_reference(first),
+                    fo.Sample.from_media_reference(
+                        LeRobotEpisode(
+                            source_identity="hub:other/source@revision",
+                            source_fingerprint=second.source_fingerprint,
+                            episode_index=second.episode_index,
+                            codebase_version=second.codebase_version,
+                            locator=second.locator,
+                        )
+                    ),
+                ]
+            )
+            mixed_destination = os.path.join(temp_dir, "mixed")
+            with self.assertRaisesRegex(ValueError, "source_identity"):
+                mixed.export(
+                    export_dir=mixed_destination,
+                    dataset_type=fot.LeRobotDataset,
+                )
+            self.assertFalse(os.path.exists(mixed_destination))
+
+            video_path = os.path.join(
+                root,
+                "videos",
+                "chunk-000",
+                _VIDEO_FEATURE,
+                "file-005.mp4",
+            )
+            with open(video_path, "ab") as file:
+                file.write(b"stale")
+
+            stale_destination = os.path.join(temp_dir, "stale")
+            with self.assertRaises(StaleMediaReferenceError):
+                dataset.export(
+                    export_dir=stale_destination,
+                    dataset_type=fot.LeRobotDataset,
+                )
+            self.assertFalse(os.path.exists(stale_destination))
 
 
 class LeRobotServerTests(unittest.TestCase):
@@ -340,15 +474,18 @@ class LeRobotServerTests(unittest.TestCase):
             self.assertEqual(manifest["robot_type"], "so101")
             self.assertIn("source_fingerprint", manifest)
             self.assertTrue(
-                {"info", "metadata", "data", "video"}.issubset(
-                    {asset["role"] for asset in manifest["assets"]}
-                )
+                {
+                    "dataset-info",
+                    "episode-metadata",
+                    "tabular-frame-data",
+                    "video-stream",
+                }.issubset({asset["role"] for asset in manifest["assets"]})
             )
 
             video = next(
                 asset
                 for asset in manifest["assets"]
-                if asset["role"] == "video"
+                if asset["role"] == "video-stream"
             )
             ranged = client.get(video["url"], headers={"Range": "bytes=0-3"})
             self.assertEqual(ranged.status_code, 206)
