@@ -9,15 +9,20 @@ LeRobotDataset v3 import and asset resolution utilities.
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
+from functools import wraps
 import hashlib
 import json
 import mimetypes
 import os
 import re
+import threading
+import uuid
 
+import cachetools
 import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
+import fiftyone.core.odm as foo
 from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
@@ -41,6 +46,7 @@ from fiftyone.multimodal.media import (
     VideoTimestampInterval,
     build_resolved_media_asset,
     get_media_resolver,
+    get_selected_media_asset_key,
     register_media_resolver,
 )
 import fiftyone.utils.data.importers as foud
@@ -73,6 +79,14 @@ _REQUIRED_EPISODE_FIELDS = {
 class _LocalLeRobotSourceBinding:
     root: str
     source_fingerprint: str
+    revision: str
+
+
+@dataclass(frozen=True)
+class _ManifestCacheEntry:
+    binding_revision: str
+    manifest: MediaAssetManifest
+    file_signatures: tuple
 
 
 @dataclass(frozen=True)
@@ -85,7 +99,35 @@ class _InspectedLeRobotSource:
     source_fingerprint: str
 
 
-_SOURCE_BINDINGS = {}
+_SOURCE_BINDINGS_COLLECTION = "media_source_bindings"
+_RESOLUTION_CACHE_TTL_SECONDS = 30
+_MANIFEST_CACHE = cachetools.TTLCache(
+    maxsize=512, ttl=_RESOLUTION_CACHE_TTL_SECONDS
+)
+_ASSET_FINGERPRINT_CACHE = cachetools.TTLCache(
+    maxsize=4096, ttl=_RESOLUTION_CACHE_TTL_SECONDS
+)
+_RESOLUTION_LOCKS = cachetools.LRUCache(maxsize=512)
+_CACHE_LOCK = threading.RLock()
+
+
+def _deduplicate_resolutions(method):
+    @wraps(method)
+    def wrapper(self, reference, assets):
+        if not isinstance(reference, LeRobotEpisode):
+            return method(self, reference, assets)
+
+        cache_key = _resolution_cache_key(reference, assets)
+        with _CACHE_LOCK:
+            lock = _RESOLUTION_LOCKS.get(cache_key)
+            if lock is None:
+                lock = threading.Lock()
+                _RESOLUTION_LOCKS[cache_key] = lock
+
+        with lock:
+            return method(self, reference, assets)
+
+    return wrapper
 
 
 class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
@@ -257,16 +299,39 @@ def bind_lerobot_source(source_identity, dataset_root, source_fingerprint):
     root = os.path.realpath(fos.normalize_path(dataset_root))
     if not isinstance(source_fingerprint, str) or not source_fingerprint:
         raise ValueError("source_fingerprint must be a non-empty string")
-
-    _SOURCE_BINDINGS[source_identity.strip()] = _LocalLeRobotSourceBinding(
-        root=root,
-        source_fingerprint=source_fingerprint,
+    source_identity = source_identity.strip()
+    binding = {
+        "_id": source_identity,
+        "kind": LEROBOT_EPISODE_KIND,
+        "root": root,
+        "source_fingerprint": source_fingerprint,
+        "revision": uuid.uuid4().hex,
+    }
+    foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION].replace_one(
+        {"_id": source_identity}, binding, upsert=True
     )
+    _clear_resolution_caches()
 
 
 def unbind_lerobot_source(source_identity):
     """Removes the local binding for a LeRobot source identity."""
-    _SOURCE_BINDINGS.pop(source_identity, None)
+    foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION].delete_one(
+        {"_id": source_identity}
+    )
+    _clear_resolution_caches()
+
+
+def relocate_lerobot_source(source_identity, dataset_root):
+    """Relocates an existing LeRobot binding without changing its identity."""
+    binding = _get_source_binding(source_identity)
+    if binding is None:
+        raise MissingMediaRootError(
+            "No authorized source binding exists for this LeRobot dataset"
+        )
+
+    bind_lerobot_source(
+        source_identity, dataset_root, binding.source_fingerprint
+    )
 
 
 class LeRobotMediaResolver(MediaResolver):
@@ -333,6 +398,7 @@ class LeRobotMediaResolver(MediaResolver):
             source.asset_fingerprints,
         )
 
+    @_deduplicate_resolutions
     def resolve_assets(self, reference, assets):
         if not isinstance(reference, LeRobotEpisode):
             raise TypeError("LeRobotMediaResolver requires a LeRobotEpisode")
@@ -344,7 +410,12 @@ class LeRobotMediaResolver(MediaResolver):
             )
 
         _validate_declared_v3_version(reference.codebase_version)
-        root = _validate_resolver_root(reference)
+        root, binding = _validate_resolver_root(reference)
+        cache_key = _resolution_cache_key(reference, assets)
+        cached = _get_cached_manifest(cache_key, binding.revision)
+        if cached is not None:
+            return cached
+
         locator = reference.locator
         info_path = _resolve_under_root(root, locator.info_location.path)
         info, info_bytes = _load_info(info_path)
@@ -378,6 +449,7 @@ class LeRobotMediaResolver(MediaResolver):
             root,
             locator.data_location.path,
             locator.data_content_fingerprint,
+            reference.source_fingerprint,
         )
         for location, fingerprint in (
             (
@@ -387,12 +459,20 @@ class LeRobotMediaResolver(MediaResolver):
             (locator.tasks_location, locator.tasks_content_fingerprint),
         ):
             if location is not None:
-                _validate_asset_fingerprint(root, location.path, fingerprint)
+                _validate_asset_fingerprint(
+                    root,
+                    location.path,
+                    fingerprint,
+                    reference.source_fingerprint,
+                )
 
         _validate_resolved_data_slice(root, reference, locator)
         for video in locator.videos:
             _validate_asset_fingerprint(
-                root, video.location.path, video.content_fingerprint
+                root,
+                video.location.path,
+                video.content_fingerprint,
+                reference.source_fingerprint,
             )
 
         resolved_assets = tuple(
@@ -402,7 +482,7 @@ class LeRobotMediaResolver(MediaResolver):
         fps = float(info["fps"])
         frame_count = int(row["length"])
         time_range = _episode_time_range(row, locator.videos, fps)
-        return MediaAssetManifest(
+        manifest = MediaAssetManifest(
             media_reference_key=reference.key,
             episode_index=reference.episode_index,
             declared_codebase_version=reference.codebase_version,
@@ -415,6 +495,8 @@ class LeRobotMediaResolver(MediaResolver):
             source_fingerprint=reference.source_fingerprint,
             assets=resolved_assets,
         )
+        _cache_manifest(cache_key, binding.revision, manifest)
+        return manifest
 
 
 def _validate_dataset_root(dataset_root):
@@ -436,7 +518,7 @@ def _validate_dataset_root(dataset_root):
 
 
 def _validate_resolver_root(reference):
-    binding = _SOURCE_BINDINGS.get(reference.source_identity)
+    binding = _get_source_binding(reference.source_identity)
     if binding is None:
         raise MissingMediaRootError(
             "No authorized source binding exists for this LeRobot dataset"
@@ -448,7 +530,7 @@ def _validate_resolver_root(reference):
         )
 
     try:
-        return _validate_dataset_root(binding.root)
+        return _validate_dataset_root(binding.root), binding
     except MissingMediaRootError as exc:
         parent = os.path.dirname(binding.root)
         if os.path.isdir(parent):
@@ -458,6 +540,25 @@ def _validate_resolver_root(reference):
             ) from exc
 
         raise
+
+
+def _get_source_binding(source_identity):
+    document = foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION].find_one(
+        {"_id": source_identity, "kind": LEROBOT_EPISODE_KIND}
+    )
+    if document is None:
+        return None
+
+    try:
+        return _LocalLeRobotSourceBinding(
+            root=document["root"],
+            source_fingerprint=document["source_fingerprint"],
+            revision=document["revision"],
+        )
+    except (KeyError, TypeError) as exc:
+        raise MissingMediaRootError(
+            "The authorized LeRobot source binding is malformed"
+        ) from exc
 
 
 def _load_info(info_path):
@@ -1035,7 +1136,9 @@ def _sha256_file(path):
     return "sha256:" + digest.hexdigest()
 
 
-def _validate_asset_fingerprint(root, relative_path, expected):
+def _validate_asset_fingerprint(
+    root, relative_path, expected, source_fingerprint
+):
     path = _resolve_under_root(root, relative_path)
     if not os.path.isfile(path):
         raise StaleMediaReferenceError(
@@ -1043,11 +1146,93 @@ def _validate_asset_fingerprint(root, relative_path, expected):
             % relative_path
         )
 
-    if _sha256_file(path) != expected:
+    signature = _file_signature(path)
+    cache_key = (source_fingerprint, relative_path)
+    with _CACHE_LOCK:
+        cached = _ASSET_FINGERPRINT_CACHE.get(cache_key)
+    if cached == (expected, signature):
+        return
+
+    actual = _sha256_file(path)
+    if _file_signature(path) != signature:
+        raise StaleMediaReferenceError(
+            "LeRobot asset '%s' changed while it was being validated; retry "
+            "or re-import the dataset" % relative_path
+        )
+
+    if actual != expected:
         raise StaleMediaReferenceError(
             "LeRobot asset '%s' changed since import; re-import the dataset"
             % relative_path
         )
+
+    with _CACHE_LOCK:
+        _ASSET_FINGERPRINT_CACHE[cache_key] = (expected, signature)
+
+
+def _get_cached_manifest(cache_key, binding_revision):
+    with _CACHE_LOCK:
+        entry = _MANIFEST_CACHE.get(cache_key)
+
+    if entry is None or entry.binding_revision != binding_revision:
+        return None
+
+    try:
+        signatures = _manifest_file_signatures(entry.manifest)
+    except OSError:
+        signatures = None
+
+    if signatures == entry.file_signatures:
+        return entry.manifest
+
+    with _CACHE_LOCK:
+        _MANIFEST_CACHE.pop(cache_key, None)
+
+    return None
+
+
+def _resolution_cache_key(reference, assets):
+    return (
+        reference.key,
+        reference.source_fingerprint,
+        tuple(
+            get_selected_media_asset_key(reference, asset) for asset in assets
+        ),
+    )
+
+
+def _cache_manifest(cache_key, binding_revision, manifest):
+    entry = _ManifestCacheEntry(
+        binding_revision=binding_revision,
+        manifest=manifest,
+        file_signatures=_manifest_file_signatures(manifest),
+    )
+    with _CACHE_LOCK:
+        _MANIFEST_CACHE[cache_key] = entry
+
+
+def _manifest_file_signatures(manifest):
+    return tuple(
+        (path, _file_signature(path))
+        for path in sorted({asset.path for asset in manifest.assets})
+    )
+
+
+def _file_signature(path):
+    result = os.stat(path)
+    return (
+        result.st_dev,
+        result.st_ino,
+        result.st_size,
+        result.st_mtime_ns,
+    )
+
+
+def _clear_resolution_caches():
+    with _CACHE_LOCK:
+        _MANIFEST_CACHE.clear()
+        _ASSET_FINGERPRINT_CACHE.clear()
+        _RESOLUTION_LOCKS.clear()
 
 
 def _validate_resolved_data_slice(root, episode, locator):

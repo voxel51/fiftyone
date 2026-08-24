@@ -87,6 +87,25 @@ class UnsupportedMediaReferenceOperation(MediaReferenceError):
 class UnsupportedLeRobotExportModeError(UnsupportedMediaReferenceOperation):
     """Raised when a LeRobot export requests an unsupported media mode."""
 
+    def __init__(self, export_media, suggestion):
+        self.export_media = export_media
+        self.reason = _get_lerobot_export_mode_reason(export_media)
+        super().__init__(
+            "LeRobotDataset export does not support export_media=%r (%s); "
+            "set export_media=True to create a self-contained v3 dataset, "
+            "or %s" % (export_media, self.reason, suggestion)
+        )
+
+
+def _get_lerobot_export_mode_reason(export_media):
+    reasons = {
+        False: "thin-reference-native-only",
+        "move": "shared-source-move-unsupported",
+        "symlink": "self-contained-export-required",
+        "manifest": "manifest-native-only",
+    }
+    return reasons.get(export_media, "unsupported-export-mode")
+
 
 class MediaAssetRole(Enum):
     """Closed roles for assets described by media references."""

@@ -6,10 +6,13 @@ Sample-scoped media-reference asset routes.
 |
 """
 
+import errno
 import importlib
 import os
+import stat
 from urllib.parse import quote
 
+import anyio
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -28,10 +31,7 @@ from fiftyone.multimodal.media import (
 )
 from fiftyone.server import decorators
 from fiftyone.server.routes.media import MediaFileResponse, _media_headers
-from fiftyone.server.utils.datasets import (
-    get_dataset,
-    get_sample_from_dataset,
-)
+from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
 
 
 class MediaAssetManifestRoute(HTTPEndpoint):
@@ -39,7 +39,9 @@ class MediaAssetManifestRoute(HTTPEndpoint):
 
     @decorators.route
     async def get(self, request: Request):
-        dataset, sample, manifest = _resolve_manifest(request)
+        dataset, sample, manifest = await anyio.to_thread.run_sync(
+            _resolve_manifest, request
+        )
         public = manifest.to_dict()
         dataset_id = quote(str(dataset._doc.id), safe="")
         sample_id = quote(str(sample.id), safe="")
@@ -58,7 +60,9 @@ class MediaAssetBytes(HTTPEndpoint):
 
     @decorators.route
     async def get(self, request: Request):
-        _, _, manifest = _resolve_manifest(request)
+        _, _, manifest = await anyio.to_thread.run_sync(
+            _resolve_manifest, request
+        )
         requested_asset_id = request.path_params["asset_id"]
         asset = next(
             (
@@ -78,7 +82,38 @@ class MediaAssetBytes(HTTPEndpoint):
                 headers={"X-FiftyOne-Error-Kind": "missing-media-asset"},
             )
 
-        stat_result = os.stat(asset.path)
+        try:
+            stat_result = await anyio.to_thread.run_sync(
+                _stat_asset, asset.path
+            )
+        except (FileNotFoundError, NotADirectoryError):
+            _raise_asset_error(
+                404,
+                "missing-media-asset",
+                "The resolved media asset is no longer available",
+            )
+        except PermissionError:
+            _raise_asset_error(
+                403,
+                "media-source-authorization",
+                "The resolved media asset is not readable",
+            )
+        except OSError as exc:
+            if exc.errno in {errno.ENAMETOOLONG, errno.ELOOP}:
+                _raise_asset_error(
+                    404,
+                    "missing-media-asset",
+                    "The resolved media asset is no longer available",
+                )
+            raise
+
+        if not stat.S_ISREG(stat_result.st_mode):
+            _raise_asset_error(
+                404,
+                "missing-media-asset",
+                "The resolved media asset is not a regular file",
+            )
+
         return MediaFileResponse(
             asset.path,
             stat_result=stat_result,
@@ -168,6 +203,23 @@ def _raise_resolution_error(status_code, kind, error):
         detail="%s: %s" % (kind, public_messages[kind]),
         headers={"X-FiftyOne-Error-Kind": kind},
     ) from error
+
+
+def _raise_asset_error(status_code, kind, message):
+    raise HTTPException(
+        status_code=status_code,
+        detail="%s: %s" % (kind, message),
+        headers={"X-FiftyOne-Error-Kind": kind},
+    )
+
+
+def _stat_asset(path):
+    result = os.stat(path)
+    if stat.S_ISREG(result.st_mode):
+        descriptor = os.open(path, os.O_RDONLY)
+        os.close(descriptor)
+
+    return result
 
 
 MediaReferenceRoutes = [

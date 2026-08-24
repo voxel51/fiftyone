@@ -8,6 +8,7 @@ LeRobotDataset v3 export utilities.
 
 from copy import deepcopy
 from dataclasses import dataclass
+import importlib.util
 import os
 import shutil
 import tempfile
@@ -33,12 +34,10 @@ from fiftyone.multimodal.media import (
 )
 import fiftyone.utils.data.exporters as foue
 from fiftyone.utils.lerobot import (
-    LeRobotDatasetImporter,
     _format_source_path,
     _load_info,
     _open_parquet,
     _resolve_under_root,
-    unbind_lerobot_source,
 )
 
 pa = fou.lazy_import("pyarrow", callback=lambda: fou.ensure_package("pyarrow"))
@@ -77,7 +76,6 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
             export_media = True
 
         if export_media is not True:
-            option = repr(export_media)
             suggestions = {
                 False: "use FiftyOneDataset to preserve thin references",
                 "move": "LeRobot sources are shared and cannot be moved",
@@ -85,11 +83,7 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
                 "manifest": "use FiftyOneDataset for a thin-reference export",
             }
             suggestion = suggestions.get(export_media, "set export_media=True")
-            raise UnsupportedLeRobotExportModeError(
-                "LeRobotDataset export does not support export_media=%s; "
-                "set export_media=True to create a self-contained v3 dataset, "
-                "or %s" % (option, suggestion)
-            )
+            raise UnsupportedLeRobotExportModeError(export_media, suggestion)
 
         super().__init__(export_dir=export_dir)
         self.export_media = True
@@ -223,6 +217,8 @@ def _write_lerobot_export(staging_dir, specs):
         episode_row["dataset_to_index"] = global_index
         episode_row["data/chunk_index"] = 0
         episode_row["data/file_index"] = 0
+        episode_row["meta/episodes/chunk_index"] = 0
+        episode_row["meta/episodes/file_index"] = 0
         _set_episode_statistics(
             episode_row, output_rows[episode_start:global_index]
         )
@@ -242,12 +238,7 @@ def _write_lerobot_export(staging_dir, specs):
     output_info["total_episodes"] = len(specs)
     output_info["total_frames"] = len(output_rows)
     output_info["total_tasks"] = len(task_indexes)
-    output_info["total_videos"] = sum(
-        1
-        for spec in specs
-        for asset in spec.manifest.assets
-        if asset.description.role is MediaAssetRole.VIDEO_STREAM
-    )
+    output_info.pop("total_videos", None)
     output_info["splits"] = {"train": "0:%d" % len(specs)}
 
     data_relative_path = _format_source_path(
@@ -257,17 +248,7 @@ def _write_lerobot_export(staging_dir, specs):
     etau.ensure_basedir(data_path)
     papq.write_table(pa.Table.from_pylist(output_rows), data_path)
 
-    episodes_template = output_info.get("episodes_path")
-    if episodes_template:
-        episodes_relative_path = _format_source_path(
-            episodes_template,
-            chunk_index=0,
-            file_index=0,
-            episode_chunk=0,
-            episode_file=0,
-        )
-    else:
-        episodes_relative_path = "meta/episodes/part-000.parquet"
+    episodes_relative_path = "meta/episodes/chunk-000/file-000.parquet"
 
     episodes_path = _resolve_under_root(staging_dir, episodes_relative_path)
     etau.ensure_basedir(episodes_path)
@@ -523,16 +504,62 @@ def _read_selected_data_rows(path, locator):
 
 
 def _validate_lerobot_export(staging_dir, expected_episodes):
-    importer = LeRobotDatasetImporter(staging_dir)
-    importer.setup()
-    source_identity = importer.get_dataset_info()["lerobot"]["source_identity"]
+    resolver = get_media_resolver(LEROBOT_EPISODE_KIND)
+    source = resolver.inspect_local_source(staging_dir)
+    if len(source.rows) != expected_episodes:
+        raise MalformedMediaSourceError(
+            "Completed LeRobot export did not preserve the selected episodes"
+        )
+
+    for row in source.rows:
+        resolver.build_locator(source, row)
+
+    _validate_with_official_lerobot(staging_dir, expected_episodes)
+
+
+def _validate_with_official_lerobot(staging_dir, expected_episodes):
+    if importlib.util.find_spec("lerobot") is None:
+        return
+
     try:
-        if len(importer) != expected_episodes:
-            raise MalformedMediaSourceError(
-                "Completed LeRobot export did not preserve the selected episodes"
-            )
-    finally:
-        unbind_lerobot_source(source_identity)
+        from lerobot.datasets.lerobot_dataset import (
+            LeRobotDataset,
+            LeRobotDatasetMetadata,
+        )
+    except ImportError:
+        return
+
+    try:
+        metadata = LeRobotDatasetMetadata(
+            repo_id="fiftyone/local-export",
+            root=staging_dir,
+            token=False,
+        )
+        dataset = LeRobotDataset(
+            repo_id="fiftyone/local-export",
+            root=staging_dir,
+            episodes=list(range(expected_episodes)),
+            download_videos=False,
+            token=False,
+        )
+        first_frame = dataset.hf_dataset[0]
+    except Exception as exc:
+        raise MalformedMediaSourceError(
+            "Completed LeRobot export is not readable by the official v3 "
+            "reader"
+        ) from exc
+
+    if metadata.total_episodes != expected_episodes or len(dataset) != (
+        metadata.total_frames
+    ):
+        raise MalformedMediaSourceError(
+            "Completed LeRobot export has inconsistent official-reader totals"
+        )
+
+    if first_frame["episode_index"] != 0:
+        raise MalformedMediaSourceError(
+            "Completed LeRobot export has inconsistent episode coordinates"
+        )
 
 
 register_media_export_planner(

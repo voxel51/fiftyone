@@ -7,11 +7,15 @@ LeRobotDataset v3 importer and episode asset transport tests.
 """
 
 import asyncio
+import importlib.util
 import json
 import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import pyarrow as pa
 import pyarrow.parquet as papq
@@ -23,6 +27,8 @@ from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.types as fot
+import fiftyone.utils.data as foud
+import fiftyone.utils.lerobot as foul
 from fiftyone.multimodal.media import (
     LeRobotEpisode,
     MalformedMediaSourceError,
@@ -40,7 +46,9 @@ from fiftyone.server.routes.sample import SampleRoutes, generate_sample_etag
 from fiftyone.server.samples import _create_sample_item
 from fiftyone.utils.lerobot import (
     bind_lerobot_source,
+    LeRobotDatasetImporter,
     LeRobotMediaResolver,
+    relocate_lerobot_source,
     unbind_lerobot_source,
 )
 
@@ -57,6 +65,11 @@ def _write_v3_source(root, version="v3.2", episodes=10):
                 "dtype": "video",
                 "shape": [3, 8, 8],
             },
+            "timestamp": {"dtype": "float32", "shape": [1]},
+            "frame_index": {"dtype": "int64", "shape": [1]},
+            "episode_index": {"dtype": "int64", "shape": [1]},
+            "index": {"dtype": "int64", "shape": [1]},
+            "task_index": {"dtype": "int64", "shape": [1]},
         },
         "fps": 10,
         "robot_type": "so101",
@@ -92,6 +105,8 @@ def _write_v3_source(root, version="v3.2", episodes=10):
                 "dataset_to_index": end,
                 "episode_index": episode_index,
                 "length": 2,
+                "meta/episodes/chunk_index": 0,
+                "meta/episodes/file_index": 0,
                 "tasks": ["task-%d" % episode_index],
                 "videos/%s/chunk_index" % _VIDEO_FEATURE: 0,
                 "videos/%s/file_index" % _VIDEO_FEATURE: 5,
@@ -168,6 +183,28 @@ def _make_route_app():
 
 class LeRobotImporterTests(unittest.TestCase):
     @drop_datasets
+    def test_source_format_selects_importer_before_reference_construction(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, version="v2.1")
+            importer, _ = foud.build_dataset_importer(
+                fot.LeRobotDataset, dataset_dir=root
+            )
+            self.assertIsInstance(importer, LeRobotDatasetImporter)
+
+            with mock.patch.object(
+                foul.LeRobotEpisode,
+                "__init__",
+                side_effect=AssertionError("constructed a reference"),
+            ), self.assertRaises(UnsupportedMediaReferenceVersionError):
+                _import(root, name="source-format-before-reference")
+
+            self.assertFalse(
+                fo.dataset_exists("source-format-before-reference")
+            )
+
+    @drop_datasets
     def test_multishard_ten_episode_import_and_relocation(self):
         with tempfile.TemporaryDirectory() as root:
             _write_v3_source(root)
@@ -224,20 +261,18 @@ class LeRobotImporterTests(unittest.TestCase):
             relocated_root = root + "-relocated"
             shutil.copytree(root, relocated_root)
             try:
-                bind_lerobot_source(
+                relocate_lerobot_source(
                     references[7].source_identity,
                     relocated_root,
-                    references[7].source_fingerprint,
                 )
                 manifest = LeRobotMediaResolver().resolve_assets(
                     references[7], references[7].describe_assets()
                 )
                 self.assertEqual(manifest.episode_index, 7)
             finally:
-                bind_lerobot_source(
+                relocate_lerobot_source(
                     references[7].source_identity,
                     root,
-                    references[7].source_fingerprint,
                 )
                 shutil.rmtree(relocated_root)
 
@@ -325,8 +360,125 @@ class LeRobotImporterTests(unittest.TestCase):
             with self.assertRaises(MissingMediaRootError):
                 resolver.resolve_assets(reference, reference.describe_assets())
 
+            bind_lerobot_source(
+                reference.source_identity,
+                root,
+                "sha256:" + "0" * 64,
+            )
+            with self.assertRaises(StaleMediaReferenceError):
+                resolver.resolve_assets(reference, reference.describe_assets())
+
+    @drop_datasets
+    def test_source_binding_survives_a_fresh_server_process(self):
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root)
+            dataset = _import(root, max_samples=1)
+            sample = dataset.first()
+            script = """
+import sys
+from starlette.applications import Starlette
+from starlette.routing import Route
+from starlette.testclient import TestClient
+from fiftyone.server.routes.media_reference import MediaReferenceRoutes
+
+app = Starlette(routes=[Route(path, endpoint) for path, endpoint in MediaReferenceRoutes])
+path = '/dataset/%s/sample/%s/multimodal/manifest' % (sys.argv[1], sys.argv[2])
+response = TestClient(app).get(path)
+print(response.status_code)
+print(response.json().get('episode_index'))
+"""
+            output = subprocess.check_output(
+                [
+                    sys.executable,
+                    "-c",
+                    script,
+                    str(dataset._doc.id),
+                    sample.id,
+                ],
+                cwd=os.getcwd(),
+                text=True,
+            )
+            self.assertEqual(output.strip().splitlines()[-2:], ["200", "0"])
+
+            with tempfile.TemporaryDirectory() as relocation_parent:
+                relocated_root = os.path.join(relocation_parent, "source")
+                shutil.copytree(root, relocated_root)
+                relocate_lerobot_source(
+                    sample.media_reference.source_identity, relocated_root
+                )
+                relocated_output = subprocess.check_output(
+                    [
+                        sys.executable,
+                        "-c",
+                        script,
+                        str(dataset._doc.id),
+                        sample.id,
+                    ],
+                    cwd=os.getcwd(),
+                    text=True,
+                )
+                self.assertEqual(
+                    relocated_output.strip().splitlines()[-2:], ["200", "0"]
+                )
+
+            relocate_lerobot_source(
+                sample.media_reference.source_identity, root
+            )
+
+            with tempfile.TemporaryDirectory() as export_parent:
+                export_root = os.path.join(export_parent, "native")
+                dataset.export(
+                    export_dir=export_root,
+                    dataset_type=fot.FiftyOneDataset,
+                    export_media=True,
+                )
+                for filename in ("metadata.json", "samples.json"):
+                    with open(os.path.join(export_root, filename)) as file:
+                        self.assertNotIn(root, file.read())
+
 
 class LeRobotExporterTests(unittest.TestCase):
+    @unittest.skipUnless(
+        importlib.util.find_spec("lerobot") is not None,
+        "official LeRobot reader is not installed",
+    )
+    @drop_datasets
+    def test_official_reader_opens_exported_coordinates(self):
+        from lerobot.datasets.lerobot_dataset import (
+            LeRobotDataset,
+            LeRobotDatasetMetadata,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            export_root = os.path.join(temp_dir, "export")
+            _write_v3_source(source_root, episodes=4)
+            dataset = _import(source_root, episodes=[1, 3])
+            dataset.export(
+                export_dir=export_root,
+                dataset_type=fot.LeRobotDataset,
+                export_media=True,
+            )
+
+            metadata = LeRobotDatasetMetadata(
+                repo_id="fiftyone/test-export",
+                root=export_root,
+                token=False,
+            )
+            official = LeRobotDataset(
+                repo_id="fiftyone/test-export",
+                root=export_root,
+                episodes=[0, 1],
+                download_videos=False,
+                token=False,
+            )
+            self.assertEqual(metadata.total_episodes, 2)
+            self.assertEqual(
+                {int(value) for value in official.hf_dataset["episode_index"]},
+                {0, 1},
+            )
+            self.assertEqual(int(official.hf_dataset[0]["frame_index"]), 0)
+
     @drop_datasets
     def test_self_contained_selected_episode_export(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -365,8 +517,18 @@ class LeRobotExporterTests(unittest.TestCase):
 
             episodes = papq.read_table(
                 os.path.join(
-                    export_root, "meta", "episodes", "part-000.parquet"
+                    export_root,
+                    "meta",
+                    "episodes",
+                    "chunk-000",
+                    "file-000.parquet",
                 )
+            )
+            self.assertEqual(
+                episodes["meta/episodes/chunk_index"].to_pylist(), [0, 0]
+            )
+            self.assertEqual(
+                episodes["meta/episodes/file_index"].to_pylist(), [0, 0]
             )
             self.assertEqual(
                 episodes["videos/%s/file_index" % _VIDEO_FEATURE].to_pylist(),
@@ -386,6 +548,19 @@ class LeRobotExporterTests(unittest.TestCase):
             ) as exported_file:
                 self.assertEqual(exported_file.read(), source_file.read())
 
+            second_export_root = os.path.join(temp_dir, "second-export")
+            selected.export(
+                export_dir=second_export_root,
+                dataset_type=fot.LeRobotDataset,
+                export_media=True,
+            )
+            exported_reference = exported.first().media_reference
+            manifest = LeRobotMediaResolver().resolve_assets(
+                exported_reference,
+                exported_reference.describe_assets(),
+            )
+            self.assertEqual(manifest.episode_index, 0)
+
     @drop_datasets
     def test_export_modes_and_preflight_are_atomic(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -393,18 +568,25 @@ class LeRobotExporterTests(unittest.TestCase):
             _write_v3_source(root, episodes=2)
             dataset = _import(root)
 
-            modes = (False, "move", "symlink", "manifest")
-            for index, mode in enumerate(modes):
+            modes = (
+                (False, "thin-reference-native-only"),
+                ("move", "shared-source-move-unsupported"),
+                ("symlink", "self-contained-export-required"),
+                ("manifest", "manifest-native-only"),
+            )
+            for index, (mode, reason) in enumerate(modes):
                 destination = os.path.join(temp_dir, "mode-%d" % index)
                 with self.subTest(mode=mode), self.assertRaisesRegex(
                     UnsupportedLeRobotExportModeError,
                     "export_media=.*export_media=True",
-                ):
+                ) as context:
                     dataset.export(
                         export_dir=destination,
                         dataset_type=fot.LeRobotDataset,
                         export_media=mode,
                     )
+                self.assertEqual(context.exception.export_media, mode)
+                self.assertEqual(context.exception.reason, reason)
                 self.assertFalse(os.path.exists(destination))
 
             first, second = [sample.media_reference for sample in dataset]
@@ -451,6 +633,91 @@ class LeRobotExporterTests(unittest.TestCase):
 
 
 class LeRobotServerTests(unittest.TestCase):
+    @drop_datasets
+    def test_manifest_cache_avoids_rehashing_and_detects_changes(self):
+        with tempfile.TemporaryDirectory() as root:
+            video_path = _write_v3_source(root)
+            dataset = _import(root, max_samples=1)
+            sample = dataset.first()
+            reference = sample.media_reference
+            client = TestClient(_make_route_app())
+            manifest_path = "/dataset/%s/sample/%s/multimodal/manifest" % (
+                dataset._doc.id,
+                sample.id,
+            )
+
+            bind_lerobot_source(
+                reference.source_identity,
+                root,
+                reference.source_fingerprint,
+            )
+            with mock.patch.object(
+                foul, "_sha256_file", wraps=foul._sha256_file
+            ) as fingerprint:
+                manifest = client.get(manifest_path).json()
+                video = next(
+                    asset
+                    for asset in manifest["assets"]
+                    if asset["role"] == "video-stream"
+                )
+                first_hash_count = fingerprint.call_count
+                self.assertGreater(first_hash_count, 0)
+
+                for _ in range(2):
+                    response = client.get(
+                        video["url"], headers={"Range": "bytes=0-3"}
+                    )
+                    self.assertEqual(response.status_code, 206)
+
+                self.assertEqual(fingerprint.call_count, first_hash_count)
+
+                with open(video_path, "ab") as file:
+                    file.write(b"changed")
+
+                stale = client.get(
+                    video["url"], headers={"Range": "bytes=0-3"}
+                )
+                self.assertEqual(stale.status_code, 409)
+                self.assertEqual(
+                    stale.headers["X-FiftyOne-Error-Kind"],
+                    "stale-media-reference",
+                )
+
+    @drop_datasets
+    def test_range_stat_races_have_typed_public_errors(self):
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root)
+            dataset = _import(root, max_samples=1)
+            sample = dataset.first()
+            client = TestClient(_make_route_app())
+            manifest_path = "/dataset/%s/sample/%s/multimodal/manifest" % (
+                dataset._doc.id,
+                sample.id,
+            )
+            manifest = client.get(manifest_path).json()
+            video_url = next(
+                asset["url"]
+                for asset in manifest["assets"]
+                if asset["role"] == "video-stream"
+            )
+
+            cases = (
+                (FileNotFoundError(), 404, "missing-media-asset"),
+                (NotADirectoryError(), 404, "missing-media-asset"),
+                (PermissionError(), 403, "media-source-authorization"),
+            )
+            for error, status, kind in cases:
+                with self.subTest(error=type(error).__name__), mock.patch(
+                    "fiftyone.server.routes.media_reference._stat_asset",
+                    side_effect=error,
+                ):
+                    response = client.get(video_url)
+                self.assertEqual(response.status_code, status)
+                self.assertEqual(
+                    response.headers["X-FiftyOne-Error-Kind"], kind
+                )
+                self.assertNotIn(root, response.text)
+
     @drop_datasets
     def test_manifest_range_scope_and_redaction(self):
         with tempfile.TemporaryDirectory() as root:
