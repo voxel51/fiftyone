@@ -1,9 +1,10 @@
 import {
   useAudio,
+  useIsPlaying,
   usePlaybackStore,
   setAudioAvailable,
 } from "@fiftyone/playback";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   useAudioDemanded,
@@ -25,13 +26,22 @@ import { useMcapAudioStream } from "./use-mcap-audio-stream";
  * actually wants the samples.
  *
  * Demand is either of:
- *   - the track is audible — master and track both unmuted;
  *   - some consumer asked for it, e.g. an open Audio tile drawing a
- *     waveform (`useRequestAudio`).
+ *     waveform (`useRequestAudio`);
+ *   - the track is audible AND this recording has actually been played.
  *
- * Audibility has to be part of it because audio is muted by default: gating
- * on playback alone would start every decoder the moment someone pressed
- * play on a recording they had no intention of listening to.
+ * Audibility alone is not demand. Master mute is sessionStorage-scoped and
+ * deliberately survives sample changes (see `audioMutedAtom`), so treating
+ * it as demand meant arriving at a new recording with a stale unmute
+ * eagerly decoded every source before anyone asked to hear anything — and
+ * an unmuted track stayed enabled after its tile closed. Pairing it with
+ * "has played" keeps the no-tile listening path working while scoping it to
+ * a recording the user actually started.
+ *
+ * The play latch is deliberately sticky rather than tracking `isPlaying`
+ * directly: releasing on every pause would drop the decoded buffer and
+ * force a re-decode on resume. It resets naturally per sample, since each
+ * sample mounts a fresh provider store and remounts this component.
  */
 const AudioSourceRegistrar: React.FC<{
   sourceId: string;
@@ -43,7 +53,16 @@ const AudioSourceRegistrar: React.FC<{
     tracks.find((track) => track.id === sourceId)?.muted ?? false;
   const audible = !masterMuted && !trackMuted;
   const requested = useAudioDemanded(sourceId);
-  const enabled = audible || requested;
+
+  // Sticky: latches on the first play of this recording and stays set for
+  // the life of the mount. See the note above on why this is not `isPlaying`.
+  const isPlaying = useIsPlaying();
+  const [hasPlayed, setHasPlayed] = useState(false);
+  useEffect(() => {
+    if (isPlaying) setHasPlayed(true);
+  }, [isPlaying]);
+
+  const enabled = requested || (audible && hasPlayed);
 
   // No presence registration here. `useMcapAudioStream` mounts
   // `useAudioPlayback` unconditionally, and that registers the mixer row on
@@ -57,7 +76,7 @@ const AudioSourceRegistrar: React.FC<{
   // header fall back to the raw stream id ("0", "1").
   const state = useMcapAudioStream(sourceId, { enabled, label });
 
-  // Republish for observers (the Audio tile's waveform) so opening a panel
+  // Republish for observers (the Audio tile's waveform) so opening a tile
   // does not have to start a second reader over the same source.
   usePublishAudioSourceState(sourceId, state);
 

@@ -315,4 +315,71 @@ describe("useMcapAudioStream", () => {
     expect(result.current.result.channels).toBe(2);
     expect(result.current.result.metadata?.sampleRate).toBe(48_000);
   });
+
+  // The one-shot read covers the whole recording, so an un-cancellable one
+  // kept fetching and decoding after the tile closed.
+  it("hands the whole-recording read an abort signal that fires on teardown", async () => {
+    const requests: Array<{ signal?: AbortSignal }> = [];
+    mocks.dataStream = {
+      getTimelineIndex: () => ({ endTimeNs: 1000n, startTimeNs: 0n }),
+      readStreamFrames: vi.fn(async (request: { signal?: AbortSignal }) => {
+        requests.push(request);
+        return {
+          frames: [rawAudioFrame(0n, [1, 2])],
+          stopReason: "complete",
+        };
+      }),
+    };
+
+    const { result, unmount } = renderPcm();
+    await waitFor(() => expect(result.current.result.status).toBe("ready"));
+
+    expect(requests.length).toBeGreaterThan(0);
+    const signals = requests.map((request) => request.signal);
+    // Every read is cancellable, and none has been cancelled yet.
+    expect(signals.every((signal) => signal instanceof AbortSignal)).toBe(true);
+    expect(signals.some((signal) => signal?.aborted)).toBe(false);
+
+    unmount();
+
+    expect(signals.every((signal) => signal?.aborted)).toBe(true);
+  });
+
+  // The ambient registrar keeps this hook mounted when a tile closes, so
+  // "demand went away" has to release as thoroughly as unmount does.
+  it("releases the decoded buffer and its AudioContext when demand goes away", async () => {
+    mocks.dataStream = {
+      getTimelineIndex: () => ({ endTimeNs: 1000n, startTimeNs: 0n }),
+      readStreamFrames: vi.fn(async () => ({
+        frames: [rawAudioFrame(0n, [1, 2])],
+        stopReason: "complete",
+      })),
+    };
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        useMcapAudioStream("audio-1", { enabled }),
+      {
+        initialProps: { enabled: true },
+        wrapper: ({ children }) => (
+          <PlaybackProvider duration={10} stepInterval={1 / 30}>
+            {children}
+          </PlaybackProvider>
+        ),
+      },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(audioContextInstances).toHaveLength(1);
+    expect(audioContextInstances[0].state).not.toBe("closed");
+
+    rerender({ enabled: false });
+
+    await waitFor(() =>
+      expect(audioContextInstances[0].close).toHaveBeenCalled(),
+    );
+    expect(audioContextInstances[0].state).toBe("closed");
+    expect(result.current.status).toBe("idle");
+    expect(result.current.waveformPeaks).toBeNull();
+  });
 });
