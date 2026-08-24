@@ -105,7 +105,7 @@ const AudioTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   // `useMcapAudioStream` with `playback: false` — which avoided a second
   // audio graph but not a second reader, and with playback off it used the
   // unlimited discard sink, so it scanned toward the end of the source
-  // purely to build peaks. Opening the panel could become a whole-recording
+  // purely to build peaks. Opening the tile could become a whole-recording
   // fetch on top of the one already running.
   const pcm = useAudioSourceState(primarySourceId ?? "");
 

@@ -169,9 +169,39 @@ export function useAudioPlayback({
     [ensureAudioGraph, stopPlayback],
   );
 
+  /**
+   * Drop everything a decoded source is holding: the AudioBuffer (the large
+   * one — a whole recording's PCM), the derived waveform/metadata state, and
+   * the AudioContext itself. Used both on unmount and when demand goes away
+   * while this hook stays mounted, which is the normal case here: the
+   * ambient registrar keeps `useAudioPlayback` alive across an Audio tile
+   * opening and closing, so without this a closed tile left a full
+   * recording resident.
+   */
+  const releaseAudioResources = useCallback((): void => {
+    stopPlayback();
+    audioBufferRef.current = null;
+    gainNodeRef.current?.disconnect();
+    gainNodeRef.current = null;
+    gainConnectedRef.current = false;
+    const audioContext = audioContextRef.current;
+    audioContextRef.current = null;
+    void audioContext?.close().catch(() => undefined);
+  }, [stopPlayback]);
+
   // Load + prepare. One pass: PCM -> per-channel peaks -> AudioBuffer.
   useEffect(() => {
-    if (!load) return undefined;
+    // Demand disappeared (the tile closed, the track went inaudible). Release
+    // rather than merely stopping: the decoded buffer is the expensive part.
+    if (!load) {
+      releaseAudioResources();
+      setWaveformPeaks(null);
+      setMetadata(null);
+      setChannels(0);
+      setHasAudio(false);
+      setStatus("idle");
+      return undefined;
+    }
     const controller = new AbortController();
     let cancelled = false;
     // Clear the previous source before loading the next: keeping its peaks
@@ -260,7 +290,7 @@ export function useAudioPlayback({
       cancelled = true;
       controller.abort();
     };
-  }, [load, playback, trackId]);
+  }, [load, playback, trackId, releaseAudioResources]);
 
   // Mixer roster. Registered as soon as a track id exists, NOT gated on a
   // successful decode: a source that fails to decode should still appear
@@ -359,17 +389,12 @@ export function useAudioPlayback({
   // presents as unexplained silence.
   useEffect(
     () => () => {
-      stopPlayback();
-      gainNodeRef.current?.disconnect();
-      gainNodeRef.current = null;
-      gainConnectedRef.current = false;
-      const audioContext = audioContextRef.current;
-      audioContextRef.current = null;
-      void audioContext?.close().catch(() => undefined);
+      releaseAudioResources();
     },
-    // `stopPlayback` is `useCallback(…, [])`, so its identity is stable and
-    // listing it cannot cause this teardown to run before unmount.
-    [stopPlayback],
+    // `releaseAudioResources` is built on `stopPlayback`, itself a
+    // `useCallback(…, [])`, so its identity is stable and listing it cannot
+    // cause this teardown to run before unmount.
+    [releaseAudioResources],
   );
 
   return useMemo(

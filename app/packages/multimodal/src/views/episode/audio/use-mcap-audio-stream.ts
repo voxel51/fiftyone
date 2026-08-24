@@ -218,11 +218,16 @@ export function useMcapAudioStream(
         return { ok: false, reason: "empty" };
       }
 
+      // `signal` reaches the reader itself, not just the post-await check
+      // below: this is a whole-recording read, and without it closing the
+      // tile left the fetch and decode running to completion in the
+      // background. `readWindowDetailed` has always passed it.
       const result = await readStreamFrames({
         budget: oneShotBudget(),
         endTimeNs: timeline.endTimeNs,
         startTimeNs: timeline.startTimeNs,
         stream: streamId,
+        signal,
       });
       if (!result || signal?.aborted) return { ok: false, reason: "empty" };
 
