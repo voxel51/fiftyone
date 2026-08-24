@@ -746,20 +746,6 @@ const ViewBar: React.FC<{
           overflow: "hidden",
         }}
       >
-        {/* Clearing must survive the collapse: hover expands the chip away
-            under the pointer, so the [x] holds one spot in both states */}
-        {state.stages.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              paddingLeft: 4,
-              flexShrink: 0,
-            }}
-          >
-            <ClearViewButton onClear={clearView} />
-          </div>
-        )}
         {collapsed && (
           <div
             style={{
@@ -890,6 +876,21 @@ const ViewBar: React.FC<{
         {!collapsed && searchEnabled && (
           <div style={{ padding: "0 4px", flexShrink: 0 }}>
             <LanguageSearchButton onOpen={openSearch} />
+          </div>
+        )}
+        {/* Clearing must survive the collapse: hover expands the chip away
+            under the pointer, so the [x] holds the bar's right edge in
+            both states */}
+        {state.stages.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              paddingRight: 4,
+              flexShrink: 0,
+            }}
+          >
+            <ClearViewButton onClear={clearView} />
           </div>
         )}
       </div>
