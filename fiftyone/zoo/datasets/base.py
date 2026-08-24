@@ -3517,7 +3517,7 @@ class GR00TXEmbodimentSimDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/GR00T-X-Embodiment-Sim"
-    _REVISION = "4857fe973fb3ad9fe380ec86dafaed84d76148c6"
+    _REVISION = "adb9ef80f1a6eb8ce420e25dc1bafe54f1d69a19"
 
     @property
     def name(self):
@@ -3905,7 +3905,7 @@ class APACEgocentricStereoDataset(FiftyOneDataset):
     """
 
     _REPO_ID = "Voxel51/APAC-Egocentric-Stereo"
-    _REVISION = "9f47b62deb1b287cddd6c762879f94ad8c8b3c93"
+    _REVISION = "8d993ef3090329275a73958eac17940088100209"
 
     @property
     def name(self):
