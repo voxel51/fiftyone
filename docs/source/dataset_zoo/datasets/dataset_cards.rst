@@ -13,6 +13,13 @@
     :tags: multimodal,mcap,robotics,video
 
 .. customcarditem::
+    :header: APAC Egocentric Stereo
+    :description: 12 first-person work sequences in native MCAP format, with rectified stereo video, a depth render, hand and head tracking, and 248 densely captioned action segments.
+    :link: datasets/apac_egocentric_stereo.html
+    :image: ../_images/apac-egocentric-stereo.png
+    :tags: multimodal,mcap,egocentric,stereo
+
+.. customcarditem::
     :header: ActivityNet 100
     :description: Large-scale video dataset for human activity understanding with 100 activity classes. Supports video classification and temporal activity detection tasks.
     :link: datasets/activitynet_100.html
@@ -109,6 +116,13 @@
     :link: datasets/fiw.html
     :image: ../_images/fiw.png
     :tags: image,classification
+
+.. customcarditem::
+    :header: Hilti SLAM Challenge 2022
+    :description: 16 handheld runs through a construction site and the Sheldonian Theatre in native MCAP format, with five cameras, LiDAR, IMU, and surveyed reference positions.
+    :link: datasets/hilti_slam_challenge_2022.html
+    :image: ../_images/hilti-slam-challenge-2022.png
+    :tags: multimodal,mcap,slam,lidar
 
 .. customcarditem::
     :header: HMDB51

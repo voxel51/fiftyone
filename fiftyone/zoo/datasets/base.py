@@ -3874,12 +3874,142 @@ class SEWMultimodalAMRDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class APACEgocentricStereoDataset(FiftyOneDataset):
+    """The labeled stereo release of the APAC egocentric dataset, as native
+    ``.mcap`` episodes.
+
+    Twelve people were filmed doing their jobs while wearing a head-mounted
+    stereo rig. Each sequence runs about a minute and carries the rectified
+    video from both eyes, a depth render, a hand and head tracking render,
+    and a caption describing what the wearer is doing at every moment. The
+    work spans industrial, hospitality, logistics and retail settings,
+    across 248 captioned segments and 62 distinct verbs.
+
+    The depth stream is a false-colour render rather than metric depth, and
+    both eyes ride in one side-by-side stream cut at ``per_eye_width``.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("apac-egocentric-stereo")
+
+        # The industrial workplaces
+        view = dataset.match({"environment": "Industrial"})
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        9.36 GB
+    """
+
+    _REPO_ID = "Voxel51/APAC-Egocentric-Stereo"
+    _REVISION = "9f47b62deb1b287cddd6c762879f94ad8c8b3c93"
+
+    @property
+    def name(self):
+        return "apac-egocentric-stereo"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "egocentric", "stereo", "action")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class HiltiSLAMChallenge2022Dataset(FiftyOneDataset):
+    """The Hilti SLAM Challenge 2022 recordings, as native ``.mcap``
+    episodes.
+
+    The recordings were made with a handheld rig called Phasma, which
+    carries five synchronized global-shutter cameras, a Hesai PandarXT-32
+    LiDAR and a Bosch BMI085 IMU. Seven runs were walked through an active
+    construction site in Schaan, Liechtenstein, and nine through the
+    Sheldonian Theatre in Oxford. A surveyor measured reference positions
+    along every run, and three runs also carry a continuous reference
+    trajectory.
+
+    Camera frames are published at 10 Hz, on the LiDAR's clock, rather than
+    the 40 Hz the bags record. ``exp23_the_sheldonian_slam`` is one run
+    stored as three episodes sharing a ``sequence`` and differing in
+    ``part``, which is why sixteen runs arrive as eighteen episodes.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("hilti-slam-challenge-2022")
+
+        # The runs with a continuous reference trajectory
+        view = dataset.match({"has_dense_ground_truth": True})
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        49.70 GB
+    """
+
+    _REPO_ID = "Voxel51/Hilti-SLAM-Challenge-2022"
+    _REVISION = "876a688bd21fb59656707b4bfe4e8bc9b7d5dd35"
+
+    @property
+    def name(self):
+        return "hilti-slam-challenge-2022"
+
+    @property
+    def license(self):
+        return "CC-BY-NC-SA-3.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "slam", "lidar", "imu")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "2026-humanoid-ikea-assembly-challenge": (
         HumanoidIKEAAssemblyChallengeDataset
     ),
     "abc-130k": ABC130kDataset,
     "activitynet-100": ActivityNet100Dataset,
+    "apac-egocentric-stereo": APACEgocentricStereoDataset,
     "activitynet-200": ActivityNet200Dataset,
     "bdd100k": BDD100KDataset,
     "caltech101": Caltech101Dataset,
@@ -3890,6 +4020,7 @@ AVAILABLE_DATASETS = {
     "coco-2017": COCO2017Dataset,
     "fiw": FIWDataset,
     "gr00t-x-embodiment-sim": GR00TXEmbodimentSimDataset,
+    "hilti-slam-challenge-2022": HiltiSLAMChallenge2022Dataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
     "kinetics-400": Kinetics400Dataset,
