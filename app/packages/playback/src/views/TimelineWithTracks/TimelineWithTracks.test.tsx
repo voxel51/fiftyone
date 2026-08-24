@@ -59,6 +59,57 @@ describe("TimelineWithTracks", () => {
     });
   });
 
+  describe("shrinking track list", () => {
+    // The virtualizer renders from the range it last measured, so a list that
+    // shrinks transiently addresses rows past the new end. Reading through
+    // those undefined rows used to throw and take the tree down — which is how
+    // deleting the last track broke the annotation surface.
+    it("survives every track being removed", () => {
+      const { rerender } = render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TrackProvider tracks={[TRACK_A, TRACK_B]} initialPinnedIds={[]}>
+            <TimelineWithTracks />
+          </TrackProvider>
+        </PlaybackProvider>,
+      );
+      expect(screen.getAllByText("Track A").length).toBeGreaterThan(0);
+
+      expect(() =>
+        rerender(
+          <PlaybackProvider duration={10} stepInterval={1 / 30}>
+            <TrackProvider tracks={[]} initialPinnedIds={[]}>
+              <TimelineWithTracks />
+            </TrackProvider>
+          </PlaybackProvider>,
+        ),
+      ).not.toThrow();
+
+      expect(screen.queryByText("Track A")).toBeNull();
+    });
+
+    it("survives the list shrinking to a single track", () => {
+      const { rerender } = render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TrackProvider tracks={[TRACK_A, TRACK_B]} initialPinnedIds={[]}>
+            <TimelineWithTracks />
+          </TrackProvider>
+        </PlaybackProvider>,
+      );
+
+      expect(() =>
+        rerender(
+          <PlaybackProvider duration={10} stepInterval={1 / 30}>
+            <TrackProvider tracks={[TRACK_B]} initialPinnedIds={[]}>
+              <TimelineWithTracks />
+            </TrackProvider>
+          </PlaybackProvider>,
+        ),
+      ).not.toThrow();
+
+      expect(screen.getAllByText("Track B").length).toBeGreaterThan(0);
+    });
+  });
+
   describe("with tracks", () => {
     it("renders track labels for registered tracks", () => {
       renderTimeline({ tracks: [TRACK_A, TRACK_B], pinnedIds: ["track-a"] });

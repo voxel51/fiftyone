@@ -103,6 +103,51 @@ describe("grid poster cache", () => {
     expect(
       gridPosterCacheKey({ ...base, source: source("one", "etag-b") }),
     ).not.toBe(key);
+    expect(
+      gridPosterCacheKey({
+        ...base,
+        source: { ...source("one", "etag-a"), sizeBytes: "2048" },
+      }),
+    ).not.toBe(key);
+  });
+
+  it("keeps signed access URLs out of persistent poster identity", () => {
+    const base = {
+      datasetId: "dataset-a",
+      mediaField: "recording",
+      selectedSourceName: null,
+    };
+    const first = gridPosterCacheKey({
+      ...base,
+      source: {
+        sourceId: "sample-a",
+        url: "https://objects.test/run.mcap?X-Amz-Signature=first",
+      },
+    });
+    const rotated = gridPosterCacheKey({
+      ...base,
+      source: {
+        sourceId: "sample-a",
+        url: "https://cdn.test/run.mcap?X-Amz-Signature=second",
+      },
+    });
+    const proxied = gridPosterCacheKey({
+      ...base,
+      mediaPath: "https://fiftyone.test/media?filepath=%2Fdatasets%2Frun.mcap",
+      source: {
+        sourceId: "sample-a",
+        url: "https://fiftyone.test/rotating-access-path",
+      },
+    });
+
+    expect(rotated).toBe(first);
+    expect(proxied).toBe(first);
+    expect(
+      gridPosterCacheKey({
+        ...base,
+        source: { sourceId: "sample-a", url: "https://cdn.test/new.mcap" },
+      }),
+    ).not.toBe(first);
   });
 
   it("classifies size and complete point-cloud pose freshness without key variants", () => {

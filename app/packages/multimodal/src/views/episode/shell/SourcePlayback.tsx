@@ -90,7 +90,6 @@ import {
   SourcePosterProvider,
   type SourcePosterValue,
 } from "../image/source-poster-context";
-import { EpisodeSourceReadyProvider } from "../playback/source-ready-context";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 export const TRANSITION_STATUS_DELAY_MS = 200;
@@ -467,7 +466,6 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
         cameraViewStateScopeKey={cameraViewStateScopeKey}
         sources={shellSources}
         sourcePoster={sourcePoster}
-        sourceReady={!transitioning}
         transformTopologyCapability={
           readyInventory ? (session?.transformTopology ?? null) : null
         }
@@ -642,7 +640,6 @@ const PlaybackSessionStateProviders: React.FC<{
   readonly children: React.ReactNode;
   readonly sources: readonly SceneSource[];
   readonly sourcePoster: SourcePosterValue | null;
-  readonly sourceReady: boolean;
   readonly transformTopologyCapability: NonNullable<
     EpisodeSession["transformTopology"]
   > | null;
@@ -653,39 +650,36 @@ const PlaybackSessionStateProviders: React.FC<{
   children,
   sources,
   sourcePoster,
-  sourceReady,
   transformTopologyCapability,
   transformTopologySourceKey,
   viewportScopeKey,
 }) => (
   <SourcePosterProvider value={sourcePoster}>
-    <EpisodeSourceReadyProvider ready={sourceReady}>
-      <FullHistoryInterestsProvider>
-        <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
-          <SidebarPreferencesProvider
-            scopeKey={cameraViewStateScopeKey}
-            sources={sources}
-          >
-            <Scene3dViewpointProvider>
-              <SceneFramesProvider>
-                <SceneNoticesProvider>
-                  <TileSettingsProvider>
-                    <MapViewportScopeProvider scopeKey={viewportScopeKey}>
-                      <TransformTopologyProvider
-                        capability={transformTopologyCapability}
-                        sourceKey={transformTopologySourceKey}
-                      >
-                        {children}
-                      </TransformTopologyProvider>
-                    </MapViewportScopeProvider>
-                  </TileSettingsProvider>
-                </SceneNoticesProvider>
-              </SceneFramesProvider>
-            </Scene3dViewpointProvider>
-          </SidebarPreferencesProvider>
-        </Scene3dViewStateProvider>
-      </FullHistoryInterestsProvider>
-    </EpisodeSourceReadyProvider>
+    <FullHistoryInterestsProvider>
+      <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
+        <SidebarPreferencesProvider
+          scopeKey={cameraViewStateScopeKey}
+          sources={sources}
+        >
+          <Scene3dViewpointProvider>
+            <SceneFramesProvider>
+              <SceneNoticesProvider>
+                <TileSettingsProvider>
+                  <MapViewportScopeProvider scopeKey={viewportScopeKey}>
+                    <TransformTopologyProvider
+                      capability={transformTopologyCapability}
+                      sourceKey={transformTopologySourceKey}
+                    >
+                      {children}
+                    </TransformTopologyProvider>
+                  </MapViewportScopeProvider>
+                </TileSettingsProvider>
+              </SceneNoticesProvider>
+            </SceneFramesProvider>
+          </Scene3dViewpointProvider>
+        </SidebarPreferencesProvider>
+      </Scene3dViewStateProvider>
+    </FullHistoryInterestsProvider>
   </SourcePosterProvider>
 );
 

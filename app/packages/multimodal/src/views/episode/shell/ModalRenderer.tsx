@@ -9,7 +9,6 @@ import {
   useSampleRendererFirstMatch,
   type TimelineSection,
 } from "../../../extensions/timeline";
-import { AdjacentSamplePrewarm } from "../playback/AdjacentSamplePrewarm";
 import { SourcePlayback } from "./SourcePlayback";
 import { sourceDisplayName } from "./source-display-name";
 import {
@@ -90,7 +89,6 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             source={source}
             tracks={tracks}
           >
-            <AdjacentSamplePrewarm ctx={ctx} />
             {runtime}
           </SourcePlayback>
         )}

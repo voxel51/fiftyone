@@ -42,7 +42,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # Blobless clone: the cherry-pick needs the full commit graph for
+          # the merge-commit parent lookup, but only the blobs it touches.
           fetch-depth: 0
+          filter: blob:none
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
       - name: Cherry-pick and open PR
         env:
