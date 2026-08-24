@@ -14,6 +14,7 @@ import { Icon, IconName, Input, Size, Tooltip, Anchor } from "@voxel51/voodo";
 import React from "react";
 import { createPortal } from "react-dom";
 
+import { StageDescription } from "./description";
 import { NO_BROWSER_SUGGESTIONS } from "./params";
 import { useAnchorRect } from "./StageCard";
 
@@ -175,55 +176,58 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
             role="listbox"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            {filtered.map((name, i) => (
-              <div
-                key={name}
-                id={`view-bar-stage-${i}`}
-                role="option"
-                aria-selected={i === active}
-                ref={(el) => {
-                  if (i === active) {
-                    el?.scrollIntoView({ block: "nearest" });
-                  }
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  insert(name);
-                }}
-                onMouseEnter={() => setHighlight(i)}
-                style={{
-                  padding: "6px 10px",
-                  cursor: "pointer",
-                  background:
-                    i === active
-                      ? "var(--fo-palette-background-level2)"
-                      : undefined,
-                }}
-              >
+            {filtered.map((name, i) => {
+              const description = describe(name);
+              return (
                 <div
+                  key={name}
+                  id={`view-bar-stage-${i}`}
+                  role="option"
+                  aria-selected={i === active}
+                  ref={(el) => {
+                    if (i === active) {
+                      el?.scrollIntoView({ block: "nearest" });
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    insert(name);
+                  }}
+                  onMouseEnter={() => setHighlight(i)}
                   style={{
-                    color: "var(--fo-palette-text-primary)",
-                    whiteSpace: "nowrap",
+                    padding: "6px 10px",
+                    cursor: "pointer",
+                    background:
+                      i === active
+                        ? "var(--fo-palette-background-level2)"
+                        : undefined,
                   }}
                 >
-                  {name}
-                </div>
-                {describe(name) && (
-                  // What the stage does, without leaving the list — its
-                  // docstring's opening sentence, served with the schema
                   <div
                     style={{
-                      color: "var(--fo-palette-text-secondary)",
-                      fontSize: "0.85em",
-                      lineHeight: 1.35,
-                      marginTop: 2,
+                      color: "var(--fo-palette-text-primary)",
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    {describe(name)}
+                    {name}
                   </div>
-                )}
-              </div>
-            ))}
+                  {description && (
+                    // What the stage does, without leaving the list — its
+                    // docstring's opening sentence, served with the schema
+                    <div
+                      style={{
+                        color: "var(--fo-palette-text-secondary)",
+                        fontSize: "0.85em",
+                        lineHeight: 1.35,
+                        marginTop: 2,
+                      }}
+                    >
+                      <StageDescription text={description} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>,
           document.body,
         )}
