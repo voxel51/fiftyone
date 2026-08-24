@@ -295,6 +295,33 @@ export class InteractionManager {
     return this.currentModifiers.shiftKey;
   }
 
+  /**
+   * While a creation tool is active, unselected overlays are treated as empty
+   * canvas. Merge is excluded because it picks sources by selecting overlays.
+   */
+  private isDrawModeActive(): boolean {
+    if (detectionModeBridge.isActive()) {
+      return true;
+    }
+
+    if (!segmentationModeBridge.isActive()) {
+      return false;
+    }
+
+    const tool = segmentationModeBridge.getActiveTool();
+    return tool !== SegmentationTool.Select && tool !== SegmentationTool.Merge;
+  }
+
+  /** While drawing, an unselected overlay never claims the pointer. */
+  private isDrawingOverUnselected(handler?: InteractionHandler): boolean {
+    return (
+      !!handler &&
+      TypeGuards.isSelectable(handler) &&
+      !this.selectionManager.isSelected(handler.id) &&
+      this.isDrawModeActive()
+    );
+  }
+
   private setupEventListeners(): void {
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
@@ -368,7 +395,10 @@ export class InteractionManager {
         TypeGuards.isSelectable(handler) &&
         !this.selectionManager.isSelected(handler.id);
 
-      if (isUnselectedOverlay) {
+      // the selected overlay still wins the hit test so drag/resize works
+      const drawOverOverlay = this.isDrawingOverUnselected(handler);
+
+      if (isUnselectedOverlay && !drawOverOverlay) {
         this.selectionManager.select(handler!.id);
 
         // Select an overlay before issuing any edits. The cursor at this point
@@ -381,13 +411,12 @@ export class InteractionManager {
 
       // Detection mode: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit detection mode.
-      // Clicking on an existing overlay selects it normally instead.
       if (detectionModeBridge.isActive() || segmentationModeBridge.isActive()) {
         const isSelectInSegmentation =
           segmentationModeBridge.isActive() &&
           segmentationModeBridge.getActiveTool() === SegmentationTool.Select;
 
-        if (isNonOverlay && !isSelectInSegmentation) {
+        if ((isNonOverlay || drawOverOverlay) && !isSelectInSegmentation) {
           this.renderer.disableZoomPan();
 
           this.pendingAction = {
@@ -473,12 +502,18 @@ export class InteractionManager {
       return;
     }
 
-    if (TypeGuards.isSelectable(handler) && !handler.isSelected?.()) {
+    // unselected overlays aren't clickable while drawing — show the mode cursor
+    const isUnselectedOverlay =
+      TypeGuards.isSelectable(handler) && !handler.isSelected?.();
+
+    if (isUnselectedOverlay && !this.isDrawModeActive()) {
       this.canvas.style.cursor = "pointer";
     } else if (segmentationModeBridge.isActive()) {
       this.canvas.style.cursor = buildBrushCursor(
         segmentationModeBridge.getToolState(scale)!,
       );
+    } else if (isUnselectedOverlay && detectionModeBridge.isActive()) {
+      this.canvas.style.cursor = "crosshair";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(
         worldPoint,
@@ -1327,7 +1362,10 @@ export class InteractionManager {
     // Hover target is pre-resolved by the caller (single hit-test per
     // pointermove). `undefined` means either nothing under the cursor or a
     // drag is active and hover should be cleared.
-    const handler = resolvedHandler;
+    // no hover highlight while drawing over an unselected overlay
+    const handler = this.isDrawingOverUnselected(resolvedHandler)
+      ? undefined
+      : resolvedHandler;
     const interactingHandler = this.findInteractingHandler();
 
     // If we are dragging, we should unhover the previous one
