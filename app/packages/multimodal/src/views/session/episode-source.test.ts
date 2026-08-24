@@ -56,8 +56,8 @@ describe("episodeSourceFromByteSource", () => {
 });
 
 describe("episodeSourceFromMediaReference", () => {
-  it("lazily exposes manifest assets as range-readable byte sources", async () => {
-    const request = vi.fn().mockResolvedValue({
+  it("deduplicates concurrent manifest-backed asset requests", async () => {
+    const response = {
       json: async () => ({
         assets: [
           {
@@ -72,25 +72,66 @@ describe("episodeSourceFromMediaReference", () => {
       ok: true,
       status: 200,
       statusText: "OK",
-    });
+    };
+    let resolveRequest: (value: typeof response) => void = () => undefined;
+    const request = vi.fn().mockImplementation(
+      () =>
+        new Promise<typeof response>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
     vi.stubGlobal("fetch", request);
 
     const source = episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
-      version: "2",
+      version: "1",
     });
 
     expect(source.episodeId).toBe("source:17");
     expect(request).not.toHaveBeenCalled();
-    await expect(source.assets.list()).resolves.toEqual([
+    const listed = source.assets.list();
+    const resolved = source.assets.resolve("camera");
+    expect(request).toHaveBeenCalledTimes(1);
+    resolveRequest(response);
+
+    await expect(listed).resolves.toEqual([
       { id: "camera", mediaType: "video/mp4", role: "video-stream" },
     ]);
-    await expect(source.assets.resolve("camera")).resolves.toMatchObject({
+    await expect(resolved).resolves.toMatchObject({
       sizeBytes: "1234",
       sourceId: "camera",
       url: "/dataset/d/sample/s/multimodal/assets/camera",
     });
     expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a manifest request after a failed in-flight fetch", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: "Unavailable",
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({ assets: [] }),
+        ok: true,
+        status: 200,
+        statusText: "OK",
+      });
+    vi.stubGlobal("fetch", request);
+
+    const source = episodeSourceFromMediaReference("d", "s", {
+      kind: "lerobot-episode",
+      key: "source:17",
+      version: "1",
+    });
+
+    await expect(source.assets.list()).rejects.toThrow(
+      "Unable to resolve episode assets",
+    );
+    await expect(source.assets.list()).resolves.toEqual([]);
+    expect(request).toHaveBeenCalledTimes(2);
   });
 });

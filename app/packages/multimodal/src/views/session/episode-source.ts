@@ -92,24 +92,35 @@ export function episodeSourceFromMediaReference(
     datasetId,
   )}/sample/${encodeURIComponent(sampleId)}/multimodal/manifest`;
   let manifest: TransportMediaAssetManifest | null = null;
+  let manifestPromise: Promise<TransportMediaAssetManifest> | null = null;
 
   const getManifest = async (
     options?: EpisodeOpenOptions,
   ): Promise<TransportMediaAssetManifest> => {
     if (manifest) return manifest;
+    if (manifestPromise) return manifestPromise;
 
-    const response = await fetch(manifestUrl, {
-      credentials: "same-origin",
-      signal: options?.signal,
-    });
-    if (!response.ok) {
-      throw new Error(
-        `Unable to resolve episode assets (${response.status} ${response.statusText})`,
-      );
+    const request = (async () => {
+      const response = await fetch(manifestUrl, {
+        credentials: "same-origin",
+        signal: options?.signal,
+      });
+      if (!response.ok) {
+        throw new Error(
+          `Unable to resolve episode assets (${response.status} ${response.statusText})`,
+        );
+      }
+
+      manifest = (await response.json()) as TransportMediaAssetManifest;
+      return manifest;
+    })();
+    manifestPromise = request;
+    try {
+      return await request;
+    } catch (error) {
+      if (manifestPromise === request) manifestPromise = null;
+      throw error;
     }
-
-    manifest = (await response.json()) as TransportMediaAssetManifest;
-    return manifest;
   };
 
   return {
