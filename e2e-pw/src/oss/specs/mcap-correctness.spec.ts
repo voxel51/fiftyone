@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { ConsoleMessage } from "@playwright/test";
+import type { ConsoleMessage, Page } from "@playwright/test";
 import { test as base, expect, Locator } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { McapExplorerPom } from "src/oss/poms/multimodal/mcap-explorer";
@@ -20,6 +20,7 @@ const alternateMediaDatasetName = getUniqueDatasetNameWithPrefix(
 const fixtureDir = path.join(os.tmpdir(), datasetName);
 const originalMultimodalFlag = process.env.VFF_MULTIMODAL;
 const RENDERER_ERROR_PATTERN = /(?:webgpu|webgl|graphics renderer|gpu device)/i;
+const SOURCE_FACTS_DATABASE_NAME = "fiftyone-multimodal-source-facts";
 const { long, sidebar, tinyA, tinyB, unsupported } = MCAP_FIXTURE_CONTRACT;
 const fixturePaths = {
   episodeA: path.join(fixtureDir, tinyA.fileName),
@@ -276,6 +277,39 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}"]:
     await modal.episode.expectPlayhead(
       "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000",
     );
+    await modal.episode.expectNoViewerError();
+  });
+
+  test("restores the episode shell from source facts after reload and reopen", async ({
+    grid,
+    modal,
+    page,
+  }) => {
+    await openMcapModal(grid, modal, sampleIndex.episodeA);
+    await modal.episode.waitForReady(tinyA.fileName);
+    await expect
+      .poll(() => sourceFactsEntryCount(page), { timeout: 10_000 })
+      .toBeGreaterThan(0);
+
+    await modal.close();
+    await page.evaluate(async () => {
+      await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
+    });
+    await page.reload();
+    await expect(grid.locator).toBeVisible({ timeout: 30_000 });
+
+    const sourceUrl = new RegExp(tinyA.fileName.replace(/\./g, "\\."));
+    await page.route(sourceUrl, (route) => route.abort("failed"));
+    await openMcapModal(grid, modal, sampleIndex.episodeA);
+    await modal.episode.expectWarmBootstrapShell(tinyA.fileName, [
+      "camera/front",
+      "points",
+    ]);
+
+    await modal.close();
+    await page.unroute(sourceUrl);
+    await openMcapModal(grid, modal, sampleIndex.episodeA);
+    await modal.episode.waitForReady(tinyA.fileName);
     await modal.episode.expectNoViewerError();
   });
 
@@ -920,6 +954,30 @@ async function openMcapModal(
   // multimodal never mounts the classic sidebar (it has its own right panel),
   // so there's nothing to hide and no toggle to hide it with
   await modal.enterFullscreen();
+}
+
+async function sourceFactsEntryCount(page: Page): Promise<number> {
+  return page.evaluate(async (databaseName) => {
+    const databases = await indexedDB.databases();
+    if (!databases.some((database) => database.name === databaseName)) return 0;
+    return new Promise<number>((resolve) => {
+      const request = indexedDB.open(databaseName);
+      request.onerror = () => resolve(0);
+      request.onsuccess = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains("entries")) {
+          database.close();
+          resolve(0);
+          return;
+        }
+        const transaction = database.transaction("entries", "readonly");
+        const count = transaction.objectStore("entries").count();
+        count.onerror = () => resolve(0);
+        count.onsuccess = () => resolve(count.result);
+        transaction.oncomplete = () => database.close();
+      };
+    });
+  }, SOURCE_FACTS_DATABASE_NAME);
 }
 
 async function setRepresentativeSidebarPreferences(

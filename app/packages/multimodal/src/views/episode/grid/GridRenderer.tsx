@@ -81,7 +81,11 @@ export function GridRenderer({
   isGridActive = true,
   onRetainedBytesChange,
 }: SampleRendererProps) {
-  const { byteSource: source, episodeSource } = useStableEpisodeSource(ctx);
+  const {
+    byteSource: source,
+    episodeSource,
+    sourceFactsScope,
+  } = useStableEpisodeSource(ctx);
   const gridCameraScopeKey =
     cameraScopeKey(ctx.dataset.datasetId, ctx.media?.field) ??
     ctx.dataset.datasetId;
@@ -181,6 +185,7 @@ export function GridRenderer({
     previewSessionStatus: previewSession.status,
     selectedSourceName,
     source,
+    sourceFactsScope,
   });
   const registerStreams = useRegisterGridStreams();
   const stableStreams = useStableGridStreams(preview.streamSourceNames);

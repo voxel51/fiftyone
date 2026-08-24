@@ -8,6 +8,8 @@ import type { EpisodePreviewSession } from "../../../ports";
 import {
   episodePreviewPlaybackDelayMs,
   publishEpisodePreviewBootstrap,
+  recordPreviewSourceFacts,
+  type SourceFactsScope,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
 import type { GridPosterCacheEntry } from "./grid-poster-cache";
@@ -70,6 +72,7 @@ export interface UseGridPreviewOptions {
     | "unavailable";
   readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
+  readonly sourceFactsScope?: SourceFactsScope;
 }
 
 /** Suppresses buffering chrome for ordinary fast grid frame reads. */
@@ -104,6 +107,7 @@ export function useGridPreview({
   previewSessionStatus = "idle",
   selectedSourceName,
   source,
+  sourceFactsScope,
 }: UseGridPreviewOptions): GridPreviewState {
   const [state, setState] = useState<GridPreviewSnapshot>(() =>
     seededSnapshot(source, cachedPoster),
@@ -238,6 +242,9 @@ export function useGridPreview({
         if (active) {
           notifyReadResult(onReadResultRef.current, result);
           publishEpisodePreviewBootstrap(source, result);
+          if (sourceFactsScope) {
+            recordPreviewSourceFacts(source, sourceFactsScope, result);
+          }
           loadedRequestRef.current = {
             posterStartTimeNs,
             source,
@@ -277,6 +284,7 @@ export function useGridPreview({
     posterStartTimeNs,
     previewSession,
     source,
+    sourceFactsScope,
   ]);
 
   // This effect runs the hover playback loop: while playing, it keeps
@@ -359,6 +367,9 @@ export function useGridPreview({
 
           if (!bootstrapPublished) {
             publishEpisodePreviewBootstrap(source, result);
+            if (sourceFactsScope) {
+              recordPreviewSourceFacts(source, sourceFactsScope, result);
+            }
             bootstrapPublished = true;
           }
 
@@ -395,6 +406,7 @@ export function useGridPreview({
     playing,
     previewSession,
     source,
+    sourceFactsScope,
     startBuffering,
     state.status,
   ]);

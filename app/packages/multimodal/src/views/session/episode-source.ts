@@ -7,7 +7,12 @@ import { getSampleSrc } from "@fiftyone/state";
 
 import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../../ir";
 import type { EpisodeSource, SampleDescriptor } from "../../ports";
-import { getSourceBootstrap } from "../../runtime";
+import {
+  getSourceSessionHints,
+  resolveSourceFactsHints,
+  SOURCE_FACTS_MCAP_ADAPTER_ID,
+  type SourceFactsScope,
+} from "../../runtime";
 
 /** Builds the format-neutral sample facts used by lazy adapter detection. */
 export function sampleDescriptorFromContext(
@@ -48,8 +53,9 @@ export function episodeByteSourceFromSample(
 /** Wraps one physical recording in the multi-asset episode port. */
 export function episodeSourceFromByteSource(
   source: ByteSourceDescriptor,
+  sourceFactsScope?: SourceFactsScope,
 ): EpisodeSource {
-  const bootstrap = getSourceBootstrap(source);
+  const hints = getSourceSessionHints(source, SOURCE_FACTS_MCAP_ADAPTER_ID);
   return {
     assets: {
       list: async () => [
@@ -66,8 +72,19 @@ export function episodeSourceFromByteSource(
       },
     },
     episodeId: source.sourceId,
-    ...(bootstrap?.manifest ? { manifestHint: bootstrap.manifest } : {}),
-    ...(bootstrap?.timeline ? { playbackHint: bootstrap.timeline } : {}),
+    ...(hints?.manifestHint ? { manifestHint: hints.manifestHint } : {}),
+    ...(hints?.playbackHint ? { playbackHint: hints.playbackHint } : {}),
+    ...(sourceFactsScope
+      ? {
+          resolveHints: (options) =>
+            resolveSourceFactsHints(
+              source,
+              sourceFactsScope,
+              SOURCE_FACTS_MCAP_ADAPTER_ID,
+              options,
+            ),
+        }
+      : {}),
   };
 }
 
