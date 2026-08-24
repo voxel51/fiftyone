@@ -6,7 +6,13 @@ import {
 import { getSampleSrc } from "@fiftyone/state";
 
 import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../../ir";
-import type { EpisodeSource, SampleDescriptor } from "../../ports";
+import type {
+  EpisodeOpenOptions,
+  EpisodeSource,
+  ManifestEpisodeSource,
+  MediaReferenceDescriptor,
+  SampleDescriptor,
+} from "../../ports";
 import { getSourceBootstrap } from "../../runtime";
 
 /** Builds the format-neutral sample facts used by lazy adapter detection. */
@@ -14,7 +20,8 @@ export function sampleDescriptorFromContext(
   ctx: SampleRendererProps["ctx"],
 ): SampleDescriptor {
   return {
-    mediaType: ctx.dataset.mediaType,
+    mediaReference: ctx.media.mediaReference,
+    mediaType: ctx.media.mediaType ?? ctx.dataset.mediaType,
     path: ctx.media?.path ?? undefined,
   };
 }
@@ -26,7 +33,11 @@ export function sampleDescriptorFromSample(
   mediaType?: string,
 ): SampleDescriptor {
   const media = createSampleRendererMediaContext(sample, mediaField);
-  return { mediaType, path: media.path ?? undefined };
+  return {
+    mediaReference: media.mediaReference,
+    mediaType: mediaType ?? media.mediaType ?? undefined,
+    path: media.path ?? undefined,
+  };
 }
 
 /** Builds a byte-addressable episode source from the active sample. */
@@ -71,6 +82,80 @@ export function episodeSourceFromByteSource(
   };
 }
 
+/** Builds a lazy multi-asset source from a sample-scoped manifest endpoint. */
+export function episodeSourceFromMediaReference(
+  datasetId: string,
+  sampleId: string,
+  mediaReference: MediaReferenceDescriptor,
+): ManifestEpisodeSource {
+  const manifestUrl = `/dataset/${encodeURIComponent(
+    datasetId,
+  )}/sample/${encodeURIComponent(sampleId)}/multimodal/manifest`;
+  let manifest: TransportEpisodeManifest | null = null;
+
+  const getManifest = async (
+    options?: EpisodeOpenOptions,
+  ): Promise<TransportEpisodeManifest> => {
+    if (manifest) return manifest;
+
+    const response = await fetch(manifestUrl, {
+      credentials: "same-origin",
+      signal: options?.signal,
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Unable to resolve episode assets (${response.status} ${response.statusText})`,
+      );
+    }
+
+    manifest = (await response.json()) as TransportEpisodeManifest;
+    return manifest;
+  };
+
+  return {
+    assets: {
+      list: async (options) =>
+        (await getManifest(options)).assets.map((asset) => ({
+          id: asset.asset_id,
+          mediaType: asset.media_type,
+          role: asset.role,
+        })),
+      resolve: async (assetId, options) => {
+        const resolvedManifest = await getManifest(options);
+        const asset = resolvedManifest.assets.find(
+          (candidate) => candidate.asset_id === assetId,
+        );
+        if (!asset) {
+          throw new Error(`Unknown episode asset: ${assetId}`);
+        }
+
+        return {
+          readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
+          sizeBytes: Math.max(0, Math.trunc(asset.size_bytes)).toString(),
+          sourceId: asset.asset_id,
+          url: asset.url,
+        };
+      },
+    },
+    episodeId: mediaReference.key,
+    mediaReference,
+  };
+}
+
+/** Builds a manifest source for a reference-backed renderer context. */
+export function episodeManifestSourceFromContext(
+  ctx: SampleRendererProps["ctx"],
+): ManifestEpisodeSource | null {
+  const mediaReference = ctx.media.mediaReference;
+  if (!mediaReference) return null;
+
+  return episodeSourceFromMediaReference(
+    ctx.dataset.datasetId,
+    ctx.sample.sample._id,
+    mediaReference,
+  );
+}
+
 function byteSourceFromSample(
   sample: SampleRendererSampleLike["sample"],
   mediaPath: string | null,
@@ -89,3 +174,15 @@ function byteSourceFromSample(
     url: getSampleSrc(mediaPath),
   };
 }
+
+type TransportEpisodeManifest = {
+  readonly assets: readonly TransportEpisodeAsset[];
+};
+
+type TransportEpisodeAsset = {
+  readonly asset_id: string;
+  readonly media_type: string;
+  readonly role: string;
+  readonly size_bytes: number;
+  readonly url: string;
+};

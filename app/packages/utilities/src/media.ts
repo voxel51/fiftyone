@@ -144,7 +144,7 @@ export const getSamplePathExtension = (
 };
 
 type MimeSample = {
-  filepath: string;
+  filepath?: string | null;
   metadata?: { mime_type?: string } | null;
 };
 

@@ -4,10 +4,19 @@ import type React from "react";
 
 type SampleRendererSurface = "grid" | "modal";
 
+export type MediaReferenceDescriptor = {
+  readonly kind: string;
+  readonly key: string;
+  readonly version: string;
+};
+
 export type SampleRendererSampleLike = {
+  frameNumber?: number | null;
+  frameRate?: number | null;
   sample: {
     _id: string;
-    filepath: string;
+    filepath?: string | null;
+    _media_reference?: MediaReferenceDescriptor | null;
     media_type?: string | null;
     _media_type?: string | null;
     metadata?: {
@@ -27,6 +36,7 @@ export type SampleRendererSampleLike = {
  */
 export type MatchMedia = {
   extensions?: string[];
+  mediaReferenceKinds?: string[];
   mimeTypes?: string[];
   mediaTypes?: string[];
 };
@@ -42,6 +52,7 @@ export type SampleRendererMediaContext = {
   mimeType: string | null;
   mediaType: string | null;
   isNative: boolean;
+  mediaReference: MediaReferenceDescriptor | null;
 };
 
 /**
@@ -217,6 +228,10 @@ export function normalizeMatchMedia(
       matchMedia?.extensions,
       normalizeExtensionValue,
     ),
+    mediaReferenceKinds: normalizeMatcherArray(
+      matchMedia?.mediaReferenceKinds,
+      normalizeMatcherValue,
+    ),
     mimeTypes: normalizeMatcherArray(
       matchMedia?.mimeTypes,
       normalizeMatcherValue,
@@ -240,6 +255,7 @@ export function hasMatchMediaMatchers(matchMedia: MatchMedia | undefined) {
 
   return !!(
     normalized.extensions?.length ||
+    normalized.mediaReferenceKinds?.length ||
     normalized.mimeTypes?.length ||
     normalized.mediaTypes?.length
   );
@@ -262,6 +278,10 @@ export function matchesMatchMedia(
     matchesField(
       normalized.extensions,
       normalizeExtensionValue(media.extension),
+    ) &&
+    matchesField(
+      normalized.mediaReferenceKinds,
+      normalizeMatcherValue(media.mediaReference?.kind),
     ) &&
     matchesField(normalized.mimeTypes, normalizeMatcherValue(media.mimeType)) &&
     matchesField(normalized.mediaTypes, normalizeMatcherValue(media.mediaType))
@@ -315,9 +335,10 @@ export function createSampleRendererMediaContext<
     sample: sample.sample,
     urls: urls ?? {},
   });
-  const path = selectedMedia.selectedMediaPath;
+  const path = selectedMedia.selectedMediaPath ?? null;
   const mediaType =
     sample.sample.media_type ?? sample.sample._media_type ?? null;
+  const mediaReference = sample.sample._media_reference ?? null;
 
   return {
     field: selectedMediaField,
@@ -326,8 +347,16 @@ export function createSampleRendererMediaContext<
     extension: getFileExtension(path),
     mimeType: selectedMedia.mimeType,
     mediaType,
-    isNative: selectedMedia.nativeLookerType !== null,
+    isNative: !mediaReference && selectedMedia.nativeLookerType !== null,
+    mediaReference,
   };
+}
+
+/** Returns whether a renderer can receive a file URL or logical reference. */
+export function hasSampleRendererSource(
+  media: SampleRendererMediaContext,
+): boolean {
+  return Boolean(media.url || media.mediaReference);
 }
 
 /**

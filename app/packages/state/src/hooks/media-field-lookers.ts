@@ -9,7 +9,12 @@ import {
 export type NativeLookerType = "image" | "video" | "3d";
 
 type MediaFieldLookerSample = {
-  filepath: string;
+  filepath?: string | null;
+  _media_reference?: {
+    readonly kind: string;
+    readonly key: string;
+    readonly version: string;
+  } | null;
   metadata?: { mime_type?: string } | null;
   media_type?: string | null;
   _media_type?: string | null;
@@ -40,12 +45,15 @@ export const resolveMediaFieldLooker = ({
   urls,
 }: ResolveMediaFieldLookerParams) => {
   const mediaFieldPath = urls[mediaField];
+  const hasMediaReference = Boolean(sample._media_reference);
   const hasSelectedMediaPath = Boolean(mediaFieldPath?.trim());
   const hasAlternateMediaPath =
     mediaField !== "filepath" && hasSelectedMediaPath;
-  const selectedMediaPath = hasAlternateMediaPath
-    ? mediaFieldPath
-    : (urls.filepath ?? sample.filepath);
+  const selectedMediaPath = hasMediaReference
+    ? null
+    : hasAlternateMediaPath
+      ? mediaFieldPath
+      : (urls.filepath ?? sample.filepath);
   const mimeType = getMimeType(
     sample,
     hasAlternateMediaPath ? mediaFieldPath : undefined,
@@ -54,15 +62,18 @@ export const resolveMediaFieldLooker = ({
     isDirect3dSamplePath(selectedMediaPath) ||
     (!hasAlternateMediaPath && isDirect3dSamplePath(sample.filepath));
   const sampleMediaType = sample.media_type ?? sample._media_type;
-  const nativeLookerType = getNativeLookerType({
-    hasAlternateMediaPath,
-    isDirect3dSample,
-    mimeType,
-    sampleMediaType,
-  });
+  const nativeLookerType = hasMediaReference
+    ? null
+    : getNativeLookerType({
+        hasAlternateMediaPath,
+        isDirect3dSample,
+        mimeType,
+        sampleMediaType,
+      });
 
   return {
     hasAlternateMediaPath,
+    hasMediaReference,
     hasSelectedMediaPath,
     isDirect3dSample,
     mediaFieldPath,

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type {
   ByteSourceDescriptor,
@@ -9,9 +9,15 @@ import {
   publishSourceBootstrap,
   resetSourceBootstrapCacheForTests,
 } from "../../runtime";
-import { episodeSourceFromByteSource } from "./episode-source";
+import {
+  episodeSourceFromByteSource,
+  episodeSourceFromMediaReference,
+} from "./episode-source";
 
-afterEach(resetSourceBootstrapCacheForTests);
+afterEach(() => {
+  resetSourceBootstrapCacheForTests();
+  vi.unstubAllGlobals();
+});
 
 describe("episodeSourceFromByteSource", () => {
   it("hands grid manifest and playback metadata to the modal session", async () => {
@@ -46,5 +52,45 @@ describe("episodeSourceFromByteSource", () => {
     await expect(episode.assets.list()).resolves.toEqual([
       { id: "recording", role: "recording" },
     ]);
+  });
+});
+
+describe("episodeSourceFromMediaReference", () => {
+  it("lazily exposes manifest assets as range-readable byte sources", async () => {
+    const request = vi.fn().mockResolvedValue({
+      json: async () => ({
+        assets: [
+          {
+            asset_id: "camera",
+            media_type: "video/mp4",
+            role: "video",
+            size_bytes: 1234,
+            url: "/dataset/d/sample/s/multimodal/assets/camera",
+          },
+        ],
+      }),
+      ok: true,
+      status: 200,
+      statusText: "OK",
+    });
+    vi.stubGlobal("fetch", request);
+
+    const source = episodeSourceFromMediaReference("d", "s", {
+      kind: "lerobot-episode",
+      key: "source:17",
+      version: "1",
+    });
+
+    expect(source.episodeId).toBe("source:17");
+    expect(request).not.toHaveBeenCalled();
+    await expect(source.assets.list()).resolves.toEqual([
+      { id: "camera", mediaType: "video/mp4", role: "video" },
+    ]);
+    await expect(source.assets.resolve("camera")).resolves.toMatchObject({
+      sizeBytes: "1234",
+      sourceId: "camera",
+      url: "/dataset/d/sample/s/multimodal/assets/camera",
+    });
+    expect(request).toHaveBeenCalledTimes(1);
   });
 });

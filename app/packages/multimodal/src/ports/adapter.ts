@@ -31,10 +31,23 @@ export interface EpisodeSource {
   readonly playbackHint?: EpisodeTimeline;
 }
 
+/** Browser-safe logical-media identity supplied by FiftyOne transport. */
+export interface MediaReferenceDescriptor {
+  readonly kind: string;
+  readonly key: string;
+  readonly version: string;
+}
+
+/** Multi-asset episode source discovered through a server manifest. */
+export interface ManifestEpisodeSource extends EpisodeSource {
+  readonly mediaReference: MediaReferenceDescriptor;
+}
+
 /** Lightweight sample facts available before a heavy adapter chunk loads. */
 export interface SampleDescriptor {
+  readonly mediaReference?: MediaReferenceDescriptor | null;
   readonly mediaType?: string;
-  readonly path?: string;
+  readonly path?: string | null;
 }
 
 /** Tiny lazy-registration record kept at the composition root. */
