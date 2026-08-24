@@ -97,7 +97,7 @@ jobs:
           heavy=false
           if [ "$run_ci" = "true" ]; then
             case "$BASE_REF" in
-              main|develop|release/*|community) heavy=true ;;
+              main|release/*|community) heavy=true ;;
             esac
           fi
           echo "run-ci=$run_ci" >> "$GITHUB_OUTPUT"
@@ -152,7 +152,6 @@ jobs:
     with:
       python-versions: >-
         ${{ (github.base_ref == 'main' ||
-        github.base_ref == 'develop' ||
         startsWith(github.base_ref, 'feat/'))
         && '["3.10", "3.14"]' || '["3.10", "3.11", "3.12", "3.13", "3.14"]' }}
 
@@ -165,7 +164,6 @@ jobs:
     with:
       python-versions: >-
         ${{ (github.base_ref == 'main' ||
-        github.base_ref == 'develop' ||
         startsWith(github.base_ref, 'feat/'))
         && '["3.10", "3.14"]' || '["3.10", "3.11", "3.12", "3.13", "3.14"]' }}
 

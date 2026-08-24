@@ -20,7 +20,6 @@ on:
   pull_request:
     branches:
       - main
-      - develop
       - release/*
     paths:
       - .github/workflows/build-docs.yml
