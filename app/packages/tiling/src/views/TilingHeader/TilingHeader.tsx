@@ -31,7 +31,8 @@ export interface TilingHeaderCaptionContext {
 }
 
 export type TilingHeaderCaption =
-  ReactNode | ((context: TilingHeaderCaptionContext) => ReactNode);
+  | ReactNode
+  | ((context: TilingHeaderCaptionContext) => ReactNode);
 
 export interface TilingHeaderProps {
   fileName: string;
