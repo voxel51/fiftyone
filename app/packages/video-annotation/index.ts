@@ -1,4 +1,9 @@
 export { VideoAnnotationSurface } from "./src/components/VideoAnnotationSurface";
+// The timeline's audio stream — the only source of sound on a video
+// surface, since the <video> elements stay muted and the engine drives a
+// separate audio element. Any surface that shows video must mount this.
+export { RegisterTimelineAudio } from "./src/components/RegisterTimelineAudio";
+export type { RegisterTimelineAudioProps } from "./src/components/RegisterTimelineAudio";
 export { useVfcClockSource } from "./src/hooks/useVfcClockSource";
 // Frame-label tracks. The track data is a server index fetch; the
 // annotation engine only overlays unsaved edits, and its atom has a

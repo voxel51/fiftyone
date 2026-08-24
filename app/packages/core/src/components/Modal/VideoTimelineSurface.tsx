@@ -10,6 +10,7 @@ import * as fos from "@fiftyone/state";
 import {
   FrameLabelsTracks,
   RegisterFrameLabels,
+  RegisterTimelineAudio,
   useVfcClockSource,
 } from "@fiftyone/video-annotation";
 import React, { useMemo, useRef } from "react";
@@ -130,6 +131,11 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
 
   return (
     <PlaybackProvider mode={mode}>
+      {/* The `<video>` above is muted: the engine drives a separate audio
+          element, and this is what registers it. Without it a sample with
+          audio plays silently. `hasAudio` is left unset — there's no demuxer
+          verdict on this path, so element sniffing decides. */}
+      <RegisterTimelineAudio videoSrc={videoSrc} />
       {/* Registers the /frames-backed label stream. It gates on
           `useDuration() > 0`, so it must sit inside the provider and
           outside anything that would remount when duration lands. */}

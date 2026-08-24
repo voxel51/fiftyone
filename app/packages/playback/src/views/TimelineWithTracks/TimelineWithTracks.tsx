@@ -519,6 +519,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     return (
       <div
         ref={containerRef}
+        id="timeline-root"
         className={clsx(styles.root, className)}
         data-timeline-loaded={loadedAttribute}
       >
@@ -537,6 +538,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   return (
     <div
       ref={containerRef}
+      id="timeline-root"
       className={clsx(styles.root, className)}
       data-timeline-loaded={loadedAttribute}
     >
