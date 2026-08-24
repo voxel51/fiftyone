@@ -38,11 +38,15 @@ const NUM_SAMPLES =
   GESTURE_SAMPLE_IDS.resize.length +
   GESTURE_SAMPLE_IDS.move.length;
 
-/** Width of the generated sample image in pixels. */
+/**
+ * Generated sample dimensions — matches the modal's media region (the
+ * content column minus the shared media-facts bar) so the image renders at
+ * viewport scale 1 and gesture geometry round-trips exactly.
+ */
 const IMAGE_WIDTH = 914;
 
-/** Height of the generated sample image in pixels. */
-const IMAGE_HEIGHT = 620;
+/** See {@link IMAGE_WIDTH}. */
+const IMAGE_HEIGHT = 584;
 
 /**
  * The initial bounding box for the detection label, expressed in relative

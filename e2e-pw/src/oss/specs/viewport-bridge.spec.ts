@@ -91,9 +91,11 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.sampleCanvas.movePixels(150, 0);
     await modal.sampleCanvas.up();
 
-    // Cross-mode clip: Annotate's canvas sits below the annotation top bar
-    // and the viewport transfer is canvas-local, so Annotate shows exactly
-    // Explore's top rows — the plain element screenshot could never match.
+    // One baseline per mode (cross-renderer.png / cross-renderer-1.png):
+    // Annotate re-fits its shorter canvas on entry, so the transferred view
+    // is not pixel-identical to Looker's. Each baseline pins its own mode's
+    // rendering of the transferred viewport; the round-trip test above pins
+    // Looker's view surviving the detour.
     await modal.sampleCanvas.assert.hasCrossModeScreenshot(
       "cross-renderer.png",
     );

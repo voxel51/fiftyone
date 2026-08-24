@@ -50,16 +50,16 @@ export const useExposeMediaBoundsForTest = (
         return null;
       }
 
-      // Derive the world→screen transform from its public inverse: two
-      // canvas-local samples give the scale and origin.
-      const origin = scene.screenToWorld({ x: 0, y: 0 });
-      const unit = scene.screenToWorld({ x: 1, y: 0 });
-      const scale = 1 / (unit.x - origin.x);
+      // The viewport's own transform floats, applied exactly as the
+      // renderer's world↔screen mapping does — a numerically derived
+      // transform (e.g. inverting screenToWorld samples) carries ~1e-8
+      // noise, which surfaces in geometry that specs assert exactly.
+      const { scale, panX, panY } = scene.getViewportState();
       const canvas = scene.getCanvasBounds();
 
       return {
-        x: canvas.x + (world.x - origin.x) * scale,
-        y: canvas.y + (world.y - origin.y) * scale,
+        x: canvas.x + world.x * scale + panX,
+        y: canvas.y + world.y * scale + panY,
         width: world.width * scale,
         height: world.height * scale,
       };

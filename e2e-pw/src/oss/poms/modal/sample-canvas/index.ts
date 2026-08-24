@@ -277,6 +277,20 @@ export class SampleCanvasPom {
       return media;
     }
 
+    // Image Explore mounts the media-facts bar above the Looker canvas
+    // inside `sample-canvas`, so the Looker container's own box is the
+    // media region. Where it fills the column (no bar) this box equals the
+    // element box, so older layouts map identically.
+    const looker = this.page.getByTestId("modal-looker-container");
+
+    if ((await looker.count()) === 1) {
+      const box = await looker.boundingBox();
+
+      if (box) {
+        return box;
+      }
+    }
+
     if (!this.#box) {
       this.#box = await this.locator.boundingBox();
     }
@@ -287,12 +301,13 @@ export class SampleCanvasPom {
   async #toScreenCoordinates(x: number, y: number) {
     const box = await this.#coordinateBox();
 
-    // Whole pixels, like a real pointer: the media-bounds hook derives its
-    // box numerically (~1e-8 noise), and a fractional target surfaces that
-    // noise in geometry the specs assert exactly (0.5 vs 0.5000000130…).
+    // Keep fractional coordinates: the box is the viewport transform's own
+    // floats, so the exact target round-trips through the renderer's
+    // world↔screen mapping bit-exactly (specs assert geometry as exact
+    // strings). Rounding would land up to half a pixel off instead.
     return {
-      x: Math.round(box.x + x * box.width),
-      y: Math.round(box.y + y * box.height),
+      x: box.x + x * box.width,
+      y: box.y + y * box.height,
     };
   }
 }
@@ -341,12 +356,12 @@ class SampleCanvasAsserter {
   }
 
   /**
-   * Cross-mode screenshot: the `sample-canvas` region that shows the same
-   * world content in Explore (Looker) and Annotate (Lighter), so one baseline
-   * serves both modes. In Annotate the canvas sits below the annotation top
-   * bar and the Explore↔Annotate viewport transfer is canvas-local, so
-   * Annotate shows exactly Explore's top `height − bar` rows: clip the bar's
-   * band from Annotate's top and Explore's bottom.
+   * Canvas-region screenshot for specs that shoot in both Explore (Looker)
+   * and Annotate (Lighter): both modes mount the media-facts bar above the
+   * canvas, so the clip below it covers the same-sized media region in each.
+   * The two renderers may still paint differently (letterbox background), so
+   * a repeated name keeps one baseline per call site (Playwright indexes
+   * repeats: `name.png`, then `name-1.png`).
    *
    * @param name the name of the screenshot
    */
@@ -358,17 +373,13 @@ class SampleCanvasAsserter {
     const page = this.sampleCanvasPom.page;
     const box = await this.sampleCanvasPom.locator.boundingBox();
     const topBar = page.getByTestId("annotation-top-bar");
-    const inAnnotate = (await topBar.count()) > 0;
-
-    if (inAnnotate) {
-      const barBox = await topBar.boundingBox();
-      expect(barBox.height).toBe(ANNOTATION_TOP_BAR_HEIGHT);
-    }
+    const barBox = await topBar.boundingBox();
+    expect(barBox.height).toBe(ANNOTATION_TOP_BAR_HEIGHT);
 
     await expect(page).toHaveScreenshot(name, {
       clip: {
         x: box.x,
-        y: inAnnotate ? box.y + ANNOTATION_TOP_BAR_HEIGHT : box.y,
+        y: box.y + ANNOTATION_TOP_BAR_HEIGHT,
         width: box.width,
         height: box.height - ANNOTATION_TOP_BAR_HEIGHT,
       },
