@@ -1,6 +1,6 @@
 import { Button, SingleValueSlider, Size, Variant } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useAudio } from "../../lib/playback/use-audio";
 import { VolumeOffIcon, VolumeUpIcon } from "../stableIcons";
 import { channelState } from "./channel-contract";
@@ -8,6 +8,14 @@ import { useMasterChannel } from "./use-master-channel";
 import styles from "./TimelineControls.module.css";
 
 const ERROR_TITLE = "Audio failed to load";
+
+/**
+ * Arrow-key increment for the fader.
+ *
+ * Deliberately coarser than the drag `step` below: 0.01 is right for pointer
+ * precision but would take 100 presses to cross the range from the keyboard.
+ */
+const KEYBOARD_STEP = 0.05;
 
 /**
  * Master volume: a mute toggle that grows a horizontal fader to its right on
@@ -19,10 +27,8 @@ const ERROR_TITLE = "Audio failed to load";
  * and so the slider keeps its identity mid-drag.
  *
  * Open purely on `:hover`, plus an explicit `dragging` flag. It deliberately
- * does NOT use `:focus-within`: voodo's slider is built from plain divs with
- * no `role` or `tabIndex`, so the only focusable thing in here is the mute
- * button — and a button keeps focus after a click, which pinned the fader
- * open until you clicked somewhere else.
+ * does NOT use `:focus-within`: the mute button keeps focus after a click,
+ * which pinned the fader open until you clicked somewhere else.
  *
  * `dragging` is what keeps it open once a drag starts. Without it, dragging
  * the knob past the edge of the control drops `:hover`, the wrapper collapses
@@ -58,6 +64,30 @@ const VolumeControl: React.FC = () => {
     e.stopPropagation();
   }, []);
 
+  // voodo's slider deliberately stops keydown propagation at its own root —
+  // we want that, or arrow keys would bubble to the controls row and toggle
+  // the tracks drawer, the same reason `stopRowToggle` exists above. It also
+  // routes unrecognized props (an `onKeyDown` included) to an outer wrapper
+  // that sits *above* that root, so a React handler can never see the key.
+  //
+  // A native listener bound to the knob itself does see it: it runs during
+  // native bubbling at the target, before the event reaches React's root
+  // container and the synthetic `stopPropagation` fires. The knob keeps the
+  // event from escaping either way, so the drawer stays put.
+  //
+  // Held in a ref so the listener is bound once per mount but always calls
+  // the current render's `shown` / `handleChange`.
+  const faderRef = useRef<HTMLSpanElement>(null);
+  const onKnobKeyRef = useRef<(e: KeyboardEvent) => void>(() => undefined);
+
+  useEffect(() => {
+    const knob = faderRef.current?.querySelector('[role="slider"]');
+    if (!knob) return undefined;
+    const listener = (e: Event) => onKnobKeyRef.current(e as KeyboardEvent);
+    knob.addEventListener("keydown", listener);
+    return () => knob.removeEventListener("keydown", listener);
+  }, [availability]);
+
   if (availability === "unavailable") {
     return null;
   }
@@ -73,6 +103,27 @@ const VolumeControl: React.FC = () => {
     errored,
     testIdPrefix: "timeline-controls",
   });
+
+  // Reassigned every render rather than memoized — the listener above reads
+  // it through the ref, so it never goes stale.
+  onKnobKeyRef.current = (e: KeyboardEvent) => {
+    // Up/Right raise, Down/Left lower, per the ARIA slider convention. A
+    // horizontal fader reads left/right first, but both pairs are standard
+    // and cost nothing to accept.
+    const direction =
+      e.key === "ArrowRight" || e.key === "ArrowUp"
+        ? 1
+        : e.key === "ArrowLeft" || e.key === "ArrowDown"
+          ? -1
+          : 0;
+    if (!direction || errored) return;
+    // Stop the arrow from also scrolling the page.
+    e.preventDefault();
+    const next = Math.min(1, Math.max(0, shown + direction * KEYBOARD_STEP));
+    // Repeated 0.05 additions drift (0.15000000000000002) and the fader
+    // reads out as a whole percentage.
+    handleChange(Math.round(next * 100) / 100);
+  };
 
   return (
     <span
@@ -102,6 +153,7 @@ const VolumeControl: React.FC = () => {
           wrapper owns the animation so the slider itself never has to
           re-measure a width mid-transition. */}
       <span
+        ref={faderRef}
         className={clsx(styles.volumeSlider, {
           [styles.volumeSliderDisabled]: errored,
         })}
@@ -116,10 +168,6 @@ const VolumeControl: React.FC = () => {
           min={0}
           max={1}
           step={0.01}
-          // A finer step is right for dragging but unusable from the
-          // keyboard — 100 presses to cross the range. Matches the step the
-          // fader this replaced used.
-          keyboardStep={0.05}
           debounceDelay={0}
           value={shown}
           onChange={handleChange}
