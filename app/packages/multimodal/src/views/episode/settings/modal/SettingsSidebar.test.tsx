@@ -1,3 +1,4 @@
+import { GridViewIcon } from "@voxel51/voodo";
 import {
   act,
   cleanup,
@@ -119,19 +120,19 @@ const TileRegistryFixture: React.FC = () => {
   React.useEffect(() => {
     const cleanups = [
       registerTile({
-        icon: null,
+        icon: GridViewIcon,
         Tile: () => null,
         type: TILE_TYPE.IMAGE,
         typeLabel: "Image",
       }),
       registerTile({
-        icon: null,
+        icon: GridViewIcon,
         Tile: () => null,
         type: TILE_TYPE.MAP,
         typeLabel: "Map",
       }),
       registerTile({
-        icon: null,
+        icon: GridViewIcon,
         Tile: () => null,
         type: TILE_TYPE.RAW,
         typeLabel: "Message",

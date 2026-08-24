@@ -1,4 +1,4 @@
-import type { IconName } from "@voxel51/voodo";
+import type { IconProps } from "@voxel51/voodo";
 import type { ComponentType, ReactNode } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 
@@ -9,7 +9,8 @@ import type { MosaicNode } from "react-mosaic-component";
 export interface RegisteredTile {
   type: string;
   typeLabel: string;
-  icon: IconName | ReactNode;
+  /** Icon component for the menu entry, e.g. `GridViewIcon`. */
+  icon: ComponentType<IconProps>;
   Tile: ComponentType;
 }
 

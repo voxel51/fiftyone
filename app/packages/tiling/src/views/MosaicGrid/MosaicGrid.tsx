@@ -1,9 +1,13 @@
 import {
+  CloseIcon,
+  ContentCopyIcon,
   ContextMenu,
-  IconName,
+  EditIcon,
+  FullscreenIcon,
   MenuIconTextItem,
   MenuSectionTitle,
   MenuSeparator,
+  RemoveIcon,
 } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, {
@@ -148,7 +152,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
   const contextMenu = (
     <>
       <MenuIconTextItem
-        icon={IconName.Edit}
+        icon={<EditIcon />}
         text="Rename"
         onClick={() => setRenameRequest((current) => current + 1)}
       />
@@ -169,7 +173,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
       )}
       {onDuplicate && (
         <MenuIconTextItem
-          icon={IconName.ContentCopy}
+          icon={<ContentCopyIcon />}
           text="Duplicate"
           onClick={onDuplicate}
         />
@@ -184,7 +188,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
               <MenuIconTextItem
                 key={entry.type}
                 disabled={isCurrent}
-                icon={entry.icon}
+                icon={<entry.icon />}
                 text={entry.typeLabel}
                 onClick={
                   isCurrent ? undefined : () => onChangeType?.(entry.type)
@@ -196,21 +200,21 @@ const TileWindow: React.FC<TileWindowProps> = ({
         </>
       ) : null}
       <MenuIconTextItem
-        icon={isFullscreen ? <FullscreenExitIcon /> : IconName.Fullscreen}
+        icon={isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
         text={fullscreenLabel}
         onClick={onFullscreen}
       />
       <MenuSeparator />
       {onCloseOthers && (
         <MenuIconTextItem
-          icon={IconName.Remove}
+          icon={<RemoveIcon />}
           text="Close others"
           onClick={onCloseOthers}
         />
       )}
       <MenuIconTextItem
         destructive
-        icon={IconName.Close}
+        icon={<CloseIcon />}
         text="Close"
         onClick={onClose}
       />

@@ -21,7 +21,7 @@ export const DefaultAddTileMenuItems: React.FC = () => {
         return (
           <MenuIconTextItem
             key={entry.type}
-            icon={entry.icon}
+            icon={<entry.icon />}
             text={entry.typeLabel}
             onClick={() => {
               addTile(

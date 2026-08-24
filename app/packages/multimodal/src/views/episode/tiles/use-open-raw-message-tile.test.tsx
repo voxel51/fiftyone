@@ -13,7 +13,7 @@ import {
 } from "@testing-library/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect } from "react";
-import { IconName } from "@voxel51/voodo";
+import { JSONIcon } from "@voxel51/voodo";
 import { afterEach, describe, expect, it } from "vitest";
 import { rawTileStreamAtom, type RawTileStreams } from "./raw-message-binding";
 import { TILE_TYPE } from "./tile-types";
@@ -32,7 +32,7 @@ const Probe: React.FC<{ readonly seedStreams?: RawTileStreams }> = ({
   useEffect(
     () =>
       registerTile({
-        icon: IconName.JSON,
+        icon: JSONIcon,
         Tile: () => null,
         type: TILE_TYPE.RAW,
         typeLabel: "Message",
