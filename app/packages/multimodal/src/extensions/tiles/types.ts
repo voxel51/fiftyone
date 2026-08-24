@@ -1,4 +1,4 @@
-import type { IconName } from "@voxel51/voodo";
+import type { IconProps } from "@voxel51/voodo";
 import type React from "react";
 
 /** Namespaced identity required for a build-time tile contribution. */
@@ -21,7 +21,7 @@ export interface EpisodeTileProps {
 
 /** One tile kind contributed by code included in the current build. */
 export interface EpisodeTileExtension {
-  readonly icon: IconName;
+  readonly icon: React.ComponentType<IconProps>;
   readonly id: EpisodeTileExtensionId;
   readonly isAvailable: (facts: EpisodeTileAvailability) => boolean;
   readonly order: number;

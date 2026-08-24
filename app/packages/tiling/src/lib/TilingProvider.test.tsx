@@ -1,3 +1,4 @@
+import { GridViewIcon } from "@voxel51/voodo";
 import {
   act,
   cleanup,
@@ -834,7 +835,7 @@ function RegisterCameraKind() {
       registerTile({
         type: "camera",
         typeLabel: "Camera",
-        icon: null,
+        icon: GridViewIcon,
         Tile: KindTile,
       }),
     [registerTile],
@@ -850,7 +851,7 @@ function RegisterLidarKind() {
       registerTile({
         type: "lidar",
         typeLabel: "Lidar",
-        icon: null,
+        icon: GridViewIcon,
         Tile: KindTile,
       }),
     [registerTile],

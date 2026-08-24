@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { IconName } from "@voxel51/voodo";
+import { EmbeddingsIcon, GridViewIcon, LogsIcon } from "@voxel51/voodo";
 import { useEffect, useState } from "react";
 import { TilingProvider } from "../../lib/TilingProvider";
 import { useTileRegistry } from "../../lib/use-tile-registry";
@@ -34,19 +34,19 @@ function RegisterTiles() {
       registerTile({
         type: "camera",
         typeLabel: "Camera",
-        icon: IconName.GridView,
+        icon: GridViewIcon,
         Tile: DummyTile,
       }),
       registerTile({
         type: "lidar",
         typeLabel: "Lidar",
-        icon: IconName.Embeddings,
+        icon: EmbeddingsIcon,
         Tile: DummyTile,
       }),
       registerTile({
         type: "graph",
         typeLabel: "Graph",
-        icon: IconName.Logs,
+        icon: LogsIcon,
         Tile: DummyTile,
       }),
     ];

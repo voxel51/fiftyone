@@ -1,6 +1,6 @@
 import { TilingProvider, useTiling } from "@fiftyone/tiling";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { Button, Dropdown, IconName } from "@voxel51/voodo";
+import { Button, Dropdown, JSONIcon } from "@voxel51/voodo";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -181,7 +181,7 @@ describe("tileTypesFor", () => {
 
   it("orders and filters build-time tile contributions with the built-ins", () => {
     registerEpisodeTileExtension({
-      icon: IconName.JSON,
+      icon: JSONIcon,
       id: "test:events",
       isAvailable: ({ sourceTypes }) => sourceTypes.includes("event"),
       order: 45,
