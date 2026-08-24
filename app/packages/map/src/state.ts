@@ -4,29 +4,40 @@ import {
   sampleFields,
   theme,
 } from "@fiftyone/state";
+import type {
+  CircleLayerSpecification,
+  SymbolLayerSpecification,
+} from "maplibre-gl";
 import { atom, selector } from "recoil";
 import { SELECTION_SCOPE } from "./constants";
+
+type CirclePaint = NonNullable<CircleLayerSpecification["paint"]>;
+type SymbolPaint = NonNullable<SymbolLayerSpecification["paint"]>;
 
 export interface Settings {
   clustering?: boolean;
   clusterMaxZoom?: number;
   clusters?: {
-    textPaint: mapboxgl.SymbolPaint;
-    paint: mapboxgl.CirclePaint;
+    textPaint: SymbolPaint;
+    paint: CirclePaint;
   };
-  pointPaint?: mapboxgl.CirclePaint;
-  mapboxAccessToken: string;
+  pointPaint?: CirclePaint;
+  mapboxAccessToken?: string;
 }
+
+export type MapSettings = Required<Omit<Settings, "mapboxAccessToken">> & {
+  mapboxAccessToken?: string;
+};
 
 export const defaultSettings = Object.freeze({
   clustering: true,
-  // https://docs.mapbox.com/help/glossary/zoom-level/
+  // https://maplibre.org/maplibre-style-spec/sources/#geojson-clustermaxzoom
   clusterMaxZoom: 11,
   clusters: {
     paint: {
       "circle-color": "rgb(244, 113, 6)",
       "circle-opacity": 0.7,
-      // Use step expressions (https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step)
+      // https://maplibre.org/maplibre-style-spec/expressions/#step
       "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 25, 40],
     },
     textPaint: {
@@ -38,7 +49,7 @@ export const defaultSettings = Object.freeze({
     "circle-opacity": 0.7,
     "circle-radius": 4,
   },
-}) as Required<Omit<Settings, "mapboxAccessToken">>;
+}) as MapSettings;
 
 const defaultActiveField = selector<string>({
   key: "@fiftyone/map/state.defaultActiveField",
@@ -65,25 +76,35 @@ export const hasSelection = selector<boolean>({
   get: ({ get }) => get(extendedSelection).scope === SELECTION_SCOPE,
 });
 
-export const MAP_STYLES = {
-  Street: "streets-v11",
-  Dark: "dark-v10",
-  Light: "light-v10",
-  Outdoors: "outdoors-v11",
-  Satellite: "satellite-v9",
-};
-export const STYLES = Object.keys(MAP_STYLES);
+const defaultMaplibreStyle = selector<string>({
+  key: "defaultMaplibreStyle",
+  get: ({ get }) => {
+    return get(theme) === "dark" ? "Dark" : "Positron";
+  },
+});
 
-const defaultMapStyle = selector<string>({
-  key: "defaultMapStyle",
+export const maplibreStyle = atom<string>({
+  key: "@fiftyone/map/state.maplibreStyle",
+  default: defaultMaplibreStyle,
+  effects: [
+    getBrowserStorageEffectForKey("@fiftyone/map/state.maplibreStyle", {
+      sessionStorage: true,
+      map: (newValue: string) =>
+        ["Dark", "Positron"].includes(newValue) ? undefined : newValue,
+    }),
+  ],
+});
+
+const defaultMapboxStyle = selector<string>({
+  key: "defaultMapboxStyle",
   get: ({ get }) => {
     return get(theme) === "dark" ? "Dark" : "Light";
   },
 });
 
-export const mapStyle = atom<string>({
-  key: "@fiftyone/map/state.mapStyle",
-  default: defaultMapStyle,
+export const mapboxStyle = atom<string>({
+  key: "@fiftyone/map/state.mapboxStyle",
+  default: defaultMapboxStyle,
   effects: [
     getBrowserStorageEffectForKey("@fiftyone/map/state.style", {
       sessionStorage: true,

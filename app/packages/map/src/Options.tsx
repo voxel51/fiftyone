@@ -8,18 +8,13 @@ import {
   activeField,
   geoFields,
   hasSelection,
-  mapStyle,
-  STYLES,
+  mapboxStyle,
+  maplibreStyle,
 } from "./state";
+import { getMapStyles, type MapProvider } from "./basemaps";
 import useEventHandler from "./useEventHandler";
 import { useExternalLink } from "@fiftyone/utilities";
 import { OperatorPlacements, types } from "@fiftyone/operators";
-
-const useSearch = (search: string) => {
-  const values = STYLES.filter((style) => style.includes(search));
-
-  return { values };
-};
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -29,12 +24,22 @@ const Options: React.FC<{
   clearSelectionData: () => void;
   fitData: () => void;
   fitSelectionData: () => void;
-}> = ({ clearSelectionData, fitSelectionData, fitData }) => {
+  provider: MapProvider;
+}> = ({ clearSelectionData, fitSelectionData, fitData, provider }) => {
   const theme = useTheme();
-  const [style, setStyle] = useRecoilState(mapStyle);
+  const [mapboxStyleValue, setMapboxStyle] = useRecoilState(mapboxStyle);
+  const [maplibreStyleValue, setMaplibreStyle] = useRecoilState(maplibreStyle);
   const fields = useRecoilValue(geoFields);
   const [field, setActiveField] = useRecoilState(activeField);
   const hasMapSelection = useRecoilValue(hasSelection);
+  const style = provider === "mapbox" ? mapboxStyleValue : maplibreStyleValue;
+  const setStyle = provider === "mapbox" ? setMapboxStyle : setMaplibreStyle;
+  const useSearch = React.useCallback(
+    (search: string) => ({
+      values: getMapStyles(provider).filter((style) => style.includes(search)),
+    }),
+    [provider],
+  );
 
   const selectorStyle = {
     background: theme.neutral.softBg,
