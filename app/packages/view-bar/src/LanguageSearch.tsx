@@ -33,26 +33,31 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
       }}
     >
       <Icon name={IconName.AI} size={Size.Sm} />
-      <Input
-        size={Size.Sm}
-        value={query}
-        placeholder="Search with natural language"
-        data-cy={LANGUAGE_SEARCH_INPUT_CY}
-        {...NO_BROWSER_SUGGESTIONS}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && query.trim()) {
-            onSubmit(query.trim());
-            setQuery("");
-          } else if (e.key === "Escape" && query) {
-            // One Escape clears the draft; the bar's own handler only sees
-            // the next press, so an unrelated reset never eats a typed query
-            e.stopPropagation();
-            setQuery("");
-          }
-        }}
-        style={{ background: "transparent", border: "none", flex: 1 }}
-      />
+      {/* voodo's Input roots itself in a block-level Field, so it fills a
+          block parent but never grows as a flex item — the growing is this
+          wrapper's job, and the field then takes its full width */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Input
+          size={Size.Sm}
+          value={query}
+          placeholder="Search with natural language"
+          data-cy={LANGUAGE_SEARCH_INPUT_CY}
+          {...NO_BROWSER_SUGGESTIONS}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && query.trim()) {
+              onSubmit(query.trim());
+              setQuery("");
+            } else if (e.key === "Escape" && query) {
+              // One Escape clears the draft; the bar's own handler only sees
+              // the next press, so an unrelated reset never eats a typed query
+              e.stopPropagation();
+              setQuery("");
+            }
+          }}
+          style={{ background: "transparent", border: "none" }}
+        />
+      </div>
       {query.trim() && (
         <span
           style={{
