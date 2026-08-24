@@ -26,6 +26,7 @@ import { LighterToolbar } from "./LighterToolbar";
 import styles from "./LighterSampleRenderer.module.css";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
+import { useExposeMediaBoundsForTest } from "./useExposeMediaBoundsForTest";
 import useRetrieveViewport from "./useRetrieveViewport";
 import useViewport from "./useViewport";
 
@@ -66,8 +67,11 @@ export const LighterSampleRenderer = ({
   const onReveal = useCallback(() => setIsRevealed(true), []);
 
   useEffect(() => {
-    onRevealChange?.(isRevealed);
-  }, [isRevealed, onRevealChange]);
+    // An init failure renders the error panel in place of the scene and no
+    // reveal ever fires — report it as "revealed" so a host's loading cover
+    // drops and the panel is visible instead of an indefinite spinner.
+    onRevealChange?.(isRevealed || initError !== null);
+  }, [isRevealed, initError, onRevealChange]);
 
   useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
@@ -189,6 +193,8 @@ const LighterSetupImpl = (props: {
       onReveal();
     }
   }, [revealed, onReveal]);
+
+  useExposeMediaBoundsForTest(scene);
 
   useViewport(sampleId);
 

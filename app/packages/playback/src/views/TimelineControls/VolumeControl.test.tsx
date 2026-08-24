@@ -80,6 +80,21 @@ describe("VolumeControl", () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
+  it("clicks on bare slider internals never toggle the tracks drawer", () => {
+    // The original bug's path: the slider renders roleless divs, so a click
+    // on its innermost node bubbles to the drawer toggle unless guarded.
+    const onToggle = vi.fn();
+    renderControls({ onToggle });
+
+    let node: Element = screen.getByTestId("timeline-controls-volume");
+    while (node.firstElementChild) {
+      node = node.firstElementChild;
+    }
+
+    fireEvent.click(node);
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
   it("unmuting restores the default volume on first ever use", () => {
     renderControls();
     fireEvent.click(screen.getByRole("button", { name: "Unmute" }));

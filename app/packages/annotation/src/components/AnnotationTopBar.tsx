@@ -11,12 +11,7 @@ import React, { useMemo } from "react";
 import { useAnnotationStatusContent } from "../state/annotationStatus";
 import styles from "./AnnotationTopBar.module.css";
 
-/**
- * Media facts shown at the top-left of the bar. Everything past the filename
- * is optional — resolution/fps/codec are absent on samples whose metadata
- * wasn't (fully) computed, and fps/codec never apply to images — so the bar
- * simply omits them rather than rendering blanks.
- */
+/** Sample metadata. */
 interface MediaInfo {
   filename: string;
   resolution: string | null;
@@ -24,11 +19,13 @@ interface MediaInfo {
   codec: string | null;
 }
 
+/**
+ * Structural subset of `fiftyone.core.metadata.ImageMetadata` /
+ * `VideoMetadata` on the wire.
+ */
 type MediaMetadataLike = {
-  /** VideoMetadata resolution. */
   frame_width?: unknown;
   frame_height?: unknown;
-  /** ImageMetadata resolution. */
   width?: unknown;
   height?: unknown;
   encoding_str?: unknown;
