@@ -20,6 +20,17 @@ export type DoPatchSampleArgs = {
   labelId?: string;
   labelPath?: string;
   opType?: OpType;
+  /**
+   * The sample id that label-op ATTRIBUTION should use when it differs
+   * from the persisted document: a grouped modal persists edits against
+   * the slice document that owns them (the second camera, the pinned 3D
+   * scene), while the modal's unit of work is the GRID anchor sample.
+   * The unified persist loop passes the anchor here for every
+   * non-generated patch; consumers that credit label work (e.g.
+   * annotation-activity integrations downstream) attribute by this id
+   * rather than the persisted document's.
+   */
+  attributionSampleId?: string;
 };
 
 /**

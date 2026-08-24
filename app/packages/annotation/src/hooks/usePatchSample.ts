@@ -16,6 +16,8 @@ type PatchOptions = {
   labelId?: string;
   labelPath?: string;
   opType?: OpType;
+  /** See DoPatchSampleArgs.attributionSampleId (grouped-modal anchor). */
+  attributionSampleId?: string;
 };
 
 /**
@@ -55,6 +57,7 @@ export const usePatchSampleWith = ({
         labelId: patchOptions?.labelId,
         labelPath: patchOptions?.labelPath,
         opType: patchOptions?.opType,
+        attributionSampleId: patchOptions?.attributionSampleId,
       });
     },
     [
