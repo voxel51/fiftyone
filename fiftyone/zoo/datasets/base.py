@@ -3472,7 +3472,7 @@ class RoboLabDataset(FiftyOneDataset):
 
     # Pinned so a loaded dataset is reproducible; the default branch is
     # mutable and could change media, labels or size underneath a user
-    _REVISION = "2d58122a556de08bf8e0598d31d4160bab15cc6d"
+    _REVISION = "d0e2b63117ada16d60ae9f5f8224545f6851a8ee"
 
     @property
     def name(self):
