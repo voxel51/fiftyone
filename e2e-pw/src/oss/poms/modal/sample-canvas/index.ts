@@ -17,11 +17,12 @@ export enum SampleCanvasType {
 }
 
 /**
- * The annotation top bar's rendered height (36px + 1px bottom border, see
+ * The annotation top bar's rendered height (`height: 36px` under border-box
+ * sizing, so the 1px bottom border is inside it — see
  * `AnnotationTopBar.module.css`). Measured live where the bar is mounted;
  * this constant covers Explore-mode math where it isn't.
  */
-const ANNOTATION_TOP_BAR_HEIGHT = 37;
+const ANNOTATION_TOP_BAR_HEIGHT = 36;
 
 /**
  * The canvas of the sample plugin in the modal. Applies to image, video and 3D
@@ -285,12 +286,13 @@ export class SampleCanvasPom {
 
   async #toScreenCoordinates(x: number, y: number) {
     const box = await this.#coordinateBox();
-    const xPixels = x * box.width;
-    const yPixels = y * box.height;
 
+    // Whole pixels, like a real pointer: the media-bounds hook derives its
+    // box numerically (~1e-8 noise), and a fractional target surfaces that
+    // noise in geometry the specs assert exactly (0.5 vs 0.5000000130…).
     return {
-      x: box.x + xPixels,
-      y: box.y + yPixels,
+      x: Math.round(box.x + x * box.width),
+      y: Math.round(box.y + y * box.height),
     };
   }
 }
