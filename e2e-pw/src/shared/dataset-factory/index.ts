@@ -121,6 +121,16 @@ interface DatasetOptions {
   numSamples?: number;
 
   /**
+   * When set, every sample's image is written as
+   * `<outputDir>/<index>/<sharedFilename>` instead of
+   * `<outputDir>/<index>.png` — distinct files whose BASENAME is identical.
+   * Use when a suite screenshots surfaces that display the open sample's
+   * filename (the modal's media-facts bar) and shares baselines across
+   * per-test samples.
+   */
+  sharedFilename?: string;
+
+  /**
    * Whether samples should be numbered/indexed.
    * When `true`, samples are assigned sequential numbers.
    * @default false
@@ -251,6 +261,7 @@ const createDataset = (() => {
     numbered = false,
     savedViews = {},
     schema = {},
+    sharedFilename,
     withSampleData = () => ({}),
   }: DatasetOptions) => {
     if (!Number.isInteger(numSamples)) {
@@ -271,7 +282,14 @@ const createDataset = (() => {
     await ensureDirExists(outputDir);
 
     for (let index = 0; index < numSamples; index++) {
-      const filepath = path.join(outputDir, `${index}.png`);
+      const filepath = sharedFilename
+        ? path.join(outputDir, `${index}`, sharedFilename)
+        : path.join(outputDir, `${index}.png`);
+
+      if (sharedFilename) {
+        await ensureDirExists(path.dirname(filepath));
+      }
+
       promises.push(
         createImage({
           outputPath: filepath,

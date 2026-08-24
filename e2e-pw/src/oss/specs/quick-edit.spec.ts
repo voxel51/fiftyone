@@ -169,6 +169,9 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await datasetFactory.createDataset({
     datasetName: DATASET_NAME,
     numSamples: NUM_SAMPLES,
+    // One basename across the per-test samples: the modal's media-facts bar
+    // renders the filename, and these tests share screenshot baselines.
+    sharedFilename: "sample.png",
     imageOptions: {
       fillColor: "white",
       height: IMAGE_HEIGHT,
