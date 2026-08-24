@@ -78,7 +78,8 @@ interface PropagateArgs {
   instanceId: string;
   fromFrame: number;
   toFrame: number;
-  /** Frames-field path of the active stream. */
+  /** Resolved label path of the active stream — `frames.<field>` on real
+   * video, bare on a dynamic group. Never reconstruct `frames.<field>`. */
   path: string;
   /** Reads the track's box at a frame through the engine. */
   at: FrameReader;

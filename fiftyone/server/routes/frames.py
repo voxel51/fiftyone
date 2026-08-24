@@ -40,7 +40,9 @@ class Frames(HTTPEndpoint):
         # no `frames` field to unwind.
         dynamic_group = data.get("dynamicGroup")
 
-        end_frame = min(num_frames + start_frame, frame_count)
+        # `end_frame` is served inclusively, so the window's last frame is
+        # `start_frame + num_frames - 1` (clamped to the clip)
+        end_frame = min(start_frame + num_frames - 1, frame_count)
         if end_frame < start_frame:
             # an empty range would produce a to_list() length < 1, which
             # pymongo rejects
