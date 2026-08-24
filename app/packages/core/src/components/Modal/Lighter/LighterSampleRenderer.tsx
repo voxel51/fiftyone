@@ -67,8 +67,11 @@ export const LighterSampleRenderer = ({
   const onReveal = useCallback(() => setIsRevealed(true), []);
 
   useEffect(() => {
-    onRevealChange?.(isRevealed);
-  }, [isRevealed, onRevealChange]);
+    // An init failure renders the error panel in place of the scene and no
+    // reveal ever fires — report it as "revealed" so a host's loading cover
+    // drops and the panel is visible instead of an indefinite spinner.
+    onRevealChange?.(isRevealed || initError !== null);
+  }, [isRevealed, initError, onRevealChange]);
 
   useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
