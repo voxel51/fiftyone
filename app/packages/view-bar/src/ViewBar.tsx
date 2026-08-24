@@ -31,8 +31,14 @@ import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import { kindsByFtype, operatorsFrom } from "./builder/catalog";
 import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
+import { CurrentViewChip } from "./CurrentViewChip";
 import { allowedFields } from "./fields";
 import { InsertSlot } from "./InsertSlot";
+import {
+  LANGUAGE_SEARCH_INPUT_CY,
+  LanguageSearch,
+  LanguageSearchButton,
+} from "./LanguageSearch";
 import {
   appliesTo,
   defaultKwargs,
@@ -121,6 +127,13 @@ if (
   document.head.appendChild(style);
 }
 
+/**
+ * How many samples a typed language query keeps, matching the modal
+ * similarity search's default. The stage lands in the bar as a normal
+ * pill, so the value is one click away from being changed.
+ */
+const LANGUAGE_SEARCH_K = 25;
+
 const ViewBar: React.FC<{
   /** What this surface may offer; everything, unless the host says less. */
   capabilities?: ViewBarCapabilities;
@@ -138,6 +151,10 @@ const ViewBar: React.FC<{
   const setView = fos.useSetView();
 
   const [state, dispatch] = useReducer(reducer, initialState);
+  // Whether the bar shows the full stage row. Collapsed by default: the
+  // applied view reads as a single summary chip, leaving the rest of the
+  // bar to the language search. Clicking out collapses it again.
+  const [expanded, setExpanded] = React.useState(false);
   // Which stage's editor popover is open, by stage id. Only one at
   // a time; clicking another collapses the previous.
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -299,6 +316,9 @@ const ViewBar: React.FC<{
         kwargs: defaultKwargs(defsByName.get(cls)?.params ?? []),
       });
       setEditingId(id);
+      // A stage can be inserted from the collapsed empty bar; its editor
+      // opens against the full row, not the summary chip
+      setExpanded(true);
     },
     [defsByName],
   );
@@ -554,6 +574,62 @@ const ViewBar: React.FC<{
     focusLastSlot();
   }, [paramErrors, serializeWorking, setView, focusLastSlot]);
 
+  // ----- Collapsed bar: summary chip + language search -----
+
+  const promptKeys = fos.usePromptableSimilarityKeys();
+  // The language search turns Enter into a SortBySimilarity stage, so it
+  // needs a prompt-capable index and the stage itself to be offerable here
+  const searchEnabled =
+    promptKeys.length > 0 && defsByName.has("SortBySimilarity");
+
+  /** The chip's [x]: back to the root view, drafts and all. */
+  const clearView = useCallback(() => {
+    setTouched(new Set());
+    setModeOverrides({});
+    setEditingId(null);
+    setView([]);
+    dispatch({ type: "hydrate", stages: [] });
+  }, [setView]);
+
+  const submitLanguageQuery = useCallback(
+    (query: string) => {
+      const brainKey = promptKeys[0];
+      if (!brainKey) return;
+      // Same gate as Apply: a draft with rejected values cannot ride along
+      if (paramErrors.labels.length) return;
+      const serialized = [
+        ...serializeWorking(),
+        {
+          _cls: "fiftyone.core.stages.SortBySimilarity",
+          kwargs: [
+            ["query", query],
+            ["brain_key", brainKey],
+            ["k", LANGUAGE_SEARCH_K],
+          ] as [string, unknown][],
+        },
+      ];
+      setView(serialized);
+      dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
+    },
+    [promptKeys, paramErrors, serializeWorking, setView],
+  );
+
+  /** Expanded bar's search icon: collapse and put the keyboard in the input. */
+  const openSearch = useCallback(() => {
+    setEditingId(null);
+    setExpanded(false);
+    // Deferred a frame: the input only exists once the collapsed layout paints
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-cy='${LANGUAGE_SEARCH_INPUT_CY}']`)
+        ?.focus();
+    });
+  }, []);
+
+  // With no stages and no search there is nothing to summarize and nothing
+  // to make room for, so the bar stays in its full layout
+  const collapsed = !expanded && (state.stages.length > 0 || searchEnabled);
+
   /**
    * Pending changes detector: whether the working state differs
    * from what's currently applied to the view. The Apply button
@@ -585,6 +661,10 @@ const ViewBar: React.FC<{
       if (element?.closest("[data-headlessui-portal]")) return;
 
       setEditingId(null);
+      // Leaving the bar also hands its real estate back to the search:
+      // the stage row folds into the summary chip. Drafts survive — the
+      // chip counts them and expanding shows them mid-edit.
+      setExpanded(false);
     };
 
     window.addEventListener("mousedown", onDown);
@@ -666,86 +746,138 @@ const ViewBar: React.FC<{
           overflow: "hidden",
         }}
       >
-        <div
-          className={SCROLLER_CLASS}
-          data-cy="view-bar-scroller"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            height: "100%",
-            // Scrolls sideways for long stage chains; the scrollbar itself is
-            // hidden in every engine by SCROLLER_CLASS
-            overflowX: "auto",
-            overflowY: "hidden",
-            flex: 1,
-            minWidth: 0,
-            // The breathing room lives inside the scroller, so it scrolls
-            // away with the content and the stages meet the border exactly
-            padding: "0 4px",
-          }}
-        >
-          <InsertSlot
-            index={0}
-            names={insertableNames}
-            describe={describeStage}
-            onInsert={insertStage}
-          />
-          {state.stages.map((stage, i) => {
-            const def = defsByName.get(stage.cls);
-            if (!def) return null;
-            return (
-              <React.Fragment key={stage.id}>
-                <StageCard
-                  errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
-                  // A stage holding a rejected value is invalid; one merely
-                  // missing required values is incomplete, which the card sees
-                  // for itself — orange says "finish me", red says "fix me"
-                  invalid={[
-                    ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
-                  ].some((message) => message !== "Required")}
-                  kinds={activeKinds.get(stage.id) ?? NO_KINDS}
-                  onModeChange={(param, kind) => changeMode(stage, param, kind)}
-                  stage={stage}
-                  definition={def}
-                  fieldOptions={
-                    editingId === stage.id ? editingFieldOptions : fieldOptions
-                  }
-                  allPaths={editingId === stage.id ? editingPaths : fieldPaths}
-                  allowedFor={
-                    editingId === stage.id ? editingAllowedFor : allowedFor
-                  }
-                  choicesFor={choicesFor}
-                  operators={operators}
-                  fieldKind={
-                    editingId === stage.id ? editingFieldKind : fieldKind
-                  }
-                  expanded={editingId === stage.id}
-                  onToggle={() =>
-                    setEditingId((id) => (id === stage.id ? null : stage.id))
-                  }
-                  onChange={(name, value) => {
-                    markTouched(stage.id, name);
-                    dispatch({ type: "setKwarg", id: stage.id, name, value });
-                  }}
-                  onCommit={commitStage}
-                  onRemove={() => {
-                    if (editingId === stage.id) setEditingId(null);
-                    dispatch({ type: "removeStage", id: stage.id });
-                    // Removing a stage is an edit like any other — Enter applies it
-                    focusApply();
-                  }}
-                />
-                <InsertSlot
-                  index={i + 1}
-                  names={insertableNames}
-                  describe={describeStage}
-                  onInsert={insertStage}
-                />
-              </React.Fragment>
-            );
-          })}
-        </div>
+        {collapsed && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              flex: 1,
+              minWidth: 0,
+              height: "100%",
+              padding: "0 4px",
+            }}
+          >
+            {state.stages.length > 0 ? (
+              <CurrentViewChip
+                count={state.stages.length}
+                onExpand={() => setExpanded(true)}
+                onClear={clearView}
+              />
+            ) : (
+              // An empty view has nothing to summarize; the slot is the way
+              // to start one by hand while the search keeps the rest
+              <InsertSlot
+                index={0}
+                names={insertableNames}
+                describe={describeStage}
+                onInsert={insertStage}
+              />
+            )}
+            {searchEnabled ? (
+              <LanguageSearch onSubmit={submitLanguageQuery} />
+            ) : (
+              <div
+                style={{ flex: 1, height: "100%", cursor: "pointer" }}
+                onClick={() => setExpanded(true)}
+                aria-hidden="true"
+              />
+            )}
+          </div>
+        )}
+        {!collapsed && (
+          <div
+            className={SCROLLER_CLASS}
+            data-cy="view-bar-scroller"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              height: "100%",
+              // Scrolls sideways for long stage chains; the scrollbar itself is
+              // hidden in every engine by SCROLLER_CLASS
+              overflowX: "auto",
+              overflowY: "hidden",
+              flex: 1,
+              minWidth: 0,
+              // The breathing room lives inside the scroller, so it scrolls
+              // away with the content and the stages meet the border exactly
+              padding: "0 4px",
+            }}
+          >
+            <InsertSlot
+              index={0}
+              names={insertableNames}
+              describe={describeStage}
+              onInsert={insertStage}
+            />
+            {state.stages.map((stage, i) => {
+              const def = defsByName.get(stage.cls);
+              if (!def) return null;
+              return (
+                <React.Fragment key={stage.id}>
+                  <StageCard
+                    errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
+                    // A stage holding a rejected value is invalid; one merely
+                    // missing required values is incomplete, which the card sees
+                    // for itself — orange says "finish me", red says "fix me"
+                    invalid={[
+                      ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
+                    ].some((message) => message !== "Required")}
+                    kinds={activeKinds.get(stage.id) ?? NO_KINDS}
+                    onModeChange={(param, kind) =>
+                      changeMode(stage, param, kind)
+                    }
+                    stage={stage}
+                    definition={def}
+                    fieldOptions={
+                      editingId === stage.id
+                        ? editingFieldOptions
+                        : fieldOptions
+                    }
+                    allPaths={
+                      editingId === stage.id ? editingPaths : fieldPaths
+                    }
+                    allowedFor={
+                      editingId === stage.id ? editingAllowedFor : allowedFor
+                    }
+                    choicesFor={choicesFor}
+                    operators={operators}
+                    fieldKind={
+                      editingId === stage.id ? editingFieldKind : fieldKind
+                    }
+                    expanded={editingId === stage.id}
+                    onToggle={() =>
+                      setEditingId((id) => (id === stage.id ? null : stage.id))
+                    }
+                    onChange={(name, value) => {
+                      markTouched(stage.id, name);
+                      dispatch({ type: "setKwarg", id: stage.id, name, value });
+                    }}
+                    onCommit={commitStage}
+                    onRemove={() => {
+                      if (editingId === stage.id) setEditingId(null);
+                      dispatch({ type: "removeStage", id: stage.id });
+                      // Removing a stage is an edit like any other — Enter applies it
+                      focusApply();
+                    }}
+                  />
+                  <InsertSlot
+                    index={i + 1}
+                    names={insertableNames}
+                    describe={describeStage}
+                    onInsert={insertStage}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
+        {!collapsed && searchEnabled && (
+          <div style={{ padding: "0 4px", flexShrink: 0 }}>
+            <LanguageSearchButton onOpen={openSearch} />
+          </div>
+        )}
       </div>
 
       {/* Apply — only animates in when the working state diverges from the

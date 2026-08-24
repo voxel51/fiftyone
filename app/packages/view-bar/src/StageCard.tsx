@@ -80,7 +80,7 @@ const POPOVER_WIDTH = 360;
  * one number to change.
  */
 const PILL_INSET = 4;
-const PILL_HEIGHT = CHROME_CONTROL_HEIGHT - PILL_INSET * 2;
+export const PILL_HEIGHT = CHROME_CONTROL_HEIGHT - PILL_INSET * 2;
 
 interface StageCardProps {
   stage: WorkingStage;
