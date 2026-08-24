@@ -17,12 +17,15 @@ import { createPortal } from "react-dom";
 import { NO_BROWSER_SUGGESTIONS } from "./params";
 import { useAnchorRect } from "./StageCard";
 
+/** Wider than the trigger, so each stage's description reads as a sentence. */
+const LIST_WIDTH = 320;
+
 export interface InsertSlotProps {
   /** Where in the chain a stage inserted here lands. */
   index: number;
   /** The stages this dataset can take, already narrowed by media type. */
   names: readonly string[];
-  /** What a stage does, for the list's tooltips. */
+  /** What a stage does, shown inline under its name in the list. */
   describe: (name: string) => string | undefined;
   onInsert: (cls: string, index: number) => void;
 }
@@ -152,18 +155,20 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
         createPortal(
           <div
             // Portaled to body — avoids being clipped by the bar's
-            // overflow rules. Width follows the trigger; top sits
-            // 4px below the trigger's bottom edge.
+            // overflow rules. Top sits 4px below the trigger's bottom edge.
             style={{
               position: "fixed",
               top: rect.top + 4,
-              left: rect.left,
-              width: rect.width,
+              // Wider than the trigger so descriptions read as sentences,
+              // pulled back from the viewport's right edge when the slot
+              // sits near it.
+              left: Math.min(rect.left, window.innerWidth - LIST_WIDTH - 8),
+              width: LIST_WIDTH,
               background: "var(--fo-palette-background-level3)",
               border: "1px solid var(--fo-palette-primary-plainBorder)",
               borderRadius: 4,
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
-              maxHeight: 280,
+              maxHeight: 360,
               overflowY: "auto",
               zIndex: 10000,
             }}
@@ -171,41 +176,53 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
             onMouseDown={(e) => e.stopPropagation()}
           >
             {filtered.map((name, i) => (
-              // What the stage does, without leaving the list — its
-              // docstring's opening sentence, served with the schema
-              <Tooltip
+              <div
                 key={name}
-                content={describe(name) ?? name}
-                anchor={Anchor.Right}
+                id={`view-bar-stage-${i}`}
+                role="option"
+                aria-selected={i === active}
+                ref={(el) => {
+                  if (i === active) {
+                    el?.scrollIntoView({ block: "nearest" });
+                  }
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  insert(name);
+                }}
+                onMouseEnter={() => setHighlight(i)}
+                style={{
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                  background:
+                    i === active
+                      ? "var(--fo-palette-background-level2)"
+                      : undefined,
+                }}
               >
                 <div
-                  id={`view-bar-stage-${i}`}
-                  role="option"
-                  aria-selected={i === active}
-                  ref={(el) => {
-                    if (i === active) {
-                      el?.scrollIntoView({ block: "nearest" });
-                    }
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insert(name);
-                  }}
-                  onMouseEnter={() => setHighlight(i)}
                   style={{
-                    padding: "6px 10px",
-                    cursor: "pointer",
                     color: "var(--fo-palette-text-primary)",
                     whiteSpace: "nowrap",
-                    background:
-                      i === active
-                        ? "var(--fo-palette-background-level2)"
-                        : undefined,
                   }}
                 >
                   {name}
                 </div>
-              </Tooltip>
+                {describe(name) && (
+                  // What the stage does, without leaving the list — its
+                  // docstring's opening sentence, served with the schema
+                  <div
+                    style={{
+                      color: "var(--fo-palette-text-secondary)",
+                      fontSize: "0.85em",
+                      lineHeight: 1.35,
+                      marginTop: 2,
+                    }}
+                  >
+                    {describe(name)}
+                  </div>
+                )}
+              </div>
             ))}
           </div>,
           document.body,
