@@ -687,7 +687,7 @@ confidence is at least 0.5:
 
     Adjusting the hard-coded threshold of the above model is possible via
     JSON-only changes in this case because the underlying
-    `eta.detectors.YOLODetector <https://github.com/voxel51/eta/blob/develop/eta/detectors/yolo.py>`_
+    `eta.detectors.YOLODetector <https://github.com/voxel51/eta/blob/main/eta/detectors/yolo.py>`_
     class exposes this as a parameter.
 
     In practice, there is no need to hard-code confidence thresholds in models,

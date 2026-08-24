@@ -26,7 +26,6 @@ on:
     types: [closed, labeled]
     branches:
       - main
-      - develop
 
 permissions:
   contents: write

@@ -32,7 +32,6 @@ jobs:
       (github.event.action != 'edited' || github.event.changes.base) &&
       (
         github.event.pull_request.base.ref == 'main' ||
-        github.event.pull_request.base.ref == 'develop' ||
         startsWith(github.event.pull_request.base.ref, 'release/') ||
         github.event.changes.base
       ) &&
@@ -53,7 +52,7 @@ jobs:
 
             // Bases mirrored into Enterprise.
             const isSyncBase = (b) =>
-              b === 'main' || b === 'develop' || b.startsWith('release/');
+              b === 'main' || b.startsWith('release/');
 
             // Retarget away from a synced base: close the orphaned mirror.
             if (action === 'edited' && context.payload.changes.base) {
