@@ -1,24 +1,17 @@
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as THREE from "three";
 
 import type { VideoPresentation } from "../../video/types";
-import {
-  useVideoTexture,
-  VIDEO_TEXTURE_RETIRE_FALLBACK_MS,
-} from "./use-video-texture";
+import { useVideoTexture } from "./use-video-texture";
 
 afterEach(() => {
   cleanup();
-  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe("useVideoTexture", () => {
-  it("clears a disposed presentation handle and releases its lease", async () => {
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
-      callback(0);
-      return 1;
-    });
+  it("clears the handle and releases its lease without a presentation", async () => {
     const release = vi.fn();
     const presentation: VideoPresentation = {
       acquire: () => ({
@@ -45,15 +38,14 @@ describe("useVideoTexture", () => {
     expect(release).toHaveBeenCalledOnce();
   });
 
-  it("replaces the renderer texture and retires the prior lease", async () => {
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
-      callback(0);
-      return 1;
-    });
+  it("reuses the renderer texture and retires only the prior lease", async () => {
+    const textureDispose = vi.spyOn(THREE.Texture.prototype, "dispose");
     const firstRelease = vi.fn();
     const secondRelease = vi.fn();
-    const first = presentation(1n, firstRelease);
-    const second = presentation(2n, secondRelease);
+    const firstSource = document.createElement("canvas");
+    const secondSource = document.createElement("canvas");
+    const first = presentation(1n, firstRelease, firstSource);
+    const second = presentation(2n, secondRelease, secondSource);
     const onLoaded = vi.fn();
     const { result, rerender } = renderHook(
       ({ value }: { readonly value: VideoPresentation }) =>
@@ -65,38 +57,38 @@ describe("useVideoTexture", () => {
 
     rerender({ value: second });
     await waitFor(() => expect(result.current).not.toBe(firstHandle));
+    expect(result.current?.texture).toBe(firstHandle?.texture);
+    expect(result.current?.texture.image).toBe(secondSource);
+    expect(textureDispose).not.toHaveBeenCalled();
     expect(firstRelease).toHaveBeenCalledOnce();
     expect(secondRelease).not.toHaveBeenCalled();
     expect(onLoaded).toHaveBeenLastCalledWith(result.current);
   });
 
-  it("retires through the timeout when animation frames are paused", async () => {
-    vi.useFakeTimers();
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+  it("disposes the stable texture and current lease on unmount", async () => {
+    const textureDispose = vi.spyOn(THREE.Texture.prototype, "dispose");
     const release = vi.fn();
-    const { rerender } = renderHook(
-      ({ value }: { readonly value: VideoPresentation | null }) =>
-        useVideoTexture(value),
-      {
-        initialProps: {
-          value: presentation(1n, release) as VideoPresentation | null,
-        },
-      },
-    );
+    const current = presentation(1n, release);
+    const { result, unmount } = renderHook(() => useVideoTexture(current));
+    await waitFor(() => expect(result.current).not.toBeNull());
 
-    rerender({ value: null });
-    expect(release).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(VIDEO_TEXTURE_RETIRE_FALLBACK_MS);
+    unmount();
+
+    expect(textureDispose).toHaveBeenCalledOnce();
     expect(release).toHaveBeenCalledOnce();
   });
 });
 
-function presentation(timeNs: bigint, release: () => void): VideoPresentation {
+function presentation(
+  timeNs: bigint,
+  release: () => void,
+  source = document.createElement("canvas"),
+): VideoPresentation {
   return {
     acquire: () => ({
       height: 480,
       release,
-      source: document.createElement("canvas"),
+      source,
       timeNs,
       width: 640,
     }),

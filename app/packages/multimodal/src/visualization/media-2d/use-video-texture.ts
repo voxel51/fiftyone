@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
-import type { VideoPresentation } from "../../video/types";
+import type {
+  VideoPresentation,
+  VideoPresentationLease,
+} from "../../video/types";
 import type { ImageTextureHandle } from "./Base2dScene";
 
 interface HeldVideoTexture {
-  readonly handle: ImageTextureHandle;
+  currentLease: VideoPresentationLease | null;
+  disposed: boolean;
+  readonly texture: THREE.Texture;
 }
 
-export const VIDEO_TEXTURE_RETIRE_FALLBACK_MS = 250;
-
-/** Gives one renderer its own texture while sharing the copied presentation. */
+/** Gives one renderer a stable texture while sharing each copied presentation. */
 export function useVideoTexture(
   presentation: VideoPresentation | null,
   onLoaded?: (handle: ImageTextureHandle) => void,
@@ -20,66 +23,63 @@ export function useVideoTexture(
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
 
+  // This effect updates the source of one renderer-owned texture and releases
+  // the presentation that it replaces.
   useEffect(() => {
-    if (!presentation) return undefined;
-    const lease = presentation.acquire();
-    if (!lease) return undefined;
-    const texture = new THREE.Texture(lease.source as TexImageSource);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.generateMipmaps = false;
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearFilter;
-    texture.needsUpdate = true;
-    let disposed = false;
-    const next: HeldVideoTexture = {
-      handle: {
-        aspectRatio: lease.width / Math.max(1, lease.height),
-        dispose: () => {
-          if (disposed) return;
-          disposed = true;
-          texture.dispose();
-          lease.release();
-        },
-        imageHeight: lease.height,
-        imageWidth: lease.width,
-        retainWhenUnused: false,
-        texture,
-      },
-    };
-    const previous = heldRef.current;
-    heldRef.current = next;
-    setHandle(next.handle);
-    onLoadedRef.current?.(next.handle);
-    if (previous) retireVideoTexture(previous);
-
-    return () => {
-      if (heldRef.current !== next) return;
+    if (!presentation) {
+      disposeHeldVideoTexture(heldRef.current);
       heldRef.current = null;
-      setHandle((current) => (current === next.handle ? null : current));
-      retireVideoTexture(next);
+      setHandle(null);
+      return;
+    }
+    const lease = presentation.acquire();
+    if (!lease) return;
+    let held = heldRef.current;
+    if (!held) {
+      const texture = new THREE.Texture();
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.generateMipmaps = false;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearFilter;
+      held = { currentLease: null, disposed: false, texture };
+      heldRef.current = held;
+    }
+    const previousLease = held.currentLease;
+    held.currentLease = lease;
+    held.texture.image = lease.source as TexImageSource;
+    // Reusing the texture keeps materials and WebGPU resources stable. The
+    // handle identity still changes so the demand-rendered scene invalidates.
+    held.texture.needsUpdate = true;
+    previousLease?.release();
+    const owned = held;
+    const next: ImageTextureHandle = {
+      aspectRatio: lease.width / Math.max(1, lease.height),
+      dispose: () => disposeHeldVideoTexture(owned),
+      imageHeight: lease.height,
+      imageWidth: lease.width,
+      retainWhenUnused: false,
+      texture: held.texture,
     };
+    setHandle(next);
+    onLoadedRef.current?.(next);
   }, [presentation]);
+
+  // This effect releases the stable texture and final presentation on unmount.
+  useEffect(
+    () => () => {
+      disposeHeldVideoTexture(heldRef.current);
+      heldRef.current = null;
+    },
+    [],
+  );
 
   return handle;
 }
 
-function retireVideoTexture(texture: HeldVideoTexture): void {
-  if (
-    typeof window === "undefined" ||
-    typeof window.requestAnimationFrame !== "function"
-  ) {
-    texture.handle.dispose();
-    return;
-  }
-  let disposed = false;
-  const dispose = () => {
-    if (disposed) return;
-    disposed = true;
-    window.clearTimeout(timeout);
-    texture.handle.dispose();
-  };
-  const timeout = window.setTimeout(dispose, VIDEO_TEXTURE_RETIRE_FALLBACK_MS);
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(dispose);
-  });
+function disposeHeldVideoTexture(held: HeldVideoTexture | null): void {
+  if (!held || held.disposed) return;
+  held.disposed = true;
+  held.texture.dispose();
+  held.currentLease?.release();
+  held.currentLease = null;
 }
