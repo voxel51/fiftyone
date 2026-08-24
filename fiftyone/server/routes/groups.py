@@ -77,8 +77,13 @@ def _filter_dict_by_fields(
 
     def _should_include_field(field_path: str) -> bool:
         """Checks if a field should be included based on the field list."""
-        # Always include id and filepath
-        if field_path in ("id", "filepath"):
+        # Always include identity and media-routing fields
+        if field_path in (
+            "id",
+            "filepath",
+            "_media_reference",
+            "_media_type",
+        ):
             return True
 
         # Include if explicitly requested

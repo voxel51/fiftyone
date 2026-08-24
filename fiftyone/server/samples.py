@@ -22,6 +22,7 @@ from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.filters import SampleFilter
 import fiftyone.server.metadata as fosm
+from fiftyone.server.media_references import sanitize_sample_for_transport
 from fiftyone.server.paginator import Connection, Edge, PageInfo
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.utils import from_dict
@@ -184,7 +185,10 @@ async def _create_sample_item(
     *,
     additional_media_fields: t.Optional[t.Tuple] = None,
 ) -> SampleItem:
-    media_type = fom.get_media_type(sample["filepath"])
+    media_type = sample.get("_media_type")
+    if media_type is None:
+        media_type = fom.get_media_type(sample.get("filepath"))
+
     cls = MEDIA_TYPES[media_type]
 
     metadata = await fosm.get_metadata(
@@ -204,7 +208,14 @@ async def _create_sample_item(
     if not pagination_data:
         _id = f"{_id}-modal"
 
-    return from_dict(cls, {"id": _id, "sample": sample, **metadata})
+    return from_dict(
+        cls,
+        {
+            "id": _id,
+            "sample": sanitize_sample_for_transport(sample),
+            **metadata,
+        },
+    )
 
 
 async def get_samples_pipeline(
