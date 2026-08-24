@@ -20,6 +20,7 @@ import uuid
 
 import cachetools
 import eta.core.utils as etau
+from pymongo.errors import DuplicateKeyError
 
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
@@ -36,7 +37,9 @@ from fiftyone.multimodal.media import (
     LeRobotVideoLocator,
     MalformedMediaSourceError,
     MediaAssetManifest,
+    MediaReferenceError,
     MediaResolver,
+    MediaSourceAuthorizationError,
     MissingMediaRootError,
     MovedMediaRootError,
     RowInterval,
@@ -51,6 +54,7 @@ from fiftyone.multimodal.media import (
 )
 import fiftyone.utils.data.importers as foud
 
+pa = fou.lazy_import("pyarrow", callback=lambda: fou.ensure_package("pyarrow"))
 papq = fou.lazy_import(
     "pyarrow.parquet", callback=lambda: fou.ensure_package("pyarrow")
 )
@@ -89,6 +93,12 @@ class _ManifestCacheEntry:
     file_signatures: tuple
 
 
+@dataclass
+class _ResolutionLockEntry:
+    lock: threading.Lock
+    references: int = 0
+
+
 @dataclass(frozen=True)
 class _InspectedLeRobotSource:
     root: str
@@ -100,14 +110,10 @@ class _InspectedLeRobotSource:
 
 
 _SOURCE_BINDINGS_COLLECTION = "media_source_bindings"
-_RESOLUTION_CACHE_TTL_SECONDS = 30
-_MANIFEST_CACHE = cachetools.TTLCache(
-    maxsize=512, ttl=_RESOLUTION_CACHE_TTL_SECONDS
-)
-_ASSET_FINGERPRINT_CACHE = cachetools.TTLCache(
-    maxsize=4096, ttl=_RESOLUTION_CACHE_TTL_SECONDS
-)
-_RESOLUTION_LOCKS = cachetools.LRUCache(maxsize=512)
+_SOURCE_BINDING_MAX_ATTEMPTS = 16
+_MANIFEST_CACHE = cachetools.LRUCache(maxsize=512)
+_ASSET_FINGERPRINT_CACHE = cachetools.LRUCache(maxsize=4096)
+_RESOLUTION_LOCKS = {}
 _CACHE_LOCK = threading.RLock()
 
 
@@ -119,13 +125,21 @@ def _deduplicate_resolutions(method):
 
         cache_key = _resolution_cache_key(reference, assets)
         with _CACHE_LOCK:
-            lock = _RESOLUTION_LOCKS.get(cache_key)
-            if lock is None:
-                lock = threading.Lock()
-                _RESOLUTION_LOCKS[cache_key] = lock
+            entry = _RESOLUTION_LOCKS.get(cache_key)
+            if entry is None:
+                entry = _ResolutionLockEntry(threading.Lock())
+                _RESOLUTION_LOCKS[cache_key] = entry
 
-        with lock:
-            return method(self, reference, assets)
+            entry.references += 1
+
+        try:
+            with entry.lock:
+                return method(self, reference, assets)
+        finally:
+            with _CACHE_LOCK:
+                entry.references -= 1
+                if entry.references == 0:
+                    _RESOLUTION_LOCKS.pop(cache_key, None)
 
     return wrapper
 
@@ -300,16 +314,45 @@ def bind_lerobot_source(source_identity, dataset_root, source_fingerprint):
     if not isinstance(source_fingerprint, str) or not source_fingerprint:
         raise ValueError("source_fingerprint must be a non-empty string")
     source_identity = source_identity.strip()
-    binding = {
-        "_id": source_identity,
-        "kind": LEROBOT_EPISODE_KIND,
-        "root": root,
-        "source_fingerprint": source_fingerprint,
-        "revision": uuid.uuid4().hex,
-    }
-    foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION].replace_one(
-        {"_id": source_identity}, binding, upsert=True
-    )
+    collection = foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION]
+    for _ in range(_SOURCE_BINDING_MAX_ATTEMPTS):
+        existing = collection.find_one({"_id": source_identity})
+        revision = uuid.uuid4().hex
+        if existing is None:
+            try:
+                collection.insert_one(
+                    {
+                        "_id": source_identity,
+                        "kind": LEROBOT_EPISODE_KIND,
+                        "root": root,
+                        "source_fingerprint": source_fingerprint,
+                        "revision": revision,
+                    }
+                )
+                break
+            except DuplicateKeyError:
+                continue
+
+        if (
+            existing.get("kind") != LEROBOT_EPISODE_KIND
+            or existing.get("source_fingerprint") != source_fingerprint
+        ):
+            raise StaleMediaReferenceError(
+                "The source identity is already bound to different content; "
+                "use a new identity for the changed source"
+            )
+
+        result = collection.update_one(
+            {"_id": source_identity, "revision": existing.get("revision")},
+            {"$set": {"root": root, "revision": revision}},
+        )
+        if result.matched_count:
+            break
+    else:
+        raise StaleMediaReferenceError(
+            "The source binding changed repeatedly; retry the operation"
+        )
+
     _clear_resolution_caches()
 
 
@@ -323,15 +366,27 @@ def unbind_lerobot_source(source_identity):
 
 def relocate_lerobot_source(source_identity, dataset_root):
     """Relocates an existing LeRobot binding without changing its identity."""
-    binding = _get_source_binding(source_identity)
-    if binding is None:
-        raise MissingMediaRootError(
-            "No authorized source binding exists for this LeRobot dataset"
+    root = os.path.realpath(fos.normalize_path(dataset_root))
+    collection = foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION]
+    for _ in range(_SOURCE_BINDING_MAX_ATTEMPTS):
+        binding = _get_source_binding(source_identity)
+        if binding is None:
+            raise MissingMediaRootError(
+                "No authorized source binding exists for this LeRobot dataset"
+            )
+
+        result = collection.update_one(
+            {"_id": source_identity, "revision": binding.revision},
+            {"$set": {"root": root, "revision": uuid.uuid4().hex}},
+        )
+        if result.matched_count:
+            break
+    else:
+        raise StaleMediaReferenceError(
+            "The source binding changed repeatedly; retry the relocation"
         )
 
-    bind_lerobot_source(
-        source_identity, dataset_root, binding.source_fingerprint
-    )
+    _clear_resolution_caches()
 
 
 class LeRobotMediaResolver(MediaResolver):
@@ -842,9 +897,9 @@ def _validate_source_assets(root, info, rows):
             ) or global_indexes[local_start:local_end] != list(
                 range(row["dataset_from_index"], row["dataset_to_index"])
             ):
-                raise StaleMediaReferenceError(
-                    "LeRobot episode %d does not match its declared data slice"
-                    % row["episode_index"]
+                raise MalformedMediaSourceError(
+                    "LeRobot episode %d does not match its declared data "
+                    "slice" % row["episode_index"]
                 )
 
     return {
@@ -986,11 +1041,26 @@ def _resolve_media_asset(reference, root, asset):
             mimetypes.guess_type(path)[0] or "application/octet-stream"
         )
 
+    try:
+        size_bytes = os.path.getsize(path)
+    except (FileNotFoundError, NotADirectoryError) as exc:
+        raise StaleMediaReferenceError(
+            "The resolved LeRobot asset disappeared during resolution"
+        ) from exc
+    except PermissionError as exc:
+        raise MediaSourceAuthorizationError(
+            "The resolved LeRobot asset is not readable"
+        ) from exc
+    except OSError as exc:
+        raise MalformedMediaSourceError(
+            "Unable to inspect the resolved LeRobot asset"
+        ) from exc
+
     return build_resolved_media_asset(
         reference,
         asset,
         path=path,
-        size_bytes=os.path.getsize(path),
+        size_bytes=size_bytes,
         media_type=media_type,
     )
 
@@ -998,7 +1068,19 @@ def _resolve_media_asset(reference, root, asset):
 def _open_parquet(path, role):
     try:
         return papq.ParquetFile(path)
-    except Exception as exc:
+    except PermissionError as exc:
+        raise MediaSourceAuthorizationError(
+            "LeRobot %s Parquet file is not readable" % role
+        ) from exc
+    except (FileNotFoundError, NotADirectoryError) as exc:
+        raise StaleMediaReferenceError(
+            "LeRobot %s Parquet file is missing" % role
+        ) from exc
+    except OSError as exc:
+        raise MalformedMediaSourceError(
+            "Unable to read the LeRobot %s Parquet file" % role
+        ) from exc
+    except pa.ArrowInvalid as exc:
         raise UnfinalizedMediaSourceError(
             "LeRobot %s Parquet file '%s' has no readable footer; finalize "
             "or repair the recording before import" % (role, path)
@@ -1112,6 +1194,10 @@ def _read_bytes(path):
     try:
         with open(path, "rb") as file:
             return file.read()
+    except PermissionError as exc:
+        raise MediaSourceAuthorizationError(
+            "The LeRobot source asset is not readable"
+        ) from exc
     except OSError as exc:
         raise MalformedMediaSourceError(
             "Unable to read LeRobot source asset '%s'" % path
@@ -1128,6 +1214,10 @@ def _sha256_file(path):
                     break
 
                 digest.update(chunk)
+    except PermissionError as exc:
+        raise MediaSourceAuthorizationError(
+            "The LeRobot source asset cannot be fingerprinted"
+        ) from exc
     except OSError as exc:
         raise MalformedMediaSourceError(
             "Unable to fingerprint LeRobot source asset '%s'" % path
@@ -1179,7 +1269,7 @@ def _get_cached_manifest(cache_key, binding_revision):
 
     try:
         signatures = _manifest_file_signatures(entry.manifest)
-    except OSError:
+    except MediaReferenceError:
         signatures = None
 
     if signatures == entry.file_signatures:
@@ -1219,7 +1309,20 @@ def _manifest_file_signatures(manifest):
 
 
 def _file_signature(path):
-    result = os.stat(path)
+    try:
+        result = os.stat(path)
+    except PermissionError as exc:
+        raise MediaSourceAuthorizationError(
+            "The LeRobot source asset cannot be inspected"
+        ) from exc
+    except (FileNotFoundError, NotADirectoryError) as exc:
+        raise StaleMediaReferenceError(
+            "The LeRobot source asset is no longer available"
+        ) from exc
+    except OSError as exc:
+        raise MalformedMediaSourceError(
+            "Unable to inspect the LeRobot source asset"
+        ) from exc
     return (
         result.st_dev,
         result.st_ino,
@@ -1232,7 +1335,6 @@ def _clear_resolution_caches():
     with _CACHE_LOCK:
         _MANIFEST_CACHE.clear()
         _ASSET_FINGERPRINT_CACHE.clear()
-        _RESOLUTION_LOCKS.clear()
 
 
 def _validate_resolved_data_slice(root, episode, locator):

@@ -6,9 +6,10 @@ Browser-safe media-reference sample transport.
 |
 """
 
-from copy import deepcopy
-
-from fiftyone.multimodal.media import sanitize_media_reference
+from fiftyone.multimodal.media import (
+    MediaReferenceError,
+    sanitize_media_reference,
+)
 
 
 def sanitize_sample_for_transport(sample):
@@ -16,14 +17,26 @@ def sanitize_sample_for_transport(sample):
     if not isinstance(sample, dict):
         return sample
 
-    sample = deepcopy(sample)
     envelope = sample.get("_media_reference", None)
     if envelope is None:
         return sample
 
-    if set(envelope) == {"kind", "key", "version"}:
+    if isinstance(envelope, dict) and set(envelope) == {
+        "kind",
+        "key",
+        "version",
+    }:
+        if not all(
+            isinstance(envelope[field], str) and envelope[field]
+            for field in ("kind", "key", "version")
+        ):
+            raise MediaReferenceError(
+                "Malformed sanitized media-reference descriptor"
+            )
+
         return sample
 
+    sample = dict(sample)
     descriptor = sanitize_media_reference(envelope)
     sample["_media_reference"] = descriptor
     sample["_media_type"] = envelope["media_type"]

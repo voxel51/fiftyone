@@ -38,6 +38,7 @@ MAX_MEDIA_REFERENCE_BYTES = 64 * 1024
 MEDIA_REFERENCE_DATASET_REVISION = "2.0.0"
 
 _DRIVE_PREFIX_PATTERN = re.compile(r"^[A-Za-z]:")
+_SHA256_FINGERPRINT_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 _ROW_COORDINATE_SYSTEMS = {
     "lerobot-v3-global-dataset-row",
     "parquet-file-row",
@@ -98,8 +99,10 @@ class UnsupportedLeRobotExportModeError(UnsupportedMediaReferenceOperation):
 
 
 def _get_lerobot_export_mode_reason(export_media):
+    if export_media is False:
+        return "thin-reference-native-only"
+
     reasons = {
-        False: "thin-reference-native-only",
         "move": "shared-source-move-unsupported",
         "symlink": "self-contained-export-required",
         "manifest": "manifest-native-only",
@@ -145,6 +148,11 @@ class DatasetRelativeLocation:
         if "\\" in self.path:
             raise InvalidMediaLocationError(
                 "Dataset-relative asset paths must use POSIX separators"
+            )
+
+        if "\x00" in self.path:
+            raise InvalidMediaLocationError(
+                "Dataset-relative asset paths cannot contain NUL bytes"
             )
 
         components = self.path.split("/")
@@ -1026,17 +1034,10 @@ def _validate_nonnegative_int(value, label):
 
 def _validate_fingerprint(value, label):
     _validate_nonempty_string(value, label)
-    if not value.startswith("sha256:") or len(value) != 71:
+    if _SHA256_FINGERPRINT_PATTERN.fullmatch(value) is None:
         raise MediaReferenceError(
             "LeRobot %s must be a sha256 fingerprint" % label
         )
-
-    try:
-        int(value[7:], 16)
-    except ValueError as exc:
-        raise MediaReferenceError(
-            "LeRobot %s must be a sha256 fingerprint" % label
-        ) from exc
 
 
 def _serialize_selector(selector):

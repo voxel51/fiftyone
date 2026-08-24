@@ -7,6 +7,7 @@ LeRobotDataset v3 importer and episode asset transport tests.
 """
 
 import asyncio
+import errno
 import importlib.util
 import json
 import os
@@ -29,6 +30,7 @@ import fiftyone as fo
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
 import fiftyone.utils.lerobot as foul
+import fiftyone.utils.lerobot_export as foule
 from fiftyone.multimodal.media import (
     LeRobotEpisode,
     MalformedMediaSourceError,
@@ -367,6 +369,7 @@ class LeRobotImporterTests(unittest.TestCase):
             )
             with self.assertRaises(StaleMediaReferenceError):
                 resolver.resolve_assets(reference, reference.describe_assets())
+            unbind_lerobot_source(reference.source_identity)
 
     @drop_datasets
     def test_source_binding_survives_a_fresh_server_process(self):
@@ -397,6 +400,7 @@ print(response.json().get('episode_index'))
                 ],
                 cwd=os.getcwd(),
                 text=True,
+                timeout=120,
             )
             self.assertEqual(output.strip().splitlines()[-2:], ["200", "0"])
 
@@ -416,6 +420,7 @@ print(response.json().get('episode_index'))
                     ],
                     cwd=os.getcwd(),
                     text=True,
+                    timeout=120,
                 )
                 self.assertEqual(
                     relocated_output.strip().splitlines()[-2:], ["200", "0"]
@@ -562,14 +567,114 @@ class LeRobotExporterTests(unittest.TestCase):
             self.assertEqual(manifest.episode_index, 0)
 
     @drop_datasets
+    def test_export_preserves_arrow_types_timestamps_and_permissions(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            export_root = os.path.join(temp_dir, "export")
+            _write_v3_source(source_root, episodes=2)
+            data_path = os.path.join(
+                source_root, "data", "chunk-000", "file-000.parquet"
+            )
+            state_type = pa.list_(pa.float32(), 2)
+            source_table = pa.table(
+                {
+                    "episode_index": pa.array([0, 0, 1, 1], pa.int64()),
+                    "index": pa.array([0, 1, 2, 3], pa.int64()),
+                    "frame_index": pa.array([0, 1, 0, 1], pa.int64()),
+                    "timestamp": pa.array(
+                        [0.01, 0.11, 0.02, 0.12], pa.float32()
+                    ),
+                    "task_index": pa.array([0, 0, 1, 1], pa.int64()),
+                    "observation.state": pa.array(
+                        [[0, 1], [2, 3], [4, 5], [6, 7]],
+                        type=state_type,
+                    ),
+                }
+            )
+            papq.write_table(source_table, data_path)
+            dataset = _import(source_root)
+
+            previous_umask = os.umask(0o077)
+            try:
+                dataset.export(
+                    export_dir=export_root,
+                    dataset_type=fot.LeRobotDataset,
+                )
+            finally:
+                os.umask(previous_umask)
+
+            exported_table = papq.read_table(
+                os.path.join(
+                    export_root, "data", "chunk-000", "file-000.parquet"
+                )
+            )
+            self.assertEqual(
+                exported_table.schema.field("observation.state").type,
+                state_type,
+            )
+            self.assertEqual(
+                exported_table.schema.field("timestamp").type, pa.float32()
+            )
+            self.assertEqual(
+                exported_table["timestamp"].to_pylist(),
+                source_table["timestamp"].to_pylist(),
+            )
+            self.assertEqual(os.stat(export_root).st_mode & 0o777, 0o700)
+
+            aggregate = foule._aggregate_episode_statistics(
+                [
+                    {
+                        "stats/camera/min": [0],
+                        "stats/camera/max": [1],
+                        "stats/camera/mean": [0.5],
+                        "stats/camera/std": [0.5],
+                        "stats/camera/count": [2],
+                        "stats/camera/q50": [0.5],
+                    },
+                    {
+                        "stats/camera/min": [100],
+                        "stats/camera/max": [100],
+                        "stats/camera/mean": [100],
+                        "stats/camera/std": [0],
+                        "stats/camera/count": [1],
+                        "stats/camera/q50": [100],
+                    },
+                ],
+                "camera",
+            )
+            self.assertNotIn("q50", aggregate)
+
+    @drop_datasets
     def test_export_modes_and_preflight_are_atomic(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = os.path.join(temp_dir, "source")
             _write_v3_source(root, episodes=2)
             dataset = _import(root)
 
+            valid_destination = os.path.join(temp_dir, "existing")
+            dataset.export(
+                export_dir=valid_destination,
+                dataset_type=fot.LeRobotDataset,
+            )
+            info_path = os.path.join(valid_destination, "meta", "info.json")
+            with open(info_path, "rb") as file:
+                existing_info = file.read()
+
+            obsolete_path = os.path.join(valid_destination, "obsolete")
+            with open(obsolete_path, "w") as file:
+                file.write("old export")
+            dataset.export(
+                export_dir=valid_destination,
+                dataset_type=fot.LeRobotDataset,
+                overwrite=True,
+            )
+            self.assertFalse(os.path.exists(obsolete_path))
+            with open(info_path, "rb") as file:
+                existing_info = file.read()
+
             modes = (
                 (False, "thin-reference-native-only"),
+                (0, "unsupported-export-mode"),
                 ("move", "shared-source-move-unsupported"),
                 ("symlink", "self-contained-export-required"),
                 ("manifest", "manifest-native-only"),
@@ -630,6 +735,51 @@ class LeRobotExporterTests(unittest.TestCase):
                     dataset_type=fot.LeRobotDataset,
                 )
             self.assertFalse(os.path.exists(stale_destination))
+
+            with self.assertRaises(StaleMediaReferenceError):
+                dataset.export(
+                    export_dir=valid_destination,
+                    dataset_type=fot.LeRobotDataset,
+                    overwrite=True,
+                )
+            with open(info_path, "rb") as file:
+                self.assertEqual(file.read(), existing_info)
+
+    @drop_datasets
+    def test_export_rejects_frames_without_declared_tasks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            export_root = os.path.join(temp_dir, "export")
+            _write_v3_source(source_root, episodes=2)
+            for path in (
+                os.path.join(
+                    source_root,
+                    "meta",
+                    "episodes",
+                    "part-000.parquet",
+                ),
+                os.path.join(
+                    source_root,
+                    "meta",
+                    "episodes",
+                    "part-001.parquet",
+                ),
+            ):
+                rows = papq.read_table(path).to_pylist()
+                for row in rows:
+                    row["tasks"] = []
+                _write_parquet(path, rows)
+
+            dataset = _import(source_root)
+            with self.assertRaisesRegex(
+                MalformedMediaSourceError, "declared task"
+            ):
+                dataset.export(
+                    export_dir=export_root,
+                    dataset_type=fot.LeRobotDataset,
+                )
+
+            self.assertFalse(os.path.exists(export_root))
 
 
 class LeRobotServerTests(unittest.TestCase):
@@ -705,6 +855,11 @@ class LeRobotServerTests(unittest.TestCase):
                 (FileNotFoundError(), 404, "missing-media-asset"),
                 (NotADirectoryError(), 404, "missing-media-asset"),
                 (PermissionError(), 403, "media-source-authorization"),
+                (
+                    OSError(errno.EIO, root + "/private/video.mp4"),
+                    409,
+                    "stale-media-asset",
+                ),
             )
             for error, status, kind in cases:
                 with self.subTest(error=type(error).__name__), mock.patch(
@@ -712,11 +867,40 @@ class LeRobotServerTests(unittest.TestCase):
                     side_effect=error,
                 ):
                     response = client.get(video_url)
-                self.assertEqual(response.status_code, status)
-                self.assertEqual(
-                    response.headers["X-FiftyOne-Error-Kind"], kind
-                )
-                self.assertNotIn(root, response.text)
+                    self.assertEqual(response.status_code, status)
+                    self.assertEqual(
+                        response.headers["X-FiftyOne-Error-Kind"], kind
+                    )
+                    self.assertNotIn(root, response.text)
+
+            with mock.patch(
+                "fiftyone.server.routes.media_reference.os.open",
+                side_effect=FileNotFoundError(),
+            ):
+                response = client.get(video_url)
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(
+                response.headers["X-FiftyOne-Error-Kind"],
+                "missing-media-asset",
+            )
+
+            with mock.patch(
+                "fiftyone.server.routes.media_reference.os.open",
+                return_value=51,
+            ), mock.patch(
+                "fiftyone.server.routes.media_reference.os.fstat",
+                side_effect=OSError(errno.EIO, "unreadable descriptor"),
+            ), mock.patch(
+                "fiftyone.server.routes.media_reference.os.close"
+            ) as close:
+                response = client.get(video_url)
+
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(
+                response.headers["X-FiftyOne-Error-Kind"],
+                "stale-media-asset",
+            )
+            close.assert_any_call(51)
 
     @drop_datasets
     def test_manifest_range_scope_and_redaction(self):
@@ -765,12 +949,9 @@ class LeRobotServerTests(unittest.TestCase):
                 video["asset_id"],
             )
             self.assertEqual(client.get(cross_sample_url).status_code, 404)
-            self.assertEqual(
-                client.get(
-                    manifest_path + "?path=../../etc/passwd"
-                ).status_code,
-                200,
-            )
+            traversal = client.get(manifest_path + "?path=../../etc/passwd")
+            self.assertEqual(traversal.status_code, 200)
+            self.assertEqual(traversal.json(), manifest)
 
             serialized = fosu.json.serialize(first)
             descriptor = serialized["_media_reference"]
@@ -842,6 +1023,19 @@ class LeRobotServerTests(unittest.TestCase):
                 self.assertNotIn(moved_root, moved_response.text)
             finally:
                 os.rename(moved_root, root)
+
+            dataset._sample_collection.update_one(
+                {"_id": first._id},
+                {"$set": {"_media_reference.kind": "unknown-reference"}},
+            )
+            first.reload()
+            malformed = client.get(manifest_path)
+            self.assertEqual(malformed.status_code, 422)
+            self.assertEqual(
+                malformed.headers["X-FiftyOne-Error-Kind"],
+                "malformed-media-reference",
+            )
+            self.assertNotIn(root, malformed.text)
 
 
 if __name__ == "__main__":

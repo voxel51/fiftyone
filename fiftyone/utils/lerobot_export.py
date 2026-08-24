@@ -11,7 +11,11 @@ from dataclasses import dataclass
 import importlib.util
 import os
 import shutil
+import stat
+import subprocess
+import sys
 import tempfile
+import uuid
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -70,23 +74,31 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
     """
 
     supports_media_references = True
+    manages_existing_export_dir = True
 
     def __init__(self, export_dir, export_media=None):
         if export_media is None:
             export_media = True
 
         if export_media is not True:
-            suggestions = {
-                False: "use FiftyOneDataset to preserve thin references",
-                "move": "LeRobot sources are shared and cannot be moved",
-                "symlink": "LeRobot exports must be self-contained",
-                "manifest": "use FiftyOneDataset for a thin-reference export",
-            }
-            suggestion = suggestions.get(export_media, "set export_media=True")
+            if export_media is False:
+                suggestion = "use FiftyOneDataset to preserve thin references"
+            else:
+                suggestions = {
+                    "move": "LeRobot sources are shared and cannot be moved",
+                    "symlink": "LeRobot exports must be self-contained",
+                    "manifest": (
+                        "use FiftyOneDataset for a thin-reference export"
+                    ),
+                }
+                suggestion = suggestions.get(
+                    export_media, "set export_media=True"
+                )
             raise UnsupportedLeRobotExportModeError(export_media, suggestion)
 
         super().__init__(export_dir=export_dir)
         self.export_media = True
+        self.overwrite = False
 
     def export_samples(self, sample_collection, progress=None):
         references = [
@@ -94,7 +106,7 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
             for sample in sample_collection.iter_samples(progress=progress)
         ]
         if not references:
-            raise ValueError("Cannot export an empty LeRobot dataset")
+            raise MediaReferenceError("Cannot export an empty LeRobot dataset")
 
         if not all(
             isinstance(reference, LeRobotEpisode) for reference in references
@@ -124,10 +136,16 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
         self._publish_export(specs)
 
     def _publish_export(self, specs):
-        if os.path.exists(self.export_dir):
+        destination_exists = os.path.exists(self.export_dir)
+        destination_is_empty = (
+            os.path.isdir(self.export_dir) and not os.listdir(self.export_dir)
+            if destination_exists
+            else False
+        )
+        if destination_exists and not (self.overwrite or destination_is_empty):
             raise FileExistsError(
-                "Atomic LeRobot export requires an empty destination: '%s'"
-                % self.export_dir
+                "Atomic LeRobot export requires an empty destination or "
+                "overwrite=True: '%s'" % self.export_dir
             )
 
         parent = os.path.dirname(self.export_dir)
@@ -145,11 +163,49 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
                     reference, reference.describe_assets()
                 )
 
-            os.replace(staging_dir, self.export_dir)
+            os.chmod(staging_dir, _get_default_directory_mode(parent))
+            _publish_staged_export(
+                staging_dir,
+                self.export_dir,
+                replace_existing=destination_exists,
+            )
             published = True
         finally:
             if not published and os.path.isdir(staging_dir):
                 shutil.rmtree(staging_dir)
+
+
+def _publish_staged_export(staging_dir, export_dir, replace_existing):
+    if not replace_existing:
+        os.replace(staging_dir, export_dir)
+        return
+
+    if os.path.isdir(export_dir) and not os.listdir(export_dir):
+        os.rmdir(export_dir)
+        os.replace(staging_dir, export_dir)
+        return
+
+    backup_dir = export_dir + ".fiftyone-backup-" + uuid.uuid4().hex
+    os.replace(export_dir, backup_dir)
+    try:
+        os.replace(staging_dir, export_dir)
+    except BaseException:
+        os.replace(backup_dir, export_dir)
+        raise
+    else:
+        if os.path.isdir(backup_dir):
+            shutil.rmtree(backup_dir)
+        else:
+            os.remove(backup_dir)
+
+
+def _get_default_directory_mode(parent):
+    probe = os.path.join(parent, ".fiftyone-mode-%s" % uuid.uuid4().hex)
+    os.mkdir(probe, 0o777)
+    try:
+        return stat.S_IMODE(os.stat(probe).st_mode)
+    finally:
+        os.rmdir(probe)
 
 
 def _plan_lerobot_export(reference):
@@ -168,7 +224,7 @@ def _write_lerobot_export(staging_dir, specs):
     video_exports = _plan_video_exports(info, specs)
 
     task_indexes = {}
-    output_rows = []
+    output_tables = []
     output_episode_rows = []
     global_index = 0
     for output_episode_index, spec in enumerate(specs):
@@ -183,32 +239,59 @@ def _write_lerobot_export(staging_dir, specs):
         data_asset = _resolved_asset_by_role(
             spec.manifest, MediaAssetRole.TABULAR_FRAME_DATA
         )
-        source_rows = _read_selected_data_rows(data_asset.path, locator)
+        source_table = _read_selected_data_table(data_asset.path, locator)
+        source_rows = source_table.to_pylist()
         tasks = list(source_episode_row.get("tasks") or [])
         for task in tasks:
             task_indexes.setdefault(task, len(task_indexes))
 
         episode_start = global_index
-        for frame_index, source_row in enumerate(source_rows):
-            row = dict(source_row)
-            row["index"] = global_index
-            row["episode_index"] = output_episode_index
-            row["frame_index"] = frame_index
-            row["timestamp"] = frame_index / fps
+        mapped_task_indexes = []
+        for source_row in source_rows:
             source_task_index = source_row.get("task_index")
             task = source_tasks.get(source_task_index)
             if task is None and len(tasks) == 1:
                 task = tasks[0]
             if task is not None:
                 task_indexes.setdefault(task, len(task_indexes))
-                row["task_index"] = task_indexes[task]
+                mapped_task_indexes.append(task_indexes[task])
             elif source_task_index is not None:
                 raise MalformedMediaSourceError(
                     "LeRobot export cannot map source task_index %s"
                     % source_task_index
                 )
-            output_rows.append(row)
+            else:
+                raise MalformedMediaSourceError(
+                    "LeRobot export requires every frame to resolve to a "
+                    "declared task"
+                )
+
             global_index += 1
+
+        source_table = _replace_column(
+            source_table, "index", range(episode_start, global_index)
+        )
+        source_table = _replace_column(
+            source_table,
+            "episode_index",
+            [output_episode_index] * len(source_rows),
+        )
+        source_table = _replace_column(
+            source_table, "frame_index", range(len(source_rows)), pa.int64()
+        )
+        if "timestamp" not in source_table.column_names:
+            source_table = _replace_column(
+                source_table,
+                "timestamp",
+                [index / fps for index in range(len(source_rows))],
+                pa.float32(),
+            )
+
+        source_table = _replace_column(
+            source_table, "task_index", mapped_task_indexes, pa.int64()
+        )
+        output_tables.append(source_table)
+        episode_output_rows = source_table.to_pylist()
 
         episode_row = dict(source_episode_row)
         episode_row["episode_index"] = output_episode_index
@@ -219,9 +302,7 @@ def _write_lerobot_export(staging_dir, specs):
         episode_row["data/file_index"] = 0
         episode_row["meta/episodes/chunk_index"] = 0
         episode_row["meta/episodes/file_index"] = 0
-        _set_episode_statistics(
-            episode_row, output_rows[episode_start:global_index]
-        )
+        _set_episode_statistics(episode_row, episode_output_rows)
 
         for asset in spec.manifest.assets:
             if asset.description.role is not MediaAssetRole.VIDEO_STREAM:
@@ -234,6 +315,8 @@ def _write_lerobot_export(staging_dir, specs):
 
         output_episode_rows.append(episode_row)
 
+    output_table = pa.concat_tables(output_tables)
+    output_rows = output_table.to_pylist()
     output_info = deepcopy(info)
     output_info["total_episodes"] = len(specs)
     output_info["total_frames"] = len(output_rows)
@@ -246,7 +329,7 @@ def _write_lerobot_export(staging_dir, specs):
     )
     data_path = _resolve_under_root(staging_dir, data_relative_path)
     etau.ensure_basedir(data_path)
-    papq.write_table(pa.Table.from_pylist(output_rows), data_path)
+    papq.write_table(output_table, data_path)
 
     episodes_relative_path = "meta/episodes/chunk-000/file-000.parquet"
 
@@ -327,6 +410,17 @@ def _set_episode_statistics(episode_row, rows):
         prefix = "stats/%s/" % field_name
         for statistic, value in field_statistics.items():
             episode_row[prefix + statistic] = value
+
+
+def _replace_column(table, name, values, missing_type=None):
+    if name in table.column_names:
+        index = table.schema.get_field_index(name)
+        field = table.schema.field(index)
+        array = pa.array(values, type=field.type)
+        return table.set_column(index, field, array)
+
+    array = pa.array(values, type=missing_type)
+    return table.append_column(name, array)
 
 
 def _compute_statistics(rows):
@@ -419,14 +513,6 @@ def _aggregate_episode_statistics(episode_rows, field_name):
         "std": np.sqrt(variance).tolist(),
         "count": [int(total_count)],
     }
-    for quantile in ("q01", "q10", "q50", "q90", "q99"):
-        key = prefix + quantile
-        if all(key in row for row in episode_rows):
-            values = np.asarray([row[key] for row in episode_rows])
-            result[quantile] = (
-                np.sum(values * weights, axis=0) / total_count
-            ).tolist()
-
     return result
 
 
@@ -484,7 +570,7 @@ def _read_parquet_row(path, row_index):
     )
 
 
-def _read_selected_data_rows(path, locator):
+def _read_selected_data_table(path, locator):
     parquet_file = _open_parquet(path, "episode data")
     row_groups = locator.parquet_row_groups
     group_start = sum(
@@ -500,7 +586,7 @@ def _read_selected_data_rows(path, locator):
             "LeRobot export data rows no longer match the stored locator"
         )
 
-    return selected.to_pylist()
+    return selected
 
 
 def _validate_lerobot_export(staging_dir, expected_episodes):
@@ -521,45 +607,57 @@ def _validate_with_official_lerobot(staging_dir, expected_episodes):
     if importlib.util.find_spec("lerobot") is None:
         return
 
-    try:
-        from lerobot.datasets.lerobot_dataset import (
-            LeRobotDataset,
-            LeRobotDatasetMetadata,
-        )
-    except ImportError:
-        return
+    script = """
+import sys
+from lerobot.datasets.lerobot_dataset import (
+    LeRobotDataset,
+    LeRobotDatasetMetadata,
+)
 
+root = sys.argv[1]
+expected_episodes = int(sys.argv[2])
+metadata = LeRobotDatasetMetadata(
+    repo_id="fiftyone/local-export",
+    root=root,
+    token=False,
+)
+dataset = LeRobotDataset(
+    repo_id="fiftyone/local-export",
+    root=root,
+    episodes=list(range(expected_episodes)),
+    download_videos=False,
+    token=False,
+)
+if metadata.total_episodes != expected_episodes:
+    raise RuntimeError("unexpected episode count")
+if len(dataset) != metadata.total_frames:
+    raise RuntimeError("unexpected frame count")
+if dataset.hf_dataset[0]["episode_index"] != 0:
+    raise RuntimeError("unexpected episode coordinates")
+"""
+    env = os.environ.copy()
+    env["HF_HUB_OFFLINE"] = "1"
+    env["HF_DATASETS_OFFLINE"] = "1"
     try:
-        metadata = LeRobotDatasetMetadata(
-            repo_id="fiftyone/local-export",
-            root=staging_dir,
-            token=False,
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                script,
+                staging_dir,
+                str(expected_episodes),
+            ],
+            check=True,
+            capture_output=True,
+            env=env,
+            text=True,
+            timeout=120,
         )
-        dataset = LeRobotDataset(
-            repo_id="fiftyone/local-export",
-            root=staging_dir,
-            episodes=list(range(expected_episodes)),
-            download_videos=False,
-            token=False,
-        )
-        first_frame = dataset.hf_dataset[0]
-    except Exception as exc:
+    except (subprocess.SubprocessError, OSError) as exc:
         raise MalformedMediaSourceError(
             "Completed LeRobot export is not readable by the official v3 "
             "reader"
         ) from exc
-
-    if metadata.total_episodes != expected_episodes or len(dataset) != (
-        metadata.total_frames
-    ):
-        raise MalformedMediaSourceError(
-            "Completed LeRobot export has inconsistent official-reader totals"
-        )
-
-    if first_frame["episode_index"] != 0:
-        raise MalformedMediaSourceError(
-            "Completed LeRobot export has inconsistent episode coordinates"
-        )
 
 
 register_media_export_planner(
