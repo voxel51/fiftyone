@@ -14,12 +14,20 @@ beforeAll(() => {
   // A fake engine, so no real AudioContext/worklet is needed.
   (globalThis as Record<string, unknown>).__FO_TEST_AUDIO_ENGINE_FACTORY = () =>
     Promise.resolve({
-      node: { connect() {}, disconnect() {}, port: {} },
+      node: {
+        connect: () => undefined,
+        disconnect: () => undefined,
+        port: {},
+      },
       audioContext: {
         createGain: () => ({
-          connect() {},
-          disconnect() {},
-          gain: { value: 1, setValueAtTime() {}, cancelScheduledValues() {} },
+          connect: () => undefined,
+          disconnect: () => undefined,
+          gain: {
+            value: 1,
+            setValueAtTime: () => undefined,
+            cancelScheduledValues: () => undefined,
+          },
         }),
         destination: {},
         close: () => Promise.resolve(),
@@ -35,8 +43,8 @@ beforeAll(() => {
       availableWrite: () => 0,
       bufferedFrames: () => 0,
       push: () => 0,
-      seek() {},
-      markEnded() {},
+      seek: () => undefined,
+      markEnded: () => undefined,
       playedSeconds: () => 0,
       underrunFrames: () => 0,
       dispose: () => Promise.resolve(),

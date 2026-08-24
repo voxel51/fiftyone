@@ -1015,7 +1015,8 @@ function useSeedPersistedTileAtom<TileValue>({
   // This effect seeds one tile-scoped atom from persisted layout state.
   useEffect(() => {
     const persisted = readModalLayout(datasetIdRef.current)?.[field] as
-      Readonly<Record<string, TileValue>> | undefined;
+      | Readonly<Record<string, TileValue>>
+      | undefined;
     if (persisted) {
       store.set(atom, (previous) => {
         const next = { ...previous };
