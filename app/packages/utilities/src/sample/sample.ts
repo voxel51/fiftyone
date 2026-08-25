@@ -16,6 +16,7 @@ import {
 } from "./labels";
 import { getNestedField } from "./pointer";
 import { reconcilePersisted } from "./reconcile";
+import { foldPersistedIntoSource } from "./sourceFold";
 
 /**
  * The nature of a {@link SampleChange}: `Update`/`Delete` for in-session edits;
@@ -145,6 +146,7 @@ export class Sample {
    * without it.
    */
   private patchBaseline: Record<string, unknown> | null = null;
+  private patchBaselineDeletes: Set<string> | null = null;
 
   constructor(opts: SampleOptions = {}) {
     if (opts.data) {
@@ -582,6 +584,10 @@ export class Sample {
    */
   captureBaseline(): void {
     this.patchBaseline = { ...this.transientData };
+    // Tombstones as of patch-build time: a re-add during the in-flight
+    // request clears the live tombstone, but the persisted patch still
+    // carries the remove — reconcile must fold from THIS set.
+    this.patchBaselineDeletes = new Set(this.transientDeletes);
   }
 
   /**
@@ -603,6 +609,30 @@ export class Sample {
     // consume the baseline; null it so a stray second reconcile fails safe
     const baseline = this.patchBaseline;
     this.patchBaseline = null;
+    const baselineDeletes = this.patchBaselineDeletes;
+    this.patchBaselineDeletes = null;
+
+    // Fold the persisted fields into source FIRST — deletes otherwise
+    // re-diff against the stale source forever, re-PATCHing the same
+    // remove on every autosave tick and never settling (see
+    // foldPersistedIntoSource). Purely source-side: the display already
+    // projects the transient state, so no change notification is due.
+    const folded = foldPersistedIntoSource(
+      this.sourceData,
+      baselineDeletes,
+      baseline,
+      deltas,
+    );
+    if (folded) {
+      this.sourceData = folded.sourceData;
+      // Release only tombstones the persisted patch actually satisfied
+      // AND that still stand — a tombstone recreated by a post-persist
+      // delete of the re-added value must keep diffing.
+      for (const path of folded.releasedTombstones) {
+        this.transientDeletes.delete(path);
+      }
+    }
+
     const result = reconcilePersisted(
       this.snapshot(),
       deltas,

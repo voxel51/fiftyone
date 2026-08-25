@@ -1243,3 +1243,161 @@ describe("Sample — TemporalDetections", () => {
     );
   });
 });
+
+describe("reconcilePersisted source fold (delete re-save loop)", () => {
+  const schema: Schema = {
+    classification: field("fiftyone.core.labels.Classification"),
+    classifications: field("fiftyone.core.labels.Classifications"),
+  };
+
+  const persistOnce = (s: Sample) => {
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    s.reconcilePersisted(patch);
+    return patch;
+  };
+
+  it("stops re-emitting a persisted single-label delete", () => {
+    const s = new Sample({
+      schema,
+      data: {
+        classification: { _id: "c1", _cls: "Classification", label: "x" },
+      },
+    });
+
+    s.deleteLabel("classification");
+    const patch = persistOnce(s);
+    expect(patch).toEqual([{ op: "remove", path: "/classification" }]);
+
+    // The loop: before the fold, this diff re-emitted the same remove
+    // forever (the source still held the label).
+    expect(s.getJsonPatch()).toEqual([]);
+  });
+
+  it("folds an acknowledged delete even when the field was re-added in flight", () => {
+    // CodeRabbit regression case (delete -> persist -> re-add -> reconcile):
+    // the re-add clears the LIVE tombstone before the reconcile runs, but
+    // the server applied the remove — folding from the persist-time
+    // tombstones commits it to source, so the re-add diffs as a fresh add
+    // instead of silently matching the stale source value (data loss).
+    const s = new Sample({
+      schema,
+      data: {
+        classification: { _id: "c1", _cls: "Classification", label: "x" },
+      },
+    });
+
+    s.deleteLabel("classification");
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    expect(patch).toEqual([{ op: "remove", path: "/classification" }]);
+
+    // Re-add the SAME value while the persist request is "in flight".
+    const readded = { _id: "c2", _cls: "Classification", label: "x" };
+    s.setField("classification", readded);
+
+    s.reconcilePersisted(patch);
+
+    // The acknowledged remove reached source...
+    const next = s.getJsonPatch();
+    // ...so the re-add must still persist (an add op), never diff away.
+    expect(next.length).toBeGreaterThan(0);
+    expect(JSON.stringify(next)).toContain("c2");
+  });
+
+  it("stops re-emitting a persisted NESTED-path delete", () => {
+    // CodeRabbit regression case: transient keys are dot-paths of
+    // varying depth — a primitive edit deletes "classification.label",
+    // not "classification". The fold must match the tombstone at its
+    // full path or the nested remove re-emits forever.
+    const s = new Sample({
+      schema,
+      data: {
+        classification: { _id: "c1", _cls: "Classification", label: "x" },
+      },
+    });
+
+    s.deleteField("classification.label");
+    const patch = persistOnce(s);
+    expect(patch).toEqual([{ op: "remove", path: "/classification/label" }]);
+
+    expect(s.getJsonPatch()).toEqual([]);
+  });
+
+  it("stops re-emitting a persisted list-label element delete", () => {
+    const s = new Sample({
+      schema,
+      data: {
+        classifications: {
+          _cls: "Classifications",
+          classifications: [
+            { _id: "a", _cls: "Classification", label: "keep" },
+            { _id: "b", _cls: "Classification", label: "drop" },
+          ],
+        },
+      },
+    });
+
+    s.deleteLabel("classifications", "b");
+    const patch = persistOnce(s);
+    expect(patch.length).toBeGreaterThan(0);
+
+    expect(s.getJsonPatch()).toEqual([]);
+  });
+
+  it("keeps an in-flight re-edit diffing after the fold", () => {
+    const s = new Sample({
+      schema,
+      data: {
+        classification: { _id: "c1", _cls: "Classification", label: "x" },
+      },
+    });
+
+    // patch built for label "y"…
+    s.setField("classification", {
+      _id: "c1",
+      _cls: "Classification",
+      label: "y",
+    });
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    expect(patch.length).toBeGreaterThan(0);
+
+    // …user edits again while the request is in flight
+    s.setField("classification", {
+      _id: "c1",
+      _cls: "Classification",
+      label: "z",
+    });
+    s.reconcilePersisted(patch);
+
+    // the newer edit must still persist on the next pass
+    const next = s.getJsonPatch();
+    expect(JSON.stringify(next)).toContain("z");
+  });
+
+  it("re-emits a delete tombstoned while the patch was in flight", () => {
+    const s = new Sample({
+      schema,
+      data: {
+        classification: { _id: "c1", _cls: "Classification", label: "x" },
+      },
+    });
+
+    s.setField("classification", {
+      _id: "c1",
+      _cls: "Classification",
+      label: "y",
+    });
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+
+    // deleted mid-flight: the value write persisted, the delete is newer
+    s.deleteLabel("classification");
+    s.reconcilePersisted(patch);
+
+    expect(s.getJsonPatch()).toEqual([
+      { op: "remove", path: "/classification" },
+    ]);
+  });
+});
