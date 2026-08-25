@@ -10,11 +10,13 @@
  *   4. `useEnsureSchemasLoaded()` — one-shot dataset-level fetch so the modal
  *      renders populated when opened from the grid.
  *
- * All gated on `canManageSchema`. Mount once per app — `DatasetPage.tsx` in
- * OSS, the samples page in teams-app — inside the Recoil/Jotai-aware tree.
+ * Operator-backed schema loading/UI is gated on `canManageSchema` and operator
+ * availability. Mount once per app — `DatasetPage.tsx` in OSS, the samples
+ * page in teams-app — inside the Recoil/Jotai-aware tree.
  */
 
 import { useRegisterAnnotationContextManager } from "@fiftyone/annotation";
+import { useOperatorAvailability } from "@fiftyone/operators";
 import { useSchemaManagerUrl } from "../url/useSchemaManagerUrl";
 import SchemaManager from "./Modal/Sidebar/Annotate/SchemaManager";
 import { useSchemaManagerModal } from "./Modal/Sidebar/Annotate/SchemaManager/hooks";
@@ -25,17 +27,18 @@ import { useEnsureSchemasLoaded } from "./Modal/Sidebar/Annotate/useEnsureSchema
 
 const SchemaManagerOutlet = () => {
   const canManage = useCanManageSchema();
+  const operatorAvailable = useOperatorAvailability("get_label_schemas");
   const { schemaManagerDisplayed } = useSchemaManagerModal();
-  // Run unconditionally so effect cleanups stay stable across permission
-  // flips; both hooks are no-ops when `canManage` is false.
+  // Run unconditionally so effect cleanups stay stable across readiness
+  // flips. Schema loading remains disabled until its operator is available.
   useSchemaManagerUrl();
-  useEnsureSchemasLoaded(canManage);
+  useEnsureSchemasLoaded(canManage && operatorAvailable);
   // The context-manager implementation registers app-level (not gated on
   // `canManage` — enter/exit must work regardless, and programmatic entry
   // via the `annotate` operator can precede the modal mounting).
   useRegisterAnnotationContextManager(useAnnotationContextManager());
 
-  if (!canManage) return null;
+  if (!canManage || !operatorAvailable) return null;
 
   return (
     <>
