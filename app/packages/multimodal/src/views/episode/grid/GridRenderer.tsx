@@ -48,10 +48,11 @@ import {
 } from "./grid-poster-cache";
 import { captureGridPoster } from "./grid-poster-codec";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
+import { useGridPosterCache } from "./use-grid-poster-cache";
 import {
-  useGridPosterCache,
-  type GridPosterCacheLookupStatus,
-} from "./use-grid-poster-cache";
+  useGridPosterProviderDescriptor,
+  useProvidedGridPoster,
+} from "./use-grid-poster-provider";
 
 const IMAGE_FIT = "cover";
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
@@ -103,15 +104,33 @@ export function GridRenderer({
   // matched window, so both the requested time and preferred stream belong to
   // the poster cache identity.
   const firstMatch = useSampleRendererFirstMatch(ctx);
+  const [cameraPose, setCameraPose] = useGridCameraPose(
+    gridCameraScopeKey,
+    visible,
+  );
+  const providerDescriptor = useGridPosterProviderDescriptor(
+    ctx.dataset.datasetId,
+    sampleId,
+    visible,
+  );
+  const providerCacheScope = providerDescriptor.resolved
+    ? JSON.stringify([
+        providerDescriptor.resolved.provider.id,
+        providerDescriptor.resolved.descriptor.cacheRevision,
+      ])
+    : undefined;
+  const providerDescriptorSettled =
+    providerDescriptor.status === "hit" || providerDescriptor.status === "miss";
   const cacheKey = useMemo(
     () =>
-      source
+      source && providerDescriptorSettled
         ? gridPosterCacheKey({
             datasetId: ctx.dataset.datasetId,
             mediaField: ctx.media?.field,
             mediaPath: ctx.media?.path,
             posterSourceName: firstMatch?.stream,
             posterStartTimeNs: firstMatch?.startNs,
+            providerRevision: providerCacheScope,
             selectedSourceName,
             source,
           })
@@ -122,6 +141,8 @@ export function GridRenderer({
       ctx.media?.path,
       firstMatch?.startNs,
       firstMatch?.stream,
+      providerCacheScope,
+      providerDescriptorSettled,
       selectedSourceName,
       source,
     ],
@@ -144,23 +165,32 @@ export function GridRenderer({
     if (cachedPoster) getGridPosterCache().touch(cacheKey);
     recordGridPosterDiagnostic(cachedPoster ? "hits" : "misses");
   }, [cacheKey, cacheLookupStatus, cachedPoster]);
-  const [cameraPose, setCameraPose] = useGridCameraPose(
-    gridCameraScopeKey,
-    visible,
-  );
+  const providedPosterLookup = useProvidedGridPoster({
+    cacheKey,
+    cameraPose,
+    enabled: visible && cacheLookupStatus === "miss" && cachedPoster === null,
+    posterStartTimeNs: firstMatch?.startNs ?? null,
+    resolved: providerDescriptor.resolved,
+    selectedSourceName,
+  });
+  const effectivePoster = cachedPoster ?? providedPosterLookup.entry;
   const rootSize = useElementCssSize(rootElement);
   const poseKey = pointCloudPoseKey(cameraPose);
   const freshness = useMemo<GridPosterFreshness | null>(
     () =>
-      cachedPoster && rootSize
-        ? gridPosterFreshness(cachedPoster, rootSize, poseKey)
+      effectivePoster && rootSize
+        ? gridPosterFreshness(effectivePoster, rootSize, poseKey)
         : null,
-    [cachedPoster, poseKey, rootSize],
+    [effectivePoster, poseKey, rootSize],
   );
+  const coldTierLoading =
+    (visible && !providerDescriptorSettled) ||
+    cacheLookupStatus === "loading" ||
+    providedPosterLookup.status === "loading";
   const previewSessionDemand = usePreviewSessionDemand({
     cacheKey,
-    cacheLookupStatus,
-    cachedPoster,
+    cachedPoster: effectivePoster,
+    coldTierLoading,
     freshness,
     hovered,
     sourceId: source?.sourceId ?? null,
@@ -174,7 +204,7 @@ export function GridRenderer({
   );
   const preview = useGridPreview({
     cacheRequestKey: cacheKey,
-    cachedPoster,
+    cachedPoster: effectivePoster,
     enabled: visible,
     hovered,
     onReadResult: gridVideoPlayback.onReadResult,
@@ -482,16 +512,16 @@ function useElementCssSize(
 
 function usePreviewSessionDemand({
   cacheKey,
-  cacheLookupStatus,
   cachedPoster,
+  coldTierLoading,
   freshness,
   hovered,
   sourceId,
   visible,
 }: {
   readonly cacheKey: string | null;
-  readonly cacheLookupStatus: GridPosterCacheLookupStatus;
   readonly cachedPoster: GridPosterCacheEntry | null;
+  readonly coldTierLoading: boolean;
   readonly freshness: GridPosterFreshness | null;
   readonly hovered: boolean;
   readonly sourceId: string | null;
@@ -539,7 +569,7 @@ function usePreviewSessionDemand({
     // already-demanded same-source session stays open across key transitions.
     demanded =
       hovered ||
-      cacheLookupStatus !== "loading" ||
+      !coldTierLoading ||
       (committedDemandRef.current.demanded &&
         committedDemandRef.current.sourceId === sourceId);
   } else if (latched || hovered) {
