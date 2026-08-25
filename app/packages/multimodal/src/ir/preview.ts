@@ -45,4 +45,6 @@ export interface EpisodePreviewReadResult {
   /** Previewable source names suitable for dataset-scoped selection. */
   readonly streamSourceNames: readonly string[];
   readonly status: EpisodePreviewReadStatus;
+  /** Decode-order access units retained alongside an encoded-video poster. */
+  readonly videoDecodeRunway?: readonly EpisodePosterFrame[];
 }

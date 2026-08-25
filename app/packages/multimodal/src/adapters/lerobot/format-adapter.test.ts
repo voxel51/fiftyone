@@ -610,6 +610,7 @@ describe("LeRobot format adapter", () => {
     if (!preview) throw new Error("LeRobot preview session is unavailable");
     try {
       const first = await preview.read({
+        decodeLookaheadNs: 250_000_000n,
         sourceName: "observation.images.test",
       });
       expect(first).toMatchObject({
@@ -630,6 +631,13 @@ describe("LeRobot format adapter", () => {
           "observation.images.test",
         ],
       });
+      expect(
+        first.videoDecodeRunway?.map((frame) =>
+          frame.kind === "image" && frame.image.kind === "encoded-video"
+            ? frame.image.timestampNs
+            : null,
+        ),
+      ).toEqual([0n, 500_000_000n]);
       await expect(
         preview.read({
           sourceName: "observation.images.test",

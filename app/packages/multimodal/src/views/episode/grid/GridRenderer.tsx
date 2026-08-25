@@ -21,6 +21,7 @@ import { retainedBinaryBytes } from "../../../runtime";
 import { VideoPlaybackManager } from "../../../video/playback-manager";
 import { PushVideoAccessUnitReader } from "../../../video/push-reader";
 import { VideoPlaybackManagerProvider } from "../../../video/react";
+import { H264_REORDERED_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import type { VideoStreamLease } from "../../../video/playback-manager";
 import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
@@ -222,6 +223,7 @@ export function GridRenderer({
     cachedPoster: effectivePoster,
     enabled: visible,
     hovered,
+    initialVideoDecodeLookaheadNs: H264_REORDERED_DECODE_LOOKAHEAD_NS,
     onReadResult: gridVideoPlayback.onReadResult,
     posterStartTimeNs: firstMatch?.startNs ?? null,
     posterSourceName: firstMatch?.stream ?? null,
@@ -447,21 +449,33 @@ function useGridVideoPlayback(sourceKey: string | null): {
 
   const onReadResult = useCallback((result: EpisodePreviewReadResult) => {
     const controller = controllerRef.current;
-    const image = result.frame?.kind === "image" ? result.frame.image : null;
     const stream = result.streamId;
-    if (
-      !controller ||
-      !image ||
-      image.kind !== "encoded-video" ||
-      image.codec !== "h264" ||
-      image.h264.hasFrame === false ||
-      !stream
-    ) {
-      return;
+    if (!controller || !stream) return;
+
+    const frames = result.videoDecodeRunway?.length
+      ? result.videoDecodeRunway
+      : result.frame
+        ? [result.frame]
+        : [];
+    let pushed = false;
+    for (const frame of frames) {
+      const image = frame.kind === "image" ? frame.image : null;
+      if (
+        !image ||
+        image.kind !== "encoded-video" ||
+        image.codec !== "h264" ||
+        image.h264.hasFrame === false
+      ) {
+        continue;
+      }
+      const timeNs =
+        image.timestampNs ??
+        (frame === result.frame ? result.frameTimeNs : undefined);
+      if (timeNs === undefined) continue;
+      controller.reader.push(stream, { frame: image, timeNs });
+      pushed = true;
     }
-    const timeNs = image.timestampNs ?? result.frameTimeNs;
-    if (timeNs === undefined) return;
-    controller.reader.push(stream, { frame: image, timeNs });
+    if (!pushed) return;
 
     let lease = controller.leases.get(stream);
     if (!lease) {

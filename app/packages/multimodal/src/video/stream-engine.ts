@@ -22,7 +22,8 @@ import {
 
 const NS_PER_SECOND = 1_000_000_000n;
 const MAX_DIRECT_FORWARD_GAP_NS = 500_000_000n;
-const REORDERED_DECODE_LOOKAHEAD_NS = 250_000_000n;
+/** Forward presentation coverage retained while decoding reordered H.264. */
+export const H264_REORDERED_DECODE_LOOKAHEAD_NS = 250_000_000n;
 export const MAX_H264_GOP_ACCESS_UNITS = 4_096;
 const VIDEO_SEEK_READ_POLICY = {
   initialLookbackNs: 15n * NS_PER_SECOND,
@@ -418,7 +419,7 @@ export class VideoStreamEngine {
     const reorderedForwardRead =
       targetDecodeTimeNs !== undefined && cursorDecodeTimeNs !== null;
     const endTimeNs = reorderedForwardRead
-      ? intent.timeNs + REORDERED_DECODE_LOOKAHEAD_NS
+      ? intent.timeNs + H264_REORDERED_DECODE_LOOKAHEAD_NS
       : intent.timeNs;
     const read = await this.readRange(reader, startTimeNs, endTimeNs, signal);
     const decodeEndTimeNs = maxDecodeTimeNs([...read, intent]);
@@ -480,7 +481,7 @@ export class VideoStreamEngine {
     const runwayEndTimeNs =
       intent.frame.decodeTimestampNs === undefined
         ? intent.timeNs
-        : intent.timeNs + REORDERED_DECODE_LOOKAHEAD_NS;
+        : intent.timeNs + H264_REORDERED_DECODE_LOOKAHEAD_NS;
     if (intent.frame.keyframe) {
       if (intent.frame.decodeTimestampNs === undefined) return [intent];
       const reader = this.reader();

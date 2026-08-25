@@ -58,6 +58,8 @@ export interface UseGridPreviewOptions {
   readonly enabled?: boolean;
   /** Whether this tile is the user's current interactive target. */
   readonly hovered?: boolean;
+  /** Initial forward coverage required by the mounted video decoder. */
+  readonly initialVideoDecodeLookaheadNs?: bigint;
   /** Receives every adapter result, including frames skipped by UI pacing. */
   readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
   /** Capture time the still frame should show, instead of the recording
@@ -104,6 +106,7 @@ export function useGridPreview({
   cachedPoster = null,
   enabled = true,
   hovered = false,
+  initialVideoDecodeLookaheadNs,
   onReadResult,
   posterStartTimeNs = null,
   posterSourceName = null,
@@ -235,6 +238,9 @@ export function useGridPreview({
     nextStartTimeNsRef.current = undefined;
 
     const request = {
+      ...(initialVideoDecodeLookaheadNs === undefined
+        ? {}
+        : { decodeLookaheadNs: initialVideoDecodeLookaheadNs }),
       ...(effectiveSourceName ? { sourceName: effectiveSourceName } : {}),
       ...(posterStartTimeNs === null ? {} : { startTimeNs: posterStartTimeNs }),
     };
@@ -286,6 +292,7 @@ export function useGridPreview({
     enabled,
     effectiveSourceName,
     hovered,
+    initialVideoDecodeLookaheadNs,
     posterStartTimeNs,
     previewSession,
     source,

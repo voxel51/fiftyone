@@ -231,7 +231,6 @@ export function createLeRobotFormatAdapter(
 }
 
 class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
-  private readonly initializedStreams = new Set<string>();
   private disposed = false;
 
   constructor(private readonly session: LeRobotEpisodeSession) {}
@@ -271,13 +270,19 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
     const frameDurationNs = secondsToNs(
       1 / (selected.approxRateHz ?? this.session.info.fps),
     );
+    const readDurationNs = request.decodeLookaheadNs
+      ? maxOfBigInts([
+          frameDurationNs,
+          request.decodeLookaheadNs + frameDurationNs,
+        ])
+      : frameDurationNs;
     let frames: readonly DecodedFrame[] = [];
     for await (const batch of this.session.read({
       priority: options.priority,
       signal: options.signal,
       streams: [selected.id],
       window: {
-        endNs: minBigInt(selected.timeRange.endNs, startNs + frameDurationNs),
+        endNs: minBigInt(selected.timeRange.endNs, startNs + readDurationNs),
         startNs,
       },
     })) {
@@ -290,12 +295,17 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
     );
     this.ensureOpen();
     throwIfAborted(options.signal);
-    const initialized = this.initializedStreams.has(selected.id);
-    const decoded = initialized
-      ? firstFrameAtOrAfter(frames, startNs)
-      : frames[0];
-    if (decoded) this.initializedStreams.add(selected.id);
+    const decoded = firstFrameAtOrAfter(frames, startNs);
     const frame = decoded ? posterFrame(decoded) : null;
+    const videoDecodeRunway = request.decodeLookaheadNs
+      ? frames.flatMap((candidate) => {
+          const poster = posterFrame(candidate);
+          return poster?.kind === "image" &&
+            poster.image.kind === "encoded-video"
+            ? [poster]
+            : [];
+        })
+      : undefined;
     const nextStartTimeNs = decoded
       ? decoded.timestampNs + frameDurationNs
       : undefined;
@@ -319,6 +329,7 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
       streamSourceName: selected.sourceName,
       streamSourceNames,
       status: frame ? "ready" : "empty",
+      ...(videoDecodeRunway?.length ? { videoDecodeRunway } : {}),
     };
   }
 

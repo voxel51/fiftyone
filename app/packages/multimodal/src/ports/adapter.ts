@@ -89,6 +89,8 @@ export interface AdapterDescriptor {
 
 /** One lightweight poster request made before a full episode session opens. */
 export interface EpisodePreviewReadRequest {
+  /** Forward access-unit coverage needed to decode the requested video frame. */
+  readonly decodeLookaheadNs?: bigint;
   /** Stable, human-facing source name used for cross-episode selection. */
   readonly sourceName?: string | null;
   readonly startTimeNs?: bigint;

@@ -25,7 +25,10 @@ import type {
   ByteSourceDescriptor,
   EpisodePosterFrame,
   EpisodePreviewNativeVideo,
+  EpisodePreviewReadResult,
 } from "../../../ir";
+import { PushVideoAccessUnitReader } from "../../../video/push-reader";
+import { H264_REORDERED_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import {
   gridPreviewStateKey,
   pointCloudPoseKey,
@@ -87,6 +90,7 @@ function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
 }
 
 const previewHarness = vi.hoisted(() => ({
+  onReadResult: null as ((result: EpisodePreviewReadResult) => void) | null,
   preview: {
     cachedPoster: null as GridPosterCacheEntry | null,
     error: null as string | null,
@@ -204,7 +208,14 @@ vi.mock("../../session/use-episode-preview-session", () => ({
 }));
 
 vi.mock("./use-grid-preview", () => ({
-  useGridPreview: vi.fn(() => previewHarness.preview),
+  useGridPreview: vi.fn(
+    (options: {
+      readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
+    }) => {
+      previewHarness.onReadResult = options.onReadResult ?? null;
+      return previewHarness.preview;
+    },
+  ),
 }));
 
 vi.mock("./use-grid-poster-provider", () => ({
@@ -325,6 +336,7 @@ afterEach(() => {
   bitmapViewHarness.lastProps = null;
   setGridFit = null;
   cameraPoseHarness.pose = null;
+  previewHarness.onReadResult = null;
   previewHarness.preview.error = null;
   previewHarness.preview.cachedPoster = null;
   previewHarness.preview.frame = null;
@@ -493,9 +505,48 @@ describe("GridRenderer", () => {
     });
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      initialVideoDecodeLookaheadNs: H264_REORDERED_DECODE_LOOKAHEAD_NS,
       posterStartTimeNs: null,
       posterSourceName: null,
     });
+  });
+
+  it("retains the complete initial H.264 decode runway", () => {
+    sourceHarness.byteSource = {
+      sourceId: "video-runway",
+      url: "memory://video-runway",
+    };
+    const push = vi.spyOn(PushVideoAccessUnitReader.prototype, "push");
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    const keyframe = videoFrame(new Uint8Array([1]), 0n, true);
+    const successor = videoFrame(new Uint8Array([2]), 33_333_333n, false);
+    act(() => {
+      previewHarness.onReadResult?.({
+        frame: keyframe,
+        frameTimeNs: 0n,
+        streamId: "/camera/front",
+        streamSourceName: "/camera/front",
+        streamSourceNames: ["/camera/front"],
+        status: "ready",
+        videoDecodeRunway: [keyframe, successor],
+      });
+    });
+
+    expect(push.mock.calls).toEqual([
+      [
+        "/camera/front",
+        expect.objectContaining({ frame: keyframe.image, timeNs: 0n }),
+      ],
+      [
+        "/camera/front",
+        expect.objectContaining({
+          frame: successor.image,
+          timeNs: 33_333_333n,
+        }),
+      ],
+    ]);
+    push.mockRestore();
   });
 
   it("renders a cached point-cloud poster with point-cloud activation semantics", () => {
@@ -1272,19 +1323,23 @@ function imageFrame(bytes: Uint8Array): EpisodePosterFrame {
   } as unknown as EpisodePosterFrame;
 }
 
-function videoFrame(bytes: Uint8Array): EpisodePosterFrame {
+function videoFrame(
+  bytes: Uint8Array,
+  timestampNs = 0n,
+  keyframe = true,
+): Extract<EpisodePosterFrame, { kind: "image" }> {
   return {
     image: {
       bytes,
       codec: "h264",
       format: "h264",
       h264: { codecString: "avc1.4D001F", hasFrame: true },
-      keyframe: true,
+      keyframe,
       kind: "encoded-video",
-      timestampNs: 0n,
+      timestampNs,
     },
     kind: "image",
-  } as unknown as EpisodePosterFrame;
+  } as unknown as Extract<EpisodePosterFrame, { kind: "image" }>;
 }
 
 function pointCloudFrame(): EpisodePosterFrame {
