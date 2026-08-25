@@ -348,6 +348,60 @@ describe("StateActionBridge", () => {
     });
   });
 
+  it("surfaces a pending state only when a committed-row refetch is slow", async () => {
+    vi.useFakeTimers();
+    let resolveSlow: ((next: StateActionRow | null) => void) | null = null;
+    let slow = false;
+    const capability = createCapability({
+      readAtTime: vi.fn(async ({ timestampNs }) => {
+        if (!slow) return rowAt(Number(timestampNs / NS_PER_SECOND));
+        return new Promise<StateActionRow | null>((resolve) => {
+          resolveSlow = resolve;
+        });
+      }),
+    });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 2);
+
+    render(
+      <Harness capability={capability} contextRef={context} store={store} />,
+    );
+    await act(async () => {
+      context.current?.subscribeRow();
+      await flushMicrotasks();
+    });
+    expect(context.current?.rowState?.status).toBe("ready");
+
+    slow = true;
+    await act(async () => {
+      store.set(playheadAtom, 7);
+      await flushMicrotasks();
+    });
+    // Fast in-memory relookups never flash: the committed row stays ready
+    // until the pending-badge delay elapses with the read still in flight.
+    expect(context.current?.rowState).toMatchObject({
+      row: rowAt(2),
+      status: "ready",
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    expect(context.current?.rowState).toMatchObject({
+      row: rowAt(2),
+      status: "loading",
+      targetNs: 7n * NS_PER_SECOND,
+    });
+    await act(async () => {
+      resolveSlow?.(rowAt(7));
+      await flushMicrotasks();
+    });
+    expect(context.current?.rowState).toMatchObject({
+      row: rowAt(7),
+      status: "ready",
+    });
+  });
+
   it("clears the published row when the source changes", async () => {
     const capability = createCapability();
     const context = createContextRef();

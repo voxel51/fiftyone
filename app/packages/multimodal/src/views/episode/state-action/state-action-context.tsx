@@ -43,6 +43,10 @@ const DEFERRED_RETRY_MS = 2_000;
  * it instead of resolving at a meaningless time. */
 const TIMELINE_RETRY_MS = 250;
 
+/** A refetch over a committed row surfaces a pending state only after this
+ * delay, so in-memory relookups during playback do not flash the table. */
+const PENDING_ROW_BADGE_MS = 150;
+
 /** The single demand key: one canonical row follows the shared playhead. */
 const ROW_KEY = "state-action:row";
 
@@ -392,6 +396,19 @@ export function StateActionBridge({
             targetNs: playheadNs,
           });
           publishValues(published, isCancelled);
+        } else {
+          // Keep the committed row visible and mark it pending only when
+          // the refetch is genuinely slow.
+          later(() => {
+            if (isCancelled() || inflight?.controller !== controller) return;
+            const current = published.get(ROW_KEY);
+            published.set(ROW_KEY, {
+              ...(current?.row !== undefined ? { row: current.row } : {}),
+              status: "loading",
+              targetNs: playheadNs,
+            });
+            publishValues(published, isCancelled);
+          }, PENDING_ROW_BADGE_MS);
         }
         void capability
           .readAtTime({

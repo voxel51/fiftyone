@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   isPlaying: false,
   isPlayPending: false,
   pause: vi.fn(),
+  playheadSec: 4,
   readRowAtCursor: vi.fn(),
   readRowIndexWindow: vi.fn(),
   retryRead: vi.fn(),
@@ -46,11 +47,19 @@ vi.mock("@fiftyone/tiling", () => ({
   useTileId: () => "lerobot:state-action-1",
 }));
 
-vi.mock("@fiftyone/playback/runtime", () => ({
-  useIsPlaying: () => mocks.isPlaying,
-  useIsPlayPending: () => mocks.isPlayPending,
-  usePlayback: () => ({ pause: mocks.pause, seek: mocks.seek }),
-}));
+vi.mock("@fiftyone/playback/runtime", async () => {
+  const { createContext } = await import("react");
+  return {
+    getIsPlaying: () => mocks.isPlaying,
+    getIsPlayPending: () => mocks.isPlayPending,
+    getPlayhead: () => mocks.playheadSec,
+    // Non-null default so the tile's supersede guard is active in tests.
+    PlaybackStoreContext: createContext<object>({}),
+    useIsPlaying: () => mocks.isPlaying,
+    useIsPlayPending: () => mocks.isPlayPending,
+    usePlayback: () => ({ pause: mocks.pause, seek: mocks.seek }),
+  };
+});
 
 vi.mock("../playback/data-stream-context", () => ({
   useDataStream: () => mocks.dataStream,
@@ -117,6 +126,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.isPlaying = false;
   mocks.isPlayPending = false;
+  mocks.playheadSec = 4;
   setState({ schema: SCHEMA, status: "ready" }, undefined);
 });
 
@@ -222,6 +232,11 @@ describe("StateActionTile", () => {
       screen.getByText("No observation.state feature declared"),
     ).toBeDefined();
     expect(screen.getByRole("table", { name: "Action values" })).toBeDefined();
+    // The absent feature is a compact note, not a pane that starves the
+    // available values of space.
+    expect(
+      screen.queryByRole("table", { name: "Observation state values" }),
+    ).toBe(null);
   });
 
   it("shows a feature-scoped error without shifting later values", () => {
@@ -297,7 +312,7 @@ describe("StateActionTile", () => {
     expect(mocks.retryRead).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the previous row visible through a failed refetch", () => {
+  it("marks a failed refetch stale while keeping the previous row visible", () => {
     setState(
       { schema: SCHEMA, status: "ready" },
       {
@@ -310,6 +325,21 @@ describe("StateActionTile", () => {
     render(<StateActionTile />);
     expect(screen.getAllByText("Frame 4 of 20").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Could not read/)).toBe(null);
+    const badge = screen.getByTestId("episode-state-action-stale");
+    expect(badge.textContent).toBe("Refresh failed. Previous shown.");
+    expect(badge.title).toContain("link starved");
+  });
+
+  it("marks a slow refetch pending while keeping the previous row visible", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "loading", targetNs: 9n * NS_PER_SECOND },
+    );
+    render(<StateActionTile />);
+    expect(screen.getAllByText("Frame 4 of 20").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("episode-state-action-stale").textContent).toBe(
+      "Loading… Previous shown.",
+    );
   });
 
   it("steps to the adjacent cursor, seeks the playhead, and pins the row", async () => {
@@ -361,10 +391,10 @@ describe("StateActionTile", () => {
       },
     );
     const { rerender } = render(<StateActionTile />);
+    // Boundary controls stay disabled and never name an impossible frame.
     expect(
-      screen.getByRole<HTMLButtonElement>("button", {
-        name: "Previous row (frame -1)",
-      }).disabled,
+      screen.getByRole<HTMLButtonElement>("button", { name: "Previous row" })
+        .disabled,
     ).toBe(true);
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
@@ -382,10 +412,57 @@ describe("StateActionTile", () => {
     );
     rerender(<StateActionTile />);
     expect(
-      screen.getByRole<HTMLButtonElement>("button", {
-        name: "Next row (frame 20)",
-      }).disabled,
+      screen.getByRole<HTMLButtonElement>("button", { name: "Next row" })
+        .disabled,
     ).toBe(true);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Previous row (frame 18)",
+      }).disabled,
+    ).toBe(false);
+  });
+
+  it("abandons a stale step when the playhead moves before it commits", async () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    mocks.readRowIndexWindow.mockResolvedValue({
+      entries: [
+        { cursor: "row:4", timestampNs: 4n * NS_PER_SECOND },
+        { cursor: "row:5", timestampNs: 5n * NS_PER_SECOND },
+      ],
+      hasNext: true,
+      hasPrevious: true,
+      selectedCursor: "row:4",
+    });
+    let resolveRead!: (value: StateActionRow) => void;
+    mocks.readRowAtCursor.mockImplementation(
+      () =>
+        new Promise<StateActionRow>((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+    render(<StateActionTile />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next row (frame 5)" }));
+    await waitFor(() => expect(mocks.readRowAtCursor).toHaveBeenCalled());
+    // The user scrubs elsewhere while the exact read is still in flight.
+    mocks.playheadSec = 12;
+    resolveRead(
+      row({ cursor: "row:5", frameIndex: 5, timestampNs: 5n * NS_PER_SECOND }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole<HTMLButtonElement>("button", {
+          name: "Next row (frame 5)",
+        }).disabled,
+      ).toBe(false),
+    );
+
+    expect(mocks.pause).not.toHaveBeenCalled();
+    expect(mocks.seek).not.toHaveBeenCalled();
+    expect(mocks.holdCursorRow).not.toHaveBeenCalled();
   });
 
   it("steps with the keyboard when the tile is focused", async () => {

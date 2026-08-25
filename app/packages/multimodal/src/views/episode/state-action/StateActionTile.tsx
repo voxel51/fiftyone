@@ -1,4 +1,8 @@
 import {
+  getIsPlaying,
+  getIsPlayPending,
+  getPlayhead,
+  PlaybackStoreContext,
   useIsPlaying,
   useIsPlayPending,
   usePlayback,
@@ -7,6 +11,7 @@ import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -20,6 +25,7 @@ import { virtualLogRowRange } from "../../../visualization/logs/log-console-virt
 import { useDataStream } from "../playback/data-stream-context";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import type { EpisodeTileProps } from "../tiles/tile-types";
+import tileStyles from "../tiles/Tile.module.css";
 import { useStateActionContext } from "./state-action-context";
 import StateActionTileSettings from "./StateActionTileSettings";
 import styles from "./StateActionTile.module.css";
@@ -54,6 +60,9 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
     subscribeRow,
   } = useStateActionContext();
   const dataStream = useDataStream();
+  // Nullable on purpose: standalone tests render the tile without a
+  // playback provider; inside the shell the store is always present.
+  const playbackStore = useContext(PlaybackStoreContext);
   const [stepError, setStepError] = useState<string | null>(null);
   const [stepPending, setStepPending] = useState(false);
   const stepPendingRef = useRef(false);
@@ -96,6 +105,12 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
       stepPendingRef.current = true;
       setStepPending(true);
       setStepError(null);
+      const playheadAtClick = playbackStore ? getPlayhead(playbackStore) : null;
+      const superseded = () =>
+        playbackStore !== null &&
+        (getPlayhead(playbackStore) !== playheadAtClick ||
+          getIsPlaying(playbackStore) ||
+          getIsPlayPending(playbackStore));
       try {
         const window = await readRowIndexWindow({
           after: direction === 1 ? 1 : 0,
@@ -114,6 +129,9 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
         if (nextRow.cursor !== target.cursor) {
           throw new Error("Exact row read returned a different cursor");
         }
+        // A newer user gesture wins: a seek or play issued while the exact
+        // reads were in flight must not be yanked back to this step target.
+        if (superseded()) return;
         // Render the cursor row, then land cameras on the same frame with an
         // ordinary paused seek. The synchronous hold after seek() precedes the
         // seek's microtask fill, so the echo cannot re-resolve through time.
@@ -132,6 +150,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
       dataStream,
       holdCursorRow,
       pause,
+      playbackStore,
       readRowAtCursor,
       readRowIndexWindow,
       row,
@@ -180,6 +199,13 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
   const hasCommittedRow = rowState?.row !== undefined;
   const showEmpty = status === "ready" && row === null;
   const showBlockingError = status === "error" && !hasCommittedRow;
+  const missingFeatureNote = schemaFacts
+    ? !schemaFacts.state
+      ? "No observation.state feature declared"
+      : !schemaFacts.action
+        ? "No action feature declared"
+        : null
+    : null;
 
   return (
     <div
@@ -247,7 +273,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
           </button>
           <button
             aria-label={
-              row
+              row && row.frameIndex > 0
                 ? `Previous row (frame ${row.frameIndex - 1})`
                 : "Previous row"
             }
@@ -263,7 +289,9 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
           </button>
           <button
             aria-label={
-              row ? `Next row (frame ${row.frameIndex + 1})` : "Next row"
+              row && row.frameIndex < rowCount - 1
+                ? `Next row (frame ${row.frameIndex + 1})`
+                : "Next row"
             }
             className={styles.actionButton}
             data-cy="episode-state-action-next"
@@ -292,26 +320,60 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
             Retry
           </button>
         </div>
-      ) : showEmpty ? (
-        <div className={styles.notice} data-cy="episode-state-action-empty">
-          No state/action row at this time
-        </div>
       ) : (
-        <div className={styles.panes}>
-          <FeaturePane
-            featureError={row?.featureErrors?.state}
-            label={STATE_PANE_LABEL}
-            missingName="observation.state"
-            schema={schemaFacts.state}
-            values={row?.state}
-          />
-          <FeaturePane
-            featureError={row?.featureErrors?.action}
-            label={ACTION_PANE_LABEL}
-            missingName="action"
-            schema={schemaFacts.action}
-            values={row?.action}
-          />
+        <div className={styles.content}>
+          {hasCommittedRow && status === "loading" ? (
+            <div
+              className={`${tileStyles.statusBadge} ${styles.staleNotice}`}
+              data-testid="episode-state-action-stale"
+              role="status"
+              title="Resolving the row at the playhead; showing the previous result"
+            >
+              Loading… Previous shown.
+            </div>
+          ) : hasCommittedRow && status === "error" ? (
+            <div
+              className={`${tileStyles.statusBadge} ${tileStyles.statusBadgeError} ${styles.staleNotice}`}
+              data-testid="episode-state-action-stale"
+              role="status"
+              title={
+                rowState?.error
+                  ? `Refresh failed: ${rowState.error}`
+                  : "Refresh failed"
+              }
+            >
+              Refresh failed. Previous shown.
+            </div>
+          ) : null}
+          {missingFeatureNote ? (
+            <div className={styles.missingNote} role="note">
+              {missingFeatureNote}
+            </div>
+          ) : null}
+          {showEmpty ? (
+            <div className={styles.notice} data-cy="episode-state-action-empty">
+              No state/action row at this time
+            </div>
+          ) : (
+            <div className={styles.panes}>
+              {schemaFacts.state ? (
+                <FeaturePane
+                  featureError={row?.featureErrors?.state}
+                  label={STATE_PANE_LABEL}
+                  schema={schemaFacts.state}
+                  values={row?.state}
+                />
+              ) : null}
+              {schemaFacts.action ? (
+                <FeaturePane
+                  featureError={row?.featureErrors?.action}
+                  label={ACTION_PANE_LABEL}
+                  schema={schemaFacts.action}
+                  values={row?.action}
+                />
+              ) : null}
+            </div>
+          )}
         </div>
       )}
       <span aria-live="polite" className={styles.srOnly}>
@@ -324,14 +386,12 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
 function FeaturePane({
   featureError,
   label,
-  missingName,
   schema,
   values,
 }: {
   readonly featureError?: string;
   readonly label: string;
-  readonly missingName: string;
-  readonly schema?: StateActionFeatureSchema;
+  readonly schema: StateActionFeatureSchema;
   readonly values?: readonly unknown[];
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -352,17 +412,6 @@ function FeaturePane({
     observer.observe(scroll);
     return () => observer.disconnect();
   }, [virtualize]);
-
-  if (!schema) {
-    return (
-      <section aria-label={label} className={styles.pane}>
-        <div className={styles.paneHeading}>{label}</div>
-        <div className={styles.paneMissing}>
-          {`No ${missingName} feature declared`}
-        </div>
-      </section>
-    );
-  }
 
   const range = virtualize
     ? virtualLogRowRange({
@@ -470,10 +519,9 @@ type PaneValue =
     };
 
 function paneRows(
-  schema: StateActionFeatureSchema | undefined,
+  schema: StateActionFeatureSchema,
   values: readonly unknown[] | undefined,
 ): readonly PaneRow[] {
-  if (!schema) return [];
   // Never shift or hide values on a shape mismatch: render every declared
   // dimension and every extra source value under its stable numeric index.
   const count = Math.max(schema.dimensions.length, values?.length ?? 0);
