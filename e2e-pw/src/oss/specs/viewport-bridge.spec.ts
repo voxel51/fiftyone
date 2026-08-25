@@ -96,16 +96,12 @@ test.describe.serial("viewport-bridge-visual", () => {
     // is not pixel-identical to Looker's. Each baseline pins its own mode's
     // rendering of the transferred viewport; the round-trip test above pins
     // Looker's view surviving the detour.
-    await modal.sampleCanvas.assert.hasCrossModeScreenshot(
-      "cross-renderer.png",
-    );
+    await modal.sampleCanvas.assert.hasScreenshot("cross-renderer.png");
 
     await modal.sidebar.switchMode("annotate");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
     await modal.waitForLighterReady();
 
-    await modal.sampleCanvas.assert.hasCrossModeScreenshot(
-      "cross-renderer.png",
-    );
+    await modal.sampleCanvas.assert.hasScreenshot("cross-renderer.png");
   });
 });

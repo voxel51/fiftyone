@@ -68,11 +68,11 @@ test.describe.serial("Canvas Rendering Regressions", () => {
     // The repeated name below keeps one baseline per mode (pixelated.png /
     // pixelated-1.png) — Annotate re-fits its shorter canvas, so the two
     // captures are not pixel-identical.
-    await modal.sampleCanvas.assert.hasCrossModeScreenshot("pixelated.png");
+    await modal.sampleCanvas.assert.hasScreenshot("pixelated.png");
 
     // Switch to Annotate mode and assert pixelated rendering there as well
     await modal.sidebar.switchMode("annotate");
     await modal.waitForLighterReady();
-    await modal.sampleCanvas.assert.hasCrossModeScreenshot("pixelated.png");
+    await modal.sampleCanvas.assert.hasScreenshot("pixelated.png");
   });
 });

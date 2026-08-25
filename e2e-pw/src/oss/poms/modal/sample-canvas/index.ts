@@ -17,20 +17,11 @@ export enum SampleCanvasType {
 }
 
 /**
- * The annotation top bar's rendered height (`height: 36px` under border-box
- * sizing, so the 1px bottom border is inside it — see
- * `AnnotationTopBar.module.css`). Measured live where the bar is mounted;
- * this constant covers Explore-mode math where it isn't.
- */
-const ANNOTATION_TOP_BAR_HEIGHT = 36;
-
-/**
  * The canvas of the sample plugin in the modal. Applies to image, video and 3D
  * media types.
  *
- * All operations use relative [0, 1] coordinates. On the image Lighter
- * surface they map over the rendered media (see `#coordinateBox`); elsewhere
- * they map over the `sample-canvas` container, not the media within it.
+ * All operations use relative [0, 1] coordinates with respect to container,
+ * and not the media within it.
  */
 export class SampleCanvasPom {
   readonly assert: SampleCanvasAsserter;
@@ -173,6 +164,10 @@ export class SampleCanvasPom {
    *   not have settled yet on the first move attempt.
    */
   async move(x: number, y: number, cursor?: string) {
+    const xy = await this.#toScreenCoordinates(x, y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
+
     if (cursor) {
       // The cursor flag only updates on mouse events, so it can hold a stale
       // value from a previous hover (e.g. a just-clicked sidebar button).
@@ -183,18 +178,10 @@ export class SampleCanvasPom {
         window.__FO_PLAYWRIGHT_CURRENT_CURSOR = "";
       });
       await expect(async () => {
-        // Recompute per attempt: the coordinate box can change while the
-        // surface settles (the media-bounds hook comes online at reveal).
-        const xy = await this.#toScreenCoordinates(x, y);
-        this.#mouseX = xy.x;
-        this.#mouseY = xy.y;
         await this.page.mouse.move(xy.x, xy.y);
         await this.assert.hasCursor(cursor);
       }).toPass();
     } else {
-      const xy = await this.#toScreenCoordinates(x, y);
-      this.#mouseX = xy.x;
-      this.#mouseY = xy.y;
       await this.page.mouse.move(xy.x, xy.y);
     }
   }
@@ -258,56 +245,18 @@ export class SampleCanvasPom {
     }
   }
 
-  /**
-   * The box the [0, 1] coordinate space maps over. The image Lighter surface
-   * publishes the canonical media's live screen bounds
-   * (`__FO_PLAYWRIGHT_MEDIA_SCREEN_BOUNDS`, mounted by the image renderer
-   * only), making fractions image-relative — exact under any viewport fit,
-   * pad, or Explore↔Annotate transfer, and immune to chrome around the canvas
-   * (the annotation top bar sits above it inside `sample-canvas`). Looker and
-   * the video surfaces don't publish the hook, so they keep the
-   * `sample-canvas` element box their specs are tuned to.
-   */
-  async #coordinateBox() {
-    const media = await this.page.evaluate(
-      () => window.__FO_PLAYWRIGHT_MEDIA_SCREEN_BOUNDS?.() ?? null,
-    );
-
-    if (media && media.width > 0 && media.height > 0) {
-      return media;
-    }
-
-    // Image Explore mounts the media-facts bar above the Looker canvas
-    // inside `sample-canvas`, so the Looker container's own box is the
-    // media region. Where it fills the column (no bar) this box equals the
-    // element box, so older layouts map identically.
-    const looker = this.page.getByTestId("modal-looker-container");
-
-    if ((await looker.count()) === 1) {
-      const box = await looker.boundingBox();
-
-      if (box) {
-        return box;
-      }
-    }
-
+  async #toScreenCoordinates(x: number, y: number) {
     if (!this.#box) {
       this.#box = await this.locator.boundingBox();
     }
 
-    return this.#box;
-  }
+    const box = this.#box;
+    const xPixels = x * box.width;
+    const yPixels = y * box.height;
 
-  async #toScreenCoordinates(x: number, y: number) {
-    const box = await this.#coordinateBox();
-
-    // Keep fractional coordinates: the box is the viewport transform's own
-    // floats, so the exact target round-trips through the renderer's
-    // world↔screen mapping bit-exactly (specs assert geometry as exact
-    // strings). Rounding would land up to half a pixel off instead.
     return {
-      x: box.x + x * box.width,
-      y: box.y + y * box.height,
+      x: box.x + xPixels,
+      y: box.y + yPixels,
     };
   }
 }
@@ -353,38 +302,6 @@ class SampleCanvasAsserter {
    */
   is(type: SampleCanvasType) {
     return expect(this.sampleCanvasPom.locator.getByTestId(type)).toBeVisible();
-  }
-
-  /**
-   * Canvas-region screenshot for specs that shoot in both Explore (Looker)
-   * and Annotate (Lighter): both modes mount the media-facts bar above the
-   * canvas, so the clip below it covers the same-sized media region in each.
-   * The two renderers may still paint differently (letterbox background), so
-   * a repeated name keeps one baseline per call site (Playwright indexes
-   * repeats: `name.png`, then `name-1.png`).
-   *
-   * @param name the name of the screenshot
-   */
-  async hasCrossModeScreenshot(name: string) {
-    await expect(this.sampleCanvasPom.checkbox).toBeHidden();
-    await this.sampleCanvasPom.tooltip.assert.isVisible(false);
-    await this.sampleCanvasPom.moveMouseToViewportEdge();
-
-    const page = this.sampleCanvasPom.page;
-    const box = await this.sampleCanvasPom.locator.boundingBox();
-    const topBar = page.getByTestId("annotation-top-bar");
-    const barBox = await topBar.boundingBox();
-    expect(barBox.height).toBe(ANNOTATION_TOP_BAR_HEIGHT);
-
-    await expect(page).toHaveScreenshot(name, {
-      clip: {
-        x: box.x,
-        y: box.y + ANNOTATION_TOP_BAR_HEIGHT,
-        width: box.width,
-        height: box.height - ANNOTATION_TOP_BAR_HEIGHT,
-      },
-      maxDiffPixelRatio: 0.0,
-    });
   }
 }
 
