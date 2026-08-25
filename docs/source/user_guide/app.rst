@@ -3108,16 +3108,16 @@ location data:
 
     session = fo.launch_app(dataset)
 
-FiftyOne renders the map with `MapLibre GL JS <https://maplibre.org/>`_ and
-uses `OpenFreeMap <https://openfreemap.org/>`_ basemaps built from
+By default, FiftyOne renders the map with
+`MapLibre GL JS <https://maplibre.org/>`_ and uses
+`OpenFreeMap <https://openfreemap.org/>`_ basemaps built from
 `OpenStreetMap <https://www.openstreetmap.org/copyright>`_ data. No access
 token is required, and the required provider and data attribution is displayed
 on the map.
 
-If you configure a
+If you wish to use Mapbox instead, configure a
 `Mapbox access token <https://docs.mapbox.com/help/getting-started/access-tokens>`_,
-the Map panel uses Mapbox and its basemaps instead. Existing Mapbox
-configurations continue to work.
+and the Map panel will use Mapbox and its basemaps.
 
 .. image:: /images/app/app-map-panel.gif
     :alt: app-map-panel
