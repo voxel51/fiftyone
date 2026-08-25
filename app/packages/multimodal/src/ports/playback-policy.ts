@@ -9,7 +9,6 @@ import {
   type StreamSyncPolicy,
   type SynchronizedFrameWindow,
 } from "../ir";
-import { maxBigInt, minBigInt } from "../utils/bigint";
 
 /** Default symmetric tolerance for nearest-frame presentation. */
 export const DEFAULT_EPISODE_SYNC_TOLERANCE_NS = 50_000_000n;
@@ -293,4 +292,14 @@ function absBigInt(value: bigint): bigint {
 
 function clampStartTime(value: bigint): bigint {
   return value < 0n ? 0n : value;
+}
+
+function maxBigInt(values: readonly bigint[]): bigint {
+  if (values.length === 0) throw new Error("Expected at least one time value");
+  return values.reduce((maximum, value) => (value > maximum ? value : maximum));
+}
+
+function minBigInt(values: readonly bigint[]): bigint {
+  if (values.length === 0) throw new Error("Expected at least one time value");
+  return values.reduce((minimum, value) => (value < minimum ? value : minimum));
 }

@@ -56,7 +56,7 @@ import {
   selectPlaybackWindow,
   streamTimeBoundsFromManifest,
   type ResolvedPlaybackWindow,
-} from "../../stream-selection/playback";
+} from "../../ports/playback-policy";
 import { throwIfAborted } from "../../utils/cancellation";
 import {
   maxBigInt as maxOfBigInts,

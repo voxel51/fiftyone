@@ -22,11 +22,11 @@ import {
   resolvePlaybackWindow,
   selectPlaybackWindow,
   streamTimeBoundsFromManifest,
-} from "../stream-selection/playback";
+} from "../ports/playback-policy";
 import { maxBigInt, minBigInt } from "../utils/bigint";
 import { throwIfAborted } from "../utils/cancellation";
 
-export { DEFAULT_EPISODE_SYNC_TOLERANCE_NS } from "../stream-selection/playback";
+export { DEFAULT_EPISODE_SYNC_TOLERANCE_NS } from "../ports/playback-policy";
 
 /** Complete decoded messages admitted per stream for one generic playback batch. */
 export const GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM = 1_024;
