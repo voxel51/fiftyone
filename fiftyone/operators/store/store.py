@@ -132,6 +132,43 @@ class ExecutionStore(object):
         """
         self.set(key, value, ttl=ttl, policy="evict")
 
+    def set_if_absent(
+        self, key: str, value: Any, ttl: Optional[int] = None, policy=None
+    ) -> bool:
+        """Sets a key only when it does not already exist."""
+
+        if policy is None:
+            policy = self._default_policy
+        return self._store_service.set_key_if_absent(
+            self.store_name, key, value, ttl=ttl, policy=policy
+        )
+
+    def compare_and_set(
+        self,
+        key: str,
+        expected: Any,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy=None,
+    ) -> bool:
+        """Atomically replaces a key whose value matches ``expected``."""
+
+        if policy is None:
+            policy = self._default_policy
+        return self._store_service.compare_and_set_key(
+            self.store_name,
+            key,
+            expected,
+            value,
+            ttl=ttl,
+            policy=policy,
+        )
+
+    def touch(self, key: str, ttl: Optional[int] = None) -> bool:
+        """Refreshes a key's update time and optional expiration."""
+
+        return self._store_service.touch_key(self.store_name, key, ttl=ttl)
+
     def delete(self, key: str) -> bool:
         """Deletes a key from the store.
 

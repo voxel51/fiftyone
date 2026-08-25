@@ -67,6 +67,32 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
         fetched_key = self.repo.get_key(store_name, key)
         self.assertEqual(fetched_key.value, value)
 
+    def test_atomic_key_primitives(self):
+        store_name = "atomic_store"
+        key = "job"
+        original = {"version": 1}
+        updated = {"version": 2}
+
+        self.assertTrue(
+            self.repo.set_key_if_absent(store_name, key, original, ttl=60)
+        )
+        self.assertFalse(
+            self.repo.set_key_if_absent(store_name, key, {"version": 99})
+        )
+        self.assertFalse(
+            self.repo.compare_and_set_key(
+                store_name, key, {"version": 0}, updated, ttl=60
+            )
+        )
+        self.assertTrue(
+            self.repo.compare_and_set_key(
+                store_name, key, original, updated, ttl=60
+            )
+        )
+        self.assertEqual(self.repo.get_key(store_name, key).value, updated)
+        self.assertTrue(self.repo.touch_key(store_name, key, ttl=120))
+        self.assertFalse(self.repo.touch_key(store_name, "missing", ttl=120))
+
     def test_update_ttl(self):
         store_name = "ttl_store"
         key = "ttl_key"

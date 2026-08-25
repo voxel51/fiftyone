@@ -6,12 +6,16 @@ Execution store repository interface and implementations.
 |
 """
 
+import copy
 import logging
+import threading
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 from bson import ObjectId
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from fiftyone.operators.store.models import (
     KeyDocument,
@@ -140,6 +144,41 @@ class AbstractExecutionStoreRepo(ABC):
         Returns:
             KeyDocument: the created or updated cache key document
         """
+        pass
+
+    @abstractmethod
+    def set_key_if_absent(
+        self,
+        store_name: str,
+        key: str,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy: str = "persist",
+    ) -> bool:
+        """Sets a key only when it does not already exist."""
+
+        pass
+
+    @abstractmethod
+    def compare_and_set_key(
+        self,
+        store_name: str,
+        key: str,
+        expected: Any,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy: str = "persist",
+    ) -> bool:
+        """Atomically replaces a key whose value matches ``expected``."""
+
+        pass
+
+    @abstractmethod
+    def touch_key(
+        self, store_name: str, key: str, ttl: Optional[int] = None
+    ) -> bool:
+        """Refreshes a key's update time and optional expiration."""
+
         pass
 
     @abstractmethod
@@ -570,6 +609,82 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
     def set_cache_key(self, store_name, key, value, ttl=None):
         return self.set_key(store_name, key, value, ttl, policy="evict")
 
+    def set_key_if_absent(
+        self,
+        store_name,
+        key,
+        value,
+        ttl=None,
+        policy="persist",
+    ):
+        now = datetime.utcnow()
+        expiration = KeyDocument.get_expiration(ttl)
+        policy = "evict" if ttl is not None or policy == "evict" else "persist"
+        document = KeyDocument.from_dict(
+            {
+                "store_name": store_name,
+                "key": key,
+                "value": value,
+                "created_at": now,
+                "updated_at": now,
+                "expires_at": expiration,
+                "dataset_id": self._dataset_id,
+                "policy": policy,
+            }
+        )
+        try:
+            self._collection.insert_one(document.to_mongo_dict())
+        except DuplicateKeyError:
+            return False
+        return True
+
+    def compare_and_set_key(
+        self,
+        store_name,
+        key,
+        expected,
+        value,
+        ttl=None,
+        policy="persist",
+    ):
+        now = datetime.utcnow()
+        expiration = KeyDocument.get_expiration(ttl)
+        policy = "evict" if ttl is not None or policy == "evict" else "persist"
+        document = self._collection.find_one_and_update(
+            {
+                "store_name": store_name,
+                "key": key,
+                "dataset_id": self._dataset_id,
+                "value": expected,
+            },
+            {
+                "$set": {
+                    "value": value,
+                    "updated_at": now,
+                    "expires_at": expiration,
+                    "policy": policy,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return document is not None
+
+    def touch_key(self, store_name, key, ttl=None):
+        values = {"updated_at": datetime.utcnow()}
+        if ttl is not None:
+            values.update(
+                expires_at=KeyDocument.get_expiration(ttl), policy="evict"
+            )
+        result = self._collection.update_one(
+            {
+                "store_name": store_name,
+                "key": key,
+                "dataset_id": self._dataset_id,
+            },
+            {"$set": values},
+        )
+        return bool(result.matched_count)
+
     def has_key(self, store_name: str, key: str) -> bool:
         result = self._collection.find_one(
             {
@@ -691,6 +806,7 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
     ):
         super().__init__(dataset_id, notification_service)
         self._docs = {}
+        self._lock = threading.RLock()
 
     def _doc_key(self, store_name: str, key: str) -> tuple:
         return (store_name, key, self._dataset_id)
@@ -799,6 +915,71 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
         self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
     ) -> None:
         return self.set_key(store_name, key, value, ttl=ttl, policy="evict")
+
+    def set_key_if_absent(
+        self,
+        store_name,
+        key,
+        value,
+        ttl=None,
+        policy="persist",
+    ):
+        composite_key = self._doc_key(store_name, key)
+        with self._lock:
+            if composite_key in self._docs:
+                return False
+            now = datetime.utcnow()
+            self._docs[composite_key] = KeyDocument.from_dict(
+                {
+                    "store_name": store_name,
+                    "key": key,
+                    "value": copy.deepcopy(value),
+                    "created_at": now,
+                    "updated_at": now,
+                    "expires_at": KeyDocument.get_expiration(ttl),
+                    "dataset_id": self._dataset_id,
+                    "policy": (
+                        "evict"
+                        if ttl is not None or policy == "evict"
+                        else "persist"
+                    ),
+                }
+            ).to_mongo_dict()
+            return True
+
+    def compare_and_set_key(
+        self,
+        store_name,
+        key,
+        expected,
+        value,
+        ttl=None,
+        policy="persist",
+    ):
+        composite_key = self._doc_key(store_name, key)
+        with self._lock:
+            document = self._docs.get(composite_key)
+            if document is None or document.get("value") != expected:
+                return False
+            document["value"] = copy.deepcopy(value)
+            document["updated_at"] = datetime.utcnow()
+            document["expires_at"] = KeyDocument.get_expiration(ttl)
+            document["policy"] = (
+                "evict" if ttl is not None or policy == "evict" else "persist"
+            )
+            return True
+
+    def touch_key(self, store_name, key, ttl=None):
+        composite_key = self._doc_key(store_name, key)
+        with self._lock:
+            document = self._docs.get(composite_key)
+            if document is None:
+                return False
+            document["updated_at"] = datetime.utcnow()
+            if ttl is not None:
+                document["expires_at"] = KeyDocument.get_expiration(ttl)
+                document["policy"] = "evict"
+            return True
 
     def has_key(self, store_name: str, key: str) -> bool:
         composite_key = self._doc_key(store_name, key)
