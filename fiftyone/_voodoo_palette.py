@@ -11,16 +11,22 @@ Run that script to pick up design system changes.
 
 # The App's default color pool, in the order colors are handed out
 COLOR_POOL = [
-    "#FF6D04",  # 1: orange 500
+    "#FA5300",  # 1: orange 500
     "#2563EB",  # 2: blue 500
     "#1E7D45",  # 3: green 500
-    "#8B5CF6",  # 4: purple 500
+    "#7C3AED",  # 4: unmapped
     "#DB2777",  # 5: pink 500
-    "#D97706",  # 6: yellow 500
-    "#0D9488",  # 7: teal 500
+    "#B45309",  # 6: unmapped
+    "#0F766E",  # 7: unmapped
     "#6F42C1",  # 8: purple 600
-    "#532E91",  # 9: purple 700
+    "#4F46E5",  # 9: unmapped
     "#C33636",  # 10: red 500
     "#B26003",  # 11: yellow 600
     "#166638",  # 12: green 600
+    "#0284C7",  # 13: unmapped
+    "#4D7C0F",  # 14: unmapped
+    "#A21CAF",  # 15: unmapped
+    "#475569",  # 16: unmapped
+    "#E11D48",  # 17: unmapped
+    "#059669",  # 18: unmapped
 ]
