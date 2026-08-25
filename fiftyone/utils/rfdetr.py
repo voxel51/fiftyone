@@ -214,7 +214,7 @@ def _sv_detections_to_fo(
     sv_dets: Any,
     width: int,
     height: int,
-    class_names: dict[int, str],
+    class_names: dict[int, str] | list[str],
     has_masks: bool,
 ) -> fol.Detections:
     """Convert a ``supervision.Detections`` object to FiftyOne format.
@@ -230,7 +230,8 @@ def _sv_detections_to_fo(
         sv_dets: a :class:`supervision.detection.core.Detections`
         width: image width in pixels
         height: image height in pixels
-        class_names: dict mapping ``{int: str}`` class IDs to labels
+        class_names: a ``{int: str}`` dict or a list of labels indexed by
+            class ID
         has_masks: whether to include instance masks
 
     Returns:
@@ -238,6 +239,10 @@ def _sv_detections_to_fo(
     """
     if sv_dets is None or len(sv_dets) == 0:
         return fol.Detections()
+
+    # rfdetr >= 1.8 returns a list indexed by class ID; older versions, a dict.
+    if isinstance(class_names, (list, tuple)):
+        class_names = dict(enumerate(class_names))
 
     xyxy = sv_dets.xyxy
     confidence = sv_dets.confidence

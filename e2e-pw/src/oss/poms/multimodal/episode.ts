@@ -69,6 +69,21 @@ export class EpisodePom {
     ).toBeHidden();
   }
 
+  /** Verifies useful episode topology is visible before source reads recover. */
+  async expectWarmBootstrapShell(
+    fileName: string,
+    tileTitles: readonly string[],
+  ): Promise<void> {
+    await expect(this.shell).toBeVisible({ timeout: READY_TIMEOUT });
+    await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible({
+      timeout: READY_TIMEOUT,
+    });
+    await this.expectTileTitles(tileTitles);
+    await expect(
+      byDataTestId(this.scope, "episode-preparing-scaffold"),
+    ).toBeHidden();
+  }
+
   async navigateDatasetSample(
     direction: "forward" | "backward",
     fileName: string,

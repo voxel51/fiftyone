@@ -153,7 +153,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
 
     // Prefer cheap transport metadata before doing a tiny ranged GET; many
     // object stores allow range reads but block HEAD, so both paths are needed.
-    const statSource = await this.byteClient.stat?.(this.source);
+    const statSource = await this.byteClient.stat?.(this.source, signal);
     if (signal?.aborted) throw createAbortError("MCAP read aborted");
     if (statSource) {
       this.updateSource(statSource);

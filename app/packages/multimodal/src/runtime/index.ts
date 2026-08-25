@@ -36,6 +36,10 @@ export * from "./temporal-policy";
 export * from "./data-stream";
 /** Public bounded grid-to-modal source bootstrap handoff. */
 export * from "./source-bootstrap-cache";
+/** Public durable source-facts identity, persistence, and orchestration. */
+export * from "./source-facts";
+export * from "./source-facts-persistence";
+export * from "./source-facts-service";
 /** Public episode time-range handoff used across grid and modal shells. */
 export {
   getEpisodeTimeRange,
