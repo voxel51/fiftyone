@@ -19,6 +19,13 @@ export type RecognizedMediaType =
   | NativeMediaType
   | typeof MEDIA_TYPE_MULTIMODAL;
 
+/** Browser-safe logical-media identity supplied by FiftyOne transport. */
+export type MediaReferenceDescriptor = {
+  readonly kind: string;
+  readonly key: string;
+  readonly version: string;
+};
+
 /** Direct-media extensions decoded by the Gaussian splat viewer. */
 export const GAUSSIAN_SPLAT_EXTENSIONS = [
   ".spz",

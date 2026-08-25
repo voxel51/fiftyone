@@ -1,14 +1,10 @@
 import * as fos from "@fiftyone/state";
-import type { Schema } from "@fiftyone/utilities";
+import type { MediaReferenceDescriptor, Schema } from "@fiftyone/utilities";
 import type React from "react";
 
 type SampleRendererSurface = "grid" | "modal";
 
-export type MediaReferenceDescriptor = {
-  readonly kind: string;
-  readonly key: string;
-  readonly version: string;
-};
+export type { MediaReferenceDescriptor } from "@fiftyone/utilities";
 
 export type SampleRendererSampleLike = {
   frameNumber?: number | null;

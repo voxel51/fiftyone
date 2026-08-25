@@ -1,3 +1,5 @@
+import type { MediaReferenceDescriptor } from "@fiftyone/utilities";
+
 import type {
   ByteSourceDescriptor,
   EpisodeManifest,
@@ -42,12 +44,7 @@ export interface EpisodeSource {
   ): Promise<EpisodeSourceHints | null>;
 }
 
-/** Browser-safe logical-media identity supplied by FiftyOne transport. */
-export interface MediaReferenceDescriptor {
-  readonly kind: string;
-  readonly key: string;
-  readonly version: string;
-}
+export type { MediaReferenceDescriptor } from "@fiftyone/utilities";
 
 /** Multi-asset episode source discovered through a server manifest. */
 export interface ManifestEpisodeSource extends EpisodeSource {

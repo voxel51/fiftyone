@@ -4,17 +4,14 @@ import {
   getMimeType,
   isDirect3dSamplePath,
   isNativeMediaType,
+  type MediaReferenceDescriptor,
 } from "@fiftyone/utilities";
 
 export type NativeLookerType = "image" | "video" | "3d";
 
 type MediaFieldLookerSample = {
   filepath?: string | null;
-  _media_reference?: {
-    readonly kind: string;
-    readonly key: string;
-    readonly version: string;
-  } | null;
+  _media_reference?: MediaReferenceDescriptor | null;
   metadata?: { mime_type?: string } | null;
   media_type?: string | null;
   _media_type?: string | null;
