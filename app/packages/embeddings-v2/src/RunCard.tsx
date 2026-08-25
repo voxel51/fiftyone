@@ -92,7 +92,7 @@ export function RunCard({
             </div>
           )}
           <span className="emb-run-card-title">
-            <Text variant={TextVariant.Lg} color={TextColor.Fg}>
+            <Text variant={TextVariant.Lg} color={TextColor.Foreground}>
               {title}
             </Text>
           </span>

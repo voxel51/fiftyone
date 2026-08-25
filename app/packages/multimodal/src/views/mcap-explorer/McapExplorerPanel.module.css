@@ -129,7 +129,7 @@
 }
 
 .error {
-  color: var(--color-content-text-destructive);
+  color: var(--color-content-text-failure);
 }
 
 .playback {

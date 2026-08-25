@@ -37,7 +37,7 @@ export default function ExpandedThumbnails({
         )}
         {negativeIds.length > 0 && (
           <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-            <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+            <Text variant={TextVariant.Md} color={TextColor.Failure}>
               Negative ({negativeIds.length})
             </Text>
             <SampleThumbnails ids={negativeIds} sampleMedia={sampleMedia} />

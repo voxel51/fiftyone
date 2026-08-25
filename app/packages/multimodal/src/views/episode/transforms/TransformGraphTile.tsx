@@ -227,7 +227,7 @@ function SummaryHeader({
       <div className={styles.summaryStatus}>
         {componentCount > 1 ? (
           <Text
-            color={hasErrors ? TextColor.Destructive : TextColor.Warning}
+            color={hasErrors ? TextColor.Failure : TextColor.Warning}
             variant={TextVariant.Xs}
           >
             {componentCount} disconnected components
@@ -265,7 +265,7 @@ function SummaryMetric({
       <Text
         color={
           severity === "error"
-            ? TextColor.Destructive
+            ? TextColor.Failure
             : severity === "warning"
               ? TextColor.Warning
               : TextColor.Primary
@@ -297,7 +297,7 @@ function CoverageNotice({
     >
       <div className={styles.coverageText} title={coverageSummary}>
         <Text
-          color={scan.error ? TextColor.Destructive : TextColor.Warning}
+          color={scan.error ? TextColor.Failure : TextColor.Warning}
           variant={TextVariant.Xs}
         >
           {coverageSummary}

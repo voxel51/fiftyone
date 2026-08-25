@@ -177,7 +177,7 @@
 
 .errorDot,
 .warningDot {
-  background: var(--color-content-text-destructive);
+  background: var(--color-content-text-failure);
   border-radius: 50%;
   flex: none;
   height: 7px;

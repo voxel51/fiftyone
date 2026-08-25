@@ -136,7 +136,7 @@ export default function HoverCard({
             {d.label}
           </Text>
           <span className="emb-hover-detail-value">
-            <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+            <Text variant={TextVariant.Sm} color={TextColor.Foreground}>
               {d.value}
             </Text>
           </span>
@@ -151,7 +151,7 @@ export default function HoverCard({
             />
           )}
           <span className="emb-hover-text">
-            <Text variant={TextVariant.Md} color={TextColor.Fg}>
+            <Text variant={TextVariant.Md} color={TextColor.Foreground}>
               {value.label}
             </Text>
           </span>

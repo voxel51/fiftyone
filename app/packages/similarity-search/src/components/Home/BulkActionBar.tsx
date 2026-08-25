@@ -62,7 +62,7 @@ export default function BulkActionBar({
           align={Align.Center}
           justify={Justify.Between}
         >
-          <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+          <Text variant={TextVariant.Md} color={TextColor.Failure}>
             Delete {label}?
           </Text>
           <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
