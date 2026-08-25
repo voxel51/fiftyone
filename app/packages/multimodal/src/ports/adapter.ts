@@ -10,11 +10,30 @@ import type { ByteResources, EpisodeSession, ReadPriority } from "./session";
 
 /** One stable asset exposed by an episode resolver. */
 export interface AssetDescriptor {
+  readonly featureName?: string;
   readonly id: string;
   readonly mediaType?: string;
   readonly metadata?: Readonly<Record<string, string>>;
   readonly role: string;
+  readonly selector?: AssetSelectorDescriptor;
 }
+
+/** Closed, browser-safe selector vocabulary returned by media manifests. */
+export type AssetSelectorDescriptor =
+  | { readonly kind: "whole-file" }
+  | {
+      readonly coordinateSystem:
+        | "lerobot-v3-global-dataset-row"
+        | "parquet-file-row";
+      readonly end: number;
+      readonly kind: "row-interval";
+      readonly start: number;
+    }
+  | {
+      readonly fromTimestamp: number;
+      readonly kind: "video-timestamp-interval";
+      readonly toTimestamp: number;
+    };
 
 /** Resolves one or more physical assets that make up an episode. */
 export interface AssetResolver {

@@ -56,7 +56,9 @@ export function registerEpisodeViews(): void {
     type: PluginComponentType.SampleRenderer,
     activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
     sampleRendererOptions: {
-      supports: { extensions: ["mcap"] },
+      supports: (ctx) =>
+        ctx.media.extension === "mcap" ||
+        ctx.media.mediaReference?.kind === "lerobot-episode",
       modal: { persistAcrossSamples: true },
       grid: {
         clickBehavior: "passthrough",
