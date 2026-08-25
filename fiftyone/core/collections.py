@@ -2732,20 +2732,11 @@ class SampleCollection(object):
                 use the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
         """
-        root_field = field_name.split(".", 1)[0]
-        if root_field in ("media_reference", "_media_reference"):
-            raise AttributeError(
-                "Media references are read-only and cannot be assigned"
-            )
-
-        if root_field == "filepath" and _contains_media_references(self):
-            from fiftyone.multimodal.media import (
-                UnsupportedMediaReferenceOperation,
-            )
-
-            raise UnsupportedMediaReferenceOperation(
-                "Cannot assign filepath values to reference-backed samples"
-            )
+        _validate_media_reference_write(
+            self,
+            field_name,
+            "Cannot assign filepath values to reference-backed samples",
+        )
 
         self._set_values(
             field_name,
@@ -6858,20 +6849,11 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        root_field = field.split(".", 1)[0]
-        if root_field in ("media_reference", "_media_reference"):
-            raise AttributeError(
-                "Media references are read-only and cannot be assigned"
-            )
-
-        if root_field == "filepath" and _contains_media_references(self):
-            from fiftyone.multimodal.media import (
-                UnsupportedMediaReferenceOperation,
-            )
-
-            raise UnsupportedMediaReferenceOperation(
-                "Cannot derive a filepath for reference-backed samples"
-            )
+        _validate_media_reference_write(
+            self,
+            field,
+            "Cannot derive a filepath for reference-backed samples",
+        )
 
         return self._add_view_stage(
             fos.SetField(field, expr, _allow_missing=_allow_missing)
@@ -12748,6 +12730,25 @@ def _serialize_value(field_name, field, value, validate=True):
             )
 
     return field.to_mongo(value)
+
+
+def _validate_media_reference_write(
+    sample_collection, field_name, filepath_error_message
+):
+    root_field = field_name.split(".", 1)[0]
+    if root_field in ("media_reference", "_media_reference"):
+        raise AttributeError(
+            "Media references are read-only and cannot be assigned"
+        )
+
+    if root_field == "filepath" and _contains_media_references(
+        sample_collection
+    ):
+        from fiftyone.multimodal.media import (
+            UnsupportedMediaReferenceOperation,
+        )
+
+        raise UnsupportedMediaReferenceOperation(filepath_error_message)
 
 
 def _contains_media_references(sample_collection):

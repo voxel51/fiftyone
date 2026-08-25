@@ -1941,6 +1941,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         name = dataset.name
         empty_import = not bool(dataset)
         now = datetime.utcnow()
+        from fiftyone.multimodal.media import (
+            MEDIA_REFERENCE_DATASET_REVISION,
+            MediaReferenceError,
+            validate_media_source,
+        )
 
         logger.info("Importing samples...")
         samples, num_samples = foo.import_collection(
@@ -2049,12 +2054,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         def _parse_sample(sd):
             media_reference = sd.get("_media_reference")
             if media_reference is not None:
-                from fiftyone.multimodal.media import (
-                    MEDIA_REFERENCE_DATASET_REVISION,
-                    MediaReferenceError,
-                    validate_media_source,
-                )
-
                 if not media_reference_revision:
                     raise MediaReferenceError(
                         "Native media-reference imports must declare dataset "
