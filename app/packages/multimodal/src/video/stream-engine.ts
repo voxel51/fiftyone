@@ -43,6 +43,7 @@ const INITIAL_SNAPSHOT: VideoStreamSnapshot = {
 /** One source/stream cursor with one serialized decoder actor. */
 export class VideoStreamEngine {
   private activeController: AbortController | null = null;
+  private activeForwardPublicationProtected = false;
   private readonly cache: EncodedAccessUnitCache;
   private closed = false;
   private continuityUncertain = false;
@@ -104,11 +105,13 @@ export class VideoStreamEngine {
       return;
     }
 
+    const retainActiveForwardPublication =
+      this.shouldRetainActiveForwardPublication(intent.timeNs);
     this.requestedTargetTimeNs = intent.timeNs;
     this.requestedPriority = intent.priority;
     this.generation += 1;
     this.latestIntent = intent;
-    if (this.activeController) {
+    if (this.activeController && !retainActiveForwardPublication) {
       this.continuityUncertain = true;
       this.activeController.abort();
     }
@@ -119,6 +122,7 @@ export class VideoStreamEngine {
         this.decoder.cursorTimeNs === null ? "seeking.locating" : "forward",
       targetTimeNs: intent.timeNs,
     });
+    if (retainActiveForwardPublication) return;
     void this.pump();
   }
 
@@ -266,6 +270,7 @@ export class VideoStreamEngine {
         });
       }
 
+      this.activeForwardPublicationProtected = true;
       const decoded = await this.decodeWithOneRecovery(
         units,
         intent,
@@ -273,7 +278,7 @@ export class VideoStreamEngine {
         signal,
       );
       if (directForward) this.observeForwardCadence(cursorTimeNs, units);
-      if (signal.aborted || generation !== this.generation) {
+      if (signal.aborted) {
         decoded.close();
         throw new VideoIntentCancelledError();
       }
@@ -289,25 +294,38 @@ export class VideoStreamEngine {
         decoded.close();
         throw error;
       }
-      if (signal.aborted || generation !== this.generation || this.closed) {
+      if (signal.aborted || this.closed) {
         presentation.releaseOwner();
         throw new VideoIntentCancelledError();
       }
       const previous = this.snapshot
         .presentation as OwnedVideoPresentation | null;
+      const publicationGeneration = this.generation;
       this.snapshot = {
         diagnostic: null,
-        generation,
+        generation: publicationGeneration,
         phase: "forward",
         presentation,
         presentedTimeNs: intent.timeNs,
-        targetTimeNs: intent.timeNs,
+        targetTimeNs: this.requestedTargetTimeNs ?? intent.timeNs,
       };
       this.emit();
       previous?.releaseOwner();
     } finally {
+      this.activeForwardPublicationProtected = false;
       releaseAdmission?.();
     }
+  }
+
+  private shouldRetainActiveForwardPublication(timeNs: bigint): boolean {
+    const previousTargetTimeNs = this.requestedTargetTimeNs;
+    return (
+      this.activeController !== null &&
+      this.activeForwardPublicationProtected &&
+      previousTargetTimeNs !== null &&
+      timeNs > previousTargetTimeNs &&
+      timeNs - previousTargetTimeNs <= MAX_DIRECT_FORWARD_GAP_NS
+    );
   }
 
   private async decodeWithOneRecovery(

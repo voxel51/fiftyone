@@ -678,6 +678,54 @@ describe("BitmapImageFrameView", () => {
     expect(decoder.instances[0].close).toHaveBeenCalledOnce();
   });
 
+  it("commits H.264 presentations while bitmap copies lag continuous rerenders", async () => {
+    stubVideoDecoder();
+    const copies = stubCreateImageBitmap();
+    stubElementSize(100, 50);
+    sharedMockContext();
+    const onCanvasCommitted = vi.fn();
+    const onImageLoaded = vi.fn();
+    const frameIntervalNs = 70_422_535n;
+    const frames = Array.from({ length: 8 }, (_, index) =>
+      index === 0
+        ? videoFrame()
+        : deltaVideoFrame(1_000n + BigInt(index) * frameIntervalNs),
+    );
+
+    const rendered = render(
+      <BitmapImageFrameView
+        frame={frames[0]}
+        onCanvasCommitted={onCanvasCommitted}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+    for (let index = 1; index < frames.length; index += 1) {
+      await waitFor(() => expect(copies.pendingCount()).toBe(index));
+      rendered.rerender(
+        <BitmapImageFrameView
+          frame={frames[index]}
+          onCanvasCommitted={onCanvasCommitted}
+          onImageLoaded={onImageLoaded}
+        />,
+      );
+      await act(async () => {
+        copies.settle(index - 1, fakeBitmap(640, 480));
+      });
+      await waitFor(() =>
+        expect(onCanvasCommitted).toHaveBeenCalledTimes(index),
+      );
+    }
+
+    await waitFor(() => expect(copies.pendingCount()).toBe(frames.length));
+    expect(onImageLoaded).toHaveBeenCalledTimes(frames.length - 1);
+    await act(async () => {
+      copies.settle(frames.length - 1, fakeBitmap(640, 480));
+    });
+    await waitFor(() =>
+      expect(onCanvasCommitted).toHaveBeenCalledTimes(frames.length),
+    );
+  });
+
   it("waits for a keyframe before bootstrapping a private preview", async () => {
     const decoder = stubVideoDecoder();
     stubElementSize(100, 50);
@@ -956,7 +1004,7 @@ function videoFrame(): EncodedVideoVisualization {
   };
 }
 
-function deltaVideoFrame(): EncodedVideoVisualization {
+function deltaVideoFrame(timestampNs = 2_000n): EncodedVideoVisualization {
   return {
     bytes: Uint8Array.of(0, 0, 1, 0x41),
     codec: "h264",
@@ -964,7 +1012,7 @@ function deltaVideoFrame(): EncodedVideoVisualization {
     h264: { hasFrame: true },
     keyframe: false,
     kind: VISUALIZATION_KIND.ENCODED_VIDEO,
-    timestampNs: 2_000n,
+    timestampNs,
   };
 }
 
@@ -1045,6 +1093,7 @@ function stubCreateImageBitmap() {
 
   return {
     fail: (index: number, error: unknown) => pending[index].reject(error),
+    pendingCount: () => pending.length,
     settle: (index: number, bitmap: ImageBitmap) =>
       pending[index].resolve(bitmap),
   };
