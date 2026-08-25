@@ -298,7 +298,9 @@ class _OpenedMediaFileResponse(MediaFileResponse):
         file = os.fdopen(os.dup(self._descriptor), "rb")
         return anyio.wrap_file(file)
 
-    async def _handle_simple(self, send, send_header_only, send_pathsend):
+    async def _handle_simple(
+        self, send, send_header_only, send_pathsend=False
+    ):
         await send(
             {
                 "type": "http.response.start",

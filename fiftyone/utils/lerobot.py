@@ -15,6 +15,7 @@ import json
 import mimetypes
 import os
 import re
+import string
 import threading
 import uuid
 
@@ -105,6 +106,7 @@ class _InspectedLeRobotSource:
     info: dict
     codebase_version: str
     rows: tuple
+    data_shard_bases: dict
     asset_fingerprints: dict
     source_fingerprint: str
 
@@ -426,7 +428,9 @@ class LeRobotMediaResolver(MediaResolver):
                 _open_parquet(path, "shared metadata")
             shard_bytes.append((relative_path, raw))
 
-        asset_fingerprints = _validate_source_assets(root, info, rows)
+        asset_fingerprints, data_shard_bases = _validate_source_assets(
+            root, info, rows
+        )
         source_fingerprint = "sha256:" + _compute_source_fingerprint(
             info, info_bytes, shard_bytes, asset_fingerprints
         )
@@ -435,6 +439,7 @@ class LeRobotMediaResolver(MediaResolver):
             info=info,
             codebase_version=codebase_version,
             rows=tuple(rows),
+            data_shard_bases=data_shard_bases,
             asset_fingerprints=asset_fingerprints,
             source_fingerprint=source_fingerprint,
         )
@@ -448,7 +453,7 @@ class LeRobotMediaResolver(MediaResolver):
             source.root,
             source.info,
             row,
-            source.rows,
+            source.data_shard_bases,
             source.source_fingerprint,
             source.asset_fingerprints,
         )
@@ -814,6 +819,7 @@ def _select_episode_indexes(rows_by_index, episodes, preprocess):
 def _validate_source_assets(root, info, rows):
     by_data_file = defaultdict(list)
     byte_asset_paths = set()
+    video_features = _video_features(info)
     for row in rows:
         relative_path = _format_source_path(
             info["data_path"],
@@ -824,7 +830,7 @@ def _validate_source_assets(root, info, rows):
         by_data_file[path].append(row)
         byte_asset_paths.add(relative_path)
 
-        for feature_name in _video_features(info):
+        for feature_name in video_features:
             chunk_field = "videos/%s/chunk_index" % feature_name
             file_field = "videos/%s/file_index" % feature_name
             from_field = "videos/%s/from_timestamp" % feature_name
@@ -861,6 +867,7 @@ def _validate_source_assets(root, info, rows):
                     % row["episode_index"]
                 )
 
+    data_shard_bases = {}
     for path, shard_rows in by_data_file.items():
         if not os.path.isfile(path):
             raise MalformedMediaSourceError(
@@ -870,6 +877,13 @@ def _validate_source_assets(root, info, rows):
 
         parquet_file = _open_parquet(path, "episode data")
         base = min(row["dataset_from_index"] for row in shard_rows)
+        for row in shard_rows:
+            coordinates = (
+                row["data/chunk_index"],
+                row["data/file_index"],
+            )
+            data_shard_bases[coordinates] = base
+
         for row in shard_rows:
             local_end = row["dataset_to_index"] - base
             if local_end > parquet_file.metadata.num_rows:
@@ -902,17 +916,18 @@ def _validate_source_assets(root, info, rows):
                     "slice" % row["episode_index"]
                 )
 
-    return {
+    asset_fingerprints = {
         relative_path: _sha256_file(_resolve_under_root(root, relative_path))
         for relative_path in sorted(byte_asset_paths)
     }
+    return asset_fingerprints, data_shard_bases
 
 
 def _build_locator(
     root,
     info,
     row,
-    all_rows,
+    data_shard_bases,
     source_fingerprint,
     asset_fingerprints,
 ):
@@ -924,13 +939,7 @@ def _build_locator(
         file_index=file_index,
     )
     data_path = _resolve_under_root(root, data_relative_path)
-    shard_rows = [
-        other
-        for other in all_rows
-        if other["data/chunk_index"] == chunk_index
-        and other["data/file_index"] == file_index
-    ]
-    shard_base = min(other["dataset_from_index"] for other in shard_rows)
+    shard_base = data_shard_bases[(chunk_index, file_index)]
     shard_start = row["dataset_from_index"] - shard_base
     shard_end = row["dataset_to_index"] - shard_base
     parquet_file = _open_parquet(data_path, "episode data")
@@ -1119,6 +1128,22 @@ def _episode_time_range(row, videos, fps):
 
 def _format_source_path(template, **coordinates):
     try:
+        fields = string.Formatter().parse(template)
+        for _, field_name, format_spec, conversion in fields:
+            if field_name is None:
+                continue
+
+            if (
+                field_name not in coordinates
+                or "." in field_name
+                or "[" in field_name
+                or "]" in field_name
+                or conversion is not None
+                or "{" in format_spec
+                or "}" in format_spec
+            ):
+                raise ValueError("unsupported coordinate expression")
+
         path = template.format(**coordinates)
     except (KeyError, ValueError, IndexError) as exc:
         raise MalformedMediaSourceError(

@@ -327,6 +327,16 @@ class LeRobotImporterTests(unittest.TestCase):
                 _import(root, name=name)
             self.assertFalse(fo.dataset_exists(name))
 
+    def test_path_templates_reject_field_traversal(self):
+        with self.assertRaisesRegex(
+            MalformedMediaSourceError,
+            "Invalid LeRobot source path template",
+        ):
+            foul._format_source_path(
+                "data/{chunk_index.__class__}/file.parquet",
+                chunk_index=0,
+            )
+
     @drop_datasets
     def test_unfinalized_parquet_has_actionable_error(self):
         with tempfile.TemporaryDirectory() as root:
@@ -443,6 +453,26 @@ print(response.json().get('episode_index'))
 
 
 class LeRobotExporterTests(unittest.TestCase):
+    def test_official_reader_validation_reports_stderr(self):
+        error = subprocess.CalledProcessError(
+            1,
+            [sys.executable, "-c", "validation"],
+            stderr="invalid episode coordinates",
+        )
+        with mock.patch.object(
+            foule.importlib.util,
+            "find_spec",
+            return_value=object(),
+        ), mock.patch.object(
+            foule.subprocess,
+            "run",
+            side_effect=error,
+        ), self.assertRaisesRegex(
+            MalformedMediaSourceError,
+            "invalid episode coordinates",
+        ):
+            foule._validate_with_official_lerobot("/unused", 1)
+
     @unittest.skipUnless(
         importlib.util.find_spec("lerobot") is not None,
         "official LeRobot reader is not installed",
@@ -937,6 +967,12 @@ class LeRobotServerTests(unittest.TestCase):
                 asset
                 for asset in manifest["assets"]
                 if asset["role"] == "video-stream"
+            )
+            full = client.get(video["url"])
+            self.assertEqual(full.status_code, 200)
+            self.assertEqual(
+                full.content,
+                b"0123456789abcdefghijklmnopqrstuvwxyz",
             )
             ranged = client.get(video["url"], headers={"Range": "bytes=0-3"})
             self.assertEqual(ranged.status_code, 206)

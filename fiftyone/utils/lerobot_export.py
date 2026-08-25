@@ -653,6 +653,16 @@ if dataset.hf_dataset[0]["episode_index"] != 0:
             text=True,
             timeout=120,
         )
+    except subprocess.CalledProcessError as exc:
+        details = (exc.stderr or "").strip()[-2000:]
+        message = (
+            "Completed LeRobot export is not readable by the official v3 "
+            "reader"
+        )
+        if details:
+            message += ": %s" % details
+
+        raise MalformedMediaSourceError(message) from exc
     except (subprocess.SubprocessError, OSError) as exc:
         raise MalformedMediaSourceError(
             "Completed LeRobot export is not readable by the official v3 "
