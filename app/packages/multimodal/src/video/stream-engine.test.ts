@@ -391,12 +391,15 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     const lease = manager.acquire("/camera");
     lease.request({ ...keyframe, priority: "playing" });
     await presented(lease, 0n);
+    expect(
+      harness.decoders[0].decodeCalls.at(-1)?.units.map((unit) => unit.timeNs),
+    ).toEqual([0n, 2n, 1n]);
 
     lease.request({ ...target, priority: "playing" });
     await presented(lease, 1n);
     expect(
       harness.decoders[0].decodeCalls.at(-1)?.units.map((unit) => unit.timeNs),
-    ).toEqual([2n, 1n]);
+    ).toEqual([1n]);
 
     lease.request({ ...futurePresentation, priority: "playing" });
     await presented(lease, 2n);

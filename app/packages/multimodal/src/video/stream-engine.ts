@@ -22,6 +22,7 @@ import {
 
 const NS_PER_SECOND = 1_000_000_000n;
 const MAX_DIRECT_FORWARD_GAP_NS = 500_000_000n;
+const REORDERED_KEYFRAME_LOOKAHEAD_NS = 250_000_000n;
 export const MAX_H264_GOP_ACCESS_UNITS = 4_096;
 const VIDEO_SEEK_READ_POLICY = {
   initialLookbackNs: 15n * NS_PER_SECOND,
@@ -207,6 +208,10 @@ export class VideoStreamEngine {
               targetDecodeTimeNs - decodeCursorTimeNs > 0n &&
               targetDecodeTimeNs - decodeCursorTimeNs <=
                 this.nominalForwardStepNs + this.nominalForwardStepNs / 2n)));
+      const reorderedKeyframeNeedsRunway =
+        intent.frame.keyframe &&
+        targetDecodeTimeNs !== undefined &&
+        Boolean(this.reader());
       const directForward =
         cursorTimeNs !== null &&
         forwardGapNs !== null &&
@@ -216,9 +221,13 @@ export class VideoStreamEngine {
         !this.continuityUncertain;
       const directKeyframe =
         intent.frame.keyframe &&
+        !reorderedKeyframeNeedsRunway &&
         (cursorTimeNs === null || intent.timeNs > cursorTimeNs);
       const keyframeOnlyDiscontinuity =
-        intent.frame.keyframe && !directKeyframe && !directForward;
+        intent.frame.keyframe &&
+        !reorderedKeyframeNeedsRunway &&
+        !directKeyframe &&
+        !directForward;
 
       if (directKeyframe || directForward) {
         units = [intent];
@@ -250,7 +259,13 @@ export class VideoStreamEngine {
         );
         if (signal.aborted) throw new VideoIntentCancelledError();
 
-        if (cursorTimeNs !== null && intent.timeNs > cursorTimeNs) {
+        if (reorderedKeyframeNeedsRunway) {
+          units = await this.buildSeekRunway(intent, signal, generation);
+          this.observeForwardCadence(null, units);
+          if (this.decoder.configuredCodec !== null) {
+            this.decoder.resetForDiscontinuity();
+          }
+        } else if (cursorTimeNs !== null && intent.timeNs > cursorTimeNs) {
           this.publishIfCurrent(generation, {
             diagnostic: null,
             phase: "seeking.reading",
@@ -452,7 +467,30 @@ export class VideoStreamEngine {
     signal: AbortSignal,
     generation: number,
   ): Promise<readonly H264AccessUnit[]> {
-    if (intent.frame.keyframe) return [intent];
+    if (intent.frame.keyframe) {
+      if (intent.frame.decodeTimestampNs === undefined) return [intent];
+      const reader = this.reader();
+      if (!reader) return [intent];
+      this.publishIfCurrent(generation, { phase: "seeking.reading" });
+      const read = await this.readRange(
+        reader,
+        intent.timeNs,
+        intent.timeNs + REORDERED_KEYFRAME_LOOKAHEAD_NS,
+        signal,
+      );
+      const units = uniqueDecodeSortedAccessUnits([intent, ...read]);
+      if (!units[0]?.frame.keyframe || units[0].timeNs !== intent.timeNs) {
+        throw new VideoDependencyWaitError(
+          "Waiting for the H.264 runway keyframe",
+        );
+      }
+      if (units.length > MAX_H264_GOP_ACCESS_UNITS) {
+        throw new VideoDependencyWaitError(
+          "H.264 dependency chain exceeds the bounded decode budget",
+        );
+      }
+      return units;
+    }
     const reader = this.reader();
     if (!reader || reader.timelineStartTimeNs === null) {
       throw new VideoDependencyWaitError("Waiting for an H.264 keyframe");

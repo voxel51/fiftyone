@@ -180,6 +180,26 @@ describe("WebCodecsH264Decoder", () => {
     actor.close();
   });
 
+  it("feeds reorder successors before awaiting an opening keyframe", async () => {
+    const harness = fakeWebCodecs({ holdOutputsUntilSubmissions: 2 });
+    const actor = new WebCodecsH264Decoder(harness.environment);
+    const output = await actor.decode(
+      [
+        unit(0, true, "avc1.4D001F", 0),
+        unit(1_000_000, false, undefined, 1_000_000),
+      ],
+      {
+        signal: new AbortController().signal,
+        targetTimeNs: 0n,
+      },
+    );
+
+    expect(harness.instances[0].decode).toHaveBeenCalledTimes(2);
+    expect(harness.instances[0].flush).not.toHaveBeenCalled();
+    output.close();
+    actor.close();
+  });
+
   it("fails stalled B-frame progress at the transaction boundary", async () => {
     vi.useFakeTimers();
     const harness = fakeWebCodecs({ shouldOutput: () => false });
@@ -286,6 +306,7 @@ describe("WebCodecsH264Decoder", () => {
 
 function fakeWebCodecs(
   options: {
+    readonly holdOutputsUntilSubmissions?: number;
     readonly isSecureContext?: boolean;
     readonly outputGate?: Promise<void>;
     readonly shouldOutput?: (submission: number) => boolean;
@@ -297,6 +318,10 @@ function fakeWebCodecs(
   const frames: Array<{
     readonly closed: () => boolean;
     readonly frame: VideoFrame;
+  }> = [];
+  const queuedOutputs: Array<{
+    readonly decoder: FakeDecoder;
+    readonly chunk: FakeChunk;
   }> = [];
   const instances: Array<{
     readonly close: ReturnType<typeof vi.fn>;
@@ -332,22 +357,31 @@ function fakeWebCodecs(
       outstanding += 1;
       maximumOutstanding = Math.max(maximumOutstanding, outstanding);
       if (options.shouldOutput && !options.shouldOutput(submission)) return;
-      void Promise.resolve(options.outputGate).then(() => {
-        outstanding -= 1;
-        let closed = false;
-        const frame = {
-          close: () => {
-            closed = true;
-          },
-          codedHeight: 480,
-          codedWidth: 640,
-          displayHeight: 480,
-          displayWidth: 640,
-          timestamp: chunk.timestamp,
-        } as unknown as VideoFrame;
-        frames.push({ closed: () => closed, frame });
-        this.init.output(frame);
-      });
+      queuedOutputs.push({ chunk, decoder: this });
+      if (
+        this.decode.mock.calls.length <
+        (options.holdOutputsUntilSubmissions ?? 1)
+      ) {
+        return;
+      }
+      for (const queued of queuedOutputs.splice(0)) {
+        void Promise.resolve(options.outputGate).then(() => {
+          outstanding -= 1;
+          let closed = false;
+          const frame = {
+            close: () => {
+              closed = true;
+            },
+            codedHeight: 480,
+            codedWidth: 640,
+            displayHeight: 480,
+            displayWidth: 640,
+            timestamp: queued.chunk.timestamp,
+          } as unknown as VideoFrame;
+          frames.push({ closed: () => closed, frame });
+          queued.decoder.init.output(frame);
+        });
+      }
     });
     readonly flush = vi.fn(async () => {
       this.keyRequired = true;
