@@ -614,6 +614,14 @@ describe("LeRobot format adapter", () => {
       });
       expect(first).toMatchObject({
         frameTimeNs: 0n,
+        nativeVideo: {
+          endTimeSeconds: 1,
+          source: {
+            sourceId: "video",
+            url: "memory://video",
+          },
+          startTimeSeconds: 0,
+        },
         nextStartTimeNs: 500_000_000n,
         status: "ready",
         streamSourceName: "observation.images.test",

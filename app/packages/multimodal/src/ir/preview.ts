@@ -1,3 +1,4 @@
+import type { ByteSourceDescriptor } from "./bytes";
 import type { CameraVisualization, PointCloudVisualization } from "./frames";
 import type { EpisodeManifest, StreamId } from "./manifest";
 import type { EpisodeTimeline } from "./playback";
@@ -17,6 +18,13 @@ export type EpisodePosterFrame =
 /** Adapter-produced outcome for one lightweight episode preview read. */
 export type EpisodePreviewReadStatus = "empty" | "ready" | "unavailable";
 
+/** Browser-native video source scoped to one half-open episode interval. */
+export interface EpisodePreviewNativeVideo {
+  readonly endTimeSeconds: number;
+  readonly source: ByteSourceDescriptor;
+  readonly startTimeSeconds: number;
+}
+
 /** Cloneable result handed from a format preview provider to the grid. */
 export interface EpisodePreviewReadResult {
   /** Manifest learned while opening the source, normally only on first read. */
@@ -27,6 +35,8 @@ export interface EpisodePreviewReadResult {
   readonly bootstrapTimeRange?: TimeWindow;
   readonly frame: EpisodePosterFrame | null;
   readonly frameTimeNs?: bigint;
+  /** Optional native-video path used only by lightweight grid playback. */
+  readonly nativeVideo?: EpisodePreviewNativeVideo;
   readonly nextStartTimeNs?: bigint;
   /** Selected stream identity in this episode, if one was resolved. */
   readonly streamId: StreamId | null;

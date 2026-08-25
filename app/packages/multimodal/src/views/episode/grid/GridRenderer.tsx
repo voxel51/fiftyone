@@ -56,6 +56,7 @@ import {
   useGridPosterProviderDescriptor,
   useProvidedGridPoster,
 } from "./use-grid-poster-provider";
+import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
 
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
 // the one hovered cell staleness-marks every visible point-cloud cell, so
@@ -384,6 +385,12 @@ export function GridRenderer({
         >
           <Spinner size={Size.Xs} />
         </span>
+      ) : null}
+      {preview.isPlaying && preview.nativeVideo ? (
+        <LeRobotGridHoverVideo
+          key={`${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.startTimeSeconds}:${preview.nativeVideo.endTimeSeconds}`}
+          video={preview.nativeVideo}
+        />
       ) : null}
     </div>
   );

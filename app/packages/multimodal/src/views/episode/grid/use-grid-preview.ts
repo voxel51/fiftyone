@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type ByteSourceDescriptor,
   type EpisodePosterFrame,
+  type EpisodePreviewNativeVideo,
   type EpisodePreviewReadResult,
 } from "../../../ir";
 import type { EpisodePreviewSession } from "../../../ports";
@@ -30,6 +31,7 @@ export interface GridPreviewSnapshot {
   readonly error: string | null;
   readonly frame: EpisodePosterFrame | null;
   readonly hasPreviewStreams: boolean;
+  readonly nativeVideo: EpisodePreviewNativeVideo | null;
   readonly streamId: string | null;
   readonly streamSourceName: string | null;
   readonly streamSourceNames: readonly string[];
@@ -41,6 +43,7 @@ export interface GridPreviewSnapshot {
  */
 export interface GridPreviewState extends GridPreviewSnapshot {
   readonly isBuffering: boolean;
+  readonly isPlaying: boolean;
   pause(): void;
   play(): void;
 }
@@ -84,6 +87,7 @@ const IDLE_PREVIEW_STATE: GridPreviewSnapshot = {
   error: null,
   frame: null,
   hasPreviewStreams: false,
+  nativeVideo: null,
   streamId: null,
   streamSourceName: null,
   streamSourceNames: [],
@@ -298,6 +302,7 @@ export function useGridPreview({
       !source ||
       !previewSession ||
       state.status !== "ready" ||
+      state.nativeVideo !== null ||
       initialLoadInFlightRef.current
     ) {
       return undefined;
@@ -434,13 +439,20 @@ export function useGridPreview({
     sourceFactsScope,
     startBuffering,
     state.status,
+    state.nativeVideo,
   ]);
 
   const visibleState =
     stateOwnerKey === cacheRequestKey
       ? state
       : seededSnapshot(source, cachedPoster);
-  return { ...visibleState, isBuffering, pause, play };
+  return {
+    ...visibleState,
+    isBuffering,
+    isPlaying: enabled && stateOwnerKey === cacheRequestKey && playing,
+    pause,
+    play,
+  };
 }
 
 function seededSnapshot(
@@ -456,6 +468,7 @@ function seededSnapshot(
     error: null,
     frame: null,
     hasPreviewStreams: cachedPoster.streamSourceNames.length > 0,
+    nativeVideo: null,
     streamId: cachedPoster.streamId,
     streamSourceName: cachedPoster.streamSourceName,
     streamSourceNames: cachedPoster.streamSourceNames,
@@ -576,6 +589,7 @@ function snapshotFromResult(
     error: null,
     frame: timestampedFrame,
     hasPreviewStreams: result.streamSourceNames.length > 0,
+    nativeVideo: result.nativeVideo ?? null,
     streamId: result.streamId,
     streamSourceName: result.streamSourceName,
     streamSourceNames: result.streamSourceNames,

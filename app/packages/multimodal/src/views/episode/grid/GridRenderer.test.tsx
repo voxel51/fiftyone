@@ -21,7 +21,11 @@ import {
   gridLiveLeaseStats,
   resetGridLiveLeasesForTests,
 } from "../../../visualization/webgpu/webgpu-live-lease";
-import type { ByteSourceDescriptor, EpisodePosterFrame } from "../../../ir";
+import type {
+  ByteSourceDescriptor,
+  EpisodePosterFrame,
+  EpisodePreviewNativeVideo,
+} from "../../../ir";
 import {
   gridPreviewStateKey,
   pointCloudPoseKey,
@@ -89,6 +93,8 @@ const previewHarness = vi.hoisted(() => ({
     frame: null as EpisodePosterFrame | null,
     hasPreviewStreams: false,
     isBuffering: false,
+    isPlaying: false,
+    nativeVideo: null as EpisodePreviewNativeVideo | null,
     pause: vi.fn(),
     play: vi.fn(),
     streamId: null as string | null,
@@ -206,6 +212,10 @@ vi.mock("./use-grid-poster-provider", () => ({
   useProvidedGridPoster: () => providerHarness.poster,
 }));
 
+vi.mock("./LeRobotGridHoverVideo", () => ({
+  LeRobotGridHoverVideo: () => <div data-testid="lerobot-grid-hover-video" />,
+}));
+
 vi.mock("./grid-camera-state", () => ({
   useGridCameraPose: vi.fn(() => [
     cameraPoseHarness.pose,
@@ -320,6 +330,8 @@ afterEach(() => {
   previewHarness.preview.frame = null;
   previewHarness.preview.hasPreviewStreams = false;
   previewHarness.preview.isBuffering = false;
+  previewHarness.preview.isPlaying = false;
+  previewHarness.preview.nativeVideo = null;
   previewHarness.preview.status = "idle";
   previewHarness.preview.streamId = null;
   previewHarness.preview.streamSourceName = null;
@@ -621,6 +633,41 @@ describe("GridRenderer", () => {
 
     expect(screen.queryByTestId("bitmap-cached-image-view")).toBeNull();
     expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
+  });
+
+  it("mounts native LeRobot playback over the retained poster only while playing", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.frame = videoFrame(new Uint8Array([9, 9, 9]));
+    previewHarness.preview.nativeVideo = {
+      endTimeSeconds: 37.5,
+      source: { sourceId: "video", url: "/asset/video.mp4" },
+      startTimeSeconds: 14.2,
+    };
+    previewHarness.preview.status = "ready";
+    previewHarness.preview.streamId = "/cam/video";
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.queryByTestId("lerobot-grid-hover-video")).toBeNull();
+
+    previewHarness.preview.isPlaying = true;
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByTestId("lerobot-grid-hover-video")).toBeTruthy();
+
+    previewHarness.preview.isPlaying = false;
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.queryByTestId("lerobot-grid-hover-video")).toBeNull();
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
   });
 
   it("shows a tiny buffering indicator over the last rendered frame", () => {

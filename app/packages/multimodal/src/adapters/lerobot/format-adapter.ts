@@ -17,6 +17,7 @@ import {
   type DecodedOutput,
   type EncodedVideoVisualization,
   type EpisodeManifest,
+  type EpisodePreviewNativeVideo,
   type EpisodePosterFrame,
   type EpisodePreviewReadResult,
   type RawObjectNode,
@@ -283,6 +284,10 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
       frames = batch.frames;
       break;
     }
+    const nativeVideo = await this.session.resolveNativePreviewVideo(
+      selected.id,
+      options.signal,
+    );
     this.ensureOpen();
     throwIfAborted(options.signal);
     const initialized = this.initializedStreams.has(selected.id);
@@ -304,6 +309,7 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
       bootstrapTimeRange: this.session.manifest.timeRange,
       frame,
       frameTimeNs: decoded?.timestampNs,
+      ...(nativeVideo ? { nativeVideo } : {}),
       nextStartTimeNs:
         nextStartTimeNs !== undefined &&
         nextStartTimeNs <= selected.timeRange.endNs
@@ -493,6 +499,23 @@ class LeRobotEpisodeSession implements EpisodeSession {
       readRequests: this.readRequests,
       returnedBatches: this.returnedBatches,
       transferredBytes: this.transferredBytes,
+    };
+  }
+
+  async resolveNativePreviewVideo(
+    streamId: string,
+    signal?: AbortSignal,
+  ): Promise<EpisodePreviewNativeVideo | undefined> {
+    const binding = this.videoBindings.get(streamId);
+    if (!binding) return undefined;
+    const source = await this.state.source.assets.resolve(binding.asset.id, {
+      signal,
+    });
+    throwIfAborted(signal);
+    return {
+      endTimeSeconds: binding.toSeconds,
+      source,
+      startTimeSeconds: binding.fromSeconds,
     };
   }
 
