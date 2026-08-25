@@ -36,8 +36,7 @@ async def test_bridge_coalesces_chunks_and_counts_bytes():
     await asyncio.to_thread(produce)
 
     chunks = await consumer
-    assert b"".join(chunks) == b"abcdefg"
-    assert all(len(chunk) <= 4 for chunk in chunks)
+    assert chunks == [b"abcd", b"efg"]
     assert bridge.bytes_written == 7
     assert totals[-1] == 7
     assert bridge.wait(timeout=0)
@@ -95,3 +94,23 @@ async def test_closing_iterator_cancels_blocked_writes():
 
     assert stopped.is_set()
     assert bridge.cancelled
+
+
+def test_backpressure_callback_can_stop_blocked_writes():
+    checks = []
+
+    def stop():
+        checks.append(True)
+        raise RuntimeError("stop producer")
+
+    bridge = StreamingBridge(
+        chunk_size=2,
+        max_chunks=1,
+        on_backpressure=stop,
+    )
+    bridge.sink.write(b"ab")
+
+    with pytest.raises(RuntimeError, match="stop producer"):
+        bridge.sink.write(b"cd")
+
+    assert checks == [True]

@@ -8,6 +8,7 @@
 import asyncio
 import queue
 import threading
+import time
 
 
 _END = object()
@@ -24,6 +25,8 @@ class StreamingBridge:
         max_chunks (8): maximum number of queued chunks
         on_bytes_written (None): optional callback receiving total bytes
             accepted from the producer
+        on_backpressure (None): optional callback invoked at most once per
+            second while a producer is blocked by the consumer
     """
 
     def __init__(
@@ -31,6 +34,7 @@ class StreamingBridge:
         chunk_size=256 * 1024,
         max_chunks=8,
         on_bytes_written=None,
+        on_backpressure=None,
     ):
         if chunk_size <= 0:
             raise ValueError("chunk_size must be positive")
@@ -41,6 +45,8 @@ class StreamingBridge:
         self._producer_done = threading.Event()
         self._consumer_done = threading.Event()
         self._error = None
+        self._on_backpressure = on_backpressure
+        self._last_backpressure_check = 0.0
         self.sink = StreamingSink(
             self, chunk_size, on_bytes_written=on_bytes_written
         )
@@ -69,7 +75,7 @@ class StreamingBridge:
     def abort(self, error):
         """Aborts the iterator with a producer failure."""
 
-        if self._producer_done.is_set():
+        if self._consumer_done.is_set():
             return
         self._error = error
         self._cancelled.set()
@@ -88,8 +94,8 @@ class StreamingBridge:
         self._producer_done.set()
         self._consumer_done.set()
 
-    def wait(self, timeout=None):
-        """Blocks until the consumer finishes or disconnects."""
+    def wait(self, timeout):
+        """Blocks up to ``timeout`` seconds for the consumer to finish."""
 
         return self._consumer_done.wait(timeout=timeout)
 
@@ -115,7 +121,13 @@ class StreamingBridge:
                 self._queue.put(item, timeout=0.1)
                 return
             except queue.Full:
-                continue
+                now = time.monotonic()
+                if (
+                    self._on_backpressure is not None
+                    and now - self._last_backpressure_check >= 1
+                ):
+                    self._last_backpressure_check = now
+                    self._on_backpressure()
 
     def _discard_queued(self):
         while True:
