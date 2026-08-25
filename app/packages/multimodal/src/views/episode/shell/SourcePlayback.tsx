@@ -106,6 +106,7 @@ export const TRANSITION_STATUS_DELAY_MS = 200;
 interface ReadyInventory {
   readonly hasNumericSeries: boolean;
   readonly hasRawRecords: boolean;
+  readonly hasStateAction: boolean;
   readonly hasTransformTopology: boolean;
   readonly recordingFacts?: EpisodeRecordingFacts;
   readonly sources: readonly SceneSource[];
@@ -278,6 +279,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
         ? {
             hasNumericSeries: session?.numericSeries !== undefined,
             hasRawRecords: session?.rawRecords !== undefined,
+            hasStateAction: session?.stateAction !== undefined,
             hasTransformTopology: session?.transformTopology !== undefined,
             recordingFacts: session?.manifest?.recordingFacts,
             sources,
@@ -290,6 +292,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       session?.numericSeries,
       session?.rawRecords,
       session?.manifest?.recordingFacts,
+      session?.stateAction,
       session?.transformTopology,
       session?.terminology,
       sources,
@@ -306,6 +309,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     return {
       hasNumericSeries: false,
       hasRawRecords: false,
+      hasStateAction: false,
       hasTransformTopology: false,
       recordingFacts: manifest.recordingFacts,
       sources,
@@ -425,6 +429,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       tileTypesFor({
         hasNumericSeries: shellInventory?.hasNumericSeries ?? false,
         hasRawRecords: shellInventory?.hasRawRecords ?? false,
+        hasStateAction: shellInventory?.hasStateAction ?? false,
         hasTransformTopology: shellInventory?.hasTransformTopology ?? false,
         sourceTypes: shellSources.map((source) => source.type),
       }),

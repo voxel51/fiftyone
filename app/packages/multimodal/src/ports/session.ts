@@ -24,6 +24,7 @@ import type {
   EpisodeTransformTopologyEdgeObservation,
   EpisodeTransformTopologyFrameUse,
 } from "../ir";
+import type { StateActionCapability } from "./state-action";
 
 /** Four proven scheduling lanes exposed by every episode session. */
 export type ReadPriority = "bulk" | "current" | "idle" | "playback";
@@ -491,6 +492,7 @@ export interface EpisodeSession {
   readonly playback?: PlaybackReadCapability;
   readonly pointCloudProjection?: PointCloudProjectionCapability;
   readonly rawRecords?: RawRecordCapability;
+  readonly stateAction?: StateActionCapability;
   readonly synchronizedRead?: SynchronizedReadAcceleration;
   readonly terminology?: EpisodeTerminology;
   readonly transformRead?: TransformReadAcceleration;
