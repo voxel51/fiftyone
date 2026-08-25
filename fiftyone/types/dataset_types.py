@@ -663,7 +663,7 @@ class CVATVideoDataset(VideoLabelsDataset):
 class FiftyOneImageLabelsDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in
-    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
+    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/main/docs/image_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneImageLabelsDataset-import>` for importing
     datasets of this type, and see
@@ -685,7 +685,7 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
 class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
     """A labeled dataset consisting of videos and their associated labels
     stored in
-    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/main/docs/video_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneVideoLabelsDataset-import>` for importing
     datasets of this type, and see

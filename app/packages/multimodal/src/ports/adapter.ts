@@ -23,12 +23,23 @@ export interface AssetResolver {
   ): Promise<ByteSourceDescriptor>;
 }
 
+/** Format-neutral source facts resolved before an adapter opens. */
+export interface EpisodeSourceHints {
+  readonly adapterId: string;
+  readonly manifestHint?: EpisodeManifest;
+  readonly playbackHint?: EpisodeTimeline;
+}
+
 /** Format-neutral source supplied to an adapter. */
 export interface EpisodeSource {
   readonly assets: AssetResolver;
   readonly episodeId: string;
   readonly manifestHint?: EpisodeManifest;
   readonly playbackHint?: EpisodeTimeline;
+  /** Resolves one durable hint bundle without replacing this source object. */
+  resolveHints?(
+    options?: EpisodeOpenOptions,
+  ): Promise<EpisodeSourceHints | null>;
 }
 
 /** Browser-safe logical-media identity supplied by FiftyOne transport. */

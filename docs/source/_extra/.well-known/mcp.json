@@ -1,0 +1,23 @@
+{
+    "description": "MCP server for working with FiftyOne. See https://docs.voxel51.com/agents/using_agents.html for full setup instructions.",
+    "servers": [
+        {
+            "name": "io.github.voxel51/fiftyone-mcp-server",
+            "description": "Control FiftyOne computer vision datasets through AI assistants using 80+ operators: load datasets, run model inference, evaluate predictions, find duplicates, and drive the FiftyOne App.",
+            "repository": {
+                "url": "https://github.com/voxel51/fiftyone-mcp-server",
+                "source": "github"
+            },
+            "packages": [
+                {
+                    "registryType": "pypi",
+                    "identifier": "fiftyone-mcp-server",
+                    "transport": {
+                        "type": "stdio"
+                    }
+                }
+            ],
+            "documentation": "https://docs.voxel51.com/agents/using_agents.html"
+        }
+    ]
+}

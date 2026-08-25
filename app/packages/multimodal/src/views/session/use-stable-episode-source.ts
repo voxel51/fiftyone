@@ -3,7 +3,11 @@ import { useMemo, useRef } from "react";
 
 import type { ByteSourceDescriptor } from "../../ir";
 import type { EpisodeSource } from "../../ports";
-import { episodeSourceAccessKey } from "../../runtime";
+import { episodeSourceAccessKey } from "../../runtime/episode-resources";
+import {
+  OSS_SOURCE_FACTS_CACHE_PARTITION,
+  type SourceFactsScope,
+} from "../../runtime/source-facts";
 import {
   episodeByteSourceFromContext,
   episodeManifestSourceFromContext,
@@ -14,13 +18,24 @@ import {
 export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   readonly byteSource: ByteSourceDescriptor | null;
   readonly episodeSource: EpisodeSource | null;
+  readonly sourceFactsScope: SourceFactsScope;
 } {
   const next = episodeByteSourceFromContext(ctx);
-  const mediaReference = ctx.media.mediaReference;
+  const datasetId = ctx.dataset.datasetId;
+  const mediaField = ctx.media?.field ?? null;
+  const mediaReference = ctx.media?.mediaReference;
+  const sourceFactsScope = useMemo(
+    () => ({
+      cachePartition: OSS_SOURCE_FACTS_CACHE_PARTITION,
+      datasetId,
+      mediaField,
+    }),
+    [datasetId, mediaField],
+  );
   const sourceKey = mediaReference
     ? JSON.stringify([
         "media-reference",
-        ctx.dataset.datasetId,
+        datasetId,
         ctx.sample.sample._id,
         mediaReference.kind,
         mediaReference.version,
@@ -49,8 +64,10 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   const episodeSource = useMemo(
     () =>
       manifestSource ??
-      (byteSource ? episodeSourceFromByteSource(byteSource) : null),
-    [byteSource, manifestSource],
+      (byteSource
+        ? episodeSourceFromByteSource(byteSource, sourceFactsScope)
+        : null),
+    [byteSource, manifestSource, sourceFactsScope],
   );
-  return { byteSource, episodeSource };
+  return { byteSource, episodeSource, sourceFactsScope };
 }

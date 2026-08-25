@@ -2,9 +2,14 @@ import type {
   GridPosterCacheEntry,
   GridPosterCacheKey,
 } from "./grid-poster-cache";
+import {
+  createIndexedDbConnection,
+  requestResult,
+  transactionDone,
+} from "../../../runtime/persistence/indexeddb";
 
 const MIB = 1024 * 1024;
-const DATABASE_NAME = "fiftyone-multimodal-grid-posters";
+export const GRID_POSTER_DATABASE_NAME = "fiftyone-multimodal-grid-posters";
 const DATABASE_VERSION = 1;
 const ENTRY_STORE = "entries";
 const RECENCY_STORE = "recency";
@@ -37,36 +42,41 @@ export interface GridPosterPersistence {
   put(key: GridPosterCacheKey, entry: GridPosterCacheEntry): Promise<void>;
 }
 
+/** Testable limits and factory for the grid-poster repository. */
+export interface GridPosterPersistenceOptions {
+  readonly factory?: IDBFactory | null;
+  readonly maxEntries?: number;
+  readonly maxSizeBytes?: number;
+}
+
 /**
  * Creates the reload-surviving grid-poster tier. Every operation is
  * best-effort: storage denial, quota pressure, corruption, and unsupported
  * runtimes all degrade to a miss without affecting preview rendering.
  */
-function createIndexedDbGridPosterPersistence(): GridPosterPersistence {
-  let databasePromise: Promise<IDBDatabase | null> | null = null;
+export function createIndexedDbGridPosterPersistence(
+  options: GridPosterPersistenceOptions = {},
+): GridPosterPersistence {
+  const maxEntries = options.maxEntries ?? DEFAULT_MAX_ENTRIES;
+  const maxSizeBytes = options.maxSizeBytes ?? DEFAULT_MAX_SIZE_BYTES;
+  const connection = createIndexedDbConnection({
+    name: GRID_POSTER_DATABASE_NAME,
+    ...(options.factory !== undefined
+      ? { resolveFactory: () => options.factory }
+      : {}),
+    upgrade: upgradeGridPosterDatabase,
+    version: DATABASE_VERSION,
+  });
   const pendingReads = new Map<
     GridPosterCacheKey,
     Promise<GridPosterCacheEntry | null>
   >();
   let evictionChain = Promise.resolve();
 
-  const open = () => {
-    if (databasePromise) return databasePromise;
-    const invalidate = () => {
-      if (databasePromise === current) databasePromise = null;
-    };
-    const current = openDatabase(invalidate).then((database) => {
-      if (!database) invalidate();
-      return database;
-    });
-    databasePromise = current;
-    return current;
-  };
-
   const read = async (
     key: GridPosterCacheKey,
   ): Promise<GridPosterCacheEntry | null> => {
-    const database = await open();
+    const database = await connection.open();
     if (!database) return null;
     try {
       const stored = await readStoredEntry(database, key);
@@ -94,19 +104,16 @@ function createIndexedDbGridPosterPersistence(): GridPosterPersistence {
     },
 
     async put(key, entry) {
-      if (
-        !validEntry(entry) ||
-        entry.bytes.byteLength > DEFAULT_MAX_SIZE_BYTES
-      ) {
+      if (!validEntry(entry) || entry.bytes.byteLength > maxSizeBytes) {
         return;
       }
-      const database = await open();
+      const database = await connection.open();
       if (!database) return;
       try {
         const totals = await writeStoredEntry(database, key, entry, Date.now());
         if (
-          totals.entryCount <= DEFAULT_MAX_ENTRIES &&
-          totals.sizeBytes <= DEFAULT_MAX_SIZE_BYTES
+          totals.entryCount <= maxEntries &&
+          totals.sizeBytes <= maxSizeBytes
         ) {
           return;
         }
@@ -114,13 +121,7 @@ function createIndexedDbGridPosterPersistence(): GridPosterPersistence {
         // race totals or run several cursor sweeps at once.
         evictionChain = evictionChain
           .catch(() => undefined)
-          .then(() =>
-            enforceBudget(
-              database,
-              DEFAULT_MAX_ENTRIES,
-              DEFAULT_MAX_SIZE_BYTES,
-            ),
-          );
+          .then(() => enforceBudget(database, maxEntries, maxSizeBytes));
         await evictionChain;
       } catch {
         // The memory tier has already accepted the poster. Persistence is an
@@ -142,55 +143,19 @@ export function resetGridPosterPersistenceForTests(
   singleton = persistence ?? createIndexedDbGridPosterPersistence();
 }
 
-function openDatabase(onClose: () => void): Promise<IDBDatabase | null> {
-  const factory = (globalThis as typeof globalThis & { indexedDB?: IDBFactory })
-    .indexedDB;
-  if (!factory) return Promise.resolve(null);
-
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (database: IDBDatabase | null) => {
-      if (settled) {
-        database?.close();
-        return;
-      }
-      settled = true;
-      resolve(database);
-    };
-    let request: IDBOpenDBRequest;
-    try {
-      request = factory.open(DATABASE_NAME, DATABASE_VERSION);
-    } catch {
-      finish(null);
-      return;
-    }
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(ENTRY_STORE)) {
-        database.createObjectStore(ENTRY_STORE);
-      }
-      if (!database.objectStoreNames.contains(RECENCY_STORE)) {
-        const store = database.createObjectStore(RECENCY_STORE, {
-          keyPath: "key",
-        });
-        store.createIndex(RECENCY_INDEX, "lastAccessedAt");
-      }
-      if (!database.objectStoreNames.contains(STATE_STORE)) {
-        database.createObjectStore(STATE_STORE);
-      }
-    };
-    request.onsuccess = () => {
-      const database = request.result;
-      database.onclose = onClose;
-      database.onversionchange = () => {
-        database.close();
-        onClose();
-      };
-      finish(database);
-    };
-    request.onerror = () => finish(null);
-    request.onblocked = () => finish(null);
-  });
+function upgradeGridPosterDatabase(database: IDBDatabase): void {
+  if (!database.objectStoreNames.contains(ENTRY_STORE)) {
+    database.createObjectStore(ENTRY_STORE);
+  }
+  if (!database.objectStoreNames.contains(RECENCY_STORE)) {
+    const store = database.createObjectStore(RECENCY_STORE, {
+      keyPath: "key",
+    });
+    store.createIndex(RECENCY_INDEX, "lastAccessedAt");
+  }
+  if (!database.objectStoreNames.contains(STATE_STORE)) {
+    database.createObjectStore(STATE_STORE);
+  }
 }
 
 async function readStoredEntry(
@@ -430,22 +395,4 @@ function normalizeTotals(
     entryCount: Math.max(0, Math.floor(totals?.entryCount ?? 0)),
     sizeBytes: Math.max(0, Math.floor(totals?.sizeBytes ?? 0)),
   };
-}
-
-function requestResult<T>(request: IDBRequest): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result as T);
-    request.onerror = () =>
-      reject(request.error ?? new Error("Grid poster storage request failed"));
-  });
-}
-
-function transactionDone(transaction: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    transaction.onabort = () =>
-      reject(transaction.error ?? new Error("Grid poster transaction aborted"));
-    transaction.onerror = () =>
-      reject(transaction.error ?? new Error("Grid poster transaction failed"));
-  });
 }

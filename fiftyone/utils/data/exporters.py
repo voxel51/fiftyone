@@ -3608,7 +3608,7 @@ class ImageSegmentationDirectoryExporter(
 
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes a labeled image dataset to disk with labels stored
-    in `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
+    in `ETA ImageLabels format <https://github.com/voxel51/eta/blob/main/docs/image_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneImageLabelsDataset-export>` for format
     details.
@@ -3727,7 +3727,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
 class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
     """Exporter that writes a labeled video dataset with labels stored in
-    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/main/docs/video_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneVideoLabelsDataset-export>` for format
     details.

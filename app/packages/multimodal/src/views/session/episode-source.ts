@@ -14,7 +14,12 @@ import type {
   MediaReferenceDescriptor,
   SampleDescriptor,
 } from "../../ports";
-import { getSourceBootstrap } from "../../runtime";
+import {
+  getSourceSessionHints,
+  resolveSourceFactsHints,
+  SOURCE_FACTS_MCAP_ADAPTER_ID,
+  type SourceFactsScope,
+} from "../../runtime";
 import { createAbortError } from "../../utils/cancellation";
 
 /** Builds the format-neutral sample facts used by lazy adapter detection. */
@@ -22,8 +27,8 @@ export function sampleDescriptorFromContext(
   ctx: SampleRendererProps["ctx"],
 ): SampleDescriptor {
   return {
-    mediaReference: ctx.media.mediaReference,
-    mediaType: ctx.media.mediaType ?? ctx.dataset.mediaType,
+    mediaReference: ctx.media?.mediaReference,
+    mediaType: ctx.media?.mediaType ?? ctx.dataset.mediaType,
     path: ctx.media?.path ?? undefined,
   };
 }
@@ -61,8 +66,9 @@ export function episodeByteSourceFromSample(
 /** Wraps one physical recording in the multi-asset episode port. */
 export function episodeSourceFromByteSource(
   source: ByteSourceDescriptor,
+  sourceFactsScope?: SourceFactsScope,
 ): EpisodeSource {
-  const bootstrap = getSourceBootstrap(source);
+  const hints = getSourceSessionHints(source, SOURCE_FACTS_MCAP_ADAPTER_ID);
   return {
     assets: {
       list: async () => [
@@ -79,8 +85,19 @@ export function episodeSourceFromByteSource(
       },
     },
     episodeId: source.sourceId,
-    ...(bootstrap?.manifest ? { manifestHint: bootstrap.manifest } : {}),
-    ...(bootstrap?.timeline ? { playbackHint: bootstrap.timeline } : {}),
+    ...(hints?.manifestHint ? { manifestHint: hints.manifestHint } : {}),
+    ...(hints?.playbackHint ? { playbackHint: hints.playbackHint } : {}),
+    ...(sourceFactsScope
+      ? {
+          resolveHints: (options) =>
+            resolveSourceFactsHints(
+              source,
+              sourceFactsScope,
+              SOURCE_FACTS_MCAP_ADAPTER_ID,
+              options,
+            ),
+        }
+      : {}),
   };
 }
 
@@ -202,7 +219,7 @@ function awaitCaller<T>(
 export function episodeManifestSourceFromContext(
   ctx: SampleRendererProps["ctx"],
 ): ManifestEpisodeSource | null {
-  const mediaReference = ctx.media.mediaReference;
+  const mediaReference = ctx.media?.mediaReference;
   if (!mediaReference) return null;
 
   return episodeSourceFromMediaReference(

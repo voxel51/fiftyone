@@ -8,6 +8,12 @@ import type {
 } from "../ir";
 import { byteSourceAccessKey } from "../query/bytes";
 import { publishEpisodeTimeRange } from "./episode-time-range-registry";
+import {
+  normalizeSourceFactsPayload,
+  SOURCE_FACTS_MCAP_ADAPTER_ID,
+  type SourceFactsPayload,
+  type SourceFactsTrust,
+} from "./source-facts";
 
 /**
  * Keep a full grid viewport plus virtualization overscan for first-open and
@@ -28,61 +34,129 @@ export interface SourceBootstrap {
   readonly timeRange?: TimeWindow;
 }
 
-type CacheEntry = SourceBootstrap & {
+/** Trusted adapter inputs projected separately from the bootstrap UI. */
+export interface SourceSessionHints {
+  readonly manifestHint?: EpisodeManifest;
+  readonly playbackHint?: EpisodeTimeline;
+}
+
+interface DurableFactLane {
+  readonly adapterId: string;
+  readonly facts: SourceFactsPayload;
+  /** Opaque identity of the disk entry that produced this lane. */
+  readonly revision?: object;
+  readonly trust: Exclude<SourceFactsTrust, "current">;
+}
+
+interface CacheEntry {
+  readonly currentFacts?: SourceFactsPayload;
+  readonly durableFacts?: DurableFactLane;
+  readonly poster?: EpisodePosterFrame;
   readonly posterBytes: number;
-};
+  readonly posterStreamId?: string;
+  readonly previewReadComplete?: boolean;
+}
 
 const entries = new Map<string, CacheEntry>();
+const snapshots = new WeakMap<CacheEntry, SourceBootstrap>();
 let retainedPosterBytes = 0;
 const listenersBySource = new Map<string, Set<() => void>>();
 
 function notifySourceListeners(key: string): void {
-  for (const listener of listenersBySource.get(key) ?? []) {
-    listener();
-  }
+  for (const listener of listenersBySource.get(key) ?? []) listener();
 }
 
-/** Publishes cloneable source facts learned by a lightweight grid. */
+/** Publishes cloneable current-page source facts or poster state. */
 export function publishSourceBootstrap(
   source: ByteSourceDescriptor,
   bootstrap: SourceBootstrap,
 ): void {
   const key = sourceBootstrapKey(source);
-  const current = entries.get(key);
-  if (current) {
-    retainedPosterBytes -= current.posterBytes;
-    entries.delete(key);
-  }
-
+  const current = removeEntry(key);
   const replacesPoster = bootstrap.poster !== undefined;
   const poster = bootstrap.poster ?? current?.poster;
   const posterStreamId =
     bootstrap.posterStreamId ??
     (replacesPoster ? undefined : current?.posterStreamId);
-  const manifest = bootstrap.manifest ?? current?.manifest;
-  const timeline = bootstrap.timeline ?? current?.timeline;
-  const timeRange = bootstrap.timeRange ?? current?.timeRange;
-  const previewReadComplete =
-    bootstrap.previewReadComplete ?? current?.previewReadComplete;
+  const hasFacts =
+    bootstrap.manifest !== undefined ||
+    bootstrap.timeline !== undefined ||
+    bootstrap.timeRange !== undefined;
+  const currentFacts = hasFacts
+    ? (normalizeSourceFactsPayload({
+        ...current?.currentFacts,
+        ...(bootstrap.manifest ? { manifest: bootstrap.manifest } : {}),
+        ...(bootstrap.timeline ? { timeline: bootstrap.timeline } : {}),
+        ...(bootstrap.timeRange ? { timeRange: bootstrap.timeRange } : {}),
+      }) ?? undefined)
+    : current?.currentFacts;
   const next: CacheEntry = {
-    ...(manifest ? { manifest } : {}),
+    ...(currentFacts ? { currentFacts } : {}),
+    // Any live fact publication is authoritative for this access path. Drop
+    // the durable lane rather than field-merging provisional data into trust.
+    ...(!hasFacts && current?.durableFacts
+      ? { durableFacts: current.durableFacts }
+      : {}),
     ...(poster ? { poster } : {}),
     ...(posterStreamId ? { posterStreamId } : {}),
-    ...(previewReadComplete ? { previewReadComplete } : {}),
-    ...(timeRange ? { timeRange } : {}),
-    ...(timeline ? { timeline } : {}),
+    ...((bootstrap.previewReadComplete ?? current?.previewReadComplete)
+      ? { previewReadComplete: true }
+      : {}),
     posterBytes: retainedBinaryBytes(poster ?? null),
   };
-  entries.set(key, next);
-  retainedPosterBytes += next.posterBytes;
-  const evicted = evictBootstrapEntries();
-  notifySourceListeners(key);
-  // An eviction is a change too: a subscriber holding the evicted source's
-  // snapshot must re-read (and see null), not keep rendering stale facts
-  for (const evictedKey of evicted) {
-    if (evictedKey !== key) {
-      notifySourceListeners(evictedKey);
-    }
+  storeEntry(key, next);
+}
+
+/** Replaces all durable facts with one authoritative current-page payload. */
+export function publishCurrentSourceFacts(
+  source: ByteSourceDescriptor,
+  facts: SourceFactsPayload,
+): void {
+  const normalized = normalizeSourceFactsPayload(facts);
+  if (!normalized) return;
+  const key = sourceBootstrapKey(source);
+  const current = removeEntry(key);
+  storeEntry(key, {
+    ...(current ?? { posterBytes: 0 }),
+    currentFacts: normalized,
+    durableFacts: undefined,
+  });
+}
+
+/** Publishes one wholesale durable lane without affecting grid range state. */
+export function publishDurableSourceFacts(
+  source: ByteSourceDescriptor,
+  lane: DurableFactLane,
+): void {
+  const normalized = normalizeSourceFactsPayload(lane.facts);
+  if (!normalized) return;
+  const key = sourceBootstrapKey(source);
+  const current = removeEntry(key);
+  storeEntry(key, {
+    ...(current ?? { posterBytes: 0 }),
+    durableFacts: { ...lane, facts: normalized },
+  });
+}
+
+/** Removes durable UI facts only when they still belong to one disk read. */
+export function retractDurableSourceFacts(
+  source: ByteSourceDescriptor,
+  revision: object,
+): void {
+  const key = sourceBootstrapKey(source);
+  const entry = entries.get(key);
+  if (!entry || entry.durableFacts?.revision !== revision) return;
+  removeEntry(key);
+  const { durableFacts: _durableFacts, ...retained } = entry;
+  if (
+    retained.currentFacts ||
+    retained.poster ||
+    retained.posterStreamId ||
+    retained.previewReadComplete
+  ) {
+    storeEntry(key, retained);
+  } else {
+    notifySourceListeners(key);
   }
 }
 
@@ -112,35 +186,53 @@ export function publishEpisodePreviewBootstrap(
   if (timeRange) publishEpisodeTimeRange(source.sourceId, timeRange);
 }
 
-/** Returns the current source bootstrap without changing its LRU position. */
+/** Returns the UI bootstrap projection without changing its LRU position. */
 export function peekSourceBootstrap(
   source: ByteSourceDescriptor,
 ): SourceBootstrap | null {
   return copyEntry(entries.get(sourceBootstrapKey(source)));
 }
 
-/** Returns the current source bootstrap and promotes it as recently used. */
+/** Returns the UI bootstrap projection and promotes it as recently used. */
 export function getSourceBootstrap(
   source: ByteSourceDescriptor,
 ): SourceBootstrap | null {
   const key = sourceBootstrapKey(source);
   const entry = entries.get(key);
   if (!entry) return null;
-
   entries.delete(key);
   entries.set(key, entry);
   return copyEntry(entry);
 }
 
-/** Returns a stable cache snapshot suitable for `useSyncExternalStore`. */
-export function getSourceBootstrapSnapshot(
+/** Returns only current or content-validated facts eligible for adapter use. */
+export function getSourceSessionHints(
   source: ByteSourceDescriptor,
-): SourceBootstrap | null {
-  return entries.get(sourceBootstrapKey(source)) ?? null;
+  adapterId: string,
+): SourceSessionHints | null {
+  const entry = entries.get(sourceBootstrapKey(source));
+  if (!entry) return null;
+  const durable =
+    entry.durableFacts?.trust === "validated" &&
+    entry.durableFacts.adapterId === adapterId
+      ? entry.durableFacts.facts
+      : undefined;
+  const manifest = entry.currentFacts?.manifest ?? durable?.manifest;
+  const timeline = entry.currentFacts?.timeline ?? durable?.timeline;
+  const playbackHint = validPlaybackHint(adapterId, manifest, timeline)
+    ? timeline
+    : undefined;
+  if (!manifest && !playbackHint) return null;
+  return {
+    ...(manifest ? { manifestHint: manifest } : {}),
+    ...(playbackHint ? { playbackHint } : {}),
+  };
 }
 
-/** Subscribes to one source's bootstrap publishes, for
- * `useSyncExternalStore` alongside {@link getSourceBootstrapSnapshot}. */
+/** Stable cache snapshot reader suitable for `useSyncExternalStore`. */
+export const getSourceBootstrapSnapshot = peekSourceBootstrap;
+
+/** Subscribes to one source's bootstrap publishes. */
 export function subscribeSourceBootstrap(
   source: ByteSourceDescriptor,
   listener: () => void,
@@ -151,38 +243,92 @@ export function subscribeSourceBootstrap(
   listenersBySource.set(key, listeners);
   return () => {
     listeners.delete(listener);
-    if (listeners.size === 0) {
-      listenersBySource.delete(key);
-    }
+    if (listeners.size === 0) listenersBySource.delete(key);
   };
 }
 
-/** Cache identity for source facts, including transport validators. */
+/** Cache identity for current-page source facts, including access validators. */
 export function sourceBootstrapKey(source: ByteSourceDescriptor): string {
   return JSON.stringify([byteSourceAccessKey(source), source.etag ?? null]);
-}
-
-function copyEntry(entry: CacheEntry | undefined): SourceBootstrap | null {
-  if (!entry) return null;
-  return {
-    ...(entry.manifest ? { manifest: entry.manifest } : {}),
-    ...(entry.poster ? { poster: entry.poster } : {}),
-    ...(entry.posterStreamId ? { posterStreamId: entry.posterStreamId } : {}),
-    ...(entry.previewReadComplete
-      ? { previewReadComplete: entry.previewReadComplete }
-      : {}),
-    ...(entry.timeRange ? { timeRange: entry.timeRange } : {}),
-    ...(entry.timeline ? { timeline: entry.timeline } : {}),
-  };
 }
 
 /** Clears every source bootstrap between tests. */
 export function resetSourceBootstrapCacheForTests(): void {
   entries.clear();
   retainedPosterBytes = 0;
-  for (const key of listenersBySource.keys()) {
-    notifySourceListeners(key);
+  for (const key of listenersBySource.keys()) notifySourceListeners(key);
+}
+
+/** Counts unique retained binary allocations in an arbitrary poster graph. */
+export function retainedBinaryBytes(value: unknown): number {
+  const buffers = new Set<ArrayBufferLike>();
+  collectArrayBuffers(value, buffers, new Set<object>());
+  let total = 0;
+  for (const buffer of buffers) total += buffer.byteLength;
+  return total;
+}
+
+function removeEntry(key: string): CacheEntry | undefined {
+  const current = entries.get(key);
+  if (!current) return undefined;
+  entries.delete(key);
+  retainedPosterBytes -= current.posterBytes;
+  return current;
+}
+
+function storeEntry(key: string, entry: CacheEntry): void {
+  entries.set(key, entry);
+  retainedPosterBytes += entry.posterBytes;
+  const evicted = evictBootstrapEntries();
+  notifySourceListeners(key);
+  for (const evictedKey of evicted) {
+    if (evictedKey !== key) notifySourceListeners(evictedKey);
   }
+}
+
+function copyEntry(entry: CacheEntry | undefined): SourceBootstrap | null {
+  if (!entry) return null;
+  const retained = snapshots.get(entry);
+  if (retained) return retained;
+  const facts = uiFacts(entry);
+  const snapshot = {
+    ...(facts?.manifest ? { manifest: facts.manifest } : {}),
+    ...(entry.poster ? { poster: entry.poster } : {}),
+    ...(entry.posterStreamId ? { posterStreamId: entry.posterStreamId } : {}),
+    ...(entry.previewReadComplete ? { previewReadComplete: true } : {}),
+    ...(facts?.timeRange ? { timeRange: facts.timeRange } : {}),
+    ...(facts?.timeline ? { timeline: facts.timeline } : {}),
+  };
+  snapshots.set(entry, snapshot);
+  return snapshot;
+}
+
+function uiFacts(entry: CacheEntry): SourceFactsPayload | null {
+  const current = entry.currentFacts;
+  const durable = entry.durableFacts?.facts;
+  if (!current && !durable) return null;
+  const manifest = current?.manifest ?? durable?.manifest;
+  const timeline = current?.timeline ?? durable?.timeline;
+  const timeRange = current?.timeRange ?? durable?.timeRange;
+  return {
+    ...(manifest ? { manifest } : {}),
+    ...(timeline ? { timeline } : {}),
+    ...(timeRange ? { timeRange } : {}),
+  };
+}
+
+function validPlaybackHint(
+  adapterId: string,
+  manifest: EpisodeManifest | undefined,
+  timeline: EpisodeTimeline | undefined,
+): timeline is EpisodeTimeline {
+  if (!timeline) return false;
+  if (manifest && manifest.timeDomain.id !== timeline.timeDomainId)
+    return false;
+  return (
+    adapterId !== SOURCE_FACTS_MCAP_ADAPTER_ID ||
+    timeline.timeDomainId === "log"
+  );
 }
 
 function evictBootstrapEntries(): string[] {
@@ -202,15 +348,6 @@ function evictBootstrapEntries(): string[] {
   return evicted;
 }
 
-/** Counts unique retained binary allocations in an arbitrary poster graph. */
-export function retainedBinaryBytes(value: unknown): number {
-  const buffers = new Set<ArrayBufferLike>();
-  collectArrayBuffers(value, buffers, new Set<object>());
-  let total = 0;
-  for (const buffer of buffers) total += buffer.byteLength;
-  return total;
-}
-
 function collectArrayBuffers(
   value: unknown,
   buffers: Set<ArrayBufferLike>,
@@ -221,7 +358,6 @@ function collectArrayBuffers(
     return;
   }
   if (!value || typeof value !== "object" || visited.has(value)) return;
-
   visited.add(value);
   for (const child of Object.values(value)) {
     collectArrayBuffers(child, buffers, visited);
