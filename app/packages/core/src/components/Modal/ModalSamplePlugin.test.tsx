@@ -28,6 +28,10 @@ vi.mock("@fiftyone/state", () => ({
   selectedMediaField: () => "selected-media-field",
 }));
 
+vi.mock("@fiftyone/annotation", () => ({
+  AnnotationTopBar: () => null,
+}));
+
 vi.mock("@fiftyone/components", () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => children,
 }));
