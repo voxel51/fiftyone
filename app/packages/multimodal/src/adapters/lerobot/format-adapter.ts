@@ -106,6 +106,19 @@ interface LeRobotInfo {
   readonly robot_type?: string;
 }
 
+type LeRobotRawStreamBinding = {
+  readonly schemaName: string;
+  readonly sourceName: string;
+  readonly streamId: string;
+} & (
+  | { readonly kind: "row" }
+  | {
+      readonly feature: LeRobotFeature;
+      readonly featureName: string;
+      readonly kind: "feature";
+    }
+);
+
 interface TimelineRow {
   readonly frameIndex: number;
   readonly localTimeNs: bigint;
@@ -991,8 +1004,37 @@ class LeRobotEpisodeSession implements EpisodeSession {
 
   private createRawRecordCapability(): RawRecordCapability {
     const rows = this.state.episodeRows.rows;
+    const streamBindings: readonly LeRobotRawStreamBinding[] = [
+      {
+        kind: "row",
+        schemaName: "LeRobotDataset v3 row",
+        sourceName: "Episode rows",
+        streamId: RAW_STREAM_ID,
+      },
+      ...[...this.scalarFeatures.entries()].map(([streamId, feature]) => {
+        const featureName = featureNameForStream(streamId);
+        return {
+          feature,
+          featureName,
+          kind: "feature" as const,
+          schemaName: `${feature.dtype}${shapeSuffix(feature.shape)}`,
+          sourceName: featureName,
+          streamId,
+        };
+      }),
+    ];
+    const requireStream = (stream: string) => {
+      const binding = streamBindings.find(
+        (candidate) => candidate.streamId === stream,
+      );
+      if (!binding) {
+        throw new Error(`Unknown LeRobot raw-record stream '${stream}'`);
+      }
+      return binding;
+    };
     const readAt = async (
       rowOffset: number,
+      binding: LeRobotRawStreamBinding,
       options: {
         readonly includeFullJson?: boolean;
         readonly prune?: RawRecordPruneBudgets;
@@ -1004,31 +1046,43 @@ class LeRobotEpisodeSession implements EpisodeSession {
         this.state.io,
         this.state.episodeRows.dataAsset,
         this.state.readObjects,
-        undefined,
+        binding.kind === "feature"
+          ? ["timestamp", "frame_index", binding.featureName]
+          : undefined,
         options.signal,
         rowOffset,
         rowOffset + 1,
       );
       const row = selected[0];
       const timeline = rows[rowOffset];
-      if (!row || !timeline) return emptyRawRecord(this.manifest.timeRange);
-      const pruned = pruneRawRecord(row, options.prune);
+      if (!row || !timeline) {
+        return emptyRawRecord(this.manifest.timeRange, binding);
+      }
+      const record =
+        binding.kind === "feature"
+          ? scalarRawRecord(
+              binding.featureName,
+              binding.feature,
+              row[binding.featureName],
+            )
+          : row;
+      const pruned = pruneRawRecord(record, options.prune);
       const next = rows[rowOffset + 1]?.localTimeNs;
       return {
         cursor: rawCursor(rowOffset),
         encoding: "parquet",
         ...(options.includeFullJson
-          ? { fullJson: boundedJson(row, options.prune) }
+          ? { fullJson: boundedJson(record, options.prune) }
           : {}),
         root: pruned.root,
-        schemaName: "LeRobotDataset v3 row",
+        schemaName: binding.schemaName,
         sequence: timeline.frameIndex,
-        sourceName: "Episode rows",
+        sourceName: binding.sourceName,
         sourceTimestamps: {
           lerobot: secondsToNs(timeline.sourceTimeSeconds),
         },
         status: "ok",
-        streamId: RAW_STREAM_ID,
+        streamId: binding.streamId,
         timestampNs: timeline.localTimeNs,
         truncated: pruned.truncated,
         validFromNs: timeline.localTimeNs,
@@ -1042,30 +1096,32 @@ class LeRobotEpisodeSession implements EpisodeSession {
     return {
       listRawRecordStreams: async ({ signal } = {}) => {
         throwIfAborted(signal);
-        return [
-          {
-            encoding: "parquet",
-            sampleCount: rows.length,
-            schemaName: "LeRobotDataset v3 row",
-            sourceName: "Episode rows",
-            streamId: RAW_STREAM_ID,
-            supportsExactBrowsing: true,
-          },
-        ];
+        return streamBindings.map((binding) => ({
+          encoding: "parquet",
+          sampleCount: rows.length,
+          schemaName: binding.schemaName,
+          sourceName: binding.sourceName,
+          streamId: binding.streamId,
+          supportsExactBrowsing: true,
+        }));
       },
       readRawRecord: async (request) => {
-        requireRawStream(request.stream);
+        const binding = requireStream(request.stream);
         const offset = rowAtOrBefore(rows, request.timestampNs);
         return offset === null
-          ? emptyRawRecord(this.manifest.timeRange)
-          : readAt(offset, request);
+          ? emptyRawRecord(this.manifest.timeRange, binding)
+          : readAt(offset, binding, request);
       },
       readRawRecordAtCursor: async (request) => {
-        requireRawStream(request.stream);
-        return readAt(parseRawCursor(request.cursor, rows.length), request);
+        const binding = requireStream(request.stream);
+        return readAt(
+          parseRawCursor(request.cursor, rows.length),
+          binding,
+          request,
+        );
       },
       readRawRecordIndexWindow: async (request) => {
-        requireRawStream(request.stream);
+        requireStream(request.stream);
         throwIfAborted(request.signal);
         const selected =
           request.anchorCursor !== undefined
@@ -2087,12 +2143,6 @@ function parseRawCursor(cursor: string, rowCount: number) {
   return value;
 }
 
-function requireRawStream(stream: string) {
-  if (stream !== RAW_STREAM_ID) {
-    throw new Error(`Unknown LeRobot raw-record stream '${stream}'`);
-  }
-}
-
 function rowAtOrBefore(rows: readonly TimelineRow[], timestampNs: bigint) {
   if (!rows.length) return null;
   if (timestampNs < rows[0].localTimeNs) return null;
@@ -2106,16 +2156,33 @@ function rowAtOrBefore(rows: readonly TimelineRow[], timestampNs: bigint) {
   return Math.max(0, low - 1);
 }
 
-function emptyRawRecord(timeRange: TimeWindow): RawRecordResult {
+function emptyRawRecord(
+  timeRange: TimeWindow,
+  binding: LeRobotRawStreamBinding,
+): RawRecordResult {
   return {
     encoding: "parquet",
-    schemaName: "LeRobotDataset v3 row",
-    sourceName: "Episode rows",
+    schemaName: binding.schemaName,
+    sourceName: binding.sourceName,
     status: "empty",
-    streamId: RAW_STREAM_ID,
+    streamId: binding.streamId,
     validFromNs: timeRange.startNs,
     validUntilNs: timeRange.endNs,
   };
+}
+
+function scalarRawRecord(
+  featureName: string,
+  feature: LeRobotFeature,
+  value: unknown,
+): Record<string, unknown> {
+  const values = Array.isArray(value) ? value.flat(Infinity) : [value];
+  return Object.fromEntries(
+    scalarFieldNames(featureName, feature).map((field, index) => [
+      field,
+      values[index],
+    ]),
+  );
 }
 
 interface PruneState {

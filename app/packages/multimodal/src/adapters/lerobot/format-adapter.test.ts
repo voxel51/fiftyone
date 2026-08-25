@@ -561,7 +561,7 @@ describe("LeRobot format adapter", () => {
     }
   });
 
-  it("reads embedded images and exact bounded raw rows", async () => {
+  it("reads embedded images and exact bounded raw feature records", async () => {
     const session = await createLeRobotFormatAdapter({
       readParquetObjects,
     }).open(source, io);
@@ -581,6 +581,25 @@ describe("LeRobot format adapter", () => {
         rowStart: 0,
       });
 
+      await expect(session.rawRecords?.listRawRecordStreams()).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            sourceName: "Episode rows",
+            streamId: "lerobot:rows",
+          }),
+          expect.objectContaining({
+            schemaName: "float32[2]",
+            sourceName: "action",
+            streamId: "lerobot:action",
+          }),
+          expect.objectContaining({
+            schemaName: "float32[2]",
+            sourceName: "observation.state",
+            streamId: "lerobot:observation.state",
+          }),
+        ]),
+      );
+
       await expect(
         session.rawRecords?.readRawRecordAtCursor?.({
           cursor: "row:1",
@@ -594,7 +613,30 @@ describe("LeRobot format adapter", () => {
         status: "ok",
         timestampNs: 33_333_335n,
       });
+      await expect(
+        session.rawRecords?.readRawRecordAtCursor?.({
+          cursor: "row:1",
+          includeFullJson: true,
+          stream: "lerobot:action",
+        }),
+      ).resolves.toMatchObject({
+        cursor: "row:1",
+        fullJson: expect.stringContaining('"action.joint_a": 5'),
+        root: {
+          entries: [
+            ["action.joint_a", { value: "5", valueType: "number" }],
+            ["action.joint_b", { value: "6", valueType: "number" }],
+          ],
+        },
+        schemaName: "float32[2]",
+        sequence: 1,
+        sourceName: "action",
+        status: "ok",
+        streamId: "lerobot:action",
+        timestampNs: 33_333_335n,
+      });
       expect(readParquetObjects.mock.lastCall?.[0]).toMatchObject({
+        columns: ["timestamp", "frame_index", "action"],
         rowEnd: 2,
         rowStart: 1,
       });
