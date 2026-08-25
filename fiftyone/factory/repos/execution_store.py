@@ -167,9 +167,13 @@ class AbstractExecutionStoreRepo(ABC):
         expected: Any,
         value: Any,
         ttl: Optional[int] = None,
-        policy: str = "persist",
+        policy: Optional[str] = None,
     ) -> bool:
-        """Atomically replaces a key whose value matches ``expected``."""
+        """Atomically replaces a key whose value matches ``expected``.
+
+        Existing expiration and policy metadata is preserved when ``ttl`` and
+        ``policy`` are omitted.
+        """
 
         pass
 
@@ -645,26 +649,35 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         expected,
         value,
         ttl=None,
-        policy="persist",
+        policy=None,
     ):
         now = datetime.utcnow()
-        expiration = KeyDocument.get_expiration(ttl)
-        policy = "evict" if ttl is not None or policy == "evict" else "persist"
+        identity = {
+            "store_name": store_name,
+            "key": key,
+            "dataset_id": self._dataset_id,
+        }
+        current = self._collection.find_one(identity, {"_id": 1, "value": 1})
+        if current is None or current.get("value") != expected:
+            return False
+
+        # Query with the value read from Mongo so embedded-document field order
+        # cannot turn a semantically equal caller value into a false mismatch.
+        query = {**identity, "value": current["value"]}
+        if current.get("_id") is not None:
+            query["_id"] = current["_id"]
+        values = {
+            "value": value,
+            "updated_at": now,
+        }
+        if ttl is not None:
+            values["expires_at"] = KeyDocument.get_expiration(ttl)
+            values["policy"] = "evict"
+        elif policy is not None:
+            values["policy"] = "evict" if policy == "evict" else "persist"
         document = self._collection.find_one_and_update(
-            {
-                "store_name": store_name,
-                "key": key,
-                "dataset_id": self._dataset_id,
-                "value": expected,
-            },
-            {
-                "$set": {
-                    "value": value,
-                    "updated_at": now,
-                    "expires_at": expiration,
-                    "policy": policy,
-                }
-            },
+            query,
+            {"$set": values},
             return_document=ReturnDocument.AFTER,
         )
         return document is not None
@@ -833,15 +846,13 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
         deleted = 0
         for key in list(self._docs):
             _, key_name, dataset_id = key
-            if (
-                dataset_id == self._dataset_id
-                and self._docs[key].get("policy") == "evict"
-                and (
-                    self._docs[key].get("expires_at") is not None
-                    or store_name is None
-                    or store_name == key[0]
-                )
-            ):
+            document = self._docs[key]
+            matches_store = store_name is None or store_name == key[0]
+            is_cache = (
+                document.get("policy") == "evict"
+                or document.get("expires_at") is not None
+            )
+            if dataset_id == self._dataset_id and matches_store and is_cache:
                 del self._docs[key]
                 deleted += 1
         return deleted
@@ -954,7 +965,7 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
         expected,
         value,
         ttl=None,
-        policy="persist",
+        policy=None,
     ):
         composite_key = self._doc_key(store_name, key)
         with self._lock:
@@ -963,10 +974,13 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
                 return False
             document["value"] = copy.deepcopy(value)
             document["updated_at"] = datetime.utcnow()
-            document["expires_at"] = KeyDocument.get_expiration(ttl)
-            document["policy"] = (
-                "evict" if ttl is not None or policy == "evict" else "persist"
-            )
+            if ttl is not None:
+                document["expires_at"] = KeyDocument.get_expiration(ttl)
+                document["policy"] = "evict"
+            elif policy is not None:
+                document["policy"] = (
+                    "evict" if policy == "evict" else "persist"
+                )
             return True
 
     def touch_key(self, store_name, key, ttl=None):

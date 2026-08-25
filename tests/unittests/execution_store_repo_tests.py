@@ -90,6 +90,25 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
             )
         )
         self.assertEqual(self.repo.get_key(store_name, key).value, updated)
+        expires_at = self.repo.get_key(store_name, key).expires_at
+        self.assertTrue(
+            self.repo.compare_and_set_key(store_name, key, updated, original)
+        )
+        preserved = self.repo.get_key(store_name, key)
+        self.assertEqual(preserved.expires_at, expires_at)
+        self.assertEqual(preserved.policy, KeyPolicy.EVICT)
+        self.assertTrue(
+            self.repo.compare_and_set_key(
+                store_name,
+                key,
+                original,
+                updated,
+                policy="persist",
+            )
+        )
+        explicit = self.repo.get_key(store_name, key)
+        self.assertEqual(explicit.expires_at, expires_at)
+        self.assertEqual(explicit.policy, KeyPolicy.PERSIST)
         self.assertTrue(self.repo.touch_key(store_name, key, ttl=120))
         self.assertFalse(self.repo.touch_key(store_name, "missing", ttl=120))
 
@@ -186,12 +205,25 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
 
     def test_clear_cache_with_store_name(self):
         store_name = "specific_cache_store"
+        other_store_name = "other_cache_store"
         key = "key_to_clear_specific"
         self.repo.set_cache_key(store_name, key, "value_to_clear_specific")
+        self.repo.set_cache_key(other_store_name, key, "value_to_keep")
         self.assertTrue(self.repo.has_key(store_name, key))
         self.repo.clear_cache(store_name)
         self.assertFalse(self.repo.has_key(store_name, key))
+        self.assertTrue(self.repo.has_key(other_store_name, key))
         key_count = self.repo.count_keys(store_name)
         self.assertEqual(
             key_count, 0, "Expected no keys to remain after clearing cache."
         )
+
+    def test_clear_cache_removes_ttl_key_with_persist_policy(self):
+        store_name = "ttl_cache_store"
+        key = "ttl_key"
+        self.repo.set_key(store_name, key, "value", ttl=60)
+        self.repo.update_policy(store_name, key, "persist")
+
+        self.repo.clear_cache(store_name)
+
+        self.assertFalse(self.repo.has_key(store_name, key))

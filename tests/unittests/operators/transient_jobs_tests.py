@@ -99,6 +99,28 @@ def test_cancellation_is_visible_across_coordinators():
 
     assert requested["state"] == "running"
     assert requested["cancel_requested"] is True
+    observed = coordinator.get("job")
+    assert observed["state"] == "running"
+    assert observed["cancel_requested"] is True
     canceled = coordinator.cancel("job", claim["fencing_token"])
     assert canceled["state"] == "canceled"
     assert canceled["lease_expires_at"] is None
+
+
+def test_expired_job_can_be_failed_without_a_worker_token(monkeypatch):
+    now = datetime.datetime(2026, 8, 25, tzinfo=datetime.timezone.utc)
+    monkeypatch.setattr(
+        "fiftyone.operators.store.transient_jobs._now", lambda: now
+    )
+    coordinator = _coordinator()
+    coordinator.create(job_id="job", owner="user", scope={}, payload={})
+    claim = coordinator.claim("job")
+
+    assert coordinator.fail_expired("job", "worker lost") is None
+    now += datetime.timedelta(seconds=11)
+    failed = coordinator.fail_expired("job", "worker lost")
+
+    assert failed["state"] == "failed"
+    assert failed["error"] == "worker lost"
+    assert failed["lease_expires_at"] is None
+    assert coordinator.complete("job", claim["fencing_token"]) is None

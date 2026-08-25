@@ -151,6 +151,31 @@ class TransientJobCoordinator:
 
         return self._finish(job_id, fencing_token, "failed", error=str(error))
 
+    def fail_expired(self, job_id, error):
+        """Fails a running job whose worker lease has expired.
+
+        This is a coordinator recovery transition rather than a worker
+        mutation, so it is guarded by the expired lease instead of a fencing
+        token. A current worker still owns every mutation while its lease is
+        valid.
+        """
+
+        def fail_job(job, now):
+            expires_at = job.get("lease_expires_at")
+            if (
+                job["state"] != "running"
+                or expires_at is None
+                or _utc(expires_at) > now
+            ):
+                return None
+            job["state"] = "failed"
+            job["lease_expires_at"] = None
+            job["result"] = None
+            job["error"] = str(error)
+            return job
+
+        return self._mutate(job_id, fail_job)
+
     def _finish(
         self, job_id, fencing_token, state, *, result=None, error=None
     ):

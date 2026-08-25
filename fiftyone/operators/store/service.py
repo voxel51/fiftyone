@@ -211,7 +211,7 @@ class ExecutionStoreService(object):
         expected: Any,
         value: Any,
         ttl: Optional[int] = None,
-        policy: str = "persist",
+        policy: Optional[str] = None,
     ) -> bool:
         """Atomically replaces a key whose value matches ``expected``."""
 

@@ -151,10 +151,12 @@ class ExecutionStore(object):
         ttl: Optional[int] = None,
         policy=None,
     ) -> bool:
-        """Atomically replaces a key whose value matches ``expected``."""
+        """Atomically replaces a key whose value matches ``expected``.
 
-        if policy is None:
-            policy = self._default_policy
+        Existing expiration and policy metadata is preserved when ``ttl`` and
+        ``policy`` are omitted.
+        """
+
         return self._store_service.compare_and_set_key(
             self.store_name,
             key,
