@@ -30,6 +30,7 @@ import {
   type TimeWindow,
 } from "../../ir";
 import {
+  EpisodeExactCursorError,
   EpisodeReadCancelledError,
   type AssetDescriptor,
   type ByteResources,
@@ -47,6 +48,10 @@ import {
   type ReadRequest,
   type SynchronizedPlaybackBatchReadRequest,
   type SynchronizedPlaybackReadOptions,
+  type StateActionCapability,
+  type StateActionFeatureSchema,
+  type StateActionRow,
+  type StateActionSchema,
   type SynchronizedPlaybackReadRequest,
   type SourceStats,
 } from "../../ports";
@@ -69,8 +74,11 @@ const INFO_ROLE = "dataset-info";
 const EPISODE_METADATA_ROLE = "episode-metadata";
 const DATA_ROLE = "tabular-frame-data";
 const IMAGE_ROLE = "image-payload";
+const TASKS_ROLE = "tasks-metadata";
 const VIDEO_ROLE = "video-stream";
 const RAW_STREAM_ID = "lerobot:rows";
+const STATE_FEATURE_NAME = "observation.state";
+const ACTION_FEATURE_NAME = "action";
 const NS_PER_SECOND = 1_000_000_000;
 const MP4_INDEX_CHUNK_BYTES = 1024 * 1024;
 const MAX_VIDEO_SPAN_CACHE_BYTES = 64 * 1024 * 1024;
@@ -87,9 +95,23 @@ type ParquetReader = (
   options: ParquetReaderOptions,
 ) => Promise<Record<string, unknown>[]>;
 
+/** Byte ceilings that switch the state/action slab to bounded block reads. */
+export interface StateActionSlabLimits {
+  /** Rows-per-block read budget once the whole slab exceeds the ceiling. */
+  readonly blockBytes: number;
+  /** Largest estimated slab decoded as one physical read. */
+  readonly maxSingleSlabBytes: number;
+}
+
+const DEFAULT_STATE_ACTION_SLAB_LIMITS: StateActionSlabLimits = {
+  blockBytes: 8 * 1024 * 1024,
+  maxSingleSlabBytes: 32 * 1024 * 1024,
+};
+
 /** Test seams for the browser-native LeRobot readers. */
 export interface CreateLeRobotFormatAdapterOptions {
   readonly readParquetObjects?: ParquetReader;
+  readonly stateActionSlabLimits?: StateActionSlabLimits;
 }
 
 interface LeRobotFeature {
@@ -187,6 +209,8 @@ export function createLeRobotFormatAdapter(
   options: CreateLeRobotFormatAdapterOptions = {},
 ): FormatAdapter {
   const readObjects = options.readParquetObjects ?? parquetReadObjects;
+  const stateActionSlabLimits =
+    options.stateActionSlabLimits ?? DEFAULT_STATE_ACTION_SLAB_LIMITS;
   const open = async (
     source: EpisodeSource,
     io: ByteResources,
@@ -229,6 +253,7 @@ export function createLeRobotFormatAdapter(
       io,
       readObjects,
       source,
+      stateActionSlabLimits,
     });
   };
 
@@ -359,11 +384,18 @@ class LeRobotEpisodeSession implements EpisodeSession {
   readonly playback: PlaybackReadCapability;
   readonly rawRecords: RawRecordCapability;
   readonly scalarFeatures: ReadonlyMap<string, LeRobotFeature>;
+  readonly stateAction?: StateActionCapability;
   readonly videoBindings: ReadonlyMap<string, VideoBinding>;
   private readonly rowCache = new Map<
     string,
     Promise<readonly Record<string, unknown>[]>
   >();
+  private readonly stateActionBlocks = new Map<
+    number,
+    Promise<readonly Record<string, unknown>[]>
+  >();
+  private stateActionTasks: Promise<ReadonlyMap<number, string> | null> | null =
+    null;
   private readonly videoIndexCache = new Map<string, Promise<VideoIndex>>();
   private readonly videoSpanCache = new Map<string, VideoSpanCacheEntry>();
   private decodedFrames = 0;
@@ -382,6 +414,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
       readonly io: ByteResources;
       readonly readObjects: ParquetReader;
       readonly source: EpisodeSource;
+      readonly stateActionSlabLimits: StateActionSlabLimits;
     },
   ) {
     this.info = state.info;
@@ -462,6 +495,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
       readNumericSeries: async (request) => this.readNumericSeries(request),
     };
     this.rawRecords = this.createRawRecordCapability();
+    this.stateAction = this.createStateActionCapability();
     this.playback = this.createPlaybackCapability();
   }
 
@@ -483,6 +517,8 @@ class LeRobotEpisodeSession implements EpisodeSession {
     this.disposed = true;
     this.generation += 1;
     this.rowCache.clear();
+    this.stateActionBlocks.clear();
+    this.stateActionTasks = null;
     this.videoIndexCache.clear();
     this.videoSpanCache.clear();
   }
@@ -1144,6 +1180,192 @@ class LeRobotEpisodeSession implements EpisodeSession {
         return result;
       },
     };
+  }
+
+  private createStateActionCapability(): StateActionCapability | undefined {
+    const stateFeature = this.scalarFeatures.get(
+      streamIdForFeature(STATE_FEATURE_NAME),
+    );
+    const actionFeature = this.scalarFeatures.get(
+      streamIdForFeature(ACTION_FEATURE_NAME),
+    );
+    if (!stateFeature && !actionFeature) return undefined;
+    const rows = this.state.episodeRows.rows;
+    const config: StateActionReadConfig = {
+      action: actionFeature,
+      blockRows: stateActionBlockRowCount(
+        rows.length,
+        [stateFeature, actionFeature].filter(
+          (feature): feature is LeRobotFeature => feature !== undefined,
+        ),
+        this.state.stateActionSlabLimits,
+      ),
+      columns: [
+        "timestamp",
+        "frame_index",
+        "task_index",
+        ...(stateFeature ? [STATE_FEATURE_NAME] : []),
+        ...(actionFeature ? [ACTION_FEATURE_NAME] : []),
+      ],
+      state: stateFeature,
+    };
+    const schema: StateActionSchema = {
+      ...(actionFeature
+        ? {
+            action: stateActionFeatureSchema(
+              ACTION_FEATURE_NAME,
+              actionFeature,
+            ),
+          }
+        : {}),
+      rowCount: rows.length,
+      ...(stateFeature
+        ? { state: stateActionFeatureSchema(STATE_FEATURE_NAME, stateFeature) }
+        : {}),
+    };
+    return {
+      schema,
+      readAtCursor: async (request) => {
+        this.ensureOpen();
+        throwIfAborted(request.signal);
+        return this.readStateActionRow(
+          parseStateActionCursor(request.cursor, rows.length),
+          config,
+          request.signal,
+        );
+      },
+      readAtTime: async (request) => {
+        this.ensureOpen();
+        throwIfAborted(request.signal);
+        if (request.timestampNs > this.manifest.timeRange.endNs) return null;
+        const offset = rowAtOrBefore(rows, request.timestampNs);
+        return offset === null
+          ? null
+          : this.readStateActionRow(offset, config, request.signal);
+      },
+      readIndexWindow: async (request) => {
+        this.ensureOpen();
+        throwIfAborted(request.signal);
+        const selected =
+          request.anchorCursor !== undefined
+            ? parseStateActionCursor(request.anchorCursor, rows.length)
+            : (rowAtOrBefore(rows, request.anchorTimestampNs) ?? 0);
+        const start = Math.max(0, selected - Math.max(0, request.before));
+        const end = Math.min(
+          rows.length,
+          selected + Math.max(0, request.after) + 1,
+        );
+        return {
+          entries: rows.slice(start, end).map((row) => ({
+            cursor: rawCursor(row.rowOffset),
+            timestampNs: row.localTimeNs,
+          })),
+          hasNext: end < rows.length,
+          hasPrevious: start > 0,
+          selectedCursor: rawCursor(selected),
+        };
+      },
+    };
+  }
+
+  private async readStateActionRow(
+    offset: number,
+    config: StateActionReadConfig,
+    signal?: AbortSignal,
+  ): Promise<StateActionRow> {
+    const blockIndex = Math.floor(offset / config.blockRows);
+    const [block, taskLabels] = await Promise.all([
+      waitForSharedRead(this.stateActionBlock(blockIndex, config), signal),
+      waitForSharedRead(this.stateActionTaskLabels(), signal),
+    ]);
+    throwIfAborted(signal);
+    this.ensureOpen();
+    const timeline = this.state.episodeRows.rows[offset];
+    const row = block[offset - blockIndex * config.blockRows];
+    if (!row || !timeline) {
+      throw new Error("LeRobot state/action row is unavailable");
+    }
+    const state = config.state
+      ? stateActionVector(STATE_FEATURE_NAME, config.state, row)
+      : undefined;
+    const action = config.action
+      ? stateActionVector(ACTION_FEATURE_NAME, config.action, row)
+      : undefined;
+    const taskIndex = optionalInteger(row.task_index);
+    const label =
+      taskIndex !== null
+        ? (taskLabels?.get(taskIndex) ??
+          singleEpisodeTask(this.state.episodeRows.episode))
+        : undefined;
+    return {
+      ...(action?.values ? { action: action.values } : {}),
+      cursor: rawCursor(offset),
+      ...(state?.error || action?.error
+        ? {
+            featureErrors: {
+              ...(action?.error ? { action: action.error } : {}),
+              ...(state?.error ? { state: state.error } : {}),
+            },
+          }
+        : {}),
+      frameIndex: timeline.frameIndex,
+      ...(state?.values ? { state: state.values } : {}),
+      ...(taskIndex !== null
+        ? {
+            task: {
+              index: taskIndex,
+              ...(label !== undefined ? { label } : {}),
+            },
+          }
+        : {}),
+      timestampNs: timeline.localTimeNs,
+    };
+  }
+
+  private stateActionBlock(blockIndex: number, config: StateActionReadConfig) {
+    let cached = this.stateActionBlocks.get(blockIndex);
+    if (!cached) {
+      const rowCount = this.state.episodeRows.rows.length;
+      const start = blockIndex * config.blockRows;
+      // The shared block fill is deliberately unbound from caller signals so
+      // an aborted trigger cannot poison the session-lifetime cache.
+      cached = readSelectedParquetRows(
+        this.state.source,
+        this.state.io,
+        this.state.episodeRows.dataAsset,
+        this.state.readObjects,
+        [...config.columns],
+        undefined,
+        start,
+        Math.min(rowCount, start + config.blockRows),
+      );
+      this.stateActionBlocks.set(blockIndex, cached);
+      void cached.catch(() => {
+        if (this.stateActionBlocks.get(blockIndex) === cached) {
+          this.stateActionBlocks.delete(blockIndex);
+        }
+      });
+    }
+    return cached;
+  }
+
+  private stateActionTaskLabels() {
+    if (!this.stateActionTasks) {
+      const asset = this.state.assets.find(
+        (candidate) => candidate.role === TASKS_ROLE,
+      );
+      // Task labels are a fallback ladder rung; a missing or unreadable
+      // tasks asset must never block state/action inspection.
+      this.stateActionTasks = asset
+        ? readTaskLabels(
+            this.state.source,
+            this.state.io,
+            asset,
+            this.state.readObjects,
+          ).catch(() => null)
+        : Promise.resolve(null);
+    }
+    return this.stateActionTasks;
   }
 
   private ensureReadable(
@@ -2141,6 +2363,125 @@ function parseRawCursor(cursor: string, rowCount: number) {
     throw new Error("Invalid LeRobot raw-record cursor");
   }
   return value;
+}
+
+interface StateActionReadConfig {
+  readonly action?: LeRobotFeature;
+  readonly blockRows: number;
+  readonly columns: readonly string[];
+  readonly state?: LeRobotFeature;
+}
+
+function stateActionFeatureSchema(
+  featureName: string,
+  feature: LeRobotFeature,
+): StateActionFeatureSchema {
+  const count = Math.max(1, numericElementCount(feature.shape));
+  return {
+    dimensions: Array.from({ length: count }, (_, index) => {
+      const name = feature.names?.[index];
+      return { index, ...(typeof name === "string" ? { name } : {}) };
+    }),
+    dtype: feature.dtype,
+    featureName,
+    shape: feature.shape ?? [],
+  };
+}
+
+function stateActionVector(
+  featureName: string,
+  feature: LeRobotFeature,
+  row: Record<string, unknown>,
+): { readonly error?: string; readonly values?: readonly unknown[] } {
+  if (!(featureName in row) || row[featureName] === undefined) {
+    return { error: `'${featureName}' column is missing from this row` };
+  }
+  const values = flattenStateActionSource(row[featureName]);
+  const expected = Math.max(1, numericElementCount(feature.shape));
+  if (values.length === expected) return { values };
+  return {
+    error: `'${featureName}' row has ${values.length} values but declares shape [${(
+      feature.shape ?? []
+    ).join(",")}]`,
+    values,
+  };
+}
+
+function flattenStateActionSource(value: unknown): readonly unknown[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => flattenStateActionSource(entry));
+  }
+  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
+    return [...(value as unknown as Iterable<unknown>)];
+  }
+  return [value];
+}
+
+function stateActionBlockRowCount(
+  rowCount: number,
+  features: readonly LeRobotFeature[],
+  limits: StateActionSlabLimits,
+): number {
+  const rowBytes = features.reduce(
+    (total, feature) =>
+      total +
+      Math.max(1, numericElementCount(feature.shape)) *
+        stateActionDtypeBytes(feature.dtype),
+    24,
+  );
+  if (rowBytes * rowCount <= limits.maxSingleSlabBytes) {
+    return Math.max(1, rowCount);
+  }
+  return Math.max(1, Math.floor(limits.blockBytes / rowBytes));
+}
+
+function stateActionDtypeBytes(dtype: string): number {
+  if (/64/.test(dtype)) return 8;
+  if (/32/.test(dtype)) return 4;
+  if (/16/.test(dtype)) return 2;
+  if (/^(?:bool|int8|uint8)/.test(dtype)) return 1;
+  return 8;
+}
+
+function parseStateActionCursor(cursor: string, rowCount: number): number {
+  try {
+    return parseRawCursor(cursor, rowCount);
+  } catch {
+    throw new EpisodeExactCursorError(
+      "Unknown LeRobot state/action row cursor for this episode",
+    );
+  }
+}
+
+function singleEpisodeTask(
+  episode: Record<string, unknown>,
+): string | undefined {
+  const tasks = episode.tasks;
+  return Array.isArray(tasks) &&
+    tasks.length === 1 &&
+    typeof tasks[0] === "string"
+    ? tasks[0]
+    : undefined;
+}
+
+async function readTaskLabels(
+  source: EpisodeSource,
+  io: ByteResources,
+  asset: AssetDescriptor,
+  readObjects: ParquetReader,
+): Promise<ReadonlyMap<number, string>> {
+  const rows = await readObjects({
+    columns: ["task_index", "task"],
+    file: asyncBufferForSource(asset, source, io),
+  });
+  const labels = new Map<number, string>();
+  for (const row of rows) {
+    const index = optionalInteger(row.task_index);
+    if (index !== null && typeof row.task === "string") {
+      labels.set(index, row.task);
+    }
+  }
+  return labels;
 }
 
 function rowAtOrBefore(rows: readonly TimelineRow[], timestampNs: bigint) {
