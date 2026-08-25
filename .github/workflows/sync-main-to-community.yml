@@ -1,8 +1,8 @@
-name: Sync develop to community
+name: Sync main to community
 
-# Keeps the long-lived `community` branch current with `develop` by merging
-# `develop` into `community` once a day, rather than on every push to
-# `develop`. When the merge conflicts, it posts a summary to the #community
+# Keeps the long-lived `community` branch current with `main` by merging
+# `main` into `community` once a day, rather than on every push to
+# `main`. When the merge conflicts, it posts a summary to the #community
 # Slack channel and fails so a maintainer can resolve it on the `community`
 # branch.
 
@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: sync-develop-to-community
+  group: sync-main-to-community
   cancel-in-progress: true
 
 permissions:
@@ -28,18 +28,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: develop
+          ref: main
+          # Full commit graph for the merge, blobs fetched on demand
           fetch-depth: 0
+          filter: blob:none
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
 
-      - name: Merge develop into community
+      - name: Merge main into community
         id: merge
         run: |
           git config user.name 'voxel51-bot'
           git config user.email 'bot@voxel51.com'
 
           if ! git ls-remote --exit-code origin community >/dev/null 2>&1; then
-            # First run — create community from develop. Nothing to merge.
+            # First run — create community from main. Nothing to merge.
             git push origin "HEAD:refs/heads/community"
             exit 0
           fi
@@ -47,12 +49,12 @@ jobs:
           git fetch origin community
           git checkout community
 
-          if git merge-base --is-ancestor origin/develop community; then
-            echo "community already contains develop; nothing to sync."
+          if git merge-base --is-ancestor origin/main community; then
+            echo "community already contains main; nothing to sync."
             exit 0
           fi
 
-          if git merge origin/develop --no-edit; then
+          if git merge origin/main --no-edit; then
             git push origin community
             exit 0
           fi
@@ -61,9 +63,9 @@ jobs:
           git merge --abort
 
           {
-            echo "### ⚠️ develop → community conflict"
+            echo "### ⚠️ main → community conflict"
             echo
-            echo "Merging \`develop\` into \`community\` conflicted in:"
+            echo "Merging \`main\` into \`community\` conflicted in:"
             echo
             printf '%s\n' "$conflicts" | sed 's/^/- `/; s/$/`/'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -74,7 +76,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-          echo "::error::Merging develop into community conflicted — resolve on the community branch."
+          echo "::error::Merging main into community conflicted — resolve on the community branch."
           exit 1
 
       - name: "Notify #community of conflict"
@@ -92,9 +94,9 @@ jobs:
 
           files="$(printf '%s\n' "$CONFLICTS" | sed 's/^/• /')"
           text="$(printf '%s\n' \
-            ":warning: develop → community sync conflicted" \
+            ":warning: main → community sync conflicted" \
             "" \
-            "Merging \`develop\` into \`community\` failed — resolve on the \`community\` branch." \
+            "Merging \`main\` into \`community\` failed — resolve on the \`community\` branch." \
             "" \
             "Commit: <$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$SHA|${SHA:0:9}>" \
             "Conflicting files:" \

@@ -25,10 +25,15 @@ export function createHttpByteClient(
   fetchFunction?: AbortableFetchFunction,
 ): ByteClient {
   return {
-    async stat(source) {
+    async stat(source, signal) {
+      if (signal?.aborted) {
+        throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
+      }
       const fetchBytes: AbortableFetchFunction =
         fetchFunction ?? getFetchFunctionExtended();
       const controller = new AbortController();
+      const onExternalAbort = () => controller.abort();
+      signal?.addEventListener("abort", onExternalAbort, { once: true });
 
       try {
         const { headers } = await withHttpByteReadTimeout(
@@ -59,9 +64,14 @@ export function createHttpByteClient(
             : {}),
         };
       } catch {
+        if (signal?.aborted) {
+          throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
+        }
         // HEAD is only an optimization; object stores and CORS policies often
         // block it even when ranged GETs are allowed.
         return undefined;
+      } finally {
+        signal?.removeEventListener("abort", onExternalAbort);
       }
     },
 

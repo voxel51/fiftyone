@@ -8,6 +8,8 @@ import type { EpisodePreviewSession } from "../../../ports";
 import {
   episodePreviewPlaybackDelayMs,
   publishEpisodePreviewBootstrap,
+  recordPreviewSourceFacts,
+  type SourceFactsScope,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
 import type { GridPosterCacheEntry } from "./grid-poster-cache";
@@ -70,6 +72,7 @@ export interface UseGridPreviewOptions {
     | "unavailable";
   readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
+  readonly sourceFactsScope?: SourceFactsScope;
 }
 
 /** Suppresses buffering chrome for ordinary fast grid frame reads. */
@@ -104,6 +107,7 @@ export function useGridPreview({
   previewSessionStatus = "idle",
   selectedSourceName,
   source,
+  sourceFactsScope,
 }: UseGridPreviewOptions): GridPreviewState {
   const [state, setState] = useState<GridPreviewSnapshot>(() =>
     seededSnapshot(source, cachedPoster),
@@ -163,6 +167,14 @@ export function useGridPreview({
     setStateOwnerKey(cacheRequestKey);
     setState(seededSnapshot(source, cachedPosterRef.current));
   }, [cacheRequestKey, finishBuffering, selectedSourceName, source]);
+
+  // IndexedDB hydration completes after the cache key is already mounted.
+  // Adopt that same-key poster in place without resetting a live frame or
+  // starting a second preview read.
+  useEffect(() => {
+    if (!cachedPoster || stateOwnerKey !== cacheRequestKey) return;
+    setState((current) => adoptCachedPoster(current, cachedPoster));
+  }, [cacheRequestKey, cachedPoster, stateOwnerKey]);
 
   // This effect surfaces adapter failures and unsupported preview providers
   // without exposing format details to the grid.
@@ -230,6 +242,9 @@ export function useGridPreview({
         if (active) {
           notifyReadResult(onReadResultRef.current, result);
           publishEpisodePreviewBootstrap(source, result);
+          if (sourceFactsScope) {
+            recordPreviewSourceFacts(source, sourceFactsScope, result);
+          }
           loadedRequestRef.current = {
             posterStartTimeNs,
             source,
@@ -269,6 +284,7 @@ export function useGridPreview({
     posterStartTimeNs,
     previewSession,
     source,
+    sourceFactsScope,
   ]);
 
   // This effect runs the hover playback loop: while playing, it keeps
@@ -351,6 +367,9 @@ export function useGridPreview({
 
           if (!bootstrapPublished) {
             publishEpisodePreviewBootstrap(source, result);
+            if (sourceFactsScope) {
+              recordPreviewSourceFacts(source, sourceFactsScope, result);
+            }
             bootstrapPublished = true;
           }
 
@@ -387,6 +406,7 @@ export function useGridPreview({
     playing,
     previewSession,
     source,
+    sourceFactsScope,
     startBuffering,
     state.status,
   ]);
@@ -425,6 +445,27 @@ function preservingCachedPoster(
   return current.cachedPoster
     ? current
     : { ...IDLE_PREVIEW_STATE, status: fallbackStatus };
+}
+
+function adoptCachedPoster(
+  current: GridPreviewSnapshot,
+  cachedPoster: GridPosterCacheEntry,
+): GridPreviewSnapshot {
+  if (current.cachedPoster === cachedPoster) return current;
+  return {
+    ...current,
+    cachedPoster,
+    error: current.frame ? current.error : null,
+    hasPreviewStreams:
+      current.hasPreviewStreams || cachedPoster.streamSourceNames.length > 0,
+    streamId: current.streamId ?? cachedPoster.streamId,
+    streamSourceName: current.streamSourceName ?? cachedPoster.streamSourceName,
+    streamSourceNames:
+      current.streamSourceNames.length > 0
+        ? current.streamSourceNames
+        : cachedPoster.streamSourceNames,
+    status: current.frame ? current.status : "ready",
+  };
 }
 
 function resultPreservingCachedPoster(

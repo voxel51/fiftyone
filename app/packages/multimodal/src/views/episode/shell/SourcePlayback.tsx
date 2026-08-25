@@ -24,6 +24,8 @@ import type {
 import type { SceneSource } from "../../../scene-inventory";
 import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection/scene-sources";
 import { episodeSourceAccessKey } from "../../../runtime/episode-resources";
+import { recordSessionSourceFacts } from "../../../runtime/source-facts-service";
+import type { SourceFactsScope } from "../../../runtime/source-facts";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react/playback-store-context";
 import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
 import { createScheduledSourceReadBudgetAccount } from "../../../runtime/scheduled-read-budget-account";
@@ -90,7 +92,6 @@ import {
   SourcePosterProvider,
   type SourcePosterValue,
 } from "../image/source-poster-context";
-import { EpisodeSourceReadyProvider } from "../playback/source-ready-context";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 export const TRANSITION_STATUS_DELAY_MS = 200;
@@ -139,6 +140,7 @@ export interface SourcePlaybackProps {
   /** Optional maximum expanded track-body height. */
   readonly timelineDrawerMaxSize?: number;
   readonly source: ByteSourceDescriptor | null;
+  readonly sourceFactsScope?: SourceFactsScope;
   readonly tracks?: readonly Track[];
 }
 
@@ -165,6 +167,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   session,
   sessionError = null,
   source,
+  sourceFactsScope,
   tracks,
 }) => {
   const imageAspectRatiosRef = useRef<Record<string, number>>({});
@@ -199,6 +202,18 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       releaseRetainedImageTextures();
     };
   }, []);
+
+  // This effect records authoritative session metadata off the ready path.
+  useEffect(() => {
+    if (
+      session &&
+      source &&
+      sourceFactsScope &&
+      session.manifest.episodeId === source.sourceId
+    ) {
+      recordSessionSourceFacts(source, sourceFactsScope, session);
+    }
+  }, [session, source, sourceFactsScope]);
 
   const { status, error, sources, streams, streamCount } =
     useSceneInventoryState({
@@ -467,7 +482,6 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
         cameraViewStateScopeKey={cameraViewStateScopeKey}
         sources={shellSources}
         sourcePoster={sourcePoster}
-        sourceReady={!transitioning}
         transformTopologyCapability={
           readyInventory ? (session?.transformTopology ?? null) : null
         }
@@ -642,7 +656,6 @@ const PlaybackSessionStateProviders: React.FC<{
   readonly children: React.ReactNode;
   readonly sources: readonly SceneSource[];
   readonly sourcePoster: SourcePosterValue | null;
-  readonly sourceReady: boolean;
   readonly transformTopologyCapability: NonNullable<
     EpisodeSession["transformTopology"]
   > | null;
@@ -653,39 +666,36 @@ const PlaybackSessionStateProviders: React.FC<{
   children,
   sources,
   sourcePoster,
-  sourceReady,
   transformTopologyCapability,
   transformTopologySourceKey,
   viewportScopeKey,
 }) => (
   <SourcePosterProvider value={sourcePoster}>
-    <EpisodeSourceReadyProvider ready={sourceReady}>
-      <FullHistoryInterestsProvider>
-        <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
-          <SidebarPreferencesProvider
-            scopeKey={cameraViewStateScopeKey}
-            sources={sources}
-          >
-            <Scene3dViewpointProvider>
-              <SceneFramesProvider>
-                <SceneNoticesProvider>
-                  <TileSettingsProvider>
-                    <MapViewportScopeProvider scopeKey={viewportScopeKey}>
-                      <TransformTopologyProvider
-                        capability={transformTopologyCapability}
-                        sourceKey={transformTopologySourceKey}
-                      >
-                        {children}
-                      </TransformTopologyProvider>
-                    </MapViewportScopeProvider>
-                  </TileSettingsProvider>
-                </SceneNoticesProvider>
-              </SceneFramesProvider>
-            </Scene3dViewpointProvider>
-          </SidebarPreferencesProvider>
-        </Scene3dViewStateProvider>
-      </FullHistoryInterestsProvider>
-    </EpisodeSourceReadyProvider>
+    <FullHistoryInterestsProvider>
+      <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
+        <SidebarPreferencesProvider
+          scopeKey={cameraViewStateScopeKey}
+          sources={sources}
+        >
+          <Scene3dViewpointProvider>
+            <SceneFramesProvider>
+              <SceneNoticesProvider>
+                <TileSettingsProvider>
+                  <MapViewportScopeProvider scopeKey={viewportScopeKey}>
+                    <TransformTopologyProvider
+                      capability={transformTopologyCapability}
+                      sourceKey={transformTopologySourceKey}
+                    >
+                      {children}
+                    </TransformTopologyProvider>
+                  </MapViewportScopeProvider>
+                </TileSettingsProvider>
+              </SceneNoticesProvider>
+            </SceneFramesProvider>
+          </Scene3dViewpointProvider>
+        </SidebarPreferencesProvider>
+      </Scene3dViewStateProvider>
+    </FullHistoryInterestsProvider>
   </SourcePosterProvider>
 );
 

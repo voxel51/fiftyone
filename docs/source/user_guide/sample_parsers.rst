@@ -664,7 +664,7 @@ You can use a |SampleParser| to
 | <fiftyone.utils.data.parsers.ImageDetectionSampleParser>`              |                                                                                                                 |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`ImageLabelsSampleParser                                        | Generic parser for image detection samples whose labels are stored in                                           |
-| <fiftyone.utils.data.parsers.ImageLabelsSampleParser>`                 | `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.             |
+| <fiftyone.utils.data.parsers.ImageLabelsSampleParser>`                 | `ETA ImageLabels format <https://github.com/voxel51/eta/blob/main/docs/image_labels_guide.md>`_.             |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneImageClassificationSampleParser                        | Parser for samples in FiftyOne image classification datasets. See                                               |
 | <fiftyone.utils.data.parsers.FiftyOneImageClassificationSampleParser>` | :class:`FiftyOneImageClassificationDataset <fiftyone.types.FiftyOneImageClassificationDataset>` for format      |

@@ -3543,7 +3543,7 @@ class ImageSegmentationDirectoryImporter(
 
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     """Importer for labeled image datasets whose labels are stored in
-    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
+    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/main/docs/image_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneImageLabelsDataset-import>` for format
     details.
@@ -3679,7 +3679,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
 class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     """Importer for labeled video datasets whose labels are stored in
-    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/main/docs/video_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneVideoLabelsDataset-import>` for format
     details.

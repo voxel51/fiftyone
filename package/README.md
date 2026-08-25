@@ -45,8 +45,8 @@ It is recommended to:
   download a `fiftyone` package whose dependencies have not been published yet.
 - Create the tags on a release branch and wait for builds to be published
   successfully before merging the branch.
-- Update `master` after the release has been merged into `develop`:
-  `git push origin develop:master`
+- Update `master` after the release has been merged into `main`:
+  `git push origin main:master`
 
 If the `publish` step of a workflow fails and has uploaded some (but not all)
 packages to PyPI, you will likely need to upload the rest manually (e.g. with

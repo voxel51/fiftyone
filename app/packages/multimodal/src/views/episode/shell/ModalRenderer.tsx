@@ -9,7 +9,6 @@ import {
   useSampleRendererFirstMatch,
   type TimelineSection,
 } from "../../../extensions/timeline";
-import { AdjacentSamplePrewarm } from "../playback/AdjacentSamplePrewarm";
 import { SourcePlayback } from "./SourcePlayback";
 import { sourceDisplayName } from "./source-display-name";
 import {
@@ -24,7 +23,11 @@ import { useTimeRange } from "../playback/use-time-range";
  * source-oriented host shared with the ad hoc episode panel.
  */
 const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
-  const { byteSource: source, episodeSource } = useStableEpisodeSource(ctx);
+  const {
+    byteSource: source,
+    episodeSource,
+    sourceFactsScope,
+  } = useStableEpisodeSource(ctx);
   const sampleDescriptor = sampleDescriptorFromContext(ctx);
   const sessionState = useEpisodeSession(sampleDescriptor, episodeSource);
   const timeRange = useTimeRange(sessionState.session);
@@ -88,9 +91,9 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             session={sessionState.session}
             sessionError={sessionState.error}
             source={source}
+            sourceFactsScope={sourceFactsScope}
             tracks={tracks}
           >
-            <AdjacentSamplePrewarm ctx={ctx} />
             {runtime}
           </SourcePlayback>
         )}

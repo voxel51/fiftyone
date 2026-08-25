@@ -1,9 +1,9 @@
 name: Cherry-Pick to Release
 
-# Opens the release-branch PR for a merged develop PR: cherry-picks its merge
-# result with -x, which the release gate verifies against develop. Two ways in:
-# dispatch with a PR number + target branch, or label a develop PR
-# 'cherry-pick-to-release' and the release PR opens itself when the develop PR
+# Opens the release-branch PR for a merged main PR: cherry-picks its merge
+# result with -x, which the release gate verifies against main. Two ways in:
+# dispatch with a PR number + target branch, or label a main PR
+# 'cherry-pick-to-release' and the release PR opens itself when the main PR
 # merges. Conflicts fail the run and comment on the source PR — resolving is
 # a human decision, and often the signal that the fix needs the release-only
 # escape hatch instead.
@@ -15,17 +15,17 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: "Merged develop PR number to cherry-pick"
+        description: "Merged main PR number to cherry-pick"
         required: true
       release_branch:
         description: "Target release branch, e.g. release/v1.8.0"
         required: true
-  # Fork PRs don't reach develop directly (community-branch flow), so plain
+  # Fork PRs don't reach main directly (community-branch flow), so plain
   # pull_request is enough; the rare exception can use workflow_dispatch.
   pull_request:
     types: [closed, labeled]
     branches:
-      - develop
+      - main
 
 permissions:
   contents: write
@@ -41,7 +41,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # Blobless clone: the cherry-pick needs the full commit graph for
+          # the merge-commit parent lookup, but only the blobs it touches.
           fetch-depth: 0
+          filter: blob:none
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
       - name: Cherry-pick and open PR
         env:
@@ -67,12 +70,12 @@ jobs:
             --jq '[.state, .baseRefName, .mergeCommit.oid, .title] | @tsv')
           IFS=$'\t' read -r state base sha title <<< "$fields"
 
-          if [ "$state" != "MERGED" ] || [ "$base" != "develop" ]; then
-            echo "::error::PR #$PR_NUMBER must be a merged develop PR (state=$state, base=$base)."
+          if [ "$state" != "MERGED" ] || [ "$base" != "main" ]; then
+            echo "::error::PR #$PR_NUMBER must be a merged main PR (state=$state, base=$base)."
             exit 1
           fi
 
-          git fetch --quiet origin develop "$RELEASE_BRANCH"
+          git fetch --quiet origin main "$RELEASE_BRANCH"
           git config user.name "voxel51-bot"
           git config user.email "voxel51-bot@users.noreply.github.com"
 
@@ -85,7 +88,7 @@ jobs:
           fi
           if ! git cherry-pick -x $mainline "$sha"; then
             git cherry-pick --abort
-            gh pr comment "$PR_NUMBER" --body "Cherry-pick to \`$RELEASE_BRANCH\` conflicts — pick it manually with \`git cherry-pick -x\`, or use the \`release-only-fix\` escape hatch if develop has moved on."
+            gh pr comment "$PR_NUMBER" --body "Cherry-pick to \`$RELEASE_BRANCH\` conflicts — pick it manually with \`git cherry-pick -x\`, or use the \`release-only-fix\` escape hatch if main has moved on."
             echo "::error::Cherry-pick of $sha onto $RELEASE_BRANCH conflicts."
             exit 1
           fi

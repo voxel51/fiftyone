@@ -22,11 +22,31 @@ export async function openEpisodeSession(
   source: EpisodeSource,
   options?: EpisodeOpenOptions,
 ): Promise<EpisodeSession> {
-  const adapter = await loadFormatAdapter(sample, options);
+  const adapterPromise = loadFormatAdapter(sample, options);
+  const hintsPromise = source.resolveHints
+    ? source.resolveHints(options).catch((error: unknown) => {
+        if (options?.signal?.aborted) throw error;
+        return null;
+      })
+    : Promise.resolve(null);
+  const [adapter, hints] = await Promise.all([adapterPromise, hintsPromise]);
   if (!adapter) {
     throw new Error("No episode adapter recognized this sample");
   }
-  return adapter.open(source, episodeByteResources, options);
+  const { resolveHints: _resolveHints, ...baseSource } = source;
+  const resolvedSource =
+    hints?.adapterId === adapter.id
+      ? {
+          ...baseSource,
+          ...((source.manifestHint ?? hints.manifestHint)
+            ? { manifestHint: source.manifestHint ?? hints.manifestHint }
+            : {}),
+          ...((source.playbackHint ?? hints.playbackHint)
+            ? { playbackHint: source.playbackHint ?? hints.playbackHint }
+            : {}),
+        }
+      : baseSource;
+  return adapter.open(resolvedSource, episodeByteResources, options);
 }
 
 /** Detects an adapter and opens its lightweight preview when supported. */
@@ -37,18 +57,4 @@ export async function openEpisodePreviewSession(
 ): Promise<EpisodePreviewSession | null> {
   const adapter = await loadFormatAdapter(sample, options);
   return adapter?.openPreview?.(source, episodeByteResources, options) ?? null;
-}
-
-/** Advises an adapter to warm likely startup bytes when it supports prewarm. */
-export async function prewarmEpisodeSource(
-  sample: SampleDescriptor,
-  source: EpisodeSource,
-  signal?: AbortSignal,
-): Promise<boolean> {
-  const adapter = await loadFormatAdapter(sample, { signal });
-  if (!adapter?.prewarm) {
-    return false;
-  }
-  await adapter.prewarm(source, episodeByteResources, { signal });
-  return true;
 }

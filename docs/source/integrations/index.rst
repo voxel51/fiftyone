@@ -6,6 +6,10 @@ FiftyOne Integrations
 
 .. default-role:: code
 
+.. meta::
+    :description: How FiftyOne integrates with popular ML tools including
+        PyTorch, Hugging Face, CVAT, Label Studio, and more.
+
 FiftyOne integrates naturally with other ML tools that you know and love. Click
 on the cards below to see how!
 
