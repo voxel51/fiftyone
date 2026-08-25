@@ -25,7 +25,10 @@ test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
-    imageOptions: { fillColor: "white", width: 640, height: 480 },
+    // Matches the modal's media region so the image renders at viewport
+    // scale 1 with no letterbox — canvas fractions are image fractions, and
+    // the classification tab sits at the element's top-left.
+    imageOptions: { fillColor: "white", width: 914, height: 584 },
     schema: {
       detections: "Detections",
       weather: "Classification",
