@@ -635,6 +635,50 @@ describe("LeRobot format adapter", () => {
       preview.dispose();
     }
   });
+
+  it("keeps an MP4 boundary keyframe after nanosecond normalization", async () => {
+    const boundaryAssets = assets.map((asset) =>
+      asset.id === "video"
+        ? {
+            ...asset,
+            selector: {
+              fromTimestamp: Number.EPSILON,
+              kind: "video-timestamp-interval" as const,
+              toTimestamp: 1,
+            },
+          }
+        : asset,
+    );
+    const boundarySource: EpisodeSource = {
+      ...source,
+      assets: {
+        ...source.assets,
+        list: async () => boundaryAssets,
+      },
+    };
+    const preview = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).openPreview?.(boundarySource, io);
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      const result = await preview.read({
+        sourceName: "observation.images.test",
+      });
+      expect(result).toMatchObject({
+        frame: {
+          image: {
+            keyframe: true,
+            timestampNs: 0n,
+          },
+          kind: "image",
+        },
+        frameTimeNs: 0n,
+        status: "ready",
+      });
+    } finally {
+      preview.dispose();
+    }
+  });
 });
 
 const realRoot = process.env.LEROBOT_DATASET_PATH;

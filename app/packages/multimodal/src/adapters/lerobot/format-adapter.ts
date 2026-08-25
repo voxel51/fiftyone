@@ -1358,13 +1358,16 @@ function videoFrame(
 ): DecodedFrame | null {
   if (index.track.timescale <= 0) return null;
   const presentationSeconds = videoPresentationSeconds(index, sample);
-  if (
-    presentationSeconds < binding.fromSeconds ||
-    presentationSeconds >= binding.toSeconds
-  ) {
+  // MP4 timestamps and v3 selectors can represent the same frame boundary
+  // with slightly different floats. Compare them in the IR's nanosecond
+  // domain so the opening keyframe is not mistaken for out-of-episode preroll.
+  const timestampNs = secondsToNs(presentationSeconds - binding.fromSeconds);
+  const episodeDurationNs = secondsToNs(
+    binding.toSeconds - binding.fromSeconds,
+  );
+  if (timestampNs < 0n || timestampNs >= episodeDurationNs) {
     return null;
   }
-  const timestampNs = secondsToNs(presentationSeconds - binding.fromSeconds);
   const decodeTimestampNs = secondsToNs(
     sample.dts / index.track.timescale - binding.fromSeconds,
   );
