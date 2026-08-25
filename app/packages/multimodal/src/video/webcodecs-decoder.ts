@@ -169,8 +169,22 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
             "H.264 dependency arrived behind the decode-order cursor",
           );
         }
-        while (this.pending.length >= MAX_VIDEO_DECODE_IN_FLIGHT) {
-          await this.waitForReorderedProgress(signal);
+        // A reordered decoder may consume queued chunks without emitting their
+        // frames yet. Bound its input queue separately from the wider retained
+        // output window so B-frame delay cannot deadlock submission.
+        while (
+          decoder.decodeQueueSize >= MAX_VIDEO_DECODE_IN_FLIGHT ||
+          this.pending.length >= MAX_REORDERED_VIDEO_OUTPUTS
+        ) {
+          if (decoder.decodeQueueSize >= MAX_VIDEO_DECODE_IN_FLIGHT) {
+            await waitForDecoderQueueProgress(
+              decoder,
+              MAX_VIDEO_DECODE_IN_FLIGHT,
+              signal,
+            );
+          } else {
+            await this.waitForReorderedProgress(signal);
+          }
         }
         this.submitReordered(decoder, unit, armProgressTimer);
       }
@@ -554,6 +568,35 @@ function abortableDecoderOutput<T>(
         reject(error);
       },
     );
+  });
+}
+
+function waitForDecoderQueueProgress(
+  decoder: VideoDecoder,
+  limit: number,
+  signal: AbortSignal,
+): Promise<void> {
+  if (signal.aborted) return Promise.reject(new VideoIntentCancelledError());
+  if (decoder.decodeQueueSize < limit) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      decoder.removeEventListener("dequeue", onDequeue);
+      signal.removeEventListener("abort", onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(new VideoIntentCancelledError());
+    };
+    const onDequeue = () => {
+      if (decoder.decodeQueueSize >= limit) return;
+      cleanup();
+      resolve();
+    };
+    decoder.addEventListener("dequeue", onDequeue);
+    signal.addEventListener("abort", onAbort, { once: true });
+    // The queue can drain between the caller's check and listener install.
+    if (signal.aborted) onAbort();
+    else onDequeue();
   });
 }
 

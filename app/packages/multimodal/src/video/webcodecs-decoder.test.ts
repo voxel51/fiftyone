@@ -203,6 +203,28 @@ describe("WebCodecsH264Decoder", () => {
     actor.close();
   });
 
+  it("keeps feeding a decoder that retains more outputs than the queue limit", async () => {
+    const retainedOutputs = MAX_VIDEO_DECODE_IN_FLIGHT + 4;
+    const harness = fakeWebCodecs({
+      holdOutputsUntilSubmissions: retainedOutputs,
+    });
+    const actor = new WebCodecsH264Decoder(harness.environment);
+    const units = Array.from({ length: retainedOutputs }, (_, index) =>
+      unit(index, index === 0, undefined, index),
+    );
+
+    const output = await actor.decode(units, {
+      signal: new AbortController().signal,
+      targetTimeNs: BigInt(retainedOutputs - 1),
+    });
+
+    expect(harness.instances[0].decode).toHaveBeenCalledTimes(retainedOutputs);
+    expect(harness.maxDecodeQueueSize()).toBe(MAX_VIDEO_DECODE_IN_FLIGHT);
+    expect(harness.instances[0].flush).not.toHaveBeenCalled();
+    output.close();
+    actor.close();
+  });
+
   it("fails stalled B-frame progress at the transaction boundary", async () => {
     vi.useFakeTimers();
     const harness = fakeWebCodecs({ shouldOutput: () => false });
@@ -318,6 +340,7 @@ function fakeWebCodecs(
 ) {
   let outstanding = 0;
   let maximumOutstanding = 0;
+  let maximumDecodeQueueSize = 0;
   const frames: Array<{
     readonly closed: () => boolean;
     readonly frame: VideoFrame;
@@ -351,12 +374,24 @@ function fakeWebCodecs(
     }));
     readonly close = vi.fn();
     readonly configure = vi.fn();
+    decodeQueueSize = 0;
     readonly decode = vi.fn((chunk: FakeChunk) => {
       if (this.keyRequired && chunk.type !== "key") {
         throw new DOMException("A key chunk is required", "DataError");
       }
       this.keyRequired = false;
       const submission = this.decode.mock.calls.length - 1;
+      this.decodeQueueSize += 1;
+      maximumDecodeQueueSize = Math.max(
+        maximumDecodeQueueSize,
+        this.decodeQueueSize,
+      );
+      queueMicrotask(() => {
+        this.decodeQueueSize -= 1;
+        for (const listener of this.dequeueListeners) {
+          listener.call(this, new Event("dequeue"));
+        }
+      });
       outstanding += 1;
       maximumOutstanding = Math.max(maximumOutstanding, outstanding);
       if (options.shouldOutput && !options.shouldOutput(submission)) return;
@@ -392,6 +427,19 @@ function fakeWebCodecs(
     readonly reset = vi.fn(() => {
       this.keyRequired = true;
     });
+    readonly addEventListener = vi.fn(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        if (type !== "dequeue" || typeof listener !== "function") return;
+        this.dequeueListeners.add(listener);
+      },
+    );
+    readonly removeEventListener = vi.fn(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        if (type !== "dequeue" || typeof listener !== "function") return;
+        this.dequeueListeners.delete(listener);
+      },
+    );
+    private readonly dequeueListeners = new Set<EventListener>();
     private keyRequired = true;
 
     constructor(
@@ -415,6 +463,7 @@ function fakeWebCodecs(
     environment,
     frames,
     instances,
+    maxDecodeQueueSize: () => maximumDecodeQueueSize,
     maxOutstanding: () => maximumOutstanding,
   };
 }
