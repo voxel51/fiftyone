@@ -289,9 +289,11 @@ function normalizedSizeBytes(value: number): string {
 
 const LEROBOT_ASSET_ROLES = new Set([
   "dataset-info",
+  "dataset-statistics",
   "episode-metadata",
   "image-payload",
   "tabular-frame-data",
+  "tasks-metadata",
   "video-stream",
 ]);
 

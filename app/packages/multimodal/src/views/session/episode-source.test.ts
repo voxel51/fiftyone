@@ -236,6 +236,59 @@ describe("episodeSourceFromMediaReference", () => {
     await expect(source.assets.list()).rejects.toThrow("unknown asset role");
   });
 
+  it("accepts the auxiliary metadata roles emitted by the server", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        json: async () => ({
+          assets: [
+            {
+              asset_id: "statistics",
+              media_type: "application/json",
+              role: "dataset-statistics",
+              selector: { kind: "whole-file" },
+              size_bytes: 10,
+              url: "/statistics",
+            },
+            {
+              asset_id: "tasks",
+              media_type: "application/octet-stream",
+              role: "tasks-metadata",
+              selector: { kind: "whole-file" },
+              size_bytes: 20,
+              url: "/tasks",
+            },
+          ],
+        }),
+        ok: true,
+        status: 200,
+        statusText: "OK",
+      }),
+    );
+    const source = episodeSourceFromMediaReference("d", "s", {
+      kind: "lerobot-episode",
+      key: "source:17",
+      version: "1",
+    });
+
+    await expect(source.assets.list()).resolves.toEqual([
+      {
+        id: "statistics",
+        mediaType: "application/json",
+        metadata: { sizeBytes: "10" },
+        role: "dataset-statistics",
+        selector: { kind: "whole-file" },
+      },
+      {
+        id: "tasks",
+        mediaType: "application/octet-stream",
+        metadata: { sizeBytes: "20" },
+        role: "tasks-metadata",
+        selector: { kind: "whole-file" },
+      },
+    ]);
+  });
+
   it("isolates caller cancellation on a shared manifest request", async () => {
     const response = {
       json: async () => ({ assets: [] }),
