@@ -559,6 +559,10 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                           {headerActions}
                                           <EpisodeHeaderActions
                                             context={episodeContext}
+                                            rawRecords={session.rawRecords}
+                                            recordingFacts={
+                                              session.manifest.recordingFacts
+                                            }
                                             source={source}
                                             streams={shellStreams}
                                             timeRange={
@@ -690,12 +694,16 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
 
 function EpisodeHeaderActions({
   context,
+  rawRecords,
+  recordingFacts,
   source,
   streams,
   timeRange,
   transformTopology,
 }: {
   readonly context: NonNullable<SourcePlaybackProps["episodeContext"]>;
+  readonly rawRecords: EpisodeSession["rawRecords"];
+  readonly recordingFacts: EpisodeSession["manifest"]["recordingFacts"];
   readonly source: ByteSourceDescriptor;
   readonly streams: readonly StreamDescriptor[];
   readonly timeRange: NonNullable<EpisodeSession["manifest"]>["timeRange"];
@@ -711,6 +719,8 @@ function EpisodeHeaderActions({
         <Component
           datasetId={context.datasetId}
           key={`${context.datasetId}:${context.sampleId}:${id}`}
+          rawRecords={rawRecords}
+          recordingFacts={recordingFacts}
           sampleId={context.sampleId}
           source={source}
           streams={streams}
