@@ -35,6 +35,15 @@ export function useVideoTexture(
     const lease = presentation.acquire();
     if (!lease) return;
     let held = heldRef.current;
+    if (
+      held?.currentLease &&
+      (held.currentLease.width !== lease.width ||
+        held.currentLease.height !== lease.height)
+    ) {
+      disposeHeldVideoTexture(held);
+      heldRef.current = null;
+      held = null;
+    }
     if (!held) {
       const texture = new THREE.Texture();
       texture.colorSpace = THREE.SRGBColorSpace;

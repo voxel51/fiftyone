@@ -65,6 +65,35 @@ describe("useVideoTexture", () => {
     expect(onLoaded).toHaveBeenLastCalledWith(result.current);
   });
 
+  it("recreates the renderer texture when frame dimensions change", async () => {
+    const textureDispose = vi.spyOn(THREE.Texture.prototype, "dispose");
+    const firstRelease = vi.fn();
+    const secondRelease = vi.fn();
+    const first = presentation(1n, firstRelease);
+    const second = presentation(
+      2n,
+      secondRelease,
+      document.createElement("canvas"),
+      1280,
+      720,
+    );
+    const { result, rerender } = renderHook(
+      ({ value }: { readonly value: VideoPresentation }) =>
+        useVideoTexture(value),
+      { initialProps: { value: first } },
+    );
+    await waitFor(() => expect(result.current).not.toBeNull());
+    const firstTexture = result.current?.texture;
+
+    rerender({ value: second });
+    await waitFor(() => expect(result.current?.texture).not.toBe(firstTexture));
+    expect(result.current?.imageWidth).toBe(1280);
+    expect(result.current?.imageHeight).toBe(720);
+    expect(textureDispose).toHaveBeenCalledOnce();
+    expect(firstRelease).toHaveBeenCalledOnce();
+    expect(secondRelease).not.toHaveBeenCalled();
+  });
+
   it("disposes the stable texture and current lease on unmount", async () => {
     const textureDispose = vi.spyOn(THREE.Texture.prototype, "dispose");
     const release = vi.fn();
@@ -83,18 +112,22 @@ function presentation(
   timeNs: bigint,
   release: () => void,
   source = document.createElement("canvas"),
+  width = 640,
+  height = 480,
 ): VideoPresentation {
+  source.width = width;
+  source.height = height;
   return {
     acquire: () => ({
-      height: 480,
+      height,
       release,
       source,
       timeNs,
-      width: 640,
+      width,
     }),
-    height: 480,
+    height,
     live: true,
     timeNs,
-    width: 640,
+    width,
   };
 }
