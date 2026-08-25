@@ -1,4 +1,3 @@
-import { AnnotationTopBar } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
@@ -8,7 +7,6 @@ import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { ImageAnnotationSurface } from "./Lighter/ImageAnnotationSurface";
-import surfaceStyles from "./Lighter/ImageAnnotationSurface.module.css";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
@@ -130,15 +128,7 @@ const ModalLookerContent = React.memo(
           <ImageAnnotationSurface sample={sample} />
         </div>
       ) : (
-        // The same media-facts bar as Annotate, so the media region keeps
-        // identical dimensions across the two modes and the viewport
-        // transfer maps 1:1.
-        <div className={surfaceStyles.root} data-cy="image-explore-surface">
-          <AnnotationTopBar sample={sample} />
-          <div className={surfaceStyles.content}>
-            <ModalLookerNoTimeline sample={sample} showControls />
-          </div>
-        </div>
+        <ModalLookerNoTimeline sample={sample} showControls />
       );
     }
 

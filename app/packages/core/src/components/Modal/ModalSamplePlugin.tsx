@@ -1,3 +1,4 @@
+import { AnnotationTopBar } from "@fiftyone/annotation";
 import { ErrorBoundary } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useEffect, useMemo } from "react";
@@ -8,7 +9,7 @@ import { Sample2D } from "./Sample2D";
 import { Sample3d } from "./Sample3d";
 import { useRetainedModalSample } from "./use-modal-sample-renderer-persistence";
 
-const ContentColumn = styled.div`
+const Root = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
@@ -17,6 +18,50 @@ const ContentColumn = styled.div`
   position: relative;
   overflow: hidden;
 `;
+
+const ContentColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+`;
+
+/**
+ * The filename + media-facts bar for native image samples, in both Explore
+ * and Annotate. Mounted above the `sample-canvas` element so the canvas box
+ * is exactly the media region — e2e coordinates and screenshots map over the
+ * media, and the bar's per-sample content stays out of canvas captures.
+ * Video mounts the bar itself, inside its surface.
+ */
+const ImageTopBar = () => {
+  const isGroup = useRecoilValue(fos.isGroup);
+  const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
+  const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+  const { sample } = useRetainedModalSample();
+
+  if (isGroup || shouldRenderImavid) {
+    return null;
+  }
+
+  const selectedMedia = fos.resolveMediaFieldLooker({
+    mediaField: modalMediaField,
+    sample: sample.sample,
+    urls: fos.getNormalizedUrls(sample.urls),
+  });
+
+  if (
+    selectedMedia.nativeLookerType === null ||
+    selectedMedia.nativeLookerType === "video" ||
+    selectedMedia.isDirect3dSample
+  ) {
+    return null;
+  }
+
+  return <AnnotationTopBar sample={sample} />;
+};
 
 export const ModalSample = React.memo(() => {
   const isGroup = useRecoilValue(fos.isGroup);
@@ -34,17 +79,22 @@ export const ModalSample = React.memo(() => {
   }, []);
 
   return (
-    <ContentColumn data-cy="sample-canvas">
-      <ErrorBoundary onReset={() => {}}>
-        <Suspense>
-          {isGroup ? (
-            <Group />
-          ) : (
-            <NonGroupModalSample is3DMediaType={is3DMediaType} />
-          )}
-        </Suspense>
-      </ErrorBoundary>
-    </ContentColumn>
+    <Root>
+      <Suspense fallback={null}>
+        <ImageTopBar />
+      </Suspense>
+      <ContentColumn data-cy="sample-canvas">
+        <ErrorBoundary onReset={() => {}}>
+          <Suspense>
+            {isGroup ? (
+              <Group />
+            ) : (
+              <NonGroupModalSample is3DMediaType={is3DMediaType} />
+            )}
+          </Suspense>
+        </ErrorBoundary>
+      </ContentColumn>
+    </Root>
   );
 });
 
