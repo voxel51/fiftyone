@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getFetchFunction,
   getFetchFunctionExtended,
+  getFetchUrl,
   setFetchFunction,
 } from "./fetch";
 
@@ -67,6 +68,20 @@ describe("fetch", () => {
 
     await expect(request).rejects.toMatchObject({ name: "AbortError" });
     expect(mockFetch.mock.calls[0]?.[1].signal).toBe(controller.signal);
+  });
+
+  it("builds URLs from configured transport parameters", () => {
+    setFetchFunction(
+      "http://localhost:3000/",
+      {},
+      "/api/proxy/fiftyone-teams/",
+    );
+    expect(getFetchUrl("/dataset/id")).toBe(
+      "http://localhost:3000/api/proxy/fiftyone-teams/dataset/id",
+    );
+
+    setFetchFunction("http://localhost:8787");
+    expect(getFetchUrl("/dataset/id")).toBe("http://localhost:8787/dataset/id");
   });
 
   it("reports streamed array-buffer progress", async () => {

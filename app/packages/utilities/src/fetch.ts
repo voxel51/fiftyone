@@ -316,6 +316,15 @@ export const getFetchParameters = () => {
   };
 };
 
+/** Builds an absolute URL from the configured fetch origin and path prefix. */
+export const getFetchUrl = (path: string): string => {
+  const prefix = fetchPathPrefix.replace(/^\/+|\/+$/g, "");
+  const suffix = path.replace(/^\/+/, "");
+  const relative = [prefix, suffix].filter(Boolean).join("/");
+  const base = fetchOrigin.replace(/\/+$/, "");
+  return `${base}/${relative}`;
+};
+
 // Identical GraphQL QUERIES that are in flight at the same moment share one
 // request. Several independent subscribers commonly derive the same
 // dataset-level aggregation from one view change, and each duplicate costs a
