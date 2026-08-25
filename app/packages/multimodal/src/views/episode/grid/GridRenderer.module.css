@@ -29,26 +29,6 @@
   z-index: 2;
 }
 
-.episodeMetadata {
-  background: linear-gradient(transparent, rgba(10, 11, 14, 0.86));
-  bottom: 0;
-  box-sizing: border-box;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 10px;
-  font-weight: 600;
-  left: 0;
-  line-height: 1.3;
-  overflow: hidden;
-  padding: 18px 34px 6px 7px;
-  pointer-events: none;
-  position: absolute;
-  right: 0;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
-  white-space: nowrap;
-  z-index: 2;
-}
-
 .imagePanel {
   inset: 0;
   position: absolute;

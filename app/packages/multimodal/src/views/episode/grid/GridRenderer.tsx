@@ -28,7 +28,6 @@ import { renderPointCloudSnapshot } from "../../../visualization/scene-3d/gpu/we
 import { sampleDescriptorFromContext } from "../../session/episode-source";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
 import { useStableEpisodeSource } from "../../session/use-stable-episode-source";
-import { episodeDisplayName } from "../../session/episode-label";
 import classes from "./GridRenderer.module.css";
 import { LoadingAscii } from "../shell/LoadingAscii";
 import {
@@ -102,7 +101,6 @@ export function GridRenderer({
     return sample._id ?? sample.id;
   }, [ctx.sample.sample]);
   const [selectedStream] = useGridSelectedStream(ctx.dataset.name);
-  const episodeLabel = episodeDisplayName(ctx.sample.sample);
   const selectedSourceName =
     selectedStream === GRID_STREAM_AUTO ? null : selectedStream;
   // A lasso/search in the embeddings panel posters this tile at its earliest
@@ -386,9 +384,6 @@ export function GridRenderer({
         >
           <Spinner size={Size.Xs} />
         </span>
-      ) : null}
-      {episodeLabel ? (
-        <span className={classes.episodeMetadata}>{episodeLabel}</span>
       ) : null}
     </div>
   );
