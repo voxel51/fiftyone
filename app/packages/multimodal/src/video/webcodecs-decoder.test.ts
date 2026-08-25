@@ -131,6 +131,50 @@ describe("WebCodecsH264Decoder", () => {
     actor.close();
   });
 
+  it("submits B-frames in decode order while preserving presentation timestamps", async () => {
+    const harness = fakeWebCodecs();
+    const actor = new WebCodecsH264Decoder(harness.environment);
+    const output = await actor.decode(
+      [
+        unit(0, true, "avc1.4D001F", 0),
+        unit(1_000_000, false, undefined, 2_000_000),
+        unit(2_000_000, false, undefined, 1_000_000),
+      ],
+      {
+        signal: new AbortController().signal,
+        targetTimeNs: 1_000_000n,
+      },
+    );
+
+    expect(
+      harness.instances[0].decode.mock.calls.map(
+        ([chunk]) => (chunk as { readonly timestamp: number }).timestamp,
+      ),
+    ).toEqual([0, 2_000, 1_000]);
+    expect(harness.instances[0].flush).toHaveBeenCalledOnce();
+    output.close();
+    actor.close();
+  });
+
+  it("fails stalled B-frame progress at the transaction boundary", async () => {
+    vi.useFakeTimers();
+    const harness = fakeWebCodecs({ shouldOutput: () => false });
+    const actor = new WebCodecsH264Decoder(harness.environment);
+    const decode = actor.decode([unit(0, true, undefined, 0)], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+    const rejection = expect(decode).rejects.toBeInstanceOf(
+      VideoDecoderFailureError,
+    );
+
+    await vi.advanceTimersByTimeAsync(VIDEO_DECODE_PROGRESS_TIMEOUT_MS + 1);
+    await rejection;
+    expect(harness.instances[0].reset).toHaveBeenCalledOnce();
+    expect(harness.instances[0].close).toHaveBeenCalledOnce();
+    actor.close();
+  });
+
   it("rejects insecure contexts with a typed decoder failure", async () => {
     const harness = fakeWebCodecs({ isSecureContext: false });
     const actor = new WebCodecsH264Decoder(harness.environment);
@@ -234,6 +278,7 @@ function fakeWebCodecs(
     readonly close: ReturnType<typeof vi.fn>;
     readonly configure: ReturnType<typeof vi.fn>;
     readonly decode: ReturnType<typeof vi.fn>;
+    readonly flush: ReturnType<typeof vi.fn>;
     readonly reset: ReturnType<typeof vi.fn>;
   }> = [];
 
@@ -276,6 +321,7 @@ function fakeWebCodecs(
         this.init.output(frame);
       });
     });
+    readonly flush = vi.fn(async () => undefined);
     readonly reset = vi.fn();
 
     constructor(
@@ -307,12 +353,16 @@ function unit(
   time: number,
   keyframe = false,
   codecString = keyframe ? "avc1.4D001F" : undefined,
+  decodeTime?: number,
 ): H264AccessUnit {
   const timeNs = BigInt(time);
   return {
     frame: {
       bytes: Uint8Array.of(0, 0, 1, keyframe ? 0x65 : 0x41),
       codec: "h264",
+      ...(decodeTime === undefined
+        ? {}
+        : { decodeTimestampNs: BigInt(decodeTime) }),
       format: "h264",
       h264: {
         ...(codecString ? { codecString } : {}),

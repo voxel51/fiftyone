@@ -66,9 +66,9 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       throw new Error("Concurrent video decoder transaction");
     }
     if (signal.aborted) throw new VideoIntentCancelledError();
-    const decodable = units.filter(
-      (unit) => unit.frame.h264.hasFrame !== false,
-    );
+    const decodable = units
+      .filter((unit) => unit.frame.h264.hasFrame !== false)
+      .sort(compareDecodeOrder);
     if (decodable.length === 0) {
       throw new VideoDependencyWaitError("Waiting for an H.264 access unit");
     }
@@ -79,6 +79,11 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     this.active = true;
     let target: VideoFrame | undefined;
     try {
+      if (
+        decodable.some((unit) => unit.frame.decodeTimestampNs !== undefined)
+      ) {
+        return await this.decodeReordered(decodable, targetTimeNs, signal);
+      }
       for (let start = 0; start < decodable.length; ) {
         if (signal.aborted) throw new VideoIntentCancelledError();
         const end = this.batchEnd(decodable, start);
@@ -108,6 +113,82 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       throw error;
     } finally {
       this.active = false;
+    }
+  }
+
+  /**
+   * Keeps a bounded sliding submission window for MP4 decode-order samples.
+   * B-frame decoders may retain a few inputs until later references arrive,
+   * so waiting for every fixed batch would deadlock before those references
+   * can be submitted. One flush at the transaction boundary drains the tail.
+   */
+  private async decodeReordered(
+    units: readonly H264AccessUnit[],
+    targetTimeNs: bigint,
+    signal: AbortSignal,
+  ): Promise<VideoFrame> {
+    await this.ensureDecoder(units[0]);
+    const decoder = this.decoder;
+    if (!decoder) throw new Error("Video decoder closed");
+    const inFlight = new Set<Promise<VideoFrame | undefined>>();
+    let target: VideoFrame | undefined;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const armProgressTimer = () => {
+      if (timer !== null) this.environment.clearTimeout(timer);
+      timer = this.environment.setTimeout(() => {
+        timer = null;
+        this.failDecoder(
+          new VideoDecoderFailureError(
+            "Timed out waiting for H.264 decoder progress",
+          ),
+        );
+      }, VIDEO_DECODE_PROGRESS_TIMEOUT_MS);
+    };
+    const waitForOne = async () => {
+      const settled = await Promise.race(
+        [...inFlight].map(async (promise) => ({
+          output: await promise,
+          promise,
+        })),
+      );
+      inFlight.delete(settled.promise);
+      if (settled.output) {
+        target?.close();
+        target = settled.output;
+      }
+    };
+
+    try {
+      armProgressTimer();
+      for (const unit of units) {
+        if (signal.aborted) throw new VideoIntentCancelledError();
+        while (inFlight.size >= MAX_VIDEO_DECODE_IN_FLIGHT) {
+          await waitForOne();
+        }
+        inFlight.add(
+          this.submit(
+            decoder,
+            unit,
+            unit.timeNs === targetTimeNs,
+            armProgressTimer,
+          ),
+        );
+      }
+      await decoder.flush();
+      while (inFlight.size) await waitForOne();
+      if (signal.aborted) throw new VideoIntentCancelledError();
+      if (!target) {
+        throw new VideoDecoderFailureError(
+          "H.264 target produced no decoder output",
+        );
+      }
+      return target;
+    } catch (error) {
+      target?.close();
+      await Promise.allSettled(inFlight);
+      throw error;
+    } finally {
+      if (timer !== null) this.environment.clearTimeout(timer);
     }
   }
 
@@ -263,14 +344,16 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       pps: unit.frame.h264.pps ? undefined : this.pps,
       sps: unit.frame.h264.sps ? undefined : this.sps,
     });
-    // Preserve source PTS for browser-level observability. Adjacent source
-    // nanoseconds can collide when truncated to WebCodecs microseconds, so
-    // nudge only collisions forward while preserving monotonic decode order.
+    // Preserve source PTS for browser-level observability. LeRobot MP4 units
+    // carry an explicit DTS and may be submitted in non-monotonic PTS order
+    // when B-frames are present. Legacy streams retain monotonic nudging.
     const sourceTimestampUs = Number(unit.timeNs / 1_000n);
     const submissionTimestampUs =
-      this.lastSubmissionTimestampUs === null
-        ? sourceTimestampUs
-        : Math.max(sourceTimestampUs, this.lastSubmissionTimestampUs + 1);
+      unit.frame.decodeTimestampNs !== undefined
+        ? uniquePendingTimestamp(sourceTimestampUs, this.pending)
+        : this.lastSubmissionTimestampUs === null
+          ? sourceTimestampUs
+          : Math.max(sourceTimestampUs, this.lastSubmissionTimestampUs + 1);
     this.lastSubmissionTimestampUs = submissionTimestampUs;
     return new Promise<VideoFrame | undefined>((resolve, reject) => {
       const pending: PendingOutput = {
@@ -360,6 +443,23 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     this.lastOutputTimeNs = null;
     this.lastSubmissionTimestampUs = null;
   }
+}
+
+function compareDecodeOrder(left: H264AccessUnit, right: H264AccessUnit) {
+  const leftTime = left.frame.decodeTimestampNs ?? left.timeNs;
+  const rightTime = right.frame.decodeTimestampNs ?? right.timeNs;
+  return leftTime < rightTime ? -1 : leftTime > rightTime ? 1 : 0;
+}
+
+function uniquePendingTimestamp(
+  preferred: number,
+  pending: readonly PendingOutput[],
+) {
+  let timestamp = preferred;
+  while (pending.some((entry) => entry.submissionTimestampUs === timestamp)) {
+    timestamp += 1;
+  }
+  return timestamp;
 }
 
 function browserWebCodecsEnvironment(): WebCodecsDecoderEnvironment {

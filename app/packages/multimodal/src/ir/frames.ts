@@ -39,6 +39,8 @@ interface BaseEncodedVideoVisualization {
   readonly kind: typeof VISUALIZATION_KIND.ENCODED_VIDEO;
   readonly bytes: Uint8Array;
   readonly coordinateFrameId?: string;
+  /** Decode-order timestamp when it differs from presentation order. */
+  readonly decodeTimestampNs?: bigint;
   readonly format: string;
   readonly keyframe?: boolean;
   readonly timestampNs?: bigint;
