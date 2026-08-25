@@ -51,7 +51,6 @@ import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
-import { useSetTimelineLoaded } from "../state/surfaceReveal";
 import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
   useVideoSurfaceActions,
@@ -583,7 +582,9 @@ export const FrameLabelsTracks: React.FC<{
   sample?: ModalSample;
   /** Cap on the timeline drawer body (px); it scrolls internally past this. */
   maxSize?: number;
-}> = ({ sample, maxSize }) => {
+  /** Reports the timeline half of the surface's coordinated reveal. */
+  onLoadedChange?: (loaded: boolean) => void;
+}> = ({ sample, maxSize, onLoadedChange }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
 
@@ -623,13 +624,12 @@ export const FrameLabelsTracks: React.FC<{
   const timelineLoaded =
     schemasLoaded && (frameTracksResolved || !hasFrameFields);
 
-  // Publish readiness so the surface's coordinated reveal (scene + timeline
-  // together) can wait on real tracks — see `surfaceReveal`.
-  const setTimelineLoaded = useSetTimelineLoaded();
+  // Report readiness so the surface's coordinated reveal (scene + timeline
+  // together) can wait on real tracks.
   useEffect(() => {
-    setTimelineLoaded(timelineLoaded);
-    return () => setTimelineLoaded(false);
-  }, [timelineLoaded, setTimelineLoaded]);
+    onLoadedChange?.(timelineLoaded);
+    return () => onLoadedChange?.(false);
+  }, [timelineLoaded, onLoadedChange]);
 
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const tracks = useMemo(

@@ -84,7 +84,10 @@ function usePaintFrameToCanvas(
  * may serve the same bitmap again (a revisited frame) and
  * `transferFromImageBitmap` would consume it.
  */
-export const ImaVidLighterTile: React.FC = () => {
+export const ImaVidLighterTile: React.FC<{
+  /** Reports the scene half of the surface's coordinated reveal. */
+  onRevealChange: (revealed: boolean) => void;
+}> = ({ onRevealChange }) => {
   const sourceId = IMAVID_STREAM_ID;
 
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
@@ -112,7 +115,11 @@ export const ImaVidLighterTile: React.FC = () => {
   });
 
   return (
-    <TileBody revealed={revealed} lighterHostRef={lighterHostRef}>
+    <TileBody
+      revealed={revealed}
+      onRevealChange={onRevealChange}
+      lighterHostRef={lighterHostRef}
+    >
       <canvas
         ref={frameCanvasRef}
         className={styles.frame}

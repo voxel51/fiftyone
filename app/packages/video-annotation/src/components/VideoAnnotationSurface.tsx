@@ -8,10 +8,6 @@ import { useRegisterVideoSegmentBitmap } from "../hooks/useRegisterVideoSegmentB
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
-import {
-  useSetTimelineLoaded,
-  useSurfaceRevealed,
-} from "../state/surfaceReveal";
 import { useFollowAnchorFrame } from "../state/useVideoInteraction";
 import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useDecodeStrategy } from "../hooks/useDecodeStrategy";
@@ -68,6 +64,8 @@ function useLabelsMode(): LabelsMode {
 
 interface MediaProps {
   videoSrc: string | null;
+  /** Reports the scene half of the surface's coordinated reveal. */
+  onRevealChange: (revealed: boolean) => void;
 }
 
 interface RegistrarProps {
@@ -87,11 +85,15 @@ interface RegistrarProps {
  * clock source).
  */
 const STRATEGY_TILE: Record<DecodeStrategy, React.FC<MediaProps>> = {
-  extract: () => <ImaVidLighterTile />,
-  fetch: () => <ImaVidLighterTile />,
-  html: ({ videoSrc }) =>
+  extract: ({ onRevealChange }) => (
+    <ImaVidLighterTile onRevealChange={onRevealChange} />
+  ),
+  fetch: ({ onRevealChange }) => (
+    <ImaVidLighterTile onRevealChange={onRevealChange} />
+  ),
+  html: ({ videoSrc, onRevealChange }) =>
     videoSrc ? (
-      <VideoLighterTile videoSrc={videoSrc} />
+      <VideoLighterTile videoSrc={videoSrc} onRevealChange={onRevealChange} />
     ) : (
       <div className={styles.empty}>No media URL on this sample.</div>
     ),
@@ -133,11 +135,18 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 }) => {
   const labelsMode = useLabelsMode();
   const prerequisites = useAnnotatePrerequisites(sample);
-  const surfaceRevealed = useSurfaceRevealed();
+
+  // The surface's coordinated reveal: media tile and timeline flip visible
+  // together, in the same commit, once BOTH are ready. The tile reports the
+  // scene half (`lighter:viewport-init-complete`), `FrameLabelsTracks` the
+  // timeline half; each reports `false` on unmount so a sample change
+  // re-covers until the new sample settles.
+  const [sceneRevealed, setSceneRevealed] = useState(false);
+  const [timelineLoaded, setTimelineLoaded] = useState(false);
+  const surfaceRevealed = sceneRevealed && timelineLoaded;
 
   // Synthetic labels have no loading phase, so satisfy the reveal's timeline
-  // half directly — `FrameLabelsTracks` (the real-mode writer) never mounts.
-  const setTimelineLoaded = useSetTimelineLoaded();
+  // half directly — `FrameLabelsTracks` (the real-mode reporter) never mounts.
   useEffect(() => {
     if (labelsMode !== "synthetic") {
       return undefined;
@@ -145,7 +154,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 
     setTimelineLoaded(true);
     return () => setTimelineLoaded(false);
-  }, [labelsMode, setTimelineLoaded]);
+  }, [labelsMode]);
 
   // Measure the surface so the timeline body caps at a fraction of it: past the
   // cap the drawer scrolls internally instead of growing into the media area.
@@ -225,17 +234,21 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
       <AnnotationTopBar sample={sample} />
       <div className={styles.content}>
         <div className={styles.media}>
-          <Tile videoSrc={videoSrc} />
+          <Tile videoSrc={videoSrc} onRevealChange={setSceneRevealed} />
         </div>
         <div className={styles.timeline}>
           {labelsMode === "synthetic" ? (
             <SyntheticTrackTimeline />
           ) : (
-            <FrameLabelsTracks sample={sample} maxSize={timelineMaxSize} />
+            <FrameLabelsTracks
+              sample={sample}
+              maxSize={timelineMaxSize}
+              onLoadedChange={setTimelineLoaded}
+            />
           )}
         </div>
         {/* Opaque cover over media + timeline until the coordinated reveal —
-            scene viewport settled AND tracks loaded (see `surfaceReveal`).
+            scene viewport settled AND tracks loaded.
             Everything mounts and lays out underneath (streams register, the
             timeline's pin-bootstrap re-key happens invisibly); the cover then
             drops in one frame with both regions at their final state. */}

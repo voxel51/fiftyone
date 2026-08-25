@@ -10,6 +10,8 @@ import styles from "./VideoLighterTile.module.css";
 export interface VideoLighterTileProps {
   /** Resolved media URL for the video. */
   videoSrc: string;
+  /** Reports the scene half of the surface's coordinated reveal. */
+  onRevealChange: (revealed: boolean) => void;
 }
 
 /**
@@ -18,6 +20,7 @@ export interface VideoLighterTileProps {
  */
 export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   videoSrc,
+  onRevealChange,
 }) => {
   const sourceId = VIDEO_STREAM_ID;
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -67,7 +70,11 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   });
 
   return (
-    <TileBody revealed={revealed} lighterHostRef={lighterHostRef}>
+    <TileBody
+      revealed={revealed}
+      onRevealChange={onRevealChange}
+      lighterHostRef={lighterHostRef}
+    >
       <video
         ref={videoRef}
         className={styles.video}
