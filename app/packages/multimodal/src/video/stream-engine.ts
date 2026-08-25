@@ -22,7 +22,7 @@ import {
 
 const NS_PER_SECOND = 1_000_000_000n;
 const MAX_DIRECT_FORWARD_GAP_NS = 500_000_000n;
-const REORDERED_KEYFRAME_LOOKAHEAD_NS = 250_000_000n;
+const REORDERED_DECODE_LOOKAHEAD_NS = 250_000_000n;
 export const MAX_H264_GOP_ACCESS_UNITS = 4_096;
 const VIDEO_SEEK_READ_POLICY = {
   initialLookbackNs: 15n * NS_PER_SECOND,
@@ -203,11 +203,7 @@ export class VideoStreamEngine {
       const decodeCadenceAllowsDirect =
         targetDecodeTimeNs === undefined ||
         (decodeCursorTimeNs !== null &&
-          (targetDecodeTimeNs <= decodeCursorTimeNs ||
-            (this.nominalForwardStepNs !== null &&
-              targetDecodeTimeNs - decodeCursorTimeNs > 0n &&
-              targetDecodeTimeNs - decodeCursorTimeNs <=
-                this.nominalForwardStepNs + this.nominalForwardStepNs / 2n)));
+          targetDecodeTimeNs <= decodeCursorTimeNs);
       const reorderedKeyframeNeedsRunway =
         intent.frame.keyframe &&
         targetDecodeTimeNs !== undefined &&
@@ -402,29 +398,28 @@ export class VideoStreamEngine {
       );
     }
     const startTimeNs = cursorTimeNs + 1n;
-    const read = await this.readRange(
-      reader,
-      startTimeNs,
-      intent.timeNs,
-      signal,
-    );
     const targetDecodeTimeNs = intent.frame.decodeTimestampNs;
     const cursorDecodeTimeNs = this.decoder.cursorDecodeTimeNs;
+    const reorderedForwardRead =
+      targetDecodeTimeNs !== undefined && cursorDecodeTimeNs !== null;
+    const endTimeNs = reorderedForwardRead
+      ? intent.timeNs + REORDERED_DECODE_LOOKAHEAD_NS
+      : intent.timeNs;
+    const read = await this.readRange(reader, startTimeNs, endTimeNs, signal);
+    const decodeEndTimeNs = maxDecodeTimeNs([...read, intent]);
     const units =
-      targetDecodeTimeNs !== undefined && cursorDecodeTimeNs !== null
+      reorderedForwardRead && decodeEndTimeNs !== null
         ? uniqueDecodeSortedAccessUnits([
             ...this.cache.rangeByDecodeTime(
               cursorDecodeTimeNs + 1n,
-              targetDecodeTimeNs,
+              decodeEndTimeNs,
             ),
             ...read,
             intent,
           ]).filter(
             (unit) =>
               (unit.frame.decodeTimestampNs ?? unit.timeNs) >
-                cursorDecodeTimeNs &&
-              (unit.frame.decodeTimestampNs ?? unit.timeNs) <=
-                targetDecodeTimeNs,
+              cursorDecodeTimeNs,
           )
         : uniqueSortedAccessUnits([
             ...this.cache.range(startTimeNs, intent.timeNs),
@@ -475,7 +470,7 @@ export class VideoStreamEngine {
       const read = await this.readRange(
         reader,
         intent.timeNs,
-        intent.timeNs + REORDERED_KEYFRAME_LOOKAHEAD_NS,
+        intent.timeNs + REORDERED_DECODE_LOOKAHEAD_NS,
         signal,
       );
       const units = uniqueDecodeSortedAccessUnits([intent, ...read]);
@@ -719,4 +714,13 @@ function uniqueDecodeSortedAccessUnits(
             ? 1
             : 0;
   });
+}
+
+function maxDecodeTimeNs(units: readonly H264AccessUnit[]): bigint | null {
+  let maximum: bigint | null = null;
+  for (const unit of units) {
+    const decodeTimeNs = unit.frame.decodeTimestampNs ?? unit.timeNs;
+    if (maximum === null || decodeTimeNs > maximum) maximum = decodeTimeNs;
+  }
+  return maximum;
 }
