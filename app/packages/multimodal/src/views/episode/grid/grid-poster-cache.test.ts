@@ -6,6 +6,7 @@ import {
   defaultGridPosterCacheBudgetBytes,
   gridPosterCacheKey,
   gridPosterFreshness,
+  gridPreviewStateKey,
   pointCloudPoseKey,
   shouldReplaceGridPoster,
   type GridPosterCacheEntry,
@@ -84,13 +85,19 @@ describe("grid poster cache", () => {
   });
 
   it("separates every render-semantic key field", () => {
-    const base = {
+    const previewIdentity = {
       datasetId: "dataset-a",
       mediaField: "recording",
       selectedSourceName: null,
       source: source("one", "etag-a"),
     };
+    const base = { ...previewIdentity, imageFit: "cover" as const };
     const key = gridPosterCacheKey(base);
+    const containKey = gridPosterCacheKey({ ...base, imageFit: "contain" });
+    expect(containKey).not.toBe(key);
+    const stateKey = gridPreviewStateKey(previewIdentity);
+    expect(stateKey).not.toBe(key);
+    expect(stateKey).not.toBe(containKey);
     expect(gridPosterCacheKey({ ...base, datasetId: "dataset-b" })).not.toBe(
       key,
     );
@@ -124,6 +131,7 @@ describe("grid poster cache", () => {
   it("keeps signed access URLs out of persistent poster identity", () => {
     const base = {
       datasetId: "dataset-a",
+      imageFit: "cover" as const,
       mediaField: "recording",
       selectedSourceName: null,
     };
