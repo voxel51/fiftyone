@@ -39,12 +39,20 @@ const ContentColumn = styled.div`
 const ImageTopBar = () => {
   const isGroup = useRecoilValue(fos.isGroup);
   const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
-  const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
-  const { sample } = useRetainedModalSample();
 
+  // Gate before NonGroupImageTopBar reads the modal sample —
+  // useRetainedModalSample resolves the non-group sample and throws for
+  // group modals.
   if (isGroup || shouldRenderImavid) {
     return null;
   }
+
+  return <NonGroupImageTopBar />;
+};
+
+const NonGroupImageTopBar = () => {
+  const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+  const { sample } = useRetainedModalSample();
 
   const selectedMedia = fos.resolveMediaFieldLooker({
     mediaField: modalMediaField,
