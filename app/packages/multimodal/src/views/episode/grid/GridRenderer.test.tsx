@@ -590,6 +590,37 @@ describe("GridRenderer", () => {
     );
   });
 
+  it("keeps the cached poster visible until a new image decode family commits", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.frame = videoFrame(new Uint8Array([9, 9, 9]));
+    previewHarness.preview.status = "ready";
+    previewHarness.preview.streamId = "/cam/video";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
+
+    act(() => {
+      bitmapViewHarness.lastProps?.onCanvasCommitted?.(
+        document.createElement("canvas"),
+        { height: 180, width: 320 },
+      );
+    });
+
+    expect(screen.queryByTestId("bitmap-cached-image-view")).toBeNull();
+    expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
+  });
+
   it("shows a tiny buffering indicator over the last rendered frame", () => {
     previewHarness.preview.frame = imageFrame(new Uint8Array([1]));
     previewHarness.preview.isBuffering = true;
@@ -1185,6 +1216,21 @@ function pointCloudCells(): HTMLElement[] {
 function imageFrame(bytes: Uint8Array): EpisodePosterFrame {
   return {
     image: { bytes, kind: "encoded-image", mimeType: "image/jpeg" },
+    kind: "image",
+  } as unknown as EpisodePosterFrame;
+}
+
+function videoFrame(bytes: Uint8Array): EpisodePosterFrame {
+  return {
+    image: {
+      bytes,
+      codec: "h264",
+      format: "h264",
+      h264: { codecString: "avc1.4D001F", hasFrame: true },
+      keyframe: true,
+      kind: "encoded-video",
+      timestampNs: 0n,
+    },
     kind: "image",
   } as unknown as EpisodePosterFrame;
 }

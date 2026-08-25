@@ -713,6 +713,7 @@ function PreviewFrame({
     />
   ) : (
     <ImagePreviewFrame
+      cachedPoster={cachedPoster}
       frame={frame}
       imageFit={imageFit}
       onCanvasCommitted={onCanvasCommitted}
@@ -1028,12 +1029,14 @@ function PointCloudPreviewFrame({
 }
 
 function ImagePreviewFrame({
+  cachedPoster,
   frame,
   imageFit,
   onCanvasCommitted,
   onSurfaceRetainedBytesChange,
   videoStream,
 }: {
+  readonly cachedPoster: GridPosterCacheEntry | null;
   readonly frame: Extract<EpisodePosterFrame, { kind: "image" }>;
   readonly imageFit: MultimodalGridFit;
   readonly onCanvasCommitted: (
@@ -1044,19 +1047,52 @@ function ImagePreviewFrame({
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
   readonly videoStream: string | null;
 }) {
+  const [committedKind, setCommittedKind] = useState<
+    Extract<EpisodePosterFrame, { kind: "image" }>["image"]["kind"] | null
+  >(null);
+  const [fallbackRetainedBytes, setFallbackRetainedBytes] = useState(0);
+  const [frameRetainedBytes, setFrameRetainedBytes] = useState(0);
+  const showFallback =
+    cachedPoster !== null && committedKind !== frame.image.kind;
+
+  useEffect(() => {
+    onSurfaceRetainedBytesChange(
+      frameRetainedBytes + (showFallback ? fallbackRetainedBytes : 0),
+    );
+  }, [
+    fallbackRetainedBytes,
+    frameRetainedBytes,
+    onSurfaceRetainedBytesChange,
+    showFallback,
+  ]);
+
   // GPU-free bitmap path: image preview cells hold zero WebGPU devices (the
-  // modal's ImagePanel is untouched).
+  // modal's ImagePanel is untouched). Keep the last poster under a newly
+  // mounted decode family so encoded-image -> encoded-video hover handoff
+  // cannot expose an empty canvas while its first presentation is pending.
   return (
-    <BitmapImageFrameView
-      className={classes.imagePanel}
-      fit={imageFit}
-      frame={frame.image}
-      onCanvasCommitted={(canvas, size) =>
-        onCanvasCommitted("image", canvas, size)
-      }
-      onBitmapRetainedBytesChange={onSurfaceRetainedBytesChange}
-      videoSessionKey={videoStream ?? undefined}
-    />
+    <>
+      {showFallback ? (
+        <BitmapImageView
+          bytes={cachedPoster.bytes}
+          className={classes.imagePanel}
+          fit={imageFit}
+          mimeType={cachedPoster.mimeType}
+          onBitmapRetainedBytesChange={setFallbackRetainedBytes}
+        />
+      ) : null}
+      <BitmapImageFrameView
+        className={classes.imagePanel}
+        fit={imageFit}
+        frame={frame.image}
+        onCanvasCommitted={(canvas, size) => {
+          setCommittedKind(frame.image.kind);
+          onCanvasCommitted("image", canvas, size);
+        }}
+        onBitmapRetainedBytesChange={setFrameRetainedBytes}
+        videoSessionKey={videoStream ?? undefined}
+      />
+    </>
   );
 }
 
