@@ -38,7 +38,8 @@ class StreamingBridge:
             raise ValueError("max_chunks must be positive")
         self._queue = queue.Queue(maxsize=max_chunks)
         self._cancelled = threading.Event()
-        self._terminal = threading.Event()
+        self._producer_done = threading.Event()
+        self._consumer_done = threading.Event()
         self._error = None
         self.sink = StreamingSink(
             self, chunk_size, on_bytes_written=on_bytes_written
@@ -59,44 +60,51 @@ class StreamingBridge:
     def finish(self):
         """Flushes buffered bytes and cleanly finishes the iterator."""
 
-        if self._terminal.is_set():
+        if self._producer_done.is_set():
             return
         self.sink.flush()
         self._put(_END)
-        self._terminal.set()
+        self._producer_done.set()
 
     def abort(self, error):
         """Aborts the iterator with a producer failure."""
 
-        if self._terminal.is_set():
+        if self._producer_done.is_set():
             return
         self._error = error
         self._cancelled.set()
         self._discard_queued()
         self._put_terminal()
-        self._terminal.set()
+        self._producer_done.set()
 
     def cancel(self):
         """Cancels producer writes after consumer disconnection."""
 
-        if self._terminal.is_set():
+        if self._consumer_done.is_set():
             return
         self._cancelled.set()
         self._discard_queued()
         self._put_terminal()
-        self._terminal.set()
+        self._producer_done.set()
+        self._consumer_done.set()
+
+    def wait(self, timeout=None):
+        """Blocks until the consumer finishes or disconnects."""
+
+        return self._consumer_done.wait(timeout=timeout)
 
     async def __aiter__(self):
         try:
             while True:
                 item = await asyncio.to_thread(self._queue.get)
                 if item is _END:
+                    self._consumer_done.set()
                     if self._error is not None:
                         raise self._error
                     return
                 yield item
         finally:
-            if not self._terminal.is_set():
+            if not self._consumer_done.is_set():
                 self.cancel()
 
     def _put(self, item):

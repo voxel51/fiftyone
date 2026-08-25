@@ -40,6 +40,7 @@ async def test_bridge_coalesces_chunks_and_counts_bytes():
     assert all(len(chunk) <= 4 for chunk in chunks)
     assert bridge.bytes_written == 7
     assert totals[-1] == 7
+    assert bridge.wait(timeout=0)
 
 
 @pytest.mark.asyncio
@@ -61,6 +62,7 @@ async def test_bounded_queue_backpressures_the_producer():
 
     assert body == b"abcdef"
     assert finished.is_set()
+    assert bridge.wait(timeout=0)
 
 
 @pytest.mark.asyncio
