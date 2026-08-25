@@ -4003,6 +4003,69 @@ class HiltiSLAMChallenge2022Dataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class MirrorSentinelElevatorDataset(FiftyOneDataset):
+    """Elevator traversals recorded to study mirror and glass interference,
+    as native ``.mcap`` episodes.
+
+    A rig carrying a ZED2 camera, an Ouster 3D LiDAR and the Ouster IMU was
+    walked through elevator cabins. A LiDAR pointed at a mirror reports
+    returns from behind it, so the cabin appears to extend into space that
+    is solid wall. Eight traversals cover seven physical cabins, and each
+    cabin was measured by hand so the real boundary can be compared against
+    what the sensors report.
+
+    ``elevator_02`` and ``elevator_03`` are two runs of one cabin; the
+    ``footprint`` field groups them.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("mirror-elevator")
+
+        # One run per physical cabin
+        view = dataset.match({"sequence": {"$ne": "elevator_03"}})
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        6.18 GB
+    """
+
+    _REPO_ID = "Voxel51/MirrorSentinel-Elevator"
+    _REVISION = "afeb2364e7381f27a02a4003561f14a513618297"
+
+    @property
+    def name(self):
+        return "mirror-elevator"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "slam", "lidar", "imu")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_hub_dataset(
+            self._REPO_ID, dataset_dir, revision=self._REVISION
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "2026-humanoid-ikea-assembly-challenge": (
         HumanoidIKEAAssemblyChallengeDataset
@@ -4030,6 +4093,7 @@ AVAILABLE_DATASETS = {
     "kitti": KITTIDataset,
     "kitti-multiview": KITTIMultiviewDataset,
     "lfw": LabeledFacesInTheWildDataset,
+    "mirror-elevator": MirrorSentinelElevatorDataset,
     "open-images-v6": OpenImagesV6Dataset,
     "open-images-v7": OpenImagesV7Dataset,
     "places": PlacesDataset,

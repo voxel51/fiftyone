@@ -202,6 +202,13 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: MirrorSentinel Elevator
+    :description: 8 elevator traversals in native MCAP format, with camera, Ouster LiDAR, IMU, sensor transforms, and hand-measured cabin geometry for studying mirror interference.
+    :link: datasets/mirror_elevator.html
+    :image: ../_images/mirror-elevator.png
+    :tags: multimodal,mcap,slam,lidar
+
+.. customcarditem::
     :header: Open Images V6
     :description: Massive dataset with ~9M images, 2M annotated. Features classification, detection, segmentation, and relationship annotations across 600 object classes.
     :link: datasets/open_images_v6.html
