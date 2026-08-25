@@ -109,6 +109,8 @@ export interface VideoAccessUnitReader {
 /** Small interface that lets the engine use real or fake WebCodecs actors. */
 export interface VideoDecoderActor {
   readonly configuredCodec: string | null;
+  /** Furthest decode-order timestamp submitted in the current codec epoch. */
+  readonly cursorDecodeTimeNs: bigint | null;
   readonly cursorTimeNs: bigint | null;
   close(): void;
   /**

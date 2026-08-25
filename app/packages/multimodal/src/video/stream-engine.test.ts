@@ -350,6 +350,63 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     lease.release();
   });
 
+  it("lets useful playing work finish while conflating rapid forward intents", async () => {
+    const gate = deferred<void>();
+    const harness = createHarness({
+      decodeGate: gate.promise,
+      honorAbort: true,
+    });
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    const lease = manager.acquire("/camera");
+    lease.request({ ...accessUnit(0, true), priority: "playing" });
+    await vi.waitFor(() =>
+      expect(harness.decoders[0].decodeCalls).toHaveLength(1),
+    );
+
+    lease.request({ ...accessUnit(1), priority: "playing" });
+    lease.request({ ...accessUnit(2), priority: "playing" });
+    lease.request({ ...accessUnit(3), priority: "playing" });
+    gate.resolve();
+    await presented(lease, 3n);
+
+    expect(harness.decoders[0].decodeCalls.map((call) => call.target)).toEqual([
+      0n,
+      3n,
+    ]);
+    expect(harness.decoders[0].resetCount).toBe(0);
+    lease.release();
+  });
+
+  it("uses decode-order dependencies that present after a B-frame target", async () => {
+    const harness = createHarness();
+    const keyframe = accessUnit(0, true, "avc1.4D001F", 0);
+    const futurePresentation = accessUnit(2, false, "avc1.4D001F", 1);
+    const target = accessUnit(1, false, "avc1.4D001F", 2);
+    const read = vi.fn(async () => ({
+      complete: true,
+      units: [keyframe, futurePresentation, target],
+    }));
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader({ timelineStartTimeNs: 0n, read });
+    const lease = manager.acquire("/camera");
+    lease.request({ ...keyframe, priority: "playing" });
+    await presented(lease, 0n);
+
+    lease.request({ ...target, priority: "playing" });
+    await presented(lease, 1n);
+    expect(
+      harness.decoders[0].decodeCalls.at(-1)?.units.map((unit) => unit.timeNs),
+    ).toEqual([2n, 1n]);
+
+    lease.request({ ...futurePresentation, priority: "playing" });
+    await presented(lease, 2n);
+    expect(
+      harness.decoders[0].decodeCalls.at(-1)?.units.map((unit) => unit.timeNs),
+    ).toEqual([2n]);
+    expect(harness.decoders[0].resetCount).toBe(0);
+    lease.release();
+  });
+
   it.each([601, 1_024])(
     "consumes a complete %i-frame long GOP with its keyframe and target",
     async (target) => {
@@ -607,6 +664,7 @@ function createHarness(
 class FakeDecoderActor implements VideoDecoderActor {
   closeCount = 0;
   configuredCodec: string | null = null;
+  cursorDecodeTimeNs: bigint | null = null;
   cursorTimeNs: bigint | null = null;
   readonly decodeCalls: Array<{
     readonly target: bigint;
@@ -661,6 +719,8 @@ class FakeDecoderActor implements VideoDecoderActor {
         this.options.honorAbort === true,
       );
       this.cursorTimeNs = targetTimeNs;
+      this.cursorDecodeTimeNs =
+        units.at(-1)?.frame.decodeTimestampNs ?? targetTimeNs;
       this.configuredCodec = units[0]?.frame.h264.codecString ?? "avc1.4D001F";
       const output = fakeVideoFrame();
       this.outputs.push(output);
@@ -675,6 +735,7 @@ class FakeDecoderActor implements VideoDecoderActor {
   resetForDiscontinuity(): void {
     this.resetCount += 1;
     this.cursorTimeNs = null;
+    this.cursorDecodeTimeNs = null;
     this.configuredCodec = null;
   }
 
@@ -687,12 +748,16 @@ function accessUnit(
   time: number,
   keyframe = false,
   codecString = "avc1.4D001F",
+  decodeTime?: number,
 ): H264AccessUnit {
   const timeNs = BigInt(time);
   return {
     frame: {
       bytes: Uint8Array.of(0, 0, 1, keyframe ? 0x65 : 0x41, time & 0xff),
       codec: "h264",
+      ...(decodeTime === undefined
+        ? {}
+        : { decodeTimestampNs: BigInt(decodeTime) }),
       format: "h264",
       h264: keyframe
         ? {

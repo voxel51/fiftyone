@@ -146,6 +146,12 @@ export class EncodedAccessUnitCache {
     return this.entries.has(timeNs);
   }
 
+  get(timeNs: bigint): H264AccessUnit | undefined {
+    const unit = this.entries.get(timeNs);
+    if (unit) this.touch(timeNs, unit);
+    return unit;
+  }
+
   put(unit: H264AccessUnit): void {
     const previous = this.entries.get(unit.timeNs);
     if (previous) {
@@ -198,10 +204,19 @@ export class EncodedAccessUnitCache {
     // Refresh recency without disturbing timestamp order.
     for (const timeNs of touchedTimes) {
       const unit = this.entries.get(timeNs);
-      if (!unit) continue;
-      this.entries.delete(timeNs);
-      this.entries.set(timeNs, unit);
+      if (unit) this.touch(timeNs, unit);
     }
+    return units;
+  }
+
+  rangeByDecodeTime(startTimeNs: bigint, endTimeNs: bigint): H264AccessUnit[] {
+    const units = [...this.entries.values()]
+      .filter((unit) => {
+        const decodeTimeNs = unit.frame.decodeTimestampNs ?? unit.timeNs;
+        return decodeTimeNs >= startTimeNs && decodeTimeNs <= endTimeNs;
+      })
+      .sort(compareUnitDecodeTime);
+    for (const unit of units) this.touch(unit.timeNs, unit);
     return units;
   }
 
@@ -216,6 +231,11 @@ export class EncodedAccessUnitCache {
   private removeSortedTime(timeNs: bigint): void {
     const index = lowerBoundTime(this.sortedTimes, timeNs);
     if (this.sortedTimes[index] === timeNs) this.sortedTimes.splice(index, 1);
+  }
+
+  private touch(timeNs: bigint, unit: H264AccessUnit): void {
+    this.entries.delete(timeNs);
+    this.entries.set(timeNs, unit);
   }
 }
 
@@ -244,6 +264,19 @@ function encodeBytes(bytes: Uint8Array | undefined): string {
 
 function compareUnitTime(left: H264AccessUnit, right: H264AccessUnit): number {
   return left.timeNs < right.timeNs ? -1 : left.timeNs > right.timeNs ? 1 : 0;
+}
+
+function compareUnitDecodeTime(
+  left: H264AccessUnit,
+  right: H264AccessUnit,
+): number {
+  const leftTimeNs = left.frame.decodeTimestampNs ?? left.timeNs;
+  const rightTimeNs = right.frame.decodeTimestampNs ?? right.timeNs;
+  return leftTimeNs < rightTimeNs
+    ? -1
+    : leftTimeNs > rightTimeNs
+      ? 1
+      : compareUnitTime(left, right);
 }
 
 function lowerBoundKeyframe(

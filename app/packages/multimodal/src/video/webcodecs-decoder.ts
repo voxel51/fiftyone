@@ -8,14 +8,19 @@ import {
 } from "./types";
 
 export const MAX_VIDEO_DECODE_IN_FLIGHT = 8;
+export const MAX_REORDERED_VIDEO_OUTPUTS = 32;
 export const VIDEO_DECODE_PROGRESS_TIMEOUT_MS = 15_000;
 
 interface PendingOutput {
   readonly reject: (error: Error) => void;
-  readonly resolve: (frame: VideoFrame | undefined) => void;
-  readonly retain: boolean;
+  readonly resolve: (frame: VideoFrame) => void;
   readonly timeNs: bigint;
   readonly submissionTimestampUs: number;
+}
+
+interface ReorderedOutput {
+  frame: VideoFrame | null;
+  readonly promise: Promise<VideoFrame>;
 }
 
 export interface WebCodecsDecoderEnvironment {
@@ -34,9 +39,12 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
   private decoder: VideoDecoder | null = null;
   private failed: Error | null = null;
   private lastOutputTimeNs: bigint | null = null;
+  private lastSubmittedDecodeTimeNs: bigint | null = null;
   private lastSubmissionTimestampUs: number | null = null;
   private readonly pending: PendingOutput[] = [];
   private pps: Uint8Array | undefined;
+  private readonly reorderedOutputs = new Map<bigint, ReorderedOutput>();
+  private readonly reorderedSubmitted = new Set<bigint>();
   private sps: Uint8Array | undefined;
 
   constructor(private environmentValue?: WebCodecsDecoderEnvironment) {}
@@ -52,6 +60,10 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
 
   get cursorTimeNs(): bigint | null {
     return this.lastOutputTimeNs;
+  }
+
+  get cursorDecodeTimeNs(): bigint | null {
+    return this.lastSubmittedDecodeTimeNs;
   }
 
   async decode(
@@ -116,12 +128,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     }
   }
 
-  /**
-   * Keeps a bounded sliding submission window for MP4 decode-order samples.
-   * B-frame decoders may retain a few inputs until later references arrive,
-   * so waiting for every fixed batch would deadlock before those references
-   * can be submitted. One flush at the transaction boundary drains the tail.
-   */
+  /** Keeps a bounded, persistent submission window for MP4 decode-order samples. */
   private async decodeReordered(
     units: readonly H264AccessUnit[],
     targetTimeNs: bigint,
@@ -130,8 +137,6 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     await this.ensureDecoder(units[0]);
     const decoder = this.decoder;
     if (!decoder) throw new Error("Video decoder closed");
-    const inFlight = new Set<Promise<VideoFrame | undefined>>();
-    let target: VideoFrame | undefined;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const armProgressTimer = () => {
       if (timer !== null) this.environment.clearTimeout(timer);
@@ -144,49 +149,40 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
         );
       }, VIDEO_DECODE_PROGRESS_TIMEOUT_MS);
     };
-    const waitForOne = async () => {
-      const settled = await Promise.race(
-        [...inFlight].map(async (promise) => ({
-          output: await promise,
-          promise,
-        })),
-      );
-      inFlight.delete(settled.promise);
-      if (settled.output) {
-        target?.close();
-        target = settled.output;
-      }
-    };
 
     try {
       armProgressTimer();
+      this.discardReorderedOutputsBefore(targetTimeNs);
       for (const unit of units) {
         if (signal.aborted) throw new VideoIntentCancelledError();
-        while (inFlight.size >= MAX_VIDEO_DECODE_IN_FLIGHT) {
-          await waitForOne();
+        if (this.reorderedSubmitted.has(unit.timeNs)) continue;
+        const decodeTimeNs = unit.frame.decodeTimestampNs ?? unit.timeNs;
+        if (
+          this.lastSubmittedDecodeTimeNs !== null &&
+          decodeTimeNs <= this.lastSubmittedDecodeTimeNs
+        ) {
+          throw new VideoDecoderFailureError(
+            "H.264 dependency arrived behind the decode-order cursor",
+          );
         }
-        inFlight.add(
-          this.submit(
-            decoder,
-            unit,
-            unit.timeNs === targetTimeNs,
-            armProgressTimer,
-          ),
-        );
+        while (this.pending.length >= MAX_VIDEO_DECODE_IN_FLIGHT) {
+          await this.waitForReorderedProgress(signal);
+        }
+        this.submitReordered(decoder, unit, armProgressTimer);
       }
-      await decoder.flush();
-      while (inFlight.size) await waitForOne();
-      if (signal.aborted) throw new VideoIntentCancelledError();
+      const target = this.reorderedOutputs.get(targetTimeNs);
       if (!target) {
         throw new VideoDecoderFailureError(
           "H.264 target produced no decoder output",
         );
       }
-      return target;
-    } catch (error) {
-      target?.close();
-      await Promise.allSettled(inFlight);
-      throw error;
+      const frame = await abortableDecoderOutput(target.promise, signal);
+      if (signal.aborted) throw new VideoIntentCancelledError();
+      this.reorderedOutputs.delete(targetTimeNs);
+      target.frame = null;
+      this.lastOutputTimeNs = targetTimeNs;
+      this.discardSubmittedTimesBefore(targetTimeNs);
+      return frame;
     } finally {
       if (timer !== null) this.environment.clearTimeout(timer);
     }
@@ -249,12 +245,11 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     armProgressTimer();
     try {
       const promises = units.map((unit) =>
-        this.submit(
-          decoder,
-          unit,
-          unit.timeNs === targetTimeNs,
-          armProgressTimer,
-        ),
+        this.submit(decoder, unit, armProgressTimer).then((frame) => {
+          if (unit.timeNs === targetTimeNs) return frame;
+          frame.close();
+          return undefined;
+        }),
       );
       const results = await Promise.allSettled(promises);
       const outputs = results.map((result) =>
@@ -268,6 +263,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
         for (const output of outputs) output?.close();
         throw this.failed ?? toError(rejection?.reason);
       }
+      if (outputs.some(Boolean)) this.lastOutputTimeNs = targetTimeNs;
       return outputs;
     } finally {
       if (timer !== null) this.environment.clearTimeout(timer);
@@ -334,9 +330,8 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
   private submit(
     decoder: VideoDecoder,
     unit: H264AccessUnit,
-    retain: boolean,
     onProgress: () => void,
-  ): Promise<VideoFrame | undefined> {
+  ): Promise<VideoFrame> {
     if (unit.frame.h264.sps) this.sps = unit.frame.h264.sps;
     if (unit.frame.h264.pps) this.pps = unit.frame.h264.pps;
     const data = h264AccessUnitWithParameterSets({
@@ -355,14 +350,13 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
           ? sourceTimestampUs
           : Math.max(sourceTimestampUs, this.lastSubmissionTimestampUs + 1);
     this.lastSubmissionTimestampUs = submissionTimestampUs;
-    return new Promise<VideoFrame | undefined>((resolve, reject) => {
+    return new Promise<VideoFrame>((resolve, reject) => {
       const pending: PendingOutput = {
         reject,
         resolve: (frame) => {
           onProgress();
           resolve(frame);
         },
-        retain,
         timeNs: unit.timeNs,
         submissionTimestampUs,
       };
@@ -388,6 +382,78 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     });
   }
 
+  private submitReordered(
+    decoder: VideoDecoder,
+    unit: H264AccessUnit,
+    onProgress: () => void,
+  ): Promise<VideoFrame> {
+    const existing = this.reorderedOutputs.get(unit.timeNs);
+    if (existing) return existing.promise;
+    const promise = this.submit(decoder, unit, onProgress);
+    const output: ReorderedOutput = { frame: null, promise };
+    this.reorderedOutputs.set(unit.timeNs, output);
+    this.reorderedSubmitted.add(unit.timeNs);
+    const decodeTimeNs = unit.frame.decodeTimestampNs ?? unit.timeNs;
+    this.lastSubmittedDecodeTimeNs = decodeTimeNs;
+    void promise.then(
+      (frame) => {
+        output.frame = frame;
+        this.trimReorderedOutputs();
+      },
+      () => {
+        if (this.reorderedOutputs.get(unit.timeNs) === output) {
+          this.reorderedOutputs.delete(unit.timeNs);
+          this.reorderedSubmitted.delete(unit.timeNs);
+        }
+      },
+    );
+    return promise;
+  }
+
+  private async waitForReorderedProgress(signal: AbortSignal): Promise<void> {
+    const pending = [...this.reorderedOutputs.values()]
+      .filter((output) => output.frame === null)
+      .map((output) => output.promise);
+    if (pending.length === 0) {
+      throw new VideoDecoderFailureError(
+        "H.264 decoder submission window made no progress",
+      );
+    }
+    await abortableDecoderOutput(Promise.race(pending), signal);
+  }
+
+  private discardReorderedOutputsBefore(timeNs: bigint): void {
+    for (const [outputTimeNs, output] of this.reorderedOutputs) {
+      if (outputTimeNs >= timeNs) continue;
+      this.reorderedOutputs.delete(outputTimeNs);
+      if (output.frame) output.frame.close();
+      else
+        void output.promise.then(
+          (frame) => frame.close(),
+          () => undefined,
+        );
+    }
+  }
+
+  private discardSubmittedTimesBefore(timeNs: bigint): void {
+    for (const submittedTimeNs of this.reorderedSubmitted) {
+      if (submittedTimeNs < timeNs) {
+        this.reorderedSubmitted.delete(submittedTimeNs);
+      }
+    }
+  }
+
+  private trimReorderedOutputs(): void {
+    if (this.reorderedOutputs.size <= MAX_REORDERED_VIDEO_OUTPUTS) return;
+    for (const [timeNs, output] of this.reorderedOutputs) {
+      if (!output.frame) continue;
+      this.reorderedOutputs.delete(timeNs);
+      this.reorderedSubmitted.delete(timeNs);
+      output.frame.close();
+      if (this.reorderedOutputs.size <= MAX_REORDERED_VIDEO_OUTPUTS) return;
+    }
+  }
+
   private handleOutput(frame: VideoFrame): void {
     const timestamp = frame.timestamp;
     const index = this.pending.findIndex(
@@ -398,18 +464,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       frame.close();
       return;
     }
-    if (
-      this.lastOutputTimeNs === null ||
-      pending.timeNs > this.lastOutputTimeNs
-    ) {
-      this.lastOutputTimeNs = pending.timeNs;
-    }
-    if (pending.retain) {
-      pending.resolve(frame);
-    } else {
-      frame.close();
-      pending.resolve(undefined);
-    }
+    pending.resolve(frame);
   }
 
   private failDecoder(error: Error): void {
@@ -425,6 +480,16 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
 
   private disposeDecoder(error: Error, reset = true): void {
     for (const pending of this.pending.splice(0)) pending.reject(error);
+    for (const output of this.reorderedOutputs.values()) {
+      if (output.frame) output.frame.close();
+      else
+        void output.promise.then(
+          (frame) => frame.close(),
+          () => undefined,
+        );
+    }
+    this.reorderedOutputs.clear();
+    this.reorderedSubmitted.clear();
     const decoder = this.decoder;
     if (reset) {
       try {
@@ -440,6 +505,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     }
     this.decoder = null;
     this.codecString = null;
+    this.lastSubmittedDecodeTimeNs = null;
     this.lastOutputTimeNs = null;
     this.lastSubmissionTimestampUs = null;
   }
@@ -460,6 +526,31 @@ function uniquePendingTimestamp(
     timestamp += 1;
   }
   return timestamp;
+}
+
+function abortableDecoderOutput<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  if (signal.aborted) return Promise.reject(new VideoIntentCancelledError());
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      reject(new VideoIntentCancelledError());
+    };
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
 }
 
 function browserWebCodecsEnvironment(): WebCodecsDecoderEnvironment {

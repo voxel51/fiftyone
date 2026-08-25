@@ -151,8 +151,32 @@ describe("WebCodecsH264Decoder", () => {
         ([chunk]) => (chunk as { readonly timestamp: number }).timestamp,
       ),
     ).toEqual([0, 2_000, 1_000]);
-    expect(harness.instances[0].flush).toHaveBeenCalledOnce();
+    expect(harness.instances[0].flush).not.toHaveBeenCalled();
     output.close();
+    actor.close();
+  });
+
+  it("reuses a decoded future B-frame without flushing or resubmitting it", async () => {
+    const harness = fakeWebCodecs();
+    const actor = new WebCodecsH264Decoder(harness.environment);
+    const keyframe = unit(0, true, "avc1.4D001F", 0);
+    const futurePresentation = unit(2_000_000, false, undefined, 1_000_000);
+    const target = unit(1_000_000, false, undefined, 2_000_000);
+
+    const first = await actor.decode([keyframe, futurePresentation, target], {
+      signal: new AbortController().signal,
+      targetTimeNs: target.timeNs,
+    });
+    first.close();
+    const second = await actor.decode([futurePresentation], {
+      signal: new AbortController().signal,
+      targetTimeNs: futurePresentation.timeNs,
+    });
+
+    expect(harness.instances[0].decode).toHaveBeenCalledTimes(3);
+    expect(harness.instances[0].flush).not.toHaveBeenCalled();
+    expect(actor.cursorTimeNs).toBe(futurePresentation.timeNs);
+    second.close();
     actor.close();
   });
 
@@ -300,6 +324,10 @@ function fakeWebCodecs(
     readonly close = vi.fn();
     readonly configure = vi.fn();
     readonly decode = vi.fn((chunk: FakeChunk) => {
+      if (this.keyRequired && chunk.type !== "key") {
+        throw new DOMException("A key chunk is required", "DataError");
+      }
+      this.keyRequired = false;
       const submission = this.decode.mock.calls.length - 1;
       outstanding += 1;
       maximumOutstanding = Math.max(maximumOutstanding, outstanding);
@@ -321,8 +349,13 @@ function fakeWebCodecs(
         this.init.output(frame);
       });
     });
-    readonly flush = vi.fn(async () => undefined);
-    readonly reset = vi.fn();
+    readonly flush = vi.fn(async () => {
+      this.keyRequired = true;
+    });
+    readonly reset = vi.fn(() => {
+      this.keyRequired = true;
+    });
+    private keyRequired = true;
 
     constructor(
       private readonly init: {

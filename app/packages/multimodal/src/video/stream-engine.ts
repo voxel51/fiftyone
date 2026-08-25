@@ -197,11 +197,22 @@ export class VideoStreamEngine {
         this.nominalForwardStepNs !== null &&
         forwardGapNs <=
           this.nominalForwardStepNs + this.nominalForwardStepNs / 2n;
+      const targetDecodeTimeNs = intent.frame.decodeTimestampNs;
+      const decodeCursorTimeNs = this.decoder.cursorDecodeTimeNs;
+      const decodeCadenceAllowsDirect =
+        targetDecodeTimeNs === undefined ||
+        (decodeCursorTimeNs !== null &&
+          (targetDecodeTimeNs <= decodeCursorTimeNs ||
+            (this.nominalForwardStepNs !== null &&
+              targetDecodeTimeNs - decodeCursorTimeNs > 0n &&
+              targetDecodeTimeNs - decodeCursorTimeNs <=
+                this.nominalForwardStepNs + this.nominalForwardStepNs / 2n)));
       const directForward =
         cursorTimeNs !== null &&
         forwardGapNs !== null &&
         forwardGapNs <= MAX_DIRECT_FORWARD_GAP_NS &&
         (!this.reader() || cadenceAllowsDirect) &&
+        decodeCadenceAllowsDirect &&
         !this.continuityUncertain;
       const directKeyframe =
         intent.frame.keyframe &&
@@ -382,12 +393,30 @@ export class VideoStreamEngine {
       intent.timeNs,
       signal,
     );
-    const units = uniqueSortedAccessUnits([
-      ...this.cache.range(startTimeNs, intent.timeNs),
-      ...read,
-      intent,
-    ]);
-    if (units.at(-1)?.timeNs !== intent.timeNs) {
+    const targetDecodeTimeNs = intent.frame.decodeTimestampNs;
+    const cursorDecodeTimeNs = this.decoder.cursorDecodeTimeNs;
+    const units =
+      targetDecodeTimeNs !== undefined && cursorDecodeTimeNs !== null
+        ? uniqueDecodeSortedAccessUnits([
+            ...this.cache.rangeByDecodeTime(
+              cursorDecodeTimeNs + 1n,
+              targetDecodeTimeNs,
+            ),
+            ...read,
+            intent,
+          ]).filter(
+            (unit) =>
+              (unit.frame.decodeTimestampNs ?? unit.timeNs) >
+                cursorDecodeTimeNs &&
+              (unit.frame.decodeTimestampNs ?? unit.timeNs) <=
+                targetDecodeTimeNs,
+          )
+        : uniqueSortedAccessUnits([
+            ...this.cache.range(startTimeNs, intent.timeNs),
+            ...read,
+            intent,
+          ]);
+    if (!units.some((unit) => unit.timeNs === intent.timeNs)) {
       throw new VideoDependencyWaitError("Waiting for the H.264 seek target");
     }
     if (units.length > MAX_H264_GOP_ACCESS_UNITS) {
@@ -404,7 +433,7 @@ export class VideoStreamEngine {
     units: readonly H264AccessUnit[],
   ): void {
     let previous = previousTimeNs;
-    for (const unit of units) {
+    for (const unit of uniqueSortedAccessUnits(units)) {
       if (previous !== null && unit.timeNs > previous) {
         const step = unit.timeNs - previous;
         if (
@@ -486,16 +515,28 @@ export class VideoStreamEngine {
         "Waiting for complete H.264 runway coverage",
       );
     }
-    const units = uniqueSortedAccessUnits([
-      ...this.cache.range(keyframeTimeNs, intent.timeNs),
-      intent,
-    ]);
+    const keyframe = this.cache.get(keyframeTimeNs);
+    const targetDecodeTimeNs = intent.frame.decodeTimestampNs;
+    const keyframeDecodeTimeNs = keyframe?.frame.decodeTimestampNs;
+    const units =
+      targetDecodeTimeNs !== undefined && keyframeDecodeTimeNs !== undefined
+        ? uniqueDecodeSortedAccessUnits([
+            ...this.cache.rangeByDecodeTime(
+              keyframeDecodeTimeNs,
+              targetDecodeTimeNs,
+            ),
+            intent,
+          ])
+        : uniqueSortedAccessUnits([
+            ...this.cache.range(keyframeTimeNs, intent.timeNs),
+            intent,
+          ]);
     if (!units[0]?.frame.keyframe || units[0].timeNs !== keyframeTimeNs) {
       throw new VideoDependencyWaitError(
         "Waiting for the H.264 runway keyframe",
       );
     }
-    if (units.at(-1)?.timeNs !== intent.timeNs) {
+    if (!units.some((unit) => unit.timeNs === intent.timeNs)) {
       throw new VideoDependencyWaitError("Waiting for the H.264 runway target");
     }
     if (units.length > MAX_H264_GOP_ACCESS_UNITS) {
@@ -620,4 +661,24 @@ function strongerIntent(
     VIDEO_INTENT_PRIORITY_WEIGHT[current.priority]
     ? candidate
     : current;
+}
+
+function uniqueDecodeSortedAccessUnits(
+  units: readonly H264AccessUnit[],
+): H264AccessUnit[] {
+  const byTime = new Map<bigint, H264AccessUnit>();
+  for (const unit of units) byTime.set(unit.timeNs, unit);
+  return [...byTime.values()].sort((left, right) => {
+    const leftTimeNs = left.frame.decodeTimestampNs ?? left.timeNs;
+    const rightTimeNs = right.frame.decodeTimestampNs ?? right.timeNs;
+    return leftTimeNs < rightTimeNs
+      ? -1
+      : leftTimeNs > rightTimeNs
+        ? 1
+        : left.timeNs < right.timeNs
+          ? -1
+          : left.timeNs > right.timeNs
+            ? 1
+            : 0;
+  });
 }
