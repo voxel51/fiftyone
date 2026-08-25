@@ -45,6 +45,7 @@ const INITIAL_SNAPSHOT: VideoStreamSnapshot = {
 export class VideoStreamEngine {
   private activeController: AbortController | null = null;
   private activeForwardPublicationProtected = false;
+  private activeIntent: VideoPlaybackIntent | null = null;
   private readonly cache: EncodedAccessUnitCache;
   private closed = false;
   private continuityUncertain = false;
@@ -115,6 +116,13 @@ export class VideoStreamEngine {
     this.requestedPriority = intent.priority;
     this.generation += 1;
     this.latestIntent = intent;
+    if (
+      this.activeController &&
+      canPromoteActivePlaybackIntent(this.activeIntent, intent)
+    ) {
+      this.activeIntent = { ...this.activeIntent, priority: "playing" };
+      this.scheduler.promote(this.activeController.signal, "playing");
+    }
     if (this.activeController && !retainActiveForwardPublication) {
       this.continuityUncertain = true;
       this.activeController.abort();
@@ -136,6 +144,7 @@ export class VideoStreamEngine {
     this.latestIntent = null;
     this.activeController?.abort();
     this.activeController = null;
+    this.activeIntent = null;
     this.decoder.close();
     this.cache.clear();
     this.gopIndex.clear();
@@ -166,6 +175,7 @@ export class VideoStreamEngine {
         const generation = this.generation;
         const controller = new AbortController();
         this.activeController = controller;
+        this.activeIntent = intent;
         try {
           await this.processIntent(intent, generation, controller.signal);
         } catch (error) {
@@ -173,6 +183,7 @@ export class VideoStreamEngine {
         } finally {
           if (this.activeController === controller) {
             this.activeController = null;
+            this.activeIntent = null;
           }
         }
       }
@@ -261,7 +272,11 @@ export class VideoStreamEngine {
           if (this.decoder.configuredCodec !== null) {
             this.decoder.resetForDiscontinuity();
           }
-        } else if (cursorTimeNs !== null && intent.timeNs > cursorTimeNs) {
+        } else if (
+          cursorTimeNs !== null &&
+          intent.timeNs > cursorTimeNs &&
+          !this.continuityUncertain
+        ) {
           this.publishIfCurrent(generation, {
             diagnostic: null,
             phase: "seeking.reading",
@@ -462,6 +477,10 @@ export class VideoStreamEngine {
     signal: AbortSignal,
     generation: number,
   ): Promise<readonly H264AccessUnit[]> {
+    const runwayEndTimeNs =
+      intent.frame.decodeTimestampNs === undefined
+        ? intent.timeNs
+        : intent.timeNs + REORDERED_DECODE_LOOKAHEAD_NS;
     if (intent.frame.keyframe) {
       if (intent.frame.decodeTimestampNs === undefined) return [intent];
       const reader = this.reader();
@@ -470,7 +489,7 @@ export class VideoStreamEngine {
       const read = await this.readRange(
         reader,
         intent.timeNs,
-        intent.timeNs + REORDERED_DECODE_LOOKAHEAD_NS,
+        runwayEndTimeNs,
         signal,
       );
       const units = uniqueDecodeSortedAccessUnits([intent, ...read]);
@@ -493,8 +512,8 @@ export class VideoStreamEngine {
     const knownKeyframe = this.gopIndex.keyframeTimeAtOrBefore(intent.timeNs);
     if (knownKeyframe !== null) {
       this.publishIfCurrent(generation, { phase: "seeking.reading" });
-      await this.readRange(reader, knownKeyframe, intent.timeNs, signal);
-      return this.validatedRunway(knownKeyframe, intent);
+      await this.readRange(reader, knownKeyframe, runwayEndTimeNs, signal);
+      return this.validatedRunway(knownKeyframe, runwayEndTimeNs, intent);
     }
 
     const timelineStartNs = reader.timelineStartTimeNs;
@@ -525,8 +544,10 @@ export class VideoStreamEngine {
       await this.readRange(reader, startTimeNs, endTimeNs, signal);
       const keyframe = this.gopIndex.keyframeTimeAtOrBefore(intent.timeNs);
       if (keyframe !== null && keyframe >= startTimeNs) {
-        // Every searched interval and the target are now in the encoded cache.
-        return this.validatedRunway(keyframe, intent);
+        // The lookback found the GOP. Re-read it through a bounded successor
+        // window so reordered targets can leave the browser decoder.
+        await this.readRange(reader, keyframe, runwayEndTimeNs, signal);
+        return this.validatedRunway(keyframe, runwayEndTimeNs, intent);
       }
       if (startTimeNs === timelineStartNs) break;
       endTimeNs = startTimeNs - 1n;
@@ -538,6 +559,7 @@ export class VideoStreamEngine {
 
   private validatedRunway(
     keyframeTimeNs: bigint,
+    runwayEndTimeNs: bigint,
     intent: VideoPlaybackIntent,
   ): readonly H264AccessUnit[] {
     if (
@@ -551,12 +573,17 @@ export class VideoStreamEngine {
     const keyframe = this.cache.get(keyframeTimeNs);
     const targetDecodeTimeNs = intent.frame.decodeTimestampNs;
     const keyframeDecodeTimeNs = keyframe?.frame.decodeTimestampNs;
+    const runwayDecodeEndTimeNs = maxDecodeTimeNs(
+      this.cache.range(keyframeTimeNs, runwayEndTimeNs),
+    );
     const units =
-      targetDecodeTimeNs !== undefined && keyframeDecodeTimeNs !== undefined
+      targetDecodeTimeNs !== undefined &&
+      keyframeDecodeTimeNs !== undefined &&
+      runwayDecodeEndTimeNs !== null
         ? uniqueDecodeSortedAccessUnits([
             ...this.cache.rangeByDecodeTime(
               keyframeDecodeTimeNs,
-              targetDecodeTimeNs,
+              runwayDecodeEndTimeNs,
             ),
             intent,
           ])
@@ -696,6 +723,19 @@ function strongerIntent(
     : current;
 }
 
+function canPromoteActivePlaybackIntent(
+  active: VideoPlaybackIntent | null,
+  requested: VideoPlaybackIntent,
+): active is VideoPlaybackIntent {
+  return Boolean(
+    active &&
+    active.priority !== "playing" &&
+    requested.priority === "playing" &&
+    !requested.frame.keyframe &&
+    requested.timeNs > active.timeNs &&
+    requested.timeNs - active.timeNs <= MAX_DIRECT_FORWARD_GAP_NS,
+  );
+}
 function uniqueDecodeSortedAccessUnits(
   units: readonly H264AccessUnit[],
 ): H264AccessUnit[] {
