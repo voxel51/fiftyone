@@ -25,6 +25,7 @@ import {
   type RawRecordResult,
   type RawValueNode,
   type StreamDescriptor,
+  type SynchronizedFrameWindow,
   type TimeWindow,
 } from "../../ir";
 import {
@@ -40,11 +41,27 @@ import {
   type FormatAdapter,
   type FrameBatch,
   type NumericSeriesCapability,
+  type PlaybackReadCapability,
   type RawRecordCapability,
   type ReadRequest,
+  type SynchronizedPlaybackBatchReadRequest,
+  type SynchronizedPlaybackReadOptions,
+  type SynchronizedPlaybackReadRequest,
   type SourceStats,
 } from "../../ports";
+import {
+  emptyPlaybackWindow,
+  prioritizedStreams,
+  resolvePlaybackWindow,
+  selectPlaybackWindow,
+  streamTimeBoundsFromManifest,
+  type ResolvedPlaybackWindow,
+} from "../../stream-selection/playback";
 import { throwIfAborted } from "../../utils/cancellation";
+import {
+  maxBigInt as maxOfBigInts,
+  minBigInt as minOfBigInts,
+} from "../../utils/bigint";
 import { nsDeltaToSeconds } from "../../utils/nanoseconds";
 
 const INFO_ROLE = "dataset-info";
@@ -55,6 +72,8 @@ const VIDEO_ROLE = "video-stream";
 const RAW_STREAM_ID = "lerobot:rows";
 const NS_PER_SECOND = 1_000_000_000;
 const MP4_INDEX_CHUNK_BYTES = 1024 * 1024;
+const MAX_VIDEO_SPAN_CACHE_BYTES = 64 * 1024 * 1024;
+const MAX_VIDEO_SPAN_CACHE_ENTRIES = 16;
 
 interface ParquetReaderOptions {
   readonly columns?: string[];
@@ -117,8 +136,26 @@ interface ImageBinding {
 interface VideoIndex {
   readonly compositionOffsetSeconds: number;
   readonly file: ISOFile;
+  readonly presentationSamples: readonly IndexedVideoSample[];
   readonly samples: readonly Sample[];
   readonly track: Track;
+}
+
+interface IndexedVideoSample {
+  readonly decodeIndex: number;
+  readonly presentationSeconds: number;
+  readonly sample: Sample;
+}
+
+interface CachedVideoSpan {
+  readonly bytes: Uint8Array;
+  readonly end: number;
+}
+
+interface VideoSpanCacheEntry {
+  bytes: number;
+  readonly promise: Promise<CachedVideoSpan>;
+  span: CachedVideoSpan | null;
 }
 
 interface AvcConfiguration {
@@ -289,6 +326,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
   readonly info: LeRobotInfo;
   readonly manifest: EpisodeManifest;
   readonly numericSeries: NumericSeriesCapability;
+  readonly playback: PlaybackReadCapability;
   readonly rawRecords: RawRecordCapability;
   readonly scalarFeatures: ReadonlyMap<string, LeRobotFeature>;
   readonly videoBindings: ReadonlyMap<string, VideoBinding>;
@@ -297,6 +335,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     Promise<readonly Record<string, unknown>[]>
   >();
   private readonly videoIndexCache = new Map<string, Promise<VideoIndex>>();
+  private readonly videoSpanCache = new Map<string, VideoSpanCacheEntry>();
   private decodedFrames = 0;
   private disposed = false;
   private generation = 0;
@@ -393,6 +432,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
       readNumericSeries: async (request) => this.readNumericSeries(request),
     };
     this.rawRecords = this.createRawRecordCapability();
+    this.playback = this.createPlaybackCapability();
   }
 
   activate(): void {
@@ -414,6 +454,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     this.generation += 1;
     this.rowCache.clear();
     this.videoIndexCache.clear();
+    this.videoSpanCache.clear();
   }
 
   async *read(request: ReadRequest): AsyncIterable<FrameBatch> {
@@ -529,14 +570,11 @@ class LeRobotEpisodeSession implements EpisodeSession {
     const index = await this.readVideoIndex(binding, request.signal);
     const samples = selectVideoSamples(index, binding, request.window);
     if (!samples.length) return [];
-    const bytes = await readSampleSpan(
+    const bytes = await this.readSampleSpan(
       binding.asset,
       samples,
-      this.state.source,
-      this.state.io,
       request.signal,
     );
-    this.transferredBytes += bytes.byteLength;
     const avc = (samples[0].description as Mp4SampleDescription).avcC;
     const lengthSize = (avc?.lengthSizeMinusOne ?? 3) + 1;
     const parameterSets = avcParameterSets(avc);
@@ -556,6 +594,214 @@ class LeRobotEpisodeSession implements EpisodeSession {
         );
       })
       .filter((frame): frame is DecodedFrame => frame !== null);
+  }
+
+  private createPlaybackCapability(): PlaybackReadCapability {
+    const streamsById = new Map(
+      this.manifest.streams.map((stream) => [stream.id, stream]),
+    );
+    const sourceNames = new Map(
+      this.manifest.streams.map((stream) => [stream.id, stream.sourceName]),
+    );
+    const readBatch = (
+      request: SynchronizedPlaybackBatchReadRequest,
+      options?: SynchronizedPlaybackReadOptions,
+    ) => this.readPlaybackBatch(request, streamsById, sourceNames, options);
+    return {
+      timeline: {
+        endNs: this.manifest.timeRange.endNs,
+        startNs: this.manifest.timeRange.startNs,
+        timeDomainId: this.manifest.timeDomain.id,
+      },
+      readStreamTimeBounds: async (streams) => {
+        this.ensureOpen();
+        return streamTimeBoundsFromManifest(this.manifest, streams);
+      },
+      readSynchronized: async (request) => {
+        const windows = await readBatch(
+          { ...request, timeNs: [request.timeNs] },
+          { priority: "current", signal: request.signal },
+        );
+        const window = windows[0] ?? emptyPlaybackWindow(request.timeNs);
+        this.publishPlaybackSettlements(request, window);
+        return window;
+      },
+      readSynchronizedBatch: readBatch,
+    };
+  }
+
+  private async readPlaybackBatch(
+    request: SynchronizedPlaybackBatchReadRequest,
+    streamsById: ReadonlyMap<string, StreamDescriptor>,
+    sourceNames: ReadonlyMap<string, string>,
+    options: SynchronizedPlaybackReadOptions = {},
+  ): Promise<readonly SynchronizedFrameWindow[]> {
+    this.ensureOpen();
+    throwIfAborted(options.signal);
+    if (request.timeNs.length === 0) return [];
+    if (request.streams.length === 0) {
+      return request.timeNs.map(emptyPlaybackWindow);
+    }
+    const streams = [...new Set(request.streams)];
+    const resolved = request.timeNs.map((timeNs) =>
+      resolvePlaybackWindow(this.manifest.timeRange.startNs, streamsById, {
+        ...request,
+        streams,
+        timeNs,
+      }),
+    );
+    const batches = (
+      await Promise.all(
+        streams.map(async (stream) => {
+          const windows = resolved.map((window) =>
+            this.playbackReadWindow(stream, streamsById, window),
+          );
+          const streamBatches: FrameBatch[] = [];
+          for await (const batch of this.read({
+            priority: options.priority,
+            signal: options.signal,
+            streams: [stream],
+            window: {
+              endNs: maxOfBigInts(windows.map((window) => window.endNs)),
+              startNs: minOfBigInts(windows.map((window) => window.startNs)),
+            },
+          })) {
+            streamBatches.push(batch);
+          }
+          return streamBatches;
+        }),
+      )
+    ).flat();
+    throwIfAborted(options.signal);
+    const framesByStream = collectLeRobotFramesByStream(batches, streams);
+    return resolved.map((window) =>
+      selectPlaybackWindow(framesByStream, streams, sourceNames, window),
+    );
+  }
+
+  private playbackReadWindow(
+    streamId: string,
+    streamsById: ReadonlyMap<string, StreamDescriptor>,
+    window: ResolvedPlaybackWindow,
+  ): TimeWindow {
+    const policy = window.streamPolicies[streamId];
+    const stream = streamsById.get(streamId);
+    const streamStartNs =
+      stream?.timeRange.startNs ?? this.manifest.timeRange.startNs;
+    const rateHz =
+      stream?.approxRateHz && stream.approxRateHz > 0
+        ? stream.approxRateHz
+        : this.info.fps;
+    const frameStepNs = BigInt(Math.ceil(NS_PER_SECOND / rateHz));
+    const predecessorStartNs =
+      window.timeNs - frameStepNs * BigInt(policy.limit);
+    return {
+      endNs: policy.endNs,
+      startNs:
+        policy.startNs ??
+        (predecessorStartNs > streamStartNs
+          ? predecessorStartNs
+          : streamStartNs),
+    };
+  }
+
+  private publishPlaybackSettlements(
+    request: SynchronizedPlaybackReadRequest,
+    window: SynchronizedFrameWindow,
+  ): void {
+    if (!request.onStreamSettlement && !request.onStreamSettlements) return;
+    const settlements = prioritizedStreams(
+      request.streams,
+      request.settlementPriorityStreams,
+    ).map((stream) => ({
+      stream,
+      window: {
+        ...window,
+        frames: window.framesByStream[stream] ?? [],
+        framesByStream: {
+          [stream]: window.framesByStream[stream] ?? [],
+        },
+        streamPolicies: { [stream]: window.streamPolicies[stream] },
+      },
+    }));
+    request.onStreamSettlements?.(settlements);
+    for (const settlement of settlements) {
+      request.onStreamSettlement?.(settlement);
+    }
+  }
+
+  private async readSampleSpan(
+    asset: AssetDescriptor,
+    samples: readonly Sample[],
+    signal?: AbortSignal,
+  ): Promise<Uint8Array> {
+    const start = samples[0].offset;
+    const end = Math.max(
+      ...samples.map((sample) => sample.offset + sample.size),
+    );
+    const key = `${asset.id}:${start}`;
+    const previous = this.videoSpanCache.get(key);
+    if (previous) {
+      this.videoSpanCache.delete(key);
+      this.videoSpanCache.set(key, previous);
+      if (previous.span && previous.span.end >= end) {
+        return previous.span.bytes.subarray(0, end - start);
+      }
+    }
+    const promise = (async (): Promise<CachedVideoSpan> => {
+      const cached = await previous?.promise;
+      if (cached && cached.end >= end) return cached;
+      const readStart = cached?.end ?? start;
+      const result = await this.state.io.readBytes({
+        range: {
+          length: BigInt(end - readStart),
+          offset: BigInt(readStart),
+        },
+        source: await this.state.source.assets.resolve(asset.id),
+      });
+      this.transferredBytes += result.bytes.byteLength;
+      const bytes = new Uint8Array(
+        (cached?.bytes.byteLength ?? 0) + result.bytes.byteLength,
+      );
+      if (cached) bytes.set(cached.bytes);
+      bytes.set(result.bytes, cached?.bytes.byteLength ?? 0);
+      return { bytes, end: readStart + result.bytes.byteLength };
+    })();
+    const entry: VideoSpanCacheEntry = { bytes: 0, promise, span: null };
+    this.videoSpanCache.set(key, entry);
+    void promise.then(
+      (span) => {
+        entry.bytes = span.bytes.byteLength;
+        entry.span = span;
+        this.evictVideoSpans();
+      },
+      () => {
+        if (this.videoSpanCache.get(key) === entry) {
+          this.videoSpanCache.delete(key);
+        }
+      },
+    );
+    const span = await waitForSharedRead(promise, signal);
+    throwIfAborted(signal);
+    return span.bytes.subarray(0, end - start);
+  }
+
+  private evictVideoSpans(): void {
+    let retainedBytes = [...this.videoSpanCache.values()].reduce(
+      (total, entry) => total + entry.bytes,
+      0,
+    );
+    while (
+      this.videoSpanCache.size > MAX_VIDEO_SPAN_CACHE_ENTRIES ||
+      retainedBytes > MAX_VIDEO_SPAN_CACHE_BYTES
+    ) {
+      const oldest = this.videoSpanCache.entries().next().value as
+        | readonly [string, VideoSpanCacheEntry]
+        | undefined;
+      if (!oldest) return;
+      this.videoSpanCache.delete(oldest[0]);
+      retainedBytes -= oldest[1].bytes;
+    }
   }
 
   private async readRows(
@@ -1046,7 +1292,25 @@ async function parseVideoIndex(
   const compositionOffsetSeconds = Math.min(
     ...samples.map((sample) => sample.cts / videoTrack.timescale),
   );
-  return { compositionOffsetSeconds, file, samples, track: videoTrack };
+  const presentationSamples = samples
+    .map((sample, decodeIndex) => ({
+      decodeIndex,
+      presentationSeconds:
+        sample.cts / videoTrack.timescale - compositionOffsetSeconds,
+      sample,
+    }))
+    .sort((left, right) =>
+      left.presentationSeconds !== right.presentationSeconds
+        ? left.presentationSeconds - right.presentationSeconds
+        : left.decodeIndex - right.decodeIndex,
+    );
+  return {
+    compositionOffsetSeconds,
+    file,
+    presentationSamples,
+    samples,
+    track: videoTrack,
+  };
 }
 
 function selectVideoSamples(
@@ -1054,49 +1318,34 @@ function selectVideoSamples(
   binding: VideoBinding,
   window: TimeWindow,
 ): readonly Sample[] {
-  const indexed = index.samples.map((sample, decodeIndex) => ({
-    decodeIndex,
-    presentationSeconds: videoPresentationSeconds(index, sample),
-    sample,
-  }));
-  const selectedInterval = indexed.filter(
-    ({ presentationSeconds }) =>
-      presentationSeconds >= binding.fromSeconds &&
-      presentationSeconds < binding.toSeconds,
+  const startSeconds = Math.max(
+    binding.fromSeconds,
+    binding.fromSeconds + nsToSeconds(window.startNs),
   );
-  const startSeconds = binding.fromSeconds + nsToSeconds(window.startNs);
-  const endSeconds = binding.fromSeconds + nsToSeconds(window.endNs);
-  const requested = selectedInterval.filter(
-    ({ presentationSeconds }) =>
-      presentationSeconds >= startSeconds && presentationSeconds <= endSeconds,
+  const endSeconds = Math.min(
+    binding.toSeconds,
+    binding.fromSeconds + nsToSeconds(window.endNs),
   );
+  const startIndex = lowerBoundPresentation(
+    index.presentationSamples,
+    startSeconds,
+  );
+  const endIndex = upperBoundPresentation(
+    index.presentationSamples,
+    endSeconds,
+  );
+  const requested = index.presentationSamples.slice(startIndex, endIndex);
   if (!requested.length) return [];
   const firstDecode = Math.min(...requested.map((entry) => entry.decodeIndex));
   const lastDecode = Math.max(...requested.map((entry) => entry.decodeIndex));
   let startDecode = firstDecode;
-  for (const entry of indexed) {
-    if (entry.decodeIndex > firstDecode) break;
-    if (entry.sample.is_sync) startDecode = entry.decodeIndex;
+  for (let decodeIndex = firstDecode; decodeIndex >= 0; decodeIndex -= 1) {
+    if (index.samples[decodeIndex].is_sync) {
+      startDecode = decodeIndex;
+      break;
+    }
   }
   return index.samples.slice(startDecode, lastDecode + 1);
-}
-
-async function readSampleSpan(
-  asset: AssetDescriptor,
-  samples: readonly Sample[],
-  source: EpisodeSource,
-  io: ByteResources,
-  signal?: AbortSignal,
-) {
-  const start = samples[0].offset;
-  const end = Math.max(...samples.map((sample) => sample.offset + sample.size));
-  const result = await io.readBytes({
-    range: { length: BigInt(end - start), offset: BigInt(start) },
-    signal,
-    source: await source.assets.resolve(asset.id, { signal }),
-  });
-  throwIfAborted(signal);
-  return result.bytes;
 }
 
 function videoFrame(
@@ -1188,6 +1437,83 @@ function encodedVideo(
 
 function videoPresentationSeconds(index: VideoIndex, sample: Sample) {
   return sample.cts / index.track.timescale - index.compositionOffsetSeconds;
+}
+
+function lowerBoundPresentation(
+  samples: readonly IndexedVideoSample[],
+  timeSeconds: number,
+): number {
+  let low = 0;
+  let high = samples.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (samples[middle].presentationSeconds < timeSeconds) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function upperBoundPresentation(
+  samples: readonly IndexedVideoSample[],
+  timeSeconds: number,
+): number {
+  let low = 0;
+  let high = samples.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (samples[middle].presentationSeconds <= timeSeconds) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function waitForSharedRead<T>(
+  promise: Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (!signal) return promise;
+  throwIfAborted(signal);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      try {
+        throwIfAborted(signal);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
+function collectLeRobotFramesByStream(
+  batches: readonly FrameBatch[],
+  streams: readonly string[],
+): ReadonlyMap<string, readonly DecodedFrame[]> {
+  const requested = new Set(streams);
+  const framesByStream = new Map<string, DecodedFrame[]>(
+    streams.map((stream) => [stream, []]),
+  );
+  for (const batch of batches) {
+    if (!requested.has(batch.stream)) continue;
+    const frames = framesByStream.get(batch.stream);
+    if (!frames) continue;
+    for (const frame of batch.frames) {
+      if (frame.streamId === batch.stream) frames.push(frame);
+    }
+  }
+  return framesByStream;
 }
 
 function mp4SampleToAnnexB(bytes: Uint8Array, lengthSize: number): Uint8Array {

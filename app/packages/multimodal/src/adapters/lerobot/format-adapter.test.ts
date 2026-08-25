@@ -423,6 +423,144 @@ describe("LeRobot format adapter", () => {
     }
   });
 
+  it("reuses an MP4 GOP prefix and reads only its missing tail", async () => {
+    const readBytes = vi.fn<ByteResources["readBytes"]>((request) =>
+      io.readBytes(request),
+    );
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(source, { readBytes });
+    const readVideo = (endNs: bigint) =>
+      collectBatches(
+        session.read({
+          streams: ["lerobot:observation.images.test"],
+          window: { endNs, startNs: 0n },
+        }),
+      );
+    try {
+      await readVideo(0n);
+      const firstReads = readBytes.mock.calls
+        .map(([request]) => request)
+        .filter((request) => request.source.sourceId === "video");
+      const firstSpan = firstReads.at(-1)?.range;
+      if (!firstSpan) throw new Error("Expected an MP4 sample span read");
+
+      await readVideo(500_000_000n);
+      const extendedReads = readBytes.mock.calls
+        .map(([request]) => request)
+        .filter((request) => request.source.sourceId === "video");
+      expect(extendedReads).toHaveLength(firstReads.length + 1);
+      const tail = extendedReads.at(-1)?.range;
+      expect(tail?.offset).toBe(firstSpan.offset + firstSpan.length);
+
+      await readVideo(500_000_000n);
+      expect(
+        readBytes.mock.calls
+          .map(([request]) => request)
+          .filter((request) => request.source.sourceId === "video"),
+      ).toHaveLength(extendedReads.length);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("reads synchronized camera batches concurrently", async () => {
+    const secondFeature = "observation.images.second";
+    const dualInfo = {
+      ...info,
+      features: {
+        ...info.features,
+        [secondFeature]: info.features["observation.images.test"],
+      },
+    };
+    const dualInfoBytes = new TextEncoder().encode(JSON.stringify(dualInfo));
+    const firstVideoAsset = assets.find((asset) => asset.id === "video");
+    if (!firstVideoAsset) throw new Error("Missing test video asset");
+    const dualAssets = [
+      ...assets.map((asset) =>
+        asset.id === "info"
+          ? {
+              ...asset,
+              metadata: { sizeBytes: dualInfoBytes.byteLength.toString() },
+            }
+          : asset,
+      ),
+      {
+        ...firstVideoAsset,
+        featureName: secondFeature,
+        id: "video-second",
+        metadata: {
+          ...firstVideoAsset.metadata,
+          stream: secondFeature,
+        },
+      },
+    ];
+    let activeVideoReads = 0;
+    let maxActiveVideoReads = 0;
+    const dualSource: EpisodeSource = {
+      assets: {
+        list: async () => dualAssets,
+        resolve: async (assetId) => {
+          const asset = dualAssets.find(
+            (candidate) => candidate.id === assetId,
+          );
+          if (!asset) throw new Error(`Unknown dual-camera asset ${assetId}`);
+          return {
+            sizeBytes: asset.metadata?.sizeBytes,
+            sourceId: asset.id,
+            url: `memory://${asset.id}`,
+          };
+        },
+      },
+      episodeId: "episode-0",
+    };
+    const dualIo: ByteResources = {
+      readBytes: async (request) => {
+        const isVideo = request.source.sourceId.startsWith("video");
+        if (isVideo) {
+          activeVideoReads += 1;
+          maxActiveVideoReads = Math.max(maxActiveVideoReads, activeVideoReads);
+          await Promise.resolve();
+        }
+        try {
+          const start = Number(request.range.offset);
+          const end = start + Number(request.range.length);
+          const bytes =
+            request.source.sourceId === "info"
+              ? dualInfoBytes.slice(start, end)
+              : isVideo
+                ? tinyMp4Bytes.slice(start, end)
+                : new Uint8Array(Number(request.range.length));
+          return { bytes, range: request.range, source: request.source };
+        } finally {
+          if (isVideo) activeVideoReads -= 1;
+        }
+      },
+    };
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(dualSource, dualIo);
+    try {
+      const streams = [
+        "lerobot:observation.images.test",
+        `lerobot:${secondFeature}`,
+      ];
+      const windows = await session.playback?.readSynchronizedBatch({
+        streams,
+        timeNs: [0n, 500_000_000n],
+      });
+
+      expect(maxActiveVideoReads).toBeGreaterThanOrEqual(2);
+      expect(windows).toHaveLength(2);
+      expect(windows?.[0].framesByStream[streams[0]]).toHaveLength(1);
+      expect(windows?.[0].framesByStream[streams[1]]).toHaveLength(1);
+      expect(windows?.[1].framesByStream[streams[0]]).toHaveLength(1);
+      expect(windows?.[1].framesByStream[streams[1]]).toHaveLength(1);
+    } finally {
+      session.dispose();
+    }
+  });
+
   it("reads embedded images and exact bounded raw rows", async () => {
     const session = await createLeRobotFormatAdapter({
       readParquetObjects,
