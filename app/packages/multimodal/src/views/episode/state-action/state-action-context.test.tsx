@@ -99,6 +99,46 @@ describe("StateActionBridge", () => {
     expect(capability.readAtTime).not.toHaveBeenCalled();
   });
 
+  it("replays a schema request registered before the bridge mounts", async () => {
+    const capability = createCapability();
+    const context = createContextRef();
+    const { rerender } = render(
+      <Harness bridge={false} capability={capability} contextRef={context} />,
+    );
+
+    act(() => context.current?.ensureSchema());
+    expect(context.current?.schema.status).toBe("idle");
+
+    rerender(<Harness bridge capability={capability} contextRef={context} />);
+    await act(flushMicrotasks);
+
+    expect(context.current?.schema).toEqual({
+      schema: SCHEMA,
+      status: "ready",
+    });
+  });
+
+  it("republishes the schema through ensureSchema after it is wiped", async () => {
+    const capability = createCapability();
+    const context = createContextRef();
+
+    render(<Harness capability={capability} contextRef={context} />);
+    await act(flushMicrotasks);
+    expect(context.current?.schema.status).toBe("ready");
+
+    // A shell remount's stale passive cleanup can reset the inventory after
+    // the new epoch's layout-phase publish; the tile heals it by calling
+    // ensureSchema from its own passive effect.
+    await act(async () => {
+      context.current?.ensureSchema();
+      await flushMicrotasks();
+    });
+    expect(context.current?.schema).toEqual({
+      schema: SCHEMA,
+      status: "ready",
+    });
+  });
+
   it("resolves the subscribed row at the playhead with paused intent", async () => {
     const capability = createCapability();
     const context = createContextRef();

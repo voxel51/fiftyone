@@ -74,6 +74,13 @@ export interface StateActionContextValue {
   readonly schema: StateActionSchemaState;
 
   /**
+   * Idempotently (re)publishes the session schema. Tiles call this from a
+   * passive effect so the publication survives shell remounts, whose stale
+   * unmount cleanups can otherwise wipe a one-shot layout-phase publish.
+   */
+  ensureSchema(): void;
+
+  /**
    * Pins one cursor-selected row and predicts the paused-seek echo so the
    * bridge keeps the exact row instead of re-resolving through time.
    */
@@ -139,7 +146,7 @@ export const StateActionProvider = stateActionDemandContext.Provider;
 
 /** Reads the state/action cache and demand hooks for the tile. */
 export function useStateActionContext(): StateActionContextValue {
-  const { handlersRef, inventory, subscribeKey, valuesByKey } =
+  const { ensureInventory, handlersRef, inventory, subscribeKey, valuesByKey } =
     useInternalValue();
   const subscribeRow = useCallback(() => subscribeKey(ROW_KEY), [subscribeKey]);
   const holdCursorRow = useCallback(
@@ -175,6 +182,7 @@ export function useStateActionContext(): StateActionContextValue {
   }, [handlersRef]);
   return useMemo(
     () => ({
+      ensureSchema: ensureInventory,
       holdCursorRow,
       readRowAtCursor,
       readRowIndexWindow,
@@ -184,6 +192,7 @@ export function useStateActionContext(): StateActionContextValue {
       subscribeRow,
     }),
     [
+      ensureInventory,
       holdCursorRow,
       inventory,
       readRowAtCursor,
@@ -257,9 +266,17 @@ export function StateActionBridge({
       handlersRef,
       inventoryReplay,
       makeHandlers: ({ isCancelled, queueExpeditedFill }) => {
-        setInventory({ schema: capability.schema, status: "ready" });
+        // Publish eagerly for the common mount order, and again through
+        // ensureInventory: a shell remount runs the outgoing bridge's
+        // passive reset after this layout-phase publish, and the tile's
+        // ensureSchema effect is what restores the wiped schema.
+        const publishSchema = () => {
+          if (isCancelled()) return;
+          setInventory({ schema: capability.schema, status: "ready" });
+        };
+        publishSchema();
         return {
-          ensureInventory: () => undefined,
+          ensureInventory: publishSchema,
           holdCursorRow(row, echoNs) {
             if (isCancelled()) return;
             held = { echoNs, row };

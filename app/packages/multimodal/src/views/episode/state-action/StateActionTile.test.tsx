@@ -25,7 +25,9 @@ const mocks = vi.hoisted(() => ({
     }),
     sourceKey: "source-1",
   },
+  ensureSchema: vi.fn(),
   holdCursorRow: vi.fn(),
+  registerTileSettings: vi.fn(),
   isPlaying: false,
   isPlayPending: false,
   pause: vi.fn(),
@@ -54,8 +56,14 @@ vi.mock("../playback/data-stream-context", () => ({
   useDataStream: () => mocks.dataStream,
 }));
 
+vi.mock("../tiles/tile-settings-context", () => ({
+  useRegisterTileSettings: (tileId: string, registration: unknown) =>
+    mocks.registerTileSettings(tileId, registration),
+}));
+
 vi.mock("./state-action-context", () => ({
   useStateActionContext: () => ({
+    ensureSchema: mocks.ensureSchema,
     holdCursorRow: mocks.holdCursorRow,
     readRowAtCursor: mocks.readRowAtCursor,
     readRowIndexWindow: mocks.readRowIndexWindow,
@@ -115,12 +123,17 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("StateActionTile", () => {
-  it("titles itself and subscribes to the canonical row", () => {
+  it("titles itself, ensures the schema, and subscribes to the row", () => {
     render(<StateActionTile />);
     expect(mocks.setTileTitle).toHaveBeenCalledWith("State & Action", {
       source: "auto",
     });
+    expect(mocks.ensureSchema).toHaveBeenCalled();
     expect(mocks.subscribeRow).toHaveBeenCalledTimes(1);
+    expect(mocks.registerTileSettings).toHaveBeenCalledWith(
+      "lerobot:state-action-1",
+      expect.objectContaining({ content: expect.anything() }),
+    );
   });
 
   it("renders schema-derived names as a skeleton before any value read", () => {

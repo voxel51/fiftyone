@@ -486,7 +486,7 @@ async function openRealEpisode(root: string): Promise<{
   };
   const buffer = (id: string): AsyncBuffer => ({
     byteLength: sizes.get(id) ?? 0,
-    async slice(start, end) {
+    async slice(start: number, end?: number) {
       const bytes = await readFileRange(
         id,
         start,

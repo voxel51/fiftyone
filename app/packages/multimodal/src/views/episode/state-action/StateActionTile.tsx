@@ -3,7 +3,7 @@ import {
   useIsPlayPending,
   usePlayback,
 } from "@fiftyone/playback/runtime";
-import { useSetTileTitle } from "@fiftyone/tiling";
+import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import React, {
   useCallback,
@@ -18,8 +18,10 @@ import { errorMessage } from "../../../utils/errors";
 import { relativeTimeParts } from "../../../utils/relative-time";
 import { virtualLogRowRange } from "../../../visualization/logs/log-console-virtualization";
 import { useDataStream } from "../playback/data-stream-context";
+import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import { useStateActionContext } from "./state-action-context";
+import StateActionTileSettings from "./StateActionTileSettings";
 import styles from "./StateActionTile.module.css";
 
 const ROW_HEIGHT_PX = 22;
@@ -36,11 +38,13 @@ const ACTION_PANE_LABEL = "Action";
  * exact row cursor while seeking cameras to the row's timestamp.
  */
 const StateActionTile: React.FC<EpisodeTileProps> = () => {
+  const tileId = useTileId();
   const setTileTitle = useSetTileTitle();
   const { pause, seek } = usePlayback();
   const isPlaying = useIsPlaying();
   const isPlayPending = useIsPlayPending();
   const {
+    ensureSchema,
     holdCursorRow,
     readRowAtCursor,
     readRowIndexWindow,
@@ -55,9 +59,22 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
   const stepPendingRef = useRef(false);
   const [cursorCopied, setCursorCopied] = useState(false);
 
+  // Settings render through the sidebar's tile-settings registry, not here.
+  const settingsRegistration = useMemo(
+    () => ({ content: <StateActionTileSettings /> }),
+    [],
+  );
+  useRegisterTileSettings(tileId, settingsRegistration);
+
   useEffect(() => {
     setTileTitle("State & Action", { source: "auto" });
   }, [setTileTitle]);
+
+  // This passive effect (re)publishes the schema after any shell remount
+  // whose stale cleanup wiped the bridge's layout-phase publication.
+  useEffect(() => {
+    ensureSchema();
+  }, [ensureSchema]);
 
   // This effect declares interest in the canonical row while the tile is
   // mounted; the bridge follows the playhead for interested tiles.
