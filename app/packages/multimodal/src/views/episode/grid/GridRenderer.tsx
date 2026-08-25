@@ -716,6 +716,7 @@ function PreviewFrame({
       cachedPoster={cachedPoster}
       frame={frame}
       imageFit={imageFit}
+      hovered={hovered}
       onCanvasCommitted={onCanvasCommitted}
       onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
       videoStream={videoStream}
@@ -1032,6 +1033,7 @@ function ImagePreviewFrame({
   cachedPoster,
   frame,
   imageFit,
+  hovered,
   onCanvasCommitted,
   onSurfaceRetainedBytesChange,
   videoStream,
@@ -1039,6 +1041,7 @@ function ImagePreviewFrame({
   readonly cachedPoster: GridPosterCacheEntry | null;
   readonly frame: Extract<EpisodePosterFrame, { kind: "image" }>;
   readonly imageFit: MultimodalGridFit;
+  readonly hovered: boolean;
   readonly onCanvasCommitted: (
     sourceKind: "image" | "point-cloud",
     canvas: HTMLCanvasElement,
@@ -1090,6 +1093,7 @@ function ImagePreviewFrame({
           onCanvasCommitted("image", canvas, size);
         }}
         onBitmapRetainedBytesChange={setFrameRetainedBytes}
+        videoPriority={hovered ? "playing" : "visible"}
         videoSessionKey={videoStream ?? undefined}
       />
     </>

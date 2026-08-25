@@ -124,6 +124,8 @@ export interface VideoDecoderActor {
       readonly targetTimeNs: bigint;
     },
   ): Promise<VideoFrame>;
+  /** Whether an explicitly reordered presentation is decoded and ready now. */
+  hasReadyPresentation(timeNs: bigint): boolean;
   resetForDiscontinuity(): void;
 }
 

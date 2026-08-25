@@ -108,6 +108,7 @@ const bitmapViewHarness = vi.hoisted(() => ({
       canvas: HTMLCanvasElement,
       size: { readonly height: number; readonly width: number },
     ) => void;
+    videoPriority?: "playing" | "visible";
   } | null,
 }));
 
@@ -239,6 +240,7 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
         canvas: HTMLCanvasElement,
         size: { readonly height: number; readonly width: number },
       ) => void;
+      readonly videoPriority?: "playing" | "visible";
     }) => {
       bitmapHostHarness.lastBitmap = bitmap;
       bitmapHostHarness.onCanvasCommitted = onCanvasCommitted ?? null;
@@ -726,12 +728,14 @@ describe("GridRenderer", () => {
     previewHarness.preview.status = "ready";
 
     render(<GridRenderer ctx={rendererCtx()} />);
+    expect(bitmapViewHarness.lastProps?.videoPriority).toBe("visible");
     const root = screen.getByTestId("bitmap-image-view").parentElement;
     if (!root) {
       throw new Error("Expected bitmap view to have a grid root");
     }
 
     fireEvent.pointerOver(root);
+    expect(bitmapViewHarness.lastProps?.videoPriority).toBe("playing");
     expect(vi.mocked(useGridPreview)).toHaveBeenLastCalledWith(
       expect.objectContaining({ hovered: true }),
     );
@@ -741,6 +745,7 @@ describe("GridRenderer", () => {
     expect(previewHarness.preview.play).not.toHaveBeenCalled();
 
     fireEvent.pointerOut(root);
+    expect(bitmapViewHarness.lastProps?.videoPriority).toBe("visible");
     expect(vi.mocked(useGridPreview)).toHaveBeenLastCalledWith(
       expect.objectContaining({ hovered: false }),
     );

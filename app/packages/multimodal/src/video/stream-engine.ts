@@ -99,6 +99,9 @@ export class VideoStreamEngine {
           VIDEO_INTENT_PRIORITY_WEIGHT[this.requestedPriority]
       ) {
         this.requestedPriority = intent.priority;
+        if (this.activeIntent) {
+          this.activeIntent = strongerIntent(this.activeIntent, intent);
+        }
         if (this.activeController) {
           this.scheduler.promote(this.activeController.signal, intent.priority);
         }
@@ -199,11 +202,9 @@ export class VideoStreamEngine {
         forwardGapNs <=
           this.nominalForwardStepNs + this.nominalForwardStepNs / 2n;
       const targetDecodeTimeNs = intent.frame.decodeTimestampNs;
-      const decodeCursorTimeNs = this.decoder.cursorDecodeTimeNs;
       const decodeCadenceAllowsDirect =
         targetDecodeTimeNs === undefined ||
-        (decodeCursorTimeNs !== null &&
-          targetDecodeTimeNs <= decodeCursorTimeNs);
+        this.decoder.hasReadyPresentation(intent.timeNs);
       const reorderedKeyframeNeedsRunway =
         intent.frame.keyframe &&
         targetDecodeTimeNs !== undefined &&
@@ -224,7 +225,6 @@ export class VideoStreamEngine {
         !reorderedKeyframeNeedsRunway &&
         !directKeyframe &&
         !directForward;
-
       if (directKeyframe || directForward) {
         units = [intent];
         this.continuityUncertain = false;
@@ -419,7 +419,7 @@ export class VideoStreamEngine {
           ]).filter(
             (unit) =>
               (unit.frame.decodeTimestampNs ?? unit.timeNs) >
-              cursorDecodeTimeNs,
+                cursorDecodeTimeNs || unit.timeNs === intent.timeNs,
           )
         : uniqueSortedAccessUnits([
             ...this.cache.range(startTimeNs, intent.timeNs),

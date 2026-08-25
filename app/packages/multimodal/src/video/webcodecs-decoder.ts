@@ -66,6 +66,10 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     return this.lastSubmittedDecodeTimeNs;
   }
 
+  hasReadyPresentation(timeNs: bigint): boolean {
+    return this.reorderedOutputs.get(timeNs)?.frame != null;
+  }
+
   async decode(
     units: readonly H264AccessUnit[],
     {

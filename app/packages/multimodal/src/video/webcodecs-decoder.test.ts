@@ -163,11 +163,13 @@ describe("WebCodecsH264Decoder", () => {
     const futurePresentation = unit(2_000_000, false, undefined, 1_000_000);
     const target = unit(1_000_000, false, undefined, 2_000_000);
 
+    expect(actor.hasReadyPresentation(futurePresentation.timeNs)).toBe(false);
     const first = await actor.decode([keyframe, futurePresentation, target], {
       signal: new AbortController().signal,
       targetTimeNs: target.timeNs,
     });
     first.close();
+    expect(actor.hasReadyPresentation(futurePresentation.timeNs)).toBe(true);
     const second = await actor.decode([futurePresentation], {
       signal: new AbortController().signal,
       targetTimeNs: futurePresentation.timeNs,
@@ -176,6 +178,7 @@ describe("WebCodecsH264Decoder", () => {
     expect(harness.instances[0].decode).toHaveBeenCalledTimes(3);
     expect(harness.instances[0].flush).not.toHaveBeenCalled();
     expect(actor.cursorTimeNs).toBe(futurePresentation.timeNs);
+    expect(actor.hasReadyPresentation(futurePresentation.timeNs)).toBe(false);
     second.close();
     actor.close();
   });

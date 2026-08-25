@@ -42,6 +42,7 @@ import {
   useOptionalVideoPlaybackManager,
   useVideoStreamPresentation,
 } from "../../video/react";
+import type { VideoIntentPriority } from "../../video/types";
 import { useLatestRef } from "./use-latest-ref";
 import { fittedImageSize } from "./image-fit";
 import { rawImageRgba } from "./raw-image-rgba";
@@ -135,6 +136,8 @@ export interface BitmapImageFrameViewProps {
     size: BitmapDrawSize,
   ) => void;
   readonly style?: CSSProperties;
+  /** Playback admission priority for encoded-video frames. */
+  readonly videoPriority?: VideoIntentPriority;
   /** Stable source/stream owner key for encoded-video decoder cleanup. */
   readonly videoSessionKey?: string;
 }
@@ -502,6 +505,7 @@ export function BitmapImageFrameView({
   onError,
   onImageLoaded,
   style,
+  videoPriority,
   videoSessionKey,
 }: BitmapImageFrameViewProps) {
   if (frame.kind === "encoded-video") {
@@ -515,6 +519,7 @@ export function BitmapImageFrameView({
         onCanvasCommitted={onCanvasCommitted}
         onImageLoaded={onImageLoaded}
         style={style}
+        videoPriority={videoPriority}
         videoSessionKey={videoSessionKey}
       />
     );
@@ -555,6 +560,7 @@ function BitmapEncodedVideoView({
   onCanvasCommitted,
   onImageLoaded,
   style,
+  videoPriority = "visible",
   videoSessionKey,
 }: Omit<BitmapImageFrameViewProps, "frame"> & {
   readonly frame: EncodedVideoVisualization;
@@ -632,7 +638,7 @@ function BitmapEncodedVideoView({
       (contextManager !== null || hasPrivateRunway),
     frame: frame.codec === "h264" ? frame : null,
     manager,
-    priority: "visible",
+    priority: videoPriority,
     stream: previewTextureKey,
     targetTimeNs,
   });

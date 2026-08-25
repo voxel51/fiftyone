@@ -72,6 +72,52 @@ describe("PushVideoAccessUnitReader", () => {
     ).rejects.toBeInstanceOf(VideoIntentCancelledError);
   });
 
+  it("waits for future pushed coverage inside the read deadline", async () => {
+    const reader = new PushVideoAccessUnitReader();
+    reader.push("camera", unit(0, true));
+    let settled = false;
+    const read = reader
+      .read({
+        budget,
+        endTimeNs: 2n,
+        signal: new AbortController().signal,
+        startTimeNs: 0n,
+        stream: "camera",
+      })
+      .finally(() => {
+        settled = true;
+      });
+
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    reader.push("camera", unit(1));
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    reader.push("camera", unit(2));
+
+    await expect(read).resolves.toMatchObject({
+      complete: true,
+      units: [unit(0, true), unit(1), unit(2)],
+    });
+  });
+
+  it("cancels a read waiting for future pushed coverage", async () => {
+    const reader = new PushVideoAccessUnitReader();
+    const controller = new AbortController();
+    reader.push("camera", unit(0, true));
+    const read = reader.read({
+      budget,
+      endTimeNs: 2n,
+      signal: controller.signal,
+      startTimeNs: 0n,
+      stream: "camera",
+    });
+
+    controller.abort();
+
+    await expect(read).rejects.toBeInstanceOf(VideoIntentCancelledError);
+  });
+
   it("reports whether a retained keyframe can bootstrap a target", () => {
     const reader = new PushVideoAccessUnitReader();
     reader.push("camera", unit(2));

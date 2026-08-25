@@ -37,6 +37,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
   private bytes = 0;
   private readonly insertionOrder: InsertionReference[] = [];
   private nextToken = 0;
+  private readonly pushListeners = new Set<() => void>();
   private readonly streams = new Map<string, StreamHistory>();
   private units = 0;
 
@@ -107,6 +108,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
     this.insertionOrder.push({ stream, timeNs: unit.timeNs, token });
     this.bytes += unit.frame.bytes.byteLength;
     this.evictToBudget();
+    this.notifyPushListeners();
   }
 
   async read({
@@ -118,12 +120,57 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
   }: Parameters<
     VideoAccessUnitReader["read"]
   >[0]): Promise<VideoAccessUnitReadResult> {
-    if (signal.aborted) throw new VideoIntentCancelledError();
+    for (;;) {
+      if (signal.aborted) throw new VideoIntentCancelledError();
+      const retained = this.readRetained(
+        stream,
+        startTimeNs,
+        endTimeNs,
+        budget.maxMessages,
+        budget.maxObservedPayloadBytes,
+      );
+      if (
+        retained.complete ||
+        retained.stopReason === "push-budget" ||
+        !retained.canGrowToComplete ||
+        playbackNowMs() >= budget.deadlineMs
+      ) {
+        return retained.result;
+      }
+      await this.waitForPush(signal, budget.deadlineMs);
+    }
+  }
+
+  clear(): void {
+    this.bytes = 0;
+    this.insertionOrder.length = 0;
+    this.streams.clear();
+    this.units = 0;
+    this.notifyPushListeners();
+  }
+
+  private readRetained(
+    stream: string,
+    startTimeNs: bigint,
+    endTimeNs: bigint,
+    maxMessages: number,
+    maxObservedPayloadBytes: number,
+  ): {
+    readonly canGrowToComplete: boolean;
+    readonly complete: boolean;
+    readonly result: VideoAccessUnitReadResult;
+    readonly stopReason?: "push-budget" | "push-history";
+  } {
     const history = this.streams.get(stream);
     const retainedStart = history?.sortedTimes[0];
     const retainedEnd = history?.sortedTimes.at(-1);
     if (!history || retainedStart === undefined || retainedEnd === undefined) {
-      return { complete: false, stopReason: "push-history", units: [] };
+      return {
+        canGrowToComplete: false,
+        complete: false,
+        result: { complete: false, stopReason: "push-history", units: [] },
+        stopReason: "push-history",
+      };
     }
 
     const units: H264AccessUnit[] = [];
@@ -131,17 +178,13 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
     let budgetStopped = false;
     let index = lowerBound(history.sortedTimes, startTimeNs);
     while (index < history.sortedTimes.length) {
-      if (signal.aborted) throw new VideoIntentCancelledError();
       const timeNs = history.sortedTimes[index];
       if (timeNs > endTimeNs) break;
       const unit = history.entries.get(timeNs)?.unit;
       index += 1;
       if (!unit) continue;
       const nextBytes = observedBytes + unit.frame.bytes.byteLength;
-      if (
-        units.length >= budget.maxMessages ||
-        nextBytes > budget.maxObservedPayloadBytes
-      ) {
+      if (units.length >= maxMessages || nextBytes > maxObservedPayloadBytes) {
         budgetStopped = true;
         break;
       }
@@ -152,20 +195,49 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
       !budgetStopped &&
       startTimeNs >= retainedStart &&
       endTimeNs <= retainedEnd;
+    const stopReason = budgetStopped ? "push-budget" : "push-history";
     return {
+      canGrowToComplete:
+        !budgetStopped &&
+        startTimeNs >= retainedStart &&
+        endTimeNs > retainedEnd,
       complete,
-      ...(complete
-        ? {}
-        : { stopReason: budgetStopped ? "push-budget" : "push-history" }),
-      units,
+      result: {
+        complete,
+        ...(complete ? {} : { stopReason }),
+        units,
+      },
+      ...(complete ? {} : { stopReason }),
     };
   }
 
-  clear(): void {
-    this.bytes = 0;
-    this.insertionOrder.length = 0;
-    this.streams.clear();
-    this.units = 0;
+  private waitForPush(signal: AbortSignal, deadlineMs: number): Promise<void> {
+    if (signal.aborted) return Promise.reject(new VideoIntentCancelledError());
+    return new Promise<void>((resolve, reject) => {
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const finish = () => {
+        cleanup();
+        resolve();
+      };
+      const cancel = () => {
+        cleanup();
+        reject(new VideoIntentCancelledError());
+      };
+      const cleanup = () => {
+        this.pushListeners.delete(finish);
+        signal.removeEventListener("abort", cancel);
+        if (timer !== null) clearTimeout(timer);
+      };
+      this.pushListeners.add(finish);
+      signal.addEventListener("abort", cancel, { once: true });
+      if (Number.isFinite(deadlineMs)) {
+        timer = setTimeout(finish, Math.max(0, deadlineMs - playbackNowMs()));
+      }
+    });
+  }
+
+  private notifyPushListeners(): void {
+    for (const listener of [...this.pushListeners]) listener();
   }
 
   private evictToBudget(): void {
@@ -185,6 +257,10 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
       if (history.entries.size === 0) this.streams.delete(reference.stream);
     }
   }
+}
+
+function playbackNowMs(): number {
+  return globalThis.performance?.now() ?? Date.now();
 }
 
 function lowerBound(times: readonly bigint[], timeNs: bigint): number {

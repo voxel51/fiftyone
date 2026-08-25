@@ -377,6 +377,33 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     lease.release();
   });
 
+  it("keeps same-target work after promotion to playing priority", async () => {
+    const gate = deferred<void>();
+    const harness = createHarness({
+      decodeGate: gate.promise,
+      honorAbort: true,
+    });
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    const lease = manager.acquire("/camera");
+    const keyframe = accessUnit(0, true);
+
+    lease.request({ ...keyframe, priority: "visible" });
+    await vi.waitFor(() =>
+      expect(harness.decoders[0].decodeCalls).toHaveLength(1),
+    );
+    lease.request({ ...keyframe, priority: "playing" });
+    lease.request({ ...accessUnit(1), priority: "playing" });
+    gate.resolve();
+
+    await presented(lease, 1n);
+    expect(harness.decoders[0].decodeCalls.map((call) => call.target)).toEqual([
+      0n,
+      1n,
+    ]);
+    expect(harness.decoders[0].resetCount).toBe(0);
+    lease.release();
+  });
+
   it("uses decode-order dependencies that present after a B-frame target", async () => {
     const harness = createHarness();
     const keyframe = accessUnit(0, true, "avc1.4D001F", 0);
@@ -406,6 +433,61 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     expect(
       harness.decoders[0].decodeCalls.at(-1)?.units.map((unit) => unit.timeNs),
     ).toEqual([2n]);
+    expect(harness.decoders[0].resetCount).toBe(0);
+    lease.release();
+  });
+
+  it("feeds successors before awaiting a submitted but pending target", async () => {
+    const keyframe = accessUnit(0, true, "avc1.4D001F", 0);
+    const target = accessUnit(100_000_000, false, "avc1.4D001F", 260_000_000);
+    const futurePresentation = accessUnit(
+      166_000_000,
+      false,
+      "avc1.4D001F",
+      100_000_000,
+    );
+    const successor = accessUnit(
+      200_000_000,
+      false,
+      "avc1.4D001F",
+      300_000_000,
+    );
+    const laterSuccessor = accessUnit(
+      300_000_000,
+      false,
+      "avc1.4D001F",
+      400_000_000,
+    );
+    const harness = createHarness({
+      hasReadyPresentation: (_id, timeNs, decodeCallCount) =>
+        timeNs !== target.timeNs || decodeCallCount > 1,
+    });
+    const units = [
+      keyframe,
+      target,
+      futurePresentation,
+      successor,
+      laterSuccessor,
+    ];
+    const read = vi.fn(async ({ endTimeNs, startTimeNs }) => ({
+      complete: true,
+      units: units.filter(
+        (unit) => unit.timeNs >= startTimeNs && unit.timeNs <= endTimeNs,
+      ),
+    }));
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader({ timelineStartTimeNs: 0n, read });
+    const lease = manager.acquire("/camera");
+
+    lease.request({ ...keyframe, priority: "playing" });
+    await presented(lease, keyframe.timeNs);
+    lease.request({ ...target, priority: "playing" });
+    await presented(lease, target.timeNs);
+
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(
+      harness.decoders[0].decodeCalls.at(-1)?.units.map((unit) => unit.timeNs),
+    ).toEqual([target.timeNs, laterSuccessor.timeNs]);
     expect(harness.decoders[0].resetCount).toBe(0);
     lease.release();
   });
@@ -682,6 +764,11 @@ function createHarness(
     readonly beforeCopy?: (timeNs: bigint) => Promise<void>;
     readonly decodeGate?: Promise<void>;
     readonly firstDecode?: ReturnType<typeof deferred<VideoFrame>>;
+    readonly hasReadyPresentation?: (
+      id: string,
+      timeNs: bigint,
+      decodeCallCount: number,
+    ) => boolean;
     readonly honorAbort?: boolean;
   } = {},
 ) {
@@ -725,6 +812,7 @@ class FakeDecoderActor implements VideoDecoderActor {
     readonly units: readonly H264AccessUnit[];
   }> = [];
   readonly outputs: ReturnType<typeof fakeVideoFrame>[] = [];
+  private readonly readyPresentations = new Set<bigint>();
   resetCount = 0;
 
   constructor(
@@ -738,9 +826,24 @@ class FakeDecoderActor implements VideoDecoderActor {
       readonly beforeCopy?: (timeNs: bigint) => Promise<void>;
       readonly decodeGate?: Promise<void>;
       readonly firstDecode?: ReturnType<typeof deferred<VideoFrame>>;
+      readonly hasReadyPresentation?: (
+        id: string,
+        timeNs: bigint,
+        decodeCallCount: number,
+      ) => boolean;
       readonly honorAbort?: boolean;
     },
   ) {}
+
+  hasReadyPresentation(timeNs: bigint): boolean {
+    return (
+      this.options.hasReadyPresentation?.(
+        this.id,
+        timeNs,
+        this.decodeCalls.length,
+      ) ?? this.readyPresentations.has(timeNs)
+    );
+  }
 
   async decode(
     units: readonly H264AccessUnit[],
@@ -756,6 +859,7 @@ class FakeDecoderActor implements VideoDecoderActor {
     this.active = true;
     try {
       this.decodeCalls.push({ target: targetTimeNs, units });
+      for (const unit of units) this.readyPresentations.add(unit.timeNs);
       this.decodeOrder.push(this.id.replace("decoder-", "/camera/"));
       await this.options.beforeDecode?.(this.id, targetTimeNs);
       if (this.options.firstDecode && this.decodeCalls.length === 1) {
@@ -765,6 +869,7 @@ class FakeDecoderActor implements VideoDecoderActor {
           this.options.honorAbort === true,
         );
         this.cursorTimeNs = targetTimeNs;
+        this.readyPresentations.delete(targetTimeNs);
         return frame;
       }
       await abortable(
@@ -773,6 +878,7 @@ class FakeDecoderActor implements VideoDecoderActor {
         this.options.honorAbort === true,
       );
       this.cursorTimeNs = targetTimeNs;
+      this.readyPresentations.delete(targetTimeNs);
       this.cursorDecodeTimeNs =
         units.at(-1)?.frame.decodeTimestampNs ?? targetTimeNs;
       this.configuredCodec = units[0]?.frame.h264.codecString ?? "avc1.4D001F";
@@ -791,6 +897,7 @@ class FakeDecoderActor implements VideoDecoderActor {
     this.cursorTimeNs = null;
     this.cursorDecodeTimeNs = null;
     this.configuredCodec = null;
+    this.readyPresentations.clear();
   }
 
   close(): void {
