@@ -65,6 +65,41 @@ describe("useVideoTexture", () => {
     expect(onLoaded).toHaveBeenLastCalledWith(result.current);
   });
 
+  it("makes handle disposal lease-generation aware", async () => {
+    const textureDispose = vi.spyOn(THREE.Texture.prototype, "dispose");
+    const firstRelease = vi.fn();
+    const secondRelease = vi.fn();
+    const thirdRelease = vi.fn();
+    const first = presentation(1n, firstRelease);
+    const second = presentation(2n, secondRelease);
+    const third = presentation(3n, thirdRelease);
+    const { result, rerender } = renderHook(
+      ({ value }: { readonly value: VideoPresentation }) =>
+        useVideoTexture(value),
+      { initialProps: { value: first } },
+    );
+    await waitFor(() => expect(result.current).not.toBeNull());
+    const firstHandle = result.current;
+
+    rerender({ value: second });
+    await waitFor(() => expect(result.current).not.toBe(firstHandle));
+    const secondHandle = result.current;
+    firstHandle?.dispose();
+
+    expect(textureDispose).not.toHaveBeenCalled();
+    expect(secondRelease).not.toHaveBeenCalled();
+
+    secondHandle?.dispose();
+    expect(textureDispose).toHaveBeenCalledOnce();
+    expect(secondRelease).toHaveBeenCalledOnce();
+
+    rerender({ value: third });
+    await waitFor(() =>
+      expect(result.current?.texture).not.toBe(secondHandle?.texture),
+    );
+    expect(thirdRelease).not.toHaveBeenCalled();
+  });
+
   it("recreates the renderer texture when frame dimensions change", async () => {
     const textureDispose = vi.spyOn(THREE.Texture.prototype, "dispose");
     const firstRelease = vi.fn();

@@ -63,7 +63,13 @@ export function useVideoTexture(
     const owned = held;
     const next: ImageTextureHandle = {
       aspectRatio: lease.width / Math.max(1, lease.height),
-      dispose: () => disposeHeldVideoTexture(owned),
+      dispose: () => {
+        if (owned.currentLease !== lease) return;
+        disposeHeldVideoTexture(owned);
+        if (heldRef.current === owned) {
+          heldRef.current = null;
+        }
+      },
       imageHeight: lease.height,
       imageWidth: lease.width,
       retainWhenUnused: false,
