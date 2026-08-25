@@ -145,27 +145,32 @@ export interface OwnedVideoPresentation extends VideoPresentation {
 export class VideoIntentCancelledError extends Error {
   constructor() {
     super("Video playback intent was superseded");
-    this.name = "VideoIntentCancelledError";
+    setErrorName(this, "VideoIntentCancelledError");
   }
 }
 
 export class VideoDependencyWaitError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "VideoDependencyWaitError";
+    setErrorName(this, "VideoDependencyWaitError");
   }
 }
 
 export class VideoDecoderFailureError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
-    this.name = "VideoDecoderFailureError";
+    setErrorName(this, "VideoDecoderFailureError");
   }
 }
 
 export class VideoSchedulerClosedError extends Error {
   constructor() {
     super("Video scheduler closed");
-    this.name = "VideoSchedulerClosedError";
+    setErrorName(this, "VideoSchedulerClosedError");
   }
+}
+
+/** Defines an own name even when the host freezes Error.prototype. */
+function setErrorName(error: Error, name: string): void {
+  Object.defineProperty(error, "name", { configurable: true, value: name });
 }

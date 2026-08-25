@@ -10,7 +10,7 @@ export class EpisodeReadCancelledError extends Error {
 
   constructor() {
     super(EPISODE_READ_CANCELLED_MESSAGE);
-    this.name = "EpisodeReadCancelledError";
+    setErrorName(this, "EpisodeReadCancelledError");
   }
 }
 
@@ -45,6 +45,11 @@ export class EpisodeReadUnsupportedError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = "EpisodeReadUnsupportedError";
+    setErrorName(this, "EpisodeReadUnsupportedError");
   }
+}
+
+/** Defines an own name even when the host freezes Error.prototype. */
+function setErrorName(error: Error, name: string): void {
+  Object.defineProperty(error, "name", { configurable: true, value: name });
 }
