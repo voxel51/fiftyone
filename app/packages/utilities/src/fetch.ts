@@ -318,6 +318,9 @@ export const getFetchParameters = () => {
 
 /** Builds an absolute URL from the configured fetch origin and path prefix. */
 export const getFetchUrl = (path: string): string => {
+  if (typeof fetchOrigin !== "string") {
+    throw new Error("Fetch parameters are not configured");
+  }
   const prefix = fetchPathPrefix.replace(/^\/+|\/+$/g, "");
   const suffix = path.replace(/^\/+/, "");
   const relative = [prefix, suffix].filter(Boolean).join("/");

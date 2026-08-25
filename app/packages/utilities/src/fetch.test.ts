@@ -3,6 +3,7 @@ import {
   getFetchFunction,
   getFetchFunctionExtended,
   getFetchUrl,
+  setFetchParameters,
   setFetchFunction,
 } from "./fetch";
 
@@ -82,6 +83,14 @@ describe("fetch", () => {
 
     setFetchFunction("http://localhost:8787");
     expect(getFetchUrl("/dataset/id")).toBe("http://localhost:8787/dataset/id");
+  });
+
+  it("rejects navigation URLs before fetch configuration", () => {
+    setFetchParameters(undefined as never);
+    expect(() => getFetchUrl("/dataset/id")).toThrow(
+      "Fetch parameters are not configured",
+    );
+    setFetchFunction("http://localhost");
   });
 
   it("reports streamed array-buffer progress", async () => {
