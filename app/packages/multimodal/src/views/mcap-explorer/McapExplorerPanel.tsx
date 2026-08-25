@@ -21,7 +21,7 @@ import {
 import { diagnosticMessage } from "../../utils/errors";
 import { episodeSourceFromByteSource } from "../session/episode-source";
 import { useEpisodeSession } from "../session/use-episode-session";
-import { SourcePlayback } from "../episode/index";
+import { RightSidebar, SourcePlayback } from "../episode/index";
 import {
   createLocalMcapSourceDescriptor,
   resolveRemoteMcapSourceDescriptor,
@@ -222,6 +222,9 @@ const McapExplorerPanel: React.FC = () => {
               </Button>
             }
             layoutScopeKey={`any-mcap:${active.source.sourceId}`}
+            // No dataset sample backs a local file dropped here, so this
+            // surface hosts no trays — it takes the plain sidebar.
+            rightSidebar={<RightSidebar />}
             session={sessionState.session}
             sessionError={sessionState.error}
             source={active.source}

@@ -1,0 +1,25 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* The tab shell takes the free space and owns its own body scrolling. */
+.tabs {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Pinned below the tabs, outside the tab system, so registered trays survive
+   tab switches. `flex-shrink` (not `0 0 auto`) matters: a tray's own body can
+   want a large share of the viewport, and on a short one — or with the
+   timeline drawer expanded — an unshrinkable region would squeeze the tab
+   region to nothing and overflow it. Capped so the tabs always keep usable
+   height, and shared by every tray so N of them can't stack past the cap. */
+.tray {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 60%;
+  overflow-y: auto;
+}

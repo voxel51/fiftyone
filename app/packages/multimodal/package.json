@@ -21,6 +21,7 @@
         "./inject": "./src/inject/index.ts",
         "./extensions/grid-posters": "./src/extensions/grid-posters/index.ts",
         "./extensions/mcap-explorer": "./src/extensions/mcap-explorer/index.ts",
+        "./extensions/sidebar-tray": "./src/extensions/sidebar-tray/index.ts",
         "./extensions/timeline": "./src/extensions/timeline/index.ts",
         "./extensions/timeline/runtime": "./src/extensions/timeline/runtime.ts",
         "./extensions/tiles": "./src/extensions/tiles/index.ts",
@@ -77,6 +78,9 @@
             ],
             "extensions/mcap-explorer": [
                 "src/extensions/mcap-explorer/index.ts"
+            ],
+            "extensions/sidebar-tray": [
+                "src/extensions/sidebar-tray/index.ts"
             ],
             "extensions/timeline": [
                 "src/extensions/timeline/index.ts"
