@@ -333,7 +333,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
             </div>
           ) : hasCommittedRow && status === "error" ? (
             <div
-              className={`${tileStyles.statusBadge} ${tileStyles.statusBadgeError} ${styles.staleNotice}`}
+              className={`${tileStyles.statusBadge} ${tileStyles.statusBadgeError} ${styles.staleNotice} ${styles.staleInteractive}`}
               data-testid="episode-state-action-stale"
               role="status"
               title={
@@ -343,6 +343,14 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
               }
             >
               Refresh failed. Previous shown.
+              <button
+                className={styles.staleRetryButton}
+                onClick={retryRead}
+                onPointerDown={(event) => event.stopPropagation()}
+                type="button"
+              >
+                Retry
+              </button>
             </div>
           ) : null}
           {missingFeatureNote ? (

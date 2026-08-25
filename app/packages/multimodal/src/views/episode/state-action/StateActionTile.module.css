@@ -103,6 +103,30 @@
   white-space: normal;
 }
 
+/* The shared badge is pointer-inert; this variant hosts a retry action. */
+.staleInteractive {
+  pointer-events: auto;
+}
+
+.staleRetryButton {
+  background: transparent;
+  border: 1px solid var(--color-content-border-default, #383835);
+  border-radius: 4px;
+  color: var(--color-content-text-primary);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.staleRetryButton:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 12%,
+    transparent
+  );
+}
+
 .missingNote {
   border-bottom: 1px solid
     color-mix(

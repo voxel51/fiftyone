@@ -326,8 +326,10 @@ describe("StateActionTile", () => {
     expect(screen.getAllByText("Frame 4 of 20").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Could not read/)).toBe(null);
     const badge = screen.getByTestId("episode-state-action-stale");
-    expect(badge.textContent).toBe("Refresh failed. Previous shown.");
+    expect(badge.textContent).toContain("Refresh failed. Previous shown.");
     expect(badge.title).toContain("link starved");
+    fireEvent.click(within(badge).getByRole("button", { name: "Retry" }));
+    expect(mocks.retryRead).toHaveBeenCalledTimes(1);
   });
 
   it("marks a slow refetch pending while keeping the previous row visible", () => {
