@@ -1,3 +1,7 @@
+import { open, stat } from "node:fs/promises";
+import { join } from "node:path";
+
+import { parquetReadObjects, type AsyncBuffer } from "hyparquet";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ByteSourceDescriptor } from "../../ir";
@@ -353,3 +357,277 @@ describe("LeRobot state/action provider", () => {
     }
   });
 });
+
+const realRoot = process.env.LEROBOT_DATASET_PATH;
+
+describe.runIf(Boolean(realRoot))(
+  "LeRobot real-corpus state/action parity",
+  () => {
+    it("matches direct Parquet values row for row and walks every cursor", async () => {
+      if (!realRoot) throw new Error("LEROBOT_DATASET_PATH is required");
+      const real = await openRealEpisode(realRoot);
+      const session = await createLeRobotFormatAdapter().open(
+        real.source,
+        real.io,
+      );
+      const capability = session.stateAction;
+      try {
+        if (!capability) {
+          throw new Error("real LeRobot session did not expose the capability");
+        }
+        expect(capability.schema.rowCount).toBe(real.episodeLength);
+        expect(
+          capability.schema.state?.dimensions.map(
+            (dimension) => dimension.name,
+          ),
+        ).toEqual(real.stateNames);
+        expect(
+          capability.schema.action?.dimensions.map(
+            (dimension) => dimension.name,
+          ),
+        ).toEqual(real.actionNames);
+
+        // Ten deterministic pseudo-random rows compared against an
+        // independent selected-column Parquet read of the same interval.
+        const sampled = Array.from(
+          { length: 10 },
+          (_, index) => (17 + index * 41) % real.episodeLength,
+        );
+        for (const offset of sampled) {
+          const row = await capability.readAtCursor({
+            cursor: `row:${offset}`,
+          });
+          const reference = real.referenceRows[offset];
+          expect(row.frameIndex).toBe(offset);
+          expect(row.featureErrors).toBeUndefined();
+          expect(row.state).toEqual(
+            flattenDeep(reference["observation.state"]),
+          );
+          expect(row.action).toEqual(flattenDeep(reference.action));
+          const taskIndex = Number(reference.task_index);
+          expect(row.task?.index).toBe(taskIndex);
+          expect(row.task?.label).toBe(real.taskLabels.get(taskIndex));
+          const atTime = await capability.readAtTime({
+            timestampNs: row.timestampNs,
+          });
+          expect(atTime?.cursor).toBe(row.cursor);
+        }
+
+        // Walking the first rows through bounded windows visits every
+        // cursor exactly once with non-decreasing timestamps.
+        const walkCount = Math.min(60, real.episodeLength);
+        const first = await capability.readIndexWindow({
+          after: 0,
+          anchorTimestampNs: 0n,
+          before: 1,
+        });
+        expect(first.hasPrevious).toBe(false);
+        let cursor = first.selectedCursor;
+        let lastTimestampNs = -1n;
+        const visited = new Set<string>();
+        for (let index = 0; index < walkCount; index += 1) {
+          visited.add(cursor);
+          const window = await capability.readIndexWindow({
+            after: 1,
+            anchorCursor: cursor,
+            before: 0,
+          });
+          expect(window.selectedCursor).toBe(cursor);
+          expect(window.entries[0].timestampNs >= lastTimestampNs).toBe(true);
+          lastTimestampNs = window.entries[0].timestampNs;
+          const next = window.entries[1];
+          if (!next) break;
+          cursor = next.cursor;
+        }
+        expect(visited.size).toBe(walkCount);
+      } finally {
+        session.dispose();
+        await real.close();
+      }
+    }, 30_000);
+  },
+);
+
+async function openRealEpisode(root: string): Promise<{
+  actionNames: readonly (string | undefined)[];
+  close(): Promise<void>;
+  episodeLength: number;
+  io: ByteResources;
+  referenceRows: readonly Record<string, unknown>[];
+  source: EpisodeSource;
+  stateNames: readonly (string | undefined)[];
+  taskLabels: ReadonlyMap<number, string>;
+}> {
+  const paths = new Map([
+    ["data", join(root, "data/chunk-000/file-000.parquet")],
+    ["episodes", join(root, "meta/episodes/chunk-000/file-000.parquet")],
+    ["info", join(root, "meta/info.json")],
+    ["tasks", join(root, "meta/tasks.parquet")],
+  ]);
+  const sizes = new Map(
+    await Promise.all(
+      [...paths.entries()].map(
+        async ([id, path]) => [id, (await stat(path)).size] as const,
+      ),
+    ),
+  );
+  const files = new Map<string, ReturnType<typeof open>>();
+  const readFileRange = async (id: string, offset: number, length: number) => {
+    const path = paths.get(id);
+    if (!path) throw new Error(`Unknown real asset ${id}`);
+    let file = files.get(id);
+    if (!file) {
+      file = open(path, "r");
+      files.set(id, file);
+    }
+    const bytes = new Uint8Array(length);
+    const { bytesRead } = await (await file).read(bytes, 0, length, offset);
+    return bytes.subarray(0, bytesRead);
+  };
+  const buffer = (id: string): AsyncBuffer => ({
+    byteLength: sizes.get(id) ?? 0,
+    async slice(start, end) {
+      const bytes = await readFileRange(
+        id,
+        start,
+        (end ?? sizes.get(id) ?? 0) - start,
+      );
+      return bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength,
+      ) as ArrayBuffer;
+    },
+  });
+
+  const infoBytes = await readFileRange("info", 0, sizes.get("info") ?? 0);
+  const info = JSON.parse(new TextDecoder().decode(infoBytes)) as {
+    features: Record<
+      string,
+      { names?: readonly string[] | null; shape?: readonly number[] }
+    >;
+  };
+  const [episodeRow] = await parquetReadObjects({
+    file: buffer("episodes"),
+    rowEnd: 1,
+    rowStart: 0,
+  });
+  const episodeLength = Number(episodeRow.length);
+  const referenceRows = await parquetReadObjects({
+    columns: [
+      "timestamp",
+      "frame_index",
+      "task_index",
+      "observation.state",
+      "action",
+    ],
+    file: buffer("data"),
+    rowEnd: episodeLength,
+    rowStart: 0,
+  });
+  const taskRows = await parquetReadObjects({
+    columns: ["task_index", "task"],
+    file: buffer("tasks"),
+  });
+  const taskLabels = new Map(
+    taskRows.map((row) => [Number(row.task_index), String(row.task)]),
+  );
+
+  const assets: readonly AssetDescriptor[] = [
+    {
+      id: "info",
+      mediaType: "application/json",
+      metadata: { sizeBytes: String(sizes.get("info")) },
+      role: "dataset-info",
+      selector: { kind: "whole-file" },
+    },
+    {
+      id: "episodes",
+      mediaType: "application/vnd.apache.parquet",
+      metadata: { sizeBytes: String(sizes.get("episodes")) },
+      role: "episode-metadata",
+      selector: {
+        coordinateSystem: "parquet-file-row",
+        end: 1,
+        kind: "row-interval",
+        start: 0,
+      },
+    },
+    {
+      id: "data",
+      mediaType: "application/vnd.apache.parquet",
+      metadata: { sizeBytes: String(sizes.get("data")) },
+      role: "tabular-frame-data",
+      selector: {
+        coordinateSystem: "parquet-file-row",
+        end: episodeLength,
+        kind: "row-interval",
+        start: 0,
+      },
+    },
+    {
+      id: "tasks",
+      mediaType: "application/vnd.apache.parquet",
+      metadata: { sizeBytes: String(sizes.get("tasks")) },
+      role: "tasks-metadata",
+      selector: { kind: "whole-file" },
+    },
+  ];
+  return {
+    actionNames: dimensionNames(info.features.action),
+    close: async () => {
+      await Promise.all(
+        [...files.values()].map(async (file) => (await file).close()),
+      );
+      files.clear();
+    },
+    episodeLength,
+    io: {
+      async readBytes({ range, source: byteSource }) {
+        const bytes = await readFileRange(
+          byteSource.sourceId,
+          Number(range.offset),
+          Number(range.length),
+        );
+        return { bytes, range, source: byteSource };
+      },
+    },
+    referenceRows,
+    source: {
+      assets: {
+        list: async () => assets,
+        resolve: async (assetId) => ({
+          sizeBytes: String(sizes.get(assetId)),
+          sourceId: assetId,
+          url: paths.get(assetId) ?? assetId,
+        }),
+      },
+      episodeId: "episode-0",
+    },
+    stateNames: dimensionNames(info.features["observation.state"]),
+    taskLabels,
+  };
+}
+
+function dimensionNames(feature: {
+  names?: readonly string[] | null;
+  shape?: readonly number[];
+}): readonly (string | undefined)[] {
+  const count = Math.max(
+    1,
+    (feature.shape ?? []).reduce((product, value) => product * value, 1),
+  );
+  return Array.from({ length: count }, (_, index) => {
+    const name = feature.names?.[index];
+    return typeof name === "string" ? name : undefined;
+  });
+}
+
+function flattenDeep(value: unknown): readonly unknown[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => flattenDeep(entry));
+  }
+  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
+    return [...(value as unknown as Iterable<unknown>)];
+  }
+  return [value];
+}
