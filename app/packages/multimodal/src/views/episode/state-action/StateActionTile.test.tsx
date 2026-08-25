@@ -1,0 +1,423 @@
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { StateActionRow, StateActionSchema } from "../../../ports";
+import type {
+  StateActionRowState,
+  StateActionSchemaState,
+} from "./state-action-context";
+import StateActionTile from "./StateActionTile";
+
+const NS_PER_SECOND = 1_000_000_000n;
+
+const mocks = vi.hoisted(() => ({
+  dataStream: {
+    getTimelineIndex: () => ({
+      nsToSec: (timeNs: bigint) => Number(timeNs) / 1e9,
+      secToNs: (timeSec: number) => BigInt(Math.round(timeSec * 1e9)),
+      startTimeNs: 0n,
+    }),
+    sourceKey: "source-1",
+  },
+  holdCursorRow: vi.fn(),
+  isPlaying: false,
+  isPlayPending: false,
+  pause: vi.fn(),
+  readRowAtCursor: vi.fn(),
+  readRowIndexWindow: vi.fn(),
+  retryRead: vi.fn(),
+  rowState: undefined as unknown,
+  schema: { schema: null, status: "idle" } as unknown,
+  seek: vi.fn(),
+  setTileTitle: vi.fn(),
+  subscribeRow: vi.fn(() => vi.fn()),
+}));
+
+vi.mock("@fiftyone/tiling", () => ({
+  useSetTileTitle: () => mocks.setTileTitle,
+  useTileId: () => "lerobot:state-action-1",
+}));
+
+vi.mock("@fiftyone/playback/runtime", () => ({
+  useIsPlaying: () => mocks.isPlaying,
+  useIsPlayPending: () => mocks.isPlayPending,
+  usePlayback: () => ({ pause: mocks.pause, seek: mocks.seek }),
+}));
+
+vi.mock("../playback/data-stream-context", () => ({
+  useDataStream: () => mocks.dataStream,
+}));
+
+vi.mock("./state-action-context", () => ({
+  useStateActionContext: () => ({
+    holdCursorRow: mocks.holdCursorRow,
+    readRowAtCursor: mocks.readRowAtCursor,
+    readRowIndexWindow: mocks.readRowIndexWindow,
+    retryRead: mocks.retryRead,
+    rowState: mocks.rowState as StateActionRowState | undefined,
+    schema: mocks.schema as StateActionSchemaState,
+    subscribeRow: mocks.subscribeRow,
+  }),
+}));
+
+const SCHEMA: StateActionSchema = {
+  action: {
+    dimensions: [{ index: 0 }, { index: 1 }, { index: 2 }],
+    dtype: "float32",
+    featureName: "action",
+    shape: [3],
+  },
+  rowCount: 20,
+  state: {
+    dimensions: [
+      { index: 0, name: "shoulder" },
+      { index: 1, name: "elbow" },
+    ],
+    dtype: "float32",
+    featureName: "observation.state",
+    shape: [2],
+  },
+};
+
+function row(overrides: Partial<StateActionRow> = {}): StateActionRow {
+  return {
+    action: [0.5, Number.NaN, 7],
+    cursor: "row:4",
+    frameIndex: 4,
+    state: [1.25, -2],
+    task: { index: 1, label: "fold the towel" },
+    timestampNs: 4n * NS_PER_SECOND,
+    ...overrides,
+  };
+}
+
+function setState(
+  schema: StateActionSchemaState,
+  rowState: StateActionRowState | undefined,
+) {
+  mocks.schema = schema;
+  mocks.rowState = rowState;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.isPlaying = false;
+  mocks.isPlayPending = false;
+  setState({ schema: SCHEMA, status: "ready" }, undefined);
+});
+
+afterEach(cleanup);
+
+describe("StateActionTile", () => {
+  it("titles itself and subscribes to the canonical row", () => {
+    render(<StateActionTile />);
+    expect(mocks.setTileTitle).toHaveBeenCalledWith("State & Action", {
+      source: "auto",
+    });
+    expect(mocks.subscribeRow).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders schema-derived names as a skeleton before any value read", () => {
+    render(<StateActionTile />);
+    const statePane = screen.getByRole("table", {
+      name: "Observation state values",
+    });
+    expect(within(statePane).getByText("shoulder")).toBeDefined();
+    expect(within(statePane).getByText("elbow")).toBeDefined();
+    const actionPane = screen.getByRole("table", { name: "Action values" });
+    expect(within(actionPane).getByText("[0]")).toBeDefined();
+    expect(within(actionPane).getByText("[2]")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Copy exact value/ })).toBe(
+      null,
+    );
+  });
+
+  it("renders both panes from the committed row without pairing them", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    render(<StateActionTile />);
+
+    expect(screen.getAllByText("Frame 4 of 20").length).toBeGreaterThan(0);
+    expect(screen.getByText("fold the towel")).toBeDefined();
+    expect(screen.getByText("Exact row")).toBeDefined();
+
+    const statePane = screen.getByRole("table", {
+      name: "Observation state values",
+    });
+    const stateValues = within(statePane).getAllByRole("cell");
+    expect(stateValues.map((cell) => cell.textContent)).toEqual(["1.25", "-2"]);
+    const actionPane = screen.getByRole("table", { name: "Action values" });
+    const actionValues = within(actionPane).getAllByRole("cell");
+    expect(actionValues.map((cell) => cell.textContent)).toEqual([
+      "0.5",
+      "NaN",
+      "7",
+    ]);
+  });
+
+  it("shows the playhead time only when it differs from the row time", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    const { rerender } = render(<StateActionTile />);
+    expect(screen.queryByText(/playhead/)).toBe(null);
+
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4_500_000_000n },
+    );
+    rerender(<StateActionTile />);
+    expect(screen.getByText("playhead t=+4.500s")).toBeDefined();
+  });
+
+  it("falls back to the numeric task index when no label resolves", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      {
+        row: row({ task: { index: 7 } }),
+        status: "ready",
+        targetNs: 4n * NS_PER_SECOND,
+      },
+    );
+    render(<StateActionTile />);
+    expect(screen.getByText("Task #7")).toBeDefined();
+  });
+
+  it("names the absent canonical feature when only one pane exists", () => {
+    setState(
+      {
+        schema: { action: SCHEMA.action, rowCount: 20 },
+        status: "ready",
+      },
+      {
+        row: row({ state: undefined }),
+        status: "ready",
+        targetNs: 4n * NS_PER_SECOND,
+      },
+    );
+    render(<StateActionTile />);
+    expect(
+      screen.getByText("No observation.state feature declared"),
+    ).toBeDefined();
+    expect(screen.getByRole("table", { name: "Action values" })).toBeDefined();
+  });
+
+  it("shows a feature-scoped error without shifting later values", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      {
+        row: row({
+          featureErrors: { state: "'observation.state' row has 3 values" },
+          state: [1, 2, 3],
+        }),
+        status: "ready",
+        targetNs: 4n * NS_PER_SECOND,
+      },
+    );
+    render(<StateActionTile />);
+    expect(
+      screen.getByText("'observation.state' row has 3 values"),
+    ).toBeDefined();
+    const statePane = screen.getByRole("table", {
+      name: "Observation state values",
+    });
+    const names = within(statePane)
+      .getAllByRole("rowheader")
+      .map((cell) => cell.textContent);
+    expect(names).toEqual(["shoulder", "elbow", "[2]"]);
+    const values = within(statePane)
+      .getAllByRole("cell")
+      .map((cell) => cell.textContent);
+    expect(values).toEqual(["1", "2", "3"]);
+  });
+
+  it("marks a dimension missing from the source row explicitly", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      {
+        row: row({
+          featureErrors: { state: "'observation.state' row has 1 value" },
+          state: [1],
+        }),
+        status: "ready",
+        targetNs: 4n * NS_PER_SECOND,
+      },
+    );
+    render(<StateActionTile />);
+    const statePane = screen.getByRole("table", {
+      name: "Observation state values",
+    });
+    const values = within(statePane)
+      .getAllByRole("cell")
+      .map((cell) => cell.textContent);
+    expect(values).toEqual(["1", "missing"]);
+  });
+
+  it("shows the empty state distinctly from loading and errors", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: null, status: "ready", targetNs: 0n },
+    );
+    render(<StateActionTile />);
+    expect(screen.getByText("No state/action row at this time")).toBeDefined();
+  });
+
+  it("offers retry on a blocking read failure", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { error: "link starved", status: "error", targetNs: 0n },
+    );
+    render(<StateActionTile />);
+    expect(
+      screen.getByText(/Could not read the state\/action row: link starved/),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(mocks.retryRead).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the previous row visible through a failed refetch", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      {
+        error: "link starved",
+        row: row(),
+        status: "error",
+        targetNs: 9n * NS_PER_SECOND,
+      },
+    );
+    render(<StateActionTile />);
+    expect(screen.getAllByText("Frame 4 of 20").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Could not read/)).toBe(null);
+  });
+
+  it("steps to the adjacent cursor, seeks the playhead, and pins the row", async () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    const nextRow = row({
+      cursor: "row:5",
+      frameIndex: 5,
+      timestampNs: 5n * NS_PER_SECOND,
+    });
+    mocks.readRowIndexWindow.mockResolvedValue({
+      entries: [
+        { cursor: "row:4", timestampNs: 4n * NS_PER_SECOND },
+        { cursor: "row:5", timestampNs: 5n * NS_PER_SECOND },
+      ],
+      hasNext: true,
+      hasPrevious: true,
+      selectedCursor: "row:4",
+    });
+    mocks.readRowAtCursor.mockResolvedValue(nextRow);
+    render(<StateActionTile />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next row (frame 5)" }));
+    await waitFor(() => expect(mocks.holdCursorRow).toHaveBeenCalled());
+
+    expect(mocks.readRowIndexWindow).toHaveBeenCalledWith({
+      after: 1,
+      anchorCursor: "row:4",
+      before: 0,
+    });
+    expect(mocks.readRowAtCursor).toHaveBeenCalledWith("row:5");
+    expect(mocks.pause).toHaveBeenCalled();
+    expect(mocks.seek).toHaveBeenCalledWith(5);
+    expect(mocks.holdCursorRow).toHaveBeenCalledWith(
+      nextRow,
+      5n * NS_PER_SECOND,
+    );
+  });
+
+  it("disables stepping at the episode boundaries", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      {
+        row: row({ cursor: "row:0", frameIndex: 0, timestampNs: 0n }),
+        status: "ready",
+        targetNs: 0n,
+      },
+    );
+    const { rerender } = render(<StateActionTile />);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Previous row (frame -1)",
+      }).disabled,
+    ).toBe(true);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Next row (frame 1)",
+      }).disabled,
+    ).toBe(false);
+
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      {
+        row: row({ cursor: "row:19", frameIndex: 19 }),
+        status: "ready",
+        targetNs: 19n * NS_PER_SECOND,
+      },
+    );
+    rerender(<StateActionTile />);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Next row (frame 20)",
+      }).disabled,
+    ).toBe(true);
+  });
+
+  it("steps with the keyboard when the tile is focused", async () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    mocks.readRowIndexWindow.mockResolvedValue({
+      entries: [
+        { cursor: "row:3", timestampNs: 3n * NS_PER_SECOND },
+        { cursor: "row:4", timestampNs: 4n * NS_PER_SECOND },
+      ],
+      hasNext: true,
+      hasPrevious: true,
+      selectedCursor: "row:4",
+    });
+    mocks.readRowAtCursor.mockResolvedValue(
+      row({ cursor: "row:3", frameIndex: 3, timestampNs: 3n * NS_PER_SECOND }),
+    );
+    render(<StateActionTile />);
+
+    fireEvent.keyDown(
+      screen.getByRole("group", { name: "State and action table" }),
+      { key: "ArrowLeft" },
+    );
+    await waitFor(() => expect(mocks.holdCursorRow).toHaveBeenCalled());
+    expect(mocks.readRowIndexWindow).toHaveBeenCalledWith({
+      after: 0,
+      anchorCursor: "row:4",
+      before: 1,
+    });
+    expect(mocks.seek).toHaveBeenCalledWith(3);
+  });
+
+  it("announces committed rows politely only while paused", () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    const { container, rerender } = render(<StateActionTile />);
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion?.textContent).toBe("Frame 4 of 20");
+
+    mocks.isPlaying = true;
+    rerender(<StateActionTile />);
+    expect(liveRegion?.textContent).toBe("");
+  });
+});

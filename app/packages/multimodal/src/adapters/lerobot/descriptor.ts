@@ -13,7 +13,13 @@ export const leRobotAdapterDescriptor: AdapterDescriptor = {
   detect: detectLeRobotSample,
   id: "lerobot-v3",
   load: async () => {
-    const { createLeRobotFormatAdapter } = await import("./format-adapter");
+    // The LeRobot tile extension registers as a side effect of this lazy
+    // load, so it exists before any session can expose hasStateAction and
+    // never enters the initial bundle for non-LeRobot sessions.
+    const [{ createLeRobotFormatAdapter }] = await Promise.all([
+      import("./format-adapter"),
+      import("../../views/episode/state-action/register-state-action-tile"),
+    ]);
     return createLeRobotFormatAdapter();
   },
 };
