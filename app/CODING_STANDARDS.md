@@ -53,7 +53,7 @@ already exists, so reaching for MUI adds migration debt for no gain.
 | `Button`                                                                     | `Button`, `RichButton`                                     |
 | `IconButton`                                                                 | `Clickable`                                                |
 | `Tooltip`                                                                    | `Tooltip`                                                  |
-| `TextField`, `OutlinedInput`                                                 | `Input`, `TextArea`                                        |
+| `TextField`, `OutlinedInput`                                                 | `Input` or `TextArea`, in `FormField` for label/error      |
 | `Select`, `Autocomplete`                                                     | `Select`, `Dropdown`                                       |
 | `Menu`, `MenuList`, `MenuItem`, `Popover`                                    | `ContextMenu`, `Dropdown`                                  |
 | `Table`, `TableBody`, `TableCell`, `TableContainer`, `TableHead`, `TableRow` | `Table`, `TableBody`, `TableCell`, `TableHead`, `TableRow` |
@@ -76,6 +76,14 @@ already exists, so reaching for MUI adds migration debt for no gain.
 Watch for same-name collisions: `Stack`, `Button`, and `Tooltip` exist in both
 libraries. Check which one your import resolves to.
 
+Some rows are approximate rather than drop-in: `Stack` is one-dimensional
+flexbox (true two-dimensional layouts can use plain CSS grid on a `div` — just
+not MUI `Grid`), `Dropdown`/`ContextMenu` are menus rather than general
+anchored popovers, and `Select` covers typeahead and multi-select but not async
+loading. Preserve the original layout, interaction, and accessibility behavior
+when migrating. If a replacement genuinely cannot express your case, that falls
+under the tier-2 escape hatch below.
+
 ## Tier 2: discouraged
 
 Where VOODO has no equivalent, Material UI may be used to keep shipping. Known
@@ -88,6 +96,11 @@ Report the gap to the VOODO owners so it can be closed, and say in the PR
 description which gap you hit. If a listed VOODO component cannot handle your
 case, or you believe a component belongs in tier 2 but is not listed above,
 explain why in the PR rather than reaching for MUI silently.
+
+Tier-2 usage still triggers the `no-restricted-imports` ESLint warning from the
+MUI freeze. That warning is expected and acceptable here — do not add the file
+to `.mui-allowlist.txt` to silence it; the allowlist is only for pre-freeze
+legacy files.
 
 ## Existing MUI code
 

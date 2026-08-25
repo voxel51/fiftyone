@@ -21,11 +21,14 @@ same primitives from sibling packages (`@mui/system`, `@mui/base`, `@mui/lab`).
 Before concluding that a component has no VOODO equivalent, check the installed
 package's exports rather than guessing. From the repository root:
 
-    grep "export \* from" app/node_modules/@voxel51/voodo/dist/components/index.d.ts
+    grep -F 'export * from' app/node_modules/@voxel51/voodo/dist/components/index.d.ts
 
 (The App's dependencies are installed under `app/`, not the repository root.)
-This is authoritative for the version actually installed, which is what matters
-— VOODO's component set changes between releases.
+The barrel lists module paths, not export names — confirm the exact identifier
+in the component folder's own `.d.ts` before importing (e.g., the `Datepicker/`
+folder exports `DatePicker`; `Slider/` exports `SingleValueSlider` and
+`MultiValueSlider`). This is authoritative for the version actually installed,
+which is what matters — VOODO's component set changes between releases.
 
 Styling uses VOODO's exported tokens and enums, not raw CSS variables and not
 string literals:
