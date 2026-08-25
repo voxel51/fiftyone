@@ -109,6 +109,12 @@ export function GridRenderer({
     sampleId,
     visible,
   );
+  const providerCacheScope = providerDescriptor.resolved
+    ? JSON.stringify([
+        providerDescriptor.resolved.provider.id,
+        providerDescriptor.resolved.descriptor.cacheRevision,
+      ])
+    : undefined;
   const providerDescriptorSettled =
     providerDescriptor.status === "hit" || providerDescriptor.status === "miss";
   const cacheKey = useMemo(
@@ -120,8 +126,7 @@ export function GridRenderer({
             mediaPath: ctx.media?.path,
             posterSourceName: firstMatch?.stream,
             posterStartTimeNs: firstMatch?.startNs,
-            providerRevision:
-              providerDescriptor.resolved?.descriptor.cacheRevision,
+            providerRevision: providerCacheScope,
             selectedSourceName,
             source,
           })
@@ -132,7 +137,7 @@ export function GridRenderer({
       ctx.media?.path,
       firstMatch?.startNs,
       firstMatch?.stream,
-      providerDescriptor.resolved?.descriptor.cacheRevision,
+      providerCacheScope,
       providerDescriptorSettled,
       selectedSourceName,
       source,

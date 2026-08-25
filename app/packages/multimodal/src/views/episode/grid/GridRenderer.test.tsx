@@ -22,6 +22,7 @@ import {
 } from "../../../visualization/webgpu/webgpu-live-lease";
 import type { ByteSourceDescriptor, EpisodePosterFrame } from "../../../ir";
 import {
+  gridPosterCacheKey,
   pointCloudPoseKey,
   type GridPosterCacheEntry,
 } from "./grid-poster-cache";
@@ -337,7 +338,71 @@ describe("GridRenderer", () => {
     expect(
       vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey,
     ).toContain("source-rev");
+    expect(
+      vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey,
+    ).toContain(provider.id);
     expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+  });
+
+  it("keeps provider misses in the non-provider cache namespace", () => {
+    const source = {
+      sourceId: "provider-miss",
+      url: "https://example.test/provider-miss.mcap",
+    };
+    sourceHarness.byteSource = source;
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey).toBe(
+      gridPosterCacheKey({
+        datasetId: "dataset-id",
+        mediaField: undefined,
+        selectedSourceName: null,
+        source,
+      }),
+    );
+  });
+
+  it("isolates cache keys for providers with the same revision", () => {
+    const source = {
+      sourceId: "provider-scope",
+      url: "https://example.test/provider-scope.mcap",
+    };
+    sourceHarness.byteSource = source;
+    const descriptor = {
+      cacheRevision: "shared-revision",
+      select: vi.fn(() => null),
+    };
+    const firstProvider = {
+      id: "test:first-provider",
+      resolveDescriptor: vi.fn(),
+    };
+    providerHarness.descriptor = {
+      resolved: { descriptor, provider: firstProvider },
+      status: "hit",
+    };
+    const ctx = rendererCtx();
+    const view = render(<GridRenderer ctx={ctx} />);
+    const firstKey = vi.mocked(useGridPreview).mock.lastCall?.[0]
+      .cacheRequestKey as string;
+
+    const secondProvider = {
+      id: "test:second-provider",
+      resolveDescriptor: vi.fn(),
+    };
+    providerHarness.descriptor = {
+      resolved: { descriptor, provider: secondProvider },
+      status: "hit",
+    };
+    view.rerender(<GridRenderer ctx={ctx} />);
+    const secondKey = vi.mocked(useGridPreview).mock.lastCall?.[0]
+      .cacheRequestKey as string;
+
+    expect(secondKey).not.toBe(firstKey);
+    expect(firstKey).toContain(firstProvider.id);
+    expect(secondKey).toContain(secondProvider.id);
+    expect(firstKey).toContain(descriptor.cacheRevision);
+    expect(secondKey).toContain(descriptor.cacheRevision);
   });
 
   it("posters at the earliest window the embeddings panel matched", () => {
@@ -1015,7 +1080,7 @@ describe("GridRenderer", () => {
 
 function rendererCtx() {
   return {
-    dataset: { name: "dataset" },
+    dataset: { datasetId: "dataset-id", name: "dataset" },
     sample: { sample: { id: "1" } },
   } as never;
 }
