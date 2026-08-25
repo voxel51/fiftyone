@@ -64,6 +64,8 @@ export interface PatchPersistedInfo {
   labelId?: string;
   labelPath?: string;
   opType?: OpType;
+  /** See DoPatchSampleArgs.attributionSampleId (grouped-modal anchor). */
+  attributionSampleId?: string;
 }
 
 type PatchPersistedListener = (
@@ -91,6 +93,7 @@ export const doPatchSample = async ({
   labelId,
   labelPath,
   opType,
+  attributionSampleId,
 }: DoPatchSampleArgs): Promise<boolean> => {
   // The annotation endpoint implements a CRDT via a version token
   const versionToken = getVersionToken();
@@ -188,6 +191,7 @@ export const doPatchSample = async ({
       labelId,
       labelPath,
       opType,
+      attributionSampleId,
     };
     for (const listener of patchListeners) {
       try {

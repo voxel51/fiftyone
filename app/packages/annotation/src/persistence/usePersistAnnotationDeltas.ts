@@ -151,6 +151,7 @@ export const usePersistAnnotationDeltas =
 
       return success;
     }, [
+      anchorSampleId,
       engine,
       eventBus,
       isGenerated,

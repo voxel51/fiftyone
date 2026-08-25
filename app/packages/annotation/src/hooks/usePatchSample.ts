@@ -39,7 +39,7 @@ export const usePatchSampleWith = ({
   generatedDatasetName,
 }: Omit<
   DoPatchSampleArgs,
-  "sampleDeltas" | "labelId" | "labelPath" | "opType"
+  "sampleDeltas" | "labelId" | "labelPath" | "opType" | "attributionSampleId"
 >) => {
   return useCallback(
     (
