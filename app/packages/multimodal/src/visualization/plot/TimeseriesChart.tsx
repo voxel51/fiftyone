@@ -222,26 +222,38 @@ function finiteYRange(
   return [min - padding, max + padding];
 }
 
+/** Recent own y writes retained to recognize their asynchronous commits. */
+const OWN_Y_WRITE_HISTORY = 4;
+
+/**
+ * Expands the stable y domain from the finite data inside `window` and
+ * applies it. The window is the caller's intended x viewport, never
+ * `chart.scales.x`: uPlot commits scale writes asynchronously, so reading
+ * scales mid-update can source a degenerate window and freeze the domain
+ * on a garbage range. Every write is remembered so the y setScale hook can
+ * tell this surface's own commits apart from a user zoom.
+ */
 function setStableYRange(
   chart: uPlot,
   data: AlignedData,
   stableRef: React.MutableRefObject<readonly [number, number] | null>,
-  settingRef: React.MutableRefObject<boolean>,
+  ownWritesRef: React.MutableRefObject<(readonly [number, number])[]>,
+  window: readonly [number, number],
   reset: boolean,
 ): void {
   if (reset) stableRef.current = null;
-  const xMin = chart.scales.x.min ?? 0;
-  const xMax = chart.scales.x.max ?? xMin;
-  const candidate = finiteYRange(data, xMin, xMax);
+  const candidate = finiteYRange(data, window[0], window[1]);
   if (!candidate) return;
   const previous = stableRef.current;
   const stable: readonly [number, number] = previous
     ? [Math.min(previous[0], candidate[0]), Math.max(previous[1], candidate[1])]
     : candidate;
   stableRef.current = stable;
-  settingRef.current = true;
+  ownWritesRef.current.push(stable);
+  if (ownWritesRef.current.length > OWN_Y_WRITE_HISTORY) {
+    ownWritesRef.current.shift();
+  }
   chart.setScale("y", { min: stable[0], max: stable[1] });
-  settingRef.current = false;
 }
 
 function renderCoverageBands(
@@ -357,7 +369,8 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   const [zoomConstrained, setZoomConstrained] = useState(false);
   const coverageLayerRef = useRef<HTMLDivElement | null>(null);
   const stableYRangeRef = useRef<readonly [number, number] | null>(null);
-  const settingStableYRef = useRef(false);
+  const ownYWritesRef = useRef<(readonly [number, number])[]>([]);
+  const stableXWindowRef = useRef<readonly [number, number]>([0, 0]);
   const dataRef = useRef(data);
   dataRef.current = data;
   const seriesRef = useRef(series);
@@ -436,6 +449,8 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     hasInteractiveScaleRef.current = false;
     setZoomConstrained(false);
     stableYRangeRef.current = null;
+    ownYWritesRef.current = [];
+    stableXWindowRef.current = [0, xMax];
     const xLimits = [0, xMax] as const;
     let viewportFrame: number | undefined;
     let stableViewportKey = "";
@@ -500,14 +515,20 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         setScale: [
           (chart, key) => {
             if (key === "x") {
-              const viewportKey = `${chart.scales.x.min}:${chart.scales.x.max}`;
+              const xWindow: readonly [number, number] = [
+                chart.scales.x.min ?? 0,
+                chart.scales.x.max ?? xMax,
+              ];
+              stableXWindowRef.current = xWindow;
+              const viewportKey = `${xWindow[0]}:${xWindow[1]}`;
               if (viewportKey !== stableViewportKey) {
                 stableViewportKey = viewportKey;
                 setStableYRange(
                   chart,
                   dataRef.current,
                   stableYRangeRef,
-                  settingStableYRef,
+                  ownYWritesRef,
+                  xWindow,
                   true,
                 );
               }
@@ -518,10 +539,19 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
                 unavailableRangesRef.current,
               );
               queueViewportPublication(chart);
-            } else if (key === "y" && !settingStableYRef.current) {
+            } else if (key === "y") {
               const min = chart.scales.y.min;
               const max = chart.scales.y.max;
-              if (min !== undefined && max !== undefined) {
+              if (min === undefined || max === undefined) {
+                return;
+              }
+              // Own writes commit asynchronously, possibly after a newer
+              // write superseded them; only a range this surface never set
+              // is a user zoom worth adopting as the stable domain.
+              const own = ownYWritesRef.current.some(
+                (write) => write[0] === min && write[1] === max,
+              );
+              if (!own) {
                 stableYRangeRef.current = [min, max];
               }
             }
@@ -563,12 +593,16 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     const chart = new uPlot(options, dataRef.current, host);
     chartRef.current = chart;
     chart.setScale("x", { min: 0, max: xMax });
-    const initialYMin = chart.scales.y.min;
-    const initialYMax = chart.scales.y.max;
-    stableYRangeRef.current =
-      initialYMin !== undefined && initialYMax !== undefined
-        ? [initialYMin, initialYMax]
-        : null;
+    // Seed the y domain from the data over the intended follow window; the
+    // chart's own scales may not have committed yet at this point.
+    setStableYRange(
+      chart,
+      dataRef.current,
+      stableYRangeRef,
+      ownYWritesRef,
+      [0, xMax],
+      true,
+    );
 
     const coverageLayer = document.createElement("div");
     coverageLayer.className = styles.coverageLayer;
@@ -890,7 +924,14 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       return;
     }
     chart.setData(data, false);
-    setStableYRange(chart, data, stableYRangeRef, settingStableYRef, false);
+    setStableYRange(
+      chart,
+      data,
+      stableYRangeRef,
+      ownYWritesRef,
+      stableXWindowRef.current,
+      false,
+    );
     chart.redraw();
     if (!pointerInsideRef.current) {
       syncLegendCursor(
