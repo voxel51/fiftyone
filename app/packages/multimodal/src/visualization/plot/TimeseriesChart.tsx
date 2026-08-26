@@ -592,7 +592,11 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
 
     const chart = new uPlot(options, dataRef.current, host);
     chartRef.current = chart;
-    chart.setScale("x", { min: 0, max: xMax });
+    // A bare setScale on a freshly constructed chart may never commit, and
+    // an uncommitted x scale strokes nothing. The reset batch — setData with
+    // a scale reset plus the explicit x range — is the sequence uPlot
+    // reliably commits, so the first paint always has real scales.
+    resetTimeseriesChart(chart, dataRef.current, [0, xMax]);
     // Seed the y domain from the data over the intended follow window; the
     // chart's own scales may not have committed yet at this point.
     setStableYRange(
@@ -924,6 +928,12 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       return;
     }
     chart.setData(data, false);
+    if (chart.scales.x.min == null || chart.scales.x.max == null) {
+      // A chart that missed its initial scale commit (created mid-transition,
+      // superseded by a recreation) strokes nothing; give it the committing
+      // reset sequence over the intended window once.
+      resetTimeseriesChart(chart, data, stableXWindowRef.current);
+    }
     setStableYRange(
       chart,
       data,
