@@ -1298,11 +1298,18 @@ describe("reconcilePersisted source fold (delete re-save loop)", () => {
 
     s.reconcilePersisted(patch);
 
-    // The acknowledged remove reached source...
+    // The acknowledged remove reached source (server-faithful rebase) —
+    // this line alone discriminates the rebase: without it, source still
+    // holds c1.
+    expect(s.getData().classification).toBeUndefined();
+    // ...so the re-add must persist as fresh ADD ops (the diff may emit
+    // the structural granular form), never diff away and never degrade
+    // to replaces against the stale c1 value.
     const next = s.getJsonPatch();
-    // ...so the re-add must still persist (an add op), never diff away.
     expect(next.length).toBeGreaterThan(0);
+    expect(next.every((op) => op.op === "add")).toBe(true);
     expect(JSON.stringify(next)).toContain("c2");
+    expect(JSON.stringify(next)).not.toContain("c1");
   });
 
   it("skips the fold when setData replaced source mid-flight", () => {
@@ -1333,6 +1340,70 @@ describe("reconcilePersisted source fold (delete re-save loop)", () => {
     // the delete keeps diffing (it will re-persist against fresh truth).
     expect(s.getJsonPatch()).toEqual([
       { op: "remove", path: "/classification" },
+    ]);
+  });
+
+  it("mixed delete+edit on one field never resurrects the deleted sub-path", () => {
+    // Review case: [remove /classification/label, replace /classification/conf]
+    // in one patch — the rebase must apply the ops in order, not rewrite
+    // the whole field from a baseline that still contains the label.
+    const s = new Sample({
+      schema,
+      data: {
+        classification: {
+          _id: "c1",
+          _cls: "Classification",
+          label: "x",
+          conf: 1,
+        },
+      },
+    });
+
+    s.deleteField("classification.label");
+    s.setField("classification.conf", 2);
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    s.reconcilePersisted(patch);
+
+    const source = s.getData().classification as Record<string, unknown>;
+    expect(source.label).toBeUndefined();
+    expect(source.conf).toBe(2);
+    expect(s.getJsonPatch()).toEqual([]);
+  });
+
+  it("folds an acknowledged nested add whose parent was absent from source", () => {
+    // Review case: withValueAtPath-style folds no-op on a missing
+    // intermediate; the rebase must create object parents like the server.
+    const s = new Sample({ schema, data: {} });
+
+    s.setField("classification.label", "y");
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    expect(patch.length).toBeGreaterThan(0);
+    s.reconcilePersisted(patch);
+
+    expect(s.getJsonPatch()).toEqual([]);
+  });
+
+  it("does not rebase from label-rooted (generated) deltas", () => {
+    // Review case: patches views persist LABEL-rooted deltas ("/label" is
+    // the label's own attribute) — rebasing them as sample paths would
+    // clobber a same-named top-level field.
+    const s = new Sample({
+      schema,
+      data: { label: "server-value" },
+    });
+
+    s.setField("label", "pending-edit");
+    s.captureBaseline();
+    s.reconcilePersisted([{ op: "replace", path: "/label", value: "attr" }], {
+      sampleRooted: false,
+    });
+
+    // The pending edit on the top-level field must still diff.
+    expect(s.getData().label).toBe("server-value");
+    expect(s.getJsonPatch()).toEqual([
+      { op: "replace", path: "/label", value: "pending-edit" },
     ]);
   });
 

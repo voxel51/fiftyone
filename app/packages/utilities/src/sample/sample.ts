@@ -16,7 +16,7 @@ import {
 } from "./labels";
 import { getNestedField } from "./pointer";
 import { reconcilePersisted } from "./reconcile";
-import { foldPersistedIntoSource } from "./sourceFold";
+import { rebaseSource } from "./sourceFold";
 
 /**
  * The nature of a {@link SampleChange}: `Update`/`Delete` for in-session edits;
@@ -146,7 +146,6 @@ export class Sample {
    * without it.
    */
   private patchBaseline: Record<string, unknown> | null = null;
-  private patchBaselineDeletes: Set<string> | null = null;
   /** Bumped on every wholesale source replacement; see reconcilePersisted. */
   private sourceRevision = 0;
   private patchBaselineSourceRevision = 0;
@@ -565,8 +564,10 @@ export class Sample {
     this.assertNotDispatching("clear");
     this.transientData = {};
     this.transientDeletes.clear();
-    // a reset invalidates any captured baseline
+    // a reset invalidates any captured baseline (revision stamp included,
+    // so a stale stamp can never validate a future capture)
     this.patchBaseline = null;
+    this.patchBaselineSourceRevision = this.sourceRevision;
     this.notify([{ path: "", kind: SampleChangeKind.Reset }]);
   }
 
@@ -588,10 +589,6 @@ export class Sample {
    */
   captureBaseline(): void {
     this.patchBaseline = { ...this.transientData };
-    // Tombstones as of patch-build time: a re-add during the in-flight
-    // request clears the live tombstone, but the persisted patch still
-    // carries the remove — reconcile must fold from THIS set.
-    this.patchBaselineDeletes = new Set(this.transientDeletes);
     this.patchBaselineSourceRevision = this.sourceRevision;
   }
 
@@ -609,45 +606,30 @@ export class Sample {
    * Release server-owned fields from the transient after a successful persist.
    * See {@link reconcilePersisted}.
    */
-  reconcilePersisted(deltas: JSONDeltas): void {
+  reconcilePersisted(
+    deltas: JSONDeltas,
+    opts: {
+      /**
+       * Whether `deltas` use sample-rooted pointers. Generated (patches)
+       * views persist LABEL-rooted deltas whose segments are attribute
+       * names, not field names — rebasing those into the sample source
+       * would write the wrong fields, so the rebase only runs when the
+       * caller vouches for sample-rooted paths.
+       */
+      sampleRooted?: boolean;
+    } = {},
+  ): void {
     this.assertNotDispatching("reconcilePersisted");
+    const { sampleRooted = true } = opts;
     // consume the baseline; null it so a stray second reconcile fails safe
     const baseline = this.patchBaseline;
     this.patchBaseline = null;
-    const baselineDeletes = this.patchBaselineDeletes;
-    this.patchBaselineDeletes = null;
 
-    // Fold the persisted fields into source FIRST — deletes otherwise
-    // re-diff against the stale source forever, re-PATCHing the same
-    // remove on every autosave tick and never settling (see
-    // foldPersistedIntoSource). Purely source-side: the display already
-    // projects the transient state, so no change notification is due.
-    // A setData() during the in-flight request replaced source with a
-    // FRESH server fetch — strictly better truth than the fold's
-    // reconstruction (the fold exists only because no echo arrives).
-    // Folding a stale baseline over it could mask a concurrent writer's
-    // newer values, so skip; the next diff resolves against the fresh
-    // source naturally.
-    const sourceReplaced =
-      this.sourceRevision !== this.patchBaselineSourceRevision;
-    const folded = sourceReplaced
-      ? null
-      : foldPersistedIntoSource(
-          this.sourceData,
-          baselineDeletes,
-          baseline,
-          deltas,
-        );
-    if (folded) {
-      this.sourceData = folded.sourceData;
-      // Release only tombstones the persisted patch actually satisfied
-      // AND that still stand — a tombstone recreated by a post-persist
-      // delete of the re-added value must keep diffing.
-      for (const path of folded.releasedTombstones) {
-        this.transientDeletes.delete(path);
-      }
-    }
-
+    // The transient release runs FIRST, against the PRE-rebase snapshot:
+    // its matched-element ops are source-indexed (see
+    // releaseUneditedLabelFields), so it must resolve them against the
+    // source the patch was diffed from, and its defer-to-source semantics
+    // must see the server-refreshed values, not our own rebase output.
     const result = reconcilePersisted(
       this.snapshot(),
       deltas,
@@ -655,26 +637,42 @@ export class Sample {
       baseline,
     );
 
-    if (!result) {
-      return;
-    }
-
-    // A released/dropped path has a new (or absent) reference vs. before;
-    // emit a per-path reset so reconcilers re-read just those from source.
-    const before = this.transientData;
-    const after = result.transientData;
-    const changes: SampleChange[] = [];
-    for (const path of new Set([
-      ...Object.keys(before),
-      ...Object.keys(after),
-    ])) {
-      if (before[path] !== after[path]) {
-        changes.push({ path, kind: SampleChangeKind.Reset });
+    // Rebase source by applying the server-accepted deltas — the shared
+    // applyDeltas contract frameStore.rebaseFrame uses (see rebaseSource;
+    // deletes otherwise re-diff against the stale source forever). gc()
+    // then drops the tombstones the rebase satisfied — and ONLY those
+    // still absent from source, which is exactly the "recreated tombstone
+    // keeps diffing" guarantee. Skipped when a setData() replaced source
+    // mid-flight: a fresh fetch is strictly better truth than a replay,
+    // and the next diff resolves against it naturally. Purely
+    // source-side: the display projects the transient, so no
+    // notification is due.
+    if (result) {
+      // A released/dropped path has a new (or absent) reference vs.
+      // before; emit a per-path reset so reconcilers re-read just those
+      // from source.
+      const before = this.transientData;
+      const after = result.transientData;
+      const changes: SampleChange[] = [];
+      for (const path of new Set([
+        ...Object.keys(before),
+        ...Object.keys(after),
+      ])) {
+        if (before[path] !== after[path]) {
+          changes.push({ path, kind: SampleChangeKind.Reset });
+        }
       }
+
+      this.transientData = after;
+      this.notify(changes);
     }
 
-    this.transientData = after;
-    this.notify(changes);
+    const sourceReplaced =
+      this.sourceRevision !== this.patchBaselineSourceRevision;
+    if (sampleRooted && !sourceReplaced && baseline) {
+      this.sourceData = rebaseSource(this.sourceData, deltas);
+      this.gc();
+    }
   }
 
   /**
