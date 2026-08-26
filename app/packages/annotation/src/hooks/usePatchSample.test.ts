@@ -58,6 +58,17 @@ describe("usePatchSampleWith", () => {
     );
   });
 
+  it("forwards attributionSampleId so grouped-modal ops credit the anchor", async () => {
+    const args = makeArgs();
+    const { result } = renderHook(() => usePatchSampleWith(args));
+
+    await result.current(DELTAS, { attributionSampleId: "anchor-1" });
+
+    expect(doPatchSample).toHaveBeenCalledWith(
+      expect.objectContaining({ attributionSampleId: "anchor-1" }),
+    );
+  });
+
   it("passes all constructor args through to doPatchSample", async () => {
     const args = makeArgs({
       isGenerated: true,

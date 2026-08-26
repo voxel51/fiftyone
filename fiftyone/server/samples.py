@@ -194,6 +194,7 @@ async def _create_sample_item(
         metadata_cache,
         url_cache,
         additional_media_fields=additional_media_fields,
+        skip_metadata_read=(pagination_data and media_type == fom.MULTIMODAL),
     )
 
     if cls == VideoSample:

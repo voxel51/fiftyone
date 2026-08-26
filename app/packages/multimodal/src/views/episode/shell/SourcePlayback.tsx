@@ -16,10 +16,12 @@ import React, {
   useState,
 } from "react";
 import PlaybackShell from "./PlaybackShell";
-import type {
-  ByteSourceDescriptor,
-  EpisodeRecordingFacts,
-  StreamDescriptor,
+import RegisterMcapAudioStreams from "../audio/RegisterMcapAudioStreams";
+import {
+  SCENE_SOURCE_TYPE,
+  type ByteSourceDescriptor,
+  type EpisodeRecordingFacts,
+  type StreamDescriptor,
 } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection/scene-sources";
@@ -335,6 +337,26 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const shellInventory = destinationInventory ?? retainedShellInventory;
   const shellSources = shellInventory?.sources ?? sources;
   const shellStreams = shellInventory?.streams ?? streams;
+  // Audio deliberately does NOT contribute `Track` rows to the main timeline
+  // for now — audio lives in the toolbar's volume/mixer controls only, and is
+  // to be reintroduced as a timeline track later.
+  //
+  // Worth knowing when it comes back: `TimelineWithTracks` gates its whole
+  // Drawer (drag handle, chevron, trailing actions) on `tracks.length > 0`,
+  // and `useAudio()`'s roster does not feed that count. So a recording whose
+  // only streams are audio now shows no timeline chrome at all — which is the
+  // gap those synthetic rows existed to close.
+  // The transitioning gate clears when `onPlayheadDataReady` fires, which
+  // requires a stream registered with the demand-driven buffered-read system
+  // to cover the playhead. Audio sources decode through their own one-shot
+  // read (`useMcapAudioStream`) and never participate, so a recording whose
+  // only sources are audio has nothing that can ever satisfy that signal and
+  // would stay masked forever. There is also nothing to preview in that case.
+  const hasPreviewableSource = useMemo(
+    () =>
+      shellSources.some((source) => source.type !== SCENE_SOURCE_TYPE.AUDIO),
+    [shellSources],
+  );
   const resolvedTimelineMode = useMemo(
     () => resolveTimelineMode(shellStreams),
     [shellStreams],
@@ -470,7 +492,10 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const transitioning =
     navigationPending ||
     readyInventory === null ||
-    presentedSourceKey !== sourceKey;
+    // See `hasPreviewableSource`: an audio-only recording never publishes a
+    // playhead-data-ready tick, so this would otherwise latch "transitioning"
+    // forever.
+    (hasPreviewableSource && presentedSourceKey !== sourceKey);
 
   return (
     <div
@@ -543,7 +568,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 addTileMenu={
                                   <AddTileMenu tileTypes={availableTileTypes} />
                                 }
-                                timelineExtraActions={<TimestampReadout />}
+                                timelineReadouts={<TimestampReadout />}
                                 sceneSources={shellSources}
                                 mode={playbackTimelineMode}
                                 deselectFocusedTileOnRepeatSelect={false}
@@ -626,6 +651,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 <NetworkHealthTracker
                                   playback={session?.playback ?? null}
                                 />
+                                <RegisterMcapAudioStreams />
                                 <SelectionHotkeys />
                                 <ExtensionRuntimeBoundary>
                                   {children}

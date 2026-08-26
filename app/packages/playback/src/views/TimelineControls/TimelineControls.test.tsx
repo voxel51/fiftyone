@@ -289,7 +289,7 @@ describe("TimelineControls", () => {
       ).toBeTruthy();
     });
 
-    it("renders the slot without introducing an extra divider", () => {
+    it("renders the slot in the trailing run, behind its own divider", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
           <TimelineControls
@@ -297,10 +297,11 @@ describe("TimelineControls", () => {
           />
         </PlaybackProvider>,
       );
-      // extraControls sits between the transport buttons and the time display;
-      // unlike extraActions it does not add its own divider.
+      // The row groups as: transport | audio | speed + clock | host content.
+      // `extraControls` now shares the last group with `extraActions`, so it
+      // sits behind the second divider rather than ahead of the first.
       const dividers = screen.getAllByTestId("timeline-controls-divider");
-      expect(dividers).toHaveLength(1);
+      expect(dividers).toHaveLength(2);
     });
 
     it("renders a single divider when no slot is provided", () => {

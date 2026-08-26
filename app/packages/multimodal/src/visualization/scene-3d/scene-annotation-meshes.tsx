@@ -25,6 +25,7 @@ import {
   modelAssetForPrimitive,
 } from "./scene-models";
 import { useSceneEmphasis } from "./scene-emphasis";
+import { createScreenSpaceLineRaycast } from "./screen-space-line-raycast";
 import { scenePoseObjectTransform } from "./transforms";
 import type { SceneIndexedGeometryRenderData } from "./types";
 import {
@@ -231,6 +232,11 @@ export function SceneLineMesh({ line }: { readonly line: SceneLinePrimitive }) {
   const emphasis = useSceneEmphasis();
   const emphasized = emphasis !== "none";
   const invalidate = useThree((state) => state.invalidate);
+  const viewportHeightPx = useThree((state) => state.size.height);
+  const lineRaycast = useMemo(
+    () => createScreenSpaceLineRaycast(viewportHeightPx),
+    [viewportHeightPx],
+  );
   const renderData = useMemo(() => createSceneLineRenderData(line), [line]);
 
   useEffect(() => {
@@ -249,10 +255,12 @@ export function SceneLineMesh({ line }: { readonly line: SceneLinePrimitive }) {
     SCENE_LINE_OPACITY,
     emphasized,
   );
+  // Fiber and the app resolve distinct bundled-three raycast signatures.
+  const fiberLineRaycast = lineRaycast as never;
 
   return (
     <group position={transform.position} quaternion={transform.quaternion}>
-      <lineSegments frustumCulled={false}>
+      <lineSegments frustumCulled={false} raycast={fiberLineRaycast}>
         <primitive attach="geometry" object={renderData.geometry} />
         {emphasis === "selected" ? (
           <lineDashedMaterial
