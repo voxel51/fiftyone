@@ -1,5 +1,6 @@
 import { LRUCache } from "lru-cache";
 
+import type { MultimodalGridFit } from "@fiftyone/state";
 import type { GridPosterProviderMetadata } from "../../../extensions/grid-posters";
 import type { ByteSourceDescriptor } from "../../../ir";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
@@ -12,6 +13,7 @@ const DEFAULT_MAX_ENTRIES = 2_048;
 const ENTRY_METADATA_BYTES = 256;
 const CACHE_SCHEMA_VERSION = "grid-poster-v3";
 const PREVIEW_SELECTION_POLICY_VERSION = "preview-selection-v1";
+const PREVIEW_STATE_KEY_VERSION = "grid-preview-state-v1";
 const SNAPSHOT_RENDERER_POLICY_VERSION = "point-cloud-snapshot-v1";
 export const GRID_POSTER_AUTO_SOURCE = "__AUTO__";
 
@@ -83,6 +85,7 @@ export interface GridPosterCacheOptions {
 
 export interface GridPosterKeyParts {
   readonly datasetId: string;
+  readonly imageFit: MultimodalGridFit;
   readonly mediaField: string | null | undefined;
   readonly mediaPath?: string | null | undefined;
   readonly posterSourceName?: string | null | undefined;
@@ -154,7 +157,7 @@ export function createGridPosterCache(
   return publicCache;
 }
 
-export function gridPosterCacheKey({
+function gridPreviewIdentityParts({
   datasetId,
   mediaField,
   mediaPath,
@@ -163,8 +166,8 @@ export function gridPosterCacheKey({
   providerRevision,
   selectedSourceName,
   source,
-}: GridPosterKeyParts): GridPosterCacheKey {
-  return serializeGridPosterKey([
+}: Omit<GridPosterKeyParts, "imageFit">): readonly (string | null)[] {
+  return [
     CACHE_SCHEMA_VERSION,
     datasetId,
     mediaField ?? null,
@@ -177,6 +180,27 @@ export function gridPosterCacheKey({
     posterSourceName ?? null,
     posterStartTimeNs?.toString() ?? null,
     PREVIEW_SELECTION_POLICY_VERSION,
+  ];
+}
+
+/** Stable owner identity for live preview state, independent of presentation fit. */
+export function gridPreviewStateKey(
+  parts: Omit<GridPosterKeyParts, "imageFit">,
+): string {
+  return serializeGridPosterKey([
+    ...gridPreviewIdentityParts(parts),
+    PREVIEW_STATE_KEY_VERSION,
+  ]);
+}
+
+/** Persistent identity for a poster whose canvas bytes bake in presentation fit. */
+export function gridPosterCacheKey(
+  parts: GridPosterKeyParts,
+): GridPosterCacheKey {
+  const { imageFit, ...identity } = parts;
+  return serializeGridPosterKey([
+    ...gridPreviewIdentityParts(identity),
+    imageFit,
   ]);
 }
 

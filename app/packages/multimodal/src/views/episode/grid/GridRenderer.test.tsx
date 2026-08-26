@@ -7,7 +7,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { RecoilRoot } from "recoil";
+import { RecoilRoot, useSetRecoilState } from "recoil";
+import { multimodalGridFit } from "@fiftyone/state";
 import { publishMcapEmbeddingSelection } from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -22,7 +23,7 @@ import {
 } from "../../../visualization/webgpu/webgpu-live-lease";
 import type { ByteSourceDescriptor, EpisodePosterFrame } from "../../../ir";
 import {
-  gridPosterCacheKey,
+  gridPreviewStateKey,
   pointCloudPoseKey,
   type GridPosterCacheEntry,
 } from "./grid-poster-cache";
@@ -43,6 +44,30 @@ import type {
 // the tile read the embeddings panel's published match for its episode.
 function render(ui: ReactElement) {
   return renderBare(ui, { wrapper: RecoilRoot });
+}
+
+function renderWithGridFit(ui: ReactElement, fit: "contain" | "cover") {
+  return renderBare(
+    <RecoilRoot initializeState={({ set }) => set(multimodalGridFit, fit)}>
+      {ui}
+    </RecoilRoot>,
+  );
+}
+
+let setGridFit: ((fit: "contain" | "cover") => void) | null = null;
+
+function renderWithMutableGridFit(ui: ReactElement) {
+  return renderBare(
+    <RecoilRoot>
+      <GridFitController />
+      {ui}
+    </RecoilRoot>,
+  );
+}
+
+function GridFitController() {
+  setGridFit = useSetRecoilState(multimodalGridFit);
+  return null;
 }
 
 type PublishedWindows = Record<
@@ -74,11 +99,20 @@ const previewHarness = vi.hoisted(() => ({
 }));
 
 const bitmapViewHarness = vi.hoisted(() => ({
+  commitOnFitEffect: false,
   lastProps: null as {
     fit?: string;
     frame: Extract<EpisodePosterFrame, { kind: "image" }>["image"];
     onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
+    onCanvasCommitted?: (
+      canvas: HTMLCanvasElement,
+      size: { readonly height: number; readonly width: number },
+    ) => void;
   } | null,
+}));
+
+const cachedBitmapViewHarness = vi.hoisted(() => ({
+  fit: null as string | null,
 }));
 
 const bitmapHostHarness = vi.hoisted(() => ({
@@ -216,9 +250,11 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
       );
     },
     BitmapImageView: (props: {
+      readonly fit?: string;
       readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
     }) => {
-      const { onBitmapRetainedBytesChange } = props;
+      const { fit, onBitmapRetainedBytesChange } = props;
+      cachedBitmapViewHarness.fit = fit ?? null;
       useEffect(() => {
         onBitmapRetainedBytesChange?.(320 * 180 * 4);
       }, [onBitmapRetainedBytesChange]);
@@ -228,13 +264,26 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
       readonly fit?: string;
       readonly frame: Extract<EpisodePosterFrame, { kind: "image" }>["image"];
       readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
+      readonly onCanvasCommitted?: (
+        canvas: HTMLCanvasElement,
+        size: { readonly height: number; readonly width: number },
+      ) => void;
     }) => {
       bitmapViewHarness.lastProps = props;
-      const { onBitmapRetainedBytesChange } = props;
+      const { fit, onBitmapRetainedBytesChange, onCanvasCommitted } = props;
       // This effect reports decoded bitmap retention like the real view does.
       useEffect(() => {
         onBitmapRetainedBytesChange?.(640 * 480 * 4);
       }, [onBitmapRetainedBytesChange]);
+      // This effect mirrors the real bitmap view's fit-triggered canvas commit.
+      useEffect(() => {
+        if (bitmapViewHarness.commitOnFitEffect) {
+          onCanvasCommitted?.(document.createElement("canvas"), {
+            height: 100,
+            width: 100,
+          });
+        }
+      }, [fit, onCanvasCommitted]);
       return <div data-testid="bitmap-image-view" />;
     },
   };
@@ -259,7 +308,10 @@ afterEach(() => {
   resetGraphicsRendererRegistryForTests();
   bitmapHostHarness.lastBitmap = null;
   bitmapHostHarness.onCanvasCommitted = null;
+  cachedBitmapViewHarness.fit = null;
+  bitmapViewHarness.commitOnFitEffect = false;
   bitmapViewHarness.lastProps = null;
+  setGridFit = null;
   cameraPoseHarness.pose = null;
   previewHarness.preview.error = null;
   previewHarness.preview.cachedPoster = null;
@@ -354,7 +406,7 @@ describe("GridRenderer", () => {
     render(<GridRenderer ctx={rendererCtx()} />);
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey).toBe(
-      gridPosterCacheKey({
+      gridPreviewStateKey({
         datasetId: "dataset-id",
         mediaField: undefined,
         selectedSourceName: null,
@@ -453,6 +505,7 @@ describe("GridRenderer", () => {
     );
 
     expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(cachedBitmapViewHarness.fit).toBe("cover");
     const root = getGridRendererRoot(container);
     expect(root.classList.contains(classes.modalActivationSurface)).toBe(false);
     fireEvent.click(root);
@@ -501,6 +554,40 @@ describe("GridRenderer", () => {
     expect(bitmapViewHarness.lastProps.frame.bytes).toBe(bytes);
     expect(bitmapViewHarness.lastProps?.fit).toBe("cover");
     expect(bitmapViewHarness.lastProps.frame.mimeType).toBe("image/jpeg");
+  });
+
+  it("honors the contain fit setting for multimodal grid frames", () => {
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+
+    renderWithGridFit(<GridRenderer ctx={rendererCtx()} />, "contain");
+
+    expect(bitmapViewHarness.lastProps?.fit).toBe("contain");
+  });
+
+  it("captures the same frame separately when its fit changes", async () => {
+    sourceHarness.byteSource = {
+      sourceId: "fit-capture",
+      url: "memory://fit-capture",
+    };
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+    bitmapViewHarness.commitOnFitEffect = true;
+
+    renderWithMutableGridFit(<GridRenderer ctx={rendererCtx()} />);
+    await waitFor(() =>
+      expect(posterCaptureHarness.capture).toHaveBeenCalledTimes(1),
+    );
+    const coverKey = posterCaptureHarness.capture.mock.calls[0]?.[0].key;
+
+    act(() => setGridFit?.("contain"));
+
+    await waitFor(() =>
+      expect(posterCaptureHarness.capture).toHaveBeenCalledTimes(2),
+    );
+    expect(posterCaptureHarness.capture.mock.calls[1]?.[0].key).not.toBe(
+      coverKey,
+    );
   });
 
   it("shows a tiny buffering indicator over the last rendered frame", () => {
