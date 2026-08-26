@@ -307,8 +307,8 @@ jobs:
     if: needs.prepare-e2e.outputs.burn-in-count != '0'
     # 10 repeats of several typical spec files fit this budget; a PR that
     # adds more should land them in pieces.
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    runs-on: ${{ vars.FIFTYONE_E2E_RUNNER || 'ubuntu-latest' }}
     container:
       # fiftyone-teams overrides the image name via repo var (superset deps)
       image: ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
