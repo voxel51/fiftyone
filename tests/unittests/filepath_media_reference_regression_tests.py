@@ -1,0 +1,282 @@
+"""
+Filepath compatibility tests for media-reference-aware code paths.
+
+| Copyright 2017-2026, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import asyncio
+from functools import partial
+import os
+import tempfile
+import unittest
+from unittest import mock
+
+from bson import ObjectId
+from decorators import drop_datasets
+from mongoengine.errors import ValidationError
+
+import fiftyone as fo
+import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
+from fiftyone.server.samples import (
+    ImageSample,
+    PointCloudSample,
+    ThreeDSample,
+    VideoSample,
+    _create_sample_item,
+)
+import fiftyone.types as fot
+
+
+class FilepathMediaReferenceRegressionTests(unittest.TestCase):
+    @drop_datasets
+    def test_add_samples_streams_and_preserves_completed_batches(self):
+        dataset = fo.Dataset()
+        consumed = []
+
+        def samples():
+            for index in range(4):
+                consumed.append(index)
+                yield fo.Sample(filepath="image-%d.jpg" % index)
+
+        batches = dataset.add_samples(
+            samples(),
+            batcher=partial(fou.StaticBatcher, batch_size=2),
+            generator=True,
+        )
+        self.assertEqual(consumed, [])
+
+        first_ids = next(batches)
+        self.assertEqual(len(first_ids), 2)
+        self.assertEqual(consumed, [0, 1])
+
+        batches.close()
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(consumed, [0, 1])
+
+        partial_dataset = fo.Dataset()
+
+        def failing_samples():
+            yield fo.Sample(filepath="partial-0.jpg")
+            yield fo.Sample(filepath="partial-1.jpg")
+            raise RuntimeError("source failed")
+
+        with self.assertRaisesRegex(RuntimeError, "source failed"):
+            partial_dataset.add_samples(
+                failing_samples(),
+                batcher=partial(fou.StaticBatcher, batch_size=2),
+            )
+
+        self.assertEqual(len(partial_dataset), 2)
+
+    @drop_datasets
+    def test_large_add_and_merge_iterables_are_consumed_by_batch(self):
+        total = 10000
+
+        def assert_first_batch(operation):
+            consumed = 0
+
+            def samples():
+                nonlocal consumed
+                for index in range(total):
+                    consumed += 1
+                    yield fo.Sample(filepath="image-%d.jpg" % index)
+
+            def stop_after_first_batch(dataset, batch):
+                raise RuntimeError("first batch seen")
+
+            def static_batcher(iterable, **kwargs):
+                return fou.StaticBatcher(
+                    iterable,
+                    batch_size=8,
+                    transform_fn=kwargs.get("transform_fn"),
+                    progress=kwargs.get("progress"),
+                    total=kwargs.get("total"),
+                )
+
+            with mock.patch.object(
+                fo.Dataset,
+                "_add_samples_batch",
+                new=stop_after_first_batch,
+            ), mock.patch(
+                "fiftyone.core.utils.get_default_batcher",
+                side_effect=static_batcher,
+            ), self.assertRaisesRegex(
+                RuntimeError, "first batch seen"
+            ):
+                operation(samples())
+
+            self.assertEqual(consumed, 8)
+
+        add_dataset = fo.Dataset()
+        assert_first_batch(add_dataset.add_samples)
+
+        merge_dataset = fo.Dataset()
+        assert_first_batch(merge_dataset.merge_samples)
+
+    @drop_datasets
+    def test_media_reference_user_field_remains_compatible(self):
+        sample = fo.Sample(filepath="image.jpg", media_reference="constructed")
+        self.assertEqual(sample.media_reference, "constructed")
+
+        sample.media_reference = "assigned"
+        sample.set_field("media_reference", "set-field")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        sample.save()
+        dataset.set_values("media_reference", ["set-values"])
+
+        dataset.clone_sample_field("media_reference", "media_reference_copy")
+        with mock.patch("fiftyone.migrations.migrate_dataset_if_necessary"):
+            cloned = dataset.clone()
+        self.assertEqual(cloned.first().media_reference, "set-values")
+        self.assertEqual(cloned.first().media_reference_copy, "set-values")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            export_dir = os.path.join(tmp_dir, "export")
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=False,
+            )
+            with mock.patch(
+                "fiftyone.utils.data.importers.fomi.migrate_dataset_if_necessary"
+            ):
+                imported = fo.Dataset.from_dir(
+                    dataset_dir=export_dir,
+                    dataset_type=fot.FiftyOneDataset,
+                )
+
+        self.assertEqual(imported.first().media_reference, "set-values")
+        self.assertEqual(imported.first().media_reference_copy, "set-values")
+
+        dataset.rename_sample_field(
+            "media_reference", "legacy_media_reference"
+        )
+        dataset.reload()
+        reloaded = dataset.first()
+        self.assertEqual(reloaded.legacy_media_reference, "set-values")
+        self.assertEqual(reloaded.media_reference_copy, "set-values")
+
+    @drop_datasets
+    def test_filepath_exception_types_remain_compatible(self):
+        with self.assertRaises(TypeError):
+            # pylint: disable-next=no-value-for-parameter
+            fo.Sample()
+
+        with self.assertRaises(TypeError):
+            fo.Sample(filepath=None)
+
+        with self.assertRaises(TypeError):
+            # pylint: disable-next=no-value-for-parameter
+            fo.Sample(_media_reference={})
+
+        sample = fo.Sample(filepath="image.jpg")
+        with self.assertRaises(fom.MediaTypeError):
+            sample.filepath = "video.mp4"
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        filepath = sample.filepath
+        try:
+            for invalid_filepath in (None, ""):
+                sample._doc.filepath = invalid_filepath
+                with self.assertRaises(ValidationError):
+                    sample.save()
+        finally:
+            sample._doc.filepath = filepath
+
+    @drop_datasets
+    def test_native_max_samples_progress_total(self):
+        source = fo.Dataset()
+        source.add_samples(
+            [fo.Sample(filepath="image-%d.jpg" % i) for i in range(5)]
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            export_dir = os.path.join(tmp_dir, "export")
+            source.export(
+                export_dir=export_dir,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=False,
+            )
+
+            events = []
+
+            def progress(pb):
+                events.append((pb.total, pb.iteration, pb.complete))
+
+            with mock.patch(
+                "fiftyone.utils.data.importers.fomi.migrate_dataset_if_necessary"
+            ):
+                imported = fo.Dataset.from_dir(
+                    dataset_dir=export_dir,
+                    dataset_type=fot.FiftyOneDataset,
+                    max_samples=2,
+                    progress=progress,
+                )
+
+        self.assertEqual(len(imported), 2)
+        self.assertTrue(events)
+        self.assertTrue(all(total == 2 for total, _, _ in events))
+        self.assertEqual(events[-1], (2, 2, True))
+
+    def test_filepath_grid_media_type_uses_filepath(self):
+        async def get_metadata(
+            dataset,
+            sample,
+            media_type,
+            metadata_cache,
+            url_cache,
+            **kwargs,
+        ):
+            metadata = {"urls": [], "aspect_ratio": 1.0}
+            if media_type == fom.VIDEO:
+                metadata["frame_rate"] = 30.0
+
+            return metadata
+
+        cases = (
+            ("image.jpg", fom.VIDEO, ImageSample),
+            ("video.mp4", fom.IMAGE, VideoSample),
+            ("point-cloud.pcd", fom.VIDEO, PointCloudSample),
+            ("scene.fo3d", fom.VIDEO, ThreeDSample),
+            ("grouped.jpg", fom.VIDEO, ImageSample),
+        )
+        with mock.patch(
+            "fiftyone.server.samples.fosm.get_metadata",
+            side_effect=get_metadata,
+        ):
+            for filepath, stored_media_type, expected_type in cases:
+                with self.subTest(filepath=filepath):
+                    sample = {
+                        "_id": ObjectId(),
+                        "filepath": filepath,
+                        "_media_type": stored_media_type,
+                    }
+                    if filepath == "grouped.jpg":
+                        sample["group"] = {
+                            "_id": ObjectId(),
+                            "name": "left",
+                        }
+
+                    item = asyncio.run(
+                        _create_sample_item(
+                            mock.Mock(),
+                            sample,
+                            {},
+                            {},
+                            True,
+                            additional_media_fields=(None, (), ()),
+                        )
+                    )
+                    self.assertIsInstance(item, expected_type)
+                    self.assertEqual(item.sample["filepath"], filepath)
+
+
+if __name__ == "__main__":
+    fo.config.show_progress_bars = False
+    unittest.main(verbosity=2)
