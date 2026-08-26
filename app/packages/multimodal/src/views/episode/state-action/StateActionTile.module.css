@@ -200,7 +200,9 @@
   display: grid;
   font-size: 10px;
   gap: 8px;
-  grid-template-columns: minmax(64px, 1fr) 44px minmax(72px, auto) 18px;
+  grid-template-columns:
+    minmax(64px, 1fr) 44px minmax(64px, auto) minmax(40px, auto)
+    18px;
   padding: 2px 10px;
   text-transform: uppercase;
 }
@@ -209,7 +211,9 @@
   align-items: center;
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(64px, 1fr) 44px minmax(72px, auto) 18px;
+  grid-template-columns:
+    minmax(64px, 1fr) 44px minmax(64px, auto) minmax(40px, auto)
+    18px;
   height: 22px;
   padding: 0 10px;
 }
@@ -233,6 +237,16 @@
 
 .dimValue {
   text-align: right;
+}
+
+.dimDelta {
+  color: var(--color-content-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dimTrackCell {

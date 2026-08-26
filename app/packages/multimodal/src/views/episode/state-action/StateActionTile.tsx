@@ -9,6 +9,7 @@ import {
 } from "@fiftyone/playback/runtime";
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import { Icon, IconName, Size } from "@voxel51/voodo";
+import { useAtomValue } from "jotai";
 import React, {
   useCallback,
   useContext,
@@ -21,6 +22,7 @@ import React, {
 import type {
   StateActionFeatureSchema,
   StateActionFeatureStats,
+  StateActionRow,
   StateActionStats,
 } from "../../../ports";
 import { errorMessage } from "../../../utils/errors";
@@ -32,6 +34,14 @@ import type { EpisodeTileProps } from "../tiles/tile-types";
 import tileStyles from "../tiles/Tile.module.css";
 import { useStateActionContext } from "./state-action-context";
 import {
+  formatStateActionDelta,
+  normalizeStateActionValue,
+  stateActionValueHeader,
+  stateActionValueModeAtom,
+  type StateActionValueMode,
+} from "./state-action-display";
+import {
+  compactStateActionFloat,
   formatEpisodeTime,
   formatStateActionValue,
   type FormattedStateActionValue,
@@ -118,6 +128,56 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
     return () => controller.abort();
   }, [readDimensionStats, schemaFacts]);
   const row = rowState?.row ?? null;
+  const valueMode = useAtomValue(stateActionValueModeAtom);
+
+  const [previousRow, setPreviousRow] = useState<{
+    readonly forCursor: string;
+    readonly row: StateActionRow | null;
+  } | null>(null);
+  const rowCursor = row?.cursor;
+  const rowFrameIndex = row?.frameIndex;
+  // This effect resolves the row before the committed one so each value can
+  // show its change from the previous frame; both reads hit the cached slab.
+  useEffect(() => {
+    if (rowCursor === undefined || rowFrameIndex === undefined) {
+      setPreviousRow(null);
+      return undefined;
+    }
+    if (rowFrameIndex <= 0) {
+      setPreviousRow({ forCursor: rowCursor, row: null });
+      return undefined;
+    }
+    const controller = new AbortController();
+    (async () => {
+      const window = await readRowIndexWindow(
+        { after: 0, anchorCursor: rowCursor, before: 1 },
+        controller.signal,
+      );
+      const anchorIndex = window.entries.findIndex(
+        (entry) => entry.cursor === window.selectedCursor,
+      );
+      const previous =
+        anchorIndex > 0 ? window.entries[anchorIndex - 1] : undefined;
+      return previous
+        ? readRowAtCursor(previous.cursor, controller.signal)
+        : null;
+    })().then(
+      (resolved) => {
+        if (!controller.signal.aborted) {
+          setPreviousRow({ forCursor: rowCursor, row: resolved });
+        }
+      },
+      () => undefined,
+    );
+    return () => controller.abort();
+  }, [readRowAtCursor, readRowIndexWindow, rowCursor, rowFrameIndex]);
+  const previousForRow =
+    previousRow &&
+    rowCursor !== undefined &&
+    previousRow.forCursor === rowCursor
+      ? previousRow.row
+      : null;
+
   const rowCount = schemaFacts?.rowCount ?? 0;
   const canStepPrevious = Boolean(row && row.frameIndex > 0 && !stepPending);
   const canStepNext = Boolean(
@@ -378,7 +438,9 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
                 <FeaturePane
                   featureError={row?.featureErrors?.state}
                   label={STATE_PANE_LABEL}
+                  mode={valueMode}
                   onPlotField={addFieldToPlot}
+                  previousValues={previousForRow?.state}
                   schema={schemaFacts.state}
                   stats={dimensionStats?.state}
                   values={row?.state}
@@ -388,7 +450,9 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
                 <FeaturePane
                   featureError={row?.featureErrors?.action}
                   label={ACTION_PANE_LABEL}
+                  mode={valueMode}
                   onPlotField={addFieldToPlot}
+                  previousValues={previousForRow?.action}
                   schema={schemaFacts.action}
                   stats={dimensionStats?.action}
                   values={row?.action}
@@ -408,14 +472,18 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
 function FeaturePane({
   featureError,
   label,
+  mode,
   onPlotField,
+  previousValues,
   schema,
   stats,
   values,
 }: {
   readonly featureError?: string;
   readonly label: string;
+  readonly mode: StateActionValueMode;
   readonly onPlotField?: (stream: string, fieldPath: string) => void;
+  readonly previousValues?: readonly unknown[];
   readonly schema: StateActionFeatureSchema;
   readonly stats?: StateActionFeatureStats;
   readonly values?: readonly unknown[];
@@ -423,8 +491,8 @@ function FeaturePane({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ height: 0, scrollTop: 0 });
   const rows = useMemo(
-    () => paneRows(schema, values, stats),
-    [schema, stats, values],
+    () => paneRows(schema, values, stats, mode, previousValues),
+    [mode, previousValues, schema, stats, values],
   );
   const virtualize = rows.length > VIRTUALIZE_AFTER_ROWS;
 
@@ -490,7 +558,14 @@ function FeaturePane({
               <span className={styles.srOnly}>Declared range</span>
             </span>
             <span role="columnheader" style={{ textAlign: "right" }}>
-              Value
+              {stateActionValueHeader(mode)}
+            </span>
+            <span
+              role="columnheader"
+              style={{ textAlign: "right" }}
+              title="Change from the previous row"
+            >
+              Δ
             </span>
             <span role="columnheader">
               <span className={styles.srOnly}>Plot</span>
@@ -530,6 +605,13 @@ function FeaturePane({
                   <span className={styles.dimValue} role="cell">
                     <ValueCell value={paneRow.value} />
                   </span>
+                  <span
+                    className={styles.dimDelta}
+                    role="cell"
+                    title={paneRow.delta?.exact}
+                  >
+                    {paneRow.delta?.text ?? ""}
+                  </span>
                   <span className={styles.dimAction} role="cell">
                     {onPlotField &&
                     schema.numericStreamId &&
@@ -562,6 +644,7 @@ function FeaturePane({
 }
 
 interface PaneRow {
+  readonly delta?: { readonly exact: string; readonly text: string };
   readonly index: number;
   readonly marker?: ValueMarkerFacts;
   readonly name: string;
@@ -586,6 +669,8 @@ function paneRows(
   schema: StateActionFeatureSchema,
   values: readonly unknown[] | undefined,
   stats: StateActionFeatureStats | undefined,
+  mode: StateActionValueMode,
+  previousValues: readonly unknown[] | undefined,
 ): readonly PaneRow[] {
   // Never shift or hide values on a shape mismatch: render every declared
   // dimension and every extra source value under its stable numeric index.
@@ -595,14 +680,31 @@ function paneRows(
     const name = dimension?.name ?? `[${index}]`;
     const raw =
       values !== undefined && index < values.length ? values[index] : undefined;
+    // A dimension whose declared normalization parameters are unusable
+    // falls back to the raw value instead of inventing a scale.
+    const normalized =
+      mode !== "raw" && typeof raw === "number" && Number.isFinite(raw)
+        ? normalizeStateActionValue(mode, stats, index, raw)
+        : null;
+    const rawFormatted = formatStateActionValue(raw);
     const value: PaneValue =
       values === undefined
         ? { kind: "skeleton" }
         : index >= values.length
           ? { kind: "missing" }
-          : formatStateActionValue(raw);
+          : normalized !== null
+            ? { ...rawFormatted, text: compactStateActionFloat(normalized) }
+            : rawFormatted;
     const marker = valueMarker(stats, index, raw);
+    const delta = paneRowDelta(
+      raw,
+      previousValues?.[index],
+      mode,
+      stats,
+      index,
+    );
     return {
+      ...(delta ? { delta } : {}),
       index,
       ...(marker ? { marker } : {}),
       name,
@@ -612,6 +714,53 @@ function paneRows(
       value,
     };
   });
+}
+
+/**
+ * Change from the previous row, on the same scale the value column shows:
+ * normalized when this dimension normalizes, raw otherwise. Non-numeric
+ * pairs render no delta rather than a fabricated zero.
+ */
+function paneRowDelta(
+  raw: unknown,
+  previousRaw: unknown,
+  mode: StateActionValueMode,
+  stats: StateActionFeatureStats | undefined,
+  index: number,
+): PaneRow["delta"] | undefined {
+  if (
+    typeof raw !== "number" ||
+    !Number.isFinite(raw) ||
+    typeof previousRaw !== "number" ||
+    !Number.isFinite(previousRaw)
+  ) {
+    return undefined;
+  }
+  let current = raw;
+  let previous = previousRaw;
+  if (mode !== "raw") {
+    const currentNormalized = normalizeStateActionValue(
+      mode,
+      stats,
+      index,
+      raw,
+    );
+    const previousNormalized = normalizeStateActionValue(
+      mode,
+      stats,
+      index,
+      previousRaw,
+    );
+    if (currentNormalized !== null && previousNormalized !== null) {
+      current = currentNormalized;
+      previous = previousNormalized;
+    }
+  }
+  const delta = current - previous;
+  return {
+    exact: `Δ ${String(delta)} from the previous row`,
+    text: formatStateActionDelta(delta),
+  };
 }
 
 /**

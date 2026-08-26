@@ -6,12 +6,14 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { getDefaultStore } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   StateActionRow,
   StateActionSchema,
   StateActionStats,
 } from "../../../ports";
+import { stateActionValueModeAtom } from "./state-action-display";
 import type {
   StateActionRowState,
   StateActionSchemaState,
@@ -125,10 +127,11 @@ function row(overrides: Partial<StateActionRow> = {}): StateActionRow {
   };
 }
 
-/** Texts of the value column only; plot-action cells are icon-only. */
+/** Texts of the value column only; marker, delta, and plot cells drop out. */
 function valueCellTexts(pane: HTMLElement): (string | null)[] {
   return within(pane)
     .getAllByRole("cell")
+    .filter((cell) => !cell.className.includes("dimDelta"))
     .map((cell) => cell.textContent)
     .filter((text) => text !== "");
 }
@@ -143,10 +146,15 @@ function setState(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Implementations set with mockResolvedValue survive clearAllMocks; the
+  // exact-read mocks must not leak a previous test's rows into the next.
+  mocks.readRowAtCursor.mockReset();
+  mocks.readRowIndexWindow.mockReset();
   mocks.isPlaying = false;
   mocks.isPlayPending = false;
   mocks.playheadSec = 4;
   mocks.readDimensionStats.mockResolvedValue(null);
+  getDefaultStore().set(stateActionValueModeAtom, "raw");
   setState({ schema: SCHEMA, status: "ready" }, undefined);
 });
 
@@ -252,6 +260,85 @@ describe("StateActionTile", () => {
     expect(actionPane.querySelectorAll('[class*="dimTrackTick"]').length).toBe(
       0,
     );
+  });
+
+  it("shows each value's change from the previous row", async () => {
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    mocks.readRowIndexWindow.mockResolvedValue({
+      entries: [
+        { cursor: "row:3", timestampNs: 3n * NS_PER_SECOND },
+        { cursor: "row:4", timestampNs: 4n * NS_PER_SECOND },
+      ],
+      hasNext: true,
+      hasPrevious: true,
+      selectedCursor: "row:4",
+    });
+    mocks.readRowAtCursor.mockResolvedValue(
+      row({
+        action: [0.25, 1, 7],
+        cursor: "row:3",
+        frameIndex: 3,
+        state: [1, -2.5],
+        timestampNs: 3n * NS_PER_SECOND,
+      }),
+    );
+    render(<StateActionTile />);
+
+    // The previous row resolves through the exact index, never through
+    // time; state and action dimension 0 both moved by exactly +0.25.
+    await waitFor(() => expect(screen.getAllByText("+0.25").length).toBe(2));
+    expect(mocks.readRowAtCursor).toHaveBeenCalledWith(
+      "row:3",
+      expect.anything(),
+    );
+    expect(screen.getByText("+0.5")).toBeDefined();
+    // A NaN pair renders no delta; an unchanged value shows an exact zero.
+    const statePane = screen.getByRole("table", {
+      name: "Observation state values",
+    });
+    expect(within(statePane).getByText("+0.25").className).toContain(
+      "dimDelta",
+    );
+    const actionPane = screen.getByRole("table", { name: "Action values" });
+    const actionDeltas = within(actionPane)
+      .getAllByRole("cell")
+      .filter((cell) => cell.className.includes("dimDelta"))
+      .map((cell) => cell.textContent);
+    expect(actionDeltas).toEqual(["+0.25", "", "0"]);
+  });
+
+  it("displays z-scored values while copy keeps the raw exact value", async () => {
+    getDefaultStore().set(stateActionValueModeAtom, "zscore");
+    mocks.readDimensionStats.mockResolvedValue({
+      state: { mean: [1, 0], std: [0.5, 1] },
+    });
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    render(<StateActionTile />);
+
+    const statePane = screen.getByRole("table", {
+      name: "Observation state values",
+    });
+    // (1.25 − 1) / 0.5 and (−2 − 0) / 1, under a mode-labeled column.
+    await waitFor(() =>
+      expect(valueCellTexts(statePane)).toEqual(["0.5", "-2"]),
+    );
+    expect(
+      within(statePane).getByRole("columnheader", { name: "Z-score" }),
+    ).toBeDefined();
+    const copyButton = screen.getByRole("button", {
+      name: "Copy exact value 1.25",
+    });
+    expect(copyButton.textContent).toBe("0.5");
+    // The action feature has no declared stats: raw values and a raw-shaped
+    // fallback keep the pane honest instead of inventing a scale.
+    const actionPane = screen.getByRole("table", { name: "Action values" });
+    expect(valueCellTexts(actionPane)).toEqual(["0.5", "NaN", "7"]);
   });
 
   it("names the absent canonical feature when only one pane exists", () => {
