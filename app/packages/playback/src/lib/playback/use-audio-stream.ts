@@ -1,8 +1,10 @@
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import {
-  audioMutedAtom,
-  audioVolumeAtom,
+  audioMasterMutedAtom,
+  audioMasterVolumeAtom,
+  audioTrackMutedAtom,
+  audioTrackVolumeAtom,
   isBufferingAtom,
   isPlayingAtom,
   playheadAtom,
@@ -14,8 +16,11 @@ import { usePlaybackStore } from "./playback-store-context";
 import {
   bumpStreamRangesVersion,
   getAudioAvailable,
+  getEffectiveTrackMuted,
+  getTrackVolumeMagnitude,
+  registerAudioTrack,
   setAudioAvailable,
-  setAudioMuted,
+  setMasterMuted,
 } from "./store-access";
 import type { BufferReadiness, PlaybackStream } from "./types";
 
@@ -159,7 +164,8 @@ export function detectElementHasAudio(
  *   buffering gate taking precedence (mirrors `useVideoSync`).
  * - `seekEventAtom` → `currentTime` (scrubs, steps, loop wrap).
  * - `speedAtom` → `playbackRate`, pitch-preserved.
- * - `audioVolumeAtom` / `audioMutedAtom` → `volume` / `muted`.
+ * - This track's effective volume/mute (its own per-track fader combined
+ *   with the master fader — see `audio-math.ts`) → `volume` / `muted`.
  * - `onCommit` drift-chase re-anchors `currentTime` when the element's
  *   hardware clock strays from the committed playhead.
  *
@@ -168,6 +174,11 @@ export function detectElementHasAudio(
  * fractionally longer container duration must not stretch it. Playhead
  * positions past the audio's own end are always "ready" (silence).
  *
+ * This is "just another audio source" in the multi-track model: alongside
+ * the blocking `PlaybackStream`, it registers an `AudioTrackDescriptor`
+ * (`kind: "native-element"`) so it appears in the Mixed dropdown / tile
+ * mute button roster like any Foxglove-backed PCM track.
+ *
  * Publishes `audioAvailableAtom` for the volume UI and returns the
  * best-effort `hasAudio` signal (`null` = unknown); prefer a demuxer-level
  * signal via `enabled` when available.
@@ -175,9 +186,10 @@ export function detectElementHasAudio(
 export function useAudioStream(
   id: string,
   src: string,
-  options: { enabled?: boolean } = {},
+  options: { enabled?: boolean; label?: string } = {},
 ): { hasAudio: boolean | null } {
   const enabled = options.enabled ?? true;
+  const label = options.label ?? id;
   const { registerStream, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
 
@@ -311,10 +323,24 @@ export function useAudioStream(
     return () => setAudioAvailable(store, "unavailable");
   }, [available, store]);
 
+  // Roster registration: this element is "just another audio source" in
+  // the multi-track model — publish it so the Mixed dropdown / tile mute
+  // button can see and control it, independent of whether it happens to be
+  // gating the engine's barrier right now.
+  useEffect(() => {
+    if (!available) {
+      return undefined;
+    }
+    return registerAudioTrack(store, { id, label, kind: "native-element" });
+  }, [available, store, id, label]);
+
   // Activation: subscribed (and therefore barrier-gating) only while the
   // sound is actually wanted. `hasAudio === false` is a conclusive "no
-  // audio track" — never gate on silence.
-  const muted = useAtomValue(audioMutedAtom, { store });
+  // audio track" — never gate on silence. "Wanted" combines this track's
+  // own mute with the master mute — either one silences it.
+  const trackMuted = useAtomValue(audioTrackMutedAtom(id), { store });
+  const masterMuted = useAtomValue(audioMasterMutedAtom, { store });
+  const muted = trackMuted || masterMuted;
   const active = enabled && !muted && hasAudio !== false;
   useEffect(() => {
     if (!active) {
@@ -353,8 +379,11 @@ export function useAudioStream(
           // subscription re-issues play() when the gate clears. Only a
           // genuine autoplay-policy denial reflects back into the UI: the
           // next unmute is a user gesture, which satisfies the policy.
+          // This is a browser-wide constraint, not specific to this track,
+          // so it mutes at the master level (mirrors the pre-multi-track
+          // behavior, which had only one mute flag).
           if ((error as DOMException | null)?.name === "NotAllowedError") {
-            setAudioMuted(store, true);
+            setMasterMuted(store, true);
           }
         });
       } else if (!shouldPlay && !element.paused) {
@@ -390,7 +419,10 @@ export function useAudioStream(
 
   // Speed, volume, mute — applied straight to the element. When the
   // engine runs dt-driven (the audio case), speed lives in the tick's dt;
-  // the element's playbackRate must match or the chase fights it.
+  // the element's playbackRate must match or the chase fights it. Volume
+  // and mute are this track's *effective* values — its own fader combined
+  // with the master fader (see `audio-math.ts`) — so a change to either
+  // one re-applies here.
   useEffect(() => {
     const element = elementRef.current;
     if (!element) {
@@ -398,19 +430,23 @@ export function useAudioStream(
     }
     const apply = () => {
       element.playbackRate = store.get(speedAtom);
-      element.volume = store.get(audioVolumeAtom);
-      element.muted = store.get(audioMutedAtom);
+      // `.volume` carries the raw level (unmuted magnitude) so unmuting
+      // via `.muted` is instant; mute state is `.muted`'s job alone.
+      element.volume = getTrackVolumeMagnitude(store, id);
+      element.muted = getEffectiveTrackMuted(store, id);
     };
     apply();
     const unsubs = [
       store.sub(speedAtom, apply),
-      store.sub(audioVolumeAtom, apply),
-      store.sub(audioMutedAtom, apply),
+      store.sub(audioTrackVolumeAtom(id), apply),
+      store.sub(audioTrackMutedAtom(id), apply),
+      store.sub(audioMasterVolumeAtom, apply),
+      store.sub(audioMasterMutedAtom, apply),
     ];
     return () => {
       for (const unsub of unsubs) unsub();
     };
-  }, [metadataReady, store]);
+  }, [metadataReady, store, id]);
 
   return { hasAudio };
 }

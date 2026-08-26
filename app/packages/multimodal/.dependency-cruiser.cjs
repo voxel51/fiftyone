@@ -17,6 +17,7 @@ const INJECT = `${SRC}inject/`;
 const INJECT_ENTRY = `${INJECT}index\\.ts$`;
 const IR = `${SRC}ir/`;
 const OBSERVABILITY = `${SRC}observability/`;
+const AUDIO = `${SRC}audio/`;
 const PORTS = `${SRC}ports/`;
 const QUERY = `${SRC}query/`;
 const RUNTIME = `${SRC}runtime/`;
@@ -234,6 +235,16 @@ module.exports = {
     },
 
     {
+      // Keep format-neutral audio (PCM -> peaks, Web Audio playback)
+      // independent of any container or adapter, so a non-MCAP audio dataset
+      // drives it by supplying only an `AudioLoader`.
+      name: "audio-imports-only-audio-foundations",
+      severity: "error",
+      from: { path: AUDIO, pathNot: TEST_MODULE },
+      to: { path: SRC, pathNot: `${SRC}(audio|codecs|ir|utils)/` },
+    },
+
+    {
       // Define the complete internal dependency surface of adapters; a new
       // upward edge must be redesigned rather than silently grandfathered.
       name: "adapters-import-only-adapter-foundations",
@@ -379,7 +390,7 @@ module.exports = {
       from: { path: VIEWS, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(views|runtime|observability|ports|scene-inventory|visualization|video|extensions|temporal-tags|ir|stream-selection|utils)/`,
+        pathNot: `${SRC}(views|runtime|observability|ports|scene-inventory|visualization|video|extensions|temporal-tags|ir|stream-selection|utils|audio)/`,
       },
     },
     {

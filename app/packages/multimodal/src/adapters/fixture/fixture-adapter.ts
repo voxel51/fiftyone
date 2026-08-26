@@ -463,6 +463,8 @@ function fixtureSceneSourceType(kind: StreamKind): SceneSourceType | undefined {
       return SCENE_SOURCE_TYPE.POSE;
     case STREAM_KIND.SCENE_UPDATE:
       return SCENE_SOURCE_TYPE.SCENE_ANNOTATION;
+    case STREAM_KIND.AUDIO:
+      return SCENE_SOURCE_TYPE.AUDIO;
     case STREAM_KIND.SCALAR:
     case STREAM_KIND.TRANSFORM:
     case STREAM_KIND.UNKNOWN:
@@ -625,6 +627,31 @@ function fixtureOutput(
           kind: VISUALIZATION_KIND.SCENE_UPDATE,
         },
       };
+    case STREAM_KIND.AUDIO: {
+      // A short mono ramp: enough for the fixture adapter to exercise the
+      // audio path (peaks, buffer, playback) without a real recording.
+      const samples = Float32Array.from({ length: 64 }, (_, index) =>
+        Math.sin((2 * Math.PI * index) / 64),
+      );
+      return {
+        attributes: {
+          channels: 1,
+          format: "pcm-f32",
+          sampleRate: 48_000,
+        },
+        resourceHints: {
+          sizeBytes: samples.byteLength,
+          transferables: [samples.buffer],
+        },
+        visualization: {
+          channels: 1,
+          kind: VISUALIZATION_KIND.RAW_AUDIO,
+          sampleRate: 48_000,
+          samples,
+          timestampNs,
+        },
+      };
+    }
     case STREAM_KIND.TRANSFORM:
       return {
         resourceHints,

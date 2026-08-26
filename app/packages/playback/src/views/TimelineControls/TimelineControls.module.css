@@ -2,6 +2,8 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  /* The first button and the last chevron sat flush against the edges. */
+  padding: 0 6px;
   user-select: none;
   border-bottom: 1px solid var(--color-content-border-default);
 }
@@ -64,23 +66,6 @@
 /* Drop the ring only for pointer focus; keyboard focus keeps the native ring. */
 .speedInput:focus:not(:focus-visible) {
   outline: none;
-}
-
-.volumeGroup {
-  align-items: center;
-  display: inline-flex;
-  flex-shrink: 0;
-  gap: 6px;
-  margin-left: 4px;
-}
-
-.volumeSlider {
-  width: 56px;
-}
-
-.volumeSliderDisabled {
-  opacity: 0.5;
-  pointer-events: none;
 }
 
 .divider {
@@ -163,4 +148,249 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Popover shell shared by the volume fader and the mixer (see
+   AudioPopover.tsx for why this isn't voodo's Dropdown). Opens upward from
+   the toolbar and is right-aligned so a wide panel doesn't run off-screen. */
+.popoverRoot {
+  display: inline-flex;
+  position: relative;
+}
+
+/* Portalled to `document.body` and `fixed`, so it escapes the stacking
+   contexts the toolbar's ancestors create — an absolutely-positioned panel
+   rendered in place lost to the mosaic regardless of z-index. `bottom`/
+   `right` are set inline from the trigger's viewport rect. */
+.popoverPanel {
+  background: var(--color-content-bg-popover);
+  border: 1px solid var(--color-content-border-default);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+  box-sizing: border-box;
+  padding: 14px 16px 16px;
+  position: fixed;
+  /* Many registered tracks would otherwise push the panel past the top of
+     the viewport, where it cannot be scrolled to. */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  /* The design system's portalled-above-modal tier — the same token voodo's
+     own Dropdown uses for its portalled panel. */
+  z-index: var(--z-above-modal);
+}
+
+/* The panel takes programmatic focus on open (see AudioPopover) so keys are
+   scoped to it, and carries `tabIndex={-1}` so it is not a tab stop. That
+   combination is what paints a ring across the whole popover the first time
+   the user presses a key: `:focus-visible` does not match a programmatic
+   focus, but the browser flips to keyboard heuristics on the next keypress
+   and the already-focused panel starts matching. It is a focus container,
+   not a control — the real controls inside keep their own rings. */
+.popoverPanel:focus,
+.popoverPanel:focus-visible {
+  outline: none;
+}
+
+.popoverClose {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+/* Explicit width: the sliders inside flex to fill it, so leaving it
+   content-sized collapsed them to nothing. */
+.mixedPanel {
+  width: 340px;
+}
+
+/* Mute icon color: orange while audible, gray while muted/errored — the
+   on/off distinction the old plain icon-swap didn't make visually obvious. */
+.muteButtonOn {
+  color: var(--color-brand-primary) !important;
+}
+
+.muteButtonOn:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.muteButtonOff {
+  color: var(--color-content-text-secondary) !important;
+}
+
+/* Master volume: a mute button with a fader that grows to its right on
+   hover, video-player style. The wrapper is the hover target so the pointer
+   can travel from the button onto the fader without it closing underneath. */
+.volumeControl {
+  --volume-slider-width: 72px;
+  /* voodo's knob is `size-4` (16px) with `-ml-2`, so it overhangs the track
+     by 8px at each end horizontally and — since the track is `h-2` and the
+     knob is absolutely positioned — by 4px top and bottom. */
+  --volume-knob-size: 16px;
+  --volume-knob-overhang: 8px;
+
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* Always mounted, collapsed to nothing. Width is the animated property (not
+   `display`, which cannot transition), and `overflow: hidden` clips the knob
+   while closed so it does not spill over the mixer button beside it. */
+.volumeSlider {
+  align-items: center;
+  display: flex;
+  /* Clip the right edge only — that is the side the fader slides out from,
+     and the only one that needs hiding. `overflow: hidden` clips all four
+     and cannot be limited to one axis (`overflow-x: hidden` with
+     `overflow-y: visible` forces the visible axis to compute to `auto`),
+     which sheared the top and bottom off the 16px knob sitting in an 8px
+     track and left nothing but the line. Negative insets leave the other
+     three sides alone. */
+  clip-path: inset(-100px 0 -100px -100px);
+  width: 0;
+  opacity: 0;
+  transition:
+    width 160ms ease,
+    opacity 120ms ease,
+    margin-right 160ms ease;
+}
+
+/* Hover, plus an explicit dragging flag. Not `:focus-within`: the mute
+   button is the only focusable child, and it keeps focus after a click,
+   which held the fader open until you clicked elsewhere. The dragging class
+   is what stops the wrapper collapsing under a drag that leaves the
+   control — that collapse killed the drag at zero and left it muted. */
+.volumeControl:hover .volumeSlider,
+.volumeControlDragging .volumeSlider {
+  width: calc(var(--volume-slider-width) + 2 * var(--volume-knob-overhang));
+  opacity: 1;
+  margin-right: 4px;
+}
+
+/* Audio failed to load: the mute button is already disabled, so make the
+   fader inert too rather than leaving a draggable control that does nothing.
+   voodo's slider takes no `disabled` prop, so this removes pointer events —
+   the same approach `.faderDisabled` uses in the mixer. */
+.volumeSliderDisabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Fixed width, and `flex: none` so the clipping wrapper cannot squeeze it:
+   the slider keeps a constant measured width through the whole animation.
+   Sizing it in percent would hand it a width of zero while closed and a
+   moving one while opening, which is exactly the case a knob position
+   computed from the track's measured width gets wrong. */
+.volumeSliderInput {
+  flex: none;
+  width: var(--volume-slider-width);
+  /* The knob is 16px wide with `-ml-2`, so it hangs half outside the track at
+     both ends — at value 0 (every muted fader) the clip box ate it and there
+     was no dot at all. Margin rather than padding on the wrapper: padding
+     could not collapse to zero, so it would hold the fader permanently open
+     by its own width. */
+  margin: 0 var(--volume-knob-overhang);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .volumeSlider {
+    transition: none;
+  }
+}
+
+/* One horizontal mixer row: label above, then mute icon + slider + value.
+   `min-width: 0` at every level lets the slider shrink to the panel width
+   instead of forcing overflow. */
+.trackFaderRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Label line of a mixer row. The note shares this existing line rather than
+   adding one, so a channel's height never changes as its status appears and
+   disappears; the label truncates first if the pair gets tight. */
+.trackFaderLabelRow {
+  align-items: baseline;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.trackFaderLabel {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trackFaderNote {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.trackFaderControls {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* An errored channel's fader is inert rather than merely aria-disabled. */
+.faderDisabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.trackFaderSlider {
+  flex: 1;
+  min-width: 0;
+}
+
+.trackFaderValue {
+  color: var(--color-content-text-secondary);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.audioControls {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+/* The group's leading separator. A pseudo-element rather than a sibling
+   <span> so it cannot outlive its content: with no audio both children
+   render nothing, and a sibling divider would be left pointing at an empty
+   box. Margins mirror `.divider`'s `0 6px`, less the row's own 2px gap. */
+.audioControls::before {
+  content: "";
+  width: 1px;
+  height: 12px;
+  background: var(--color-content-border-default);
+  flex-shrink: 0;
+  margin: 0 4px 0 4px;
+}
+
+/* No audio on this timeline — drop the group and its separator together.
+   Pseudo-elements are not children, so `:empty` still matches. */
+.audioControls:empty {
+  display: none;
+}
+
+/* Icon-only transport/volume/pin buttons: a background box reads oddly at
+   Xs size packed into a 2-4px gap row — brighten instead of boxing. */
+.iconButton {
+  background-color: transparent !important;
+  transition: filter 120ms ease;
+}
+
+.iconButton:hover:not(:disabled) {
+  background-color: transparent !important;
+  filter: brightness(1.25);
 }
