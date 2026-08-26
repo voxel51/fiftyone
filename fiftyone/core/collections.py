@@ -4336,6 +4336,7 @@ class SampleCollection(object):
         -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
         -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
         -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
+        -   ``"tide"``: :class:`fiftyone.utils.eval.tide.TIDEEvaluationConfig`
 
         If an ``eval_key`` is provided, a number of fields are populated at the
         object- and sample-level recording the results of the evaluation:
