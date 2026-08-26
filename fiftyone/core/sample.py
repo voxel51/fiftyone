@@ -101,11 +101,15 @@ class _SampleMixin(object):
         """The sample's hydrated media reference, or ``None``.
 
         This property is read-only. Reference-backed samples must be created
-        via :meth:`Sample.from_media_reference`.
+        via :meth:`Sample.from_media_reference`. On filepath-backed samples,
+        a user-defined field with this name retains its ordinary field value.
         """
         envelope = self._doc.get_field("_media_reference")
         if envelope is None:
-            return None
+            try:
+                return super().get_field("media_reference")
+            except AttributeError:
+                return None
 
         from fiftyone.multimodal.media import hydrate_media_reference
 
@@ -519,7 +523,16 @@ class _SampleMixin(object):
         return d
 
     def _secure_media(self, field_name, value):
-        if field_name in ("media_reference", "_media_reference"):
+        if field_name == "_media_reference":
+            raise AttributeError(
+                "Media references are read-only; use "
+                "Sample.from_media_reference()"
+            )
+
+        if (
+            field_name == "media_reference"
+            and self._doc.get_field("_media_reference") is not None
+        ):
             raise AttributeError(
                 "Media references are read-only; use "
                 "Sample.from_media_reference()"
@@ -584,25 +597,21 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
     _NO_DATASET_DOC_CLS = foo.NoDatasetSampleDocument
 
-    def __init__(self, filepath=None, tags=None, metadata=None, **kwargs):
+    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         private_fields = {
             "_media_reference",
-            "media_reference",
             "_media_type",
             "_rand",
         }
         found_private = private_fields.intersection(kwargs)
         if found_private:
-            raise AttributeError(
+            raise ValueError(
                 "Private media state cannot be assigned directly: %s"
                 % sorted(found_private)
             )
 
         if filepath is None:
-            raise ValueError(
-                "A filepath is required; use Sample.from_media_reference() "
-                "for logical media"
-            )
+            raise TypeError("filepath must be a path-like string")
 
         super().__init__(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs

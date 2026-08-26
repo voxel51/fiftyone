@@ -1962,6 +1962,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
             if media_mode == "reference":
                 dataset_dict["media_reference_kind"] = media_reference_kind
+        elif self.max_samples is not None:
+            num_samples = self.max_samples
 
         #
         # Import DatasetDocument

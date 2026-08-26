@@ -4212,13 +4212,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        original_samples = samples
-        samples = list(samples)
-        media_mode, media_reference_kind = _preflight_media_sources(
-            self, samples
-        )
         if num_samples is None:
-            num_samples = original_samples
+            num_samples = samples
 
         transform_fn = partial(
             self._transform_sample,
@@ -4228,32 +4223,50 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             copy=True,
         )
 
-        batcher = fou.get_default_batcher(
-            samples,
-            batcher=batcher,
-            transform_fn=transform_fn,
-            size_calc_fn=self._calculate_size,
-            progress=progress,
-            total=num_samples,
-        )
-
         def _do_add_samples():
+            sample_iter = iter(samples)
+            try:
+                first_sample = next(sample_iter)
+            except StopIteration:
+                return
+
+            # Establish rollback state before batching can mutate the dataset
+            media_mode, _ = _preflight_media_sources(
+                self, [first_sample], check_duplicates=False
+            )
+            batcher_instance = fou.get_default_batcher(
+                itertools.chain((first_sample,), sample_iter),
+                batcher=batcher,
+                transform_fn=transform_fn,
+                size_calc_fn=self._calculate_size,
+                progress=progress,
+                total=num_samples,
+            )
+
             with _media_reference_write_guard(
                 self, media_mode == "reference"
             ) as inserted_ids:
-                if media_mode == "reference":
-                    self._mark_media_reference_capable(media_reference_kind)
+                with batcher_instance:
+                    batches = iter(batcher_instance)
+                    try:
+                        batch = next(batches)
+                    except StopIteration:
+                        return
 
-                with batcher:
-                    for batch in batcher:
+                    while True:
                         res, ids = self._add_samples_batch(batch)
                         inserted_ids.extend(ids)
                         if hasattr(res, "nBytes") and hasattr(
-                            batcher, "set_encoding_ratio"
+                            batcher_instance, "set_encoding_ratio"
                         ):
-                            batcher.set_encoding_ratio(res.nBytes)
+                            batcher_instance.set_encoding_ratio(res.nBytes)
 
                         yield ids
+
+                        try:
+                            batch = next(batches)
+                        except StopIteration:
+                            break
 
         if generator:
             return _do_add_samples()
@@ -4911,22 +4924,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 _validate_reference_merge_identity(
                     key_field, key_fcn, insert_new
                 )
-        else:
-            samples = list(samples)
-            media_mode, media_reference_kind = _preflight_media_sources(
-                self,
-                samples,
-                check_existing_reference_keys=False,
-            )
-            if key_fcn is None and key_field == "filepath":
-                if media_mode == "reference":
-                    key_field = "_media_reference.key"
-
-            if media_mode == "reference":
-                _validate_reference_merge_identity(
-                    key_field, key_fcn, insert_new
-                )
-
         if fields is not None:
             if etau.is_str(fields):
                 fields = [fields]
@@ -5034,6 +5031,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 tmp.delete()
 
             return
+
+        if num_samples is None:
+            num_samples = samples
+
+        samples = iter(samples)
+        try:
+            first_sample = next(samples)
+        except StopIteration:
+            return
+
+        samples = itertools.chain((first_sample,), samples)
+        media_mode, media_reference_kind = _preflight_media_sources(
+            self,
+            [first_sample],
+            check_existing_reference_keys=False,
+        )
+        if media_mode == "reference":
+            _validate_reference_merge_identity(key_field, key_fcn, insert_new)
 
         adopting_reference = (
             media_mode == "reference"

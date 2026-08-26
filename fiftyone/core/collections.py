@@ -12736,7 +12736,10 @@ def _validate_media_reference_write(
     sample_collection, field_name, filepath_error_message
 ):
     root_field = field_name.split(".", 1)[0]
-    if root_field in ("media_reference", "_media_reference"):
+    if root_field == "_media_reference" or (
+        root_field == "media_reference"
+        and _contains_media_references(sample_collection)
+    ):
         raise AttributeError(
             "Media references are read-only and cannot be assigned"
         )

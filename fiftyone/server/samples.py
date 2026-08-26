@@ -185,8 +185,9 @@ async def _create_sample_item(
     *,
     additional_media_fields: t.Optional[t.Tuple] = None,
 ) -> SampleItem:
-    media_type = sample.get("_media_type")
-    if media_type is None:
+    if sample.get("_media_reference") is not None:
+        media_type = sample.get("_media_type")
+    else:
         media_type = fom.get_media_type(sample.get("filepath"))
 
     cls = MEDIA_TYPES[media_type]

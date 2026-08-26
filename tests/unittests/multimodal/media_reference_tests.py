@@ -197,9 +197,11 @@ class MediaReferenceDomainTests(unittest.TestCase):
             sample._media_reference = {}
         with self.assertRaises(ValueError):
             sample.filepath = "/tmp/episode.mcap"
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(TypeError):
+            # pylint: disable-next=no-value-for-parameter
             fo.Sample(_media_reference={})
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
+            # pylint: disable-next=no-value-for-parameter
             fo.Sample()
 
     def test_document_xor_validation(self):
@@ -607,6 +609,8 @@ class MediaReferenceDatasetTests(unittest.TestCase):
     def test_duplicate_batches_fail_before_mutation(self):
         dataset = fo.Dataset()
         version = dataset._doc.version
+        media_type = dataset.media_type
+        field_names = set(dataset.get_field_schema())
         app_config = dataset.app_config.to_dict()
         indexes = dataset.get_index_information()
         samples = [
@@ -619,6 +623,8 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 0)
         self.assertEqual(dataset._doc.version, version)
+        self.assertEqual(dataset.media_type, media_type)
+        self.assertEqual(set(dataset.get_field_schema()), field_names)
         self.assertIsNone(dataset._doc.media_reference_kind)
         self.assertEqual(dataset.app_config.to_dict(), app_config)
         self.assertEqual(dataset.get_index_information(), indexes)
@@ -648,6 +654,8 @@ class MediaReferenceDatasetTests(unittest.TestCase):
     def test_failed_later_batch_rolls_back_capability_and_records(self):
         dataset = fo.Dataset()
         version = dataset._doc.version
+        media_type = dataset.media_type
+        field_names = set(dataset.get_field_schema())
         app_config = dataset.app_config.to_dict()
         indexes = dataset.get_index_information()
         original_add_batch = fo.Dataset._add_samples_batch
@@ -677,6 +685,8 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 0)
         self.assertEqual(dataset._doc.version, version)
+        self.assertEqual(dataset.media_type, media_type)
+        self.assertEqual(set(dataset.get_field_schema()), field_names)
         self.assertIsNone(dataset._doc.media_reference_kind)
         self.assertEqual(dataset.app_config.to_dict(), app_config)
         self.assertEqual(dataset.get_index_information(), indexes)

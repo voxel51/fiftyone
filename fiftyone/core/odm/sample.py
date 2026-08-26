@@ -51,6 +51,8 @@ from collections import OrderedDict
 import hashlib
 import random
 
+from mongoengine.errors import ValidationError
+
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
@@ -103,6 +105,9 @@ class DatasetSampleDocument(DatasetMixin, Document):
         return self._media_type
 
     def clean(self):
+        if self._media_reference is None and not self.filepath:
+            raise ValidationError("Field is required: ['filepath']")
+
         from fiftyone.multimodal.media import validate_media_source
 
         validate_media_source(self.filepath, self._media_reference)
