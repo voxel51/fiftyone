@@ -167,6 +167,13 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
         waitingSeekCount: 6,
       });
     });
+    const waitingSnapshots = leases
+      .map((lease) => lease.getSnapshot())
+      .filter((snapshot) => snapshot.phase === "waiting-for-capacity");
+    expect(waitingSnapshots).toHaveLength(6);
+    expect(
+      waitingSnapshots.every((snapshot) => snapshot.diagnostic === null),
+    ).toBe(true);
     expect(harness.decoders.every((decoder) => decoder.closeCount === 0)).toBe(
       true,
     );

@@ -254,11 +254,7 @@ export class VideoStreamEngine {
         });
       } else {
         this.publishIfCurrent(generation, {
-          diagnostic: {
-            code: "capacity",
-            message: "Waiting for video seek capacity",
-            severity: "info",
-          },
+          diagnostic: null,
           phase: "waiting-for-capacity",
         });
         releaseAdmission = await this.scheduler.acquire(
