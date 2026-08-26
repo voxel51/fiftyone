@@ -6,6 +6,7 @@ Logical media-reference sample tests.
 |
 """
 
+from dataclasses import FrozenInstanceError, dataclass
 import json
 import os
 import pickle
@@ -18,9 +19,11 @@ from unittest import mock
 
 from decorators import drop_datasets
 from mongoengine import ValidationError
+from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
@@ -34,16 +37,107 @@ from fiftyone.multimodal.media import (
     MEDIA_REFERENCE_DATASET_REVISION,
     MediaAsset,
     MediaAssetRole,
+    MediaReference,
     MediaReferenceError,
     RowInterval,
     UnsupportedMediaReferenceOperation,
     WholeFile,
     get_selected_media_asset_key,
     get_shared_media_asset_key,
+    register_media_reference,
     serialize_media_reference,
 )
 
 _SOURCE_FINGERPRINT = "sha256:" + "1" * 64
+
+
+@dataclass(frozen=True)
+class _AlternateMediaReference(MediaReference):
+    identity: str
+
+    @property
+    def key(self):
+        return "alternate:%s" % self.identity
+
+    @property
+    def media_type(self):
+        return "multimodal"
+
+    @property
+    def display_name(self):
+        return self.identity
+
+    def describe_assets(self):
+        return ()
+
+
+@dataclass(frozen=True)
+class _ImageMediaReference(MediaReference):
+    identity: str
+
+    @property
+    def key(self):
+        return "image:%s" % self.identity
+
+    @property
+    def media_type(self):
+        return "image"
+
+    @property
+    def display_name(self):
+        return self.identity
+
+    def describe_assets(self):
+        return ()
+
+
+@dataclass(frozen=True)
+class _UnmaterializedMediaReference(MediaReference):
+    identity: str
+
+    @property
+    def key(self):
+        return "unmaterialized:%s" % self.identity
+
+    @property
+    def media_type(self):
+        return "multimodal"
+
+    @property
+    def display_name(self):
+        return self.identity
+
+    def describe_assets(self):
+        return (
+            MediaAsset(
+                MediaAssetRole.PRIMARY_MEDIA,
+                DatasetRelativeLocation("asset.bin"),
+                WholeFile(),
+            ),
+        )
+
+
+register_media_reference(
+    "test-alternate-reference",
+    _AlternateMediaReference,
+    "1",
+    lambda reference: {"identity": reference.identity},
+    lambda payload: _AlternateMediaReference(payload["identity"]),
+)
+register_media_reference(
+    "test-image-reference",
+    _ImageMediaReference,
+    "1",
+    lambda reference: {"identity": reference.identity},
+    lambda payload: _ImageMediaReference(payload["identity"]),
+)
+register_media_reference(
+    "test-unmaterialized-reference",
+    _UnmaterializedMediaReference,
+    "1",
+    lambda reference: {"identity": reference.identity},
+    lambda payload: _UnmaterializedMediaReference(payload["identity"]),
+)
 
 
 def _make_reference(episode_index):
@@ -185,18 +279,69 @@ class MediaReferenceDomainTests(unittest.TestCase):
             get_selected_media_asset_key(reference, right),
         )
 
-    def test_public_construction_and_assignment_guards(self):
+    def test_unattached_whole_value_reassignment(self):
         sample = fo.Sample.from_media_reference(_make_reference(1), value=1)
 
         self.assertIsNone(sample.filepath)
         self.assertEqual(sample.filename, "episode-000001")
         self.assertEqual(sample.media_type, "multimodal")
+        sample.media_reference = _make_reference(2)
+        self.assertEqual(sample.media_reference, _make_reference(2))
+        self.assertEqual(sample.filename, "episode-000002")
+
+        sample.set_field("media_reference", _make_reference(3))
+        self.assertEqual(
+            sample.get_field("media_reference"), _make_reference(3)
+        )
+
+    def test_reassignment_validation_and_mutation_guards(self):
+        sample = fo.Sample.from_media_reference(_make_reference(1), value=1)
+        original = sample.media_reference
+
+        for invalid in (
+            None,
+            {},
+            serialize_media_reference(_make_reference(2)),
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(TypeError):
+                sample.media_reference = invalid
+
+            self.assertEqual(sample.media_reference, original)
+
+        with self.assertRaises(fom.MediaTypeError):
+            sample.media_reference = _ImageMediaReference("other-media-type")
+
+        self.assertEqual(sample.media_reference, original)
         with self.assertRaises(AttributeError):
-            sample.media_reference = _make_reference(2)
+            sample.set_field("media_reference.payload", {})
+        with self.assertRaises(AttributeError):
+            sample.set_field("_media_reference.payload", {})
         with self.assertRaises(AttributeError):
             sample._media_reference = {}
         with self.assertRaises(ValueError):
             sample.filepath = "/tmp/episode.mcap"
+
+        hydrated = sample.media_reference
+        with self.assertRaises(FrozenInstanceError):
+            hydrated.episode_index = 2
+        with self.assertRaises(FrozenInstanceError):
+            hydrated.locator.episode_metadata_row = 2
+
+        with self.assertRaises(ValueError):
+            sample.clear_field("media_reference")
+        with self.assertRaises(AttributeError):
+            sample.clear_field("media_reference.payload")
+        with self.assertRaises(ValueError):
+            sample.clear_field("_media_reference")
+
+        filepath_sample = fo.Sample(filepath="image.jpg")
+        with self.assertRaises(ValueError):
+            filepath_sample.set_field("media_reference", _make_reference(2))
+        with self.assertRaises(ValueError):
+            filepath_sample.media_reference = _make_reference(2)
+        with self.assertRaises(ValueError):
+            filepath_sample["media_reference"] = _make_reference(2)
+
         with self.assertRaises(TypeError):
             # pylint: disable-next=no-value-for-parameter
             fo.Sample(_media_reference={})
@@ -231,6 +376,118 @@ class MediaReferenceDomainTests(unittest.TestCase):
 
 
 class MediaReferenceDatasetTests(unittest.TestCase):
+    @drop_datasets
+    def test_attached_whole_value_reassignment_and_reload(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample.from_media_reference(
+                _make_reference(1), metadata=fo.Metadata(size_bytes=51)
+            )
+        )
+        sample = dataset.first()
+
+        replacement = _make_reference(11)
+        sample.media_reference = replacement
+        self.assertEqual(sample.media_reference, replacement)
+        self.assertIsNone(sample.metadata)
+
+        sample.save()
+        sample.reload()
+        self.assertEqual(sample.media_reference, replacement)
+        self.assertIsNone(sample.metadata)
+
+        second_replacement = _make_reference(12)
+        sample.set_field("media_reference", second_replacement)
+        sample.save()
+        sample.reload()
+        self.assertEqual(sample.media_reference, second_replacement)
+
+    @drop_datasets
+    def test_reassignment_rejects_duplicates_and_incompatible_references(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample.from_media_reference(_make_reference(1)),
+                fo.Sample.from_media_reference(_make_reference(2)),
+            ]
+        )
+        sample = dataset.first()
+        persisted = dataset._sample_collection.find_one({"_id": sample._id})
+        dataset_kind = dataset._doc.media_reference_kind
+
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            sample.media_reference = _make_reference(2)
+
+        self.assertEqual(
+            dataset._sample_collection.find_one({"_id": sample._id}), persisted
+        )
+        self.assertEqual(sample.media_reference, _make_reference(1))
+
+        dataset._doc.media_reference_kind = None
+        dataset._doc.save()
+        with self.assertRaisesRegex(ValueError, "incompatible"):
+            sample.media_reference = _AlternateMediaReference("other-kind")
+
+        self.assertEqual(
+            dataset._sample_collection.find_one({"_id": sample._id}), persisted
+        )
+        self.assertEqual(sample.media_reference, _make_reference(1))
+        dataset._doc.media_reference_kind = dataset_kind
+        dataset._doc.save()
+
+        with mock.patch.object(
+            fo.Sample, "_validate_unique_media_reference_key"
+        ):
+            sample.media_reference = _make_reference(2)
+
+        with self.assertRaises(DuplicateKeyError):
+            sample.save()
+
+        self.assertEqual(
+            dataset._sample_collection.find_one({"_id": sample._id}), persisted
+        )
+        sample.reload()
+        self.assertEqual(sample.media_reference, _make_reference(1))
+
+        with self.assertRaisesRegex(ValueError, "multiple reference kinds"):
+            sample.media_reference = _AlternateMediaReference("other-kind")
+
+        self.assertEqual(
+            dataset._sample_collection.find_one({"_id": sample._id}), persisted
+        )
+        self.assertEqual(sample.media_reference, _make_reference(1))
+
+    @drop_datasets
+    def test_group_slice_compatibility_is_revalidated_on_assignment(self):
+        group = fo.Group()
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample.from_media_reference(
+                _make_reference(1), group=group.element("left")
+            )
+        )
+        sample = dataset.first()
+        persisted = dataset._sample_collection.find_one({"_id": sample._id})
+
+        dataset._doc.group_media_types["left"] = "image"
+        dataset.save()
+
+        with self.assertRaises(fom.MediaTypeError):
+            sample.media_reference = _make_reference(2)
+
+        self.assertEqual(
+            dataset._sample_collection.find_one({"_id": sample._id}), persisted
+        )
+        self.assertEqual(sample.media_reference, _make_reference(1))
+
+        with self.assertRaises(fom.MediaTypeError):
+            sample.media_reference = _ImageMediaReference("other-media-type")
+
+        self.assertEqual(
+            dataset._sample_collection.find_one({"_id": sample._id}), persisted
+        )
+        self.assertEqual(sample.media_reference, _make_reference(1))
+
     @drop_datasets
     def test_persistence_views_iteration_and_workflows(self):
         dataset = fo.Dataset()
@@ -374,7 +631,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             dataset.export(
                 export_dir=native_dir,
                 dataset_type=fot.FiftyOneDataset,
-                export_media=True,
+                export_media=False,
             )
             samples_path = os.path.join(native_dir, "samples.json")
             with open(samples_path) as file:
@@ -453,6 +710,47 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
         self.assertEqual(_reference_keys(imported), expected_keys)
         self.assertEqual(_private_values(imported, "_rand"), expected_rand)
+
+    @drop_datasets
+    def test_native_thin_does_not_require_an_asset_materializer(self):
+        dataset = fo.Dataset()
+        reference = _UnmaterializedMediaReference("logical-only")
+        dataset.add_sample(fo.Sample.from_media_reference(reference))
+
+        capabilities = dataset.get_media_asset_capabilities()
+        self.assertFalse(capabilities.supports_asset_enumeration)
+        self.assertTrue(capabilities.supports_thin_serialization)
+        self.assertFalse(capabilities.supports_materialization(True))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            thin_dir = os.path.join(temp_dir, "thin")
+            materialized_dir = os.path.join(temp_dir, "materialized")
+            dataset.export(
+                export_dir=thin_dir,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=False,
+            )
+            imported = fo.Dataset.from_dir(
+                dataset_dir=thin_dir,
+                dataset_type=fot.FiftyOneDataset,
+            )
+            self.assertEqual(imported.first().media_reference, reference)
+
+            with open(os.path.join(thin_dir, "media_assets.json")) as file:
+                manifest = json.load(file)
+
+            self.assertEqual(manifest["sources"], [])
+            self.assertEqual(manifest["assets"], [])
+            self.assertEqual(manifest["usages"], [])
+
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.export(
+                    export_dir=materialized_dir,
+                    dataset_type=fot.FiftyOneDataset,
+                    export_media=True,
+                )
+
+            self.assertFalse(os.path.exists(materialized_dir))
 
     @drop_datasets
     def test_from_dir_cleanup_is_scoped_to_atomic_importers(self):
@@ -929,6 +1227,22 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 dataset.clear_sample_field("filepath")
             with self.assertRaises(AttributeError):
                 dataset.set_values("_media_reference", [{}])
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.set_values("media_reference", [_make_reference(2)])
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.set_values("media_reference.key", ["replacement"])
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.clear_sample_field("media_reference")
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.rename_sample_field(
+                    "media_reference", "other_media_reference"
+                )
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.clone_sample_field(
+                    "media_reference", "other_media_reference"
+                )
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.delete_sample_field("media_reference")
             with self.assertRaises(UnsupportedMediaReferenceOperation):
                 dataset.compute_metadata()
             with self.assertRaises(UnsupportedMediaReferenceOperation):

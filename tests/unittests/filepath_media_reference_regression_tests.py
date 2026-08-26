@@ -8,6 +8,7 @@ Filepath compatibility tests for media-reference-aware code paths.
 
 import asyncio
 from functools import partial
+import json
 import os
 import tempfile
 import unittest
@@ -19,6 +20,7 @@ from mongoengine.errors import ValidationError
 
 import fiftyone as fo
 import fiftyone.core.media as fom
+import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 from fiftyone.server.samples import (
     ImageSample,
@@ -142,6 +144,10 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
                 dataset_type=fot.FiftyOneDataset,
                 export_media=False,
             )
+            with open(
+                os.path.join(export_dir, "media_assets.json"), "w"
+            ) as file:
+                json.dump({"unrelated": "filepath artifact"}, file)
             with mock.patch(
                 "fiftyone.utils.data.importers.fomi.migrate_dataset_if_necessary"
             ):
@@ -162,6 +168,92 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
         self.assertEqual(reloaded.media_reference_copy, "set-values")
 
     @drop_datasets
+    def test_filepath_asset_planning_preserves_copy_behavior(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            shared_path = os.path.join(temp_dir, "shared.jpg")
+            other_path = os.path.join(temp_dir, "other.jpg")
+            with open(shared_path, "wb") as file:
+                file.write(b"shared")
+            with open(other_path, "wb") as file:
+                file.write(b"other")
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath=shared_path, selected=True),
+                    fo.Sample(filepath=shared_path, selected=True),
+                    fo.Sample(filepath=other_path, selected=False),
+                ]
+            )
+            selected = dataset.match({"selected": True})
+            plan = selected.get_media_asset_plan(resolve=True)
+            self.assertIsInstance(plan, fo.MediaAssetPlan)
+            self.assertEqual(
+                fo.get_logical_media_identity(selected.first()), shared_path
+            )
+            self.assertEqual(len(plan.assets), 1)
+            self.assertEqual(len(plan.usages), 2)
+            self.assertEqual(
+                {usage.sample_id for usage in plan.usages},
+                set(selected.values("id")),
+            )
+
+            capabilities = selected.get_media_asset_capabilities()
+            self.assertTrue(capabilities.supports_asset_enumeration)
+            self.assertTrue(capabilities.supports_thin_serialization)
+            self.assertTrue(
+                capabilities.supports_materialization(
+                    True, "fiftyone-dataset-materialized"
+                )
+            )
+
+            materialized_dir = os.path.join(temp_dir, "materialized")
+            selected.materialize_media_assets(materialized_dir)
+            copied_media = [
+                os.path.join(root, filename)
+                for root, _, filenames in os.walk(materialized_dir)
+                for filename in filenames
+                if filename != "media_assets.json"
+            ]
+            self.assertEqual(len(copied_media), 1)
+            with open(copied_media[0], "rb") as file:
+                self.assertEqual(file.read(), b"shared")
+
+    @drop_datasets
+    def test_fo3d_asset_materialization_maps_scene_dependencies(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            asset_path = os.path.join(temp_dir, "mesh.ply")
+            scene_path = os.path.join(temp_dir, "scene.fo3d")
+            output_dir = os.path.join(temp_dir, "materialized")
+            with open(asset_path, "wb") as file:
+                file.write(b"mesh")
+
+            scene = fo3d.Scene()
+            scene.add(fo3d.PlyMesh("mesh", ply_path="mesh.ply"))
+            scene.write(scene_path)
+
+            dataset = fo.Dataset()
+            dataset.add_sample(fo.Sample(filepath=scene_path))
+            plan = dataset.get_media_asset_plan(resolve=True)
+            self.assertEqual(len(plan.assets), 2)
+
+            dataset.materialize_media_assets(output_dir)
+            with open(os.path.join(output_dir, "media_assets.json")) as file:
+                manifest = json.load(file)
+
+            materialized_paths = [
+                asset["materialized_path"] for asset in manifest["assets"]
+            ]
+            self.assertEqual(len(set(materialized_paths)), 2)
+            self.assertTrue(all(materialized_paths))
+            self.assertTrue(
+                all(
+                    os.path.isfile(os.path.join(output_dir, path))
+                    for path in materialized_paths
+                )
+            )
+
+    @drop_datasets
     def test_filepath_exception_types_remain_compatible(self):
         with self.assertRaises(TypeError):
             # pylint: disable-next=no-value-for-parameter
@@ -175,6 +267,9 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
             fo.Sample(_media_reference={})
 
         sample = fo.Sample(filepath="image.jpg")
+        sample.filepath = "replacement.jpg"
+        self.assertTrue(sample.filepath.endswith("replacement.jpg"))
+
         with self.assertRaises(fom.MediaTypeError):
             sample.filepath = "video.mp4"
 
