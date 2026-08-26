@@ -112,7 +112,7 @@ jobs:
           token: ${{ secrets.RO_FOT_FG_PAT }}
           ref: ${{ steps.get_branch.outputs.teams_ref || steps.get_branch.outputs.branch_name }}
       - name: Set up Python 3.13
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
@@ -146,7 +146,7 @@ jobs:
       - name: Setup node 22
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Prepare yarn
         uses: ./.github/actions/setup-yarn
