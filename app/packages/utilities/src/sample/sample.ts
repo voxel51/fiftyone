@@ -147,6 +147,9 @@ export class Sample {
    */
   private patchBaseline: Record<string, unknown> | null = null;
   private patchBaselineDeletes: Set<string> | null = null;
+  /** Bumped on every wholesale source replacement; see reconcilePersisted. */
+  private sourceRevision = 0;
+  private patchBaselineSourceRevision = 0;
 
   constructor(opts: SampleOptions = {}) {
     if (opts.data) {
@@ -249,6 +252,7 @@ export class Sample {
 
   setData(data: Record<string, unknown>): void {
     this.assertNotDispatching("setData");
+    this.sourceRevision += 1;
     this.sourceData = data;
     this.gc();
     this.notify([{ path: "", kind: SampleChangeKind.Reset }]);
@@ -588,6 +592,7 @@ export class Sample {
     // request clears the live tombstone, but the persisted patch still
     // carries the remove — reconcile must fold from THIS set.
     this.patchBaselineDeletes = new Set(this.transientDeletes);
+    this.patchBaselineSourceRevision = this.sourceRevision;
   }
 
   /**
@@ -617,12 +622,22 @@ export class Sample {
     // remove on every autosave tick and never settling (see
     // foldPersistedIntoSource). Purely source-side: the display already
     // projects the transient state, so no change notification is due.
-    const folded = foldPersistedIntoSource(
-      this.sourceData,
-      baselineDeletes,
-      baseline,
-      deltas,
-    );
+    // A setData() during the in-flight request replaced source with a
+    // FRESH server fetch — strictly better truth than the fold's
+    // reconstruction (the fold exists only because no echo arrives).
+    // Folding a stale baseline over it could mask a concurrent writer's
+    // newer values, so skip; the next diff resolves against the fresh
+    // source naturally.
+    const sourceReplaced =
+      this.sourceRevision !== this.patchBaselineSourceRevision;
+    const folded = sourceReplaced
+      ? null
+      : foldPersistedIntoSource(
+          this.sourceData,
+          baselineDeletes,
+          baseline,
+          deltas,
+        );
     if (folded) {
       this.sourceData = folded.sourceData;
       // Release only tombstones the persisted patch actually satisfied

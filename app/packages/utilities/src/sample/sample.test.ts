@@ -1305,6 +1305,37 @@ describe("reconcilePersisted source fold (delete re-save loop)", () => {
     expect(JSON.stringify(next)).toContain("c2");
   });
 
+  it("skips the fold when setData replaced source mid-flight", () => {
+    // CodeRabbit case: a fresh fetch landing during the in-flight persist
+    // is strictly better truth than the fold's reconstruction — folding a
+    // stale baseline over it could mask a concurrent writer's newer value.
+    const s = new Sample({
+      schema,
+      data: {
+        classification: { _id: "c1", _cls: "Classification", label: "x" },
+      },
+    });
+
+    s.deleteLabel("classification");
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    expect(patch).toEqual([{ op: "remove", path: "/classification" }]);
+
+    // Fresh fetch mid-flight: a concurrent writer set a NEW value.
+    s.setData({
+      classification: { _id: "c9", _cls: "Classification", label: "theirs" },
+    });
+
+    s.reconcilePersisted(patch);
+
+    // The fold must NOT have dropped the freshly fetched value: with the
+    // local tombstone still standing against a source that has the field,
+    // the delete keeps diffing (it will re-persist against fresh truth).
+    expect(s.getJsonPatch()).toEqual([
+      { op: "remove", path: "/classification" },
+    ]);
+  });
+
   it("stops re-emitting a persisted NESTED-path delete", () => {
     // CodeRabbit regression case: transient keys are dot-paths of
     // varying depth — a primitive edit deletes "classification.label",
