@@ -123,12 +123,15 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-/** Drives the voodo-backed scope select the way a keyboard user would. */
-function selectScope(value: string) {
+/** Opens the scope select with the keyboard and picks one option. */
+function selectScope(label: string) {
   const select = screen.getByRole("combobox", { name: /Scope/ });
   fireEvent.focus(select);
-  fireEvent.change(select, { target: { value } });
-  fireEvent.keyDown(select, { key: "Enter" });
+  fireEvent.keyDown(select, { key: "ArrowDown" });
+  const option = screen.getByRole("option", { name: label });
+  fireEvent.mouseDown(option);
+  fireEvent.mouseUp(option);
+  fireEvent.click(option);
 }
 
 describe("StateActionStatisticsSidebar", () => {
@@ -237,9 +240,22 @@ describe("StateActionStatisticsSidebar", () => {
     );
     expect(mocks.seek).toHaveBeenLastCalledWith(8);
 
-    // Out-of-range facts render only where declared bounds existed.
-    expect(screen.getByText("· 14 outside declared")).toBeDefined();
-    expect(screen.getAllByText(/outside declared/).length).toBe(1);
+    // The episode numbers ride the same columns as the declared row, with
+    // the out-of-range count in the episode row's leading cell — only
+    // where declared bounds existed.
+    const statePane = screen.getByRole("table", {
+      name: "observation.state declared statistics",
+    });
+    const firstRow = within(statePane)
+      .getAllByRole("row")
+      .find((row) => within(row).queryByText("joint_0")) as HTMLElement;
+    expect(
+      within(firstRow)
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent),
+    ).toEqual(["-2.672", "—", "2.677", "-2.1", "0.2", "1.9"]);
+    expect(screen.getByText("14 outside")).toBeDefined();
+    expect(screen.getAllByText(/outside/).length).toBe(1);
     // The episode strip overlays the declared bar.
     expect(container.querySelectorAll('[class*="rangeEpisode"]').length).toBe(
       2,
@@ -253,7 +269,7 @@ describe("StateActionStatisticsSidebar", () => {
     mocks.readEpisodeProfile.mockResolvedValue(PROFILE);
     render(<StateActionStatisticsSidebar />);
 
-    selectScope("episode");
+    selectScope("Episode");
     const statePane = await screen.findByRole("table", {
       name: "observation.state episode statistics",
     });
@@ -271,7 +287,7 @@ describe("StateActionStatisticsSidebar", () => {
     // The separate per-dimension episode line folds into the table; only
     // the out-of-range fact remains as its own note.
     expect(screen.queryByText("episode")).toBe(null);
-    expect(screen.getByText("· 14 outside declared")).toBeDefined();
+    expect(screen.getByText("14 outside declared")).toBeDefined();
     // The choice persists for the next session.
     expect(readStoredStatsScope()).toBe("episode");
   });
@@ -290,7 +306,7 @@ describe("StateActionStatisticsSidebar", () => {
     mocks.readEpisodeProfile.mockResolvedValue(PROFILE);
     const { container } = render(<StateActionStatisticsSidebar />);
 
-    selectScope("dataset");
+    selectScope("Dataset");
     await waitFor(() =>
       expect(screen.getByText(/across 53,102 frames/)).toBeDefined(),
     );

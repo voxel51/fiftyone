@@ -174,14 +174,12 @@
   gap: 2px 4px;
 }
 
-.episodeLabel {
-  font-size: 9px;
-  opacity: 0.7;
-  text-transform: uppercase;
-}
-
 .episodeOutOfRange {
   color: var(--color-content-text-destructive);
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .seekButton {

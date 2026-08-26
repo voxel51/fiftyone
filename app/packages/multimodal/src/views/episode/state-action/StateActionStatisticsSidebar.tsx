@@ -323,15 +323,6 @@ function DimensionRow({
   ]
     .filter((entry): entry is string => entry !== null)
     .join(" · ");
-  const outOfRangeNote =
-    outOfRange !== null && outOfRange > 0 ? (
-      <span
-        className={styles.episodeOutOfRange}
-        title="Rows whose value falls outside the declared min–max"
-      >
-        {`· ${outOfRange.toLocaleString()} outside declared`}
-      </span>
-    ) : null;
   return (
     <div className={styles.dimBlock} role="row" title={detail || undefined}>
       <div className={styles.statRow}>
@@ -366,6 +357,36 @@ function DimensionRow({
           </>
         )}
       </div>
+      {scope === "both" && episodeMin && episodeMax ? (
+        // This episode's numbers ride the same columns as the declared row
+        // above them — the underlined min/max are the seek affordance, and
+        // the leading cell flags declared-range violations.
+        <div className={styles.statRow}>
+          <span
+            className={styles.episodeOutOfRange}
+            title="Rows whose value falls outside the declared min–max"
+          >
+            {outOfRange !== null && outOfRange > 0
+              ? `${outOfRange.toLocaleString()} outside`
+              : ""}
+          </span>
+          <SeekableStatCell
+            extreme={episodeMin}
+            kind="minimum"
+            name={name}
+            onSeek={onSeek}
+            originNs={originNs}
+          />
+          <StatCell value={episodeMean ?? undefined} />
+          <SeekableStatCell
+            extreme={episodeMax}
+            kind="maximum"
+            name={name}
+            onSeek={onSeek}
+            originNs={originNs}
+          />
+        </div>
+      ) : null}
       <RangeBar
         episodeMax={scope === "dataset" ? undefined : episodeMax?.value}
         episodeMin={scope === "dataset" ? undefined : episodeMin?.value}
@@ -375,28 +396,15 @@ function DimensionRow({
         q01={stats?.q01?.[index]}
         q99={stats?.q99?.[index]}
       />
-      {scope === "both" && episodeMin && episodeMax ? (
+      {scope === "episode" && outOfRange !== null && outOfRange > 0 ? (
         <div className={styles.episodeLine}>
-          <span className={styles.episodeLabel}>episode</span>
-          <ExtremeSeekButton
-            extreme={episodeMin}
-            kind="minimum"
-            name={name}
-            onSeek={onSeek}
-            originNs={originNs}
-          />
-          <span aria-hidden>…</span>
-          <ExtremeSeekButton
-            extreme={episodeMax}
-            kind="maximum"
-            name={name}
-            onSeek={onSeek}
-            originNs={originNs}
-          />
-          {outOfRangeNote}
+          <span
+            className={styles.episodeOutOfRange}
+            title="Rows whose value falls outside the declared min–max"
+          >
+            {`${outOfRange.toLocaleString()} outside declared`}
+          </span>
         </div>
-      ) : scope === "episode" && outOfRangeNote ? (
-        <div className={styles.episodeLine}>{outOfRangeNote}</div>
       ) : null}
     </div>
   );

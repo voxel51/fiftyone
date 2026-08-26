@@ -33,7 +33,7 @@ export const STATE_ACTION_STATS_SCOPES: readonly {
 }[] = [
   { label: "Dataset", value: "dataset" },
   { label: "Episode", value: "episode" },
-  { label: "Both", value: "both" },
+  { label: "Dataset + Episode", value: "both" },
 ];
 
 const STATS_SCOPE_STORAGE_KEY = "fiftyone-multimodal-state-action-stats-scope";
