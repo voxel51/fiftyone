@@ -716,7 +716,7 @@ describe("LeRobot format adapter", () => {
     }
   });
 
-  it("exposes AV1 video as a native-only grid preview", async () => {
+  it("keeps AV1 grid previews native while demuxing modal access units", async () => {
     const av1InfoBytes = new TextEncoder().encode(
       JSON.stringify({
         ...info,
@@ -777,9 +777,10 @@ describe("LeRobot format adapter", () => {
         };
       },
     };
-    const preview = await createLeRobotFormatAdapter({
+    const adapter = createLeRobotFormatAdapter({
       readParquetObjects,
-    }).openPreview?.(av1Source, av1Io);
+    });
+    const preview = await adapter.openPreview?.(av1Source, av1Io);
     if (!preview) throw new Error("LeRobot preview session is unavailable");
     try {
       await expect(
@@ -802,6 +803,35 @@ describe("LeRobot format adapter", () => {
       });
     } finally {
       preview.dispose();
+    }
+
+    const session = await adapter.open(av1Source, av1Io);
+    try {
+      expect(
+        session.manifest.streams.find(
+          (stream) => stream.id === "lerobot:observation.images.test",
+        )?.metadata,
+      ).toMatchObject({ "stream.decode_status": "decodable" });
+      const batches = await collectBatches(
+        session.read({
+          streams: ["lerobot:observation.images.test"],
+          window: session.manifest.timeRange,
+        }),
+      );
+      expect(batches[0].frames[0].output.visualization).toMatchObject({
+        codec: "av1",
+        format: expect.stringMatching(/^av01\./),
+        keyframe: true,
+        kind: "encoded-video",
+      });
+      expect(batches[0].frames[0].output.visualization).not.toHaveProperty(
+        "h264",
+      );
+      expect(
+        batches[0].frames[0].output.resourceHints?.sizeBytes,
+      ).toBeGreaterThan(0);
+    } finally {
+      session.dispose();
     }
   });
 

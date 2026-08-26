@@ -315,7 +315,7 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
         ])
       : frameDurationNs;
     let frames: readonly DecodedFrame[] = [];
-    if (isSharedDecoderCameraStream(selected)) {
+    if (isGridFrameDecoderCameraStream(selected)) {
       for await (const batch of this.session.read({
         priority: options.priority,
         signal: options.signal,
@@ -657,8 +657,15 @@ class LeRobotEpisodeSession implements EpisodeSession {
     binding: VideoBinding,
     request: ReadRequest,
   ) {
-    if (codecFamily(videoCodec(binding.feature)) !== "h264") return [];
+    const declaredCodec = codecFamily(videoCodec(binding.feature));
+    if (declaredCodec !== "h264" && declaredCodec !== "av1") return [];
     const index = await this.readVideoIndex(binding, request.signal);
+    const containerCodec = codecFamily(index.track.codec);
+    if (containerCodec !== declaredCodec) {
+      throw new Error(
+        `LeRobot video codec mismatch: manifest '${videoCodec(binding.feature)}', MP4 '${index.track.codec}'`,
+      );
+    }
     const samples = selectVideoSamples(index, binding, request.window);
     if (!samples.length) return [];
     const bytes = await this.readSampleSpan(
@@ -666,7 +673,10 @@ class LeRobotEpisodeSession implements EpisodeSession {
       samples,
       request.signal,
     );
-    const avc = (samples[0].description as Mp4SampleDescription).avcC;
+    const avc =
+      declaredCodec === "h264"
+        ? (samples[0].description as Mp4SampleDescription).avcC
+        : undefined;
     const lengthSize = (avc?.lengthSizeMinusOne ?? 3) + 1;
     const parameterSets = avcParameterSets(avc);
     return samples
@@ -677,10 +687,12 @@ class LeRobotEpisodeSession implements EpisodeSession {
           binding,
           index,
           sample,
-          mp4SampleToAnnexB(
-            bytes.subarray(offset, offset + sample.size),
-            lengthSize,
-          ),
+          declaredCodec === "h264"
+            ? mp4SampleToAnnexB(
+                bytes.subarray(offset, offset + sample.size),
+                lengthSize,
+              )
+            : bytes.slice(offset, offset + sample.size),
           parameterSets,
         );
       })
@@ -1610,9 +1622,13 @@ async function parseVideoIndex(
     throw new Error("LeRobot video asset has no readable video track");
   const samples = file.getTrackSamplesInfo(videoTrack.id);
   if (!samples.length) throw new Error("LeRobot video track has no samples");
-  const compositionOffsetSeconds = Math.min(
-    ...samples.map((sample) => sample.cts / videoTrack.timescale),
-  );
+  let compositionOffsetSeconds = Number.POSITIVE_INFINITY;
+  for (const sample of samples) {
+    compositionOffsetSeconds = Math.min(
+      compositionOffsetSeconds,
+      sample.cts / videoTrack.timescale,
+    );
+  }
   const presentationSamples = samples
     .map((sample, decodeIndex) => ({
       decodeIndex,
@@ -2001,7 +2017,8 @@ function videoStream(
   fps: number,
 ): StreamDescriptor {
   const codec = videoCodec(feature);
-  const supported = codecFamily(codec) === "h264";
+  const family = codecFamily(codec);
+  const supported = family === "h264" || family === "av1";
   return {
     approxRateHz: optionalNumber(feature.info?.["video.fps"]) ?? fps,
     id: binding.streamId,
@@ -2106,20 +2123,22 @@ function requireRowInterval(asset: AssetDescriptor) {
   return selector;
 }
 
-function isSharedDecoderCameraStream(stream: StreamDescriptor) {
+function isGridFrameDecoderCameraStream(stream: StreamDescriptor) {
   return (
     stream.metadata?.[SCENE_SOURCE_METADATA.TYPE] === SCENE_SOURCE_TYPE.IMAGE &&
-    stream.metadata?.[STREAM_METADATA.DECODE_STATUS] === "decodable"
+    stream.metadata?.[STREAM_METADATA.DECODE_STATUS] === "decodable" &&
+    (stream.kind !== STREAM_KIND.VIDEO ||
+      codecFamily(stream.metadata?.["lerobot.codec"] ?? "") === "h264")
   );
 }
 
 /**
- * Grid previews may use a browser-native video even before its codec is
- * implemented by the shared synchronized decoder. Keep that capability local
- * to preview selection so modal inventories remain truthful.
+ * The AV1 grid path deliberately stays browser-native even though the shared
+ * synchronized decoder supports AV1 in the modal. Keep that policy local to
+ * previews so grid reads do not start a redundant WebCodecs pipeline.
  */
 function isPreviewableCameraStream(stream: StreamDescriptor) {
-  if (isSharedDecoderCameraStream(stream)) return true;
+  if (isGridFrameDecoderCameraStream(stream)) return true;
   return (
     stream.kind === STREAM_KIND.VIDEO &&
     stream.metadata?.[SCENE_SOURCE_METADATA.TYPE] === SCENE_SOURCE_TYPE.IMAGE &&
