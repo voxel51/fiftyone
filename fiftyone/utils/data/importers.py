@@ -1830,6 +1830,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._media_fields = None
         self._dataset_dict = None
         self._cleanup_on_failure = False
+        self._media_asset_manifest_sources = ()
 
     @property
     def cleanup_on_failure(self):
@@ -1852,6 +1853,21 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             == MEDIA_REFERENCE_DATASET_REVISION
             or self._dataset_dict.get("media_reference_kind") is not None
         )
+
+        if self._cleanup_on_failure:
+            from fiftyone.core.media_assets import (
+                MEDIA_ASSET_MANIFEST_FILENAME,
+                load_media_asset_manifest,
+            )
+
+            media_asset_manifest_path = os.path.join(
+                self.dataset_dir, MEDIA_ASSET_MANIFEST_FILENAME
+            )
+            if os.path.isfile(media_asset_manifest_path):
+                self._media_asset_manifest_sources = load_media_asset_manifest(
+                    media_asset_manifest_path
+                )
+
         self._tags_path = os.path.join(
             self.dataset_dir, fota.TAGS_EXPORT_FILENAME
         )
@@ -1928,7 +1944,50 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 progress=progress,
             )
 
+            self._bind_imported_media_sources(dataset, sample_ids)
+
         return sample_ids
+
+    def _bind_imported_media_sources(self, dataset, sample_ids):
+        if not self._media_asset_manifest_sources:
+            return
+
+        from fiftyone.core.media_assets import (
+            bind_materialized_media_sources,
+            validate_media_asset_manifest_sources,
+        )
+
+        imported_samples = dataset.select(sample_ids)
+        validate_media_asset_manifest_sources(
+            imported_samples, self._media_asset_manifest_sources
+        )
+        binding_required = bind_materialized_media_sources(
+            self._media_asset_manifest_sources, self.dataset_dir
+        )
+        required_keys = {source.key for source in binding_required}
+        sources = [
+            {
+                **source.to_dict(),
+                "binding_status": (
+                    "required" if source.key in required_keys else "bound"
+                ),
+            }
+            for source, _, _ in self._media_asset_manifest_sources
+        ]
+        info = dict(dataset.info)
+        info["media_reference_sources"] = sources
+        dataset.info = info
+        dataset.save()
+
+        if binding_required:
+            identities = [
+                source.source_identity for source in binding_required
+            ]
+            logger.warning(
+                "Imported thin media references require a source binding "
+                "before assets can be resolved: %s",
+                identities,
+            )
 
     def _import_samples(
         self,

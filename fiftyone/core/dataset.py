@@ -3391,7 +3391,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clone_sample_fields(self, field_mapping, view=None):
         sample_collection = self if view is None else view
-        _validate_media_field_edits(sample_collection, field_mapping.values())
+        _validate_media_field_edits(
+            sample_collection,
+            list(field_mapping) + list(field_mapping.values()),
+        )
 
         paths, new_paths = zip(*field_mapping.items())
         self._sample_doc_cls._clone_fields(sample_collection, paths, new_paths)

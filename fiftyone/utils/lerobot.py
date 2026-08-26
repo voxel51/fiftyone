@@ -15,6 +15,7 @@ import json
 import mimetypes
 import os
 import re
+import shutil
 import string
 import threading
 import uuid
@@ -37,9 +38,11 @@ from fiftyone.multimodal.media import (
     LeRobotV3Locator,
     LeRobotVideoLocator,
     MalformedMediaSourceError,
+    MediaAssetMaterializer,
     MediaAssetManifest,
     MediaReferenceError,
     MediaResolver,
+    MediaSourceDescriptor,
     MediaSourceAuthorizationError,
     MissingMediaRootError,
     MovedMediaRootError,
@@ -51,7 +54,9 @@ from fiftyone.multimodal.media import (
     build_resolved_media_asset,
     get_media_resolver,
     get_selected_media_asset_key,
+    register_media_asset_materializer,
     register_media_resolver,
+    serialize_media_reference,
 )
 import fiftyone.utils.data.importers as foud
 
@@ -557,6 +562,47 @@ class LeRobotMediaResolver(MediaResolver):
         )
         _cache_manifest(cache_key, binding.revision, manifest)
         return manifest
+
+
+class LeRobotAssetMaterializer(MediaAssetMaterializer):
+    """Materializes and rebinds portable LeRobot source assets."""
+
+    def describe_source(self, reference):
+        if not isinstance(reference, LeRobotEpisode):
+            raise TypeError(
+                "LeRobotAssetMaterializer requires a LeRobotEpisode"
+            )
+
+        return MediaSourceDescriptor(
+            kind=LEROBOT_EPISODE_KIND,
+            source_identity=reference.source_identity,
+            source_fingerprint=reference.source_fingerprint,
+        )
+
+    def is_source_bound(self, source):
+        try:
+            binding = _get_source_binding(source.source_identity)
+        except MissingMediaRootError:
+            return False
+
+        return (
+            binding is not None
+            and binding.source_fingerprint == source.source_fingerprint
+            and os.path.isdir(binding.root)
+        )
+
+    def bind_source(self, source, root):
+        bind_lerobot_source(
+            source.source_identity,
+            root,
+            source.source_fingerprint,
+        )
+
+    def get_destination_location(self, reference, asset):
+        return asset.location.path
+
+    def materialize_asset(self, asset, destination, usages):
+        shutil.copy2(asset.path, destination)
 
 
 def _validate_dataset_root(dataset_root):
@@ -1307,9 +1353,16 @@ def _get_cached_manifest(cache_key, binding_revision):
 
 
 def _resolution_cache_key(reference, assets):
+    serialized_reference = json.dumps(
+        serialize_media_reference(reference),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    reference_fingerprint = hashlib.sha256(serialized_reference).hexdigest()
     return (
         reference.key,
-        reference.source_fingerprint,
+        reference_fingerprint,
         tuple(
             get_selected_media_asset_key(reference, asset) for asset in assets
         ),
@@ -1409,4 +1462,8 @@ def _validate_declared_v3_version(version):
 register_media_resolver(
     LEROBOT_EPISODE_KIND,
     LeRobotMediaResolver(),
+)
+register_media_asset_materializer(
+    LEROBOT_EPISODE_KIND,
+    LeRobotAssetMaterializer(),
 )
