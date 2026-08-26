@@ -275,6 +275,56 @@ describe("LeRobot state/action provider", () => {
     }
   });
 
+  it("reads DROID-style axis-dict dimension names", async () => {
+    const built = buildStateActionSource({
+      action: {
+        dtype: "float32",
+        names: { axes: ["joint_0", "joint_1", "gripper"] },
+        rows: [[1, 2, 3]],
+        shape: [3],
+      },
+      state: {
+        dtype: "float32",
+        // A dict that does not flatten to one name per dimension yields
+        // stable indices, never a guessed alignment.
+        names: { axes: ["a", "b"] },
+        rows: [[4, 5, 6]],
+        shape: [3],
+      },
+      timestampsSeconds: [0],
+    });
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects: built.reader,
+    }).open(built.source, built.io);
+    try {
+      const schema = session.stateAction?.schema;
+      expect(
+        schema?.action?.dimensions.map((dimension) => dimension.name),
+      ).toEqual(["joint_0", "joint_1", "gripper"]);
+      expect(
+        schema?.action?.dimensions.map(
+          (dimension) => dimension.numericFieldPath,
+        ),
+      ).toEqual(["action.joint_0", "action.joint_1", "action.gripper"]);
+      expect(
+        schema?.state?.dimensions.map((dimension) => dimension.name),
+      ).toEqual([undefined, undefined, undefined]);
+      await expect(
+        session.numericSeries?.enumerateNumericFields(["lerobot:action"]),
+      ).resolves.toMatchObject([
+        {
+          fields: [
+            { path: "action.joint_0" },
+            { path: "action.joint_1" },
+            { path: "action.gripper" },
+          ],
+        },
+      ]);
+    } finally {
+      session.dispose();
+    }
+  });
+
   it("binds dimensions to the numeric-series stream for add-to-plot", async () => {
     const built = buildStateActionSource(BASIC_SCENARIO);
     const session = await createLeRobotFormatAdapter({

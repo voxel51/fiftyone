@@ -14,7 +14,11 @@ const NS_PER_SECOND = 1_000_000_000;
 /** One declared state/action feature with its per-row stored values. */
 export interface StateActionScenarioFeature {
   readonly dtype: string;
-  readonly names?: readonly string[] | null;
+  /** Flat list, or a source-format-specific shape such as an axis dict. */
+  readonly names?:
+    | readonly string[]
+    | Readonly<Record<string, readonly string[]>>
+    | null;
   /** Per-row raw values, nested exactly as stored; scalars allowed. */
   readonly rows: readonly unknown[];
   readonly shape: readonly number[];
@@ -233,12 +237,12 @@ function featureSchema(
   return {
     dimensions: Array.from(
       { length: elementCount(feature.shape) },
-      (_, index) => ({
-        index,
-        ...(feature.names?.[index] !== undefined
-          ? { name: feature.names[index] }
-          : {}),
-      }),
+      (_, index) => {
+        const name = Array.isArray(feature.names)
+          ? feature.names[index]
+          : undefined;
+        return { index, ...(name !== undefined ? { name } : {}) };
+      },
     ),
     dtype: feature.dtype,
     featureName,

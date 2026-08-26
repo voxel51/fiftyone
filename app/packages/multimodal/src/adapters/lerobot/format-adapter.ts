@@ -114,10 +114,18 @@ export interface CreateLeRobotFormatAdapterOptions {
   readonly stateActionSlabLimits?: StateActionSlabLimits;
 }
 
+/**
+ * Declared dimension names as LeRobot writes them: a flat list, a nested
+ * per-axis list, or a dict of axis lists (DROID-style `{"axes": [...]}`).
+ */
+type LeRobotFeatureNames =
+  | readonly (string | null | readonly string[])[]
+  | Readonly<Record<string, unknown>>;
+
 interface LeRobotFeature {
   readonly dtype: string;
   readonly info?: Readonly<Record<string, unknown>>;
-  readonly names?: readonly string[] | null;
+  readonly names?: LeRobotFeatureNames | null;
   readonly shape?: readonly number[];
 }
 
@@ -2204,15 +2212,56 @@ function isStandardField(name: string) {
 }
 
 function scalarFieldNames(featureName: string, feature: LeRobotFeature) {
-  const count = Math.max(1, numericElementCount(feature.shape));
-  return Array.from({ length: count }, (_, index) => {
-    const name = feature.names?.[index];
+  const names = featureDimensionNames(feature);
+  return names.map((name, index) => {
     return name
       ? `${featureName}.${name}`
-      : count === 1
+      : names.length === 1
         ? featureName
         : `${featureName}[${index}]`;
   });
+}
+
+/**
+ * Declared per-dimension names in row-major order. A flat list stays
+ * positional (a shorter list leaves trailing dimensions unnamed); nested
+ * lists and axis dicts are used only when they flatten to exactly one
+ * string per dimension, never realigned by guesswork.
+ */
+function featureDimensionNames(
+  feature: LeRobotFeature,
+): readonly (string | undefined)[] {
+  const count = Math.max(1, numericElementCount(feature.shape));
+  const names = feature.names;
+  if (
+    Array.isArray(names) &&
+    names.every((entry) => typeof entry === "string" || entry === null)
+  ) {
+    return Array.from({ length: count }, (_, index) => {
+      const name = names[index];
+      return typeof name === "string" ? name : undefined;
+    });
+  }
+  const flattened = flattenDeclaredNames(names);
+  if (
+    flattened.length === count &&
+    flattened.every((name) => typeof name === "string")
+  ) {
+    return flattened;
+  }
+  return Array.from({ length: count }, () => undefined);
+}
+
+function flattenDeclaredNames(names: unknown): readonly (string | undefined)[] {
+  if (Array.isArray(names)) {
+    return names.flatMap((entry) =>
+      typeof entry === "string" ? [entry] : flattenDeclaredNames(entry),
+    );
+  }
+  if (names && typeof names === "object") {
+    return Object.values(names).flatMap((value) => flattenDeclaredNames(value));
+  }
+  return [];
 }
 
 function numericElementCount(shape: readonly number[] | undefined) {
@@ -2451,11 +2500,10 @@ function stateActionFeatureSchema(
   featureName: string,
   feature: LeRobotFeature,
 ): StateActionFeatureSchema {
-  const count = Math.max(1, numericElementCount(feature.shape));
+  const names = featureDimensionNames(feature);
   const fieldPaths = scalarFieldNames(featureName, feature);
   return {
-    dimensions: Array.from({ length: count }, (_, index) => {
-      const name = feature.names?.[index];
+    dimensions: names.map((name, index) => {
       return {
         index,
         ...(typeof name === "string" ? { name } : {}),
