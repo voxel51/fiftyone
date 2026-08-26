@@ -26,6 +26,7 @@ import type {
 } from "../../../ir";
 import type {
   StateActionCapability,
+  StateActionEpisodeProfile,
   StateActionRow,
   StateActionSchema,
   StateActionStats,
@@ -106,6 +107,11 @@ export interface StateActionContextValue {
   /** Source-declared per-dimension statistics, or null when absent. */
   readDimensionStats(signal?: AbortSignal): Promise<StateActionStats | null>;
 
+  /** Episode-computed profile, or null when the provider cannot profile. */
+  readEpisodeProfile(
+    signal?: AbortSignal,
+  ): Promise<StateActionEpisodeProfile | null>;
+
   /** User-initiated retry after a failed read; bypasses the backoff. */
   retryRead(): void;
 
@@ -119,6 +125,9 @@ export interface StateActionContextValue {
 type StateActionHandlers = DemandContextHandlers & {
   holdCursorRow(row: StateActionRow, echoNs: bigint): void;
   readDimensionStats(signal?: AbortSignal): Promise<StateActionStats | null>;
+  readEpisodeProfile(
+    signal?: AbortSignal,
+  ): Promise<StateActionEpisodeProfile | null>;
   readRowAtCursor(
     cursor: RawRecordCursor,
     signal?: AbortSignal,
@@ -207,6 +216,15 @@ export function useStateActionContext(): StateActionContextValue {
     },
     [handlersRef],
   );
+  const readEpisodeProfile = useCallback(
+    (signal?: AbortSignal) => {
+      const handlers = handlersRef.current;
+      return handlers
+        ? handlers.readEpisodeProfile(signal)
+        : Promise.resolve(null);
+    },
+    [handlersRef],
+  );
   const retryRead = useCallback(() => {
     handlersRef.current?.retryRead();
   }, [handlersRef]);
@@ -215,6 +233,7 @@ export function useStateActionContext(): StateActionContextValue {
       ensureSchema: ensureInventory,
       holdCursorRow,
       readDimensionStats,
+      readEpisodeProfile,
       readRowAtCursor,
       readRowIndexWindow,
       retryRead,
@@ -227,6 +246,7 @@ export function useStateActionContext(): StateActionContextValue {
       holdCursorRow,
       inventory,
       readDimensionStats,
+      readEpisodeProfile,
       readRowAtCursor,
       readRowIndexWindow,
       retryRead,
@@ -329,6 +349,17 @@ export function StateActionBridge({
             const linked = linkAbortSignals(epochController.signal, signal);
             try {
               return await capability.readDimensionStats({
+                signal: linked.signal,
+              });
+            } finally {
+              linked.cleanup();
+            }
+          },
+          async readEpisodeProfile(signal) {
+            if (!capability.readEpisodeProfile) return null;
+            const linked = linkAbortSignals(epochController.signal, signal);
+            try {
+              return await capability.readEpisodeProfile({
                 signal: linked.signal,
               });
             } finally {

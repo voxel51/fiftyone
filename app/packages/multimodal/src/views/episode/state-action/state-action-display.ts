@@ -22,6 +22,50 @@ export const STATE_ACTION_VALUE_MODES: readonly {
   { label: "Quantile [−1, 1]", value: "quantile" },
 ];
 
+/**
+ * Which statistics the Statistics tab shows: the dataset-declared numbers,
+ * this episode's computed numbers, or both layered together.
+ */
+export type StateActionStatsScope = "both" | "dataset" | "episode";
+
+export const STATE_ACTION_STATS_SCOPES: readonly {
+  readonly label: string;
+  readonly value: StateActionStatsScope;
+}[] = [
+  { label: "Dataset", value: "dataset" },
+  { label: "Episode", value: "episode" },
+  { label: "Both", value: "both" },
+];
+
+const STATS_SCOPE_STORAGE_KEY = "fiftyone-multimodal-state-action-stats-scope";
+
+/** Returns the persisted scope, defaulting to "both" on anything else. */
+export function readStoredStatsScope(): StateActionStatsScope {
+  try {
+    const raw = globalThis.localStorage?.getItem(STATS_SCOPE_STORAGE_KEY);
+    return raw === "dataset" || raw === "episode" || raw === "both"
+      ? raw
+      : "both";
+  } catch {
+    return "both";
+  }
+}
+
+const baseStatsScopeAtom = atom<StateActionStatsScope>(readStoredStatsScope());
+
+/** Statistics-tab scope, persisted browser-wide across sessions. */
+export const stateActionStatsScopeAtom = atom(
+  (get) => get(baseStatsScopeAtom),
+  (_get, set, next: StateActionStatsScope) => {
+    set(baseStatsScopeAtom, next);
+    try {
+      globalThis.localStorage?.setItem(STATS_SCOPE_STORAGE_KEY, next);
+    } catch {
+      // Private windows without storage still honor the in-session choice.
+    }
+  },
+);
+
 /** Value-column header per display mode. */
 export function stateActionValueHeader(mode: StateActionValueMode): string {
   if (mode === "zscore") return "Z-score";

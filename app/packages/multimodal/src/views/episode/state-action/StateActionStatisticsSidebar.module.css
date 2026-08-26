@@ -85,6 +85,18 @@
   text-align: right;
 }
 
+.scopeRow {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.scopeLabel {
+  color: var(--color-content-text-secondary);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
 .caption {
   color: var(--color-content-text-secondary);
   font-size: 10px;
@@ -121,6 +133,20 @@
   top: 0;
 }
 
+/* This episode's observed range, drawn over the dataset band so an
+   episode hugging one edge of its declared range reads at a glance. */
+.rangeEpisode {
+  background: color-mix(
+    in srgb,
+    var(--color-voxel-secondary, #f5b700) 45%,
+    transparent
+  );
+  border-radius: 2px;
+  height: 2px;
+  position: absolute;
+  top: 1px;
+}
+
 .rangeMean {
   background: var(--color-voxel-secondary, #f5b700);
   height: 8px;
@@ -128,4 +154,74 @@
   top: -2px;
   transform: translateX(-50%);
   width: 2px;
+}
+
+.timingLine {
+  align-items: baseline;
+  color: var(--color-content-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 10px;
+  gap: 2px 6px;
+}
+
+.episodeLine {
+  align-items: baseline;
+  color: var(--color-content-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 10px;
+  gap: 2px 4px;
+}
+
+.episodeLabel {
+  font-size: 9px;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.episodeOutOfRange {
+  color: var(--color-content-text-destructive);
+}
+
+.seekButton {
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--color-content-text-primary);
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  padding: 0 2px;
+  text-decoration: underline dotted
+    color-mix(in srgb, var(--color-content-text-secondary) 60%, transparent);
+  text-underline-offset: 2px;
+}
+
+.seekButton:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 16%,
+    transparent
+  );
+  color: var(--color-voxel-secondary, #f5b700);
+}
+
+.seekButton:focus-visible {
+  outline: 1px solid var(--color-voxel-secondary, #f5b700);
+  outline-offset: 1px;
+}
+
+.statSeekCell {
+  overflow: hidden;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.trackingRow {
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(56px, 1fr) minmax(44px, auto);
+  min-height: 16px;
 }
