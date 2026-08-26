@@ -1,9 +1,6 @@
 import { useAtom } from "jotai";
 import React, { useEffect, useState } from "react";
-import type {
-  StateActionFeatureSchema,
-  StateActionStats,
-} from "../../../ports";
+import type { StateActionStats } from "../../../ports";
 import { SettingsLabel } from "../settings/controls/SettingsLabel";
 import { SettingsSelect } from "../settings/controls/SettingsSelect";
 import settingsStyles from "../tiles/Tile.settings.module.css";
@@ -15,24 +12,18 @@ import {
 } from "./state-action-display";
 
 const VALUE_SCALE_TOOLTIP =
-  "How the tile displays numeric values. Z-score shows (v − mean) / std and Quantile maps q01–q99 onto [−1, 1], both from the dataset-declared statistics — the scales normalization-trained policies actually see. Copy always yields the raw exact value.";
+  "Z-score is (v − mean) / std; Quantile maps q01–q99 onto [−1, 1] — both from the dataset-declared statistics. Copy always yields the raw exact value.";
 
 /**
- * Settings sidebar for the State & Action tile: the value display scale
- * plus the declared schema facts practitioners reconcile against.
+ * Settings sidebar for the State & Action tile: the value display scale.
+ * Schema facts and statistics live in the Statistics tab, not here.
  */
 const StateActionTileSettings: React.FC = () => {
-  const { ensureSchema, readDimensionStats, schema } = useStateActionContext();
+  const { readDimensionStats } = useStateActionContext();
   const [valueMode, setValueMode] = useAtom(stateActionValueModeAtom);
   const [stats, setStats] = useState<StateActionStats | null | "loading">(
     "loading",
   );
-
-  // This effect republishes the session schema in case a shell remount
-  // wiped the bridge's initial publication before this panel opened.
-  useEffect(() => {
-    ensureSchema();
-  }, [ensureSchema]);
 
   // This effect resolves whether declared statistics exist so the panel
   // can say when a normalized scale has nothing to normalize with.
@@ -47,16 +38,6 @@ const StateActionTileSettings: React.FC = () => {
     return () => controller.abort();
   }, [readDimensionStats]);
 
-  const facts = schema.status === "ready" ? schema.schema : null;
-  if (!facts) {
-    return (
-      <div className={settingsStyles.root}>
-        <span className={settingsStyles.emptyText}>
-          Reading the state/action schema…
-        </span>
-      </div>
-    );
-  }
   return (
     <div
       className={settingsStyles.root}
@@ -77,41 +58,8 @@ const StateActionTileSettings: React.FC = () => {
           </span>
         ) : null}
       </label>
-      <span className={settingsStyles.metaText}>
-        {`Exact per-row values · ${facts.rowCount.toLocaleString()} episode rows. Declared per-dimension statistics live in the Statistics tab.`}
-      </span>
-      <FeatureFacts feature={facts.state} missingName="observation.state" />
-      <FeatureFacts feature={facts.action} missingName="action" />
     </div>
   );
 };
-
-function FeatureFacts({
-  feature,
-  missingName,
-}: {
-  readonly feature?: StateActionFeatureSchema;
-  readonly missingName: string;
-}) {
-  if (!feature) {
-    return (
-      <span className={settingsStyles.emptyText}>
-        {`No ${missingName} feature declared`}
-      </span>
-    );
-  }
-  const named = feature.dimensions.filter(
-    (dimension) => dimension.name !== undefined,
-  ).length;
-  return (
-    <div className={settingsStyles.field}>
-      <span className={settingsStyles.metaText}>
-        {`${feature.featureName} — ${feature.dtype} [${feature.shape.join(",")}], ${feature.dimensions.length} dimensions${
-          named ? ` (${named} named)` : ""
-        }`}
-      </span>
-    </div>
-  );
-}
 
 export default StateActionTileSettings;

@@ -1,6 +1,5 @@
 import { atom } from "jotai";
 import type { StateActionFeatureStats } from "../../../ports";
-import { compactStateActionFloat } from "./state-action-format";
 
 /**
  * How the State & Action tile displays numeric values. "raw" shows source
@@ -115,9 +114,18 @@ export function normalizeStateActionValue(
   return null;
 }
 
-/** Compact signed delta, or null for a change too small to print. */
+/**
+ * Compact signed delta. Three significant digits on purpose: a delta is a
+ * change indicator, not a reconciliation value (the exact delta rides the
+ * cell's hover title), and the tight bound keeps the Δ column at a fixed
+ * width so value and delta columns align across every row.
+ */
 export function formatStateActionDelta(delta: number): string {
   if (delta === 0) return "0";
-  const compact = compactStateActionFloat(delta);
+  const magnitude = Math.abs(delta);
+  const compact =
+    magnitude >= 1e5 || magnitude < 1e-3
+      ? delta.toExponential(1)
+      : String(Number(delta.toPrecision(3)));
   return delta > 0 ? `+${compact}` : compact;
 }
