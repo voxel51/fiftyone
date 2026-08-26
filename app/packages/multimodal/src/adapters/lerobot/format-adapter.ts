@@ -1010,31 +1010,32 @@ class LeRobotEpisodeSession implements EpisodeSession {
         (frame): frame is DecodedFrame =>
           frame !== null && inWindow(frame.timestampNs, request.window),
       );
-    const selected = sampledIndexes(
-      frames.length,
-      request.maxPointsPerField,
-    ).map((index) => frames[index]);
     const baseTimeNs = this.manifest.timeRange.startNs;
+    const timesSec = frames.map((frame) =>
+      nsDeltaToSeconds(frame.timestampNs - baseTimeNs),
+    );
+    let truncated = false;
     return {
       baseTimeNs,
-      fields: request.fields.map((path) => ({
-        path,
-        timesSec: Float64Array.from(
-          selected.map((frame) =>
-            nsDeltaToSeconds(frame.timestampNs - baseTimeNs),
-          ),
-        ),
-        values: Float64Array.from(
-          selected.map(
-            (frame) =>
-              frame.output.scalars?.find((scalar) => scalar.field === path)
-                ?.value ?? Number.NaN,
-          ),
-        ),
-      })),
+      // Decimation is per field: each signal keeps its own extremes, so a
+      // budgeted read never aliases one field's spikes away to fit another.
+      fields: request.fields.map((path) => {
+        const values = frames.map(
+          (frame) =>
+            frame.output.scalars?.find((scalar) => scalar.field === path)
+              ?.value ?? Number.NaN,
+        );
+        const picked = minMaxSampledIndexes(values, request.maxPointsPerField);
+        truncated ||= picked.length < values.length;
+        return {
+          path,
+          timesSec: Float64Array.from(picked.map((index) => timesSec[index])),
+          values: Float64Array.from(picked.map((index) => values[index])),
+        };
+      }),
       sampleCount: frames.length,
       streamId: request.stream,
-      truncated: selected.length < frames.length,
+      truncated,
     };
   }
 
@@ -2246,14 +2247,47 @@ function shapeSuffix(shape: readonly number[] | undefined) {
   return shape?.length ? `[${shape.join(",")}]` : "";
 }
 
-function sampledIndexes(length: number, maxPoints: number | undefined) {
+/**
+ * Peak-preserving decimation: every bucket keeps its extreme samples in
+ * time order, so a budgeted series never aliases spikes away the way a
+ * uniform stride does. An all-gap bucket keeps one sample so decoded gap
+ * markers stay visible.
+ */
+function minMaxSampledIndexes(
+  values: readonly number[],
+  maxPoints: number | undefined,
+): readonly number[] {
+  const length = values.length;
   if (!maxPoints || maxPoints <= 0 || length <= maxPoints) {
     return Array.from({ length }, (_, index) => index);
   }
   if (maxPoints === 1) return [0];
-  return Array.from({ length: maxPoints }, (_, index) =>
-    Math.round((index * (length - 1)) / (maxPoints - 1)),
-  );
+  const buckets = Math.max(1, Math.floor(maxPoints / 2));
+  const picked: number[] = [];
+  for (let bucket = 0; bucket < buckets; bucket += 1) {
+    const start = Math.floor((bucket * length) / buckets);
+    const end = Math.max(
+      start + 1,
+      Math.floor(((bucket + 1) * length) / buckets),
+    );
+    let minIndex = -1;
+    let maxIndex = -1;
+    for (let index = start; index < end && index < length; index += 1) {
+      const value = values[index];
+      if (!Number.isFinite(value)) continue;
+      if (minIndex < 0 || value < values[minIndex]) minIndex = index;
+      if (maxIndex < 0 || value > values[maxIndex]) maxIndex = index;
+    }
+    if (minIndex < 0) {
+      picked.push(start);
+      continue;
+    }
+    const first = Math.min(minIndex, maxIndex);
+    const second = Math.max(minIndex, maxIndex);
+    picked.push(first);
+    if (second !== first) picked.push(second);
+  }
+  return picked;
 }
 
 function inWindow(timestampNs: bigint, window: TimeWindow) {

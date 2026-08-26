@@ -242,6 +242,39 @@ const BASIC_SCENARIO: StateActionScenario = {
 };
 
 describe("LeRobot state/action provider", () => {
+  it("preserves signal peaks under a numeric decimation budget", async () => {
+    const values = [0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0];
+    const built = buildStateActionSource({
+      action: {
+        dtype: "float32",
+        rows: values.map((value) => [value]),
+        shape: [1],
+      },
+      timestampsSeconds: values.map((_, index) => index / 30),
+    });
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects: built.reader,
+    }).open(built.source, built.io);
+    try {
+      const series = await session.numericSeries?.readNumericSeries({
+        fields: ["action"],
+        maxPointsPerField: 6,
+        stream: "lerobot:action",
+        window: session.manifest.timeRange,
+      });
+      const field = series?.fields[0];
+      expect(field?.values.length).toBeLessThanOrEqual(6);
+      // A uniform stride would alias the lone spike away; per-bucket
+      // min/max decimation must keep it.
+      expect([...(field?.values ?? [])]).toContain(100);
+      expect(series?.truncated).toBe(true);
+      const times = [...(field?.timesSec ?? [])];
+      expect([...times].sort((left, right) => left - right)).toEqual(times);
+    } finally {
+      session.dispose();
+    }
+  });
+
   it("omits the capability when neither canonical feature is declared", async () => {
     const built = buildStateActionSource({
       timestampsSeconds: [0, 0.05],
