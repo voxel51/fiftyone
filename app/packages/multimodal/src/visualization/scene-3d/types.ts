@@ -3,7 +3,7 @@ import * as THREE from "three";
 
 import type {
   CameraCalibrationVisualization,
-  EncodedH264VideoVisualization,
+  EncodedVideoVisualization,
   GridVisualization,
   ImageVisualization,
   PointCloudVisualization,
@@ -299,8 +299,8 @@ export interface CameraFrustumPanelLayer {
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;
   readonly image?: ImageVisualization;
-  /** H.264 content is presented by the source-scoped video engine. */
-  readonly video?: EncodedH264VideoVisualization;
+  /** Encoded content is presented by the source-scoped video engine. */
+  readonly video?: EncodedVideoVisualization;
   readonly imageContentTimeNs?: bigint;
   /**
    * Presentational distance from optical center to image plane, in scene

@@ -743,7 +743,7 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() =>
       expect(onError).toHaveBeenCalledWith(
-        new Error("H.264 preview is waiting for a keyframe"),
+        new Error("Video preview is waiting for a keyframe"),
       ),
     );
     expect(decoder.instances).toHaveLength(0);
@@ -815,7 +815,7 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
     expect(onError.mock.calls[0]?.[0]).toEqual(
-      new Error("WebCodecs H.264 decoding is unavailable"),
+      new Error("WebCodecs video decoding is unavailable"),
     );
     expect(onImageLoaded).not.toHaveBeenCalled();
   });

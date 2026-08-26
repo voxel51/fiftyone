@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { EncodedH264VideoVisualization } from "../ir";
+import type {
+  EncodedAv1VideoVisualization,
+  EncodedH264VideoVisualization,
+} from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
-import type { H264AccessUnit } from "./types";
+import type { EncodedVideoAccessUnit, H264AccessUnit } from "./types";
 import { VideoDecoderFailureError, VideoIntentCancelledError } from "./types";
 import {
   MAX_VIDEO_DECODE_IN_FLIGHT,
   VIDEO_DECODE_PROGRESS_TIMEOUT_MS,
   WebCodecsH264Decoder,
+  WebCodecsVideoDecoder,
   type WebCodecsDecoderEnvironment,
 } from "./webcodecs-decoder";
 
@@ -329,6 +333,34 @@ describe("WebCodecsH264Decoder", () => {
   });
 });
 
+describe("WebCodecsVideoDecoder AV1", () => {
+  it("configures the container codec string and submits raw temporal-unit bytes", async () => {
+    const harness = fakeWebCodecs();
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const accessUnit = av1Unit(0, true);
+
+    const output = await actor.decode([accessUnit], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+
+    expect(harness.instances[0].configure).toHaveBeenCalledWith(
+      expect.objectContaining({ codec: "av01.0.00M.08" }),
+    );
+    expect(harness.instances[0].decode).toHaveBeenCalledOnce();
+    expect(
+      (
+        harness.instances[0].decode.mock.calls[0][0] as {
+          readonly data: Uint8Array;
+        }
+      ).data,
+    ).toEqual(accessUnit.frame.bytes);
+    expect(harness.instances[0].flush).not.toHaveBeenCalled();
+    output.close();
+    actor.close();
+  });
+});
+
 function fakeWebCodecs(
   options: {
     readonly holdOutputsUntilSubmissions?: number;
@@ -358,10 +390,12 @@ function fakeWebCodecs(
   }> = [];
 
   class FakeChunk {
+    readonly data: Uint8Array;
     readonly timestamp: number;
     readonly type: "key" | "delta";
 
     constructor(init: EncodedVideoChunkInit) {
+      this.data = Uint8Array.from(init.data as ArrayLike<number>);
       this.timestamp = init.timestamp;
       this.type = init.type;
     }
@@ -465,6 +499,22 @@ function fakeWebCodecs(
     instances,
     maxDecodeQueueSize: () => maximumDecodeQueueSize,
     maxOutstanding: () => maximumOutstanding,
+  };
+}
+
+function av1Unit(time: number, keyframe = false): EncodedVideoAccessUnit {
+  const timeNs = BigInt(time);
+  return {
+    frame: {
+      bytes: Uint8Array.of(0x12, 0x0a, keyframe ? 0x20 : 0x30),
+      codec: "av1",
+      decodeTimestampNs: timeNs,
+      format: "av01.0.00M.08",
+      keyframe,
+      kind: VISUALIZATION_KIND.ENCODED_VIDEO,
+      timestampNs: timeNs,
+    } satisfies EncodedAv1VideoVisualization,
+    timeNs,
   };
 }
 

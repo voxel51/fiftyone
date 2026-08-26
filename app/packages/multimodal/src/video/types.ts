@@ -1,9 +1,32 @@
-import type { EncodedH264VideoVisualization } from "../ir";
+import type {
+  EncodedAv1VideoVisualization,
+  EncodedH264VideoVisualization,
+  EncodedVideoVisualization,
+} from "../ir";
 
-/** One timestamped H.264 access unit owned by the video engine. */
-export interface H264AccessUnit {
-  readonly frame: EncodedH264VideoVisualization;
+/** One timestamped encoded-video access unit owned by the video engine. */
+export interface EncodedVideoAccessUnit {
+  readonly frame: EncodedVideoVisualization;
   readonly timeNs: bigint;
+}
+
+/** H.264 specialization retained for codec-specific producers and tests. */
+export interface H264AccessUnit extends EncodedVideoAccessUnit {
+  readonly frame: EncodedH264VideoVisualization;
+}
+
+/** Codec subset implemented by the shared synchronized WebCodecs pipeline. */
+export type SharedEncodedVideoVisualization =
+  | EncodedH264VideoVisualization
+  | EncodedAv1VideoVisualization;
+
+export function isSharedEncodedVideoVisualization(
+  frame: EncodedVideoVisualization,
+): frame is SharedEncodedVideoVisualization {
+  return (
+    frame.codec === "av1" ||
+    (frame.codec === "h264" && frame.h264.hasFrame !== false)
+  );
 }
 
 /** Presentation copy that no longer owns a WebCodecs decoder surface. */
@@ -78,7 +101,7 @@ export const VIDEO_INTENT_PRIORITY_WEIGHT: Readonly<
 };
 
 /** Latest-wins playback intent from one or more mounted consumers. */
-export interface VideoPlaybackIntent extends H264AccessUnit {
+export interface VideoPlaybackIntent extends EncodedVideoAccessUnit {
   readonly priority: VideoIntentPriority;
 }
 
@@ -91,7 +114,7 @@ export interface VideoReadBudget {
 export interface VideoAccessUnitReadResult {
   readonly complete: boolean;
   readonly stopReason?: string;
-  readonly units: readonly H264AccessUnit[];
+  readonly units: readonly EncodedVideoAccessUnit[];
 }
 
 /** Framework-independent read boundary supplied by SourcePlayback. */
@@ -118,7 +141,7 @@ export interface VideoDecoderActor {
    * rejection the actor closes every decoder output it produced.
    */
   decode(
-    units: readonly H264AccessUnit[],
+    units: readonly EncodedVideoAccessUnit[],
     options: {
       readonly signal: AbortSignal;
       readonly targetTimeNs: bigint;

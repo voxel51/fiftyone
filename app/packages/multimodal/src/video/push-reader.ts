@@ -1,6 +1,6 @@
 import { VIDEO_ENCODED_ACCESS_UNIT_BYTE_CAP } from "./gop-index";
 import type {
-  H264AccessUnit,
+  EncodedVideoAccessUnit,
   VideoAccessUnitReader,
   VideoAccessUnitReadResult,
 } from "./types";
@@ -10,7 +10,7 @@ const PUSH_VIDEO_ACCESS_UNIT_CAP = 4_096;
 
 interface StoredAccessUnit {
   readonly token: number;
-  readonly unit: H264AccessUnit;
+  readonly unit: EncodedVideoAccessUnit;
 }
 
 interface StreamHistory {
@@ -79,7 +79,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
     return false;
   }
 
-  push(stream: string, unit: H264AccessUnit): void {
+  push(stream: string, unit: EncodedVideoAccessUnit): void {
     let history = this.streams.get(stream);
     if (!history) {
       history = { entries: new Map(), sortedTimes: [] };
@@ -173,7 +173,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
       };
     }
 
-    const units: H264AccessUnit[] = [];
+    const units: EncodedVideoAccessUnit[] = [];
     let observedBytes = 0;
     let budgetStopped = false;
     let index = lowerBound(history.sortedTimes, startTimeNs);

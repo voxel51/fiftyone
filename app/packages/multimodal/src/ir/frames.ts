@@ -59,6 +59,12 @@ export interface EncodedH264VideoVisualization extends BaseEncodedVideoVisualiza
   };
 }
 
+/** AV1 temporal unit carried directly from an ISO BMFF sample. */
+export interface EncodedAv1VideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: "av1";
+  readonly h264?: never;
+}
+
 /**
  * Encoded video access unit decoded from one record. The contract lets source
  * streams be classified as image-family streams while keeping codec metadata
@@ -66,8 +72,9 @@ export interface EncodedH264VideoVisualization extends BaseEncodedVideoVisualiza
  */
 export type EncodedVideoVisualization =
   | EncodedH264VideoVisualization
+  | EncodedAv1VideoVisualization
   | (BaseEncodedVideoVisualization & {
-      readonly codec: "av1" | "h265" | "vp9";
+      readonly codec: "h265" | "vp9";
       readonly h264?: never;
     });
 

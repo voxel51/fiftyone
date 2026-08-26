@@ -5,7 +5,7 @@ import {
   type ReactNode,
 } from "react";
 
-import type { EncodedH264VideoVisualization } from "../../ir";
+import type { EncodedVideoVisualization } from "../../ir";
 import { useVideoStreamPresentation } from "../../video/react";
 import type { VideoIntentPriority } from "../../video/types";
 import {
@@ -26,7 +26,7 @@ export interface VideoPanelProps {
   readonly canvasSurface?: string;
   readonly className?: string;
   readonly fit?: "contain" | "cover";
-  readonly frame: EncodedH264VideoVisualization;
+  readonly frame: EncodedVideoVisualization;
   readonly notices?: readonly PanelNotice[];
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly onResetView?: () => void;
@@ -39,7 +39,7 @@ export interface VideoPanelProps {
   readonly viewTransform?: ImageViewTransform;
 }
 
-/** Dedicated H.264 sibling of ImagePanel backed by the source video engine. */
+/** Dedicated encoded-video sibling of ImagePanel backed by the source engine. */
 export function VideoPanel({
   alt = "Video",
   canvasSurface,

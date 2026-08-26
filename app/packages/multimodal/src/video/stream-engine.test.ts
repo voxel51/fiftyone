@@ -99,7 +99,7 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     lease.request({ ...accessUnit(1_000_000_000), priority: "visible" });
     await vi.waitFor(() =>
       expect(lease.getSnapshot()).toMatchObject({
-        diagnostic: { message: "Waiting for an H.264 access unit reader" },
+        diagnostic: { message: "Waiting for a video access unit reader" },
         phase: "waiting-for-keyframe",
       }),
     );
@@ -708,7 +708,7 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     await vi.waitFor(() =>
       expect(lease.getSnapshot()).toMatchObject({
         diagnostic: {
-          message: "H.264 dependency chain exceeds the bounded decode budget",
+          message: "Video dependency chain exceeds the bounded decode budget",
         },
         phase: "waiting-for-keyframe",
       }),

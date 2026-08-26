@@ -1,7 +1,9 @@
 import { h264AccessUnitWithParameterSets } from "../codecs/h264-annexb";
 import { toError } from "../utils/errors";
-import type { H264AccessUnit, VideoDecoderActor } from "./types";
+import type { EncodedVideoVisualization } from "../ir";
+import type { EncodedVideoAccessUnit, VideoDecoderActor } from "./types";
 import {
+  isSharedEncodedVideoVisualization,
   VideoDecoderFailureError,
   VideoDependencyWaitError,
   VideoIntentCancelledError,
@@ -32,7 +34,7 @@ export interface WebCodecsDecoderEnvironment {
 }
 
 /** One serialized WebCodecs actor. It never flushes per frame. */
-export class WebCodecsH264Decoder implements VideoDecoderActor {
+export class WebCodecsVideoDecoder implements VideoDecoderActor {
   private active = false;
   private closed = false;
   private codecString: string | null = null;
@@ -71,7 +73,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
   }
 
   async decode(
-    units: readonly H264AccessUnit[],
+    units: readonly EncodedVideoAccessUnit[],
     {
       signal,
       targetTimeNs,
@@ -82,14 +84,12 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       throw new Error("Concurrent video decoder transaction");
     }
     if (signal.aborted) throw new VideoIntentCancelledError();
-    const decodable = units
-      .filter((unit) => unit.frame.h264.hasFrame !== false)
-      .sort(compareDecodeOrder);
+    const decodable = units.filter(isDecodableUnit).sort(compareDecodeOrder);
     if (decodable.length === 0) {
-      throw new VideoDependencyWaitError("Waiting for an H.264 access unit");
+      throw new VideoDependencyWaitError("Waiting for a video access unit");
     }
     if (!this.decoder && !decodable[0].frame.keyframe) {
-      throw new VideoDependencyWaitError("Waiting for an H.264 keyframe");
+      throw new VideoDependencyWaitError("Waiting for a video keyframe");
     }
 
     this.active = true;
@@ -120,7 +120,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       }
       if (!target) {
         throw new VideoDecoderFailureError(
-          "H.264 target produced no decoder output",
+          `${codecDisplayName(decodable[0].frame)} target produced no decoder output`,
         );
       }
       return target;
@@ -134,7 +134,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
 
   /** Keeps a bounded, persistent submission window for MP4 decode-order samples. */
   private async decodeReordered(
-    units: readonly H264AccessUnit[],
+    units: readonly EncodedVideoAccessUnit[],
     targetTimeNs: bigint,
     signal: AbortSignal,
   ): Promise<VideoFrame> {
@@ -148,7 +148,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
         timer = null;
         this.failDecoder(
           new VideoDecoderFailureError(
-            "Timed out waiting for H.264 decoder progress",
+            `Timed out waiting for ${codecDisplayName(units[0].frame)} decoder progress`,
           ),
         );
       }, VIDEO_DECODE_PROGRESS_TIMEOUT_MS);
@@ -166,7 +166,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
           decodeTimeNs <= this.lastSubmittedDecodeTimeNs
         ) {
           throw new VideoDecoderFailureError(
-            "H.264 dependency arrived behind the decode-order cursor",
+            `${codecDisplayName(unit.frame)} dependency arrived behind the decode-order cursor`,
           );
         }
         // A reordered decoder may consume queued chunks without emitting their
@@ -191,7 +191,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       const target = this.reorderedOutputs.get(targetTimeNs);
       if (!target) {
         throw new VideoDecoderFailureError(
-          "H.264 target produced no decoder output",
+          `${codecDisplayName(units[0].frame)} target produced no decoder output`,
         );
       }
       const frame = await abortableDecoderOutput(target.promise, signal);
@@ -207,13 +207,16 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
   }
 
   /** Never submit access units from two codec epochs to one decoder batch. */
-  private batchEnd(units: readonly H264AccessUnit[], start: number): number {
+  private batchEnd(
+    units: readonly EncodedVideoAccessUnit[],
+    start: number,
+  ): number {
     const limit = Math.min(units.length, start + MAX_VIDEO_DECODE_IN_FLIGHT);
     const batchCodec =
-      units[start].frame.h264.codecString ?? this.codecString ?? undefined;
+      frameCodecString(units[start].frame) ?? this.codecString ?? undefined;
     for (let index = start + 1; index < limit; index += 1) {
       const unit = units[index];
-      const codec = unit.frame.h264.codecString;
+      const codec = frameCodecString(unit.frame);
       if (unit.frame.keyframe && codec && batchCodec && codec !== batchCodec) {
         return index;
       }
@@ -227,7 +230,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     this.sps = undefined;
     this.pps = undefined;
     this.disposeDecoder(
-      new VideoDecoderFailureError("H.264 decoder discontinuity"),
+      new VideoDecoderFailureError("Video decoder discontinuity"),
     );
   }
 
@@ -240,7 +243,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
   }
 
   private async decodeBatch(
-    units: readonly H264AccessUnit[],
+    units: readonly EncodedVideoAccessUnit[],
     targetTimeNs: bigint,
   ): Promise<readonly (VideoFrame | undefined)[]> {
     const first = units[0];
@@ -255,7 +258,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
         timer = null;
         this.failDecoder(
           new VideoDecoderFailureError(
-            "Timed out waiting for H.264 decoder progress",
+            `Timed out waiting for ${codecDisplayName(units[0].frame)} decoder progress`,
           ),
         );
       }, VIDEO_DECODE_PROGRESS_TIMEOUT_MS);
@@ -288,26 +291,26 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     }
   }
 
-  private async ensureDecoder(unit: H264AccessUnit): Promise<void> {
+  private async ensureDecoder(unit: EncodedVideoAccessUnit): Promise<void> {
     if (this.failed) {
       const failure = this.failed;
       this.failed = null;
       throw failure;
     }
-    const nextCodec = unit.frame.h264.codecString ?? this.codecString;
+    const nextCodec = frameCodecString(unit.frame) ?? this.codecString;
     if (!nextCodec) {
       throw new VideoDependencyWaitError(
-        "Waiting for an H.264 keyframe with SPS/PPS",
+        `Waiting for a ${codecDisplayName(unit.frame)} keyframe with decoder configuration`,
       );
     }
     if (unit.frame.keyframe && this.decoder && this.codecString !== nextCodec) {
       this.disposeDecoder(
-        new VideoDecoderFailureError("H.264 codec configuration changed"),
+        new VideoDecoderFailureError("Video codec configuration changed"),
       );
     }
     if (this.decoder) return;
     if (!unit.frame.keyframe) {
-      throw new VideoDependencyWaitError("Waiting for an H.264 keyframe");
+      throw new VideoDependencyWaitError("Waiting for a video keyframe");
     }
     if (!this.environment.isSecureContext) {
       throw new VideoDecoderFailureError(
@@ -323,7 +326,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       await this.environment.VideoDecoder.isConfigSupported(config);
     if (!support.supported) {
       throw new VideoDecoderFailureError(
-        `H.264 codec '${nextCodec}' is unsupported`,
+        `${codecDisplayName(unit.frame)} codec '${nextCodec}' is unsupported`,
       );
     }
     if (this.closed) throw new Error("Video decoder closed");
@@ -337,7 +340,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       this.decoder.configure(config);
     } catch (error) {
       const failure = new VideoDecoderFailureError(
-        "Failed to configure the H.264 decoder",
+        `Failed to configure the ${codecDisplayName(unit.frame)} decoder`,
         { cause: error },
       );
       this.failDecoder(failure);
@@ -347,16 +350,10 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
 
   private submit(
     decoder: VideoDecoder,
-    unit: H264AccessUnit,
+    unit: EncodedVideoAccessUnit,
     onProgress: () => void,
   ): Promise<VideoFrame> {
-    if (unit.frame.h264.sps) this.sps = unit.frame.h264.sps;
-    if (unit.frame.h264.pps) this.pps = unit.frame.h264.pps;
-    const data = h264AccessUnitWithParameterSets({
-      bytes: unit.frame.bytes,
-      pps: unit.frame.h264.pps ? undefined : this.pps,
-      sps: unit.frame.h264.sps ? undefined : this.sps,
-    });
+    const data = this.chunkData(unit);
     // Preserve source PTS for browser-level observability. LeRobot MP4 units
     // carry an explicit DTS and may be submitted in non-monotonic PTS order
     // when B-frames are present. Legacy streams retain monotonic nudging.
@@ -391,7 +388,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
         const index = this.pending.indexOf(pending);
         if (index >= 0) this.pending.splice(index, 1);
         const failure = new VideoDecoderFailureError(
-          "Failed to submit an H.264 access unit",
+          `Failed to submit a ${codecDisplayName(unit.frame)} access unit`,
           { cause: error },
         );
         this.failDecoder(failure);
@@ -402,7 +399,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
 
   private submitReordered(
     decoder: VideoDecoder,
-    unit: H264AccessUnit,
+    unit: EncodedVideoAccessUnit,
     onProgress: () => void,
   ): Promise<VideoFrame> {
     const existing = this.reorderedOutputs.get(unit.timeNs);
@@ -434,7 +431,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       .map((output) => output.promise);
     if (pending.length === 0) {
       throw new VideoDecoderFailureError(
-        "H.264 decoder submission window made no progress",
+        "Video decoder submission window made no progress",
       );
     }
     await abortableDecoderOutput(Promise.race(pending), signal);
@@ -489,7 +486,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     const failure =
       error instanceof VideoDecoderFailureError
         ? error
-        : new VideoDecoderFailureError("H.264 decoder failed", {
+        : new VideoDecoderFailureError("Video decoder failed", {
             cause: error,
           });
     this.failed = failure;
@@ -527,9 +524,26 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     this.lastOutputTimeNs = null;
     this.lastSubmissionTimestampUs = null;
   }
+
+  private chunkData(unit: EncodedVideoAccessUnit): Uint8Array {
+    if (unit.frame.codec !== "h264") return unit.frame.bytes;
+    if (unit.frame.h264.sps) this.sps = unit.frame.h264.sps;
+    if (unit.frame.h264.pps) this.pps = unit.frame.h264.pps;
+    return h264AccessUnitWithParameterSets({
+      bytes: unit.frame.bytes,
+      pps: unit.frame.h264.pps ? undefined : this.pps,
+      sps: unit.frame.h264.sps ? undefined : this.sps,
+    });
+  }
 }
 
-function compareDecodeOrder(left: H264AccessUnit, right: H264AccessUnit) {
+/** Compatibility export for existing H.264-specific callers. */
+export { WebCodecsVideoDecoder as WebCodecsH264Decoder };
+
+function compareDecodeOrder(
+  left: EncodedVideoAccessUnit,
+  right: EncodedVideoAccessUnit,
+) {
   const leftTime = left.frame.decodeTimestampNs ?? left.timeNs;
   const rightTime = right.frame.decodeTimestampNs ?? right.timeNs;
   return leftTime < rightTime ? -1 : leftTime > rightTime ? 1 : 0;
@@ -606,7 +620,7 @@ function browserWebCodecsEnvironment(): WebCodecsDecoderEnvironment {
     typeof EncodedVideoChunk === "undefined"
   ) {
     throw new VideoDecoderFailureError(
-      "WebCodecs H.264 decoding is unavailable",
+      "WebCodecs video decoding is unavailable",
     );
   }
   return {
@@ -616,4 +630,20 @@ function browserWebCodecsEnvironment(): WebCodecsDecoderEnvironment {
     isSecureContext: globalThis.isSecureContext !== false,
     setTimeout: globalThis.setTimeout.bind(globalThis),
   };
+}
+
+function isDecodableUnit(unit: EncodedVideoAccessUnit): boolean {
+  return isSharedEncodedVideoVisualization(unit.frame);
+}
+
+function frameCodecString(frame: EncodedVideoVisualization): string | null {
+  if (frame.codec === "h264") return frame.h264.codecString ?? null;
+  if (frame.codec === "av1") return frame.format;
+  return null;
+}
+
+function codecDisplayName(frame: EncodedVideoVisualization): string {
+  if (frame.codec === "h264") return "H.264";
+  if (frame.codec === "av1") return "AV1";
+  return frame.codec.toUpperCase();
 }

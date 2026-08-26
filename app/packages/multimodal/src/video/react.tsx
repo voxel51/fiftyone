@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
-import type { EncodedH264VideoVisualization } from "../ir";
+import type { EncodedVideoVisualization } from "../ir";
 import type {
   VideoPlaybackManager,
   VideoStreamLease,
@@ -56,7 +56,7 @@ export function useVideoStreamPresentation({
   targetTimeNs,
 }: {
   readonly enabled?: boolean;
-  readonly frame: EncodedH264VideoVisualization | null;
+  readonly frame: EncodedVideoVisualization | null;
   readonly manager?: VideoPlaybackManager | null;
   readonly priority?: VideoIntentPriority;
   readonly stream: string;

@@ -23,6 +23,7 @@ import { PushVideoAccessUnitReader } from "../../../video/push-reader";
 import { VideoPlaybackManagerProvider } from "../../../video/react";
 import { H264_REORDERED_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import type { VideoStreamLease } from "../../../video/playback-manager";
+import { isSharedEncodedVideoVisualization } from "../../../video/types";
 import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
 import { renderPointCloudSnapshot } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
@@ -434,7 +435,7 @@ interface GridVideoPlaybackController {
 }
 
 /**
- * Pushes every H.264 access unit into one mounted source/stream engine, even
+ * Pushes every supported video access unit into one source/stream engine, even
  * when the 12fps grid presentation policy skips the corresponding React
  * frame. The bitmap consumer then subscribes to that same engine.
  */
@@ -491,8 +492,7 @@ function useGridVideoPlayback(sourceKey: string | null): {
       if (
         !image ||
         image.kind !== "encoded-video" ||
-        image.codec !== "h264" ||
-        image.h264.hasFrame === false
+        !isSharedEncodedVideoVisualization(image)
       ) {
         continue;
       }

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import type { EncodedH264VideoVisualization } from "../../../ir";
 import { VideoPlaybackManager } from "../../../video/playback-manager";
 import { VideoPlaybackManagerProvider } from "../../../video/react";
 import type {
-  H264AccessUnit,
+  EncodedVideoAccessUnit,
   VideoAccessUnitReader,
 } from "../../../video/types";
+import { isSharedEncodedVideoVisualization } from "../../../video/types";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { useDataStream } from "./data-stream-context";
 
@@ -40,18 +40,17 @@ export function SourceVideoPlaybackProvider({
           startTimeNs,
           stream,
         });
-        const units: H264AccessUnit[] = [];
+        const units: EncodedVideoAccessUnit[] = [];
         for (const decoded of result.frames) {
           const visualization = decoded.output.visualization;
           if (
             visualization?.kind !== VISUALIZATION_KIND.ENCODED_VIDEO ||
-            visualization.codec !== "h264" ||
-            visualization.h264.hasFrame === false
+            !isSharedEncodedVideoVisualization(visualization)
           ) {
             continue;
           }
           units.push({
-            frame: visualization satisfies EncodedH264VideoVisualization,
+            frame: visualization,
             timeNs: decoded.timestampNs,
           });
         }
