@@ -1407,6 +1407,33 @@ describe("reconcilePersisted source fold (delete re-save loop)", () => {
     ]);
   });
 
+  it("folds a list append whose list field was absent from source", () => {
+    // CodeRabbit case: /field/<child>/- with the parent missing must
+    // create an ARRAY parent — an object parent would store the "-" as a
+    // literal key and corrupt source.
+    // field present, inner list ABSENT — the discriminating shape: the
+    // diff emits an append op whose array parent must be created
+    const s = new Sample({
+      schema,
+      data: { classifications: { _cls: "Classifications" } },
+    });
+
+    s.updateLabel("classifications", {
+      _id: "a",
+      _cls: "Classification",
+      label: "x",
+    });
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    expect(patch.length).toBeGreaterThan(0);
+    s.reconcilePersisted(patch);
+
+    const folded = s.getData().classifications as Record<string, unknown>;
+    expect(Array.isArray(folded?.classifications)).toBe(true);
+    expect((folded.classifications as unknown[]).length).toBe(1);
+    expect(s.getJsonPatch()).toEqual([]);
+  });
+
   it("stops re-emitting a persisted NESTED-path delete", () => {
     // CodeRabbit regression case: transient keys are dot-paths of
     // varying depth — a primitive edit deletes "classification.label",

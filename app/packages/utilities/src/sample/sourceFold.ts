@@ -26,6 +26,15 @@ export const rebaseSource = (
   sourceData: Readonly<Record<string, unknown>>,
   deltas: JSONDeltas,
 ): Record<string, unknown> => {
+  // Batch first: applyDeltas deep-clones the document per call, so the
+  // happy path pays exactly one clone. The per-op walk below is the
+  // recovery path for the parent-creation / stale-op cases only.
+  try {
+    return applyDeltas(sourceData as Record<string, unknown>, deltas);
+  } catch {
+    // fall through to the per-op recovery
+  }
+
   let next = sourceData as Record<string, unknown>;
   for (const op of deltas) {
     try {
@@ -59,19 +68,38 @@ const withCreatedParents = (
   doc: Record<string, unknown>,
   pointer: string,
 ): Record<string, unknown> | null => {
-  const segments = pointer.split("/").filter(Boolean).slice(0, -1);
+  const all = pointer.split("/").filter(Boolean);
+  const segments = all.slice(0, -1);
+  const leaf = all[all.length - 1];
+  const isIndexSegment = (s: string | undefined) =>
+    s === "-" || (s !== undefined && /^\d+$/.test(s));
   const root = { ...doc };
   let node: Record<string, unknown> = root;
-  for (const segment of segments) {
+  for (let i = 0; i < segments.length; i += 1) {
+    const segment = segments[i];
+    // What follows this container decides its shape: an append ("-") or
+    // numeric index means the container must be an ARRAY — a {} here
+    // would make fast-json-patch assign "-" as an object key.
+    const following = i + 1 < segments.length ? segments[i + 1] : leaf;
     const value = node[segment];
     if (value === undefined || value === null) {
-      if (/^\d+$/.test(segment)) {
+      if (isIndexSegment(segment)) {
+        // fabricating array structure at a specific index is not
+        // server-matching — bail and let the op be skipped
         return null;
       }
-      const created: Record<string, unknown> = {};
+      const created: Record<string, unknown> | unknown[] = isIndexSegment(
+        following,
+      )
+        ? []
+        : {};
       node[segment] = created;
-      node = created;
+      node = created as Record<string, unknown>;
     } else if (typeof value === "object") {
+      if (isIndexSegment(following) && !Array.isArray(value)) {
+        // an existing non-array where the op needs an array: unsatisfiable
+        return null;
+      }
       const clone: Record<string, unknown> = Array.isArray(value)
         ? ([...value] as unknown as Record<string, unknown>)
         : { ...(value as Record<string, unknown>) };

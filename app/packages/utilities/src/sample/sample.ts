@@ -647,13 +647,16 @@ export class Sample {
     // and the next diff resolves against it naturally. Purely
     // source-side: the display projects the transient, so no
     // notification is due.
+    // Compute the release's change set from the PRE-rebase references,
+    // but rebase source BEFORE applying + notifying: a released path's
+    // Reset makes subscribers re-read from source, and they must see the
+    // post-persist value, not the stale pre-rebase one (with no later
+    // event ever correcting it).
+    let changes: SampleChange[] | null = null;
     if (result) {
-      // A released/dropped path has a new (or absent) reference vs.
-      // before; emit a per-path reset so reconcilers re-read just those
-      // from source.
       const before = this.transientData;
       const after = result.transientData;
-      const changes: SampleChange[] = [];
+      changes = [];
       for (const path of new Set([
         ...Object.keys(before),
         ...Object.keys(after),
@@ -662,16 +665,24 @@ export class Sample {
           changes.push({ path, kind: SampleChangeKind.Reset });
         }
       }
-
-      this.transientData = after;
-      this.notify(changes);
     }
 
     const sourceReplaced =
       this.sourceRevision !== this.patchBaselineSourceRevision;
     if (sampleRooted && !sourceReplaced && baseline) {
       this.sourceData = rebaseSource(this.sourceData, deltas);
+    }
+
+    if (result) {
+      this.transientData = result.transientData;
+    }
+    if (sampleRooted && !sourceReplaced && baseline) {
+      // after both the rebase and the release apply, so the sweep sees
+      // the final transient against the final source
       this.gc();
+    }
+    if (changes) {
+      this.notify(changes);
     }
   }
 
