@@ -180,6 +180,13 @@ class ProcessMapper(fomm.LocalMapper):
                     # Yield successfully mapped sample
                     yield sample_id, None, result
 
+            # All sentinels received means the workers are idle; join
+            # them so the context exit's terminate() never overlaps
+            # live worker processes (filelock>=3.30 installs a fork
+            # guard that aborts concurrent os.fork calls)
+            pool.close()
+            pool.join()
+
             queue.close()
             queue.join_thread()
 
