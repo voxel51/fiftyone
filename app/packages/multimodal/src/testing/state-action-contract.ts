@@ -120,22 +120,30 @@ export function defineStateActionCapabilityContractTests({
           featureName: "observation.state",
           shape: [3],
         });
-        expect(schema.state?.dimensions).toEqual([
+        // Providers may add optional plot bindings; order and names are
+        // the contract.
+        expect(schema.state?.dimensions).toMatchObject([
           { index: 0, name: "shoulder" },
           { index: 1, name: "elbow" },
           { index: 2 },
         ]);
+        expect(schema.state?.dimensions[2]?.name).toBeUndefined();
         expect(schema.action).toMatchObject({
           dtype: "float32",
           featureName: "action",
           shape: [2, 2],
         });
-        expect(schema.action?.dimensions).toEqual([
+        expect(schema.action?.dimensions).toMatchObject([
           { index: 0 },
           { index: 1 },
           { index: 2 },
           { index: 3 },
         ]);
+        expect(
+          schema.action?.dimensions.every(
+            (dimension) => dimension.name === undefined,
+          ),
+        ).toBe(true);
       });
     });
 

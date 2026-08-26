@@ -13,9 +13,13 @@ export interface StateActionFeatureSchema {
   readonly dimensions: readonly {
     readonly index: number;
     readonly name?: string;
+    /** Numeric-series field path plotting this dimension, when served. */
+    readonly numericFieldPath?: string;
   }[];
   readonly dtype: string;
   readonly featureName: string;
+  /** Numeric-series stream serving this feature's dimensions, when any. */
+  readonly numericStreamId?: string;
   readonly shape: readonly number[];
 }
 

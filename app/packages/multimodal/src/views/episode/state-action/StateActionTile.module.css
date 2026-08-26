@@ -211,7 +211,7 @@
   display: grid;
   font-size: 10px;
   gap: 8px;
-  grid-template-columns: minmax(80px, 1fr) minmax(72px, auto);
+  grid-template-columns: minmax(80px, 1fr) minmax(72px, auto) 18px;
   padding: 2px 10px;
   text-transform: uppercase;
 }
@@ -220,7 +220,7 @@
   align-items: center;
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(80px, 1fr) minmax(72px, auto);
+  grid-template-columns: minmax(80px, 1fr) minmax(72px, auto) 18px;
   height: 22px;
   padding: 0 10px;
 }
@@ -270,6 +270,51 @@
 }
 
 .valueButton:focus-visible {
+  outline: 1px solid var(--color-voxel-secondary, #f5b700);
+  outline-offset: 1px;
+}
+
+.dimAction {
+  align-items: center;
+  display: inline-flex;
+  height: 18px;
+  justify-content: center;
+  width: 18px;
+}
+
+/* The plot affordance stays quiet until the row is hovered or the
+   button itself holds keyboard focus. */
+.plotButton {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--color-content-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  height: 18px;
+  justify-content: center;
+  opacity: 0;
+  padding: 0;
+  width: 18px;
+}
+
+.dimRow:hover .plotButton,
+.dimRow:focus-within .plotButton,
+.plotButton:focus-visible {
+  opacity: 1;
+}
+
+.plotButton:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 16%,
+    transparent
+  );
+  color: var(--color-content-text-primary);
+}
+
+.plotButton:focus-visible {
   outline: 1px solid var(--color-voxel-secondary, #f5b700);
   outline-offset: 1px;
 }

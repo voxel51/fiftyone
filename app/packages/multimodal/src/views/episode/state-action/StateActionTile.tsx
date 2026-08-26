@@ -23,6 +23,7 @@ import { errorMessage } from "../../../utils/errors";
 import { relativeTimeParts } from "../../../utils/relative-time";
 import { virtualLogRowRange } from "../../../visualization/logs/log-console-virtualization";
 import { useDataStream } from "../playback/data-stream-context";
+import { useAddFieldToPlot } from "../plots/use-add-field-to-plot";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import tileStyles from "../tiles/Tile.module.css";
@@ -60,6 +61,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
     subscribeRow,
   } = useStateActionContext();
   const dataStream = useDataStream();
+  const addFieldToPlot = useAddFieldToPlot();
   // Nullable on purpose: standalone tests render the tile without a
   // playback provider; inside the shell the store is always present.
   const playbackStore = useContext(PlaybackStoreContext);
@@ -368,6 +370,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
                 <FeaturePane
                   featureError={row?.featureErrors?.state}
                   label={STATE_PANE_LABEL}
+                  onPlotField={addFieldToPlot}
                   schema={schemaFacts.state}
                   values={row?.state}
                 />
@@ -376,6 +379,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
                 <FeaturePane
                   featureError={row?.featureErrors?.action}
                   label={ACTION_PANE_LABEL}
+                  onPlotField={addFieldToPlot}
                   schema={schemaFacts.action}
                   values={row?.action}
                 />
@@ -394,11 +398,13 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
 function FeaturePane({
   featureError,
   label,
+  onPlotField,
   schema,
   values,
 }: {
   readonly featureError?: string;
   readonly label: string;
+  readonly onPlotField?: (stream: string, fieldPath: string) => void;
   readonly schema: StateActionFeatureSchema;
   readonly values?: readonly unknown[];
 }) {
@@ -468,6 +474,9 @@ function FeaturePane({
             <span role="columnheader" style={{ textAlign: "right" }}>
               Value
             </span>
+            <span role="columnheader">
+              <span className={styles.srOnly}>Plot</span>
+            </span>
           </div>
           <div
             className={styles.rowSpacer}
@@ -500,6 +509,27 @@ function FeaturePane({
                   <span className={styles.dimValue} role="cell">
                     <ValueCell value={paneRow.value} />
                   </span>
+                  <span className={styles.dimAction} role="cell">
+                    {onPlotField &&
+                    schema.numericStreamId &&
+                    paneRow.plotFieldPath ? (
+                      <button
+                        aria-label={`Plot ${paneRow.name}`}
+                        className={styles.plotButton}
+                        onClick={() =>
+                          onPlotField(
+                            schema.numericStreamId as string,
+                            paneRow.plotFieldPath as string,
+                          )
+                        }
+                        onPointerDown={(event) => event.stopPropagation()}
+                        title={`Plot ${paneRow.name} over the episode`}
+                        type="button"
+                      >
+                        <Icon name={IconName.Insights} size={Size.Xs} />
+                      </button>
+                    ) : null}
+                  </span>
                 </div>
               ))}
             </div>
@@ -513,6 +543,7 @@ function FeaturePane({
 interface PaneRow {
   readonly index: number;
   readonly name: string;
+  readonly plotFieldPath?: string;
   readonly value: PaneValue;
 }
 
@@ -534,14 +565,22 @@ function paneRows(
   // dimension and every extra source value under its stable numeric index.
   const count = Math.max(schema.dimensions.length, values?.length ?? 0);
   return Array.from({ length: count }, (_, index) => {
-    const name = schema.dimensions[index]?.name ?? `[${index}]`;
+    const dimension = schema.dimensions[index];
+    const name = dimension?.name ?? `[${index}]`;
     const value: PaneValue =
       values === undefined
         ? { kind: "skeleton" }
         : index >= values.length
           ? { kind: "missing" }
           : formatStateActionValue(values[index]);
-    return { index, name, value };
+    return {
+      index,
+      name,
+      ...(dimension?.numericFieldPath
+        ? { plotFieldPath: dimension.numericFieldPath }
+        : {}),
+      value,
+    };
   });
 }
 

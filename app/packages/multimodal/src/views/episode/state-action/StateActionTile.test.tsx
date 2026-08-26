@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     }),
     sourceKey: "source-1",
   },
+  addFieldToPlot: vi.fn(),
   ensureSchema: vi.fn(),
   holdCursorRow: vi.fn(),
   registerTileSettings: vi.fn(),
@@ -63,6 +64,10 @@ vi.mock("@fiftyone/playback/runtime", async () => {
 
 vi.mock("../playback/data-stream-context", () => ({
   useDataStream: () => mocks.dataStream,
+}));
+
+vi.mock("../plots/use-add-field-to-plot", () => ({
+  useAddFieldToPlot: () => mocks.addFieldToPlot,
 }));
 
 vi.mock("../tiles/tile-settings-context", () => ({
@@ -112,6 +117,14 @@ function row(overrides: Partial<StateActionRow> = {}): StateActionRow {
     timestampNs: 4n * NS_PER_SECOND,
     ...overrides,
   };
+}
+
+/** Texts of the value column only; plot-action cells are icon-only. */
+function valueCellTexts(pane: HTMLElement): (string | null)[] {
+  return within(pane)
+    .getAllByRole("cell")
+    .map((cell) => cell.textContent)
+    .filter((text) => text !== "");
 }
 
 function setState(
@@ -175,15 +188,9 @@ describe("StateActionTile", () => {
     const statePane = screen.getByRole("table", {
       name: "Observation state values",
     });
-    const stateValues = within(statePane).getAllByRole("cell");
-    expect(stateValues.map((cell) => cell.textContent)).toEqual(["1.25", "-2"]);
+    expect(valueCellTexts(statePane)).toEqual(["1.25", "-2"]);
     const actionPane = screen.getByRole("table", { name: "Action values" });
-    const actionValues = within(actionPane).getAllByRole("cell");
-    expect(actionValues.map((cell) => cell.textContent)).toEqual([
-      "0.5",
-      "NaN",
-      "7",
-    ]);
+    expect(valueCellTexts(actionPane)).toEqual(["0.5", "NaN", "7"]);
   });
 
   it("shows the playhead time only when it differs from the row time", () => {
@@ -262,10 +269,7 @@ describe("StateActionTile", () => {
       .getAllByRole("rowheader")
       .map((cell) => cell.textContent);
     expect(names).toEqual(["shoulder", "elbow", "[2]"]);
-    const values = within(statePane)
-      .getAllByRole("cell")
-      .map((cell) => cell.textContent);
-    expect(values).toEqual(["1", "2", "3"]);
+    expect(valueCellTexts(statePane)).toEqual(["1", "2", "3"]);
   });
 
   it("marks a dimension missing from the source row explicitly", () => {
@@ -284,10 +288,7 @@ describe("StateActionTile", () => {
     const statePane = screen.getByRole("table", {
       name: "Observation state values",
     });
-    const values = within(statePane)
-      .getAllByRole("cell")
-      .map((cell) => cell.textContent);
-    expect(values).toEqual(["1", "missing"]);
+    expect(valueCellTexts(statePane)).toEqual(["1", "missing"]);
   });
 
   it("shows the empty state distinctly from loading and errors", () => {
@@ -497,6 +498,42 @@ describe("StateActionTile", () => {
       before: 1,
     });
     expect(mocks.seek).toHaveBeenCalledWith(3);
+  });
+
+  it("offers an on-hover plot affordance for plottable dimensions", () => {
+    setState(
+      {
+        schema: {
+          action: SCHEMA.action,
+          rowCount: 20,
+          state: {
+            dimensions: [
+              {
+                index: 0,
+                name: "shoulder",
+                numericFieldPath: "observation.state.shoulder",
+              },
+              { index: 1, name: "elbow" },
+            ],
+            dtype: "float32",
+            featureName: "observation.state",
+            numericStreamId: "lerobot:observation.state",
+            shape: [2],
+          },
+        },
+        status: "ready",
+      },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    render(<StateActionTile />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Plot shoulder" }));
+    expect(mocks.addFieldToPlot).toHaveBeenCalledWith(
+      "lerobot:observation.state",
+      "observation.state.shoulder",
+    );
+    // A dimension without a numeric binding offers no affordance.
+    expect(screen.queryByRole("button", { name: "Plot elbow" })).toBe(null);
   });
 
   it("announces committed rows politely only while paused", () => {

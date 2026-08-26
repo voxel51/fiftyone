@@ -2411,13 +2411,19 @@ function stateActionFeatureSchema(
   feature: LeRobotFeature,
 ): StateActionFeatureSchema {
   const count = Math.max(1, numericElementCount(feature.shape));
+  const fieldPaths = scalarFieldNames(featureName, feature);
   return {
     dimensions: Array.from({ length: count }, (_, index) => {
       const name = feature.names?.[index];
-      return { index, ...(typeof name === "string" ? { name } : {}) };
+      return {
+        index,
+        ...(typeof name === "string" ? { name } : {}),
+        ...(fieldPaths[index] ? { numericFieldPath: fieldPaths[index] } : {}),
+      };
     }),
     dtype: feature.dtype,
     featureName,
+    numericStreamId: streamIdForFeature(featureName),
     shape: feature.shape ?? [],
   };
 }

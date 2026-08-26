@@ -275,6 +275,30 @@ describe("LeRobot state/action provider", () => {
     }
   });
 
+  it("binds dimensions to the numeric-series stream for add-to-plot", async () => {
+    const built = buildStateActionSource(BASIC_SCENARIO);
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects: built.reader,
+    }).open(built.source, built.io);
+    try {
+      const schema = session.stateAction?.schema;
+      expect(schema?.state?.numericStreamId).toBe("lerobot:observation.state");
+      expect(
+        schema?.state?.dimensions.map(
+          (dimension) => dimension.numericFieldPath,
+        ),
+      ).toEqual(["observation.state.shoulder", "observation.state.elbow"]);
+      expect(schema?.action?.numericStreamId).toBe("lerobot:action");
+      expect(
+        schema?.action?.dimensions.map(
+          (dimension) => dimension.numericFieldPath,
+        ),
+      ).toEqual(["action[0]", "action[1]"]);
+    } finally {
+      session.dispose();
+    }
+  });
+
   it("omits the capability when neither canonical feature is declared", async () => {
     const built = buildStateActionSource({
       timestampsSeconds: [0, 0.05],
