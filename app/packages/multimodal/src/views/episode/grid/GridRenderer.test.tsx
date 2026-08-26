@@ -224,7 +224,12 @@ vi.mock("./use-grid-poster-provider", () => ({
 }));
 
 vi.mock("./LeRobotGridHoverVideo", () => ({
-  LeRobotGridHoverVideo: () => <div data-testid="lerobot-grid-hover-video" />,
+  LeRobotGridHoverVideo: ({ playing }: { readonly playing?: boolean }) => (
+    <div
+      data-playing={playing ? "true" : "false"}
+      data-testid="lerobot-grid-hover-video"
+    />
+  ),
 }));
 
 vi.mock("./grid-camera-state", () => ({
@@ -686,7 +691,7 @@ describe("GridRenderer", () => {
     expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
   });
 
-  it("mounts native LeRobot playback over the retained poster only while playing", () => {
+  it("activates native LeRobot playback over the retained poster only while playing", () => {
     previewHarness.preview.cachedPoster = {
       bytes: new Uint8Array([1, 2, 3]),
       height: 180,
@@ -699,6 +704,8 @@ describe("GridRenderer", () => {
     };
     previewHarness.preview.frame = videoFrame(new Uint8Array([9, 9, 9]));
     previewHarness.preview.nativeVideo = {
+      codec: "h264",
+      codecString: "avc1.64000a",
       endTimeSeconds: 37.5,
       source: { sourceId: "video", url: "/asset/video.mp4" },
       startTimeSeconds: 14.2,
@@ -708,16 +715,22 @@ describe("GridRenderer", () => {
     const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
 
     expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
-    expect(screen.queryByTestId("lerobot-grid-hover-video")).toBeNull();
+    expect(screen.getByTestId("lerobot-grid-hover-video").dataset.playing).toBe(
+      "false",
+    );
 
     previewHarness.preview.isPlaying = true;
     rerender(<GridRenderer ctx={rendererCtx()} />);
     expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
-    expect(screen.getByTestId("lerobot-grid-hover-video")).toBeTruthy();
+    expect(screen.getByTestId("lerobot-grid-hover-video").dataset.playing).toBe(
+      "true",
+    );
 
     previewHarness.preview.isPlaying = false;
     rerender(<GridRenderer ctx={rendererCtx()} />);
-    expect(screen.queryByTestId("lerobot-grid-hover-video")).toBeNull();
+    expect(screen.getByTestId("lerobot-grid-hover-video").dataset.playing).toBe(
+      "false",
+    );
     expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
   });
 

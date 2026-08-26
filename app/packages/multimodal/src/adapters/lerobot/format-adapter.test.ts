@@ -77,6 +77,26 @@ const tinyMp4Bytes = new Uint8Array(
     "base64",
   ),
 );
+const tinyAv1Mp4Bytes = new Uint8Array(
+  Buffer.from(
+    [
+      "AAAAIGZ0eXBpc29tAAACAGlzb21hdjAxaXNvMm1wNDEAAAMebW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAA",
+      "AQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "AgAAAkl0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAB",
+      "AAAAAAAAAAAAAAAAAABAAAAAAEAAAABAAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAHBbWRpYQAAACB",
+      "tZGhkAAAAAAAAAAAAAAAAAABAAAAAQABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAAB",
+      "bG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAASxzdGJsAAAArHN0c",
+      "2QAAAAAAAAAAQAAAJxhdjAxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAEAAQABIAAAASAAAAAAAAAABF0xhdmM2Mi4xMS4xMDAg",
+      "bGlic3Z0YXYxAAAAAAAAAAAAGP//AAAAGGF2MUOBAAwACgoAAAACr/+AXwAIAAAACmZpZWwBAAAAABBwYXNwAAAAAQAAAAEAAAAU",
+      "YnRydAAAAAAAAAGoAAABqAAAABhzdHRzAAAAAAAAAAEAAAACAAAgAAAAABRzdHNzAAAAAAAAAAEAAAABAAAAHHN0c2MAAAAAAAAA",
+      "AQAAAAEAAAACAAAAAQAAABxzdHN6AAAAAAAAAAAAAAACAAAAIwAAABIAAAAUc3RjbwAAAAAAAAABAAADTgAAAGF1ZHRhAAAAWW1l",
+      "dGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALGlsc3QAAAAkqXRvbwAAABxkYXRhAAAAAQAAAABMYXZm",
+      "NjIuMy4xMDAAAAAIZnJlZQAAAD1tZGF0CgoAAAACr/+JXyAIMhUQAMGCCyxRQgAACJQNlzHvMaZyCPgyEDACBAkkkiOQAAACAAA",
+      "AnFA=",
+    ].join(""),
+    "base64",
+  ),
+);
 const assets: readonly AssetDescriptor[] = [
   {
     id: "info",
@@ -658,6 +678,8 @@ describe("LeRobot format adapter", () => {
       expect(first).toMatchObject({
         frameTimeNs: 0n,
         nativeVideo: {
+          codec: "h264",
+          codecString: expect.stringMatching(/^avc1\./),
           endTimeSeconds: 1,
           source: {
             sourceId: "video",
@@ -688,6 +710,95 @@ describe("LeRobot format adapter", () => {
       ).resolves.toMatchObject({
         frameTimeNs: 500_000_000n,
         status: "ready",
+      });
+    } finally {
+      preview.dispose();
+    }
+  });
+
+  it("exposes AV1 video as a native-only grid preview", async () => {
+    const av1InfoBytes = new TextEncoder().encode(
+      JSON.stringify({
+        ...info,
+        features: {
+          ...info.features,
+          "observation.images.test": {
+            ...info.features["observation.images.test"],
+            info: { "video.codec": "av1", "video.fps": 2 },
+          },
+        },
+      }),
+    );
+    const av1Assets = assets.map((asset) => {
+      if (asset.id === "info") {
+        return {
+          ...asset,
+          metadata: { sizeBytes: av1InfoBytes.byteLength.toString() },
+        };
+      }
+      if (asset.id === "video") {
+        return {
+          ...asset,
+          metadata: {
+            ...asset.metadata,
+            sizeBytes: tinyAv1Mp4Bytes.byteLength.toString(),
+          },
+        };
+      }
+      return asset;
+    });
+    const av1Source: EpisodeSource = {
+      ...source,
+      assets: {
+        list: async () => av1Assets,
+        resolve: async (assetId) => ({
+          ...descriptor(assetId),
+          sizeBytes: av1Assets.find((asset) => asset.id === assetId)?.metadata
+            ?.sizeBytes,
+        }),
+      },
+    };
+    const av1Io: ByteResources = {
+      readBytes: async (request) => {
+        const start = Number(request.range.offset);
+        const end = start + Number(request.range.length);
+        if (request.source.sourceId === "video") {
+          return {
+            bytes: tinyAv1Mp4Bytes.slice(start, end),
+            range: request.range,
+            source: request.source,
+          };
+        }
+        if (request.source.sourceId !== "info") return io.readBytes(request);
+        return {
+          bytes: av1InfoBytes.slice(start, end),
+          range: request.range,
+          source: request.source,
+        };
+      },
+    };
+    const preview = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).openPreview?.(av1Source, av1Io);
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      await expect(
+        preview.read({ sourceName: "observation.images.test" }),
+      ).resolves.toMatchObject({
+        frame: null,
+        nativeVideo: {
+          codec: "av1",
+          codecString: expect.stringMatching(/^av01\./),
+          endTimeSeconds: 1,
+          source: { sourceId: "video", url: "memory://video" },
+          startTimeSeconds: 0,
+        },
+        status: "ready",
+        streamSourceName: "observation.images.test",
+        streamSourceNames: [
+          "observation.images.embedded",
+          "observation.images.test",
+        ],
       });
     } finally {
       preview.dispose();

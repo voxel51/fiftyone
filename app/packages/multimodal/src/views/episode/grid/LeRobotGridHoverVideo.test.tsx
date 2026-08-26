@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EpisodePreviewNativeVideo } from "../../../ir";
 import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
+import { resetGridNativeVideoLeasesForTests } from "./grid-native-video-lease";
 
 type FrameCallback = (
   now: number,
@@ -21,6 +22,7 @@ const frameHarness = {
 };
 
 beforeEach(() => {
+  resetGridNativeVideoLeasesForTests();
   frameHarness.callbacks.clear();
   frameHarness.nextHandle = 1;
   Object.defineProperty(
@@ -52,10 +54,19 @@ beforeEach(() => {
     () => undefined,
   );
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+  Object.defineProperty(HTMLVideoElement.prototype, "videoWidth", {
+    configurable: true,
+    get: () => 320,
+  });
+  Object.defineProperty(HTMLVideoElement.prototype, "videoHeight", {
+    configurable: true,
+    get: () => 180,
+  });
 });
 
 afterEach(() => {
   cleanup();
+  resetGridNativeVideoLeasesForTests();
   vi.restoreAllMocks();
 });
 
@@ -83,7 +94,7 @@ describe("LeRobotGridHoverVideo", () => {
     expect(screen.getByTestId("cached-poster")).toBeTruthy();
     expect(element.style.visibility).not.toBe("visible");
 
-    presentFrame(14.2);
+    presentFrame(14.1995);
     expect(element.style.visibility).toBe("visible");
     expect(screen.getByTestId("cached-poster")).toBeTruthy();
   });
@@ -127,6 +138,70 @@ describe("LeRobotGridHoverVideo", () => {
     expect(element.style.visibility).not.toBe("visible");
   });
 
+  it("captures and retains an uncached native poster without playing", () => {
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      () => ({ drawImage }) as unknown as never,
+    );
+    const onCanvasCommitted = vi.fn();
+    const onSurfaceRetainedBytesChange = vi.fn();
+    render(
+      <LeRobotGridHoverVideo
+        capturePoster
+        onCanvasCommitted={onCanvasCommitted}
+        onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
+        playing={false}
+        video={nativeVideo(14.2, 37.5)}
+      />,
+    );
+    const element = screen.getByTestId(
+      "lerobot-grid-hover-video",
+    ) as HTMLVideoElement;
+    const poster = screen.getByTestId(
+      "lerobot-grid-native-poster",
+    ) as HTMLCanvasElement;
+
+    fireEvent.loadedMetadata(element);
+    expect(element.currentTime).toBe(14.2);
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+
+    Object.defineProperty(element, "readyState", {
+      configurable: true,
+      value: 4,
+    });
+    presentFrame(14.2);
+    expect(drawImage).toHaveBeenCalledWith(element, 0, 0, 320, 180);
+    expect(onCanvasCommitted).toHaveBeenCalledWith(poster, {
+      height: 180,
+      width: 320,
+    });
+    expect(onSurfaceRetainedBytesChange).toHaveBeenCalledWith(320 * 180 * 4);
+    expect(poster.style.visibility).toBe("visible");
+    expect(element.getAttribute("src")).toBeNull();
+  });
+
+  it("reports native AV1 capability failure without loading the asset", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockReturnValue("");
+    const onError = vi.fn();
+
+    render(
+      <LeRobotGridHoverVideo
+        onError={onError}
+        video={nativeVideo(0, 1, "av1")}
+      />,
+    );
+
+    const element = screen.getByTestId(
+      "lerobot-grid-hover-video",
+    ) as HTMLVideoElement;
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "AV1 video playback is unsupported by this browser",
+      }),
+    );
+    expect(element.getAttribute("src")).toBeNull();
+  });
+
   it("cancels frame work and releases the media source on cleanup", () => {
     const { unmount } = render(
       <LeRobotGridHoverVideo video={nativeVideo(30, 31)} />,
@@ -152,8 +227,11 @@ describe("LeRobotGridHoverVideo", () => {
 function nativeVideo(
   startTimeSeconds: number,
   endTimeSeconds: number,
+  codec: EpisodePreviewNativeVideo["codec"] = "h264",
 ): EpisodePreviewNativeVideo {
   return {
+    codec,
+    codecString: codec === "av1" ? "av01.0.00M.08" : "avc1.64000a",
     endTimeSeconds,
     source: {
       sourceId: "video",

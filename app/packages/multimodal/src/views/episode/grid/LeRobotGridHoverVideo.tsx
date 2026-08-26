@@ -1,8 +1,13 @@
 import { getFetchUrl } from "@fiftyone/utilities";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import type { EpisodePreviewNativeVideo } from "../../../ir";
+import type { BitmapDrawSize } from "../../../visualization/media-2d/BitmapImageView";
 import classes from "./GridRenderer.module.css";
+import {
+  requestGridNativeVideoLease,
+  type GridNativeVideoLeaseRequest,
+} from "./grid-native-video-lease";
 
 type VideoFrameCallback = (
   now: number,
@@ -14,22 +19,53 @@ type VideoWithFrameCallbacks = HTMLVideoElement & {
   requestVideoFrameCallback?: (callback: VideoFrameCallback) => number;
 };
 
-/** Native MP4 hover surface constrained to one LeRobot episode interval. */
-export function LeRobotGridHoverVideo({
-  video,
-}: {
-  readonly video: EpisodePreviewNativeVideo;
-}) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const { endTimeSeconds, startTimeSeconds } = video;
-  const sourceUrl = getFetchUrl(video.source.url);
+// Native media clocks commonly round MP4 timestamps to six decimal places.
+// One millisecond accepts that representation loss while remaining far below
+// one 15fps DROID frame, so an adjacent episode frame is never admitted.
+const START_TIME_EPSILON_SECONDS = 0.001;
 
-  // This effect owns the native media lifecycle for exactly one hover. It
-  // seeks into the shared MP4, loops before the adjacent episode, and drops
-  // the source on cleanup so rapid hover changes cannot retain old work.
+interface LeRobotGridHoverVideoProps {
+  readonly active?: boolean;
+  readonly capturePoster?: boolean;
+  readonly onCanvasCommitted?: (
+    canvas: HTMLCanvasElement,
+    size: BitmapDrawSize,
+  ) => void;
+  readonly onError?: (error: Error) => void;
+  readonly onSurfaceRetainedBytesChange?: (bytes: number) => void;
+  readonly playing?: boolean;
+  readonly video: EpisodePreviewNativeVideo;
+}
+
+/** Native MP4 grid surface constrained to one LeRobot episode interval. */
+export function LeRobotGridHoverVideo({
+  active = true,
+  capturePoster = false,
+  onCanvasCommitted,
+  onError,
+  onSurfaceRetainedBytesChange,
+  playing = true,
+  video,
+}: LeRobotGridHoverVideoProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const posterRef = useRef<HTMLCanvasElement | null>(null);
+  const posterReadyRef = useRef(false);
+  const requestRef = useRef<GridNativeVideoLeaseRequest | null>(null);
+  const holderId = useId();
+  const [posterReady, setPosterReady] = useState(false);
+  const { codec, codecString, endTimeSeconds, startTimeSeconds } = video;
+  const sourceUrl = getFetchUrl(video.source.url);
+  const wantsMedia = active && (playing || (capturePoster && !posterReady));
+
   useEffect(() => {
+    if (!wantsMedia) return undefined;
     const element = videoRef.current as VideoWithFrameCallbacks | null;
-    if (!element) return undefined;
+    const poster = posterRef.current;
+    if (!element || !poster) return undefined;
+    if (codec === "av1" && !supportsNativeCodec(element, codecString)) {
+      onError?.(new Error("AV1 video playback is unsupported by this browser"));
+      return undefined;
+    }
 
     const requestFrame = element.requestVideoFrameCallback;
     const cancelFrame = element.cancelVideoFrameCallback;
@@ -39,15 +75,21 @@ export function LeRobotGridHoverVideo({
     let frameHandle: number | null = null;
     let playGeneration = 0;
     let showingVideo = false;
-    element.style.visibility = "hidden";
+    let started = false;
+    let posterCaptured = posterReadyRef.current;
+    let posterRetryCount = 0;
+    let posterRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
     const setShowingVideo = (showing: boolean) => {
       if (showingVideo === showing) return;
       showingVideo = showing;
       element.style.visibility = showing ? "visible" : "hidden";
+      poster.style.visibility =
+        showing || !posterCaptured ? "hidden" : "visible";
     };
     const inEpisode = (timeSeconds: number) =>
-      timeSeconds >= startTimeSeconds && timeSeconds < endTimeSeconds;
+      timeSeconds >= startTimeSeconds - START_TIME_EPSILON_SECONDS &&
+      timeSeconds < endTimeSeconds;
     const cancelPendingFrame = () => {
       const handle = frameHandle;
       frameHandle = null;
@@ -73,36 +115,91 @@ export function LeRobotGridHoverVideo({
         }
       });
     };
-    const playFromEpisodeStart = () => {
+    const startAtEpisodeStart = () => {
       if (disposed || failed) return;
       setShowingVideo(false);
       cancelPendingFrame();
-      element.pause();
+      element?.pause();
       element.currentTime = startTimeSeconds;
       scheduleFrame();
-      play();
+      if (playing) play();
+      else schedulePosterRetry();
+    };
+    const capturePresentedPoster = () => {
+      if (posterCaptured || !capturePoster) return true;
+      const width = element.videoWidth;
+      const height = element.videoHeight;
+      if (width <= 0 || height <= 0 || element.readyState < 2) return false;
+      const context = poster.getContext("2d");
+      if (!context) throw new Error("Unable to create native video poster");
+      poster.width = width;
+      poster.height = height;
+      context.drawImage(element, 0, 0, width, height);
+      posterCaptured = true;
+      poster.style.visibility = playing ? "hidden" : "visible";
+      onSurfaceRetainedBytesChange?.(width * height * 4);
+      onCanvasCommitted?.(poster, { height, width });
+      posterReadyRef.current = true;
+      setPosterReady(true);
+      if (!playing) requestRef.current?.release();
+      return true;
+    };
+    const schedulePosterRetry = () => {
+      if (disposed || playing || posterCaptured || posterRetryTimer !== null) {
+        return;
+      }
+      if (posterRetryCount >= 50) {
+        fail(new Error("Timed out waiting for a native video poster frame"));
+        return;
+      }
+      posterRetryCount += 1;
+      posterRetryTimer = setTimeout(() => {
+        posterRetryTimer = null;
+        try {
+          if (!inEpisode(element.currentTime) || !capturePresentedPoster()) {
+            schedulePosterRetry();
+          }
+        } catch (error) {
+          fail(error);
+        }
+      }, 100);
     };
     const presentFallbackFrame = () => {
-      if (!supportsFrameCallbacks && inEpisode(element.currentTime)) {
-        setShowingVideo(true);
+      if (
+        inEpisode(element.currentTime) &&
+        (!supportsFrameCallbacks || !playing)
+      ) {
+        try {
+          if (!capturePresentedPoster()) schedulePosterRetry();
+          setShowingVideo(playing);
+        } catch (error) {
+          fail(error);
+        }
       }
     };
     const onTimeUpdate = () => {
       if (element.currentTime >= endTimeSeconds) {
-        playFromEpisodeStart();
+        startAtEpisodeStart();
       } else if (element.currentTime < startTimeSeconds) {
         setShowingVideo(false);
       } else {
         presentFallbackFrame();
       }
     };
-    const onError = () => {
+    const onMediaError = () => {
+      fail(new Error(`Unable to play native ${codec.toUpperCase()} video`));
+    };
+
+    function fail(error: unknown) {
+      if (failed || disposed) return;
       failed = true;
       playGeneration += 1;
       setShowingVideo(false);
       cancelPendingFrame();
-      element.pause();
-    };
+      element?.pause();
+      requestRef.current?.release();
+      onError?.(error instanceof Error ? error : new Error(String(error)));
+    }
 
     function onPresentedFrame(
       _now: number,
@@ -111,56 +208,136 @@ export function LeRobotGridHoverVideo({
       frameHandle = null;
       if (disposed) return;
       if (metadata.mediaTime >= endTimeSeconds) {
-        playFromEpisodeStart();
+        startAtEpisodeStart();
         return;
       }
-      setShowingVideo(inEpisode(metadata.mediaTime));
-      scheduleFrame();
+      if (!inEpisode(metadata.mediaTime)) {
+        setShowingVideo(false);
+        scheduleFrame();
+        return;
+      }
+      try {
+        if (!capturePresentedPoster()) schedulePosterRetry();
+        setShowingVideo(playing);
+        if (playing) scheduleFrame();
+      } catch (error) {
+        fail(error);
+      }
     }
 
-    element.addEventListener("ended", playFromEpisodeStart);
-    element.addEventListener("error", onError);
-    element.addEventListener("loadeddata", presentFallbackFrame);
-    element.addEventListener("loadedmetadata", playFromEpisodeStart);
-    element.addEventListener("seeked", presentFallbackFrame);
-    element.addEventListener("timeupdate", onTimeUpdate);
-    setShowingVideo(false);
-    if (element.getAttribute("src") !== sourceUrl) {
-      element.setAttribute("src", sourceUrl);
-      element.load();
-    }
-
-    if (element.readyState >= 1) {
-      playFromEpisodeStart();
-    }
-
-    return () => {
-      disposed = true;
+    const cleanupMedia = () => {
+      if (!started) return;
+      started = false;
       playGeneration += 1;
       cancelPendingFrame();
-      element.removeEventListener("ended", playFromEpisodeStart);
-      element.removeEventListener("error", onError);
+      if (posterRetryTimer !== null) {
+        clearTimeout(posterRetryTimer);
+        posterRetryTimer = null;
+      }
+      element.removeEventListener("ended", startAtEpisodeStart);
+      element.removeEventListener("error", onMediaError);
       element.removeEventListener("loadeddata", presentFallbackFrame);
-      element.removeEventListener("loadedmetadata", playFromEpisodeStart);
+      element.removeEventListener("loadedmetadata", startAtEpisodeStart);
       element.removeEventListener("seeked", presentFallbackFrame);
       element.removeEventListener("timeupdate", onTimeUpdate);
       element.style.visibility = "hidden";
+      poster.style.visibility = posterCaptured ? "visible" : "hidden";
       element.pause();
       element.removeAttribute("src");
       element.load();
     };
-  }, [endTimeSeconds, sourceUrl, startTimeSeconds]);
+    const startMedia = () => {
+      if (disposed || started) return;
+      started = true;
+      element.addEventListener("ended", startAtEpisodeStart);
+      element.addEventListener("error", onMediaError);
+      element.addEventListener("loadeddata", presentFallbackFrame);
+      element.addEventListener("loadedmetadata", startAtEpisodeStart);
+      element.addEventListener("seeked", presentFallbackFrame);
+      element.addEventListener("timeupdate", onTimeUpdate);
+      setShowingVideo(false);
+      element.setAttribute("src", sourceUrl);
+      element.load();
+      if (element.readyState >= 1) startAtEpisodeStart();
+    };
+    const request = requestGridNativeVideoLease(
+      holderId,
+      playing ? "playing" : "poster",
+      startMedia,
+      cleanupMedia,
+    );
+    requestRef.current = request;
+
+    return () => {
+      disposed = true;
+      request.release();
+      if (requestRef.current === request) requestRef.current = null;
+      cleanupMedia();
+    };
+  }, [
+    capturePoster,
+    codec,
+    codecString,
+    endTimeSeconds,
+    holderId,
+    onCanvasCommitted,
+    onError,
+    onSurfaceRetainedBytesChange,
+    playing,
+    sourceUrl,
+    startTimeSeconds,
+    wantsMedia,
+  ]);
+
+  useEffect(() => {
+    if (active) return;
+    const poster = posterRef.current;
+    if (poster) {
+      poster.width = 0;
+      poster.height = 0;
+      poster.style.visibility = "hidden";
+    }
+    posterReadyRef.current = false;
+    setPosterReady(false);
+    onSurfaceRetainedBytesChange?.(0);
+  }, [active, onSurfaceRetainedBytesChange]);
+
+  useEffect(
+    () => () => {
+      const poster = posterRef.current;
+      if (poster) {
+        poster.width = 0;
+        poster.height = 0;
+      }
+      onSurfaceRetainedBytesChange?.(0);
+    },
+    [onSurfaceRetainedBytesChange],
+  );
 
   return (
-    <video
-      aria-hidden
-      className={classes.nativeVideo}
-      data-testid="lerobot-grid-hover-video"
-      muted
-      playsInline
-      preload="metadata"
-      ref={videoRef}
-      src={sourceUrl}
-    />
+    <>
+      <canvas
+        aria-hidden
+        className={classes.nativePoster}
+        data-testid="lerobot-grid-native-poster"
+        ref={posterRef}
+      />
+      <video
+        aria-hidden
+        className={classes.nativeVideo}
+        data-testid="lerobot-grid-hover-video"
+        muted
+        playsInline
+        preload="metadata"
+        ref={videoRef}
+      />
+    </>
   );
+}
+
+function supportsNativeCodec(
+  element: HTMLVideoElement,
+  codecString: string,
+): boolean {
+  return element.canPlayType(`video/mp4; codecs="${codecString}"`) !== "";
 }

@@ -286,7 +286,7 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
     this.ensureOpen();
     throwIfAborted(options.signal);
     const previewStreams = this.session.manifest.streams
-      .filter(isRenderableCameraStream)
+      .filter(isPreviewableCameraStream)
       .sort(comparePreviewStreams);
     const selected = request.sourceName
       ? previewStreams.find(
@@ -315,17 +315,19 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
         ])
       : frameDurationNs;
     let frames: readonly DecodedFrame[] = [];
-    for await (const batch of this.session.read({
-      priority: options.priority,
-      signal: options.signal,
-      streams: [selected.id],
-      window: {
-        endNs: minBigInt(selected.timeRange.endNs, startNs + readDurationNs),
-        startNs,
-      },
-    })) {
-      frames = batch.frames;
-      break;
+    if (isSharedDecoderCameraStream(selected)) {
+      for await (const batch of this.session.read({
+        priority: options.priority,
+        signal: options.signal,
+        streams: [selected.id],
+        window: {
+          endNs: minBigInt(selected.timeRange.endNs, startNs + readDurationNs),
+          startNs,
+        },
+      })) {
+        frames = batch.frames;
+        break;
+      }
     }
     const nativeVideo = await this.session.resolveNativePreviewVideo(
       selected.id,
@@ -366,7 +368,7 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
       streamId: selected.id,
       streamSourceName: selected.sourceName,
       streamSourceNames,
-      status: frame ? "ready" : "empty",
+      status: frame || nativeVideo ? "ready" : "empty",
       ...(videoDecodeRunway?.length ? { videoDecodeRunway } : {}),
     };
   }
@@ -568,11 +570,17 @@ class LeRobotEpisodeSession implements EpisodeSession {
   ): Promise<EpisodePreviewNativeVideo | undefined> {
     const binding = this.videoBindings.get(streamId);
     if (!binding) return undefined;
+    const index = await this.readVideoIndex(binding, signal);
+    const codecString = index.track.codec;
+    const codec = codecFamily(codecString);
+    if (codec === "unknown") return undefined;
     const source = await this.state.source.assets.resolve(binding.asset.id, {
       signal,
     });
     throwIfAborted(signal);
     return {
+      codec,
+      codecString,
       endTimeSeconds: binding.toSeconds,
       source,
       startTimeSeconds: binding.fromSeconds,
@@ -2098,10 +2106,24 @@ function requireRowInterval(asset: AssetDescriptor) {
   return selector;
 }
 
-function isRenderableCameraStream(stream: StreamDescriptor) {
+function isSharedDecoderCameraStream(stream: StreamDescriptor) {
   return (
     stream.metadata?.[SCENE_SOURCE_METADATA.TYPE] === SCENE_SOURCE_TYPE.IMAGE &&
     stream.metadata?.[STREAM_METADATA.DECODE_STATUS] === "decodable"
+  );
+}
+
+/**
+ * Grid previews may use a browser-native video even before its codec is
+ * implemented by the shared synchronized decoder. Keep that capability local
+ * to preview selection so modal inventories remain truthful.
+ */
+function isPreviewableCameraStream(stream: StreamDescriptor) {
+  if (isSharedDecoderCameraStream(stream)) return true;
+  return (
+    stream.kind === STREAM_KIND.VIDEO &&
+    stream.metadata?.[SCENE_SOURCE_METADATA.TYPE] === SCENE_SOURCE_TYPE.IMAGE &&
+    codecFamily(stream.metadata?.["lerobot.codec"] ?? "") === "av1"
   );
 }
 

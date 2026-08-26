@@ -34,6 +34,7 @@
   position: absolute;
 }
 
+.nativePoster,
 .nativeVideo {
   height: 100%;
   inset: 0;
@@ -42,7 +43,14 @@
   position: absolute;
   visibility: hidden;
   width: 100%;
+}
+
+.nativePoster {
   z-index: 1;
+}
+
+.nativeVideo {
+  z-index: 2;
 }
 
 .pointCloud {

@@ -1122,6 +1122,8 @@ function readyResult({
 
 function nativeVideo(): EpisodePreviewNativeVideo {
   return {
+    codec: "h264",
+    codecString: "avc1.64000a",
     endTimeSeconds: 37.5,
     source: { sourceId: "video", url: "/asset/video.mp4" },
     startTimeSeconds: 14.2,

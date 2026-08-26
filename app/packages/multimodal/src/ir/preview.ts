@@ -1,5 +1,9 @@
 import type { ByteSourceDescriptor } from "./bytes";
-import type { CameraVisualization, PointCloudVisualization } from "./frames";
+import type {
+  CameraVisualization,
+  EncodedVideoVisualization,
+  PointCloudVisualization,
+} from "./frames";
 import type { EpisodeManifest, StreamId } from "./manifest";
 import type { EpisodeTimeline } from "./playback";
 import type { TimeWindow } from "./time";
@@ -20,6 +24,10 @@ export type EpisodePreviewReadStatus = "empty" | "ready" | "unavailable";
 
 /** Browser-native video source scoped to one half-open episode interval. */
 export interface EpisodePreviewNativeVideo {
+  /** Browser codec family used for runtime native-playback capability checks. */
+  readonly codec: EncodedVideoVisualization["codec"];
+  /** Container-qualified codec string used by `canPlayType()`. */
+  readonly codecString: string;
   readonly endTimeSeconds: number;
   readonly source: ByteSourceDescriptor;
   readonly startTimeSeconds: number;

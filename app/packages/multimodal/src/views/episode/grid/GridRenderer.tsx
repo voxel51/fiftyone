@@ -255,6 +255,12 @@ export function GridRenderer({
     readonly owner: EpisodePosterFrame | GridPosterCacheEntry;
   } | null>(null);
   const displayOwner = preview.frame ?? preview.cachedPoster;
+  const [nativeSurfaceRetainedBytes, setNativeSurfaceRetainedBytes] =
+    useState(0);
+  const [nativeVideoError, setNativeVideoError] = useState<string | null>(null);
+  useEffect(() => {
+    setNativeVideoError(null);
+  }, [preview.nativeVideo]);
   const surfaceRetainedBytes =
     surfaceRetention && surfaceRetention.owner === displayOwner
       ? surfaceRetention.bytes
@@ -321,13 +327,29 @@ export function GridRenderer({
       preview.streamSourceNames,
     ],
   );
+  const handleNativePosterCanvasCommitted = useCallback(
+    (canvas: HTMLCanvasElement, size: BitmapDrawSize) =>
+      handlePosterCanvasCommitted("image", canvas, size),
+    [handlePosterCanvasCommitted],
+  );
+  const handleNativeVideoError = useCallback(
+    (error: Error) => setNativeVideoError(error.message),
+    [],
+  );
 
   // This effect keeps the grid cache's retained-byte estimate current.
   useEffect(() => {
     onRetainedBytesChange?.(
-      retainedBinaryBytes(preview.frame) + surfaceRetainedBytes,
+      retainedBinaryBytes(preview.frame) +
+        surfaceRetainedBytes +
+        nativeSurfaceRetainedBytes,
     );
-  }, [onRetainedBytesChange, preview.frame, surfaceRetainedBytes]);
+  }, [
+    nativeSurfaceRetainedBytes,
+    onRetainedBytesChange,
+    preview.frame,
+    surfaceRetainedBytes,
+  ]);
 
   // This effect registers the sample's previewable streams for grid controls.
   useEffect(() => {
@@ -375,9 +397,9 @@ export function GridRenderer({
         />
       ) : (
         <PreviewStatus
-          error={preview.error}
+          error={nativeVideoError ?? preview.error}
           hasPreviewStreams={preview.hasPreviewStreams}
-          status={preview.status}
+          status={nativeVideoError ? "error" : preview.status}
         />
       )}
       {preview.frame && preview.isBuffering ? (
@@ -388,9 +410,15 @@ export function GridRenderer({
           <Spinner size={Size.Xs} />
         </span>
       ) : null}
-      {preview.isPlaying && preview.nativeVideo ? (
+      {preview.nativeVideo ? (
         <LeRobotGridHoverVideo
-          key={`${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.startTimeSeconds}:${preview.nativeVideo.endTimeSeconds}`}
+          active={visible}
+          capturePoster={!preview.frame && !preview.cachedPoster}
+          key={`${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.codec}:${preview.nativeVideo.startTimeSeconds}:${preview.nativeVideo.endTimeSeconds}`}
+          onCanvasCommitted={handleNativePosterCanvasCommitted}
+          onError={handleNativeVideoError}
+          onSurfaceRetainedBytesChange={setNativeSurfaceRetainedBytes}
+          playing={preview.isPlaying}
           video={preview.nativeVideo}
         />
       ) : null}
