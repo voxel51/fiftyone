@@ -39,7 +39,7 @@ jobs:
        contains(github.event.pull_request.labels.*.name, 'cherry-pick-to-release'))
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Blobless clone: the cherry-pick needs the full commit graph for
           # the merge-commit parent lookup, but only the blobs it touches.
