@@ -18,7 +18,11 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { StateActionFeatureSchema } from "../../../ports";
+import type {
+  StateActionFeatureSchema,
+  StateActionFeatureStats,
+  StateActionStats,
+} from "../../../ports";
 import { errorMessage } from "../../../utils/errors";
 import { virtualLogRowRange } from "../../../visualization/logs/log-console-virtualization";
 import { useDataStream } from "../playback/data-stream-context";
@@ -57,6 +61,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
   const {
     ensureSchema,
     holdCursorRow,
+    readDimensionStats,
     readRowAtCursor,
     readRowIndexWindow,
     retryRead,
@@ -96,6 +101,22 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
   useEffect(() => subscribeRow(), [subscribeRow]);
 
   const schemaFacts = schema.status === "ready" ? schema.schema : null;
+  const [dimensionStats, setDimensionStats] = useState<StateActionStats | null>(
+    null,
+  );
+  // This effect loads the declared dataset ranges once per session so value
+  // rows can carry faint in-context markers; absent stats render none.
+  useEffect(() => {
+    if (!schemaFacts) return undefined;
+    const controller = new AbortController();
+    readDimensionStats(controller.signal).then(
+      (result) => {
+        if (!controller.signal.aborted) setDimensionStats(result);
+      },
+      () => undefined,
+    );
+    return () => controller.abort();
+  }, [readDimensionStats, schemaFacts]);
   const row = rowState?.row ?? null;
   const rowCount = schemaFacts?.rowCount ?? 0;
   const canStepPrevious = Boolean(row && row.frameIndex > 0 && !stepPending);
@@ -376,6 +397,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
                   label={STATE_PANE_LABEL}
                   onPlotField={addFieldToPlot}
                   schema={schemaFacts.state}
+                  stats={dimensionStats?.state}
                   values={row?.state}
                 />
               ) : null}
@@ -385,6 +407,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
                   label={ACTION_PANE_LABEL}
                   onPlotField={addFieldToPlot}
                   schema={schemaFacts.action}
+                  stats={dimensionStats?.action}
                   values={row?.action}
                 />
               ) : null}
@@ -404,17 +427,22 @@ function FeaturePane({
   label,
   onPlotField,
   schema,
+  stats,
   values,
 }: {
   readonly featureError?: string;
   readonly label: string;
   readonly onPlotField?: (stream: string, fieldPath: string) => void;
   readonly schema: StateActionFeatureSchema;
+  readonly stats?: StateActionFeatureStats;
   readonly values?: readonly unknown[];
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ height: 0, scrollTop: 0 });
-  const rows = useMemo(() => paneRows(schema, values), [schema, values]);
+  const rows = useMemo(
+    () => paneRows(schema, values, stats),
+    [schema, stats, values],
+  );
   const virtualize = rows.length > VIRTUALIZE_AFTER_ROWS;
 
   // This effect tracks the fixed-row viewport for large vectors so long
@@ -475,6 +503,9 @@ function FeaturePane({
         >
           <div className={styles.columnHeaders} role="row">
             <span role="columnheader">Dimension</span>
+            <span role="columnheader">
+              <span className={styles.srOnly}>Declared range</span>
+            </span>
             <span role="columnheader" style={{ textAlign: "right" }}>
               Value
             </span>
@@ -509,6 +540,9 @@ function FeaturePane({
                     title={paneRow.name}
                   >
                     {paneRow.name}
+                  </span>
+                  <span className={styles.dimTrackCell} role="cell">
+                    <ValueMarker marker={paneRow.marker} />
                   </span>
                   <span className={styles.dimValue} role="cell">
                     <ValueCell value={paneRow.value} />
@@ -546,9 +580,18 @@ function FeaturePane({
 
 interface PaneRow {
   readonly index: number;
+  readonly marker?: ValueMarkerFacts;
   readonly name: string;
   readonly plotFieldPath?: string;
   readonly value: PaneValue;
+}
+
+/** Where one exact value sits inside its declared dataset range. */
+interface ValueMarkerFacts {
+  readonly band?: readonly [number, number];
+  readonly outOfRange: boolean;
+  readonly position: number;
+  readonly title: string;
 }
 
 type PaneValue =
@@ -559,6 +602,7 @@ type PaneValue =
 function paneRows(
   schema: StateActionFeatureSchema,
   values: readonly unknown[] | undefined,
+  stats: StateActionFeatureStats | undefined,
 ): readonly PaneRow[] {
   // Never shift or hide values on a shape mismatch: render every declared
   // dimension and every extra source value under its stable numeric index.
@@ -566,14 +610,18 @@ function paneRows(
   return Array.from({ length: count }, (_, index) => {
     const dimension = schema.dimensions[index];
     const name = dimension?.name ?? `[${index}]`;
+    const raw =
+      values !== undefined && index < values.length ? values[index] : undefined;
     const value: PaneValue =
       values === undefined
         ? { kind: "skeleton" }
         : index >= values.length
           ? { kind: "missing" }
-          : formatStateActionValue(values[index]);
+          : formatStateActionValue(raw);
+    const marker = valueMarker(stats, index, raw);
     return {
       index,
+      ...(marker ? { marker } : {}),
       name,
       ...(dimension?.numericFieldPath
         ? { plotFieldPath: dimension.numericFieldPath }
@@ -581,6 +629,69 @@ function paneRows(
       value,
     };
   });
+}
+
+/**
+ * Positions one exact value on its dimension's declared dataset range so
+ * the row carries a faint in-context marker. Only source-declared facts
+ * feed the geometry; a value outside the declared range clamps to the
+ * edge and tints the tick instead of stretching the scale.
+ */
+function valueMarker(
+  stats: StateActionFeatureStats | undefined,
+  index: number,
+  value: unknown,
+): ValueMarkerFacts | undefined {
+  if (!stats || typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined;
+  }
+  const min = stats.min?.[index];
+  const max = stats.max?.[index];
+  if (
+    min === undefined ||
+    max === undefined ||
+    !Number.isFinite(min) ||
+    !Number.isFinite(max) ||
+    max <= min
+  ) {
+    return undefined;
+  }
+  const position = (candidate: number) =>
+    Math.min(1, Math.max(0, (candidate - min) / (max - min)));
+  const q01 = stats.q01?.[index];
+  const q99 = stats.q99?.[index];
+  return {
+    ...(q01 !== undefined && q99 !== undefined
+      ? { band: [position(q01), position(q99)] as const }
+      : {}),
+    outOfRange: value < min || value > max,
+    position: position(value),
+    title: `declared ${formatStateActionValue(min).text} … ${formatStateActionValue(max).text}`,
+  };
+}
+
+/** Faint declared-range strip with a tick at the current value. */
+function ValueMarker({ marker }: { readonly marker?: ValueMarkerFacts }) {
+  if (!marker) return null;
+  return (
+    <span aria-hidden className={styles.dimTrack} title={marker.title}>
+      {marker.band ? (
+        <span
+          className={styles.dimTrackBand}
+          style={{
+            left: `${marker.band[0] * 100}%`,
+            width: `${Math.max(1, (marker.band[1] - marker.band[0]) * 100)}%`,
+          }}
+        />
+      ) : null}
+      <span
+        className={`${styles.dimTrackTick} ${
+          marker.outOfRange ? styles.dimTrackTickOut : ""
+        }`}
+        style={{ left: `${marker.position * 100}%` }}
+      />
+    </span>
+  );
 }
 
 function ValueCell({ value }: { readonly value: PaneValue }) {

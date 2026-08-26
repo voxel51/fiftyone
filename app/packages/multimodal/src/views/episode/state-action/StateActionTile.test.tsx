@@ -7,7 +7,11 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { StateActionRow, StateActionSchema } from "../../../ports";
+import type {
+  StateActionRow,
+  StateActionSchema,
+  StateActionStats,
+} from "../../../ports";
 import type {
   StateActionRowState,
   StateActionSchemaState,
@@ -33,6 +37,7 @@ const mocks = vi.hoisted(() => ({
   isPlayPending: false,
   pause: vi.fn(),
   playheadSec: 4,
+  readDimensionStats: vi.fn<() => Promise<StateActionStats | null>>(),
   readRowAtCursor: vi.fn(),
   readRowIndexWindow: vi.fn(),
   retryRead: vi.fn(),
@@ -79,7 +84,7 @@ vi.mock("./state-action-context", () => ({
   useStateActionContext: () => ({
     ensureSchema: mocks.ensureSchema,
     holdCursorRow: mocks.holdCursorRow,
-    readDimensionStats: async () => null,
+    readDimensionStats: mocks.readDimensionStats,
     readRowAtCursor: mocks.readRowAtCursor,
     readRowIndexWindow: mocks.readRowIndexWindow,
     retryRead: mocks.retryRead,
@@ -141,6 +146,7 @@ beforeEach(() => {
   mocks.isPlaying = false;
   mocks.isPlayPending = false;
   mocks.playheadSec = 4;
+  mocks.readDimensionStats.mockResolvedValue(null);
   setState({ schema: SCHEMA, status: "ready" }, undefined);
 });
 
@@ -221,6 +227,46 @@ describe("StateActionTile", () => {
     );
     render(<StateActionTile />);
     expect(screen.getByText("Task #7")).toBeDefined();
+  });
+
+  it("marks each value's place on its declared dataset range", async () => {
+    // dim 0: 1.25 inside [-2, 2] → tick at 81.25%; dim 1: -2 below the
+    // declared [0, 1] → clamped to the left edge and tinted out-of-range.
+    mocks.readDimensionStats.mockResolvedValue({
+      state: {
+        max: [2, 1],
+        min: [-2, 0],
+        q01: [-1.5, 0.1],
+        q99: [1.5, 0.9],
+      },
+    });
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    const { container } = render(<StateActionTile />);
+
+    await waitFor(() =>
+      expect(container.querySelectorAll('[class*="dimTrackTick"]').length).toBe(
+        2,
+      ),
+    );
+    const ticks = container.querySelectorAll<HTMLElement>(
+      '[class*="dimTrackTick"]',
+    );
+    expect(ticks[0].style.left).toBe("81.25%");
+    expect(ticks[0].className).not.toContain("dimTrackTickOut");
+    expect(ticks[1].style.left).toBe("0%");
+    expect(ticks[1].className).toContain("dimTrackTickOut");
+    // The declared band renders behind the tick; the action pane, with no
+    // declared stats, carries no markers at all.
+    expect(container.querySelectorAll('[class*="dimTrackBand"]').length).toBe(
+      2,
+    );
+    const actionPane = screen.getByRole("table", { name: "Action values" });
+    expect(actionPane.querySelectorAll('[class*="dimTrackTick"]').length).toBe(
+      0,
+    );
   });
 
   it("names the absent canonical feature when only one pane exists", () => {
