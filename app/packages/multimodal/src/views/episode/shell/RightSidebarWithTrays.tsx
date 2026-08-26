@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useSidebarTrayExtensions } from "../../../extensions/sidebar-tray";
 import RightSidebar from "./RightSidebar";
-import useMountedOnceOpen from "./useMountedOnceOpen";
 
 export interface RightSidebarWithTraysProps {
   /**
@@ -37,3 +36,18 @@ const RightSidebarWithTrays: React.FC<RightSidebarWithTraysProps> = ({
 };
 
 export default RightSidebarWithTrays;
+
+/**
+ * Latches true the first time `open` is true, and stays true.
+ *
+ * A tray behind a closed drawer shouldn't do mount-time work until the drawer
+ * is revealed, but must not be discarded when it closes again — losing a draft
+ * or refetching on every reopen. Mount on first open; stay mounted.
+ */
+function useMountedOnceOpen(open: boolean): boolean {
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) setMounted(true);
+  }, [open]);
+  return mounted;
+}

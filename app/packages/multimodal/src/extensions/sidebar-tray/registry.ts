@@ -26,7 +26,7 @@ const registry = createExtensionRegistry<SidebarTrayExtension>(
 export function registerSidebarTrayExtension(
   extension: SidebarTrayExtension,
 ): () => void {
-  if (!extension.id.includes(":")) {
+  if (!isNamespacedId(extension.id)) {
     throw new Error(
       `Sidebar tray extension ids must be namespaced: ${extension.id}`,
     );
@@ -41,6 +41,12 @@ export function useSidebarTrayExtensions(): readonly SidebarTrayExtension[] {
     registry.getSnapshot,
     registry.getSnapshot,
   );
+}
+
+/** Recognizes the required `namespace:tray` extension-id shape. */
+function isNamespacedId(value: string): boolean {
+  const separator = value.indexOf(":");
+  return separator > 0 && separator < value.length - 1;
 }
 
 /** Test-only reset kept out of the public package barrel. */

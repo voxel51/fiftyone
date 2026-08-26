@@ -25,6 +25,15 @@ describe("Sidebar tray extension registry", () => {
     ).toThrow("Sidebar tray extension ids must be namespaced: tray");
   });
 
+  it.each([":tray", "product:", ":"])(
+    "rejects %j — a separator alone is not a namespaced identity",
+    (id) => {
+      expect(() => registerSidebarTrayExtension({ ...extension, id })).toThrow(
+        `Sidebar tray extension ids must be namespaced: ${id}`,
+      );
+    },
+  );
+
   it("shares one registry across duplicate module evaluations", async () => {
     registerSidebarTrayExtension(extension);
     vi.resetModules();

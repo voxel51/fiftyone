@@ -632,10 +632,15 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                   ) : null
                                 }
                                 rightSidebar={
-                                  rightSidebar ??
-                                  (({ open }) => (
-                                    <RightSidebarWithTrays sidebarOpen={open} />
-                                  ))
+                                  // `null` explicitly removes the sidebar, so
+                                  // only an absent prop takes the default.
+                                  rightSidebar === undefined
+                                    ? ({ open }) => (
+                                        <RightSidebarWithTrays
+                                          sidebarOpen={open}
+                                        />
+                                      )
+                                    : rightSidebar
                                 }
                                 sharedImageWebGpuViews
                                 defaultRightOpen={false}
