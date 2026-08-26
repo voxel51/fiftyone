@@ -1,0 +1,153 @@
+/* Statistics tab for state/action sessions: dataset-declared
+   per-dimension statistics as compact monospace rows, each with a
+   min–max strip carrying the q01–q99 band and a mean tick. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.title {
+  align-items: center;
+  color: var(--color-content-text-primary);
+  display: flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 8px;
+}
+
+.titleBadge {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 18%,
+    transparent
+  );
+  border-radius: 8px;
+  color: var(--color-content-text-secondary);
+  font-size: 10px;
+  font-weight: 400;
+  padding: 1px 6px;
+}
+
+.feature {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.featureHeading {
+  align-items: baseline;
+  color: var(--color-content-text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  font-weight: 600;
+  gap: 4px 8px;
+}
+
+.featureSchema {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 18%,
+    transparent
+  );
+  border-radius: 8px;
+  color: var(--color-content-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 400;
+  padding: 1px 6px;
+}
+
+.statRow {
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  grid-template-columns:
+    minmax(56px, 1fr) minmax(44px, auto) minmax(44px, auto)
+    minmax(44px, auto);
+  min-height: 18px;
+}
+
+.statHeader,
+.statHeaderValue {
+  color: var(--color-content-text-secondary);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.statHeaderValue {
+  text-align: right;
+}
+
+.statName {
+  color: var(--color-content-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statValue {
+  color: var(--color-content-text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statMissing {
+  color: var(--color-content-text-secondary);
+  font-size: 10px;
+  opacity: 0.6;
+  text-align: right;
+}
+
+.caption {
+  color: var(--color-content-text-secondary);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.dimBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 4px;
+}
+
+.rangeBar {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 14%,
+    transparent
+  );
+  border-radius: 2px;
+  height: 4px;
+  position: relative;
+}
+
+.rangeBand {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 45%,
+    transparent
+  );
+  border-radius: 2px;
+  height: 100%;
+  position: absolute;
+  top: 0;
+}
+
+.rangeMean {
+  background: var(--color-voxel-secondary, #f5b700);
+  height: 8px;
+  position: absolute;
+  top: -2px;
+  transform: translateX(-50%);
+  width: 2px;
+}

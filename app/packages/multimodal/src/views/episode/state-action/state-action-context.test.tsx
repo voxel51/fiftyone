@@ -471,6 +471,26 @@ describe("StateActionBridge", () => {
     expect(context.current?.rowState).toBeUndefined();
   });
 
+  it("forwards dimension-stat reads and defaults to null without support", async () => {
+    const stats = {
+      state: { max: [1], mean: [0.5], min: [0] },
+    };
+    const capability = createCapability({
+      readDimensionStats: vi.fn(async () => stats),
+    });
+    const context = createContextRef();
+    render(<Harness capability={capability} contextRef={context} />);
+    await act(flushMicrotasks);
+    await expect(context.current?.readDimensionStats()).resolves.toEqual(stats);
+
+    const bare = createCapability();
+    delete (bare as { readDimensionStats?: unknown }).readDimensionStats;
+    const bareContext = createContextRef();
+    render(<Harness capability={bare} contextRef={bareContext} />);
+    await act(flushMicrotasks);
+    await expect(bareContext.current?.readDimensionStats()).resolves.toBe(null);
+  });
+
   it("forwards exact cursor and index reads with linked cancellation", async () => {
     const capability = createCapability();
     const context = createContextRef();

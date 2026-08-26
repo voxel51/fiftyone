@@ -54,6 +54,25 @@ export interface StateActionRow {
   readonly timestampNs: bigint;
 }
 
+/** Source-declared per-dimension statistics for one feature, row-major. */
+export interface StateActionFeatureStats {
+  readonly max?: readonly number[];
+  readonly mean?: readonly number[];
+  readonly min?: readonly number[];
+  readonly q01?: readonly number[];
+  readonly q50?: readonly number[];
+  readonly q99?: readonly number[];
+  readonly std?: readonly number[];
+}
+
+/** Source-declared dataset statistics for the canonical features. */
+export interface StateActionStats {
+  readonly action?: StateActionFeatureStats;
+  /** Dataset-wide frame count the statistics were computed over. */
+  readonly sampleCount?: number;
+  readonly state?: StateActionFeatureStats;
+}
+
 /**
  * Optional semantic capability for exact single-row state/action inspection.
  *
@@ -84,4 +103,12 @@ export interface StateActionCapability {
       readonly signal?: AbortSignal;
     },
   ): Promise<RawRecordIndexWindow>;
+  /**
+   * Source-declared per-dimension statistics, read lazily and cached for
+   * the session. Resolves null when the source ships none; a missing or
+   * unreadable statistics asset never blocks row inspection.
+   */
+  readDimensionStats?(options?: {
+    readonly signal?: AbortSignal;
+  }): Promise<StateActionStats | null>;
 }

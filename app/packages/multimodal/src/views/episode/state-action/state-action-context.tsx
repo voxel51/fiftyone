@@ -28,6 +28,7 @@ import type {
   StateActionCapability,
   StateActionRow,
   StateActionSchema,
+  StateActionStats,
 } from "../../../ports";
 import { errorMessage } from "../../../utils/errors";
 import { shouldDeferIdleWorkForStore } from "../playback/network-health";
@@ -102,6 +103,9 @@ export interface StateActionContextValue {
     signal?: AbortSignal,
   ): Promise<RawRecordIndexWindow>;
 
+  /** Source-declared per-dimension statistics, or null when absent. */
+  readDimensionStats(signal?: AbortSignal): Promise<StateActionStats | null>;
+
   /** User-initiated retry after a failed read; bypasses the backoff. */
   retryRead(): void;
 
@@ -114,6 +118,7 @@ export interface StateActionContextValue {
 
 type StateActionHandlers = DemandContextHandlers & {
   holdCursorRow(row: StateActionRow, echoNs: bigint): void;
+  readDimensionStats(signal?: AbortSignal): Promise<StateActionStats | null>;
   readRowAtCursor(
     cursor: RawRecordCursor,
     signal?: AbortSignal,
@@ -148,6 +153,18 @@ const stateActionDemandContext = createDemandContextProvider<
  */
 export const StateActionProvider = stateActionDemandContext.Provider;
 
+/** Whether a StateActionProvider is mounted above the calling component. */
+export function useHasStateActionProvider(): boolean {
+  return stateActionDemandContext.useOptionalDemandContext() !== null;
+}
+
+/** The published session schema, or null without a provider or session. */
+export function useStateActionSchemaIfPresent(): StateActionSchema | null {
+  const controller = stateActionDemandContext.useOptionalDemandContext();
+  const inventory = controller?.inventory;
+  return inventory?.status === "ready" ? inventory.schema : null;
+}
+
 /** Reads the state/action cache and demand hooks for the tile. */
 export function useStateActionContext(): StateActionContextValue {
   const { ensureInventory, handlersRef, inventory, subscribeKey, valuesByKey } =
@@ -181,6 +198,15 @@ export function useStateActionContext(): StateActionContextValue {
     },
     [handlersRef],
   );
+  const readDimensionStats = useCallback(
+    (signal?: AbortSignal) => {
+      const handlers = handlersRef.current;
+      return handlers
+        ? handlers.readDimensionStats(signal)
+        : Promise.resolve(null);
+    },
+    [handlersRef],
+  );
   const retryRead = useCallback(() => {
     handlersRef.current?.retryRead();
   }, [handlersRef]);
@@ -188,6 +214,7 @@ export function useStateActionContext(): StateActionContextValue {
     () => ({
       ensureSchema: ensureInventory,
       holdCursorRow,
+      readDimensionStats,
       readRowAtCursor,
       readRowIndexWindow,
       retryRead,
@@ -199,6 +226,7 @@ export function useStateActionContext(): StateActionContextValue {
       ensureInventory,
       holdCursorRow,
       inventory,
+      readDimensionStats,
       readRowAtCursor,
       readRowIndexWindow,
       retryRead,
@@ -296,6 +324,17 @@ export function StateActionBridge({
             publishValues(published, isCancelled);
           },
           onDemandChanged: queueExpeditedFill,
+          async readDimensionStats(signal) {
+            if (!capability.readDimensionStats) return null;
+            const linked = linkAbortSignals(epochController.signal, signal);
+            try {
+              return await capability.readDimensionStats({
+                signal: linked.signal,
+              });
+            } finally {
+              linked.cleanup();
+            }
+          },
           async readRowAtCursor(cursor, signal) {
             const linked = linkAbortSignals(epochController.signal, signal);
             try {

@@ -50,8 +50,10 @@ import {
   type SynchronizedPlaybackReadOptions,
   type StateActionCapability,
   type StateActionFeatureSchema,
+  type StateActionFeatureStats,
   type StateActionRow,
   type StateActionSchema,
+  type StateActionStats,
   type SynchronizedPlaybackReadRequest,
   type SourceStats,
 } from "../../ports";
@@ -75,6 +77,7 @@ const EPISODE_METADATA_ROLE = "episode-metadata";
 const DATA_ROLE = "tabular-frame-data";
 const IMAGE_ROLE = "image-payload";
 const TASKS_ROLE = "tasks-metadata";
+const STATISTICS_ROLE = "dataset-statistics";
 const VIDEO_ROLE = "video-stream";
 const RAW_STREAM_ID = "lerobot:rows";
 const STATE_FEATURE_NAME = "observation.state";
@@ -404,6 +407,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     number,
     Promise<readonly Record<string, unknown>[]>
   >();
+  private stateActionStats: Promise<StateActionStats | null> | null = null;
   private stateActionTasks: Promise<ReadonlyMap<number, string> | null> | null =
     null;
   private readonly videoIndexCache = new Map<string, Promise<VideoIndex>>();
@@ -528,6 +532,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     this.generation += 1;
     this.rowCache.clear();
     this.stateActionBlocks.clear();
+    this.stateActionStats = null;
     this.stateActionTasks = null;
     this.videoIndexCache.clear();
     this.videoSpanCache.clear();
@@ -1272,6 +1277,17 @@ class LeRobotEpisodeSession implements EpisodeSession {
           ? null
           : this.readStateActionRow(offset, config, request.signal);
       },
+      readDimensionStats: async (options) => {
+        this.ensureOpen();
+        throwIfAborted(options?.signal);
+        const stats = await waitForSharedRead(
+          this.stateActionStatsFill(stateFeature, actionFeature),
+          options?.signal,
+        );
+        throwIfAborted(options?.signal);
+        this.ensureOpen();
+        return stats;
+      },
       readIndexWindow: async (request) => {
         this.ensureOpen();
         throwIfAborted(request.signal);
@@ -1376,6 +1392,29 @@ class LeRobotEpisodeSession implements EpisodeSession {
       });
     }
     return cached;
+  }
+
+  private stateActionStatsFill(
+    stateFeature: LeRobotFeature | undefined,
+    actionFeature: LeRobotFeature | undefined,
+  ) {
+    if (!this.stateActionStats) {
+      const asset = this.state.assets.find(
+        (candidate) => candidate.role === STATISTICS_ROLE,
+      );
+      // Statistics are reference context; a missing or unreadable stats
+      // asset must never block row inspection.
+      this.stateActionStats = asset
+        ? readStateActionStats(
+            this.state.source,
+            this.state.io,
+            asset,
+            stateFeature,
+            actionFeature,
+          ).catch(() => null)
+        : Promise.resolve(null);
+    }
+    return this.stateActionStats;
   }
 
   private stateActionTaskLabels() {
@@ -2611,6 +2650,84 @@ async function readTaskLabels(
     }
   }
   return labels;
+}
+
+const STATE_ACTION_STAT_KEYS = [
+  "max",
+  "mean",
+  "min",
+  "q01",
+  "q50",
+  "q99",
+  "std",
+] as const;
+
+/**
+ * Reads the source-declared `meta/stats.json` and keeps only the stat
+ * vectors that flatten to exactly one finite number per declared
+ * dimension; anything else is omitted rather than realigned.
+ */
+async function readStateActionStats(
+  source: EpisodeSource,
+  io: ByteResources,
+  asset: AssetDescriptor,
+  stateFeature: LeRobotFeature | undefined,
+  actionFeature: LeRobotFeature | undefined,
+): Promise<StateActionStats | null> {
+  const buffer = asyncBufferForSource(asset, source, io);
+  const bytes = new Uint8Array(await buffer.slice(0, buffer.byteLength));
+  const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Record<
+    string,
+    unknown
+  >;
+  const state = stateFeature
+    ? statsForFeature(parsed[STATE_FEATURE_NAME], stateFeature)
+    : undefined;
+  const action = actionFeature
+    ? statsForFeature(parsed[ACTION_FEATURE_NAME], actionFeature)
+    : undefined;
+  if (!state && !action) return null;
+  const sampleCount = statsSampleCount(
+    parsed[STATE_FEATURE_NAME] ?? parsed[ACTION_FEATURE_NAME],
+  );
+  return {
+    ...(action ? { action } : {}),
+    ...(sampleCount !== undefined ? { sampleCount } : {}),
+    ...(state ? { state } : {}),
+  };
+}
+
+function statsSampleCount(entry: unknown): number | undefined {
+  if (!entry || typeof entry !== "object") return undefined;
+  const flattened = flattenStateActionSource(
+    (entry as Record<string, unknown>).count,
+  );
+  const count = flattened[0];
+  return typeof count === "number" && Number.isFinite(count) && count > 0
+    ? count
+    : undefined;
+}
+
+function statsForFeature(
+  entry: unknown,
+  feature: LeRobotFeature,
+): StateActionFeatureStats | undefined {
+  if (!entry || typeof entry !== "object") return undefined;
+  const count = Math.max(1, numericElementCount(feature.shape));
+  const record = entry as Record<string, unknown>;
+  const stats: Record<string, readonly number[]> = {};
+  for (const key of STATE_ACTION_STAT_KEYS) {
+    const values = flattenStateActionSource(record[key]);
+    if (
+      values.length === count &&
+      values.every((value) => typeof value === "number")
+    ) {
+      stats[key] = values as readonly number[];
+    }
+  }
+  return Object.keys(stats).length > 0
+    ? (stats as StateActionFeatureStats)
+    : undefined;
 }
 
 function rowAtOrBefore(rows: readonly TimelineRow[], timestampNs: bigint) {

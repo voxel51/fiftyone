@@ -79,6 +79,7 @@ vi.mock("./state-action-context", () => ({
   useStateActionContext: () => ({
     ensureSchema: mocks.ensureSchema,
     holdCursorRow: mocks.holdCursorRow,
+    readDimensionStats: async () => null,
     readRowAtCursor: mocks.readRowAtCursor,
     readRowIndexWindow: mocks.readRowIndexWindow,
     retryRead: mocks.retryRead,

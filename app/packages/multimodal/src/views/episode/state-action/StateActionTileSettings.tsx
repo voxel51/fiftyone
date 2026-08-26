@@ -34,7 +34,7 @@ const StateActionTileSettings: React.FC = () => {
       data-cy="episode-state-action-settings"
     >
       <span className={settingsStyles.metaText}>
-        {`Exact per-row values from ${facts.rowCount.toLocaleString()} episode rows. The playhead selects a row; every displayed value comes from that one source row.`}
+        {`Exact per-row values · ${facts.rowCount.toLocaleString()} episode rows. Declared per-dimension statistics live in the Statistics tab.`}
       </span>
       <FeatureFacts feature={facts.state} missingName="observation.state" />
       <FeatureFacts feature={facts.action} missingName="action" />

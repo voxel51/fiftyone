@@ -19,6 +19,8 @@ interface BuildOptions {
   readonly intervalStart?: number;
   /** Makes every tasks-metadata read reject. */
   readonly failTasksRead?: boolean;
+  /** Serves this object as the meta/stats.json asset when present. */
+  readonly statistics?: Readonly<Record<string, unknown>>;
 }
 
 interface ParquetReadOptions {
@@ -71,6 +73,9 @@ function buildStateActionSource(
     robot_type: "test-arm",
   };
   const infoBytes = new TextEncoder().encode(JSON.stringify(info));
+  const statsBytes = build.statistics
+    ? new TextEncoder().encode(JSON.stringify(build.statistics))
+    : null;
   const episodeRow = {
     dataset_from_index: 0n,
     dataset_to_index: BigInt(rowCount),
@@ -136,6 +141,17 @@ function buildStateActionSource(
           },
         ]
       : []),
+    ...(statsBytes
+      ? [
+          {
+            id: "stats",
+            mediaType: "application/json",
+            metadata: { sizeBytes: statsBytes.byteLength.toString() },
+            role: "dataset-statistics",
+            selector: { kind: "whole-file" } as const,
+          },
+        ]
+      : []),
   ];
   let slabReads = 0;
   const reader = vi.fn(async (options: ParquetReadOptions) => {
@@ -167,14 +183,18 @@ function buildStateActionSource(
     },
     episodeId: "episode-0",
   };
+  let statsAssetReads = 0;
   const io: ByteResources = {
     readBytes: async ({ range, source: byteSource }) => {
       const start = Number(range.offset);
       const end = start + Number(range.length);
+      if (byteSource.sourceId === "stats") statsAssetReads += 1;
       const bytes =
         byteSource.sourceId === "info"
           ? infoBytes.slice(start, end)
-          : new Uint8Array(Number(range.length));
+          : byteSource.sourceId === "stats" && statsBytes
+            ? statsBytes.slice(start, end)
+            : new Uint8Array(Number(range.length));
       return { bytes, range, source: byteSource };
     },
   };
@@ -183,6 +203,7 @@ function buildStateActionSource(
     physicalReads: () => slabReads,
     reader,
     source,
+    statsReads: () => statsAssetReads,
   };
 }
 
@@ -320,6 +341,55 @@ describe("LeRobot state/action provider", () => {
           ],
         },
       ]);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("reads declared per-dimension statistics lazily and caches them", async () => {
+    const built = buildStateActionSource(BASIC_SCENARIO, {
+      statistics: {
+        action: {
+          max: [5, 6],
+          mean: [3, 4],
+          min: [1, 2],
+          std: [0.5, 0.6],
+        },
+        "observation.state": {
+          // Wrong length: this stat vector must be omitted, not realigned.
+          max: [9],
+          min: [-9, -8],
+        },
+      },
+    });
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects: built.reader,
+    }).open(built.source, built.io);
+    try {
+      const stats = await session.stateAction?.readDimensionStats?.();
+      expect(stats?.action).toEqual({
+        max: [5, 6],
+        mean: [3, 4],
+        min: [1, 2],
+        std: [0.5, 0.6],
+      });
+      expect(stats?.state).toEqual({ min: [-9, -8] });
+      await session.stateAction?.readDimensionStats?.();
+      expect(built.statsReads()).toBe(1);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("resolves null statistics when the source ships none", async () => {
+    const built = buildStateActionSource(BASIC_SCENARIO);
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects: built.reader,
+    }).open(built.source, built.io);
+    try {
+      await expect(
+        session.stateAction?.readDimensionStats?.(),
+      ).resolves.toBeNull();
     } finally {
       session.dispose();
     }
