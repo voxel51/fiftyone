@@ -65,6 +65,52 @@ export const stateActionStatsScopeAtom = atom(
   },
 );
 
+/**
+ * Which range the tile's in-context value markers span: this episode's
+ * observed min–max (the default — declared dataset ranges often dwarf a
+ * single episode's motion and pin every tick near the middle), or the
+ * dataset-declared min–max with its q01–q99 band.
+ */
+export type StateActionMarkerScope = "dataset" | "episode";
+
+export const STATE_ACTION_MARKER_SCOPES: readonly {
+  readonly label: string;
+  readonly value: StateActionMarkerScope;
+}[] = [
+  { label: "Episode", value: "episode" },
+  { label: "Dataset", value: "dataset" },
+];
+
+const MARKER_SCOPE_STORAGE_KEY =
+  "fiftyone-multimodal-state-action-marker-scope";
+
+/** Returns the persisted marker scope, defaulting to "episode". */
+export function readStoredMarkerScope(): StateActionMarkerScope {
+  try {
+    const raw = globalThis.localStorage?.getItem(MARKER_SCOPE_STORAGE_KEY);
+    return raw === "dataset" || raw === "episode" ? raw : "episode";
+  } catch {
+    return "episode";
+  }
+}
+
+const baseMarkerScopeAtom = atom<StateActionMarkerScope>(
+  readStoredMarkerScope(),
+);
+
+/** Tile marker-range scope, persisted browser-wide across sessions. */
+export const stateActionMarkerScopeAtom = atom(
+  (get) => get(baseMarkerScopeAtom),
+  (_get, set, next: StateActionMarkerScope) => {
+    set(baseMarkerScopeAtom, next);
+    try {
+      globalThis.localStorage?.setItem(MARKER_SCOPE_STORAGE_KEY, next);
+    } catch {
+      // Private windows without storage still honor the in-session choice.
+    }
+  },
+);
+
 /** Value-column header per display mode. */
 export function stateActionValueHeader(mode: StateActionValueMode): string {
   if (mode === "zscore") return "Z-score";

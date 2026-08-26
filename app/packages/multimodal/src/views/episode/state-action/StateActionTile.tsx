@@ -20,6 +20,8 @@ import React, {
   useState,
 } from "react";
 import type {
+  StateActionEpisodeProfile,
+  StateActionFeatureProfile,
   StateActionFeatureSchema,
   StateActionFeatureStats,
   StateActionRow,
@@ -36,8 +38,10 @@ import { useStateActionContext } from "./state-action-context";
 import {
   formatStateActionDelta,
   normalizeStateActionValue,
+  stateActionMarkerScopeAtom,
   stateActionValueHeader,
   stateActionValueModeAtom,
+  type StateActionMarkerScope,
   type StateActionValueMode,
 } from "./state-action-display";
 import {
@@ -72,6 +76,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
     ensureSchema,
     holdCursorRow,
     readDimensionStats,
+    readEpisodeProfile,
     readRowAtCursor,
     readRowIndexWindow,
     retryRead,
@@ -127,8 +132,24 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
     );
     return () => controller.abort();
   }, [readDimensionStats, schemaFacts]);
+  const [episodeProfile, setEpisodeProfile] =
+    useState<StateActionEpisodeProfile | null>(null);
+  // This effect loads the episode profile once per session so markers can
+  // span this episode's observed ranges; the capability caches the scan.
+  useEffect(() => {
+    if (!schemaFacts) return undefined;
+    const controller = new AbortController();
+    readEpisodeProfile(controller.signal).then(
+      (result) => {
+        if (!controller.signal.aborted) setEpisodeProfile(result);
+      },
+      () => undefined,
+    );
+    return () => controller.abort();
+  }, [readEpisodeProfile, schemaFacts]);
   const row = rowState?.row ?? null;
   const valueMode = useAtomValue(stateActionValueModeAtom);
+  const markerScope = useAtomValue(stateActionMarkerScopeAtom);
 
   const [previousRow, setPreviousRow] = useState<{
     readonly forCursor: string;
@@ -438,9 +459,11 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
                 <FeaturePane
                   featureError={row?.featureErrors?.state}
                   label={STATE_PANE_LABEL}
+                  markerScope={markerScope}
                   mode={valueMode}
                   onPlotField={addFieldToPlot}
                   previousValues={previousForRow?.state}
+                  profile={episodeProfile?.state}
                   schema={schemaFacts.state}
                   stats={dimensionStats?.state}
                   values={row?.state}
@@ -450,9 +473,11 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
                 <FeaturePane
                   featureError={row?.featureErrors?.action}
                   label={ACTION_PANE_LABEL}
+                  markerScope={markerScope}
                   mode={valueMode}
                   onPlotField={addFieldToPlot}
                   previousValues={previousForRow?.action}
+                  profile={episodeProfile?.action}
                   schema={schemaFacts.action}
                   stats={dimensionStats?.action}
                   values={row?.action}
@@ -472,18 +497,22 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
 function FeaturePane({
   featureError,
   label,
+  markerScope,
   mode,
   onPlotField,
   previousValues,
+  profile,
   schema,
   stats,
   values,
 }: {
   readonly featureError?: string;
   readonly label: string;
+  readonly markerScope: StateActionMarkerScope;
   readonly mode: StateActionValueMode;
   readonly onPlotField?: (stream: string, fieldPath: string) => void;
   readonly previousValues?: readonly unknown[];
+  readonly profile?: StateActionFeatureProfile;
   readonly schema: StateActionFeatureSchema;
   readonly stats?: StateActionFeatureStats;
   readonly values?: readonly unknown[];
@@ -491,8 +520,17 @@ function FeaturePane({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ height: 0, scrollTop: 0 });
   const rows = useMemo(
-    () => paneRows(schema, values, stats, mode, previousValues),
-    [mode, previousValues, schema, stats, values],
+    () =>
+      paneRows(
+        schema,
+        values,
+        stats,
+        mode,
+        previousValues,
+        markerScope,
+        profile,
+      ),
+    [markerScope, mode, previousValues, profile, schema, stats, values],
   );
   const virtualize = rows.length > VIRTUALIZE_AFTER_ROWS;
 
@@ -555,7 +593,9 @@ function FeaturePane({
           <div className={styles.columnHeaders} role="row">
             <span role="columnheader">Dimension</span>
             <span role="columnheader">
-              <span className={styles.srOnly}>Declared range</span>
+              <span className={styles.srOnly}>
+                {markerScope === "dataset" ? "Declared range" : "Episode range"}
+              </span>
             </span>
             <span role="columnheader" style={{ textAlign: "right" }}>
               {stateActionValueHeader(mode)}
@@ -671,6 +711,8 @@ function paneRows(
   stats: StateActionFeatureStats | undefined,
   mode: StateActionValueMode,
   previousValues: readonly unknown[] | undefined,
+  markerScope: StateActionMarkerScope,
+  profile: StateActionFeatureProfile | undefined,
 ): readonly PaneRow[] {
   // Never shift or hide values on a shape mismatch: render every declared
   // dimension and every extra source value under its stable numeric index.
@@ -695,7 +737,7 @@ function paneRows(
           : normalized !== null
             ? { ...rawFormatted, text: compactStateActionFloat(normalized) }
             : rawFormatted;
-    const marker = valueMarker(stats, index, raw);
+    const marker = valueMarker(markerScope, stats, profile, index, raw);
     const delta = paneRowDelta(
       raw,
       previousValues?.[index],
@@ -764,21 +806,26 @@ function paneRowDelta(
 }
 
 /**
- * Positions one exact value on its dimension's declared dataset range so
- * the row carries a faint in-context marker. Only source-declared facts
- * feed the geometry; a value outside the declared range clamps to the
- * edge and tints the tick instead of stretching the scale.
+ * Positions one exact value on its dimension's marker range — this
+ * episode's observed min–max, or the dataset-declared range — so the row
+ * carries a faint in-context marker. In dataset scope a value outside the
+ * declared range clamps to the edge and tints the tick instead of
+ * stretching the scale.
  */
 function valueMarker(
+  scope: StateActionMarkerScope,
   stats: StateActionFeatureStats | undefined,
+  profile: StateActionFeatureProfile | undefined,
   index: number,
   value: unknown,
 ): ValueMarkerFacts | undefined {
-  if (!stats || typeof value !== "number" || !Number.isFinite(value)) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
     return undefined;
   }
-  const min = stats.min?.[index];
-  const max = stats.max?.[index];
+  const min =
+    scope === "episode" ? profile?.min[index]?.value : stats?.min?.[index];
+  const max =
+    scope === "episode" ? profile?.max[index]?.value : stats?.max?.[index];
   if (
     min === undefined ||
     max === undefined ||
@@ -790,8 +837,17 @@ function valueMarker(
   }
   const position = (candidate: number) =>
     Math.min(1, Math.max(0, (candidate - min) / (max - min)));
-  const q01 = stats.q01?.[index];
-  const q99 = stats.q99?.[index];
+  if (scope === "episode") {
+    // An episode value can never leave its own observed range, and the
+    // profile carries no quantiles — the track and tick say everything.
+    return {
+      outOfRange: false,
+      position: position(value),
+      title: `episode ${formatStateActionValue(min).text} … ${formatStateActionValue(max).text}`,
+    };
+  }
+  const q01 = stats?.q01?.[index];
+  const q99 = stats?.q99?.[index];
   return {
     ...(q01 !== undefined && q99 !== undefined
       ? { band: [position(q01), position(q99)] as const }
@@ -802,7 +858,7 @@ function valueMarker(
   };
 }
 
-/** Faint declared-range strip with a tick at the current value. */
+/** Faint range strip with a tick at the current value. */
 function ValueMarker({ marker }: { readonly marker?: ValueMarkerFacts }) {
   if (!marker) return null;
   return (

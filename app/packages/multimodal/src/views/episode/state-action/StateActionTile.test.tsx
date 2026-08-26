@@ -9,11 +9,15 @@ import {
 import { getDefaultStore } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
+  StateActionEpisodeProfile,
   StateActionRow,
   StateActionSchema,
   StateActionStats,
 } from "../../../ports";
-import { stateActionValueModeAtom } from "./state-action-display";
+import {
+  stateActionMarkerScopeAtom,
+  stateActionValueModeAtom,
+} from "./state-action-display";
 import type {
   StateActionRowState,
   StateActionSchemaState,
@@ -40,6 +44,7 @@ const mocks = vi.hoisted(() => ({
   pause: vi.fn(),
   playheadSec: 4,
   readDimensionStats: vi.fn<() => Promise<StateActionStats | null>>(),
+  readEpisodeProfile: vi.fn<() => Promise<StateActionEpisodeProfile | null>>(),
   readRowAtCursor: vi.fn(),
   readRowIndexWindow: vi.fn(),
   retryRead: vi.fn(),
@@ -87,6 +92,7 @@ vi.mock("./state-action-context", () => ({
     ensureSchema: mocks.ensureSchema,
     holdCursorRow: mocks.holdCursorRow,
     readDimensionStats: mocks.readDimensionStats,
+    readEpisodeProfile: mocks.readEpisodeProfile,
     readRowAtCursor: mocks.readRowAtCursor,
     readRowIndexWindow: mocks.readRowIndexWindow,
     retryRead: mocks.retryRead,
@@ -154,7 +160,9 @@ beforeEach(() => {
   mocks.isPlayPending = false;
   mocks.playheadSec = 4;
   mocks.readDimensionStats.mockResolvedValue(null);
+  mocks.readEpisodeProfile.mockResolvedValue(null);
   getDefaultStore().set(stateActionValueModeAtom, "raw");
+  getDefaultStore().set(stateActionMarkerScopeAtom, "episode");
   setState({ schema: SCHEMA, status: "ready" }, undefined);
 });
 
@@ -223,6 +231,7 @@ describe("StateActionTile", () => {
   });
 
   it("marks each value's place on its declared dataset range", async () => {
+    getDefaultStore().set(stateActionMarkerScopeAtom, "dataset");
     // dim 0: 1.25 inside [-2, 2] → tick at 81.25%; dim 1: -2 below the
     // declared [0, 1] → clamped to the left edge and tinted out-of-range.
     mocks.readDimensionStats.mockResolvedValue({
@@ -260,6 +269,51 @@ describe("StateActionTile", () => {
     expect(actionPane.querySelectorAll('[class*="dimTrackTick"]').length).toBe(
       0,
     );
+  });
+
+  it("spans markers over this episode's observed range by default", async () => {
+    // Episode scope: dim 0's 1.25 sits at 75% of [-2.5, 2.5]; dim 1's -2
+    // IS its episode minimum, so the tick pins to the left edge untinted.
+    mocks.readEpisodeProfile.mockResolvedValue({
+      rowCount: 20,
+      state: {
+        max: [
+          { frameIndex: 10, timestampNs: 10n * NS_PER_SECOND, value: 2.5 },
+          { frameIndex: 3, timestampNs: 3n * NS_PER_SECOND, value: 3 },
+        ],
+        mean: [0, 0],
+        min: [
+          { frameIndex: 2, timestampNs: 2n * NS_PER_SECOND, value: -2.5 },
+          { frameIndex: 4, timestampNs: 4n * NS_PER_SECOND, value: -2 },
+        ],
+        outOfRangeCounts: null,
+      },
+      timing: { gapCount: 0, gaps: [], medianIntervalNs: 1_000_000_000n },
+    });
+    setState(
+      { schema: SCHEMA, status: "ready" },
+      { row: row(), status: "ready", targetNs: 4n * NS_PER_SECOND },
+    );
+    const { container } = render(<StateActionTile />);
+
+    await waitFor(() =>
+      expect(container.querySelectorAll('[class*="dimTrackTick"]').length).toBe(
+        2,
+      ),
+    );
+    const ticks = container.querySelectorAll<HTMLElement>(
+      '[class*="dimTrackTick"]',
+    );
+    expect(ticks[0].style.left).toBe("75%");
+    expect(ticks[1].style.left).toBe("0%");
+    expect(ticks[1].className).not.toContain("dimTrackTickOut");
+    // Episode scope carries no quantile band, and the profile-less action
+    // feature carries no markers at all.
+    expect(container.querySelectorAll('[class*="dimTrackBand"]').length).toBe(
+      0,
+    );
+    const track = container.querySelector<HTMLElement>('[class="dimTrack"]');
+    expect(track?.title).toBe("episode -2.5 … 2.5");
   });
 
   it("shows each value's change from the previous row", async () => {

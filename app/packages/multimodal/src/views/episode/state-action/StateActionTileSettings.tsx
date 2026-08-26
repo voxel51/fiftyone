@@ -6,10 +6,16 @@ import { SettingsSelect } from "../settings/controls/SettingsSelect";
 import settingsStyles from "../tiles/Tile.settings.module.css";
 import { useStateActionContext } from "./state-action-context";
 import {
+  STATE_ACTION_MARKER_SCOPES,
   STATE_ACTION_VALUE_MODES,
+  stateActionMarkerScopeAtom,
   stateActionValueModeAtom,
+  type StateActionMarkerScope,
   type StateActionValueMode,
 } from "./state-action-display";
+
+const MARKER_RANGE_TOOLTIP =
+  "The span behind each row's faint marker. Episode uses this episode's observed min–max, so ticks travel the full track; Dataset uses the declared min–max with its q01–q99 band and flags out-of-range values.";
 
 const VALUE_SCALE_TOOLTIP =
   "Z-score is (v − mean) / std; Quantile maps q01–q99 onto [−1, 1] — both from the dataset-declared statistics. Copy always yields the raw exact value.";
@@ -21,6 +27,7 @@ const VALUE_SCALE_TOOLTIP =
 const StateActionTileSettings: React.FC = () => {
   const { readDimensionStats } = useStateActionContext();
   const [valueMode, setValueMode] = useAtom(stateActionValueModeAtom);
+  const [markerScope, setMarkerScope] = useAtom(stateActionMarkerScopeAtom);
   const [stats, setStats] = useState<StateActionStats | null | "loading">(
     "loading",
   );
@@ -55,6 +62,21 @@ const StateActionTileSettings: React.FC = () => {
           <span className={settingsStyles.emptyText}>
             This source declares no statistics (meta/stats.json); raw values are
             shown.
+          </span>
+        ) : null}
+      </label>
+      <label className={settingsStyles.field}>
+        <SettingsLabel label="Marker range" tooltip={MARKER_RANGE_TOOLTIP} />
+        <SettingsSelect
+          ariaLabel="Marker range"
+          onChange={(next) => setMarkerScope(next as StateActionMarkerScope)}
+          options={STATE_ACTION_MARKER_SCOPES}
+          value={markerScope}
+        />
+        {markerScope === "dataset" && stats === null ? (
+          <span className={settingsStyles.emptyText}>
+            This source declares no statistics (meta/stats.json); no markers can
+            span the dataset range.
           </span>
         ) : null}
       </label>
