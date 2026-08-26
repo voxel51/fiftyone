@@ -432,6 +432,99 @@ export function defineStateActionCapabilityContractTests({
       );
     });
 
+    it("profiles the episode from its own rows, skipping non-finite values", async () => {
+      await withSession(CANONICAL_SCENARIO, async ({ capability }) => {
+        expect(capability.readEpisodeProfile).toBeDefined();
+        const profile = await capability.readEpisodeProfile?.();
+        expect(profile?.rowCount).toBe(5);
+        // Extremes carry the exact row that attains them.
+        expect(profile?.state?.min[0]).toMatchObject({
+          frameIndex: 0,
+          value: 0.1,
+        });
+        expect(profile?.state?.max[0]).toMatchObject({
+          frameIndex: 4,
+          value: 4.1,
+        });
+        expect(profile?.state?.mean[0]).toBeCloseTo(2.1);
+        // Dimension 1 skips its NaN row; dimension 2 skips Infinity and null.
+        expect(profile?.state?.mean[1]).toBeCloseTo(
+          (0.2 + 2.2 + 3.2 + 4.2) / 4,
+        );
+        expect(profile?.state?.min[2]).toMatchObject({
+          frameIndex: 0,
+          value: 0.3,
+        });
+        expect(profile?.state?.max[2]).toMatchObject({
+          frameIndex: 4,
+          value: 4.3,
+        });
+        // Without declared statistics there are no bounds to count against.
+        expect(profile?.state?.outOfRangeCounts).toBeNull();
+        // Dimension counts differ (3 vs 4): no index-wise tracking error.
+        expect(profile?.trackingError).toBeUndefined();
+        // A perfectly regular 20 Hz cadence has no gaps.
+        expect(profile?.timing.medianIntervalNs).toBe(50_000_000n);
+        expect(profile?.timing.gapCount).toBe(0);
+        expect(profile?.timing.gaps).toEqual([]);
+      });
+    });
+
+    it("computes tracking error and timing gaps over matching features", async () => {
+      await withSession(
+        {
+          action: {
+            dtype: "float32",
+            rows: [
+              [1, 10],
+              [2, 20],
+              [4, 30],
+              [3, 34],
+            ],
+            shape: [2],
+          },
+          state: {
+            dtype: "float32",
+            names: ["a", "b"],
+            rows: [
+              [0, 10],
+              [1, 22],
+              [2, 27],
+              [3, 30],
+            ],
+            shape: [2],
+          },
+          timestampsSeconds: [0, 0.1, 0.2, 0.5],
+        },
+        async ({ capability }) => {
+          const profile = await capability.readEpisodeProfile?.();
+          expect(profile?.trackingError?.[0]).toBeCloseTo(1);
+          expect(profile?.trackingError?.[1]).toBeCloseTo(2.25);
+          // Intervals 100ms, 100ms, 300ms: the 300ms one exceeds 1.5× the
+          // 100ms median and seeks to the row where data resumes.
+          expect(profile?.timing.medianIntervalNs).toBe(100_000_000n);
+          expect(profile?.timing.gapCount).toBe(1);
+          expect(profile?.timing.gaps[0]).toEqual({
+            beforeFrameIndex: 2,
+            durationNs: 300_000_000n,
+            timestampNs: 500_000_000n,
+          });
+        },
+      );
+    });
+
+    it("reuses the profiled scan instead of rereading data", async () => {
+      await withSession(CANONICAL_SCENARIO, async (session) => {
+        const first = await session.capability.readEpisodeProfile?.();
+        const readsAfterFirst = session.physicalReads?.();
+        const second = await session.capability.readEpisodeProfile?.();
+        expect(second).toEqual(first);
+        if (session.physicalReads) {
+          expect(session.physicalReads()).toBe(readsAfterFirst);
+        }
+      });
+    });
+
     it("rejects unknown or foreign cursors with a typed error", async () => {
       await withSession(CANONICAL_SCENARIO, async ({ capability }) => {
         await expect(

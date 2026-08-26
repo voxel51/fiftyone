@@ -73,6 +73,70 @@ export interface StateActionStats {
   readonly state?: StateActionFeatureStats;
 }
 
+/** One episode extreme: the exact row where a dimension attains a value. */
+export interface StateActionDimensionExtreme {
+  readonly frameIndex: number;
+  readonly timestampNs: bigint;
+  readonly value: number;
+}
+
+/**
+ * Episode-computed per-dimension aggregates for one feature, row-major.
+ * Only finite numeric values aggregate; a dimension with none is null.
+ */
+export interface StateActionFeatureProfile {
+  readonly max: readonly (StateActionDimensionExtreme | null)[];
+  readonly mean: readonly (number | null)[];
+  readonly min: readonly (StateActionDimensionExtreme | null)[];
+  /**
+   * Rows whose value falls outside the source-declared [min, max]; null
+   * for a dimension without declared bounds, or entirely when the source
+   * declares no statistics.
+   */
+  readonly outOfRangeCounts: readonly (number | null)[] | null;
+}
+
+/** One irregular inter-row interval in the episode's recorded timeline. */
+export interface StateActionTimingGap {
+  /** Frame index of the last row before the gap. */
+  readonly beforeFrameIndex: number;
+  readonly durationNs: bigint;
+  /** Timestamp of the first row after the gap — the natural seek target. */
+  readonly timestampNs: bigint;
+}
+
+/**
+ * Recorded-cadence facts for the episode. A gap is an inter-row interval
+ * exceeding 1.5× the median interval, so a single dropped frame at a
+ * steady rate registers while ordinary jitter does not.
+ */
+export interface StateActionTimingProfile {
+  readonly gapCount: number;
+  /** Largest-first sample of the gaps, capped for transport. */
+  readonly gaps: readonly StateActionTimingGap[];
+  /** Median inter-row interval; 0n with fewer than two rows. */
+  readonly medianIntervalNs: bigint;
+}
+
+/**
+ * Episode-computed profile over every row: per-dimension extremes and
+ * means, recorded-timing health, and index-wise action-vs-state tracking
+ * error. Everything here derives from this episode's rows — never from
+ * dataset-declared statistics, which only bound the out-of-range counts.
+ */
+export interface StateActionEpisodeProfile {
+  readonly action?: StateActionFeatureProfile;
+  readonly rowCount: number;
+  readonly state?: StateActionFeatureProfile;
+  readonly timing: StateActionTimingProfile;
+  /**
+   * Mean |action − state| per dimension, present only when both features
+   * declare the same dimension count; a null entry had no row where both
+   * values were finite.
+   */
+  readonly trackingError?: readonly (number | null)[];
+}
+
 /**
  * Optional semantic capability for exact single-row state/action inspection.
  *
@@ -111,4 +175,12 @@ export interface StateActionCapability {
   readDimensionStats?(options?: {
     readonly signal?: AbortSignal;
   }): Promise<StateActionStats | null>;
+  /**
+   * Episode-computed profile over every row, read lazily and cached for
+   * the session. The scan shares the row-read caches, so profiling never
+   * rereads data a row inspection already paid for.
+   */
+  readEpisodeProfile?(options?: {
+    readonly signal?: AbortSignal;
+  }): Promise<StateActionEpisodeProfile>;
 }

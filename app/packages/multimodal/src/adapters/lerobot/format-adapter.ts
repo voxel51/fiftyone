@@ -49,11 +49,16 @@ import {
   type SynchronizedPlaybackBatchReadRequest,
   type SynchronizedPlaybackReadOptions,
   type StateActionCapability,
+  type StateActionDimensionExtreme,
+  type StateActionEpisodeProfile,
+  type StateActionFeatureProfile,
   type StateActionFeatureSchema,
   type StateActionFeatureStats,
   type StateActionRow,
   type StateActionSchema,
   type StateActionStats,
+  type StateActionTimingGap,
+  type StateActionTimingProfile,
   type SynchronizedPlaybackReadRequest,
   type SourceStats,
 } from "../../ports";
@@ -407,6 +412,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     number,
     Promise<readonly Record<string, unknown>[]>
   >();
+  private stateActionProfile: Promise<StateActionEpisodeProfile> | null = null;
   private stateActionStats: Promise<StateActionStats | null> | null = null;
   private stateActionTasks: Promise<ReadonlyMap<number, string> | null> | null =
     null;
@@ -532,6 +538,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     this.generation += 1;
     this.rowCache.clear();
     this.stateActionBlocks.clear();
+    this.stateActionProfile = null;
     this.stateActionStats = null;
     this.stateActionTasks = null;
     this.videoIndexCache.clear();
@@ -1288,6 +1295,17 @@ class LeRobotEpisodeSession implements EpisodeSession {
         this.ensureOpen();
         return stats;
       },
+      readEpisodeProfile: async (options) => {
+        this.ensureOpen();
+        throwIfAborted(options?.signal);
+        const profile = await waitForSharedRead(
+          this.stateActionProfileFill(config, schema),
+          options?.signal,
+        );
+        throwIfAborted(options?.signal);
+        this.ensureOpen();
+        return profile;
+      },
       readIndexWindow: async (request) => {
         this.ensureOpen();
         throwIfAborted(request.signal);
@@ -1415,6 +1433,98 @@ class LeRobotEpisodeSession implements EpisodeSession {
         : Promise.resolve(null);
     }
     return this.stateActionStats;
+  }
+
+  private stateActionProfileFill(
+    config: StateActionReadConfig,
+    schema: StateActionSchema,
+  ) {
+    if (!this.stateActionProfile) {
+      // The shared profile fill is deliberately unbound from caller signals
+      // so an aborted trigger cannot poison the session-lifetime cache.
+      const started = this.computeStateActionProfile(config, schema);
+      this.stateActionProfile = started;
+      void started.catch(() => {
+        if (this.stateActionProfile === started) {
+          this.stateActionProfile = null;
+        }
+      });
+    }
+    return this.stateActionProfile;
+  }
+
+  private async computeStateActionProfile(
+    config: StateActionReadConfig,
+    schema: StateActionSchema,
+  ): Promise<StateActionEpisodeProfile> {
+    const rows = this.state.episodeRows.rows;
+    // Declared statistics only bound the out-of-range counts; their
+    // absence must never block the episode-computed profile.
+    const declared = await this.stateActionStatsFill(
+      config.state,
+      config.action,
+    );
+    const state = schema.state
+      ? createStateActionAggregator(
+          schema.state.dimensions.length,
+          declared?.state,
+        )
+      : null;
+    const action = schema.action
+      ? createStateActionAggregator(
+          schema.action.dimensions.length,
+          declared?.action,
+        )
+      : null;
+    const tracking =
+      schema.state &&
+      schema.action &&
+      schema.state.dimensions.length === schema.action.dimensions.length
+        ? createStateActionTrackingAggregator(schema.state.dimensions.length)
+        : null;
+    const blockCount = Math.ceil(rows.length / config.blockRows);
+    for (let blockIndex = 0; blockIndex < blockCount; blockIndex += 1) {
+      const block = await this.stateActionBlock(blockIndex, config);
+      this.ensureOpen();
+      for (let inBlock = 0; inBlock < block.length; inBlock += 1) {
+        const timeline = rows[blockIndex * config.blockRows + inBlock];
+        if (!timeline) continue;
+        const raw = block[inBlock];
+        const stateValues =
+          config.state && raw[STATE_FEATURE_NAME] !== undefined
+            ? flattenStateActionSource(raw[STATE_FEATURE_NAME])
+            : undefined;
+        const actionValues =
+          config.action && raw[ACTION_FEATURE_NAME] !== undefined
+            ? flattenStateActionSource(raw[ACTION_FEATURE_NAME])
+            : undefined;
+        if (stateValues) {
+          state?.accumulate(
+            stateValues,
+            timeline.frameIndex,
+            timeline.localTimeNs,
+          );
+        }
+        if (actionValues) {
+          action?.accumulate(
+            actionValues,
+            timeline.frameIndex,
+            timeline.localTimeNs,
+          );
+        }
+        if (stateValues && actionValues) {
+          tracking?.accumulate(stateValues, actionValues);
+        }
+      }
+    }
+    const trackingError = tracking?.finish();
+    return {
+      ...(action ? { action: action.finish() } : {}),
+      rowCount: rows.length,
+      ...(state ? { state: state.finish() } : {}),
+      timing: stateActionTimingProfile(rows),
+      ...(trackingError ? { trackingError } : {}),
+    };
   }
 
   private stateActionTaskLabels() {
@@ -2609,6 +2719,149 @@ function stateActionDtypeBytes(dtype: string): number {
   if (/16/.test(dtype)) return 2;
   if (/^(?:bool|int8|uint8)/.test(dtype)) return 1;
   return 8;
+}
+
+/** Largest-first gap samples kept on a timing profile. */
+const STATE_ACTION_TIMING_GAP_CAP = 8;
+
+function createStateActionAggregator(
+  dimensionCount: number,
+  declared: StateActionFeatureStats | undefined,
+): {
+  accumulate(
+    values: readonly unknown[],
+    frameIndex: number,
+    timestampNs: bigint,
+  ): void;
+  finish(): StateActionFeatureProfile;
+} {
+  const min: (StateActionDimensionExtreme | null)[] = Array.from(
+    { length: dimensionCount },
+    () => null,
+  );
+  const max: (StateActionDimensionExtreme | null)[] = Array.from(
+    { length: dimensionCount },
+    () => null,
+  );
+  const sums = new Array<number>(dimensionCount).fill(0);
+  const counts = new Array<number>(dimensionCount).fill(0);
+  const outOfRange = declared
+    ? new Array<number>(dimensionCount).fill(0)
+    : null;
+  const declaredBound = (index: number) => {
+    const low = declared?.min?.[index];
+    const high = declared?.max?.[index];
+    return Number.isFinite(low) && Number.isFinite(high)
+      ? { high: high as number, low: low as number }
+      : null;
+  };
+  const bounds = Array.from({ length: dimensionCount }, (_, index) =>
+    declaredBound(index),
+  );
+  return {
+    accumulate(values, frameIndex, timestampNs) {
+      for (let index = 0; index < dimensionCount; index += 1) {
+        const value = values[index];
+        if (typeof value !== "number" || !Number.isFinite(value)) continue;
+        sums[index] += value;
+        counts[index] += 1;
+        const currentMin = min[index];
+        if (currentMin === null || value < currentMin.value) {
+          min[index] = { frameIndex, timestampNs, value };
+        }
+        const currentMax = max[index];
+        if (currentMax === null || value > currentMax.value) {
+          max[index] = { frameIndex, timestampNs, value };
+        }
+        const bound = bounds[index];
+        if (outOfRange && bound && (value < bound.low || value > bound.high)) {
+          outOfRange[index] += 1;
+        }
+      }
+    },
+    finish() {
+      return {
+        max,
+        mean: counts.map((count, index) =>
+          count > 0 ? sums[index] / count : null,
+        ),
+        min,
+        outOfRangeCounts: outOfRange
+          ? outOfRange.map((count, index) =>
+              bounds[index] !== null ? count : null,
+            )
+          : null,
+      };
+    },
+  };
+}
+
+function createStateActionTrackingAggregator(dimensionCount: number): {
+  accumulate(state: readonly unknown[], action: readonly unknown[]): void;
+  finish(): readonly (number | null)[];
+} {
+  const sums = new Array<number>(dimensionCount).fill(0);
+  const counts = new Array<number>(dimensionCount).fill(0);
+  return {
+    accumulate(state, action) {
+      for (let index = 0; index < dimensionCount; index += 1) {
+        const stateValue = state[index];
+        const actionValue = action[index];
+        if (
+          typeof stateValue !== "number" ||
+          !Number.isFinite(stateValue) ||
+          typeof actionValue !== "number" ||
+          !Number.isFinite(actionValue)
+        ) {
+          continue;
+        }
+        sums[index] += Math.abs(actionValue - stateValue);
+        counts[index] += 1;
+      }
+    },
+    finish() {
+      return counts.map((count, index) =>
+        count > 0 ? sums[index] / count : null,
+      );
+    },
+  };
+}
+
+/**
+ * Recorded-cadence facts from the already-loaded timeline rows: median
+ * inter-row interval plus the intervals exceeding 1.5× that median, so a
+ * single dropped frame at a steady rate registers while jitter does not.
+ */
+function stateActionTimingProfile(
+  rows: readonly TimelineRow[],
+): StateActionTimingProfile {
+  if (rows.length < 2) {
+    return { gapCount: 0, gaps: [], medianIntervalNs: 0n };
+  }
+  const intervals = rows.slice(1).map((row, index) => ({
+    beforeFrameIndex: rows[index].frameIndex,
+    durationNs: row.localTimeNs - rows[index].localTimeNs,
+    timestampNs: row.localTimeNs,
+  }));
+  const sorted = intervals
+    .map((interval) => interval.durationNs)
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const medianIntervalNs =
+    (sorted[(sorted.length - 1) >> 1] + sorted[sorted.length >> 1]) / 2n;
+  const gaps: StateActionTimingGap[] = intervals
+    .filter(
+      (interval) =>
+        medianIntervalNs > 0n &&
+        interval.durationNs * 2n > medianIntervalNs * 3n,
+    )
+    .sort((a, b) =>
+      a.durationNs < b.durationNs ? 1 : a.durationNs > b.durationNs ? -1 : 0,
+    );
+  return {
+    gapCount: gaps.length,
+    gaps: gaps.slice(0, STATE_ACTION_TIMING_GAP_CAP),
+    medianIntervalNs,
+  };
 }
 
 function parseStateActionCursor(cursor: string, rowCount: number): number {

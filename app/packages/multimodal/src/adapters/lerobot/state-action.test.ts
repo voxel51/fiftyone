@@ -503,6 +503,63 @@ describe("LeRobot state/action provider", () => {
     }
   });
 
+  it("counts out-of-declared-range rows in the episode profile", async () => {
+    const built = buildStateActionSource(BASIC_SCENARIO, {
+      statistics: {
+        // Deliberately tighter than the data: rows 0 and 2 fall outside
+        // dimension 0's declared bounds while dimension 1 stays inside.
+        action: { max: [4, 6], min: [2, 2] },
+        // Min without max: no usable bounds, so counts stay null rather
+        // than pretending a one-sided range was checked.
+        "observation.state": { min: [-9, -8] },
+      },
+    });
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects: built.reader,
+    }).open(built.source, built.io);
+    try {
+      const profile = await session.stateAction?.readEpisodeProfile?.();
+      expect(profile?.action?.outOfRangeCounts).toEqual([2, 0]);
+      expect(profile?.state?.outOfRangeCounts).toEqual([null, null]);
+      // The profile shares the cached statistics read with the stats API.
+      await session.stateAction?.readDimensionStats?.();
+      expect(built.statsReads()).toBe(1);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("profiles across bounded blocks with one cached scan", async () => {
+    const built = buildStateActionSource(BASIC_SCENARIO);
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects: built.reader,
+      // rowBytes = 40 (see the degradation test): the profile scan must
+      // walk two blocks and later reads must reuse them.
+      stateActionSlabLimits: { blockBytes: 90, maxSingleSlabBytes: 100 },
+    }).open(built.source, built.io);
+    try {
+      const profile = await session.stateAction?.readEpisodeProfile?.();
+      expect(built.physicalReads()).toBe(2);
+      expect(profile?.state?.min[0]).toMatchObject({
+        frameIndex: 0,
+        value: 0.1,
+      });
+      expect(profile?.state?.max[0]).toMatchObject({
+        frameIndex: 2,
+        value: 2.1,
+      });
+      expect(profile?.trackingError?.[0]).toBeCloseTo(
+        (Math.abs(1 - 0.1) + Math.abs(3 - 1.1) + Math.abs(5 - 2.1)) / 3,
+      );
+      await session.stateAction?.readEpisodeProfile?.();
+      const row = await session.stateAction?.readAtCursor({ cursor: "row:1" });
+      expect(row?.state).toEqual([1.1, 1.2]);
+      expect(built.physicalReads()).toBe(2);
+    } finally {
+      session.dispose();
+    }
+  });
+
   it("degrades to bounded block reads when the slab exceeds its ceiling", async () => {
     const built = buildStateActionSource(BASIC_SCENARIO);
     const session = await createLeRobotFormatAdapter({

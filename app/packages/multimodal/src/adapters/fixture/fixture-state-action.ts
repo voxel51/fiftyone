@@ -3,9 +3,14 @@ import {
   EpisodeExactCursorError,
   EpisodeReadCancelledError,
   type StateActionCapability,
+  type StateActionDimensionExtreme,
+  type StateActionEpisodeProfile,
+  type StateActionFeatureProfile,
   type StateActionFeatureSchema,
   type StateActionRow,
   type StateActionSchema,
+  type StateActionTimingGap,
+  type StateActionTimingProfile,
 } from "../../ports";
 import { throwIfAborted } from "../../utils/cancellation";
 
@@ -143,6 +148,14 @@ export function createFixtureStateActionProvider(
         const offset = offsetAtOrBefore(timesNs, request.timestampNs);
         return offset === null ? null : rowAt(offset, request.signal);
       },
+      async readEpisodeProfile(options) {
+        ensureOpen();
+        throwIfAborted(options?.signal);
+        const filled = await waitForSharedFill(ensureFill(), options?.signal);
+        throwIfAborted(options?.signal);
+        ensureOpen();
+        return buildEpisodeProfile(filled, timesNs, schema);
+      },
       async readIndexWindow(request) {
         ensureOpen();
         throwIfAborted(request.signal);
@@ -173,6 +186,144 @@ export function createFixtureStateActionProvider(
       fill = null;
     },
     physicalReads: () => reads,
+  };
+}
+
+/** Largest-first gap samples kept on a timing profile. */
+const TIMING_GAP_CAP = 8;
+
+function buildEpisodeProfile(
+  rows: readonly FilledRow[],
+  timesNs: readonly bigint[],
+  schema: StateActionSchema,
+): StateActionEpisodeProfile {
+  const state = schema.state
+    ? aggregateFeature(
+        rows.map((row) => row.state),
+        timesNs,
+        schema.state.dimensions.length,
+      )
+    : undefined;
+  const action = schema.action
+    ? aggregateFeature(
+        rows.map((row) => row.action),
+        timesNs,
+        schema.action.dimensions.length,
+      )
+    : undefined;
+  const trackingError =
+    schema.state &&
+    schema.action &&
+    schema.state.dimensions.length === schema.action.dimensions.length
+      ? trackingErrorOf(rows, schema.state.dimensions.length)
+      : undefined;
+  return {
+    ...(action ? { action } : {}),
+    rowCount: timesNs.length,
+    ...(state ? { state } : {}),
+    timing: timingProfileOf(timesNs),
+    ...(trackingError ? { trackingError } : {}),
+  };
+}
+
+function aggregateFeature(
+  perRowValues: readonly (readonly unknown[] | undefined)[],
+  timesNs: readonly bigint[],
+  dimensionCount: number,
+): StateActionFeatureProfile {
+  const min: (StateActionDimensionExtreme | null)[] = Array.from(
+    { length: dimensionCount },
+    () => null,
+  );
+  const max: (StateActionDimensionExtreme | null)[] = Array.from(
+    { length: dimensionCount },
+    () => null,
+  );
+  const sums = new Array<number>(dimensionCount).fill(0);
+  const counts = new Array<number>(dimensionCount).fill(0);
+  perRowValues.forEach((values, frameIndex) => {
+    if (!values) return;
+    for (let index = 0; index < dimensionCount; index += 1) {
+      const value = values[index];
+      if (typeof value !== "number" || !Number.isFinite(value)) continue;
+      sums[index] += value;
+      counts[index] += 1;
+      const timestampNs = timesNs[frameIndex];
+      const currentMin = min[index];
+      if (currentMin === null || value < currentMin.value) {
+        min[index] = { frameIndex, timestampNs, value };
+      }
+      const currentMax = max[index];
+      if (currentMax === null || value > currentMax.value) {
+        max[index] = { frameIndex, timestampNs, value };
+      }
+    }
+  });
+  return {
+    max,
+    mean: counts.map((count, index) =>
+      count > 0 ? sums[index] / count : null,
+    ),
+    min,
+    // The fixture models no declared statistics, so declared bounds never
+    // exist to count against.
+    outOfRangeCounts: null,
+  };
+}
+
+function trackingErrorOf(
+  rows: readonly FilledRow[],
+  dimensionCount: number,
+): readonly (number | null)[] {
+  const sums = new Array<number>(dimensionCount).fill(0);
+  const counts = new Array<number>(dimensionCount).fill(0);
+  for (const row of rows) {
+    if (!row.state || !row.action) continue;
+    for (let index = 0; index < dimensionCount; index += 1) {
+      const state = row.state[index];
+      const action = row.action[index];
+      if (
+        typeof state !== "number" ||
+        !Number.isFinite(state) ||
+        typeof action !== "number" ||
+        !Number.isFinite(action)
+      ) {
+        continue;
+      }
+      sums[index] += Math.abs(action - state);
+      counts[index] += 1;
+    }
+  }
+  return counts.map((count, index) => (count > 0 ? sums[index] / count : null));
+}
+
+function timingProfileOf(timesNs: readonly bigint[]): StateActionTimingProfile {
+  if (timesNs.length < 2) {
+    return { gapCount: 0, gaps: [], medianIntervalNs: 0n };
+  }
+  const intervals = timesNs.slice(1).map((timeNs, index) => ({
+    beforeFrameIndex: index,
+    durationNs: timeNs - timesNs[index],
+    timestampNs: timeNs,
+  }));
+  const sorted = intervals
+    .map((interval) => interval.durationNs)
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const medianIntervalNs =
+    (sorted[(sorted.length - 1) >> 1] + sorted[sorted.length >> 1]) / 2n;
+  const gaps: StateActionTimingGap[] = intervals
+    .filter(
+      (interval) =>
+        medianIntervalNs > 0n &&
+        interval.durationNs * 2n > medianIntervalNs * 3n,
+    )
+    .sort((a, b) =>
+      a.durationNs < b.durationNs ? 1 : a.durationNs > b.durationNs ? -1 : 0,
+    );
+  return {
+    gapCount: gaps.length,
+    gaps: gaps.slice(0, TIMING_GAP_CAP),
+    medianIntervalNs,
   };
 }
 
