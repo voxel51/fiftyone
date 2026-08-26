@@ -8,28 +8,6 @@
   gap: 12px;
 }
 
-.title {
-  align-items: center;
-  color: var(--color-content-text-primary);
-  display: flex;
-  font-size: 12px;
-  font-weight: 600;
-  gap: 8px;
-}
-
-.titleBadge {
-  background: color-mix(
-    in srgb,
-    var(--color-content-text-secondary) 18%,
-    transparent
-  );
-  border-radius: 8px;
-  color: var(--color-content-text-secondary);
-  font-size: 10px;
-  font-weight: 400;
-  padding: 1px 6px;
-}
-
 .feature {
   display: flex;
   flex-direction: column;

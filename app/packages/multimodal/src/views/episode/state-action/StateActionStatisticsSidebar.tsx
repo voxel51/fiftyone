@@ -60,25 +60,20 @@ const ProvidedStatistics: React.FC = () => {
   if (!facts) return null;
 
   const resolvedStats = stats === "loading" ? null : stats;
+  const rowsFact = `${facts.rowCount.toLocaleString()} rows this episode`;
   return (
     <div className={styles.root} data-testid="episode-state-action-summary">
-      <div className={styles.title}>
-        <span>State &amp; Action</span>
-        <span className={styles.titleBadge}>
-          {`${facts.rowCount.toLocaleString()} rows this episode`}
-        </span>
-      </div>
       <span className={styles.caption}>
         {resolvedStats
-          ? `Dataset-declared statistics (meta/stats.json)${
+          ? `${rowsFact} · dataset-declared statistics (meta/stats.json)${
               resolvedStats.sampleCount
                 ? ` across ${resolvedStats.sampleCount.toLocaleString()} frames`
                 : ""
             }. Bars span min–max; the band covers q01–q99 and the tick marks
             the mean.`
           : stats === "loading"
-            ? "Reading declared statistics…"
-            : "This source declares no statistics (meta/stats.json)."}
+            ? `${rowsFact} · reading declared statistics…`
+            : `${rowsFact} · this source declares no statistics (meta/stats.json).`}
       </span>
       {facts.state ? (
         <FeatureStatistics

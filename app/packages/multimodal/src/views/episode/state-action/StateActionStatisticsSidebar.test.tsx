@@ -84,7 +84,8 @@ describe("StateActionStatisticsSidebar", () => {
     });
     const { container } = render(<StateActionStatisticsSidebar />);
 
-    expect(screen.getByText("167 rows this episode")).toBeDefined();
+    // No panel title: the row count leads the caption line itself.
+    expect(screen.getByText(/^167 rows this episode/)).toBeDefined();
     await waitFor(() =>
       expect(screen.getByText(/across 53,102 frames/)).toBeDefined(),
     );

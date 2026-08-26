@@ -219,9 +219,6 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
   const paused = !isPlaying && !isPlayPending;
   const announcement =
     paused && row ? `Frame ${row.frameIndex} of ${rowCount}` : "";
-  const taskLabel = row?.task
-    ? (row.task.label ?? `Task #${row.task.index}`)
-    : null;
   const status = rowState?.status;
   const hasCommittedRow = rowState?.row !== undefined;
   const showEmpty = status === "ready" && row === null;
@@ -260,20 +257,6 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
             {`playhead ${formatEpisodeTime(rowState.targetNs, startTimeNs)}`}
           </span>
         ) : null}
-        {taskLabel ? (
-          <span
-            className={styles.headerBadge}
-            title="Task supervising this row"
-          >
-            {taskLabel}
-          </span>
-        ) : null}
-        <span
-          className={styles.headerBadge}
-          title="Every value comes from the identified source row"
-        >
-          Exact row
-        </span>
         {stepError ? (
           <span className={styles.headerError} role="status">
             {stepError}

@@ -31,17 +31,6 @@
   white-space: nowrap;
 }
 
-.headerBadge {
-  background: color-mix(
-    in srgb,
-    var(--color-content-text-secondary) 18%,
-    transparent
-  );
-  border-radius: 8px;
-  padding: 1px 6px;
-  white-space: nowrap;
-}
-
 .headerError {
   color: var(--color-content-text-destructive);
 }

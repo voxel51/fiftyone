@@ -189,8 +189,6 @@ describe("StateActionTile", () => {
     render(<StateActionTile />);
 
     expect(screen.getAllByText("Frame 4 of 20").length).toBeGreaterThan(0);
-    expect(screen.getByText("fold the towel")).toBeDefined();
-    expect(screen.getByText("Exact row")).toBeDefined();
 
     const statePane = screen.getByRole("table", {
       name: "Observation state values",
@@ -214,19 +212,6 @@ describe("StateActionTile", () => {
     );
     rerender(<StateActionTile />);
     expect(screen.getByText("playhead t=+4.500s")).toBeDefined();
-  });
-
-  it("falls back to the numeric task index when no label resolves", () => {
-    setState(
-      { schema: SCHEMA, status: "ready" },
-      {
-        row: row({ task: { index: 7 } }),
-        status: "ready",
-        targetNs: 4n * NS_PER_SECOND,
-      },
-    );
-    render(<StateActionTile />);
-    expect(screen.getByText("Task #7")).toBeDefined();
   });
 
   it("marks each value's place on its declared dataset range", async () => {
