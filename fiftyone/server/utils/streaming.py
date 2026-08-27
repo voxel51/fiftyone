@@ -47,7 +47,7 @@ class StreamingBridge:
         self._error = None
         self._on_backpressure = on_backpressure
         self._last_backpressure_check = 0.0
-        self.sink = StreamingSink(
+        self.sink = _StreamingSink(
             self, chunk_size, on_bytes_written=on_bytes_written
         )
 
@@ -145,7 +145,7 @@ class StreamingBridge:
                 self._discard_queued()
 
 
-class StreamingSink:
+class _StreamingSink:
     """Non-seekable synchronous binary sink owned by a streaming bridge."""
 
     def __init__(self, bridge, chunk_size, on_bytes_written=None):

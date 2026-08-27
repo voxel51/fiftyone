@@ -178,14 +178,6 @@ class AbstractExecutionStoreRepo(ABC):
         pass
 
     @abstractmethod
-    def touch_key(
-        self, store_name: str, key: str, ttl: Optional[int] = None
-    ) -> bool:
-        """Refreshes a key's update time and optional expiration."""
-
-        pass
-
-    @abstractmethod
     def has_key(self, store_name: str, key: str) -> bool:
         """Check if a key exists in a store.
 
@@ -682,22 +674,6 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         )
         return document is not None
 
-    def touch_key(self, store_name, key, ttl=None):
-        values = {"updated_at": datetime.utcnow()}
-        if ttl is not None:
-            values.update(
-                expires_at=KeyDocument.get_expiration(ttl), policy="evict"
-            )
-        result = self._collection.update_one(
-            {
-                "store_name": store_name,
-                "key": key,
-                "dataset_id": self._dataset_id,
-            },
-            {"$set": values},
-        )
-        return bool(result.matched_count)
-
     def has_key(self, store_name: str, key: str) -> bool:
         result = self._collection.find_one(
             {
@@ -981,18 +957,6 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
                 document["policy"] = (
                     "evict" if policy == "evict" else "persist"
                 )
-            return True
-
-    def touch_key(self, store_name, key, ttl=None):
-        composite_key = self._doc_key(store_name, key)
-        with self._lock:
-            document = self._docs.get(composite_key)
-            if document is None:
-                return False
-            document["updated_at"] = datetime.utcnow()
-            if ttl is not None:
-                document["expires_at"] = KeyDocument.get_expiration(ttl)
-                document["policy"] = "evict"
             return True
 
     def has_key(self, store_name: str, key: str) -> bool:

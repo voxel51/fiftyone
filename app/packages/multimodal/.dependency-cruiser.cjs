@@ -39,7 +39,7 @@ const ENTERPRISE_SHARED_FACADES =
   `${SRC}(extensions/(grid-posters|timeline|tiles)/(index|runtime)\\.ts$|` +
   `extensions/(mcap-explorer|episode-actions)/index\\.ts$|` +
   `ir/index\\.ts$|query/bytes/index\\.ts$|temporal-tags/index\\.ts$|` +
-  `utils/relative-time\\.ts$|` +
+  `utils/(bigint|cancellation|relative-time)\\.ts$|` +
   `views/episode/settings/controls/index\\.ts$|visualization/index\\.ts$)`;
 const FORMAT_VENDORS =
   "(^|/)node_modules/(@mcap|@foxglove|hyparquet|mp4box)(/|$)|" +

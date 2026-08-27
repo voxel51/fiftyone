@@ -100,8 +100,6 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
             "value": {"version": 1},
         }
         self.mock_collection.find_one_and_update.return_value = {"key": "job"}
-        self.mock_collection.update_one.return_value = Mock(matched_count=1)
-
         self.assertTrue(
             self.store_repo.set_key_if_absent(
                 "jobs", "job", {"version": 1}, ttl=60
@@ -116,8 +114,6 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
                 ttl=60,
             )
         )
-        self.assertTrue(self.store_repo.touch_key("jobs", "job", ttl=60))
-
         inserted = self.mock_collection.insert_one.call_args.args[0]
         self.assertEqual(inserted["value"], {"version": 1})
         query = self.mock_collection.find_one_and_update.call_args.args[0]

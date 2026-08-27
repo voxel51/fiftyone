@@ -109,9 +109,6 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
         explicit = self.repo.get_key(store_name, key)
         self.assertEqual(explicit.expires_at, expires_at)
         self.assertEqual(explicit.policy, KeyPolicy.PERSIST)
-        self.assertTrue(self.repo.touch_key(store_name, key, ttl=120))
-        self.assertFalse(self.repo.touch_key(store_name, "missing", ttl=120))
-
     def test_update_ttl(self):
         store_name = "ttl_store"
         key = "ttl_key"

@@ -224,13 +224,6 @@ class ExecutionStoreService(object):
             policy=policy,
         )
 
-    def touch_key(
-        self, store_name: str, key: str, ttl: Optional[int] = None
-    ) -> bool:
-        """Refreshes a key's update time and optional expiration."""
-
-        return self._repo.touch_key(store_name, key, ttl=ttl)
-
     def has_key(self, store_name: str, key: str) -> bool:
         """Determines whether the specified key exists in the specified store.
 

@@ -166,11 +166,6 @@ class ExecutionStore(object):
             policy=policy,
         )
 
-    def touch(self, key: str, ttl: Optional[int] = None) -> bool:
-        """Refreshes a key's update time and optional expiration."""
-
-        return self._store_service.touch_key(self.store_name, key, ttl=ttl)
-
     def delete(self, key: str) -> bool:
         """Deletes a key from the store.
 
