@@ -1989,6 +1989,7 @@ class SampleCollection(object):
             for field in fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 1)[0]
+                _validate_media_identity_read(self, field_name)
                 if field_name not in existing_fields:
                     raise ValueError("Field '%s' does not exist" % field_name)
 
@@ -11189,17 +11190,16 @@ class SampleCollection(object):
 
             return []
 
-        reference_indexes = (
+        identity_indexes = (
             ["media_reference.key"]
             if self._dataset._doc.media_reference_kind is not None
-            else []
+            else ["filepath"]
         )
 
         if self._is_patches:
             names = [
                 "id",
-                "filepath",
-                *reference_indexes,
+                *identity_indexes,
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11212,8 +11212,7 @@ class SampleCollection(object):
         if self._is_frames:
             return [
                 "id",
-                "filepath",
-                *reference_indexes,
+                *identity_indexes,
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11223,8 +11222,7 @@ class SampleCollection(object):
         if self._is_clips:
             return [
                 "id",
-                "filepath",
-                *reference_indexes,
+                *identity_indexes,
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11234,8 +11232,7 @@ class SampleCollection(object):
             gf = self.group_field
             return [
                 "id",
-                "filepath",
-                *reference_indexes,
+                *identity_indexes,
                 "created_at",
                 "last_modified_at",
                 gf + ".id",
@@ -11244,8 +11241,7 @@ class SampleCollection(object):
 
         return [
             "id",
-            "filepath",
-            *reference_indexes,
+            *identity_indexes,
             "created_at",
             "last_modified_at",
         ]
@@ -12766,24 +12762,22 @@ def _validate_media_reference_write(
         raise UnsupportedMediaReferenceOperation(filepath_error_message)
 
 
-def _contains_media_references(sample_collection):
-    if sample_collection.media_type == fom.GROUP:
-        sample_collection = sample_collection.select_group_slices(
-            _allow_mixed=True
-        )
+def _validate_media_identity_read(sample_collection, field_name):
+    if field_name != "filepath":
+        return
 
-    return bool(
-        len(
-            sample_collection.match(
-                {
-                    "media_reference.key": {
-                        "$exists": True,
-                        "$ne": None,
-                    }
-                }
-            ).limit(1)
-        )
+    if fod._get_media_identity_mode(sample_collection) != "reference":
+        return
+
+    from fiftyone.multimodal.media import UnsupportedMediaReferenceOperation
+
+    raise UnsupportedMediaReferenceOperation(
+        "Filepath operations are not supported on reference-backed datasets"
     )
+
+
+def _contains_media_references(sample_collection):
+    return fod._get_media_identity_mode(sample_collection) == "reference"
 
 
 def _unwind_values(values, level=0):
@@ -13244,9 +13238,11 @@ def _parse_field_name(
     else:
         prefix = ""
 
-    if not allow_missing and not is_id_field:
-        root_field_name = field_name.split(".", 1)[0]
+    root_field_name = field_name.split(".", 1)[0]
+    if not is_frame_field:
+        _validate_media_identity_read(sample_collection, root_field_name)
 
+    if not allow_missing and not is_id_field:
         if sample_collection.get_field(prefix + root_field_name) is None:
             ftype = "frame field" if is_frame_field else "field"
             raise ValueError(

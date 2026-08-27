@@ -89,14 +89,14 @@ class DatasetSampleDocument(DatasetMixin, Document):
     _is_frames_doc = False
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
-    filepath = fof.StringField(null=True)
+    filepath = fof.StringField()
+    media_reference = fof.MediaReferenceField()
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
     created_at = fof.DateTimeField(read_only=True)
     last_modified_at = fof.DateTimeField(read_only=True)
 
     _media_type = fof.StringField()
-    media_reference = fof.MediaReferenceField(null=True)
     _rand = fof.FloatField(default=_generate_rand)
     _dataset_id = fof.ObjectIdField()
 
@@ -172,7 +172,12 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
-            if value is None and field_name not in ("id", "_dataset_id"):
+            if value is None and field_name not in (
+                "id",
+                "filepath",
+                "media_reference",
+                "_dataset_id",
+            ):
                 value = self._get_default(self.default_fields[field_name])
 
             self._data[field_name] = value

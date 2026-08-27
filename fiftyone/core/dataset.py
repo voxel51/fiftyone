@@ -396,13 +396,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             media_mode = _get_media_identity_mode(self)
             if media_mode == "reference":
                 query = {"media_reference.key": id_filepath_slice}
-            elif media_mode == "mixed":
-                query = {
-                    "$or": [
-                        {"filepath": id_filepath_slice},
-                        {"media_reference.key": id_filepath_slice},
-                    ]
-                }
             else:
                 query = {"filepath": id_filepath_slice}
 
@@ -2261,7 +2254,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
             instances
         """
-        schema = self._sample_doc_cls.get_field_schema(
+        return self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
@@ -2273,14 +2266,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             unwind=unwind,
             mode=mode,
         )
-        if not include_private and self._doc.media_reference_kind is None:
-            for path in list(schema):
-                if path == "media_reference" or path.startswith(
-                    "media_reference."
-                ):
-                    schema.pop(path)
-
-        return schema
 
     def get_frame_field_schema(
         self,
@@ -4158,8 +4143,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         media_mode, media_reference_kind = _preflight_media_sources(
             self, [sample]
         )
+        adopting_reference = (
+            media_mode == "reference"
+            and self._doc.media_reference_kind is None
+        )
         with _reference_media_write_guard(
-            self, media_mode == "reference"
+            self,
+            rollback_samples=media_mode == "reference",
+            transition=adopting_reference,
         ) as inserted_ids:
             sample = self._transform_sample(
                 sample,
@@ -4243,6 +4234,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             media_mode, _ = _preflight_media_sources(
                 self, [first_sample], check_duplicates=False
             )
+            adopting_reference = (
+                media_mode == "reference"
+                and self._doc.media_reference_kind is None
+            )
             batcher_instance = fou.get_default_batcher(
                 itertools.chain((first_sample,), sample_iter),
                 batcher=batcher,
@@ -4253,7 +4248,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
             with _reference_media_write_guard(
-                self, media_mode == "reference"
+                self,
+                rollback_samples=media_mode == "reference",
+                transition=adopting_reference,
             ) as inserted_ids:
                 with batcher_instance:
                     batches = iter(batcher_instance)
@@ -4559,8 +4556,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "reference kinds"
             )
 
-        if self._sample_collection.find_one(
-            {"filepath": {"$exists": True, "$ne": None}}, {"_id": True}
+        if current_kind is None and self._sample_collection.find_one(
+            {}, {"_id": True}
         ):
             raise ValueError(
                 "A dataset cannot mix filepath-backed and "
@@ -4569,8 +4566,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         indexes = self._sample_collection.index_information()
         matching_indexes = [
-            index
-            for index in indexes.values()
+            (name, index)
+            for name, index in indexes.items()
             if index.get("key") == [("media_reference.key", 1)]
         ]
         if not matching_indexes:
@@ -4579,26 +4576,39 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
         elif len(matching_indexes) != 1 or not all(
             index.get("unique") and index.get("sparse")
-            for index in matching_indexes
+            for _, index in matching_indexes
         ):
             raise ValueError(
                 "The existing media_reference.key index must be sparse "
                 "and unique"
             )
 
-        if current_kind == kind and matching_indexes:
+        filepath_indexes = [
+            name
+            for name, index in indexes.items()
+            # Every filepath index is inactive in reference mode, including
+            # compound indexes created before the empty dataset was adopted
+            # as reference-backed.
+            if any(field == "filepath" for field, _ in index.get("key", ()))
+        ]
+
+        if current_kind == kind:
+            for index_name in filepath_indexes:
+                self._sample_collection.drop_index(index_name)
+
             self._reference_media_capable = True
             return
 
         self._doc.media_reference_kind = kind
-        if not any(
-            field.name == "media_reference"
+        self._doc.sample_fields = [
+            field
             for field in self._doc.sample_fields
-        ):
-            field = self._sample_doc_cls._fields["media_reference"]
-            self._doc.sample_fields.append(
-                foo.SampleFieldDocument.from_field(field)
-            )
+            if field.name not in ("filepath", "media_reference")
+        ]
+        field = self._sample_doc_cls._fields["media_reference"]
+        self._doc.sample_fields.append(
+            foo.SampleFieldDocument.from_field(field)
+        )
 
         app_config = self._doc.app_config
         if app_config.grid_media_field == "filepath":
@@ -4614,6 +4624,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             app_config.media_fields.append("media_reference")
 
         self._doc.save()
+        for index_name in filepath_indexes:
+            self._sample_collection.drop_index(index_name)
+
         self._reference_media_capable = True
 
     def _bulk_write(
@@ -4935,11 +4948,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             adopting_reference = (
                 media_mode == "reference"
                 and insert_new
-                and _get_media_identity_mode(self) is None
+                and self._doc.media_reference_kind is None
             )
             with _reference_media_write_guard(
                 self,
-                adopting_reference,
+                rollback_samples=adopting_reference,
+                transition=adopting_reference,
                 clear_samples_on_failure=True,
             ):
                 if media_mode == "reference" and insert_new:
@@ -5048,11 +5062,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         adopting_reference = (
             media_mode == "reference"
             and insert_new
-            and _get_media_identity_mode(self) is None
+            and self._doc.media_reference_kind is None
         )
         with _reference_media_write_guard(
             self,
-            adopting_reference,
+            rollback_samples=adopting_reference,
+            transition=adopting_reference,
             clear_samples_on_failure=True,
         ):
             if media_mode == "reference" and insert_new:
@@ -10619,6 +10634,18 @@ def _save_view(view, fields=None):
         }
 
     media_identity_mode = _get_media_identity_mode(dataset)
+    if media_identity_mode == "reference" and any(
+        isinstance(stage, fot.Mongo) for stage in view._stages
+    ):
+        from fiftyone.multimodal.media import (
+            UnsupportedMediaReferenceOperation,
+        )
+
+        raise UnsupportedMediaReferenceOperation(
+            "Saving raw Mongo stages is not supported for media-reference "
+            "datasets"
+        )
+
     _validate_media_field_edits(
         dataset, edited_fields, media_identity_mode=media_identity_mode
     )
@@ -10652,38 +10679,6 @@ def _save_view(view, fields=None):
     #
 
     pipeline = view._pipeline(detach_frames=True, detach_groups=True)
-    if media_identity_mode == "reference":
-        reference_kind = dataset._doc.media_reference_kind
-        validation_pipeline = pipeline + [
-            {
-                "$match": {
-                    "$or": [
-                        {
-                            "filepath": {"$ne": None},
-                            "media_reference": {"$ne": None},
-                        },
-                        {
-                            "filepath": None,
-                            "media_reference": None,
-                        },
-                        {"media_reference.kind": {"$ne": reference_kind}},
-                    ]
-                }
-            },
-            {"$limit": 1},
-        ]
-        invalid = next(
-            iter(
-                foo.aggregate(dataset._sample_collection, validation_pipeline)
-            ),
-            None,
-        )
-        if invalid is not None:
-            raise ValueError(
-                "A saved view would violate the dataset media-source "
-                "invariant"
-            )
-
     if sample_fields:
         project = {f: True for f in sample_fields}
         project["last_modified_at"] = now
@@ -11137,11 +11132,12 @@ def _add_collection_with_new_ids(
         dataset, sample_collection, check_duplicates=True
     )
     adopting_reference = (
-        media_mode == "reference" and _get_media_identity_mode(dataset) is None
+        media_mode == "reference" and dataset._doc.media_reference_kind is None
     )
     with _reference_media_write_guard(
         dataset,
-        adopting_reference,
+        rollback_samples=adopting_reference,
+        transition=adopting_reference,
         clear_samples_on_failure=True,
     ):
         if media_mode == "reference":
@@ -12315,17 +12311,17 @@ def _validate_media_source_compatibility(
         return
 
     dataset_mode = _get_media_identity_mode(dataset)
-    if "mixed" in (dataset_mode, incoming_mode):
-        raise ValueError(
-            "A dataset cannot mix filepath-backed and "
-            "media-reference-backed samples"
+    if dataset_mode != incoming_mode:
+        adopting_reference = (
+            dataset_mode == "filepath"
+            and incoming_mode == "reference"
+            and dataset._sample_collection.find_one({}, {"_id": True}) is None
         )
-
-    if dataset_mode is not None and dataset_mode != incoming_mode:
-        raise ValueError(
-            "A dataset cannot mix filepath-backed and "
-            "media-reference-backed samples"
-        )
+        if not adopting_reference:
+            raise ValueError(
+                "A dataset cannot mix filepath-backed and "
+                "media-reference-backed samples"
+            )
 
     if incoming_mode == "reference":
         dataset_kind = _get_media_reference_kind(dataset)
@@ -12375,36 +12371,7 @@ def _get_media_reference_kind(samples):
     if not isinstance(samples, foc.SampleCollection):
         return None
 
-    dataset = samples._dataset
-    dataset_document = foo.get_db_conn().datasets.find_one(
-        {"_id": dataset._doc.id}, {"media_reference_kind": True}
-    )
-    marked_kind = (
-        None
-        if dataset_document is None
-        else dataset_document.get("media_reference_kind")
-    )
-    if marked_kind is None and not _has_media_reference_capability_marker(
-        dataset
-    ):
-        return None
-
-    kinds = dataset._sample_collection.distinct(
-        "media_reference.kind",
-        {"media_reference.kind": {"$exists": True}},
-    )
-    kinds = [kind for kind in kinds if kind is not None]
-    if marked_kind is not None:
-        kinds.append(marked_kind)
-
-    kinds = set(kinds)
-    if len(kinds) > 1:
-        raise ValueError(
-            "A media-reference dataset cannot contain multiple reference "
-            "kinds"
-        )
-
-    return next(iter(kinds)) if kinds else None
+    return samples._dataset._doc.media_reference_kind
 
 
 def _get_media_identity_mode(samples):
@@ -12417,92 +12384,24 @@ def _get_media_identity_mode(samples):
     if not isinstance(samples, foc.SampleCollection):
         return None
 
-    dataset = samples._dataset
-    dataset_document = foo.get_db_conn().datasets.find_one(
-        {"_id": dataset._doc.id}, {"media_reference_kind": True}
-    )
-    marked_reference = (
-        dataset_document is not None
-        and dataset_document.get("media_reference_kind") is not None
-    )
-    if not marked_reference and not _has_media_reference_capability_marker(
-        dataset
-    ):
-        sample = dataset._sample_collection.find_one(
-            {}, {"filepath": True, "media_reference": True}
-        )
-        if sample is None:
-            return None
-
-        filepath = sample.get("filepath")
-        reference = sample.get("media_reference")
-        if filepath is not None and reference is None:
-            return "filepath"
-
-        return "mixed"
-
-    invalid_source = dataset._sample_collection.find_one(
-        {
-            "$or": [
-                {"filepath": None, "media_reference": None},
-                {
-                    "filepath": {"$ne": None},
-                    "media_reference": {"$ne": None},
-                },
-            ]
-        },
-        {"_id": True},
-    )
-    if invalid_source is not None:
-        return "mixed"
-
-    has_reference = (
-        dataset._sample_collection.find_one(
-            {"media_reference": {"$ne": None}}, {"_id": True}
-        )
-        is not None
-    )
-    has_filepath = (
-        dataset._sample_collection.find_one(
-            {"filepath": {"$ne": None}}, {"_id": True}
-        )
-        is not None
-    )
-    if has_reference and has_filepath:
-        return "mixed"
-
-    if has_reference:
-        return "reference"
-
-    if has_filepath:
-        return "mixed" if marked_reference else "filepath"
-
-    return "reference" if marked_reference else None
-
-
-def _has_media_reference_capability_marker(dataset):
-    if any(
-        field.name == "media_reference" for field in dataset._doc.sample_fields
-    ):
-        return True
-
-    app_config = dataset._doc.app_config
     return (
-        app_config.grid_media_field == "media_reference"
-        or app_config.modal_media_field == "media_reference"
-        or "media_reference" in app_config.media_fields
+        "reference"
+        if samples._dataset._doc.media_reference_kind is not None
+        else "filepath"
     )
 
 
 @contextlib.contextmanager
 def _reference_media_write_guard(
     dataset,
-    enabled,
+    *,
+    rollback_samples,
+    transition=False,
     clear_samples_on_failure=False,
     inserted_binding_keys=None,
 ):
     inserted_ids = []
-    if not enabled:
+    if not rollback_samples and not transition:
         try:
             yield inserted_ids
         except BaseException:
@@ -12511,9 +12410,16 @@ def _reference_media_write_guard(
 
         return
 
-    database = foo.get_db_conn()
-    dataset_document = database.datasets.find_one({"_id": dataset._doc.id})
-    index_names = set(dataset._sample_collection.index_information())
+    database = None
+    dataset_document = None
+    identity_indexes = None
+    if transition:
+        database = foo.get_db_conn()
+        dataset_document = database.datasets.find_one({"_id": dataset._doc.id})
+        identity_indexes = _get_media_identity_indexes(
+            dataset._sample_collection
+        )
+
     try:
         yield inserted_ids
     except GeneratorExit:
@@ -12524,28 +12430,63 @@ def _reference_media_write_guard(
     except BaseException:
         _delete_imported_reference_bindings(inserted_binding_keys)
 
-        object_ids = []
-        if clear_samples_on_failure:
-            dataset._sample_collection.delete_many({})
-        else:
-            object_ids = [ObjectId(sample_id) for sample_id in inserted_ids]
+        if rollback_samples:
+            object_ids = []
+            if clear_samples_on_failure:
+                dataset._sample_collection.delete_many({})
+            else:
+                object_ids = [
+                    ObjectId(sample_id) for sample_id in inserted_ids
+                ]
 
-        if object_ids:
-            dataset._sample_collection.delete_many(
-                {"_id": {"$in": object_ids}}
+            if object_ids:
+                dataset._sample_collection.delete_many(
+                    {"_id": {"$in": object_ids}}
+                )
+
+        if transition:
+            _restore_media_identity_indexes(
+                dataset._sample_collection, identity_indexes
             )
 
-        current_indexes = set(dataset._sample_collection.index_information())
-        for index_name in current_indexes - index_names:
-            dataset._sample_collection.drop_index(index_name)
-
-        if dataset_document is not None:
+        if transition and dataset_document is not None:
             database.datasets.replace_one(
                 {"_id": dataset._doc.id}, dataset_document
             )
             dataset._reload(hard=True)
 
         raise
+
+
+def _get_media_identity_indexes(collection):
+    indexes = collection.index_information()
+    return {
+        name: copy.deepcopy(index)
+        for name, index in indexes.items()
+        if any(
+            field in ("filepath", "media_reference.key")
+            for field, _ in index.get("key", ())
+        )
+    }
+
+
+def _restore_media_identity_indexes(collection, indexes):
+    current_indexes = _get_media_identity_indexes(collection)
+    for index_name in set(current_indexes) - set(indexes):
+        collection.drop_index(index_name)
+
+    current_indexes = _get_media_identity_indexes(collection)
+    for index_name, index in indexes.items():
+        if index_name in current_indexes or index_name == "_id_":
+            continue
+
+        keys = index["key"]
+        options = {
+            key: value
+            for key, value in index.items()
+            if key not in ("key", "ns", "v")
+        }
+        collection.create_index(keys, name=index_name, **options)
 
 
 def _delete_imported_reference_bindings(binding_keys):

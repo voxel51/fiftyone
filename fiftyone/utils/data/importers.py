@@ -1913,11 +1913,16 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         media_reference_export = (
             dataset_dict.get("media_reference_kind") is not None
         )
-        adopting_reference = media_reference_export and not bool(dataset)
+        adopting_reference = (
+            media_reference_export
+            and dataset._doc.media_reference_kind is None
+            and dataset._sample_collection.find_one({}, {"_id": True}) is None
+        )
         inserted_binding_keys = []
         with fod._reference_media_write_guard(
             dataset,
-            adopting_reference,
+            rollback_samples=adopting_reference,
+            transition=adopting_reference,
             clear_samples_on_failure=True,
             inserted_binding_keys=inserted_binding_keys,
         ):

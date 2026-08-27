@@ -327,6 +327,12 @@ else:
         sample = fo.Sample(media_reference=reference, value=1)
 
         self.assertIsNone(sample.filepath)
+        self.assertNotIn("filepath", sample.field_names)
+        self.assertIn("media_reference", sample.field_names)
+        self.assertNotIn("filepath", sample.to_dict())
+        self.assertEqual(
+            set(sample.to_dict()["media_reference"]), {"kind", "key"}
+        )
         self.assertEqual(sample.media_reference, reference)
         self.assertEqual(sample["media_reference"], reference)
         self.assertEqual(sample.filename, "episode-000001")
@@ -493,15 +499,18 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         hydrate.assert_called_once()
 
     @drop_datasets
-    def test_media_source_mode_is_authoritative_across_dataset_instances(self):
+    def test_media_source_mode_is_authoritative_across_dataset_loads(self):
         reference_dataset = fo.Dataset()
         reference_name = reference_dataset.name
-        self.assertIsNone(fod._get_media_identity_mode(reference_dataset))
+        self.assertEqual(
+            fod._get_media_identity_mode(reference_dataset), "filepath"
+        )
         fo.Dataset._instances.pop(reference_name, None)
         reference_writer = fo.load_dataset(reference_name)
         reference_writer.add_sample(
             fo.Sample.from_media_reference(_make_reference(1))
         )
+        reference_dataset.reload()
 
         with self.assertRaisesRegex(ValueError, "cannot mix"):
             reference_dataset.add_sample(fo.Sample(filepath="sample.jpg"))
@@ -510,15 +519,18 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
         stored = list(reference_dataset._sample_collection.find({}))
         self.assertEqual(len(stored), 1)
-        self.assertIsNone(stored[0].get("filepath"))
-        self.assertIsNotNone(stored[0].get("media_reference"))
+        self.assertNotIn("filepath", stored[0])
+        self.assertIn("media_reference", stored[0])
 
         filepath_dataset = fo.Dataset()
         filepath_name = filepath_dataset.name
-        self.assertIsNone(fod._get_media_identity_mode(filepath_dataset))
+        self.assertEqual(
+            fod._get_media_identity_mode(filepath_dataset), "filepath"
+        )
         fo.Dataset._instances.pop(filepath_name, None)
         filepath_writer = fo.load_dataset(filepath_name)
         filepath_writer.add_sample(fo.Sample(filepath="sample.jpg"))
+        filepath_dataset.reload()
 
         with self.assertRaisesRegex(ValueError, "cannot mix"):
             filepath_dataset.add_sample(
@@ -530,7 +542,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(
             stored[0].get("filepath"), os.path.abspath("sample.jpg")
         )
-        self.assertIsNone(stored[0].get("media_reference"))
+        self.assertNotIn("media_reference", stored[0])
 
     @drop_datasets
     def test_incompatible_reserved_schema_fails_before_migration(self):
@@ -652,6 +664,12 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 _make_reference(1), group=group.element("left")
             )
         )
+        schema = dataset.get_field_schema()
+        self.assertIn("media_reference", schema)
+        self.assertNotIn("filepath", schema)
+        grouped_schema = dataset.select_group_slices().get_field_schema()
+        self.assertIn("media_reference", grouped_schema)
+        self.assertNotIn("filepath", grouped_schema)
         sample = dataset.first()
         persisted = dataset._sample_collection.find_one({"_id": sample._id})
 
@@ -704,11 +722,20 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         ]
         self.assertTrue(reference_index["unique"])
         self.assertTrue(reference_index["sparse"])
+        self.assertNotIn("filepath", dataset.get_index_information())
+        self.assertNotIn("filepath", dataset._get_default_indexes())
+        self.assertIn(
+            "media_reference", dataset._sample_doc_cls._get_default_fields()
+        )
+        self.assertNotIn(
+            "filepath", dataset._sample_doc_cls._get_default_fields()
+        )
         with self.assertRaises(ValueError):
             dataset.drop_index("media_reference.key")
 
         private_schema = dataset.get_field_schema(include_private=True)
         public_schema = dataset.get_field_schema()
+        self.assertNotIn("filepath", public_schema)
         self.assertIsInstance(
             public_schema["media_reference"], fof.MediaReferenceField
         )
@@ -751,6 +778,12 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         )
         serialized_reference = dataset.first().to_dict()["media_reference"]
         self.assertEqual(set(serialized_reference), {"kind", "key"})
+        self.assertNotIn("filepath", dataset.first().to_dict())
+        selected_schema = dataset.select_fields(
+            "episode_index"
+        ).get_field_schema()
+        self.assertNotIn("filepath", selected_schema)
+        self.assertIn("media_reference", selected_schema)
         self.assertEqual(
             dataset.select_fields("media_reference").first().media_reference,
             dataset.first().media_reference,
@@ -1230,6 +1263,12 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertIsNone(dataset._doc.media_reference_kind)
         self.assertEqual(dataset.app_config.to_dict(), app_config)
         self.assertEqual(dataset.get_index_information(), indexes)
+        identity_fields = {
+            field.name
+            for field in dataset._doc.sample_fields
+            if field.name in ("filepath", "media_reference")
+        }
+        self.assertEqual(identity_fields, {"filepath"})
 
         dataset.add_sample(fo.Sample.from_media_reference(_make_reference(5)))
         with self.assertRaisesRegex(ValueError, "duplicate"):
@@ -1269,6 +1308,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             if calls == 1:
                 return original_add_batch(current_dataset, batch)
 
+            current_dataset._sample_collection.create_index("unrelated")
             raise ValueError("concurrent duplicate")
 
         samples = [
@@ -1291,7 +1331,11 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(set(dataset.get_field_schema()), field_names)
         self.assertIsNone(dataset._doc.media_reference_kind)
         self.assertEqual(dataset.app_config.to_dict(), app_config)
-        self.assertEqual(dataset.get_index_information(), indexes)
+        restored_indexes = dataset.get_index_information()
+        self.assertIn("unrelated", restored_indexes)
+        for name, info in indexes.items():
+            self.assertEqual(restored_indexes[name], info)
+        self.assertNotIn("media_reference.key", restored_indexes)
 
     @drop_datasets
     def test_closing_add_generator_preserves_completed_batches(self):
@@ -1389,7 +1433,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertNotEqual(cloned_view.first().id, dataset.first().id)
 
     @drop_datasets
-    def test_empty_reference_dataset_reload_clone_and_legacy_index(self):
+    def test_empty_reference_dataset_reload_clone_and_index(self):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample.from_media_reference(_make_reference(0)))
         name = dataset.name
@@ -1453,32 +1497,6 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(output.strip().splitlines()[-1], "0")
         self.assertFalse(fo.dataset_exists(clone.name))
 
-        legacy = fo.Dataset()
-        old_revision = legacy._doc.version
-        legacy.add_sample(fo.Sample.from_media_reference(_make_reference(10)))
-        legacy._sample_collection.drop_index("media_reference.key_1")
-        legacy._sample_collection.update_many({}, {"$set": {"filepath": None}})
-        legacy._doc.version = old_revision
-        legacy._doc.media_reference_kind = None
-        legacy._doc.sample_fields = [
-            field
-            for field in legacy._doc.sample_fields
-            if field.name != "media_reference"
-        ]
-        legacy._doc.save()
-        legacy.add_sample(fo.Sample.from_media_reference(_make_reference(11)))
-        reference_index = legacy.get_index_information()["media_reference.key"]
-        self.assertTrue(reference_index["unique"])
-        self.assertTrue(reference_index["sparse"])
-        self.assertIn(
-            "media_reference",
-            {field.name for field in legacy._doc.sample_fields},
-        )
-        with self.assertRaisesRegex(ValueError, "duplicate"):
-            legacy.add_sample(
-                fo.Sample.from_media_reference(_make_reference(10))
-            )
-
     @drop_datasets
     def test_guarded_file_operations_and_record_only_deletion(self):
         with tempfile.TemporaryDirectory() as root:
@@ -1491,29 +1509,25 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             dataset.add_sample(
                 fo.Sample.from_media_reference(_make_reference(1))
             )
-            self.assertEqual(dataset.values("filepath"), [None])
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.values("filepath")
             persisted = dataset._sample_collection.find_one()
 
-            for field, expression in (
-                ("media_reference.key", fo.ViewField("id")),
-                ("filepath", fo.ViewField("id")),
-            ):
-                view = dataset.add_stage(fo.SetField(field, expression))
-                with self.subTest(field=field), self.assertRaises(
-                    UnsupportedMediaReferenceOperation
-                ):
-                    view.save()
+            view = dataset.add_stage(
+                fo.SetField("media_reference.key", fo.ViewField("id"))
+            )
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                view.save()
 
-                self.assertEqual(
-                    dataset._sample_collection.find_one(), persisted
-                )
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.add_stage(fo.SetField("filepath", fo.ViewField("id")))
 
-            dataset.mongo(
-                [{"$set": {"filepath": None, "tags": ["valid"]}}]
-            ).save(fields=["tags"])
+            self.assertEqual(dataset._sample_collection.find_one(), persisted)
+
+            dataset.set_field("tags", ["valid"]).save(fields=["tags"])
             self.assertEqual(dataset.first().tags, ["valid"])
             persisted = dataset._sample_collection.find_one()
-            with self.assertRaisesRegex(ValueError, "media-source invariant"):
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
                 dataset.mongo(
                     [
                         {

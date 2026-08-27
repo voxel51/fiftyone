@@ -125,13 +125,6 @@ class DatasetView(foc.SampleCollection):
             media_mode = fod._get_media_identity_mode(self)
             if media_mode == "reference":
                 query = {"media_reference.key": id_filepath_slice}
-            elif media_mode == "mixed":
-                query = {
-                    "$or": [
-                        {"filepath": id_filepath_slice},
-                        {"media_reference.key": id_filepath_slice},
-                    ]
-                }
             else:
                 query = {"filepath": id_filepath_slice}
 

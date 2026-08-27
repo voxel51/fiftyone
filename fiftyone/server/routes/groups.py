@@ -86,6 +86,9 @@ def _filter_dict_by_fields(
         ):
             return True
 
+        if field_path.startswith("media_reference."):
+            return True
+
         # Include if explicitly requested
         if field_path in field_set:
             return True

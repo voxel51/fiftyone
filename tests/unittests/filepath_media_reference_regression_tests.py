@@ -19,6 +19,7 @@ from decorators import drop_datasets
 from mongoengine.errors import ValidationError
 
 import fiftyone as fo
+import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -39,14 +40,50 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
         dataset.add_sample(fo.Sample(filepath="image.jpg"))
 
         self.assertEqual(fod._get_media_identity_mode(dataset), "filepath")
+        collection = dataset._sample_collection
         with mock.patch.object(
-            dataset._sample_collection,
+            fo.Dataset,
+            "_get_sample_collection",
+            return_value=collection,
+        ), mock.patch.object(
+            collection,
             "distinct",
-            side_effect=AssertionError(
-                "filepath datasets must not scan kinds"
-            ),
+            side_effect=AssertionError("filepath datasets must not scan"),
+        ), mock.patch.object(
+            collection,
+            "find_one",
+            side_effect=AssertionError("filepath datasets must not probe"),
+        ), mock.patch.object(
+            collection,
+            "aggregate",
+            side_effect=AssertionError("filepath datasets must not aggregate"),
         ):
             self.assertIsNone(fod._get_media_reference_kind(dataset))
+            self.assertFalse(foc._contains_media_references(dataset))
+            self.assertEqual(
+                dataset._get_default_indexes(),
+                ["id", "filepath", "created_at", "last_modified_at"],
+            )
+            self.assertIn(
+                "filepath", dataset._sample_doc_cls._get_default_fields()
+            )
+            self.assertNotIn(
+                "media_reference",
+                dataset._sample_doc_cls._get_default_fields(),
+            )
+            self.assertNotIn("media_reference", dataset.get_field_schema())
+
+        raw = dataset._sample_collection.find_one()
+        self.assertIn("filepath", raw)
+        self.assertNotIn("media_reference", raw)
+
+        serialized = dataset.first().to_dict()
+        self.assertIn("filepath", serialized)
+        self.assertNotIn("media_reference", serialized)
+
+        indexes = dataset.get_index_information()
+        self.assertIn("filepath", indexes)
+        self.assertNotIn("media_reference.key", indexes)
 
     @drop_datasets
     def test_add_samples_streams_and_preserves_completed_batches(self):
@@ -137,6 +174,10 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
     def test_media_reference_is_reserved_on_filepath_datasets(self):
         sample = fo.Sample(filepath="image.jpg")
         self.assertIsNone(sample.media_reference)
+        self.assertIn("filepath", sample.field_names)
+        self.assertNotIn("media_reference", sample.field_names)
+        self.assertIn("filepath", sample.to_dict())
+        self.assertNotIn("media_reference", sample.to_dict())
 
         with self.assertRaises(TypeError):
             fo.Sample(filepath="image.jpg", media_reference="constructed")
@@ -147,6 +188,9 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(sample)
         self.assertNotIn("media_reference", dataset.get_field_schema())
+        self.assertNotIn(
+            "media_reference", dataset.select_fields().get_field_schema()
+        )
         self.assertFalse(
             any(
                 path.startswith("media_reference")
@@ -207,6 +251,14 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
                 dataset_type=fot.FiftyOneDataset,
                 export_media=False,
             )
+
+            with open(os.path.join(export_dir, "samples.json")) as file:
+                exported_samples = json.load(file)["samples"]
+
+            self.assertTrue(
+                all("media_reference" not in s for s in exported_samples)
+            )
+            self.assertTrue(all("filepath" in s for s in exported_samples))
 
             events = []
 
@@ -279,6 +331,7 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
                     )
                     self.assertIsInstance(item, expected_type)
                     self.assertEqual(item.sample["filepath"], filepath)
+                    self.assertNotIn("media_reference", item.sample)
 
 
 if __name__ == "__main__":
