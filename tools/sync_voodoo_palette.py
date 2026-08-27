@@ -129,7 +129,11 @@ def main():
     args = parser.parse_args()
 
     module = _render(*_read_tokens())
-    relative = os.path.relpath(TARGET, REPO_ROOT)
+    try:
+        relative = os.path.relpath(TARGET, REPO_ROOT)
+    except ValueError:
+        # Windows raises when the two paths sit on different drives
+        relative = TARGET
 
     current = None
     if os.path.isfile(TARGET):
