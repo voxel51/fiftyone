@@ -193,12 +193,12 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}", "${worksp
         fo.delete_dataset(dataset_name)
           `);
         } catch (error) {
-          void error;
+          console.warn("Error deleting MCAP E2E datasets:", error);
         }
         try {
           await foWebServer.stopWebServer();
         } catch (error) {
-          void error;
+          console.warn("Error stopping FiftyOne webserver:", error);
         }
         await fs.rm(fixtureDir, { force: true, recursive: true });
       }
