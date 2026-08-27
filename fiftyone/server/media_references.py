@@ -1,43 +1,22 @@
 """
-Browser-safe media-reference sample transport.
+Browser-safe media-reference sample transport validation.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-from fiftyone.multimodal.media import (
-    MediaReferenceError,
-    sanitize_media_reference,
-)
+from fiftyone.multimodal.media import _validate_media_reference_descriptor
 
 
-def sanitize_sample_for_transport(sample):
-    """Redacts a sample's private reference payload for browser transport."""
+def validate_sample_for_transport(sample):
+    """Validates that browser transport contains no private binding data."""
     if not isinstance(sample, dict):
         return sample
 
-    envelope = sample.get("_media_reference", None)
-    if envelope is None:
+    descriptor = sample.get("media_reference", None)
+    if descriptor is None:
         return sample
 
-    if isinstance(envelope, dict) and set(envelope) == {
-        "kind",
-        "key",
-        "version",
-    }:
-        if not all(
-            isinstance(envelope[field], str) and envelope[field]
-            for field in ("kind", "key", "version")
-        ):
-            raise MediaReferenceError(
-                "Malformed sanitized media-reference descriptor"
-            )
-
-        return sample
-
-    sample = dict(sample)
-    descriptor = sanitize_media_reference(envelope)
-    sample["_media_reference"] = descriptor
-    sample["_media_type"] = envelope["media_type"]
+    _validate_media_reference_descriptor(descriptor)
     return sample

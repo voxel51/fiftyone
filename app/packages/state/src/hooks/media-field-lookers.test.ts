@@ -127,12 +127,11 @@ describe("resolveMediaFieldLooker", () => {
   it("keeps a logical media reference off all native looker paths", () => {
     expect(
       resolveMediaFieldLooker({
-        mediaField: "_media_reference",
+        mediaField: "media_reference",
         sample: {
-          _media_reference: {
+          media_reference: {
             kind: "lerobot-episode",
             key: "source:17",
-            version: "1",
           },
           _media_type: "multimodal",
         },

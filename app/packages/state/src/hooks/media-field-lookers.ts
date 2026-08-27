@@ -11,7 +11,7 @@ export type NativeLookerType = "image" | "video" | "3d";
 
 type MediaFieldLookerSample = {
   filepath?: string | null;
-  _media_reference?: MediaReferenceDescriptor | null;
+  media_reference?: MediaReferenceDescriptor | null;
   metadata?: { mime_type?: string } | null;
   media_type?: string | null;
   _media_type?: string | null;
@@ -42,7 +42,7 @@ export const resolveMediaFieldLooker = ({
   urls,
 }: ResolveMediaFieldLookerParams) => {
   const mediaFieldPath = urls[mediaField];
-  const hasMediaReference = Boolean(sample._media_reference);
+  const hasMediaReference = Boolean(sample.media_reference);
   const hasSelectedMediaPath = Boolean(mediaFieldPath?.trim());
   const hasAlternateMediaPath =
     mediaField !== "filepath" && hasSelectedMediaPath;

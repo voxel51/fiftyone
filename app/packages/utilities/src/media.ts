@@ -23,7 +23,6 @@ export type RecognizedMediaType =
 export type MediaReferenceDescriptor = {
   readonly kind: string;
   readonly key: string;
-  readonly version: string;
 };
 
 /** Direct-media extensions decoded by the Gaussian splat viewer. */

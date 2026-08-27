@@ -81,7 +81,7 @@ def _filter_dict_by_fields(
         if field_path in (
             "id",
             "filepath",
-            "_media_reference",
+            "media_reference",
             "_media_type",
         ):
             return True

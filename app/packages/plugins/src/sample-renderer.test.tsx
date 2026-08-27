@@ -179,15 +179,14 @@ describe("sample renderer matcher utilities", () => {
       {
         sample: {
           _id: "episode",
-          _media_reference: {
+          media_reference: {
             kind: "lerobot-episode",
             key: "source:17",
-            version: "1",
           },
           _media_type: "multimodal",
         },
       },
-      "_media_reference",
+      "media_reference",
     );
 
     expect(media).toMatchObject({
@@ -196,7 +195,6 @@ describe("sample renderer matcher utilities", () => {
       mediaReference: {
         kind: "lerobot-episode",
         key: "source:17",
-        version: "1",
       },
       mediaType: "multimodal",
       path: null,
@@ -277,15 +275,14 @@ describe("sample renderer selection", () => {
       {
         sample: {
           _id: "episode",
-          _media_reference: {
+          media_reference: {
             kind: "lerobot-episode",
             key: "source:17",
-            version: "1",
           },
           _media_type: "multimodal",
         },
       },
-      "_media_reference",
+      "media_reference",
       dataset,
       schema,
       "modal",

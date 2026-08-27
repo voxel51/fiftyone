@@ -23,7 +23,7 @@ from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.filters import SampleFilter
 import fiftyone.server.metadata as fosm
-from fiftyone.server.media_references import sanitize_sample_for_transport
+from fiftyone.server.media_references import validate_sample_for_transport
 from fiftyone.server.paginator import Connection, Edge, PageInfo
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.utils import from_dict
@@ -188,9 +188,9 @@ async def _create_sample_item(
     *,
     additional_media_fields: t.Optional[t.Tuple] = None,
 ) -> SampleItem:
-    if sample.get("_media_reference") is not None:
+    if sample.get("media_reference") is not None:
         try:
-            transported_sample = sanitize_sample_for_transport(sample)
+            transported_sample = validate_sample_for_transport(sample)
             media_type = transported_sample.get("_media_type")
             if not isinstance(media_type, str) or not media_type:
                 raise ValueError(
@@ -216,7 +216,7 @@ async def _create_sample_item(
                 exc_info=True,
             )
             transported_sample = dict(sample)
-            transported_sample["_media_reference"] = None
+            transported_sample["media_reference"] = None
             transported_sample["_media_type"] = fom.UNKNOWN
             media_type = fom.UNKNOWN
             metadata = {"urls": [], "aspect_ratio": 1}

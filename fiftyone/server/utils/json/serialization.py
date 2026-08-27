@@ -87,10 +87,10 @@ def serialize(value: Any) -> Any:
 
     if isinstance(value, (fos.Sample, fos.SampleView)):
         from fiftyone.server.media_references import (
-            sanitize_sample_for_transport,
+            validate_sample_for_transport,
         )
 
-        return sanitize_sample_for_transport(
+        return validate_sample_for_transport(
             value.to_dict(include_private=True)
         )
 

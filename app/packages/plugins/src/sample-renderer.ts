@@ -12,7 +12,7 @@ export type SampleRendererSampleLike = {
   sample: {
     _id: string;
     filepath?: string | null;
-    _media_reference?: MediaReferenceDescriptor | null;
+    media_reference?: MediaReferenceDescriptor | null;
     media_type?: string | null;
     _media_type?: string | null;
     metadata?: {
@@ -334,7 +334,7 @@ export function createSampleRendererMediaContext<
   const path = selectedMedia.selectedMediaPath ?? null;
   const mediaType =
     sample.sample.media_type ?? sample.sample._media_type ?? null;
-  const mediaReference = sample.sample._media_reference ?? null;
+  const mediaReference = sample.sample.media_reference ?? null;
 
   return {
     field: selectedMediaField,

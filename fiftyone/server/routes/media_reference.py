@@ -14,6 +14,7 @@ import stat
 from urllib.parse import quote
 
 import anyio
+from mongoengine.errors import InvalidDocumentError
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -27,9 +28,8 @@ from fiftyone.multimodal.media import (
     StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
     UnsupportedMediaReferenceOperation,
-    UnsupportedMediaReferenceVersionError,
+    UnsupportedLeRobotVersionError,
     _get_media_resolver,
-    hydrate_media_reference,
 )
 from fiftyone.server import decorators
 from fiftyone.server.routes.media import MediaFileResponse, _media_headers
@@ -172,9 +172,17 @@ class MediaAssetBytes(HTTPEndpoint):
 
 def _resolve_manifest(request):
     dataset = get_dataset(request.path_params["dataset_id"])
-    sample = get_sample_from_dataset(dataset, request.path_params["sample_id"])
-    envelope = sample._doc.get_field("_media_reference")
-    if envelope is None:
+    try:
+        sample = get_sample_from_dataset(
+            dataset, request.path_params["sample_id"]
+        )
+        reference = sample.media_reference
+    except MediaReferenceError as exc:
+        _raise_resolution_error(422, "malformed-media-reference", exc)
+    except (InvalidDocumentError, TypeError, ValueError) as exc:
+        _raise_resolution_error(422, "malformed-media-reference", exc)
+
+    if reference is None:
         raise HTTPException(
             status_code=400,
             detail=(
@@ -188,13 +196,6 @@ def _resolve_manifest(request):
     # are registered only when asset resolution is requested.
     importlib.import_module("fiftyone.utils.lerobot")
     try:
-        reference = hydrate_media_reference(envelope)
-    except MediaReferenceError as exc:
-        _raise_resolution_error(422, "malformed-media-reference", exc)
-    except (TypeError, ValueError) as exc:
-        _raise_resolution_error(422, "malformed-media-reference", exc)
-
-    try:
         assets = reference.describe_assets()
         resolver = _get_media_resolver(reference)
         manifest = resolver.resolve_assets(reference, assets)
@@ -206,7 +207,7 @@ def _resolve_manifest(request):
         _raise_resolution_error(409, "moved-media-root", exc)
     except StaleMediaReferenceError as exc:
         _raise_resolution_error(409, "stale-media-reference", exc)
-    except UnsupportedMediaReferenceVersionError as exc:
+    except UnsupportedLeRobotVersionError as exc:
         _raise_resolution_error(415, "unsupported-source-version", exc)
     except UnfinalizedMediaSourceError as exc:
         _raise_resolution_error(422, "unfinalized-media-source", exc)
