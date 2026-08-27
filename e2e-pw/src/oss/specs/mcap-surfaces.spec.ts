@@ -249,19 +249,30 @@ async function sourceFactsEntryCount(page: Page): Promise<number> {
     if (!databases.some((database) => database.name === databaseName)) return 0;
     return new Promise<number>((resolve) => {
       const request = indexedDB.open(databaseName);
-      request.onerror = () => resolve(0);
+      let settled = false;
+      const settle = (database: IDBDatabase | null, value: number) => {
+        if (settled) return;
+        settled = true;
+        database?.close();
+        resolve(value);
+      };
+      request.onerror = () => settle(null, 0);
+      request.onblocked = () => settle(null, 0);
       request.onsuccess = () => {
         const database = request.result;
-        if (!database.objectStoreNames.contains("entries")) {
+        if (settled) {
           database.close();
-          resolve(0);
+          return;
+        }
+        if (!database.objectStoreNames.contains("entries")) {
+          settle(database, 0);
           return;
         }
         const transaction = database.transaction("entries", "readonly");
         const count = transaction.objectStore("entries").count();
-        count.onerror = () => resolve(0);
-        count.onsuccess = () => resolve(count.result);
-        transaction.oncomplete = () => database.close();
+        transaction.onabort = () => settle(database, 0);
+        count.onerror = () => settle(database, 0);
+        count.onsuccess = () => settle(database, count.result);
       };
     });
   }, SOURCE_FACTS_DATABASE_NAME);

@@ -182,6 +182,11 @@ async function waitForCustomizedWorkspaceSave(page: Page): Promise<void> {
           const parsed = JSON.parse(raw) as {
             byDataset?: Record<string, Record<string, unknown>>;
           };
+          // Layouts are keyed by opaque dataset ID. A fresh Playwright context
+          // loads exactly one dataset before this assertion.
+          const entries = Object.values(parsed.byDataset ?? {});
+          if (entries.length !== 1) return false;
+          const [entry] = entries;
           const collectTileIds = (node: unknown): string[] => {
             if (typeof node === "string") return [node];
             if (!node || typeof node !== "object") return [];
@@ -191,21 +196,19 @@ async function waitForCustomizedWorkspaceSave(page: Page): Promise<void> {
               ...collectTileIds(branch.second),
             ];
           };
-          return Object.values(parsed.byDataset ?? {}).some((entry) => {
-            const tileTypes = collectTileIds(entry.layout)
-              .map((tileId) => tileId.split("-", 1)[0])
-              .sort();
-            const rawStreams =
-              entry.rawStreams && typeof entry.rawStreams === "object"
-                ? Object.values(entry.rawStreams)
-                : [];
-            return (
-              typeof entry.expandedTileId === "string" &&
-              entry.expandedTileId.startsWith("log-") &&
-              tileTypes.join(",") === "image,log,raw" &&
-              rawStreams.length === 1
-            );
-          });
+          const tileTypes = collectTileIds(entry.layout)
+            .map((tileId) => tileId.split("-", 1)[0])
+            .sort();
+          const rawStreams =
+            entry.rawStreams && typeof entry.rawStreams === "object"
+              ? Object.values(entry.rawStreams)
+              : [];
+          return (
+            typeof entry.expandedTileId === "string" &&
+            entry.expandedTileId.startsWith("log-") &&
+            tileTypes.join(",") === "image,log,raw" &&
+            rawStreams.length === 1
+          );
         }, EPISODE_LAYOUT_STORAGE_KEY),
       { timeout: 10_000 },
     )

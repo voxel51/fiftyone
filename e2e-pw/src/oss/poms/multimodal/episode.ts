@@ -268,6 +268,7 @@ export class EpisodePom {
       .getByRole("button", { name: "Close", exact: true })
       .click();
     await expect(this.tileTitle(title)).toHaveCount(0);
+    if (this.inspectedStream === title) this.inspectedStream = null;
   }
 
   async fullscreenTile(title: string): Promise<void> {
