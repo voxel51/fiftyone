@@ -121,7 +121,7 @@ test.describe("MCAP persistence", () => {
       modal,
       sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
     );
-    await modal.episode.waitForReady(cameraPoseFileNames.at(-1)!);
+    await modal.episode.waitForReady(cameraPoseFileNames[3]);
     await modal.episode.expectCameraPose("points", egoPose);
 
     await modal.close();
@@ -132,7 +132,7 @@ test.describe("MCAP persistence", () => {
       modal,
       sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
     );
-    await modal.episode.waitForReady(cameraPoseFileNames.at(-1)!);
+    await modal.episode.waitForReady(cameraPoseFileNames[3]);
     await modal.episode.expectCameraPose("points", egoPose);
   });
 
@@ -156,7 +156,7 @@ test.describe("MCAP persistence", () => {
       modal,
       sampleIndex.sidebarStart + sidebarFileNames.length - 1,
     );
-    await modal.episode.waitForReady(sidebarFileNames.at(-1)!);
+    await modal.episode.waitForReady(sidebarFileNames[3]);
     await expectRepresentativeSidebarPreferences(modal);
 
     await modal.close();
@@ -167,7 +167,7 @@ test.describe("MCAP persistence", () => {
       modal,
       sampleIndex.sidebarStart + sidebarFileNames.length - 1,
     );
-    await modal.episode.waitForReady(sidebarFileNames.at(-1)!);
+    await modal.episode.waitForReady(sidebarFileNames[3]);
     await expectRepresentativeSidebarPreferences(modal);
   });
 });

@@ -88,7 +88,7 @@ test.describe("MCAP surfaces", () => {
       await modal.episode.waitForReady(tinyA.fileName);
       await modal.episode.expectTileTitles(
         ["camera/front", "points"],
-        ["Logs"],
+        ["Logs / Diagnostics"],
       );
       await modal.episode.expectNoViewerError();
 
@@ -114,7 +114,7 @@ test.describe("MCAP surfaces", () => {
       await modal.episode.waitForReady(tinyB.fileName);
       await modal.episode.expectTileTitles(
         ["camera/rear", "camera/side", "scan/rear"],
-        ["Logs"],
+        ["Logs / Diagnostics"],
       );
       await modal.episode.expectNoViewerError();
     });
