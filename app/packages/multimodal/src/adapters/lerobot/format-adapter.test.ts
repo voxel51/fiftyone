@@ -273,7 +273,6 @@ describe("LeRobot format adapter", () => {
         mediaReference: {
           kind: "lerobot-episode",
           key: "source:17",
-          version: "1",
         },
       }),
     ).toBe(true);
@@ -283,7 +282,6 @@ describe("LeRobot format adapter", () => {
         mediaReference: {
           kind: "lerobot-episode",
           key: "source:17",
-          version: "1",
         },
       }),
     ).toBe(false);

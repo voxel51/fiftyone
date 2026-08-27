@@ -47,6 +47,7 @@ export class VideoStreamEngine {
   private activeController: AbortController | null = null;
   private activeForwardPublicationProtected = false;
   private activeIntent: VideoPlaybackIntent | null = null;
+  private activePublicationSupersededButAllowed = false;
   private readonly cache: EncodedAccessUnitCache;
   private closed = false;
   private continuityUncertain = false;
@@ -124,7 +125,13 @@ export class VideoStreamEngine {
       this.activeIntent = { ...this.activeIntent, priority: "playing" };
       this.scheduler.promote(this.activeController.signal, "playing");
     }
-    if (this.activeController && !retainActiveForwardPublication) {
+    const retainActiveWork =
+      retainActiveForwardPublication ||
+      canFinishActivePlaybackIntent(this.activeIntent, intent);
+    if (retainActiveForwardPublication) {
+      this.activePublicationSupersededButAllowed = true;
+    }
+    if (this.activeController && !retainActiveWork) {
       this.continuityUncertain = true;
       this.activeController.abort();
     }
@@ -135,7 +142,7 @@ export class VideoStreamEngine {
         this.decoder.cursorTimeNs === null ? "seeking.locating" : "forward",
       targetTimeNs: intent.timeNs,
     });
-    if (retainActiveForwardPublication) return;
+    if (retainActiveWork) return;
     void this.pump();
   }
 
@@ -177,6 +184,7 @@ export class VideoStreamEngine {
         const controller = new AbortController();
         this.activeController = controller;
         this.activeIntent = intent;
+        this.activePublicationSupersededButAllowed = false;
         try {
           await this.processIntent(intent, generation, controller.signal);
         } catch (error) {
@@ -185,6 +193,7 @@ export class VideoStreamEngine {
           if (this.activeController === controller) {
             this.activeController = null;
             this.activeIntent = null;
+            this.activePublicationSupersededButAllowed = false;
           }
         }
       }
@@ -312,7 +321,11 @@ export class VideoStreamEngine {
         signal,
       );
       if (directForward) this.observeForwardCadence(cursorTimeNs, units);
-      if (signal.aborted) {
+      if (
+        signal.aborted ||
+        (generation !== this.generation &&
+          !this.activePublicationSupersededButAllowed)
+      ) {
         decoded.close();
         throw new VideoIntentCancelledError();
       }
@@ -328,7 +341,12 @@ export class VideoStreamEngine {
         decoded.close();
         throw error;
       }
-      if (signal.aborted || this.closed) {
+      if (
+        signal.aborted ||
+        (generation !== this.generation &&
+          !this.activePublicationSupersededButAllowed) ||
+        this.closed
+      ) {
         presentation.releaseOwner();
         throw new VideoIntentCancelledError();
       }
@@ -356,6 +374,7 @@ export class VideoStreamEngine {
     return (
       this.activeController !== null &&
       this.activeForwardPublicationProtected &&
+      this.activeIntent?.priority === "playing" &&
       previousTargetTimeNs !== null &&
       timeNs > previousTargetTimeNs &&
       timeNs - previousTargetTimeNs <= MAX_DIRECT_FORWARD_GAP_NS
@@ -718,6 +737,22 @@ function strongerIntent(
     VIDEO_INTENT_PRIORITY_WEIGHT[current.priority]
     ? candidate
     : current;
+}
+
+function canFinishActivePlaybackIntent(
+  active: VideoPlaybackIntent | null,
+  requested: VideoPlaybackIntent,
+): boolean {
+  if (
+    !active ||
+    active.priority !== "playing" ||
+    requested.priority !== "playing" ||
+    requested.frame.keyframe ||
+    requested.timeNs <= active.timeNs
+  ) {
+    return false;
+  }
+  return requested.timeNs - active.timeNs <= MAX_DIRECT_FORWARD_GAP_NS;
 }
 
 function canPromoteActivePlaybackIntent(

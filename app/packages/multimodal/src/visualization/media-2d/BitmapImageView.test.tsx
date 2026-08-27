@@ -697,6 +697,7 @@ describe("BitmapImageFrameView", () => {
         frame={frames[0]}
         onCanvasCommitted={onCanvasCommitted}
         onImageLoaded={onImageLoaded}
+        videoPriority="playing"
       />,
     );
     for (let index = 1; index < frames.length; index += 1) {
@@ -706,6 +707,7 @@ describe("BitmapImageFrameView", () => {
           frame={frames[index]}
           onCanvasCommitted={onCanvasCommitted}
           onImageLoaded={onImageLoaded}
+          videoPriority="playing"
         />,
       );
       await act(async () => {

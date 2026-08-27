@@ -312,7 +312,9 @@ describe("StateActionTile", () => {
     expect(container.querySelectorAll('[class*="dimTrackBand"]').length).toBe(
       0,
     );
-    const track = container.querySelector<HTMLElement>('[class="dimTrack"]');
+    const track = container.querySelector<HTMLElement>(
+      '[class*="dimTrack"][title]',
+    );
     expect(track?.title).toBe("episode -2.5 … 2.5");
   });
 

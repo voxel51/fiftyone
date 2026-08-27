@@ -198,7 +198,6 @@ describe("episodeSourceFromMediaReference", () => {
     const source = episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
-      version: "1",
     });
 
     await expect(source.assets.list()).rejects.toThrow(
@@ -230,7 +229,6 @@ describe("episodeSourceFromMediaReference", () => {
     const source = episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
-      version: "1",
     });
 
     await expect(source.assets.list()).rejects.toThrow("unknown asset role");
@@ -268,7 +266,6 @@ describe("episodeSourceFromMediaReference", () => {
     const source = episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
-      version: "1",
     });
 
     await expect(source.assets.list()).resolves.toEqual([
