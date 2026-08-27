@@ -432,6 +432,12 @@ export interface RawRecordCapability {
      */
     readonly intent?: "background" | "paused-inspection" | "export";
     readonly prune?: RawRecordPruneBudgets;
+    /**
+     * Selects whether the adapter should decode the record body or return only
+     * message metadata. Metadata reads are intended for callers such as size
+     * estimators that only need payload byte counts.
+     */
+    readonly select?: "metadata" | "record";
     readonly signal?: AbortSignal;
     readonly stream: StreamId;
     readonly timestampNs: bigint;

@@ -3,9 +3,12 @@ import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it } from "vitest";
 import { rawNodeToJson } from "../../../ir/index";
+import type { ByteClient } from "../../../query/bytes/index";
 import { createDecodeClient } from "../../../query/decoding/index";
 import { createDefaultMcapReader } from "../reader/index";
+import { ByteClientReadable } from "../reader/byte-readable";
 import { createMcapDecoderRegistry } from "../message-decoders/index";
+import { readMcapTopics } from "./operations/read-topics";
 import { resolveMcapTimelineStrategy } from "./timeline";
 import { readMcapFrameTransformWindow } from "./operations/read-frame-transforms";
 import { readMcapRawMessageRecord } from "./operations/read-raw-message-record";
@@ -18,6 +21,30 @@ const source = {
 const timeline = resolveMcapTimelineStrategy(undefined);
 
 describe("non-indexed MCAP production contract", () => {
+  it("publishes source size discovered by the byte transport", async () => {
+    const fixture = await createNonIndexedMcapFixture();
+    const sizeBytes = await fixture.size();
+    const byteClient: ByteClient = {
+      async readBytes(request) {
+        return {
+          bytes: await fixture.read(request.range.offset, request.range.length),
+          range: request.range,
+          source: { ...request.source, sizeBytes: sizeBytes.toString() },
+        };
+      },
+    };
+    const reader = await createDefaultMcapReader(
+      source,
+      new ByteClientReadable(source, byteClient),
+    );
+
+    expect(readMcapTopics(reader).recordingFacts.sizeBytes).toBe(
+      sizeBytes.toString(),
+    );
+
+    reader.dispose?.();
+  });
+
   it("serves raw predecessor, raw-message, and transform fallback lanes", async () => {
     const fixture = await createNonIndexedMcapFixture();
     const reader = await createDefaultMcapReader(source, fixture);

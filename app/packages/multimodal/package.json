@@ -19,6 +19,7 @@
         "./temporal-tags": "./src/temporal-tags/index.ts",
         "./temporal-tags/grid-overlay": "./src/temporal-tags/TemporalTagGridOverlay.tsx",
         "./inject": "./src/inject/index.ts",
+        "./extensions/episode-actions": "./src/extensions/episode-actions/index.ts",
         "./extensions/grid-posters": "./src/extensions/grid-posters/index.ts",
         "./extensions/mcap-explorer": "./src/extensions/mcap-explorer/index.ts",
         "./extensions/timeline": "./src/extensions/timeline/index.ts",
@@ -71,6 +72,9 @@
             ],
             "inject": [
                 "src/inject/index.ts"
+            ],
+            "extensions/episode-actions": [
+                "src/extensions/episode-actions/index.ts"
             ],
             "extensions/grid-posters": [
                 "src/extensions/grid-posters/index.ts"
