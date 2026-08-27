@@ -16,7 +16,6 @@ describe("detectMcapSample", () => {
         mediaReference: {
           kind: "lerobot-episode",
           key: "source:17",
-          version: "1",
         },
         mediaType: "multimodal",
       }),

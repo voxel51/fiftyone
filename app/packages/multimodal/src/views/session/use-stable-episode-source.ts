@@ -38,7 +38,6 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
         datasetId,
         ctx.sample.sample._id,
         mediaReference.kind,
-        mediaReference.version,
         mediaReference.key,
       ])
     : next

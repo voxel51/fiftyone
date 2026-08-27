@@ -54,15 +54,10 @@ export function useOwnedEpisodeResource<
 ): State {
   const { mediaReference, mediaType, path } = sample;
   const mediaReferenceKind = mediaReference?.kind;
-  const mediaReferenceVersion = mediaReference?.version;
   const mediaReferenceKey = mediaReference?.key;
   const hasMediaReference = mediaReference != null;
   const mediaReferenceIdentity = hasMediaReference
-    ? JSON.stringify([
-        mediaReferenceKind,
-        mediaReferenceVersion,
-        mediaReferenceKey,
-      ])
+    ? JSON.stringify([mediaReferenceKind, mediaReferenceKey])
     : undefined;
   const liveResourceRef = useRef<Resource | null>(null);
   const [ownedState, setOwnedState] = useState<
@@ -107,13 +102,10 @@ export function useOwnedEpisodeResource<
       .open(
         {
           mediaReference:
-            mediaReferenceKey !== undefined &&
-            mediaReferenceKind !== undefined &&
-            mediaReferenceVersion !== undefined
+            mediaReferenceKey !== undefined && mediaReferenceKind !== undefined
               ? {
                   key: mediaReferenceKey,
                   kind: mediaReferenceKind,
-                  version: mediaReferenceVersion,
                 }
               : undefined,
           mediaType,
@@ -191,7 +183,6 @@ export function useOwnedEpisodeResource<
     mediaReferenceIdentity,
     mediaReferenceKey,
     mediaReferenceKind,
-    mediaReferenceVersion,
     mediaType,
     path,
     source,

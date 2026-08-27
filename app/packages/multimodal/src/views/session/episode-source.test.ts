@@ -88,7 +88,6 @@ describe("episodeSourceFromMediaReference", () => {
     const source = episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
-      version: "1",
     });
 
     expect(source.episodeId).toBe("source:17");
@@ -134,7 +133,6 @@ describe("episodeSourceFromMediaReference", () => {
     const source = episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
-      version: "1",
     });
 
     await expect(source.assets.list()).rejects.toThrow(
@@ -162,7 +160,6 @@ describe("episodeSourceFromMediaReference", () => {
     const source = episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
-      version: "1",
     });
     const controller = new AbortController();
 
@@ -182,7 +179,6 @@ describe("episodeSourceFromMediaReference", () => {
     const source = episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
-      version: "1",
     });
     const controller = new AbortController();
     controller.abort();
