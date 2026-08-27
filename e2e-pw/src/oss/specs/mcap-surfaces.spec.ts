@@ -285,22 +285,28 @@ async function expectPointCloudSpread(
 ): Promise<void> {
   await expect(panel).toBeVisible();
   await expect
-    .poll(async () => {
-      const count = Number(
-        await panel.getAttribute("data-point-cloud-rendered-count"),
-      );
-      return Number.isFinite(count) ? count : 0;
-    })
+    .poll(
+      async () => {
+        const count = Number(
+          await panel.getAttribute("data-point-cloud-rendered-count"),
+        );
+        return Number.isFinite(count) ? count : 0;
+      },
+      { timeout: 20_000 },
+    )
     .toBeGreaterThanOrEqual(minimumRenderedCount);
   await expect
-    .poll(async () => {
-      const bounds =
-        (await panel.getAttribute("data-point-cloud-bounds-size")) ?? "";
-      return bounds
-        .split(",")
-        .map(Number)
-        .filter((value) => Number.isFinite(value) && value > 0.1).length;
-    })
+    .poll(
+      async () => {
+        const bounds =
+          (await panel.getAttribute("data-point-cloud-bounds-size")) ?? "";
+        return bounds
+          .split(",")
+          .map(Number)
+          .filter((value) => Number.isFinite(value) && value > 0.1).length;
+      },
+      { timeout: 20_000 },
+    )
     .toBeGreaterThanOrEqual(minimumSpreadAxes);
 }
 

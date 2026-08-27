@@ -263,7 +263,11 @@ export class EpisodePom {
   }
 
   async closeTile(title: string): Promise<void> {
-    const remaining = (await this.tileTitle(title).count()) - 1;
+    const initial = await this.tileTitle(title).count();
+    if (initial === 0) {
+      throw new Error(`No episode tile with title: ${title}`);
+    }
+    const remaining = initial - 1;
     await this.tile(title)
       .first()
       .getByRole("button", { name: "Close", exact: true })
