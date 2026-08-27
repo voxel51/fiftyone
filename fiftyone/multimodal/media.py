@@ -642,44 +642,21 @@ class _MediaAssetManifest:
     source_fingerprint: str
     assets: Sequence[_ResolvedMediaAsset]
 
-    def to_dict(self, include_paths: bool = False) -> Dict[str, Any]:
-        """Serializes the manifest.
-
-        Args:
-            include_paths (False): whether to include server-only paths
-
-        Returns:
-            a JSON-compatible manifest dict
-        """
+    def to_public_dict(self) -> Dict[str, Any]:
+        """Serializes browser-safe asset handles for the manifest."""
         assets = []
         for asset in self.assets:
             description = asset.description
-            serialized_asset = {
-                "asset_id": asset.asset_id,
-                "role": description.role.value,
-                "size_bytes": asset.size_bytes,
-                "media_type": asset.media_type,
-                "feature_name": description.feature_name,
-                "selector": _serialize_selector(description.selector),
-            }
-            if include_paths:
-                serialized_asset["path"] = asset.path
+            assets.append(
+                {
+                    "asset_id": asset.asset_id,
+                    "role": description.role.value,
+                    "size_bytes": asset.size_bytes,
+                    "media_type": asset.media_type,
+                }
+            )
 
-            assets.append(serialized_asset)
-
-        return {
-            "media_reference_key": self.media_reference_key,
-            "episode_index": self.episode_index,
-            "declared_codebase_version": self.declared_codebase_version,
-            "detected_codebase_version": self.detected_codebase_version,
-            "fps": self.fps,
-            "robot_type": self.robot_type,
-            "task_labels": list(self.task_labels),
-            "frame_count": self.frame_count,
-            "time_range_seconds": list(self.time_range_seconds),
-            "source_fingerprint": self.source_fingerprint,
-            "assets": assets,
-        }
+        return {"assets": assets}
 
 
 class _MediaResolver(ABC):

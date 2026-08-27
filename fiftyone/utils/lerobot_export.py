@@ -48,9 +48,12 @@ from fiftyone.utils.lerobot import (
     _resolve_under_root,
 )
 
-pa = fou.lazy_import("pyarrow", callback=lambda: fou.ensure_package("pyarrow"))
+pa = fou.lazy_import(
+    "pyarrow", callback=lambda: fou.ensure_package("pyarrow>=10.0.0")
+)
 papq = fou.lazy_import(
-    "pyarrow.parquet", callback=lambda: fou.ensure_package("pyarrow")
+    "pyarrow.parquet",
+    callback=lambda: fou.ensure_package("pyarrow>=10.0.0"),
 )
 
 

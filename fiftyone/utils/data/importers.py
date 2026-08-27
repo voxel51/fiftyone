@@ -1983,29 +1983,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         binding_required = _bind_materialized_media_sources(
             self._media_source_manifest_sources, self.dataset_dir
         )
-        required_keys = {source.key for source in binding_required}
-        sources = [
-            {
-                **source.to_dict(),
-                "binding_status": (
-                    "required" if source.key in required_keys else "bound"
-                ),
-            }
-            for source, _, _ in self._media_source_manifest_sources
-        ]
-        info = dict(dataset.info)
-        info["media_reference_sources"] = sources
-        dataset.info = info
-        dataset.save()
-
         if binding_required:
-            identities = [
-                source.source_identity for source in binding_required
-            ]
             logger.warning(
-                "Imported thin media references require a source binding "
-                "before assets can be resolved: %s",
-                identities,
+                "Imported thin media references require %d source "
+                "binding(s) before assets can be resolved",
+                len(binding_required),
             )
 
     def _import_samples(
@@ -2022,7 +2004,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         now = datetime.utcnow()
         from fiftyone.multimodal.media import (
             MediaReferenceError,
-            _hydrate_media_reference,
             _import_media_reference_bindings,
             _validate_media_source,
         )
@@ -2034,7 +2015,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         samples = self._preprocess_list(samples)
 
         media_reference_kind = None
+        reference_media_types = {}
         if media_reference_export:
+            # Atomic reference preflight needs multiple complete passes over
+            # descriptors and bindings before any sample is published
             samples = list(samples)
             num_samples = len(samples)
             media_mode, media_reference_kind = fod._preflight_media_sources(
@@ -2051,6 +2035,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             inserted = _import_media_reference_bindings(
                 self._reference_bindings or (), descriptors
             )
+            reference_media_types = {
+                (binding["kind"], binding["_id"]): binding["media_type"]
+                for binding in self._reference_bindings or ()
+            }
             if inserted_binding_keys is not None:
                 inserted_binding_keys.extend(inserted)
         elif self.max_samples is not None:
@@ -2154,8 +2142,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                     )
 
                 _validate_media_source(sd.get("filepath"), media_reference)
-                reference = _hydrate_media_reference(media_reference)
-                if sd.get("_media_type") != reference.media_type:
+                identity = (
+                    media_reference["kind"],
+                    media_reference["key"],
+                )
+                if sd.get("_media_type") != reference_media_types[identity]:
                     raise ValueError(
                         "Native media-reference import has inconsistent "
                         "persisted media type"

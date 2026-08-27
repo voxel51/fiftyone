@@ -260,6 +260,11 @@ class LeRobotImporterTests(unittest.TestCase):
             self.assertEqual(
                 dataset.info["lerobot"]["imported_episode_count"], 10
             )
+            self.assertNotIn("source_identity", dataset.info["lerobot"])
+            self.assertNotIn("source_fingerprint", dataset.info["lerobot"])
+            self.assertNotIn(
+                "source_binding_required", dataset.info["lerobot"]
+            )
 
             locator = references[7].locator
             self.assertEqual(
@@ -364,14 +369,17 @@ class LeRobotImporterTests(unittest.TestCase):
             self.assertFalse(fo.dataset_exists(name))
 
     def test_path_templates_reject_field_traversal(self):
-        with self.assertRaisesRegex(
-            MalformedMediaSourceError,
-            "Invalid LeRobot source path template",
-        ):
-            foul._format_source_path(
-                "data/{chunk_index.__class__}/file.parquet",
-                chunk_index=0,
-            )
+        templates = (
+            "data/{chunk_index.__class__}/file.parquet",
+            "data/{chunk_index:100000000d}/file.parquet",
+            "data/{chunk_index:>16}/file.parquet",
+        )
+        for template in templates:
+            with self.subTest(template=template), self.assertRaisesRegex(
+                MalformedMediaSourceError,
+                "Invalid LeRobot source path template",
+            ):
+                foul._format_source_path(template, chunk_index=0)
 
     def test_source_paths_remain_posix_across_platforms(self):
         self.assertEqual(
@@ -541,7 +549,7 @@ app = Starlette(routes=[Route(path, endpoint) for path, endpoint in MediaReferen
 path = '/dataset/%s/sample/%s/multimodal/manifest' % (sys.argv[1], sys.argv[2])
 response = TestClient(app).get(path)
 print(response.status_code)
-print(response.json().get('episode_index'))
+print(any(asset['role'] == 'video-stream' for asset in response.json()['assets']))
 """
             output = subprocess.check_output(
                 [
@@ -555,7 +563,7 @@ print(response.json().get('episode_index'))
                 text=True,
                 timeout=120,
             )
-            self.assertEqual(output.strip().splitlines()[-2:], ["200", "0"])
+            self.assertEqual(output.strip().splitlines()[-2:], ["200", "True"])
 
             with tempfile.TemporaryDirectory() as relocation_parent:
                 relocated_root = os.path.join(relocation_parent, "source")
@@ -576,7 +584,8 @@ print(response.json().get('episode_index'))
                     timeout=120,
                 )
                 self.assertEqual(
-                    relocated_output.strip().splitlines()[-2:], ["200", "0"]
+                    relocated_output.strip().splitlines()[-2:],
+                    ["200", "True"],
                 )
 
             relocate_lerobot_source(
@@ -855,8 +864,6 @@ class LeRobotExporterTests(unittest.TestCase):
                 dataset_type=fot.LeRobotDataset,
             )
             info_path = os.path.join(valid_destination, "meta", "info.json")
-            with open(info_path, "rb") as file:
-                existing_info = file.read()
 
             late_destination = os.path.join(temp_dir, "late-existing")
             late_marker = os.path.join(late_destination, "preserve.txt")
@@ -1056,10 +1063,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 dataset_type=fot.FiftyOneDataset,
             )
             self.assertEqual(sorted(imported.values("episode_index")), [1, 3])
-            self.assertEqual(
-                imported.info["media_reference_sources"][0]["binding_status"],
-                "bound",
-            )
+            self.assertNotIn("media_reference_sources", imported.info)
 
     @drop_datasets
     def test_native_thin_materialized_and_unsupported_modes(self):
@@ -1101,12 +1105,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 dataset_dir=thin_root,
                 dataset_type=fot.FiftyOneDataset,
             )
-            self.assertEqual(
-                thin_import.info["media_reference_sources"][0][
-                    "binding_status"
-                ],
-                "required",
-            )
+            self.assertNotIn("media_reference_sources", thin_import.info)
             missing_binding_root = os.path.join(temp_dir, "missing-binding")
             with self.assertRaises(MissingMediaRootError):
                 thin_import.export(
@@ -1116,7 +1115,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 )
             self.assertFalse(os.path.exists(missing_binding_root))
 
-            source = thin_import.info["media_reference_sources"][0]
+            source = thin_manifest["sources"][0]
             bind_lerobot_source(
                 source["source_identity"],
                 source_root,
@@ -1140,11 +1139,8 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 dataset_dir=materialized_root,
                 dataset_type=fot.FiftyOneDataset,
             )
-            self.assertEqual(
-                materialized_import.info["media_reference_sources"][0][
-                    "binding_status"
-                ],
-                "bound",
+            self.assertNotIn(
+                "media_reference_sources", materialized_import.info
             )
             index = materialized_import.get_index_information()[
                 "media_reference.key"
@@ -1266,8 +1262,9 @@ try:
         dataset_type=fot.FiftyOneDataset,
     )
     created.append(thin)
-    source = thin.info["media_reference_sources"][0]
-    assert source["binding_status"] == "required"
+    assert "media_reference_sources" not in thin.info
+    with open(os.path.join(thin_root, "media_sources.json")) as file:
+        source = json.load(file)["sources"][0]
     with tempfile.TemporaryDirectory() as scratch:
         missing_root = os.path.join(scratch, "missing")
         try:
@@ -1302,8 +1299,7 @@ try:
         dataset_type=fot.FiftyOneDataset,
     )
     created.append(materialized)
-    materialized_source = materialized.info["media_reference_sources"][0]
-    assert materialized_source["binding_status"] == "bound"
+    assert "media_reference_sources" not in materialized.info
     with tempfile.TemporaryDirectory() as scratch:
         copied_root = os.path.join(scratch, "copied")
         materialized.export(
@@ -1587,13 +1583,26 @@ class LeRobotServerTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             manifest = response.json()
             encoded = json.dumps(manifest)
+            self.assertEqual(set(manifest), {"assets"})
             self.assertNotIn(root, encoded)
             self.assertNotIn("relative_path", encoded)
             self.assertNotIn("locator", encoded)
-            self.assertEqual(manifest["episode_index"], 0)
-            self.assertEqual(manifest["frame_count"], 2)
-            self.assertEqual(manifest["robot_type"], "so101")
-            self.assertIn("source_fingerprint", manifest)
+            self.assertNotIn("selector", encoded)
+            self.assertNotIn("feature_name", encoded)
+            self.assertNotIn("fingerprint", encoded)
+            self.assertTrue(
+                all(
+                    set(asset)
+                    == {
+                        "asset_id",
+                        "role",
+                        "size_bytes",
+                        "media_type",
+                        "url",
+                    }
+                    for asset in manifest["assets"]
+                )
+            )
             self.assertTrue(
                 {
                     "dataset-info",

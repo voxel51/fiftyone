@@ -63,12 +63,16 @@ from fiftyone.multimodal.media import (
 )
 import fiftyone.utils.data.importers as foud
 
-pa = fou.lazy_import("pyarrow", callback=lambda: fou.ensure_package("pyarrow"))
+pa = fou.lazy_import(
+    "pyarrow", callback=lambda: fou.ensure_package("pyarrow>=10.0.0")
+)
 papq = fou.lazy_import(
-    "pyarrow.parquet", callback=lambda: fou.ensure_package("pyarrow")
+    "pyarrow.parquet",
+    callback=lambda: fou.ensure_package("pyarrow>=10.0.0"),
 )
 
 _VERSION_PATTERN = re.compile(r"^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+].*)?$")
+_PATH_FORMAT_SPEC_PATTERN = re.compile(r"^0([1-9]|1[0-6])d$")
 _REQUIRED_INFO_FIELDS = {
     "codebase_version",
     "data_path",
@@ -302,12 +306,9 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         bind_lerobot_source(source_identity, root, source_fingerprint)
         self._dataset_info = {
             "lerobot": {
-                "source_identity": source_identity,
                 "format": "LeRobotDataset",
                 "format_major": 3,
                 "codebase_version": codebase_version,
-                "source_fingerprint": source_fingerprint,
-                "source_binding_required": True,
                 "episode_count": len(rows_by_index),
                 "imported_episode_count": len(samples),
             }
@@ -1241,14 +1242,18 @@ def _format_source_path(template, **coordinates):
             if field_name is None:
                 continue
 
+            format_match = (
+                None
+                if not format_spec
+                else _PATH_FORMAT_SPEC_PATTERN.fullmatch(format_spec)
+            )
             if (
                 field_name not in coordinates
                 or "." in field_name
                 or "[" in field_name
                 or "]" in field_name
                 or conversion is not None
-                or "{" in format_spec
-                or "}" in format_spec
+                or (format_spec and format_match is None)
             ):
                 raise ValueError("unsupported coordinate expression")
 

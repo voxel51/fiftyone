@@ -44,7 +44,7 @@ class MediaAssetManifestRoute(HTTPEndpoint):
         dataset, sample, manifest = await anyio.to_thread.run_sync(
             _resolve_manifest, request
         )
-        public = manifest.to_dict()
+        public = manifest.to_public_dict()
         dataset_id = quote(str(dataset._doc.id), safe="")
         sample_id = quote(str(sample.id), safe="")
         base_url = "/dataset/%s/sample/%s/multimodal/assets" % (

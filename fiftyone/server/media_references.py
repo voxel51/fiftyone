@@ -10,7 +10,11 @@ from fiftyone.multimodal.media import _validate_media_reference_descriptor
 
 
 def validate_sample_for_transport(sample):
-    """Validates that browser transport contains no private binding data."""
+    """Validates a public descriptor and returns ``sample`` unchanged.
+
+    This function does not redact the input. Invalid media-reference
+    descriptors raise before the sample is transported.
+    """
     if not isinstance(sample, dict):
         return sample
 
