@@ -230,6 +230,13 @@
     :tags: image,detection,segmentation
 
 .. customcarditem::
+    :header: TaF Tactile-Force
+    :description: 3,594 contact-rich probing episodes in native MCAP format, pairing a tactile image with a 12x12 pressure map and a six-axis force/torque wrench on one clock.
+    :link: datasets/taf_tactile_force.html
+    :image: ../_images/taf-tactile-force.png
+    :tags: multimodal,mcap,tactile,force-torque
+
+.. customcarditem::
     :header: UCF101
     :description: Action recognition dataset with 13,320 realistic YouTube videos across 101 action categories. Features diverse camera motion, lighting, and viewpoints - challenging for video understanding.
     :link: datasets/ucf101.html
