@@ -6,7 +6,9 @@ import type {
 } from "@fiftyone/playback";
 import {
   useActiveTemporalTagFilterValues,
+  useSyncTemporalTagResults,
   useTemporalTagColor,
+  useTemporalTagValues,
 } from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
@@ -22,6 +24,8 @@ const temporalTagTrackId = (label: string): string =>
 
 export interface TemporalTagsResult {
   tracks: Track[];
+  /** Every tag label in the dataset, for the creation popup's dropdown. */
+  existingTags: string[];
   onTagCreate: (tag: TemporalTagCreatePayload) => Promise<void>;
   onTagUpdate: (tag: TemporalTagUpdatePayload) => Promise<void>;
   onTagDelete: (event: { data?: unknown }) => Promise<void>;
@@ -103,7 +107,14 @@ export function useTemporalTags(
     }));
   }, [temporalTags, colorForTag]);
 
-  return { tracks, onTagCreate, onTagUpdate, onTagDelete };
+  // The dropdown offers the whole dataset's vocabulary, not just this
+  // sample's tags — otherwise the first tag on any sample has nothing to pick
+  // from and every label has to be retyped. The sidebar filter loads the same
+  // atom; loading here too covers the modal being opened without it.
+  useSyncTemporalTagResults();
+  const existingTags = useTemporalTagValues();
+
+  return { tracks, existingTags, onTagCreate, onTagUpdate, onTagDelete };
 }
 
 /**

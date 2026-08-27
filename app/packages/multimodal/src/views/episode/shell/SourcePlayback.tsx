@@ -132,6 +132,8 @@ export interface SourcePlaybackProps {
   readonly layoutScopeKey?: string;
   /** Host selected a new sample whose media descriptor is still resolving. */
   readonly navigationPending?: boolean;
+  /** Dataset-wide tag labels for the creation popup's dropdown. */
+  readonly existingTags?: TemporalTagTimelineProps["existingTags"];
   readonly onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
   readonly onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   readonly onTagDelete?: NonNullable<
@@ -161,6 +163,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   initialSeekTimeNs,
   layoutScopeKey,
   navigationPending = false,
+  existingTags,
   onTagCreate,
   onTagUpdate,
   onTagDelete,
@@ -630,6 +633,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 onLeftSidebarWidthChange={
                                   onLeftSidebarWidthChange
                                 }
+                                existingTags={existingTags}
                                 onTagCreate={onTagCreate}
                                 onTagUpdate={onTagUpdate}
                                 onTimelineDrawerOpenChange={

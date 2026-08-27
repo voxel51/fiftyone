@@ -186,6 +186,8 @@ export interface PlaybackShellProps {
    * the temporal-tag workflow is enabled in the timeline (button, `T`
    * hotkey, Shift+drag).
    */
+  /** Dataset-wide tag labels for the creation popup's dropdown. */
+  existingTags?: TemporalTagTimelineProps["existingTags"];
   onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
   onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   /** Callback that deletes an existing temporal tag by its backend id. */
@@ -272,6 +274,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   mainOverlay,
   leftSidebarWidth,
   onLeftSidebarWidthChange,
+  existingTags,
   onTagCreate,
   onTagUpdate,
   onTagDelete,
@@ -323,6 +326,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               mainOverlay={mainOverlay}
               leftSidebarWidth={leftSidebarWidth}
               onLeftSidebarWidthChange={onLeftSidebarWidthChange}
+              existingTags={existingTags}
               onTagCreate={onTagCreate}
               onTagUpdate={onTagUpdate}
               onTagDelete={onTagDelete}
@@ -364,6 +368,8 @@ interface LayoutProps {
   mainOverlay?: ReactNode;
   leftSidebarWidth?: number;
   onLeftSidebarWidthChange?: (px: number) => void;
+  /** Dataset-wide tag labels for the creation popup's dropdown. */
+  existingTags?: PlaybackShellProps["existingTags"];
   onTagCreate?: PlaybackShellProps["onTagCreate"];
   onTagUpdate?: PlaybackShellProps["onTagUpdate"];
   onTagDelete?: PlaybackShellProps["onTagDelete"];
@@ -394,6 +400,7 @@ function Layout({
   mainOverlay,
   leftSidebarWidth,
   onLeftSidebarWidthChange,
+  existingTags,
   onTagCreate,
   onTagUpdate,
   onTagDelete,
@@ -614,6 +621,7 @@ function Layout({
         decorateTrack={decorateTrack}
         readouts={timelineReadouts}
         extraActions={timelineExtraActions}
+        existingTags={existingTags}
         onTagCreate={onTagCreate}
         onTagUpdate={onTagUpdate}
         eventMenuItems={

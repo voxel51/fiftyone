@@ -35,6 +35,7 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const datasetId = ctx.dataset.datasetId;
   const {
     tracks: tagTracks,
+    existingTags,
     onTagCreate,
     onTagUpdate,
     onTagDelete,
@@ -82,6 +83,7 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             initialSeekTimeNs={firstMatch?.startNs ?? null}
             layoutScopeKey={datasetId}
             cameraPreferenceField={ctx.media.field}
+            existingTags={existingTags}
             onTagCreate={onTagCreate}
             onTagUpdate={onTagUpdate}
             onTagDelete={onTagDelete}

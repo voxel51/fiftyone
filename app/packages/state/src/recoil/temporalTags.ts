@@ -128,6 +128,21 @@ export const useTemporalTagsFieldActive = (): boolean =>
   useRecoilValue(activeField({ modal: false, path: TEMPORAL_TAGS_FIELD }));
 
 /**
+ * Every temporal-tag value defined on the current dataset. Populated by
+ * {@link useSyncTemporalTagResults}; empty until that has run, so callers
+ * that need it should call the sync hook too.
+ */
+export const useTemporalTagValues = (): string[] => {
+  const { results } = useRecoilValue(temporalTagResults);
+  return useMemo(() => {
+    const values = results
+      .map(({ value }) => value)
+      .filter((value): value is string => !!value);
+    return values.length ? values : NO_VALUES;
+  }, [results]);
+};
+
+/**
  * Tag values the grid is currently filtering *for* via the temporal-tags
  * filter — inclusive selections only (empty when the filter is unset or set to
  * exclude). Used to auto-pin the matching timeline tracks when a sample is
