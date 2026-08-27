@@ -142,6 +142,7 @@ export async function readMcapRawMessageRecord({
   };
 
   const selected = await selectMessageAtOrBefore({
+    metadataOnly: request.select === "metadata",
     reader,
     timeline,
     timeNs: request.timeNs,
@@ -266,7 +267,6 @@ function rawRecordResultForMessage({
   readonly validFromNs: bigint;
   readonly validUntilNs: bigint;
 }): McapRawMessageRecordResult {
-  assertRawRecordMessageInputBound(message.data.byteLength);
   // A topic can span channels with different schemas; decode the exact
   // message through its own channel rather than the topic representative.
   const channel = reader.channelsById.get(message.channelId);
@@ -291,6 +291,7 @@ function rawRecordResultForMessage({
   if (select === "metadata") {
     return { ...metadata, status: "ok" };
   }
+  assertRawRecordMessageInputBound(message.data.byteLength);
   const decoderResolution = genericRecordDecoderResolutionForChannel(
     reader,
     channel,
@@ -331,6 +332,7 @@ function rawRecordResultForMessage({
  */
 async function selectMessageAtOrBefore({
   channelId,
+  metadataOnly,
   reader,
   timeline,
   timeNs,
@@ -338,6 +340,7 @@ async function selectMessageAtOrBefore({
   signal,
 }: {
   readonly channelId: number;
+  readonly metadataOnly: boolean;
   readonly reader: McapIndexedReaderLike;
   readonly timeline: McapTimelineStrategy;
   readonly timeNs: bigint;
@@ -386,6 +389,7 @@ async function selectMessageAtOrBefore({
       return selectMessageForIndexedEntries({
         candidates,
         channelId,
+        metadataOnly,
         reader,
         signal,
         topic,
@@ -534,12 +538,14 @@ function assertExactIndexedEntryAddressable(
 async function selectMessageForIndexedEntries({
   candidates,
   channelId,
+  metadataOnly,
   reader,
   signal,
   topic,
 }: {
   readonly candidates: readonly McapIndexedMessageTime[];
   readonly channelId: number;
+  readonly metadataOnly: boolean;
   readonly reader: McapIndexedReaderLike;
   readonly signal?: AbortSignal;
   readonly topic: string;
@@ -553,7 +559,9 @@ async function selectMessageForIndexedEntries({
     let selectedIndex = -1;
     for (const [index, message] of messages.entries()) {
       throwIfAborted(signal);
-      assertRawRecordMessageInputBound(message.data.byteLength);
+      if (!metadataOnly) {
+        assertRawRecordMessageInputBound(message.data.byteLength);
+      }
       if (message.channelId !== channelId) continue;
       const selected = messages[selectedIndex];
       if (!selected || isPreferredSameTimeMessage(message, selected)) {
@@ -599,7 +607,9 @@ async function selectMessageForIndexedEntries({
       throwIfAborted(signal);
       materializedMessageCount += 1;
       materializedBytes += message.data.byteLength;
-      assertRawRecordMessageInputBound(message.data.byteLength);
+      if (!metadataOnly) {
+        assertRawRecordMessageInputBound(message.data.byteLength);
+      }
       assertRawRecordFallbackWorkBound(
         materializedMessageCount,
         materializedBytes,
