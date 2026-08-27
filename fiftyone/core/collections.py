@@ -11189,11 +11189,17 @@ class SampleCollection(object):
 
             return []
 
+        reference_indexes = (
+            ["media_reference.key"]
+            if self._dataset._doc.media_reference_kind is not None
+            else []
+        )
+
         if self._is_patches:
             names = [
                 "id",
                 "filepath",
-                "media_reference.key",
+                *reference_indexes,
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11207,7 +11213,7 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
-                "media_reference.key",
+                *reference_indexes,
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11218,7 +11224,7 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
-                "media_reference.key",
+                *reference_indexes,
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11229,7 +11235,7 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
-                "media_reference.key",
+                *reference_indexes,
                 "created_at",
                 "last_modified_at",
                 gf + ".id",
@@ -11239,7 +11245,7 @@ class SampleCollection(object):
         return [
             "id",
             "filepath",
-            "media_reference.key",
+            *reference_indexes,
             "created_at",
             "last_modified_at",
         ]

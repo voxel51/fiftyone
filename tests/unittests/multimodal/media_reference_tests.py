@@ -29,6 +29,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
+import fiftyone.multimodal.media as fomm
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
 from fiftyone.multimodal.media import (
@@ -475,6 +476,23 @@ else:
 
 class MediaReferenceDatasetTests(unittest.TestCase):
     @drop_datasets
+    def test_loading_hydrates_each_reference_once(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample.from_media_reference(_make_reference(8210))
+        )
+
+        with mock.patch.object(
+            fomm,
+            "_hydrate_media_reference",
+            wraps=fomm._hydrate_media_reference,
+        ) as hydrate:
+            sample = dataset.first()
+
+        self.assertEqual(sample.media_reference, _make_reference(8210))
+        hydrate.assert_called_once()
+
+    @drop_datasets
     def test_media_source_mode_is_authoritative_across_dataset_instances(self):
         reference_dataset = fo.Dataset()
         reference_name = reference_dataset.name
@@ -521,12 +539,10 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         database = foo.get_db_conn()
         persisted = database.datasets.find_one({"_id": dataset._doc.id})
         incompatible = deepcopy(persisted)
-        media_reference_field = next(
-            field
-            for field in incompatible["sample_fields"]
-            if field["name"] == "media_reference"
+        media_reference_field = foo.SampleFieldDocument.from_field(
+            foo.create_field("media_reference", fof.StringField)
         )
-        media_reference_field["ftype"] = "fiftyone.core.fields.StringField"
+        incompatible["sample_fields"].append(media_reference_field.to_dict())
         database.datasets.replace_one({"_id": dataset._doc.id}, incompatible)
         fo.Dataset._instances.pop(name, None)
         try:
@@ -699,8 +715,8 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertIsInstance(
             private_schema["media_reference"], fof.MediaReferenceField
         )
-        self.assertNotIsInstance(
-            private_schema["media_reference"], LeRobotEpisode
+        self.assertIs(
+            type(private_schema["media_reference"]), fof.MediaReferenceField
         )
 
         with mock.patch.object(
@@ -777,6 +793,12 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         )
         self.assertEqual(view_copy._doc._rand, dataset.first()._doc._rand)
 
+        id_only_copy = dataset.first().copy(fields=["id"])
+        self.assertIsNone(id_only_copy.id)
+        self.assertEqual(
+            id_only_copy.media_reference, dataset.first().media_reference
+        )
+
         destination = fo.Dataset()
         destination.add_samples(dataset.iter_samples())
         self.assertEqual(
@@ -822,11 +844,18 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as export_dir:
             native_dir = os.path.join(export_dir, "native")
-            dataset.export(
-                export_dir=native_dir,
-                dataset_type=fot.FiftyOneDataset,
-                export_media=False,
-            )
+            previous_umask = os.umask(0o027)
+            try:
+                dataset.export(
+                    export_dir=native_dir,
+                    dataset_type=fot.FiftyOneDataset,
+                    export_media=False,
+                )
+            finally:
+                os.umask(previous_umask)
+
+            if os.name == "posix":
+                self.assertEqual(os.stat(native_dir).st_mode & 0o777, 0o750)
             samples_path = os.path.join(native_dir, "samples.json")
             with open(samples_path) as file:
                 exported_document = json.load(file)
@@ -964,6 +993,31 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 )
 
             self.assertFalse(fo.dataset_exists(name))
+            self.assertEqual(
+                bindings.count_documents({"_id": {"$in": keys}}), 0
+            )
+
+            destination = fo.Dataset()
+            destination.add_sample(
+                fo.Sample.from_media_reference(_make_reference(9200))
+            )
+            destination_document = destination._doc.to_dict()
+            destination_samples = list(destination._sample_collection.find({}))
+            destination_indexes = destination.get_index_information()
+            with self.assertRaisesRegex(ValueError, "inconsistent"):
+                destination.add_dir(
+                    dataset_dir=export_dir,
+                    dataset_type=fot.FiftyOneDataset,
+                )
+
+            self.assertEqual(destination._doc.to_dict(), destination_document)
+            self.assertEqual(
+                list(destination._sample_collection.find({})),
+                destination_samples,
+            )
+            self.assertEqual(
+                destination.get_index_information(), destination_indexes
+            )
             self.assertEqual(
                 bindings.count_documents({"_id": {"$in": keys}}), 0
             )
@@ -1453,6 +1507,25 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 self.assertEqual(
                     dataset._sample_collection.find_one(), persisted
                 )
+
+            dataset.mongo(
+                [{"$set": {"filepath": None, "tags": ["valid"]}}]
+            ).save(fields=["tags"])
+            self.assertEqual(dataset.first().tags, ["valid"])
+            persisted = dataset._sample_collection.find_one()
+            with self.assertRaisesRegex(ValueError, "media-source invariant"):
+                dataset.mongo(
+                    [
+                        {
+                            "$set": {
+                                "filepath": None,
+                                "media_reference": None,
+                                "tags": ["invalid"],
+                            }
+                        }
+                    ]
+                ).save(fields=["tags"])
+            self.assertEqual(dataset.first().tags, ["valid"])
 
             view = dataset.add_stage(
                 fo.SetField("media_reference.key", fo.ViewField("id"))

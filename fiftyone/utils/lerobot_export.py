@@ -11,11 +11,9 @@ from dataclasses import dataclass
 import importlib.util
 import os
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
-import uuid
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -163,7 +161,6 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
                     reference, reference.describe_assets()
                 )
 
-            os.chmod(staging_dir, _get_default_directory_mode(parent))
             _publish_staging_dir(
                 staging_dir,
                 self.export_dir,
@@ -174,15 +171,6 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
         finally:
             if not published and os.path.isdir(staging_dir):
                 shutil.rmtree(staging_dir)
-
-
-def _get_default_directory_mode(parent):
-    probe = os.path.join(parent, ".fiftyone-mode-%s" % uuid.uuid4().hex)
-    os.mkdir(probe, 0o777)
-    try:
-        return stat.S_IMODE(os.stat(probe).st_mode)
-    finally:
-        os.rmdir(probe)
 
 
 def _plan_lerobot_export(reference):

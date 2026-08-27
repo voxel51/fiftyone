@@ -373,6 +373,7 @@ class LeRobotImporterTests(unittest.TestCase):
             "data/{chunk_index.__class__}/file.parquet",
             "data/{chunk_index:100000000d}/file.parquet",
             "data/{chunk_index:>16}/file.parquet",
+            "data/" + "x" * 4096,
         )
         for template in templates:
             with self.subTest(template=template), self.assertRaisesRegex(
@@ -380,6 +381,38 @@ class LeRobotImporterTests(unittest.TestCase):
                 "Invalid LeRobot source path template",
             ):
                 foul._format_source_path(template, chunk_index=0)
+
+        with self.assertRaisesRegex(
+            MalformedMediaSourceError, "produced an invalid path"
+        ):
+            foul._format_source_path("{video_key}", video_key="x" * 4097)
+
+    def test_info_features_and_video_timestamps_are_typed(self):
+        info = {
+            "codebase_version": "v3.2",
+            "data_path": "data/{file_index:03d}.parquet",
+            "features": {"observation": 1},
+            "fps": 10,
+            "total_episodes": 1,
+            "video_path": "videos/{file_index:03d}.mp4",
+        }
+        with self.assertRaisesRegex(
+            MalformedMediaSourceError, "features must contain objects"
+        ):
+            foul._validate_v3_info(info)
+
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            episodes_path = os.path.join(
+                root, "meta", "episodes", "part-000.parquet"
+            )
+            rows = papq.read_table(episodes_path).to_pylist()
+            rows[0]["videos/%s/from_timestamp" % _VIDEO_FEATURE] = "invalid"
+            _write_parquet(episodes_path, rows)
+            with self.assertRaisesRegex(
+                MalformedMediaSourceError, "invalid video timestamp bounds"
+            ):
+                _import(root)
 
     def test_source_paths_remain_posix_across_platforms(self):
         self.assertEqual(
@@ -655,7 +688,7 @@ class LeRobotExporterTests(unittest.TestCase):
     )
     @drop_datasets
     def test_official_reader_opens_exported_coordinates(self):
-        from lerobot.datasets.lerobot_dataset import (
+        from lerobot.datasets.lerobot_dataset import (  # pylint: disable=import-error
             LeRobotDataset,
             LeRobotDatasetMetadata,
         )
@@ -1529,7 +1562,7 @@ class LeRobotServerTests(unittest.TestCase):
             )
             for error, status, kind in cases:
                 with self.subTest(error=type(error).__name__), mock.patch(
-                    "fiftyone.server.routes.media_reference._stat_asset",
+                    "fiftyone.server.routes.media_reference._open_asset",
                     side_effect=error,
                 ):
                     response = client.get(video_url)
@@ -1540,7 +1573,7 @@ class LeRobotServerTests(unittest.TestCase):
                     self.assertNotIn(root, response.text)
 
             with mock.patch(
-                "fiftyone.server.routes.media_reference.os.open",
+                "fiftyone.server.routes.media_reference._open_asset",
                 side_effect=FileNotFoundError(),
             ):
                 response = client.get(video_url)
@@ -1551,7 +1584,7 @@ class LeRobotServerTests(unittest.TestCase):
             )
 
             with mock.patch(
-                "fiftyone.server.routes.media_reference.os.open",
+                "fiftyone.server.routes.media_reference._open_asset",
                 return_value=51,
             ), mock.patch(
                 "fiftyone.server.routes.media_reference.os.fstat",
@@ -1567,6 +1600,54 @@ class LeRobotServerTests(unittest.TestCase):
                 "stale-media-asset",
             )
             close.assert_any_call(51)
+
+    @drop_datasets
+    def test_asset_open_rejects_post_resolution_symlink_replacement(self):
+        if (
+            os.name != "posix"
+            or not hasattr(os, "O_NOFOLLOW")
+            or os.open not in os.supports_dir_fd
+        ):
+            self.skipTest(
+                "descriptor-relative no-follow opens are unavailable"
+            )
+
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as outside:
+            video_path = _write_v3_source(root)
+            dataset = _import(root, max_samples=1)
+            sample = dataset.first()
+            reference = sample.media_reference
+            manifest = _LeRobotMediaResolver().resolve_assets(
+                reference, reference.describe_assets()
+            )
+            video = next(
+                asset
+                for asset in manifest.assets
+                if asset.description.role.value == "video-stream"
+            )
+            outside_path = os.path.join(outside, "video.mp4")
+            shutil.copy2(video_path, outside_path)
+            os.remove(video_path)
+            os.symlink(outside_path, video_path)
+
+            client = TestClient(_make_route_app())
+            url = "/dataset/%s/sample/%s/multimodal/assets/%s" % (
+                dataset._doc.id,
+                sample.id,
+                video.asset_id,
+            )
+            with mock.patch(
+                "fiftyone.server.routes.media_reference._resolve_manifest",
+                return_value=(dataset, sample, manifest),
+            ):
+                response = client.get(url)
+
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(
+                response.headers["X-FiftyOne-Error-Kind"],
+                "stale-media-asset",
+            )
+            self.assertNotIn(outside, response.text)
 
     @drop_datasets
     def test_manifest_range_scope_and_redaction(self):
@@ -1627,6 +1708,15 @@ class LeRobotServerTests(unittest.TestCase):
             self.assertEqual(ranged.status_code, 206)
             self.assertEqual(ranged.content, b"0123")
             self.assertEqual(ranged.headers["accept-ranges"], "bytes")
+            multipart = client.get(
+                video["url"], headers={"Range": "bytes=0-1,4-5"}
+            )
+            self.assertEqual(multipart.status_code, 206)
+            self.assertTrue(
+                multipart.headers["content-type"].startswith(
+                    "multipart/byteranges; boundary="
+                )
+            )
 
             cross_sample_url = "/dataset/%s/sample/%s/multimodal/assets/%s" % (
                 dataset._doc.id,

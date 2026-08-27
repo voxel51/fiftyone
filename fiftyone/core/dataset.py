@@ -2261,7 +2261,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
             instances
         """
-        return self._sample_doc_cls.get_field_schema(
+        schema = self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
@@ -2273,6 +2273,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             unwind=unwind,
             mode=mode,
         )
+        if not include_private and self._doc.media_reference_kind is None:
+            for path in list(schema):
+                if path == "media_reference" or path.startswith(
+                    "media_reference."
+                ):
+                    schema.pop(path)
+
+        return schema
 
     def get_frame_field_schema(
         self,
@@ -9419,7 +9427,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if descriptor is not None:
             from fiftyone.multimodal.media import _hydrate_media_reference
 
-            _hydrate_media_reference(descriptor)
+            d = dict(d)
+            d["media_reference"] = _hydrate_media_reference(descriptor)
 
         try:
             return self._sample_doc_cls.from_dict(d)
@@ -9705,6 +9714,7 @@ def _create_dataset(
     sample_fields = [
         foo.SampleFieldDocument.from_field(field)
         for field in sample_doc_cls._fields.values()
+        if field.name != "media_reference"
     ]
 
     if _clips:
@@ -10649,12 +10659,12 @@ def _save_view(view, fields=None):
                 "$match": {
                     "$or": [
                         {
-                            "filepath": {"$exists": True},
-                            "media_reference": {"$exists": True},
+                            "filepath": {"$ne": None},
+                            "media_reference": {"$ne": None},
                         },
                         {
-                            "filepath": {"$exists": False},
-                            "media_reference": {"$exists": False},
+                            "filepath": None,
+                            "media_reference": None,
                         },
                         {"media_reference.kind": {"$ne": reference_kind}},
                     ]
@@ -12374,6 +12384,11 @@ def _get_media_reference_kind(samples):
         if dataset_document is None
         else dataset_document.get("media_reference_kind")
     )
+    if marked_kind is None and not _has_media_reference_capability_marker(
+        dataset
+    ):
+        return None
+
     kinds = dataset._sample_collection.distinct(
         "media_reference.kind",
         {"media_reference.kind": {"$exists": True}},
@@ -12410,6 +12425,21 @@ def _get_media_identity_mode(samples):
         dataset_document is not None
         and dataset_document.get("media_reference_kind") is not None
     )
+    if not marked_reference and not _has_media_reference_capability_marker(
+        dataset
+    ):
+        sample = dataset._sample_collection.find_one(
+            {}, {"filepath": True, "media_reference": True}
+        )
+        if sample is None:
+            return None
+
+        filepath = sample.get("filepath")
+        reference = sample.get("media_reference")
+        if filepath is not None and reference is None:
+            return "filepath"
+
+        return "mixed"
 
     invalid_source = dataset._sample_collection.find_one(
         {
@@ -12448,6 +12478,20 @@ def _get_media_identity_mode(samples):
         return "mixed" if marked_reference else "filepath"
 
     return "reference" if marked_reference else None
+
+
+def _has_media_reference_capability_marker(dataset):
+    if any(
+        field.name == "media_reference" for field in dataset._doc.sample_fields
+    ):
+        return True
+
+    app_config = dataset._doc.app_config
+    return (
+        app_config.grid_media_field == "media_reference"
+        or app_config.modal_media_field == "media_reference"
+        or "media_reference" in app_config.media_fields
+    )
 
 
 @contextlib.contextmanager

@@ -13,6 +13,7 @@ import hashlib
 import os
 import posixpath
 import shutil
+import stat
 import uuid
 
 import eta.core.serial as etas
@@ -485,6 +486,8 @@ def _publish_staging_dir(
     operation="Native media-reference export",
 ):
     _validate_publish_destination(output_dir, overwrite, operation=operation)
+    parent = os.path.dirname(os.path.abspath(output_dir))
+    os.chmod(staging_dir, _get_default_directory_mode(parent))
 
     if not os.path.exists(output_dir):
         os.replace(staging_dir, output_dir)
@@ -507,3 +510,12 @@ def _publish_staging_dir(
             shutil.rmtree(backup_dir)
         else:
             os.remove(backup_dir)
+
+
+def _get_default_directory_mode(parent):
+    probe = os.path.join(parent, ".fiftyone-mode-%s" % uuid.uuid4().hex)
+    os.mkdir(probe, 0o777)
+    try:
+        return stat.S_IMODE(os.stat(probe).st_mode)
+    finally:
+        os.rmdir(probe)

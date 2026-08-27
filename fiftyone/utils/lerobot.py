@@ -7,11 +7,13 @@ LeRobotDataset v3 import and asset resolution utilities.
 """
 
 from collections import defaultdict
+from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import wraps
 import hashlib
 import json
+import math
 import mimetypes
 import os
 import posixpath
@@ -73,6 +75,7 @@ papq = fou.lazy_import(
 
 _VERSION_PATTERN = re.compile(r"^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+].*)?$")
 _PATH_FORMAT_SPEC_PATTERN = re.compile(r"^0([1-9]|1[0-6])d$")
+_MAX_SOURCE_PATH_LENGTH = 4096
 _REQUIRED_INFO_FIELDS = {
     "codebase_version",
     "data_path",
@@ -748,6 +751,12 @@ def _validate_v3_info(info):
         raise MalformedMediaSourceError(
             "LeRobot info.json must declare a non-empty features object"
         )
+    if not all(
+        isinstance(feature, Mapping) for feature in info["features"].values()
+    ):
+        raise MalformedMediaSourceError(
+            "LeRobot info.json features must contain objects"
+        )
 
     if isinstance(info["total_episodes"], bool) or not isinstance(
         info["total_episodes"], int
@@ -934,7 +943,21 @@ def _collect_source_asset_paths(root, info, rows):
                     % video_relative_path
                 )
 
-            if float(row[to_field]) <= float(row[from_field]):
+            try:
+                from_timestamp = float(row[from_field])
+                to_timestamp = float(row[to_field])
+            except (TypeError, ValueError) as exc:
+                raise MalformedMediaSourceError(
+                    "LeRobot episode %d has invalid video timestamp bounds"
+                    % row["episode_index"]
+                ) from exc
+
+            if (
+                not math.isfinite(from_timestamp)
+                or not math.isfinite(to_timestamp)
+                or from_timestamp < 0
+                or to_timestamp <= from_timestamp
+            ):
                 raise MalformedMediaSourceError(
                     "LeRobot episode %d has invalid video timestamp bounds"
                     % row["episode_index"]
@@ -1236,6 +1259,13 @@ def _episode_time_range(row, videos, fps):
 
 
 def _format_source_path(template, **coordinates):
+    if (
+        not isinstance(template, str)
+        or not template
+        or len(template) > _MAX_SOURCE_PATH_LENGTH
+    ):
+        raise MalformedMediaSourceError("Invalid LeRobot source path template")
+
     try:
         fields = string.Formatter().parse(template)
         for _, field_name, format_spec, conversion in fields:
@@ -1263,7 +1293,11 @@ def _format_source_path(template, **coordinates):
             "Invalid LeRobot source path template '%s'" % template
         ) from exc
 
-    if not isinstance(path, str) or not path:
+    if (
+        not isinstance(path, str)
+        or not path
+        or len(path) > _MAX_SOURCE_PATH_LENGTH
+    ):
         raise MalformedMediaSourceError(
             "LeRobot source path template produced an invalid path"
         )

@@ -1707,7 +1707,6 @@ class DatasetTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
-                "media_reference",
                 "tags",
                 "metadata",
                 "created_at",
@@ -1745,7 +1744,6 @@ class DatasetTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
-                "media_reference",
                 "tags",
                 "metadata",
                 "created_at",
@@ -1834,7 +1832,6 @@ class DatasetTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
-                "media_reference",
                 "tags",
                 "metadata",
                 "metadata.size_bytes",
@@ -1871,7 +1868,6 @@ class DatasetTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
-                "media_reference",
                 "tags",
                 "metadata",
                 "metadata.size_bytes",

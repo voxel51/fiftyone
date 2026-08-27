@@ -19,7 +19,7 @@ from decorators import drop_datasets
 from mongoengine.errors import ValidationError
 
 import fiftyone as fo
-import fiftyone.core.fields as fof
+import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 from fiftyone.server.samples import (
@@ -33,6 +33,21 @@ import fiftyone.types as fot
 
 
 class FilepathMediaReferenceRegressionTests(unittest.TestCase):
+    @drop_datasets
+    def test_filepath_identity_avoids_reference_collection_scans(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="image.jpg"))
+
+        self.assertEqual(fod._get_media_identity_mode(dataset), "filepath")
+        with mock.patch.object(
+            dataset._sample_collection,
+            "distinct",
+            side_effect=AssertionError(
+                "filepath datasets must not scan kinds"
+            ),
+        ):
+            self.assertIsNone(fod._get_media_reference_kind(dataset))
+
     @drop_datasets
     def test_add_samples_streams_and_preserves_completed_batches(self):
         dataset = fo.Dataset()
@@ -131,29 +146,21 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
 
         dataset = fo.Dataset()
         dataset.add_sample(sample)
-        self.assertIsInstance(
-            dataset.get_field_schema()["media_reference"],
-            fof.MediaReferenceField,
+        self.assertNotIn("media_reference", dataset.get_field_schema())
+        self.assertFalse(
+            any(
+                path.startswith("media_reference")
+                for path in dataset.get_field_schema(flat=True)
+            )
         )
 
         with self.assertRaises(fo.UnsupportedMediaReferenceOperation):
             dataset.set_values("media_reference", [None])
 
-        field_doc = next(
-            field
-            for field in dataset._doc.sample_fields
-            if field.name == "media_reference"
+        self.assertNotIn(
+            "media_reference",
+            {field.name for field in dataset._doc.sample_fields},
         )
-        expected_type = field_doc.ftype
-        field_doc.ftype = "fiftyone.core.fields.StringField"
-        dataset._doc.save()
-        fo.Dataset._instances.pop(dataset.name, None)
-        try:
-            with self.assertRaisesRegex(ValueError, "incompatible schema"):
-                fo.load_dataset(dataset.name)
-        finally:
-            field_doc.ftype = expected_type
-            dataset._doc.save()
 
     @drop_datasets
     def test_filepath_exception_types_remain_compatible(self):

@@ -11,6 +11,7 @@ import importlib
 import os
 from secrets import token_hex
 import stat
+from typing import NoReturn
 from urllib.parse import quote
 
 import anyio
@@ -85,44 +86,8 @@ class MediaAssetBytes(HTTPEndpoint):
             )
 
         try:
-            stat_result = await anyio.to_thread.run_sync(
-                _stat_asset, asset.path
-            )
-        except (FileNotFoundError, NotADirectoryError):
-            _raise_asset_error(
-                404,
-                "missing-media-asset",
-                "The resolved media asset is no longer available",
-            )
-        except PermissionError:
-            _raise_asset_error(
-                403,
-                "media-source-authorization",
-                "The resolved media asset is not readable",
-            )
-        except OSError as exc:
-            if exc.errno in {errno.ENAMETOOLONG, errno.ELOOP}:
-                _raise_asset_error(
-                    404,
-                    "missing-media-asset",
-                    "The resolved media asset is no longer available",
-                )
-            _raise_asset_error(
-                409,
-                "stale-media-asset",
-                "The resolved media asset could not be opened safely",
-            )
-
-        if not stat.S_ISREG(stat_result.st_mode):
-            _raise_asset_error(
-                404,
-                "missing-media-asset",
-                "The resolved media asset is not a regular file",
-            )
-
-        try:
             descriptor = await anyio.to_thread.run_sync(
-                os.open, asset.path, os.O_RDONLY
+                _open_asset, asset.path
             )
         except (FileNotFoundError, NotADirectoryError):
             _raise_asset_error(
@@ -223,7 +188,7 @@ def _resolve_manifest(request):
     return dataset, sample, manifest
 
 
-def _raise_resolution_error(status_code, kind, error):
+def _raise_resolution_error(status_code, kind, error) -> NoReturn:
     public_messages = {
         "missing-media-root": (
             "The configured LeRobot source root is unavailable; restore or "
@@ -267,7 +232,7 @@ def _raise_resolution_error(status_code, kind, error):
     ) from error
 
 
-def _raise_asset_error(status_code, kind, message):
+def _raise_asset_error(status_code, kind, message) -> NoReturn:
     raise HTTPException(
         status_code=status_code,
         detail="%s: %s" % (kind, message),
@@ -275,13 +240,41 @@ def _raise_asset_error(status_code, kind, message):
     )
 
 
-def _stat_asset(path):
-    result = os.stat(path)
-    if stat.S_ISREG(result.st_mode):
-        descriptor = os.open(path, os.O_RDONLY)
-        os.close(descriptor)
+def _open_asset(path):
+    if (
+        os.name != "posix"
+        or not hasattr(os, "O_NOFOLLOW")
+        or os.open not in os.supports_dir_fd
+    ):
+        return os.open(path, os.O_RDONLY)
 
-    return result
+    path = os.path.normpath(path)
+    if not os.path.isabs(path):
+        raise OSError(errno.EINVAL, "media asset path must be absolute")
+
+    flags = os.O_RDONLY | os.O_NOFOLLOW
+    directory_flags = flags | os.O_DIRECTORY
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+        directory_flags |= os.O_CLOEXEC
+
+    descriptor = os.open(os.path.sep, directory_flags)
+    try:
+        components = [part for part in path.split(os.path.sep) if part]
+        for index, component in enumerate(components):
+            component_flags = (
+                flags if index == len(components) - 1 else directory_flags
+            )
+            next_descriptor = os.open(
+                component, component_flags, dir_fd=descriptor
+            )
+            os.close(descriptor)
+            descriptor = next_descriptor
+
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
 
 
 class _OpenedMediaFileResponse(MediaFileResponse):
@@ -372,7 +365,7 @@ class _OpenedMediaFileResponse(MediaFileResponse):
         content_length, header_generator = self.generate_multipart(
             ranges, boundary, file_size, self.headers["content-type"]
         )
-        self.headers["content-range"] = (
+        self.headers["content-type"] = (
             "multipart/byteranges; boundary=%s" % boundary
         )
         self.headers["content-length"] = str(content_length)

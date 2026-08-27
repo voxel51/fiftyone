@@ -85,7 +85,14 @@ def serialize(value: Any) -> Any:
         The serialized value if able to serialize, otherwise the input value.
     """
 
-    if isinstance(value, (fos.Sample, fos.SampleView)):
+    if isinstance(value, fos.SampleView):
+        from fiftyone.server.media_references import (
+            validate_sample_for_transport,
+        )
+
+        return validate_sample_for_transport(value.to_dict())
+
+    if isinstance(value, fos.Sample):
         from fiftyone.server.media_references import (
             validate_sample_for_transport,
         )

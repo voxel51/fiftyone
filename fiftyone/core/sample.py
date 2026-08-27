@@ -474,7 +474,7 @@ class _SampleMixin(object):
             )
             values = {}
             for src_field, dst_field in parsed_fields.items():
-                if src_field in ("filepath", "media_reference"):
+                if src_field in ("id", "filepath", "media_reference"):
                     continue
 
                 try:

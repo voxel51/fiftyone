@@ -1829,6 +1829,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._has_frames = None
         self._media_fields = None
         self._dataset_dict = None
+        self._is_media_reference_dataset = False
         self._cleanup_on_failure = False
         self._media_source_manifest_sources = None
         self._reference_bindings = None
@@ -1847,11 +1848,12 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         self._dataset_dict = foo.import_document(self._metadata_path)
 
-        self._cleanup_on_failure = (
+        self._is_media_reference_dataset = (
             self._dataset_dict.get("media_reference_kind") is not None
         )
+        self._cleanup_on_failure = self._is_media_reference_dataset
 
-        if self._cleanup_on_failure:
+        if self._is_media_reference_dataset:
             from fiftyone.core.media_assets import (
                 _MEDIA_SOURCE_MANIFEST_FILENAME,
                 _load_media_source_manifest,
@@ -2005,6 +2007,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         from fiftyone.multimodal.media import (
             MediaReferenceError,
             _import_media_reference_bindings,
+            _validate_media_reference_binding,
             _validate_media_source,
         )
 
@@ -2032,13 +2035,29 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 for sample in samples
                 if sample.get("media_reference") is not None
             ]
-            inserted = _import_media_reference_bindings(
-                self._reference_bindings or (), descriptors
-            )
+            bindings = self._reference_bindings or ()
+            for binding in bindings:
+                _validate_media_reference_binding(binding)
+
             reference_media_types = {
                 (binding["kind"], binding["_id"]): binding["media_type"]
-                for binding in self._reference_bindings or ()
+                for binding in bindings
             }
+            for sample in samples:
+                descriptor = sample.get("media_reference")
+                if descriptor is None:
+                    continue
+
+                _validate_media_source(sample.get("filepath"), descriptor)
+                identity = (descriptor["kind"], descriptor["key"])
+                expected_media_type = reference_media_types.get(identity)
+                if sample.get("_media_type") != expected_media_type:
+                    raise ValueError(
+                        "Native media-reference import has inconsistent "
+                        "persisted media type"
+                    )
+
+            inserted = _import_media_reference_bindings(bindings, descriptors)
             if inserted_binding_keys is not None:
                 inserted_binding_keys.extend(inserted)
         elif self.max_samples is not None:

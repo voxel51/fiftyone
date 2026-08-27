@@ -72,7 +72,6 @@ class PatchesTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
-                "media_reference",
                 "tags",
                 "metadata",
                 "created_at",
@@ -97,7 +96,6 @@ class PatchesTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
-                "media_reference",
                 "tags",
                 "metadata",
                 "created_at",
@@ -393,7 +391,6 @@ class PatchesTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
-                "media_reference",
                 "metadata",
                 "tags",
                 "created_at",
@@ -412,7 +409,6 @@ class PatchesTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
-                "media_reference",
                 "metadata",
                 "tags",
                 "created_at",
