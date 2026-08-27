@@ -3,7 +3,6 @@ div.iconContainer {
   justify-content: flex-end;
   height: 100%;
   align-items: center;
-  /* The header's own right padding ends the row; padding here doubled it */
 }
 
 a.iconLink {

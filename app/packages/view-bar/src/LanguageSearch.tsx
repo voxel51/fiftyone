@@ -6,7 +6,7 @@
  * the dataset has a sample-level similarity index that accepts text prompts.
  */
 
-import { Icon, IconName, Input, Size, Tooltip, Anchor } from "@voxel51/voodo";
+import { Icon, IconName, Input, Size } from "@voxel51/voodo";
 import React from "react";
 
 import { NO_BROWSER_SUGGESTIONS } from "./params";
@@ -40,7 +40,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
         <Input
           size={Size.Sm}
           value={query}
-          placeholder="Search with natural language"
+          placeholder="Search by text"
           data-cy={LANGUAGE_SEARCH_INPUT_CY}
           {...NO_BROWSER_SUGGESTIONS}
           onChange={(e) => setQuery(e.target.value)}
@@ -73,40 +73,3 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
     </div>
   );
 };
-
-/**
- * The search affordance while the stage row is expanded: a single icon that
- * hands the bar back to the collapsed layout, where the full input lives.
- */
-export const LanguageSearchButton: React.FC<{ onOpen: () => void }> = ({
-  onOpen,
-}) => (
-  <Tooltip anchor={Anchor.Bottom} content="Search with natural language">
-    <div
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label="Search with natural language"
-      data-cy="view-bar-language-search-button"
-      style={{
-        cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        color: "var(--fo-palette-text-secondary)",
-        flexShrink: 0,
-      }}
-    >
-      <Icon name={IconName.Search} size={Size.Sm} />
-    </div>
-  </Tooltip>
-);

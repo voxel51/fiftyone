@@ -14,7 +14,6 @@
  * marks the field as optional.
  */
 
-import { CHROME_CONTROL_HEIGHT } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   Align,
@@ -34,11 +33,7 @@ import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
 import { ClearViewButton, CurrentViewChip } from "./CurrentViewChip";
 import { allowedFields } from "./fields";
 import { InsertSlot } from "./InsertSlot";
-import {
-  LANGUAGE_SEARCH_INPUT_CY,
-  LanguageSearch,
-  LanguageSearchButton,
-} from "./LanguageSearch";
+import { LanguageSearch } from "./LanguageSearch";
 import {
   appliesTo,
   defaultKwargs,
@@ -56,7 +51,12 @@ import type {
   StageDefinition,
   ViewBarCapabilities,
 } from "./params";
-import { StageCard } from "./StageCard";
+import { CHROME_CONTROL_HEIGHT, StageCard } from "./StageCard";
+import {
+  rankStages,
+  readRecentStages,
+  recordRecentStage,
+} from "./stage-ranking";
 import {
   initialState,
   makeId,
@@ -289,11 +289,20 @@ const ViewBar: React.FC<{
     () => kindsByFtype(catalog?.viewExpressionFieldKinds ?? []),
     [catalog],
   );
-  // Every slot offers the same stages, so the media-type filter runs once for
-  // the bar rather than once per slot
+  // Recency lives per browser; reading it once per mount is enough because
+  // this bar is the only writer
+  const [recentStages, setRecentStages] =
+    React.useState<string[]>(readRecentStages);
+
+  // Every slot offers the same stages, so the media-type filter and ranking
+  // run once for the bar rather than once per slot
   const insertableNames = useMemo(
-    () => stageDefs.filter((d) => appliesTo(d, mediaType)).map((d) => d.name),
-    [stageDefs, mediaType],
+    () =>
+      rankStages(
+        stageDefs.filter((d) => appliesTo(d, mediaType)).map((d) => d.name),
+        recentStages,
+      ),
+    [stageDefs, mediaType, recentStages],
   );
 
   const describeStage = useCallback(
@@ -316,6 +325,7 @@ const ViewBar: React.FC<{
         kwargs: defaultKwargs(defsByName.get(cls)?.params ?? []),
       });
       setEditingId(id);
+      setRecentStages(recordRecentStage(cls));
       // A stage can be inserted from the collapsed empty bar; its editor
       // opens against the full row, not the summary chip
       setExpanded(true);
@@ -334,6 +344,7 @@ const ViewBar: React.FC<{
   // Closed-choice params pick from a list: the stage's own constants, or
   // names only the dataset knows — its group slices, its evaluation keys
   const evaluationKeys = fos.useEvaluationKeys();
+  const similarityKeys = fos.useSimilarityKeys();
   const groupSlices = fos.useGroupSlices(ALL_SLICE_MEDIA_TYPES);
   const choicesFor = useCallback(
     (param: ParamDef): string[] => {
@@ -342,11 +353,13 @@ const ViewBar: React.FC<{
           return groupSlices;
         case "EVALUATION_KEYS":
           return evaluationKeys;
+        case "SIMILARITY_KEYS":
+          return similarityKeys;
         default:
           return [...param.choices.values];
       }
     },
-    [groupSlices, evaluationKeys],
+    [groupSlices, evaluationKeys, similarityKeys],
   );
 
   /**
@@ -561,10 +574,21 @@ const ViewBar: React.FC<{
     return byStage;
   }, [paramErrors, touched]);
 
+  // What setView was last given: `fos.view` lags a round-trip behind, and
+  // that gap must not read as pending work — clearing an applied view would
+  // flash the Apply button for exactly one echo
+  const [inFlight, setInFlight] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (inFlight !== null && viewFingerprint(currentView) === inFlight) {
+      setInFlight(null);
+    }
+  }, [currentView, inFlight]);
+
   const apply = useCallback(() => {
     if (paramErrors.labels.length) return;
     const serialized = serializeWorking();
     setView(serialized);
+    setInFlight(viewFingerprint(serialized));
     // Rebuild the bar from exactly what was sent, so an applied expression
     // reopens printed from its envelope — `F("x")` as typed becomes the
     // canonical `F('x')` — without waiting on any echo from the server
@@ -588,6 +612,7 @@ const ViewBar: React.FC<{
     setModeOverrides({});
     setEditingId(null);
     setView([]);
+    setInFlight(viewFingerprint([]));
     dispatch({ type: "hydrate", stages: [] });
   }, [setView]);
 
@@ -613,18 +638,6 @@ const ViewBar: React.FC<{
     },
     [promptKeys, paramErrors, serializeWorking, setView],
   );
-
-  /** Expanded bar's search icon: collapse and put the keyboard in the input. */
-  const openSearch = useCallback(() => {
-    setEditingId(null);
-    setExpanded(false);
-    // Deferred a frame: the input only exists once the collapsed layout paints
-    requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>(`[data-cy='${LANGUAGE_SEARCH_INPUT_CY}']`)
-        ?.focus();
-    });
-  }, []);
 
   // With no stages and no search there is nothing to summarize and nothing
   // to make room for, so the bar stays in its full layout
@@ -671,10 +684,12 @@ const ViewBar: React.FC<{
     return () => window.removeEventListener("mousedown", onDown);
   }, []);
 
-  const hasPendingChanges = useMemo(
-    () => viewFingerprint(serializeWorking()) !== viewFingerprint(currentView),
-    [serializeWorking, currentView],
-  );
+  const hasPendingChanges = useMemo(() => {
+    const working = viewFingerprint(serializeWorking());
+    // A working state that matches what was just sent is applied work still
+    // in flight, not pending work
+    return working !== viewFingerprint(currentView) && working !== inFlight;
+  }, [serializeWorking, currentView, inFlight]);
 
   /**
    * Insertion slot styled as a typeahead {@link Input} — same shape
@@ -871,11 +886,6 @@ const ViewBar: React.FC<{
                 </React.Fragment>
               );
             })}
-          </div>
-        )}
-        {!collapsed && searchEnabled && (
-          <div style={{ padding: "0 4px", flexShrink: 0 }}>
-            <LanguageSearchButton onOpen={openSearch} />
           </div>
         )}
         {/* Clearing must survive the collapse: hover expands the chip away

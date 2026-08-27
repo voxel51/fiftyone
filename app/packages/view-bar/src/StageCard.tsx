@@ -18,7 +18,6 @@ import {
   Stack,
   Tooltip,
 } from "@voxel51/voodo";
-import { CHROME_CONTROL_HEIGHT } from "@fiftyone/components";
 import React from "react";
 import { createPortal } from "react-dom";
 
@@ -80,6 +79,14 @@ const POPOVER_WIDTH = 360;
  * one number to change.
  */
 const PILL_INSET = 4;
+
+/**
+ * The height of the view bar's gutter, and of anything that must line up with
+ * it. Nested pieces derive their height from this rather than carrying their
+ * own number.
+ */
+export const CHROME_CONTROL_HEIGHT = 40;
+
 export const PILL_HEIGHT = CHROME_CONTROL_HEIGHT - PILL_INSET * 2;
 
 interface StageCardProps {
@@ -238,9 +245,9 @@ export const StageCard: React.FC<StageCardProps> = ({
           height: PILL_HEIGHT,
           display: "flex",
           alignItems: "center",
-          // A stage that cannot be applied says so, whether its editor is
-          // open or closed and whether the value is missing or rejected
-          ...(invalid || incomplete
+          // A stage that cannot be applied says so once its editor closes —
+          // while the popover is open the user is mid-thought, not in error
+          ...(!expanded && (invalid || incomplete)
             ? {
                 borderColor: ERROR_COLOR,
                 outline: `1px solid ${ERROR_COLOR}`,
