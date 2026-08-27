@@ -203,6 +203,17 @@ describe("sample renderer matcher utilities", () => {
     expect(
       matchesMatchMedia({ mediaReferenceKinds: ["LEROBOT-EPISODE"] }, media),
     ).toBe(true);
+
+    const filepathMedia = createSampleRendererMediaContext(
+      createSample(),
+      "filepath",
+    );
+    expect(
+      matchesMatchMedia(
+        { mediaReferenceKinds: ["lerobot-episode"] },
+        filepathMedia,
+      ),
+    ).toBe(false);
   });
 
   it("detects matcher presence only when a matcher field is populated", () => {

@@ -157,6 +157,7 @@ describe("useImageTextureLease", () => {
     expect(handlesAtRelease).toEqual([]);
     act(() => animationFrames.shift()?.(0));
     expect(handlesAtRelease).toEqual([]);
+    await waitFor(() => expect(animationFrames).toHaveLength(1));
     act(() => animationFrames.shift()?.(16));
     expect(handlesAtRelease).toEqual([secondHandle]);
 
