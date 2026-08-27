@@ -12,7 +12,7 @@ import {
   RegisterFrameLabels,
   useVfcClockSource,
 } from "@fiftyone/video-annotation";
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import styles from "./VideoTimelineSurface.module.css";
 
 const VIDEO_STREAM_ID = "video";
@@ -52,6 +52,9 @@ const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const { seek } = usePlayback();
+  // Keyed to the source rather than a bare flag so navigating to a sample
+  // that does load clears it without an effect and without a flicker.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   // Which `videoSrc` the engine has already been kicked for. `loadeddata`
   // can fire more than once on the same element — a `currentTime` write
@@ -64,10 +67,18 @@ const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
   useVideoSync(videoRef);
   useVfcClockSource(videoRef);
 
+  if (failedSrc === videoSrc) {
+    return (
+      <div className={styles.empty} data-cy="looker-error-info">
+        This video failed to load. The file may not exist, or its type may be
+        unsupported.
+      </div>
+    );
+  }
+
   return (
     <video
       ref={videoRef}
-      data-cy="looker"
       className={styles.video}
       src={videoSrc}
       preload="auto"
@@ -80,6 +91,7 @@ const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
         // matching `loadeddata`, which a React effect would not be.
         videoRef.current?.removeAttribute(LOADED);
       }}
+      onError={() => setFailedSrc(videoSrc)}
       onLoadedData={() => {
         const element = videoRef.current;
         element?.setAttribute(LOADED, "true");
@@ -167,7 +179,10 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
           data-cy="modal-looker-container"
           className={styles.root}
         >
-          <div className={styles.media}>
+          {/* The media area answers to `looker` the way every other sample
+              surface does: it is what hover affordances target, and it
+              survives a media error the same way the lookers' root does. */}
+          <div className={styles.media} data-cy="looker">
             {videoSrc ? (
               <VideoTile
                 videoSrc={videoSrc}
