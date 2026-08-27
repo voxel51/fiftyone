@@ -171,6 +171,10 @@ const ViewBar: React.FC<{
     () => new Set(),
   );
   const applyRef = React.useRef<HTMLDivElement | null>(null);
+  // What setView was last given, normalized to what the bar will hold:
+  // `fos.view` lags a round-trip behind, and that gap must not read as
+  // pending work — clearing or searching would flash Apply for one echo
+  const [inFlight, setInFlight] = React.useState<string | null>(null);
 
   /**
    * Puts the keyboard on the trailing insert slot — where describing the next
@@ -241,6 +245,8 @@ const ViewBar: React.FC<{
       const hydrated = workingStagesFromView(currentView);
       dispatch({ type: "hydrate", stages: hydrated });
       setEditingId(null);
+      // Whatever was in transit has landed (or been superseded externally)
+      setInFlight(null);
     };
 
     hydrate();
@@ -446,46 +452,67 @@ const ViewBar: React.FC<{
    * `'<=' not supported between instances of 'NoneType' and 'int'`.
    * Omitting them lets the Python stage class use its own default.
    */
-  const serializeWorking = useCallback(() => {
-    const isEmpty = isEmptyValue;
-    return state.stages.map((s) => {
-      const def = defsByName.get(s.cls);
-      const kwargs: [string, unknown][] = (def?.params ?? [])
-        .filter((p) => !isEmpty(s.kwargs[p.name]))
-        .map((p) => {
-          const value = s.kwargs[p.name];
-          const kind = kindOf(s, p);
-          // Numeric controls hold what was typed; validation has already
-          // rejected anything that is not a number by the time Apply runs
-          if (kind === "numeric" && typeof value === "string") {
-            return [p.name, Number(value.trim())];
-          }
-          // The Python editor holds source; the server takes the envelope it
-          // parses to, and decodes that back into the expression it describes
-          if (kind === "python" && typeof value === "string") {
-            const result = fromSource(value);
-            return [p.name, result.status === "ok" ? result.envelope : value];
-          }
-          // The json editor holds text; the server takes the document it
-          // parses to — as a string, `MapLabels(map='{...}')` is a type error.
-          // Validation gated Apply on parseability, so the fallthrough only
-          // covers an envelope shown as its lowering, which passes through.
-          if (
-            kind === "json" &&
-            typeof value === "string" &&
-            !isEnvelope(value)
-          ) {
-            try {
-              return [p.name, JSON.parse(value)];
-            } catch {
-              return [p.name, value];
+  const serializeStages = useCallback(
+    (stages: readonly WorkingStage[]) => {
+      const isEmpty = isEmptyValue;
+      return stages.map((s) => {
+        const def = defsByName.get(s.cls);
+        const kwargs: [string, unknown][] = (def?.params ?? [])
+          .filter((p) => !isEmpty(s.kwargs[p.name]))
+          .map((p) => {
+            const value = s.kwargs[p.name];
+            const kind = kindOf(s, p);
+            // Numeric controls hold what was typed; validation has already
+            // rejected anything that is not a number by the time Apply runs
+            if (kind === "numeric" && typeof value === "string") {
+              return [p.name, Number(value.trim())];
             }
-          }
-          return [p.name, value];
-        });
-      return { _cls: `fiftyone.core.stages.${s.cls}`, kwargs };
-    });
-  }, [state.stages, defsByName, kindOf]);
+            // The Python editor holds source; the server takes the envelope it
+            // parses to, and decodes that back into the expression it describes
+            if (kind === "python" && typeof value === "string") {
+              const result = fromSource(value);
+              return [p.name, result.status === "ok" ? result.envelope : value];
+            }
+            // The json editor holds text; the server takes the document it
+            // parses to — as a string, `MapLabels(map='{...}')` is a type error.
+            // Validation gated Apply on parseability, so the fallthrough only
+            // covers an envelope shown as its lowering, which passes through.
+            if (
+              kind === "json" &&
+              typeof value === "string" &&
+              !isEnvelope(value)
+            ) {
+              try {
+                return [p.name, JSON.parse(value)];
+              } catch {
+                return [p.name, value];
+              }
+            }
+            return [p.name, value];
+          });
+        return { _cls: `fiftyone.core.stages.${s.cls}`, kwargs };
+      });
+    },
+    [defsByName, kindOf],
+  );
+
+  const serializeWorking = useCallback(
+    () => serializeStages(state.stages),
+    [serializeStages, state.stages],
+  );
+
+  /**
+   * What a just-sent payload reads as once the bar rebuilds from it —
+   * kwargs normalized through the descriptors, exactly what
+   * `hasPendingChanges` will compare. Fingerprinting the raw payload
+   * instead leaves a hand-built stage (a typed search) reading as pending
+   * for the length of a server round-trip.
+   */
+  const inFlightFingerprint = useCallback(
+    (serialized: SerializedStage[]) =>
+      viewFingerprint(serializeStages(workingStagesFromView(serialized))),
+    [serializeStages],
+  );
 
   //
   // A stage edits against the view the stages BEFORE it produce — resolving
@@ -574,10 +601,6 @@ const ViewBar: React.FC<{
     return byStage;
   }, [paramErrors, touched]);
 
-  // What setView was last given: `fos.view` lags a round-trip behind, and
-  // that gap must not read as pending work — clearing an applied view would
-  // flash the Apply button for exactly one echo
-  const [inFlight, setInFlight] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (inFlight !== null && viewFingerprint(currentView) === inFlight) {
       setInFlight(null);
@@ -588,7 +611,7 @@ const ViewBar: React.FC<{
     if (paramErrors.labels.length) return;
     const serialized = serializeWorking();
     setView(serialized);
-    setInFlight(viewFingerprint(serialized));
+    setInFlight(inFlightFingerprint(serialized));
     // Rebuild the bar from exactly what was sent, so an applied expression
     // reopens printed from its envelope — `F("x")` as typed becomes the
     // canonical `F('x')` — without waiting on any echo from the server
@@ -596,7 +619,13 @@ const ViewBar: React.FC<{
     // Apply itself vanishes once there is nothing pending, so the keyboard
     // moves to where the next stage starts rather than nowhere
     focusLastSlot();
-  }, [paramErrors, serializeWorking, setView, focusLastSlot]);
+  }, [
+    paramErrors,
+    serializeWorking,
+    inFlightFingerprint,
+    setView,
+    focusLastSlot,
+  ]);
 
   // ----- Collapsed bar: summary chip + language search -----
 
@@ -612,9 +641,9 @@ const ViewBar: React.FC<{
     setModeOverrides({});
     setEditingId(null);
     setView([]);
-    setInFlight(viewFingerprint([]));
+    setInFlight(inFlightFingerprint([]));
     dispatch({ type: "hydrate", stages: [] });
-  }, [setView]);
+  }, [setView, inFlightFingerprint]);
 
   const submitLanguageQuery = useCallback(
     (query: string) => {
@@ -644,9 +673,12 @@ const ViewBar: React.FC<{
         },
       ];
       setView(serialized);
+      // A typed search commits immediately — the round-trip gap must not
+      // read as pending work, or Apply flashes for exactly one echo
+      setInFlight(inFlightFingerprint(serialized));
       dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
     },
-    [promptKeys, paramErrors, serializeWorking, setView],
+    [promptKeys, paramErrors, serializeWorking, inFlightFingerprint, setView],
   );
 
   // With no stages and no search there is nothing to summarize and nothing
