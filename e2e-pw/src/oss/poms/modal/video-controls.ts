@@ -53,6 +53,25 @@ export class ModalVideoControlsPom {
     await this.time.click();
   }
 
+  /**
+   * Play until the readout leaves the value it is showing now, then pause.
+   * Mode-agnostic: the readout is frame numbers when the frame rate is known
+   * and elapsed time when it is not, and callers that only need playback to
+   * have moved should not have to care which.
+   */
+  async playUntilAdvanced() {
+    const start = await this.time.textContent();
+
+    await this.togglePlay();
+    await this.page.waitForFunction(
+      (start_) =>
+        document.querySelector("[data-testid=timeline-playhead-time]")
+          ?.textContent !== start_,
+      start,
+    );
+    await this.togglePlay();
+  }
+
   /** Play until the readout reads `text`, then pause. */
   private async playUntilReadout(text: string, matchBeginning: boolean) {
     await this.togglePlay();

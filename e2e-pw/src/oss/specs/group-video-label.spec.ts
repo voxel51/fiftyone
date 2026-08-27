@@ -118,9 +118,7 @@ test.describe.serial("groups video labels", () => {
       //   animations: "allow",
       // });
 
-      // Frame numbers are the readout's default whenever the frame rate is
-      // known, so nothing has to be switched on first.
-      await modal.video.playUntilFrames("#5", true);
+      await modal.video.playUntilAdvanced();
       await modal.looker.hover();
 
       // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL

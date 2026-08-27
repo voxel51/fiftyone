@@ -41,6 +41,9 @@ const PlayheadTime: React.FC = () => {
     <Text
       variant={TextVariant.Xs}
       color={TextColor.Secondary}
+      // On the readout itself, not the toggle button that sometimes wraps
+      // it, so it is addressable in both modes.
+      data-testid="timeline-playhead-time"
       // Inline rather than a class so it always beats voodo's own font
       // stack — same-specificity class order isn't guaranteed across builds.
       style={{
@@ -78,7 +81,6 @@ const PlayheadTime: React.FC = () => {
       <button
         type="button"
         className={styles.playheadTime}
-        data-testid="timeline-playhead-time"
         aria-label={hint}
         onClick={toggle}
       >

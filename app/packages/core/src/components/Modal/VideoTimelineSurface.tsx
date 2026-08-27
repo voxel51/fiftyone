@@ -12,7 +12,7 @@ import {
   RegisterFrameLabels,
   useVfcClockSource,
 } from "@fiftyone/video-annotation";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import styles from "./VideoTimelineSurface.module.css";
 
 const VIDEO_STREAM_ID = "video";
@@ -64,13 +64,6 @@ const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
   useVideoSync(videoRef);
   useVfcClockSource(videoRef);
 
-  // The element is reused across sources, so the marker has to be cleared as
-  // soon as the source changes — otherwise a watcher waiting on the next
-  // sample sees the previous one's marker and proceeds too early.
-  useEffect(() => {
-    videoRef.current?.removeAttribute(LOADED);
-  }, [videoSrc]);
-
   return (
     <video
       ref={videoRef}
@@ -80,6 +73,13 @@ const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
       preload="auto"
       playsInline
       muted
+      onLoadStart={() => {
+        // The element is reused across sources, so the previous source's
+        // marker has to come down before the next one lands. `loadstart`
+        // is the element's own ordering guarantee that it precedes the
+        // matching `loadeddata`, which a React effect would not be.
+        videoRef.current?.removeAttribute(LOADED);
+      }}
       onLoadedData={() => {
         const element = videoRef.current;
         element?.setAttribute(LOADED, "true");
