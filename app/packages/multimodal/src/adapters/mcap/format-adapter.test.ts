@@ -136,6 +136,19 @@ describe("MCAP format adapter", () => {
     });
   });
 
+  it("preserves source size discovered while reading inventory", () => {
+    const manifest = createMcapManifest(
+      "episode",
+      { endTimeNs: 2n, startTimeNs: 1n },
+      recordingInventory([], {
+        format: "mcap",
+        sizeBytes: "2845415834",
+      }),
+    );
+
+    expect(manifest.recordingFacts?.sizeBytes).toBe("2845415834");
+  });
+
   it("activates the source before uncached bootstrap reads", async () => {
     const calls: string[] = [];
     const client = createClient();
