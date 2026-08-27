@@ -139,6 +139,32 @@ describe("mcapSceneSources", () => {
     ]);
   });
 
+  it("classifies Foxglove RawAudio/CompressedAudio topics (protobuf + CDR) as AUDIO", () => {
+    const sources = mcapSceneSources([
+      createTopic("/mic/raw", "foxglove.RawAudio"),
+      createTopic(
+        "/mic/raw_cdr",
+        "foxglove_msgs/msg/RawAudio",
+        "cdr",
+        "ros2msg",
+      ),
+      createTopic("/mic/compressed", "foxglove.CompressedAudio"),
+      createTopic(
+        "/mic/compressed_cdr",
+        "foxglove_msgs/msg/CompressedAudio",
+        "cdr",
+        "ros2idl",
+      ),
+    ]);
+
+    expect(sources).toMatchObject([
+      { id: "/mic/raw", type: SCENE_SOURCE_TYPE.AUDIO },
+      { id: "/mic/raw_cdr", type: SCENE_SOURCE_TYPE.AUDIO },
+      { id: "/mic/compressed", type: SCENE_SOURCE_TYPE.AUDIO },
+      { id: "/mic/compressed_cdr", type: SCENE_SOURCE_TYPE.AUDIO },
+    ]);
+  });
+
   it("preserves inventory order so per-type defaults are deterministic", () => {
     const sources = mcapSceneSources([
       createTopic("/camera/front/image_rect_compressed"),

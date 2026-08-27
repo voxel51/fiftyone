@@ -380,7 +380,26 @@ function validEntry(entry: GridPosterCacheEntry): boolean {
     Array.isArray(entry.streamSourceNames) &&
     entry.streamSourceNames.every((name) => typeof name === "string") &&
     (entry.pointCloudPoseKey === undefined ||
-      typeof entry.pointCloudPoseKey === "string")
+      typeof entry.pointCloudPoseKey === "string") &&
+    validProviderMetadata(entry.provider)
+  );
+}
+
+function validProviderMetadata(
+  provider: GridPosterCacheEntry["provider"],
+): boolean {
+  return (
+    provider === undefined ||
+    (typeof provider.artifactIdentity === "string" &&
+      provider.artifactIdentity.length > 0 &&
+      typeof provider.id === "string" &&
+      provider.id.includes(":") &&
+      (provider.mediaKind === "image" ||
+        provider.mediaKind === "video" ||
+        provider.mediaKind === "point-cloud") &&
+      typeof provider.policyVersion === "string" &&
+      (provider.revision === null || typeof provider.revision === "string") &&
+      typeof provider.variant === "string")
   );
 }
 

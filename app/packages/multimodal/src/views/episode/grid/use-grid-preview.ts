@@ -6,6 +6,7 @@ import {
 } from "../../../ir";
 import type { EpisodePreviewSession } from "../../../ports";
 import {
+  EpisodePreviewPlaybackScheduler,
   episodePreviewPlaybackDelayMs,
   publishEpisodePreviewBootstrap,
   recordPreviewSourceFacts,
@@ -305,8 +306,33 @@ export function useGridPreview({
     let active = true;
     const controller = new AbortController();
     let bootstrapPublished = false;
-    let previousFrameTimeNs = frameTimeNsRef.current;
-    let presentedAtMs = performance.now();
+    let deferredSkippedFrame: {
+      readonly result: EpisodePreviewReadResult;
+    } | null = null;
+    const playbackScheduler = new EpisodePreviewPlaybackScheduler();
+    playbackScheduler.reset(frameTimeNsRef.current, performance.now());
+
+    const presentResult = async (
+      result: EpisodePreviewReadResult,
+      playbackDelayMs: number,
+    ): Promise<boolean> => {
+      await delayMs(playbackDelayMs, controller.signal);
+      if (!active) return false;
+
+      if (!bootstrapPublished) {
+        publishEpisodePreviewBootstrap(source, result);
+        if (sourceFactsScope) {
+          recordPreviewSourceFacts(source, sourceFactsScope, result);
+        }
+        bootstrapPublished = true;
+      }
+
+      frameTimeNsRef.current = result.frameTimeNs;
+      nextStartTimeNsRef.current = result.nextStartTimeNs;
+      setState((current) => resultPreservingCachedPoster(current, result));
+      playbackScheduler.markPresented(result.frameTimeNs, performance.now());
+      return true;
+    };
 
     const run = async () => {
       try {
@@ -337,11 +363,24 @@ export function useGridPreview({
           notifyReadResult(onReadResultRef.current, result);
 
           if (!result.frame) {
+            if (deferredSkippedFrame) {
+              const deferred = deferredSkippedFrame;
+              const flushDelayMs =
+                playbackScheduler.nextDelayMs(
+                  deferred.result.frameTimeNs,
+                  performance.now(),
+                  true,
+                ) ?? 0;
+              if (!(await presentResult(deferred.result, flushDelayMs))) {
+                break;
+              }
+              deferredSkippedFrame = null;
+            }
             frameTimeNsRef.current = undefined;
             nextStartTimeNsRef.current = undefined;
-            previousFrameTimeNs = undefined;
+            playbackScheduler.reset(undefined, performance.now());
             await delayMs(
-              episodePreviewPlaybackDelayMs(undefined, undefined) ?? 0,
+              episodePreviewPlaybackDelayMs(undefined, undefined),
               controller.signal,
             );
             if (!active) {
@@ -350,34 +389,20 @@ export function useGridPreview({
             continue;
           }
 
-          const playbackDelayMs = episodePreviewPlaybackDelayMs(
-            previousFrameTimeNs,
+          const playbackDelayMs = playbackScheduler.nextDelayMs(
             result.frameTimeNs,
-            performance.now() - presentedAtMs,
+            performance.now(),
           );
           if (playbackDelayMs === null) {
+            deferredSkippedFrame = { result };
             nextStartTimeNsRef.current = result.nextStartTimeNs;
             continue;
           }
 
-          await delayMs(playbackDelayMs, controller.signal);
-          if (!active) {
+          deferredSkippedFrame = null;
+          if (!(await presentResult(result, playbackDelayMs))) {
             break;
           }
-
-          if (!bootstrapPublished) {
-            publishEpisodePreviewBootstrap(source, result);
-            if (sourceFactsScope) {
-              recordPreviewSourceFacts(source, sourceFactsScope, result);
-            }
-            bootstrapPublished = true;
-          }
-
-          frameTimeNsRef.current = result.frameTimeNs;
-          nextStartTimeNsRef.current = result.nextStartTimeNs;
-          setState((current) => resultPreservingCachedPoster(current, result));
-          previousFrameTimeNs = result.frameTimeNs;
-          presentedAtMs = performance.now();
         }
       } catch (caughtError) {
         finishBuffering();

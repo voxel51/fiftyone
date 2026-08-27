@@ -146,6 +146,10 @@ export function usePlugins() {
   }, [setState]);
 
   return {
+    // Plugin metadata and JavaScript bundles must register before rendering
+    // surfaces that select plugin-provided components, such as grid renderers.
+    // Operator definitions can initialize behind those surfaces.
+    isLoadingPlugins: state === "loading",
     isLoading: state === "loading" || operatorIsLoading,
     hasError: state === "error" || operatorHasError,
     ready: state === "ready" && operatorsReady,

@@ -17,9 +17,9 @@
  * Fit math intentionally matches `imageDisplayRect` in `Base2dScene.tsx`
  * (the `ImagePanel` fit semantics) so swapping a cell between this view
  * and a live panel never shifts pixels. Bitmap lifecycle mirrors the
- * discipline in `image-texture-cache.ts`: a superseded decode never
- * commits, and every bitmap is closed exactly once (on replacement, on
- * cancellation, or on unmount).
+ * discipline in `image-texture-cache.ts`: active work stays live through
+ * input churn, pending work coalesces to the latest request, and every bitmap
+ * is closed exactly once (on replacement, cancellation, or unmount).
  */
 import type { CSSProperties } from "react";
 import {
@@ -172,16 +172,37 @@ class LatestEncodedBitmapDecoder {
       source,
     };
     if (this.active) {
-      if (this.pending) this.pending.cancelled = true;
+      if (this.pending) {
+        this.cancel(this.pending);
+      }
       this.pending = request;
     } else {
       this.start(request);
     }
 
     return () => {
-      request.cancelled = true;
-      if (this.pending === request) this.pending = null;
+      if (request.cancelled) return;
+      if (this.active === request) return;
+      if (this.pending === request) {
+        this.pending = null;
+        this.cancel(request);
+      }
     };
+  }
+
+  dispose(): void {
+    if (this.active) {
+      this.cancel(this.active);
+    }
+    if (this.pending) {
+      this.cancel(this.pending);
+      this.pending = null;
+    }
+  }
+
+  private cancel(request: EncodedBitmapDecodeRequest): void {
+    if (request.cancelled) return;
+    request.cancelled = true;
   }
 
   private start(request: EncodedBitmapDecodeRequest): void {
@@ -408,6 +429,9 @@ export function BitmapImageView({
   if (decoderRef.current === null) {
     decoderRef.current = new LatestEncodedBitmapDecoder();
   }
+  useEffect(() => {
+    return () => decoderRef.current?.dispose();
+  }, []);
   const onErrorRef = useLatestRef(onError);
   const onImageLoadedRef = useLatestRef(onImageLoaded);
   const onBitmapRetainedBytesChangeRef = useLatestRef(
@@ -415,9 +439,9 @@ export function BitmapImageView({
   );
 
   // This effect decodes the current bytes and commits the resulting
-  // bitmap. The cleanup flag is the out-of-order guard: only the latest
-  // request may commit — a superseded decode (newer bytes arrived, or
-  // unmount) closes its own bitmap and leaves the previous frame drawn.
+  // bitmap. A running browser decode remains eligible to commit when newer
+  // bytes arrive; the queue still coalesces to one latest pending frame. The
+  // decoder lifecycle effect above cancels both slots on actual unmount.
   useEffect(() => {
     if (!decodeSize) {
       return undefined;

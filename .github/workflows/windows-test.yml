@@ -27,18 +27,18 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           sparse-checkout: |
             /*
             !/docs/**
           sparse-checkout-cone-mode: false
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Setup (UV)
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           python-version: ${{ matrix.python }}
           # TODO: we are unsure if cache is working correctly here

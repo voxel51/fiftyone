@@ -1,5 +1,6 @@
 import {
   isGeneratedView,
+  nullableModalSampleId,
   useCurrentDatasetId,
   useModalSample,
   useRefreshSample,
@@ -55,6 +56,12 @@ export const usePersistAnnotationDeltas =
     // hang the modal on "Pixelating…". Until the 3D group query settles it reads
     // `undefined`, which matches `sceneId` below so the 3D branch stays inert.
     const modalId = useModalSample()?.sample?._id;
+    // The task's unit of work: the GRID anchor sample id, stable across
+    // group-slice and 3D-pin changes. Non-generated label ops attribute
+    // to it so grouped-modal edits (the second camera, the pinned 3D
+    // scene) reach the submit delta and the trail under the same key the
+    // subtask, the delta peek, and the tracker focus already use.
+    const anchorSampleId = useRecoilValue(nullableModalSampleId) ?? undefined;
     const sceneId = useThreeDSceneSampleId();
     const threeDScene = useStableInteraction3dSample();
     const patch3d = usePatchSampleWith({
@@ -99,7 +106,11 @@ export const usePersistAnnotationDeltas =
         });
 
         if (success && modalId) {
-          engine.reconcilePersisted([{ sample: modalId, deltas }]);
+          // Generated (patches) deltas are LABEL-rooted — the sample
+          // source must not be rebased from them.
+          engine.reconcilePersisted([{ sample: modalId, deltas }], {
+            sampleRooted: false,
+          });
         }
 
         return success;
@@ -128,7 +139,9 @@ export const usePersistAnnotationDeltas =
       for (const entry of patches) {
         const patch = entry.sample === sceneId ? patch3d : patchSelected;
 
-        const ok = await patch(entry.deltas);
+        const ok = await patch(entry.deltas, {
+          attributionSampleId: anchorSampleId,
+        });
 
         if (ok) {
           // release server-owned fields (e.g. masks) the backend now owns, so
@@ -142,6 +155,7 @@ export const usePersistAnnotationDeltas =
 
       return success;
     }, [
+      anchorSampleId,
       engine,
       eventBus,
       isGenerated,

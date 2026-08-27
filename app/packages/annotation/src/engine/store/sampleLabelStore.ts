@@ -33,7 +33,7 @@ import type {
   LabelStore,
   StoreSnapshot,
 } from "./types";
-import { wholeSampleReset } from "./types";
+import { ReconcileOpts, wholeSampleReset } from "./types";
 
 const CHANGE_KIND: Record<SampleChangeKind, LabelChangeKind> = {
   [SampleChangeKind.Update]: "update",
@@ -203,8 +203,8 @@ export class SampleLabelStore implements LabelStore {
     this.source.captureBaseline();
   }
 
-  reconcilePersisted(deltas: JSONDeltas): void {
-    this.source.reconcilePersisted(deltas);
+  reconcilePersisted(deltas: JSONDeltas, opts?: ReconcileOpts): void {
+    this.source.reconcilePersisted(deltas, opts);
   }
 
   // ---- lifecycle ----

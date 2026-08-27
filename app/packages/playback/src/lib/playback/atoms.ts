@@ -222,6 +222,18 @@ export const audioMutedAtom = atomWithStorage(
 );
 
 /**
+ * Master volume/mute — canonical names for the multi-track model, aliasing
+ * `audioVolumeAtom`/`audioMutedAtom` above. These are renaming re-exports,
+ * NOT new atoms: same atom identity, same underlying storage keys, so
+ * introducing per-track audio state requires no migration and no
+ * dual-write. New code should prefer these "master" names to make the
+ * master/per-track distinction explicit at call sites; the old names
+ * remain valid for any code not yet updated.
+ */
+export const audioMasterVolumeAtom = audioVolumeAtom;
+export const audioMasterMutedAtom = audioMutedAtom;
+
+/**
  * Audio status for the volume UI: "unavailable" renders no control,
  * "available" renders it, "error" (a fatal `MediaError` on the source)
  * renders it disabled with an explanatory tooltip. Audio integrations
@@ -230,6 +242,21 @@ export const audioMutedAtom = atomWithStorage(
 export type AudioAvailability = "unavailable" | "available" | "error";
 
 export const audioAvailableAtom = atom<AudioAvailability>("unavailable");
+
+// Per-track audio state (multi-track model) lives in audio-atoms.ts to keep
+// it colocated and reviewable; re-exported here so `atoms.ts` stays the one
+// place to look for every playback atom.
+export {
+  audioTrackMutedAtom,
+  audioTracksAtom,
+  audioTrackSnapshotsAtom,
+  audioTrackVolumeAtom,
+  hasRegisteredAudioTracksAtom,
+  DEFAULT_TRACK_VOLUME,
+  type AudioSourceKind,
+  type AudioTrackDescriptor,
+  type AudioTrackSnapshot,
+} from "./audio-atoms";
 
 /**
  * Fired on discontinuous playhead jumps: user seek, step forward/back,

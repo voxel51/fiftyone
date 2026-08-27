@@ -1,6 +1,8 @@
 import type { PayloadDescriptor } from "../../../ir/index";
 import type { StreamInventory } from "../../../schemas/v1/index";
 import {
+  JSON_FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD,
+  JSON_FOXGLOVE_RAW_AUDIO_PAYLOAD,
   JSON_POSE_PAYLOAD,
   JSON_ROS_CAMERA_INFO_PAYLOADS,
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
@@ -24,6 +26,8 @@ import {
 import {
   FOXGLOVE_CAMERA_CALIBRATION_CDR_PAYLOADS,
   FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD,
+  FOXGLOVE_COMPRESSED_AUDIO_CDR_PAYLOADS,
+  FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD,
   FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS,
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
   FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS,
@@ -42,6 +46,8 @@ import {
   FOXGLOVE_POSE_IN_FRAME_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
   FOXGLOVE_POINT_CLOUD_PAYLOAD,
+  FOXGLOVE_RAW_AUDIO_CDR_PAYLOADS,
+  FOXGLOVE_RAW_AUDIO_PAYLOAD,
   FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS,
   FOXGLOVE_RAW_IMAGE_PAYLOAD,
   FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS,
@@ -276,6 +282,22 @@ export function isLogStream(topic: StreamInventory): boolean {
     hasAnyPayload(topic, ROS_ROSGRAPH_LOG_PAYLOADS) ||
     hasAnyPayload(topic, ROS_RCL_LOG_PAYLOADS) ||
     hasAnyPayload(topic, ROS_DIAGNOSTIC_ARRAY_PAYLOADS)
+  );
+}
+
+/**
+ * Matches Foxglove RawAudio/CompressedAudio streams (protobuf + CDR) — the
+ * same raw/compressed OR-of-`hasPayload` shape `isImageStream` already
+ * uses for its raw/compressed split.
+ */
+export function isAudioStream(topic: StreamInventory): boolean {
+  return (
+    hasPayload(topic, FOXGLOVE_RAW_AUDIO_PAYLOAD) ||
+    hasAnyPayload(topic, FOXGLOVE_RAW_AUDIO_CDR_PAYLOADS) ||
+    hasPayload(topic, FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD) ||
+    hasAnyPayload(topic, FOXGLOVE_COMPRESSED_AUDIO_CDR_PAYLOADS) ||
+    hasPayload(topic, JSON_FOXGLOVE_RAW_AUDIO_PAYLOAD) ||
+    hasPayload(topic, JSON_FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD)
   );
 }
 
