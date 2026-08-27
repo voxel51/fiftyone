@@ -1,5 +1,18 @@
 import { useCallback, useState } from "react";
 
+// Browser storage can be entirely unavailable: Firefox surfaces profile-level
+// storage failures as NS_ERROR_FAILURE thrown from the `window.localStorage`
+// accessor itself or from any read/write, and blocked site data raises
+// SecurityError. This hook backs cosmetic preferences, so storage failures
+// degrade to plain in-memory state instead of throwing mid-render.
+const resolveStorage = (useSessionStorage: boolean): Storage | null => {
+  try {
+    return useSessionStorage ? window.sessionStorage : window.localStorage;
+  } catch {
+    return null;
+  }
+};
+
 // riffed from https://usehooks.com/useLocalStorage/
 export const useBrowserStorage = <T = string>(
   key: string,
@@ -10,25 +23,19 @@ export const useBrowserStorage = <T = string>(
     stringify: (value: T) => string;
   },
 ) => {
-  const storage = useSessionStorage
-    ? window.sessionStorage
-    : window.localStorage;
+  const storage = resolveStorage(useSessionStorage);
 
   // Pass initial state function to useState so logic is only executed once
   const [storedValue, setStoredValue] = useState<T>(() => {
-    const item = storage.getItem(key);
+    try {
+      const item = storage?.getItem(key);
 
-    if (item) {
-      // Workaround for existing "undefined" values in storage
-      if (item === "undefined") {
-        return initialValue instanceof Function ? initialValue() : initialValue;
+      // "undefined" guards existing values written by an older stringify bug
+      if (item && item !== "undefined") {
+        return parseFn ? parseFn.parse(item) : JSON.parse(item);
       }
-
-      if (parseFn) {
-        return parseFn.parse(item);
-      }
-
-      return JSON.parse(item);
+    } catch {
+      // Unreadable or corrupt storage — fall through to the initial value.
     }
 
     return initialValue instanceof Function ? initialValue() : initialValue;
@@ -49,15 +56,19 @@ export const useBrowserStorage = <T = string>(
         setStoredValue(value);
       }
 
-      // Handle undefined values by removing from storage
-      if (valueToStore === undefined) {
-        storage.removeItem(key);
-      } else if (parseFn) {
-        // Let the custom parser handle other values
-        storage.setItem(key, parseFn.stringify(valueToStore));
-      } else {
-        // For JSON.stringify, handle other values
-        storage.setItem(key, JSON.stringify(valueToStore));
+      try {
+        // Handle undefined values by removing from storage
+        if (valueToStore === undefined) {
+          storage?.removeItem(key);
+        } else if (parseFn) {
+          // Let the custom parser handle other values
+          storage?.setItem(key, parseFn.stringify(valueToStore));
+        } else {
+          // For JSON.stringify, handle other values
+          storage?.setItem(key, JSON.stringify(valueToStore));
+        }
+      } catch {
+        // Write failed — the in-memory state above is already updated.
       }
     },
     [key, storage, parseFn],

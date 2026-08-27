@@ -344,13 +344,27 @@ const Modal = () => {
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
-        <Actions />
+        {/* Overlay chrome gets its own boundary: a render throw here (e.g. a
+            failing browser-storage read behind a cosmetic preference) must
+            not unmount the modal itself. Shows the error in the overlay's
+            place and resets on navigation like the main boundary. */}
+        <ReactErrorBoundary
+          FallbackComponent={ModalErrorFallback}
+          resetKeys={[modalSelector?.id, modalSelector?.groupId]}
+        >
+          <Actions />
+        </ReactErrorBoundary>
         {isAnnotationEnabled && (
           <Suspense>
             <AnnotationHandlerRegistration />
           </Suspense>
         )}
-        <TooltipInfo />
+        <ReactErrorBoundary
+          FallbackComponent={ModalErrorFallback}
+          resetKeys={[modalSelector?.id, modalSelector?.groupId]}
+        >
+          <TooltipInfo />
+        </ReactErrorBoundary>
         <ModalContainer data-cy="modal-content" style={{ ...screenParams }}>
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}
