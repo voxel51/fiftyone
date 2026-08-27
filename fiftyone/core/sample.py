@@ -799,13 +799,24 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
                 video samples
         """
         if self.in_dataset and self.media_reference is not None:
-            descriptor = self._dataset._sample_collection.find_one(
+            stored_sample = self._dataset._sample_collection.find_one(
                 {"_id": self._id}, {"media_reference": True}
             )
-            if descriptor is not None:
-                from fiftyone.multimodal.media import _hydrate_media_reference
+            if stored_sample is not None:
+                from fiftyone.multimodal.media import (
+                    MediaReferenceError,
+                    _hydrate_media_reference,
+                )
 
-                _hydrate_media_reference(descriptor.get("media_reference"))
+                descriptor = stored_sample.get("media_reference")
+                if descriptor is None:
+                    raise MediaReferenceError(
+                        "Stored reference-backed sample no longer contains "
+                        "a media_reference descriptor"
+                    )
+
+                # Validate before the normal reload mutates the backing doc
+                _hydrate_media_reference(descriptor)
 
         if self.media_type == fomm.VIDEO and include_frames:
             self.frames.reload(hard=hard)

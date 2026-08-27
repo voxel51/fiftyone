@@ -305,7 +305,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         "_evaluation_cache",
         "_run_cache",
         "_reference_media_capable",
-        "_media_identity_mode_cache",
         "_deleted",
     )
 
@@ -345,7 +344,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._evaluation_cache = cachetools.LRUCache(5)
         self._run_cache = cachetools.LRUCache(5)
         self._reference_media_capable = False
-        self._media_identity_mode_cache = None
 
         self._deleted = False
 
@@ -4546,7 +4544,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _mark_media_reference_capable(self, kind):
         current_kind = self._doc.media_reference_kind
         if self._reference_media_capable and current_kind == kind:
-            self._media_identity_mode_cache = "reference"
             return
         if current_kind is not None and current_kind != kind:
             raise ValueError(
@@ -4583,7 +4580,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if current_kind == kind and matching_indexes:
             self._reference_media_capable = True
-            self._media_identity_mode_cache = "reference"
             return
 
         self._doc.media_reference_kind = kind
@@ -4611,7 +4607,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.save()
         self._reference_media_capable = True
-        self._media_identity_mode_cache = "reference"
 
     def _bulk_write(
         self, ops, ids=None, frames=False, ordered=False, progress=False
@@ -6274,7 +6269,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ops.append(DeleteMany({}))
 
         foo.bulk_write(ops, self._sample_collection)
-        self._media_identity_mode_cache = None
 
         if sample_ids is None:
             fota.delete_for_dataset_id(self._doc.id)
@@ -9574,7 +9568,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not hard:
             self._doc.reload()
             self._reference_media_capable = False
-            self._media_identity_mode_cache = None
             return
 
         doc, sample_doc_cls, frame_doc_cls = _load_dataset(
@@ -9587,7 +9580,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
         self._reference_media_capable = False
-        self._media_identity_mode_cache = None
 
         if new_media_type:
             self._set_media_type(doc.media_type)
@@ -10161,16 +10153,7 @@ def _create_frame_document_cls(
 
 def _declare_fields(dataset, doc_cls, field_docs=None):
     if field_docs is not None and not doc_cls._is_frames_doc:
-        media_reference_type = etau.get_class_name(fof.MediaReferenceField)
-        for field_doc in field_docs:
-            if (
-                field_doc.name == "media_reference"
-                and field_doc.ftype != media_reference_type
-            ):
-                raise ValueError(
-                    "Dataset field 'media_reference' has incompatible schema "
-                    "%s; expected %s" % (field_doc.ftype, media_reference_type)
-                )
+        _validate_media_reference_field_docs(field_docs)
 
     default_fields = set(doc_cls._fields.keys())
     if field_docs is not None:
@@ -10214,6 +10197,7 @@ def _load_clips_source_dataset(frame_collection_name):
 
 def _load_dataset(obj, name, virtual=False):
     if not virtual:
+        _validate_stored_media_reference_schema(name)
         fomi.migrate_dataset_if_necessary(name)
 
     try:
@@ -10232,6 +10216,34 @@ def _load_dataset(obj, name, virtual=False):
             ) from e
 
         raise e
+
+
+def _validate_stored_media_reference_schema(name):
+    dataset_doc = foo.get_db_conn().datasets.find_one(
+        {"name": name},
+        {"sample_fields": {"$elemMatch": {"name": "media_reference"}}},
+    )
+    if dataset_doc is not None:
+        _validate_media_reference_field_docs(
+            dataset_doc.get("sample_fields", ())
+        )
+
+
+def _validate_media_reference_field_docs(field_docs):
+    media_reference_type = etau.get_class_name(fof.MediaReferenceField)
+    for field_doc in field_docs:
+        if isinstance(field_doc, Mapping):
+            name = field_doc.get("name")
+            ftype = field_doc.get("ftype")
+        else:
+            name = field_doc.name
+            ftype = field_doc.ftype
+
+        if name == "media_reference" and ftype != media_reference_type:
+            raise ValueError(
+                "Dataset field 'media_reference' has incompatible schema "
+                "%s; expected %s" % (ftype, media_reference_type)
+            )
 
 
 def _do_load_dataset(obj, name):
@@ -10584,7 +10596,22 @@ def _save_view(view, fields=None):
         )
 
     if not all_fields:
-        edited_fields &= set(fields)
+        selected_fields = set(fields)
+        edited_fields = {
+            edited_field
+            for edited_field in edited_fields
+            if any(
+                edited_field == selected_field
+                or edited_field.startswith(selected_field + ".")
+                or selected_field.startswith(edited_field + ".")
+                for selected_field in selected_fields
+            )
+        }
+
+    media_identity_mode = _get_media_identity_mode(dataset)
+    _validate_media_field_edits(
+        dataset, edited_fields, media_identity_mode=media_identity_mode
+    )
 
     for field in edited_fields:
         if dataset._is_read_only_field(field):
@@ -10615,7 +10642,7 @@ def _save_view(view, fields=None):
     #
 
     pipeline = view._pipeline(detach_frames=True, detach_groups=True)
-    if _get_media_identity_mode(dataset) == "reference":
+    if media_identity_mode == "reference":
         reference_kind = dataset._doc.media_reference_kind
         validation_pipeline = pipeline + [
             {
@@ -12490,9 +12517,14 @@ def _delete_imported_reference_bindings(binding_keys):
     )
 
 
-def _validate_media_field_edits(sample_collection, field_names):
+def _validate_media_field_edits(
+    sample_collection, field_names, media_identity_mode=None
+):
     roots = {field.split(".", 1)[0] for field in field_names}
-    reference_mode = _get_media_identity_mode(sample_collection) == "reference"
+    if media_identity_mode is None:
+        media_identity_mode = _get_media_identity_mode(sample_collection)
+
+    reference_mode = media_identity_mode == "reference"
     if "media_reference" in roots or ("filepath" in roots and reference_mode):
         from fiftyone.multimodal.media import (
             UnsupportedMediaReferenceOperation,

@@ -6,6 +6,7 @@ Logical media-reference sample tests.
 |
 """
 
+from copy import deepcopy
 from dataclasses import FrozenInstanceError, dataclass
 import json
 import os
@@ -448,6 +449,29 @@ else:
         finally:
             bindings.delete_one({"_id": reference.key})
 
+    @drop_datasets
+    def test_reload_rejects_missing_descriptor_without_mutating_sample(self):
+        dataset = fo.Dataset()
+        reference = _make_reference(8124)
+        dataset.add_sample(fo.Sample(media_reference=reference))
+        sample = dataset.first()
+        persisted = dataset._sample_collection.find_one({"_id": sample._id})
+
+        dataset._sample_collection.update_one(
+            {"_id": sample._id}, {"$unset": {"media_reference": ""}}
+        )
+        try:
+            with self.assertRaisesRegex(
+                MediaReferenceError, "no longer contains"
+            ):
+                sample.reload()
+
+            self.assertEqual(sample.media_reference, reference)
+        finally:
+            dataset._sample_collection.replace_one(
+                {"_id": sample._id}, persisted
+            )
+
 
 class MediaReferenceDatasetTests(unittest.TestCase):
     @drop_datasets
@@ -489,6 +513,38 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             stored[0].get("filepath"), os.path.abspath("sample.jpg")
         )
         self.assertIsNone(stored[0].get("media_reference"))
+
+    @drop_datasets
+    def test_incompatible_reserved_schema_fails_before_migration(self):
+        dataset = fo.Dataset()
+        name = dataset.name
+        database = foo.get_db_conn()
+        persisted = database.datasets.find_one({"_id": dataset._doc.id})
+        incompatible = deepcopy(persisted)
+        media_reference_field = next(
+            field
+            for field in incompatible["sample_fields"]
+            if field["name"] == "media_reference"
+        )
+        media_reference_field["ftype"] = "fiftyone.core.fields.StringField"
+        database.datasets.replace_one({"_id": dataset._doc.id}, incompatible)
+        fo.Dataset._instances.pop(name, None)
+        try:
+            with mock.patch.object(
+                fomi, "migrate_dataset_if_necessary"
+            ) as migrate:
+                with self.assertRaisesRegex(ValueError, "incompatible schema"):
+                    fo.load_dataset(name)
+
+                migrate.assert_not_called()
+
+            self.assertEqual(
+                database.datasets.find_one({"_id": dataset._doc.id}),
+                incompatible,
+            )
+        finally:
+            database.datasets.replace_one({"_id": dataset._doc.id}, persisted)
+            fo.Dataset._instances.pop(name, None)
 
     @drop_datasets
     def test_attached_whole_value_reassignment_and_reload(self):
@@ -1382,6 +1438,28 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 fo.Sample.from_media_reference(_make_reference(1))
             )
             self.assertEqual(dataset.values("filepath"), [None])
+            persisted = dataset._sample_collection.find_one()
+
+            for field, expression in (
+                ("media_reference.key", fo.ViewField("id")),
+                ("filepath", fo.ViewField("id")),
+            ):
+                view = dataset.add_stage(fo.SetField(field, expression))
+                with self.subTest(field=field), self.assertRaises(
+                    UnsupportedMediaReferenceOperation
+                ):
+                    view.save()
+
+                self.assertEqual(
+                    dataset._sample_collection.find_one(), persisted
+                )
+
+            view = dataset.add_stage(
+                fo.SetField("media_reference.key", fo.ViewField("id"))
+            )
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                view.save(fields=["media_reference"])
+            self.assertEqual(dataset._sample_collection.find_one(), persisted)
 
             with self.assertRaises(UnsupportedMediaReferenceOperation):
                 dataset.set_values("filepath", ["/tmp/replacement.mcap"])
