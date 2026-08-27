@@ -29,31 +29,31 @@ test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
 });
 
-test.beforeEach(async ({ fiftyoneLoader }) => {
+test.beforeEach(async ({ datasetFactory }) => {
   datasetName = getUniqueDatasetNameWithPrefix("view-bar");
 
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-    dataset.add_samples([
-        fo.Sample(
-            filepath=f"/tmp/${datasetName}-{i}.png",
-            index=i,
-            ground_truth=fo.Detections(
-                detections=[
-                    fo.Detection(
-                        label="cat" if i % 2 == 0 else "dog",
-                        confidence=i / 10,
-                        bounding_box=[0, 0, 1, 1],
-                    )
-                ]
-            ),
-        )
-        for i in range(10)
-    ])
-  `);
+  await datasetFactory.createDataset({
+    datasetName,
+    numSamples: 10,
+    schema: { ground_truth: "Detections" },
+    withSampleData: ({ index }, { createId }) => ({
+      ground_truth: {
+        detections: [
+          {
+            _id: createId(),
+            label: index % 2 === 0 ? "cat" : "dog",
+            confidence: index / 10,
+            bounding_box: [0, 0, 1, 1],
+          },
+        ],
+      },
+    }),
+    savedViews: {
+      // eight no-op stages: enough pills to overflow the bar's scroller
+      "long-chain": `dataset${'.match(fo.ViewField("index") >= 0)'.repeat(8)}`,
+      "built-in-python": 'dataset.match(fo.ViewField("index") > 4)',
+    },
+  });
 });
 
 test.describe("view bar", () => {
@@ -68,20 +68,12 @@ test.describe("view bar", () => {
     viewBar,
     grid,
   }) => {
-    await fiftyoneLoader.executePythonCode(`
-      import fiftyone as fo
-      from fiftyone import ViewField as F
-
-      dataset = fo.load_dataset("${datasetName}")
-      view = dataset
-      for i in range(8):
-          view = view.match(F("index") >= 0)
-      dataset.save_view("long-chain", view)
-    `);
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "long-chain" }),
     });
 
+    // A hydrated bar starts as the collapsed summary chip
+    await viewBar.expand();
     await expect(viewBar.viewStages).toHaveCount(8);
 
     const bar = page.getByTestId("view-bar");
@@ -123,8 +115,8 @@ test.describe("view bar", () => {
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
-    await viewBar.addStage("Limit");
-    await viewBar.fill("limit", "3");
+    const editor = await viewBar.addStage("Limit");
+    await editor.fill("limit", "3");
 
     // Armed before the click, so nothing waits on elapsed time
     await grid.run(() => viewBar.apply());
@@ -153,9 +145,9 @@ test.describe("view bar", () => {
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
-    await viewBar.addStage("FilterLabels");
-    await viewBar.chooseField("field", "ground_truth");
-    await viewBar.fill("filter", 'F("label") == "cat"');
+    const editor = await viewBar.addStage("FilterLabels");
+    await editor.pick("field", "ground_truth");
+    await editor.fill("filter", 'F("label") == "cat"');
 
     await grid.run(() => viewBar.apply());
 
@@ -163,10 +155,10 @@ test.describe("view bar", () => {
     expect(stages).toHaveLength(1);
     expect(clsOf(stages[0])).toBe("FilterLabels");
 
-    await viewBar.editStage(0);
-    await viewBar.assert.activeEditor("filter", "expr");
+    const reopened = await viewBar.editStage(0);
+    await reopened.assert.activeEditor("filter", "expr");
     // What reopens is the printed canonical form, not the keystrokes
-    await viewBar.assert.paramText("filter", "F('label') == 'cat'");
+    await reopened.assert.paramText("filter", "F('label') == 'cat'");
   });
 
   test("a view built in Python hydrates into the bar", async ({
@@ -174,24 +166,18 @@ test.describe("view bar", () => {
     fiftyoneLoader,
     viewBar,
   }) => {
-    await fiftyoneLoader.executePythonCode(`
-      import fiftyone as fo
-      from fiftyone import ViewField as F
-
-      dataset = fo.load_dataset("${datasetName}")
-      dataset.save_view("built-in-python", dataset.match(F("index") > 4))
-    `);
-
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "built-in-python" }),
     });
 
+    // A hydrated bar starts as the collapsed summary chip
+    await viewBar.expand();
     await viewBar.assert.stageCount(1);
     await viewBar.assert.hasViewStage("Match");
 
     // An expression is an expression whoever wrote it, so it opens as Python
-    await viewBar.editStage(0);
-    await viewBar.assert.activeEditor("filter", "expr");
-    await viewBar.assert.paramText("filter", "F('index') > 4");
+    const editor = await viewBar.editStage(0);
+    await editor.assert.activeEditor("filter", "expr");
+    await editor.assert.paramText("filter", "F('index') > 4");
   });
 });

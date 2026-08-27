@@ -30,19 +30,10 @@ test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
 });
 
-test.beforeEach(async ({ page, fiftyoneLoader }) => {
+test.beforeEach(async ({ page, fiftyoneLoader, datasetFactory }) => {
   datasetName = getUniqueDatasetNameWithPrefix("view-bar-keyboard");
 
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-    dataset.add_samples([
-        fo.Sample(filepath=f"/tmp/${datasetName}-{i}.png", index=i)
-        for i in range(10)
-    ])
-  `);
+  await datasetFactory.createDataset({ datasetName, numSamples: 10 });
 
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
@@ -60,16 +51,16 @@ test.describe("view bar keyboard", () => {
     request,
     baseURL,
   }) => {
-    await viewBar.addStage("Limit");
+    const editor = await viewBar.addStage("Limit");
 
-    const input = viewBar.param("limit").getByRole("textbox");
+    const input = editor.param("limit").getByRole("textbox");
     await expect(input).toBeFocused();
 
     await input.pressSequentially("3");
 
     // The first Enter finishes the stage and moves the keyboard to Apply
     await page.keyboard.press("Enter");
-    await expect(viewBar.editor).toBeHidden();
+    await editor.assert.isClosed();
     await expect(viewBar.applyBtn).toBeFocused();
 
     // The second runs the view
@@ -98,20 +89,28 @@ test.describe("view bar keyboard", () => {
     await viewBar.locator.getByLabel("Insert stage").last().focus();
     await page.keyboard.press("Enter");
 
-    // The typeahead owns the keyboard: type to filter, Enter inserts
+    // The typeahead owns the keyboard: type to filter, Enter inserts.
+    // Keys go nowhere until the typeahead mounts and takes focus.
+    await expect(viewBar.insertTypeahead).toBeFocused();
     await page.keyboard.type("Skip");
     await page.keyboard.press("Enter");
-    await expect(viewBar.editor).toBeVisible();
+    await viewBar.stageEditor.assert.isOpen();
     await page.keyboard.type("2");
     await page.keyboard.press("Enter");
     await expect(viewBar.applyBtn).toBeFocused();
 
-    // Walk back to the nearest insert slot for the second stage
+    // Walk back to the nearest insert slot for the second stage — past the
+    // clear-view [x] that sits between Apply and the stages
     await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(
+      viewBar.locator.getByLabel("Insert stage").last(),
+    ).toBeFocused();
     await page.keyboard.press("Enter");
+    await expect(viewBar.insertTypeahead).toBeFocused();
     await page.keyboard.type("Limit");
     await page.keyboard.press("Enter");
-    await expect(viewBar.editor).toBeVisible();
+    await viewBar.stageEditor.assert.isOpen();
     await page.keyboard.type("3");
     await page.keyboard.press("Enter");
     await expect(viewBar.applyBtn).toBeFocused();
@@ -136,14 +135,19 @@ test.describe("view bar keyboard", () => {
     viewBar,
     page,
   }) => {
-    await viewBar.addStage("Limit");
-    await viewBar.fill("limit", "5");
+    const editor = await viewBar.addStage("Limit");
+    await editor.fill("limit", "5");
 
     await page.keyboard.press("Escape");
-    await expect(viewBar.editor).toBeHidden();
+    await editor.assert.isClosed();
 
-    // The pill survived the first Escape, holding the pending stage
+    // The pill survived the first Escape, holding the pending stage. The
+    // second Escape must land after focus settles on the pill — the bar
+    // only hears it from inside
     await expect(viewBar.viewStages).toHaveCount(1);
+    await expect(
+      viewBar.viewStages.first().getByLabel("Edit stage"),
+    ).toBeFocused();
 
     await page.keyboard.press("Escape");
     await expect(viewBar.viewStages).toHaveCount(0);
@@ -167,8 +171,8 @@ test.describe("view bar keyboard", () => {
     grid,
     page,
   }) => {
-    await viewBar.addStage("Limit");
-    await viewBar.fill("limit", "3");
+    const editor = await viewBar.addStage("Limit");
+    await editor.fill("limit", "3");
     await page.keyboard.press("Enter");
     await expect(viewBar.applyBtn).toBeFocused();
 
@@ -179,9 +183,10 @@ test.describe("view bar keyboard", () => {
 
     // And that focus is enough to describe the next stage
     await page.keyboard.press("Enter");
+    await expect(viewBar.insertTypeahead).toBeFocused();
     await page.keyboard.type("Skip");
     await page.keyboard.press("Enter");
-    await expect(viewBar.editor).toBeVisible();
+    await editor.assert.isOpen();
   });
 
   //
@@ -189,13 +194,13 @@ test.describe("view bar keyboard", () => {
   // insert slot is the entry point, Apply is the exit.
   //
   test("Tab and Shift+Tab traverse the bar", async ({ viewBar, page }) => {
-    await viewBar.addStage("Limit");
-    await viewBar.fill("limit", "3");
+    const editor = await viewBar.addStage("Limit");
+    await editor.fill("limit", "3");
     await page.keyboard.press("Enter");
 
     // The commit closes the editor and hands the keyboard to Apply; Tabbing
     // before that re-render lands walks a half-built bar
-    await expect(viewBar.editor).toBeHidden();
+    await editor.assert.isClosed();
     await expect(viewBar.applyBtn).toBeFocused();
 
     // Pending changes, so Apply is the last stop
@@ -243,16 +248,20 @@ test.describe("view bar keyboard", () => {
     grid,
     page,
   }) => {
-    await viewBar.addStage("Limit");
-    await viewBar.fill("limit", "3");
+    const editor = await viewBar.addStage("Limit");
+    await editor.fill("limit", "3");
     await page.keyboard.press("Enter");
     await grid.run(() => viewBar.applyBtn.click());
 
     // Reopen the applied stage, then walk back out
     await viewBar.editStage(0);
     await page.keyboard.press("Escape");
-    await expect(viewBar.editor).toBeHidden();
+    await editor.assert.isClosed();
 
+    // The second Escape must land after focus settles back on the pill
+    await expect(
+      viewBar.viewStages.first().getByLabel("Edit stage"),
+    ).toBeFocused();
     await page.keyboard.press("Escape");
     const focusedInBar = await page.evaluate(() => {
       const bar = document.querySelector("[data-cy='view-bar']");
@@ -273,10 +282,10 @@ test.describe("view bar keyboard", () => {
     viewBar,
     page,
   }) => {
-    await viewBar.addStage("Limit");
+    const editor = await viewBar.addStage("Limit");
 
     await page.keyboard.press("Enter");
 
-    await expect(viewBar.editor).toBeVisible();
+    await editor.assert.isOpen();
   });
 });
