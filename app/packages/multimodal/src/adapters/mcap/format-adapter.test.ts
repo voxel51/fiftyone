@@ -1309,6 +1309,36 @@ describe("MCAP format adapter", () => {
     });
   });
 
+  it("forwards metadata-only export reads to the bulk lane", async () => {
+    const client = createClient();
+    vi.mocked(client.readRawMessageRecord).mockResolvedValue({
+      encodedPayloadBytes: 42,
+      logTimeNs: 1n,
+      messageEncoding: "cdr",
+      schemaName: null,
+      status: "ok",
+      topic: "/camera",
+      validFromNs: 1n,
+      validUntilNs: 2n,
+    });
+    const capability = createMcapRawRecordCapability({
+      client,
+      source: sourceDescriptor,
+    });
+
+    await capability.readRawRecord({
+      intent: "export",
+      select: "metadata",
+      stream: "/camera",
+      timestampNs: 1n,
+    });
+
+    expect(client.readRawMessageRecord).toHaveBeenLastCalledWith(
+      expect.objectContaining({ select: "metadata", topic: "/camera" }),
+      expect.objectContaining({ priority: "bulk" }),
+    );
+  });
+
   it("falls back from malformed channel metadata to a numeric inventory id", async () => {
     const client = createClient();
     vi.mocked(client.readTopics).mockResolvedValue(

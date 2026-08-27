@@ -544,6 +544,7 @@ export function createMcapRawRecordCapability({
             : {}),
           includeFullJson: request.includeFullJson,
           prune: request.prune,
+          select: request.select,
           source,
           timeNs: request.timestampNs,
           topic: rawTarget.topic,

@@ -361,6 +361,46 @@ describe("readMcapRawMessageRecord", () => {
     expect(result.validUntilNs).toBe(3_000_000_000n);
   });
 
+  it("returns metadata without decoding or probing a successor", async () => {
+    const selectedEntry = indexedEntry({ logTimeNs: 2_000_000_000n });
+    const selected = createMessage(new Uint8Array([0xff, 0xfe, 0xfd]), {
+      logTime: 2_000_000_000n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield indexedEntry({ logTimeNs: 3_000_000_000n });
+    });
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [],
+      readIndexedMessages: vi.fn(async () => [selected]),
+      readIndexedMessageTimes,
+      readLatestIndexedMessageTimes: async () =>
+        new Map([["/state", [selectedEntry]]]),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        select: "metadata",
+        source: createSource(),
+        timeNs: 2_500_000_000n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(readIndexedMessageTimes).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      encodedPayloadBytes: 3,
+      logTimeNs: 2_000_000_000n,
+      status: "ok",
+      validFromNs: 2_000_000_000n,
+      validUntilNs: 2_000_000_001n,
+    });
+    expect(result.decodeError).toBeUndefined();
+    expect(result.root).toBeUndefined();
+  });
+
   it("materializes only the exact selected indexed entries", async () => {
     const source = createSource();
     const selectedEntry = indexedEntry({ logTimeNs: 2_000_000_000n });

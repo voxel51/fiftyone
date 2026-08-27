@@ -155,29 +155,35 @@ export async function readMcapRawMessageRecord({
       ...base,
       status: "empty",
       validFromNs: 0n,
-      validUntilNs: await probeNextMessageTimeNs({
-        afterNs: request.timeNs,
-        fallbackNs: request.timeNs + FALLBACK_VALIDITY_STEP_NS,
-        reader,
-        timeline,
-        topic: topicChannel.topic,
-        channelId: topicChannel.id,
-        signal,
-      }),
+      validUntilNs:
+        request.select === "metadata"
+          ? request.timeNs + FALLBACK_VALIDITY_STEP_NS
+          : await probeNextMessageTimeNs({
+              afterNs: request.timeNs,
+              fallbackNs: request.timeNs + FALLBACK_VALIDITY_STEP_NS,
+              reader,
+              timeline,
+              topic: topicChannel.topic,
+              channelId: topicChannel.id,
+              signal,
+            }),
     };
   }
 
   const { entry, message } = selected;
   const messageTimeNs = timeline.messageTimeNs(message);
-  const validUntilNs = await probeNextMessageTimeNs({
-    afterNs: messageTimeNs,
-    fallbackNs: request.timeNs + FALLBACK_VALIDITY_STEP_NS,
-    reader,
-    timeline,
-    topic: topicChannel.topic,
-    channelId: topicChannel.id,
-    signal,
-  });
+  const validUntilNs =
+    request.select === "metadata"
+      ? messageTimeNs + FALLBACK_VALIDITY_STEP_NS
+      : await probeNextMessageTimeNs({
+          afterNs: messageTimeNs,
+          fallbackNs: request.timeNs + FALLBACK_VALIDITY_STEP_NS,
+          reader,
+          timeline,
+          topic: topicChannel.topic,
+          channelId: topicChannel.id,
+          signal,
+        });
 
   return rawRecordResultForMessage({
     base,
@@ -188,6 +194,7 @@ export async function readMcapRawMessageRecord({
     message,
     prune: request.prune,
     reader,
+    select: request.select,
     validFromNs: messageTimeNs,
     validUntilNs,
   });
@@ -241,6 +248,7 @@ function rawRecordResultForMessage({
   message,
   prune,
   reader,
+  select,
   validFromNs,
   validUntilNs,
 }: {
@@ -254,6 +262,7 @@ function rawRecordResultForMessage({
   readonly message: McapRawMessage;
   readonly prune?: McapReadRawMessageRecordRequest["prune"];
   readonly reader: McapIndexedReaderLike;
+  readonly select?: McapReadRawMessageRecordRequest["select"];
   readonly validFromNs: bigint;
   readonly validUntilNs: bigint;
 }): McapRawMessageRecordResult {
@@ -279,6 +288,9 @@ function rawRecordResultForMessage({
     validFromNs,
     validUntilNs,
   };
+  if (select === "metadata") {
+    return { ...metadata, status: "ok" };
+  }
   const decoderResolution = genericRecordDecoderResolutionForChannel(
     reader,
     channel,
