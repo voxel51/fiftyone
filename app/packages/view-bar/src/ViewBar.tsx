@@ -14,6 +14,7 @@
  * marks the field as optional.
  */
 
+import { useTrackEvent } from "@fiftyone/analytics";
 import * as fos from "@fiftyone/state";
 import {
   Align,
@@ -149,6 +150,7 @@ const ViewBar: React.FC<{
   const currentView = useRecoilValue(fos.view);
   const datasetName = fos.useCurrentDatasetName();
   const setView = fos.useSetView();
+  const trackEvent = useTrackEvent();
 
   const [state, dispatch] = useReducer(reducer, initialState);
   // Whether the bar shows the full stage row. Collapsed by default: the
@@ -332,11 +334,12 @@ const ViewBar: React.FC<{
       });
       setEditingId(id);
       setRecentStages(recordRecentStage(cls));
+      trackEvent("view_bar_stage_added", { stage: cls });
       // A stage can be inserted from the collapsed empty bar; its editor
       // opens against the full row, not the summary chip
       setExpanded(true);
     },
-    [defsByName],
+    [defsByName, trackEvent],
   );
 
   const fieldKind = useCallback(
@@ -612,6 +615,7 @@ const ViewBar: React.FC<{
     const serialized = serializeWorking();
     setView(serialized);
     setInFlight(inFlightFingerprint(serialized));
+    trackEvent("view_bar_view_applied", { stages: serialized.length });
     // Rebuild the bar from exactly what was sent, so an applied expression
     // reopens printed from its envelope — `F("x")` as typed becomes the
     // canonical `F('x')` — without waiting on any echo from the server
@@ -642,8 +646,9 @@ const ViewBar: React.FC<{
     setEditingId(null);
     setView([]);
     setInFlight(inFlightFingerprint([]));
+    trackEvent("view_bar_view_cleared");
     dispatch({ type: "hydrate", stages: [] });
-  }, [setView, inFlightFingerprint]);
+  }, [setView, inFlightFingerprint, trackEvent]);
 
   const submitLanguageQuery = useCallback(
     (query: string) => {
@@ -676,9 +681,19 @@ const ViewBar: React.FC<{
       // A typed search commits immediately — the round-trip gap must not
       // read as pending work, or Apply flashes for exactly one echo
       setInFlight(inFlightFingerprint(serialized));
+      trackEvent("view_bar_text_search", {
+        patches: Boolean(index.patchesField),
+      });
       dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
     },
-    [promptKeys, paramErrors, serializeWorking, inFlightFingerprint, setView],
+    [
+      promptKeys,
+      paramErrors,
+      serializeWorking,
+      inFlightFingerprint,
+      setView,
+      trackEvent,
+    ],
   );
 
   // With no stages and no search there is nothing to summarize and nothing

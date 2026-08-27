@@ -443,7 +443,13 @@ const ParamControl: React.FC<ParamInputProps> = ({
                 </Stack>
               ) : (
                 invalid && (
-                  <Tooltip content={error ?? ""}>
+                  // Every flex wrapper between the row and the nowrap text
+                  // must be allowed to shrink, or the ellipsis never engages
+                  // and the message runs out of the popover
+                  <Tooltip
+                    content={error ?? ""}
+                    style={{ minWidth: 0, overflow: "hidden" }}
+                  >
                     <Text
                       variant={TextVariant.Caption}
                       color={TextColor.Destructive}
@@ -452,6 +458,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         minWidth: 0,
+                        display: "block",
                       }}
                     >
                       {error}
@@ -642,7 +649,13 @@ export const ParamInput: React.FC<
     <Text
       variant={TextVariant.Caption}
       color={TextColor.Destructive}
-      style={{ minHeight: STATUS_LINE_HEIGHT }}
+      // A JSON parse error is one long unbroken token; without a break
+      // opportunity it runs out of the popover instead of wrapping
+      style={{
+        minHeight: STATUS_LINE_HEIGHT,
+        minWidth: 0,
+        overflowWrap: "anywhere",
+      }}
     >
       {props.error ?? " "}
     </Text>

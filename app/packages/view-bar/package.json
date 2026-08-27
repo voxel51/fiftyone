@@ -11,6 +11,7 @@
     ],
     "main": "src/index.ts",
     "dependencies": {
+        "@fiftyone/analytics": "*",
         "@fiftyone/components": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",

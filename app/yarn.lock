@@ -2488,6 +2488,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/view-bar@workspace:packages/view-bar"
   dependencies:
+    "@fiftyone/analytics": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
