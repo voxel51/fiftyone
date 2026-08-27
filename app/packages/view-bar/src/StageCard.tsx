@@ -18,6 +18,7 @@ import {
   Stack,
   Tooltip,
 } from "@voxel51/voodo";
+import { useAnchorRect } from "@fiftyone/components";
 import React from "react";
 import { createPortal } from "react-dom";
 
@@ -34,40 +35,6 @@ import {
 } from "./params";
 import type { InputKind, ParamDef, StageDefinition } from "./params";
 import type { WorkingStage } from "./state";
-
-/**
- * Anchor-rect hook for portaled dropdowns. Returns the trigger
- * element's viewport rect (top/left/width), recomputed on scroll
- * and resize so the portaled overlay tracks its anchor.
- */
-export const useAnchorRect = (
-  ref: React.RefObject<HTMLElement>,
-  active: boolean,
-) => {
-  const [rect, setRect] = React.useState<{
-    top: number;
-    left: number;
-    width: number;
-  } | null>(null);
-  React.useEffect(() => {
-    if (!active || !ref.current) {
-      setRect(null);
-      return undefined;
-    }
-    const measure = () => {
-      const r = ref.current?.getBoundingClientRect();
-      if (r) setRect({ top: r.bottom, left: r.left, width: r.width });
-    };
-    measure();
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
-    return () => {
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
-    };
-  }, [active, ref]);
-  return rect;
-};
 
 /** Every stage's editor is this wide, so none of them surprises the next. */
 const POPOVER_WIDTH = 360;

@@ -2,48 +2,15 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { type UseSearch } from "@fiftyone/components";
+import {
+  AnchoredListbox,
+  useAnchorRect,
+  type UseSearch,
+} from "@fiftyone/components";
 import { datasetName, useSetDataset } from "@fiftyone/state";
 import { Input, Size } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
-
-/**
- * Hook: returns viewport-coords `{top, left, width}` of an
- * element ref, recomputed on scroll/resize. Used to anchor a
- * portaled dropdown directly below its trigger without being
- * clipped by ancestor `overflow` rules.
- */
-const useAnchorRect = (ref: React.RefObject<HTMLElement>, active: boolean) => {
-  const [rect, setRect] = useState<{
-    top: number;
-    left: number;
-    width: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!active || !ref.current) {
-      setRect(null);
-      return undefined;
-    }
-    const measure = () => {
-      const r = ref.current?.getBoundingClientRect();
-      if (r) {
-        setRect({ top: r.bottom, left: r.left, width: r.width });
-      }
-    };
-    measure();
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
-    return () => {
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
-    };
-  }, [active, ref]);
-
-  return rect;
-};
 
 /**
  * Dataset typeahead. Skinned with voodo `Input` for visual
@@ -190,75 +157,28 @@ const DatasetSelector: React.FC<{
         aria-label="Dataset"
         style={{ background: "transparent", border: "none" }}
       />
-      {open &&
-        values.length > 0 &&
-        rect &&
-        createPortal(
-          <div
-            // Portaled to document.body so ancestor `overflow:auto`
-            // rules can't clip the dropdown. Position is computed
-            // from the trigger's bounding rect via `useAnchorRect`.
-            style={{
-              position: "fixed",
-              top: rect.top + 4,
-              left: rect.left,
-              width: rect.width,
-              background: "var(--fo-palette-background-level3)",
-              border: "1px solid var(--fo-palette-primary-plainBorder)",
-              borderRadius: 4,
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
-              maxHeight: 280,
-              overflowY: "auto",
-              zIndex: 10000,
-            }}
-            role="listbox"
-            id="dataset-selector-options"
-            data-cy="selector-results-container-dataset"
-            ref={(el) =>
-              // The harness arms a listener for this before opening the
-              // dropdown; the old selector announced its results the same way
-              el?.dispatchEvent(
-                new CustomEvent("selector-results-dataset", { bubbles: true }),
-              )
-            }
-          >
-            {values.map((name, i) => (
-              <div
-                key={name}
-                id={`dataset-option-${i}`}
-                data-cy={`selector-result-${name}`}
-                role="option"
-                aria-selected={i === active}
-                ref={(el) => {
-                  if (i === active) {
-                    el?.scrollIntoView({ block: "nearest" });
-                  }
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  pick(name);
-                }}
-                onMouseEnter={() => setHighlight(i)}
-                style={{
-                  padding: "6px 10px",
-                  cursor: "pointer",
-                  background:
-                    i === active || name === dataset
-                      ? "var(--fo-palette-background-level2)"
-                      : undefined,
-                  color: "var(--fo-palette-text-primary)",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-                title={name}
-              >
-                {name}
-              </div>
-            ))}
-          </div>,
-          document.body,
-        )}
+      {open && (
+        <AnchoredListbox
+          rect={rect}
+          options={values}
+          activeIndex={active}
+          onPick={pick}
+          onHighlight={setHighlight}
+          optionId={(i) => `dataset-option-${i}`}
+          optionDataCy={(name) => `selector-result-${name}`}
+          optionTitle={(name) => name}
+          isSelected={(name) => name === dataset}
+          id="dataset-selector-options"
+          data-cy="selector-results-container-dataset"
+          onMount={(el) =>
+            // The harness arms a listener for this before opening the
+            // dropdown; the old selector announced its results the same way
+            el.dispatchEvent(
+              new CustomEvent("selector-results-dataset", { bubbles: true }),
+            )
+          }
+        />
+      )}
     </div>
   );
 };

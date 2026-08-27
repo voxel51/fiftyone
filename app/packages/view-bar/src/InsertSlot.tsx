@@ -10,13 +10,12 @@
  * discards everything the old one held.
  */
 
+import { AnchoredListbox, useAnchorRect } from "@fiftyone/components";
 import { Icon, IconName, Input, Size, Tooltip, Anchor } from "@voxel51/voodo";
 import React from "react";
-import { createPortal } from "react-dom";
 
 import { StageDescription } from "./description";
 import { NO_BROWSER_SUGGESTIONS } from "./params";
-import { useAnchorRect } from "./StageCard";
 
 /** Wider than the trigger, so each stage's description reads as a sentence. */
 const LIST_WIDTH = 320;
@@ -151,89 +150,49 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
         }
         style={{ background: "transparent", border: "none" }}
       />
-      {filtered.length > 0 &&
-        rect &&
-        createPortal(
-          <div
-            // Portaled to body — avoids being clipped by the bar's
-            // overflow rules. Top sits 4px below the trigger's bottom edge.
-            style={{
-              position: "fixed",
-              top: rect.top + 4,
-              // Wider than the trigger so descriptions read as sentences,
-              // pulled back from the viewport's right edge when the slot
-              // sits near it.
-              left: Math.min(rect.left, window.innerWidth - LIST_WIDTH - 8),
-              width: LIST_WIDTH,
-              background: "var(--fo-palette-background-level3)",
-              border: "1px solid var(--fo-palette-primary-plainBorder)",
-              borderRadius: 4,
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
-              maxHeight: 360,
-              overflowY: "auto",
-              zIndex: 10000,
-            }}
-            role="listbox"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            {filtered.map((name, i) => {
-              const description = describe(name);
-              return (
+      <AnchoredListbox
+        rect={rect}
+        options={filtered}
+        activeIndex={active}
+        onPick={insert}
+        onHighlight={setHighlight}
+        optionId={(i) => `view-bar-stage-${i}`}
+        // The visible content concatenates name + description; the
+        // option's announced name is just the stage name
+        optionAriaLabel={(name) => name}
+        // Wider than the trigger so descriptions read as sentences
+        width={LIST_WIDTH}
+        maxHeight={360}
+        renderOption={(name) => {
+          const description = describe(name);
+          return (
+            <>
+              <div
+                style={{
+                  color: "var(--fo-palette-text-primary)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {name}
+              </div>
+              {description && (
+                // What the stage does, without leaving the list — its
+                // docstring's opening sentence, served with the schema
                 <div
-                  key={name}
-                  id={`view-bar-stage-${i}`}
-                  role="option"
-                  // The visible content concatenates name + description; the
-                  // option's announced name is just the stage name
-                  aria-label={name}
-                  aria-selected={i === active}
-                  ref={(el) => {
-                    if (i === active) {
-                      el?.scrollIntoView({ block: "nearest" });
-                    }
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insert(name);
-                  }}
-                  onMouseEnter={() => setHighlight(i)}
                   style={{
-                    padding: "6px 10px",
-                    cursor: "pointer",
-                    background:
-                      i === active
-                        ? "var(--fo-palette-background-level2)"
-                        : undefined,
+                    color: "var(--fo-palette-text-secondary)",
+                    fontSize: "0.85em",
+                    lineHeight: 1.35,
+                    marginTop: 2,
                   }}
                 >
-                  <div
-                    style={{
-                      color: "var(--fo-palette-text-primary)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {name}
-                  </div>
-                  {description && (
-                    // What the stage does, without leaving the list — its
-                    // docstring's opening sentence, served with the schema
-                    <div
-                      style={{
-                        color: "var(--fo-palette-text-secondary)",
-                        fontSize: "0.85em",
-                        lineHeight: 1.35,
-                        marginTop: 2,
-                      }}
-                    >
-                      <StageDescription text={description} />
-                    </div>
-                  )}
+                  <StageDescription text={description} />
                 </div>
-              );
-            })}
-          </div>,
-          document.body,
-        )}
+              )}
+            </>
+          );
+        }}
+      />
     </div>
   );
 };
