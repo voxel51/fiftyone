@@ -244,6 +244,64 @@ export class EpisodePom {
     await expect(this.tileTitle(title)).toBeVisible({ timeout: READY_TIMEOUT });
   }
 
+  async selectMessageSource(
+    currentTitle: string,
+    nextTitle: string,
+  ): Promise<void> {
+    await this.openTileSettings(currentTitle);
+    const source = this.scope.getByRole("radio", {
+      name: nextTitle,
+      exact: true,
+    });
+    await expect(source).toBeVisible({ timeout: READY_TIMEOUT });
+    await source.check();
+    this.inspectedStream = nextTitle;
+    await expect(this.tileTitle(nextTitle).first()).toBeVisible({
+      timeout: READY_TIMEOUT,
+    });
+    await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
+  }
+
+  async closeTile(title: string): Promise<void> {
+    await this.tile(title)
+      .first()
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+    await expect(this.tileTitle(title)).toHaveCount(0);
+  }
+
+  async fullscreenTile(title: string): Promise<void> {
+    await this.tile(title)
+      .first()
+      .getByRole("button", { name: "Fullscreen", exact: true })
+      .click();
+    await this.expectTileFullscreen(title);
+  }
+
+  async exitTileFullscreen(title: string): Promise<void> {
+    await this.tile(title)
+      .first()
+      .getByRole("button", { name: "Exit fullscreen", exact: true })
+      .click();
+    await expect(
+      this.tile(title)
+        .first()
+        .getByRole("button", { name: "Fullscreen", exact: true }),
+    ).toBeVisible({ timeout: READY_TIMEOUT });
+  }
+
+  async expectTileFullscreen(title: string): Promise<void> {
+    await expect(
+      this.tile(title)
+        .first()
+        .getByRole("button", { name: "Exit fullscreen", exact: true }),
+    ).toBeVisible({ timeout: READY_TIMEOUT });
+  }
+
+  async expectTileCount(count: number): Promise<void> {
+    await expect(this.shell.locator(".mosaic-window")).toHaveCount(count);
+  }
+
   tile(title: string): Locator {
     return this.shell.locator(".mosaic-window").filter({
       has: this.page
