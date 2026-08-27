@@ -25,6 +25,11 @@ import eta.core.utils as etau
 from pymongo.errors import DuplicateKeyError
 
 import fiftyone.core.fields as fof
+from fiftyone.core.media_assets import (
+    _MediaSourceDescriptor,
+    _ReferenceAssetMaterializer,
+    _register_reference_asset_materializer,
+)
 import fiftyone.core.odm as foo
 from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
@@ -38,11 +43,7 @@ from fiftyone.multimodal.media import (
     LeRobotV3Locator,
     LeRobotVideoLocator,
     MalformedMediaSourceError,
-    MediaAssetMaterializer,
-    MediaAssetManifest,
     MediaReferenceError,
-    MediaResolver,
-    MediaSourceDescriptor,
     MediaSourceAuthorizationError,
     MissingMediaRootError,
     MovedMediaRootError,
@@ -51,11 +52,12 @@ from fiftyone.multimodal.media import (
     UnfinalizedMediaSourceError,
     UnsupportedMediaReferenceVersionError,
     VideoTimestampInterval,
-    build_resolved_media_asset,
-    get_media_resolver,
-    get_selected_media_asset_key,
-    register_media_asset_materializer,
-    register_media_resolver,
+    _MediaAssetManifest,
+    _MediaResolver,
+    _build_resolved_media_asset,
+    _get_media_resolver,
+    _get_selected_media_asset_key,
+    _register_media_resolver,
     serialize_media_reference,
 )
 import fiftyone.utils.data.importers as foud
@@ -95,7 +97,7 @@ class _LocalLeRobotSourceBinding:
 @dataclass(frozen=True)
 class _ManifestCacheEntry:
     binding_revision: str
-    manifest: MediaAssetManifest
+    manifest: _MediaAssetManifest
     file_signatures: tuple
 
 
@@ -223,8 +225,8 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         return deepcopy(self._dataset_info)
 
     def setup(self):
-        resolver = get_media_resolver(LEROBOT_EPISODE_KIND)
-        if not isinstance(resolver, LeRobotMediaResolver):
+        resolver = _get_media_resolver(LEROBOT_EPISODE_KIND)
+        if not isinstance(resolver, _LeRobotMediaResolver):
             raise TypeError("Registered LeRobot resolver has the wrong type")
 
         source = resolver.inspect_local_source(self.dataset_dir)
@@ -396,8 +398,8 @@ def relocate_lerobot_source(source_identity, dataset_root):
     _clear_resolution_caches()
 
 
-class LeRobotMediaResolver(MediaResolver):
-    """Resolves typed LeRobot v3 assets through server-side source bindings."""
+class _LeRobotMediaResolver(_MediaResolver):
+    """Resolves LeRobot v3 assets through server-side source bindings."""
 
     def inspect_local_source(self, dataset_root):
         """Reads and validates one local v3 source for the importer."""
@@ -466,7 +468,7 @@ class LeRobotMediaResolver(MediaResolver):
     @_deduplicate_resolutions
     def resolve_assets(self, reference, assets):
         if not isinstance(reference, LeRobotEpisode):
-            raise TypeError("LeRobotMediaResolver requires a LeRobotEpisode")
+            raise TypeError("_LeRobotMediaResolver requires a LeRobotEpisode")
 
         described_assets = reference.describe_assets()
         if tuple(assets) != described_assets:
@@ -547,7 +549,7 @@ class LeRobotMediaResolver(MediaResolver):
         fps = float(info["fps"])
         frame_count = int(row["length"])
         time_range = _episode_time_range(row, locator.videos, fps)
-        manifest = MediaAssetManifest(
+        manifest = _MediaAssetManifest(
             media_reference_key=reference.key,
             episode_index=reference.episode_index,
             declared_codebase_version=reference.codebase_version,
@@ -564,16 +566,16 @@ class LeRobotMediaResolver(MediaResolver):
         return manifest
 
 
-class LeRobotAssetMaterializer(MediaAssetMaterializer):
+class _LeRobotAssetMaterializer(_ReferenceAssetMaterializer):
     """Materializes and rebinds portable LeRobot source assets."""
 
     def describe_source(self, reference):
         if not isinstance(reference, LeRobotEpisode):
             raise TypeError(
-                "LeRobotAssetMaterializer requires a LeRobotEpisode"
+                "_LeRobotAssetMaterializer requires a LeRobotEpisode"
             )
 
-        return MediaSourceDescriptor(
+        return _MediaSourceDescriptor(
             kind=LEROBOT_EPISODE_KIND,
             source_identity=reference.source_identity,
             source_fingerprint=reference.source_fingerprint,
@@ -1111,7 +1113,7 @@ def _resolve_media_asset(reference, root, asset):
             "Unable to inspect the resolved LeRobot asset"
         ) from exc
 
-    return build_resolved_media_asset(
+    return _build_resolved_media_asset(
         reference,
         asset,
         path=path,
@@ -1364,7 +1366,7 @@ def _resolution_cache_key(reference, assets):
         reference.key,
         reference_fingerprint,
         tuple(
-            get_selected_media_asset_key(reference, asset) for asset in assets
+            _get_selected_media_asset_key(reference, asset) for asset in assets
         ),
     )
 
@@ -1459,11 +1461,11 @@ def _validate_declared_v3_version(version):
         )
 
 
-register_media_resolver(
+_register_media_resolver(
     LEROBOT_EPISODE_KIND,
-    LeRobotMediaResolver(),
+    _LeRobotMediaResolver(),
 )
-register_media_asset_materializer(
+_register_reference_asset_materializer(
     LEROBOT_EPISODE_KIND,
-    LeRobotAssetMaterializer(),
+    _LeRobotAssetMaterializer(),
 )

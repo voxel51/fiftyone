@@ -28,7 +28,7 @@ from fiftyone.multimodal.media import (
     UnfinalizedMediaSourceError,
     UnsupportedMediaReferenceOperation,
     UnsupportedMediaReferenceVersionError,
-    get_media_resolver,
+    _get_media_resolver,
     hydrate_media_reference,
 )
 from fiftyone.server import decorators
@@ -196,7 +196,7 @@ def _resolve_manifest(request):
 
     try:
         assets = reference.describe_assets()
-        resolver = get_media_resolver(reference)
+        resolver = _get_media_resolver(reference)
         manifest = resolver.resolve_assets(reference, assets)
     except MissingMediaRootError as exc:
         _raise_resolution_error(404, "missing-media-root", exc)

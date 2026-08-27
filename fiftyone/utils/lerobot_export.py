@@ -26,15 +26,15 @@ from fiftyone.multimodal.media import (
     LEROBOT_EPISODE_KIND,
     LeRobotEpisode,
     MalformedMediaSourceError,
-    MediaAssetManifest,
     MediaAssetRole,
     MediaReferenceError,
     StaleMediaReferenceError,
     UnsupportedLeRobotExportModeError,
     UnsupportedMediaReferenceOperation,
-    get_media_export_planner,
-    get_media_resolver,
-    register_media_export_planner,
+    _MediaAssetManifest,
+    _get_media_export_planner,
+    _get_media_resolver,
+    _register_media_export_planner,
 )
 import fiftyone.utils.data.exporters as foue
 from fiftyone.utils.lerobot import (
@@ -53,7 +53,7 @@ papq = fou.lazy_import(
 @dataclass(frozen=True)
 class _EpisodeExportSpec:
     reference: LeRobotEpisode
-    manifest: MediaAssetManifest
+    manifest: _MediaAssetManifest
 
 
 @dataclass(frozen=True)
@@ -74,7 +74,7 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
     """
 
     supports_media_references = True
-    manages_existing_export_dir = True
+    _manages_existing_export_dir = True
 
     def __init__(self, export_dir, export_media=None):
         if export_media is None:
@@ -131,7 +131,7 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
                 "LeRobotDataset export cannot mix source fingerprints"
             )
 
-        planner = get_media_export_planner(LEROBOT_EPISODE_KIND, "lerobot-v3")
+        planner = _get_media_export_planner(LEROBOT_EPISODE_KIND, "lerobot-v3")
         specs = [planner(reference) for reference in references]
         self._publish_export(specs)
 
@@ -159,7 +159,7 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
             # Revalidate the original sources immediately before publication.
             for spec in specs:
                 reference = spec.reference
-                get_media_resolver(reference).resolve_assets(
+                _get_media_resolver(reference).resolve_assets(
                     reference, reference.describe_assets()
                 )
 
@@ -209,7 +209,7 @@ def _get_default_directory_mode(parent):
 
 
 def _plan_lerobot_export(reference):
-    resolver = get_media_resolver(reference)
+    resolver = _get_media_resolver(reference)
     manifest = resolver.resolve_assets(reference, reference.describe_assets())
     return _EpisodeExportSpec(reference=reference, manifest=manifest)
 
@@ -590,7 +590,7 @@ def _read_selected_data_table(path, locator):
 
 
 def _validate_lerobot_export(staging_dir, expected_episodes):
-    resolver = get_media_resolver(LEROBOT_EPISODE_KIND)
+    resolver = _get_media_resolver(LEROBOT_EPISODE_KIND)
     source = resolver.inspect_local_source(staging_dir)
     if len(source.rows) != expected_episodes:
         raise MalformedMediaSourceError(
@@ -670,7 +670,7 @@ if dataset.hf_dataset[0]["episode_index"] != 0:
         ) from exc
 
 
-register_media_export_planner(
+_register_media_export_planner(
     LEROBOT_EPISODE_KIND,
     "lerobot-v3",
     _plan_lerobot_export,

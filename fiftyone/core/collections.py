@@ -10216,94 +10216,6 @@ class SampleCollection(object):
             "Unsupported media type '%s'" % self.media_type
         )
 
-    def get_media_asset_plan(
-        self,
-        resolve=False,
-        group_slices=None,
-        include_scene_assets=True,
-        progress=None,
-    ):
-        """Builds the structured physical asset plan for this collection.
-
-        The plan contains one entry per unique physical asset and separate
-        usage entries that preserve each logical sample's selector, reference
-        role, and group slice.
-
-        Args:
-            resolve (False): whether to resolve reference assets through their
-                registered source bindings
-            group_slices (None): an optional subset of group slices to include
-            include_scene_assets (True): whether to include assets referenced
-                by ``.fo3d`` scenes
-            progress (None): whether to render a progress bar (True/False), use
-                the default value ``fiftyone.config.show_progress_bars``
-                (None), or a progress callback function to invoke instead
-
-        Returns:
-            a :class:`fiftyone.multimodal.MediaAssetPlan`
-        """
-        from fiftyone.core.media_assets import build_media_asset_plan
-
-        return build_media_asset_plan(
-            self,
-            resolve=resolve,
-            group_slices=group_slices,
-            include_scene_assets=include_scene_assets,
-            progress=progress,
-        )
-
-    def get_media_asset_capabilities(self, group_slices=None):
-        """Returns the sanctioned media lifecycle capabilities for this
-        collection or selected view.
-
-        Args:
-            group_slices (None): an optional subset of group slices to inspect
-
-        Returns:
-            a :class:`fiftyone.multimodal.MediaAssetCapabilities`
-        """
-        from fiftyone.core.media_assets import build_media_asset_capabilities
-
-        return build_media_asset_capabilities(self, group_slices=group_slices)
-
-    def materialize_media_assets(
-        self,
-        output_dir,
-        group_slices=None,
-        include_scene_assets=True,
-        overwrite=False,
-        progress=None,
-    ):
-        """Materializes this collection's unique physical assets and writes a
-        manifest that preserves their logical sample relationships.
-
-        Args:
-            output_dir: the output directory to create
-            group_slices (None): an optional subset of group slices to include
-            include_scene_assets (True): whether to include assets referenced
-                by ``.fo3d`` scenes
-            overwrite (False): whether to replace an existing non-empty output
-                directory
-            progress (None): whether to render a progress bar (True/False), use
-                the default value ``fiftyone.config.show_progress_bars``
-                (None), or a progress callback function to invoke instead
-
-        Returns:
-            the resolved :class:`fiftyone.multimodal.MediaAssetPlan`
-        """
-        from fiftyone.core.media_assets import (
-            materialize_collection_media_assets,
-        )
-
-        return materialize_collection_media_assets(
-            self,
-            output_dir,
-            group_slices=group_slices,
-            include_scene_assets=include_scene_assets,
-            overwrite=overwrite,
-            progress=progress,
-        )
-
     def export(
         self,
         export_dir=None,
@@ -13657,12 +13569,12 @@ def _export(
 
     if contains_media_references:
         preflight = getattr(
-            dataset_exporter, "preflight_media_reference_export", None
+            dataset_exporter, "_preflight_media_reference_export", None
         )
         if preflight is not None:
             preflight(sample_collection, overwrite=overwrite)
 
-    if getattr(dataset_exporter, "manages_existing_export_dir", False):
+    if getattr(dataset_exporter, "_manages_existing_export_dir", False):
         dataset_exporter.overwrite = overwrite
 
     # Overwrite existing directories or warn if files will be merged
@@ -13790,7 +13702,7 @@ def _handle_existing_dirs(
     export_media=False,
     overwrite=False,
 ):
-    if getattr(dataset_exporter, "manages_existing_export_dir", False):
+    if getattr(dataset_exporter, "_manages_existing_export_dir", False):
         return
 
     if dataset_exporter is not None:

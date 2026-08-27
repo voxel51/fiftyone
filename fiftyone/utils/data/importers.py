@@ -1830,7 +1830,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._media_fields = None
         self._dataset_dict = None
         self._cleanup_on_failure = False
-        self._media_asset_manifest_sources = ()
+        self._media_source_manifest_sources = None
 
     @property
     def cleanup_on_failure(self):
@@ -1856,16 +1856,16 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         if self._cleanup_on_failure:
             from fiftyone.core.media_assets import (
-                MEDIA_ASSET_MANIFEST_FILENAME,
-                load_media_asset_manifest,
+                _MEDIA_SOURCE_MANIFEST_FILENAME,
+                _load_media_source_manifest,
             )
 
-            media_asset_manifest_path = os.path.join(
-                self.dataset_dir, MEDIA_ASSET_MANIFEST_FILENAME
+            media_source_manifest_path = os.path.join(
+                self.dataset_dir, _MEDIA_SOURCE_MANIFEST_FILENAME
             )
-            if os.path.isfile(media_asset_manifest_path):
-                self._media_asset_manifest_sources = load_media_asset_manifest(
-                    media_asset_manifest_path
+            if os.path.isfile(media_source_manifest_path):
+                self._media_source_manifest_sources = (
+                    _load_media_source_manifest(media_source_manifest_path)
                 )
 
         self._tags_path = os.path.join(
@@ -1949,20 +1949,23 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         return sample_ids
 
     def _bind_imported_media_sources(self, dataset, sample_ids):
-        if not self._media_asset_manifest_sources:
+        if self._media_source_manifest_sources is None:
             return
 
         from fiftyone.core.media_assets import (
-            bind_materialized_media_sources,
-            validate_media_asset_manifest_sources,
+            _bind_materialized_media_sources,
+            _validate_media_source_manifest,
         )
 
         imported_samples = dataset.select(sample_ids)
-        validate_media_asset_manifest_sources(
-            imported_samples, self._media_asset_manifest_sources
+        _validate_media_source_manifest(
+            imported_samples, self._media_source_manifest_sources
         )
-        binding_required = bind_materialized_media_sources(
-            self._media_asset_manifest_sources, self.dataset_dir
+        if not self._media_source_manifest_sources:
+            return
+
+        binding_required = _bind_materialized_media_sources(
+            self._media_source_manifest_sources, self.dataset_dir
         )
         required_keys = {source.key for source in binding_required}
         sources = [
@@ -1972,7 +1975,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                     "required" if source.key in required_keys else "bound"
                 ),
             }
-            for source, _, _ in self._media_asset_manifest_sources
+            for source, _, _ in self._media_source_manifest_sources
         ]
         info = dict(dataset.info)
         info["media_reference_sources"] = sources

@@ -618,8 +618,8 @@ class LeRobotEpisode(MediaReference):
 
 
 @dataclass(frozen=True)
-class ResolvedMediaAsset:
-    """A server-side resolution of one described media asset."""
+class _ResolvedMediaAsset:
+    """A private server-side resolution of one described media asset."""
 
     description: MediaAsset
     asset_id: str
@@ -630,8 +630,8 @@ class ResolvedMediaAsset:
 
 
 @dataclass(frozen=True)
-class MediaAssetManifest:
-    """The server-side resolved asset manifest for one media reference."""
+class _MediaAssetManifest:
+    """The private resolved asset manifest for one media reference."""
 
     media_reference_key: str
     episode_index: int
@@ -643,7 +643,7 @@ class MediaAssetManifest:
     frame_count: int
     time_range_seconds: Sequence[float]
     source_fingerprint: str
-    assets: Sequence[ResolvedMediaAsset]
+    assets: Sequence[_ResolvedMediaAsset]
 
     def to_dict(self, include_paths: bool = False) -> Dict[str, Any]:
         """Serializes the manifest.
@@ -685,200 +685,16 @@ class MediaAssetManifest:
         }
 
 
-class MediaResolver(ABC):
-    """An external resolver for one registered media-reference kind."""
+class _MediaResolver(ABC):
+    """A private resolver for one registered media-reference kind."""
 
     @abstractmethod
     def resolve_assets(
         self,
         reference: MediaReference,
         assets: Sequence[MediaAsset],
-    ) -> MediaAssetManifest:
+    ) -> _MediaAssetManifest:
         """Resolves typed asset descriptions for the media reference."""
-
-
-@dataclass(frozen=True)
-class MediaSourceDescriptor:
-    """A portable, non-secret identity for one bindable media source.
-
-    Source descriptors must never contain bound roots or credentials.
-    """
-
-    kind: str
-    source_identity: str
-    source_fingerprint: str
-
-    def __post_init__(self):
-        for name, value in (
-            ("kind", self.kind),
-            ("source_identity", self.source_identity),
-            ("source_fingerprint", self.source_fingerprint),
-        ):
-            if not isinstance(value, str) or not value:
-                raise TypeError("%s must be a non-empty string" % name)
-
-    @property
-    def key(self):
-        """The stable key used to group assets from this source."""
-        value = "%s\0%s\0%s" % (
-            self.kind,
-            self.source_identity,
-            self.source_fingerprint,
-        )
-        return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
-    def to_dict(self):
-        """Returns a portable JSON representation of the source."""
-        return {
-            "kind": self.kind,
-            "source_identity": self.source_identity,
-            "source_fingerprint": self.source_fingerprint,
-        }
-
-
-@dataclass(frozen=True)
-class PlannedMediaAsset:
-    """A unique physical asset in a collection media-asset plan."""
-
-    key: str
-    source_mode: str
-    location: str
-    reference_kind: Optional[str] = None
-    source: Optional[MediaSourceDescriptor] = None
-    path: Optional[str] = None
-    size_bytes: Optional[int] = None
-    media_type: Optional[str] = None
-
-
-@dataclass(frozen=True)
-class MediaAssetUsage:
-    """One logical sample's selected use of a physical asset."""
-
-    sample_id: str
-    logical_media_identity: str
-    asset_key: str
-    role: MediaAssetRole
-    selector: MediaAssetSelector
-    group_slice: Optional[str] = None
-    feature_name: Optional[str] = None
-
-
-@dataclass(frozen=True)
-class MediaAssetPlan:
-    """A collection-level plan of unique assets and logical usages."""
-
-    assets: Tuple[PlannedMediaAsset, ...]
-    usages: Tuple[MediaAssetUsage, ...]
-    sources: Tuple[MediaSourceDescriptor, ...]
-    resolved: bool = False
-
-    def get_assets_for_sample(self, sample_or_id):
-        """Returns the assets used by the given sample or sample ID."""
-        sample_id = getattr(sample_or_id, "id", sample_or_id)
-        asset_keys = {
-            usage.asset_key
-            for usage in self.usages
-            if usage.sample_id == str(sample_id)
-        }
-        return tuple(asset for asset in self.assets if asset.key in asset_keys)
-
-    def to_dict(self, include_paths=False):
-        """Returns a portable representation of the asset plan.
-
-        Args:
-            include_paths (False): whether to include resolved server paths
-        """
-        assets = []
-        for asset in self.assets:
-            value = {
-                "key": asset.key,
-                "source_mode": asset.source_mode,
-                "reference_kind": asset.reference_kind,
-                "source_key": (
-                    None if asset.source is None else asset.source.key
-                ),
-                "location": asset.location,
-                "size_bytes": asset.size_bytes,
-                "media_type": asset.media_type,
-            }
-            if include_paths:
-                value["path"] = asset.path
-
-            assets.append(value)
-
-        usages = [
-            {
-                "sample_id": usage.sample_id,
-                "logical_media_identity": usage.logical_media_identity,
-                "asset_key": usage.asset_key,
-                "role": usage.role.value,
-                "selector": _serialize_selector(usage.selector),
-                "group_slice": usage.group_slice,
-                "feature_name": usage.feature_name,
-            }
-            for usage in self.usages
-        ]
-        return {
-            "version": "1",
-            "resolved": self.resolved,
-            "sources": [source.to_dict() for source in self.sources],
-            "assets": assets,
-            "usages": usages,
-        }
-
-
-@dataclass(frozen=True)
-class MediaAssetCapabilities:
-    """Public media lifecycle capabilities for a collection or view."""
-
-    source_modes: Tuple[str, ...]
-    reference_kinds: Tuple[str, ...]
-    supports_asset_enumeration: bool
-    supports_thin_serialization: bool
-    materialization_modes: Tuple[Any, ...]
-    supported_exporters: Tuple[str, ...]
-    binding_required_sources: Tuple[MediaSourceDescriptor, ...]
-
-    def supports_materialization(
-        self, export_media=True, destination_format=None
-    ):
-        """Whether the requested materialization mode is supported."""
-        if export_media not in self.materialization_modes:
-            return False
-
-        return (
-            destination_format is None
-            or destination_format in self.supported_exporters
-        )
-
-
-class MediaAssetMaterializer(ABC):
-    """Plans, materializes, and binds assets for one reference kind."""
-
-    @property
-    def supported_modes(self):
-        """The physical materialization modes supported by this kind."""
-        return (True,)
-
-    @abstractmethod
-    def describe_source(self, reference):
-        """Returns the portable, non-secret descriptor for the reference."""
-
-    @abstractmethod
-    def is_source_bound(self, source):
-        """Whether the source has a live binding in this environment."""
-
-    @abstractmethod
-    def bind_source(self, source, root):
-        """Binds a materialized source root in the current environment."""
-
-    @abstractmethod
-    def get_destination_location(self, reference, asset):
-        """Returns the source-relative destination for a resolved asset."""
-
-    @abstractmethod
-    def materialize_asset(self, asset, destination, usages):
-        """Materializes a resolved physical asset at ``destination``."""
 
 
 @dataclass(frozen=True)
@@ -894,9 +710,8 @@ _SERIALIZERS_BY_KIND: Dict[str, _MediaReferenceSerializer] = {}
 _SERIALIZERS_BY_TYPE: Dict[
     Type[MediaReference], _MediaReferenceSerializer
 ] = {}
-_RESOLVERS_BY_KIND: Dict[str, MediaResolver] = {}
+_RESOLVERS_BY_KIND: Dict[str, _MediaResolver] = {}
 _EXPORT_PLANNERS_BY_KIND_AND_FORMAT: Dict[Tuple[str, str], Callable] = {}
-_ASSET_MATERIALIZERS_BY_KIND: Dict[str, MediaAssetMaterializer] = {}
 
 
 def register_media_reference(
@@ -975,10 +790,10 @@ def hydrate_media_reference(envelope: Mapping[str, Any]) -> MediaReference:
     return reference
 
 
-def register_media_resolver(kind: str, resolver: MediaResolver) -> None:
-    """Registers an external resolver for a media-reference kind."""
-    if not isinstance(resolver, MediaResolver):
-        raise TypeError("resolver must be a MediaResolver")
+def _register_media_resolver(kind: str, resolver: _MediaResolver) -> None:
+    """Registers a private resolver for a media-reference kind."""
+    if not isinstance(resolver, _MediaResolver):
+        raise TypeError("resolver must be a _MediaResolver")
 
     if kind in _RESOLVERS_BY_KIND:
         raise ValueError(
@@ -988,8 +803,8 @@ def register_media_resolver(kind: str, resolver: MediaResolver) -> None:
     _RESOLVERS_BY_KIND[kind] = resolver
 
 
-def get_media_resolver(reference_or_kind: Any) -> MediaResolver:
-    """Gets the registered resolver for a reference or reference kind."""
+def _get_media_resolver(reference_or_kind: Any) -> _MediaResolver:
+    """Gets the private resolver for a reference or reference kind."""
     if isinstance(reference_or_kind, str):
         kind = reference_or_kind
     else:
@@ -1005,63 +820,13 @@ def get_media_resolver(reference_or_kind: Any) -> MediaResolver:
     return resolver
 
 
-def get_media_reference_kind(reference: MediaReference) -> str:
+def _get_media_reference_kind(reference: MediaReference) -> str:
     """Gets the registered persistence kind for a media reference."""
     return _find_serializer_for_reference(reference).kind
 
 
-def register_media_asset_materializer(kind, materializer):
-    """Registers the asset lifecycle for a media-reference kind."""
-    if not isinstance(materializer, MediaAssetMaterializer):
-        raise TypeError("materializer must be a MediaAssetMaterializer")
-
-    if kind in _ASSET_MATERIALIZERS_BY_KIND:
-        raise ValueError(
-            "Media asset materializer for '%s' is already registered" % kind
-        )
-
-    _ASSET_MATERIALIZERS_BY_KIND[kind] = materializer
-
-
-def get_media_asset_materializer(reference_or_kind):
-    """Gets the registered asset lifecycle for a reference or kind."""
-    if isinstance(reference_or_kind, str):
-        kind = reference_or_kind
-    else:
-        kind = get_media_reference_kind(reference_or_kind)
-
-    _ensure_builtin_media_reference_kind(kind)
-    materializer = _ASSET_MATERIALIZERS_BY_KIND.get(kind)
-    if materializer is None:
-        raise UnsupportedMediaReferenceOperation(
-            "No asset materializer is registered for media-reference kind "
-            "'%s'" % kind
-        )
-
-    return materializer
-
-
-def list_media_export_formats(reference_or_kind):
-    """Lists registered kind-specific export formats."""
-    if isinstance(reference_or_kind, str):
-        kind = reference_or_kind
-    else:
-        kind = get_media_reference_kind(reference_or_kind)
-
-    _ensure_builtin_media_reference_kind(kind, load_exporters=True)
-    return tuple(
-        sorted(
-            destination_format
-            for registered_kind, destination_format in (
-                _EXPORT_PLANNERS_BY_KIND_AND_FORMAT.keys()
-            )
-            if registered_kind == kind
-        )
-    )
-
-
-def register_media_export_planner(kind, destination_format, planner):
-    """Registers an export planner for a reference kind and destination."""
+def _register_media_export_planner(kind, destination_format, planner):
+    """Registers a private export planner for a reference kind."""
     key = (kind, destination_format)
     if key in _EXPORT_PLANNERS_BY_KIND_AND_FORMAT:
         raise ValueError(
@@ -1074,8 +839,8 @@ def register_media_export_planner(kind, destination_format, planner):
     _EXPORT_PLANNERS_BY_KIND_AND_FORMAT[key] = planner
 
 
-def get_media_export_planner(kind, destination_format):
-    """Gets the registered export planner for a kind and destination."""
+def _get_media_export_planner(kind, destination_format):
+    """Gets the private export planner for a kind and destination."""
     _ensure_builtin_media_reference_kind(kind, load_exporters=True)
     key = (kind, destination_format)
     planner = _EXPORT_PLANNERS_BY_KIND_AND_FORMAT.get(key)
@@ -1135,10 +900,10 @@ def get_logical_media_identity(sample_or_dict: Any) -> str:
     return filepath
 
 
-def get_shared_media_asset_key(
+def _get_shared_media_asset_key(
     reference: MediaReference, asset: MediaAsset
 ) -> str:
-    """Returns the stable cache key for a shared source asset."""
+    """Returns the private stable key for a shared source asset."""
     source_fingerprint = getattr(reference, "source_fingerprint", None)
     if not source_fingerprint:
         raise MediaReferenceError(
@@ -1149,41 +914,41 @@ def get_shared_media_asset_key(
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def get_selected_media_asset_key(
+def _get_selected_media_asset_key(
     reference: MediaReference, asset: MediaAsset
 ) -> str:
-    """Returns the stable cache key for one selected asset derivative."""
+    """Returns the private key for one selected asset derivative."""
     selection = {
         "role": asset.role.value,
         "feature_name": asset.feature_name,
         "selector": _serialize_selector(asset.selector),
     }
     value = "%s\0%s" % (
-        get_shared_media_asset_key(reference, asset),
+        _get_shared_media_asset_key(reference, asset),
         json.dumps(selection, sort_keys=True),
     )
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def build_resolved_media_asset(
+def _build_resolved_media_asset(
     reference: MediaReference,
     asset: MediaAsset,
     path: str,
     size_bytes: int,
     media_type: str,
-) -> ResolvedMediaAsset:
+) -> _ResolvedMediaAsset:
     """Builds a server-only resolution for a typed media asset."""
-    selected_key = get_selected_media_asset_key(reference, asset)
+    selected_key = _get_selected_media_asset_key(reference, asset)
     asset_id = hashlib.sha256(
         (reference.key + "\0" + selected_key).encode("utf-8")
     ).hexdigest()
-    return ResolvedMediaAsset(
+    return _ResolvedMediaAsset(
         description=asset,
         asset_id=asset_id,
         path=path,
         size_bytes=size_bytes,
         media_type=media_type,
-        shared_resource_key=get_shared_media_asset_key(reference, asset),
+        shared_resource_key=_get_shared_media_asset_key(reference, asset),
     )
 
 

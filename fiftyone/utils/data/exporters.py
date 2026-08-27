@@ -2145,7 +2145,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
     """
 
     supports_media_references = True
-    manages_existing_export_dir = False
+    _manages_existing_export_dir = False
 
     def __init__(
         self,
@@ -2190,21 +2190,21 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_exporter = None
         self._media_fields = {}
         self._media_field_exporters = {}
-        self._media_asset_plan = None
+        self._reference_asset_plan = None
         self._final_export_dir = None
         self._staging_dir = None
         self.overwrite = False
 
-    def preflight_media_reference_export(
+    def _preflight_media_reference_export(
         self, sample_collection, overwrite=False
     ):
         """Validates and plans a reference export before creating output."""
         from fiftyone.core.media_assets import (
+            _ReferenceAssetPlan,
+            _build_reference_asset_plan,
             _validate_publish_destination,
-            build_media_asset_plan,
         )
         from fiftyone.multimodal.media import (
-            MediaAssetPlan,
             UnsupportedMediaReferenceOperation,
         )
 
@@ -2217,7 +2217,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         _validate_publish_destination(self.export_dir, overwrite)
         try:
-            self._media_asset_plan = build_media_asset_plan(
+            self._reference_asset_plan = _build_reference_asset_plan(
                 sample_collection,
                 resolve=self.export_media is True,
             )
@@ -2227,14 +2227,16 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
             # Native thin serialization is defined by the sanctioned
             # persistence envelope and does not require an asset materializer.
-            self._media_asset_plan = MediaAssetPlan((), (), (), resolved=False)
+            self._reference_asset_plan = _ReferenceAssetPlan(
+                (), (), (), resolved=False
+            )
 
         self._final_export_dir = self.export_dir
         self.overwrite = overwrite
-        self.manages_existing_export_dir = True
+        self._manages_existing_export_dir = True
 
     def setup(self):
-        if self._media_asset_plan is not None:
+        if self._reference_asset_plan is not None:
             parent = os.path.dirname(os.path.abspath(self._final_export_dir))
             etau.ensure_dir(parent)
             self._staging_dir = tempfile.mkdtemp(
@@ -2270,15 +2272,15 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_exporter.setup()
 
     def export_samples(self, sample_collection, progress=None):
-        if self._media_asset_plan is None:
+        if self._reference_asset_plan is None:
             self._export_samples(sample_collection, progress=progress)
             return
 
         from fiftyone.core.media_assets import (
-            MEDIA_ASSET_MANIFEST_FILENAME,
+            _MEDIA_SOURCE_MANIFEST_FILENAME,
+            _materialize_reference_assets,
             _publish_staging_dir,
-            materialize_reference_asset_plan,
-            write_media_asset_manifest,
+            _write_media_source_manifest,
         )
 
         published = False
@@ -2286,15 +2288,15 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             self._export_samples(sample_collection, progress=progress)
             materialized_roots = {}
             if self.export_media is True:
-                materialized_roots = materialize_reference_asset_plan(
-                    self._media_asset_plan,
+                materialized_roots = _materialize_reference_assets(
+                    self._reference_asset_plan,
                     self.export_dir,
                     progress=progress,
                 )
 
-            write_media_asset_manifest(
-                self._media_asset_plan,
-                os.path.join(self.export_dir, MEDIA_ASSET_MANIFEST_FILENAME),
+            _write_media_source_manifest(
+                self._reference_asset_plan,
+                os.path.join(self.export_dir, _MEDIA_SOURCE_MANIFEST_FILENAME),
                 materialized_roots=materialized_roots,
             )
             _publish_staging_dir(self.export_dir, self._final_export_dir)
