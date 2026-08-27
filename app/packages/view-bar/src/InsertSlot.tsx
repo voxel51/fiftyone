@@ -183,6 +183,9 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
                   key={name}
                   id={`view-bar-stage-${i}`}
                   role="option"
+                  // The visible content concatenates name + description; the
+                  // option's announced name is just the stage name
+                  aria-label={name}
                   aria-selected={i === active}
                   ref={(el) => {
                     if (i === active) {
