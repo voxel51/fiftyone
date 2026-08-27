@@ -85,6 +85,23 @@ describe("fetch", () => {
     expect(getFetchUrl("/dataset/id")).toBe("http://localhost:8787/dataset/id");
   });
 
+  it("uses the same normalized URL for configured fetches", async () => {
+    const mockFetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", mockFetch);
+    setFetchFunction(
+      "http://localhost:3000/",
+      {},
+      "/api/proxy/fiftyone-teams/",
+    );
+
+    await getFetchFunction()("GET", "/dataset/id", null, "json", 0);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:3000/api/proxy/fiftyone-teams/dataset/id",
+      expect.any(Object),
+    );
+  });
+
   it("rejects navigation URLs before fetch configuration", () => {
     setFetchParameters(undefined as never);
     expect(() => getFetchUrl("/dataset/id")).toThrow(

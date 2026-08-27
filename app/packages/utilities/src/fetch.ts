@@ -316,16 +316,24 @@ export const getFetchParameters = () => {
   };
 };
 
+const joinFetchUrl = (
+  origin: string,
+  pathPrefix: string,
+  path: string,
+): string => {
+  const prefix = pathPrefix.replace(/^\/+|\/+$/g, "");
+  const suffix = path.replace(/^\/+/, "");
+  const relative = [prefix, suffix].filter(Boolean).join("/");
+  const base = origin.replace(/\/+$/, "");
+  return `${base}/${relative}`;
+};
+
 /** Builds an absolute URL from the configured fetch origin and path prefix. */
 export const getFetchUrl = (path: string): string => {
   if (typeof fetchOrigin !== "string") {
     throw new Error("Fetch parameters are not configured");
   }
-  const prefix = fetchPathPrefix.replace(/^\/+|\/+$/g, "");
-  const suffix = path.replace(/^\/+/, "");
-  const relative = [prefix, suffix].filter(Boolean).join("/");
-  const base = fetchOrigin.replace(/\/+$/, "");
-  return `${base}/${relative}`;
+  return joinFetchUrl(fetchOrigin, fetchPathPrefix, path);
 };
 
 // Identical GraphQL QUERIES that are in flight at the same moment share one
@@ -383,13 +391,7 @@ export const setFetchFunction = (
       new URL(path);
       url = path;
     } catch {
-      if (fetchPathPrefix) {
-        path = `${fetchPathPrefix}${path}`.replaceAll("//", "/");
-      }
-
-      url = `${origin}${
-        !origin.endsWith("/") && !path.startsWith("/") ? "/" : ""
-      }${path}`;
+      url = joinFetchUrl(origin, fetchPathPrefix, path);
     }
 
     // set content type only if body is present, otherwise it can cause Bad Request
