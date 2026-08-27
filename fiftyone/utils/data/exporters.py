@@ -2299,7 +2299,11 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 os.path.join(self.export_dir, _MEDIA_SOURCE_MANIFEST_FILENAME),
                 materialized_roots=materialized_roots,
             )
-            _publish_staging_dir(self.export_dir, self._final_export_dir)
+            _publish_staging_dir(
+                self.export_dir,
+                self._final_export_dir,
+                overwrite=self.overwrite,
+            )
             published = True
         finally:
             if (

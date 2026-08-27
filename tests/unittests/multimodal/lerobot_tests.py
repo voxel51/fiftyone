@@ -19,8 +19,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-import pyarrow as pa
-import pyarrow.parquet as papq
+import pytest
 from starlette.applications import Starlette
 from starlette.routing import Route
 from starlette.testclient import TestClient
@@ -28,6 +27,7 @@ from starlette.testclient import TestClient
 from decorators import drop_datasets
 
 import fiftyone as fo
+import fiftyone.core.media_assets as foma
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
 import fiftyone.utils.lerobot as foul
@@ -55,6 +55,9 @@ from fiftyone.utils.lerobot import (
     relocate_lerobot_source,
     unbind_lerobot_source,
 )
+
+pa = pytest.importorskip("pyarrow")
+papq = pytest.importorskip("pyarrow.parquet")
 
 _VIDEO_FEATURE = "observation.images.front"
 
@@ -282,6 +285,20 @@ class LeRobotImporterTests(unittest.TestCase):
             relocated_root = root + "-relocated"
             shutil.copytree(root, relocated_root)
             try:
+                for relative_path in (
+                    locator.data_location.path,
+                    locator.videos[0].location.path,
+                ):
+                    path = os.path.join(relocated_root, relative_path)
+                    stat_result = os.stat(path)
+                    os.utime(
+                        path,
+                        ns=(
+                            stat_result.st_atime_ns,
+                            stat_result.st_mtime_ns + 1_000_000_000,
+                        ),
+                    )
+
                 relocate_lerobot_source(
                     references[7].source_identity,
                     relocated_root,
@@ -354,6 +371,113 @@ class LeRobotImporterTests(unittest.TestCase):
             foul._format_source_path(
                 "data/{chunk_index.__class__}/file.parquet",
                 chunk_index=0,
+            )
+
+    def test_source_paths_remain_posix_across_platforms(self):
+        self.assertEqual(
+            foul._format_source_path(
+                "data/chunk-{chunk_index:03d}/file-{file_index:03d}.parquet",
+                chunk_index=1,
+                file_index=2,
+            ),
+            "data/chunk-001/file-002.parquet",
+        )
+        with mock.patch.object(
+            foul.os.path,
+            "relpath",
+            return_value=r"meta\episodes\part-000.parquet",
+        ), mock.patch.object(foul.os, "sep", "\\"):
+            self.assertEqual(
+                foul._get_dataset_relative_path("unused", "unused"),
+                "meta/episodes/part-000.parquet",
+            )
+
+        with self.assertRaisesRegex(
+            MalformedMediaSourceError, "non-canonical path"
+        ):
+            foul._format_source_path(
+                r"data\chunk-{chunk_index:03d}\file.parquet",
+                chunk_index=0,
+            )
+
+    @drop_datasets
+    def test_import_and_resolution_close_parquet_files(self):
+        real_parquet_file = papq.ParquetFile
+        opened = []
+
+        class _TrackedParquetFile:
+            def __init__(self, *args, **kwargs):
+                self._inner = real_parquet_file(*args, **kwargs)
+                self.closed = False
+                opened.append(self)
+
+            def __getattr__(self, name):
+                return getattr(self._inner, name)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                self.close()
+
+            def close(self):
+                self._inner.close()
+                self.closed = True
+
+        with tempfile.TemporaryDirectory() as temp_dir, mock.patch.object(
+            papq, "ParquetFile", _TrackedParquetFile
+        ):
+            source_root = os.path.join(temp_dir, "source")
+            export_root = os.path.join(temp_dir, "export")
+            _write_v3_source(source_root, episodes=2)
+            dataset = _import(source_root)
+            reference = dataset.first().media_reference
+            _LeRobotMediaResolver().resolve_assets(
+                reference, reference.describe_assets()
+            )
+            dataset.export(
+                export_dir=export_root,
+                dataset_type=fot.LeRobotDataset,
+                export_media=True,
+            )
+
+        self.assertTrue(opened)
+        self.assertTrue(all(parquet_file.closed for parquet_file in opened))
+
+    @drop_datasets
+    def test_selected_import_does_not_hash_unrelated_large_assets(self):
+        with tempfile.TemporaryDirectory() as root:
+            selected_video_path = _write_v3_source(root, episodes=2)
+            unrelated_video_path = os.path.join(
+                root,
+                "videos",
+                "chunk-000",
+                _VIDEO_FEATURE,
+                "file-006.mp4",
+            )
+            shutil.copy2(selected_video_path, unrelated_video_path)
+
+            metadata_path = os.path.join(
+                root, "meta", "episodes", "part-001.parquet"
+            )
+            with papq.ParquetFile(metadata_path) as parquet_file:
+                rows = parquet_file.read().to_pylist()
+            rows[0]["videos/%s/file_index" % _VIDEO_FEATURE] = 6
+            _write_parquet(metadata_path, rows)
+
+            with mock.patch.object(
+                foul, "_sha256_file", wraps=foul._sha256_file
+            ) as fingerprint:
+                dataset = _import(root, episodes=[0])
+
+            self.assertEqual(dataset.values("episode_index"), [0])
+            hashed_paths = {
+                os.path.realpath(call.args[0])
+                for call in fingerprint.call_args_list
+            }
+            self.assertIn(os.path.realpath(selected_video_path), hashed_paths)
+            self.assertNotIn(
+                os.path.realpath(unrelated_video_path), hashed_paths
             )
 
     @drop_datasets
@@ -472,6 +596,30 @@ print(response.json().get('episode_index'))
 
 
 class LeRobotExporterTests(unittest.TestCase):
+    @drop_datasets
+    def test_export_materializes_each_selected_data_table_once(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            export_root = os.path.join(temp_dir, "export")
+            _write_v3_source(source_root, episodes=4)
+            dataset = _import(source_root)
+
+            with mock.patch.object(
+                foule, "_open_parquet", wraps=foule._open_parquet
+            ) as open_parquet:
+                dataset.export(
+                    export_dir=export_root,
+                    dataset_type=fot.LeRobotDataset,
+                    export_media=True,
+                )
+
+            data_reads = [
+                call
+                for call in open_parquet.call_args_list
+                if call.args[1] == "episode data"
+            ]
+            self.assertEqual(len(data_reads), 1)
+
     def test_official_reader_validation_reports_stderr(self):
         error = subprocess.CalledProcessError(
             1,
@@ -708,6 +856,30 @@ class LeRobotExporterTests(unittest.TestCase):
             info_path = os.path.join(valid_destination, "meta", "info.json")
             with open(info_path, "rb") as file:
                 existing_info = file.read()
+
+            late_destination = os.path.join(temp_dir, "late-existing")
+            late_marker = os.path.join(late_destination, "preserve.txt")
+            write_lerobot_export = foule._write_lerobot_export
+
+            def write_then_populate_destination(staging_dir, specs):
+                write_lerobot_export(staging_dir, specs)
+                os.makedirs(late_destination)
+                with open(late_marker, "w") as file:
+                    file.write("preserve me")
+
+            with mock.patch.object(
+                foule,
+                "_write_lerobot_export",
+                side_effect=write_then_populate_destination,
+            ), self.assertRaises(FileExistsError):
+                dataset.export(
+                    export_dir=late_destination,
+                    dataset_type=fot.LeRobotDataset,
+                )
+
+            with open(late_marker) as file:
+                self.assertEqual(file.read(), "preserve me")
+            self.assertEqual(os.listdir(late_destination), ["preserve.txt"])
 
             obsolete_path = os.path.join(valid_destination, "obsolete")
             with open(obsolete_path, "w") as file:
@@ -1197,6 +1369,31 @@ finally:
                 )
             )
 
+            late_root = os.path.join(temp_dir, "late-native")
+            late_marker = os.path.join(late_root, "preserve.txt")
+            write_manifest = foma._write_media_source_manifest
+
+            def write_then_populate_destination(*args, **kwargs):
+                write_manifest(*args, **kwargs)
+                os.makedirs(late_root)
+                with open(late_marker, "w") as file:
+                    file.write("preserve me")
+
+            with mock.patch.object(
+                foma,
+                "_write_media_source_manifest",
+                side_effect=write_then_populate_destination,
+            ), self.assertRaises(FileExistsError):
+                dataset.export(
+                    export_dir=late_root,
+                    dataset_type=fot.FiftyOneDataset,
+                    export_media=True,
+                )
+
+            with open(late_marker) as file:
+                self.assertEqual(file.read(), "preserve me")
+            self.assertEqual(os.listdir(late_root), ["preserve.txt"])
+
             exporter = foud.FiftyOneDatasetExporter(
                 export_root, export_media=True
             )
@@ -1453,6 +1650,65 @@ class LeRobotServerTests(unittest.TestCase):
                     {"kind", "key", "version"},
                 )
                 self.assertEqual(transported["_media_type"], "multimodal")
+
+            unbind_lerobot_source(first.media_reference.source_identity)
+            try:
+                unbound = asyncio.run(
+                    _create_sample_item(
+                        dataset,
+                        raw,
+                        {},
+                        {},
+                        True,
+                        additional_media_fields=(None, (), ()),
+                    )
+                )
+                self.assertEqual(
+                    set(unbound.sample["_media_reference"]),
+                    {"kind", "key", "version"},
+                )
+                self.assertNotIn(root, json.dumps(unbound.sample, default=str))
+            finally:
+                bind_lerobot_source(
+                    first.media_reference.source_identity,
+                    root,
+                    first.media_reference.source_fingerprint,
+                )
+
+            malformed_envelope = dict(raw["_media_reference"])
+            malformed_envelope["key"] = None
+            malformed_envelope["payload"] = {"private_root": root}
+            malformed_raw = dict(raw)
+            malformed_raw["_media_reference"] = malformed_envelope
+            isolated = asyncio.run(
+                _create_sample_item(
+                    dataset,
+                    malformed_raw,
+                    {},
+                    {},
+                    True,
+                    additional_media_fields=(None, (), ()),
+                )
+            )
+            self.assertIsNone(isolated.sample["_media_reference"])
+            self.assertEqual(isolated.sample["_media_type"], "unknown")
+            self.assertNotIn(root, json.dumps(isolated.sample, default=str))
+
+            already_sanitized = dict(raw)
+            already_sanitized["_media_reference"] = descriptor
+            already_sanitized.pop("_media_type", None)
+            isolated = asyncio.run(
+                _create_sample_item(
+                    dataset,
+                    already_sanitized,
+                    {},
+                    {},
+                    True,
+                    additional_media_fields=(None, (), ()),
+                )
+            )
+            self.assertIsNone(isolated.sample["_media_reference"])
+            self.assertEqual(isolated.sample["_media_type"], "unknown")
 
             grouped = _filter_dict_by_fields(serialized, {"task"})
             self.assertIn("_media_reference", grouped)

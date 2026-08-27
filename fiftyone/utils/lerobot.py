@@ -14,6 +14,7 @@ import hashlib
 import json
 import mimetypes
 import os
+import posixpath
 import re
 import shutil
 import string
@@ -267,6 +268,8 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
             self.episodes,
             self._preprocess_list,
         )
+        selected_rows = [rows_by_index[index] for index in selected_indexes]
+        source = resolver.prepare_source_assets(source, selected_rows)
         fps = float(info["fps"])
         robot_type = info.get("robot_type", None)
         samples = []
@@ -432,14 +435,14 @@ class _LeRobotMediaResolver(_MediaResolver):
 
             raw = _read_bytes(path)
             if relative_path.endswith(".parquet"):
-                _open_parquet(path, "shared metadata")
+                with _open_parquet(path, "shared metadata"):
+                    pass
             shard_bytes.append((relative_path, raw))
 
-        asset_fingerprints, data_shard_bases = _validate_source_assets(
-            root, info, rows
-        )
+        asset_sizes = _collect_source_asset_sizes(root, info, rows)
+        data_shard_bases = _get_data_shard_bases(root, info, rows)
         source_fingerprint = "sha256:" + _compute_source_fingerprint(
-            info, info_bytes, shard_bytes, asset_fingerprints
+            info, info_bytes, shard_bytes, asset_sizes
         )
         return _InspectedLeRobotSource(
             root=root,
@@ -447,8 +450,29 @@ class _LeRobotMediaResolver(_MediaResolver):
             codebase_version=codebase_version,
             rows=tuple(rows),
             data_shard_bases=data_shard_bases,
-            asset_fingerprints=asset_fingerprints,
+            asset_fingerprints={},
             source_fingerprint=source_fingerprint,
+        )
+
+    def prepare_source_assets(self, source, rows):
+        """Validates and fingerprints only the selected physical assets."""
+        if not isinstance(source, _InspectedLeRobotSource):
+            raise TypeError("source must be an inspected LeRobot source")
+
+        asset_fingerprints, data_shard_bases = _validate_source_assets(
+            source.root,
+            source.info,
+            rows,
+            data_shard_bases=source.data_shard_bases,
+        )
+        return _InspectedLeRobotSource(
+            root=source.root,
+            info=source.info,
+            codebase_version=source.codebase_version,
+            rows=source.rows,
+            data_shard_bases=data_shard_bases,
+            asset_fingerprints=asset_fingerprints,
+            source_fingerprint=source.source_fingerprint,
         )
 
     def build_locator(self, source, row):
@@ -756,12 +780,12 @@ def _read_episode_metadata(root, paths):
     rows = []
     shard_bytes = []
     for path in paths:
-        relative_path = os.path.relpath(path, root)
+        relative_path = _get_dataset_relative_path(path, root)
         _resolve_under_root(root, relative_path)
         raw = _read_bytes(path)
         shard_bytes.append((relative_path, raw))
-        parquet_file = _open_parquet(path, "episode metadata")
-        table = parquet_file.read()
+        with _open_parquet(path, "episode metadata") as parquet_file:
+            table = parquet_file.read()
         missing = _REQUIRED_EPISODE_FIELDS - set(table.column_names)
         if missing:
             raise MalformedMediaSourceError(
@@ -780,26 +804,26 @@ def _read_episode_metadata(root, paths):
 
 
 def _read_episode_metadata_row(root, path, row_index):
-    relative_path = os.path.relpath(path, root)
+    relative_path = _get_dataset_relative_path(path, root)
     _resolve_under_root(root, relative_path)
-    parquet_file = _open_parquet(path, "episode metadata")
-    offset = 0
-    for group_index in range(parquet_file.metadata.num_row_groups):
-        row_count = parquet_file.metadata.row_group(group_index).num_rows
-        if offset <= row_index < offset + row_count:
-            table = parquet_file.read_row_group(group_index)
-            missing = _REQUIRED_EPISODE_FIELDS - set(table.column_names)
-            if missing:
-                raise MalformedMediaSourceError(
-                    "LeRobot episode metadata shard '%s' is missing fields: %s"
-                    % (relative_path, sorted(missing))
-                )
+    with _open_parquet(path, "episode metadata") as parquet_file:
+        offset = 0
+        for group_index in range(parquet_file.metadata.num_row_groups):
+            row_count = parquet_file.metadata.row_group(group_index).num_rows
+            if offset <= row_index < offset + row_count:
+                table = parquet_file.read_row_group(group_index)
+                missing = _REQUIRED_EPISODE_FIELDS - set(table.column_names)
+                if missing:
+                    raise MalformedMediaSourceError(
+                        "LeRobot episode metadata shard '%s' is missing "
+                        "fields: %s" % (relative_path, sorted(missing))
+                    )
 
-            row = table.slice(row_index - offset, 1).to_pylist()[0]
-            _validate_episode_row(row, relative_path)
-            return row
+                row = table.slice(row_index - offset, 1).to_pylist()[0]
+                _validate_episode_row(row, relative_path)
+                return row
 
-        offset += row_count
+            offset += row_count
 
     raise StaleMediaReferenceError(
         "LeRobot episode metadata row is no longer present"
@@ -864,7 +888,7 @@ def _select_episode_indexes(rows_by_index, episodes, preprocess):
     return list(preprocess(indexes))
 
 
-def _validate_source_assets(root, info, rows):
+def _collect_source_asset_paths(root, info, rows):
     by_data_file = defaultdict(list)
     byte_asset_paths = set()
     video_features = _video_features(info)
@@ -915,15 +939,23 @@ def _validate_source_assets(root, info, rows):
                     % row["episode_index"]
                 )
 
-    data_shard_bases = {}
-    for path, shard_rows in by_data_file.items():
-        if not os.path.isfile(path):
-            raise MalformedMediaSourceError(
-                "LeRobot data asset '%s' does not exist"
-                % os.path.relpath(path, root)
-            )
+    return by_data_file, byte_asset_paths
 
-        parquet_file = _open_parquet(path, "episode data")
+
+def _collect_source_asset_sizes(root, info, rows):
+    _, byte_asset_paths = _collect_source_asset_paths(root, info, rows)
+    return {
+        relative_path: _file_signature(
+            _resolve_under_root(root, relative_path)
+        )[2]
+        for relative_path in sorted(byte_asset_paths)
+    }
+
+
+def _get_data_shard_bases(root, info, rows):
+    by_data_file, _ = _collect_source_asset_paths(root, info, rows)
+    data_shard_bases = {}
+    for shard_rows in by_data_file.values():
         base = min(row["dataset_from_index"] for row in shard_rows)
         for row in shard_rows:
             coordinates = (
@@ -932,22 +964,49 @@ def _validate_source_assets(root, info, rows):
             )
             data_shard_bases[coordinates] = base
 
-        for row in shard_rows:
-            local_end = row["dataset_to_index"] - base
-            if local_end > parquet_file.metadata.num_rows:
-                raise MalformedMediaSourceError(
-                    "LeRobot episode %d row bounds exceed data shard '%s'"
-                    % (row["episode_index"], os.path.relpath(path, root))
-                )
+    return data_shard_bases
 
-        columns = set(parquet_file.schema_arrow.names)
-        if "episode_index" not in columns or "index" not in columns:
+
+def _validate_source_assets(root, info, rows, data_shard_bases=None):
+    by_data_file, byte_asset_paths = _collect_source_asset_paths(
+        root, info, rows
+    )
+
+    if data_shard_bases is None:
+        data_shard_bases = _get_data_shard_bases(root, info, rows)
+    else:
+        data_shard_bases = dict(data_shard_bases)
+
+    for path, shard_rows in by_data_file.items():
+        if not os.path.isfile(path):
             raise MalformedMediaSourceError(
-                "LeRobot data shard '%s' must contain episode_index and index"
+                "LeRobot data asset '%s' does not exist"
                 % os.path.relpath(path, root)
             )
 
-        table = parquet_file.read(columns=["episode_index", "index"])
+        with _open_parquet(path, "episode data") as parquet_file:
+            coordinates = (
+                shard_rows[0]["data/chunk_index"],
+                shard_rows[0]["data/file_index"],
+            )
+            base = data_shard_bases[coordinates]
+
+            for row in shard_rows:
+                local_end = row["dataset_to_index"] - base
+                if local_end > parquet_file.metadata.num_rows:
+                    raise MalformedMediaSourceError(
+                        "LeRobot episode %d row bounds exceed data shard '%s'"
+                        % (row["episode_index"], os.path.relpath(path, root))
+                    )
+
+            columns = set(parquet_file.schema_arrow.names)
+            if "episode_index" not in columns or "index" not in columns:
+                raise MalformedMediaSourceError(
+                    "LeRobot data shard '%s' must contain episode_index and "
+                    "index" % os.path.relpath(path, root)
+                )
+
+            table = parquet_file.read(columns=["episode_index", "index"])
         episode_indexes = table["episode_index"].to_pylist()
         global_indexes = table["index"].to_pylist()
         for row in shard_rows:
@@ -990,8 +1049,10 @@ def _build_locator(
     shard_base = data_shard_bases[(chunk_index, file_index)]
     shard_start = row["dataset_from_index"] - shard_base
     shard_end = row["dataset_to_index"] - shard_base
-    parquet_file = _open_parquet(data_path, "episode data")
-    row_groups = _overlapping_row_groups(parquet_file, shard_start, shard_end)
+    with _open_parquet(data_path, "episode data") as parquet_file:
+        row_groups = _overlapping_row_groups(
+            parquet_file, shard_start, shard_end
+        )
 
     videos = []
     for feature_name in _video_features(info):
@@ -1203,20 +1264,39 @@ def _format_source_path(template, **coordinates):
             "LeRobot source path template produced an invalid path"
         )
 
-    return fos.normpath(path)
+    path = posixpath.normpath(path)
+    try:
+        return DatasetRelativeLocation(path).path
+    except InvalidMediaLocationError as exc:
+        raise MalformedMediaSourceError(
+            "LeRobot source path template produced a non-canonical path"
+        ) from exc
+
+
+def _get_dataset_relative_path(path, root):
+    relative_path = os.path.relpath(path, root)
+    if os.sep != "/":
+        relative_path = relative_path.replace(os.sep, "/")
+
+    try:
+        return DatasetRelativeLocation(relative_path).path
+    except InvalidMediaLocationError as exc:
+        raise MalformedMediaSourceError(
+            "LeRobot source path is not a canonical dataset-relative path"
+        ) from exc
 
 
 def _resolve_under_root(root, relative_path):
-    if not isinstance(relative_path, str) or not relative_path:
-        raise MalformedMediaSourceError("LeRobot asset path must be non-empty")
-
-    if os.path.isabs(relative_path):
+    try:
+        location = DatasetRelativeLocation(relative_path)
+    except InvalidMediaLocationError as exc:
         raise MalformedMediaSourceError(
-            "LeRobot asset paths must be relative to the dataset root"
-        )
+            "LeRobot asset paths must be canonical POSIX paths relative to "
+            "the dataset root"
+        ) from exc
 
     root = os.path.realpath(root)
-    path = os.path.realpath(os.path.join(root, relative_path))
+    path = os.path.realpath(os.path.join(root, *location.path.split("/")))
     if os.path.commonpath((root, path)) != root:
         raise MalformedMediaSourceError(
             "LeRobot asset path escapes the dataset root: '%s'" % relative_path
@@ -1225,9 +1305,7 @@ def _resolve_under_root(root, relative_path):
     return path
 
 
-def _compute_source_fingerprint(
-    info, info_bytes, shard_bytes, asset_fingerprints
-):
+def _compute_source_fingerprint(info, info_bytes, shard_bytes, asset_sizes):
     digest = hashlib.sha256()
     digest.update(_canonical_info(info, info_bytes))
     for relative_path, raw in shard_bytes:
@@ -1235,10 +1313,10 @@ def _compute_source_fingerprint(
         digest.update(b"\0")
         digest.update(hashlib.sha256(raw).digest())
 
-    for relative_path, fingerprint in sorted(asset_fingerprints.items()):
+    for relative_path, size_bytes in sorted(asset_sizes.items()):
         digest.update(relative_path.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(fingerprint.encode("ascii"))
+        digest.update(str(size_bytes).encode("ascii"))
 
     return digest.hexdigest()
 
@@ -1419,25 +1497,25 @@ def _clear_resolution_caches():
 
 def _validate_resolved_data_slice(root, episode, locator):
     path = _resolve_under_root(root, locator.data_location.path)
-    parquet_file = _open_parquet(path, "episode data")
     row_groups = locator.parquet_row_groups
     if not row_groups:
         raise StaleMediaReferenceError(
             "LeRobot episode data locator has no Parquet row groups"
         )
 
-    try:
-        group_start = sum(
-            parquet_file.metadata.row_group(index).num_rows
-            for index in range(row_groups[0])
-        )
-        table = parquet_file.read_row_groups(
-            row_groups, columns=["episode_index", "index"]
-        )
-    except Exception as exc:
-        raise StaleMediaReferenceError(
-            "LeRobot episode data row groups no longer match the source"
-        ) from exc
+    with _open_parquet(path, "episode data") as parquet_file:
+        try:
+            group_start = sum(
+                parquet_file.metadata.row_group(index).num_rows
+                for index in range(row_groups[0])
+            )
+            table = parquet_file.read_row_groups(
+                row_groups, columns=["episode_index", "index"]
+            )
+        except Exception as exc:
+            raise StaleMediaReferenceError(
+                "LeRobot episode data row groups no longer match the source"
+            ) from exc
 
     bounds = locator.parquet_file_rows
     local_start = bounds.start - group_start

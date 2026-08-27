@@ -8,6 +8,7 @@ FiftyOne Server samples pagination
 
 import asyncio
 import collections
+import logging
 
 import strawberry as gql
 import typing as t
@@ -27,6 +28,9 @@ from fiftyone.server.paginator import Connection, Edge, PageInfo
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.utils import from_dict
 import fiftyone.server.view as fosv
+
+
+logger = logging.getLogger(__name__)
 
 
 @gql.type
@@ -186,20 +190,47 @@ async def _create_sample_item(
     additional_media_fields: t.Optional[t.Tuple] = None,
 ) -> SampleItem:
     if sample.get("_media_reference") is not None:
-        media_type = sample.get("_media_type")
+        try:
+            transported_sample = sanitize_sample_for_transport(sample)
+            media_type = transported_sample.get("_media_type")
+            if not isinstance(media_type, str) or not media_type:
+                raise ValueError(
+                    "A transported media reference requires a media type"
+                )
+
+            metadata = await fosm.get_metadata(
+                dataset,
+                sample,
+                media_type,
+                metadata_cache,
+                url_cache,
+                additional_media_fields=additional_media_fields,
+            )
+            cls = MEDIA_TYPES[media_type]
+        except (KeyError, TypeError, ValueError):
+            logger.warning(
+                "Unable to prepare media reference for sample %s",
+                sample.get("_id"),
+                exc_info=True,
+            )
+            transported_sample = dict(sample)
+            transported_sample["_media_reference"] = None
+            transported_sample["_media_type"] = fom.UNKNOWN
+            media_type = fom.UNKNOWN
+            metadata = {"urls": [], "aspect_ratio": 1}
+            cls = MEDIA_TYPES[media_type]
     else:
         media_type = fom.get_media_type(sample.get("filepath"))
-
-    cls = MEDIA_TYPES[media_type]
-
-    metadata = await fosm.get_metadata(
-        dataset,
-        sample,
-        media_type,
-        metadata_cache,
-        url_cache,
-        additional_media_fields=additional_media_fields,
-    )
+        transported_sample = sample
+        metadata = await fosm.get_metadata(
+            dataset,
+            sample,
+            media_type,
+            metadata_cache,
+            url_cache,
+            additional_media_fields=additional_media_fields,
+        )
+        cls = MEDIA_TYPES[media_type]
 
     if cls == VideoSample:
         metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))
@@ -213,7 +244,7 @@ async def _create_sample_item(
         cls,
         {
             "id": _id,
-            "sample": sanitize_sample_for_transport(sample),
+            "sample": transported_sample,
             **metadata,
         },
     )

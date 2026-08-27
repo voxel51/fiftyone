@@ -80,9 +80,9 @@ def _is_media_reference_compatibility_revision(name, revision=None):
     if revision is not None and revision != stored_revision:
         return False
 
-    # This branch teaches the pre-media-reference client how to open the
-    # deliberately incompatible sentinel revision. Once the package catches
-    # up to that revision, normal migrations apply again.
+    # This client understands the deliberately incompatible, permanently
+    # reserved media-reference compatibility revision. Older clients reject
+    # it as a future revision.
     return (
         stored_revision == MEDIA_REFERENCE_DATASET_REVISION
         and document.get("media_reference_kind") is not None

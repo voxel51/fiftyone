@@ -33,9 +33,10 @@ import fiftyone.core.media as fom
 LEROBOT_EPISODE_KIND = "lerobot-episode"
 MEDIA_REFERENCE_ENVELOPE_VERSION = "1"
 MAX_MEDIA_REFERENCE_BYTES = 64 * 1024
-# Existing clients accept dataset revisions below 2.0, so reference-backed
-# datasets use the first incompatible revision and fail cleanly when opened.
-MEDIA_REFERENCE_DATASET_REVISION = "2.0.0"
+# Existing clients accept dataset revisions below 2.0. Reference-backed
+# datasets use a valid, permanently reserved future revision with an explicit
+# local marker so older clients fail cleanly without colliding with a release.
+MEDIA_REFERENCE_DATASET_REVISION = "9999.0.0+media-reference-v1"
 
 _DRIVE_PREFIX_PATTERN = re.compile(r"^[A-Za-z]:")
 _SHA256_FINGERPRINT_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -1189,6 +1190,8 @@ def _hydrate_lerobot_locator(value):
         "row_groups",
     }:
         raise MediaReferenceError("Malformed episode data locator")
+    if not isinstance(data["row_groups"], list):
+        raise MediaReferenceError("Malformed episode data row groups")
 
     videos = value["videos"]
     images = value["images"]

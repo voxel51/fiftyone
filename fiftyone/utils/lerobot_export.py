@@ -21,6 +21,10 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import numpy as np
 
+from fiftyone.core.media_assets import (
+    _publish_staging_dir,
+    _validate_publish_destination,
+)
 import fiftyone.core.utils as fou
 from fiftyone.multimodal.media import (
     LEROBOT_EPISODE_KIND,
@@ -136,17 +140,10 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
         self._publish_export(specs)
 
     def _publish_export(self, specs):
-        destination_exists = os.path.exists(self.export_dir)
-        destination_is_empty = (
-            os.path.isdir(self.export_dir) and not os.listdir(self.export_dir)
-            if destination_exists
-            else False
+        operation = "Atomic LeRobot export"
+        _validate_publish_destination(
+            self.export_dir, self.overwrite, operation=operation
         )
-        if destination_exists and not (self.overwrite or destination_is_empty):
-            raise FileExistsError(
-                "Atomic LeRobot export requires an empty destination or "
-                "overwrite=True: '%s'" % self.export_dir
-            )
 
         parent = os.path.dirname(self.export_dir)
         etau.ensure_dir(parent)
@@ -164,39 +161,16 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
                 )
 
             os.chmod(staging_dir, _get_default_directory_mode(parent))
-            _publish_staged_export(
+            _publish_staging_dir(
                 staging_dir,
                 self.export_dir,
-                replace_existing=destination_exists,
+                overwrite=self.overwrite,
+                operation=operation,
             )
             published = True
         finally:
             if not published and os.path.isdir(staging_dir):
                 shutil.rmtree(staging_dir)
-
-
-def _publish_staged_export(staging_dir, export_dir, replace_existing):
-    if not replace_existing:
-        os.replace(staging_dir, export_dir)
-        return
-
-    if os.path.isdir(export_dir) and not os.listdir(export_dir):
-        os.rmdir(export_dir)
-        os.replace(staging_dir, export_dir)
-        return
-
-    backup_dir = export_dir + ".fiftyone-backup-" + uuid.uuid4().hex
-    os.replace(export_dir, backup_dir)
-    try:
-        os.replace(staging_dir, export_dir)
-    except BaseException:
-        os.replace(backup_dir, export_dir)
-        raise
-    else:
-        if os.path.isdir(backup_dir):
-            shutil.rmtree(backup_dir)
-        else:
-            os.remove(backup_dir)
 
 
 def _get_default_directory_mode(parent):
@@ -226,6 +200,7 @@ def _write_lerobot_export(staging_dir, specs):
     task_indexes = {}
     output_tables = []
     output_episode_rows = []
+    source_data_tables = {}
     global_index = 0
     for output_episode_index, spec in enumerate(specs):
         reference = spec.reference
@@ -239,7 +214,9 @@ def _write_lerobot_export(staging_dir, specs):
         data_asset = _resolved_asset_by_role(
             spec.manifest, MediaAssetRole.TABULAR_FRAME_DATA
         )
-        source_table = _read_selected_data_table(data_asset.path, locator)
+        source_table = _read_selected_data_table(
+            data_asset.path, locator, source_data_tables
+        )
         source_rows = source_table.to_pylist()
         tasks = list(source_episode_row.get("tasks") or [])
         for task in tasks:
@@ -542,7 +519,8 @@ def _read_source_tasks(manifest):
             "LeRobot export expected at most one tasks metadata asset"
         )
 
-    table = papq.read_table(assets[0].path)
+    with _open_parquet(assets[0].path, "tasks metadata") as parquet_file:
+        table = parquet_file.read()
     if not {"task_index", "task"}.issubset(table.column_names):
         raise MalformedMediaSourceError(
             "LeRobot tasks metadata must contain task_index and task"
@@ -555,30 +533,32 @@ def _read_source_tasks(manifest):
 
 
 def _read_parquet_row(path, row_index):
-    parquet_file = _open_parquet(path, "episode metadata")
-    offset = 0
-    for group_index in range(parquet_file.metadata.num_row_groups):
-        row_count = parquet_file.metadata.row_group(group_index).num_rows
-        if offset <= row_index < offset + row_count:
-            table = parquet_file.read_row_group(group_index)
-            return table.slice(row_index - offset, 1).to_pylist()[0]
+    with _open_parquet(path, "episode metadata") as parquet_file:
+        offset = 0
+        for group_index in range(parquet_file.metadata.num_row_groups):
+            row_count = parquet_file.metadata.row_group(group_index).num_rows
+            if offset <= row_index < offset + row_count:
+                table = parquet_file.read_row_group(group_index)
+                return table.slice(row_index - offset, 1).to_pylist()[0]
 
-        offset += row_count
+            offset += row_count
 
     raise StaleMediaReferenceError(
         "LeRobot export episode metadata row is no longer present"
     )
 
 
-def _read_selected_data_table(path, locator):
-    parquet_file = _open_parquet(path, "episode data")
-    row_groups = locator.parquet_row_groups
-    group_start = sum(
-        parquet_file.metadata.row_group(index).num_rows
-        for index in range(row_groups[0])
-    )
-    table = parquet_file.read_row_groups(row_groups)
-    start = locator.parquet_file_rows.start - group_start
+def _read_selected_data_table(path, locator, source_tables=None):
+    if source_tables is None:
+        source_tables = {}
+
+    table = source_tables.get(path)
+    if table is None:
+        with _open_parquet(path, "episode data") as parquet_file:
+            table = parquet_file.read()
+        source_tables[path] = table
+
+    start = locator.parquet_file_rows.start
     length = locator.parquet_file_rows.end - locator.parquet_file_rows.start
     selected = table.slice(start, length)
     if selected.num_rows != length:
@@ -597,6 +577,7 @@ def _validate_lerobot_export(staging_dir, expected_episodes):
             "Completed LeRobot export did not preserve the selected episodes"
         )
 
+    source = resolver.prepare_source_assets(source, source.rows)
     for row in source.rows:
         resolver.build_locator(source, row)
 

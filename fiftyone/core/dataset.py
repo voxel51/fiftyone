@@ -4561,7 +4561,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         if self._sample_collection.find_one(
-            {"filepath": {"$exists": True}}, {"_id": True}
+            {"filepath": {"$exists": True, "$ne": None}}, {"_id": True}
         ):
             raise ValueError(
                 "A dataset cannot mix filepath-backed and "
@@ -12327,18 +12327,30 @@ def _get_media_reference_kind(samples):
         return None
 
     dataset = samples._dataset
-    kind = dataset._doc.media_reference_kind
-    if kind is not None:
-        return kind
-
-    document = dataset._sample_collection.find_one(
-        {"_media_reference.kind": {"$exists": True}},
-        {"_media_reference.kind": True},
+    dataset_document = foo.get_db_conn().datasets.find_one(
+        {"_id": dataset._doc.id}, {"media_reference_kind": True}
     )
-    if document is None:
-        return None
+    marked_kind = (
+        None
+        if dataset_document is None
+        else dataset_document.get("media_reference_kind")
+    )
+    kinds = dataset._sample_collection.distinct(
+        "_media_reference.kind",
+        {"_media_reference.kind": {"$exists": True}},
+    )
+    kinds = [kind for kind in kinds if kind is not None]
+    if marked_kind is not None:
+        kinds.append(marked_kind)
 
-    return document["_media_reference"]["kind"]
+    kinds = set(kinds)
+    if len(kinds) > 1:
+        raise ValueError(
+            "A media-reference dataset cannot contain multiple reference "
+            "kinds"
+        )
+
+    return next(iter(kinds)) if kinds else None
 
 
 def _get_media_identity_mode(samples):
@@ -12351,36 +12363,52 @@ def _get_media_identity_mode(samples):
     if not isinstance(samples, foc.SampleCollection):
         return None
 
-    from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
-
     dataset = samples._dataset
-    cached_mode = dataset._media_identity_mode_cache
-    if cached_mode is not None:
-        return cached_mode
-
+    dataset_document = foo.get_db_conn().datasets.find_one(
+        {"_id": dataset._doc.id}, {"media_reference_kind": True}
+    )
     marked_reference = (
-        dataset._doc.media_reference_kind is not None
-        or dataset._doc.version == MEDIA_REFERENCE_DATASET_REVISION
+        dataset_document is not None
+        and dataset_document.get("media_reference_kind") is not None
     )
-    document = dataset._sample_collection.find_one(
-        {}, {"filepath": True, "_media_reference": True}
-    )
-    if document is None:
-        mode = "reference" if marked_reference else None
-        dataset._media_identity_mode_cache = mode
-        return mode
 
-    has_reference = document.get("_media_reference") is not None
-    has_filepath = document.get("filepath") is not None
-    if has_reference == has_filepath:
+    invalid_source = dataset._sample_collection.find_one(
+        {
+            "$or": [
+                {"filepath": None, "_media_reference": None},
+                {
+                    "filepath": {"$ne": None},
+                    "_media_reference": {"$ne": None},
+                },
+            ]
+        },
+        {"_id": True},
+    )
+    if invalid_source is not None:
         return "mixed"
 
-    mode = "reference" if has_reference else "filepath"
-    if marked_reference and mode != "reference":
+    has_reference = (
+        dataset._sample_collection.find_one(
+            {"_media_reference": {"$ne": None}}, {"_id": True}
+        )
+        is not None
+    )
+    has_filepath = (
+        dataset._sample_collection.find_one(
+            {"filepath": {"$ne": None}}, {"_id": True}
+        )
+        is not None
+    )
+    if has_reference and has_filepath:
         return "mixed"
 
-    dataset._media_identity_mode_cache = mode
-    return mode
+    if has_reference:
+        return "reference"
+
+    if has_filepath:
+        return "mixed" if marked_reference else "filepath"
+
+    return "reference" if marked_reference else None
 
 
 @contextlib.contextmanager

@@ -462,7 +462,9 @@ def _validate_relative_root(relative_root):
         ) from exc
 
 
-def _validate_publish_destination(output_dir, overwrite):
+def _validate_publish_destination(
+    output_dir, overwrite, operation="Native media-reference export"
+):
     if not os.path.exists(output_dir):
         return
 
@@ -471,12 +473,19 @@ def _validate_publish_destination(output_dir, overwrite):
 
     if not overwrite:
         raise FileExistsError(
-            "Native media-reference export requires an empty destination or "
-            "overwrite=True: '%s'" % output_dir
+            "%s requires an empty destination or overwrite=True: '%s'"
+            % (operation, output_dir)
         )
 
 
-def _publish_staging_dir(staging_dir, output_dir):
+def _publish_staging_dir(
+    staging_dir,
+    output_dir,
+    overwrite=False,
+    operation="Native media-reference export",
+):
+    _validate_publish_destination(output_dir, overwrite, operation=operation)
+
     if not os.path.exists(output_dir):
         os.replace(staging_dir, output_dir)
         return

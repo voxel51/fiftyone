@@ -119,10 +119,10 @@ class _SampleMixin(object):
         """
         envelope = self._doc.get_field("_media_reference")
         if envelope is None:
-            try:
-                return super().get_field("media_reference")
-            except AttributeError:
+            if not self.has_field("media_reference"):
                 return None
+
+            return super().get_field("media_reference")
 
         from fiftyone.multimodal.media import hydrate_media_reference
 
@@ -226,6 +226,16 @@ class _SampleMixin(object):
             skip_failures (False): whether to gracefully continue without
                 raising an error if metadata cannot be computed
         """
+        if self._doc.get_field("_media_reference") is not None:
+            from fiftyone.multimodal.media import (
+                UnsupportedMediaReferenceOperation,
+            )
+
+            raise UnsupportedMediaReferenceOperation(
+                "Generic file metadata is unavailable for media-reference-"
+                "backed samples; use the registered episode resolver"
+            )
+
         fom.compute_sample_metadata(
             self, overwrite=overwrite, skip_failures=skip_failures
         )

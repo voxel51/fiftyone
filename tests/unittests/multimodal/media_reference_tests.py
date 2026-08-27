@@ -22,6 +22,7 @@ from mongoengine import ValidationError
 from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
@@ -44,6 +45,7 @@ from fiftyone.multimodal.media import (
     WholeFile,
     _get_selected_media_asset_key,
     _get_shared_media_asset_key,
+    hydrate_media_reference,
     register_media_reference,
     serialize_media_reference,
 )
@@ -196,6 +198,36 @@ def _private_values(dataset, field_name):
 
 
 class MediaReferenceDomainTests(unittest.TestCase):
+    def test_lerobot_tests_skip_when_pyarrow_is_unavailable(self):
+        test_path = os.path.join(os.path.dirname(__file__), "lerobot_tests.py")
+        script = """
+import os
+import runpy
+import sys
+
+from _pytest.outcomes import Skipped
+
+test_path = sys.argv[1]
+sys.path.insert(0, os.path.dirname(os.path.dirname(test_path)))
+sys.modules["pyarrow"] = None
+sys.modules["pyarrow.parquet"] = None
+try:
+    runpy.run_path(test_path)
+except Skipped:
+    print("optional-pyarrow-skip")
+else:
+    raise AssertionError("LeRobot tests did not skip without pyarrow")
+"""
+        result = subprocess.run(
+            [sys.executable, "-c", script, test_path],
+            capture_output=True,
+            check=True,
+            cwd=os.getcwd(),
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(result.stdout.strip(), "optional-pyarrow-skip")
+
     def test_stable_domain_identity_and_pickling(self):
         first = _make_reference(17)
         same_episode = _make_reference(17)
@@ -224,6 +256,9 @@ class MediaReferenceDomainTests(unittest.TestCase):
             ),
         )
         self.assertEqual(pickle.loads(pickle.dumps(first)), first)
+
+        filepath_sample = fo.Sample(filepath="sample.jpg")
+        self.assertIsNone(filepath_sample.media_reference)
 
     def test_typed_asset_description_validation(self):
         reference = _make_reference(3)
@@ -254,6 +289,13 @@ class MediaReferenceDomainTests(unittest.TestCase):
                 DatasetRelativeLocation("meta/info.json"),
                 WholeFile(),
             )
+
+        envelope = serialize_media_reference(reference)
+        envelope["payload"]["locator"]["data"]["row_groups"] = 0
+        with self.assertRaisesRegex(
+            MediaReferenceError, "episode data row groups"
+        ):
+            hydrate_media_reference(envelope)
 
         shared_location = DatasetRelativeLocation(
             "data/chunk-000/file-000.parquet"
@@ -376,6 +418,46 @@ class MediaReferenceDomainTests(unittest.TestCase):
 
 
 class MediaReferenceDatasetTests(unittest.TestCase):
+    @drop_datasets
+    def test_media_source_mode_is_authoritative_across_dataset_instances(self):
+        reference_dataset = fo.Dataset()
+        reference_name = reference_dataset.name
+        self.assertIsNone(fod._get_media_identity_mode(reference_dataset))
+        fo.Dataset._instances.pop(reference_name, None)
+        reference_writer = fo.load_dataset(reference_name)
+        reference_writer.add_sample(
+            fo.Sample.from_media_reference(_make_reference(1))
+        )
+
+        with self.assertRaisesRegex(ValueError, "cannot mix"):
+            reference_dataset.add_sample(fo.Sample(filepath="sample.jpg"))
+        with self.assertRaises(UnsupportedMediaReferenceOperation):
+            reference_dataset.set_values("filepath", ["replacement.jpg"])
+
+        stored = list(reference_dataset._sample_collection.find({}))
+        self.assertEqual(len(stored), 1)
+        self.assertIsNone(stored[0].get("filepath"))
+        self.assertIsNotNone(stored[0].get("_media_reference"))
+
+        filepath_dataset = fo.Dataset()
+        filepath_name = filepath_dataset.name
+        self.assertIsNone(fod._get_media_identity_mode(filepath_dataset))
+        fo.Dataset._instances.pop(filepath_name, None)
+        filepath_writer = fo.load_dataset(filepath_name)
+        filepath_writer.add_sample(fo.Sample(filepath="sample.jpg"))
+
+        with self.assertRaisesRegex(ValueError, "cannot mix"):
+            filepath_dataset.add_sample(
+                fo.Sample.from_media_reference(_make_reference(2))
+            )
+
+        stored = list(filepath_dataset._sample_collection.find({}))
+        self.assertEqual(len(stored), 1)
+        self.assertEqual(
+            stored[0].get("filepath"), os.path.abspath("sample.jpg")
+        )
+        self.assertIsNone(stored[0].get("_media_reference"))
+
     @drop_datasets
     def test_attached_whole_value_reassignment_and_reload(self):
         dataset = fo.Dataset()
@@ -1106,7 +1188,11 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             {"_id": destination._doc.id},
             {"$set": {"media_reference_kind": "lerobot-episode"}},
         )
-        with mock.patch("fiftyone.migrations.runner.foc.VERSION", "2.1.0"):
+        self.assertEqual(
+            MEDIA_REFERENCE_DATASET_REVISION,
+            "9999.0.0+media-reference-v1",
+        )
+        with mock.patch("fiftyone.migrations.runner.foc.VERSION", "10000.0.0"):
             self.assertFalse(
                 fomi._is_media_reference_compatibility_revision(
                     destination.name
@@ -1210,6 +1296,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         old_revision = legacy._doc.version
         legacy.add_sample(fo.Sample.from_media_reference(_make_reference(10)))
         legacy._sample_collection.drop_index("_media_reference.key_1")
+        legacy._sample_collection.update_many({}, {"$set": {"filepath": None}})
         legacy._doc.version = old_revision
         legacy._doc.media_reference_kind = None
         legacy._doc.sample_fields = [
@@ -1273,6 +1360,12 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 dataset.delete_sample_field("media_reference")
             with self.assertRaises(UnsupportedMediaReferenceOperation):
                 dataset.compute_metadata()
+            live = dataset.first()
+            self.assertIsNone(live.metadata)
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                live.compute_metadata(overwrite=True, skip_failures=True)
+            live.reload()
+            self.assertIsNone(live.metadata)
             with self.assertRaises(UnsupportedMediaReferenceOperation):
                 dataset.export(
                     export_dir=os.path.join(root, "export"),
