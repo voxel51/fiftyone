@@ -33,7 +33,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: community
           # Full commit graph for the diff and trial merge, blobs on demand

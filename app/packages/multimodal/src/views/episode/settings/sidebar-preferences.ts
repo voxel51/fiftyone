@@ -82,6 +82,12 @@ export interface PersistedSidebarTilePreferences {
     Record<SemanticSourceKey, PersistedImagePointCloudProjection>
   >;
   readonly imageSourceKey?: SemanticSourceKey;
+  /**
+   * Which audio source an audio tile shows. A semantic key, not a runtime
+   * source id: ids are positional and are reassigned between loads, so
+   * persisting one would restore a different topic.
+   */
+  readonly audioSourceKey?: SemanticSourceKey;
   readonly threeD?: PersistedScene3dTilePreferences;
 }
 
@@ -270,6 +276,7 @@ function normalizeTiles(
       continue;
     }
     const imageSourceKey = normalizeSemanticSourceKey(value.imageSourceKey);
+    const audioSourceKey = normalizeSemanticSourceKey(value.audioSourceKey);
     const threeD = normalizeThreeD(value.threeD);
     const imageLabelSourceKeys = normalizeSemanticListMap(
       value.imageLabelSourceKeys,
@@ -293,6 +300,7 @@ function normalizeTiles(
         ? { imagePointCloudProjections }
         : {}),
       ...(imageSourceKey ? { imageSourceKey } : {}),
+      ...(audioSourceKey ? { audioSourceKey } : {}),
       ...(threeD ? { threeD } : {}),
     };
   }

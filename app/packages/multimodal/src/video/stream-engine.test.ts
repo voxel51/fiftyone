@@ -272,7 +272,7 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     lease.release();
   });
 
-  it("closes stale submitted output and never runs an obsolete decode tail", async () => {
+  it("closes stale submitted output for a discontinuous seek", async () => {
     const firstDecode = deferred<VideoFrame>();
     const harness = createHarness({ firstDecode });
     const manager = new VideoPlaybackManager("source", harness.dependencies);
@@ -281,18 +281,72 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     await vi.waitFor(() =>
       expect(harness.decoders[0].decodeCalls).toHaveLength(1),
     );
-    lease.request({ ...accessUnit(2, true), priority: "playing" });
-    lease.request({ ...accessUnit(3, true), priority: "playing" });
+    lease.request({
+      ...accessUnit(1_000_000_000, true),
+      priority: "playing",
+    });
+    lease.request({
+      ...accessUnit(2_000_000_000, true),
+      priority: "playing",
+    });
 
     const stale = fakeVideoFrame();
     firstDecode.resolve(stale.frame);
-    await presented(lease, 3n);
+    await presented(lease, 2_000_000_000n);
 
     expect(stale.close).toHaveBeenCalledOnce();
     expect(harness.decoders[0].decodeCalls.map((call) => call.target)).toEqual([
       1n,
-      3n,
+      2_000_000_000n,
     ]);
+    lease.release();
+  });
+
+  it("keeps publishing while H.264 copies lag continuous forward input", async () => {
+    const copyGates = new Map<bigint, ReturnType<typeof deferred<void>>>();
+    const harness = createHarness({
+      beforeCopy: async (timeNs) => {
+        const gate = deferred<void>();
+        copyGates.set(timeNs, gate);
+        await gate.promise;
+      },
+    });
+    const frameIntervalNs = 70_422_535;
+    const units = Array.from({ length: 10 }, (_, index) =>
+      accessUnit(index * frameIntervalNs, index % 5 === 0),
+    );
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader(units));
+    const lease = manager.acquire("/camera");
+    const published: bigint[] = [];
+    let lastPresentedTimeNs: bigint | null = null;
+    const unsubscribe = lease.subscribe(() => {
+      const presentedTimeNs = lease.getSnapshot().presentedTimeNs;
+      if (presentedTimeNs !== null && presentedTimeNs !== lastPresentedTimeNs) {
+        lastPresentedTimeNs = presentedTimeNs;
+        published.push(presentedTimeNs);
+      }
+    });
+
+    lease.request({ ...units[0], priority: "playing" });
+    for (let index = 1; index < units.length; index += 1) {
+      const previousTimeNs = units[index - 1].timeNs;
+      await vi.waitFor(() => expect(copyGates.has(previousTimeNs)).toBe(true));
+      // Models an 83ms grid request arriving before a >83ms bitmap copy. The
+      // producer never pauses, so a burst-only latest-wins test cannot pass it.
+      lease.request({ ...units[index], priority: "playing" });
+      copyGates.get(previousTimeNs)?.resolve();
+    }
+    const lastUnit = units.at(-1);
+    const penultimateUnit = units.at(-2);
+    if (!lastUnit || !penultimateUnit) throw new Error("expected churn units");
+    await vi.waitFor(() => expect(copyGates.has(lastUnit.timeNs)).toBe(true));
+
+    expect(published.length).toBeGreaterThanOrEqual(units.length - 1);
+    expect(published.at(-1)).toBe(penultimateUnit.timeNs);
+
+    copyGates.get(lastUnit.timeNs)?.resolve();
+    unsubscribe();
     lease.release();
   });
 
@@ -356,20 +410,26 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
       expect(harness.decoders[0].decodeCalls).toHaveLength(1),
     );
 
-    lease.request({ ...accessUnit(10, true), priority: "playing" });
+    lease.request({
+      ...accessUnit(1_000_000_000, true),
+      priority: "playing",
+    });
     await vi.waitFor(() =>
       expect(harness.decoders[0].decodeCalls).toHaveLength(2),
     );
     gate.resolve();
-    await presented(lease, 10n);
-    lease.request({ ...accessUnit(11), priority: "playing" });
-    await presented(lease, 11n);
-    lease.request({ ...accessUnit(12), priority: "playing" });
-    await presented(lease, 12n);
+    await presented(lease, 1_000_000_000n);
+    lease.request({ ...accessUnit(1_000_000_001), priority: "playing" });
+    await presented(lease, 1_000_000_001n);
+    lease.request({ ...accessUnit(1_000_000_002), priority: "playing" });
+    await presented(lease, 1_000_000_002n);
 
     expect(read).toHaveBeenCalledOnce();
     expect(read).toHaveBeenCalledWith(
-      expect.objectContaining({ endTimeNs: 11n, startTimeNs: 11n }),
+      expect.objectContaining({
+        endTimeNs: 1_000_000_001n,
+        startTimeNs: 1_000_000_001n,
+      }),
     );
     lease.release();
   });
@@ -508,6 +568,7 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
 function createHarness(
   options: {
     readonly beforeDecode?: (id: string, targetTimeNs: bigint) => Promise<void>;
+    readonly beforeCopy?: (timeNs: bigint) => Promise<void>;
     readonly decodeGate?: Promise<void>;
     readonly firstDecode?: ReturnType<typeof deferred<VideoFrame>>;
     readonly honorAbort?: boolean;
@@ -518,6 +579,7 @@ function createHarness(
   const presentationSources: Array<{ close: ReturnType<typeof vi.fn> }> = [];
   const dependencies: VideoEngineDependencies = {
     copyPresentation: async (frame, timeNs) => {
+      await options.beforeCopy?.(timeNs);
       frame.close();
       const source = { close: vi.fn(), height: 480, width: 640 };
       presentationSources.push(source);
@@ -561,6 +623,7 @@ class FakeDecoderActor implements VideoDecoderActor {
         id: string,
         targetTimeNs: bigint,
       ) => Promise<void>;
+      readonly beforeCopy?: (timeNs: bigint) => Promise<void>;
       readonly decodeGate?: Promise<void>;
       readonly firstDecode?: ReturnType<typeof deferred<VideoFrame>>;
       readonly honorAbort?: boolean;
