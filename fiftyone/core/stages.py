@@ -640,6 +640,13 @@ def _evaluation_key_choices():
     return {"source": "evaluation_keys"}
 
 
+def _similarity_key_choices():
+    """A parameter naming one of the dataset's similarity indexes. No
+    payload: the App resolves the keys from the dataset itself.
+    """
+    return {"source": "similarity_keys"}
+
+
 class Concat(ViewStage):
     """Concatenates the contents of the given
     :class:`fiftyone.core.collections.SampleCollection` to this collection.
@@ -8258,6 +8265,7 @@ class SortBySimilarity(ViewStage):
                 "type": "NoneType|str",
                 "default": "None",
                 "placeholder": "brain key",
+                "choices": _similarity_key_choices(),
             },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]

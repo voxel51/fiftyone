@@ -3,6 +3,7 @@ export * from "./media-field-lookers";
 export { default as useSearchSchemaFields } from "./schema/useSearchSchemaFields";
 export { default as useSetSelectedFieldsStage } from "./schema/useSetSelectedFieldsStage";
 export { default as usePromptableSimilarityKeys } from "./similaritySearch/usePromptableSimilarityKeys";
+export { default as useSimilarityKeys } from "./similaritySearch/useSimilarityKeys";
 export { default as useSimilarityType } from "./similaritySearch/useSimilarityType";
 export * from "./useActivityToast";
 export {

@@ -34,6 +34,7 @@ class StageParameterChoiceSource(Enum):
     GROUP_SLICES = "group_slices"
     CONSTANTS = "constants"
     EVALUATION_KEYS = "evaluation_keys"
+    SIMILARITY_KEYS = "similarity_keys"
     FREE_TEXT = "free_text"
 
 
@@ -85,9 +86,9 @@ class StageParameterChoices:
 
     ``source`` discriminates: ``fields`` is populated only for ``FIELDS``,
     where each entry is an alternative the parameter accepts, and ``values``
-    only for ``CONSTANTS``. ``GROUP_SLICES`` and ``EVALUATION_KEYS`` carry no
-    payload because the App resolves them from the dataset, and neither does
-    ``FREE_TEXT``.
+    only for ``CONSTANTS``. ``GROUP_SLICES``, ``EVALUATION_KEYS``, and
+    ``SIMILARITY_KEYS`` carry no payload because the App resolves them from
+    the dataset, and neither does ``FREE_TEXT``.
     """
 
     source: StageParameterChoiceSource

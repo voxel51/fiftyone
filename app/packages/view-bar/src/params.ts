@@ -100,6 +100,7 @@ export const RESOLVED_CHOICES: ReadonlySet<ParamChoices["source"]> = new Set([
   "CONSTANTS",
   "GROUP_SLICES",
   "EVALUATION_KEYS",
+  "SIMILARITY_KEYS",
 ] as const);
 
 /** Short label for a mode, for the switcher. */
@@ -259,6 +260,7 @@ export interface ParamChoices {
     | "GROUP_SLICES"
     | "CONSTANTS"
     | "EVALUATION_KEYS"
+    | "SIMILARITY_KEYS"
     | "FREE_TEXT"
     | "%future added value";
   fields: readonly FieldConstraint[];

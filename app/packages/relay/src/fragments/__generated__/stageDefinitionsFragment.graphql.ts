@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cb8d9e40baa1d4e0c427e71be396c141>>
+ * @generated SignedSource<<6c9f5c6b159cf41a51a3b7c4211b89a8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
-export type StageParameterChoiceSource = "CONSTANTS" | "EVALUATION_KEYS" | "FIELDS" | "FREE_TEXT" | "GROUP_SLICES" | "%future added value";
+export type StageParameterChoiceSource = "CONSTANTS" | "EVALUATION_KEYS" | "FIELDS" | "FREE_TEXT" | "GROUP_SLICES" | "SIMILARITY_KEYS" | "%future added value";
 export type StageParameterFieldExistence = "ANY" | "EXISTING" | "EXISTING_ROOT" | "%future added value";
 export type StageParameterFieldLevel = "ANY" | "FRAME" | "SAMPLE" | "%future added value";
 import { FragmentRefs } from "relay-runtime";

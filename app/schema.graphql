@@ -718,6 +718,7 @@ enum StageParameterChoiceSource {
   GROUP_SLICES
   CONSTANTS
   EVALUATION_KEYS
+  SIMILARITY_KEYS
   FREE_TEXT
 }
 

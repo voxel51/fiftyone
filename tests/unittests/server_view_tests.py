@@ -1380,6 +1380,7 @@ class StageDefinitionTests(unittest.TestCase):
             "constants": "values",
             "group_slices": None,
             "evaluation_keys": None,
+            "similarity_keys": None,
             "free_text": None,
         }
         levels = {"any", "sample", "frame"}
@@ -1426,6 +1427,14 @@ class StageDefinitionTests(unittest.TestCase):
         }
         self.assertEqual(
             params["eval_key"]["choices"], {"source": "evaluation_keys"}
+        )
+
+    def test_similarity_key_choices(self):
+        params = {
+            param["name"]: param for param in fosg.SortBySimilarity._params()
+        }
+        self.assertEqual(
+            params["brain_key"]["choices"], {"source": "similarity_keys"}
         )
 
     def test_stage_descriptions(self):
