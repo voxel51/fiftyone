@@ -40,6 +40,7 @@ FiftyOne
       ["banner-mobile","banner-desktop"].forEach(function(cls){
         var v=document.createElement("video"),s=document.createElement("source");
         v.className=cls;v.autoplay=v.loop=v.muted=v.playsInline=true;
+        v.setAttribute("muted","");v.setAttribute("aria-hidden","true");
         s.src=c["video_"+cls.split("-")[1]];s.type="video/webm";
         v.appendChild(s);a.appendChild(v);
       });
