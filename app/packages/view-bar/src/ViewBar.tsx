@@ -618,17 +618,27 @@ const ViewBar: React.FC<{
 
   const submitLanguageQuery = useCallback(
     (query: string) => {
-      const brainKey = promptKeys[0];
-      if (!brainKey) return;
+      // The most recently computed prompt-capable index — sample- or
+      // patches-level; a patches index needs the view in patch space first
+      const index = promptKeys[0];
+      if (!index) return;
       // Same gate as Apply: a draft with rejected values cannot ride along
       if (paramErrors.labels.length) return;
       const serialized = [
         ...serializeWorking(),
+        ...(index.patchesField
+          ? [
+              {
+                _cls: "fiftyone.core.stages.ToPatches",
+                kwargs: [["field", index.patchesField]] as [string, unknown][],
+              },
+            ]
+          : []),
         {
           _cls: "fiftyone.core.stages.SortBySimilarity",
           kwargs: [
             ["query", query],
-            ["brain_key", brainKey],
+            ["brain_key", index.key],
             ["k", LANGUAGE_SEARCH_K],
           ] as [string, unknown][],
         },
@@ -888,21 +898,6 @@ const ViewBar: React.FC<{
             })}
           </div>
         )}
-        {/* Clearing must survive the collapse: hover expands the chip away
-            under the pointer, so the [x] holds the bar's right edge in
-            both states */}
-        {state.stages.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              paddingRight: 4,
-              flexShrink: 0,
-            }}
-          >
-            <ClearViewButton onClear={clearView} />
-          </div>
-        )}
       </div>
 
       {/* Apply — only animates in when the working state diverges from the
@@ -954,6 +949,22 @@ const ViewBar: React.FC<{
           </Button>
         </Tooltip>
       </div>
+      {/* Clearing must survive the collapse: hover expands the chip away
+          under the pointer, so the [x] holds the bar's right edge in both
+          states. It sits after Apply so walking backward from Apply reaches
+          the stages without passing a destructive control. */}
+      {state.stages.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            paddingRight: 4,
+            flexShrink: 0,
+          }}
+        >
+          <ClearViewButton onClear={clearView} />
+        </div>
+      )}
     </Stack>
   );
 };

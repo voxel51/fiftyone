@@ -99,9 +99,8 @@ test.describe("view bar keyboard", () => {
     await page.keyboard.press("Enter");
     await expect(viewBar.applyBtn).toBeFocused();
 
-    // Walk back to the nearest insert slot for the second stage — past the
-    // clear-view [x] that sits between Apply and the stages
-    await page.keyboard.press("Shift+Tab");
+    // Walk back to the nearest insert slot for the second stage — nothing
+    // destructive sits between Apply and the stages
     await page.keyboard.press("Shift+Tab");
     await expect(
       viewBar.locator.getByLabel("Insert stage").last(),
