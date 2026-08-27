@@ -8,7 +8,11 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
-import { VideoTimelineSurface } from "./VideoTimelineSurface";
+import { VideoLookerReact } from "./VideoLooker";
+import {
+  useIsVideoTimelinePoc,
+  VideoTimelineSurface,
+} from "./VideoTimelineSurface";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -88,6 +92,7 @@ const ModalLookerContent = React.memo(
     const shouldRenderImavid = useRecoilValue(
       fos.shouldRenderImaVidLooker(true),
     );
+    const isVideoTimelinePoc = useIsVideoTimelinePoc();
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
 
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
@@ -110,10 +115,13 @@ const ModalLookerContent = React.memo(
     }
 
     if (isVideo) {
-      return isAnnotate ? (
-        <VideoAnnotationSurface sample={sample} />
-      ) : (
+      if (isAnnotate) {
+        return <VideoAnnotationSurface sample={sample} />;
+      }
+      return isVideoTimelinePoc ? (
         <VideoTimelineSurface sample={sample} />
+      ) : (
+        <VideoLookerReact sample={sample} showControls />
       );
     }
 

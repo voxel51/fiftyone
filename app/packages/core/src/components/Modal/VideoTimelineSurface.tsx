@@ -18,6 +18,30 @@ import styles from "./VideoTimelineSurface.module.css";
 const VIDEO_STREAM_ID = "video";
 
 /**
+ * Query-param opt-in, read once at mount.
+ *
+ * Off by default: this surface is deliberately plain — no Lighter, no
+ * overlays — so making it the default video renderer regresses every
+ * behaviour those carry. Eight e2e specs cover exactly that ground
+ * (bounding boxes on grouped video, temporal-detection CRUD, track
+ * split/merge, mp4 selection and carousels), and they are testing real
+ * features, not the POC.
+ *
+ * Reach it with `?mmtimeline=1` on a video sample. The app router preserves
+ * unknown query params (`useWriters/onSetSample.ts` only rewrites
+ * `id`/`groupId`), so the opt-in survives opening the modal and navigating
+ * between samples.
+ */
+export function useIsVideoTimelinePoc(): boolean {
+  return useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      new URLSearchParams(window.location.search).get("mmtimeline") === "1"
+    );
+  }, []);
+}
+
+/**
  * Fraction of the surface height the timeline may occupy before its body caps
  * and scrolls internally — so a growing track list never crowds out the media.
  * Mirrors the annotation surface so both video surfaces dock the same way.
