@@ -816,7 +816,8 @@ class LeRobotExporterTests(unittest.TestCase):
                 exported_table["timestamp"].to_pylist(),
                 source_table["timestamp"].to_pylist(),
             )
-            self.assertEqual(os.stat(export_root).st_mode & 0o777, 0o700)
+            if os.name == "posix":
+                self.assertEqual(os.stat(export_root).st_mode & 0o777, 0o700)
 
             aggregate = foule._aggregate_episode_statistics(
                 [
