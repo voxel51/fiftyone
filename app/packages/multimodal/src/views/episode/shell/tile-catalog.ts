@@ -6,6 +6,7 @@ import {
   JSONIcon,
   LogsIcon,
   PolylineIcon,
+  VolumeUpIcon,
   WorkspacesIcon,
 } from "@voxel51/voodo";
 import {
@@ -50,7 +51,7 @@ const THREE_D_SOURCE_TYPES = new Set<string>([
 /** Built-in tile catalog in explicit product order. */
 const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
   [TILE_TYPE.AUDIO]: {
-    icon: IconName.VolumeUp,
+    icon: VolumeUpIcon,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.includes(SCENE_SOURCE_TYPE.AUDIO),
     order: 15,
