@@ -1179,6 +1179,60 @@ class DictField(mongoengine.fields.DictField, Field):
                 self.field.validate(_value)
 
 
+class MediaReferenceField(Field):
+    """The protected immutable media-reference descriptor field.
+
+    Values are exposed as :class:`fiftyone.multimodal.MediaReference`
+    instances and stored as public ``{"kind": ..., "key": ...}``
+    descriptors. Resolver details are hydrated from the private bindings
+    collection.
+    """
+
+    def validate(self, value):
+        from fiftyone.multimodal.media import (
+            MediaReference,
+            _validate_media_reference_descriptor,
+            _serialize_media_reference,
+        )
+
+        if isinstance(value, MediaReference):
+            _validate_media_reference_descriptor(
+                _serialize_media_reference(value)
+            )
+            return
+
+        _validate_media_reference_descriptor(value)
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        from fiftyone.multimodal.media import (
+            MediaReference,
+            _validate_media_reference_descriptor,
+            _serialize_media_reference,
+        )
+
+        if isinstance(value, MediaReference):
+            return _serialize_media_reference(value)
+
+        _validate_media_reference_descriptor(value)
+        return dict(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        from fiftyone.multimodal.media import MediaReference
+
+        if isinstance(value, MediaReference):
+            return value
+
+        from fiftyone.multimodal.media import _hydrate_media_reference
+
+        return _hydrate_media_reference(value)
+
+
 class KeypointsField(ListField):
     """A list of ``(x, y)`` coordinate pairs.
 

@@ -1905,7 +1905,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             self._metadata["frame_fields"] = schema
 
         self._media_fields = sample_collection._get_media_fields(
-            blacklist="filepath",
+            blacklist=("filepath", "media_reference"),
         )
 
         info = dict(sample_collection.info)
@@ -2286,6 +2286,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         published = False
         try:
             self._export_samples(sample_collection, progress=progress)
+            self._export_media_reference_bindings(sample_collection)
             materialized_roots = {}
             if self.export_media is True:
                 materialized_roots = _materialize_reference_assets(
@@ -2316,6 +2317,28 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             if self._final_export_dir is not None:
                 self.export_dir = self._final_export_dir
 
+    def _export_media_reference_bindings(self, sample_collection):
+        from fiftyone.multimodal.media import (
+            _MEDIA_REFERENCE_BINDINGS_FILENAME,
+            _export_media_reference_bindings,
+        )
+
+        if sample_collection.media_type == fomm.GROUP:
+            sample_collection = sample_collection.select_group_slices(
+                _allow_mixed=True
+            )
+
+        descriptors = [
+            descriptor
+            for descriptor in sample_collection.values("media_reference")
+            if descriptor is not None
+        ]
+        bindings = _export_media_reference_bindings(descriptors)
+        foo.export_document(
+            {"bindings": bindings},
+            os.path.join(self.export_dir, _MEDIA_REFERENCE_BINDINGS_FILENAME),
+        )
+
     def close(self, *args):
         if self._staging_dir is not None and os.path.isdir(self._staging_dir):
             shutil.rmtree(self._staging_dir)
@@ -2335,7 +2358,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             _sample_collection = sample_collection
 
         self._media_fields = sample_collection._get_media_fields(
-            blacklist="filepath"
+            blacklist=("filepath", "media_reference")
         )
 
         logger.info("Exporting samples...")
@@ -2345,13 +2368,13 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         _samples = foo.aggregate(coll, pipeline)
 
         def _prep_sample(sd):
-            media_reference = sd.get("_media_reference")
+            media_reference = sd.get("media_reference")
             if media_reference is not None:
-                from fiftyone.multimodal.media import validate_media_source
+                from fiftyone.multimodal.media import _validate_media_source
 
-                validate_media_source(sd.get("filepath"), media_reference)
-                # Reference envelopes remain logical when their physical
-                # assets are materialized into a portable source bundle.
+                _validate_media_source(sd.get("filepath"), media_reference)
+                # Public descriptors remain logical when physical assets are
+                # materialized into a portable source bundle.
             else:
                 filepath = sd["filepath"]
                 if self.export_media is not False:

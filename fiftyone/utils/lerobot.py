@@ -51,7 +51,7 @@ from fiftyone.multimodal.media import (
     RowInterval,
     StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
-    UnsupportedMediaReferenceVersionError,
+    UnsupportedLeRobotVersionError,
     VideoTimestampInterval,
     _MediaAssetManifest,
     _MediaResolver,
@@ -59,7 +59,7 @@ from fiftyone.multimodal.media import (
     _get_media_resolver,
     _get_selected_media_asset_key,
     _register_media_resolver,
-    serialize_media_reference,
+    _serialize_media_reference_binding,
 )
 import fiftyone.utils.data.importers as foud
 
@@ -738,7 +738,7 @@ def _validate_v3_info(info):
 
     major = int(match.group(1))
     if major != 3:
-        raise UnsupportedMediaReferenceVersionError(
+        raise UnsupportedLeRobotVersionError(
             "Unsupported LeRobotDataset format major %d; this importer "
             "supports only v3.x" % major
         )
@@ -1103,7 +1103,6 @@ def _build_locator(
     has_stats = os.path.isfile(_resolve_under_root(root, stats_path))
     has_tasks = os.path.isfile(_resolve_under_root(root, tasks_path))
     return LeRobotV3Locator(
-        schema_version=1,
         source_fingerprint=source_fingerprint,
         locator_fingerprint=locator_fingerprint,
         info_location=DatasetRelativeLocation("meta/info.json"),
@@ -1434,7 +1433,7 @@ def _get_cached_manifest(cache_key, binding_revision):
 
 def _resolution_cache_key(reference, assets):
     serialized_reference = json.dumps(
-        serialize_media_reference(reference),
+        _serialize_media_reference_binding(reference),
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
@@ -1533,7 +1532,7 @@ def _validate_resolved_data_slice(root, episode, locator):
 def _validate_declared_v3_version(version):
     match = _VERSION_PATTERN.fullmatch(version.strip())
     if match is None or int(match.group(1)) != 3:
-        raise UnsupportedMediaReferenceVersionError(
+        raise UnsupportedLeRobotVersionError(
             "Stored LeRobot episode declares unsupported version '%s'; "
             "re-import it with the v3 importer" % version
         )

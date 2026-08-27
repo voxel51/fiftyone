@@ -1889,6 +1889,10 @@ class NoDatasetMixin(object):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
+            field = self.default_fields.get(k)
+            if isinstance(field, fof.MediaReferenceField):
+                v = field.to_mongo(v)
+
             # Store ObjectIds in private fields in the DB
             if k == "id":
                 k = "_id"
@@ -1911,6 +1915,10 @@ class NoDatasetMixin(object):
                 continue
             elif isinstance(v, ObjectId) and k.startswith("_"):
                 k = k[1:]
+
+            field = cls.default_fields.get(k)
+            if isinstance(field, fof.MediaReferenceField):
+                v = field.to_python(v)
 
             kwargs[k] = v
 

@@ -217,6 +217,7 @@ from .multimodal.media import (
     MediaReference,
     MediaReferenceError,
     MediaSourceAuthorizationError,
+    MissingMediaReferenceBindingError,
     MissingMediaRootError,
     MovedMediaRootError,
     RowInterval,
@@ -224,11 +225,10 @@ from .multimodal.media import (
     UnfinalizedMediaSourceError,
     UnsupportedLeRobotExportModeError,
     UnsupportedMediaReferenceOperation,
-    UnsupportedMediaReferenceVersionError,
+    UnsupportedLeRobotVersionError,
     VideoTimestampInterval,
     WholeFile,
     get_logical_media_identity,
-    register_media_reference,
 )
 from .core.threed import (
     BoxGeometry,

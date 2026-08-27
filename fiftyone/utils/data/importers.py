@@ -1831,6 +1831,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._dataset_dict = None
         self._cleanup_on_failure = False
         self._media_source_manifest_sources = None
+        self._reference_bindings = None
 
     @property
     def cleanup_on_failure(self):
@@ -1846,12 +1847,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         self._dataset_dict = foo.import_document(self._metadata_path)
 
-        from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
-
         self._cleanup_on_failure = (
-            self._dataset_dict.get("version")
-            == MEDIA_REFERENCE_DATASET_REVISION
-            or self._dataset_dict.get("media_reference_kind") is not None
+            self._dataset_dict.get("media_reference_kind") is not None
         )
 
         if self._cleanup_on_failure:
@@ -1867,6 +1864,24 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 self._media_source_manifest_sources = (
                     _load_media_source_manifest(media_source_manifest_path)
                 )
+
+            from fiftyone.multimodal.media import (
+                _MEDIA_REFERENCE_BINDINGS_FILENAME,
+            )
+
+            binding_path = os.path.join(
+                self.dataset_dir, _MEDIA_REFERENCE_BINDINGS_FILENAME
+            )
+            if os.path.isfile(binding_path):
+                binding_document = foo.import_document(binding_path)
+                if not isinstance(binding_document, dict) or set(
+                    binding_document
+                ) != {"bindings"}:
+                    raise ValueError(
+                        "Malformed private media-reference bindings export"
+                    )
+
+                self._reference_bindings = binding_document["bindings"]
 
         self._tags_path = os.path.join(
             self.dataset_dir, fota.TAGS_EXPORT_FILENAME
@@ -1893,20 +1908,20 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
     def import_samples(self, dataset, tags=None, progress=None):
         dataset_dict = self._dataset_dict
-        from fiftyone.multimodal.media import MEDIA_REFERENCE_DATASET_REVISION
-
-        media_reference_revision = (
-            dataset_dict.get("version") == MEDIA_REFERENCE_DATASET_REVISION
+        media_reference_export = (
+            dataset_dict.get("media_reference_kind") is not None
         )
-        adopting_reference = media_reference_revision and not bool(dataset)
-        with fod._media_reference_write_guard(
+        adopting_reference = media_reference_export and not bool(dataset)
+        inserted_binding_keys = []
+        with fod._reference_media_write_guard(
             dataset,
             adopting_reference,
             clear_samples_on_failure=True,
+            inserted_binding_keys=inserted_binding_keys,
         ):
             if (
                 len(dataset) > 0
-                and not media_reference_revision
+                and not media_reference_export
                 and fomi.needs_migration(head=dataset_dict["version"])
             ):
                 # A migration is required in order to load this dataset, and
@@ -1920,7 +1935,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                         dataset_dict,
                         tags=tags,
                         progress=progress,
-                        media_reference_revision=media_reference_revision,
+                        media_reference_export=media_reference_export,
                     )
                     dataset.add_collection(tmp_dataset)
                 finally:
@@ -1932,7 +1947,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                     dataset_dict,
                     tags=tags,
                     progress=progress,
-                    media_reference_revision=media_reference_revision,
+                    media_reference_export=media_reference_export,
+                    inserted_binding_keys=inserted_binding_keys,
                 )
 
             fota.import_tags(
@@ -1998,15 +2014,17 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         dataset_dict,
         tags=None,
         progress=None,
-        media_reference_revision=False,
+        media_reference_export=False,
+        inserted_binding_keys=None,
     ):
         name = dataset.name
         empty_import = not bool(dataset)
         now = datetime.utcnow()
         from fiftyone.multimodal.media import (
-            MEDIA_REFERENCE_DATASET_REVISION,
             MediaReferenceError,
-            validate_media_source,
+            _hydrate_media_reference,
+            _import_media_reference_bindings,
+            _validate_media_source,
         )
 
         logger.info("Importing samples...")
@@ -2016,7 +2034,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         samples = self._preprocess_list(samples)
 
         media_reference_kind = None
-        if media_reference_revision:
+        if media_reference_export:
             samples = list(samples)
             num_samples = len(samples)
             media_mode, media_reference_kind = fod._preflight_media_sources(
@@ -2024,6 +2042,17 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
             if media_mode == "reference":
                 dataset_dict["media_reference_kind"] = media_reference_kind
+
+            descriptors = [
+                sample.get("media_reference")
+                for sample in samples
+                if sample.get("media_reference") is not None
+            ]
+            inserted = _import_media_reference_bindings(
+                self._reference_bindings or (), descriptors
+            )
+            if inserted_binding_keys is not None:
+                inserted_binding_keys.extend(inserted)
         elif self.max_samples is not None:
             num_samples = self.max_samples
 
@@ -2099,7 +2128,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             dataset._merge_doc(new_doc)
 
         marked_kind = media_reference_kind
-        if marked_kind is None and media_reference_revision:
+        if marked_kind is None and media_reference_export:
             marked_kind = dataset._doc.media_reference_kind
 
         if marked_kind is not None:
@@ -2116,16 +2145,17 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         dataset_id = dataset._doc.id
 
         def _parse_sample(sd):
-            media_reference = sd.get("_media_reference")
+            media_reference = sd.get("media_reference")
             if media_reference is not None:
-                if not media_reference_revision:
+                if not media_reference_export:
                     raise MediaReferenceError(
-                        "Native media-reference imports must declare dataset "
-                        "revision %s" % MEDIA_REFERENCE_DATASET_REVISION
+                        "Native media-reference imports must declare their "
+                        "media_reference_kind"
                     )
 
-                validate_media_source(sd.get("filepath"), media_reference)
-                if sd.get("_media_type") != media_reference["media_type"]:
+                _validate_media_source(sd.get("filepath"), media_reference)
+                reference = _hydrate_media_reference(media_reference)
+                if sd.get("_media_type") != reference.media_type:
                     raise ValueError(
                         "Native media-reference import has inconsistent "
                         "persisted media type"
@@ -2244,8 +2274,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         # Migrate dataset if necessary
         #
 
-        if not media_reference_revision:
-            fomi.migrate_dataset_if_necessary(name)
+        fomi.migrate_dataset_if_necessary(name)
         dataset._reload(hard=True)
 
         return sample_ids

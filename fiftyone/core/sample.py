@@ -55,10 +55,7 @@ class _SampleMixin(object):
             self.set_field("frames", value)
             return
 
-        if (
-            name == "media_reference"
-            and self._doc.get_field("_media_reference") is not None
-        ):
+        if name == "media_reference" and hasattr(self, "_doc"):
             self._set_media_reference(value)
             return
 
@@ -74,6 +71,10 @@ class _SampleMixin(object):
     def __setitem__(self, field_name, value):
         if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
             self.frames[field_name] = value
+            return
+
+        if field_name == "media_reference":
+            self._set_media_reference(value)
             return
 
         self._secure_media(field_name, value)
@@ -97,36 +98,11 @@ class _SampleMixin(object):
     @property
     def filename(self):
         """The basename or logical display name of the sample's media."""
-        envelope = self._doc.get_field("_media_reference")
-        if envelope is not None:
-            return envelope["display_name"]
+        reference = self._doc.get_field("media_reference")
+        if reference is not None:
+            return reference.display_name
 
         return os.path.basename(self.filepath)
-
-    @property
-    def media_reference(self):
-        """The sample's hydrated media reference, or ``None``.
-
-        The complete value of a reference-backed sample can be replaced by
-        assigning another valid :class:`fiftyone.multimodal.MediaReference`.
-        Media references are immutable; nested or in-place edits are not
-        supported. Collection-level replacement via
-        :meth:`fiftyone.core.collections.SampleCollection.set_values` is not
-        supported.
-
-        On filepath-backed samples, a user-defined field with this name
-        retains its ordinary field value and editing behavior.
-        """
-        envelope = self._doc.get_field("_media_reference")
-        if envelope is None:
-            if not self.has_field("media_reference"):
-                return None
-
-            return super().get_field("media_reference")
-
-        from fiftyone.multimodal.media import hydrate_media_reference
-
-        return hydrate_media_reference(envelope)
 
     @property
     def media_type(self):
@@ -136,12 +112,6 @@ class _SampleMixin(object):
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             return self._frames
-
-        if (
-            field_name == "media_reference"
-            and self._doc.get_field("_media_reference") is not None
-        ):
-            return self.media_reference
 
         return super().get_field(field_name)
 
@@ -153,23 +123,15 @@ class _SampleMixin(object):
         validate=True,
         dynamic=False,
     ):
-        envelope = self._doc.get_field("_media_reference")
-        if field_name == "media_reference" and envelope is not None:
+        root_field = field_name.split(".", 1)[0]
+        if root_field == "media_reference" and field_name != root_field:
+            raise AttributeError(
+                "Media references only support whole-value reassignment"
+            )
+
+        if field_name == "media_reference":
             self._set_media_reference(value)
             return
-
-        if (
-            field_name == "media_reference"
-            and envelope is None
-            and not self.has_field(field_name)
-        ):
-            from fiftyone.multimodal.media import MediaReference
-
-            if isinstance(value, MediaReference):
-                raise ValueError(
-                    "Cannot convert a filepath-backed sample to a media "
-                    "reference by assignment; create a new sample instead"
-                )
 
         self._secure_media(field_name, value)
 
@@ -197,16 +159,13 @@ class _SampleMixin(object):
         if (
             root_field == "media_reference"
             and field_name != root_field
-            and self._doc.get_field("_media_reference") is not None
+            and self._doc.get_field("media_reference") is not None
         ):
             raise AttributeError(
                 "Media references only support whole-value reassignment"
             )
 
-        if root_field in ("filepath", "_media_reference") or (
-            root_field == "media_reference"
-            and self._doc.get_field("_media_reference") is not None
-        ):
+        if root_field in ("filepath", "media_reference"):
             raise ValueError(
                 "A sample's media source cannot be cleared; create a new "
                 "sample instead"
@@ -226,7 +185,7 @@ class _SampleMixin(object):
             skip_failures (False): whether to gracefully continue without
                 raising an error if metadata cannot be computed
         """
-        if self._doc.get_field("_media_reference") is not None:
+        if self._doc.get_field("media_reference") is not None:
             from fiftyone.multimodal.media import (
                 UnsupportedMediaReferenceOperation,
             )
@@ -508,14 +467,14 @@ class _SampleMixin(object):
         Returns:
             a :class:`Sample`
         """
-        envelope = self._doc.get_field("_media_reference")
-        if envelope is not None:
+        reference = self._doc.get_field("media_reference")
+        if reference is not None:
             parsed_fields = self._parse_fields(
                 fields=fields, omit_fields=omit_fields
             )
             values = {}
             for src_field, dst_field in parsed_fields.items():
-                if src_field == "filepath":
+                if src_field in ("filepath", "media_reference"):
                     continue
 
                 try:
@@ -523,11 +482,9 @@ class _SampleMixin(object):
                 except KeyError:
                     continue
 
-            return Sample._from_media_reference_envelope(
-                deepcopy(envelope),
-                _rand=self._doc.get_field("_rand"),
-                **values,
-            )
+            sample = Sample(media_reference=deepcopy(reference), **values)
+            sample._doc._data["_rand"] = self._doc.get_field("_rand")
+            return sample
 
         if self.media_type == fomm.VIDEO:
             (
@@ -566,12 +523,6 @@ class _SampleMixin(object):
         """
         d = super().to_dict(include_private=include_private)
 
-        envelope = self._doc.get_field("_media_reference")
-        if envelope is not None:
-            d["_media_reference"] = deepcopy(envelope)
-            d["_media_type"] = self.media_type
-            d["_rand"] = self._doc.get_field("_rand")
-
         if self.media_type == fomm.VIDEO:
             if include_frames:
                 d["frames"] = self.frames._to_frames_dict(
@@ -584,15 +535,7 @@ class _SampleMixin(object):
 
     def _secure_media(self, field_name, value):
         root_field = field_name.split(".", 1)[0]
-        if root_field == "_media_reference":
-            raise AttributeError(
-                "The private '_media_reference' field cannot be edited"
-            )
-
-        if (
-            root_field == "media_reference"
-            and self._doc.get_field("_media_reference") is not None
-        ):
+        if root_field == "media_reference":
             if field_name == "media_reference":
                 return
 
@@ -603,7 +546,7 @@ class _SampleMixin(object):
         if field_name != "filepath":
             return
 
-        if self._doc.get_field("_media_reference") is not None:
+        if self._doc.get_field("media_reference") is not None:
             raise ValueError(
                 "Cannot assign a filepath to a reference-backed sample"
             )
@@ -617,22 +560,27 @@ class _SampleMixin(object):
             )
 
     def _set_media_reference(self, reference):
-        current_envelope = self._doc.get_field("_media_reference")
-        if current_envelope is None:
+        current_reference = self._doc.get_field("media_reference")
+        if current_reference is None:
             raise ValueError(
                 "Cannot convert a filepath-backed sample to a media reference "
                 "by assignment; create a new sample instead"
             )
 
         from fiftyone.multimodal.media import (
-            serialize_media_reference,
-            validate_media_source,
+            MediaReference,
+            _persist_media_reference,
+            _serialize_media_reference,
+            _validate_media_source,
         )
 
-        envelope = serialize_media_reference(reference)
-        validate_media_source(self._doc.get_field("filepath"), envelope)
+        if not isinstance(reference, MediaReference):
+            raise TypeError("media_reference must be a MediaReference")
 
-        new_media_type = envelope["media_type"]
+        descriptor = _serialize_media_reference(reference)
+        _validate_media_source(self._doc.get_field("filepath"), descriptor)
+
+        new_media_type = reference.media_type
         if self.media_type != new_media_type:
             raise fomm.MediaTypeError(
                 "A sample's 'media_reference' can be changed, but its media "
@@ -641,24 +589,25 @@ class _SampleMixin(object):
             )
 
         if self.in_dataset:
-            self._validate_attached_media_reference(envelope)
-            self._validate_unique_media_reference_key(envelope["key"])
+            self._validate_attached_media_reference(reference, descriptor)
+            self._validate_unique_media_reference_key(descriptor["key"])
 
-        if envelope == current_envelope:
+        if reference == current_reference:
             return
 
+        _persist_media_reference(reference)
         if self.in_dataset:
-            self._doc._media_reference = deepcopy(envelope)
+            self._doc.media_reference = reference
             self._doc.metadata = None
         else:
-            self._doc._data["_media_reference"] = deepcopy(envelope)
+            self._doc._data["media_reference"] = reference
             self._doc._data["metadata"] = None
 
     def _validate_unique_media_reference_key(self, key):
         duplicate = self._dataset._sample_collection.find_one(
             {
                 "_id": {"$ne": self._id},
-                "_media_reference.key": key,
+                "media_reference.key": key,
             },
             {"_id": True},
         )
@@ -667,10 +616,10 @@ class _SampleMixin(object):
                 "Cannot assign a duplicate media-reference key in a dataset"
             )
 
-    def _validate_attached_media_reference(self, envelope):
+    def _validate_attached_media_reference(self, reference, descriptor):
         dataset = self._dataset
         dataset_kind = dataset._doc.media_reference_kind
-        if dataset_kind is not None and dataset_kind != envelope["kind"]:
+        if dataset_kind is not None and dataset_kind != descriptor["kind"]:
             raise ValueError(
                 "A media-reference dataset cannot contain multiple "
                 "reference kinds"
@@ -680,10 +629,10 @@ class _SampleMixin(object):
             incompatible_source = dataset._sample_collection.find_one(
                 {
                     "$or": [
-                        {"_media_reference": {"$exists": False}},
-                        {"_media_reference": None},
+                        {"media_reference": {"$exists": False}},
+                        {"media_reference": None},
                         {"filepath": {"$exists": True, "$ne": None}},
-                        {"_media_reference.kind": {"$ne": envelope["kind"]}},
+                        {"media_reference.kind": {"$ne": descriptor["kind"]}},
                     ]
                 },
                 {"_id": True},
@@ -706,19 +655,19 @@ class _SampleMixin(object):
                 if group is not None
                 else None
             )
-            if slice_media_type != envelope["media_type"]:
+            if slice_media_type != reference.media_type:
                 raise fomm.MediaTypeError(
                     "Media-reference type '%s' is incompatible with group "
                     "slice '%s'"
                     % (
-                        envelope["media_type"],
+                        reference.media_type,
                         group.name if group is not None else None,
                     )
                 )
-        elif dataset.media_type != envelope["media_type"]:
+        elif dataset.media_type != reference.media_type:
             raise fomm.MediaTypeError(
                 "Media-reference type '%s' does not match dataset media type "
-                "'%s'" % (envelope["media_type"], dataset.media_type)
+                "'%s'" % (reference.media_type, dataset.media_type)
             )
 
     def _parse_fields_video(self, fields=None, omit_fields=None):
@@ -752,11 +701,12 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         :class:`Sample` instance.
 
     Args:
-        filepath: the required path to the data on disk for a filepath-backed
+        filepath (None): the path to the data on disk for a filepath-backed
             sample. The path is converted to an absolute path (if necessary)
-            via :func:`fiftyone.core.storage.normalize_path`. Reference-backed
-            samples must instead be created via
-            :meth:`Sample.from_media_reference`
+            via :func:`fiftyone.core.storage.normalize_path`
+        media_reference (None): an immutable
+            :class:`fiftyone.multimodal.MediaReference` for a
+            reference-backed sample
         tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample
@@ -764,9 +714,15 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
     _NO_DATASET_DOC_CLS = foo.NoDatasetSampleDocument
 
-    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+    def __init__(
+        self,
+        filepath=None,
+        tags=None,
+        metadata=None,
+        media_reference=None,
+        **kwargs,
+    ):
         private_fields = {
-            "_media_reference",
             "_media_type",
             "_rand",
         }
@@ -777,11 +733,30 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
                 % sorted(found_private)
             )
 
-        if filepath is None:
-            raise TypeError("filepath must be a path-like string")
+        from fiftyone.multimodal.media import (
+            MediaReference,
+            _persist_media_reference,
+            _validate_media_source,
+        )
+
+        if media_reference is not None and not isinstance(
+            media_reference, MediaReference
+        ):
+            raise TypeError("media_reference must be a MediaReference")
+
+        if filepath is None and media_reference is None:
+            raise TypeError("filepath or media_reference is required")
+
+        _validate_media_source(filepath, media_reference)
+        if media_reference is not None:
+            _persist_media_reference(media_reference)
 
         super().__init__(
-            filepath=filepath, tags=tags, metadata=metadata, **kwargs
+            filepath=filepath,
+            tags=tags,
+            metadata=metadata,
+            media_reference=media_reference,
+            **kwargs,
         )
 
         if self.media_type == fomm.VIDEO:
@@ -823,6 +798,15 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             include_frames (True): whether to reload any in-memory frames of
                 video samples
         """
+        if self.in_dataset and self.media_reference is not None:
+            descriptor = self._dataset._sample_collection.find_one(
+                {"_id": self._id}, {"media_reference": True}
+            )
+            if descriptor is not None:
+                from fiftyone.multimodal.media import _hydrate_media_reference
+
+                _hydrate_media_reference(descriptor.get("media_reference"))
+
         if self.media_type == fomm.VIDEO and include_frames:
             self.frames.reload(hard=hard)
 
@@ -882,7 +866,6 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         forbidden = {
             "filepath",
             "media_reference",
-            "_media_reference",
             "_media_type",
             "_rand",
         }
@@ -893,23 +876,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
                 % sorted(found)
             )
 
-        from fiftyone.multimodal.media import serialize_media_reference
-
-        envelope = serialize_media_reference(reference)
-        return cls._from_media_reference_envelope(envelope, **fields)
-
-    @classmethod
-    def _from_media_reference_envelope(cls, envelope, _rand=None, **fields):
-        """Trusted internal construction from a serialized envelope."""
-        kwargs = dict(fields)
-        kwargs["filepath"] = None
-        kwargs["_media_reference"] = deepcopy(envelope)
-        kwargs["_media_type"] = envelope["media_type"]
-        if _rand is not None:
-            kwargs["_rand"] = _rand
-
-        doc = cls._NO_DATASET_DOC_CLS(**kwargs)
-        return cls.from_doc(doc)
+        return cls(media_reference=reference, **fields)
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
@@ -943,7 +910,15 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         d = dict(d)
         d.pop("_dataset_id", None)
 
+        descriptor = d.get("media_reference")
+        if descriptor is not None:
+            from fiftyone.multimodal.media import _hydrate_media_reference
+
+            d["media_reference"] = _hydrate_media_reference(descriptor)
+
         media_type = d.get("_media_type", None)
+        if media_type is None and d.get("media_reference") is not None:
+            media_type = d["media_reference"].media_type
         if media_type is None:
             media_type = fomm.get_media_type(d.get("filepath", ""))
 
@@ -1061,12 +1036,6 @@ class SampleView(_SampleMixin, DocumentView):
                 field_names.add("frames")
 
             d = {k: v for k, v in d.items() if k in field_names}
-
-        envelope = self._doc.get_field("_media_reference")
-        if envelope is not None:
-            d["_media_reference"] = deepcopy(envelope)
-            d["_media_type"] = self.media_type
-            d["_rand"] = self._doc.get_field("_rand")
 
         return d
 

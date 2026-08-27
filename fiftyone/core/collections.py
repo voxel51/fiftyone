@@ -11193,7 +11193,7 @@ class SampleCollection(object):
             names = [
                 "id",
                 "filepath",
-                "_media_reference.key",
+                "media_reference.key",
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11207,7 +11207,7 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
-                "_media_reference.key",
+                "media_reference.key",
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11218,7 +11218,7 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
-                "_media_reference.key",
+                "media_reference.key",
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11229,7 +11229,7 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
-                "_media_reference.key",
+                "media_reference.key",
                 "created_at",
                 "last_modified_at",
                 gf + ".id",
@@ -11239,7 +11239,7 @@ class SampleCollection(object):
         return [
             "id",
             "filepath",
-            "_media_reference.key",
+            "media_reference.key",
             "created_at",
             "last_modified_at",
         ]
@@ -12736,28 +12736,23 @@ def _validate_media_reference_write(
     sample_collection, field_name, filepath_error_message
 ):
     root_field = field_name.split(".", 1)[0]
-    if root_field == "_media_reference":
-        raise AttributeError(
-            "The private '_media_reference' field cannot be edited"
-        )
-
-    if root_field not in ("media_reference", "filepath"):
-        return
-
-    reference_mode = (
-        fod._get_media_identity_mode(sample_collection) == "reference"
-    )
-    if root_field == "media_reference" and reference_mode:
+    if root_field == "media_reference":
         from fiftyone.multimodal.media import (
             UnsupportedMediaReferenceOperation,
         )
 
         raise UnsupportedMediaReferenceOperation(
-            "Collection-level media-reference replacement is not supported; "
+            "Collection-level media-reference mutation is not supported; "
             "assign a complete MediaReference to each Sample and save it"
         )
 
-    if root_field == "filepath" and reference_mode:
+    if root_field != "filepath":
+        return
+
+    reference_mode = (
+        fod._get_media_identity_mode(sample_collection) == "reference"
+    )
+    if reference_mode:
         from fiftyone.multimodal.media import (
             UnsupportedMediaReferenceOperation,
         )
@@ -12775,7 +12770,7 @@ def _contains_media_references(sample_collection):
         len(
             sample_collection.match(
                 {
-                    "_media_reference.key": {
+                    "media_reference.key": {
                         "$exists": True,
                         "$ne": None,
                     }

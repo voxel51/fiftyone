@@ -96,7 +96,7 @@ class DatasetSampleDocument(DatasetMixin, Document):
     last_modified_at = fof.DateTimeField(read_only=True)
 
     _media_type = fof.StringField()
-    _media_reference = fof.DictField(null=True)
+    media_reference = fof.MediaReferenceField(null=True)
     _rand = fof.FloatField(default=_generate_rand)
     _dataset_id = fof.ObjectIdField()
 
@@ -105,12 +105,12 @@ class DatasetSampleDocument(DatasetMixin, Document):
         return self._media_type
 
     def clean(self):
-        if self._media_reference is None and not self.filepath:
+        if self.media_reference is None and not self.filepath:
             raise ValidationError("Field is required: ['filepath']")
 
-        from fiftyone.multimodal.media import validate_media_source
+        from fiftyone.multimodal.media import _validate_media_source
 
-        validate_media_source(self.filepath, self._media_reference)
+        _validate_media_source(self.filepath, self.media_reference)
 
     def _get_repr_fields(self):
         fields = self.field_names
@@ -130,14 +130,14 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
 
     def __init__(self, **kwargs):
         filepath = kwargs.get("filepath", None)
-        media_reference = kwargs.get("_media_reference", None)
+        media_reference = kwargs.get("media_reference", None)
 
         if filepath is not None:
             filepath = fos.normalize_path(filepath)
 
-        from fiftyone.multimodal.media import validate_media_source
+        from fiftyone.multimodal.media import _validate_media_source
 
-        validate_media_source(filepath, media_reference)
+        _validate_media_source(filepath, media_reference)
 
         kwargs["id"] = kwargs.get("id", None)
         kwargs["filepath"] = filepath
@@ -147,7 +147,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
             kwargs["_rand"] = _generate_rand(
                 filepath=filepath,
                 media_identity=(
-                    media_reference.get("key")
+                    media_reference.key
                     if media_reference is not None
                     else None
                 ),
@@ -156,7 +156,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
         media_type = kwargs.pop("media_type", None)
         if media_reference is not None:
             kwargs["_media_type"] = kwargs.get("_media_type", None) or (
-                media_reference["media_type"]
+                media_reference.media_type
             )
         else:
             kwargs["_media_type"] = (

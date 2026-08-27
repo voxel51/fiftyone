@@ -28,15 +28,14 @@ from typing import (
     Union,
 )
 
+from pymongo.errors import DuplicateKeyError
+
 import fiftyone.core.media as fom
 
 LEROBOT_EPISODE_KIND = "lerobot-episode"
-MEDIA_REFERENCE_ENVELOPE_VERSION = "1"
 MAX_MEDIA_REFERENCE_BYTES = 64 * 1024
-# Existing clients accept dataset revisions below 2.0. Reference-backed
-# datasets use a valid, permanently reserved future revision with an explicit
-# local marker so older clients fail cleanly without colliding with a release.
-MEDIA_REFERENCE_DATASET_REVISION = "9999.0.0+media-reference-v1"
+_MEDIA_REFERENCE_BINDINGS_COLLECTION = "media_reference_bindings"
+_MEDIA_REFERENCE_BINDINGS_FILENAME = "media_reference_bindings.json"
 
 _DRIVE_PREFIX_PATTERN = re.compile(r"^[A-Za-z]:")
 _SHA256_FINGERPRINT_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -62,8 +61,12 @@ class StaleMediaReferenceError(MediaReferenceError):
     """Raised when a stored locator no longer matches its source."""
 
 
-class UnsupportedMediaReferenceVersionError(MediaReferenceError):
-    """Raised when a referenced source version is not supported."""
+class MissingMediaReferenceBindingError(MediaReferenceError):
+    """Raised when a persisted reference has no private binding."""
+
+
+class UnsupportedLeRobotVersionError(MediaReferenceError):
+    """Raised when a LeRobot source version is not supported."""
 
 
 class MalformedMediaSourceError(MediaReferenceError):
@@ -329,7 +332,6 @@ class LeRobotImageLocator:
 class LeRobotV3Locator:
     """A bounded, source-relative locator for one LeRobot v3 episode."""
 
-    schema_version: int
     source_fingerprint: str
     locator_fingerprint: str
     info_location: DatasetRelativeLocation
@@ -350,12 +352,6 @@ class LeRobotV3Locator:
     images: Tuple[LeRobotImageLocator, ...]
 
     def __post_init__(self):
-        if self.schema_version != 1:
-            raise UnsupportedMediaReferenceVersionError(
-                "Unsupported LeRobot locator schema version '%s'"
-                % self.schema_version
-            )
-
         _validate_fingerprint(self.source_fingerprint, "source_fingerprint")
         _validate_fingerprint(self.locator_fingerprint, "locator_fingerprint")
         _validate_fingerprint(
@@ -463,7 +459,6 @@ class MediaReference(ABC):
     """A logical media value that is independent of physical location."""
 
     kind: ClassVar[str]
-    schema_version: ClassVar[int]
 
     @property
     @abstractmethod
@@ -498,7 +493,6 @@ class LeRobotEpisode(MediaReference):
     """
 
     kind: ClassVar[str] = LEROBOT_EPISODE_KIND
-    schema_version: ClassVar[int] = 1
 
     source_identity: str
     source_fingerprint: str
@@ -540,7 +534,9 @@ class LeRobotEpisode(MediaReference):
 
     @property
     def key(self) -> str:
-        return "lerobot:%s:%d" % (self.source_identity, self.episode_index)
+        identity = "%s\0%d" % (self.source_identity, self.episode_index)
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        return "lerobot:%s" % digest
 
     @property
     def media_type(self) -> str:
@@ -702,7 +698,6 @@ class _MediaResolver(ABC):
 class _MediaReferenceSerializer:
     kind: str
     domain_type: Type[MediaReference]
-    version: str
     serialize: Callable[[MediaReference], Mapping[str, Any]]
     hydrate: Callable[[Mapping[str, Any]], MediaReference]
 
@@ -715,10 +710,9 @@ _RESOLVERS_BY_KIND: Dict[str, _MediaResolver] = {}
 _EXPORT_PLANNERS_BY_KIND_AND_FORMAT: Dict[Tuple[str, str], Callable] = {}
 
 
-def register_media_reference(
+def _register_media_reference(
     kind: str,
     domain_type: Type[MediaReference],
-    version: str,
     serialize: Callable[[MediaReference], Mapping[str, Any]],
     hydrate: Callable[[Mapping[str, Any]], MediaReference],
 ) -> None:
@@ -727,32 +721,56 @@ def register_media_reference(
         raise ValueError("Media-reference serializer is already registered")
 
     serializer = _MediaReferenceSerializer(
-        kind, domain_type, str(version), serialize, hydrate
+        kind, domain_type, serialize, hydrate
     )
     _SERIALIZERS_BY_KIND[kind] = serializer
     _SERIALIZERS_BY_TYPE[domain_type] = serializer
 
 
-def serialize_media_reference(reference: MediaReference) -> Dict[str, Any]:
-    """Serializes a media reference into its private persistence envelope."""
+def _serialize_media_reference(reference: MediaReference) -> Dict[str, Any]:
+    """Serializes a media reference into its public descriptor."""
     serializer = _find_serializer_for_reference(reference)
-    payload = deepcopy(dict(serializer.serialize(reference)))
-    envelope = {
+    descriptor = {
         "kind": serializer.kind,
-        "version": serializer.version,
-        "media_type": reference.media_type,
         "key": reference.key,
-        "display_name": reference.display_name,
-        "payload": payload,
     }
-    _validate_media_reference_envelope(envelope)
-    return envelope
+    _validate_media_reference_descriptor(descriptor)
+    return descriptor
 
 
-def hydrate_media_reference(envelope: Mapping[str, Any]) -> MediaReference:
-    """Hydrates a domain value from a private persistence envelope."""
-    _validate_media_reference_envelope(envelope)
-    kind = envelope["kind"]
+def _persist_media_reference(reference: MediaReference) -> Dict[str, str]:
+    """Persists the private binding for a reference and returns its descriptor."""
+    descriptor = _serialize_media_reference(reference)
+    binding = _serialize_media_reference_binding(reference)
+
+    import fiftyone.core.odm as foo
+
+    collection = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION]
+    existing = collection.find_one({"_id": descriptor["key"]})
+    if existing is None:
+        try:
+            collection.insert_one(binding)
+            return descriptor
+        except DuplicateKeyError:
+            existing = collection.find_one({"_id": descriptor["key"]})
+            if existing is None:
+                raise
+
+    if existing != binding:
+        raise StaleMediaReferenceError(
+            "Media-reference key '%s' is already bound to different private "
+            "resolution data" % descriptor["key"]
+        )
+
+    return descriptor
+
+
+def _hydrate_media_reference(descriptor: Mapping[str, Any]) -> MediaReference:
+    """Hydrates a media reference through its private binding."""
+    _validate_media_reference_descriptor(descriptor)
+    kind = descriptor["kind"]
+
+    _ensure_builtin_media_reference_kind(kind)
 
     serializer = _SERIALIZERS_BY_KIND.get(kind)
     if serializer is None:
@@ -760,13 +778,24 @@ def hydrate_media_reference(envelope: Mapping[str, Any]) -> MediaReference:
             "Unsupported media-reference kind '%s'" % kind
         )
 
-    if envelope["version"] != serializer.version:
-        raise UnsupportedMediaReferenceVersionError(
-            "Unsupported media-reference envelope version '%s' for kind '%s'"
-            % (envelope["version"], kind)
+    import fiftyone.core.odm as foo
+
+    binding = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION].find_one(
+        {"_id": descriptor["key"]}
+    )
+    if binding is None:
+        raise MissingMediaReferenceBindingError(
+            "No private media binding exists for reference '%s'"
+            % descriptor["key"]
         )
 
-    reference = serializer.hydrate(deepcopy(envelope["payload"]))
+    _validate_media_reference_binding(binding)
+    if binding["kind"] != kind:
+        raise StaleMediaReferenceError(
+            "Persisted media-reference kind does not match its private binding"
+        )
+
+    reference = serializer.hydrate(deepcopy(binding["payload"]))
     if not isinstance(reference, serializer.domain_type):
         raise MediaReferenceError(
             "Media-reference hydrator for '%s' returned %s"
@@ -779,9 +808,9 @@ def hydrate_media_reference(envelope: Mapping[str, Any]) -> MediaReference:
         reference.display_name,
     )
     actual = (
-        envelope["key"],
-        envelope["media_type"],
-        envelope["display_name"],
+        descriptor["key"],
+        binding["media_type"],
+        binding["display_name"],
     )
     if expected != actual:
         raise StaleMediaReferenceError(
@@ -854,49 +883,42 @@ def _get_media_export_planner(kind, destination_format):
     return planner
 
 
-def sanitize_media_reference(
-    envelope: Optional[Mapping[str, Any]],
-) -> Optional[Dict[str, str]]:
-    """Returns the browser-safe descriptor for a persisted envelope."""
-    if envelope is None:
-        return None
-
-    _validate_media_reference_envelope(envelope)
-    return {
-        "kind": envelope["kind"],
-        "key": envelope["key"],
-        "version": envelope["version"],
-    }
-
-
-def validate_media_source(
-    filepath: Optional[str], envelope: Optional[Mapping[str, Any]]
+def _validate_media_source(
+    filepath: Optional[str], reference: Optional[Any]
 ) -> None:
     """Validates the filepath/media-reference storage XOR invariant."""
     has_filepath = filepath is not None
-    has_reference = envelope is not None
+    has_reference = reference is not None
     if has_filepath == has_reference:
         raise MediaReferenceError(
             "A sample must contain exactly one of 'filepath' and "
-            "'_media_reference'"
+            "'media_reference'"
         )
 
     if has_reference:
-        _validate_media_reference_envelope(envelope)
+        if isinstance(reference, MediaReference):
+            _validate_media_reference_descriptor(
+                _serialize_media_reference(reference)
+            )
+        else:
+            _validate_media_reference_descriptor(reference)
 
 
 def get_logical_media_identity(sample_or_dict: Any) -> str:
     """Gets the logical media identity of a sample or stored sample dict."""
     if isinstance(sample_or_dict, Mapping):
-        envelope = sample_or_dict.get("_media_reference")
+        reference = sample_or_dict.get("media_reference")
         filepath = sample_or_dict.get("filepath")
     else:
-        envelope = sample_or_dict._doc.get_field("_media_reference")
+        reference = sample_or_dict._doc.get_field("media_reference")
         filepath = sample_or_dict._doc.get_field("filepath")
 
-    validate_media_source(filepath, envelope)
-    if envelope is not None:
-        return envelope["key"]
+    _validate_media_source(filepath, reference)
+    if reference is not None:
+        if isinstance(reference, MediaReference):
+            return reference.key
+
+        return reference["key"]
 
     return filepath
 
@@ -979,44 +1001,174 @@ def _ensure_builtin_media_reference_kind(kind, load_exporters=False):
         __import__("fiftyone.utils.lerobot_export")
 
 
-def _validate_media_reference_envelope(envelope: Mapping[str, Any]) -> None:
-    if not isinstance(envelope, Mapping):
-        raise TypeError("Media-reference envelope must be a mapping")
+def _validate_media_reference_descriptor(
+    descriptor: Mapping[str, Any],
+) -> None:
+    if not isinstance(descriptor, Mapping):
+        raise TypeError("Media-reference descriptor must be a mapping")
 
-    required = {
-        "kind",
-        "version",
-        "media_type",
-        "key",
-        "display_name",
-        "payload",
-    }
-    if set(envelope) != required:
+    required = {"kind", "key"}
+    if set(descriptor) != required:
         raise MediaReferenceError(
-            "Media-reference envelope must contain exactly %s"
+            "Media-reference descriptor must contain exactly %s"
+            % sorted(required)
+        )
+
+    for field_name in required:
+        value = descriptor[field_name]
+        if not isinstance(value, str) or not value:
+            raise MediaReferenceError(
+                "Media-reference descriptor field '%s' must be a non-empty "
+                "string" % field_name
+            )
+
+
+def _serialize_media_reference_binding(reference):
+    serializer = _find_serializer_for_reference(reference)
+    payload = deepcopy(dict(serializer.serialize(reference)))
+    binding = {
+        "_id": reference.key,
+        "kind": serializer.kind,
+        "media_type": reference.media_type,
+        "display_name": reference.display_name,
+        "payload": payload,
+    }
+    _validate_media_reference_binding(binding)
+    return binding
+
+
+def _validate_media_reference_binding(binding):
+    if not isinstance(binding, Mapping):
+        raise TypeError("Private media-reference binding must be a mapping")
+
+    required = {"_id", "kind", "media_type", "display_name", "payload"}
+    if set(binding) != required:
+        raise MediaReferenceError(
+            "Private media-reference binding must contain exactly %s"
             % sorted(required)
         )
 
     for field_name in required - {"payload"}:
-        value = envelope[field_name]
+        value = binding[field_name]
         if not isinstance(value, str) or not value:
             raise MediaReferenceError(
-                "Media-reference envelope field '%s' must be a non-empty string"
-                % field_name
+                "Private media-reference binding field '%s' must be a "
+                "non-empty string" % field_name
             )
 
-    if envelope["media_type"] not in fom.MEDIA_TYPES:
+    if binding["media_type"] not in fom.MEDIA_TYPES:
         raise MediaReferenceError(
             "Unsupported media-reference media type '%s'"
-            % envelope["media_type"]
+            % binding["media_type"]
         )
 
-    if not isinstance(envelope["payload"], Mapping):
+    if not isinstance(binding["payload"], Mapping):
         raise MediaReferenceError(
-            "Media-reference envelope payload must be a mapping"
+            "Private media-reference binding payload must be a mapping"
         )
 
-    _validate_bounded_json(envelope, "Media-reference envelope")
+    _validate_bounded_json(binding, "Private media-reference binding")
+
+
+def _export_media_reference_bindings(descriptors):
+    """Returns private bindings for exactly the given public descriptors."""
+    import fiftyone.core.odm as foo
+
+    normalized = []
+    seen = set()
+    for descriptor in descriptors:
+        if isinstance(descriptor, MediaReference):
+            descriptor = _serialize_media_reference(descriptor)
+
+        _validate_media_reference_descriptor(descriptor)
+        identity = (descriptor["kind"], descriptor["key"])
+        if identity not in seen:
+            normalized.append(dict(descriptor))
+            seen.add(identity)
+
+    collection = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION]
+    bindings = []
+    for descriptor in normalized:
+        binding = collection.find_one({"_id": descriptor["key"]})
+        if binding is None:
+            raise MissingMediaReferenceBindingError(
+                "No private media binding exists for reference '%s'"
+                % descriptor["key"]
+            )
+
+        _validate_media_reference_binding(binding)
+        if binding["kind"] != descriptor["kind"]:
+            raise StaleMediaReferenceError(
+                "Media-reference descriptor kind does not match its private "
+                "binding"
+            )
+
+        bindings.append(binding)
+
+    return bindings
+
+
+def _import_media_reference_bindings(bindings, descriptors):
+    """Imports private bindings required by the given public descriptors."""
+    by_identity = {}
+    for binding in bindings:
+        _validate_media_reference_binding(binding)
+        identity = (binding["kind"], binding["_id"])
+        if identity in by_identity and by_identity[identity] != binding:
+            raise StaleMediaReferenceError(
+                "Native export contains conflicting private media bindings"
+            )
+
+        by_identity[identity] = dict(binding)
+
+    import fiftyone.core.odm as foo
+
+    collection = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION]
+    pending = []
+    seen = set()
+    for descriptor in descriptors:
+        _validate_media_reference_descriptor(descriptor)
+        identity = (descriptor["kind"], descriptor["key"])
+        if identity in seen:
+            continue
+
+        seen.add(identity)
+        binding = by_identity.get(identity)
+        if binding is None:
+            raise MissingMediaReferenceBindingError(
+                "Native export is missing the private binding for reference "
+                "'%s'" % descriptor["key"]
+            )
+
+        existing = collection.find_one({"_id": descriptor["key"]})
+        if existing is None:
+            pending.append(binding)
+        elif existing != binding:
+            raise StaleMediaReferenceError(
+                "Media-reference key '%s' is already bound to different "
+                "private resolution data" % descriptor["key"]
+            )
+
+    inserted = []
+    try:
+        for binding in pending:
+            try:
+                collection.insert_one(binding)
+                inserted.append(binding["_id"])
+            except DuplicateKeyError:
+                existing = collection.find_one({"_id": binding["_id"]})
+                if existing != binding:
+                    raise StaleMediaReferenceError(
+                        "Media-reference key '%s' was concurrently bound to "
+                        "different private resolution data" % binding["_id"]
+                    )
+    except BaseException:
+        if inserted:
+            collection.delete_many({"_id": {"$in": inserted}})
+
+        raise
+
+    return inserted
 
 
 def _validate_bounded_json(value: Any, label: str) -> None:
@@ -1099,7 +1251,6 @@ def _hydrate_row_interval(value):
 
 def _serialize_lerobot_locator(locator):
     return {
-        "schema_version": locator.schema_version,
         "source_fingerprint": locator.source_fingerprint,
         "locator_fingerprint": locator.locator_fingerprint,
         "info_location": locator.info_location.path,
@@ -1156,7 +1307,6 @@ def _serialize_lerobot_locator(locator):
 
 def _hydrate_lerobot_locator(value):
     required = {
-        "schema_version",
         "source_fingerprint",
         "locator_fingerprint",
         "info_location",
@@ -1201,7 +1351,6 @@ def _hydrate_lerobot_locator(value):
     statistics = value["statistics_location"]
     tasks = value["tasks_location"]
     return LeRobotV3Locator(
-        schema_version=value["schema_version"],
         source_fingerprint=value["source_fingerprint"],
         locator_fingerprint=value["locator_fingerprint"],
         info_location=DatasetRelativeLocation(value["info_location"]),
@@ -1304,10 +1453,9 @@ def _hydrate_lerobot_episode(payload: Mapping[str, Any]) -> LeRobotEpisode:
     )
 
 
-register_media_reference(
+_register_media_reference(
     LEROBOT_EPISODE_KIND,
     LeRobotEpisode,
-    MEDIA_REFERENCE_ENVELOPE_VERSION,
     _serialize_lerobot_episode,
     _hydrate_lerobot_episode,
 )
