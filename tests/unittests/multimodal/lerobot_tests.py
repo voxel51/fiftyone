@@ -35,10 +35,8 @@ import fiftyone.utils.lerobot_export as foule
 from fiftyone.multimodal.media import (
     LeRobotEpisode,
     MalformedMediaSourceError,
-    MediaAssetRole,
     MissingMediaRootError,
     MovedMediaRootError,
-    RowInterval,
     StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
     UnsupportedLeRobotExportModeError,
@@ -51,9 +49,9 @@ from fiftyone.server.routes.media_reference import MediaReferenceRoutes
 from fiftyone.server.routes.sample import SampleRoutes, generate_sample_etag
 from fiftyone.server.samples import _create_sample_item
 from fiftyone.utils.lerobot import (
+    _LeRobotMediaResolver,
     bind_lerobot_source,
     LeRobotDatasetImporter,
-    LeRobotMediaResolver,
     relocate_lerobot_source,
     unbind_lerobot_source,
 )
@@ -288,7 +286,7 @@ class LeRobotImporterTests(unittest.TestCase):
                     references[7].source_identity,
                     relocated_root,
                 )
-                manifest = LeRobotMediaResolver().resolve_assets(
+                manifest = _LeRobotMediaResolver().resolve_assets(
                     references[7], references[7].describe_assets()
                 )
                 self.assertEqual(manifest.episode_index, 7)
@@ -311,7 +309,7 @@ class LeRobotImporterTests(unittest.TestCase):
             second = _import(root, max_samples=1).first().media_reference
             self.assertNotEqual(first.source_identity, second.source_identity)
             with self.assertRaises(StaleMediaReferenceError):
-                LeRobotMediaResolver().resolve_assets(
+                _LeRobotMediaResolver().resolve_assets(
                     first, first.describe_assets()
                 )
 
@@ -379,7 +377,7 @@ class LeRobotImporterTests(unittest.TestCase):
             _write_v3_source(root)
             dataset = _import(root, max_samples=1)
             reference = dataset.first().media_reference
-            resolver = LeRobotMediaResolver()
+            resolver = _LeRobotMediaResolver()
 
             bind_lerobot_source(
                 reference.source_identity,
@@ -611,7 +609,7 @@ class LeRobotExporterTests(unittest.TestCase):
                 export_media=True,
             )
             exported_reference = exported.first().media_reference
-            manifest = LeRobotMediaResolver().resolve_assets(
+            manifest = _LeRobotMediaResolver().resolve_assets(
                 exported_reference,
                 exported_reference.describe_assets(),
             )
@@ -835,67 +833,23 @@ class LeRobotExporterTests(unittest.TestCase):
 
 class MediaAssetLifecycleTests(unittest.TestCase):
     @drop_datasets
-    def test_selected_view_plan_and_shared_asset_materialization(self):
+    def test_selected_view_native_materialization_deduplicates_assets(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
-            output_root = os.path.join(temp_dir, "assets")
+            output_root = os.path.join(temp_dir, "native")
             _write_v3_source(source_root, episodes=4)
             dataset = _import(source_root)
             selected = dataset.match({"episode_index": {"$in": [1, 3]}})
 
-            plan = selected.get_media_asset_plan()
-            selected_ids = set(selected.values("id"))
-            self.assertIsInstance(plan, fo.MediaAssetPlan)
             self.assertEqual(
                 fo.get_logical_media_identity(selected.first()),
                 selected.first().media_reference.key,
             )
-            self.assertEqual(
-                {usage.sample_id for usage in plan.usages}, selected_ids
+            selected.export(
+                export_dir=output_root,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=True,
             )
-            self.assertEqual(len(plan.sources), 1)
-
-            video_assets = [
-                asset
-                for asset in plan.assets
-                if asset.location.endswith(".mp4")
-            ]
-            self.assertEqual(len(video_assets), 1)
-            video_usages = [
-                usage
-                for usage in plan.usages
-                if usage.asset_key == video_assets[0].key
-            ]
-            self.assertEqual(len(video_usages), 2)
-
-            data_usages = [
-                usage
-                for usage in plan.usages
-                if usage.role is MediaAssetRole.TABULAR_FRAME_DATA
-            ]
-            self.assertEqual(len(data_usages), 2)
-            self.assertTrue(
-                all(
-                    isinstance(usage.selector, RowInterval)
-                    for usage in data_usages
-                )
-            )
-            self.assertNotEqual(
-                data_usages[0].selector, data_usages[1].selector
-            )
-
-            capabilities = selected.get_media_asset_capabilities()
-            self.assertTrue(capabilities.supports_asset_enumeration)
-            self.assertTrue(capabilities.supports_thin_serialization)
-            self.assertTrue(
-                capabilities.supports_materialization(
-                    True, "fiftyone-dataset-materialized"
-                )
-            )
-            self.assertIn("lerobot-v3", capabilities.supported_exporters)
-
-            resolved = selected.materialize_media_assets(output_root)
-            self.assertTrue(resolved.resolved)
             materialized_videos = [
                 os.path.join(root, filename)
                 for root, _, filenames in os.walk(output_root)
@@ -904,15 +858,24 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             ]
             self.assertEqual(len(materialized_videos), 1)
 
-            manifest_path = os.path.join(output_root, "media_assets.json")
+            manifest_path = os.path.join(output_root, "media_sources.json")
             with open(manifest_path) as file:
                 manifest = json.load(file)
 
-            self.assertEqual(
-                {usage["sample_id"] for usage in manifest["usages"]},
-                selected_ids,
-            )
+            self.assertEqual(set(manifest), {"version", "sources"})
+            self.assertEqual(len(manifest["sources"]), 1)
+            self.assertEqual(manifest["sources"][0]["binding_required"], False)
             self.assertNotIn(source_root, json.dumps(manifest))
+
+            imported = fo.Dataset.from_dir(
+                dataset_dir=output_root,
+                dataset_type=fot.FiftyOneDataset,
+            )
+            self.assertEqual(sorted(imported.values("episode_index")), [1, 3])
+            self.assertEqual(
+                imported.info["media_reference_sources"][0]["binding_status"],
+                "bound",
+            )
 
     @drop_datasets
     def test_native_thin_materialized_and_unsupported_modes(self):
@@ -930,9 +893,10 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 dataset_type=fot.FiftyOneDataset,
                 export_media=False,
             )
-            with open(os.path.join(thin_root, "media_assets.json")) as file:
+            with open(os.path.join(thin_root, "media_sources.json")) as file:
                 thin_manifest = json.load(file)
 
+            self.assertEqual(set(thin_manifest), {"version", "sources"})
             self.assertTrue(
                 all(
                     source["binding_required"]
@@ -943,7 +907,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             for filename in (
                 "metadata.json",
                 "samples.json",
-                "media_assets.json",
+                "media_sources.json",
             ):
                 with open(os.path.join(thin_root, filename)) as file:
                     self.assertNotIn(source_root, file.read())
@@ -954,28 +918,33 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 dataset_type=fot.FiftyOneDataset,
             )
             self.assertEqual(
-                len(
-                    thin_import.get_media_asset_capabilities().binding_required_sources
-                ),
-                1,
-            )
-            self.assertEqual(
                 thin_import.info["media_reference_sources"][0][
                     "binding_status"
                 ],
                 "required",
             )
+            missing_binding_root = os.path.join(temp_dir, "missing-binding")
             with self.assertRaises(MissingMediaRootError):
-                thin_import.get_media_asset_plan(resolve=True)
+                thin_import.export(
+                    export_dir=missing_binding_root,
+                    dataset_type=fot.FiftyOneDataset,
+                    export_media=True,
+                )
+            self.assertFalse(os.path.exists(missing_binding_root))
 
+            source = thin_import.info["media_reference_sources"][0]
             bind_lerobot_source(
-                reference.source_identity,
+                source["source_identity"],
                 source_root,
-                reference.source_fingerprint,
+                source["source_fingerprint"],
             )
-            self.assertTrue(
-                thin_import.get_media_asset_plan(resolve=True).resolved
+            rebound_root = os.path.join(temp_dir, "rebound")
+            thin_import.export(
+                export_dir=rebound_root,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=True,
             )
+            self.assertTrue(os.path.isdir(rebound_root))
 
             dataset.export(
                 export_dir=materialized_root,
@@ -987,17 +956,28 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 dataset_dir=materialized_root,
                 dataset_type=fot.FiftyOneDataset,
             )
-            self.assertFalse(
-                materialized_import.get_media_asset_capabilities().binding_required_sources
-            )
-            self.assertTrue(
-                materialized_import.get_media_asset_plan(resolve=True).resolved
+            self.assertEqual(
+                materialized_import.info["media_reference_sources"][0][
+                    "binding_status"
+                ],
+                "bound",
             )
             index = materialized_import.get_index_information()[
                 "_media_reference.key"
             ]
             self.assertTrue(index["unique"])
             self.assertTrue(index["sparse"])
+
+            roundtrip_root = os.path.join(temp_dir, "roundtrip")
+            materialized_import.export(
+                export_dir=roundtrip_root,
+                dataset_type=fot.LeRobotDataset,
+            )
+            roundtrip = fo.Dataset.from_dir(
+                dataset_dir=roundtrip_root,
+                dataset_type=fot.LeRobotDataset,
+            )
+            self.assertEqual(sorted(roundtrip.values("episode_index")), [0, 1])
 
             for mode_index, mode in enumerate(("move", "symlink", "manifest")):
                 destination = os.path.join(
@@ -1016,7 +996,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             tampered_root = os.path.join(temp_dir, "tampered")
             shutil.copytree(thin_root, tampered_root)
             tampered_manifest_path = os.path.join(
-                tampered_root, "media_assets.json"
+                tampered_root, "media_sources.json"
             )
             with open(tampered_manifest_path) as file:
                 tampered_manifest = json.load(file)
@@ -1028,7 +1008,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
 
             tampered_name = "tampered-media-asset-manifest"
             with self.assertRaisesRegex(
-                ValueError, "do not match the imported samples"
+                ValueError, "does not match the imported samples"
             ):
                 fo.Dataset.from_dir(
                     dataset_dir=tampered_root,
@@ -1036,6 +1016,28 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                     name=tampered_name,
                 )
             self.assertFalse(fo.dataset_exists(tampered_name))
+
+            stripped_root = os.path.join(temp_dir, "stripped")
+            shutil.copytree(thin_root, stripped_root)
+            stripped_manifest_path = os.path.join(
+                stripped_root, "media_sources.json"
+            )
+            with open(stripped_manifest_path) as file:
+                stripped_manifest = json.load(file)
+            stripped_manifest["sources"] = []
+            with open(stripped_manifest_path, "w") as file:
+                json.dump(stripped_manifest, file)
+
+            stripped_name = "stripped-media-source-manifest"
+            with self.assertRaisesRegex(
+                ValueError, "does not match the imported samples"
+            ):
+                fo.Dataset.from_dir(
+                    dataset_dir=stripped_root,
+                    dataset_type=fot.FiftyOneDataset,
+                    name=stripped_name,
+                )
+            self.assertFalse(fo.dataset_exists(stripped_name))
 
             unbind_lerobot_source(reference.source_identity)
 
@@ -1063,7 +1065,9 @@ class MediaAssetLifecycleTests(unittest.TestCase):
 
             script = r"""
 import json
+import os
 import sys
+import tempfile
 
 import fiftyone as fo
 import fiftyone.types as fot
@@ -1078,31 +1082,52 @@ try:
         dataset_type=fot.FiftyOneDataset,
     )
     created.append(thin)
-    capabilities = thin.get_media_asset_capabilities()
-    assert len(capabilities.binding_required_sources) == 1
-    source = capabilities.binding_required_sources[0]
-    try:
-        thin.get_media_asset_plan(resolve=True)
-    except MissingMediaRootError:
-        missing_binding = True
-    else:
-        missing_binding = False
-    assert missing_binding
+    source = thin.info["media_reference_sources"][0]
+    assert source["binding_status"] == "required"
+    with tempfile.TemporaryDirectory() as scratch:
+        missing_root = os.path.join(scratch, "missing")
+        try:
+            thin.export(
+                export_dir=missing_root,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=True,
+            )
+        except MissingMediaRootError:
+            missing_binding = True
+        else:
+            missing_binding = False
+        assert missing_binding
+        assert not os.path.exists(missing_root)
     bind_lerobot_source(
-        source.source_identity,
+        source["source_identity"],
         source_root,
-        source.source_fingerprint,
+        source["source_fingerprint"],
     )
-    assert thin.get_media_asset_plan(resolve=True).resolved
-    unbind_lerobot_source(source.source_identity)
+    with tempfile.TemporaryDirectory() as scratch:
+        rebound_root = os.path.join(scratch, "rebound")
+        thin.export(
+            export_dir=rebound_root,
+            dataset_type=fot.FiftyOneDataset,
+            export_media=True,
+        )
+        assert os.path.isfile(os.path.join(rebound_root, "media_sources.json"))
+    unbind_lerobot_source(source["source_identity"])
 
     materialized = fo.Dataset.from_dir(
         dataset_dir=materialized_root,
         dataset_type=fot.FiftyOneDataset,
     )
     created.append(materialized)
-    assert not materialized.get_media_asset_capabilities().binding_required_sources
-    assert materialized.get_media_asset_plan(resolve=True).resolved
+    materialized_source = materialized.info["media_reference_sources"][0]
+    assert materialized_source["binding_status"] == "bound"
+    with tempfile.TemporaryDirectory() as scratch:
+        copied_root = os.path.join(scratch, "copied")
+        materialized.export(
+            export_dir=copied_root,
+            dataset_type=fot.FiftyOneDataset,
+            export_media=True,
+        )
+        assert os.path.isfile(os.path.join(copied_root, "media_sources.json"))
     index = materialized.get_index_information()["_media_reference.key"]
     assert index["unique"] and index["sparse"]
     print(json.dumps({
@@ -1151,7 +1176,7 @@ finally:
             dataset = _import(source_root)
 
             with mock.patch.object(
-                foul.LeRobotAssetMaterializer,
+                foul._LeRobotAssetMaterializer,
                 "materialize_asset",
                 side_effect=RuntimeError("materializer failed"),
             ):
@@ -1175,7 +1200,7 @@ finally:
             exporter = foud.FiftyOneDatasetExporter(
                 export_root, export_media=True
             )
-            exporter.preflight_media_reference_export(dataset)
+            exporter._preflight_media_reference_export(dataset)
             with self.assertRaisesRegex(RuntimeError, "before export"):
                 with exporter:
                     self.assertTrue(os.path.isdir(exporter._staging_dir))
@@ -1195,7 +1220,7 @@ finally:
                 file.write("preserve me")
 
             with mock.patch.object(
-                foul.LeRobotAssetMaterializer,
+                foul._LeRobotAssetMaterializer,
                 "materialize_asset",
                 side_effect=KeyboardInterrupt(),
             ):
@@ -1215,61 +1240,6 @@ finally:
                     name.startswith(".fiftyone-native-")
                     for name in os.listdir(temp_dir)
                 )
-            )
-
-    @drop_datasets
-    def test_group_slice_plan_does_not_assume_dataset_wide_mode(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            source_root = os.path.join(temp_dir, "source")
-            filepath = os.path.join(temp_dir, "left.bin")
-            with open(filepath, "wb") as file:
-                file.write(b"left")
-
-            _write_v3_source(source_root, episodes=2)
-            source = _import(source_root)
-            references = [sample.media_reference for sample in source]
-            group = fo.Group()
-            grouped = fo.Dataset()
-            grouped.add_samples(
-                [
-                    fo.Sample.from_media_reference(
-                        references[0], group=group.element("left")
-                    ),
-                    fo.Sample.from_media_reference(
-                        references[1], group=group.element("right")
-                    ),
-                ]
-            )
-
-            grouped._sample_collection.update_one(
-                {grouped.group_field + ".name": "left"},
-                {
-                    "$set": {"filepath": filepath},
-                    "$unset": {"_media_reference": ""},
-                },
-            )
-            plan = grouped.get_media_asset_plan()
-            self.assertEqual(
-                {asset.source_mode for asset in plan.assets},
-                {"filepath", "reference"},
-            )
-            self.assertEqual(
-                {usage.group_slice for usage in plan.usages},
-                {"left", "right"},
-            )
-            self.assertEqual(
-                grouped.get_media_asset_capabilities().source_modes,
-                ("filepath", "reference"),
-            )
-            self.assertTrue(
-                grouped.get_media_asset_capabilities(
-                    group_slices="left"
-                ).supports_thin_serialization
-            )
-            self.assertTrue(
-                grouped.get_media_asset_capabilities(
-                    group_slices="right"
-                ).supports_thin_serialization
             )
 
 

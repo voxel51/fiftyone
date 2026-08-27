@@ -42,8 +42,8 @@ from fiftyone.multimodal.media import (
     RowInterval,
     UnsupportedMediaReferenceOperation,
     WholeFile,
-    get_selected_media_asset_key,
-    get_shared_media_asset_key,
+    _get_selected_media_asset_key,
+    _get_shared_media_asset_key,
     register_media_reference,
     serialize_media_reference,
 )
@@ -212,14 +212,14 @@ class MediaReferenceDomainTests(unittest.TestCase):
             next_episode.describe_assets()[0].location,
         )
         self.assertEqual(
-            get_shared_media_asset_key(first, first.describe_assets()[0]),
-            get_shared_media_asset_key(
+            _get_shared_media_asset_key(first, first.describe_assets()[0]),
+            _get_shared_media_asset_key(
                 next_episode, next_episode.describe_assets()[0]
             ),
         )
         self.assertNotEqual(
-            get_selected_media_asset_key(first, first.describe_assets()[-1]),
-            get_selected_media_asset_key(
+            _get_selected_media_asset_key(first, first.describe_assets()[-1]),
+            _get_selected_media_asset_key(
                 next_episode, next_episode.describe_assets()[-1]
             ),
         )
@@ -271,12 +271,12 @@ class MediaReferenceDomainTests(unittest.TestCase):
             feature_name="observation.images.right",
         )
         self.assertEqual(
-            get_shared_media_asset_key(reference, left),
-            get_shared_media_asset_key(reference, right),
+            _get_shared_media_asset_key(reference, left),
+            _get_shared_media_asset_key(reference, right),
         )
         self.assertNotEqual(
-            get_selected_media_asset_key(reference, left),
-            get_selected_media_asset_key(reference, right),
+            _get_selected_media_asset_key(reference, left),
+            _get_selected_media_asset_key(reference, right),
         )
 
     def test_unattached_whole_value_reassignment(self):
@@ -717,11 +717,6 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         reference = _UnmaterializedMediaReference("logical-only")
         dataset.add_sample(fo.Sample.from_media_reference(reference))
 
-        capabilities = dataset.get_media_asset_capabilities()
-        self.assertFalse(capabilities.supports_asset_enumeration)
-        self.assertTrue(capabilities.supports_thin_serialization)
-        self.assertFalse(capabilities.supports_materialization(True))
-
         with tempfile.TemporaryDirectory() as temp_dir:
             thin_dir = os.path.join(temp_dir, "thin")
             materialized_dir = os.path.join(temp_dir, "materialized")
@@ -736,12 +731,10 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             )
             self.assertEqual(imported.first().media_reference, reference)
 
-            with open(os.path.join(thin_dir, "media_assets.json")) as file:
+            with open(os.path.join(thin_dir, "media_sources.json")) as file:
                 manifest = json.load(file)
 
-            self.assertEqual(manifest["sources"], [])
-            self.assertEqual(manifest["assets"], [])
-            self.assertEqual(manifest["usages"], [])
+            self.assertEqual(manifest, {"version": "1", "sources": []})
 
             with self.assertRaises(UnsupportedMediaReferenceOperation):
                 dataset.export(
@@ -751,6 +744,41 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 )
 
             self.assertFalse(os.path.exists(materialized_dir))
+
+    def test_asset_lifecycle_surface_is_private(self):
+        sample = fo.Sample.from_media_reference(_make_reference(1))
+        for name in (
+            "get_media_asset_plan",
+            "get_media_asset_capabilities",
+            "materialize_media_assets",
+        ):
+            self.assertFalse(hasattr(fo.Dataset, name))
+
+        for name in (
+            "MediaAssetCapabilities",
+            "MediaAssetManifest",
+            "MediaAssetMaterializer",
+            "MediaAssetPlan",
+            "MediaAssetUsage",
+            "MediaResolver",
+            "MediaSourceDescriptor",
+            "PlannedMediaAsset",
+            "ResolvedMediaAsset",
+            "get_media_asset_materializer",
+            "get_media_export_planner",
+            "get_media_reference_kind",
+            "get_media_resolver",
+            "get_selected_media_asset_key",
+            "get_shared_media_asset_key",
+            "register_media_asset_materializer",
+            "register_media_export_planner",
+            "register_media_resolver",
+        ):
+            self.assertFalse(hasattr(fo, name))
+
+        self.assertEqual(
+            fo.get_logical_media_identity(sample), sample.media_reference.key
+        )
 
     @drop_datasets
     def test_from_dir_cleanup_is_scoped_to_atomic_importers(self):
