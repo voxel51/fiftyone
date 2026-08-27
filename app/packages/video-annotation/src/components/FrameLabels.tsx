@@ -62,7 +62,6 @@ import {
   type TemporalDetectionLabelLike,
 } from "../tracks/temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
-import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
 
@@ -686,7 +685,6 @@ export const FrameLabelsTracks: React.FC<{
       <TimelineWithTracks
         decorateTrack={decorateTrack}
         scrollerRef={timelineScroller}
-        extraControls={<VideoAnnotationToolbar />}
         extraActions={extraActions}
         loaded={timelineLoaded}
         maxSize={maxSize}

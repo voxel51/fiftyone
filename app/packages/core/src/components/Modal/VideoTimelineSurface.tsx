@@ -12,10 +12,18 @@ import {
   RegisterFrameLabels,
   useVfcClockSource,
 } from "@fiftyone/video-annotation";
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import styles from "./VideoTimelineSurface.module.css";
 
 const VIDEO_STREAM_ID = "video";
+
+/**
+ * The readiness signal the lookers raise once a sample has painted: an
+ * attribute to poll and a bubbling event of the same name to await. Named
+ * for the canvas the lookers draw into, and kept verbatim here so nothing
+ * watching for a sample to land has to know which surface rendered it.
+ */
+const LOADED = "canvas-loaded";
 
 /**
  * Fraction of the surface height the timeline may occupy before its body caps
@@ -38,7 +46,10 @@ const TIMELINE_MIN_MAX_SIZE = 160;
  * Deliberately plain: no Lighter and no overlays. The hover overlay cluster
  * (zoom / crop / toggle-overlays) is tracked separately.
  */
-const VideoTile: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
+const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
+  videoSrc,
+  filepath,
+}) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const { seek } = usePlayback();
 
@@ -53,15 +64,32 @@ const VideoTile: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
   useVideoSync(videoRef);
   useVfcClockSource(videoRef);
 
+  // The element is reused across sources, so the marker has to be cleared as
+  // soon as the source changes — otherwise a watcher waiting on the next
+  // sample sees the previous one's marker and proceeds too early.
+  useEffect(() => {
+    videoRef.current?.removeAttribute(LOADED);
+  }, [videoSrc]);
+
   return (
     <video
       ref={videoRef}
+      data-cy="looker"
       className={styles.video}
       src={videoSrc}
       preload="auto"
       playsInline
       muted
       onLoadedData={() => {
+        const element = videoRef.current;
+        element?.setAttribute(LOADED, "true");
+        element?.dispatchEvent(
+          new CustomEvent(LOADED, {
+            detail: { sampleFilepath: filepath },
+            bubbles: true,
+          }),
+        );
+
         // The engine's RAF loop is dormant while paused, so nothing commits
         // until something moves the playhead. Kick it once per source so the
         // first frame and the ruler agree on mount.
@@ -136,11 +164,15 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
       <RegisterFrameLabels sample={sample}>
         <div
           ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+          data-cy="modal-looker-container"
           className={styles.root}
         >
           <div className={styles.media}>
             {videoSrc ? (
-              <VideoTile videoSrc={videoSrc} />
+              <VideoTile
+                videoSrc={videoSrc}
+                filepath={sample.sample.filepath}
+              />
             ) : (
               <div className={styles.empty}>No media URL on this sample.</div>
             )}

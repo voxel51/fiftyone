@@ -1,14 +1,19 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
+/**
+ * Video playback controls in the modal.
+ *
+ * Explore-mode video is a plain `<video>` docked over the shared timeline,
+ * so these drive the timeline's controls row rather than an overlay the
+ * media surface draws for itself.
+ */
 export class ModalVideoControlsPom {
   readonly page: Page;
   readonly assert: ModalVideoControlsAsserter;
   readonly controls: Locator;
-  readonly optionsPanel: Locator;
   readonly time: Locator;
   readonly playPauseButton: Locator;
-  readonly speedButton: Locator;
 
   private readonly modal: ModalPom;
 
@@ -17,24 +22,18 @@ export class ModalVideoControlsPom {
     this.modal = modal;
     this.assert = new ModalVideoControlsAsserter(this);
 
-    this.controls = this.modal.locator.getByTestId("looker-controls");
-    this.optionsPanel = this.modal.locator.getByTestId("looker-options-panel");
-    this.time = this.modal.locator.getByTestId("looker-video-time");
-    this.playPauseButton = this.controls.getByTestId(
-      "looker-video-play-button",
+    // The playback package tags with `data-testid`; Playwright's
+    // `getByTestId` is bound to `data-cy` here, so these go by selector.
+    this.controls = byDataTestId(this.modal.locator, "timeline-controls-root");
+    this.time = byDataTestId(this.modal.locator, "timeline-playhead-time");
+    this.playPauseButton = byDataTestId(
+      this.controls,
+      "timeline-controls-play-pause",
     );
-    this.speedButton = this.controls.getByTestId("looker-video-speed-button");
   }
 
   private async togglePlay() {
-    // this is to clear popups, if any
-    await this.controls.click();
-    await this.modal.locator.press("Space");
-  }
-
-  private async clickSettings() {
-    await this.modal.sampleCanvas.move(0.5, 0.5);
-    return this.controls.getByTestId("looker-controls-settings").click();
+    await this.playPauseButton.click();
   }
 
   async getCurrentTime() {
@@ -45,77 +44,40 @@ export class ModalVideoControlsPom {
     await this.controls.hover();
   }
 
-  async clickUseFrameNumber() {
-    await this.clickSettings();
-    await this.optionsPanel
-      .getByTestId("looker-checkbox-Use frame number")
-      .click();
-    await this.clickSettings();
+  /**
+   * Swap the readout, and the ruler with it, between the timeline's
+   * configured domain (frame numbers, when the frame rate is known) and
+   * plain elapsed time. Replaces the looker's "use frame number" setting.
+   */
+  async toggleTimeDisplay() {
+    await this.time.click();
   }
 
-  async playUntilDuration(durationText: string) {
-    await this.togglePlay();
-
-    await this.page.waitForFunction((durationText_) => {
-      const time = document.querySelector(
-        "[data-cy=looker-video-time]",
-      )?.textContent;
-      return time.startsWith(durationText_);
-    }, durationText);
-
-    await this.togglePlay();
-  }
-
-  async playUntilFrames(frameText: string, matchBeginning = false) {
+  /** Play until the readout reads `text`, then pause. */
+  private async playUntilReadout(text: string, matchBeginning: boolean) {
     await this.togglePlay();
 
     await this.page.waitForFunction(
-      ({ frameText_, matchBeginning_ }) => {
-        const frameTextDom = document.querySelector(
-          "[data-cy=looker-video-time]",
+      ({ text_, matchBeginning_ }) => {
+        const readout = document.querySelector(
+          "[data-testid=timeline-playhead-time]",
         )?.textContent;
-        if (matchBeginning_) {
-          return frameTextDom?.startsWith(frameText_);
-        }
-        return frameTextDom === frameText_;
+        return matchBeginning_
+          ? !!readout?.startsWith(text_)
+          : readout === text_;
       },
-      { frameText_: frameText, matchBeginning_: matchBeginning },
+      { text_: text, matchBeginning_: matchBeginning },
     );
 
     await this.togglePlay();
   }
 
-  async setSpeedTo(config: "low" | "middle" | "high") {
-    await this.speedButton.hover();
-    const speedSliderInputRange = this.speedButton.locator("input[type=range]");
-    const sliderBoundingBox = await speedSliderInputRange.boundingBox();
+  async playUntilDuration(durationText: string) {
+    await this.playUntilReadout(durationText, true);
+  }
 
-    if (!sliderBoundingBox) {
-      throw new Error("Could not find speed slider bounding box");
-    }
-
-    const sliderWidth = sliderBoundingBox.width;
-
-    switch (config) {
-      case "low":
-        await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.05,
-          sliderBoundingBox.y,
-        );
-        break;
-      case "middle":
-        await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.5,
-          sliderBoundingBox.y,
-        );
-        break;
-      case "high":
-        await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.95,
-          sliderBoundingBox.y,
-        );
-        break;
-    }
+  async playUntilFrames(frameText: string, matchBeginning = false) {
+    await this.playUntilReadout(frameText, matchBeginning);
   }
 }
 
@@ -131,4 +93,8 @@ class ModalVideoControlsAsserter {
     const time = await this.videoControlsPom.time.textContent();
     expect(time).toContain(text);
   }
+}
+
+function byDataTestId(root: Locator, id: string): Locator {
+  return root.locator(`[data-testid="${id}"]`);
 }

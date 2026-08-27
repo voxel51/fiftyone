@@ -107,8 +107,6 @@ test.describe.serial("groups video labels", () => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
 
-    await modal.video.clickUseFrameNumber();
-
     const checkVideo = async (slice: "v1" | "v2") => {
       await modal.assert.verifyModalSamplePluginTitle(slice, { pinned: true });
 
@@ -120,7 +118,9 @@ test.describe.serial("groups video labels", () => {
       //   animations: "allow",
       // });
 
-      await modal.video.playUntilFrames("5", true);
+      // Frame numbers are the readout's default whenever the frame rate is
+      // known, so nothing has to be switched on first.
+      await modal.video.playUntilFrames("#5", true);
       await modal.looker.hover();
 
       // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
