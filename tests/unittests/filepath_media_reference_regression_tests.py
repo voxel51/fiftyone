@@ -19,6 +19,7 @@ from decorators import drop_datasets
 from mongoengine.errors import ValidationError
 
 import fiftyone as fo
+import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 from fiftyone.server.samples import (
@@ -118,53 +119,41 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
         assert_first_batch(merge_dataset.merge_samples)
 
     @drop_datasets
-    def test_media_reference_user_field_remains_compatible(self):
-        sample = fo.Sample(filepath="image.jpg", media_reference="constructed")
-        self.assertEqual(sample.media_reference, "constructed")
+    def test_media_reference_is_reserved_on_filepath_datasets(self):
+        sample = fo.Sample(filepath="image.jpg")
+        self.assertIsNone(sample.media_reference)
 
-        sample.media_reference = "assigned"
-        sample.set_field("media_reference", "set-field")
+        with self.assertRaises(TypeError):
+            fo.Sample(filepath="image.jpg", media_reference="constructed")
+
+        with self.assertRaises(ValueError):
+            sample.media_reference = "assigned"
 
         dataset = fo.Dataset()
         dataset.add_sample(sample)
-        sample.save()
-        dataset.set_values("media_reference", ["set-values"])
-
-        dataset.clone_sample_field("media_reference", "media_reference_copy")
-        with mock.patch("fiftyone.migrations.migrate_dataset_if_necessary"):
-            cloned = dataset.clone()
-        self.assertEqual(cloned.first().media_reference, "set-values")
-        self.assertEqual(cloned.first().media_reference_copy, "set-values")
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            export_dir = os.path.join(tmp_dir, "export")
-            dataset.export(
-                export_dir=export_dir,
-                dataset_type=fot.FiftyOneDataset,
-                export_media=False,
-            )
-            with open(
-                os.path.join(export_dir, "media_sources.json"), "w"
-            ) as file:
-                json.dump({"unrelated": "filepath artifact"}, file)
-            with mock.patch(
-                "fiftyone.utils.data.importers.fomi.migrate_dataset_if_necessary"
-            ):
-                imported = fo.Dataset.from_dir(
-                    dataset_dir=export_dir,
-                    dataset_type=fot.FiftyOneDataset,
-                )
-
-        self.assertEqual(imported.first().media_reference, "set-values")
-        self.assertEqual(imported.first().media_reference_copy, "set-values")
-
-        dataset.rename_sample_field(
-            "media_reference", "legacy_media_reference"
+        self.assertIsInstance(
+            dataset.get_field_schema()["media_reference"],
+            fof.MediaReferenceField,
         )
-        dataset.reload()
-        reloaded = dataset.first()
-        self.assertEqual(reloaded.legacy_media_reference, "set-values")
-        self.assertEqual(reloaded.media_reference_copy, "set-values")
+
+        with self.assertRaises(fo.UnsupportedMediaReferenceOperation):
+            dataset.set_values("media_reference", [None])
+
+        field_doc = next(
+            field
+            for field in dataset._doc.sample_fields
+            if field.name == "media_reference"
+        )
+        expected_type = field_doc.ftype
+        field_doc.ftype = "fiftyone.core.fields.StringField"
+        dataset._doc.save()
+        fo.Dataset._instances.pop(dataset.name, None)
+        try:
+            with self.assertRaisesRegex(ValueError, "incompatible schema"):
+                fo.load_dataset(dataset.name)
+        finally:
+            field_doc.ftype = expected_type
+            dataset._doc.save()
 
     @drop_datasets
     def test_filepath_exception_types_remain_compatible(self):
@@ -177,7 +166,7 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             # pylint: disable-next=no-value-for-parameter
-            fo.Sample(_media_reference={})
+            fo.Sample(media_reference={})
 
         sample = fo.Sample(filepath="image.jpg")
         sample.filepath = "replacement.jpg"

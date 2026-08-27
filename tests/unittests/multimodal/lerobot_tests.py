@@ -41,7 +41,7 @@ from fiftyone.multimodal.media import (
     UnfinalizedMediaSourceError,
     UnsupportedLeRobotExportModeError,
     UnsupportedMediaReferenceOperation,
-    UnsupportedMediaReferenceVersionError,
+    UnsupportedLeRobotVersionError,
 )
 from fiftyone.server import utils as fosu
 from fiftyone.server.routes.groups import _filter_dict_by_fields
@@ -221,7 +221,7 @@ class LeRobotImporterTests(unittest.TestCase):
                 foul.LeRobotEpisode,
                 "__init__",
                 side_effect=AssertionError("constructed a reference"),
-            ), self.assertRaises(UnsupportedMediaReferenceVersionError):
+            ), self.assertRaises(UnsupportedLeRobotVersionError):
                 _import(root, name="source-format-before-reference")
 
             self.assertFalse(
@@ -333,8 +333,8 @@ class LeRobotImporterTests(unittest.TestCase):
     @drop_datasets
     def test_atomic_version_and_structure_rejection(self):
         cases = [
-            ("v2.1", UnsupportedMediaReferenceVersionError),
-            ("v4.0", UnsupportedMediaReferenceVersionError),
+            ("v2.1", UnsupportedLeRobotVersionError),
+            ("v4.0", UnsupportedLeRobotVersionError),
             ("not-a-version", MalformedMediaSourceError),
         ]
         for index, (version, error_type) in enumerate(cases):
@@ -1040,6 +1040,17 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             self.assertEqual(manifest["sources"][0]["binding_required"], False)
             self.assertNotIn(source_root, json.dumps(manifest))
 
+            with open(
+                os.path.join(output_root, "media_reference_bindings.json")
+            ) as file:
+                reference_bindings = json.load(file)["bindings"]
+
+            self.assertEqual(len(reference_bindings), 2)
+            self.assertEqual(
+                {binding["_id"] for binding in reference_bindings},
+                set(selected.values("media_reference.key")),
+            )
+
             imported = fo.Dataset.from_dir(
                 dataset_dir=output_root,
                 dataset_type=fot.FiftyOneDataset,
@@ -1136,7 +1147,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 "bound",
             )
             index = materialized_import.get_index_information()[
-                "_media_reference.key"
+                "media_reference.key"
             ]
             self.assertTrue(index["unique"])
             self.assertTrue(index["sparse"])
@@ -1301,7 +1312,7 @@ try:
             export_media=True,
         )
         assert os.path.isfile(os.path.join(copied_root, "media_sources.json"))
-    index = materialized.get_index_information()["_media_reference.key"]
+    index = materialized.get_index_information()["media_reference.key"]
     assert index["unique"] and index["sparse"]
     print(json.dumps({
         "thin_missing_binding": missing_binding,
@@ -1619,8 +1630,8 @@ class LeRobotServerTests(unittest.TestCase):
             self.assertEqual(traversal.json(), manifest)
 
             serialized = fosu.json.serialize(first)
-            descriptor = serialized["_media_reference"]
-            self.assertEqual(set(descriptor), {"kind", "key", "version"})
+            descriptor = serialized["media_reference"]
+            self.assertEqual(set(descriptor), {"kind", "key"})
             self.assertEqual(serialized["_media_type"], "multimodal")
             self.assertNotIn(root, json.dumps(serialized))
 
@@ -1647,8 +1658,8 @@ class LeRobotServerTests(unittest.TestCase):
             )
             for transported in (grid.sample, modal.sample):
                 self.assertEqual(
-                    set(transported["_media_reference"]),
-                    {"kind", "key", "version"},
+                    set(transported["media_reference"]),
+                    {"kind", "key"},
                 )
                 self.assertEqual(transported["_media_type"], "multimodal")
 
@@ -1665,8 +1676,8 @@ class LeRobotServerTests(unittest.TestCase):
                     )
                 )
                 self.assertEqual(
-                    set(unbound.sample["_media_reference"]),
-                    {"kind", "key", "version"},
+                    set(unbound.sample["media_reference"]),
+                    {"kind", "key"},
                 )
                 self.assertNotIn(root, json.dumps(unbound.sample, default=str))
             finally:
@@ -1676,11 +1687,11 @@ class LeRobotServerTests(unittest.TestCase):
                     first.media_reference.source_fingerprint,
                 )
 
-            malformed_envelope = dict(raw["_media_reference"])
-            malformed_envelope["key"] = None
-            malformed_envelope["payload"] = {"private_root": root}
+            malformed_descriptor = dict(raw["media_reference"])
+            malformed_descriptor["key"] = None
+            malformed_descriptor["payload"] = {"private_root": root}
             malformed_raw = dict(raw)
-            malformed_raw["_media_reference"] = malformed_envelope
+            malformed_raw["media_reference"] = malformed_descriptor
             isolated = asyncio.run(
                 _create_sample_item(
                     dataset,
@@ -1691,28 +1702,28 @@ class LeRobotServerTests(unittest.TestCase):
                     additional_media_fields=(None, (), ()),
                 )
             )
-            self.assertIsNone(isolated.sample["_media_reference"])
+            self.assertIsNone(isolated.sample["media_reference"])
             self.assertEqual(isolated.sample["_media_type"], "unknown")
             self.assertNotIn(root, json.dumps(isolated.sample, default=str))
 
-            already_sanitized = dict(raw)
-            already_sanitized["_media_reference"] = descriptor
-            already_sanitized.pop("_media_type", None)
+            missing_media_type = dict(raw)
+            missing_media_type["media_reference"] = descriptor
+            missing_media_type.pop("_media_type", None)
             isolated = asyncio.run(
                 _create_sample_item(
                     dataset,
-                    already_sanitized,
+                    missing_media_type,
                     {},
                     {},
                     True,
                     additional_media_fields=(None, (), ()),
                 )
             )
-            self.assertIsNone(isolated.sample["_media_reference"])
+            self.assertIsNone(isolated.sample["media_reference"])
             self.assertEqual(isolated.sample["_media_type"], "unknown")
 
             grouped = _filter_dict_by_fields(serialized, {"task"})
-            self.assertIn("_media_reference", grouped)
+            self.assertIn("media_reference", grouped)
             self.assertIn("_media_type", grouped)
 
             patch_path = "/dataset/%s/sample/%s" % (
@@ -1729,8 +1740,8 @@ class LeRobotServerTests(unittest.TestCase):
             )
             self.assertEqual(patched.status_code, 200)
             self.assertEqual(
-                set(patched.json()["_media_reference"]),
-                {"kind", "key", "version"},
+                set(patched.json()["media_reference"]),
+                {"kind", "key"},
             )
             self.assertNotIn(root, patched.text)
 
@@ -1750,9 +1761,9 @@ class LeRobotServerTests(unittest.TestCase):
 
             dataset._sample_collection.update_one(
                 {"_id": first._id},
-                {"$set": {"_media_reference.kind": "unknown-reference"}},
+                {"$set": {"media_reference.kind": "unknown-reference"}},
             )
-            first.reload()
+            fo.Sample._clear(dataset._sample_collection_name)
             malformed = client.get(manifest_path)
             self.assertEqual(malformed.status_code, 422)
             self.assertEqual(

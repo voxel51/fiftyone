@@ -35,19 +35,22 @@ from fiftyone.multimodal.media import (
     InvalidMediaLocationError,
     LeRobotEpisode,
     LeRobotV3Locator,
-    MEDIA_REFERENCE_DATASET_REVISION,
     MediaAsset,
     MediaAssetRole,
     MediaReference,
     MediaReferenceError,
+    MissingMediaReferenceBindingError,
     RowInterval,
+    StaleMediaReferenceError,
     UnsupportedMediaReferenceOperation,
     WholeFile,
+    _MEDIA_REFERENCE_BINDINGS_COLLECTION,
     _get_selected_media_asset_key,
     _get_shared_media_asset_key,
-    hydrate_media_reference,
-    register_media_reference,
-    serialize_media_reference,
+    _hydrate_lerobot_episode,
+    _serialize_media_reference_binding,
+    _register_media_reference,
+    _serialize_media_reference,
 )
 
 _SOURCE_FINGERPRINT = "sha256:" + "1" * 64
@@ -119,24 +122,21 @@ class _UnmaterializedMediaReference(MediaReference):
         )
 
 
-register_media_reference(
+_register_media_reference(
     "test-alternate-reference",
     _AlternateMediaReference,
-    "1",
     lambda reference: {"identity": reference.identity},
     lambda payload: _AlternateMediaReference(payload["identity"]),
 )
-register_media_reference(
+_register_media_reference(
     "test-image-reference",
     _ImageMediaReference,
-    "1",
     lambda reference: {"identity": reference.identity},
     lambda payload: _ImageMediaReference(payload["identity"]),
 )
-register_media_reference(
+_register_media_reference(
     "test-unmaterialized-reference",
     _UnmaterializedMediaReference,
-    "1",
     lambda reference: {"identity": reference.identity},
     lambda payload: _UnmaterializedMediaReference(payload["identity"]),
 )
@@ -150,7 +150,6 @@ def _make_reference(episode_index):
         episode_index=episode_index,
         codebase_version="v3.2",
         locator=LeRobotV3Locator(
-            schema_version=1,
             source_fingerprint=_SOURCE_FINGERPRINT,
             locator_fingerprint="sha256:" + "2" * 64,
             info_location=DatasetRelativeLocation("meta/info.json"),
@@ -290,12 +289,12 @@ else:
                 WholeFile(),
             )
 
-        envelope = serialize_media_reference(reference)
-        envelope["payload"]["locator"]["data"]["row_groups"] = 0
+        binding = _serialize_media_reference_binding(reference)
+        binding["payload"]["locator"]["data"]["row_groups"] = 0
         with self.assertRaisesRegex(
             MediaReferenceError, "episode data row groups"
         ):
-            hydrate_media_reference(envelope)
+            _hydrate_lerobot_episode(binding["payload"])
 
         shared_location = DatasetRelativeLocation(
             "data/chunk-000/file-000.parquet"
@@ -322,9 +321,12 @@ else:
         )
 
     def test_unattached_whole_value_reassignment(self):
-        sample = fo.Sample.from_media_reference(_make_reference(1), value=1)
+        reference = _make_reference(1)
+        sample = fo.Sample(media_reference=reference, value=1)
 
         self.assertIsNone(sample.filepath)
+        self.assertEqual(sample.media_reference, reference)
+        self.assertEqual(sample["media_reference"], reference)
         self.assertEqual(sample.filename, "episode-000001")
         self.assertEqual(sample.media_type, "multimodal")
         sample.media_reference = _make_reference(2)
@@ -343,7 +345,7 @@ else:
         for invalid in (
             None,
             {},
-            serialize_media_reference(_make_reference(2)),
+            _serialize_media_reference(_make_reference(2)),
         ):
             with self.subTest(invalid=invalid), self.assertRaises(TypeError):
                 sample.media_reference = invalid
@@ -356,10 +358,6 @@ else:
         self.assertEqual(sample.media_reference, original)
         with self.assertRaises(AttributeError):
             sample.set_field("media_reference.payload", {})
-        with self.assertRaises(AttributeError):
-            sample.set_field("_media_reference.payload", {})
-        with self.assertRaises(AttributeError):
-            sample._media_reference = {}
         with self.assertRaises(ValueError):
             sample.filepath = "/tmp/episode.mcap"
 
@@ -373,9 +371,6 @@ else:
             sample.clear_field("media_reference")
         with self.assertRaises(AttributeError):
             sample.clear_field("media_reference.payload")
-        with self.assertRaises(ValueError):
-            sample.clear_field("_media_reference")
-
         filepath_sample = fo.Sample(filepath="image.jpg")
         with self.assertRaises(ValueError):
             filepath_sample.set_field("media_reference", _make_reference(2))
@@ -386,16 +381,16 @@ else:
 
         with self.assertRaises(TypeError):
             # pylint: disable-next=no-value-for-parameter
-            fo.Sample(_media_reference={})
+            fo.Sample(media_reference={})
         with self.assertRaises(TypeError):
             # pylint: disable-next=no-value-for-parameter
             fo.Sample()
 
     def test_document_xor_validation(self):
-        envelope = serialize_media_reference(_make_reference(1))
+        reference = _make_reference(1)
         both = foo.DatasetSampleDocument(
             filepath="/tmp/episode.mcap",
-            _media_reference=envelope,
+            media_reference=reference,
             _media_type="multimodal",
         )
         neither = foo.DatasetSampleDocument(_media_type="multimodal")
@@ -408,13 +403,50 @@ else:
     def test_sample_native_round_trip(self):
         sample = fo.Sample.from_media_reference(_make_reference(3), value=51)
         serialized = json.loads(json.dumps(sample.to_dict()))
-        self.assertEqual(serialized["_media_reference"]["version"], "1")
+        self.assertEqual(set(serialized["media_reference"]), {"kind", "key"})
         reloaded = fo.Sample.from_dict(serialized)
 
         self.assertEqual(reloaded.media_reference, sample.media_reference)
         self.assertEqual(reloaded.media_type, sample.media_type)
         self.assertEqual(reloaded._doc._rand, sample._doc._rand)
         self.assertEqual(reloaded.value, 51)
+
+    @drop_datasets
+    def test_private_binding_hydration_failures_are_typed_and_non_mutating(
+        self,
+    ):
+        dataset = fo.Dataset()
+        reference = _make_reference(8123)
+        dataset.add_sample(fo.Sample(media_reference=reference))
+        sample = dataset.first()
+        persisted = dataset._sample_collection.find_one({"_id": sample._id})
+        bindings = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION]
+
+        binding = bindings.find_one({"_id": reference.key})
+        bindings.delete_one({"_id": reference.key})
+        try:
+            with self.assertRaises(MissingMediaReferenceBindingError):
+                sample.reload()
+
+            self.assertEqual(
+                dataset._sample_collection.find_one({"_id": sample._id}),
+                persisted,
+            )
+
+            bindings.insert_one(binding)
+            bindings.update_one(
+                {"_id": reference.key},
+                {"$set": {"display_name": "stale-display-name"}},
+            )
+            with self.assertRaises(StaleMediaReferenceError):
+                sample.reload()
+
+            self.assertEqual(
+                dataset._sample_collection.find_one({"_id": sample._id}),
+                persisted,
+            )
+        finally:
+            bindings.delete_one({"_id": reference.key})
 
 
 class MediaReferenceDatasetTests(unittest.TestCase):
@@ -437,7 +469,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         stored = list(reference_dataset._sample_collection.find({}))
         self.assertEqual(len(stored), 1)
         self.assertIsNone(stored[0].get("filepath"))
-        self.assertIsNotNone(stored[0].get("_media_reference"))
+        self.assertIsNotNone(stored[0].get("media_reference"))
 
         filepath_dataset = fo.Dataset()
         filepath_name = filepath_dataset.name
@@ -456,7 +488,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(
             stored[0].get("filepath"), os.path.abspath("sample.jpg")
         )
-        self.assertIsNone(stored[0].get("_media_reference"))
+        self.assertIsNone(stored[0].get("media_reference"))
 
     @drop_datasets
     def test_attached_whole_value_reassignment_and_reload(self):
@@ -586,33 +618,33 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             all("filepath" not in sample for sample in raw_samples)
         )
         self.assertEqual(
-            len({sample["_media_reference"]["key"] for sample in raw_samples}),
+            len({sample["media_reference"]["key"] for sample in raw_samples}),
             4,
         )
         self.assertEqual(len({sample["_rand"] for sample in raw_samples}), 4)
         self.assertEqual(dataset.media_type, "multimodal")
         self.assertEqual(
-            dataset.app_config.grid_media_field, "_media_reference"
+            dataset.app_config.grid_media_field, "media_reference"
         )
-        self.assertIn("_media_reference", dataset.app_config.media_fields)
-        self.assertEqual(
-            dataset._doc.version, MEDIA_REFERENCE_DATASET_REVISION
-        )
-
+        self.assertIn("media_reference", dataset.app_config.media_fields)
         reference_index = dataset.get_index_information()[
-            "_media_reference.key"
+            "media_reference.key"
         ]
         self.assertTrue(reference_index["unique"])
         self.assertTrue(reference_index["sparse"])
         with self.assertRaises(ValueError):
-            dataset.drop_index("_media_reference.key")
+            dataset.drop_index("media_reference.key")
 
         private_schema = dataset.get_field_schema(include_private=True)
+        public_schema = dataset.get_field_schema()
         self.assertIsInstance(
-            private_schema["_media_reference"], fof.DictField
+            public_schema["media_reference"], fof.MediaReferenceField
+        )
+        self.assertIsInstance(
+            private_schema["media_reference"], fof.MediaReferenceField
         )
         self.assertNotIsInstance(
-            private_schema["_media_reference"], LeRobotEpisode
+            private_schema["media_reference"], LeRobotEpisode
         )
 
         with mock.patch.object(
@@ -628,6 +660,28 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(
             [sample.media_reference.key for sample in loaded],
             [sample.media_reference.key for sample in selected],
+        )
+        expected_keys = [
+            reference.key for reference in map(_make_reference, range(4))
+        ]
+        self.assertEqual(dataset.values("media_reference.key"), expected_keys)
+        self.assertEqual(
+            len(dataset.match({"media_reference.kind": "lerobot-episode"})),
+            4,
+        )
+        self.assertEqual(
+            len(
+                dataset.match(
+                    {"media_reference.key": {"$in": expected_keys[1:3]}}
+                )
+            ),
+            2,
+        )
+        serialized_reference = dataset.first().to_dict()["media_reference"]
+        self.assertEqual(set(serialized_reference), {"kind", "key"})
+        self.assertEqual(
+            dataset.select_fields("media_reference").first().media_reference,
+            dataset.first().media_reference,
         )
         logical_key = loaded[2].media_reference.key
         self.assertEqual(dataset[logical_key].id, loaded[2].id)
@@ -661,9 +715,11 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(
             copied.media_reference.key, dataset.first().media_reference.key
         )
+        self.assertEqual(copied._doc._rand, dataset.first()._doc._rand)
         self.assertEqual(
             view_copy.media_reference.key, dataset.first().media_reference.key
         )
+        self.assertEqual(view_copy._doc._rand, dataset.first()._doc._rand)
 
         destination = fo.Dataset()
         destination.add_samples(dataset.iter_samples())
@@ -725,9 +781,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 all("filepath" not in sample for sample in exported_samples)
             )
             self.assertTrue(
-                all(
-                    "_media_reference" in sample for sample in exported_samples
-                )
+                all("media_reference" in sample for sample in exported_samples)
             )
 
             imported = fo.Dataset.from_dir(
@@ -745,37 +799,28 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             destination.add_importer(importer)
             self.assertEqual(len(destination), 3)
             self.assertEqual(
-                destination._doc.version, MEDIA_REFERENCE_DATASET_REVISION
-            )
-            self.assertEqual(
                 destination._doc.media_reference_kind, "lerobot-episode"
             )
             self.assertTrue(
-                destination.get_index_information()["_media_reference.key"][
+                destination.get_index_information()["media_reference.key"][
                     "unique"
                 ]
             )
 
-            metadata_path = os.path.join(native_dir, "metadata.json")
-            with open(metadata_path) as file:
-                exported_metadata = json.load(file)
+            binding_path = os.path.join(
+                native_dir, "media_reference_bindings.json"
+            )
+            with open(binding_path) as file:
+                bindings = json.load(file)["bindings"]
 
-            exported_metadata["version"] = "1.0.0"
-            with open(metadata_path, "w") as file:
-                json.dump(exported_metadata, file)
-
-            invalid_revision_name = "invalid-native-media-reference-revision"
-            with self.assertRaises(MediaReferenceError):
-                fo.Dataset.from_dir(
-                    dataset_dir=native_dir,
-                    dataset_type=fot.FiftyOneDataset,
-                    name=invalid_revision_name,
-                )
-            self.assertFalse(fo.dataset_exists(invalid_revision_name))
-
-            exported_metadata["version"] = MEDIA_REFERENCE_DATASET_REVISION
-            with open(metadata_path, "w") as file:
-                json.dump(exported_metadata, file)
+            self.assertEqual(len(bindings), 2)
+            self.assertEqual(
+                {binding["_id"] for binding in bindings},
+                {
+                    sample["media_reference"]["key"]
+                    for sample in exported_samples
+                },
+            )
 
             exported_samples[0]["filepath"] = "/tmp/injected.jpg"
             with open(samples_path, "w") as file:
@@ -826,6 +871,46 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 )
 
             self.assertFalse(os.path.exists(materialized_dir))
+
+    @drop_datasets
+    def test_failed_native_import_rolls_back_new_private_bindings(self):
+        dataset = fo.Dataset()
+        references = [_make_reference(9100), _make_reference(9101)]
+        dataset.add_samples(
+            [fo.Sample(media_reference=reference) for reference in references]
+        )
+        keys = [reference.key for reference in references]
+
+        with tempfile.TemporaryDirectory() as export_dir:
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=False,
+            )
+
+            bindings = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION]
+            bindings.delete_many({"_id": {"$in": keys}})
+
+            samples_path = os.path.join(export_dir, "samples.json")
+            with open(samples_path) as file:
+                samples_document = json.load(file)
+
+            samples_document["samples"][-1]["_media_type"] = "image"
+            with open(samples_path, "w") as file:
+                json.dump(samples_document, file)
+
+            name = "failed-private-binding-import"
+            with self.assertRaisesRegex(ValueError, "inconsistent"):
+                fo.Dataset.from_dir(
+                    dataset_dir=export_dir,
+                    dataset_type=fot.FiftyOneDataset,
+                    name=name,
+                )
+
+            self.assertFalse(fo.dataset_exists(name))
+            self.assertEqual(
+                bindings.count_documents({"_id": {"$in": keys}}), 0
+            )
 
     def test_asset_lifecycle_surface_is_private(self):
         sample = fo.Sample.from_media_reference(_make_reference(1))
@@ -977,10 +1062,9 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             filepath_dataset.get_index_information(), indexes_before
         )
 
-        other_envelope = serialize_media_reference(_make_reference(3))
-        other_envelope["kind"] = "other-reference-kind"
-        other_envelope["key"] = "other-reference-kind:3"
-        other = fo.Sample._from_media_reference_envelope(other_envelope)
+        other = fo.Sample(
+            media_reference=_AlternateMediaReference("other-kind")
+        )
         with self.assertRaisesRegex(ValueError, "multiple reference kinds"):
             reference_dataset.add_sample(other)
         self.assertEqual(len(reference_dataset), 1)
@@ -1119,9 +1203,6 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(
             dataset.first().media_reference.key, _make_reference(0).key
         )
-        self.assertEqual(
-            dataset._doc.version, MEDIA_REFERENCE_DATASET_REVISION
-        )
 
     @drop_datasets
     def test_failed_collection_merge_rolls_back_reference_adoption(self):
@@ -1152,7 +1233,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertEqual(destination.get_index_information(), indexes)
 
     @drop_datasets
-    def test_reference_add_collection_and_migration_compatibility(self):
+    def test_reference_add_collection_preserves_normal_revision(self):
         source = fo.Dataset()
         source.add_sample(
             fo.Sample.from_media_reference(_make_reference(1), value="source")
@@ -1173,31 +1254,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         )
         self.assertFalse(fomi.needs_migration(name=destination.name))
         fomi.migrate_dataset_if_necessary(destination.name)
-        self.assertEqual(
-            destination._doc.version, MEDIA_REFERENCE_DATASET_REVISION
-        )
-
-        collection = foo.get_db_conn().datasets
-        collection.update_one(
-            {"_id": destination._doc.id},
-            {"$set": {"media_reference_kind": None}},
-        )
-        with self.assertRaises(EnvironmentError):
-            fomi.needs_migration(name=destination.name)
-        collection.update_one(
-            {"_id": destination._doc.id},
-            {"$set": {"media_reference_kind": "lerobot-episode"}},
-        )
-        self.assertEqual(
-            MEDIA_REFERENCE_DATASET_REVISION,
-            "9999.0.0+media-reference-v1",
-        )
-        with mock.patch("fiftyone.migrations.runner.foc.VERSION", "10000.0.0"):
-            self.assertFalse(
-                fomi._is_media_reference_compatibility_revision(
-                    destination.name
-                )
-            )
+        self.assertEqual(destination._doc.version, source._doc.version)
 
     @drop_datasets
     def test_reference_clone_remaps_saved_view_record_ids(self):
@@ -1233,9 +1290,6 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         reloaded = fo.load_dataset(name)
         self.assertEqual(len(reloaded), 0)
         self.assertEqual(reloaded._doc.media_reference_kind, kind)
-        self.assertEqual(
-            reloaded._doc.version, MEDIA_REFERENCE_DATASET_REVISION
-        )
 
         with tempfile.TemporaryDirectory() as export_dir:
             reloaded.export(
@@ -1248,12 +1302,9 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 dataset_type=fot.FiftyOneDataset,
             )
             self.assertEqual(len(imported), 0)
-            self.assertEqual(
-                imported._doc.version, MEDIA_REFERENCE_DATASET_REVISION
-            )
             self.assertEqual(imported._doc.media_reference_kind, kind)
             reference_index = imported.get_index_information()[
-                "_media_reference.key"
+                "media_reference.key"
             ]
             self.assertTrue(reference_index["unique"])
             self.assertTrue(reference_index["sparse"])
@@ -1295,24 +1346,22 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         legacy = fo.Dataset()
         old_revision = legacy._doc.version
         legacy.add_sample(fo.Sample.from_media_reference(_make_reference(10)))
-        legacy._sample_collection.drop_index("_media_reference.key_1")
+        legacy._sample_collection.drop_index("media_reference.key_1")
         legacy._sample_collection.update_many({}, {"$set": {"filepath": None}})
         legacy._doc.version = old_revision
         legacy._doc.media_reference_kind = None
         legacy._doc.sample_fields = [
             field
             for field in legacy._doc.sample_fields
-            if field.name != "_media_reference"
+            if field.name != "media_reference"
         ]
         legacy._doc.save()
         legacy.add_sample(fo.Sample.from_media_reference(_make_reference(11)))
-        reference_index = legacy.get_index_information()[
-            "_media_reference.key"
-        ]
+        reference_index = legacy.get_index_information()["media_reference.key"]
         self.assertTrue(reference_index["unique"])
         self.assertTrue(reference_index["sparse"])
         self.assertIn(
-            "_media_reference",
+            "media_reference",
             {field.name for field in legacy._doc.sample_fields},
         )
         with self.assertRaisesRegex(ValueError, "duplicate"):
@@ -1340,8 +1389,8 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                 dataset.set_field("filepath", fo.ViewField("episode_index"))
             with self.assertRaises(UnsupportedMediaReferenceOperation):
                 dataset.clear_sample_field("filepath")
-            with self.assertRaises(AttributeError):
-                dataset.set_values("_media_reference", [{}])
+            with self.assertRaises(UnsupportedMediaReferenceOperation):
+                dataset.set_values("media_reference", [{}])
             with self.assertRaises(UnsupportedMediaReferenceOperation):
                 dataset.set_values("media_reference", [_make_reference(2)])
             with self.assertRaises(UnsupportedMediaReferenceOperation):
