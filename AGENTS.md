@@ -5,5 +5,5 @@ Python core (`fiftyone/`) plus a React App (`app/`).
 
 - Any change under `fiftyone/`: see `STYLE_GUIDE.md`.
 - Any change under `app/`: **read `app/AGENTS.md` first**, and treat
-  `app/CODING_STANDARDS.md` as binding. App UI is built with VOODO
-  (`@voxel51/voodo`), not Material UI.
+  `app/CODING_STANDARDS.md` as binding. New App UI uses VOODO
+  (`@voxel51/voodo`); do not add Material UI.
