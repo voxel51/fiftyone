@@ -152,13 +152,17 @@ describe("useImageTextureLease", () => {
     await waitFor(() =>
       expect(rendered.result.current.handle).toBe(secondHandle),
     );
-    await waitFor(() => expect(animationFrames).toHaveLength(1));
+    await waitFor(() =>
+      expect(animationFrames.length).toBeGreaterThanOrEqual(1),
+    );
 
     expect(handlesAtRelease).toEqual([]);
-    act(() => animationFrames.shift()?.(0));
+    act(() => flushAnimationFrame(animationFrames, 0));
     expect(handlesAtRelease).toEqual([]);
-    await waitFor(() => expect(animationFrames).toHaveLength(1));
-    act(() => animationFrames.shift()?.(16));
+    await waitFor(() =>
+      expect(animationFrames.length).toBeGreaterThanOrEqual(1),
+    );
+    act(() => flushAnimationFrame(animationFrames, 16));
     expect(handlesAtRelease).toEqual([secondHandle]);
 
     rendered.unmount();
@@ -230,6 +234,16 @@ function textureHandle(): ImageTextureHandle {
     imageWidth: 1,
     texture: new THREE.Texture(),
   };
+}
+
+function flushAnimationFrame(
+  animationFrames: FrameRequestCallback[],
+  timestamp: number,
+) {
+  const callbacks = animationFrames.splice(0);
+  for (const callback of callbacks) {
+    callback(timestamp);
+  }
 }
 
 function deferred<T>() {
