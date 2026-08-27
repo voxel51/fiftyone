@@ -7,7 +7,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { RecoilRoot } from "recoil";
+import { RecoilRoot, useSetRecoilState } from "recoil";
+import { multimodalGridFit } from "@fiftyone/state";
 import { publishMcapEmbeddingSelection } from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -22,6 +23,7 @@ import {
 } from "../../../visualization/webgpu/webgpu-live-lease";
 import type { ByteSourceDescriptor, EpisodePosterFrame } from "../../../ir";
 import {
+  gridPreviewStateKey,
   pointCloudPoseKey,
   type GridPosterCacheEntry,
 } from "./grid-poster-cache";
@@ -33,11 +35,39 @@ import {
 import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
+import type {
+  GridPosterProviderLookupStatus,
+  ResolvedGridPosterProviderDescriptor,
+} from "./use-grid-poster-provider";
 
 // The grid mounts custom renderers under a RecoilBridge, which is what lets
 // the tile read the embeddings panel's published match for its episode.
 function render(ui: ReactElement) {
   return renderBare(ui, { wrapper: RecoilRoot });
+}
+
+function renderWithGridFit(ui: ReactElement, fit: "contain" | "cover") {
+  return renderBare(
+    <RecoilRoot initializeState={({ set }) => set(multimodalGridFit, fit)}>
+      {ui}
+    </RecoilRoot>,
+  );
+}
+
+let setGridFit: ((fit: "contain" | "cover") => void) | null = null;
+
+function renderWithMutableGridFit(ui: ReactElement) {
+  return renderBare(
+    <RecoilRoot>
+      <GridFitController />
+      {ui}
+    </RecoilRoot>,
+  );
+}
+
+function GridFitController() {
+  setGridFit = useSetRecoilState(multimodalGridFit);
+  return null;
 }
 
 type PublishedWindows = Record<
@@ -69,11 +99,20 @@ const previewHarness = vi.hoisted(() => ({
 }));
 
 const bitmapViewHarness = vi.hoisted(() => ({
+  commitOnFitEffect: false,
   lastProps: null as {
     fit?: string;
     frame: Extract<EpisodePosterFrame, { kind: "image" }>["image"];
     onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
+    onCanvasCommitted?: (
+      canvas: HTMLCanvasElement,
+      size: { readonly height: number; readonly width: number },
+    ) => void;
   } | null,
+}));
+
+const cachedBitmapViewHarness = vi.hoisted(() => ({
+  fit: null as string | null,
 }));
 
 const bitmapHostHarness = vi.hoisted(() => ({
@@ -96,6 +135,17 @@ const sourceHarness = vi.hoisted(() => ({
 
 const gridStreamHarness = vi.hoisted(() => ({
   selected: "__auto__",
+}));
+
+const providerHarness = vi.hoisted(() => ({
+  descriptor: {
+    resolved: null as ResolvedGridPosterProviderDescriptor | null,
+    status: "miss" as GridPosterProviderLookupStatus,
+  },
+  poster: {
+    entry: null as GridPosterCacheEntry | null,
+    status: "miss" as GridPosterProviderLookupStatus,
+  },
 }));
 
 interface SnapshotRequest {
@@ -150,6 +200,11 @@ vi.mock("./use-grid-preview", () => ({
   useGridPreview: vi.fn(() => previewHarness.preview),
 }));
 
+vi.mock("./use-grid-poster-provider", () => ({
+  useGridPosterProviderDescriptor: () => providerHarness.descriptor,
+  useProvidedGridPoster: () => providerHarness.poster,
+}));
+
 vi.mock("./grid-camera-state", () => ({
   useGridCameraPose: vi.fn(() => [
     cameraPoseHarness.pose,
@@ -195,9 +250,11 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
       );
     },
     BitmapImageView: (props: {
+      readonly fit?: string;
       readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
     }) => {
-      const { onBitmapRetainedBytesChange } = props;
+      const { fit, onBitmapRetainedBytesChange } = props;
+      cachedBitmapViewHarness.fit = fit ?? null;
       useEffect(() => {
         onBitmapRetainedBytesChange?.(320 * 180 * 4);
       }, [onBitmapRetainedBytesChange]);
@@ -207,13 +264,26 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
       readonly fit?: string;
       readonly frame: Extract<EpisodePosterFrame, { kind: "image" }>["image"];
       readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
+      readonly onCanvasCommitted?: (
+        canvas: HTMLCanvasElement,
+        size: { readonly height: number; readonly width: number },
+      ) => void;
     }) => {
       bitmapViewHarness.lastProps = props;
-      const { onBitmapRetainedBytesChange } = props;
+      const { fit, onBitmapRetainedBytesChange, onCanvasCommitted } = props;
       // This effect reports decoded bitmap retention like the real view does.
       useEffect(() => {
         onBitmapRetainedBytesChange?.(640 * 480 * 4);
       }, [onBitmapRetainedBytesChange]);
+      // This effect mirrors the real bitmap view's fit-triggered canvas commit.
+      useEffect(() => {
+        if (bitmapViewHarness.commitOnFitEffect) {
+          onCanvasCommitted?.(document.createElement("canvas"), {
+            height: 100,
+            width: 100,
+          });
+        }
+      }, [fit, onCanvasCommitted]);
       return <div data-testid="bitmap-image-view" />;
     },
   };
@@ -238,7 +308,10 @@ afterEach(() => {
   resetGraphicsRendererRegistryForTests();
   bitmapHostHarness.lastBitmap = null;
   bitmapHostHarness.onCanvasCommitted = null;
+  cachedBitmapViewHarness.fit = null;
+  bitmapViewHarness.commitOnFitEffect = false;
   bitmapViewHarness.lastProps = null;
+  setGridFit = null;
   cameraPoseHarness.pose = null;
   previewHarness.preview.error = null;
   previewHarness.preview.cachedPoster = null;
@@ -255,9 +328,135 @@ afterEach(() => {
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
   gridStreamHarness.selected = "__auto__";
+  providerHarness.descriptor = { resolved: null, status: "miss" };
+  providerHarness.poster = { entry: null, status: "miss" };
 });
 
 describe("GridRenderer", () => {
+  it("waits for the optional cold tier before opening a source session", () => {
+    sourceHarness.byteSource = {
+      sourceId: "cold-tier-loading",
+      url: "https://example.test/cold-tier-loading.mcap",
+    };
+    providerHarness.descriptor = { resolved: null, status: "loading" };
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+  });
+
+  it("uses a revision-keyed provided poster without opening the source", () => {
+    sourceHarness.byteSource = {
+      sourceId: "provider-hit",
+      url: "https://example.test/provider-hit.mcap",
+    };
+    const provider = {
+      id: "test:posters",
+      resolveDescriptor: vi.fn(),
+    };
+    const descriptor = {
+      cacheRevision: "source-rev",
+      select: vi.fn(() => null),
+    };
+    providerHarness.descriptor = {
+      resolved: { descriptor, provider },
+      status: "hit",
+    };
+    const providedPoster: GridPosterCacheEntry = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 288,
+      mimeType: "image/webp",
+      provider: {
+        artifactIdentity: "artifact",
+        id: provider.id,
+        mediaKind: "image",
+        policyVersion: "image-grid-poster-v1",
+        revision: "source-rev",
+        variant: "frame",
+      },
+      sourceKind: "image",
+      streamId: "camera",
+      streamSourceName: "/camera/front",
+      streamSourceNames: ["/camera/front"],
+      width: 512,
+    };
+    providerHarness.poster = { entry: providedPoster, status: "hit" };
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      cachedPoster: providedPoster,
+    });
+    expect(
+      vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey,
+    ).toContain("source-rev");
+    expect(
+      vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey,
+    ).toContain(provider.id);
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+  });
+
+  it("keeps provider misses in the non-provider cache namespace", () => {
+    const source = {
+      sourceId: "provider-miss",
+      url: "https://example.test/provider-miss.mcap",
+    };
+    sourceHarness.byteSource = source;
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey).toBe(
+      gridPreviewStateKey({
+        datasetId: "dataset-id",
+        mediaField: undefined,
+        selectedSourceName: null,
+        source,
+      }),
+    );
+  });
+
+  it("isolates cache keys for providers with the same revision", () => {
+    const source = {
+      sourceId: "provider-scope",
+      url: "https://example.test/provider-scope.mcap",
+    };
+    sourceHarness.byteSource = source;
+    const descriptor = {
+      cacheRevision: "shared-revision",
+      select: vi.fn(() => null),
+    };
+    const firstProvider = {
+      id: "test:first-provider",
+      resolveDescriptor: vi.fn(),
+    };
+    providerHarness.descriptor = {
+      resolved: { descriptor, provider: firstProvider },
+      status: "hit",
+    };
+    const ctx = rendererCtx();
+    const view = render(<GridRenderer ctx={ctx} />);
+    const firstKey = vi.mocked(useGridPreview).mock.lastCall?.[0]
+      .cacheRequestKey as string;
+
+    const secondProvider = {
+      id: "test:second-provider",
+      resolveDescriptor: vi.fn(),
+    };
+    providerHarness.descriptor = {
+      resolved: { descriptor, provider: secondProvider },
+      status: "hit",
+    };
+    view.rerender(<GridRenderer ctx={ctx} />);
+    const secondKey = vi.mocked(useGridPreview).mock.lastCall?.[0]
+      .cacheRequestKey as string;
+
+    expect(secondKey).not.toBe(firstKey);
+    expect(firstKey).toContain(firstProvider.id);
+    expect(secondKey).toContain(secondProvider.id);
+    expect(firstKey).toContain(descriptor.cacheRevision);
+    expect(secondKey).toContain(descriptor.cacheRevision);
+  });
+
   it("posters at the earliest window the embeddings panel matched", () => {
     renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
       "1": [
@@ -306,6 +505,7 @@ describe("GridRenderer", () => {
     );
 
     expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(cachedBitmapViewHarness.fit).toBe("cover");
     const root = getGridRendererRoot(container);
     expect(root.classList.contains(classes.modalActivationSurface)).toBe(false);
     fireEvent.click(root);
@@ -354,6 +554,40 @@ describe("GridRenderer", () => {
     expect(bitmapViewHarness.lastProps.frame.bytes).toBe(bytes);
     expect(bitmapViewHarness.lastProps?.fit).toBe("cover");
     expect(bitmapViewHarness.lastProps.frame.mimeType).toBe("image/jpeg");
+  });
+
+  it("honors the contain fit setting for multimodal grid frames", () => {
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+
+    renderWithGridFit(<GridRenderer ctx={rendererCtx()} />, "contain");
+
+    expect(bitmapViewHarness.lastProps?.fit).toBe("contain");
+  });
+
+  it("captures the same frame separately when its fit changes", async () => {
+    sourceHarness.byteSource = {
+      sourceId: "fit-capture",
+      url: "memory://fit-capture",
+    };
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+    bitmapViewHarness.commitOnFitEffect = true;
+
+    renderWithMutableGridFit(<GridRenderer ctx={rendererCtx()} />);
+    await waitFor(() =>
+      expect(posterCaptureHarness.capture).toHaveBeenCalledTimes(1),
+    );
+    const coverKey = posterCaptureHarness.capture.mock.calls[0]?.[0].key;
+
+    act(() => setGridFit?.("contain"));
+
+    await waitFor(() =>
+      expect(posterCaptureHarness.capture).toHaveBeenCalledTimes(2),
+    );
+    expect(posterCaptureHarness.capture.mock.calls[1]?.[0].key).not.toBe(
+      coverKey,
+    );
   });
 
   it("shows a tiny buffering indicator over the last rendered frame", () => {
@@ -933,7 +1167,7 @@ describe("GridRenderer", () => {
 
 function rendererCtx() {
   return {
-    dataset: { name: "dataset" },
+    dataset: { datasetId: "dataset-id", name: "dataset" },
     sample: { sample: { id: "1" } },
   } as never;
 }

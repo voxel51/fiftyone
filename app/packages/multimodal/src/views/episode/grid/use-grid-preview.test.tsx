@@ -444,12 +444,13 @@ describe("useGridPreview", () => {
     act(() => latestState.current?.play());
     await act(async () => {
       await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
     });
+    expect(onReadResult).toHaveBeenCalledTimes(2);
+
+    await act(() => vi.advanceTimersByTimeAsync(84));
 
     expect(onReadResult).toHaveBeenCalledTimes(4);
-    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(2);
     act(() => latestState.current?.pause());
   });
 
@@ -579,6 +580,47 @@ describe("useGridPreview", () => {
     await act(() => vi.advanceTimersByTimeAsync(1));
     expect(firstImageByte(latestState.current?.frame ?? null)).toBe(2);
 
+    act(() => latestState.current?.pause());
+  });
+
+  it("flushes the final source frame before wrapping", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
+    const latestState = { current: null as GridPreviewState | null };
+    const pending = deferred<EpisodePreviewReadResult>();
+    sessionHarness.session.read.mockResolvedValueOnce(
+      readyResult({ bytes: [0], frameTimeNs: 0n, nextStartTimeNs: 1n }),
+    );
+    for (let frame = 1; frame <= 7; frame += 1) {
+      sessionHarness.session.read.mockResolvedValueOnce(
+        readyResult({
+          bytes: [frame],
+          frameTimeNs: BigInt(frame) * 70_000_000n,
+          nextStartTimeNs: BigInt(frame) * 70_000_000n + 1n,
+        }),
+      );
+    }
+    sessionHarness.session.read
+      .mockResolvedValueOnce(emptyResult(true))
+      .mockReturnValue(pending.promise);
+
+    render(
+      <PreviewHarness
+        id="full-source"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("full-source")}
+      />,
+    );
+    await act(async () => undefined);
+    act(() => latestState.current?.play());
+    await act(() => vi.advanceTimersByTimeAsync(1_000));
+
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(10);
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(7);
+    expect(sessionHarness.session.read.mock.calls[8]?.[0]).toMatchObject({
+      startTimeNs: 490_000_001n,
+    });
     act(() => latestState.current?.pause());
   });
 

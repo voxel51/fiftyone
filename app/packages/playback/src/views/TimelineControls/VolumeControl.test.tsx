@@ -1,4 +1,11 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -10,8 +17,11 @@ import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import {
   getAudioMuted,
   getAudioVolume,
+  getMasterMuted,
+  getMasterVolume,
   setAudioAvailable,
   setAudioVolume,
+  setMasterMuted,
 } from "../../lib/playback/store-access";
 import type { PlaybackStore } from "../../lib/playback/types";
 import TimelineControls from "./TimelineControls";
@@ -36,9 +46,31 @@ function renderControls(opts: { availability?: AudioAvailability } = {}) {
   return render(
     <PlaybackProvider duration={10} stepInterval={1 / 30}>
       <Capture availability={opts.availability} />
+      {/* TimelineControls renders the audio controls itself now, right after
+          the transport buttons — passing one in as well would put two in the
+          row. Rendering the bare row keeps this suite on the integrated
+          shape. */}
       <TimelineControls />
     </PlaybackProvider>,
   );
+}
+
+/**
+ * The fader is always mounted beside the mute button — it only animates its
+ * width open on hover — so nothing has to be opened before driving it.
+ */
+
+/**
+ * The fader's knob — voodo puts the ARIA slider contract and the keyboard
+ * handling there, not on the wrapper, so key events have to land on it.
+ */
+function knob() {
+  return screen.getByRole("slider");
+}
+
+/** The mute button, labelled by its channel ("Master"). */
+function muteButton(name: "Mute" | "Unmute") {
+  return screen.getByRole("button", { name: `${name} Master` });
 }
 
 describe("VolumeControl", () => {
@@ -52,60 +84,67 @@ describe("VolumeControl", () => {
 
   it("renders nothing while no audio integration has published availability", () => {
     renderControls({ availability: "unavailable" });
-    expect(screen.queryByTestId("timeline-controls-volume-group")).toBeNull();
+    expect(screen.queryByTestId("timeline-controls-mute")).toBeNull();
   });
 
-  it("disables the control with an error tooltip on a fatal audio error", () => {
+  it("disables the control and names the failure on a fatal audio error", () => {
     renderControls({ availability: "error" });
-    const group = screen.getByTestId("timeline-controls-volume-group");
-    expect(group.getAttribute("title")).toBe("Audio failed to load");
-    const mute = screen.getByTestId("timeline-controls-mute");
-    expect(mute.hasAttribute("disabled")).toBe(true);
+    const toggle = screen.getByTestId("timeline-controls-mute");
+    expect(toggle.getAttribute("aria-label")).toBe("Audio failed to load");
+    expect(toggle.hasAttribute("disabled")).toBe(true);
   });
 
-  it("renders the group once audio is available, muted by default", () => {
+  it("renders the toggle once audio is available, muted by default", () => {
     renderControls();
-    expect(screen.getByTestId("timeline-controls-volume-group")).toBeTruthy();
-    const mute = screen.getByRole("button", { name: "Unmute" });
-    expect(mute.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("timeline-controls-mute")).toBeTruthy();
+    expect(muteButton("Unmute").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("unmuting restores the default volume on first ever use", () => {
     renderControls();
-    fireEvent.click(screen.getByRole("button", { name: "Unmute" }));
+    fireEvent.click(muteButton("Unmute"));
     expect(getAudioMuted(store as PlaybackStore)).toBe(false);
     expect(getAudioVolume(store as PlaybackStore)).toBe(DEFAULT_AUDIO_VOLUME);
-    expect(screen.getByRole("button", { name: "Mute" })).toBeTruthy();
+    expect(muteButton("Mute")).toBeTruthy();
   });
 
   it("unmuting with a zero persisted volume falls back to the default level", () => {
     renderControls();
     setAudioVolume(store as PlaybackStore, 0);
-    fireEvent.click(screen.getByRole("button", { name: "Unmute" }));
+    fireEvent.click(muteButton("Unmute"));
     expect(getAudioVolume(store as PlaybackStore)).toBe(DEFAULT_AUDIO_VOLUME);
     expect(getAudioMuted(store as PlaybackStore)).toBe(false);
   });
 
-  it("arrow keys raise the volume and unmute", () => {
+  // The slider updates its own knob synchronously but emits `onChange`
+  // through a debounce, so the store write lands a tick later even at
+  // `debounceDelay={0}` — these have to wait for it rather than read
+  // straight after the keypress.
+  it("arrow keys raise the volume and unmute", async () => {
     renderControls();
-    const group = screen.getByTestId("timeline-controls-volume-group");
-    fireEvent.keyDown(group, { key: "ArrowUp" });
-    expect(getAudioMuted(store as PlaybackStore)).toBe(false);
+    fireEvent.keyDown(knob(), { key: "ArrowUp" });
+    await waitFor(() =>
+      expect(getAudioMuted(store as PlaybackStore)).toBe(false),
+    );
     expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.05);
   });
 
-  it("stepping down to zero mutes but preserves the stored volume", () => {
+  it("stepping down to zero mutes but preserves the stored volume", async () => {
     renderControls();
-    const group = screen.getByTestId("timeline-controls-volume-group");
-    fireEvent.keyDown(group, { key: "ArrowUp" }); // unmuted at 0.05
-    fireEvent.keyDown(group, { key: "ArrowDown" }); // back to 0 → mute
-    expect(getAudioMuted(store as PlaybackStore)).toBe(true);
+    fireEvent.keyDown(knob(), { key: "ArrowUp" }); // unmuted at 0.05
+    await waitFor(() =>
+      expect(getAudioMuted(store as PlaybackStore)).toBe(false),
+    );
+    fireEvent.keyDown(knob(), { key: "ArrowDown" }); // back to 0 -> mute
+    await waitFor(() =>
+      expect(getAudioMuted(store as PlaybackStore)).toBe(true),
+    );
     expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.05);
   });
 
   it("unmute and volume survive a provider swap within the session", () => {
     const first = renderControls();
-    fireEvent.click(screen.getByRole("button", { name: "Unmute" }));
+    fireEvent.click(muteButton("Unmute"));
     setAudioVolume(store as PlaybackStore, 0.42);
     first.unmount();
 
@@ -114,16 +153,33 @@ describe("VolumeControl", () => {
     expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.42);
   });
 
+  it("reads and writes through useAudio()'s master accessors (same atoms as the legacy names)", () => {
+    renderControls();
+    fireEvent.click(muteButton("Unmute"));
+    expect(getMasterMuted(store as PlaybackStore)).toBe(false);
+    expect(getAudioMuted(store as PlaybackStore)).toBe(false);
+
+    // Direct store writes bypass fireEvent's implicit act(), so React has
+    // not re-rendered the popover yet when the assertion runs.
+    act(() => setMasterMuted(store as PlaybackStore, true));
+    expect(getAudioMuted(store as PlaybackStore)).toBe(true);
+    expect(muteButton("Unmute")).toBeTruthy();
+
+    expect(getMasterVolume(store as PlaybackStore)).toBe(
+      getAudioVolume(store as PlaybackStore),
+    );
+  });
+
   it("a new session starts muted but keeps the persisted volume", () => {
     const first = renderControls();
-    fireEvent.click(screen.getByRole("button", { name: "Unmute" }));
+    fireEvent.click(muteButton("Unmute"));
     setAudioVolume(store as PlaybackStore, 0.42);
     first.unmount();
 
     window.sessionStorage.clear();
     renderControls();
     expect(getAudioMuted(store as PlaybackStore)).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Unmute" }));
+    fireEvent.click(muteButton("Unmute"));
     expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.42);
   });
 });

@@ -1,5 +1,7 @@
 import { LRUCache } from "lru-cache";
 
+import type { MultimodalGridFit } from "@fiftyone/state";
+import type { GridPosterProviderMetadata } from "../../../extensions/grid-posters";
 import type { ByteSourceDescriptor } from "../../../ir";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 
@@ -9,8 +11,9 @@ const MIN_BUDGET_BYTES = 32 * MIB;
 const MAX_BUDGET_BYTES = 128 * MIB;
 const DEFAULT_MAX_ENTRIES = 2_048;
 const ENTRY_METADATA_BYTES = 256;
-const CACHE_SCHEMA_VERSION = "grid-poster-v2";
+const CACHE_SCHEMA_VERSION = "grid-poster-v3";
 const PREVIEW_SELECTION_POLICY_VERSION = "preview-selection-v1";
+const PREVIEW_STATE_KEY_VERSION = "grid-preview-state-v1";
 const SNAPSHOT_RENDERER_POLICY_VERSION = "point-cloud-snapshot-v1";
 export const GRID_POSTER_AUTO_SOURCE = "__AUTO__";
 
@@ -22,6 +25,7 @@ export interface GridPosterCacheEntry {
   readonly height: number;
   readonly mimeType: string;
   readonly pointCloudPoseKey?: string;
+  readonly provider?: GridPosterProviderMetadata;
   readonly sourceKind: GridPosterSourceKind;
   readonly streamId: string | null;
   readonly streamSourceName: string | null;
@@ -40,6 +44,10 @@ export interface GridPosterCacheStats {
   readonly misses: number;
   readonly oversizeRejections: number;
   readonly puts: number;
+  readonly providerArtifactFailures: number;
+  readonly providerArtifactHits: number;
+  readonly providerDescriptorHits: number;
+  readonly providerDescriptorMisses: number;
   readonly replacements: number;
   readonly retainedBytes: number;
   readonly sourceRefreshesHover: number;
@@ -77,10 +85,12 @@ export interface GridPosterCacheOptions {
 
 export interface GridPosterKeyParts {
   readonly datasetId: string;
+  readonly imageFit: MultimodalGridFit;
   readonly mediaField: string | null | undefined;
   readonly mediaPath?: string | null | undefined;
   readonly posterSourceName?: string | null | undefined;
   readonly posterStartTimeNs?: bigint | null | undefined;
+  readonly providerRevision?: string | null | undefined;
   readonly selectedSourceName: string | null | undefined;
   readonly source: ByteSourceDescriptor;
 }
@@ -147,16 +157,17 @@ export function createGridPosterCache(
   return publicCache;
 }
 
-export function gridPosterCacheKey({
+function gridPreviewIdentityParts({
   datasetId,
   mediaField,
   mediaPath,
   posterSourceName,
   posterStartTimeNs,
+  providerRevision,
   selectedSourceName,
   source,
-}: GridPosterKeyParts): GridPosterCacheKey {
-  return serializeGridPosterKey([
+}: Omit<GridPosterKeyParts, "imageFit">): readonly (string | null)[] {
+  return [
     CACHE_SCHEMA_VERSION,
     datasetId,
     mediaField ?? null,
@@ -164,10 +175,32 @@ export function gridPosterCacheKey({
     stableMediaFilename(mediaPath ?? source.url),
     source.sizeBytes ?? null,
     source.etag ?? null,
+    providerRevision ?? null,
     selectedSourceName ?? GRID_POSTER_AUTO_SOURCE,
     posterSourceName ?? null,
     posterStartTimeNs?.toString() ?? null,
     PREVIEW_SELECTION_POLICY_VERSION,
+  ];
+}
+
+/** Stable owner identity for live preview state, independent of presentation fit. */
+export function gridPreviewStateKey(
+  parts: Omit<GridPosterKeyParts, "imageFit">,
+): string {
+  return serializeGridPosterKey([
+    ...gridPreviewIdentityParts(parts),
+    PREVIEW_STATE_KEY_VERSION,
+  ]);
+}
+
+/** Persistent identity for a poster whose canvas bytes bake in presentation fit. */
+export function gridPosterCacheKey(
+  parts: GridPosterKeyParts,
+): GridPosterCacheKey {
+  const { imageFit, ...identity } = parts;
+  return serializeGridPosterKey([
+    ...gridPreviewIdentityParts(identity),
+    imageFit,
   ]);
 }
 
@@ -202,6 +235,17 @@ export function gridPosterFreshness(
   size: { readonly height: number; readonly width: number },
   poseKey: string,
 ): GridPosterFreshness {
+  if (entry.provider) {
+    if (
+      entry.sourceKind === "point-cloud" &&
+      poseKey !== pointCloudPoseKey(null)
+    ) {
+      return "stale-pose";
+    }
+    // Provider posters are the bounded cold-grid tier. Upsizing one would
+    // open a live preview session and defeat that optimization.
+    return "fresh";
+  }
   if (
     entry.sourceKind === "point-cloud" &&
     entry.pointCloudPoseKey !== poseKey
@@ -219,6 +263,8 @@ export function shouldReplaceGridPoster(
   next: Omit<GridPosterCacheEntry, "bytes">,
 ): boolean {
   if (!current) return true;
+  if (!current.provider && next.provider) return false;
+  if (current.provider && !next.provider) return true;
   if (current.sourceKind !== next.sourceKind) return true;
   if (
     next.sourceKind === "point-cloud" &&
@@ -280,6 +326,10 @@ export function recordGridPosterDiagnostic(
     | "encodesStarted"
     | "hits"
     | "misses"
+    | "providerArtifactFailures"
+    | "providerArtifactHits"
+    | "providerDescriptorHits"
+    | "providerDescriptorMisses"
     | "sourceRefreshesHover"
     | "sourceRefreshesPose"
     | "sourceRefreshesSize"
@@ -302,6 +352,10 @@ function emptyCounters(): MutableStats {
     misses: 0,
     oversizeRejections: 0,
     puts: 0,
+    providerArtifactFailures: 0,
+    providerArtifactHits: 0,
+    providerDescriptorHits: 0,
+    providerDescriptorMisses: 0,
     replacements: 0,
     sourceRefreshesHover: 0,
     sourceRefreshesPose: 0,
@@ -315,6 +369,7 @@ function copyEntry(entry: GridPosterCacheEntry): GridPosterCacheEntry {
   return Object.freeze({
     ...entry,
     bytes: entry.bytes.slice(),
+    provider: entry.provider ? Object.freeze({ ...entry.provider }) : undefined,
     streamSourceNames: Object.freeze([...entry.streamSourceNames]),
   });
 }

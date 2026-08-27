@@ -106,7 +106,11 @@ export const usePersistAnnotationDeltas =
         });
 
         if (success && modalId) {
-          engine.reconcilePersisted([{ sample: modalId, deltas }]);
+          // Generated (patches) deltas are LABEL-rooted — the sample
+          // source must not be rebased from them.
+          engine.reconcilePersisted([{ sample: modalId, deltas }], {
+            sampleRooted: false,
+          });
         }
 
         return success;
