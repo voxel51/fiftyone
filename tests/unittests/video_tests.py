@@ -1861,6 +1861,7 @@ class VideoTests(unittest.TestCase):
                 "id",
                 "sample_id",
                 "filepath",
+                "media_reference",
                 "support",
                 "metadata",
                 "tags",
@@ -1886,6 +1887,7 @@ class VideoTests(unittest.TestCase):
                 "id",
                 "sample_id",
                 "filepath",
+                "media_reference",
                 "support",
                 "metadata",
                 "tags",
@@ -2696,6 +2698,7 @@ class VideoTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
+                "media_reference",
                 "metadata",
                 "tags",
                 "created_at",
@@ -2722,6 +2725,7 @@ class VideoTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
+                "media_reference",
                 "metadata",
                 "tags",
                 "created_at",
@@ -3623,6 +3627,7 @@ class VideoTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
+                "media_reference",
                 "metadata",
                 "tags",
                 "created_at",
@@ -3639,6 +3644,7 @@ class VideoTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
+                "media_reference",
                 "metadata",
                 "tags",
                 "created_at",
@@ -3874,6 +3880,7 @@ class VideoTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
+                "media_reference",
                 "metadata",
                 "tags",
                 "created_at",
@@ -3890,6 +3897,7 @@ class VideoTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
+                "media_reference",
                 "metadata",
                 "tags",
                 "created_at",
