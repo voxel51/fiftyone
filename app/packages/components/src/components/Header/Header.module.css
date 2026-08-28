@@ -4,35 +4,56 @@
   flex-shrink: 0;
   justify-content: space-between;
   width: 100%;
-  height: 74px;
+  /* All interactive chrome in the nav bar — title, dataset selector,
+   * view bar, social/theme buttons — share a 36px target height so
+   * they sit on a single visual baseline. The header itself is
+   * 56px to give 10px of vertical padding around that 36px row. */
+  height: 56px;
   justify-content: left;
   align-items: center;
+  /* Top-level gap between header sections (.left with the title +
+   * dataset selector, the view bar, the teams pill, the icon
+   * container). Within `.left` is its own gap; this one separates
+   * the dataset selector from the bar. */
+  gap: 1.5rem;
+  /* The icon links carry 0.5rem of their own padding for the hover circle,
+   * so the header contributes the difference — the rightmost glyph then sits
+   * 0.75rem from the edge, the same as the logo on the left. */
+  padding-right: 0.25rem;
 }
 
 .title {
-  margin-right: 1rem;
   cursor: pointer;
-  height: 40px;
+  height: 36px;
   display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .logo {
-  height: 40px;
-  width: 40px;
+  height: 28px;
+  width: 28px;
   cursor: pointer;
-  margin-right: 1rem;
+  margin-right: 0.75rem;
   will-change: transform;
 }
 
 .left {
   display: flex;
-  padding: 1rem;
+  align-items: center;
+  padding: 0 0.75rem;
+  height: 100%;
+  /* Explicit gap between the FiftyOne title and the dataset
+   * selector (and any other nav children). Without this they butt
+   * up against each other and visually overlap. */
+  gap: 0.75rem;
 }
 
 .fiftyone {
   color: var(--fo-palette-text-primary);
   font-weight: bold;
-  font-size: 1.8rem;
+  /* Big enough to carry the wordmark, small enough for the 36px row */
+  font-size: 1.35rem;
   align-items: center;
   display: flex;
   white-space: nowrap;

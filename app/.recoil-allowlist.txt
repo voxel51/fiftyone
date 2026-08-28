@@ -382,7 +382,9 @@ packages/state/src/hooks/schema/useSearchSchemaFields.test.tsx
 packages/state/src/hooks/schema/useSearchSchemaFields.ts
 packages/state/src/hooks/schema/useSetExcludedFieldsStage.test.tsx
 packages/state/src/hooks/schema/useSetSelectedFieldsStage.ts
+packages/state/src/hooks/similaritySearch/usePromptableSimilarityKeys.ts
 packages/state/src/hooks/similaritySearch/useSimilarity.test.tsx
+packages/state/src/hooks/similaritySearch/useSimilarityKeys.ts
 packages/state/src/hooks/similaritySearch/useSimilarityType.ts
 packages/state/src/hooks/useClearModal.ts
 packages/state/src/hooks/useCreateLooker.ts
@@ -417,6 +419,7 @@ packages/state/src/hooks/useToClips.ts
 packages/state/src/hooks/useToEvaluationPatches.ts
 packages/state/src/hooks/useTooltip.ts
 packages/state/src/hooks/useToPatches.ts
+packages/state/src/hooks/useViewChangePending.ts
 packages/state/src/recoil/aggregate.ts
 packages/state/src/recoil/aggregations.ts
 packages/state/src/recoil/atoms.ts
@@ -468,3 +471,4 @@ packages/state/src/recoil/utils.ts
 packages/state/src/recoil/view.ts
 packages/state/src/session.ts
 packages/video-annotation/src/state/accessors.ts
+packages/view-bar/src/ViewBar.tsx

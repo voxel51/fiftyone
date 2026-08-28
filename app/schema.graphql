@@ -339,6 +339,11 @@ input ExtendedViewForm {
   slice: String = null
 }
 
+type FieldKind {
+  ftype: String!
+  kind: Kind!
+}
+
 type FloatAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -440,6 +445,20 @@ scalar JSON
 type KeypointSkeleton {
   labels: [String!]
   edges: [[Int!]!]!
+}
+
+"""
+The kind of value a view expression operator accepts or produces
+"""
+enum Kind {
+  ANY
+  NUMBER
+  STRING
+  BOOLEAN
+  ARRAY
+  OBJECT
+  DATE
+  ID
 }
 
 type LabelTagColor {
@@ -557,6 +576,9 @@ type Query {
   version: String!
   savedViews(datasetName: String!): [SavedView!]
   schemaForViewStages(datasetName: String!, viewStages: BSONArray!): SchemaResult!
+  viewExpressionOperators: [ViewExpressionOperator!]!
+  viewExpressionFieldKinds: [FieldKind!]!
+  viewExpressionAstVersion: Int!
 }
 
 type QueryTimeout {
@@ -675,14 +697,54 @@ input SidebarGroupInput {
 
 type StageDefinition {
   name: String!
+  description: String
+  mediaTypes: [String!]!
   params: [StageParameter!]!
 }
 
 type StageParameter {
   name: String!
   type: String!
+  tokens: [String!]!
+  nullable: Boolean!
+  required: Boolean!
+  choices: StageParameterChoices!
   default: String
   placeholder: String
+}
+
+enum StageParameterChoiceSource {
+  FIELDS
+  GROUP_SLICES
+  CONSTANTS
+  EVALUATION_KEYS
+  SIMILARITY_KEYS
+  FREE_TEXT
+}
+
+type StageParameterChoices {
+  source: StageParameterChoiceSource!
+  fields: [StageParameterFieldConstraint!]!
+  values: [String!]!
+}
+
+type StageParameterFieldConstraint {
+  level: StageParameterFieldLevel!
+  existence: StageParameterFieldExistence!
+  ftypes: [String!]!
+  labelTypes: [String!]!
+}
+
+enum StageParameterFieldExistence {
+  EXISTING
+  EXISTING_ROOT
+  ANY
+}
+
+enum StageParameterFieldLevel {
+  ANY
+  SAMPLE
+  FRAME
 }
 
 input StateForm {
@@ -772,6 +834,20 @@ type VideoSample implements Sample {
   aspectRatio: Float!
   frameNumber: Int!
   frameRate: Float!
+}
+
+type ViewExpressionOperator {
+  name: String!
+  display: String!
+  syntax: String!
+  selfKind: Kind!
+  argKinds: [Kind!]!
+  returns: Kind!
+  minArgs: Int!
+  maxArgs: Int
+  reflected: Boolean!
+  typed: Boolean!
+  summary: String!
 }
 
 type WildcardProjection {

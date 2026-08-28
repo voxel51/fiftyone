@@ -371,7 +371,7 @@ const createDataset = (() => {
       .map(([name, view]) => {
         return `dataset.save_view("${name}", ${view})`;
       })
-      .join("\n")}
+      .join("\n    ")}
     `);
   };
 })();

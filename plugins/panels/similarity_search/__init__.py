@@ -18,7 +18,7 @@ from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 
 from .constants import STORE_NAME, RunStatus
-from .run_manager import RunManager
+from .run_manager import RunManager, build_result_view
 from fiftyone.core.brain import BrainMethod
 
 logger = logging.getLogger(__name__)
@@ -179,7 +179,6 @@ class SimilaritySearchPanel(Panel):
             return
 
         result_view_stages = run_data.get("result_view")
-        patches_field = run_data.get("patches_field")
         result_ids = run_data.get("result_ids", [])
 
         if not result_view_stages and not result_ids:
@@ -187,18 +186,7 @@ class SimilaritySearchPanel(Panel):
             return
 
         try:
-            if result_view_stages:
-                from fiftyone.core.view import DatasetView
-
-                view = DatasetView._build(ctx.dataset, result_view_stages)
-            else:
-                base = ctx.dataset
-                if base.media_type == "group":
-                    base = base.select_group_slices(_allow_mixed=True)
-                if patches_field:
-                    base = base.to_patches(patches_field)
-
-                view = base.select(result_ids, ordered=True)
+            view = build_result_view(ctx, run_data)
 
             ctx.ops.clear_selected_samples()
             ctx.ops.clear_selected_labels()

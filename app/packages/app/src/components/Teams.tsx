@@ -110,13 +110,17 @@ const BaseEnterpriseButton = styled(Button)<{
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 6px 12px;
-  border-radius: 16px;
+  /* Snug to the 36px nav row — was 16px / 6px×12px, oversized vs.
+   * the rest of the chrome. */
+  padding: 2px 8px;
+  height: 28px;
+  border-radius: 14px;
   font-weight: 500;
   text-transform: none;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   text-decoration: none;
-  font-size: 16px;
+  font-size: 12px;
+  line-height: 1;
   position: relative;
   overflow: hidden;
   border: 1px solid ${({ $borderColor }) => $borderColor};
@@ -124,8 +128,8 @@ const BaseEnterpriseButton = styled(Button)<{
   box-shadow: none;
 
   @media (max-width: 767px) {
-    font-size: 14px;
-    padding: 4px 10px;
+    font-size: 11px;
+    padding: 2px 6px;
   }
 
   &:before {

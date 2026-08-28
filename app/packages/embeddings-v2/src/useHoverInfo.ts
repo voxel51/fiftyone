@@ -95,7 +95,7 @@ export function useHoverInfo(
       cancelDwell();
       cancelClear();
     },
-    [],
+    [cancelDwell, cancelClear],
   );
 
   const handleHover = (hit: HoverHit | null) => {
