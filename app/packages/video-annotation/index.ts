@@ -1,5 +1,12 @@
 export { VideoAnnotationSurface } from "./src/components/VideoAnnotationSurface";
 export { useVfcClockSource } from "./src/hooks/useVfcClockSource";
+export { VideoLighterTile } from "./src/components/VideoLighterTile";
+export { RegisterVideoExploreLabels } from "./src/components/RegisterVideoExploreLabels";
+export { RegisterTimelineAudio } from "./src/components/RegisterTimelineAudio";
+export type {
+  VideoLighterTileMode,
+  VideoLighterTileProps,
+} from "./src/components/VideoLighterTile";
 // Frame-label tracks. The track data is a server index fetch; the
 // annotation engine only overlays unsaved edits, and its atom has a
 // module-level default, so these work read-only outside Annotate mode.

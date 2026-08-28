@@ -1,14 +1,56 @@
-import React, { useRef, useState } from "react";
+import React, { type RefObject, useRef, useState } from "react";
 import { usePlayback, useVideoStream, useVideoSync } from "@fiftyone/playback";
+import { useLighterTooltipEventHandler } from "../../../core/src/components/Modal/Lighter/useLighterTooltipEventHandler";
 import { useLighterTileScene } from "../hooks/useLighterTileScene";
 import { useVfcClockSource } from "../hooks/useVfcClockSource";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
+import { useVideoExploreSyncBundle } from "../hooks/useVideoExploreSyncBundle";
 import { VIDEO_STREAM_ID } from "../utils/ids";
 import styles from "./VideoLighterTile.module.css";
+
+/** Which sync bundle the tile arms. Explore is the read-only half. */
+export type VideoLighterTileMode = "annotate" | "explore";
+
+interface SyncProps {
+  scene: ReturnType<typeof useLighterTileScene>["scene"];
+  canonicalMediaReady: boolean;
+  mediaRef: RefObject<HTMLVideoElement | null>;
+}
+
+/**
+ * Null-rendering hosts for the two sync bundles. Which bundle runs is a
+ * per-surface choice, and hooks cannot be called conditionally — so the
+ * choice becomes which component the tile renders, and each one's hooks
+ * stay unconditional inside it.
+ */
+const AnnotateSync: React.FC<SyncProps> = (props) => {
+  useVideoAnnotationSyncBundle(props);
+  return null;
+};
+
+const ExploreSync: React.FC<SyncProps> = (props) => {
+  useVideoExploreSyncBundle(props);
+  return null;
+};
 
 export interface VideoLighterTileProps {
   /** Resolved media URL for the video. */
   videoSrc: string;
+  /**
+   * Which sync bundle to arm. Defaults to `annotate` so the annotation
+   * surface keeps its existing behaviour; Explore passes `explore` for the
+   * read-only overlay path.
+   */
+  mode?: VideoLighterTileMode;
+  /**
+   * Media lifecycle passthroughs, fired alongside the tile's own handling
+   * rather than replacing it. Explore uses them to raise the readiness
+   * marker every sample surface publishes and to fall back on a load
+   * failure; the tile itself stays agnostic to both.
+   */
+  onLoadStart?: (element: HTMLVideoElement) => void;
+  onLoadedData?: (element: HTMLVideoElement) => void;
+  onError?: (element: HTMLVideoElement) => void;
 }
 
 /**
@@ -17,6 +59,10 @@ export interface VideoLighterTileProps {
  */
 export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   videoSrc,
+  mode = "annotate",
+  onLoadStart,
+  onLoadedData,
+  onError,
 }) => {
   const sourceId = VIDEO_STREAM_ID;
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -57,13 +103,12 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
     sceneIdDeps: [videoSrc],
   });
 
-  // Overlay / sidebar sync. `videoRef` keeps the <video> zoomed/panned with
-  // the Lighter viewport so scroll-zoom scales the picture, not just overlays.
-  useVideoAnnotationSyncBundle({
-    scene,
-    canonicalMediaReady,
-    mediaRef: videoRef,
-  });
+  // Hover -> `fos.tooltipDetail`, which `TooltipInfo` (mounted in Modal.tsx)
+  // renders. Unconditional: both surfaces want the label tooltip, and
+  // Annotate never had it either.
+  useLighterTooltipEventHandler(scene);
+
+  const Sync = mode === "annotate" ? AnnotateSync : ExploreSync;
 
   return (
     <div className={styles.body}>
@@ -79,7 +124,11 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
           const v = e.currentTarget;
           setVideoDims({ w: v.videoWidth, h: v.videoHeight });
         }}
-        onLoadedData={() => {
+        onLoadStart={(e) => onLoadStart?.(e.currentTarget)}
+        onError={(e) => onError?.(e.currentTarget)}
+        onLoadedData={(e) => {
+          onLoadedData?.(e.currentTarget);
+
           // Force the engine to commit once now that the video stream is
           // ready. The engine's RAF loop is dormant while paused — without
           // a seek the label stream never gets `onCommit` called
@@ -96,6 +145,14 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
         }}
       />
       <div ref={lighterHostRef} className={styles.lighterHost} />
+      {/* Overlay / sidebar sync. `videoRef` keeps the <video> zoomed and
+          panned with the Lighter viewport so scroll-zoom scales the
+          picture, not just the overlays. */}
+      <Sync
+        scene={scene}
+        canonicalMediaReady={canonicalMediaReady}
+        mediaRef={videoRef}
+      />
     </div>
   );
 };

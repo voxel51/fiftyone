@@ -1,21 +1,19 @@
 import {
   PlaybackProvider,
   TIMELINE_DRAWER_MAX_SIZE,
-  usePlayback,
-  useVideoStream,
-  useVideoSync,
   type TimelineMode,
 } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
   FrameLabelsTracks,
   RegisterFrameLabels,
-  useVfcClockSource,
+  RegisterTimelineAudio,
+  RegisterVideoExploreLabels,
+  VideoLighterTile,
 } from "@fiftyone/video-annotation";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { VideoExploreToolbar } from "./VideoExploreToolbar";
 import styles from "./VideoTimelineSurface.module.css";
-
-const VIDEO_STREAM_ID = "video";
 
 /**
  * The readiness signal the lookers raise once a sample has painted: an
@@ -24,6 +22,27 @@ const VIDEO_STREAM_ID = "video";
  * watching for a sample to land has to know which surface rendered it.
  */
 const LOADED = "canvas-loaded";
+
+/**
+ * Query-param escape hatch, read once at mount.
+ *
+ * On by default: the timeline is the direction of travel for video Explore.
+ * It is not yet at parity with the looker it replaces, so `?mmtimeline=0`
+ * falls back to `VideoLookerReact` for the behaviours still being ported —
+ * and gives the e2e specs that cover them somewhere to run in the meantime.
+ *
+ * The app router preserves unknown query params (`useWriters/onSetSample.ts`
+ * only rewrites `id`/`groupId`), so the opt-out survives opening the modal
+ * and navigating between samples.
+ */
+export function useIsVideoTimelineEnabled(): boolean {
+  return useMemo(() => {
+    if (typeof window === "undefined") return true;
+    return (
+      new URLSearchParams(window.location.search).get("mmtimeline") !== "0"
+    );
+  }, []);
+}
 
 /**
  * Fraction of the surface height the timeline may occupy before its body caps
@@ -36,36 +55,45 @@ const TIMELINE_MAX_HEIGHT_FRACTION = 0.25;
 const TIMELINE_MIN_MAX_SIZE = 160;
 
 /**
- * `<video>` bound to the playback engine.
+ * The media half of the surface: `VideoLighterTile` — the same Lighter-backed
+ * tile the annotation surface uses — in its read-only `explore` mode.
  *
- * Video-anchored playback: `useVfcClockSource` makes the decoder's
- * presented-frame time the engine's clock, so the engine commits exactly
- * where the picture is. The stream is therefore non-blocking — gating the
- * engine again on `bufferState` would double-count and cause stalls.
- *
- * Deliberately plain: no Lighter and no overlays. The hover overlay cluster
- * (zoom / crop / toggle-overlays) is tracked separately.
+ * The tile owns the `<video>`, the engine binding (`useVideoStream` /
+ * `useVideoSync` / `useVfcClockSource`) and the Lighter scene that paints the
+ * label overlays and feeds the hover tooltip. What stays here is what is
+ * specific to Explore: the readiness marker every sample surface publishes,
+ * and the media-error fallback.
  */
 const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
   videoSrc,
   filepath,
 }) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const { seek } = usePlayback();
   // Keyed to the source rather than a bare flag so navigating to a sample
   // that does load clears it without an effect and without a flicker.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
-  // Which `videoSrc` the engine has already been kicked for. `loadeddata`
-  // can fire more than once on the same element — a `currentTime` write
-  // across an unbuffered range drops readyState below HAVE_CURRENT_DATA and
-  // fires it again on recovery — and an unguarded kick would yank the
-  // playhead back to 0 mid-session.
-  const kickedSrcRef = useRef<string | null>(null);
+  const onLoadStart = useCallback((element: HTMLVideoElement) => {
+    // The element is reused across sources, so the previous source's
+    // marker has to come down before the next one lands. `loadstart`
+    // is the element's own ordering guarantee that it precedes the
+    // matching `loadeddata`, which a React effect would not be.
+    element.removeAttribute(LOADED);
+  }, []);
 
-  useVideoStream(VIDEO_STREAM_ID, videoRef, { blocking: false });
-  useVideoSync(videoRef);
-  useVfcClockSource(videoRef);
+  const onLoadedData = useCallback(
+    (element: HTMLVideoElement) => {
+      element.setAttribute(LOADED, "true");
+      element.dispatchEvent(
+        new CustomEvent(LOADED, {
+          detail: { sampleFilepath: filepath },
+          bubbles: true,
+        }),
+      );
+    },
+    [filepath],
+  );
+
+  const onError = useCallback(() => setFailedSrc(videoSrc), [videoSrc]);
 
   if (failedSrc === videoSrc) {
     return (
@@ -77,38 +105,12 @@ const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
   }
 
   return (
-    <video
-      ref={videoRef}
-      className={styles.video}
-      src={videoSrc}
-      preload="auto"
-      playsInline
-      muted
-      onLoadStart={() => {
-        // The element is reused across sources, so the previous source's
-        // marker has to come down before the next one lands. `loadstart`
-        // is the element's own ordering guarantee that it precedes the
-        // matching `loadeddata`, which a React effect would not be.
-        videoRef.current?.removeAttribute(LOADED);
-      }}
-      onError={() => setFailedSrc(videoSrc)}
-      onLoadedData={() => {
-        const element = videoRef.current;
-        element?.setAttribute(LOADED, "true");
-        element?.dispatchEvent(
-          new CustomEvent(LOADED, {
-            detail: { sampleFilepath: filepath },
-            bubbles: true,
-          }),
-        );
-
-        // The engine's RAF loop is dormant while paused, so nothing commits
-        // until something moves the playhead. Kick it once per source so the
-        // first frame and the ruler agree on mount.
-        if (kickedSrcRef.current === videoSrc) return;
-        kickedSrcRef.current = videoSrc;
-        seek(0);
-      }}
+    <VideoLighterTile
+      videoSrc={videoSrc}
+      mode="explore"
+      onLoadStart={onLoadStart}
+      onLoadedData={onLoadedData}
+      onError={onError}
     />
   );
 };
@@ -157,9 +159,13 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   // the same targeted cast video-annotation's `getModalSampleFrameRate` uses.
   const frameRate = (sample as { frameRate?: number }).frameRate;
 
-  // Frame-numbered ruler when the frame rate is known; elapsed seconds if
-  // not. This is what retires the looker's "use frame number" preference —
-  // the readout in the controls row switches between the two at a click.
+  // Sequence mode when the frame rate is known, so the engine steps whole
+  // frames and the frame domain is available to switch into; elapsed seconds
+  // if not. This is what retires the looker's "use frame number" preference
+  // — the readout in the controls row switches between the two at a click.
+  //
+  // The DISPLAY still opens on timecode (`defaultDisplay` below): frames were
+  // opt-in on the looker too, behind `UseFrameNumberOptionElement`.
   const mode = useMemo<TimelineMode>(
     () =>
       frameRate && Number.isFinite(frameRate) && frameRate > 0
@@ -169,7 +175,17 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   );
 
   return (
-    <PlaybackProvider mode={mode}>
+    <PlaybackProvider mode={mode} defaultDisplay="duration">
+      {/* Hydrates the frame labels onto the tile's Lighter scene. A SIBLING
+          of `RegisterFrameLabels`, not a child — that component swaps its
+          wrapper when duration lands, which would remount the store. */}
+      <RegisterVideoExploreLabels />
+      {/* The timeline's audio stream — the only source of sound. The tile's
+          <video> is muted ("pixels only"), so without this the surface is
+          silent, which is what the looker's own volume control used to
+          drive. `hasAudio` is left unset: there is no demuxer verdict on
+          this path, so the element sniffs for a track itself. */}
+      <RegisterTimelineAudio videoSrc={videoSrc} />
       {/* Registers the /frames-backed label stream. It gates on
           `useDuration() > 0`, so it must sit inside the provider and
           outside anything that would remount when duration lands. */}
@@ -196,7 +212,11 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
               the server label index; the annotation engine contributes only
               an unsaved-edit overlay, empty in Explore. */}
           <div className={styles.timeline}>
-            <FrameLabelsTracks sample={sample} maxSize={timelineMaxSize} />
+            <FrameLabelsTracks
+              sample={sample}
+              maxSize={timelineMaxSize}
+              trailingActions={<VideoExploreToolbar />}
+            />
           </div>
         </div>
       </RegisterFrameLabels>

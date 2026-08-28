@@ -20,7 +20,10 @@ const MixedAudioDropdown: React.FC = () => {
   const { availability, tracks, masterMuted } = useAudio();
   const master = useMasterChannel();
 
-  if (tracks.length === 0 || availability === "unavailable") {
+  // A single track has nothing to mix: the master volume control beside it
+  // already governs the only channel, so a mixer would just duplicate it.
+  // (`AudioControls` documents this gate; the check used to read `=== 0`.)
+  if (tracks.length <= 1 || availability === "unavailable") {
     return null;
   }
   // Audio failed to load: keep the button visible so the failure is

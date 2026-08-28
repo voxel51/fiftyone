@@ -146,6 +146,7 @@ export function PlaybackProvider({
   defaultSpeed = 1.0,
   snapToFrameOnSettle,
   mode,
+  defaultDisplay = "configured",
   seekFetchDebounceMs,
 }: PlaybackConfig & { children: React.ReactNode }) {
   // Frozen at mount to match `usePlaybackEngine`'s mount-scoped store: that
@@ -162,9 +163,18 @@ export function PlaybackProvider({
   }
   const resolvedMode = resolvedModeRef.current;
 
-  // What the ruler / readouts render in. Seeded from the configured mode and
-  // then owned by the user; the engine never reads it.
-  const [displayMode, setDisplayMode] = useState<TimelineMode>(resolvedMode);
+  // What the ruler / readouts render in. Seeded from the configured mode —
+  // or from plain elapsed time when the surface asks for that — and then
+  // owned by the user; the engine never reads it. Frozen at mount like
+  // `resolvedMode`, so this only ever picks the opening domain.
+  const initialDisplayModeRef = useRef<TimelineMode>();
+  if (initialDisplayModeRef.current === undefined) {
+    initialDisplayModeRef.current =
+      defaultDisplay === "duration" ? DEFAULT_MODE : resolvedMode;
+  }
+  const [displayMode, setDisplayMode] = useState<TimelineMode>(
+    initialDisplayModeRef.current,
+  );
   const canToggleMode = resolvedMode.kind !== "duration";
   const toggleMode = useCallback(() => {
     if (!canToggleMode) return;

@@ -588,7 +588,13 @@ export const FrameLabelsTracks: React.FC<{
    * only Annotate has editing actions to offer.
    */
   extraActions?: React.ReactNode;
-}> = ({ sample, maxSize, extraActions }) => {
+  /**
+   * Host content for the controls row's TRAILING group, beside the drawer
+   * chevron. Where a surface's own action cluster belongs — Explore puts its
+   * zoom / fit / labels / JSON / help buttons here.
+   */
+  trailingActions?: React.ReactNode;
+}> = ({ sample, maxSize, extraActions, trailingActions }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
 
@@ -686,6 +692,7 @@ export const FrameLabelsTracks: React.FC<{
         decorateTrack={decorateTrack}
         scrollerRef={timelineScroller}
         extraActions={extraActions}
+        trailingActions={trailingActions}
         loaded={timelineLoaded}
         maxSize={maxSize}
         drawerOpen={drawerOpen}

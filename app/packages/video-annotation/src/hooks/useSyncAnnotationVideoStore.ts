@@ -7,6 +7,7 @@ import {
   useSampleInstanceGetter,
   VideoLabelStore,
 } from "@fiftyone/annotation";
+import type { LabelType } from "@fiftyone/utilities";
 import { type MutableRefObject, useEffect, useRef } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { parseFramesData } from "../streams/framesData";
@@ -30,12 +31,22 @@ import {
  *
  * Must be mounted under the modal scope where the labels stream is published.
  */
-export const useSyncAnnotationVideoStore = (): void => {
+export const useSyncAnnotationVideoStore = (
+  /**
+   * Frame fields to register, keyed to label type. Explore supplies its own
+   * (see `useExploreFrameLabelFields`) because the annotation-schema default
+   * below is empty outside Annotate mode.
+   */
+  labelTypesOverride?: Record<string, LabelType>,
+): void => {
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
   const getSample = useSampleInstanceGetter();
   const stream = useFrameLabelsStream();
-  const labelTypes = useFrameLabelFields();
+  // Both are called unconditionally to keep hook order stable; the override
+  // wins when a surface supplies one.
+  const annotationLabelTypes = useFrameLabelFields();
+  const labelTypes = labelTypesOverride ?? annotationLabelTypes;
 
   // Working overlay carried across an effect rebuild (e.g. activating a frame
   // field, or the labels stream re-mounting) so unsaved edits aren't dropped
