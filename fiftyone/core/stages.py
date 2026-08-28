@@ -8304,6 +8304,12 @@ class SortBySimilarity(ViewStage):
             )
 
         results = sample_collection.load_brain_results(brain_key)
+        if results is None:
+            raise ValueError(
+                "Failed to load results for similarity run '%s'. Did you "
+                "forget to save them, or are they unavailable in this "
+                "environment?" % brain_key
+            )
 
         with contextlib.ExitStack() as context:
             if sample_collection.view() != results.view.view():
