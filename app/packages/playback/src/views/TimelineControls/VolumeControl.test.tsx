@@ -105,7 +105,7 @@ describe("VolumeControl", () => {
   it("clicks on the volume group never toggle the tracks drawer", () => {
     const onToggle = vi.fn();
     renderControls({ onToggle });
-    fireEvent.click(screen.getByTestId("timeline-controls-volume-group"));
+    fireEvent.click(screen.getByTestId("timeline-controls-volume-control"));
     fireEvent.click(screen.getByTestId("timeline-controls-volume"));
     expect(onToggle).not.toHaveBeenCalled();
   });
