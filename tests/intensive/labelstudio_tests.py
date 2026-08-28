@@ -120,10 +120,10 @@ def label_configs():
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <PolygonLabels name="some_random_field" toName="image">
+  <VectorLabels name="some_random_field" toName="image" closable="true" curves="false" skeleton="false">
     <Label value="Airplane"/>
     <Label value="Car"/>
-  </PolygonLabels>
+  </VectorLabels>
 </View>""",
         },
         {
