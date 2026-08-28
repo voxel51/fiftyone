@@ -8,6 +8,8 @@ Private media-reference asset planning and materialization.
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from collections.abc import Mapping
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 import hashlib
 import os
@@ -30,10 +32,15 @@ from fiftyone.multimodal.media import (
     MediaReferenceError,
     StaleMediaReferenceError,
     UnsupportedMediaReferenceOperation,
+    _export_media_reference_bindings,
     _get_media_reference_kind,
     _get_media_resolver,
     _get_shared_media_asset_key,
-    get_logical_media_identity,
+    _hydrate_media_reference_binding,
+    _select_media_reference_bindings,
+    _serialize_media_reference,
+    _validate_media_reference_descriptor,
+    _validate_media_source,
 )
 
 _MEDIA_SOURCE_MANIFEST_FILENAME = "media_sources.json"
@@ -100,6 +107,26 @@ class _ReferenceAssetUsage:
 
 
 @dataclass(frozen=True)
+class _ReferenceOccurrence:
+    """One selected sample occurrence and its deduplicated physical assets."""
+
+    sample_id: str
+    logical_media_identity: str
+    reference_identity: tuple
+    asset_keys: tuple
+    group_slice: str = None
+
+
+@dataclass(frozen=True)
+class _PlannedReference:
+    """One unique hydrated reference and its described assets."""
+
+    reference: object
+    source: _MediaSourceDescriptor
+    descriptions: tuple
+
+
+@dataclass(frozen=True)
 class _ReferenceAssetPlan:
     """A private deduplicated plan for selected media references."""
 
@@ -107,6 +134,182 @@ class _ReferenceAssetPlan:
     usages: tuple
     sources: tuple
     resolved: bool = False
+    bindings: tuple = ()
+    occurrences: tuple = ()
+    references: tuple = ()
+
+
+class _ReferenceAssetPlanBuilder:
+    """Builds one operation-scoped media-reference plan from occurrences."""
+
+    def __init__(self):
+        self._descriptors = OrderedDict()
+        self._occurrences = []
+        self._media_mode = None
+        self._media_reference_kind = None
+
+    @property
+    def descriptors(self):
+        return tuple(self._descriptors.values())
+
+    @property
+    def media_mode(self):
+        return self._media_mode
+
+    @property
+    def media_reference_kind(self):
+        return self._media_reference_kind
+
+    def observe(self, sample_or_dict, group_slice=None):
+        """Observes one selected sample without hydrating its reference."""
+        if isinstance(sample_or_dict, Mapping):
+            filepath = sample_or_dict.get("filepath")
+            reference = sample_or_dict.get("media_reference")
+            sample_id = sample_or_dict.get("_id", sample_or_dict.get("id"))
+        else:
+            filepath = sample_or_dict._doc.get_field("filepath")
+            reference = sample_or_dict._doc.get_field("media_reference")
+            sample_id = sample_or_dict.id
+
+        _validate_media_source(filepath, reference)
+        mode = "reference" if reference is not None else "filepath"
+        if self._media_mode is not None and self._media_mode != mode:
+            raise ValueError(
+                "A dataset cannot mix filepath-backed and "
+                "media-reference-backed samples"
+            )
+
+        self._media_mode = mode
+        if reference is None:
+            return
+
+        if not isinstance(reference, Mapping):
+            reference = _serialize_media_reference(reference)
+
+        _validate_media_reference_descriptor(reference)
+        descriptor = dict(reference)
+        if (
+            self._media_reference_kind is not None
+            and self._media_reference_kind != descriptor["kind"]
+        ):
+            raise ValueError(
+                "A media-reference dataset cannot contain multiple reference "
+                "kinds"
+            )
+
+        self._media_reference_kind = descriptor["kind"]
+        identity = (descriptor["kind"], descriptor["key"])
+        existing = self._descriptors.setdefault(identity, descriptor)
+        if existing != descriptor:
+            raise MediaReferenceError(
+                "Conflicting public media-reference descriptors"
+            )
+
+        self._occurrences.append((str(sample_id), identity, group_slice))
+
+    def finalize(
+        self,
+        *,
+        resolve=False,
+        bindings=None,
+        allow_unsupported=False,
+    ):
+        """Loads each binding and describes each unique reference once."""
+        descriptors = self.descriptors
+        if bindings is None:
+            selected_bindings = _export_media_reference_bindings(descriptors)
+        else:
+            selected_bindings = _select_media_reference_bindings(
+                bindings, descriptors
+            )
+
+        if len(selected_bindings) != len(descriptors):
+            raise MediaReferenceError(
+                "Selected media-reference bindings do not match their "
+                "descriptors"
+            )
+
+        assets = OrderedDict()
+        sources = OrderedDict()
+        assets_by_reference = {}
+        planned_references = []
+        with ExitStack() as resolver_contexts:
+            if resolve:
+                kinds = OrderedDict.fromkeys(
+                    descriptor["kind"] for descriptor in descriptors
+                )
+                for kind in kinds:
+                    resolver_contexts.enter_context(
+                        _get_media_resolver(kind).operation_context()
+                    )
+
+            for descriptor, binding in zip(descriptors, selected_bindings):
+                identity = (descriptor["kind"], descriptor["key"])
+                reference = _hydrate_media_reference_binding(
+                    descriptor, binding
+                )
+                try:
+                    (
+                        assets_by_reference[identity],
+                        planned_reference,
+                    ) = _plan_reference_assets(
+                        reference, assets, sources, resolve
+                    )
+                    planned_references.append(planned_reference)
+                except UnsupportedMediaReferenceOperation:
+                    if not allow_unsupported:
+                        raise
+
+                    assets_by_reference[identity] = ()
+
+        usages = []
+        usage_keys = set()
+        occurrences = []
+        for sample_id, identity, group_slice in self._occurrences:
+            reference_assets = assets_by_reference[identity]
+            asset_keys = []
+            for asset_key, description in reference_assets:
+                asset_keys.append(asset_key)
+                usage_key = (
+                    identity,
+                    asset_key,
+                    description.role,
+                    description.selector,
+                    description.feature_name,
+                )
+                if usage_key not in usage_keys:
+                    usage_keys.add(usage_key)
+                    usages.append(
+                        _ReferenceAssetUsage(
+                            sample_id=sample_id,
+                            logical_media_identity=identity[1],
+                            asset_key=asset_key,
+                            role=description.role,
+                            selector=description.selector,
+                            group_slice=group_slice,
+                            feature_name=description.feature_name,
+                        )
+                    )
+
+            occurrences.append(
+                _ReferenceOccurrence(
+                    sample_id=sample_id,
+                    logical_media_identity=identity[1],
+                    reference_identity=identity,
+                    asset_keys=tuple(asset_keys),
+                    group_slice=group_slice,
+                )
+            )
+
+        return _ReferenceAssetPlan(
+            assets=tuple(assets.values()),
+            usages=tuple(usages),
+            sources=tuple(sources.values()),
+            resolved=resolve,
+            bindings=tuple(selected_bindings),
+            occurrences=tuple(occurrences),
+            references=tuple(planned_references),
+        )
 
 
 class _ReferenceAssetMaterializer(ABC):
@@ -124,6 +327,12 @@ class _ReferenceAssetMaterializer(ABC):
     def bind_source(self, source, root):
         """Binds a materialized source root in the current environment."""
 
+    @contextmanager
+    def source_binding_context(self, source, root):
+        """Binds a source and rolls it back if a later binding fails."""
+        self.bind_source(source, root)
+        yield
+
     @abstractmethod
     def get_destination_location(self, reference, asset):
         """Returns the source-relative destination for a described asset."""
@@ -131,6 +340,9 @@ class _ReferenceAssetMaterializer(ABC):
     @abstractmethod
     def materialize_asset(self, asset, destination, usages):
         """Materializes a resolved physical asset at ``destination``."""
+
+    def validate_materialized_reference(self, reference, assets, root):
+        """Validates a materialized reference without changing bindings."""
 
 
 _MATERIALIZERS_BY_KIND = {}
@@ -171,9 +383,8 @@ def _build_reference_asset_plan(
     sample_collection, resolve=False, progress=None
 ):
     """Builds a private asset plan for references in a collection or view."""
-    assets = OrderedDict()
-    usages = []
-    sources = OrderedDict()
+    import fiftyone.core.dataset as fod
+    import fiftyone.core.odm as foo
 
     if sample_collection.media_type == fom.GROUP:
         samples = sample_collection.select_group_slices(_allow_mixed=True)
@@ -182,31 +393,41 @@ def _build_reference_asset_plan(
         samples = sample_collection
         group_field = None
 
-    for sample in samples.iter_samples(progress=progress):
-        if sample.filepath is not None:
-            continue
+    coll, pipeline = fod._get_samples_pipeline(samples)
+    fields = {"_id": True, "filepath": True, "media_reference": True}
+    if group_field is not None:
+        fields[group_field] = True
 
-        _add_reference_assets(
-            assets,
-            usages,
-            sources,
-            sample,
-            _get_group_slice(sample, group_field),
-            resolve,
-        )
+    pipeline.append({"$project": fields})
+    builder = _ReferenceAssetPlanBuilder()
+    documents = foo.aggregate(coll, pipeline)
+    with fou.ProgressBar(progress=progress) as progress_bar:
+        for document in progress_bar(documents):
+            builder.observe(
+                document,
+                group_slice=_get_group_slice(document, group_field),
+            )
 
-    return _ReferenceAssetPlan(
-        assets=tuple(assets.values()),
-        usages=tuple(usages),
-        sources=tuple(sources.values()),
-        resolved=resolve,
-    )
+    return builder.finalize(resolve=resolve, allow_unsupported=not resolve)
 
 
-def _materialize_reference_assets(plan, export_root, progress=None):
+def _materialize_reference_assets(
+    plan, export_root, media_exporter=None, progress=None
+):
     """Materializes a resolved reference plan into a portable source bundle."""
     if not plan.resolved:
         raise ValueError("A resolved media-reference asset plan is required")
+
+    owns_exporter = media_exporter is None
+    if owns_exporter:
+        from fiftyone.utils.data.exporters import MediaExporter
+
+        media_exporter = MediaExporter(
+            True,
+            export_path=export_root,
+            supported_modes=(True,),
+        )
+        media_exporter.setup()
 
     source_roots = {
         source.key: posixpath.join("media_sources", source.key)
@@ -222,36 +443,45 @@ def _materialize_reference_assets(plan, export_root, progress=None):
     for usage in plan.usages:
         usages_by_asset.setdefault(usage.asset_key, []).append(usage)
 
-    with fou.ProgressBar(
-        total=len(plan.assets), progress=progress
-    ) as progress_bar:
-        for asset in progress_bar(plan.assets):
-            if asset.path is None:
-                raise ValueError(
-                    "Resolved reference assets require source paths"
-                )
+    try:
+        with fou.ProgressBar(
+            total=len(plan.assets), progress=progress
+        ) as progress_bar:
+            for asset in progress_bar(plan.assets):
+                if asset.path is None:
+                    raise ValueError(
+                        "Resolved reference assets require source paths"
+                    )
 
-            relative_root = source_roots[asset.source.key]
-            source_root = os.path.realpath(
-                os.path.join(export_root, *relative_root.split("/"))
-            )
-            destination = os.path.realpath(
-                os.path.join(source_root, *asset.location.split("/"))
-            )
-            if os.path.commonpath((source_root, destination)) != source_root:
-                raise InvalidMediaLocationError(
-                    "Materialized media asset escapes its portable source root"
+                relative_root = source_roots[asset.source.key]
+                source_root = os.path.realpath(
+                    os.path.join(export_root, *relative_root.split("/"))
                 )
+                destination = os.path.realpath(
+                    os.path.join(source_root, *asset.location.split("/"))
+                )
+                if (
+                    os.path.commonpath((source_root, destination))
+                    != source_root
+                ):
+                    raise InvalidMediaLocationError(
+                        "Materialized media asset escapes its portable source "
+                        "root"
+                    )
 
-            fos.ensure_basedir(destination)
-            materializer = _get_reference_asset_materializer(
-                asset.reference_kind
-            )
-            materializer.materialize_asset(
-                asset,
-                destination,
-                tuple(usages_by_asset.get(asset.key, ())),
-            )
+                fos.ensure_basedir(destination)
+                materializer = _get_reference_asset_materializer(
+                    asset.reference_kind
+                )
+                media_exporter._export_reference_asset(
+                    asset,
+                    destination,
+                    tuple(usages_by_asset.get(asset.key, ())),
+                    materializer,
+                )
+    finally:
+        if owns_exporter:
+            media_exporter.close()
 
     return source_roots
 
@@ -328,16 +558,8 @@ def _load_media_source_manifest(path):
     return tuple(parsed)
 
 
-def _validate_media_source_manifest(sample_collection, manifest_sources):
+def _validate_media_source_manifest(plan, manifest_sources):
     """Validates that a native manifest describes imported references."""
-    try:
-        plan = _build_reference_asset_plan(sample_collection, resolve=False)
-    except UnsupportedMediaReferenceOperation:
-        if manifest_sources:
-            raise
-
-        return
-
     expected_keys = {source.key for source in plan.sources}
     actual_keys = {source.key for source, _, _ in manifest_sources}
     if actual_keys != expected_keys:
@@ -349,11 +571,30 @@ def _validate_media_source_manifest(sample_collection, manifest_sources):
 def _bind_materialized_media_sources(manifest_sources, dataset_dir):
     """Binds materialized sources from a native dataset import."""
     binding_required = []
+    with ExitStack() as binding_contexts:
+        for source, root, required in _validate_materialized_media_sources(
+            manifest_sources, dataset_dir
+        ):
+            if root is None:
+                if required:
+                    binding_required.append(source)
+                continue
+
+            materializer = _get_reference_asset_materializer(source.kind)
+            binding_contexts.enter_context(
+                materializer.source_binding_context(source, root)
+            )
+
+    return tuple(binding_required)
+
+
+def _validate_materialized_media_sources(manifest_sources, dataset_dir):
+    """Validates materialized source roots without changing bindings."""
+    validated = []
     dataset_root = os.path.realpath(dataset_dir)
     for source, relative_root, required in manifest_sources:
         if relative_root is None:
-            if required:
-                binding_required.append(source)
+            validated.append((source, None, required))
             continue
 
         root = os.path.realpath(
@@ -367,25 +608,69 @@ def _bind_materialized_media_sources(manifest_sources, dataset_dir):
                 "Materialized media source '%s' is missing" % relative_root
             )
 
-        materializer = _get_reference_asset_materializer(source.kind)
-        if not materializer.is_source_bound(source):
-            materializer.bind_source(source, root)
+        _get_reference_asset_materializer(source.kind)
+        validated.append((source, root, required))
 
-    return tuple(binding_required)
+    return tuple(validated)
 
 
-def _add_reference_assets(
-    assets, usages, sources, sample, group_slice, resolve
+def _validate_materialized_reference_assets(
+    plan, manifest_sources, dataset_dir
 ):
-    reference = sample.media_reference
+    """Validates every bundled physical asset before import mutation."""
+    validated_sources = _validate_materialized_media_sources(
+        manifest_sources, dataset_dir
+    )
+    roots = {
+        source.key: root
+        for source, root, _ in validated_sources
+        if root is not None
+    }
+    for asset in plan.assets:
+        root = roots.get(asset.source.key)
+        if root is None:
+            continue
+
+        path = os.path.realpath(os.path.join(root, *asset.location.split("/")))
+        if os.path.commonpath((root, path)) != root:
+            raise InvalidMediaLocationError(
+                "Materialized media asset escapes its portable source root"
+            )
+
+        if not os.path.isfile(path):
+            raise ValueError(
+                "Materialized media asset '%s' is missing" % asset.location
+            )
+
+    for planned_reference in plan.references:
+        root = roots.get(planned_reference.source.key)
+        if root is None:
+            continue
+
+        materializer = _get_reference_asset_materializer(
+            planned_reference.reference
+        )
+        materializer.validate_materialized_reference(
+            planned_reference.reference,
+            planned_reference.descriptions,
+            root,
+        )
+
+    return validated_sources
+
+
+def _plan_reference_assets(reference, assets, sources, resolve):
     kind = _get_media_reference_kind(reference)
     materializer = _get_reference_asset_materializer(kind)
     source = materializer.describe_source(reference)
-    sources.setdefault(source.key, source)
+    existing_source = sources.setdefault(source.key, source)
+    if existing_source != source:
+        raise ValueError("Conflicting definitions for shared media source")
+
     descriptions = tuple(reference.describe_assets())
     resolved = None
     if resolve:
-        manifest = _get_media_resolver(reference).resolve_assets(
+        manifest = _get_media_resolver(reference).resolve_described_assets(
             reference, descriptions
         )
         resolved = {asset.description: asset for asset in manifest.assets}
@@ -396,6 +681,7 @@ def _add_reference_assets(
                 "Resolved media assets do not match their descriptions"
             )
 
+    reference_assets = []
     for description in descriptions:
         key = _get_shared_media_asset_key(reference, description)
         resolved_asset = None if resolved is None else resolved[description]
@@ -430,25 +716,52 @@ def _add_reference_assets(
             existing.source != planned.source
             or existing.location != planned.location
             or existing.path != planned.path
+            or existing.size_bytes != planned.size_bytes
+            or existing.media_type != planned.media_type
         ):
             raise ValueError("Conflicting resolutions for shared media asset")
 
-        usages.append(
-            _ReferenceAssetUsage(
-                sample_id=str(sample.id),
-                logical_media_identity=get_logical_media_identity(sample),
-                asset_key=key,
-                role=description.role,
-                selector=description.selector,
-                group_slice=group_slice,
-                feature_name=description.feature_name,
-            )
-        )
+        reference_assets.append((key, description))
+
+    planned_reference = _PlannedReference(
+        reference=reference,
+        source=source,
+        descriptions=descriptions,
+    )
+    return tuple(reference_assets), planned_reference
+
+
+def _get_reference_asset_paths(plan, flat=True):
+    """Projects a resolved private plan into stable physical path lists."""
+    if not plan.resolved:
+        raise ValueError("A resolved media-reference asset plan is required")
+
+    paths_by_key = {asset.key: asset.path for asset in plan.assets}
+    if flat:
+        return [asset.path for asset in plan.assets if asset.path is not None]
+
+    paths = []
+    for occurrence in plan.occurrences:
+        sample_paths = []
+        seen = set()
+        for asset_key in occurrence.asset_keys:
+            path = paths_by_key.get(asset_key)
+            if path is not None and path not in seen:
+                sample_paths.append(path)
+                seen.add(path)
+
+        paths.append(sample_paths)
+
+    return paths
 
 
 def _get_group_slice(sample, group_field):
     if group_field is None:
         return None
+
+    if isinstance(sample, Mapping):
+        group = sample.get(group_field)
+        return None if group is None else group.get("name")
 
     group = sample.get_field(group_field)
     return None if group is None else group.name

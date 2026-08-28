@@ -8,11 +8,14 @@ LeRobotDataset v3 import and asset resolution utilities.
 
 from collections import defaultdict
 from collections.abc import Mapping
+from contextlib import contextmanager
+import contextvars
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import wraps
 import hashlib
 import json
+import logging
 import math
 import mimetypes
 import os
@@ -73,6 +76,8 @@ papq = fou.lazy_import(
     callback=lambda: fou.ensure_package("pyarrow>=10.0.0"),
 )
 
+logger = logging.getLogger(__name__)
+
 _VERSION_PATTERN = re.compile(r"^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+].*)?$")
 _PATH_FORMAT_SPEC_PATTERN = re.compile(r"^0([1-9]|1[0-6])d$")
 _MAX_SOURCE_PATH_LENGTH = 4096
@@ -93,6 +98,10 @@ _REQUIRED_EPISODE_FIELDS = {
     "length",
     "tasks",
 }
+
+_RESOLUTION_SOURCE_CACHE = contextvars.ContextVar(
+    "lerobot_resolution_source_cache", default=None
+)
 
 
 @dataclass(frozen=True)
@@ -292,8 +301,8 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
             )
             tasks = list(row["tasks"] or [])
             frame_count = row["length"]
-            sample = Sample.from_media_reference(
-                reference,
+            sample = Sample(
+                media_reference=reference,
                 episode_index=episode_index,
                 task=tasks[0] if tasks else None,
                 tasks=tasks,
@@ -493,7 +502,6 @@ class _LeRobotMediaResolver(_MediaResolver):
             source.asset_fingerprints,
         )
 
-    @_deduplicate_resolutions
     def resolve_assets(self, reference, assets):
         if not isinstance(reference, LeRobotEpisode):
             raise TypeError("_LeRobotMediaResolver requires a LeRobotEpisode")
@@ -504,94 +512,124 @@ class _LeRobotMediaResolver(_MediaResolver):
                 "LeRobot assets must come from MediaReference.describe_assets()"
             )
 
-        _validate_declared_v3_version(reference.codebase_version)
+        return self.resolve_described_assets(reference, assets)
+
+    @contextmanager
+    def operation_context(self):
+        token = _RESOLUTION_SOURCE_CACHE.set({})
+        try:
+            yield
+        finally:
+            _RESOLUTION_SOURCE_CACHE.reset(token)
+
+    @_deduplicate_resolutions
+    def resolve_described_assets(self, reference, assets):
         root, binding = _validate_resolver_root(reference)
-        cache_key = _resolution_cache_key(reference, assets)
-        cached = _get_cached_manifest(cache_key, binding.revision)
+        return _resolve_lerobot_assets_at_root(
+            reference,
+            assets,
+            root,
+            cache_revision=binding.revision,
+        )
+
+
+def _resolve_lerobot_assets_at_root(
+    reference, assets, root, cache_revision=None
+):
+    if not isinstance(reference, LeRobotEpisode):
+        raise TypeError("_LeRobotMediaResolver requires a LeRobotEpisode")
+
+    _validate_declared_v3_version(reference.codebase_version)
+    root = _validate_dataset_root(root)
+    cache_key = _resolution_cache_key(reference, assets)
+    if cache_revision is not None:
+        cached = _get_cached_manifest(cache_key, cache_revision)
         if cached is not None:
             return cached
 
-        locator = reference.locator
-        info_path = _resolve_under_root(root, locator.info_location.path)
-        info, info_bytes = _load_info(info_path)
-        detected_version = _validate_v3_info(info)
+    locator = reference.locator
+    info_path = _resolve_under_root(root, locator.info_location.path)
+    info, info_bytes = _load_info(info_path)
+    detected_version = _validate_v3_info(info)
 
-        metadata_path = _resolve_under_root(
-            root, locator.episode_metadata_location.path
+    metadata_path = _resolve_under_root(
+        root, locator.episode_metadata_location.path
+    )
+    row = _read_episode_metadata_row(
+        root, metadata_path, locator.episode_metadata_row
+    )
+    metadata_bytes = _read_bytes(metadata_path)
+    if row["episode_index"] != reference.episode_index:
+        raise StaleMediaReferenceError(
+            "LeRobot episode metadata row now identifies another episode"
         )
-        row = _read_episode_metadata_row(
-            root, metadata_path, locator.episode_metadata_row
-        )
-        metadata_bytes = _read_bytes(metadata_path)
-        if row["episode_index"] != reference.episode_index:
-            raise StaleMediaReferenceError(
-                "LeRobot episode metadata row now identifies another episode"
-            )
 
-        current_fingerprint = "sha256:" + _compute_locator_fingerprint(
-            info,
-            info_bytes,
-            locator.episode_metadata_location.path,
-            metadata_bytes,
+    current_fingerprint = "sha256:" + _compute_locator_fingerprint(
+        info,
+        info_bytes,
+        locator.episode_metadata_location.path,
+        metadata_bytes,
+    )
+    if current_fingerprint != locator.locator_fingerprint:
+        raise StaleMediaReferenceError(
+            "LeRobot source layout changed since import; re-import the "
+            "dataset to refresh its episode locators"
         )
-        if current_fingerprint != locator.locator_fingerprint:
-            raise StaleMediaReferenceError(
-                "LeRobot source layout changed since import; re-import the "
-                "dataset to refresh its episode locators"
-            )
 
-        _validate_asset_fingerprint(
-            root,
-            locator.data_location.path,
-            locator.data_content_fingerprint,
-            reference.source_fingerprint,
-        )
-        for location, fingerprint in (
-            (
-                locator.statistics_location,
-                locator.statistics_content_fingerprint,
-            ),
-            (locator.tasks_location, locator.tasks_content_fingerprint),
-        ):
-            if location is not None:
-                _validate_asset_fingerprint(
-                    root,
-                    location.path,
-                    fingerprint,
-                    reference.source_fingerprint,
-                )
-
-        _validate_resolved_data_slice(root, reference, locator)
-        for video in locator.videos:
+    _validate_asset_fingerprint(
+        root,
+        locator.data_location.path,
+        locator.data_content_fingerprint,
+        reference.source_fingerprint,
+    )
+    for location, fingerprint in (
+        (
+            locator.statistics_location,
+            locator.statistics_content_fingerprint,
+        ),
+        (locator.tasks_location, locator.tasks_content_fingerprint),
+    ):
+        if location is not None:
             _validate_asset_fingerprint(
                 root,
-                video.location.path,
-                video.content_fingerprint,
+                location.path,
+                fingerprint,
                 reference.source_fingerprint,
             )
 
-        resolved_assets = tuple(
-            _resolve_media_asset(reference, root, asset) for asset in assets
+    _validate_resolved_data_slice(root, reference, locator)
+    for video in locator.videos:
+        _validate_asset_fingerprint(
+            root,
+            video.location.path,
+            video.content_fingerprint,
+            reference.source_fingerprint,
         )
-        tasks = tuple(row["tasks"] or [])
-        fps = float(info["fps"])
-        frame_count = int(row["length"])
-        time_range = _episode_time_range(row, locator.videos, fps)
-        manifest = _MediaAssetManifest(
-            media_reference_key=reference.key,
-            episode_index=reference.episode_index,
-            declared_codebase_version=reference.codebase_version,
-            detected_codebase_version=detected_version,
-            fps=fps,
-            robot_type=info.get("robot_type", None),
-            task_labels=tasks,
-            frame_count=frame_count,
-            time_range_seconds=time_range,
-            source_fingerprint=reference.source_fingerprint,
-            assets=resolved_assets,
-        )
-        _cache_manifest(cache_key, binding.revision, manifest)
-        return manifest
+
+    resolved_assets = tuple(
+        _resolve_media_asset(reference, root, asset) for asset in assets
+    )
+    tasks = tuple(row["tasks"] or [])
+    fps = float(info["fps"])
+    frame_count = int(row["length"])
+    time_range = _episode_time_range(row, locator.videos, fps)
+    manifest = _MediaAssetManifest(
+        media_reference_key=reference.key,
+        episode_index=reference.episode_index,
+        declared_codebase_version=reference.codebase_version,
+        detected_codebase_version=detected_version,
+        fps=fps,
+        robot_type=info.get("robot_type", None),
+        task_labels=tasks,
+        frame_count=frame_count,
+        time_range_seconds=time_range,
+        source_fingerprint=reference.source_fingerprint,
+        assets=resolved_assets,
+    )
+    if cache_revision is not None:
+        _cache_manifest(cache_key, cache_revision, manifest)
+
+    return manifest
 
 
 class _LeRobotAssetMaterializer(_ReferenceAssetMaterializer):
@@ -628,11 +666,49 @@ class _LeRobotAssetMaterializer(_ReferenceAssetMaterializer):
             source.source_fingerprint,
         )
 
+    @contextmanager
+    def source_binding_context(self, source, root):
+        collection = foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION]
+        previous = collection.find_one({"_id": source.source_identity})
+        bind_lerobot_source(
+            source.source_identity,
+            root,
+            source.source_fingerprint,
+        )
+        current = collection.find_one({"_id": source.source_identity})
+        revision = current["revision"]
+        try:
+            yield
+        except BaseException:
+            query = {
+                "_id": source.source_identity,
+                "revision": revision,
+            }
+            if previous is None:
+                result = collection.delete_one(query)
+                restored = result.deleted_count > 0
+            else:
+                result = collection.replace_one(query, previous)
+                restored = result.matched_count > 0
+
+            if not restored:
+                logger.warning(
+                    "Could not restore the LeRobot source binding for '%s'; "
+                    "it was modified concurrently",
+                    source.source_identity,
+                )
+
+            _clear_resolution_caches()
+            raise
+
     def get_destination_location(self, reference, asset):
         return asset.location.path
 
     def materialize_asset(self, asset, destination, usages):
         shutil.copy2(asset.path, destination)
+
+    def validate_materialized_reference(self, reference, assets, root):
+        _resolve_lerobot_assets_at_root(reference, assets, root)
 
 
 def _validate_dataset_root(dataset_root):
@@ -654,6 +730,11 @@ def _validate_dataset_root(dataset_root):
 
 
 def _validate_resolver_root(reference):
+    cache = _RESOLUTION_SOURCE_CACHE.get()
+    cache_key = (reference.source_identity, reference.source_fingerprint)
+    if cache is not None and cache_key in cache:
+        return cache[cache_key]
+
     binding = _get_source_binding(reference.source_identity)
     if binding is None:
         raise MissingMediaRootError(
@@ -666,7 +747,11 @@ def _validate_resolver_root(reference):
         )
 
     try:
-        return _validate_dataset_root(binding.root), binding
+        resolved = (_validate_dataset_root(binding.root), binding)
+        if cache is not None:
+            cache[cache_key] = resolved
+
+        return resolved
     except MissingMediaRootError as exc:
         parent = os.path.dirname(binding.root)
         if os.path.isdir(parent):

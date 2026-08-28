@@ -7,6 +7,7 @@ Logical media references and asset resolution contracts.
 """
 
 from abc import ABC, abstractmethod
+from contextlib import nullcontext
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
@@ -36,6 +37,7 @@ LEROBOT_EPISODE_KIND = "lerobot-episode"
 MAX_MEDIA_REFERENCE_BYTES = 64 * 1024
 _MEDIA_REFERENCE_BINDINGS_COLLECTION = "media_reference_bindings"
 _MEDIA_REFERENCE_BINDINGS_FILENAME = "media_reference_bindings.json"
+_MEDIA_REFERENCE_BINDING_QUERY_BATCH_SIZE = 1000
 
 _DRIVE_PREFIX_PATTERN = re.compile(r"^[A-Za-z]:")
 _SHA256_FINGERPRINT_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -662,6 +664,14 @@ class _MediaAssetManifest:
 class _MediaResolver(ABC):
     """A private resolver for one registered media-reference kind."""
 
+    def operation_context(self):
+        """Returns an optional operation-scoped resolver cache context."""
+        return nullcontext()
+
+    def resolve_described_assets(self, reference, assets):
+        """Resolves assets already obtained from ``describe_assets()``."""
+        return self.resolve_assets(reference, assets)
+
     @abstractmethod
     def resolve_assets(
         self,
@@ -745,15 +755,6 @@ def _persist_media_reference(reference: MediaReference) -> Dict[str, str]:
 def _hydrate_media_reference(descriptor: Mapping[str, Any]) -> MediaReference:
     """Hydrates a media reference through its private binding."""
     _validate_media_reference_descriptor(descriptor)
-    kind = descriptor["kind"]
-
-    _ensure_builtin_media_reference_kind(kind)
-
-    serializer = _SERIALIZERS_BY_KIND.get(kind)
-    if serializer is None:
-        raise MediaReferenceError(
-            "Unsupported media-reference kind '%s'" % kind
-        )
 
     import fiftyone.core.odm as foo
 
@@ -766,10 +767,24 @@ def _hydrate_media_reference(descriptor: Mapping[str, Any]) -> MediaReference:
             % descriptor["key"]
         )
 
+    return _hydrate_media_reference_binding(descriptor, binding)
+
+
+def _hydrate_media_reference_binding(descriptor, binding):
+    """Hydrates a descriptor from an already loaded private binding."""
+    _validate_media_reference_descriptor(descriptor)
     _validate_media_reference_binding(binding)
+    kind = descriptor["kind"]
     if binding["kind"] != kind:
         raise StaleMediaReferenceError(
             "Persisted media-reference kind does not match its private binding"
+        )
+
+    _ensure_builtin_media_reference_kind(kind)
+    serializer = _SERIALIZERS_BY_KIND.get(kind)
+    if serializer is None:
+        raise MediaReferenceError(
+            "Unsupported media-reference kind '%s'" % kind
         )
 
     reference = serializer.hydrate(deepcopy(binding["payload"]))
@@ -881,14 +896,13 @@ def _validate_media_source(
             _validate_media_reference_descriptor(reference)
 
 
-def get_logical_media_identity(sample_or_dict: Any) -> str:
+def _get_logical_media_identity(sample_or_dict: Any) -> str:
     """Gets the logical media identity of a sample or stored sample dict."""
     if isinstance(sample_or_dict, Mapping):
         reference = sample_or_dict.get("media_reference")
         filepath = sample_or_dict.get("filepath")
     else:
-        reference = sample_or_dict._doc.get_field("media_reference")
-        filepath = sample_or_dict._doc.get_field("filepath")
+        return sample_or_dict.get_media_key()
 
     _validate_media_source(filepath, reference)
     if reference is not None:
@@ -1049,24 +1063,19 @@ def _validate_media_reference_binding(binding):
 
 def _export_media_reference_bindings(descriptors):
     """Returns private bindings for exactly the given public descriptors."""
+    normalized = _normalize_media_reference_descriptors(descriptors)
+    if not normalized:
+        return []
+
     import fiftyone.core.odm as foo
 
-    normalized = []
-    seen = set()
-    for descriptor in descriptors:
-        if isinstance(descriptor, MediaReference):
-            descriptor = _serialize_media_reference(descriptor)
-
-        _validate_media_reference_descriptor(descriptor)
-        identity = (descriptor["kind"], descriptor["key"])
-        if identity not in seen:
-            normalized.append(dict(descriptor))
-            seen.add(identity)
-
     collection = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION]
+    keys = [descriptor["key"] for descriptor in normalized]
+    by_key = _find_media_reference_bindings(collection, keys)
+
     bindings = []
     for descriptor in normalized:
-        binding = collection.find_one({"_id": descriptor["key"]})
+        binding = by_key.get(descriptor["key"])
         if binding is None:
             raise MissingMediaReferenceBindingError(
                 "No private media binding exists for reference '%s'"
@@ -1085,31 +1094,65 @@ def _export_media_reference_bindings(descriptors):
     return bindings
 
 
-def _import_media_reference_bindings(bindings, descriptors):
-    """Imports private bindings required by the given public descriptors."""
+def _normalize_media_reference_descriptors(descriptors):
+    normalized = []
+    seen = set()
+    keys = {}
+    for descriptor in descriptors:
+        if isinstance(descriptor, MediaReference):
+            descriptor = _serialize_media_reference(descriptor)
+
+        _validate_media_reference_descriptor(descriptor)
+        identity = (descriptor["kind"], descriptor["key"])
+        existing_kind = keys.setdefault(descriptor["key"], descriptor["kind"])
+        if existing_kind != descriptor["kind"]:
+            raise StaleMediaReferenceError(
+                "Media-reference key is used with multiple kinds"
+            )
+
+        if identity not in seen:
+            normalized.append(dict(descriptor))
+            seen.add(identity)
+
+    return normalized
+
+
+def _find_media_reference_bindings(collection, keys):
+    bindings = {}
+    for offset in range(
+        0, len(keys), _MEDIA_REFERENCE_BINDING_QUERY_BATCH_SIZE
+    ):
+        batch = keys[
+            offset : offset + _MEDIA_REFERENCE_BINDING_QUERY_BATCH_SIZE
+        ]
+        bindings.update(
+            {
+                binding["_id"]: binding
+                for binding in collection.find({"_id": {"$in": batch}})
+            }
+        )
+
+    return bindings
+
+
+def _select_media_reference_bindings(bindings, descriptors):
+    """Validates and orders supplied bindings for public descriptors."""
+    normalized = _normalize_media_reference_descriptors(descriptors)
     by_identity = {}
     for binding in bindings:
         _validate_media_reference_binding(binding)
         identity = (binding["kind"], binding["_id"])
-        if identity in by_identity and by_identity[identity] != binding:
+        existing = by_identity.get(identity)
+        if existing is not None and existing != binding:
             raise StaleMediaReferenceError(
                 "Native export contains conflicting private media bindings"
             )
 
         by_identity[identity] = dict(binding)
 
-    import fiftyone.core.odm as foo
-
-    collection = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION]
-    pending = []
-    seen = set()
-    for descriptor in descriptors:
-        _validate_media_reference_descriptor(descriptor)
+    selected = []
+    for descriptor in normalized:
         identity = (descriptor["kind"], descriptor["key"])
-        if identity in seen:
-            continue
-
-        seen.add(identity)
         binding = by_identity.get(identity)
         if binding is None:
             raise MissingMediaReferenceBindingError(
@@ -1117,13 +1160,31 @@ def _import_media_reference_bindings(bindings, descriptors):
                 "'%s'" % descriptor["key"]
             )
 
-        existing = collection.find_one({"_id": descriptor["key"]})
+        selected.append(binding)
+
+    return selected
+
+
+def _import_media_reference_bindings(bindings, descriptors):
+    """Imports private bindings required by the given public descriptors."""
+    selected = _select_media_reference_bindings(bindings, descriptors)
+    if not selected:
+        return []
+
+    import fiftyone.core.odm as foo
+
+    collection = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION]
+    keys = [binding["_id"] for binding in selected]
+    existing_by_key = _find_media_reference_bindings(collection, keys)
+    pending = []
+    for binding in selected:
+        existing = existing_by_key.get(binding["_id"])
         if existing is None:
             pending.append(binding)
         elif existing != binding:
             raise StaleMediaReferenceError(
                 "Media-reference key '%s' is already bound to different "
-                "private resolution data" % descriptor["key"]
+                "private resolution data" % binding["_id"]
             )
 
     inserted = []
