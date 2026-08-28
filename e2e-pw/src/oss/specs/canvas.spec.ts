@@ -64,10 +64,8 @@ test.describe.serial("Canvas Rendering Regressions", () => {
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
-    // Assert pixelated rendering in Explore mode via screenshot comparison.
-    // Cross-mode clip: Annotate's canvas sits below the annotation top bar,
-    // so the plain element screenshot could never match across modes.
-    await modal.sampleCanvas.assert.hasCrossModeScreenshot("pixelated.png");
+    // Assert pixelated rendering in Explore mode via screenshot comparison
+    await modal.sampleCanvas.assert.hasScreenshot("pixelated.png");
 
     // Switch to Annotate mode and assert pixelated rendering there as well
     await modal.sidebar.switchMode("annotate");
