@@ -649,14 +649,17 @@ class _MediaAssetManifest:
         assets = []
         for asset in self.assets:
             description = asset.description
-            assets.append(
-                {
-                    "asset_id": asset.asset_id,
-                    "role": description.role.value,
-                    "size_bytes": asset.size_bytes,
-                    "media_type": asset.media_type,
-                }
-            )
+            public = {
+                "asset_id": asset.asset_id,
+                "role": description.role.value,
+                "selector": _serialize_selector(description.selector),
+                "size_bytes": asset.size_bytes,
+                "media_type": asset.media_type,
+            }
+            if description.feature_name is not None:
+                public["feature_name"] = description.feature_name
+
+            assets.append(public)
 
         return {"assets": assets}
 
