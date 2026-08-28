@@ -22,6 +22,7 @@ import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
+import fiftyone.core.media_assets as foma
 import fiftyone.core.utils as fou
 from fiftyone.server.samples import (
     ImageSample,
@@ -78,6 +79,9 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
         self.assertNotIn("media_reference", raw)
 
         serialized = dataset.first().to_dict()
+        self.assertEqual(
+            dataset.first().get_media_key(), dataset.first().filepath
+        )
         self.assertIn("filepath", serialized)
         self.assertNotIn("media_reference", serialized)
 
@@ -246,11 +250,30 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             export_dir = os.path.join(tmp_dir, "export")
-            source.export(
-                export_dir=export_dir,
-                dataset_type=fot.FiftyOneDataset,
-                export_media=False,
-            )
+            with mock.patch.object(
+                foma,
+                "_ReferenceAssetPlanBuilder",
+                side_effect=AssertionError(
+                    "filepath exports must not construct reference plans"
+                ),
+            ), mock.patch.object(
+                foma,
+                "_export_media_reference_bindings",
+                side_effect=AssertionError(
+                    "filepath exports must not query reference bindings"
+                ),
+            ), mock.patch.object(
+                foma,
+                "_hydrate_media_reference_binding",
+                side_effect=AssertionError(
+                    "filepath exports must not hydrate references"
+                ),
+            ):
+                source.export(
+                    export_dir=export_dir,
+                    dataset_type=fot.FiftyOneDataset,
+                    export_media=False,
+                )
 
             with open(os.path.join(export_dir, "samples.json")) as file:
                 exported_samples = json.load(file)["samples"]

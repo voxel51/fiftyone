@@ -9,6 +9,7 @@ Database utilities.
 import atexit
 import dataclasses
 from datetime import datetime
+import json
 import logging
 from multiprocessing.pool import ThreadPool
 import os
@@ -950,7 +951,10 @@ def export_collection(
             progress callback function to invoke instead
     """
     if num_docs is None:
-        num_docs = len(docs)
+        try:
+            num_docs = len(docs)
+        except TypeError:
+            pass
 
     if json_dir_or_path.endswith(".json"):
         _export_collection_single(
@@ -971,9 +975,10 @@ def _export_collection_single(docs, json_path, key, num_docs, progress=None):
             total=num_docs, iters_str="docs", progress=progress
         ) as pb:
             for idx, doc in pb(enumerate(docs, 1)):
-                f.write(json_util.dumps(doc))
-                if idx < num_docs:
+                if idx > 1:
                     f.write(",")
+
+                f.write(json_util.dumps(doc))
 
         f.write("]}")
 
@@ -1003,7 +1008,7 @@ def import_document(json_path):
         return json_util.loads(f.read())
 
 
-def import_collection(json_dir_or_path, key="documents"):
+def import_collection(json_dir_or_path, key="documents", stream=False):
     """Imports the collection from JSON on disk.
 
     Args:
@@ -1011,14 +1016,22 @@ def import_collection(json_dir_or_path, key="documents"):
             containing per-document JSON files
         key ("documents"): the field name under which the documents are stored
             when ``json_path`` is a single JSON file
+        stream (False): whether to stream documents from a single JSON file
+            rather than loading the complete collection into memory
 
     Returns:
         a tuple of
 
         -   an iterable of BSON documents
-        -   the number of documents
+        -   the number of documents, or ``None`` when streaming a single file
     """
     if json_dir_or_path.endswith(".json"):
+        if stream:
+            return (
+                _import_collection_single_streaming(json_dir_or_path, key),
+                None,
+            )
+
         return _import_collection_single(json_dir_or_path, key)
 
     return _import_collection_multi(json_dir_or_path)
@@ -1031,6 +1044,103 @@ def _import_collection_single(json_path, key):
     num_docs = len(docs)
 
     return docs, num_docs
+
+
+def _import_collection_single_streaming(json_path, key):
+    decoder = json.JSONDecoder(object_hook=json_util.object_hook)
+    chunk_size = 64 * 1024
+
+    with open(json_path, "r", encoding="utf-8") as file:
+        buffer = ""
+        position = 0
+        eof = False
+
+        def _read_more():
+            nonlocal buffer, position, eof
+            if position:
+                buffer = buffer[position:]
+                position = 0
+
+            chunk = file.read(chunk_size)
+            if chunk:
+                buffer += chunk
+            else:
+                eof = True
+
+        def _skip_whitespace():
+            nonlocal position
+            while True:
+                while position < len(buffer) and buffer[position].isspace():
+                    position += 1
+
+                if position < len(buffer) or eof:
+                    return
+
+                _read_more()
+
+        def _consume(expected):
+            nonlocal position
+            _skip_whitespace()
+            if position >= len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            actual = buffer[position]
+            if actual != expected:
+                raise ValueError(
+                    "Malformed JSON collection: expected '%s'" % expected
+                )
+
+            position += 1
+
+        def _decode_value():
+            nonlocal position
+            while True:
+                _skip_whitespace()
+                try:
+                    value, position = decoder.raw_decode(buffer, position)
+                    return value
+                except json.JSONDecodeError as exc:
+                    if eof:
+                        raise ValueError("Malformed JSON collection") from exc
+
+                    _read_more()
+
+        _read_more()
+        _consume("{")
+        imported_key = _decode_value()
+        if imported_key != key:
+            raise ValueError(
+                "JSON collection does not contain the expected '%s' key" % key
+            )
+
+        _consume(":")
+        _consume("[")
+        first = True
+        while True:
+            _skip_whitespace()
+            if position >= len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            if buffer[position] == "]":
+                position += 1
+                break
+
+            if not first:
+                _consume(",")
+
+            yield _decode_value()
+            first = False
+
+        _consume("}")
+        while True:
+            _skip_whitespace()
+            if position < len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            if eof:
+                break
+
+            _read_more()
 
 
 def _import_collection_multi(json_dir):
@@ -1051,6 +1161,7 @@ def insert_documents(
     batcher=None,
     progress=None,
     num_docs=None,
+    inserted_ids=None,
 ):
     """Inserts documents into a collection.
 
@@ -1071,6 +1182,8 @@ def insert_documents(
         num_docs (None): the total number of documents. Only used when
             ``progress=True``. If omitted, this will be computed via
             ``len(docs)``, if possible
+        inserted_ids (None): an optional list to populate after each
+            successful batch, including partial inserts reported by MongoDB
 
     Returns:
         a list of IDs of the inserted documents
@@ -1088,13 +1201,29 @@ def insert_documents(
             for batch in batcher:
                 batch = list(batch)
                 res = coll.insert_many(batch, ordered=ordered)
-                ids.extend(b["_id"] for b in batch)
+                batch_ids = [b["_id"] for b in batch]
+                ids.extend(batch_ids)
+                if inserted_ids is not None:
+                    inserted_ids.extend(batch_ids)
+
                 if hasattr(res, "nBytes") and hasattr(
                     batcher, "set_encoding_ratio"
                 ):
                     batcher.set_encoding_ratio(res.nBytes)
 
     except BulkWriteError as bwe:
+        if inserted_ids is not None:
+            failed_indexes = {
+                error["index"] for error in bwe.details.get("writeErrors", ())
+            }
+            partial_ids = [
+                document["_id"]
+                for index, document in enumerate(batch)
+                if index not in failed_indexes
+            ]
+            num_inserted = bwe.details.get("nInserted", 0)
+            inserted_ids.extend(partial_ids[:num_inserted])
+
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
 
