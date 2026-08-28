@@ -9,8 +9,9 @@ workflows include :ref:`visualizing embeddings <brain-embeddings-visualization>`
 to explore the structure of your dataset, :ref:`similarity search
 <brain-similarity>` (including :ref:`natural language queries
 <brain-similarity-text>`), scoring samples by :ref:`uniqueness
-<brain-image-uniqueness>`, and pruning :ref:`near-duplicate
-<brain-near-duplicates>` samples.
+<brain-image-uniqueness>`, pruning :ref:`near-duplicate
+<brain-near-duplicates>` samples, and auditing your raw data with the
+FiftyOne Enterprise Data Quality 🚀 panel.
 
 In the FiftyOne App, the :ref:`Embeddings panel <app-embeddings-panel>` and
 :ref:`similarity search <app-similarity-search-panel>` make these workflows
@@ -21,6 +22,7 @@ subsets you discover into named slices of your dataset.
    :maxdepth: 1
    :hidden:
 
+   Data Quality 🚀 <../enterprise/data_quality>
    Similarity Search <../user_guide/similarity>
    Using image embeddings <../tutorials/image_embeddings.ipynb>
    Dimensionality reduction <../tutorials/dimension_reduction.ipynb>
