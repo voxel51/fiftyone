@@ -1,3 +1,4 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import {
   useAutoSave,
   useRegisterAnnotationEventHandlers,
@@ -44,7 +45,7 @@ import { Sidebar } from "./Sidebar";
 import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
-import { TooltipInfo } from "./TooltipInfo";
+import { TooltipInfoBoundary } from "./TooltipInfoBoundary";
 import {
   useLookerHelpers,
   useShowClassicSidebar,
@@ -153,6 +154,22 @@ const Modal = () => {
   );
 
   const { jsonPanel, helpPanel } = useLookerHelpers();
+
+  const trackEvent = useTrackEvent();
+  const trackBoundaryError = useCallback(
+    (error: Error) => {
+      // same event the @fiftyone/components ErrorBoundary emits, so errors
+      // caught by these raw boundaries still reach analytics
+      trackEvent("uncaught_app_error", {
+        error: error?.message || error?.name || error,
+        stack: error?.stack,
+        messages: (error as Error & { errors?: Error[] })?.errors?.map(
+          (e) => e.message,
+        ),
+      });
+    },
+    [trackEvent],
+  );
 
   const modalCloseHandler = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -350,6 +367,7 @@ const Modal = () => {
             place and resets on navigation like the main boundary. */}
         <ReactErrorBoundary
           FallbackComponent={ModalErrorFallback}
+          onError={trackBoundaryError}
           resetKeys={[modalSelector?.id, modalSelector?.groupId]}
         >
           <Actions />
@@ -359,15 +377,15 @@ const Modal = () => {
             <AnnotationHandlerRegistration />
           </Suspense>
         )}
-        <ReactErrorBoundary
+        <TooltipInfoBoundary
           FallbackComponent={ModalErrorFallback}
+          onError={trackBoundaryError}
           resetKeys={[modalSelector?.id, modalSelector?.groupId]}
-        >
-          <TooltipInfo />
-        </ReactErrorBoundary>
+        />
         <ModalContainer data-cy="modal-content" style={{ ...screenParams }}>
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}
+            onError={trackBoundaryError}
             resetKeys={[modalSelector?.id, modalSelector?.groupId]}
           >
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
