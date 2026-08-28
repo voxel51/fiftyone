@@ -317,3 +317,13 @@ export const generatedDatasetName = selector<string | undefined>({
     eviction: "most-recent",
   },
 });
+
+/**
+ * A view change in flight outside the router's knowledge — a server-side
+ * operator that applies a view when it finishes. Read through
+ * `useViewChangePending`; the router clears it when the next entry loads.
+ */
+export const viewChangePending = atom<boolean>({
+  key: "viewChangePending",
+  default: false,
+});

@@ -419,6 +419,7 @@ packages/state/src/hooks/useToClips.ts
 packages/state/src/hooks/useToEvaluationPatches.ts
 packages/state/src/hooks/useTooltip.ts
 packages/state/src/hooks/useToPatches.ts
+packages/state/src/hooks/useViewChangePending.ts
 packages/state/src/recoil/aggregate.ts
 packages/state/src/recoil/aggregations.ts
 packages/state/src/recoil/atoms.ts

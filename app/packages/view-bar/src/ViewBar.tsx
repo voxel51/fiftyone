@@ -155,6 +155,7 @@ const ViewBar: React.FC<{
   const currentView = useRecoilValue(fos.view);
   const datasetName = fos.useCurrentDatasetName();
   const setView = fos.useSetView();
+  const setViewChangePending = fos.useSetViewChangePending();
   const trackEvent = useTrackEvent();
 
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -664,6 +665,9 @@ const ViewBar: React.FC<{
       trackEvent("view_bar_text_search", {
         patches: Boolean(index.patchesField),
       });
+      // The pending treatment every view change gets, for the operator's
+      // whole run — the router clears it when the resulting entry loads
+      setViewChangePending(true);
       // The same route the Similarity action takes: the server-side search
       // operator owns building and applying the view, and the bar hydrates
       // from the view change like any other external edit
@@ -686,6 +690,9 @@ const ViewBar: React.FC<{
       executeOperator(SIMILARITY_SEARCH_OPERATOR, params, {
         callback: (result) => {
           if (result?.error) {
+            // No view change is coming, so nothing will clear the pending
+            // treatment — release it here
+            setViewChangePending(false);
             console.error("Similarity search failed:", result.error);
             return;
           }
@@ -706,7 +713,7 @@ const ViewBar: React.FC<{
         },
       });
     },
-    [promptKeys, trackEvent],
+    [promptKeys, trackEvent, setViewChangePending],
   );
 
   // With no stages and no search there is nothing to summarize and nothing
