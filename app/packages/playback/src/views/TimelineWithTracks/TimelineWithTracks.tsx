@@ -246,7 +246,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const resolvedLabelWidth = clampLabelWidth(
     draggedLabelWidth ?? requestedLabelWidth,
   );
-  const labelWidth = tracks.length === 0 ? 0 : resolvedLabelWidth;
 
   // Sub-rows follow their parent's pin state via `parentId` so a partial pin
   // doesn't strand attribute children above unrelated parents — see
@@ -255,6 +254,11 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     () => partitionTracksByPin(tracks, pinnedIds),
     [tracks, pinnedIds],
   );
+
+  const labelWidth =
+    pinned.length > 0 || (drawerOpen && tracks.length > 0)
+      ? resolvedLabelWidth
+      : 0;
 
   /**
    * Index range the virtualizer currently has mounted, as a `start:end` key.
