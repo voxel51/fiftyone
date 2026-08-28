@@ -48,7 +48,6 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 """
 
 from collections import OrderedDict
-import hashlib
 import random
 
 from mongoengine.errors import ValidationError
@@ -65,12 +64,7 @@ from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 _random = random.Random()
 
 
-def _generate_rand(filepath=None, media_identity=None):
-    if media_identity is not None:
-        digest = hashlib.sha256(media_identity.encode("utf-8")).digest()
-        unit_value = int.from_bytes(digest[:8], "big") / float(2**64)
-        return unit_value * 0.001 + 0.999
-
+def _generate_rand(filepath=None):
     if filepath is not None:
         return random.Random(filepath).random() * 0.001 + 0.999
 
@@ -144,14 +138,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
         kwargs["created_at"] = None
         kwargs["last_modified_at"] = None
         if kwargs.get("_rand", None) is None:
-            kwargs["_rand"] = _generate_rand(
-                filepath=filepath,
-                media_identity=(
-                    media_reference.key
-                    if media_reference is not None
-                    else None
-                ),
-            )
+            kwargs["_rand"] = _generate_rand(filepath=filepath)
 
         media_type = kwargs.pop("media_type", None)
         if media_reference is not None:

@@ -37,8 +37,8 @@ from .media import (
     UnsupportedLeRobotVersionError,
     VideoTimestampInterval,
     WholeFile,
-    get_logical_media_identity,
 )
+
 
 _LAZY_ATTRIBUTES = {
     "DecodedIngestFields": ("decoders", "DecodedIngestFields"),
@@ -106,7 +106,6 @@ __all__ = [
     "clear_decoders",
     "decoders",
     "get_decoder",
-    "get_logical_media_identity",
     "list_decoders",
     "register_decoder",
     "resolver",

@@ -109,6 +109,18 @@ class _SampleMixin(object):
         """The media type of the sample."""
         return self._media_type
 
+    def get_media_key(self):
+        """Returns the sample's active logical media key.
+
+        Reference-backed samples return their media-reference key. All other
+        samples return their filepath.
+        """
+        reference = self._doc.get_field("media_reference")
+        if reference is not None:
+            return reference.key
+
+        return self._doc.get_field("filepath")
+
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             return self._frames
@@ -474,7 +486,13 @@ class _SampleMixin(object):
             )
             values = {}
             for src_field, dst_field in parsed_fields.items():
-                if src_field in ("id", "filepath", "media_reference"):
+                if src_field in (
+                    "id",
+                    "filepath",
+                    "media_reference",
+                    "_media_type",
+                    "_rand",
+                ):
                     continue
 
                 try:
@@ -590,7 +608,6 @@ class _SampleMixin(object):
 
         if self.in_dataset:
             self._validate_attached_media_reference(reference, descriptor)
-            self._validate_unique_media_reference_key(descriptor["key"])
 
         if reference == current_reference:
             return
@@ -602,19 +619,6 @@ class _SampleMixin(object):
         else:
             self._doc._data["media_reference"] = reference
             self._doc._data["metadata"] = None
-
-    def _validate_unique_media_reference_key(self, key):
-        duplicate = self._dataset._sample_collection.find_one(
-            {
-                "_id": {"$ne": self._id},
-                "media_reference.key": key,
-            },
-            {"_id": True},
-        )
-        if duplicate is not None:
-            raise ValueError(
-                "Cannot assign a duplicate media-reference key in a dataset"
-            )
 
     def _validate_attached_media_reference(self, reference, descriptor):
         dataset = self._dataset
@@ -862,32 +866,6 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             kwargs["filepath"] = filepath
 
         return cls(**kwargs)
-
-    @classmethod
-    def from_media_reference(cls, reference, **fields):
-        """Creates a sample backed by a logical media reference.
-
-        Args:
-            reference: a :class:`fiftyone.multimodal.MediaReference`
-            **fields: sample fields to populate
-
-        Returns:
-            a :class:`Sample`
-        """
-        forbidden = {
-            "filepath",
-            "media_reference",
-            "_media_type",
-            "_rand",
-        }
-        found = forbidden.intersection(fields)
-        if found:
-            raise AttributeError(
-                "Media state cannot be assigned through fields: %s"
-                % sorted(found)
-            )
-
-        return cls(media_reference=reference, **fields)
 
     @classmethod
     def from_doc(cls, doc, dataset=None):

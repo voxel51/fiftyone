@@ -228,7 +228,6 @@ from .multimodal.media import (
     UnsupportedLeRobotVersionError,
     VideoTimestampInterval,
     WholeFile,
-    get_logical_media_identity,
 )
 from .core.threed import (
     BoxGeometry,
