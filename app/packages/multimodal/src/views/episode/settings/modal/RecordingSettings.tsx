@@ -37,8 +37,8 @@ const RecordingSettings = memo(function RecordingSettings({
     ["Format", format],
     ["Size", size],
     ["Duration", duration],
-    ["Start time", formatTimestampNs(facts.startTimeNs)],
-    ["End time", formatTimestampNs(facts.endTimeNs)],
+    ["Start time", facts.lerobot ? null : formatTimestampNs(facts.startTimeNs)],
+    ["End time", facts.lerobot ? null : formatTimestampNs(facts.endTimeNs)],
     ["Topics", formatInteger(facts.topicCount)],
     ["Channels", formatInteger(facts.channelCount)],
     ["Messages", formatIntegerString(facts.messageCount)],
@@ -47,6 +47,7 @@ const RecordingSettings = memo(function RecordingSettings({
     ["App support", formatApplicationSupport(facts)],
   ];
   const mcapRows = facts.mcap ? mcapFactRows(facts) : [];
+  const leRobotRows = facts.lerobot ? leRobotFactRows(facts) : [];
 
   return (
     <SidebarGroup defaultExpanded={false} summary={summary} title="Recording">
@@ -58,6 +59,15 @@ const RecordingSettings = memo(function RecordingSettings({
           title="MCAP details"
         >
           <FactRows rows={mcapRows} />
+        </SidebarGroup>
+      ) : null}
+      {leRobotRows.length > 0 ? (
+        <SidebarGroup
+          defaultExpanded={false}
+          summary={leRobotDetailsSummary(facts)}
+          title="LeRobot details"
+        >
+          <FactRows rows={leRobotRows} />
         </SidebarGroup>
       ) : null}
       <div className={styles.recordingActions}>
@@ -90,6 +100,30 @@ function FactRows({ rows }: { readonly rows: readonly RecordingFactRow[] }) {
       ))}
     </div>
   );
+}
+
+function leRobotFactRows(
+  facts: EpisodeRecordingFacts,
+): readonly RecordingFactRow[] {
+  const lerobot = facts.lerobot;
+  if (!lerobot) return [];
+  return [
+    ["Codebase version", lerobot.codebaseVersion ?? null],
+    ["Episode index", lerobot.episodeIndex ?? null],
+    ["Robot type", lerobot.robotType ?? null],
+    ["FPS", lerobot.fps === undefined ? null : formatDecimal(lerobot.fps)],
+    ["Logical rows", formatInteger(lerobot.logicalRowCount)],
+    ["Features", formatInteger(lerobot.featureCount)],
+    ["Media features", formatInteger(lerobot.mediaFeatureCount)],
+    [
+      "Task labels",
+      lerobot.taskLabels?.length ? lerobot.taskLabels.join(" · ") : null,
+    ],
+    [
+      "Video codecs",
+      lerobot.videoCodecs?.length ? lerobot.videoCodecs.join(", ") : null,
+    ],
+  ];
 }
 
 function mcapFactRows(
@@ -187,6 +221,23 @@ function mcapDetailsSummary(facts: EpisodeRecordingFacts): string | undefined {
   const indexes = formatIndexStatus(facts.mcap?.messageIndexStatus);
   return (
     [chunks ? `${chunks} chunks` : null, indexes ? `${indexes} indexes` : null]
+      .filter(Boolean)
+      .join(" · ") || undefined
+  );
+}
+
+function leRobotDetailsSummary(
+  facts: EpisodeRecordingFacts,
+): string | undefined {
+  const lerobot = facts.lerobot;
+  if (!lerobot) return undefined;
+  return (
+    [
+      lerobot.robotType ?? null,
+      lerobot.logicalRowCount === undefined
+        ? null
+        : `${lerobot.logicalRowCount.toLocaleString()} rows`,
+    ]
       .filter(Boolean)
       .join(" · ") || undefined
   );

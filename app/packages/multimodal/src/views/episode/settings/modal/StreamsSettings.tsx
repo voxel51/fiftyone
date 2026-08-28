@@ -153,7 +153,7 @@ function StreamRow({
       </div>
       <div className={styles.streamMetaLine}>
         <span className={styles.streamMeta}>
-          {row.countLabel}
+          {row.countLabel ?? ""}
           {row.rateLabel ? ` · ${row.rateLabel}` : ""}
           {capabilitySummary ? ` · ${capabilitySummary}` : ""}
         </span>
@@ -201,9 +201,9 @@ function streamActionsForRow(
 
   if (row.sourceType === SCENE_SOURCE_TYPE.IMAGE) {
     actions.push({
-      ariaLabel: `Image ${row.sourceName}`,
+      ariaLabel: `${row.kind === "video" ? "Video" : "Image"} ${row.sourceName}`,
       id: "image",
-      label: "Image",
+      label: row.kind === "video" ? "Video" : "Image",
       onClick: () => handlers.openImageTile(row.streamId),
     });
   }
@@ -238,16 +238,18 @@ function streamActionsForRow(
     });
   }
 
-  actions.push({
-    ariaLabel: `Inspect ${row.sourceName}`,
-    id: "inspect",
-    label: "Inspect",
-    onClick: () =>
-      handlers.openRawMessageTile({
-        sourceName: row.sourceName,
-        streamId: row.streamId,
-      }),
-  });
+  if (row.canInspect) {
+    actions.push({
+      ariaLabel: `Inspect ${row.sourceName}`,
+      id: "inspect",
+      label: "Inspect",
+      onClick: () =>
+        handlers.openRawMessageTile({
+          sourceName: row.sourceName,
+          streamId: row.streamId,
+        }),
+    });
+  }
 
   return actions;
 }

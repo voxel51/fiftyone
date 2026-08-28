@@ -217,6 +217,60 @@ describe("buildStreamInventoryRows", () => {
       });
     }
   });
+
+  it("uses adapter categories and semantic count nouns without inventing counts", () => {
+    const rows = buildStreamInventoryRows({
+      sceneSources: [],
+      streams: [
+        {
+          ...stream("observation.images.front", "image", "parquet", "", "3"),
+          kind: "image",
+          metadata: {
+            [STREAM_METADATA.CATEGORY]: STREAM_CATEGORY.OBSERVATIONS,
+            [STREAM_METADATA.COUNT_NOUN]: "frames",
+            [STREAM_METADATA.INSPECTABLE]: "false",
+          },
+        },
+        {
+          ...stream("action", "float32", "parquet", "", "3"),
+          kind: "scalar",
+          metadata: {
+            [STREAM_METADATA.CATEGORY]: STREAM_CATEGORY.ACTIONS,
+            [STREAM_METADATA.COUNT_NOUN]: "samples",
+            [STREAM_METADATA.INSPECTABLE]: "true",
+          },
+        },
+        {
+          ...stream("instruction.text", "string", "parquet", "", "1"),
+          metadata: {
+            [STREAM_METADATA.CATEGORY]: STREAM_CATEGORY.INSTRUCTIONS,
+            [STREAM_METADATA.INSPECTABLE]: "false",
+          },
+        },
+        {
+          ...stream("camera.video", "h264", "mp4", "", "1"),
+          count: undefined,
+          kind: "video",
+          metadata: { [STREAM_METADATA.INSPECTABLE]: "false" },
+        },
+      ],
+    });
+
+    expect(row(rows, "observation.images.front")).toMatchObject({
+      category: STREAM_CATEGORY.OBSERVATIONS,
+      countLabel: "3 frames",
+      canInspect: false,
+    });
+    expect(row(rows, "action")).toMatchObject({
+      category: STREAM_CATEGORY.ACTIONS,
+      countLabel: "3 samples",
+      canInspect: true,
+    });
+    expect(row(rows, "instruction.text").category).toBe(
+      STREAM_CATEGORY.INSTRUCTIONS,
+    );
+    expect(row(rows, "camera.video").countLabel).toBeNull();
+  });
 });
 
 function row(rows: readonly StreamInventoryRow[], stream: string) {
@@ -248,6 +302,8 @@ function stream(
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
       ...(sceneType ? { [SCENE_SOURCE_METADATA.TYPE]: sceneType } : {}),
       [STREAM_METADATA.DECODE_STATUS]: decodeStatus,
+      [STREAM_METADATA.INSPECTABLE]:
+        decodeStatus === "decodable" ? "true" : "false",
       [STREAM_METADATA.ENCODING]: encoding,
       [STREAM_METADATA.SCHEMA_NAME]: schema,
     },

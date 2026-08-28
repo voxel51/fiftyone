@@ -5,12 +5,16 @@ import {
   type SceneSource,
   type SceneSourceType,
   type StreamDescriptor,
+  type StreamKind,
   type StreamId,
 } from "../../../ir/index";
 
 export const STREAM_CATEGORY = {
+  ACTIONS: "actions",
   SENSORS: "sensors",
   ANNOTATIONS_PLANNING: "annotations-planning",
+  INSTRUCTIONS: "instructions",
+  OBSERVATIONS: "observations",
   TRANSFORMS_POSES: "transforms-poses",
   DIAGNOSTICS: "diagnostics",
   TELEMETRY: "telemetry",
@@ -21,6 +25,9 @@ export type StreamCategory =
   (typeof STREAM_CATEGORY)[keyof typeof STREAM_CATEGORY];
 
 export const STREAM_CATEGORY_ORDER: readonly StreamCategory[] = [
+  STREAM_CATEGORY.OBSERVATIONS,
+  STREAM_CATEGORY.ACTIONS,
+  STREAM_CATEGORY.INSTRUCTIONS,
   STREAM_CATEGORY.SENSORS,
   STREAM_CATEGORY.ANNOTATIONS_PLANNING,
   STREAM_CATEGORY.TRANSFORMS_POSES,
@@ -30,8 +37,11 @@ export const STREAM_CATEGORY_ORDER: readonly StreamCategory[] = [
 ];
 
 export const STREAM_CATEGORY_LABEL: Record<StreamCategory, string> = {
+  [STREAM_CATEGORY.ACTIONS]: "Actions",
   [STREAM_CATEGORY.SENSORS]: "Sensors",
   [STREAM_CATEGORY.ANNOTATIONS_PLANNING]: "Annotations & Planning",
+  [STREAM_CATEGORY.INSTRUCTIONS]: "Instructions",
+  [STREAM_CATEGORY.OBSERVATIONS]: "Observations",
   [STREAM_CATEGORY.TRANSFORMS_POSES]: "Transforms & Poses",
   [STREAM_CATEGORY.DIAGNOSTICS]: "Diagnostics",
   [STREAM_CATEGORY.TELEMETRY]: "Telemetry",
@@ -78,11 +88,12 @@ export interface StreamInventoryRow {
   readonly canInspect: boolean;
   readonly capabilities: readonly StreamCapability[];
   readonly category: StreamCategory;
-  readonly countLabel: string;
+  readonly countLabel: string | null;
   readonly encoding: string;
   readonly rateHz: number | null;
   readonly rateLabel: string | null;
   readonly recordCount: number | null;
+  readonly kind: StreamKind;
   readonly schemaName: string;
   readonly sourceName: string;
   readonly sourceType: SceneSourceType | null;
@@ -149,7 +160,8 @@ export function buildStreamInventoryRows({
       const decodeStatus = genericDecodeStatus(
         stream.metadata?.[STREAM_METADATA.DECODE_STATUS],
       );
-      const canInspect = decodeStatus === "decodable";
+      const canInspect =
+        stream.metadata?.[STREAM_METADATA.INSPECTABLE] === "true";
       const schemaName = schemaNameFor(stream);
       const telemetry = isTelemetrySchema(schemaName);
       const rateHz = messageRateHz(stream.approxRateHz);
@@ -166,13 +178,15 @@ export function buildStreamInventoryRows({
           frameTransform,
           sourceName,
           sourceType,
+          stream,
           telemetry,
         }),
-        countLabel: messageCountLabel(stream.count),
+        countLabel: countLabelFor(stream),
         encoding: encodingFor(stream),
         rateHz,
         rateLabel: messageRateLabel(rateHz),
         recordCount: recordCountFor(stream.count),
+        kind: stream.kind,
         schemaName,
         sourceName,
         sourceType,
@@ -211,12 +225,32 @@ export function filterStreamInventoryRows(
   );
 }
 
-function messageCountLabel(recordCount: number | undefined): string {
-  const count = recordCountFor(recordCount);
-  if (count === null) {
-    return "unknown msgs";
+function countLabelFor(stream: StreamDescriptor): string | null {
+  const count = recordCountFor(stream.count);
+  if (count === null) return null;
+  const noun =
+    stream.metadata?.[STREAM_METADATA.COUNT_NOUN] ?? countNoun(stream.kind);
+  return `${count.toLocaleString()} ${count === 1 ? singularNoun(noun) : noun}`;
+}
+
+function countNoun(kind: StreamKind): string {
+  switch (kind) {
+    case "image":
+    case "video":
+      return "frames";
+    case "audio":
+    case "scalar":
+      return "samples";
+    default:
+      return "messages";
   }
-  return `${count.toLocaleString()} ${count === 1 ? "msg" : "msgs"}`;
+}
+
+function singularNoun(noun: string): string {
+  if (noun === "messages") return "message";
+  if (noun === "frames") return "frame";
+  if (noun === "samples") return "sample";
+  return noun;
 }
 
 function messageRateLabel(
@@ -238,13 +272,22 @@ function categoryForStream({
   frameTransform,
   sourceName,
   sourceType,
+  stream,
   telemetry,
 }: {
   readonly frameTransform: boolean;
   readonly sourceName: string;
   readonly sourceType: SceneSourceType | null;
+  readonly stream: StreamDescriptor;
   readonly telemetry: boolean;
 }): StreamCategory {
+  const adapterCategory = stream.metadata?.[STREAM_METADATA.CATEGORY];
+  if (
+    adapterCategory &&
+    Object.values(STREAM_CATEGORY).includes(adapterCategory as StreamCategory)
+  ) {
+    return adapterCategory as StreamCategory;
+  }
   if (/(?:^|\/)imu(?:\/|$)/i.test(sourceName)) {
     return STREAM_CATEGORY.SENSORS;
   }
