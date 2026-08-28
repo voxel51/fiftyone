@@ -32,6 +32,7 @@ import type {
   ChangeListener,
   DisplayListener,
   LabelStore,
+  ReconcileOpts,
   StoreSnapshot,
 } from "./types";
 
@@ -169,7 +170,7 @@ export class VideoLabelStore implements LabelStore {
     this.sampleLevel.captureBaseline();
   }
 
-  reconcilePersisted(deltas: JSONDeltas): void {
+  reconcilePersisted(deltas: JSONDeltas, opts?: ReconcileOpts): void {
     const frameDeltas: JSONDeltas = [];
     const sampleDeltas: JSONDeltas = [];
 
@@ -177,8 +178,8 @@ export class VideoLabelStore implements LabelStore {
       (op.path.startsWith("/frames/") ? frameDeltas : sampleDeltas).push(op);
     }
 
-    this.frames.reconcilePersisted(frameDeltas);
-    this.sampleLevel.reconcilePersisted(sampleDeltas);
+    this.frames.reconcilePersisted(frameDeltas, opts);
+    this.sampleLevel.reconcilePersisted(sampleDeltas, opts);
   }
 
   // ---- lifecycle ----

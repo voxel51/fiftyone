@@ -6,6 +6,17 @@
 
 import type { JSONDeltas, LabelData, LabelType } from "@fiftyone/utilities";
 
+/**
+ * Options threaded from the persist caller down to each store's
+ * reconcile. `sampleRooted` declares that the deltas use sample-rooted
+ * pointers (false for generated/patches views, whose deltas are rooted at
+ * the persisted LABEL) — stores must not rebase their source from
+ * label-rooted paths.
+ */
+export interface ReconcileOpts {
+  sampleRooted?: boolean;
+}
+
 import type { LabelRef } from "../identity/ref";
 
 export type LabelChangeKind = "update" | "delete" | "reset";
@@ -119,7 +130,7 @@ export interface LabelStore {
   // snapshot the pre-persist transient; the trigger calls this before the patch
   // is sent so reconcilePersisted can keep fields edited while it was in flight
   captureBaseline(): void;
-  reconcilePersisted(deltas: JSONDeltas): void;
+  reconcilePersisted(deltas: JSONDeltas, opts?: ReconcileOpts): void;
 
   // lifecycle
   setData(data: Record<string, unknown>): void;

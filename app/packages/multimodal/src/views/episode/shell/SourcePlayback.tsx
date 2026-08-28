@@ -16,14 +16,18 @@ import React, {
   useState,
 } from "react";
 import PlaybackShell from "./PlaybackShell";
-import type {
-  ByteSourceDescriptor,
-  EpisodeRecordingFacts,
-  StreamDescriptor,
+import RegisterMcapAudioStreams from "../audio/RegisterMcapAudioStreams";
+import {
+  SCENE_SOURCE_TYPE,
+  type ByteSourceDescriptor,
+  type EpisodeRecordingFacts,
+  type StreamDescriptor,
 } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection/scene-sources";
 import { episodeSourceAccessKey } from "../../../runtime/episode-resources";
+import { recordSessionSourceFacts } from "../../../runtime/source-facts-service";
+import type { SourceFactsScope } from "../../../runtime/source-facts";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react/playback-store-context";
 import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
 import { createScheduledSourceReadBudgetAccount } from "../../../runtime/scheduled-read-budget-account";
@@ -90,7 +94,11 @@ import {
   SourcePosterProvider,
   type SourcePosterValue,
 } from "../image/source-poster-context";
-import { EpisodeSourceReadyProvider } from "../playback/source-ready-context";
+import { useEpisodeHeaderActions } from "../../../extensions/episode-actions";
+import {
+  VisibleStreamsProvider,
+  useVisibleStreamIds,
+} from "../stream-discovery/visible-streams";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 export const TRANSITION_STATUS_DELAY_MS = 200;
@@ -122,6 +130,11 @@ export interface SourcePlaybackProps {
   /** Per-row timeline decoration contributed by timeline sources. */
   readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
   readonly fileName: string;
+  /** Present only for the dataset sample modal, never the Explorer. */
+  readonly episodeContext?: {
+    readonly datasetId: string;
+    readonly sampleId: string;
+  };
   readonly headerActions?: React.ReactNode;
   /** Capture time to open the recording at, ahead of the first-data tick.
    * Set to an embeddings match so opening a matched tile lands on it. */
@@ -139,6 +152,7 @@ export interface SourcePlaybackProps {
   /** Optional maximum expanded track-body height. */
   readonly timelineDrawerMaxSize?: number;
   readonly source: ByteSourceDescriptor | null;
+  readonly sourceFactsScope?: SourceFactsScope;
   readonly tracks?: readonly Track[];
 }
 
@@ -147,12 +161,19 @@ export interface SourcePlaybackProps {
  * feed it a byte source; it owns inventory loading, episode providers, tiling,
  * layout persistence, and the playback chrome around the discovered streams.
  */
-export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
+export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => (
+  <VisibleStreamsProvider>
+    <SourcePlaybackContent {...props} />
+  </VisibleStreamsProvider>
+);
+
+const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   cameraPreferenceField,
   children,
   defaultPinnedTrackIds,
   decorateTrack,
   fileName,
+  episodeContext,
   headerActions,
   initialSeekTimeNs,
   layoutScopeKey,
@@ -165,6 +186,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   session,
   sessionError = null,
   source,
+  sourceFactsScope,
   tracks,
 }) => {
   const imageAspectRatiosRef = useRef<Record<string, number>>({});
@@ -199,6 +221,18 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       releaseRetainedImageTextures();
     };
   }, []);
+
+  // This effect records authoritative session metadata off the ready path.
+  useEffect(() => {
+    if (
+      session &&
+      source &&
+      sourceFactsScope &&
+      session.manifest.episodeId === source.sourceId
+    ) {
+      recordSessionSourceFacts(source, sourceFactsScope, session);
+    }
+  }, [session, source, sourceFactsScope]);
 
   const { status, error, sources, streams, streamCount } =
     useSceneInventoryState({
@@ -320,6 +354,26 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const shellInventory = destinationInventory ?? retainedShellInventory;
   const shellSources = shellInventory?.sources ?? sources;
   const shellStreams = shellInventory?.streams ?? streams;
+  // Audio deliberately does NOT contribute `Track` rows to the main timeline
+  // for now — audio lives in the toolbar's volume/mixer controls only, and is
+  // to be reintroduced as a timeline track later.
+  //
+  // Worth knowing when it comes back: `TimelineWithTracks` gates its whole
+  // Drawer (drag handle, chevron, trailing actions) on `tracks.length > 0`,
+  // and `useAudio()`'s roster does not feed that count. So a recording whose
+  // only streams are audio now shows no timeline chrome at all — which is the
+  // gap those synthetic rows existed to close.
+  // The transitioning gate clears when `onPlayheadDataReady` fires, which
+  // requires a stream registered with the demand-driven buffered-read system
+  // to cover the playhead. Audio sources decode through their own one-shot
+  // read (`useMcapAudioStream`) and never participate, so a recording whose
+  // only sources are audio has nothing that can ever satisfy that signal and
+  // would stay masked forever. There is also nothing to preview in that case.
+  const hasPreviewableSource = useMemo(
+    () =>
+      shellSources.some((source) => source.type !== SCENE_SOURCE_TYPE.AUDIO),
+    [shellSources],
+  );
   const resolvedTimelineMode = useMemo(
     () => resolveTimelineMode(shellStreams),
     [shellStreams],
@@ -455,7 +509,10 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const transitioning =
     navigationPending ||
     readyInventory === null ||
-    presentedSourceKey !== sourceKey;
+    // See `hasPreviewableSource`: an audio-only recording never publishes a
+    // playhead-data-ready tick, so this would otherwise latch "transitioning"
+    // forever.
+    (hasPreviewableSource && presentedSourceKey !== sourceKey);
 
   return (
     <div
@@ -467,7 +524,6 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
         cameraViewStateScopeKey={cameraViewStateScopeKey}
         sources={shellSources}
         sourcePoster={sourcePoster}
-        sourceReady={!transitioning}
         transformTopologyCapability={
           readyInventory ? (session?.transformTopology ?? null) : null
         }
@@ -520,7 +576,32 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 headerCaption={headerCaption}
                                 headerActions={
                                   <HeaderActions
-                                    actions={headerActions}
+                                    actions={
+                                      episodeContext &&
+                                      session?.manifest &&
+                                      source ? (
+                                        <>
+                                          {headerActions}
+                                          <EpisodeHeaderActions
+                                            context={episodeContext}
+                                            rawRecords={session.rawRecords}
+                                            recordingFacts={
+                                              session.manifest.recordingFacts
+                                            }
+                                            source={source}
+                                            streams={shellStreams}
+                                            timeRange={
+                                              session.manifest.timeRange
+                                            }
+                                            transformTopology={
+                                              session.manifest.transformTopology
+                                            }
+                                          />
+                                        </>
+                                      ) : (
+                                        headerActions
+                                      )
+                                    }
                                     loading={
                                       transitioning && !hasTerminalTransition
                                     }
@@ -529,7 +610,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 addTileMenu={
                                   <AddTileMenu tileTypes={availableTileTypes} />
                                 }
-                                timelineExtraActions={<TimestampReadout />}
+                                timelineReadouts={<TimestampReadout />}
                                 sceneSources={shellSources}
                                 mode={playbackTimelineMode}
                                 deselectFocusedTileOnRepeatSelect={false}
@@ -612,6 +693,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 <NetworkHealthTracker
                                   playback={session?.playback ?? null}
                                 />
+                                <RegisterMcapAudioStreams />
                                 <SelectionHotkeys />
                                 <ExtensionRuntimeBoundary>
                                   {children}
@@ -636,13 +718,53 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   );
 };
 
+function EpisodeHeaderActions({
+  context,
+  rawRecords,
+  recordingFacts,
+  source,
+  streams,
+  timeRange,
+  transformTopology,
+}: {
+  readonly context: NonNullable<SourcePlaybackProps["episodeContext"]>;
+  readonly rawRecords: EpisodeSession["rawRecords"];
+  readonly recordingFacts: EpisodeSession["manifest"]["recordingFacts"];
+  readonly source: ByteSourceDescriptor;
+  readonly streams: readonly StreamDescriptor[];
+  readonly timeRange: NonNullable<EpisodeSession["manifest"]>["timeRange"];
+  readonly transformTopology: NonNullable<
+    EpisodeSession["manifest"]
+  >["transformTopology"];
+}) {
+  const actions = useEpisodeHeaderActions();
+  const visibleStreamIds = useVisibleStreamIds();
+  return (
+    <>
+      {actions.map(({ Component, id }) => (
+        <Component
+          datasetId={context.datasetId}
+          key={`${context.datasetId}:${context.sampleId}:${id}`}
+          rawRecords={rawRecords}
+          recordingFacts={recordingFacts}
+          sampleId={context.sampleId}
+          source={source}
+          streams={streams}
+          timeRange={timeRange}
+          transformTopology={transformTopology}
+          visibleStreamIds={visibleStreamIds}
+        />
+      ))}
+    </>
+  );
+}
+
 /** State shared within the current dataset/media-field inspection session. */
 const PlaybackSessionStateProviders: React.FC<{
   readonly cameraViewStateScopeKey?: string;
   readonly children: React.ReactNode;
   readonly sources: readonly SceneSource[];
   readonly sourcePoster: SourcePosterValue | null;
-  readonly sourceReady: boolean;
   readonly transformTopologyCapability: NonNullable<
     EpisodeSession["transformTopology"]
   > | null;
@@ -653,39 +775,36 @@ const PlaybackSessionStateProviders: React.FC<{
   children,
   sources,
   sourcePoster,
-  sourceReady,
   transformTopologyCapability,
   transformTopologySourceKey,
   viewportScopeKey,
 }) => (
   <SourcePosterProvider value={sourcePoster}>
-    <EpisodeSourceReadyProvider ready={sourceReady}>
-      <FullHistoryInterestsProvider>
-        <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
-          <SidebarPreferencesProvider
-            scopeKey={cameraViewStateScopeKey}
-            sources={sources}
-          >
-            <Scene3dViewpointProvider>
-              <SceneFramesProvider>
-                <SceneNoticesProvider>
-                  <TileSettingsProvider>
-                    <MapViewportScopeProvider scopeKey={viewportScopeKey}>
-                      <TransformTopologyProvider
-                        capability={transformTopologyCapability}
-                        sourceKey={transformTopologySourceKey}
-                      >
-                        {children}
-                      </TransformTopologyProvider>
-                    </MapViewportScopeProvider>
-                  </TileSettingsProvider>
-                </SceneNoticesProvider>
-              </SceneFramesProvider>
-            </Scene3dViewpointProvider>
-          </SidebarPreferencesProvider>
-        </Scene3dViewStateProvider>
-      </FullHistoryInterestsProvider>
-    </EpisodeSourceReadyProvider>
+    <FullHistoryInterestsProvider>
+      <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
+        <SidebarPreferencesProvider
+          scopeKey={cameraViewStateScopeKey}
+          sources={sources}
+        >
+          <Scene3dViewpointProvider>
+            <SceneFramesProvider>
+              <SceneNoticesProvider>
+                <TileSettingsProvider>
+                  <MapViewportScopeProvider scopeKey={viewportScopeKey}>
+                    <TransformTopologyProvider
+                      capability={transformTopologyCapability}
+                      sourceKey={transformTopologySourceKey}
+                    >
+                      {children}
+                    </TransformTopologyProvider>
+                  </MapViewportScopeProvider>
+                </TileSettingsProvider>
+              </SceneNoticesProvider>
+            </SceneFramesProvider>
+          </Scene3dViewpointProvider>
+        </SidebarPreferencesProvider>
+      </Scene3dViewStateProvider>
+    </FullHistoryInterestsProvider>
   </SourcePosterProvider>
 );
 

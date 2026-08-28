@@ -58,7 +58,6 @@ import { isEpisodeReadCancelledError } from "../../ports";
 import { throwIfAborted } from "../../utils/cancellation";
 import { compareFrameIds } from "../../utils/frame-ids";
 import type { McapGridPreviewResult } from "./resource-client/grid-preview";
-import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {
   acquireSharedMcapResourceClient,
   createMcapResourceClient,
@@ -201,10 +200,6 @@ export function createMcapFormatAdapter(
       const pool = (options.getPreviewPool ?? getMcapGridPreviewPool)();
       pool.acquire();
       return new McapEpisodePreviewSession(asset, source.episodeId, pool);
-    },
-    async prewarm(source, _io, prewarmOptions) {
-      const asset = await resolveMcapAsset(source, prewarmOptions?.signal);
-      await prewarmMcapSource(asset, { signal: prewarmOptions?.signal });
     },
   };
 }
@@ -549,6 +544,7 @@ export function createMcapRawRecordCapability({
             : {}),
           includeFullJson: request.includeFullJson,
           prune: request.prune,
+          select: request.select,
           source,
           timeNs: request.timestampNs,
           topic: rawTarget.topic,

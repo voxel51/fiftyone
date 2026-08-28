@@ -72,7 +72,20 @@ export interface PlaybackShellProps {
    * transport buttons) — e.g. an absolute-timestamp readout. Composed
    * with the timeline's own actions, not replacing them.
    */
+  /**
+   * Clock-adjacent readout rendered beside the playhead time (the absolute
+   * UTC stamp) rather than in the trailing action run.
+   */
+  timelineReadouts?: ReactNode;
   timelineExtraActions?: ReactNode;
+
+  /**
+   * Buttons pinned to the right edge of the timeline's controls row,
+   * behind their own divider and before the drawer chevron — e.g.
+   * the timeline's own audio controls (master volume + Mixed
+   * dropdown) for a recording with audio tracks.
+   */
+  timelineTrailingActions?: ReactNode;
 
   /** Tracks broadcast through the embedded TrackProvider. */
   tracks?: Track[];
@@ -231,7 +244,9 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   headerCaption,
   headerActions,
   addTileMenu,
+  timelineReadouts,
   timelineExtraActions,
+  timelineTrailingActions,
   tracks,
   defaultPinnedTrackIds,
   decorateTrack,
@@ -293,7 +308,9 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               headerCaption={headerCaption}
               headerActions={headerActions}
               addTileMenu={addTileMenu}
+              timelineReadouts={timelineReadouts}
               timelineExtraActions={timelineExtraActions}
+              timelineTrailingActions={timelineTrailingActions}
               leftSidebar={leftSidebar}
               rightSidebar={rightSidebar}
               deselectFocusedTileOnRepeatSelect={
@@ -330,7 +347,13 @@ interface LayoutProps {
   headerCaption?: TilingHeaderCaption;
   headerActions?: ReactNode;
   addTileMenu?: ReactNode;
+  /**
+   * Clock-adjacent readout rendered beside the playhead time (the absolute
+   * UTC stamp) rather than in the trailing action run.
+   */
+  timelineReadouts?: ReactNode;
   timelineExtraActions?: ReactNode;
+  timelineTrailingActions?: ReactNode;
   leftSidebar: ReactNode;
   rightSidebar: ReactNode;
   deselectFocusedTileOnRepeatSelect: boolean;
@@ -358,7 +381,9 @@ function Layout({
   headerCaption,
   headerActions,
   addTileMenu,
+  timelineReadouts,
   timelineExtraActions,
+  timelineTrailingActions,
   leftSidebar,
   rightSidebar,
   deselectFocusedTileOnRepeatSelect,
@@ -585,7 +610,9 @@ function Layout({
         drawerOpen={timelineTracksOpen}
         maxSize={timelineDrawerMaxSize}
         onDrawerOpenChange={updateTimelineTracksOpen}
+        trailingActions={timelineTrailingActions}
         decorateTrack={decorateTrack}
+        readouts={timelineReadouts}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
         onTagUpdate={onTagUpdate}

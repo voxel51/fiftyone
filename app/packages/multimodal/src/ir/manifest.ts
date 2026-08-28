@@ -10,6 +10,7 @@ export type StreamId = string;
 
 /** Renderer-level family exposed by one episode stream. */
 export const STREAM_KIND = Object.freeze({
+  AUDIO: "audio",
   CAMERA_CALIBRATION: "camera-calibration",
   GRID: "grid",
   IMAGE: "image",
@@ -30,6 +31,7 @@ export type StreamKind = (typeof STREAM_KIND)[keyof typeof STREAM_KIND];
 
 /** Semantic source families consumed by the shared scene views. */
 export const SCENE_SOURCE_TYPE = Object.freeze({
+  AUDIO: "audio",
   CAMERA_CALIBRATION: "camera-calibration",
   IMAGE: "image",
   IMAGE_ANNOTATION: "image-annotation",

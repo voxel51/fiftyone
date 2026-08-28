@@ -92,6 +92,7 @@ import {
 import { projectionStreamsForHover } from "./hover-projection-streams";
 import { useSourcePoster } from "./source-poster-context";
 import { shouldPresentDestinationPoster } from "./destination-poster";
+import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
@@ -513,6 +514,11 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     pointCloudProjection.enabled,
     pointCloudProjection.streams,
     pointCloudStreams,
+  ]);
+  usePublishVisibleStreams([
+    ...activeStreams,
+    ...selectedProjectionStreams,
+    ...(explicitCalibrationStream ? [explicitCalibrationStream] : []),
   ]);
   const projectionGeometry =
     effectiveImageDims &&

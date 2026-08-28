@@ -26,6 +26,7 @@ import {
   publishSourceBootstrap,
   resetSourceBootstrapCacheForTests,
 } from "../../../runtime";
+import { registerEpisodeHeaderAction } from "../../../extensions/episode-actions";
 import { useSourcePoster } from "../image/source-poster-context";
 import { TILE_TYPE } from "../tiles/tile-types";
 import { SourcePlayback, TRANSITION_STATUS_DELAY_MS } from "./SourcePlayback";
@@ -64,6 +65,12 @@ const playbackHarness = vi.hoisted(() => {
   harness.useModalLayout.mockImplementation(() => harness.modalLayoutResult);
   return harness;
 });
+
+const sourceFactsHarness = vi.hoisted(() => ({
+  recordSessionSourceFacts: vi.fn(),
+}));
+
+vi.mock("../../../runtime/source-facts-service", () => sourceFactsHarness);
 
 vi.mock("./PlaybackShell", () => {
   const MockPlaybackShell = ({
@@ -225,6 +232,7 @@ describe("SourcePlayback", () => {
       () => playbackHarness.modalLayoutResult,
     );
     playbackHarness.useSceneInventoryState.mockClear();
+    sourceFactsHarness.recordSessionSourceFacts.mockReset();
   });
 
   afterEach(() => {
@@ -289,6 +297,100 @@ describe("SourcePlayback", () => {
     expect(screen.getByTestId("settings-stream-term").textContent).toBe(
       "topics",
     );
+  });
+
+  it("does not record a prior session under the next source", () => {
+    const firstSource = createSource("source-a");
+    const nextSource = createSource("source-b");
+    const scope = {
+      cachePartition: "partition",
+      datasetId: "dataset",
+      mediaField: "filepath",
+    } as const;
+    const session = {
+      activate: vi.fn(),
+      manifest: {
+        ...bootstrapManifest("/camera"),
+        episodeId: firstSource.sourceId,
+      },
+    } as unknown as EpisodeSession;
+    playbackHarness.sceneInventory = readyInventory("/camera");
+    const view = render(
+      <SourcePlayback
+        fileName="source-a.mcap"
+        session={session}
+        source={firstSource}
+        sourceFactsScope={scope}
+      />,
+    );
+    expect(sourceFactsHarness.recordSessionSourceFacts).toHaveBeenCalledWith(
+      firstSource,
+      scope,
+      session,
+    );
+    sourceFactsHarness.recordSessionSourceFacts.mockClear();
+
+    view.rerender(
+      <SourcePlayback
+        fileName="source-b.mcap"
+        session={session}
+        source={nextSource}
+        sourceFactsScope={scope}
+      />,
+    );
+
+    expect(sourceFactsHarness.recordSessionSourceFacts).not.toHaveBeenCalled();
+  });
+
+  it("passes optional session capabilities to registered header actions", () => {
+    const manifest = bootstrapManifest("/camera/front");
+    const recordingFacts: EpisodeRecordingFacts = {
+      format: "mcap",
+      sizeBytes: "1024",
+    };
+    const rawRecords = {
+      listRawRecordStreams: vi.fn(async () => []),
+      readRawRecord: vi.fn(),
+    } as EpisodeSession["rawRecords"];
+    const unregister = registerEpisodeHeaderAction({
+      Component: (context) => (
+        <span data-testid="header-action-capabilities">
+          {context.rawRecords === rawRecords &&
+          context.recordingFacts === recordingFacts
+            ? "available"
+            : "missing"}
+        </span>
+      ),
+      id: "test:session-capabilities",
+      order: 1,
+    });
+    playbackHarness.sceneInventory = readyInventory(
+      "/camera/front",
+      manifest.streams as StreamDescriptor[],
+    );
+
+    try {
+      render(
+        <SourcePlayback
+          episodeContext={{ datasetId: "dataset", sampleId: "sample" }}
+          fileName="recording.mcap"
+          session={
+            {
+              activate: vi.fn(),
+              manifest: { ...manifest, recordingFacts },
+              rawRecords,
+            } as unknown as EpisodeSession
+          }
+          source={createSource("recording")}
+        />,
+      );
+
+      expect(screen.getByTestId("header-action-capabilities").textContent).toBe(
+        "available",
+      );
+    } finally {
+      unregister();
+    }
   });
 
   it("builds the destination shell and poster from a buffered grid bootstrap", () => {

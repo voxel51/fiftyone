@@ -136,6 +136,19 @@ describe("MCAP format adapter", () => {
     });
   });
 
+  it("preserves source size discovered while reading inventory", () => {
+    const manifest = createMcapManifest(
+      "episode",
+      { endTimeNs: 2n, startTimeNs: 1n },
+      recordingInventory([], {
+        format: "mcap",
+        sizeBytes: "2845415834",
+      }),
+    );
+
+    expect(manifest.recordingFacts?.sizeBytes).toBe("2845415834");
+  });
+
   it("activates the source before uncached bootstrap reads", async () => {
     const calls: string[] = [];
     const client = createClient();
@@ -226,29 +239,6 @@ describe("MCAP format adapter", () => {
       signal: controller.signal,
     });
     session.dispose();
-  });
-
-  it("forwards prewarm cancellation into asset inventory", async () => {
-    const controller = new AbortController();
-    const resolve = vi.fn();
-    const prewarmSource: EpisodeSource = {
-      assets: {
-        list: vi.fn(async (options) => {
-          expect(options?.signal).toBe(controller.signal);
-          controller.abort();
-          return [];
-        }),
-        resolve,
-      },
-      episodeId: "mcap-prewarm-cancel",
-    };
-
-    await expect(
-      createMcapFormatAdapter({ createClient }).prewarm?.(prewarmSource, io, {
-        signal: controller.signal,
-      }),
-    ).rejects.toMatchObject({ name: "EpisodeReadCancelledError" });
-    expect(resolve).not.toHaveBeenCalled();
   });
 
   it("names streams as topics for the shared viewer", async () => {
@@ -1330,6 +1320,36 @@ describe("MCAP format adapter", () => {
       schemaName: "SchemaB",
       streamId: selected.streamId,
     });
+  });
+
+  it("forwards metadata-only export reads to the bulk lane", async () => {
+    const client = createClient();
+    vi.mocked(client.readRawMessageRecord).mockResolvedValue({
+      encodedPayloadBytes: 42,
+      logTimeNs: 1n,
+      messageEncoding: "cdr",
+      schemaName: null,
+      status: "ok",
+      topic: "/camera",
+      validFromNs: 1n,
+      validUntilNs: 2n,
+    });
+    const capability = createMcapRawRecordCapability({
+      client,
+      source: sourceDescriptor,
+    });
+
+    await capability.readRawRecord({
+      intent: "export",
+      select: "metadata",
+      stream: "/camera",
+      timestampNs: 1n,
+    });
+
+    expect(client.readRawMessageRecord).toHaveBeenLastCalledWith(
+      expect.objectContaining({ select: "metadata", topic: "/camera" }),
+      expect.objectContaining({ priority: "bulk" }),
+    );
   });
 
   it("falls back from malformed channel metadata to a numeric inventory id", async () => {

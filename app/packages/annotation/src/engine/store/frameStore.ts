@@ -40,6 +40,7 @@ import { toSchemaField } from "../identity/framePath";
 import { addressIdOf, indexFromAddressId } from "../identity/ref";
 import type { LabelRef } from "../identity/ref";
 import type {
+  ReconcileOpts,
   ChangeListener,
   DisplayListener,
   LabelChange,
@@ -335,7 +336,7 @@ export class FrameStore implements LabelStore {
    * version bookkeeping stays fresh — this mirrors the sample store's
    * change-only-what-changed reconcile.
    */
-  reconcilePersisted(deltas: JSONDeltas): void {
+  reconcilePersisted(deltas: JSONDeltas, _opts?: ReconcileOpts): void {
     const byFrame = new Map<number, JSONDeltas>();
 
     for (const op of deltas) {

@@ -11,10 +11,10 @@ export function createDefaultByteClient(): ByteClient {
   const httpClient = createHttpByteClient();
 
   return {
-    async stat(source) {
+    async stat(source, signal) {
       return source.localFile
-        ? fileClient.stat?.(source)
-        : httpClient.stat?.(source);
+        ? fileClient.stat?.(source, signal)
+        : httpClient.stat?.(source, signal);
     },
 
     async readBytes(request) {

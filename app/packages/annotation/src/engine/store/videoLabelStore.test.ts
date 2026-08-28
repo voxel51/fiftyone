@@ -228,9 +228,10 @@ describe("VideoLabelStore persistence", () => {
       { op: "add", path: "/events", value: [] },
     ]);
 
-    expect(reconcileSpy).toHaveBeenCalledWith([
-      { op: "add", path: "/frames/1/detections/detections/-", value: {} },
-    ]);
+    expect(reconcileSpy).toHaveBeenCalledWith(
+      [{ op: "add", path: "/frames/1/detections/detections/-", value: {} }],
+      undefined,
+    );
     expect(sampleLevel.reconciled).toEqual([
       { op: "add", path: "/events", value: [] },
     ]);
