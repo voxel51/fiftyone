@@ -401,6 +401,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
   readonly numericSeries: NumericSeriesCapability;
   readonly playback: PlaybackReadCapability;
   readonly rawRecords: RawRecordCapability;
+  readonly rawStreamBindings: readonly LeRobotRawStreamBinding[];
   readonly scalarFeatures: ReadonlyMap<string, LeRobotFeature>;
   readonly stateAction?: StateActionCapability;
   readonly videoBindings: ReadonlyMap<string, VideoBinding>;
@@ -471,7 +472,15 @@ class LeRobotEpisodeSession implements EpisodeSession {
           const asset = findFeatureAsset(state.assets, IMAGE_ROLE, name);
           if (!asset) return [unsupportedStream(name, feature, timeRange)];
           imageBindings.set(streamId, { asset, feature, streamId });
-          return [imageStream(name, feature, timeRange, state.info.fps)];
+          return [
+            imageStream(
+              name,
+              feature,
+              timeRange,
+              state.info.fps,
+              state.episodeRows.rows.length,
+            ),
+          ];
         }
         if (isNumericFeature(name, feature)) {
           scalarFeatures.set(streamId, feature);
@@ -493,7 +502,23 @@ class LeRobotEpisodeSession implements EpisodeSession {
     this.scalarFeatures = scalarFeatures;
     this.videoBindings = videoBindings;
     this.imageBindings = imageBindings;
-    this.manifest = state.source.manifestHint ?? {
+    this.rawStreamBindings = [
+      {
+        kind: "row",
+        schemaName: "LeRobotDataset v3 row",
+        sourceName: "Episode rows",
+        streamId: RAW_STREAM_ID,
+      },
+      ...[...scalarFeatures.entries()].map(([streamId, feature]) => ({
+        feature,
+        featureName: featureNameForStream(streamId),
+        kind: "feature" as const,
+        schemaName: `${feature.dtype}${shapeSuffix(feature.shape)}`,
+        sourceName: featureNameForStream(streamId),
+        streamId,
+      })),
+    ];
+    this.manifest = {
       episodeId: state.source.episodeId,
       metadata: {
         "lerobot.codebaseVersion": state.info.codebase_version ?? "unknown",
@@ -505,6 +530,16 @@ class LeRobotEpisodeSession implements EpisodeSession {
         "lerobot.robotType": state.info.robot_type ?? "unknown",
         "lerobot.tasks": JSON.stringify(state.episodeRows.episode.tasks ?? []),
       },
+      recordingFacts: leRobotRecordingFacts({
+        episode: state.episodeRows.episode,
+        fps: state.info.fps,
+        streams,
+        features: state.info.features,
+        rowCount: state.episodeRows.rows.length,
+        codebaseVersion: state.info.codebase_version,
+        robotType: state.info.robot_type,
+        timeRange,
+      }),
       streams,
       timeDomain: { id: "episode", kind: "duration", originNs: 0n },
       timeRange,
@@ -1081,25 +1116,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
 
   private createRawRecordCapability(): RawRecordCapability {
     const rows = this.state.episodeRows.rows;
-    const streamBindings: readonly LeRobotRawStreamBinding[] = [
-      {
-        kind: "row",
-        schemaName: "LeRobotDataset v3 row",
-        sourceName: "Episode rows",
-        streamId: RAW_STREAM_ID,
-      },
-      ...[...this.scalarFeatures.entries()].map(([streamId, feature]) => {
-        const featureName = featureNameForStream(streamId);
-        return {
-          feature,
-          featureName,
-          kind: "feature" as const,
-          schemaName: `${feature.dtype}${shapeSuffix(feature.shape)}`,
-          sourceName: featureName,
-          streamId,
-        };
-      }),
-    ];
+    const streamBindings = this.rawStreamBindings;
     const requireStream = (stream: string) => {
       const binding = streamBindings.find(
         (candidate) => candidate.streamId === stream,
@@ -2135,7 +2152,11 @@ function scalarStream(
     count,
     id: streamIdForFeature(name),
     kind: STREAM_KIND.SCALAR,
-    metadata: streamMetadata(feature.dtype, feature.dtype, "decodable"),
+    metadata: streamMetadata(feature.dtype, feature.dtype, "decodable", {
+      [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
+      [STREAM_METADATA.COUNT_NOUN]: "samples",
+      [STREAM_METADATA.INSPECTABLE]: "true",
+    }),
     payload: {
       encoding: "parquet",
       schema: `${feature.dtype}${shapeSuffix(feature.shape)}`,
@@ -2150,13 +2171,18 @@ function imageStream(
   feature: LeRobotFeature,
   timeRange: TimeWindow,
   fps: number,
+  count: number,
 ): StreamDescriptor {
   return {
     approxRateHz: fps,
+    count,
     id: streamIdForFeature(name),
     kind: STREAM_KIND.IMAGE,
     metadata: {
       ...streamMetadata("parquet-image", feature.dtype, "decodable"),
+      [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
+      [STREAM_METADATA.COUNT_NOUN]: "frames",
+      [STREAM_METADATA.INSPECTABLE]: "false",
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
       [SCENE_SOURCE_METADATA.TYPE]: SCENE_SOURCE_TYPE.IMAGE,
     },
@@ -2186,6 +2212,8 @@ function videoStream(
         codec,
         supported ? "decodable" : "unsupported-encoding",
       ),
+      [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
+      [STREAM_METADATA.INSPECTABLE]: "false",
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
       [SCENE_SOURCE_METADATA.TYPE]: SCENE_SOURCE_TYPE.IMAGE,
       "lerobot.assetId": binding.asset.id,
@@ -2209,6 +2237,10 @@ function unsupportedStream(
       feature.dtype,
       feature.dtype,
       "unsupported-encoding",
+      {
+        [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
+        [STREAM_METADATA.INSPECTABLE]: "false",
+      },
     ),
     payload: { encoding: feature.dtype, schema: shapeSuffix(feature.shape) },
     sourceName: name,
@@ -2220,11 +2252,99 @@ function streamMetadata(
   encoding: string,
   schema: string,
   status: "decodable" | "unsupported-encoding",
+  additional: Readonly<Record<string, string>> = {},
 ) {
   return {
+    ...additional,
     [STREAM_METADATA.DECODE_STATUS]: status,
     [STREAM_METADATA.ENCODING]: encoding,
     [STREAM_METADATA.SCHEMA_NAME]: schema,
+  };
+}
+
+function leRobotCategory(name: string): string {
+  if (name === "action" || name.startsWith("action.")) return "actions";
+  if (name.startsWith("observation.")) return "observations";
+  if (
+    /(?:^|[._/])(instruction|language|task|prompt|text)(?:[._/]|$)/i.test(name)
+  ) {
+    return "instructions";
+  }
+  return "custom";
+}
+
+function leRobotRecordingFacts({
+  codebaseVersion,
+  episode,
+  features,
+  fps,
+  robotType,
+  rowCount,
+  streams,
+  timeRange,
+}: {
+  readonly codebaseVersion?: string;
+  readonly episode: Record<string, unknown>;
+  readonly features: Readonly<Record<string, LeRobotFeature>>;
+  readonly fps: number;
+  readonly robotType?: string;
+  readonly rowCount: number;
+  readonly streams: readonly StreamDescriptor[];
+  readonly timeRange: TimeWindow;
+}) {
+  const tasks = Array.isArray(episode.tasks)
+    ? episode.tasks.filter((task): task is string => typeof task === "string")
+    : [];
+  const codecs = [
+    ...new Set(
+      Object.values(features)
+        .filter((feature) => feature.dtype === "video")
+        .map(videoCodec)
+        .filter((codec) => codec !== "unknown"),
+    ),
+  ];
+  const mediaFeatureCount = Object.values(features).filter(
+    (feature) => feature.dtype === "image" || feature.dtype === "video",
+  ).length;
+  let inspectableStreamCount = 0;
+  let renderableStreamCount = 0;
+  let unavailableStreamCount = 0;
+  for (const stream of streams) {
+    if (stream.kind !== STREAM_KIND.UNKNOWN) {
+      renderableStreamCount++;
+    } else if (stream.metadata?.[STREAM_METADATA.INSPECTABLE] === "true") {
+      inspectableStreamCount++;
+    } else {
+      unavailableStreamCount++;
+    }
+  }
+  return {
+    applicationSupport: {
+      inspectableStreamCount,
+      renderableStreamCount,
+      unavailableStreamCount,
+    },
+    durationNs: (timeRange.endNs - timeRange.startNs).toString(),
+    format: "lerobot",
+    lerobot: {
+      ...(codebaseVersion ? { codebaseVersion } : {}),
+      ...(integer(episode.episode_index, "episode_index") >= 0n
+        ? {
+            episodeIndex: integer(
+              episode.episode_index,
+              "episode_index",
+            ).toString(),
+          }
+        : {}),
+      featureCount: Object.keys(features).length,
+      fps,
+      logicalRowCount: rowCount,
+      mediaFeatureCount,
+      ...(robotType ? { robotType } : {}),
+      ...(tasks.length ? { taskLabels: tasks } : {}),
+      ...(codecs.length ? { videoCodecs: codecs } : {}),
+    },
+    messageCount: rowCount.toString(),
   };
 }
 

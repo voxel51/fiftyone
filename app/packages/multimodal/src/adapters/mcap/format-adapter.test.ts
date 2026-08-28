@@ -79,7 +79,10 @@ describe("MCAP format adapter", () => {
       recordingInventory(
         [
           create(StreamInventorySchema, {
-            metadata: { "mcap.topic": "/camera" },
+            metadata: {
+              "mcap.topic": "/camera",
+              [STREAM_METADATA.DECODE_STATUS]: "decodable",
+            },
             payload: {
               encoding: "cdr",
               schema: "sensor_msgs/msg/Image",
@@ -134,6 +137,28 @@ describe("MCAP format adapter", () => {
       startTimeNs: "10000000000",
       topicCount: 3,
     });
+    expect(manifest.streams).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "1",
+          metadata: expect.objectContaining({
+            [STREAM_METADATA.INSPECTABLE]: "true",
+          }),
+        }),
+        expect.objectContaining({
+          id: "2",
+          metadata: expect.objectContaining({
+            [STREAM_METADATA.INSPECTABLE]: "true",
+          }),
+        }),
+        expect.objectContaining({
+          id: "3",
+          metadata: expect.objectContaining({
+            [STREAM_METADATA.INSPECTABLE]: "false",
+          }),
+        }),
+      ]),
+    );
   });
 
   it("preserves source size discovered while reading inventory", () => {

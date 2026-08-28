@@ -416,6 +416,7 @@ function validRecordingFacts(value: unknown): value is EpisodeRecordingFacts {
       "durationNs",
       "endTimeNs",
       "format",
+      "lerobot",
       "mcap",
       "messageCount",
       "readProfile",
@@ -441,7 +442,33 @@ function validRecordingFacts(value: unknown): value is EpisodeRecordingFacts {
       validApplicationSupport(value.applicationSupport)) &&
     (value.schemaCoverage === undefined ||
       validSchemaCoverage(value.schemaCoverage)) &&
+    (value.lerobot === undefined || validLeRobotFacts(value.lerobot)) &&
     (value.mcap === undefined || validMcapFacts(value.mcap))
+  );
+}
+
+function validLeRobotFacts(value: unknown): boolean {
+  return (
+    recordWithKeys(value, [
+      "codebaseVersion",
+      "episodeIndex",
+      "featureCount",
+      "fps",
+      "logicalRowCount",
+      "mediaFeatureCount",
+      "robotType",
+      "taskLabels",
+      "videoCodecs",
+    ]) &&
+    optionalString(value.codebaseVersion) &&
+    optionalDecimal(value.episodeIndex) &&
+    optionalNonNegativeInteger(value.featureCount) &&
+    optionalFiniteNonNegative(value.fps) &&
+    optionalNonNegativeInteger(value.logicalRowCount) &&
+    optionalNonNegativeInteger(value.mediaFeatureCount) &&
+    optionalString(value.robotType) &&
+    optionalStringArray(value.taskLabels) &&
+    optionalStringArray(value.videoCodecs)
   );
 }
 
@@ -575,6 +602,10 @@ function optionalStringRecord(value: unknown): boolean {
     (isRecord(value) &&
       Object.values(value).every((child) => typeof child === "string"))
   );
+}
+
+function optionalStringArray(value: unknown): boolean {
+  return value === undefined || stringArray(value);
 }
 
 function stringArray(value: unknown): boolean {

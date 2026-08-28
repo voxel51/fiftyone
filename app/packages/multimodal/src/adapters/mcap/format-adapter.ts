@@ -712,6 +712,10 @@ export function createMcapManifest(
       kind: streamKindForPayload(topic.payload),
       metadata: {
         ...topic.metadata,
+        [STREAM_METADATA.INSPECTABLE]:
+          topic.metadata[STREAM_METADATA.DECODE_STATUS] === "decodable"
+            ? "true"
+            : "false",
         ...(calibrationSourceName
           ? {
               [SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID]:

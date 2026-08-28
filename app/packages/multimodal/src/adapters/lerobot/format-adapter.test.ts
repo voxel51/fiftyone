@@ -293,6 +293,66 @@ describe("LeRobot format adapter", () => {
     ).toBe(false);
   });
 
+  it("publishes canonical catalog and recording facts even with a stale hint", async () => {
+    const staleSource: EpisodeSource = {
+      ...source,
+      manifestHint: {
+        episodeId: "stale",
+        streams: [],
+        timeDomain: { id: "stale", kind: "duration" },
+        timeRange: { endNs: 0n, startNs: 0n },
+      },
+    };
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(staleSource, io);
+    try {
+      const byName = new Map(
+        session.manifest.streams.map((stream) => [stream.sourceName, stream]),
+      );
+      expect(byName.get("observation.state")?.metadata).toMatchObject({
+        "stream.category": "observations",
+        "stream.count_noun": "samples",
+        "stream.inspectable": "true",
+      });
+      expect(byName.get("action")?.metadata).toMatchObject({
+        "stream.category": "actions",
+        "stream.inspectable": "true",
+      });
+      expect(byName.get("observation.images.embedded")).toMatchObject({
+        count: 3,
+        kind: "image",
+        metadata: {
+          "stream.category": "observations",
+          "stream.count_noun": "frames",
+          "stream.inspectable": "false",
+        },
+      });
+      expect(byName.get("observation.images.test")).toMatchObject({
+        kind: "video",
+        metadata: { "stream.inspectable": "false" },
+      });
+      expect(byName.get("observation.images.test")).not.toHaveProperty("count");
+      expect(session.manifest.recordingFacts).toMatchObject({
+        durationNs: "1000000000",
+        format: "lerobot",
+        lerobot: {
+          codebaseVersion: "v3.0",
+          episodeIndex: "0",
+          featureCount: 6,
+          fps: 30,
+          logicalRowCount: 3,
+          mediaFeatureCount: 2,
+          robotType: "test-arm",
+          videoCodecs: ["h264"],
+        },
+        messageCount: "3",
+      });
+    } finally {
+      session.dispose();
+    }
+  });
+
   it("exposes named vector values through the numeric capability", async () => {
     readParquetObjects.mockClear();
     const session = await createLeRobotFormatAdapter({

@@ -56,8 +56,11 @@ export const SCENE_SOURCE_METADATA = Object.freeze({
 
 /** Well-known adapter-normalized metadata keys used by generic inventories. */
 export const STREAM_METADATA = Object.freeze({
+  CATEGORY: "stream.category",
+  COUNT_NOUN: "stream.count_noun",
   DECODE_STATUS: "stream.decode_status",
   ENCODING: "stream.encoding",
+  INSPECTABLE: "stream.inspectable",
   SCHEMA_NAME: "stream.schema_name",
 } as const);
 
@@ -160,6 +163,19 @@ export interface McapRecordingFacts {
   readonly profile?: string;
 }
 
+/** LeRobot-specific facts resolved from its selected episode metadata. */
+export interface LeRobotRecordingFacts {
+  readonly codebaseVersion?: string;
+  readonly episodeIndex?: string;
+  readonly featureCount?: number;
+  readonly fps?: number;
+  readonly logicalRowCount?: number;
+  readonly mediaFeatureCount?: number;
+  readonly robotType?: string;
+  readonly taskLabels?: readonly string[];
+  readonly videoCodecs?: readonly string[];
+}
+
 /** Immutable episode-wide recording facts safe to clone across workers. */
 export interface EpisodeRecordingFacts {
   readonly applicationSupport?: EpisodeRecordingSupportFacts;
@@ -167,6 +183,7 @@ export interface EpisodeRecordingFacts {
   readonly durationNs?: string;
   readonly endTimeNs?: string;
   readonly format: string;
+  readonly lerobot?: LeRobotRecordingFacts;
   readonly mcap?: McapRecordingFacts;
   readonly messageCount?: string;
   readonly readProfile?: ByteSourceReadProfile;

@@ -122,6 +122,34 @@ describe("source facts codec", () => {
     ).toEqual(entry);
   });
 
+  it("round-trips typed LeRobot recording details", () => {
+    const entry = storedEntry({
+      manifest: {
+        ...manifest(),
+        recordingFacts: {
+          durationNs: "1000000000",
+          format: "lerobot",
+          lerobot: {
+            codebaseVersion: "v3.0",
+            episodeIndex: "12",
+            featureCount: 8,
+            fps: 30,
+            logicalRowCount: 30,
+            mediaFeatureCount: 2,
+            robotType: "so101",
+            taskLabels: ["pick up cube"],
+            videoCodecs: ["h264"],
+          },
+          messageCount: "30",
+        },
+      },
+    });
+
+    expect(
+      decodeStoredSourceFacts(encodeStoredSourceFacts(entry)?.value),
+    ).toEqual(entry);
+  });
+
   it("rejects malformed versions, ranges, domains, duplicates, and empty facts", () => {
     const encoded = encodeStoredSourceFacts(storedEntry());
     if (!encoded) throw new Error("Expected a valid source-facts fixture");
