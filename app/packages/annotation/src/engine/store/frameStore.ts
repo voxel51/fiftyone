@@ -123,13 +123,26 @@ export class FrameStore implements LabelStore {
   // ---- resolution ----
 
   getLabel(ref: LabelRef): LabelData | undefined {
-    if (ref.frame == null) {
-      return undefined;
+    if (ref.frame != null) {
+      return this.listAt(ref.frame, ref.path).find(
+        (label) => addressIdOf(label) === ref.instanceId,
+      );
     }
 
-    return this.listAt(ref.frame, ref.path).find(
-      (label) => addressIdOf(label) === ref.instanceId,
-    );
+    // A frameless ref still identifies one label: the surface's selection
+    // refs carry no frame, and the interaction GC's read-through liveness
+    // check resolves through here — answering undefined deselected every
+    // frame label on the next sample-level reset (any modal data refresh)
+    for (const frame of this.frames()) {
+      const hit = this.listAt(frame, ref.path).find(
+        (label) => addressIdOf(label) === ref.instanceId,
+      );
+      if (hit) {
+        return hit;
+      }
+    }
+
+    return undefined;
   }
 
   listLabels(path: string, frame?: number): LabelData[] {

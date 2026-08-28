@@ -40,14 +40,25 @@ interface GroupWriteState {
 const toGroupToken = (timestamps: (Date | null)[]): string | null => {
   let max = Number.NEGATIVE_INFINITY;
   for (const ts of timestamps) {
-    if (!ts) {
-      return null;
+    // A member without `last_modified_at` cannot move the max; treating it
+    // as fatal minted a null token and refused every subsequent save
+    // ("dynamic group write state is not ready") for the whole session
+    if (ts) {
+      max = Math.max(max, ts.getTime());
     }
-    max = Math.max(max, ts.getTime());
   }
 
-  if (!Number.isFinite(max)) {
+  if (timestamps.length === 0) {
     return null;
+  }
+
+  // Legacy members never written through the app carry NO
+  // `last_modified_at` — pin to the epoch, the same sentinel the server
+  // computes for that state, so the first write can validate at all (a
+  // null token here deadlocks: no save is ever attempted, and only a save
+  // could stamp real timestamps)
+  if (!Number.isFinite(max)) {
+    max = 0;
   }
 
   const iso = new Date(max).toISOString().replace(/Z$/, "");
@@ -95,7 +106,9 @@ export const useDynamicGroupPersistence = ({
   const readyRef = useRef<Promise<void> | null>(null);
 
   const active =
-    enabled && !!frameCount && !!sampleId && !!dataset && !!dynamicGroup;
+    // `dynamicGroup` is the group's VALUE — 0 and "" are legitimate groups,
+    // so only null/undefined means "not a dynamic group"
+    enabled && !!frameCount && !!sampleId && !!dataset && dynamicGroup != null;
 
   useEffect(() => {
     if (!active) {
@@ -152,11 +165,28 @@ export const useDynamicGroupPersistence = ({
   const persist = useCallback(
     async (deltas: JSONDeltas): Promise<boolean> => {
       await readyRef.current;
-      const state = stateRef.current;
+      let state = stateRef.current;
 
-      if (!state?.token || !datasetId || !dynamicGroup) {
-        console.error("dynamic group write state is not ready");
-        return false;
+      if (!state?.token) {
+        // A persistence tick can land between the index effect's teardown
+        // and its next fetch (a remount); the deltas stay pending either
+        // way, so give the fetch one macrotask before failing the pass
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await readyRef.current;
+        state = stateRef.current;
+      }
+
+      if (!state?.token || !datasetId || dynamicGroup == null) {
+        throw new Error(
+          "dynamic group write state is not ready " +
+            JSON.stringify({
+              hasState: state !== null,
+              memberCount: state?.index.length ?? 0,
+              token: state?.token ?? null,
+              datasetId: datasetId || null,
+              dynamicGroup: dynamicGroup ?? null,
+            }),
+        );
       }
 
       const { byFrame, rest } = splitMemberDeltas(deltas);
@@ -166,11 +196,29 @@ export const useDynamicGroupPersistence = ({
         const memberId = state.index[frame - 1];
 
         if (!memberId) {
-          console.error(`no member sample at frame ${frame}`);
-          return false;
+          throw new Error(
+            `dynamic group save: no member sample at frame ${frame} ` +
+              `(index has ${state.index.length} members)`,
+          );
         }
 
         patches.push({ sampleId: memberId, patch: ops });
+      }
+
+      // Sample-level ops belong to the anchor sample, which is itself a
+      // group member — ride the same fan-out so the write validates against
+      // the GROUP token. The single-sample transport mints its token from
+      // the sample's `last_modified_at`, which legacy samples lack, and a
+      // null token silently fails the whole pass.
+      let restViaGroup = false;
+      if (rest.length > 0 && state.index.includes(sampleId)) {
+        const anchor = patches.find((patch) => patch.sampleId === sampleId);
+        if (anchor) {
+          anchor.patch = [...anchor.patch, ...rest];
+        } else {
+          patches.push({ sampleId, patch: rest });
+        }
+        restViaGroup = true;
       }
 
       if (patches.length > 0) {
@@ -182,6 +230,19 @@ export const useDynamicGroupPersistence = ({
             patches,
             versionToken: state.token,
           });
+
+          if (!response.versionToken) {
+            // the write landed but the fresh token is unreadable — the ETag
+            // header is not CORS-safelisted, so a cross-origin server must
+            // send `Access-Control-Expose-Headers: etag` for it to be
+            // visible here. Without it the next save cannot validate.
+            console.error(
+              "dynamic group save succeeded but the response ETag is " +
+                "unreadable; is the server exposing the ETag header to " +
+                "cross-origin requests?",
+            );
+          }
+
           state.token = response.versionToken;
         } catch (err) {
           if (err instanceof VersionMismatchError) {
@@ -206,13 +267,13 @@ export const useDynamicGroupPersistence = ({
       }
 
       let success = true;
-      if (rest.length > 0) {
+      if (rest.length > 0 && !restViaGroup) {
         success = await patchSelected(rest);
       }
 
       return success;
     },
-    [datasetId, dynamicGroup, view, patchSelected],
+    [datasetId, dynamicGroup, sampleId, view, patchSelected],
   );
 
   useEffect(() => {

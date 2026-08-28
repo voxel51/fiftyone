@@ -69,6 +69,21 @@ def parse_group_token(
         ) from err
 
 
+#: Sentinel "max last_modified_at" for a group whose members all lack the
+#: field — legacy samples never written through the app. The client mints
+#: the same value, so the first write validates and stamps real values.
+GROUP_EPOCH = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+
+
+def _group_max_lmt(
+    lmts: List[Optional[datetime.datetime]],
+) -> datetime.datetime:
+    """The group token's max ``last_modified_at``: the max over members that
+    have one, or :data:`GROUP_EPOCH` when none do."""
+    known = [lmt for lmt in lmts if lmt is not None]
+    return max(known) if known else GROUP_EPOCH
+
+
 def generate_group_etag(
     max_last_modified_at: datetime.datetime, count: int
 ) -> str:
@@ -163,7 +178,13 @@ class DynamicGroup(HTTPEndpoint):
         )
 
         member_ids, lmts = get_group_state(view)
-        max_lmt, count = max(lmts), len(member_ids)
+        # A member missing `last_modified_at` cannot pin the group's state;
+        # it is also invisible to the client's token, so exclude it from the
+        # max on both sides rather than crashing the comparison. A group with
+        # NO known values (legacy samples never written through the app)
+        # pins to the epoch — the client mints the same sentinel, and the
+        # first successful write stamps real values
+        max_lmt, count = _group_max_lmt(lmts), len(member_ids)
 
         if_max_lmt, if_count = token
         if count != if_count or not datetimes_match(max_lmt, if_max_lmt):
@@ -212,7 +233,7 @@ class DynamicGroup(HTTPEndpoint):
             samples.append(utils.json.serialize(sample))
 
         member_ids, lmts = get_group_state(view)
-        etag = generate_group_etag(max(lmts), len(member_ids))
+        etag = generate_group_etag(_group_max_lmt(lmts), len(member_ids))
 
         return utils.json.JSONResponse(
             {"samples": samples}, headers={"ETag": etag}
@@ -225,12 +246,21 @@ class DynamicGroup(HTTPEndpoint):
         return utils.json.JSONResponse(
             {
                 "members": [
-                    {"id": _id, "last_modified_at": lmt.isoformat()}
+                    {
+                        "id": _id,
+                        "last_modified_at": (
+                            lmt.isoformat() if lmt is not None else None
+                        ),
+                    }
                     for _id, lmt in zip(member_ids, lmts)
                 ]
             },
             status_code=412,
-            headers={"ETag": generate_group_etag(max(lmts), len(member_ids))},
+            headers={
+                "ETag": generate_group_etag(
+                    _group_max_lmt(lmts), len(member_ids)
+                )
+            },
         )
 
 

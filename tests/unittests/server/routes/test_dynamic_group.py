@@ -123,6 +123,27 @@ def fixture_mock_request(dataset, group_token):
     return mock_request
 
 
+def _null_lmts(dataset, members, sample_ids=None):
+    """Strips `last_modified_at` from samples at the database level, the
+    shape of legacy datasets created before the field was tracked.
+
+    Reloads the given member instances afterwards — the sample singleton
+    cache would otherwise hand the route the pre-null in-memory values.
+    """
+    match = (
+        {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
+        if (sample_ids)
+        else {}
+    )
+    # pylint: disable-next=protected-access
+    dataset._sample_collection.update_many(
+        match, {"$set": {"last_modified_at": None}}
+    )
+
+    for member in members:
+        member.reload()
+
+
 def _body(stages, patches, dynamic_group=SCENE):
     return {
         "dynamicGroup": dynamic_group,
@@ -357,3 +378,89 @@ class TestDynamicGroupPatch:
             await mutator.patch(mock_request)
 
         assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_all_null_lmt_bootstraps_with_epoch_token(
+        self, mutator, mock_request, dataset, stages, members, group_view
+    ):
+        """Legacy members with no `last_modified_at` accept the epoch
+        sentinel token, and the write stamps real timestamps."""
+        _null_lmts(dataset, members)
+
+        mock_request.headers["If-Match"] = ford.generate_group_etag(
+            ford.GROUP_EPOCH, len(members)
+        )
+        mock_request.body.return_value = json_payload(
+            _body(stages, [_replace_label(members[1], "dog")])
+        )
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 200
+
+        target = dataset[members[1].id]
+        assert target["detections"].detections[0].label == "dog"
+
+        # the response token reflects the freshly-stamped state, not epoch
+        _, lmts = group_view.values(["id", "last_modified_at"])
+        known = [lmt for lmt in lmts if lmt is not None]
+        assert known
+        assert response.headers.get("ETag") == ford.generate_group_etag(
+            max(known), len(members)
+        )
+
+    @pytest.mark.asyncio
+    async def test_partial_null_lmt_validates(
+        self, mutator, mock_request, dataset, stages, members, group_view
+    ):
+        """A member without `last_modified_at` is invisible to the token on
+        both sides — the max over the members that have one validates."""
+        _null_lmts(dataset, members, sample_ids=[members[0].id])
+
+        _, lmts = group_view.values(["id", "last_modified_at"])
+        known = [lmt for lmt in lmts if lmt is not None]
+        mock_request.headers["If-Match"] = ford.generate_group_etag(
+            max(known), len(members)
+        )
+        mock_request.body.return_value = json_payload(
+            _body(stages, [_replace_label(members[0], "dog")])
+        )
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_null_lmt_version_mismatch_is_a_412_not_a_500(
+        self, mutator, mock_request, dataset, stages, members
+    ):
+        """The 412 fresh-state response serializes members without
+        `last_modified_at` instead of crashing."""
+        _null_lmts(dataset, members)
+
+        # a stale real-timestamp token cannot match the epoch state
+        mock_request.body.return_value = json_payload(
+            _body(stages, [_replace_label(members[1], "dog")])
+        )
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 412
+        assert response.headers.get("ETag") == ford.generate_group_etag(
+            ford.GROUP_EPOCH, len(members)
+        )
+
+        response_dict = json.loads(response.body)
+        assert [m["last_modified_at"] for m in response_dict["members"]] == [
+            None
+        ] * len(members)
+
+        # the write did not land
+        target = dataset[members[1].id]
+        assert target["detections"].detections[0].label == "cat"
