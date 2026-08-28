@@ -129,6 +129,22 @@
   padding: 4px 10px;
 }
 
+.filterBar {
+  border-bottom: 1px solid
+    color-mix(
+      in srgb,
+      var(--color-content-border-default, #383835) 60%,
+      transparent
+    );
+  flex: none;
+  padding: 6px 10px;
+}
+
+.filterInput {
+  min-width: 0;
+  width: 100%;
+}
+
 .panes {
   display: grid;
   flex: 1;
@@ -189,6 +205,13 @@
   min-height: 0;
   overflow: auto;
   padding: 2px 0 6px;
+}
+
+.noMatches {
+  color: var(--color-content-text-secondary);
+  font-size: 11px;
+  padding: 12px 10px;
+  text-align: center;
 }
 
 .rowSpacer {

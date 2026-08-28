@@ -214,6 +214,65 @@ describe("StateActionTile", () => {
     expect(valueCellTexts(actionPane)).toEqual(["0.5", "NaN", "7"]);
   });
 
+  it("filters both panes by case-insensitive dimension substrings without reindexing values", () => {
+    setState(
+      {
+        schema: {
+          ...SCHEMA,
+          action: {
+            dimensions: [
+              { index: 0, name: "wrist" },
+              { index: 1, name: "shoulder_target" },
+              { index: 2, name: "gripper" },
+            ],
+            dtype: "float32",
+            featureName: "action",
+            shape: [3],
+          },
+        },
+        status: "ready",
+      },
+      {
+        row: row({
+          action: [10, 20, 30],
+          cursor: "row:0",
+          frameIndex: 0,
+          timestampNs: 0n,
+        }),
+        status: "ready",
+        targetNs: 0n,
+      },
+    );
+    render(<StateActionTile />);
+
+    const filter = screen.getByRole("searchbox", {
+      name: "Filter dimensions",
+    });
+    fireEvent.change(filter, { target: { value: "  OUL  " } });
+    fireEvent.keyDown(filter, { key: "ArrowRight" });
+    expect(mocks.readRowIndexWindow).not.toHaveBeenCalled();
+
+    const statePane = screen.getByRole("table", {
+      name: "Observation state values",
+    });
+    expect(within(statePane).getByText("shoulder")).toBeDefined();
+    expect(within(statePane).queryByText("elbow")).toBe(null);
+    expect(valueCellTexts(statePane)).toEqual(["1.25"]);
+
+    const actionPane = screen.getByRole("table", { name: "Action values" });
+    expect(within(actionPane).getByText("shoulder_target")).toBeDefined();
+    expect(within(actionPane).queryByText("wrist")).toBe(null);
+    expect(within(actionPane).queryByText("gripper")).toBe(null);
+    expect(valueCellTexts(actionPane)).toEqual(["20"]);
+
+    fireEvent.change(filter, { target: { value: "not-a-dimension" } });
+    expect(screen.getAllByText("No matching dimensions")).toHaveLength(2);
+
+    fireEvent.change(filter, { target: { value: "" } });
+    expect(within(statePane).getByText("elbow")).toBeDefined();
+    expect(within(actionPane).getByText("gripper")).toBeDefined();
+  });
+
   it("shows the playhead time only when it differs from the row time", () => {
     setState(
       { schema: SCHEMA, status: "ready" },

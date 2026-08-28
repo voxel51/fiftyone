@@ -8,7 +8,7 @@ import {
   usePlayback,
 } from "@fiftyone/playback/runtime";
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
-import { Icon, IconName, Size } from "@voxel51/voodo";
+import { Icon, IconName, Input, InputType, Size } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React, {
   useCallback,
@@ -93,6 +93,8 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
   const [stepPending, setStepPending] = useState(false);
   const stepPendingRef = useRef(false);
   const [cursorCopied, setCursorCopied] = useState(false);
+  const [dimensionFilter, setDimensionFilter] = useState("");
+  const normalizedDimensionFilter = dimensionFilter.trim().toLowerCase();
 
   // Settings render through the sidebar's tile-settings registry, not here.
   const settingsRegistration = useMemo(
@@ -449,6 +451,22 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
               {missingFeatureNote}
             </div>
           ) : null}
+          {!showEmpty && (schemaFacts.state || schemaFacts.action) ? (
+            <div className={styles.filterBar}>
+              <Input
+                aria-label="Filter dimensions"
+                className={styles.filterInput}
+                icon={IconName.Search}
+                onChange={(event) => setDimensionFilter(event.target.value)}
+                onKeyDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                placeholder="Filter dimensions"
+                size={Size.Sm}
+                type={InputType.Search}
+                value={dimensionFilter}
+              />
+            </div>
+          ) : null}
           {showEmpty ? (
             <div className={styles.notice} data-cy="episode-state-action-empty">
               No state/action row at this time
@@ -457,6 +475,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
             <div className={styles.panes}>
               {schemaFacts.state ? (
                 <FeaturePane
+                  dimensionFilter={normalizedDimensionFilter}
                   featureError={row?.featureErrors?.state}
                   label={STATE_PANE_LABEL}
                   markerScope={markerScope}
@@ -471,6 +490,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
               ) : null}
               {schemaFacts.action ? (
                 <FeaturePane
+                  dimensionFilter={normalizedDimensionFilter}
                   featureError={row?.featureErrors?.action}
                   label={ACTION_PANE_LABEL}
                   markerScope={markerScope}
@@ -495,6 +515,7 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
 };
 
 function FeaturePane({
+  dimensionFilter,
   featureError,
   label,
   markerScope,
@@ -506,6 +527,7 @@ function FeaturePane({
   stats,
   values,
 }: {
+  readonly dimensionFilter: string;
   readonly featureError?: string;
   readonly label: string;
   readonly markerScope: StateActionMarkerScope;
@@ -519,7 +541,7 @@ function FeaturePane({
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ height: 0, scrollTop: 0 });
-  const rows = useMemo(
+  const allRows = useMemo(
     () =>
       paneRows(
         schema,
@@ -532,7 +554,25 @@ function FeaturePane({
       ),
     [markerScope, mode, previousValues, profile, schema, stats, values],
   );
+  const rows = useMemo(
+    () =>
+      dimensionFilter.length === 0
+        ? allRows
+        : allRows.filter((row) =>
+            row.name.toLowerCase().includes(dimensionFilter),
+          ),
+    [allRows, dimensionFilter],
+  );
   const virtualize = rows.length > VIRTUALIZE_AFTER_ROWS;
+
+  // A new query starts at the first match instead of preserving a stale
+  // scroll offset that can leave a shorter filtered result out of view.
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll || scroll.scrollTop === 0) return;
+    scroll.scrollTop = 0;
+    setViewport((current) => ({ ...current, scrollTop: 0 }));
+  }, [dimensionFilter]);
 
   // This effect tracks the fixed-row viewport for large vectors so long
   // action/state vectors stay usable through row virtualization.
@@ -625,9 +665,9 @@ function FeaturePane({
                   : undefined
               }
             >
-              {visible.map((paneRow) => (
+              {visible.map((paneRow, visibleIndex) => (
                 <div
-                  aria-rowindex={paneRow.index + 1}
+                  aria-rowindex={range.startIndex + visibleIndex + 1}
                   className={styles.dimRow}
                   key={paneRow.index}
                   role="row"
@@ -678,6 +718,11 @@ function FeaturePane({
             </div>
           </div>
         </div>
+        {dimensionFilter.length > 0 && rows.length === 0 ? (
+          <div className={styles.noMatches} role="status">
+            No matching dimensions
+          </div>
+        ) : null}
       </div>
     </section>
   );
