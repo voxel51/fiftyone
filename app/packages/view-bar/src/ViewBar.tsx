@@ -15,7 +15,9 @@
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
+import { executeOperator } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
+import { buildSimilarityRunName } from "@fiftyone/utilities";
 import {
   Align,
   Anchor,
@@ -134,6 +136,9 @@ if (
  * pill, so the value is one click away from being changed.
  */
 const LANGUAGE_SEARCH_K = 25;
+
+/** The Similarity action's server-side search operator. */
+const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
 
 const ViewBar: React.FC<{
   /** What this surface may offer; everything, unless the host says less. */
@@ -653,47 +658,55 @@ const ViewBar: React.FC<{
   const submitLanguageQuery = useCallback(
     (query: string) => {
       // The most recently computed prompt-capable index — sample- or
-      // patches-level; a patches index needs the view in patch space first
+      // patches-level; never an index that cannot embed the typed prompt
       const index = promptKeys[0];
       if (!index) return;
-      // Same gate as Apply: a draft with rejected values cannot ride along
-      if (paramErrors.labels.length) return;
-      const serialized = [
-        ...serializeWorking(),
-        ...(index.patchesField
-          ? [
-              {
-                _cls: "fiftyone.core.stages.ToPatches",
-                kwargs: [["field", index.patchesField]] as [string, unknown][],
-              },
-            ]
-          : []),
-        {
-          _cls: "fiftyone.core.stages.SortBySimilarity",
-          kwargs: [
-            ["query", query],
-            ["brain_key", index.key],
-            ["k", LANGUAGE_SEARCH_K],
-          ] as [string, unknown][],
-        },
-      ];
-      setView(serialized);
-      // A typed search commits immediately — the round-trip gap must not
-      // read as pending work, or Apply flashes for exactly one echo
-      setInFlight(inFlightFingerprint(serialized));
       trackEvent("view_bar_text_search", {
         patches: Boolean(index.patchesField),
       });
-      dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
+      // The same route the Similarity action takes: the server-side search
+      // operator owns building and applying the view, and the bar hydrates
+      // from the view change like any other external edit
+      const params: Record<string, unknown> = {
+        brain_key: index.key,
+        query_type: "text",
+        query,
+        reverse: false,
+        k: LANGUAGE_SEARCH_K,
+        run_name: buildSimilarityRunName({
+          isImageSearch: false,
+          textQuery: query,
+          patchesField: index.patchesField ?? undefined,
+        }),
+        view_target: "CURRENT_VIEW",
+      };
+      if (index.patchesField) {
+        params.patches_field = index.patchesField;
+      }
+      executeOperator(SIMILARITY_SEARCH_OPERATOR, params, {
+        callback: (result) => {
+          if (result?.error) {
+            console.error("Similarity search failed:", result.error);
+            return;
+          }
+          if (index.patchesField) {
+            // The sort ran in patch space; show the view there too
+            executeOperator("set_view", {
+              view: [
+                {
+                  _cls: "fiftyone.core.stages.ToPatches",
+                  kwargs: [
+                    ["field", index.patchesField],
+                    ["_state", null],
+                  ],
+                },
+              ],
+            });
+          }
+        },
+      });
     },
-    [
-      promptKeys,
-      paramErrors,
-      serializeWorking,
-      inFlightFingerprint,
-      setView,
-      trackEvent,
-    ],
+    [promptKeys, trackEvent],
   );
 
   // With no stages and no search there is nothing to summarize and nothing

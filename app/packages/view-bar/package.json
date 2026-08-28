@@ -13,8 +13,10 @@
     "dependencies": {
         "@fiftyone/analytics": "*",
         "@fiftyone/components": "*",
+        "@fiftyone/operators": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",
+        "@fiftyone/utilities": "*",
         "@voxel51/voodo": "catalog:",
         "react-relay": "catalog:"
     },
