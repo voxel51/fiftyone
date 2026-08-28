@@ -46,8 +46,8 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && query.trim()) {
+              // The query stays visible — it names the view now loading
               onSubmit(query.trim());
-              setQuery("");
             } else if (e.key === "Escape" && query) {
               // One Escape clears the draft; the bar's own handler only sees
               // the next press, so an unrelated reset never eats a typed query
@@ -67,7 +67,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
             flexShrink: 0,
           }}
         >
-          ⏎ Sort by similarity
+          ⏎ Similarity search
         </span>
       )}
     </div>

@@ -183,6 +183,14 @@ const ViewBar: React.FC<{
   // `fos.view` lags a round-trip behind, and that gap must not read as
   // pending work — clearing or searching would flash Apply for one echo
   const [inFlight, setInFlight] = React.useState<string | null>(null);
+  // Search chaining: the run a submitted search created, then — once its
+  // view lands — the fingerprint of that view. A following search typed
+  // over an unmodified result view REPLACES the search (via the run's
+  // recorded base) instead of refining 25 results down to 25 results.
+  const pendingSearchRunId = React.useRef<string | null>(null);
+  const lastSearch = React.useRef<{ runId: string; viewFp: string } | null>(
+    null,
+  );
 
   /**
    * Puts the keyboard on the trailing insert slot — where describing the next
@@ -236,6 +244,21 @@ const ViewBar: React.FC<{
 
   useEffect(() => {
     const hydrate = () => {
+      // A just-searched run owns the arriving view; any other view change
+      // supersedes the chain and a next search targets the view as-is
+      if (pendingSearchRunId.current) {
+        lastSearch.current = {
+          runId: pendingSearchRunId.current,
+          viewFp: viewFingerprint(currentView),
+        };
+        pendingSearchRunId.current = null;
+      } else if (
+        lastSearch.current &&
+        viewFingerprint(currentView) !== lastSearch.current.viewFp
+      ) {
+        lastSearch.current = null;
+      }
+
       //
       // After Apply the server echoes the view back — the same stages, with
       // expressions lowered into `kwargs` and their syntax beside them.
@@ -626,6 +649,11 @@ const ViewBar: React.FC<{
     // reopens printed from its envelope — `F("x")` as typed becomes the
     // canonical `F('x')` — without waiting on any echo from the server
     dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
+    // An emptied view leaves nothing to keep building; collapse so the
+    // search input (which lives in the collapsed layout) is offered
+    if (serialized.length === 0) {
+      setExpanded(false);
+    }
     // Apply itself vanishes once there is nothing pending, so the keyboard
     // moves to where the next stage starts rather than nowhere
     focusLastSlot();
@@ -650,6 +678,9 @@ const ViewBar: React.FC<{
     setTouched(new Set());
     setModeOverrides({});
     setEditingId(null);
+    // Nothing is left to expand, and the search input lives in the
+    // collapsed layout — an emptied bar should offer it immediately
+    setExpanded(false);
     setView([]);
     setInFlight(inFlightFingerprint([]));
     trackEvent("view_bar_view_cleared");
@@ -683,9 +714,19 @@ const ViewBar: React.FC<{
           patchesField: index.patchesField ?? undefined,
         }),
         view_target: "CURRENT_VIEW",
+        // The run applies its own results — the same view the panel's
+        // Apply builds, without needing the panel
+        apply_results: true,
       };
       if (index.patchesField) {
         params.patches_field = index.patchesField;
+      }
+      if (
+        lastSearch.current &&
+        viewFingerprint(currentView) === lastSearch.current.viewFp
+      ) {
+        // Typed over an unmodified result view: replace that search
+        params.replace_run_id = lastSearch.current.runId;
       }
       executeOperator(SIMILARITY_SEARCH_OPERATOR, params, {
         callback: (result) => {
@@ -696,24 +737,12 @@ const ViewBar: React.FC<{
             console.error("Similarity search failed:", result.error);
             return;
           }
-          if (index.patchesField) {
-            // The sort ran in patch space; show the view there too
-            executeOperator("set_view", {
-              view: [
-                {
-                  _cls: "fiftyone.core.stages.ToPatches",
-                  kwargs: [
-                    ["field", index.patchesField],
-                    ["_state", null],
-                  ],
-                },
-              ],
-            });
-          }
+          pendingSearchRunId.current =
+            (result?.result as { run_id?: string } | undefined)?.run_id ?? null;
         },
       });
     },
-    [promptKeys, trackEvent, setViewChangePending],
+    [promptKeys, trackEvent, setViewChangePending, currentView],
   );
 
   // With no stages and no search there is nothing to summarize and nothing
