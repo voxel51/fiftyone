@@ -13,6 +13,7 @@ import {
 } from "@fiftyone/video-annotation";
 import React, { useCallback, useMemo, useState } from "react";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
+import { useVideoExploreKeybindings } from "./useVideoExploreKeybindings";
 import styles from "./VideoTimelineSurface.module.css";
 
 /**
@@ -140,6 +141,10 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
     const url = sample.urls?.[0]?.url;
     return url ? fos.getSampleSrc(url) : null;
   }, [sample]);
+
+  // `+` / `-` zoom. The rest of this surface's keys are already registered
+  // elsewhere — see the hook's doc comment.
+  useVideoExploreKeybindings();
 
   // Measure the surface so the timeline body caps at a fraction of it: past
   // the cap the drawer scrolls internally instead of growing into the media.
