@@ -167,11 +167,18 @@ export function useLighterTileScene({
   dims,
   sceneIdPrefix,
   sceneIdDeps = [],
+  readOnly = false,
 }: {
   hostRef: RefObject<HTMLDivElement | null>;
   dims: Dimensions | null;
   sceneIdPrefix: string;
   sceneIdDeps?: DependencyList;
+  /**
+   * Block geometry mutation while keeping selection and hover. Explore sets
+   * this: it renders labels it has no way to save, so an accidental drag
+   * would otherwise commit a silent edit.
+   */
+  readOnly?: boolean;
 }): {
   scene: LighterScene;
   canonicalMediaReady: boolean;
@@ -191,6 +198,16 @@ export function useLighterTileScene({
   );
 
   const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);
+
+  // Applied per scene, so a re-minted scene (new source) comes back read-only
+  // too. Set before overlays are installed below — nothing is on the canvas to
+  // grab in the interim.
+  useEffect(() => {
+    if (!scene || scene.getSceneId() !== sceneId) {
+      return;
+    }
+    scene.setReadOnly(readOnly);
+  }, [scene, sceneId, readOnly]);
 
   useSceneColorScheme(scene, sceneId);
   const canonicalMediaReady = useCanonicalMediaInstall(scene, sceneId, dims);

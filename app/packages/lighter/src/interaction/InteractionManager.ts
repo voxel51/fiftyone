@@ -232,6 +232,9 @@ export class InteractionManager {
   private emptyCanvasClickHandler?: EmptyCanvasClickHandler;
 
   // Configuration
+  /** See {@link setReadOnly}. */
+  private readOnly = false;
+
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
@@ -273,6 +276,28 @@ export class InteractionManager {
    */
   public setCanonicalMediaId(id: string): void {
     this.canonicalMediaId = id;
+  }
+
+  /**
+   * Read-only mode: overlays stay selectable and hoverable, but none of them
+   * can be moved, resized, or drawn.
+   *
+   * Enforced at the single point where a pointer-down would hand control to
+   * an overlay's own handler — the moment an overlay enters a DRAGGING /
+   * RESIZE / PAINTING state. Selection runs BEFORE that point, so it is
+   * unaffected, and `onMove` self-guards on an interaction state the overlay
+   * can now never enter.
+   *
+   * For a surface that renders labels it has no way to save (Explore), where
+   * an accidental drag would otherwise commit a silent edit.
+   */
+  public setReadOnly(readOnly: boolean): void {
+    this.readOnly = readOnly;
+  }
+
+  /** Whether geometry mutation is currently blocked. */
+  public isReadOnly(): boolean {
+    return this.readOnly;
   }
 
   /**
@@ -349,7 +374,11 @@ export class InteractionManager {
     this.clickStartPoint = point;
 
     let handler: InteractionHandler | undefined = undefined;
-    const interactiveHandler = this.getInteractiveHandler();
+    // Read-only never consults an interactive (draw) handler: entering one is
+    // an annotate-only path, but a shared scene could still have one set.
+    const interactiveHandler = this.readOnly
+      ? undefined
+      : this.getInteractiveHandler();
 
     if (interactiveHandler) {
       handler = isSelfManagedInteractiveHandler(interactiveHandler)
@@ -431,6 +460,12 @@ export class InteractionManager {
           return;
         }
       }
+    }
+
+    // Read-only stops here: selection above has already run, but handing the
+    // pointer to the overlay is what puts it into a move/resize/paint state.
+    if (this.readOnly) {
+      return;
     }
 
     if (

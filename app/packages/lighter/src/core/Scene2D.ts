@@ -142,6 +142,8 @@ export class Scene2D {
   private overlayOrder: string[] = [];
   private renderingState = new RenderingStateManager();
   private sceneOptions?: SceneOptions;
+  /** See {@link setReadOnly}. */
+  private readOnlyMode = false;
   private selectionManager: SelectionManager;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
@@ -774,6 +776,57 @@ export class Scene2D {
   }
 
   /**
+   * Read-only mode: overlays stay selectable and hoverable, but none of them
+   * can be moved, resized, or drawn. See
+   * {@link InteractionManager.setReadOnly}.
+   *
+   * Deliberately NOT part of {@link SceneOptions}: that object is replaced
+   * wholesale by `updateOptions`, and the `lighter:scene-options-changed`
+   * handler rebuilds it from only `activePaths` / `showOverlays` / `alpha` —
+   * a read-only flag living there would be silently dropped the first time
+   * the sidebar toggled a field. This is a surface-lifetime property, not a
+   * display option, so it gets its own storage.
+   */
+  setReadOnly(readOnly: boolean): void {
+    this.readOnlyMode = readOnly;
+    this.interactionManager.setReadOnly(readOnly);
+    for (const overlay of this.overlays.values()) {
+      this.applyReadOnlyTo(overlay);
+    }
+  }
+
+  /**
+   * Strip an overlay's move affordances while the scene is read-only.
+   *
+   * This is presentation, not enforcement — `InteractionManager` already
+   * refuses the gesture. But `DetectionOverlay` gates its resize handles and
+   * selection scrim on `isDraggable || isResizeable`, so leaving those set
+   * would draw grab handles for a drag that cannot happen. Clearing them
+   * makes a selected label render as a plain highlighted box.
+   *
+   * One-way by design: read-only is a surface-lifetime property, so this
+   * never re-enables anything an overlay opted out of on its own.
+   */
+  private applyReadOnlyTo(overlay: BaseOverlay): void {
+    if (!this.readOnlyMode) {
+      return;
+    }
+    // Not on BaseOverlay — only the spatial overlays that can move define
+    // them, so feature-detect rather than widen the base type.
+    const movable = overlay as Partial<{
+      setDraggable(value: boolean): void;
+      setResizeable(value: boolean): void;
+    }>;
+    movable.setDraggable?.(false);
+    movable.setResizeable?.(false);
+  }
+
+  /** Whether geometry mutation is blocked on this scene. */
+  isReadOnly(): boolean {
+    return this.readOnlyMode;
+  }
+
+  /**
    * Determines if overlay order should be recalculated based on cursor position.
    * Only recalculates if the cursor is over a non-canonical overlay.
    * @returns True if overlay order should be recalculated.
@@ -1105,6 +1158,7 @@ export class Scene2D {
     overlay.setResourceLoader(this.config.resourceLoader);
     overlay.setEventChannel(this.eventChannel);
     overlay.rehydrateMask?.();
+    this.applyReadOnlyTo(overlay);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);

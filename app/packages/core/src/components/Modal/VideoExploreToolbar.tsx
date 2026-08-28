@@ -1,17 +1,24 @@
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { Button, Icon, IconName, Size, Variant } from "@voxel51/voodo";
+import {
+  Anchor,
+  Button,
+  Icon,
+  IconName,
+  Size,
+  Text,
+  TextVariant,
+  Tooltip,
+  Variant,
+} from "@voxel51/voodo";
 import React, { useCallback } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 
 // Button's string `leadingIcon` is wrapped in a component type created on
 // every render, so React remounts the SVG each render and a click that starts
 // on the icon can die before pointerup. Stable component types reconcile in
 // place. Mirrors `playback/src/views/stableIcons.tsx`, for the same reason.
-const ZoomOutIcon: React.FC = () => <Icon name={IconName.Remove} />;
-const ZoomInIcon: React.FC = () => <Icon name={IconName.Add} />;
 const FitIcon: React.FC = () => <Icon name={IconName.Fullscreen} />;
-const LabelsIcon: React.FC = () => <Icon name={IconName.Detection} />;
 const JsonIcon: React.FC = () => <Icon name={IconName.JSON} />;
 const HelpIcon: React.FC = () => <Icon name={IconName.Info} />;
 
@@ -39,6 +46,34 @@ const HELP_ITEMS = [
 ];
 
 /**
+ * One trailing action: an icon button with a tooltip anchored to a wrapping
+ * span rather than the button, so it still shows when the button is disabled.
+ */
+const Action: React.FC<{
+  label: string;
+  icon: React.FC;
+  testId: string;
+  onClick: () => void;
+}> = ({ label, icon, testId, onClick }) => (
+  <Tooltip
+    portal
+    anchor={Anchor.Top}
+    content={<Text variant={TextVariant.Sm}>{label}</Text>}
+  >
+    <span>
+      <Button
+        variant={Variant.Icon}
+        size={Size.Xs}
+        data-testid={testId}
+        leadingIcon={icon}
+        aria-label={label}
+        onClick={onClick}
+      />
+    </span>
+  </Tooltip>
+);
+
+/**
  * The right-side action cluster the video looker carried in its controls row,
  * rebuilt against Lighter and the modal panels.
  *
@@ -46,17 +81,15 @@ const HELP_ITEMS = [
  * timeline controls row's trailing group beside the drawer chevron — the
  * same edge the looker's cluster occupied.
  *
- * Maps onto the looker elements it replaces: `PlusElement` / `MinusElement`
- * (zoom), `CropToContentButtonElement` (fit), `ToggleOverlaysButtonElement`,
- * `JSONButtonElement` and `HelpButtonElement`. `OptionsButtonElement` and
- * `SupportLockButtonElement` are not yet ported.
+ * Zoom in/out are deliberately absent: scroll over the media already zooms,
+ * so the buttons only duplicated a gesture users already have. Fit remains
+ * because there is no gesture for it.
  */
 export const VideoExploreToolbar: React.FC = () => {
-  const { scene, zoomIn, zoomOut } = useLighter();
+  const { scene } = useLighter();
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
   const sample = useRecoilValue(fos.modalSample);
-  const [showOverlays, setShowOverlays] = useRecoilState(fos.showOverlays);
 
   // `fitToContent` frames the overlays' bounding box — the looker's
   // crop-to-content. It is a documented no-op when nothing qualifies, which
@@ -71,11 +104,6 @@ export const VideoExploreToolbar: React.FC = () => {
     scene.resetZoomPan();
   }, [scene]);
 
-  const handleToggleOverlays = useCallback(
-    () => setShowOverlays((current) => !current),
-    [setShowOverlays],
-  );
-
   const handleJSON = useCallback(
     () => jsonPanel.toggle(sample?.sample),
     [jsonPanel, sample],
@@ -85,53 +113,22 @@ export const VideoExploreToolbar: React.FC = () => {
 
   return (
     <>
-      <Button
-        variant={Variant.Icon}
-        size={Size.Xs}
-        data-testid="video-explore-zoom-out"
-        leadingIcon={ZoomOutIcon}
-        aria-label="Zoom out"
-        onClick={zoomOut}
-      />
-      <Button
-        variant={Variant.Icon}
-        size={Size.Xs}
-        data-testid="video-explore-zoom-in"
-        leadingIcon={ZoomInIcon}
-        aria-label="Zoom in"
-        onClick={zoomIn}
-      />
-      <Button
-        variant={Variant.Icon}
-        size={Size.Xs}
-        data-testid="video-explore-fit"
-        leadingIcon={FitIcon}
-        aria-label="Fit to content"
+      <Action
+        label="Fit to content"
+        icon={FitIcon}
+        testId="video-explore-fit"
         onClick={handleFit}
       />
-      <Button
-        variant={Variant.Icon}
-        size={Size.Xs}
-        data-testid="video-explore-toggle-overlays"
-        leadingIcon={LabelsIcon}
-        aria-label={showOverlays ? "Hide labels" : "Show labels"}
-        aria-pressed={showOverlays}
-        onClick={handleToggleOverlays}
-      />
-      <Button
-        variant={Variant.Icon}
-        size={Size.Xs}
-        data-testid="video-explore-json"
-        leadingIcon={JsonIcon}
-        aria-label="Sample JSON"
+      <Action
+        label="Sample JSON"
+        icon={JsonIcon}
+        testId="video-explore-json"
         onClick={handleJSON}
       />
-      <Button
-        variant={Variant.Icon}
-        size={Size.Xs}
-        data-testid="video-explore-help"
-        leadingIcon={HelpIcon}
-        aria-label="Shortcuts & help"
+      <Action
+        label="Shortcuts & help"
+        icon={HelpIcon}
+        testId="video-explore-help"
         onClick={handleHelp}
       />
     </>

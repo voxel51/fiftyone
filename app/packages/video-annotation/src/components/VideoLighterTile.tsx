@@ -101,6 +101,9 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
     dims: videoDims,
     sceneIdPrefix: "video-anno",
     sceneIdDeps: [videoSrc],
+    // Explore renders labels it cannot save — lock geometry so a stray drag
+    // can't commit a silent edit. Selection and hover still work.
+    readOnly: mode === "explore",
   });
 
   // Hover -> `fos.tooltipDetail`, which `TooltipInfo` (mounted in Modal.tsx)
