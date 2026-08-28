@@ -28,6 +28,7 @@ const info = {
     },
     "action.gripper": { dtype: "float32", shape: [1] },
     language_instruction: { dtype: "string", shape: [1] },
+    task_progress: { dtype: "float32", shape: [1] },
     "observation.state": {
       dtype: "float32",
       names: ["joint_a", "joint_b"],
@@ -189,6 +190,7 @@ const dataRows = [
     "observation.images.embedded": Uint8Array.of(0xff, 0xd8, 0xff, 0xd9),
     "observation.state": [3, 4],
     task_index: 0n,
+    task_progress: [0.1],
     timestamp: 0,
     success: false,
   },
@@ -202,6 +204,7 @@ const dataRows = [
     "observation.images.embedded": Uint8Array.of(0xff, 0xd8, 0xff, 0xd9),
     "observation.state": [7, 8],
     task_index: 0n,
+    task_progress: [0.5],
     timestamp: 0.033333335,
     success: true,
   },
@@ -215,6 +218,7 @@ const dataRows = [
     "observation.images.embedded": Uint8Array.of(0xff, 0xd8, 0xff, 0xd9),
     "observation.state": [11, 12],
     task_index: 0n,
+    task_progress: [1],
     timestamp: 0.06666667,
     success: true,
   },
@@ -339,6 +343,10 @@ describe("LeRobot format adapter", () => {
         "stream.category": "custom",
         "stream.inspectable": "true",
       });
+      expect(byName.get("task_progress")?.metadata).toMatchObject({
+        "stream.category": "custom",
+        "stream.inspectable": "true",
+      });
       expect(byName.get("observation.images.embedded")).toMatchObject({
         count: 3,
         kind: "image",
@@ -355,7 +363,7 @@ describe("LeRobot format adapter", () => {
       expect(byName.get("observation.images.test")).not.toHaveProperty("count");
       expect(session.manifest.recordingFacts).toMatchObject({
         applicationSupport: {
-          inspectableStreamCount: 4,
+          inspectableStreamCount: 5,
           renderableStreamCount: 2,
           unavailableStreamCount: 1,
         },
@@ -364,7 +372,7 @@ describe("LeRobot format adapter", () => {
         lerobot: {
           codebaseVersion: "v3.0",
           episodeIndex: "0",
-          featureCount: 8,
+          featureCount: 9,
           fps: 30,
           logicalRowCount: 3,
           mediaFeatureCount: 2,

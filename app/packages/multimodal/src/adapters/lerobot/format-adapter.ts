@@ -2157,7 +2157,7 @@ function scalarStream(
     id: streamIdForFeature(name),
     kind: STREAM_KIND.SCALAR,
     metadata: streamMetadata(feature.dtype, feature.dtype, "decodable", {
-      [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
+      [STREAM_METADATA.CATEGORY]: leRobotCategory(name, feature.dtype),
       [STREAM_METADATA.COUNT_NOUN]: STREAM_COUNT_NOUN.SAMPLES,
       [STREAM_METADATA.INSPECTABLE]: "true",
     }),
@@ -2184,7 +2184,7 @@ function imageStream(
     kind: STREAM_KIND.IMAGE,
     metadata: {
       ...streamMetadata("parquet-image", feature.dtype, "decodable"),
-      [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
+      [STREAM_METADATA.CATEGORY]: leRobotCategory(name, feature.dtype),
       [STREAM_METADATA.COUNT_NOUN]: STREAM_COUNT_NOUN.FRAMES,
       [STREAM_METADATA.INSPECTABLE]: "false",
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
@@ -2216,7 +2216,7 @@ function videoStream(
         codec,
         supported ? "decodable" : "unsupported-encoding",
       ),
-      [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
+      [STREAM_METADATA.CATEGORY]: leRobotCategory(name, feature.dtype),
       [STREAM_METADATA.INSPECTABLE]: "false",
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
       [SCENE_SOURCE_METADATA.TYPE]: SCENE_SOURCE_TYPE.IMAGE,
@@ -2242,7 +2242,7 @@ function unsupportedStream(
       feature.dtype,
       "unsupported-encoding",
       {
-        [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
+        [STREAM_METADATA.CATEGORY]: leRobotCategory(name, feature.dtype),
         [STREAM_METADATA.INSPECTABLE]: "false",
       },
     ),
@@ -2266,7 +2266,7 @@ function streamMetadata(
   };
 }
 
-function leRobotCategory(name: string): StreamCategory {
+function leRobotCategory(name: string, dtype: string): StreamCategory {
   if (name === "action" || name.startsWith("action.")) {
     return STREAM_CATEGORY.ACTIONS;
   }
@@ -2274,6 +2274,7 @@ function leRobotCategory(name: string): StreamCategory {
     return STREAM_CATEGORY.OBSERVATIONS;
   }
   if (
+    dtype === "string" &&
     /(?:^|[._/])(instruction|language|task|prompt|text)(?:[._/]|$)/i.test(name)
   ) {
     return STREAM_CATEGORY.INSTRUCTIONS;
