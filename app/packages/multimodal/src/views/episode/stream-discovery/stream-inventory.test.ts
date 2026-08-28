@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   SCENE_SOURCE_METADATA,
   SCENE_SOURCE_TYPE,
+  STREAM_CATEGORY,
   STREAM_METADATA,
   type StreamDescriptor,
 } from "../../../ir/index";
 import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection";
 import {
   STREAM_CAPABILITY,
-  STREAM_CATEGORY,
   buildStreamInventoryRows,
   filterStreamInventoryRows,
   type StreamInventoryRow,

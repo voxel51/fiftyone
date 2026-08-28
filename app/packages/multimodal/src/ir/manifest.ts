@@ -29,6 +29,34 @@ export const STREAM_KIND = Object.freeze({
 /** Closed union of renderer-level stream families. */
 export type StreamKind = (typeof STREAM_KIND)[keyof typeof STREAM_KIND];
 
+/** Shared catalog categories that adapters may assign to streams. */
+export const STREAM_CATEGORY = Object.freeze({
+  ACTIONS: "actions",
+  ANNOTATIONS_PLANNING: "annotations-planning",
+  CUSTOM: "custom",
+  DIAGNOSTICS: "diagnostics",
+  INSTRUCTIONS: "instructions",
+  OBSERVATIONS: "observations",
+  SENSORS: "sensors",
+  TELEMETRY: "telemetry",
+  TRANSFORMS_POSES: "transforms-poses",
+} as const);
+
+/** Closed union of shared stream-catalog categories. */
+export type StreamCategory =
+  (typeof STREAM_CATEGORY)[keyof typeof STREAM_CATEGORY];
+
+/** Shared plural nouns for exact per-stream record counts. */
+export const STREAM_COUNT_NOUN = Object.freeze({
+  FRAMES: "frames",
+  MESSAGES: "messages",
+  SAMPLES: "samples",
+} as const);
+
+/** Closed union of shared stream-count nouns. */
+export type StreamCountNoun =
+  (typeof STREAM_COUNT_NOUN)[keyof typeof STREAM_COUNT_NOUN];
+
 /** Semantic source families consumed by the shared scene views. */
 export const SCENE_SOURCE_TYPE = Object.freeze({
   AUDIO: "audio",
@@ -46,6 +74,8 @@ export const SCENE_SOURCE_TYPE = Object.freeze({
 /** Closed union of semantic source families understood by scene views. */
 export type SceneSourceType =
   (typeof SCENE_SOURCE_TYPE)[keyof typeof SCENE_SOURCE_TYPE];
+
+const SCENE_SOURCE_TYPES = new Set<string>(Object.values(SCENE_SOURCE_TYPE));
 
 /** Well-known renderer-neutral scene-source metadata keys. */
 export const SCENE_SOURCE_METADATA = Object.freeze({
@@ -192,6 +222,34 @@ export interface EpisodeRecordingFacts {
   readonly sizeBytes?: string;
   readonly startTimeNs?: string;
   readonly topicCount?: number;
+}
+
+/** Classifies streams into mutually exclusive scene, inspection, or unavailable totals. */
+export function recordingSupportFactsFromStreams(
+  streams: readonly StreamDescriptor[],
+): EpisodeRecordingSupportFacts {
+  let inspectableStreamCount = 0;
+  let renderableStreamCount = 0;
+  let unavailableStreamCount = 0;
+  for (const stream of streams) {
+    const sceneSourceType = stream.metadata?.[SCENE_SOURCE_METADATA.TYPE];
+    if (
+      (sceneSourceType !== undefined &&
+        SCENE_SOURCE_TYPES.has(sceneSourceType)) ||
+      stream.kind === STREAM_KIND.TRANSFORM
+    ) {
+      renderableStreamCount++;
+    } else if (stream.metadata?.[STREAM_METADATA.INSPECTABLE] === "true") {
+      inspectableStreamCount++;
+    } else {
+      unavailableStreamCount++;
+    }
+  }
+  return {
+    inspectableStreamCount,
+    renderableStreamCount,
+    unavailableStreamCount,
+  };
 }
 
 /** Cloneable inventory returned when an episode session opens. */

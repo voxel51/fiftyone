@@ -10,9 +10,12 @@ import {
 import {
   SCENE_SOURCE_METADATA,
   SCENE_SOURCE_TYPE,
+  STREAM_CATEGORY,
+  STREAM_COUNT_NOUN,
   STREAM_KIND,
   STREAM_METADATA,
   VISUALIZATION_KIND,
+  recordingSupportFactsFromStreams,
   type DecodedFrame,
   type DecodedOutput,
   type EncodedVideoVisualization,
@@ -26,6 +29,7 @@ import {
   type RawRecordResult,
   type RawValueNode,
   type StreamDescriptor,
+  type StreamCategory,
   type SynchronizedFrameWindow,
   type TimeWindow,
 } from "../../ir";
@@ -2154,7 +2158,7 @@ function scalarStream(
     kind: STREAM_KIND.SCALAR,
     metadata: streamMetadata(feature.dtype, feature.dtype, "decodable", {
       [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
-      [STREAM_METADATA.COUNT_NOUN]: "samples",
+      [STREAM_METADATA.COUNT_NOUN]: STREAM_COUNT_NOUN.SAMPLES,
       [STREAM_METADATA.INSPECTABLE]: "true",
     }),
     payload: {
@@ -2181,7 +2185,7 @@ function imageStream(
     metadata: {
       ...streamMetadata("parquet-image", feature.dtype, "decodable"),
       [STREAM_METADATA.CATEGORY]: leRobotCategory(name),
-      [STREAM_METADATA.COUNT_NOUN]: "frames",
+      [STREAM_METADATA.COUNT_NOUN]: STREAM_COUNT_NOUN.FRAMES,
       [STREAM_METADATA.INSPECTABLE]: "false",
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
       [SCENE_SOURCE_METADATA.TYPE]: SCENE_SOURCE_TYPE.IMAGE,
@@ -2262,15 +2266,19 @@ function streamMetadata(
   };
 }
 
-function leRobotCategory(name: string): string {
-  if (name === "action" || name.startsWith("action.")) return "actions";
-  if (name.startsWith("observation.")) return "observations";
+function leRobotCategory(name: string): StreamCategory {
+  if (name === "action" || name.startsWith("action.")) {
+    return STREAM_CATEGORY.ACTIONS;
+  }
+  if (name.startsWith("observation.")) {
+    return STREAM_CATEGORY.OBSERVATIONS;
+  }
   if (
     /(?:^|[._/])(instruction|language|task|prompt|text)(?:[._/]|$)/i.test(name)
   ) {
-    return "instructions";
+    return STREAM_CATEGORY.INSTRUCTIONS;
   }
-  return "custom";
+  return STREAM_CATEGORY.CUSTOM;
 }
 
 function leRobotRecordingFacts({
@@ -2306,36 +2314,14 @@ function leRobotRecordingFacts({
   const mediaFeatureCount = Object.values(features).filter(
     (feature) => feature.dtype === "image" || feature.dtype === "video",
   ).length;
-  let inspectableStreamCount = 0;
-  let renderableStreamCount = 0;
-  let unavailableStreamCount = 0;
-  for (const stream of streams) {
-    if (stream.kind !== STREAM_KIND.UNKNOWN) {
-      renderableStreamCount++;
-    } else if (stream.metadata?.[STREAM_METADATA.INSPECTABLE] === "true") {
-      inspectableStreamCount++;
-    } else {
-      unavailableStreamCount++;
-    }
-  }
+  const episodeIndex = integer(episode.episode_index, "episode_index");
   return {
-    applicationSupport: {
-      inspectableStreamCount,
-      renderableStreamCount,
-      unavailableStreamCount,
-    },
+    applicationSupport: recordingSupportFactsFromStreams(streams),
     durationNs: (timeRange.endNs - timeRange.startNs).toString(),
     format: "lerobot",
     lerobot: {
       ...(codebaseVersion ? { codebaseVersion } : {}),
-      ...(integer(episode.episode_index, "episode_index") >= 0n
-        ? {
-            episodeIndex: integer(
-              episode.episode_index,
-              "episode_index",
-            ).toString(),
-          }
-        : {}),
+      ...(episodeIndex >= 0n ? { episodeIndex: episodeIndex.toString() } : {}),
       featureCount: Object.keys(features).length,
       fps,
       logicalRowCount: rowCount,
@@ -2344,7 +2330,6 @@ function leRobotRecordingFacts({
       ...(tasks.length ? { taskLabels: tasks } : {}),
       ...(codecs.length ? { videoCodecs: codecs } : {}),
     },
-    messageCount: rowCount.toString(),
   };
 }
 

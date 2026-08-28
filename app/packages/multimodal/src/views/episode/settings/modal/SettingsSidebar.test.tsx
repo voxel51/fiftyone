@@ -549,7 +549,7 @@ describe("SettingsSidebar", () => {
     );
   });
 
-  it("labels video-backed image tiles as Video and hides unsupported inspection", () => {
+  it("labels video-backed image tiles as Video and omits unavailable count metadata", () => {
     renderSidebar({
       sources: [
         {
@@ -562,7 +562,7 @@ describe("SettingsSidebar", () => {
       streams: [
         {
           ...stream("observation.images.camera", {
-            count: "3",
+            approxRateHz: 2,
             decodeStatus: "decodable",
             encoding: "mp4",
             id: "camera",
@@ -582,6 +582,7 @@ describe("SettingsSidebar", () => {
     expect(
       screen.getByRole("button", { name: "Video observation.images.camera" }),
     ).toBeTruthy();
+    expect(screen.getByText("2 Hz · Image")).toBeTruthy();
     expect(
       screen.queryByRole("button", {
         name: "Inspect observation.images.camera",
@@ -605,7 +606,6 @@ describe("SettingsSidebar", () => {
           taskLabels: ["pick up cube"],
           videoCodecs: ["h264"],
         },
-        messageCount: "30",
         startTimeNs: "0",
         endTimeNs: "1000000000",
       },
@@ -614,7 +614,10 @@ describe("SettingsSidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: /Recording LEROBOT/ }));
     expect(screen.queryByText("Start time")).toBeNull();
     expect(screen.queryByText("End time")).toBeNull();
+    expect(screen.queryByText("Messages")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /LeRobot details/ }));
+    expect(screen.getByText("Logical rows")).toBeTruthy();
+    expect(screen.getAllByText("30")).toHaveLength(2);
     expect(screen.getByText("v3.0")).toBeTruthy();
     expect(screen.getByText("pick up cube")).toBeTruthy();
   });
@@ -808,7 +811,7 @@ function stream(
     schema,
   }: {
     readonly approxRateHz?: number;
-    readonly count: string;
+    readonly count?: string;
     readonly decodeStatus: string;
     readonly encoding: string;
     readonly id?: string;
@@ -818,7 +821,7 @@ function stream(
   const sceneType = testSceneType(schema);
   return {
     ...(approxRateHz !== undefined ? { approxRateHz } : {}),
-    count: Number(count),
+    ...(count === undefined ? {} : { count: Number(count) }),
     id,
     kind: "unknown",
     metadata: {

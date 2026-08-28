@@ -1,28 +1,17 @@
 import {
   SCENE_SOURCE_METADATA,
   SCENE_SOURCE_TYPE,
+  STREAM_CATEGORY,
+  STREAM_COUNT_NOUN,
   STREAM_METADATA,
   type SceneSource,
   type SceneSourceType,
   type StreamDescriptor,
+  type StreamCategory,
+  type StreamCountNoun,
   type StreamKind,
   type StreamId,
 } from "../../../ir/index";
-
-export const STREAM_CATEGORY = {
-  ACTIONS: "actions",
-  SENSORS: "sensors",
-  ANNOTATIONS_PLANNING: "annotations-planning",
-  INSTRUCTIONS: "instructions",
-  OBSERVATIONS: "observations",
-  TRANSFORMS_POSES: "transforms-poses",
-  DIAGNOSTICS: "diagnostics",
-  TELEMETRY: "telemetry",
-  CUSTOM: "custom",
-} as const;
-
-export type StreamCategory =
-  (typeof STREAM_CATEGORY)[keyof typeof STREAM_CATEGORY];
 
 export const STREAM_CATEGORY_ORDER: readonly StreamCategory[] = [
   STREAM_CATEGORY.OBSERVATIONS,
@@ -229,28 +218,40 @@ function countLabelFor(stream: StreamDescriptor): string | null {
   const count = recordCountFor(stream.count);
   if (count === null) return null;
   const noun =
-    stream.metadata?.[STREAM_METADATA.COUNT_NOUN] ?? countNoun(stream.kind);
+    knownCountNoun(stream.metadata?.[STREAM_METADATA.COUNT_NOUN]) ??
+    countNoun(stream.kind);
   return `${count.toLocaleString()} ${count === 1 ? singularNoun(noun) : noun}`;
 }
 
-function countNoun(kind: StreamKind): string {
+function countNoun(kind: StreamKind): StreamCountNoun {
   switch (kind) {
     case "image":
     case "video":
-      return "frames";
+      return STREAM_COUNT_NOUN.FRAMES;
     case "audio":
     case "scalar":
-      return "samples";
+      return STREAM_COUNT_NOUN.SAMPLES;
     default:
-      return "messages";
+      return STREAM_COUNT_NOUN.MESSAGES;
   }
 }
 
-function singularNoun(noun: string): string {
-  if (noun === "messages") return "message";
-  if (noun === "frames") return "frame";
-  if (noun === "samples") return "sample";
-  return noun;
+function knownCountNoun(value: string | undefined): StreamCountNoun | null {
+  return value !== undefined &&
+    Object.values(STREAM_COUNT_NOUN).includes(value as StreamCountNoun)
+    ? (value as StreamCountNoun)
+    : null;
+}
+
+function singularNoun(noun: StreamCountNoun): string {
+  switch (noun) {
+    case STREAM_COUNT_NOUN.FRAMES:
+      return "frame";
+    case STREAM_COUNT_NOUN.SAMPLES:
+      return "sample";
+    case STREAM_COUNT_NOUN.MESSAGES:
+      return "message";
+  }
 }
 
 function messageRateLabel(

@@ -3,10 +3,10 @@ import {
   STREAM_METADATA,
   STREAM_SYNC_MODE,
   STREAM_KIND,
+  recordingSupportFactsFromStreams,
   type ByteSourceDescriptor,
   type DecodedFrame,
   type EpisodeManifest,
-  type EpisodeRecordingSupportFacts,
   type EpisodePreviewReadResult,
   type StreamDescriptor,
   type StreamKind,
@@ -737,7 +737,7 @@ export function createMcapManifest(
     episodeId,
     recordingFacts: {
       ...inventory.recordingFacts,
-      applicationSupport: recordingSupportFacts(streams),
+      applicationSupport: recordingSupportFactsFromStreams(streams),
       durationNs: (range.endTimeNs - range.startTimeNs).toString(),
       endTimeNs: range.endTimeNs.toString(),
       ...(source?.readProfile ? { readProfile: source.readProfile } : {}),
@@ -749,30 +749,6 @@ export function createMcapManifest(
     streams,
     timeDomain: { id: MCAP_ACTIVE_TIMELINE.LOG, kind: "timestamp" },
     timeRange,
-  };
-}
-
-function recordingSupportFacts(
-  streams: readonly StreamDescriptor[],
-): EpisodeRecordingSupportFacts {
-  let inspectableStreamCount = 0;
-  let renderableStreamCount = 0;
-  let unavailableStreamCount = 0;
-  for (const stream of streams) {
-    if (stream.kind !== STREAM_KIND.UNKNOWN) {
-      renderableStreamCount++;
-    } else if (
-      stream.metadata?.[STREAM_METADATA.DECODE_STATUS] === "decodable"
-    ) {
-      inspectableStreamCount++;
-    } else {
-      unavailableStreamCount++;
-    }
-  }
-  return {
-    inspectableStreamCount,
-    renderableStreamCount,
-    unavailableStreamCount,
   };
 }
 

@@ -140,7 +140,6 @@ describe("source facts codec", () => {
             taskLabels: ["pick up cube"],
             videoCodecs: ["h264"],
           },
-          messageCount: "30",
         },
       },
     });

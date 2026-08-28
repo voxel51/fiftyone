@@ -81,6 +81,7 @@ describe("MCAP format adapter", () => {
           create(StreamInventorySchema, {
             metadata: {
               "mcap.topic": "/camera",
+              [SCENE_SOURCE_METADATA.TYPE]: "image",
               [STREAM_METADATA.DECODE_STATUS]: "decodable",
             },
             payload: {

@@ -230,6 +230,44 @@ describe("source bootstrap cache", () => {
     expect(peekSourceBootstrap(source)?.manifest).toBe(currentManifest);
   });
 
+  it("retains canonical LeRobot catalog and recording facts in current hints", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("lerobot-current");
+    const base = createManifest("lerobot:action", "episode");
+    const manifest: EpisodeManifest = {
+      ...base,
+      recordingFacts: {
+        durationNs: "1000000000",
+        format: "lerobot",
+        lerobot: {
+          codebaseVersion: "v3.0",
+          episodeIndex: "4",
+          featureCount: 8,
+          fps: 30,
+          logicalRowCount: 30,
+          mediaFeatureCount: 2,
+          robotType: "so101",
+          taskLabels: ["pick up cube"],
+          videoCodecs: ["h264"],
+        },
+      },
+      streams: base.streams.map((stream) => ({
+        ...stream,
+        metadata: {
+          "stream.category": "actions",
+          "stream.count_noun": "samples",
+          "stream.inspectable": "true",
+        },
+      })),
+    };
+
+    publishSourceBootstrap(source, { manifest });
+
+    expect(getSourceSessionHints(source, "lerobot-v3")).toEqual({
+      manifestHint: manifest,
+    });
+  });
+
   it("uses validated durable hints only for their adapter", () => {
     resetSourceBootstrapCacheForTests();
     const source = createSource("validated");

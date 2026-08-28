@@ -26,6 +26,8 @@ const info = {
       names: ["joint_a", "joint_b"],
       shape: [2],
     },
+    "action.gripper": { dtype: "float32", shape: [1] },
+    language_instruction: { dtype: "string", shape: [1] },
     "observation.state": {
       dtype: "float32",
       names: ["joint_a", "joint_b"],
@@ -179,9 +181,11 @@ const episodeRow = {
 const dataRows = [
   {
     action: [1, 2],
+    "action.gripper": [0.1],
     episode_index: 0n,
     frame_index: 0n,
     index: 0n,
+    language_instruction: "reach for the cube",
     "observation.images.embedded": Uint8Array.of(0xff, 0xd8, 0xff, 0xd9),
     "observation.state": [3, 4],
     task_index: 0n,
@@ -190,9 +194,11 @@ const dataRows = [
   },
   {
     action: [5, 6],
+    "action.gripper": [0.2],
     episode_index: 0n,
     frame_index: 1n,
     index: 1n,
+    language_instruction: "reach for the cube",
     "observation.images.embedded": Uint8Array.of(0xff, 0xd8, 0xff, 0xd9),
     "observation.state": [7, 8],
     task_index: 0n,
@@ -201,9 +207,11 @@ const dataRows = [
   },
   {
     action: [9, 10],
+    "action.gripper": [0.3],
     episode_index: 0n,
     frame_index: 2n,
     index: 2n,
+    language_instruction: "reach for the cube",
     "observation.images.embedded": Uint8Array.of(0xff, 0xd8, 0xff, 0xd9),
     "observation.state": [11, 12],
     task_index: 0n,
@@ -319,6 +327,18 @@ describe("LeRobot format adapter", () => {
         "stream.category": "actions",
         "stream.inspectable": "true",
       });
+      expect(byName.get("action.gripper")?.metadata).toMatchObject({
+        "stream.category": "actions",
+        "stream.inspectable": "true",
+      });
+      expect(byName.get("language_instruction")?.metadata).toMatchObject({
+        "stream.category": "instructions",
+        "stream.inspectable": "false",
+      });
+      expect(byName.get("success")?.metadata).toMatchObject({
+        "stream.category": "custom",
+        "stream.inspectable": "true",
+      });
       expect(byName.get("observation.images.embedded")).toMatchObject({
         count: 3,
         kind: "image",
@@ -334,20 +354,27 @@ describe("LeRobot format adapter", () => {
       });
       expect(byName.get("observation.images.test")).not.toHaveProperty("count");
       expect(session.manifest.recordingFacts).toMatchObject({
+        applicationSupport: {
+          inspectableStreamCount: 4,
+          renderableStreamCount: 2,
+          unavailableStreamCount: 1,
+        },
         durationNs: "1000000000",
         format: "lerobot",
         lerobot: {
           codebaseVersion: "v3.0",
           episodeIndex: "0",
-          featureCount: 6,
+          featureCount: 8,
           fps: 30,
           logicalRowCount: 3,
           mediaFeatureCount: 2,
           robotType: "test-arm",
           videoCodecs: ["h264"],
         },
-        messageCount: "3",
       });
+      expect(session.manifest.recordingFacts).not.toHaveProperty(
+        "messageCount",
+      );
     } finally {
       session.dispose();
     }
