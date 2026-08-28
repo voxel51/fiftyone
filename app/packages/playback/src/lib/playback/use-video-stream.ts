@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { PlaybackStream } from "./types";
 import { usePlayback } from "./PlaybackProvider";
+import { usePlaybackStore } from "./playback-store-context";
+import { setPresentedTime } from "./store-access";
 
 /**
  * Maximum drift (sec) between the engine's target time and the video's
@@ -171,6 +173,7 @@ export function usePresentedMediaTime(
   enabled = true,
 ): RefObject<number | null> {
   const ref = useRef<number | null>(null);
+  const store = usePlaybackStore();
 
   useEffect(() => {
     if (!enabled) {
@@ -206,6 +209,10 @@ export function usePresentedMediaTime(
       }
 
       ref.current = metadata.mediaTime;
+      // The presented-frame authority: this fires when a frame reaches the
+      // compositor, so overlay clocks tracking it follow the picture through
+      // a scrub instead of the requested time the browser's async seek trails
+      setPresentedTime(store, metadata.mediaTime);
       handle = rvfc.call(v, onFrame);
     };
     handle = rvfc.call(v, onFrame);
@@ -217,8 +224,9 @@ export function usePresentedMediaTime(
       }
 
       ref.current = null;
+      setPresentedTime(store, null);
     };
-  }, [videoRef, enabled]);
+  }, [videoRef, enabled, store]);
 
   return ref;
 }

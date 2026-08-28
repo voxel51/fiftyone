@@ -25,6 +25,7 @@ import {
   currentTimeAtom,
   durationAtom,
   hoverTimeAtom,
+  presentedTimeAtom,
   inspectionMarkerAtom,
   isBufferingAtom,
   isPlayPendingAtom,
@@ -75,6 +76,16 @@ export function useInspectionMarker(): PlaybackInspectionMarker | null {
 export function useCurrentTime(): number {
   const store = usePlaybackStore();
   return useAtomValue(currentTimeAtom, { store });
+}
+
+/**
+ * Media time of the frame actually on glass (null when nothing has
+ * presented). Overlay clocks read this so labels track the picture through
+ * a scrub instead of the requested position the picture may trail.
+ */
+export function usePresentedTime(): number | null {
+  const store = usePlaybackStore();
+  return useAtomValue(presentedTimeAtom, { store });
 }
 
 export function useIsPlaying(): boolean {

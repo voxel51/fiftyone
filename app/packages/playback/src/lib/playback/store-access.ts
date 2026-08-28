@@ -28,6 +28,7 @@ import {
   bufferingStreamsAtom,
   currentTimeAtom,
   hoverTimeAtom,
+  presentedTimeAtom,
   inspectionMarkerAtom,
   isBufferingAtom,
   isPlayPendingAtom,
@@ -119,6 +120,28 @@ export function subscribeHoverTime(
   callback: () => void,
 ): () => void {
   return store.sub(hoverTimeAtom, callback);
+}
+
+/** Non-reactive read of the presented media time, in seconds (or null). */
+export function getPresentedTime(store: PlaybackStore): number | null {
+  return store.get(presentedTimeAtom);
+}
+
+/**
+ * Publishes the media time of the frame a tile just put on glass (null when
+ * its media unmounts or stops presenting). Tile-owned, like hover: the vfc
+ * callback for an html `<video>`, the paint effect for decoded bitmaps.
+ */
+export function setPresentedTime(store: PlaybackStore, timeSec: number | null) {
+  store.set(presentedTimeAtom, timeSec);
+}
+
+/** Subscribes to presented-time changes; returns an unsubscribe. */
+export function subscribePresentedTime(
+  store: PlaybackStore,
+  callback: () => void,
+): () => void {
+  return store.sub(presentedTimeAtom, callback);
 }
 
 /** Publishes or moves one owner's persistent visual inspection marker. */
