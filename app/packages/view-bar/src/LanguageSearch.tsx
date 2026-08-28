@@ -6,6 +6,8 @@
  * the dataset has a sample-level similarity index that accepts text prompts.
  */
 
+import { LoadingDots } from "@fiftyone/components";
+import { useViewChangePending } from "@fiftyone/state";
 import { Icon, IconName, Input, Size } from "@voxel51/voodo";
 import React from "react";
 
@@ -19,6 +21,9 @@ export interface LanguageSearchProps {
 
 export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
   const [query, setQuery] = React.useState("");
+  // Set when the submitted search is still resolving into a view — only the
+  // quick search drives the flag, so it can't fire for unrelated loads
+  const pending = useViewChangePending();
 
   return (
     <div
@@ -67,7 +72,13 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
             flexShrink: 0,
           }}
         >
-          ⏎ Similarity search
+          {pending ? (
+            <>
+              <LoadingDots text="pixelating" /> {query.trim()}
+            </>
+          ) : (
+            "⏎ Similarity search"
+          )}
         </span>
       )}
     </div>
