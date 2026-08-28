@@ -76,11 +76,10 @@
   margin: 0 6px;
 }
 
-/* Trailing group pinned to the right edge: caller-supplied buttons (behind
-   their own divider) followed by the drawer chevron, which always sits
-   last so its position doesn't shift as buttons come and go. Only
-   `trailingActions` lives here — the time readouts and `extraActions` stay
-   in the left-hand run. */
+/* Trailing group pinned to the right edge: caller-supplied buttons, then a
+   divider, then the drawer chevron, which always sits last so its position
+   doesn't shift as buttons come and go. Only `trailingActions` lives here —
+   the time readouts and `extraActions` stay in the left-hand run. */
 .trailing {
   align-items: center;
   display: flex;
