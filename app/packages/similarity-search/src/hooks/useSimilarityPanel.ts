@@ -67,7 +67,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   // annotated as incompatible so components can gray them out with an
   // explanatory tooltip instead of hiding them.
   const brainKeys = useMemo((): AnnotatedBrainKeyConfig[] => {
-    return allBrainKeys.map((bk) => {
+    const annotated = allBrainKeys.map((bk): AnnotatedBrainKeyConfig => {
       const compatible = isPatchesView
         ? bk.patches_field === patchesField
         : !bk.patches_field;
@@ -82,6 +82,12 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
           : "Cannot use a dataset index in the current view",
       };
     });
+    // Usable indexes first; disabled ones sink to the bottom of the
+    // index page list and the new-search dropdown
+    return [
+      ...annotated.filter((bk) => bk.compatible),
+      ...annotated.filter((bk) => !bk.compatible),
+    ];
   }, [allBrainKeys, isPatchesView, patchesField]);
 
   // Filter runs to only those whose brain_key is usable in this view
