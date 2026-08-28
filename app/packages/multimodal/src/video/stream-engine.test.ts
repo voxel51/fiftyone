@@ -4,7 +4,7 @@ import type { EncodedH264VideoVisualization } from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
 import { VideoPlaybackManager } from "./playback-manager";
 import { SharedVideoPresentation } from "./presentation";
-import { MAX_H264_GOP_ACCESS_UNITS } from "./stream-engine";
+import { MAX_VIDEO_DEPENDENCY_ACCESS_UNITS } from "./stream-engine";
 import type {
   H264AccessUnit,
   VideoAccessUnitReader,
@@ -703,7 +703,7 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
 
   it("rejects a dependency chain beyond the bounded decode budget", async () => {
     const harness = createHarness();
-    const target = MAX_H264_GOP_ACCESS_UNITS;
+    const target = MAX_VIDEO_DEPENDENCY_ACCESS_UNITS;
     const units = Array.from({ length: target + 1 }, (_, index) =>
       accessUnit(index, index === 0),
     );

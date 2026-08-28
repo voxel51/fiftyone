@@ -6,6 +6,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
 
 import type { EpisodePreviewNativeVideo } from "../../../ir";
 import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
@@ -75,7 +76,7 @@ describe("LeRobotGridHoverVideo", () => {
     render(
       <>
         <div data-testid="cached-poster" />
-        <LeRobotGridHoverVideo video={nativeVideo(14.2, 37.533333)} />
+        <TestLeRobotGridHoverVideo video={nativeVideo(14.2, 37.533333)} />
       </>,
     );
     const element = screen.getByTestId(
@@ -100,7 +101,7 @@ describe("LeRobotGridHoverVideo", () => {
   });
 
   it("hides and loops before presenting the adjacent episode", () => {
-    render(<LeRobotGridHoverVideo video={nativeVideo(10, 12)} />);
+    render(<TestLeRobotGridHoverVideo video={nativeVideo(10, 12)} />);
     const element = screen.getByTestId(
       "lerobot-grid-hover-video",
     ) as HTMLVideoElement;
@@ -123,7 +124,7 @@ describe("LeRobotGridHoverVideo", () => {
       "requestVideoFrameCallback",
       { configurable: true, value: undefined },
     );
-    render(<LeRobotGridHoverVideo video={nativeVideo(20, 21)} />);
+    render(<TestLeRobotGridHoverVideo video={nativeVideo(20, 21)} />);
     const element = screen.getByTestId(
       "lerobot-grid-hover-video",
     ) as HTMLVideoElement;
@@ -146,7 +147,7 @@ describe("LeRobotGridHoverVideo", () => {
     const onCanvasCommitted = vi.fn();
     const onSurfaceRetainedBytesChange = vi.fn();
     render(
-      <LeRobotGridHoverVideo
+      <TestLeRobotGridHoverVideo
         capturePoster
         onCanvasCommitted={onCanvasCommitted}
         onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
@@ -185,7 +186,7 @@ describe("LeRobotGridHoverVideo", () => {
     const onError = vi.fn();
 
     render(
-      <LeRobotGridHoverVideo
+      <TestLeRobotGridHoverVideo
         onError={onError}
         video={nativeVideo(0, 1, "av1")}
       />,
@@ -204,7 +205,7 @@ describe("LeRobotGridHoverVideo", () => {
 
   it("cancels frame work and releases the media source on cleanup", () => {
     const { unmount } = render(
-      <LeRobotGridHoverVideo video={nativeVideo(30, 31)} />,
+      <TestLeRobotGridHoverVideo video={nativeVideo(30, 31)} />,
     );
     const element = screen.getByTestId(
       "lerobot-grid-hover-video",
@@ -239,6 +240,29 @@ function nativeVideo(
     },
     startTimeSeconds,
   };
+}
+
+function TestLeRobotGridHoverVideo({
+  active = true,
+  capturePoster = false,
+  onCanvasCommitted = () => undefined,
+  onError = () => undefined,
+  onSurfaceRetainedBytesChange = () => undefined,
+  playing = true,
+  video,
+}: Pick<ComponentProps<typeof LeRobotGridHoverVideo>, "video"> &
+  Partial<Omit<ComponentProps<typeof LeRobotGridHoverVideo>, "video">>) {
+  return (
+    <LeRobotGridHoverVideo
+      active={active}
+      capturePoster={capturePoster}
+      onCanvasCommitted={onCanvasCommitted}
+      onError={onError}
+      onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
+      playing={playing}
+      video={video}
+    />
+  );
 }
 
 function presentFrame(mediaTime: number): void {

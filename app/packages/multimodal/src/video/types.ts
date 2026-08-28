@@ -20,6 +20,7 @@ export type SharedEncodedVideoVisualization =
   | EncodedH264VideoVisualization
   | EncodedAv1VideoVisualization;
 
+/** Whether the shared synchronized decoder supports this encoded frame. */
 export function isSharedEncodedVideoVisualization(
   frame: EncodedVideoVisualization,
 ): frame is SharedEncodedVideoVisualization {

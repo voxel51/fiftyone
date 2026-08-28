@@ -21,7 +21,7 @@ import { retainedBinaryBytes } from "../../../runtime";
 import { VideoPlaybackManager } from "../../../video/playback-manager";
 import { PushVideoAccessUnitReader } from "../../../video/push-reader";
 import { VideoPlaybackManagerProvider } from "../../../video/react";
-import { H264_REORDERED_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
+import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import type { VideoStreamLease } from "../../../video/playback-manager";
 import { isSharedEncodedVideoVisualization } from "../../../video/types";
 import { PointCloudPanel } from "../../../visualization/composition";
@@ -224,7 +224,7 @@ export function GridRenderer({
     cachedPoster: effectivePoster,
     enabled: visible,
     hovered,
-    initialVideoDecodeLookaheadNs: H264_REORDERED_DECODE_LOOKAHEAD_NS,
+    initialVideoDecodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
     onReadResult: gridVideoPlayback.onReadResult,
     posterStartTimeNs: firstMatch?.startNs ?? null,
     posterSourceName: firstMatch?.stream ?? null,
@@ -259,6 +259,8 @@ export function GridRenderer({
   const [nativeSurfaceRetainedBytes, setNativeSurfaceRetainedBytes] =
     useState(0);
   const [nativeVideoError, setNativeVideoError] = useState<string | null>(null);
+  // This effect clears a native-playback failure when the selected episode
+  // video changes so a previous source cannot poison the next preview.
   useEffect(() => {
     setNativeVideoError(null);
   }, [preview.nativeVideo]);
@@ -1107,6 +1109,8 @@ function ImagePreviewFrame({
   const showFallback =
     cachedPoster !== null && committedKind !== frame.image.kind;
 
+  // This effect reports both canvases while a cached poster covers the first
+  // decode from a newly mounted image family.
   useEffect(() => {
     onSurfaceRetainedBytesChange(
       frameRetainedBytes + (showFallback ? fallbackRetainedBytes : 0),

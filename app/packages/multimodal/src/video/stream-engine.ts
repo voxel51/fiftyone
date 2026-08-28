@@ -23,12 +23,13 @@ import {
 const NS_PER_SECOND = 1_000_000_000n;
 const MAX_DIRECT_FORWARD_GAP_NS = 500_000_000n;
 /** Forward presentation coverage retained while decoding reordered video. */
-export const H264_REORDERED_DECODE_LOOKAHEAD_NS = 250_000_000n;
-export const MAX_H264_GOP_ACCESS_UNITS = 4_096;
+export const REORDERED_VIDEO_DECODE_LOOKAHEAD_NS = 250_000_000n;
+/** Maximum access units admitted for one bounded video dependency chain. */
+export const MAX_VIDEO_DEPENDENCY_ACCESS_UNITS = 4_096;
 const VIDEO_SEEK_READ_POLICY = {
   initialLookbackNs: 15n * NS_PER_SECOND,
   maxLookbackNs: 120n * NS_PER_SECOND,
-  maxMessages: MAX_H264_GOP_ACCESS_UNITS,
+  maxMessages: MAX_VIDEO_DEPENDENCY_ACCESS_UNITS,
   maxObservedPayloadBytes: 128 * 1024 * 1024,
   maxWallTimeMs: 8_000,
 } as const;
@@ -434,7 +435,7 @@ export class VideoStreamEngine {
     const reorderedForwardRead =
       targetDecodeTimeNs !== undefined && cursorDecodeTimeNs !== null;
     const endTimeNs = reorderedForwardRead
-      ? intent.timeNs + H264_REORDERED_DECODE_LOOKAHEAD_NS
+      ? intent.timeNs + REORDERED_VIDEO_DECODE_LOOKAHEAD_NS
       : intent.timeNs;
     const read = await this.readRange(reader, startTimeNs, endTimeNs, signal);
     const decodeEndTimeNs = maxDecodeTimeNs([...read, intent]);
@@ -460,7 +461,7 @@ export class VideoStreamEngine {
     if (!units.some((unit) => unit.timeNs === intent.timeNs)) {
       throw new VideoDependencyWaitError("Waiting for the video seek target");
     }
-    if (units.length > MAX_H264_GOP_ACCESS_UNITS) {
+    if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
       throw new VideoDependencyWaitError(
         "Video dependency chain exceeds the bounded decode budget",
       );
@@ -496,7 +497,7 @@ export class VideoStreamEngine {
     const runwayEndTimeNs =
       intent.frame.decodeTimestampNs === undefined
         ? intent.timeNs
-        : intent.timeNs + H264_REORDERED_DECODE_LOOKAHEAD_NS;
+        : intent.timeNs + REORDERED_VIDEO_DECODE_LOOKAHEAD_NS;
     if (intent.frame.keyframe) {
       if (intent.frame.decodeTimestampNs === undefined) return [intent];
       const reader = this.reader();
@@ -514,7 +515,7 @@ export class VideoStreamEngine {
           "Waiting for the video runway keyframe",
         );
       }
-      if (units.length > MAX_H264_GOP_ACCESS_UNITS) {
+      if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
         throw new VideoDependencyWaitError(
           "Video dependency chain exceeds the bounded decode budget",
         );
@@ -615,7 +616,7 @@ export class VideoStreamEngine {
     if (!units.some((unit) => unit.timeNs === intent.timeNs)) {
       throw new VideoDependencyWaitError("Waiting for the video runway target");
     }
-    if (units.length > MAX_H264_GOP_ACCESS_UNITS) {
+    if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
       throw new VideoDependencyWaitError(
         "Video dependency chain exceeds the bounded decode budget",
       );

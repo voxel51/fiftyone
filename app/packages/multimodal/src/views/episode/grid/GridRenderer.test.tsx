@@ -28,7 +28,7 @@ import type {
   EpisodePreviewReadResult,
 } from "../../../ir";
 import { PushVideoAccessUnitReader } from "../../../video/push-reader";
-import { H264_REORDERED_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
+import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import {
   gridPreviewStateKey,
   pointCloudPoseKey,
@@ -510,7 +510,7 @@ describe("GridRenderer", () => {
     });
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
-      initialVideoDecodeLookaheadNs: H264_REORDERED_DECODE_LOOKAHEAD_NS,
+      initialVideoDecodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
       posterStartTimeNs: null,
       posterSourceName: null,
     });

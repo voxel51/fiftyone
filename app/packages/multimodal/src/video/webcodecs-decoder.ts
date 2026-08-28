@@ -10,7 +10,7 @@ import {
 } from "./types";
 
 export const MAX_VIDEO_DECODE_IN_FLIGHT = 8;
-export const MAX_REORDERED_VIDEO_OUTPUTS = 32;
+const MAX_REORDERED_VIDEO_OUTPUTS = 32;
 export const VIDEO_DECODE_PROGRESS_TIMEOUT_MS = 15_000;
 
 interface PendingOutput {
@@ -356,7 +356,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     const data = this.chunkData(unit);
     // Preserve source PTS for browser-level observability. LeRobot MP4 units
     // carry an explicit DTS and may be submitted in non-monotonic PTS order
-    // when B-frames are present. Legacy streams retain monotonic nudging.
+    // when B-frames are present. Units without DTS retain monotonic nudging.
     const sourceTimestampUs = Number(unit.timeNs / 1_000n);
     const submissionTimestampUs =
       unit.frame.decodeTimestampNs !== undefined
@@ -536,9 +536,6 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     });
   }
 }
-
-/** Compatibility export for existing H.264-specific callers. */
-export { WebCodecsVideoDecoder as WebCodecsH264Decoder };
 
 function compareDecodeOrder(
   left: EncodedVideoAccessUnit,

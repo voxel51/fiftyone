@@ -11,7 +11,10 @@ import {
 } from "react";
 import {
   createDemandFailureBackoff,
+  DEMAND_DEFERRED_RETRY_MS,
   DEMAND_FAILURE_BACKOFF_MS,
+  DEMAND_TIMELINE_RETRY_MS,
+  EXACT_RECORD_PLAYHEAD_THROTTLE_MS,
   startDemandBridge,
 } from "../../../runtime";
 import {
@@ -31,19 +34,10 @@ import type {
   StateActionSchema,
   StateActionStats,
 } from "../../../ports";
+import { linkAbortSignals } from "../../../utils/cancellation";
 import { errorMessage } from "../../../utils/errors";
 import { shouldDeferIdleWorkForStore } from "../playback/network-health";
 import { useDataStream } from "../playback/data-stream-context";
-
-/** Playhead-driven relookups run at most this often per bridge tick. */
-const PLAYHEAD_THROTTLE_MS = 300;
-
-/** Starved-link stand-down retry, matching the raw-message gate. */
-const DEFERRED_RETRY_MS = 2_000;
-
-/** The timeline index lands moments after stream registration; wait for
- * it instead of resolving at a meaningless time. */
-const TIMELINE_RETRY_MS = 250;
 
 /** A refetch over a committed row surfaces a pending state only after this
  * delay, so in-memory relookups during playback do not flash the table. */
@@ -313,7 +307,7 @@ export function StateActionBridge({
       NonNullable<typeof dataStream>
     >({
       dataStreamRef,
-      deferredRetryMs: DEFERRED_RETRY_MS,
+      deferredRetryMs: DEMAND_DEFERRED_RETRY_MS,
       expeditePausedSeeks: true,
       handlersRef,
       inventoryReplay,
@@ -548,11 +542,11 @@ export function StateActionBridge({
           });
       },
       playbackStore,
-      playheadThrottleMs: PLAYHEAD_THROTTLE_MS,
+      playheadThrottleMs: EXACT_RECORD_PLAYHEAD_THROTTLE_MS,
       refCountsRef,
       requireTimeline: true,
       shouldDeferIdleWork: (store) => shouldDeferIdleWorkForStore(store, null),
-      timelineRetryMs: TIMELINE_RETRY_MS,
+      timelineRetryMs: DEMAND_TIMELINE_RETRY_MS,
     });
     return () => {
       epochController.abort();
@@ -579,30 +573,4 @@ export function StateActionBridge({
 
 function useInternalValue() {
   return stateActionDemandContext.useDemandContext();
-}
-
-/** Links source-epoch and user cancellation without requiring AbortSignal.any. */
-function linkAbortSignals(
-  epochSignal: AbortSignal,
-  requestSignal?: AbortSignal,
-): { readonly cleanup: () => void; readonly signal: AbortSignal } {
-  if (!requestSignal) {
-    return { cleanup: () => undefined, signal: epochSignal };
-  }
-
-  const controller = new AbortController();
-  const abort = () => controller.abort();
-  if (epochSignal.aborted || requestSignal.aborted) {
-    controller.abort();
-  } else {
-    epochSignal.addEventListener("abort", abort, { once: true });
-    requestSignal.addEventListener("abort", abort, { once: true });
-  }
-  return {
-    cleanup: () => {
-      epochSignal.removeEventListener("abort", abort);
-      requestSignal.removeEventListener("abort", abort);
-    },
-    signal: controller.signal,
-  };
 }

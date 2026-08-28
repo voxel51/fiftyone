@@ -328,7 +328,7 @@ function timingProfileOf(timesNs: readonly bigint[]): StateActionTimingProfile {
 }
 
 /** Flattens nested stored values in row-major source order. */
-export function flattenStateActionValues(value: unknown): readonly unknown[] {
+function flattenStateActionValues(value: unknown): readonly unknown[] {
   if (Array.isArray(value)) {
     return value.flatMap((entry) => flattenStateActionValues(entry));
   }

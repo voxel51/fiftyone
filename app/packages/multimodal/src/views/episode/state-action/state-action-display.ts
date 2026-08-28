@@ -12,6 +12,7 @@ export type StateActionValueMode = "raw" | "zscore" | "quantile";
 /** Shared across State & Action tiles: one inspection mode per modal. */
 export const stateActionValueModeAtom = atom<StateActionValueMode>("raw");
 
+/** Selectable value-display modes and their UI labels. */
 export const STATE_ACTION_VALUE_MODES: readonly {
   readonly label: string;
   readonly value: StateActionValueMode;
@@ -27,6 +28,7 @@ export const STATE_ACTION_VALUE_MODES: readonly {
  */
 export type StateActionStatsScope = "both" | "dataset" | "episode";
 
+/** Selectable statistics scopes and their UI labels. */
 export const STATE_ACTION_STATS_SCOPES: readonly {
   readonly label: string;
   readonly value: StateActionStatsScope;
@@ -73,6 +75,7 @@ export const stateActionStatsScopeAtom = atom(
  */
 export type StateActionMarkerScope = "dataset" | "episode";
 
+/** Selectable marker-range scopes and their UI labels. */
 export const STATE_ACTION_MARKER_SCOPES: readonly {
   readonly label: string;
   readonly value: StateActionMarkerScope;

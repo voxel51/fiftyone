@@ -19,7 +19,9 @@ import {
   createDemandFailureBackoff,
   createDemandInventoryMachine,
   createNumericSeriesTileCache,
+  DEMAND_DEFERRED_RETRY_MS,
   DEMAND_FAILURE_BACKOFF_MS,
+  DEMAND_TIMELINE_RETRY_MS,
   flattenSeriesSegments,
   FULL_NUMERIC_SERIES_COVERAGE,
   nearestNumericSeriesRange,
@@ -71,13 +73,6 @@ const PLAYHEAD_FILL_THROTTLE_MS = 500;
 
 /** Coalesces a short burst of plot-field toggles into one stream scan. */
 const FIELD_SELECTION_DEBOUNCE_MS = 250;
-
-/** Starved-link stand-down retry, matching the pose-trajectory gate. */
-const DEFERRED_RETRY_MS = 2_000;
-
-/** The timeline index lands moments after stream registration; wait for
- * it instead of falling back to an unbounded scan. */
-const TIMELINE_RETRY_MS = 250;
 
 /** Prevents a long continuation chain from monopolizing one demand epoch. */
 const MAX_NUMERIC_SLICE_PAGES_PER_EPOCH = 8;
@@ -598,7 +593,7 @@ export function NumericSeriesBridge({
     >({
       dataStreamRef,
       demandDebounceMs: FIELD_SELECTION_DEBOUNCE_MS,
-      deferredRetryMs: DEFERRED_RETRY_MS,
+      deferredRetryMs: DEMAND_DEFERRED_RETRY_MS,
       handlersRef,
       inventoryReplay,
       makeHandlers: ({ isCancelled, queueFill }) => {
@@ -1068,7 +1063,7 @@ export function NumericSeriesBridge({
       refCountsRef,
       requireTimeline: Boolean(playbackStore),
       shouldDeferIdleWork: (store) => shouldDeferIdleWorkForStore(store, null),
-      timelineRetryMs: TIMELINE_RETRY_MS,
+      timelineRetryMs: DEMAND_TIMELINE_RETRY_MS,
     });
 
     return () => {

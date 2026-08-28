@@ -103,6 +103,8 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
   );
   useRegisterTileSettings(tileId, settingsRegistration);
 
+  // This effect restores the automatic title if a persisted layout carried a
+  // stale generated title from an earlier tile registration.
   useEffect(() => {
     setTileTitle("State & Action", { source: "auto" });
   }, [setTileTitle]);
@@ -699,12 +701,13 @@ function FeaturePane({
                       <button
                         aria-label={`Plot ${paneRow.name}`}
                         className={styles.plotButton}
-                        onClick={() =>
-                          onPlotField(
-                            schema.numericStreamId as string,
-                            paneRow.plotFieldPath as string,
-                          )
-                        }
+                        onClick={() => {
+                          const stream = schema.numericStreamId;
+                          const fieldPath = paneRow.plotFieldPath;
+                          if (stream && fieldPath) {
+                            onPlotField(stream, fieldPath);
+                          }
+                        }}
                         onPointerDown={(event) => event.stopPropagation()}
                         title={`Plot ${paneRow.name} over the episode`}
                         type="button"

@@ -23,28 +23,30 @@ type VideoWithFrameCallbacks = HTMLVideoElement & {
 // One millisecond accepts that representation loss while remaining far below
 // one 15fps DROID frame, so an adjacent episode frame is never admitted.
 const START_TIME_EPSILON_SECONDS = 0.001;
+const POSTER_RETRY_INTERVAL_MS = 100;
+const POSTER_RETRY_LIMIT = 50;
 
 interface LeRobotGridHoverVideoProps {
-  readonly active?: boolean;
-  readonly capturePoster?: boolean;
-  readonly onCanvasCommitted?: (
+  readonly active: boolean;
+  readonly capturePoster: boolean;
+  readonly onCanvasCommitted: (
     canvas: HTMLCanvasElement,
     size: BitmapDrawSize,
   ) => void;
-  readonly onError?: (error: Error) => void;
-  readonly onSurfaceRetainedBytesChange?: (bytes: number) => void;
-  readonly playing?: boolean;
+  readonly onError: (error: Error) => void;
+  readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
+  readonly playing: boolean;
   readonly video: EpisodePreviewNativeVideo;
 }
 
 /** Native MP4 grid surface constrained to one LeRobot episode interval. */
 export function LeRobotGridHoverVideo({
-  active = true,
-  capturePoster = false,
+  active,
+  capturePoster,
   onCanvasCommitted,
   onError,
   onSurfaceRetainedBytesChange,
-  playing = true,
+  playing,
   video,
 }: LeRobotGridHoverVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -57,13 +59,15 @@ export function LeRobotGridHoverVideo({
   const sourceUrl = getFetchUrl(video.source.url);
   const wantsMedia = active && (playing || (capturePoster && !posterReady));
 
+  // This effect owns one native decoder lease and its complete media-element
+  // lifecycle for the selected episode interval.
   useEffect(() => {
     if (!wantsMedia) return undefined;
     const element = videoRef.current as VideoWithFrameCallbacks | null;
     const poster = posterRef.current;
     if (!element || !poster) return undefined;
     if (codec === "av1" && !supportsNativeCodec(element, codecString)) {
-      onError?.(new Error("AV1 video playback is unsupported by this browser"));
+      onError(new Error("AV1 video playback is unsupported by this browser"));
       return undefined;
     }
 
@@ -137,8 +141,8 @@ export function LeRobotGridHoverVideo({
       context.drawImage(element, 0, 0, width, height);
       posterCaptured = true;
       poster.style.visibility = playing ? "hidden" : "visible";
-      onSurfaceRetainedBytesChange?.(width * height * 4);
-      onCanvasCommitted?.(poster, { height, width });
+      onSurfaceRetainedBytesChange(width * height * 4);
+      onCanvasCommitted(poster, { height, width });
       posterReadyRef.current = true;
       setPosterReady(true);
       if (!playing) requestRef.current?.release();
@@ -148,7 +152,7 @@ export function LeRobotGridHoverVideo({
       if (disposed || playing || posterCaptured || posterRetryTimer !== null) {
         return;
       }
-      if (posterRetryCount >= 50) {
+      if (posterRetryCount >= POSTER_RETRY_LIMIT) {
         fail(new Error("Timed out waiting for a native video poster frame"));
         return;
       }
@@ -162,7 +166,7 @@ export function LeRobotGridHoverVideo({
         } catch (error) {
           fail(error);
         }
-      }, 100);
+      }, POSTER_RETRY_INTERVAL_MS);
     };
     const presentFallbackFrame = () => {
       if (
@@ -198,7 +202,7 @@ export function LeRobotGridHoverVideo({
       cancelPendingFrame();
       element?.pause();
       requestRef.current?.release();
-      onError?.(error instanceof Error ? error : new Error(String(error)));
+      onError(error instanceof Error ? error : new Error(String(error)));
     }
 
     function onPresentedFrame(
@@ -289,6 +293,8 @@ export function LeRobotGridHoverVideo({
     wantsMedia,
   ]);
 
+  // This effect releases the captured poster surface when the grid cell is no
+  // longer visible, even if the component remains mounted by virtualization.
   useEffect(() => {
     if (active) return;
     const poster = posterRef.current;
@@ -299,9 +305,10 @@ export function LeRobotGridHoverVideo({
     }
     posterReadyRef.current = false;
     setPosterReady(false);
-    onSurfaceRetainedBytesChange?.(0);
+    onSurfaceRetainedBytesChange(0);
   }, [active, onSurfaceRetainedBytesChange]);
 
+  // This effect clears retained poster memory and accounting on unmount.
   useEffect(
     () => () => {
       const poster = posterRef.current;
@@ -309,7 +316,7 @@ export function LeRobotGridHoverVideo({
         poster.width = 0;
         poster.height = 0;
       }
-      onSurfaceRetainedBytesChange?.(0);
+      onSurfaceRetainedBytesChange(0);
     },
     [onSurfaceRetainedBytesChange],
   );

@@ -76,8 +76,10 @@ import {
 } from "../../ports/playback-policy";
 import { throwIfAborted } from "../../utils/cancellation";
 import {
-  maxBigInt as maxOfBigInts,
-  minBigInt as minOfBigInts,
+  maxBigInt,
+  maxBigIntPair,
+  minBigInt,
+  minBigIntPair,
 } from "../../utils/bigint";
 import { nsDeltaToSeconds } from "../../utils/nanoseconds";
 
@@ -329,7 +331,7 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
       1 / (selected.approxRateHz ?? this.session.info.fps),
     );
     const readDurationNs = request.decodeLookaheadNs
-      ? maxOfBigInts([
+      ? maxBigInt([
           frameDurationNs,
           request.decodeLookaheadNs + frameDurationNs,
         ])
@@ -341,7 +343,10 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
         signal: options.signal,
         streams: [selected.id],
         window: {
-          endNs: minBigInt(selected.timeRange.endNs, startNs + readDurationNs),
+          endNs: minBigIntPair(
+            selected.timeRange.endNs,
+            startNs + readDurationNs,
+          ),
           startNs,
         },
       })) {
@@ -824,8 +829,8 @@ class LeRobotEpisodeSession implements EpisodeSession {
             signal: options.signal,
             streams: [stream],
             window: {
-              endNs: maxOfBigInts(windows.map((window) => window.endNs)),
-              startNs: minOfBigInts(windows.map((window) => window.startNs)),
+              endNs: maxBigInt(windows.map((window) => window.endNs)),
+              startNs: minBigInt(windows.map((window) => window.startNs)),
             },
           })) {
             streamBatches.push(batch);
@@ -2345,7 +2350,10 @@ function episodeTimeRange(
       ? Math.max(end, selector.toTimestamp - selector.fromTimestamp)
       : end;
   }, 0);
-  return { endNs: maxBigInt(rowEnd, secondsToNs(videoEnd)), startNs: 0n };
+  return {
+    endNs: maxBigIntPair(rowEnd, secondsToNs(videoEnd)),
+    startNs: 0n,
+  };
 }
 
 function requireSingleRole(
@@ -2723,14 +2731,6 @@ function exactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   ) as ArrayBuffer;
 }
 
-function maxBigInt(left: bigint, right: bigint) {
-  return left > right ? left : right;
-}
-
-function minBigInt(left: bigint, right: bigint) {
-  return left < right ? left : right;
-}
-
 function rawCursor(rowOffset: number) {
   return `row:${rowOffset}`;
 }
@@ -2857,8 +2857,11 @@ function createStateActionAggregator(
   const declaredBound = (index: number) => {
     const low = declared?.min?.[index];
     const high = declared?.max?.[index];
-    return Number.isFinite(low) && Number.isFinite(high)
-      ? { high: high as number, low: low as number }
+    return typeof low === "number" &&
+      Number.isFinite(low) &&
+      typeof high === "number" &&
+      Number.isFinite(high)
+      ? { high, low }
       : null;
   };
   const bounds = Array.from({ length: dimensionCount }, (_, index) =>

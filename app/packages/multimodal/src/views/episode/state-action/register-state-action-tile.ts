@@ -6,7 +6,7 @@ import {
 import StateActionTile from "./StateActionTile";
 
 /** Namespaced tile id persisted layouts reference for this extension. */
-export const STATE_ACTION_TILE_ID = "lerobot:state-action";
+const STATE_ACTION_TILE_ID = "lerobot:state-action";
 
 // Module side effect of the lazy LeRobot client chunk: the chunk loads
 // before the adapter can open a session, and the tile only becomes

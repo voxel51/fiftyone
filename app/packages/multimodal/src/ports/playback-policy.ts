@@ -15,6 +15,7 @@ export const DEFAULT_EPISODE_SYNC_TOLERANCE_NS = 50_000_000n;
 
 const DEFAULT_STREAM_SYNC_LIMIT = 1;
 
+/** Read bounds and per-stream policies resolved for one playhead target. */
 export interface ResolvedPlaybackWindow {
   readonly endNs: bigint;
   readonly startNs: bigint;
@@ -22,6 +23,7 @@ export interface ResolvedPlaybackWindow {
   readonly timeNs: bigint;
 }
 
+/** Format-neutral request used to derive a synchronized playback window. */
 export interface PlaybackWindowRequest {
   readonly defaultStreamPolicy?: StreamSyncPolicy;
   readonly streamPolicies?: StreamSyncPolicies;
@@ -29,6 +31,7 @@ export interface PlaybackWindowRequest {
   readonly timeNs: bigint;
 }
 
+/** Places requested priority streams first without duplicating stream ids. */
 export function prioritizedStreams(
   streams: readonly string[],
   priorityStreams: readonly string[] | undefined,
@@ -42,6 +45,7 @@ export function prioritizedStreams(
   return [...priority, ...streams.filter((stream) => !prioritized.has(stream))];
 }
 
+/** Resolves one read window from manifest bounds and stream sync policies. */
 export function resolvePlaybackWindow(
   manifestStartNs: bigint,
   streamsById: ReadonlyMap<string, StreamDescriptor>,
@@ -81,6 +85,7 @@ export function resolvePlaybackWindow(
   };
 }
 
+/** Selects and orders the frames that satisfy a resolved playback window. */
 export function selectPlaybackWindow(
   candidatesByStream: ReadonlyMap<string, readonly DecodedFrame[]>,
   streams: readonly string[],
@@ -109,6 +114,7 @@ export function selectPlaybackWindow(
   };
 }
 
+/** Reads manifest time bounds for the requested streams in request order. */
 export function streamTimeBoundsFromManifest(
   manifest: EpisodeManifest,
   streams: readonly string[],
@@ -124,6 +130,7 @@ export function streamTimeBoundsFromManifest(
   });
 }
 
+/** Resolves an explicit or manifest-derived read start for one stream. */
 export function readStartForPolicy(
   manifestStartNs: bigint,
   streamsById: ReadonlyMap<string, StreamDescriptor>,
@@ -134,6 +141,7 @@ export function readStartForPolicy(
   return streamsById.get(streamId)?.timeRange.startNs ?? manifestStartNs;
 }
 
+/** Creates a synchronized window with no selected frames. */
 export function emptyPlaybackWindow(timeNs: bigint): SynchronizedFrameWindow {
   return {
     endNs: timeNs,

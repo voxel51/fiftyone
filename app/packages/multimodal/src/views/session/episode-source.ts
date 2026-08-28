@@ -316,10 +316,12 @@ function normalizeAssetSelector(selector: unknown): AssetSelectorDescriptor {
       if (
         (value.coordinate_system !== "parquet-file-row" &&
           value.coordinate_system !== "lerobot-v3-global-dataset-row") ||
+        typeof value.start !== "number" ||
         !Number.isSafeInteger(value.start) ||
+        typeof value.end !== "number" ||
         !Number.isSafeInteger(value.end) ||
-        (value.start as number) < 0 ||
-        (value.start as number) >= (value.end as number)
+        value.start < 0 ||
+        value.start >= value.end
       ) {
         throw new Error(
           "Episode manifest contains an unsupported row selector",
@@ -327,9 +329,9 @@ function normalizeAssetSelector(selector: unknown): AssetSelectorDescriptor {
       }
       return {
         coordinateSystem: value.coordinate_system,
-        end: value.end as number,
+        end: value.end,
         kind: value.kind,
-        start: value.start as number,
+        start: value.start,
       };
     case "video-timestamp-interval":
       if (

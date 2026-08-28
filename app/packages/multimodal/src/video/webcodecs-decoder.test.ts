@@ -10,19 +10,18 @@ import { VideoDecoderFailureError, VideoIntentCancelledError } from "./types";
 import {
   MAX_VIDEO_DECODE_IN_FLIGHT,
   VIDEO_DECODE_PROGRESS_TIMEOUT_MS,
-  WebCodecsH264Decoder,
   WebCodecsVideoDecoder,
   type WebCodecsDecoderEnvironment,
 } from "./webcodecs-decoder";
 
-describe("WebCodecsH264Decoder", () => {
+describe("WebCodecsVideoDecoder", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
   it("decodes a slow 1,024-frame GOP with bounded submission and no reset storm", async () => {
     const harness = fakeWebCodecs();
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const units = Array.from({ length: 1_025 }, (_, index) =>
       unit(index, index === 0),
     );
@@ -46,7 +45,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("reconfigures only at a keyframe configuration epoch", async () => {
     const harness = fakeWebCodecs();
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     await actor.decode([unit(0, true, "avc1.4D001F")], {
       signal: new AbortController().signal,
       targetTimeNs: 0n,
@@ -71,7 +70,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("splits one runway before an in-batch codec configuration boundary", async () => {
     const harness = fakeWebCodecs();
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const output = await actor.decode(
       [unit(0, true, "avc1.4D001F"), unit(1), unit(2, true, "avc1.640028")],
       {
@@ -93,7 +92,7 @@ describe("WebCodecsH264Decoder", () => {
   it("treats supersession as cancellation without resetting the decoder", async () => {
     const outputGate = deferred<void>();
     const harness = fakeWebCodecs({ outputGate: outputGate.promise });
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const controller = new AbortController();
     const decode = actor.decode(
       [
@@ -120,7 +119,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("uses unique submission timestamps without losing nanosecond cursor time", async () => {
     const harness = fakeWebCodecs();
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const output = await actor.decode([unit(1_000, true), unit(1_999)], {
       signal: new AbortController().signal,
       targetTimeNs: 1_999n,
@@ -137,7 +136,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("submits B-frames in decode order while preserving presentation timestamps", async () => {
     const harness = fakeWebCodecs();
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const output = await actor.decode(
       [
         unit(0, true, "avc1.4D001F", 0),
@@ -162,7 +161,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("reuses a decoded future B-frame without flushing or resubmitting it", async () => {
     const harness = fakeWebCodecs();
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const keyframe = unit(0, true, "avc1.4D001F", 0);
     const futurePresentation = unit(2_000_000, false, undefined, 1_000_000);
     const target = unit(1_000_000, false, undefined, 2_000_000);
@@ -189,7 +188,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("feeds reorder successors before awaiting an opening keyframe", async () => {
     const harness = fakeWebCodecs({ holdOutputsUntilSubmissions: 2 });
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const output = await actor.decode(
       [
         unit(0, true, "avc1.4D001F", 0),
@@ -212,7 +211,7 @@ describe("WebCodecsH264Decoder", () => {
     const harness = fakeWebCodecs({
       holdOutputsUntilSubmissions: retainedOutputs,
     });
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const units = Array.from({ length: retainedOutputs }, (_, index) =>
       unit(index, index === 0, undefined, index),
     );
@@ -232,7 +231,7 @@ describe("WebCodecsH264Decoder", () => {
   it("fails stalled B-frame progress at the transaction boundary", async () => {
     vi.useFakeTimers();
     const harness = fakeWebCodecs({ shouldOutput: () => false });
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const decode = actor.decode([unit(0, true, undefined, 0)], {
       signal: new AbortController().signal,
       targetTimeNs: 0n,
@@ -250,7 +249,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("rejects insecure contexts with a typed decoder failure", async () => {
     const harness = fakeWebCodecs({ isSecureContext: false });
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
 
     await expect(
       actor.decode([unit(0, true)], {
@@ -264,7 +263,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("reports unsupported codec configuration with the codec string", async () => {
     const harness = fakeWebCodecs({ supported: false });
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
 
     await expect(
       actor.decode([unit(0, true, "avc1.640028")], {
@@ -280,7 +279,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("still closes a decoder whose reset throws", async () => {
     const harness = fakeWebCodecs();
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const output = await actor.decode([unit(0, true)], {
       signal: new AbortController().signal,
       targetTimeNs: 0n,
@@ -297,7 +296,7 @@ describe("WebCodecsH264Decoder", () => {
 
   it("closes explicit source ownership without an unnecessary reset", async () => {
     const harness = fakeWebCodecs();
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const output = await actor.decode([unit(0, true)], {
       signal: new AbortController().signal,
       targetTimeNs: 0n,
@@ -314,7 +313,7 @@ describe("WebCodecsH264Decoder", () => {
     const harness = fakeWebCodecs({
       shouldOutput: (submission) => submission === 0,
     });
-    const actor = new WebCodecsH264Decoder(harness.environment);
+    const actor = new WebCodecsVideoDecoder(harness.environment);
     const decode = actor.decode([unit(0, true), unit(1)], {
       signal: new AbortController().signal,
       targetTimeNs: 0n,

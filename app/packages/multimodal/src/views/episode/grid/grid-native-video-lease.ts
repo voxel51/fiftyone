@@ -1,8 +1,9 @@
 /** Bounds browser-native video decoders retained by episode grid cells. */
 export const GRID_NATIVE_VIDEO_CAP = 2;
 
-export type GridNativeVideoPriority = "playing" | "poster";
+type GridNativeVideoPriority = "playing" | "poster";
 
+/** Handle for one pending or active native-video decoder lease. */
 export interface GridNativeVideoLeaseRequest {
   release(): void;
 }
@@ -61,6 +62,7 @@ export function requestGridNativeVideoLease(
   return record.request;
 }
 
+/** Current scheduler counts exposed to the focused lease tests. */
 export function gridNativeVideoLeaseStats() {
   return {
     active: active.size,

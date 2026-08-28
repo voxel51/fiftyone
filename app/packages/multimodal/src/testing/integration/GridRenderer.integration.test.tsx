@@ -22,7 +22,7 @@ import {
   gridPosterCacheKey,
   resetGridPosterCacheForTests,
 } from "../../views/episode/grid/grid-poster-cache";
-import { H264_REORDERED_DECODE_LOOKAHEAD_NS } from "../../video/stream-engine";
+import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../video/stream-engine";
 
 const harness = vi.hoisted(() => ({
   byteSource: {
@@ -136,7 +136,7 @@ describe("fixture adapter through the production grid renderer", () => {
       expect(screen.getByTestId("fixture-grid-image")).toBeTruthy();
     });
     expect(read).toHaveBeenCalledWith(
-      { decodeLookaheadNs: H264_REORDERED_DECODE_LOOKAHEAD_NS },
+      { decodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS },
       expect.objectContaining({ priority: "idle" }),
     );
   });
@@ -165,7 +165,7 @@ describe("fixture adapter through the production grid renderer", () => {
     fireEvent.pointerEnter(remounted.container.firstElementChild as Element);
     await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
     expect(read).toHaveBeenCalledWith(
-      { decodeLookaheadNs: H264_REORDERED_DECODE_LOOKAHEAD_NS },
+      { decodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS },
       expect.objectContaining({ priority: "current" }),
     );
     await act(async () => {
