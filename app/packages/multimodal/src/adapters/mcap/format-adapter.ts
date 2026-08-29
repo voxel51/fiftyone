@@ -426,11 +426,11 @@ export function createMcapNumericSeriesCapability({
           absoluteBudget: request.absoluteBudget,
           absoluteMaxChunks: request.absoluteMaxChunks,
           activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          bucketDurationNs: request.bucketDurationNs,
           budget: request.budget,
           continuation: request.continuation,
           endTimeNs: request.window.endNs,
           maxChunks: request.maxChunks,
-          maxPointsPerField: request.maxPointsPerField,
           preferredTimeNs: request.preferredTimeNs,
           selections: request.selections.map((selection) => ({
             fieldPaths: selection.fields,
@@ -443,6 +443,9 @@ export function createMcapNumericSeriesCapability({
       );
       return {
         ...(result.continuation ? { continuation: result.continuation } : {}),
+        ...(result.resumeAtNs !== undefined
+          ? { resumeAtNs: result.resumeAtNs }
+          : {}),
         coverageByStream: new Map(
           [...result.coverageByTopic].map(([topic, windows]) => [
             streamsByTopic.get(topic) ?? topic,

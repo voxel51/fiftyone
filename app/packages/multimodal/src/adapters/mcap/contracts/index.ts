@@ -378,6 +378,8 @@ export interface McapReadNumericSeriesRequest {
  * render gaps.
  */
 export interface McapNumericSeriesField {
+  /** Exact absolute bucket identity for aligned bounded-read summaries. */
+  readonly bucketIndexes?: BigInt64Array;
   /** Per-decimation-bucket discontinuity bits, when decimation was applied. */
   readonly bucketGapMask?: Uint8Array;
   readonly path: string;
@@ -422,11 +424,12 @@ export interface McapReadNumericSeriesSliceRequest {
   readonly absoluteBudget: ReadWorkBudget;
   readonly absoluteMaxChunks: number;
   readonly activeTimeline?: McapActiveTimeline;
+  /** Absolute-time-aligned aggregate resolution requested by the viewport. */
+  readonly bucketDurationNs: bigint;
   readonly budget: ReadWorkBudget;
   readonly continuation?: ReadContinuation;
   readonly endTimeNs: bigint;
   readonly maxChunks: number;
-  readonly maxPointsPerField?: number;
   readonly preferredTimeNs?: bigint;
   readonly selections: readonly McapNumericSeriesSelection[];
   readonly source: ByteSourceDescriptor;
@@ -445,6 +448,8 @@ export interface McapNumericSeriesSliceResult {
   readonly baseTimeNs: bigint;
   readonly continuation?: ReadContinuation;
   readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
+  /** Earliest timestamp not yet inspected by a chronological continuation. */
+  readonly resumeAtNs?: bigint;
   /** Exact source spans omitted because one atomic unit exceeded the hard ceiling. */
   readonly skippedByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
   readonly series: readonly McapNumericTopicSeries[];

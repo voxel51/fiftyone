@@ -15,6 +15,8 @@ import {
 } from "react";
 import {
   addCoveredRange,
+  completeNumericSeriesPrefix,
+  contiguousNumericSeriesPrefix,
   coveredNumericSeriesSeconds,
   createDemandFailureBackoff,
   createDemandInventoryMachine,
@@ -39,7 +41,6 @@ import {
   type NumericSeriesTileCache,
   type TimelineIndex,
 } from "../../../runtime";
-import { NUMERIC_SERIES_MAX_BUCKET_SURVIVORS } from "../../../ports";
 import {
   createDemandContextProvider,
   useResetDemandContextOnUnmount,
@@ -53,6 +54,10 @@ import type {
   ReadWorkBudget,
 } from "../../../ports";
 import { errorMessage } from "../../../utils/errors";
+import {
+  aggregateAlignedNumericSeries,
+  ALIGNED_NUMERIC_BUCKET_MAX_POINTS,
+} from "../../../utils/numeric-series-buckets";
 import { useDataStream } from "../playback/data-stream-context";
 import { shouldDeferIdleWorkForStore } from "../playback/network-health";
 
@@ -83,6 +88,7 @@ const TIMELINE_RETRY_MS = 250;
 const MAX_NUMERIC_SLICE_PAGES_PER_EPOCH = 8;
 const NUMERIC_TILE_CACHE_MAX_BYTES = 64 * 1024 * 1024;
 const NUMERIC_TILE_CACHE_MAX_TILES = 2_048;
+const MAX_NUMERIC_REPRESENTATIVE_POINTS = 10_000;
 
 const MIB = 1024 * 1024;
 
@@ -183,7 +189,6 @@ interface NumericSliceJob {
   readonly continuation?: ReadContinuation;
   readonly horizon: NsRange;
   readonly horizonKey: string;
-  readonly maxPointsPerField: number;
   readonly notBeforeMs?: number;
   readonly pageCount: number;
   readonly preferredTimeNs: bigint;
@@ -384,6 +389,7 @@ export function NumericSeriesBridge({
     let tileCache: NumericSeriesTileCache | undefined;
     let tileOriginNs: bigint | undefined;
     const published = publication.valuesByKey;
+    const publishedHorizonKeys = new Map<string, string>();
     const setPublished = (key: string, state: NumericSeriesState) => {
       published.set(key, state);
       publicationEpoch.set(key, state);
@@ -424,6 +430,7 @@ export function NumericSeriesBridge({
       readonly baseTimeNs: bigint;
       readonly bucketDurationNs: bigint;
       readonly fields: readonly {
+        readonly bucketIndexes?: BigInt64Array;
         readonly path: string;
         readonly timesSec: Float64Array;
         readonly values: Float64Array;
@@ -453,6 +460,9 @@ export function NumericSeriesBridge({
             );
             cache.put({
               bucketDurationNs,
+              ...(sliced.bucketIndexes
+                ? { bucketIndexes: sliced.bucketIndexes }
+                : {}),
               coverageRanges: [missingRange],
               range: missingRange,
               seriesKey: key,
@@ -534,7 +544,8 @@ export function NumericSeriesBridge({
       bucketDurationNs: bigint,
     ) => {
       const cache = tileCache;
-      if (!cache) return;
+      if (!cache || tileOriginNs === undefined) return;
+      const horizonKey = `${horizon.startNs}:${horizon.endNs}:${bucketDurationNs}`;
       const targetSeconds = numericSeriesRangeDurationSeconds(horizon);
       for (const selection of selections) {
         for (const field of selection.fields) {
@@ -544,27 +555,60 @@ export function NumericSeriesBridge({
             range: horizon,
             seriesKey: key,
           });
+          const prefix = completeNumericSeriesPrefix(
+            horizon,
+            contiguousNumericSeriesPrefix(horizon, [
+              ...assembled.coverageRanges,
+              ...assembled.unavailableRanges,
+            ]),
+            bucketDurationNs,
+          );
+          if (!prefix) continue;
+          const publishedHorizonKey = publishedHorizonKeys.get(key);
+          if (
+            published.get(key)?.status === "ready" &&
+            publishedHorizonKey !== undefined &&
+            publishedHorizonKey !== horizonKey &&
+            prefix.endNs < horizon.endNs
+          ) {
+            continue;
+          }
+          const visible = cache.assembleVisible({
+            bucketDurationNs,
+            range: prefix,
+            seriesKey: key,
+          });
           const flat = flattenSeriesSegments(
-            assembled.parts.map((part) => ({
+            visible.parts.map((part) => ({
+              bucketIndexes: part.bucketIndexes,
               endNs: part.range.endNs,
               startNs: part.range.startNs,
               timesSec: part.timesSec,
               values: part.values,
             })),
+            visible.unavailableRanges,
+          );
+          const aggregated = aggregateAlignedNumericSeries(
+            flat.timesSec,
+            flat.values,
+            tileOriginNs,
+            bucketDurationNs,
+            flat.bucketIndexes,
           );
           setPublished(key, {
-            coverage: assembled.coverageRanges,
+            coverage: visible.coverageRanges,
             coverageSeconds: coveredNumericSeriesSeconds(
-              assembled.coverageRanges,
+              visible.coverageRanges,
               horizon,
             ),
             status: "ready",
             targetSeconds,
-            timesSec: flat.timesSec,
+            timesSec: aggregated.timesSec,
             truncated: truncatedKeys.has(key) || undefined,
-            unavailable: assembled.unavailableRanges,
-            values: flat.values,
+            unavailable: visible.unavailableRanges,
+            values: aggregated.values,
           });
+          publishedHorizonKeys.set(key, horizonKey);
         }
       }
     };
@@ -781,13 +825,9 @@ export function NumericSeriesBridge({
           window,
           maxPointsPerField,
         );
-        const rawPreferredTimeNs = timeline.secToNs(playheadSec);
-        const preferredTimeNs =
-          rawPreferredTimeNs < window.startNs
-            ? window.startNs
-            : rawPreferredTimeNs > window.endNs
-              ? window.endNs
-              : rawPreferredTimeNs;
+        // Chronological admission makes every publishable replacement a
+        // stable prefix that can extend only at its right edge.
+        const preferredTimeNs = window.startNs;
         const horizonKey = `${window.startNs}:${window.endNs}:${bucketDurationNs}`;
         const cache = cacheForOrigin(timeline.startTimeNs);
         syncPinnedCacheDemand(
@@ -874,7 +914,6 @@ export function NumericSeriesBridge({
             bucketDurationNs,
             horizon: window,
             horizonKey,
-            maxPointsPerField,
             pageCount: 0,
             preferredTimeNs,
             range,
@@ -894,6 +933,7 @@ export function NumericSeriesBridge({
           .readNumericSeriesSlice({
             absoluteBudget: ABSOLUTE_NUMERIC_SOURCE_UNIT_BUDGET,
             absoluteMaxChunks: ABSOLUTE_NUMERIC_SOURCE_UNIT_MAX_CHUNKS,
+            bucketDurationNs: sliceJob.bucketDurationNs,
             budget: isFirstPage
               ? FIRST_NUMERIC_SLICE_BUDGET
               : STEADY_NUMERIC_SLICE_BUDGET,
@@ -901,7 +941,6 @@ export function NumericSeriesBridge({
             maxChunks: isFirstPage
               ? FIRST_NUMERIC_SLICE_MAX_CHUNKS
               : STEADY_NUMERIC_SLICE_MAX_CHUNKS,
-            maxPointsPerField: sliceJob.maxPointsPerField,
             preferredTimeNs: sliceJob.preferredTimeNs,
             selections: sliceJob.selections,
             signal: controller.signal,
@@ -964,29 +1003,36 @@ export function NumericSeriesBridge({
                     0) > 0,
               });
             }
-            putKnownEmpty(
-              sliceJob.selections,
-              result.coverageByStream,
-              sliceJob.bucketDurationNs,
-              timeOriginNs,
-            );
             putUnavailable(
               sliceJob.selections,
               result.unavailableByStream ?? new Map(),
               sliceJob.bucketDurationNs,
               timeOriginNs,
             );
+            const inspectedThroughNs = result.continuation
+              ? result.resumeAtNs !== undefined
+                ? result.resumeAtNs - 1n
+                : undefined
+              : result.stopReason === "horizon-reached" ||
+                  result.stopReason === "oversized-source-unit" ||
+                  result.stopReason === "source-exhausted"
+                ? sliceJob.range.endNs
+                : undefined;
             if (
-              !result.continuation &&
-              (result.stopReason === "source-exhausted" ||
-                result.stopReason === "oversized-source-unit")
+              inspectedThroughNs !== undefined &&
+              inspectedThroughNs >= sliceJob.range.startNs
             ) {
               putKnownEmpty(
                 sliceJob.selections,
                 new Map(
                   sliceJob.selections.map((selection) => [
                     selection.stream,
-                    [sliceJob.range],
+                    [
+                      {
+                        endNs: inspectedThroughNs,
+                        startNs: sliceJob.range.startNs,
+                      },
+                    ],
                   ]),
                 ),
                 sliceJob.bucketDurationNs,
@@ -1140,9 +1186,17 @@ function numericSeriesDemandPointBudget(
   durationSec: number,
   viewports: Iterable<NumericSeriesViewportDemand>,
 ): number {
-  const pinned = smallestPinnedViewport(viewports);
-  if (!pinned) return numericSeriesWindowPointBudget(range, durationSec);
-  return Math.max(200, Math.min(4_000, Math.round(pinned.pixelWidth * 2)));
+  const viewportList = [...viewports];
+  const pinned = smallestPinnedViewport(viewportList);
+  const viewport = pinned ?? widestViewport(viewportList);
+  if (!viewport) return numericSeriesWindowPointBudget(range, durationSec);
+  return Math.max(
+    ALIGNED_NUMERIC_BUCKET_MAX_POINTS,
+    Math.min(
+      MAX_NUMERIC_REPRESENTATIVE_POINTS,
+      Math.round(viewport.pixelWidth) * ALIGNED_NUMERIC_BUCKET_MAX_POINTS,
+    ),
+  );
 }
 
 function numericSeriesBucketDurationNs(
@@ -1150,13 +1204,17 @@ function numericSeriesBucketDurationNs(
   maxPoints: number,
 ): bigint {
   const spanNs = range.endNs - range.startNs + 1n;
-  const buckets = BigInt(
-    Math.max(
-      1,
-      Math.floor((maxPoints - 2) / NUMERIC_SERIES_MAX_BUCKET_SURVIVORS),
+  const buckets = Math.max(
+    2,
+    Math.min(
+      Math.floor(
+        MAX_NUMERIC_REPRESENTATIVE_POINTS / ALIGNED_NUMERIC_BUCKET_MAX_POINTS,
+      ),
+      Math.floor(maxPoints / ALIGNED_NUMERIC_BUCKET_MAX_POINTS),
     ),
   );
-  return (spanNs + buckets - 1n) / buckets;
+  const intervals = BigInt(buckets - 1);
+  return (spanNs + intervals - 1n) / intervals;
 }
 
 function smallestPinnedViewport(
@@ -1168,6 +1226,16 @@ function smallestPinnedViewport(
       (left, right) =>
         left.endSec - left.startSec - (right.endSec - right.startSec),
     )[0];
+}
+
+function widestViewport(
+  viewports: Iterable<NumericSeriesViewportDemand>,
+): NumericSeriesViewportDemand | undefined {
+  let widest: NumericSeriesViewportDemand | undefined;
+  for (const viewport of viewports) {
+    if (!widest || viewport.pixelWidth > widest.pixelWidth) widest = viewport;
+  }
+  return widest;
 }
 
 function selectionsForNumericSeriesKeys(

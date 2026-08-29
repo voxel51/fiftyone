@@ -1221,6 +1221,7 @@ describe("MCAP format adapter", () => {
       const slice = await session.numericSeries?.readNumericSeriesSlice?.({
         absoluteBudget: budget,
         absoluteMaxChunks: 2,
+        bucketDurationNs: 1_000_000_000n,
         budget,
         maxChunks: 1,
         selections: [{ fields: ["exposure"], stream: "camera" }],
