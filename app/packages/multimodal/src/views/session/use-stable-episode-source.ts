@@ -10,6 +10,7 @@ import {
 } from "../../runtime/source-facts";
 import {
   episodeByteSourceFromContext,
+  episodeManifestSourceFromContext,
   episodeSourceFromByteSource,
 } from "./episode-source";
 
@@ -22,6 +23,7 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   const next = episodeByteSourceFromContext(ctx);
   const datasetId = ctx.dataset.datasetId;
   const mediaField = ctx.media?.field ?? null;
+  const mediaReference = ctx.media?.mediaReference;
   const sourceFactsScope = useMemo(
     () => ({
       cachePartition: OSS_SOURCE_FACTS_CACHE_PARTITION,
@@ -30,22 +32,41 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
     }),
     [datasetId, mediaField],
   );
-  const sourceKey = next ? episodeSourceAccessKey(next) : "";
+  const sourceKey = mediaReference
+    ? JSON.stringify([
+        "media-reference",
+        datasetId,
+        ctx.sample.sample._id,
+        mediaReference.kind,
+        mediaReference.key,
+      ])
+    : next
+      ? episodeSourceAccessKey(next)
+      : "";
   const ref = useRef<{
     readonly byteSource: ByteSourceDescriptor | null;
+    readonly episodeSource: EpisodeSource | null;
     readonly sourceKey: string;
   }>();
 
   if (!ref.current || ref.current.sourceKey !== sourceKey) {
-    ref.current = { byteSource: next, sourceKey };
+    ref.current = {
+      byteSource: next,
+      episodeSource: mediaReference
+        ? episodeManifestSourceFromContext(ctx)
+        : null,
+      sourceKey,
+    };
   }
   const byteSource = ref.current.byteSource;
+  const manifestSource = ref.current.episodeSource;
   const episodeSource = useMemo(
     () =>
-      byteSource
+      manifestSource ??
+      (byteSource
         ? episodeSourceFromByteSource(byteSource, sourceFactsScope)
-        : null,
-    [byteSource, sourceFactsScope],
+        : null),
+    [byteSource, manifestSource, sourceFactsScope],
   );
   return { byteSource, episodeSource, sourceFactsScope };
 }

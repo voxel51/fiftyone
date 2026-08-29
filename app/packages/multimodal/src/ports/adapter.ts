@@ -1,3 +1,5 @@
+import type { MediaReferenceDescriptor } from "@fiftyone/utilities";
+
 import type {
   ByteSourceDescriptor,
   EpisodeManifest,
@@ -42,10 +44,18 @@ export interface EpisodeSource {
   ): Promise<EpisodeSourceHints | null>;
 }
 
+export type { MediaReferenceDescriptor } from "@fiftyone/utilities";
+
+/** Multi-asset episode source discovered through a server manifest. */
+export interface ManifestEpisodeSource extends EpisodeSource {
+  readonly mediaReference: MediaReferenceDescriptor;
+}
+
 /** Lightweight sample facts available before a heavy adapter chunk loads. */
 export interface SampleDescriptor {
+  readonly mediaReference?: MediaReferenceDescriptor | null;
   readonly mediaType?: string;
-  readonly path?: string;
+  readonly path?: string | null;
 }
 
 /** Tiny lazy-registration record kept at the composition root. */

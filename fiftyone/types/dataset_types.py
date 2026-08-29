@@ -5,6 +5,7 @@ FiftyOne dataset types.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import eta.core.utils as etau
 
 
@@ -822,6 +823,20 @@ class FiftyOneDataset(Dataset):
         import fiftyone.utils.data as foud
 
         return foud.FiftyOneDatasetExporter
+
+
+class LeRobotDataset(Dataset):
+    """A LeRobotDataset v3 represented by logical episode samples."""
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.lerobot as foul
+
+        return foul.LeRobotDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.lerobot_export as foule
+
+        return foule.LeRobotDatasetExporter
 
 
 class LegacyFiftyOneDataset(Dataset):
