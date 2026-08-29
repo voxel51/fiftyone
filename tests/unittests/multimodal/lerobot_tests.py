@@ -17,24 +17,18 @@ import subprocess
 import sys
 import tempfile
 import unittest
-import uuid
 from unittest import mock
+import uuid
 
+from decorators import drop_datasets
 import pytest
 from starlette.applications import Starlette
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from decorators import drop_datasets
-
 import fiftyone as fo
 import fiftyone.core.media_assets as foma
 import fiftyone.multimodal.media as fomm
-import fiftyone.types as fot
-import fiftyone.utils.data as foud
-import fiftyone.utils.data.importers as foudi
-import fiftyone.utils.lerobot as foul
-import fiftyone.utils.lerobot_export as foule
 from fiftyone.multimodal.media import (
     InvalidMediaLocationError,
     LeRobotEpisode,
@@ -44,21 +38,26 @@ from fiftyone.multimodal.media import (
     StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
     UnsupportedLeRobotExportModeError,
-    UnsupportedMediaReferenceOperation,
     UnsupportedLeRobotVersionError,
+    UnsupportedMediaReferenceOperation,
 )
 from fiftyone.server import utils as fosu
 from fiftyone.server.routes.groups import _filter_dict_by_fields
 from fiftyone.server.routes.media_reference import MediaReferenceRoutes
 from fiftyone.server.routes.sample import SampleRoutes, generate_sample_etag
 from fiftyone.server.samples import _create_sample_item
+import fiftyone.types as fot
+import fiftyone.utils.data as foud
+import fiftyone.utils.data.importers as foudi
+import fiftyone.utils.lerobot as foul
 from fiftyone.utils.lerobot import (
+    LeRobotDatasetImporter,
     _LeRobotMediaResolver,
     bind_lerobot_source,
-    LeRobotDatasetImporter,
     relocate_lerobot_source,
     unbind_lerobot_source,
 )
+import fiftyone.utils.lerobot_export as foule
 
 pa = pytest.importorskip("pyarrow")
 papq = pytest.importorskip("pyarrow.parquet")
@@ -228,7 +227,7 @@ class LeRobotImporterTests(unittest.TestCase):
             ), self.assertRaises(UnsupportedLeRobotVersionError):
                 _import(root, name="source-format-before-reference")
 
-            self.assertFalse(
+            self.assertTrue(
                 fo.dataset_exists("source-format-before-reference")
             )
 
@@ -340,7 +339,7 @@ class LeRobotImporterTests(unittest.TestCase):
                 )
 
     @drop_datasets
-    def test_atomic_version_and_structure_rejection(self):
+    def test_version_and_structure_rejection(self):
         cases = [
             ("v2.1", UnsupportedLeRobotVersionError),
             ("v4.0", UnsupportedLeRobotVersionError),
@@ -354,13 +353,13 @@ class LeRobotImporterTests(unittest.TestCase):
                 name = "invalid-version-%d" % index
                 with self.assertRaises(error_type):
                     _import(root, name=name)
-                self.assertFalse(fo.dataset_exists(name))
+                self.assertTrue(fo.dataset_exists(name))
 
         with tempfile.TemporaryDirectory() as root:
             name = "missing-info"
             with self.assertRaises(MalformedMediaSourceError):
                 _import(root, name=name)
-            self.assertFalse(fo.dataset_exists(name))
+            self.assertTrue(fo.dataset_exists(name))
 
         with tempfile.TemporaryDirectory() as root:
             info_path = os.path.join(root, "meta", "info.json")
@@ -370,7 +369,7 @@ class LeRobotImporterTests(unittest.TestCase):
             name = "malformed-info"
             with self.assertRaises(MalformedMediaSourceError):
                 _import(root, name=name)
-            self.assertFalse(fo.dataset_exists(name))
+            self.assertTrue(fo.dataset_exists(name))
 
     def test_path_templates_reject_field_traversal(self):
         templates = (
@@ -542,7 +541,7 @@ class LeRobotImporterTests(unittest.TestCase):
                 UnfinalizedMediaSourceError, "finalize or repair"
             ):
                 _import(root, name=name)
-            self.assertFalse(fo.dataset_exists(name))
+            self.assertTrue(fo.dataset_exists(name))
 
     @drop_datasets
     def test_typed_missing_and_moved_binding_errors(self):
@@ -897,7 +896,7 @@ class LeRobotExporterTests(unittest.TestCase):
             self.assertNotIn("q50", aggregate)
 
     @drop_datasets
-    def test_export_modes_and_preflight_are_atomic(self):
+    def test_export_modes_and_partial_failures(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = os.path.join(temp_dir, "source")
             _write_v3_source(root, episodes=2)
@@ -910,29 +909,27 @@ class LeRobotExporterTests(unittest.TestCase):
             )
             info_path = os.path.join(valid_destination, "meta", "info.json")
 
-            late_destination = os.path.join(temp_dir, "late-existing")
-            late_marker = os.path.join(late_destination, "preserve.txt")
-            write_lerobot_export = foule._write_lerobot_export
+            failed_destination = os.path.join(temp_dir, "failed")
+            failed_marker = os.path.join(failed_destination, "partial.txt")
 
-            def write_then_populate_destination(staging_dir, specs):
-                write_lerobot_export(staging_dir, specs)
-                os.makedirs(late_destination)
-                with open(late_marker, "w") as file:
-                    file.write("preserve me")
+            def write_then_fail(export_dir, specs):
+                os.makedirs(export_dir, exist_ok=True)
+                with open(failed_marker, "w") as file:
+                    file.write("partial export")
+                raise RuntimeError("export failed")
 
             with mock.patch.object(
                 foule,
                 "_write_lerobot_export",
-                side_effect=write_then_populate_destination,
-            ), self.assertRaises(FileExistsError):
+                side_effect=write_then_fail,
+            ), self.assertRaisesRegex(RuntimeError, "export failed"):
                 dataset.export(
-                    export_dir=late_destination,
+                    export_dir=failed_destination,
                     dataset_type=fot.LeRobotDataset,
                 )
 
-            with open(late_marker) as file:
-                self.assertEqual(file.read(), "preserve me")
-            self.assertEqual(os.listdir(late_destination), ["preserve.txt"])
+            with open(failed_marker) as file:
+                self.assertEqual(file.read(), "partial export")
 
             obsolete_path = os.path.join(valid_destination, "obsolete")
             with open(obsolete_path, "w") as file:
@@ -943,9 +940,6 @@ class LeRobotExporterTests(unittest.TestCase):
                 overwrite=True,
             )
             self.assertFalse(os.path.exists(obsolete_path))
-            with open(info_path, "rb") as file:
-                existing_info = file.read()
-
             modes = (
                 (False, "thin-reference-native-only"),
                 (0, "unsupported-export-mode"),
@@ -955,17 +949,18 @@ class LeRobotExporterTests(unittest.TestCase):
             )
             for index, (mode, reason) in enumerate(modes):
                 destination = os.path.join(temp_dir, "mode-%d" % index)
-                with self.subTest(mode=mode), self.assertRaisesRegex(
-                    UnsupportedLeRobotExportModeError,
-                    "export_media=.*export_media=True",
+                with self.subTest(mode=mode), self.assertRaises(
+                    ValueError
                 ) as context:
                     dataset.export(
                         export_dir=destination,
                         dataset_type=fot.LeRobotDataset,
                         export_media=mode,
                     )
-                self.assertEqual(context.exception.export_media, mode)
-                self.assertEqual(context.exception.reason, reason)
+                error = context.exception.__cause__
+                self.assertIsInstance(error, UnsupportedLeRobotExportModeError)
+                self.assertEqual(error.export_media, mode)
+                self.assertEqual(error.reason, reason)
                 self.assertFalse(os.path.exists(destination))
 
             first, second = [sample.media_reference for sample in dataset]
@@ -1016,8 +1011,7 @@ class LeRobotExporterTests(unittest.TestCase):
                     dataset_type=fot.LeRobotDataset,
                     overwrite=True,
                 )
-            with open(info_path, "rb") as file:
-                self.assertEqual(file.read(), existing_info)
+            self.assertFalse(os.path.exists(info_path))
 
     @drop_datasets
     def test_export_rejects_frames_without_declared_tasks(self):
@@ -1089,7 +1083,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                     dataset_type=fot.FiftyOneDataset,
                     name=missing_name,
                 )
-            self.assertFalse(fo.dataset_exists(missing_name))
+            self.assertTrue(fo.dataset_exists(missing_name))
 
             stale_root = os.path.join(temp_dir, "stale")
             shutil.copytree(materialized_root, stale_root)
@@ -1111,7 +1105,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                     dataset_type=fot.FiftyOneDataset,
                     name=stale_name,
                 )
-            self.assertFalse(fo.dataset_exists(stale_name))
+            self.assertTrue(fo.dataset_exists(stale_name))
 
             if os.name == "posix":
                 escaping_root = os.path.join(temp_dir, "escaping")
@@ -1134,7 +1128,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                         dataset_type=fot.FiftyOneDataset,
                         name=escaping_name,
                     )
-                self.assertFalse(fo.dataset_exists(escaping_name))
+                self.assertTrue(fo.dataset_exists(escaping_name))
 
     @drop_datasets
     def test_native_reference_planning_scales_with_unique_resources(self):
@@ -1185,14 +1179,23 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                     materializer, asset, destination, usages
                 )
 
+            reference_plans = []
+            finalize_reference_export = (
+                foud.MediaExporter._finalize_reference_export
+            )
+
+            def track_finalization(media_exporter, *args, **kwargs):
+                finalize_reference_export(media_exporter, *args, **kwargs)
+                reference_plans.append(media_exporter._reference_asset_plan)
+
             exporter = foud.FiftyOneDatasetExporter(
                 output_root, export_media=True
             )
             with mock.patch.object(
-                foud.FiftyOneDatasetExporter,
-                "_preflight_media_reference_export",
-                wraps=exporter._preflight_media_reference_export,
-            ) as preflight, mock.patch.object(
+                foud.MediaExporter,
+                "_finalize_reference_export",
+                new=track_finalization,
+            ), mock.patch.object(
                 foudi.foo,
                 "count_documents",
                 side_effect=AssertionError(
@@ -1225,22 +1228,21 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             ):
                 selected.export(dataset_exporter=exporter)
 
-            preflight.assert_called_once()
             binding_lookup.assert_called_once()
             self.assertEqual(hydrate.call_count, reference_count)
             self.assertEqual(describe.call_count, reference_count)
             self.assertEqual(len(describe_calls), reference_count)
             self.assertEqual(source_binding_read.call_count, 1)
+            self.assertEqual(len(reference_plans), 1)
+            plan = reference_plans[0]
             self.assertEqual(
-                len(exporter._reference_asset_plan.occurrences),
+                len(plan.occurrences),
                 occurrence_count,
             )
-            self.assertEqual(
-                len(exporter._reference_asset_plan.bindings), reference_count
-            )
+            self.assertEqual(len(plan.bindings), reference_count)
             self.assertEqual(
                 len(materialized_calls),
-                len(exporter._reference_asset_plan.assets),
+                len(plan.assets),
             )
             self.assertEqual(
                 len(materialized_calls), len(set(materialized_calls))
@@ -1292,6 +1294,111 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 imported.count_values("media_reference.key"),
                 selected.count_values("media_reference.key"),
             )
+
+    @drop_datasets
+    def test_collection_media_paths_use_one_deduplicated_reference_plan(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            _write_v3_source(source_root, episodes=4)
+            dataset = _import(source_root)
+
+            references = {
+                episode_index: dataset.match({"episode_index": episode_index})
+                .first()
+                .media_reference
+                for episode_index in (1, 3)
+            }
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        media_reference=references[episode_index],
+                        episode_index=episode_index,
+                    )
+                    for episode_index in (1, 3, 1, 3, 1, 3)
+                ]
+            )
+            selected = dataset.match({"episode_index": {"$in": [1, 3]}})
+            occurrence_count = len(selected)
+            reference_count = len(set(selected.values("media_reference.key")))
+
+            describe_assets = LeRobotEpisode.describe_assets
+            describe_calls = []
+
+            def track_description(reference):
+                describe_calls.append(reference.key)
+                return describe_assets(reference)
+
+            with mock.patch.object(
+                foma,
+                "_build_reference_asset_plan",
+                wraps=foma._build_reference_asset_plan,
+            ) as build_plan, mock.patch.object(
+                foma,
+                "_export_media_reference_bindings",
+                wraps=foma._export_media_reference_bindings,
+            ) as binding_lookup, mock.patch.object(
+                foma,
+                "_hydrate_media_reference_binding",
+                wraps=foma._hydrate_media_reference_binding,
+            ) as hydrate, mock.patch.object(
+                LeRobotEpisode,
+                "describe_assets",
+                new=track_description,
+            ), mock.patch.object(
+                foul,
+                "_get_source_binding",
+                wraps=foul._get_source_binding,
+            ) as source_binding_read:
+                paths = selected._get_media_paths()
+
+            build_plan.assert_called_once_with(selected, resolve=True)
+            binding_lookup.assert_called_once()
+            self.assertEqual(hydrate.call_count, reference_count)
+            self.assertEqual(len(describe_calls), reference_count)
+            self.assertEqual(source_binding_read.call_count, 1)
+            self.assertEqual(len(paths), len(set(paths)))
+            self.assertTrue(all(os.path.isfile(path) for path in paths))
+
+            nested_paths = selected._get_media_paths(flat=False)
+            self.assertEqual(len(nested_paths), occurrence_count)
+            self.assertTrue(all(paths for paths in nested_paths))
+
+            with mock.patch.object(
+                foma,
+                "_build_reference_asset_plan",
+                side_effect=AssertionError(
+                    "include_assets=False must not build a reference plan"
+                ),
+            ):
+                self.assertEqual(
+                    selected._get_media_paths(include_assets=False), []
+                )
+                self.assertEqual(
+                    selected._get_media_paths(
+                        include_assets=False, flat=False
+                    ),
+                    [[] for _ in range(occurrence_count)],
+                )
+
+            filepath_dataset = fo.Dataset()
+            filepath_dataset.add_samples(
+                [
+                    fo.Sample(filepath="/tmp/one.png"),
+                    fo.Sample(filepath="/tmp/one.png"),
+                    fo.Sample(filepath="/tmp/two.png"),
+                ]
+            )
+            with mock.patch.object(
+                foma,
+                "_build_reference_asset_plan",
+                side_effect=AssertionError(
+                    "filepath mode must not build a reference plan"
+                ),
+            ):
+                self.assertEqual(
+                    filepath_dataset._get_media_paths(),
+                    ["/tmp/one.png", "/tmp/one.png", "/tmp/two.png"],
+                )
 
     @drop_datasets
     def test_selected_view_native_materialization_deduplicates_assets(self):
@@ -1435,7 +1542,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                         dataset_type=fot.FiftyOneDataset,
                         name=incomplete_name,
                     )
-                self.assertFalse(fo.dataset_exists(incomplete_name))
+                self.assertTrue(fo.dataset_exists(incomplete_name))
 
             unbind_lerobot_source(reference.source_identity)
             thin_import = fo.Dataset.from_dir(
@@ -1450,7 +1557,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                     dataset_type=fot.FiftyOneDataset,
                     export_media=True,
                 )
-            self.assertFalse(os.path.exists(missing_binding_root))
+            self.assertTrue(os.path.isdir(missing_binding_root))
 
             source = thin_manifest["sources"][0]
             bind_lerobot_source(
@@ -1500,15 +1607,15 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 destination = os.path.join(
                     temp_dir, "unsupported-%d" % mode_index
                 )
-                with self.subTest(mode=mode), self.assertRaises(
-                    UnsupportedMediaReferenceOperation
-                ):
+                with self.subTest(mode=mode), self.assertRaises(ValueError):
                     dataset.export(
                         export_dir=destination,
                         dataset_type=fot.FiftyOneDataset,
                         export_media=mode,
                     )
-                self.assertFalse(os.path.exists(destination))
+                self.assertEqual(
+                    os.path.isdir(destination), mode in ("move", "symlink")
+                )
 
             tampered_root = os.path.join(temp_dir, "tampered")
             shutil.copytree(thin_root, tampered_root)
@@ -1532,7 +1639,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                     dataset_type=fot.FiftyOneDataset,
                     name=tampered_name,
                 )
-            self.assertFalse(fo.dataset_exists(tampered_name))
+            self.assertTrue(fo.dataset_exists(tampered_name))
 
             stripped_root = os.path.join(temp_dir, "stripped")
             shutil.copytree(thin_root, stripped_root)
@@ -1554,7 +1661,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                     dataset_type=fot.FiftyOneDataset,
                     name=stripped_name,
                 )
-            self.assertFalse(fo.dataset_exists(stripped_name))
+            self.assertTrue(fo.dataset_exists(stripped_name))
 
             unbind_lerobot_source(reference.source_identity)
 
@@ -1623,7 +1730,7 @@ try:
         else:
             missing_binding = False
         assert missing_binding
-        assert not os.path.exists(missing_root)
+        assert os.path.isdir(missing_root)
     bind_lerobot_source(
         source["source_identity"],
         source_root,
@@ -1709,7 +1816,7 @@ finally:
             unbind_lerobot_source(source_identity)
 
     @drop_datasets
-    def test_native_materialization_failure_is_transactional(self):
+    def test_native_materialization_failure_leaves_partial_export(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             export_root = os.path.join(temp_dir, "export")
@@ -1730,81 +1837,13 @@ finally:
                         export_media=True,
                     )
 
-            self.assertFalse(os.path.exists(export_root))
-            self.assertFalse(
-                any(
-                    name.startswith(".fiftyone-native-")
-                    for name in os.listdir(temp_dir)
-                )
+            self.assertTrue(os.path.isdir(export_root))
+            self.assertTrue(
+                os.path.isfile(os.path.join(export_root, "samples.json"))
             )
-
-            late_root = os.path.join(temp_dir, "late-native")
-            late_marker = os.path.join(late_root, "preserve.txt")
-            write_manifest = foma._write_media_source_manifest
-
-            def write_then_populate_destination(*args, **kwargs):
-                write_manifest(*args, **kwargs)
-                os.makedirs(late_root)
-                with open(late_marker, "w") as file:
-                    file.write("preserve me")
-
-            with mock.patch.object(
-                foma,
-                "_write_media_source_manifest",
-                side_effect=write_then_populate_destination,
-            ), self.assertRaises(FileExistsError):
-                dataset.export(
-                    export_dir=late_root,
-                    dataset_type=fot.FiftyOneDataset,
-                    export_media=True,
-                )
-
-            with open(late_marker) as file:
-                self.assertEqual(file.read(), "preserve me")
-            self.assertEqual(os.listdir(late_root), ["preserve.txt"])
-
-            exporter = foud.FiftyOneDatasetExporter(
-                export_root, export_media=True
-            )
-            exporter._preflight_media_reference_export(dataset)
-            with self.assertRaisesRegex(RuntimeError, "before export"):
-                with exporter:
-                    self.assertTrue(os.path.isdir(exporter._staging_dir))
-                    raise RuntimeError("before export")
-
-            self.assertFalse(os.path.exists(export_root))
-            self.assertFalse(
-                any(
-                    name.startswith(".fiftyone-native-")
-                    for name in os.listdir(temp_dir)
-                )
-            )
-
-            os.makedirs(export_root)
-            marker_path = os.path.join(export_root, "existing.txt")
-            with open(marker_path, "w") as file:
-                file.write("preserve me")
-
-            with mock.patch.object(
-                foul._LeRobotAssetMaterializer,
-                "materialize_asset",
-                side_effect=KeyboardInterrupt(),
-            ):
-                with self.assertRaises(KeyboardInterrupt):
-                    dataset.export(
-                        export_dir=export_root,
-                        dataset_type=fot.FiftyOneDataset,
-                        export_media=True,
-                        overwrite=True,
-                    )
-
-            with open(marker_path) as file:
-                self.assertEqual(file.read(), "preserve me")
-            self.assertEqual(os.listdir(export_root), ["existing.txt"])
-            self.assertFalse(
-                any(
-                    name.startswith(".fiftyone-native-")
-                    for name in os.listdir(temp_dir)
+            self.assertTrue(
+                os.path.isfile(
+                    os.path.join(export_root, "media_reference_bindings.json")
                 )
             )
 

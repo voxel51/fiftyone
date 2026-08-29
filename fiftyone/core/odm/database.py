@@ -6,6 +6,7 @@ Database utilities.
 |
 """
 
+import asyncio
 import atexit
 import dataclasses
 from datetime import datetime
@@ -15,15 +16,12 @@ from multiprocessing.pool import ThreadPool
 import os
 from typing import Tuple
 
-import asyncio
-from bson import json_util, ObjectId
+from bson import ObjectId, json_util
 from bson.codec_options import CodecOptions
 import mongoengine
-
 from packaging.version import Version
 import pymongo
 from pymongo.asynchronous.collection import AsyncCollection
-
 from pymongo.errors import (
     BulkWriteError,
     OperationFailure,
@@ -33,13 +31,12 @@ from pymongo.errors import (
 import pytz
 
 import eta.core.utils as etau
-
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+import fiftyone.migrations as fom
 
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
@@ -1161,7 +1158,6 @@ def insert_documents(
     batcher=None,
     progress=None,
     num_docs=None,
-    inserted_ids=None,
 ):
     """Inserts documents into a collection.
 
@@ -1182,9 +1178,6 @@ def insert_documents(
         num_docs (None): the total number of documents. Only used when
             ``progress=True``. If omitted, this will be computed via
             ``len(docs)``, if possible
-        inserted_ids (None): an optional list to populate after each
-            successful batch, including partial inserts reported by MongoDB
-
     Returns:
         a list of IDs of the inserted documents
     """
@@ -1203,8 +1196,6 @@ def insert_documents(
                 res = coll.insert_many(batch, ordered=ordered)
                 batch_ids = [b["_id"] for b in batch]
                 ids.extend(batch_ids)
-                if inserted_ids is not None:
-                    inserted_ids.extend(batch_ids)
 
                 if hasattr(res, "nBytes") and hasattr(
                     batcher, "set_encoding_ratio"
@@ -1212,18 +1203,6 @@ def insert_documents(
                     batcher.set_encoding_ratio(res.nBytes)
 
     except BulkWriteError as bwe:
-        if inserted_ids is not None:
-            failed_indexes = {
-                error["index"] for error in bwe.details.get("writeErrors", ())
-            }
-            partial_ids = [
-                document["_id"]
-                for index, document in enumerate(batch)
-                if index not in failed_indexes
-            ]
-            num_inserted = bwe.details.get("nInserted", 0)
-            inserted_ids.extend(partial_ids[:num_inserted])
-
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
 

@@ -6,13 +6,11 @@ Dataset exporters.
 |
 """
 
+from collections import defaultdict
 import inspect
 import logging
 import os
-import shutil
-import tempfile
 import warnings
-from collections import defaultdict
 
 from bson import json_util
 import pydash
@@ -21,7 +19,6 @@ import eta.core.datasets as etad
 import eta.core.frameutils as etaf
 import eta.core.serial as etas
 import eta.core.utils as etau
-
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
@@ -512,13 +509,6 @@ def build_dataset_exporter(
     try:
         dataset_exporter = dataset_exporter_cls(**kwargs)
     except Exception as e:
-        from fiftyone.multimodal.media import (
-            UnsupportedMediaReferenceOperation,
-        )
-
-        if isinstance(e, UnsupportedMediaReferenceOperation):
-            raise
-
         raise ValueError(
             "Failed to construct exporter of type %s using the provided "
             "parameters. See above for the error. You may need to supply "
@@ -1180,6 +1170,10 @@ class MediaExporter(object):
         self._manifest_path = None
         self._reference_asset_outputs = None
         self._reference_output_keys = None
+        self._reference_asset_builder = None
+        self._reference_asset_plan = None
+        self._reference_export_root = None
+        self._reference_group_field = None
 
     def _handle_fo3d_file(self, fo3d_path, fo3d_output_path):
         if self.export_mode in (False, "manifest"):
@@ -1315,6 +1309,110 @@ class MediaExporter(object):
         self._reference_asset_outputs[asset.key] = outpath
         self._reference_output_keys[outpath] = asset.key
         return outpath
+
+    @property
+    def _is_reference_export(self):
+        return self._reference_asset_builder is not None
+
+    def _configure_reference_export(self, sample_collection, export_root):
+        if sample_collection._dataset._doc.media_reference_kind is None:
+            return
+
+        if self.export_mode not in (True, False):
+            from fiftyone.multimodal.media import (
+                UnsupportedMediaReferenceOperation,
+            )
+
+            raise UnsupportedMediaReferenceOperation(
+                "Native media-reference export supports only "
+                "export_media=False for thin serialization or "
+                "export_media=True for registered materialization"
+            )
+
+        from fiftyone.core.media_assets import _ReferenceAssetPlanBuilder
+
+        self._reference_asset_builder = _ReferenceAssetPlanBuilder()
+        self._reference_export_root = export_root
+        self._reference_group_field = (
+            sample_collection.group_field
+            if sample_collection.media_type == fomm.GROUP
+            else None
+        )
+
+    def _export_sample(self, sample_or_dict):
+        if self._reference_asset_builder is None:
+            if isinstance(sample_or_dict, dict):
+                filepath = sample_or_dict["filepath"]
+            else:
+                filepath = sample_or_dict.filepath
+
+            return self.export(filepath)
+
+        group_slice = None
+        if self._reference_group_field is not None:
+            if isinstance(sample_or_dict, dict):
+                group = sample_or_dict.get(self._reference_group_field)
+                if group is not None:
+                    group_slice = group.get("name")
+            else:
+                group = sample_or_dict[self._reference_group_field]
+                if group is not None:
+                    group_slice = group.name
+
+        self._reference_asset_builder.observe(
+            sample_or_dict, group_slice=group_slice
+        )
+        return None, None
+
+    def _finalize_reference_export(self, progress=None):
+        if self._reference_asset_builder is None:
+            return
+
+        if self._reference_asset_builder.media_mode not in (None, "reference"):
+            raise ValueError(
+                "Reference-backed native exports contain filepath samples"
+            )
+
+        from fiftyone.core.media_assets import (
+            _MEDIA_SOURCE_MANIFEST_FILENAME,
+            _materialize_reference_assets,
+            _write_media_source_manifest,
+        )
+        from fiftyone.multimodal.media import (
+            _MEDIA_REFERENCE_BINDINGS_FILENAME,
+        )
+
+        plan = self._reference_asset_builder.finalize(
+            resolve=self.export_mode is True,
+            allow_unsupported=self.export_mode is False,
+        )
+        self._reference_asset_plan = plan
+
+        foo.export_document(
+            {"bindings": plan.bindings},
+            os.path.join(
+                self._reference_export_root,
+                _MEDIA_REFERENCE_BINDINGS_FILENAME,
+            ),
+        )
+
+        materialized_roots = {}
+        if self.export_mode is True:
+            materialized_roots = _materialize_reference_assets(
+                plan,
+                self._reference_export_root,
+                media_exporter=self,
+                progress=progress,
+            )
+
+        _write_media_source_manifest(
+            plan,
+            os.path.join(
+                self._reference_export_root,
+                _MEDIA_SOURCE_MANIFEST_FILENAME,
+            ),
+            materialized_roots=materialized_roots,
+        )
 
     def export(self, media_or_path, outpath=None):
         """Exports the given media.
@@ -1854,6 +1952,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             format with newlines and indentations
     """
 
+    supports_media_references = True
+
     def __init__(
         self,
         export_dir,
@@ -1922,8 +2022,14 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
+        self._media_exporter._configure_reference_export(
+            sample_collection, self.export_dir
+        )
         self._metadata["name"] = sample_collection._dataset.name
         self._metadata["media_type"] = sample_collection.media_type
+        self._metadata[
+            "media_reference_kind"
+        ] = sample_collection._dataset._doc.media_reference_kind
         if sample_collection.media_type == fomm.GROUP:
             self._metadata[
                 "group_media_types"
@@ -2038,29 +2144,35 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             _export_run_results(dataset, self._runs_dir)
 
     def export_sample(self, sample):
-        out_filepath, _ = self._media_exporter.export(sample.filepath)
+        out_filepath, _ = self._media_exporter._export_sample(sample)
 
         sd = sample.to_dict(include_private=True)
 
-        if self.abs_paths:
-            sd["filepath"] = out_filepath
-        else:
-            sd["filepath"] = fou.safe_relpath(
-                out_filepath, self.export_dir, default=out_filepath
-            )
+        if sample.media_reference is None:
+            if self.abs_paths:
+                sd["filepath"] = out_filepath
+            else:
+                sd["filepath"] = fou.safe_relpath(
+                    out_filepath, self.export_dir, default=out_filepath
+                )
 
         if self._media_fields:
             self._export_media_fields(sd)
 
         if sample.media_type == fomm.VIDEO:
             # Serialize frame labels separately
-            uuid = os.path.splitext(os.path.basename(out_filepath))[0]
+            if out_filepath is None:
+                uuid = sample.id
+            else:
+                uuid = os.path.splitext(os.path.basename(out_filepath))[0]
+
             outpath = self._export_frame_labels(sample, uuid)
             sd["frames"] = os.path.relpath(outpath, self.export_dir)
 
         self._samples.append(sd)
 
     def close(self, *args):
+        self._media_exporter._finalize_reference_export()
         etas.write_json(
             self._metadata, self._metadata_path, pretty_print=self.pretty_print
         )
@@ -2177,7 +2289,6 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
     """
 
     supports_media_references = True
-    _manages_existing_export_dir = False
 
     def __init__(
         self,
@@ -2222,47 +2333,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_exporter = None
         self._media_fields = {}
         self._media_field_exporters = {}
-        self._reference_asset_plan = None
-        self._reference_asset_builder = None
-        self._final_export_dir = None
-        self._staging_dir = None
-        self.overwrite = False
-
-    def _preflight_media_reference_export(
-        self, sample_collection, overwrite=False
-    ):
-        """Validates a reference export before creating output."""
-        from fiftyone.core.media_assets import (
-            _ReferenceAssetPlanBuilder,
-            _validate_publish_destination,
-        )
-        from fiftyone.multimodal.media import (
-            UnsupportedMediaReferenceOperation,
-        )
-
-        if self.export_media not in (True, False):
-            raise UnsupportedMediaReferenceOperation(
-                "FiftyOneDataset media-reference export supports only "
-                "export_media=False for thin serialization or "
-                "export_media=True for registered materialization"
-            )
-
-        _validate_publish_destination(self.export_dir, overwrite)
-        self._reference_asset_builder = _ReferenceAssetPlanBuilder()
-
-        self._final_export_dir = self.export_dir
-        self.overwrite = overwrite
-        self._manages_existing_export_dir = True
 
     def setup(self):
-        if self._reference_asset_builder is not None:
-            parent = os.path.dirname(os.path.abspath(self._final_export_dir))
-            etau.ensure_dir(parent)
-            self._staging_dir = tempfile.mkdtemp(
-                prefix=".fiftyone-native-", dir=parent
-            )
-            self.export_dir = self._staging_dir
-
         self._data_dir = os.path.join(self.export_dir, "data")
         self._fields_dir = os.path.join(self.export_dir, "fields")
         self._anno_dir = os.path.join(self.export_dir, "annotations")
@@ -2291,73 +2363,13 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_exporter.setup()
 
     def export_samples(self, sample_collection, progress=None):
-        if self._reference_asset_builder is None:
-            self._export_samples(sample_collection, progress=progress)
-            return
-
-        from fiftyone.core.media_assets import (
-            _MEDIA_SOURCE_MANIFEST_FILENAME,
-            _materialize_reference_assets,
-            _publish_staging_dir,
-            _write_media_source_manifest,
+        self._media_exporter._configure_reference_export(
+            sample_collection, self.export_dir
         )
-
-        published = False
-        try:
-            self._export_samples(sample_collection, progress=progress)
-            self._export_media_reference_bindings()
-            materialized_roots = {}
-            if self.export_media is True:
-                materialized_roots = _materialize_reference_assets(
-                    self._reference_asset_plan,
-                    self.export_dir,
-                    media_exporter=self._media_exporter,
-                    progress=progress,
-                )
-
-            _write_media_source_manifest(
-                self._reference_asset_plan,
-                os.path.join(self.export_dir, _MEDIA_SOURCE_MANIFEST_FILENAME),
-                materialized_roots=materialized_roots,
-            )
-            _publish_staging_dir(
-                self.export_dir,
-                self._final_export_dir,
-                overwrite=self.overwrite,
-            )
-            published = True
-        finally:
-            self._close_media_exporter()
-
-            if (
-                not published
-                and self._staging_dir is not None
-                and os.path.isdir(self._staging_dir)
-            ):
-                shutil.rmtree(self._staging_dir)
-
-            if self._final_export_dir is not None:
-                self.export_dir = self._final_export_dir
-
-    def _export_media_reference_bindings(self):
-        from fiftyone.multimodal.media import (
-            _MEDIA_REFERENCE_BINDINGS_FILENAME,
-        )
-
-        foo.export_document(
-            {"bindings": self._reference_asset_plan.bindings},
-            os.path.join(self.export_dir, _MEDIA_REFERENCE_BINDINGS_FILENAME),
-        )
+        self._export_samples(sample_collection, progress=progress)
 
     def close(self, *args):
         self._close_media_exporter()
-
-        if self._staging_dir is not None and os.path.isdir(self._staging_dir):
-            shutil.rmtree(self._staging_dir)
-
-        self._staging_dir = None
-        if self._final_export_dir is not None:
-            self.export_dir = self._final_export_dir
 
     def _export_samples(self, sample_collection, progress=None):
         etau.ensure_dir(self.export_dir)
@@ -2376,44 +2388,23 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         logger.info("Exporting samples...")
 
         coll, pipeline = fod._get_samples_pipeline(_sample_collection)
-        if self._reference_asset_builder is None:
+        if not self._media_exporter._is_reference_export:
             num_samples = foo.count_documents(coll, pipeline)
         else:
             num_samples = None
 
         _samples = foo.aggregate(coll, pipeline)
 
-        if sample_collection.media_type == fomm.GROUP:
-            group_field = sample_collection.group_field
-        else:
-            group_field = None
-
         def _prep_sample(sd):
-            media_reference = sd.get("media_reference")
-            if self._reference_asset_builder is not None:
-                if media_reference is None:
-                    raise ValueError(
-                        "Reference-backed native exports contain filepath "
-                        "samples"
-                    )
-
-                group = None if group_field is None else sd.get(group_field)
-                group_slice = None if group is None else group.get("name")
-                self._reference_asset_builder.observe(
-                    sd, group_slice=group_slice
-                )
-
-            if media_reference is not None:
-                from fiftyone.multimodal.media import _validate_media_source
-
-                _validate_media_source(sd.get("filepath"), media_reference)
+            if self._media_exporter._is_reference_export:
+                self._media_exporter._export_sample(sd)
                 # Public descriptors remain logical when physical assets are
                 # materialized into a portable source bundle.
             else:
                 filepath = sd["filepath"]
                 if self.export_media is not False:
                     # Store relative path
-                    _, uuid = self._media_exporter.export(filepath)
+                    _, uuid = self._media_exporter._export_sample(sd)
                     sd["filepath"] = os.path.join("data", uuid)
                 elif self.rel_dir is not None:
                     # Remove `rel_dir` prefix from filepath
@@ -2443,22 +2434,6 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             num_docs=num_samples,
         )
 
-        if self._reference_asset_builder is not None:
-            if self._reference_asset_builder.media_mode not in (
-                None,
-                "reference",
-            ):
-                raise ValueError(
-                    "Reference-backed native exports contain filepath samples"
-                )
-
-            self._reference_asset_plan = (
-                self._reference_asset_builder.finalize(
-                    resolve=self.export_media is True,
-                    allow_unsupported=self.export_media is False,
-                )
-            )
-
         if sample_collection._contains_videos(any_slice=True):
             logger.info("Exporting frames...")
 
@@ -2473,7 +2448,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 _video_collection = sample_collection
 
             coll, pipeline = fod._get_frames_pipeline(_video_collection)
-            if self._reference_asset_builder is None:
+            if not self._media_exporter._is_reference_export:
                 num_frames = foo.count_documents(coll, pipeline)
             else:
                 num_frames = None
@@ -2554,8 +2529,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             _sample_collection, self._tags_path, progress=progress
         )
 
-        if self._reference_asset_builder is None:
-            self._close_media_exporter()
+        self._media_exporter._finalize_reference_export(progress=progress)
+        self._close_media_exporter()
 
         for media_exporter in self._media_field_exporters.values():
             media_exporter.close()

@@ -13,16 +13,11 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
+
+import numpy as np
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-import numpy as np
-
-from fiftyone.core.media_assets import (
-    _publish_staging_dir,
-    _validate_publish_destination,
-)
 import fiftyone.core.utils as fou
 from fiftyone.multimodal.media import (
     LEROBOT_EPISODE_KIND,
@@ -33,9 +28,9 @@ from fiftyone.multimodal.media import (
     StaleMediaReferenceError,
     UnsupportedLeRobotExportModeError,
     UnsupportedMediaReferenceOperation,
-    _MediaAssetManifest,
     _get_media_export_planner,
     _get_media_resolver,
+    _MediaAssetManifest,
     _register_media_export_planner,
 )
 import fiftyone.utils.data.exporters as foue
@@ -79,7 +74,6 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
     """
 
     supports_media_references = True
-    _manages_existing_export_dir = True
 
     def __init__(self, export_dir, export_media=None):
         if export_media is None:
@@ -103,7 +97,6 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
 
         super().__init__(export_dir=export_dir)
         self.export_media = True
-        self.overwrite = False
 
     def export_samples(self, sample_collection, progress=None):
         references = [
@@ -138,39 +131,19 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
 
         planner = _get_media_export_planner(LEROBOT_EPISODE_KIND, "lerobot-v3")
         specs = [planner(reference) for reference in references]
-        self._publish_export(specs)
+        self._write_export(specs)
 
-    def _publish_export(self, specs):
-        operation = "Atomic LeRobot export"
-        _validate_publish_destination(
-            self.export_dir, self.overwrite, operation=operation
-        )
+    def _write_export(self, specs):
+        _write_lerobot_export(self.export_dir, specs)
+        _validate_lerobot_export(self.export_dir, len(specs))
 
-        parent = os.path.dirname(self.export_dir)
-        etau.ensure_dir(parent)
-        staging_dir = tempfile.mkdtemp(prefix=".fiftyone-lerobot-", dir=parent)
-        published = False
-        try:
-            _write_lerobot_export(staging_dir, specs)
-            _validate_lerobot_export(staging_dir, len(specs))
-
-            # Revalidate the original sources immediately before publication.
-            for spec in specs:
-                reference = spec.reference
-                _get_media_resolver(reference).resolve_assets(
-                    reference, reference.describe_assets()
-                )
-
-            _publish_staging_dir(
-                staging_dir,
-                self.export_dir,
-                overwrite=self.overwrite,
-                operation=operation,
+        # Revalidate the original sources after writing the export so stale
+        # inputs are still reported to the caller.
+        for spec in specs:
+            reference = spec.reference
+            _get_media_resolver(reference).resolve_assets(
+                reference, reference.describe_assets()
             )
-            published = True
-        finally:
-            if not published and os.path.isdir(staging_dir):
-                shutil.rmtree(staging_dir)
 
 
 def _plan_lerobot_export(reference):
@@ -179,7 +152,7 @@ def _plan_lerobot_export(reference):
     return _EpisodeExportSpec(reference=reference, manifest=manifest)
 
 
-def _write_lerobot_export(staging_dir, specs):
+def _write_lerobot_export(export_dir, specs):
     first_info_asset = _resolved_asset_by_role(
         specs[0].manifest, MediaAssetRole.DATASET_INFO
     )
@@ -295,17 +268,17 @@ def _write_lerobot_export(staging_dir, specs):
     data_relative_path = _format_source_path(
         output_info["data_path"], chunk_index=0, file_index=0
     )
-    data_path = _resolve_under_root(staging_dir, data_relative_path)
+    data_path = _resolve_under_root(export_dir, data_relative_path)
     etau.ensure_basedir(data_path)
     papq.write_table(output_table, data_path)
 
     episodes_relative_path = "meta/episodes/chunk-000/file-000.parquet"
 
-    episodes_path = _resolve_under_root(staging_dir, episodes_relative_path)
+    episodes_path = _resolve_under_root(export_dir, episodes_relative_path)
     etau.ensure_basedir(episodes_path)
     papq.write_table(pa.Table.from_pylist(output_episode_rows), episodes_path)
 
-    tasks_path = _resolve_under_root(staging_dir, "meta/tasks.parquet")
+    tasks_path = _resolve_under_root(export_dir, "meta/tasks.parquet")
     etau.ensure_basedir(tasks_path)
     task_rows = [
         {"task_index": index, "task": task}
@@ -324,18 +297,18 @@ def _write_lerobot_export(staging_dir, specs):
         )
     papq.write_table(tasks_table, tasks_path)
 
-    stats_path = _resolve_under_root(staging_dir, "meta/stats.json")
+    stats_path = _resolve_under_root(export_dir, "meta/stats.json")
     statistics = _compute_statistics(output_rows)
     statistics.update(
         _aggregate_stream_statistics(output_episode_rows, output_info)
     )
     etas.write_json(statistics, stats_path)
-    info_path = _resolve_under_root(staging_dir, "meta/info.json")
+    info_path = _resolve_under_root(export_dir, "meta/info.json")
     etas.write_json(output_info, info_path)
 
     for video_export in video_exports.values():
         output_path = _resolve_under_root(
-            staging_dir, video_export.destination_location
+            export_dir, video_export.destination_location
         )
         etau.ensure_basedir(output_path)
         shutil.copy2(video_export.source_asset.path, output_path)
@@ -560,9 +533,9 @@ def _read_selected_data_table(path, locator, source_tables=None):
     return selected
 
 
-def _validate_lerobot_export(staging_dir, expected_episodes):
+def _validate_lerobot_export(export_dir, expected_episodes):
     resolver = _get_media_resolver(LEROBOT_EPISODE_KIND)
-    source = resolver.inspect_local_source(staging_dir)
+    source = resolver.inspect_local_source(export_dir)
     if len(source.rows) != expected_episodes:
         raise MalformedMediaSourceError(
             "Completed LeRobot export did not preserve the selected episodes"
@@ -572,10 +545,10 @@ def _validate_lerobot_export(staging_dir, expected_episodes):
     for row in source.rows:
         resolver.build_locator(source, row)
 
-    _validate_with_official_lerobot(staging_dir, expected_episodes)
+    _validate_with_official_lerobot(export_dir, expected_episodes)
 
 
-def _validate_with_official_lerobot(staging_dir, expected_episodes):
+def _validate_with_official_lerobot(export_dir, expected_episodes):
     if importlib.util.find_spec("lerobot") is None:
         return
 
@@ -616,7 +589,7 @@ if dataset.hf_dataset[0]["episode_index"] != 0:
                 sys.executable,
                 "-c",
                 script,
-                staging_dir,
+                export_dir,
                 str(expected_episodes),
             ],
             check=True,

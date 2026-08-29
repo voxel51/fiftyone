@@ -6,7 +6,7 @@ Dataset samples.
 |
 """
 
-from copy import deepcopy
+import logging
 import os
 
 from bson import ObjectId
@@ -15,12 +15,11 @@ from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
-import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
-import logging
+import fiftyone.core.utils as fou
 
 logger = logging.getLogger(__name__)
 
@@ -479,31 +478,6 @@ class _SampleMixin(object):
         Returns:
             a :class:`Sample`
         """
-        reference = self._doc.get_field("media_reference")
-        if reference is not None:
-            parsed_fields = self._parse_fields(
-                fields=fields, omit_fields=omit_fields
-            )
-            values = {}
-            for src_field, dst_field in parsed_fields.items():
-                if src_field in (
-                    "id",
-                    "filepath",
-                    "media_reference",
-                    "_media_type",
-                    "_rand",
-                ):
-                    continue
-
-                try:
-                    values[dst_field] = deepcopy(self[src_field])
-                except KeyError:
-                    continue
-
-            sample = Sample(media_reference=deepcopy(reference), **values)
-            sample._doc._data["_rand"] = self._doc.get_field("_rand")
-            return sample
-
         if self.media_type == fomm.VIDEO:
             (
                 fields,
@@ -726,17 +700,6 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         media_reference=None,
         **kwargs,
     ):
-        private_fields = {
-            "_media_type",
-            "_rand",
-        }
-        found_private = private_fields.intersection(kwargs)
-        if found_private:
-            raise ValueError(
-                "Private media state cannot be assigned directly: %s"
-                % sorted(found_private)
-            )
-
         from fiftyone.multimodal.media import (
             MediaReference,
             _persist_media_reference,
@@ -802,26 +765,6 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             include_frames (True): whether to reload any in-memory frames of
                 video samples
         """
-        if self.in_dataset and self.media_reference is not None:
-            stored_sample = self._dataset._sample_collection.find_one(
-                {"_id": self._id}, {"media_reference": True}
-            )
-            if stored_sample is not None:
-                from fiftyone.multimodal.media import (
-                    MediaReferenceError,
-                    _hydrate_media_reference,
-                )
-
-                descriptor = stored_sample.get("media_reference")
-                if descriptor is None:
-                    raise MediaReferenceError(
-                        "Stored reference-backed sample no longer contains "
-                        "a media_reference descriptor"
-                    )
-
-                # Validate before the normal reload mutates the backing doc
-                _hydrate_media_reference(descriptor)
-
         if self.media_type == fomm.VIDEO and include_frames:
             self.frames.reload(hard=hard)
 
@@ -896,7 +839,6 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         Returns:
             a :class:`Sample`
         """
-        d = dict(d)
         d.pop("_dataset_id", None)
 
         descriptor = d.get("media_reference")

@@ -27,9 +27,9 @@ import threading
 import uuid
 
 import cachetools
-import eta.core.utils as etau
 from pymongo.errors import DuplicateKeyError
 
+import eta.core.utils as etau
 import fiftyone.core.fields as fof
 from fiftyone.core.media_assets import (
     _MediaSourceDescriptor,
@@ -58,11 +58,11 @@ from fiftyone.multimodal.media import (
     UnfinalizedMediaSourceError,
     UnsupportedLeRobotVersionError,
     VideoTimestampInterval,
-    _MediaAssetManifest,
-    _MediaResolver,
     _build_resolved_media_asset,
     _get_media_resolver,
     _get_selected_media_asset_key,
+    _MediaAssetManifest,
+    _MediaResolver,
     _register_media_resolver,
     _serialize_media_reference_binding,
 )
@@ -217,10 +217,6 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
 
     @property
     def has_dataset_info(self):
-        return True
-
-    @property
-    def cleanup_on_failure(self):
         return True
 
     @property

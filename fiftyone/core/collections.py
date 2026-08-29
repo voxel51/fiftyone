@@ -10,13 +10,12 @@ from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from datetime import datetime
-from operator import itemgetter
 import fnmatch
 import itertools
 import logging
 import operator
+from operator import itemgetter
 import os
-from packaging.version import Version
 import random
 import string
 import threading
@@ -24,11 +23,11 @@ import timeit
 import warnings
 
 from bson import ObjectId
+from packaging.version import Version
 from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
@@ -51,6 +50,7 @@ import fiftyone.core.utils as fou
 from fiftyone.internal.docs import hide_from_docs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
+foma = fou.lazy_import("fiftyone.core.media_assets")
 fos = fou.lazy_import("fiftyone.core.stages")
 fota = fou.lazy_import("fiftyone.core.tags")
 fov = fou.lazy_import("fiftyone.core.view")
@@ -3659,6 +3659,23 @@ class SampleCollection(object):
         include_assets=True,
         flat=True,
     ):
+        if self._dataset._doc.media_reference_kind is not None:
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+            else:
+                view = self
+
+            if not include_assets:
+                if flat:
+                    return []
+
+                return [[] for _ in range(view.count())]
+
+            plan = foma._build_reference_asset_plan(view, resolve=True)
+            return foma._get_reference_asset_paths(plan, flat=flat)
+
         if media_fields is None:
             media_fields = list(self._get_media_fields().keys())
         elif etau.is_container(media_fields):
@@ -11134,9 +11151,11 @@ class SampleCollection(object):
                 return _existing_name
 
             # Handle default indexes
-            if (
-                _index_name in self._get_default_indexes(frames=is_frame_index)
-                and index_name != "filepath"  # allow 'filepath' to be modified
+            if _index_name in self._get_default_indexes(
+                frames=is_frame_index
+            ) and index_name not in (
+                "filepath",
+                "media_reference.key",
             ):
                 raise ValueError(f"Cannot modify default index '{index_name}'")
 
@@ -13649,13 +13668,6 @@ def _export(
             "samples; use FiftyOneDataset for thin references or a registered "
             "kind-specific exporter"
         )
-
-    if contains_media_references:
-        preflight = getattr(
-            dataset_exporter, "_preflight_media_reference_export", None
-        )
-        if preflight is not None:
-            preflight(sample_collection, overwrite=overwrite)
 
     if getattr(dataset_exporter, "_manages_existing_export_dir", False):
         dataset_exporter.overwrite = overwrite

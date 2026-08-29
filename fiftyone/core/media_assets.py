@@ -14,19 +14,15 @@ from dataclasses import dataclass
 import hashlib
 import os
 import posixpath
-import shutil
-import stat
-import uuid
 
 import eta.core.serial as etas
-
 import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 from fiftyone.multimodal.media import (
+    LEROBOT_EPISODE_KIND,
     DatasetRelativeLocation,
     InvalidMediaLocationError,
-    LEROBOT_EPISODE_KIND,
     MediaAssetRole,
     MediaAssetSelector,
     MediaReferenceError,
@@ -774,61 +770,3 @@ def _validate_relative_root(relative_root):
         raise ValueError(
             "Materialized source root must be a canonical POSIX path"
         ) from exc
-
-
-def _validate_publish_destination(
-    output_dir, overwrite, operation="Native media-reference export"
-):
-    if not os.path.exists(output_dir):
-        return
-
-    if os.path.isdir(output_dir) and not os.listdir(output_dir):
-        return
-
-    if not overwrite:
-        raise FileExistsError(
-            "%s requires an empty destination or overwrite=True: '%s'"
-            % (operation, output_dir)
-        )
-
-
-def _publish_staging_dir(
-    staging_dir,
-    output_dir,
-    overwrite=False,
-    operation="Native media-reference export",
-):
-    _validate_publish_destination(output_dir, overwrite, operation=operation)
-    parent = os.path.dirname(os.path.abspath(output_dir))
-    os.chmod(staging_dir, _get_default_directory_mode(parent))
-
-    if not os.path.exists(output_dir):
-        os.replace(staging_dir, output_dir)
-        return
-
-    if os.path.isdir(output_dir) and not os.listdir(output_dir):
-        os.rmdir(output_dir)
-        os.replace(staging_dir, output_dir)
-        return
-
-    backup_dir = output_dir + ".fiftyone-backup-" + uuid.uuid4().hex
-    os.replace(output_dir, backup_dir)
-    try:
-        os.replace(staging_dir, output_dir)
-    except BaseException:
-        os.replace(backup_dir, output_dir)
-        raise
-    else:
-        if os.path.isdir(backup_dir):
-            shutil.rmtree(backup_dir)
-        else:
-            os.remove(backup_dir)
-
-
-def _get_default_directory_mode(parent):
-    probe = os.path.join(parent, ".fiftyone-mode-%s" % uuid.uuid4().hex)
-    os.mkdir(probe, 0o777)
-    try:
-        return stat.S_IMODE(os.stat(probe).st_mode)
-    finally:
-        os.rmdir(probe)
