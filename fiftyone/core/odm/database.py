@@ -1162,6 +1162,7 @@ def insert_documents(
         num_docs (None): the total number of documents. Only used when
             ``progress=True``. If omitted, this will be computed via
             ``len(docs)``, if possible
+
     Returns:
         a list of IDs of the inserted documents
     """
