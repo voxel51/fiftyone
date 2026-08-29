@@ -100,6 +100,8 @@ const tinyAv1Mp4Bytes = new Uint8Array(
     "base64",
   ),
 );
+const EPISODE_ROW_START = 100;
+const EPISODE_ROW_END = 101;
 const assets: readonly AssetDescriptor[] = [
   {
     id: "info",
@@ -115,9 +117,9 @@ const assets: readonly AssetDescriptor[] = [
     role: "episode-metadata",
     selector: {
       coordinateSystem: "parquet-file-row",
-      end: 1,
+      end: EPISODE_ROW_END,
       kind: "row-interval",
-      start: 0,
+      start: EPISODE_ROW_START,
     },
   },
   {
@@ -263,7 +265,13 @@ const readParquetObjects = vi.fn(
     rowEnd?: number;
     rowStart?: number;
   }) => {
-    if (!options.columns && options.file.byteLength !== 2) return [episodeRow];
+    if (
+      !options.columns &&
+      options.rowStart === EPISODE_ROW_START &&
+      options.rowEnd === EPISODE_ROW_END
+    ) {
+      return [episodeRow];
+    }
     return dataRows.slice(
       options.rowStart ?? 0,
       options.rowEnd ?? dataRows.length,

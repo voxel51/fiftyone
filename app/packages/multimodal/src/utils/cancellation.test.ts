@@ -37,6 +37,37 @@ describe("cancellation identity", () => {
     epochOnly.cleanup();
   });
 
+  it("propagates epoch cancellation through a linked request", () => {
+    const epoch = new AbortController();
+    const request = new AbortController();
+    const linked = linkAbortSignals(epoch.signal, request.signal);
+
+    epoch.abort();
+
+    expect(linked.signal.aborted).toBe(true);
+    linked.cleanup();
+  });
+
+  it("links already-aborted epochs and requests as aborted", () => {
+    const abortedEpoch = new AbortController();
+    abortedEpoch.abort();
+    const fromEpoch = linkAbortSignals(
+      abortedEpoch.signal,
+      new AbortController().signal,
+    );
+    expect(fromEpoch.signal.aborted).toBe(true);
+    fromEpoch.cleanup();
+
+    const abortedRequest = new AbortController();
+    abortedRequest.abort();
+    const fromRequest = linkAbortSignals(
+      new AbortController().signal,
+      abortedRequest.signal,
+    );
+    expect(fromRequest.signal.aborted).toBe(true);
+    fromRequest.cleanup();
+  });
+
   it("accepts absent and active signals without throwing", () => {
     expect(() => throwIfAborted(undefined)).not.toThrow();
     expect(() => throwIfAborted(null)).not.toThrow();
