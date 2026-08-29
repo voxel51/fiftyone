@@ -304,25 +304,23 @@ export function insertSeriesSegment(
 }
 
 /**
- * Flattens segments into one ascending series, inserting a NaN sample
- * between non-abutting segments so charts render the unfetched region
- * as a gap instead of a connecting line.
+ * Flattens segments into one ascending series, inserting a NaN sample only
+ * when an explicit unread or unavailable range separates two parts. MCAP
+ * chunk coverage normally leaves time between adjacent message bounds; that
+ * known-empty interval is not a signal discontinuity.
  */
 export function flattenSeriesSegments(
   segments: readonly NumericSeriesSegment[],
+  discontinuities: readonly NsRange[],
 ): { readonly timesSec: Float64Array; readonly values: Float64Array } {
   const nonEmpty = segments.filter((segment) => segment.timesSec.length > 0);
   if (nonEmpty.length === 0) {
     return { timesSec: new Float64Array(0), values: new Float64Array(0) };
   }
 
-  const separators = nonEmpty.reduce(
-    (count, segment, index) =>
-      index > 0 && nonEmpty[index - 1].endNs + 1n < segment.startNs
-        ? count + 1
-        : count,
-    0,
-  );
+  const sortedDiscontinuities = [...discontinuities].sort(compareByStartNs);
+  const separatorBefore = segmentSeparators(nonEmpty, sortedDiscontinuities);
+  const separators = separatorBefore.filter(Boolean).length;
   const total =
     nonEmpty.reduce((sum, segment) => sum + segment.timesSec.length, 0) +
     separators;
@@ -335,7 +333,7 @@ export function flattenSeriesSegments(
     values.set(segment.values, offset);
     offset += segment.timesSec.length;
     const next = nonEmpty[index + 1];
-    if (next && segment.endNs + 1n < next.startNs) {
+    if (next && separatorBefore[index + 1]) {
       const previousLast = segment.timesSec[segment.timesSec.length - 1];
       const nextFirst = next.timesSec[0];
       timesSec[offset] = (previousLast + nextFirst) / 2;
@@ -344,6 +342,30 @@ export function flattenSeriesSegments(
     }
   }
   return { timesSec, values };
+}
+
+function segmentSeparators(
+  segments: readonly NumericSeriesSegment[],
+  discontinuities: readonly NsRange[],
+): readonly boolean[] {
+  const separatorBefore = new Array<boolean>(segments.length).fill(false);
+  let discontinuity = 0;
+  for (let index = 1; index < segments.length; index += 1) {
+    const leftEndNs = segments[index - 1].endNs;
+    while (
+      discontinuity < discontinuities.length &&
+      discontinuities[discontinuity].endNs <= leftEndNs
+    ) {
+      discontinuity += 1;
+    }
+    const range = discontinuities[discontinuity];
+    separatorBefore[index] = Boolean(
+      range &&
+      range.startNs < segments[index].startNs &&
+      range.endNs > leftEndNs,
+    );
+  }
+  return separatorBefore;
 }
 
 function concatFloat64Parts(parts: readonly Float64Array[]): Float64Array {

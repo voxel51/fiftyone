@@ -551,6 +551,7 @@ export function NumericSeriesBridge({
               timesSec: part.timesSec,
               values: part.values,
             })),
+            [...assembled.unavailableRanges, ...assembled.unreadRanges],
           );
           setPublished(key, {
             coverage: assembled.coverageRanges,
