@@ -1396,7 +1396,11 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             ):
                 self.assertEqual(
                     filepath_dataset._get_media_paths(),
-                    ["/tmp/one.png", "/tmp/one.png", "/tmp/two.png"],
+                    [
+                        os.path.abspath("/tmp/one.png"),
+                        os.path.abspath("/tmp/one.png"),
+                        os.path.abspath("/tmp/two.png"),
+                    ],
                 )
 
     @drop_datasets
