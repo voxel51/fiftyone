@@ -7,6 +7,9 @@ import type {
 import { VideoIntentCancelledError } from "./types";
 
 const PUSH_VIDEO_ACCESS_UNIT_CAP = 4_096;
+// Push-only sources have no EOF marker. One video-frame-scale quiet period
+// closes an incomplete runway instead of spending the engine's full deadline.
+const PUSH_VIDEO_QUIESCENCE_MS = 100;
 
 interface StoredAccessUnit {
   readonly token: number;
@@ -137,7 +140,11 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
       ) {
         return retained.result;
       }
-      await this.waitForPush(signal, budget.deadlineMs);
+      const pushed = await this.waitForPush(
+        signal,
+        Math.min(budget.deadlineMs, playbackNowMs() + PUSH_VIDEO_QUIESCENCE_MS),
+      );
+      if (!pushed) return retained.result;
     }
   }
 
@@ -211,13 +218,20 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
     };
   }
 
-  private waitForPush(signal: AbortSignal, deadlineMs: number): Promise<void> {
+  private waitForPush(
+    signal: AbortSignal,
+    deadlineMs: number,
+  ): Promise<boolean> {
     if (signal.aborted) return Promise.reject(new VideoIntentCancelledError());
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
       let timer: ReturnType<typeof setTimeout> | null = null;
       const finish = () => {
         cleanup();
-        resolve();
+        resolve(true);
+      };
+      const quiesce = () => {
+        cleanup();
+        resolve(false);
       };
       const cancel = () => {
         cleanup();
@@ -231,7 +245,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
       this.pushListeners.add(finish);
       signal.addEventListener("abort", cancel, { once: true });
       if (Number.isFinite(deadlineMs)) {
-        timer = setTimeout(finish, Math.max(0, deadlineMs - playbackNowMs()));
+        timer = setTimeout(quiesce, Math.max(0, deadlineMs - playbackNowMs()));
       }
     });
   }

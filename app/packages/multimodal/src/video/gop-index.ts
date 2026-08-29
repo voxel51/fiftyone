@@ -273,7 +273,8 @@ function compareUnitTime(
   return left.timeNs < right.timeNs ? -1 : left.timeNs > right.timeNs ? 1 : 0;
 }
 
-function compareUnitDecodeTime(
+/** Orders access units by decode time, then presentation time. */
+export function compareUnitDecodeTime(
   left: EncodedVideoAccessUnit,
   right: EncodedVideoAccessUnit,
 ): number {

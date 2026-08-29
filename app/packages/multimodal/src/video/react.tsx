@@ -8,12 +8,15 @@ import {
   type ReactNode,
 } from "react";
 
-import type { EncodedVideoVisualization } from "../ir";
 import type {
   VideoPlaybackManager,
   VideoStreamLease,
 } from "./playback-manager";
-import type { VideoIntentPriority, VideoStreamSnapshot } from "./types";
+import type {
+  SharedEncodedVideoVisualization,
+  VideoIntentPriority,
+  VideoStreamSnapshot,
+} from "./types";
 
 const EMPTY_VIDEO_SNAPSHOT: VideoStreamSnapshot = {
   diagnostic: null,
@@ -56,7 +59,7 @@ export function useVideoStreamPresentation({
   targetTimeNs,
 }: {
   readonly enabled?: boolean;
-  readonly frame: EncodedVideoVisualization | null;
+  readonly frame: SharedEncodedVideoVisualization | null;
   readonly manager?: VideoPlaybackManager | null;
   readonly priority?: VideoIntentPriority;
   readonly stream: string;

@@ -239,7 +239,7 @@ function selectFrames(
         .slice(0, policy.limit)
         .sort(chronological);
     case STREAM_SYNC_MODE.STRICT:
-      return inWindow.slice(0, policy.limit).sort(chronological);
+      return [...inWindow].sort(chronological).slice(0, policy.limit);
     case STREAM_SYNC_MODE.LATEST:
       return [...inWindow]
         .filter((frame) => frame.timestampNs <= timeNs)

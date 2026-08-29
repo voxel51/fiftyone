@@ -247,6 +247,37 @@ describe("WebCodecsVideoDecoder", () => {
     actor.close();
   });
 
+  it("rejects a saturated queue wait when decoder progress fails", async () => {
+    vi.useFakeTimers();
+    const harness = fakeWebCodecs({
+      holdDecodeQueue: true,
+      shouldOutput: () => false,
+    });
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const decode = actor.decode(
+      Array.from({ length: MAX_VIDEO_DECODE_IN_FLIGHT + 1 }, (_, index) =>
+        unit(index, index === 0, undefined, index),
+      ),
+      {
+        signal: new AbortController().signal,
+        targetTimeNs: BigInt(MAX_VIDEO_DECODE_IN_FLIGHT),
+      },
+    );
+    const rejection = expect(decode).rejects.toBeInstanceOf(
+      VideoDecoderFailureError,
+    );
+
+    await vi.advanceTimersByTimeAsync(VIDEO_DECODE_PROGRESS_TIMEOUT_MS + 1);
+
+    await rejection;
+    expect(harness.instances[0].decode).toHaveBeenCalledTimes(
+      MAX_VIDEO_DECODE_IN_FLIGHT,
+    );
+    expect(harness.instances[0].reset).toHaveBeenCalledOnce();
+    expect(harness.instances[0].close).toHaveBeenCalledOnce();
+    actor.close();
+  });
+
   it("rejects insecure contexts with a typed decoder failure", async () => {
     const harness = fakeWebCodecs({ isSecureContext: false });
     const actor = new WebCodecsVideoDecoder(harness.environment);
@@ -362,6 +393,7 @@ describe("WebCodecsVideoDecoder AV1", () => {
 
 function fakeWebCodecs(
   options: {
+    readonly holdDecodeQueue?: boolean;
     readonly holdOutputsUntilSubmissions?: number;
     readonly isSecureContext?: boolean;
     readonly outputGate?: Promise<void>;
@@ -419,12 +451,14 @@ function fakeWebCodecs(
         maximumDecodeQueueSize,
         this.decodeQueueSize,
       );
-      queueMicrotask(() => {
-        this.decodeQueueSize -= 1;
-        for (const listener of this.dequeueListeners) {
-          listener.call(this, new Event("dequeue"));
-        }
-      });
+      if (!options.holdDecodeQueue) {
+        queueMicrotask(() => {
+          this.decodeQueueSize -= 1;
+          for (const listener of this.dequeueListeners) {
+            listener.call(this, new Event("dequeue"));
+          }
+        });
+      }
       outstanding += 1;
       maximumOutstanding = Math.max(maximumOutstanding, outstanding);
       if (options.shouldOutput && !options.shouldOutput(submission)) return;

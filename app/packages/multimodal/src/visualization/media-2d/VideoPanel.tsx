@@ -5,9 +5,11 @@ import {
   type ReactNode,
 } from "react";
 
-import type { EncodedVideoVisualization } from "../../ir";
 import { useVideoStreamPresentation } from "../../video/react";
-import type { VideoIntentPriority } from "../../video/types";
+import type {
+  SharedEncodedVideoVisualization,
+  VideoIntentPriority,
+} from "../../video/types";
 import {
   Base2dScene,
   ImageTexturePlane,
@@ -26,7 +28,7 @@ export interface VideoPanelProps {
   readonly canvasSurface?: string;
   readonly className?: string;
   readonly fit?: "contain" | "cover";
-  readonly frame: EncodedVideoVisualization;
+  readonly frame: SharedEncodedVideoVisualization;
   readonly notices?: readonly PanelNotice[];
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly onResetView?: () => void;

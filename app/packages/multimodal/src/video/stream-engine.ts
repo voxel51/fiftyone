@@ -1,6 +1,7 @@
 import { diagnosticMessage } from "../utils/errors";
 import { VideoSeekAdmissionScheduler } from "./admission-scheduler";
 import {
+  compareUnitDecodeTime,
   EncodedAccessUnitCache,
   uniqueSortedAccessUnits,
   VideoGopIndex,
@@ -774,19 +775,7 @@ function uniqueDecodeSortedAccessUnits(
 ): EncodedVideoAccessUnit[] {
   const byTime = new Map<bigint, EncodedVideoAccessUnit>();
   for (const unit of units) byTime.set(unit.timeNs, unit);
-  return [...byTime.values()].sort((left, right) => {
-    const leftTimeNs = left.frame.decodeTimestampNs ?? left.timeNs;
-    const rightTimeNs = right.frame.decodeTimestampNs ?? right.timeNs;
-    return leftTimeNs < rightTimeNs
-      ? -1
-      : leftTimeNs > rightTimeNs
-        ? 1
-        : left.timeNs < right.timeNs
-          ? -1
-          : left.timeNs > right.timeNs
-            ? 1
-            : 0;
-  });
+  return [...byTime.values()].sort(compareUnitDecodeTime);
 }
 
 function maxDecodeTimeNs(

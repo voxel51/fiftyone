@@ -44,6 +44,7 @@ import {
 } from "../../video/react";
 import {
   isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
   type VideoIntentPriority,
 } from "../../video/types";
 import { useLatestRef } from "./use-latest-ref";
@@ -693,9 +694,7 @@ function BitmapEncodedVideoView({
 
   useEffect(() => {
     if (!sharedVideo) {
-      onErrorRef.current?.(
-        new Error(`Video codec ${frame.codec} is unsupported`),
-      );
+      onErrorRef.current?.(new Error(sharedVideoRejectionMessage(frame)));
       return;
     }
     if (targetTimeNs === null) {
@@ -720,7 +719,7 @@ function BitmapEncodedVideoView({
     }
   }, [
     contextManager,
-    frame.codec,
+    frame,
     hasPrivateRunway,
     localManager,
     onErrorRef,

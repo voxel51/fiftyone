@@ -6,6 +6,7 @@ import { VideoPlaybackManager } from "./playback-manager";
 import { SharedVideoPresentation } from "./presentation";
 import { MAX_VIDEO_DEPENDENCY_ACCESS_UNITS } from "./stream-engine";
 import type {
+  EncodedVideoAccessUnit,
   H264AccessUnit,
   VideoAccessUnitReader,
   VideoDecoderActor,
@@ -945,7 +946,7 @@ class FakeDecoderActor implements VideoDecoderActor {
   cursorTimeNs: bigint | null = null;
   readonly decodeCalls: Array<{
     readonly target: bigint;
-    readonly units: readonly H264AccessUnit[];
+    readonly units: readonly EncodedVideoAccessUnit[];
   }> = [];
   readonly outputs: ReturnType<typeof fakeVideoFrame>[] = [];
   private readonly readyPresentations = new Set<bigint>();
@@ -982,7 +983,7 @@ class FakeDecoderActor implements VideoDecoderActor {
   }
 
   async decode(
-    units: readonly H264AccessUnit[],
+    units: readonly EncodedVideoAccessUnit[],
     {
       signal,
       targetTimeNs,
@@ -1017,7 +1018,11 @@ class FakeDecoderActor implements VideoDecoderActor {
       this.readyPresentations.delete(targetTimeNs);
       this.cursorDecodeTimeNs =
         units.at(-1)?.frame.decodeTimestampNs ?? targetTimeNs;
-      this.configuredCodec = units[0]?.frame.h264.codecString ?? "avc1.4D001F";
+      const firstFrame = units[0]?.frame;
+      this.configuredCodec =
+        (firstFrame?.codec === "h264"
+          ? firstFrame.h264.codecString
+          : undefined) ?? "avc1.4D001F";
       const output = fakeVideoFrame();
       this.outputs.push(output);
       return output.frame;

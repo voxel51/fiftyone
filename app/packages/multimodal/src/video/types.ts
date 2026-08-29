@@ -30,6 +30,16 @@ export function isSharedEncodedVideoVisualization(
   );
 }
 
+/** Explains why an encoded frame rejected by shared playback is unavailable. */
+export function sharedVideoRejectionMessage(
+  frame: EncodedVideoVisualization,
+): string {
+  if (frame.codec === "h264" && frame.h264.hasFrame === false) {
+    return "H.264 video frame data is unavailable";
+  }
+  return `Video codec ${frame.codec} is unsupported`;
+}
+
 /** Presentation copy that no longer owns a WebCodecs decoder surface. */
 export interface VideoPresentationLease {
   readonly height: number;

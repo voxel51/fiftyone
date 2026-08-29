@@ -821,6 +821,20 @@ describe("BitmapImageFrameView", () => {
     );
     expect(onImageLoaded).not.toHaveBeenCalled();
   });
+
+  it("reports unavailable H.264 frame data separately from codec support", async () => {
+    const onError = vi.fn();
+
+    render(
+      <BitmapImageFrameView frame={videoFrame(false)} onError={onError} />,
+    );
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith(
+        new Error("H.264 video frame data is unavailable"),
+      ),
+    );
+  });
 });
 
 describe("BitmapCanvasHost", () => {
@@ -989,14 +1003,14 @@ function depthFrame(): RawImageVisualization {
   };
 }
 
-function videoFrame(): EncodedVideoVisualization {
+function videoFrame(hasFrame = true): EncodedVideoVisualization {
   return {
     bytes: Uint8Array.of(0, 0, 1, 0x65),
     codec: "h264",
     format: "h264",
     h264: {
       codecString: "avc1.4D001F",
-      hasFrame: true,
+      hasFrame,
       pps: Uint8Array.of(0x68, 0xce),
       sps: Uint8Array.of(0x67, 0x4d, 0x00, 0x1f),
     },

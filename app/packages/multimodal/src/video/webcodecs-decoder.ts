@@ -1,6 +1,7 @@
 import { h264AccessUnitWithParameterSets } from "../codecs/h264-annexb";
 import { toError } from "../utils/errors";
 import type { EncodedVideoVisualization } from "../ir";
+import { compareUnitDecodeTime } from "./gop-index";
 import type { EncodedVideoAccessUnit, VideoDecoderActor } from "./types";
 import {
   isSharedEncodedVideoVisualization,
@@ -39,6 +40,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   private closed = false;
   private codecString: string | null = null;
   private decoder: VideoDecoder | null = null;
+  private readonly decoderQueueWaiters = new Set<(error: Error) => void>();
   private failed: Error | null = null;
   private lastOutputTimeNs: bigint | null = null;
   private lastSubmittedDecodeTimeNs: bigint | null = null;
@@ -84,7 +86,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       throw new Error("Concurrent video decoder transaction");
     }
     if (signal.aborted) throw new VideoIntentCancelledError();
-    const decodable = units.filter(isDecodableUnit).sort(compareDecodeOrder);
+    const decodable = units.filter(isDecodableUnit).sort(compareUnitDecodeTime);
     if (decodable.length === 0) {
       throw new VideoDependencyWaitError("Waiting for a video access unit");
     }
@@ -177,7 +179,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
           this.pending.length >= MAX_REORDERED_VIDEO_OUTPUTS
         ) {
           if (decoder.decodeQueueSize >= MAX_VIDEO_DECODE_IN_FLIGHT) {
-            await waitForDecoderQueueProgress(
+            await this.waitForDecoderQueueProgress(
               decoder,
               MAX_VIDEO_DECODE_IN_FLIGHT,
               signal,
@@ -437,6 +439,41 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     await abortableDecoderOutput(Promise.race(pending), signal);
   }
 
+  private waitForDecoderQueueProgress(
+    decoder: VideoDecoder,
+    limit: number,
+    signal: AbortSignal,
+  ): Promise<void> {
+    if (signal.aborted) return Promise.reject(new VideoIntentCancelledError());
+    if (decoder.decodeQueueSize < limit) return Promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        this.decoderQueueWaiters.delete(fail);
+        decoder.removeEventListener("dequeue", onDequeue);
+        signal.removeEventListener("abort", onAbort);
+      };
+      const fail = (error: Error) => {
+        cleanup();
+        reject(error);
+      };
+      const onAbort = () => {
+        cleanup();
+        reject(new VideoIntentCancelledError());
+      };
+      const onDequeue = () => {
+        if (decoder.decodeQueueSize >= limit) return;
+        cleanup();
+        resolve();
+      };
+      this.decoderQueueWaiters.add(fail);
+      decoder.addEventListener("dequeue", onDequeue);
+      signal.addEventListener("abort", onAbort, { once: true });
+      // The queue can drain between the caller's check and listener install.
+      if (signal.aborted) onAbort();
+      else onDequeue();
+    });
+  }
+
   private discardReorderedOutputsBefore(timeNs: bigint): void {
     for (const [outputTimeNs, output] of this.reorderedOutputs) {
       if (outputTimeNs >= timeNs) continue;
@@ -494,6 +531,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   }
 
   private disposeDecoder(error: Error, reset = true): void {
+    for (const fail of [...this.decoderQueueWaiters]) fail(error);
     for (const pending of this.pending.splice(0)) pending.reject(error);
     for (const output of this.reorderedOutputs.values()) {
       if (output.frame) output.frame.close();
@@ -537,15 +575,6 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   }
 }
 
-function compareDecodeOrder(
-  left: EncodedVideoAccessUnit,
-  right: EncodedVideoAccessUnit,
-) {
-  const leftTime = left.frame.decodeTimestampNs ?? left.timeNs;
-  const rightTime = right.frame.decodeTimestampNs ?? right.timeNs;
-  return leftTime < rightTime ? -1 : leftTime > rightTime ? 1 : 0;
-}
-
 function uniquePendingTimestamp(
   preferred: number,
   pending: readonly PendingOutput[],
@@ -579,35 +608,6 @@ function abortableDecoderOutput<T>(
         reject(error);
       },
     );
-  });
-}
-
-function waitForDecoderQueueProgress(
-  decoder: VideoDecoder,
-  limit: number,
-  signal: AbortSignal,
-): Promise<void> {
-  if (signal.aborted) return Promise.reject(new VideoIntentCancelledError());
-  if (decoder.decodeQueueSize < limit) return Promise.resolve();
-  return new Promise<void>((resolve, reject) => {
-    const cleanup = () => {
-      decoder.removeEventListener("dequeue", onDequeue);
-      signal.removeEventListener("abort", onAbort);
-    };
-    const onAbort = () => {
-      cleanup();
-      reject(new VideoIntentCancelledError());
-    };
-    const onDequeue = () => {
-      if (decoder.decodeQueueSize >= limit) return;
-      cleanup();
-      resolve();
-    };
-    decoder.addEventListener("dequeue", onDequeue);
-    signal.addEventListener("abort", onAbort, { once: true });
-    // The queue can drain between the caller's check and listener install.
-    if (signal.aborted) onAbort();
-    else onDequeue();
   });
 }
 

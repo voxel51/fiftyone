@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 
 import type { CameraVisualization, SceneSource } from "../../../../ir";
-import { isSharedEncodedVideoVisualization } from "../../../../video/types";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+} from "../../../../video/types";
 import { imageTextureCacheKey } from "../../../../visualization/media-2d/image-texture-cache";
 import { useKeyedIdentityMap } from "../../../../visualization/panel-ui/use-keyed-identity-map";
 import type { CameraFrustumPanelLayer } from "../../../../visualization/scene-3d/types";
@@ -133,7 +136,9 @@ export function buildScene3dFrustumLayer({
               video: imageFrame.frame,
             }
           : {
-              imageUnavailableReason: `Video codec ${imageFrame.frame.codec} is unsupported`,
+              imageUnavailableReason: sharedVideoRejectionMessage(
+                imageFrame.frame,
+              ),
             }
         : {
             image: imageFrame.frame,
