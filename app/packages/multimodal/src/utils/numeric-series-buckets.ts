@@ -138,7 +138,7 @@ function finiteExtremaIndexes(
   let maxIndex = -1;
   for (let index = start; index < end; index += 1) {
     const value = values[index];
-    if (Number.isNaN(value)) continue;
+    if (!Number.isFinite(value)) continue;
     if (minIndex === -1 || value < values[minIndex]) minIndex = index;
     if (maxIndex === -1 || value >= values[maxIndex]) maxIndex = index;
   }

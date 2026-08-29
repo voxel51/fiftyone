@@ -6,7 +6,13 @@ describe("aggregateAlignedNumericSeries", () => {
     const result = aggregateAlignedNumericSeries(
       Float64Array.from({ length: 20 }, (_, index) => index / 10),
       Float64Array.from({ length: 20 }, (_, index) =>
-        index === 7 ? 100 : index === 12 ? Number.NaN : index % 3,
+        index === 7
+          ? 100
+          : index === 12
+            ? Number.NaN
+            : index === 15
+              ? Number.POSITIVE_INFINITY
+              : index % 3,
       ),
       0n,
       1_000_000_000n,
@@ -14,6 +20,7 @@ describe("aggregateAlignedNumericSeries", () => {
 
     expect([...result.values]).toContain(100);
     expect([...result.values].some(Number.isNaN)).toBe(true);
+    expect([...result.values]).not.toContain(Number.POSITIVE_INFINITY);
   });
 
   it("is invariant to continuation page boundaries", () => {
