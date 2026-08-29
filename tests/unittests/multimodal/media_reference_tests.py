@@ -1456,12 +1456,6 @@ class MediaReferenceDatasetTests(unittest.TestCase):
             duplicate_id, [sample.id for sample in duplicate_occurrences]
         )
 
-        with self.assertRaisesRegex(ValueError, "multiple samples"):
-            destination.merge_sample(
-                fo.Sample(
-                    media_reference=_make_reference(1), value="ambiguous"
-                )
-            )
         with self.assertRaisesRegex(ValueError, "duplicated.*destination"):
             destination.merge_samples(source)
 

@@ -406,9 +406,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         d = self._sample_collection.find_one(query)
 
         if d is None:
-            field = (
-                "ID" if oid is not None else "filepath or media-reference key"
-            )
+            if oid is not None:
+                field = "ID"
+            elif media_mode == "reference":
+                field = "media-reference key"
+            else:
+                field = "filepath"
+
             raise KeyError(
                 "No sample found with %s '%s'" % (field, id_filepath_slice)
             )
@@ -4768,22 +4772,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             view = self
 
-        if key_field == "media_reference.key":
-            matches = list(view.match(F(key_field) == sample_key)[:2])
-            if len(matches) > 1:
-                raise ValueError(
-                    "Cannot merge by a media-reference key that matches "
-                    "multiple samples"
-                )
-
-            existing_sample = matches[0] if matches else None
-        else:
-            try:
-                existing_sample = view.one(F(key_field) == sample_key)
-            except ValueError:
-                existing_sample = None
-
-        if existing_sample is None:
+        try:
+            existing_sample = view.one(F(key_field) == sample_key)
+        except ValueError:
             if insert_new:
                 self.add_sample(
                     sample,
@@ -10643,16 +10634,10 @@ def _save_view(view, fields=None):
         )
 
     if not all_fields:
-        selected_fields = set(fields)
         edited_fields = {
-            edited_field
-            for edited_field in edited_fields
-            if any(
-                edited_field == selected_field
-                or edited_field.startswith(selected_field + ".")
-                or selected_field.startswith(edited_field + ".")
-                for selected_field in selected_fields
-            )
+            e
+            for e in edited_fields
+            if any(e == f or e.startswith(f + ".") for f in fields)
         }
 
     media_identity_mode = _get_media_identity_mode(dataset)

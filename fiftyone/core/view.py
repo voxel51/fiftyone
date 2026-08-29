@@ -133,9 +133,13 @@ class DatasetView(foc.SampleCollection):
         try:
             return next(iter(view))
         except StopIteration:
-            field = (
-                "ID" if oid is not None else "filepath or media-reference key"
-            )
+            if oid is not None:
+                field = "ID"
+            elif media_mode == "reference":
+                field = "media-reference key"
+            else:
+                field = "filepath"
+
             raise KeyError(
                 "No sample found with %s '%s'" % (field, id_filepath_slice)
             )

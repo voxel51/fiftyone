@@ -64,10 +64,7 @@ from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 _random = random.Random()
 
 
-def _generate_rand(filepath=None):
-    if filepath is not None:
-        return random.Random(filepath).random() * 0.001 + 0.999
-
+def _generate_rand():
     return _random.random() * 0.001 + 0.999
 
 
@@ -128,27 +125,30 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
 
         if filepath is not None:
             filepath = fos.normalize_path(filepath)
+            kwargs["filepath"] = filepath
 
         from fiftyone.multimodal.media import _validate_media_source
 
         _validate_media_source(filepath, media_reference)
 
         kwargs["id"] = kwargs.get("id", None)
-        kwargs["filepath"] = filepath
         kwargs["created_at"] = None
         kwargs["last_modified_at"] = None
+
         if kwargs.get("_rand", None) is None:
-            kwargs["_rand"] = _generate_rand(filepath=filepath)
+            kwargs["_rand"] = _generate_rand()
 
         media_type = kwargs.pop("media_type", None)
         if media_reference is not None:
-            kwargs["_media_type"] = kwargs.get("_media_type", None) or (
-                media_reference.media_type
+            kwargs["_media_type"] = (
+                media_type
+                or kwargs.get("_media_type", None)
+                or media_reference.media_type
             )
         else:
             kwargs["_media_type"] = (
-                kwargs.get("_media_type", None)
-                or media_type
+                media_type
+                or kwargs.get("_media_type", None)
                 or fomm.get_media_type(filepath)
             )
 
