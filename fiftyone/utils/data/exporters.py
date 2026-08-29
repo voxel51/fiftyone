@@ -1280,7 +1280,7 @@ class MediaExporter(object):
         self._manifest_path = manifest_path
         self._manifest = manifest
 
-    def _export_reference_asset(self, asset, outpath, usages, materializer):
+    def _export_reference_asset(self, asset, outpath):
         """Exports one planned physical reference asset exactly once."""
         if self.export_mode is not True:
             raise ValueError("Reference assets require copy-mode media export")
@@ -1305,7 +1305,7 @@ class MediaExporter(object):
                 "Distinct reference assets resolve to the same output path"
             )
 
-        materializer.materialize_asset(asset, outpath, usages)
+        self.export(asset.path, outpath=outpath)
         self._reference_asset_outputs[asset.key] = outpath
         self._reference_output_keys[outpath] = asset.key
         return outpath
@@ -1390,7 +1390,7 @@ class MediaExporter(object):
 
         foo.export_document(
             {"bindings": plan.bindings},
-            os.path.join(
+            fos.join(
                 self._reference_export_root,
                 _MEDIA_REFERENCE_BINDINGS_FILENAME,
             ),
@@ -1407,7 +1407,7 @@ class MediaExporter(object):
 
         _write_media_source_manifest(
             plan,
-            os.path.join(
+            fos.join(
                 self._reference_export_root,
                 _MEDIA_SOURCE_MANIFEST_FILENAME,
             ),

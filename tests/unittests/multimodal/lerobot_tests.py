@@ -1159,10 +1159,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             self.assertEqual((occurrence_count, reference_count), (8, 2))
 
             materialized_calls = []
-            materialized_usage_counts = []
-            materialize_asset = (
-                foul._LeRobotAssetMaterializer.materialize_asset
-            )
+            export_reference_asset = foud.MediaExporter._export_reference_asset
             describe_assets = LeRobotEpisode.describe_assets
             describe_calls = []
 
@@ -1170,13 +1167,10 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 describe_calls.append(reference.key)
                 return describe_assets(reference)
 
-            def track_materialization(
-                materializer, asset, destination, usages
-            ):
+            def track_materialization(media_exporter, asset, destination):
                 materialized_calls.append(asset.key)
-                materialized_usage_counts.append(len(usages))
-                return materialize_asset(
-                    materializer, asset, destination, usages
+                return export_reference_asset(
+                    media_exporter, asset, destination
                 )
 
             reference_plans = []
@@ -1222,8 +1216,8 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 "_get_source_binding",
                 wraps=foul._get_source_binding,
             ) as source_binding_read, mock.patch.object(
-                foul._LeRobotAssetMaterializer,
-                "materialize_asset",
+                foud.MediaExporter,
+                "_export_reference_asset",
                 new=track_materialization,
             ):
                 selected.export(dataset_exporter=exporter)
@@ -1247,8 +1241,13 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             self.assertEqual(
                 len(materialized_calls), len(set(materialized_calls))
             )
+            usages_by_asset = {}
+            for usage in plan.usages:
+                usages_by_asset.setdefault(usage.asset_key, 0)
+                usages_by_asset[usage.asset_key] += 1
+
             self.assertLessEqual(
-                max(materialized_usage_counts), reference_count
+                max(usages_by_asset.values()), reference_count
             )
 
             import_collection = foudi.foo.import_collection
@@ -1824,8 +1823,8 @@ finally:
             dataset = _import(source_root)
 
             with mock.patch.object(
-                foul._LeRobotAssetMaterializer,
-                "materialize_asset",
+                foud.MediaExporter,
+                "_export_reference_asset",
                 side_effect=RuntimeError("materializer failed"),
             ):
                 with self.assertRaisesRegex(

@@ -21,7 +21,6 @@ import mimetypes
 import os
 import posixpath
 import re
-import shutil
 import string
 import threading
 import uuid
@@ -699,9 +698,6 @@ class _LeRobotAssetMaterializer(_ReferenceAssetMaterializer):
 
     def get_destination_location(self, reference, asset):
         return asset.location.path
-
-    def materialize_asset(self, asset, destination, usages):
-        shutil.copy2(asset.path, destination)
 
     def validate_materialized_reference(self, reference, assets, root):
         _resolve_lerobot_assets_at_root(reference, assets, root)
