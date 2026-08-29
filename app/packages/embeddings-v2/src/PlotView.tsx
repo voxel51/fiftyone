@@ -45,7 +45,7 @@ const TOKEN_VARS = {
   "--emb-card-elevated": `var(${getColorCssVar(BackgroundColor.CardElevated)})`,
   "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
   "--emb-border-strong": `var(${getColorCssVar(BorderColor.Strong)})`,
-  "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
+  "--emb-fg": `var(${getColorCssVar(TextColor.Foreground)})`,
 } as CSSProperties;
 
 function ModeSegment({
@@ -69,11 +69,11 @@ function ModeSegment({
       <Icon
         name={icon}
         size={Size.Md}
-        color={active ? TextColor.Fg : TextColor.Secondary}
+        color={active ? TextColor.Foreground : TextColor.Secondary}
       />
       <Text
         variant={TextVariant.Md}
-        color={active ? TextColor.Fg : TextColor.Secondary}
+        color={active ? TextColor.Foreground : TextColor.Secondary}
       >
         {label}
       </Text>
@@ -211,7 +211,7 @@ export default function PlotView({
           onClick={onBack}
         />
         <div className="emb-plot-title">
-          <Text variant={TextVariant.Md} color={TextColor.Fg}>
+          <Text variant={TextVariant.Md} color={TextColor.Foreground}>
             {run.brainKey}
           </Text>
           <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
@@ -320,7 +320,7 @@ export default function PlotView({
       </div>
       {error && (
         <div className="emb-plot-error">
-          <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
+          <Text variant={TextVariant.Sm} color={TextColor.Failure}>
             {error}
           </Text>
         </div>
@@ -468,7 +468,7 @@ export default function PlotView({
                 <Icon
                   name={IconName.Refresh}
                   size={Size.Xs}
-                  color={TextColor.Fg}
+                  color={TextColor.Foreground}
                 />
                 {canUpdate
                   ? `Apply to all ${total.toLocaleString()}`
@@ -482,8 +482,12 @@ export default function PlotView({
             describe */}
         {features.notice && (
           <div className="emb-toast" role="status" aria-live="polite">
-            <Icon name={IconName.Info} size={Size.Sm} color={TextColor.Fg} />
-            <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+            <Icon
+              name={IconName.Info}
+              size={Size.Sm}
+              color={TextColor.Foreground}
+            />
+            <Text variant={TextVariant.Sm} color={TextColor.Foreground}>
               {features.notice.text}
             </Text>
             <button

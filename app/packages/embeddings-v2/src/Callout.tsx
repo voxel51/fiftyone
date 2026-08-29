@@ -55,7 +55,7 @@ export function Callout({
           {icon && (
             <Icon name={icon} size={Size.Sm} color={BrandColor.Primary} />
           )}
-          <Text variant={TextVariant.Md} color={TextColor.Fg}>
+          <Text variant={TextVariant.Md} color={TextColor.Foreground}>
             {title}
           </Text>
         </div>

@@ -63,7 +63,7 @@
 }
 
 .statusBadgeError {
-  color: var(--color-content-text-destructive);
+  color: var(--color-content-text-failure);
 }
 
 .emptyText {
@@ -79,5 +79,5 @@
 }
 
 .emptyTextError {
-  color: var(--color-content-text-destructive);
+  color: var(--color-content-text-failure);
 }

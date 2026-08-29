@@ -83,7 +83,7 @@ export default function SimilarityIndex({
                   name={bk.supports_prompts ? IconName.Check : IconName.Close}
                   size={Size.Sm}
                   color={
-                    bk.supports_prompts ? IconColor.Success : IconColor.Error
+                    bk.supports_prompts ? IconColor.Success : IconColor.Failure
                   }
                 />
               </Stack>

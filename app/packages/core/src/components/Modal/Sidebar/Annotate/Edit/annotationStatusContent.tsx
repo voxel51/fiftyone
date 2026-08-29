@@ -175,7 +175,7 @@ const AIErrorStatus = ({ error }: { error: InferenceError }): ReactElement => (
     spacing={Spacing.Sm}
   >
     <ErrorOutline fontSize="small" color="error" />
-    <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+    <Text variant={TextVariant.Md} color={TextColor.Failure}>
       {formatErrorLabel(error)}
     </Text>
   </Stack>
@@ -215,7 +215,7 @@ const AIPromptStatus = (): ReactElement => (
     spacing={Spacing.Md}
   >
     <Marker color={TextColor.Success} label="Positive prompt" />
-    <Marker color={TextColor.Destructive} label="Negative prompt" />
+    <Marker color={TextColor.Failure} label="Negative prompt" />
     <Separator />
     <Text variant={TextVariant.Md} color={TextColor.Secondary}>
       Hold shift to invert positive/negative selection

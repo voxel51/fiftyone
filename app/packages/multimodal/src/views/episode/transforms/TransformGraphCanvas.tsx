@@ -463,7 +463,7 @@ function TransformFrameNode({ data, selected }: NodeProps<FrameFlowNode>) {
   const iconColor = selected
     ? BrandColor.Accent
     : data.isolated
-      ? IconColor.Destructive
+      ? IconColor.Failure
       : data.dataBearing
         ? IconColor.Info
         : IconColor.Muted;
