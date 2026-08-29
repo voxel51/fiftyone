@@ -347,8 +347,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not _virtual:
             self._update_last_loaded_at()
 
-        if doc.media_type:
-            self._configure_media_type(doc.media_type)
+        media_type = kwargs.get("media_type")
+        if media_type or doc.media_type:
+            self._configure_media_type(media_type or doc.media_type)
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
@@ -7884,6 +7885,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         dynamic=False,
         progress=None,
+        media_type=None,
         **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
@@ -7975,6 +7977,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
+            media_type (None): the media type of the dataset. If provided, this
+                argument sets the media type of the dataset.
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
@@ -7982,7 +7986,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        dataset = cls(name, persistent=persistent, overwrite=overwrite)
+        dataset = cls(
+            name,
+            persistent=persistent,
+            overwrite=overwrite,
+            media_type=media_type,
+        )
         dataset.add_dir(
             dataset_dir=dataset_dir,
             dataset_type=dataset_type,
@@ -8011,6 +8020,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dynamic=False,
         cleanup=True,
         progress=None,
+        media_type=None,
         **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given archive.
@@ -8099,6 +8109,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
+            media_type (None): the media type of the dataset. If provided, this
+                argument sets the media type of the dataset.
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
@@ -8106,7 +8118,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        dataset = cls(name, persistent=persistent, overwrite=overwrite)
+        dataset = cls(
+            name,
+            persistent=persistent,
+            overwrite=overwrite,
+            media_type=media_type,
+        )
         dataset.add_archive(
             archive_path,
             dataset_type=dataset_type,
@@ -8132,6 +8149,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         dynamic=False,
         progress=None,
+        media_type=None,
     ):
         """Creates a :class:`Dataset` by importing the samples in the given
         :class:`fiftyone.utils.data.importers.DatasetImporter`.
@@ -8170,11 +8188,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
+            media_type (None): the media type of the dataset. If provided, this
+                argument sets the media type of the dataset.
 
         Returns:
             a :class:`Dataset`
         """
-        dataset = cls(name, persistent=persistent, overwrite=overwrite)
+        dataset = cls(
+            name,
+            persistent=persistent,
+            overwrite=overwrite,
+            media_type=media_type,
+        )
         dataset.add_importer(
             dataset_importer,
             label_field=label_field,
@@ -9940,6 +9965,14 @@ def _load_dataset(obj, name, virtual=False):
             ) from e
 
         raise e
+
+
+def _get_dataset_media_type(name) -> Optional[str]:
+    db = foo.get_db_conn()
+    res = db.datasets.find_one({"name": name}, {"media_type": 1})
+    if not res:
+        raise DatasetNotFoundError(name)
+    return res.get("media_type", None)
 
 
 def _do_load_dataset(obj, name):
