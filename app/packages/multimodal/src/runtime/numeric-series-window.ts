@@ -167,12 +167,17 @@ export function completeNumericSeriesPrefix(
 /** Clips a decoded numeric field to one recording-time range. */
 export function sliceNumericFieldToRange(
   field: {
+    readonly bucketIndexes?: BigInt64Array;
     readonly timesSec: Float64Array;
     readonly values: Float64Array;
   },
   baseTimeNs: bigint,
   range: NsRange,
-): { readonly timesSec: Float64Array; readonly values: Float64Array } {
+): {
+  readonly bucketIndexes?: BigInt64Array;
+  readonly timesSec: Float64Array;
+  readonly values: Float64Array;
+} {
   const startSec = nsDeltaToSeconds(range.startNs - baseTimeNs);
   const endSec = nsDeltaToSeconds(range.endNs - baseTimeNs);
   let start = 0;
@@ -184,6 +189,9 @@ export function sliceNumericFieldToRange(
     end += 1;
   }
   return {
+    ...(field.bucketIndexes
+      ? { bucketIndexes: field.bucketIndexes.slice(start, end) }
+      : {}),
     timesSec: field.timesSec.slice(start, end),
     values: field.values.slice(start, end),
   };
@@ -219,6 +227,7 @@ function distanceToRange(range: NsRange, preferredTimeNs: bigint): bigint {
 
 /** One fetched slice of a signal, tagged with the range it covers. */
 export interface NumericSeriesSegment {
+  readonly bucketIndexes?: BigInt64Array;
   readonly startNs: bigint;
   readonly endNs: bigint;
   /** Recording-relative seconds, ascending. */
@@ -337,7 +346,15 @@ export function insertSeriesSegment(
     }
   }
   mergedParts.sort(compareByStartNs);
+  const indexedParts = mergedParts.filter(hasBucketIndexes);
   result.push({
+    ...(indexedParts.length === mergedParts.length
+      ? {
+          bucketIndexes: concatBigInt64Parts(
+            indexedParts.map((part) => part.bucketIndexes),
+          ),
+        }
+      : {}),
     endNs: mergedEndNs,
     startNs: mergedStartNs,
     timesSec: concatFloat64Parts(mergedParts.map((part) => part.timesSec)),
@@ -355,7 +372,11 @@ export function insertSeriesSegment(
 export function flattenSeriesSegments(
   segments: readonly NumericSeriesSegment[],
   discontinuities: readonly NsRange[],
-): { readonly timesSec: Float64Array; readonly values: Float64Array } {
+): {
+  readonly bucketIndexes?: BigInt64Array;
+  readonly timesSec: Float64Array;
+  readonly values: Float64Array;
+} {
   const nonEmpty = segments.filter((segment) => segment.timesSec.length > 0);
   if (nonEmpty.length === 0) {
     return { timesSec: new Float64Array(0), values: new Float64Array(0) };
@@ -369,11 +390,19 @@ export function flattenSeriesSegments(
     separators;
   const timesSec = new Float64Array(total);
   const values = new Float64Array(total);
+  const indexedSegments = nonEmpty.filter(hasBucketIndexes);
+  const bucketIndexes =
+    indexedSegments.length === nonEmpty.length
+      ? new BigInt64Array(total)
+      : undefined;
   let offset = 0;
   for (let index = 0; index < nonEmpty.length; index += 1) {
     const segment = nonEmpty[index];
     timesSec.set(segment.timesSec, offset);
     values.set(segment.values, offset);
+    if (bucketIndexes) {
+      bucketIndexes.set(indexedSegments[index].bucketIndexes, offset);
+    }
     offset += segment.timesSec.length;
     const next = nonEmpty[index + 1];
     if (next && separatorBefore[index + 1]) {
@@ -381,10 +410,23 @@ export function flattenSeriesSegments(
       const nextFirst = next.timesSec[0];
       timesSec[offset] = (previousLast + nextFirst) / 2;
       values[offset] = Number.NaN;
+      if (bucketIndexes) {
+        const indexedSegment = indexedSegments[index];
+        const left =
+          indexedSegment.bucketIndexes[indexedSegment.bucketIndexes.length - 1];
+        const right = indexedSegments[index + 1].bucketIndexes[0];
+        bucketIndexes[offset] = left < right ? left + 1n : left;
+      }
       offset += 1;
     }
   }
-  return { timesSec, values };
+  return { ...(bucketIndexes ? { bucketIndexes } : {}), timesSec, values };
+}
+
+function hasBucketIndexes(
+  segment: NumericSeriesSegment,
+): segment is NumericSeriesSegment & { readonly bucketIndexes: BigInt64Array } {
+  return segment.bucketIndexes !== undefined;
 }
 
 function segmentSeparators(
@@ -413,6 +455,18 @@ function segmentSeparators(
 
 function concatFloat64Parts(parts: readonly Float64Array[]): Float64Array {
   const result = new Float64Array(
+    parts.reduce((total, part) => total + part.length, 0),
+  );
+  let offset = 0;
+  for (const part of parts) {
+    result.set(part, offset);
+    offset += part.length;
+  }
+  return result;
+}
+
+function concatBigInt64Parts(parts: readonly BigInt64Array[]): BigInt64Array {
+  const result = new BigInt64Array(
     parts.reduce((total, part) => total + part.length, 0),
   );
   let offset = 0;

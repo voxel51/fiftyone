@@ -3,6 +3,8 @@ export const ALIGNED_NUMERIC_BUCKET_MAX_POINTS = 6;
 
 /** Numeric samples reduced onto an absolute-time bucket grid. */
 export interface AggregatedNumericSeries {
+  /** Exact absolute bucket identity for each retained representative. */
+  readonly bucketIndexes: BigInt64Array;
   readonly timesSec: Float64Array;
   readonly values: Float64Array;
 }
@@ -31,6 +33,7 @@ export function aggregateAlignedNumericSeries(
   values: Float64Array,
   baseTimeNs: bigint,
   bucketDurationNs: bigint,
+  bucketIndexes?: BigInt64Array | readonly bigint[],
 ): AggregatedNumericSeries {
   if (bucketDurationNs <= 0n) {
     throw new Error("numeric series bucket duration must be positive");
@@ -38,22 +41,34 @@ export function aggregateAlignedNumericSeries(
   const length = Math.min(timesSec.length, values.length);
   if (length === 0) {
     return {
+      bucketIndexes: new BigInt64Array(0),
       timesSec: new Float64Array(0),
       values: new Float64Array(0),
     };
   }
+  if (bucketIndexes && bucketIndexes.length < length) {
+    throw new Error("numeric series bucket indexes must cover every sample");
+  }
 
   const kept: number[] = [];
   let bucketStart = 0;
-  let bucket: bigint | undefined = bucketIndex(
-    timesSec[0],
+  let bucket: bigint | undefined = sampleBucketIndex(
+    0,
+    timesSec,
     baseTimeNs,
     bucketDurationNs,
+    bucketIndexes,
   );
   for (let index = 1; index <= length; index += 1) {
     const nextBucket =
       index < length
-        ? bucketIndex(timesSec[index], baseTimeNs, bucketDurationNs)
+        ? sampleBucketIndex(
+            index,
+            timesSec,
+            baseTimeNs,
+            bucketDurationNs,
+            bucketIndexes,
+          )
         : undefined;
     if (nextBucket === bucket) continue;
     kept.push(...summarizeBucket(values, bucketStart, index));
@@ -63,19 +78,36 @@ export function aggregateAlignedNumericSeries(
 
   const outTimes = new Float64Array(kept.length);
   const outValues = new Float64Array(kept.length);
+  const outBucketIndexes = new BigInt64Array(kept.length);
   for (let index = 0; index < kept.length; index += 1) {
-    outTimes[index] = timesSec[kept[index]];
-    outValues[index] = values[kept[index]];
+    const keptIndex = kept[index];
+    outTimes[index] = timesSec[keptIndex];
+    outValues[index] = values[keptIndex];
+    outBucketIndexes[index] = sampleBucketIndex(
+      keptIndex,
+      timesSec,
+      baseTimeNs,
+      bucketDurationNs,
+      bucketIndexes,
+    );
   }
-  return { timesSec: outTimes, values: outValues };
+  return {
+    bucketIndexes: outBucketIndexes,
+    timesSec: outTimes,
+    values: outValues,
+  };
 }
 
-function bucketIndex(
-  timeSec: number,
+function sampleBucketIndex(
+  index: number,
+  timesSec: Float64Array,
   baseTimeNs: bigint,
   bucketDurationNs: bigint,
+  bucketIndexes?: BigInt64Array | readonly bigint[],
 ): bigint {
-  const timeNs = baseTimeNs + BigInt(Math.round(timeSec * 1e9));
+  const supplied = bucketIndexes?.[index];
+  if (supplied !== undefined) return supplied;
+  const timeNs = baseTimeNs + BigInt(Math.round(timesSec[index] * 1e9));
   return numericSeriesBucketIndex(timeNs, bucketDurationNs);
 }
 

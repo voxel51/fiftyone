@@ -322,12 +322,14 @@ describe("numeric-series window policy", () => {
   it("clips decoded fields and applies proportional point budgets", () => {
     const clipped = sliceNumericFieldToRange(
       {
+        bucketIndexes: BigInt64Array.from([0n, 1n, 2n, 3n]),
         timesSec: Float64Array.from([0, 1, 2, 3]),
         values: Float64Array.from([10, 11, 12, 13]),
       },
       0n,
       range(1_000_000_000n, 2_000_000_000n),
     );
+    expect(clipped.bucketIndexes).toEqual(BigInt64Array.from([1n, 2n]));
     expect([...clipped.timesSec]).toEqual([1, 2]);
     expect([...clipped.values]).toEqual([11, 12]);
     expect(numericSeriesWindowPointBudget(null, undefined)).toBe(4_000);

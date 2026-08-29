@@ -60,13 +60,37 @@ describe("aggregateAlignedNumericSeries", () => {
       Float64Array.from(pages.flatMap((page) => [...page.values])),
       1_700_000_000_000_000_000n,
       bucketDurationNs,
+      BigInt64Array.from(pages.flatMap((page) => [...page.bucketIndexes])),
     );
 
     expect([...merged.timesSec]).toEqual([...whole.timesSec]);
     expect([...merged.values]).toEqual([...whole.values]);
   });
 
-  it("emits at most five representatives per bucket", () => {
+  it("retains exact bucket identities beyond float nanosecond precision", () => {
+    const baseTimeNs = 1_700_000_000_000_000_000n;
+    const absoluteTimes = [
+      baseTimeNs + 9_007_199_254_740_992n,
+      baseTimeNs + 9_007_199_254_740_993n,
+    ];
+    const timesSec = Float64Array.from(
+      absoluteTimes,
+      (timeNs) => Number(timeNs - baseTimeNs) / 1e9,
+    );
+    const bucketIndexes = BigInt64Array.from(absoluteTimes, (timeNs) => timeNs);
+    const result = aggregateAlignedNumericSeries(
+      timesSec,
+      Float64Array.from([1, 2]),
+      baseTimeNs,
+      1n,
+      bucketIndexes,
+    );
+
+    expect([...result.bucketIndexes]).toEqual(absoluteTimes);
+    expect([...result.values]).toEqual([1, 2]);
+  });
+
+  it("emits at most six representatives per bucket", () => {
     const result = aggregateAlignedNumericSeries(
       Float64Array.from({ length: 100_000 }, (_, index) => index / 1_000),
       Float64Array.from({ length: 100_000 }, (_, index) =>

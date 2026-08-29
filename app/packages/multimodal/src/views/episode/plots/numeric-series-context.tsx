@@ -430,6 +430,7 @@ export function NumericSeriesBridge({
       readonly baseTimeNs: bigint;
       readonly bucketDurationNs: bigint;
       readonly fields: readonly {
+        readonly bucketIndexes?: BigInt64Array;
         readonly path: string;
         readonly timesSec: Float64Array;
         readonly values: Float64Array;
@@ -459,6 +460,9 @@ export function NumericSeriesBridge({
             );
             cache.put({
               bucketDurationNs,
+              ...(sliced.bucketIndexes
+                ? { bucketIndexes: sliced.bucketIndexes }
+                : {}),
               coverageRanges: [missingRange],
               range: missingRange,
               seriesKey: key,
@@ -576,6 +580,7 @@ export function NumericSeriesBridge({
           });
           const flat = flattenSeriesSegments(
             visible.parts.map((part) => ({
+              bucketIndexes: part.bucketIndexes,
               endNs: part.range.endNs,
               startNs: part.range.startNs,
               timesSec: part.timesSec,
@@ -588,6 +593,7 @@ export function NumericSeriesBridge({
             flat.values,
             tileOriginNs,
             bucketDurationNs,
+            flat.bucketIndexes,
           );
           setPublished(key, {
             coverage: visible.coverageRanges,
@@ -1224,9 +1230,11 @@ function smallestPinnedViewport(
 function widestViewport(
   viewports: Iterable<NumericSeriesViewportDemand>,
 ): NumericSeriesViewportDemand | undefined {
-  return [...viewports].sort(
-    (left, right) => right.pixelWidth - left.pixelWidth,
-  )[0];
+  let widest: NumericSeriesViewportDemand | undefined;
+  for (const viewport of viewports) {
+    if (!widest || viewport.pixelWidth > widest.pixelWidth) widest = viewport;
+  }
+  return widest;
 }
 
 function selectionsForNumericSeriesKeys(

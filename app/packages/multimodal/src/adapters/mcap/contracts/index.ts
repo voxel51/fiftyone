@@ -378,6 +378,8 @@ export interface McapReadNumericSeriesRequest {
  * render gaps.
  */
 export interface McapNumericSeriesField {
+  /** Exact absolute bucket identity for aligned bounded-read summaries. */
+  readonly bucketIndexes?: BigInt64Array;
   /** Per-decimation-bucket discontinuity bits, when decimation was applied. */
   readonly bucketGapMask?: Uint8Array;
   readonly path: string;

@@ -351,12 +351,14 @@ function appendCoverageBand(
  * acquired data from unread and hard-unavailable spans. Touch gestures or
  * controls pin a viewport whose range and pixel width drive acquisition.
  */
+const EMPTY_COVERAGE_RANGES: readonly TimeseriesCoverageRange[] = [];
+
 const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   data,
   durationSec,
   followWindowQuantumSeconds,
   followWindowSeconds,
-  coverageRanges = [],
+  coverageRanges = EMPTY_COVERAGE_RANGES,
   onHoverTime,
   onSeek,
   onSeekEnd,
@@ -365,7 +367,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   registerPlayheadListener,
   resetZoomRevision = 0,
   series,
-  unavailableRanges = [],
+  unavailableRanges = EMPTY_COVERAGE_RANGES,
 }) => {
   const plotRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<uPlot | null>(null);

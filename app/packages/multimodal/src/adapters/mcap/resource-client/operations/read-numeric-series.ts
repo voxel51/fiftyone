@@ -20,7 +20,10 @@ import type {
 } from "../../contracts/index";
 import type { ReadWorkUsage } from "../../../../ports";
 import { nsDeltaToSeconds } from "../../../../utils/nanoseconds";
-import { aggregateAlignedNumericSeries } from "../../../../utils/numeric-series-buckets";
+import {
+  aggregateAlignedNumericSeries,
+  numericSeriesBucketIndex,
+} from "../../../../utils/numeric-series-buckets";
 import { decimateMinMax } from "../numeric-series-decimate";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 import { throwIfAborted } from "../../../../utils/cancellation";
@@ -42,7 +45,7 @@ const MAX_SCAN_MESSAGES = 500_000;
 interface NumericSeriesAccumulator {
   readonly fieldPaths: readonly string[];
   readonly pathSegments: readonly (readonly string[])[];
-  readonly times: number[];
+  readonly timesNs: bigint[];
   readonly topic: string;
   readonly valuesByField: number[][];
   messageCount: number;
@@ -214,7 +217,6 @@ export async function readMcapNumericSeries({
       accumulator,
       message.data,
       timeline.messageTimeNs(message),
-      baseTimeNs,
       decodersByChannelId.get(message.channelId),
     );
   }
@@ -222,7 +224,7 @@ export async function readMcapNumericSeries({
 
   const maxPoints =
     request.maxPointsPerField ?? DEFAULT_NUMERIC_SERIES_MAX_POINTS;
-  const finalized = finalizeNumericSeries(accumulator, maxPoints);
+  const finalized = finalizeNumericSeries(accumulator, baseTimeNs, maxPoints);
 
   return {
     baseTimeNs,
@@ -355,7 +357,6 @@ export async function readMcapNumericSeriesSlice({
         selected.accumulator,
         message.data,
         timeline.messageTimeNs(message),
-        baseTimeNs,
         selected.decodeRecord,
       );
     },
@@ -396,7 +397,7 @@ function createNumericSeriesAccumulator(
     fieldPaths,
     messageCount: 0,
     pathSegments: fieldPaths.map((path) => path.split(".")),
-    times: [],
+    timesNs: [],
     topic,
     valuesByField: fieldPaths.map(() => []),
   };
@@ -406,10 +407,9 @@ function pushNumericSeriesMessage(
   accumulator: NumericSeriesAccumulator,
   data: Uint8Array,
   timeNs: bigint,
-  baseTimeNs: bigint,
   decodeRecord?: (data: Uint8Array) => Record<string, unknown>,
 ): void {
-  accumulator.times.push(nsDeltaToSeconds(timeNs - baseTimeNs));
+  accumulator.timesNs.push(timeNs);
   accumulator.messageCount += 1;
 
   let record: Record<string, unknown> | undefined;
@@ -428,9 +428,12 @@ function pushNumericSeriesMessage(
 
 function finalizeNumericSeries(
   accumulator: NumericSeriesAccumulator,
+  baseTimeNs: bigint,
   maxPoints: number,
 ): McapNumericTopicSeries {
-  const sharedTimes = Float64Array.from(accumulator.times);
+  const sharedTimes = Float64Array.from(accumulator.timesNs, (timeNs) =>
+    nsDeltaToSeconds(timeNs - baseTimeNs),
+  );
   return {
     fields: accumulator.fieldPaths.map((path, index) => {
       const decimated = decimateMinMax(
@@ -455,7 +458,12 @@ function finalizeAlignedNumericSeries(
   baseTimeNs: bigint,
   bucketDurationNs: bigint,
 ): McapNumericTopicSeries {
-  const sharedTimes = Float64Array.from(accumulator.times);
+  const sharedTimes = Float64Array.from(accumulator.timesNs, (timeNs) =>
+    nsDeltaToSeconds(timeNs - baseTimeNs),
+  );
+  const bucketIndexes = BigInt64Array.from(accumulator.timesNs, (timeNs) =>
+    numericSeriesBucketIndex(timeNs, bucketDurationNs),
+  );
   return {
     fields: accumulator.fieldPaths.map((path, index) => {
       const aggregated = aggregateAlignedNumericSeries(
@@ -463,8 +471,10 @@ function finalizeAlignedNumericSeries(
         Float64Array.from(accumulator.valuesByField[index]),
         baseTimeNs,
         bucketDurationNs,
+        bucketIndexes,
       );
       return {
+        bucketIndexes: aggregated.bucketIndexes,
         path,
         timesSec: aggregated.timesSec,
         values: aggregated.values,
