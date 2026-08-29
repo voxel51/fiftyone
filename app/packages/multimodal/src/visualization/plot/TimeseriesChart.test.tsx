@@ -176,19 +176,19 @@ describe("TimeseriesChart interactions", () => {
     fireEvent.click(screen.getByLabelText("Zoom in"));
     expect(resetZoom.getAttribute("data-active")).toBe("true");
     expect(chart.scales.x).toEqual({ min: 2, max: 18 });
-    expect(chart.scales.y).toEqual({ min: 1, max: 9 });
+    // The y domain seeds from the data ([1, 2] padded to [0.95, 2.05]),
+    // so zooming in scales that window rather than the mock's preset.
+    expect(chart.scales.y.min).toBeCloseTo(1.06, 6);
+    expect(chart.scales.y.max).toBeCloseTo(1.94, 6);
     expect(chart.setScale).toHaveBeenCalledWith("x", {
       min: 2,
       max: 18,
     });
-    expect(chart.setScale).toHaveBeenCalledWith("y", {
-      min: 1,
-      max: 9,
-    });
 
     fireEvent.click(screen.getByLabelText("Zoom out"));
     expect(chart.scales.x).toEqual({ min: 0, max: 20 });
-    expect(chart.scales.y).toEqual({ min: 0, max: 10 });
+    expect(chart.scales.y.min).toBeCloseTo(0.95, 6);
+    expect(chart.scales.y.max).toBeCloseTo(2.05, 6);
 
     chart.setData.mockClear();
     chart.over.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
@@ -282,9 +282,10 @@ describe("TimeseriesChart interactions", () => {
         series={[{ color: "#f00", label: "speed" }]}
       />,
     );
+    // The mount seed ([0.95, 2.05] from the initial data) only expands.
     expect(chart.setScale).toHaveBeenLastCalledWith("y", {
-      max: 10,
-      min: 0,
+      max: 5.05,
+      min: 0.95,
     });
 
     const wider = [
@@ -302,6 +303,90 @@ describe("TimeseriesChart interactions", () => {
     expect(chart.setScale).toHaveBeenLastCalledWith("y", {
       max: 32.5,
       min: -22.5,
+    });
+    unmount();
+  });
+
+  it("sources the stable y domain from the intended window, not mid-commit scales", () => {
+    const { rerender, unmount } = renderChart();
+    const chart = lastChart();
+    // Simulate uPlot mid-commit: the x scale reads as a degenerate window
+    // while newly published data arrives. The y domain must come from the
+    // intended follow window, never from this transient scale state.
+    chart.scales.x.min = 0;
+    chart.scales.x.max = 0;
+    chart.setScale.mockClear();
+
+    const arrived = [
+      [0, 10, 20],
+      [1, -80, 90],
+    ] as AlignedData;
+    rerender(
+      <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
+        data={arrived}
+        durationSec={20}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const lastY = chart.setScale.mock.calls
+      .filter((call) => call[0] === "y")
+      .at(-1)?.[1] as { max: number; min: number };
+    expect(lastY.min).toBeLessThanOrEqual(-80);
+    expect(lastY.max).toBeGreaterThanOrEqual(90);
+    unmount();
+  });
+
+  it("ignores its own asynchronously committed y writes but adopts user zooms", () => {
+    const { rerender, unmount } = renderChart();
+    const chart = lastChart();
+    const fireSetScale = (key: string) => {
+      const hooks = chart.options.hooks?.setScale;
+      for (const hook of Array.isArray(hooks) ? hooks : [hooks]) {
+        (hook as (chart: MockChart, key: string) => void)(chart, key);
+      }
+    };
+
+    // An own write committing late must not be misread as a user zoom:
+    // the stable domain keeps expanding from the seeded range afterwards.
+    fireSetScale("y");
+    const wider = [
+      [0, 10, 20],
+      [-20, 30, 0],
+    ] as AlignedData;
+    rerender(
+      <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
+        data={wider}
+        durationSec={20}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    expect(chart.setScale).toHaveBeenLastCalledWith("y", {
+      max: 32.5,
+      min: -22.5,
+    });
+
+    // A range this surface never wrote is a real user zoom and becomes
+    // the new stable domain that later data only expands.
+    chart.scales.y.min = -50;
+    chart.scales.y.max = 60;
+    fireSetScale("y");
+    const narrower = [
+      [0, 10, 20],
+      [4, 5, 4],
+    ] as AlignedData;
+    rerender(
+      <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
+        data={narrower}
+        durationSec={20}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    expect(chart.setScale).toHaveBeenLastCalledWith("y", {
+      max: 60,
+      min: -50,
     });
     unmount();
   });
