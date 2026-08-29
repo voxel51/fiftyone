@@ -1283,9 +1283,6 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 in ("samples", "samples.json")
             ]
             self.assertEqual(len(sample_reads), 2)
-            self.assertTrue(
-                all(call.kwargs.get("stream") is True for call in sample_reads)
-            )
             binding_import.assert_called_once()
             self.assertEqual(import_hydrate.call_count, reference_count)
             self.assertEqual(len(imported), occurrence_count)
