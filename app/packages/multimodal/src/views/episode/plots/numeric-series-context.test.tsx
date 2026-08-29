@@ -550,7 +550,7 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     expect(client.readNumericSeriesSlice).toHaveBeenCalledTimes(1);
     const request = sliceRequestOf(client, 0);
     expect(request.maxChunks).toBe(1);
-    expect(request.preferredTimeNs).toBe(60_000_000_000n);
+    expect(request.preferredTimeNs).toBe(30_000_000_000n);
     expect(request.selections).toEqual([
       { fields: ["accel.x"], stream: "/imu" },
       { fields: ["speed"], stream: "/odom" },
@@ -573,7 +573,8 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
       .mockImplementationOnce(async (request) =>
         sliceResult(request, {
           continuation,
-          coverage: [{ endNs: 61_000_000_000n, startNs: 59_000_000_000n }],
+          coverage: [{ endNs: 49_999_999_999n, startNs: 30_000_000_000n }],
+          resumeAtNs: 50_000_000_000n,
           stopReason: "budget-exhausted",
         }),
       )
@@ -605,8 +606,10 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
       numericSeriesKey("/imu", "accel.x"),
     );
     expect(state?.status).toBe("ready");
-    expect(state?.coverageSeconds).toBe(2);
+    expect(state?.coverageSeconds).toBeGreaterThan(18);
+    expect(state?.coverage?.at(-1)?.endNs).toBeLessThan(50_000_000_000n);
     expect(state?.targetSeconds).toBeCloseTo(60);
+    expect(state?.values?.some(Number.isNaN) ?? false).toBe(false);
 
     await act(async () => {
       resolveSecond?.(
@@ -799,7 +802,7 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
 
     expect(firstSignal?.aborted).toBe(true);
     expect(readNumericSeriesSlice).toHaveBeenCalledTimes(2);
-    expect(sliceRequestOf(client, 1).preferredTimeNs).toBe(1_800_000_000_000n);
+    expect(sliceRequestOf(client, 1).preferredTimeNs).toBe(1_770_000_000_000n);
   });
 
   it("keeps useful in-flight work across transient demand changes", async () => {
@@ -882,7 +885,7 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
       context.current?.setViewportDemand("plot", null);
       await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
     });
-    expect(sliceRequestOf(client, 2).preferredTimeNs).toBe(1_800_000_000_000n);
+    expect(sliceRequestOf(client, 2).preferredTimeNs).toBe(1_770_000_000_000n);
   });
 
   it("refines a pinned viewport without reusing insufficient resolution", async () => {
@@ -910,19 +913,21 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
       context.current?.subscribeSeries("/imu", "accel.x");
       await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
     });
-    expect(sliceRequestOf(client, 0).maxPointsPerField).toBe(200);
+    expect(sliceRequestOf(client, 0).bucketDurationNs).toBe(202_020_203n);
 
     await act(async () => {
       context.current?.setViewportDemand("plot", {
         endSec: 1_020,
         mode: "pinned",
-        pixelWidth: 1_000,
+        pixelWidth: 5_000,
         startSec: 1_000,
       });
       await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
     });
     expect(client.readNumericSeriesSlice).toHaveBeenCalledTimes(2);
-    expect(sliceRequestOf(client, 1).maxPointsPerField).toBe(2_000);
+    expect(sliceRequestOf(client, 1).bucketDurationNs).toBeLessThan(
+      sliceRequestOf(client, 0).bucketDurationNs,
+    );
 
     // The finer retained tile is sufficient when demand later coarsens.
     await act(async () => {
@@ -935,6 +940,84 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
       await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
     });
     expect(client.readNumericSeriesSlice).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the previous coherent plot while a refinement is loading", async () => {
+    const continuation = {} as ReadContinuation;
+    let resolveFinalPage:
+      | ((result: NumericSeriesSliceResult) => void)
+      | undefined;
+    const finalPage = new Promise<NumericSeriesSliceResult>((resolve) => {
+      resolveFinalPage = resolve;
+    });
+    const readNumericSeriesSlice = vi
+      .fn<NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>>()
+      .mockImplementationOnce(async (request) =>
+        sliceResult(request, { stopReason: "source-exhausted" }),
+      )
+      .mockImplementationOnce(async (request) =>
+        sliceResult(request, {
+          continuation,
+          coverage: [
+            {
+              endNs: request.window.startNs + 9_999_999_999n,
+              startNs: request.window.startNs,
+            },
+          ],
+          resumeAtNs: request.window.startNs + 10_000_000_000n,
+          stopReason: "budget-exhausted",
+        }),
+      )
+      .mockImplementationOnce(() => finalPage);
+    const client = createClient({ readNumericSeriesSlice });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={createSource()}
+        store={store}
+      />,
+    );
+
+    await act(async () => {
+      context.current?.setViewportDemand("plot", {
+        endSec: 1_020,
+        mode: "pinned",
+        pixelWidth: 100,
+        startSec: 1_000,
+      });
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    const key = numericSeriesKey("/imu", "accel.x");
+    const initialValues = context.current?.seriesByKey.get(key)?.values;
+
+    await act(async () => {
+      context.current?.setViewportDemand("plot", {
+        endSec: 1_020,
+        mode: "pinned",
+        pixelWidth: 5_000,
+        startSec: 1_000,
+      });
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(3);
+    expect(context.current?.seriesByKey.get(key)?.status).toBe("ready");
+    expect(context.current?.seriesByKey.get(key)?.values).toBe(initialValues);
+
+    await act(async () => {
+      resolveFinalPage?.(
+        sliceResult(sliceRequestOf(client, 2), {
+          stopReason: "source-exhausted",
+        }),
+      );
+      await flushMicrotasks();
+    });
   });
 
   it("does not debounce a playhead-driven fill", async () => {
@@ -1234,6 +1317,7 @@ function sliceResult(
       readonly endNs: bigint;
       readonly startNs: bigint;
     }[];
+    readonly resumeAtNs?: bigint;
     readonly stopReason: NumericSeriesSliceResult["stopReason"];
     readonly unavailable?: readonly {
       readonly endNs: bigint;
@@ -1245,6 +1329,16 @@ function sliceResult(
   const coverage = options.coverage ?? [request.window];
   return {
     ...(options.continuation ? { continuation: options.continuation } : {}),
+    ...(options.continuation
+      ? {
+          resumeAtNs:
+            options.resumeAtNs ??
+            [...coverage, ...(options.unavailable ?? [])].reduce(
+              (endNs, range) => (range.endNs > endNs ? range.endNs : endNs),
+              request.window.startNs - 1n,
+            ) + 1n,
+        }
+      : {}),
     coverageByStream: new Map(
       request.selections.map((selection) => [selection.stream, coverage]),
     ),

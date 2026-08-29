@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addCoveredRange,
+  completeNumericSeriesPrefix,
+  contiguousNumericSeriesPrefix,
   coveredNumericSeriesSeconds,
   flattenSeriesSegments,
   FULL_NUMERIC_SERIES_COVERAGE,
@@ -17,6 +19,28 @@ import {
   subtractCoveredRanges,
   type NsRange,
 } from "./numeric-series-window";
+
+describe("contiguous numeric-series publication", () => {
+  it("stops before unread interior coverage", () => {
+    expect(
+      contiguousNumericSeriesPrefix({ endNs: 99n, startNs: 0n }, [
+        { endNs: 39n, startNs: 20n },
+        { endNs: 19n, startNs: 0n },
+        { endNs: 99n, startNs: 60n },
+      ]),
+    ).toEqual({ endNs: 39n, startNs: 0n });
+  });
+
+  it("publishes only complete progressive buckets", () => {
+    const window = { endNs: 99n, startNs: 5n };
+    expect(
+      completeNumericSeriesPrefix(window, { endNs: 54n, startNs: 5n }, 20n),
+    ).toEqual({ endNs: 39n, startNs: 5n });
+    expect(completeNumericSeriesPrefix(window, { ...window }, 20n)).toEqual(
+      window,
+    );
+  });
+});
 import { createTimelineIndex } from "./timeline-index";
 
 const range = (startNs: bigint, endNs: bigint): NsRange => ({ endNs, startNs });

@@ -19,8 +19,8 @@ import type {
   McapReadNumericSeriesSliceRequest,
 } from "../../contracts/index";
 import type { ReadWorkUsage } from "../../../../ports";
-import { NUMERIC_SERIES_MAX_BUCKET_SURVIVORS } from "../../../../ports/numeric-series";
 import { nsDeltaToSeconds } from "../../../../utils/nanoseconds";
+import { aggregateAlignedNumericSeries } from "../../../../utils/numeric-series-buckets";
 import { decimateMinMax } from "../numeric-series-decimate";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 import { throwIfAborted } from "../../../../utils/cancellation";
@@ -363,19 +363,13 @@ export async function readMcapNumericSeriesSlice({
     usage: () => usage,
   });
 
-  const maxPoints =
-    request.maxPointsPerField ?? DEFAULT_NUMERIC_SERIES_MAX_POINTS;
   const series: McapNumericTopicSeries[] = [];
   for (const accumulator of accumulatorsByTopic.values()) {
     series.push(
-      finalizeNumericSeries(
+      finalizeAlignedNumericSeries(
         accumulator,
-        numericSeriesSlicePointBudget(
-          maxPoints,
-          bounded.coverageByTopic.get(accumulator.topic) ?? [],
-          request.startTimeNs,
-          request.endTimeNs,
-        ),
+        baseTimeNs,
+        request.bucketDurationNs,
       ),
     );
   }
@@ -384,50 +378,14 @@ export async function readMcapNumericSeriesSlice({
     baseTimeNs,
     ...(bounded.continuation ? { continuation: bounded.continuation } : {}),
     coverageByTopic: bounded.coverageByTopic,
+    ...(bounded.resumeAtNs !== undefined
+      ? { resumeAtNs: bounded.resumeAtNs }
+      : {}),
     skippedByTopic: bounded.skippedByTopic ?? new Map(),
     series,
     stopReason: bounded.stopReason,
     usage,
   };
-}
-
-/**
- * Allocates an M4 survivor budget in proportion to this page's inspected
- * share of the requested viewport. Continuation pages therefore converge on
- * the viewport budget instead of each independently consuming all of it.
- */
-export function numericSeriesSlicePointBudget(
-  maxPoints: number,
-  coverage: readonly { readonly endNs: bigint; readonly startNs: bigint }[],
-  startTimeNs: bigint,
-  endTimeNs: bigint,
-): number {
-  if (!Number.isFinite(maxPoints) || coverage.length === 0) return maxPoints;
-  const budget = Math.max(0, Math.floor(maxPoints));
-  const globalBuckets = Math.floor(
-    (budget - 2) / NUMERIC_SERIES_MAX_BUCKET_SURVIVORS,
-  );
-  if (globalBuckets < 1 || endTimeNs < startTimeNs) return budget;
-
-  const viewportDurationNs = endTimeNs - startTimeNs + 1n;
-  const coveredDurationNs = coverage.reduce(
-    (sum, range) => sum + (range.endNs - range.startNs + 1n),
-    0n,
-  );
-  const boundedCoveredDurationNs =
-    coveredDurationNs < viewportDurationNs
-      ? coveredDurationNs
-      : viewportDurationNs;
-  const pageBuckets = Number(
-    (BigInt(globalBuckets) * boundedCoveredDurationNs +
-      viewportDurationNs -
-      1n) /
-      viewportDurationNs,
-  );
-  return Math.min(
-    budget,
-    2 + pageBuckets * NUMERIC_SERIES_MAX_BUCKET_SURVIVORS,
-  );
 }
 
 function createNumericSeriesAccumulator(
@@ -485,6 +443,31 @@ function finalizeNumericSeries(
         path,
         timesSec: decimated.times,
         values: decimated.values,
+      };
+    }),
+    messageCount: accumulator.messageCount,
+    topic: accumulator.topic,
+  };
+}
+
+function finalizeAlignedNumericSeries(
+  accumulator: NumericSeriesAccumulator,
+  baseTimeNs: bigint,
+  bucketDurationNs: bigint,
+): McapNumericTopicSeries {
+  const sharedTimes = Float64Array.from(accumulator.times);
+  return {
+    fields: accumulator.fieldPaths.map((path, index) => {
+      const aggregated = aggregateAlignedNumericSeries(
+        sharedTimes,
+        Float64Array.from(accumulator.valuesByField[index]),
+        baseTimeNs,
+        bucketDurationNs,
+      );
+      return {
+        path,
+        timesSec: aggregated.timesSec,
+        values: aggregated.values,
       };
     }),
     messageCount: accumulator.messageCount,

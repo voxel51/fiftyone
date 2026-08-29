@@ -42,6 +42,33 @@ describe("numeric-series tile cache", () => {
     ).toBe(13);
   });
 
+  it("assembles cached ranges independently of loading order", () => {
+    const forward = createCache({ maxBytes: 1_000, maxTiles: 10 });
+    const reverse = createCache({ maxBytes: 1_000, maxTiles: 10 });
+    const left = tile({ endSec: 9, timesSec: [2, 8], values: [2, 8] });
+    const right = tile({
+      endSec: 19,
+      startSec: 10,
+      timesSec: [12, 18],
+      values: [12, 18],
+    });
+    forward.put(left);
+    forward.put(right);
+    reverse.put(right);
+    reverse.put(left);
+    const demand = {
+      bucketDurationNs: SECOND,
+      range: secondsRange(0, 19),
+      seriesKey: "speed",
+    } as const;
+
+    expect(
+      forward.assembleVisible(demand).parts.map((part) => [...part.values]),
+    ).toEqual(
+      reverse.assembleVisible(demand).parts.map((part) => [...part.values]),
+    );
+  });
+
   it("retains explicit gap bits with mixed finite and NaN values", () => {
     const cache = createCache({ maxBytes: 1_000, maxTiles: 10 });
     cache.put(

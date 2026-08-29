@@ -397,10 +397,11 @@ export interface NumericSeriesSliceSelection {
 export interface NumericSeriesSliceRequest {
   readonly absoluteBudget: ReadWorkBudget;
   readonly absoluteMaxChunks: number;
+  /** Absolute-time-aligned aggregate resolution requested by the viewport. */
+  readonly bucketDurationNs: bigint;
   readonly budget: ReadWorkBudget;
   readonly continuation?: ReadContinuation;
   readonly maxChunks: number;
-  readonly maxPointsPerField?: number;
   readonly preferredTimeNs?: bigint;
   readonly selections: readonly NumericSeriesSliceSelection[];
   readonly signal?: AbortSignal;
@@ -411,6 +412,8 @@ export interface NumericSeriesSliceRequest {
 export interface NumericSeriesSliceResult {
   readonly continuation?: ReadContinuation;
   readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
+  /** Earliest timestamp not yet inspected by a chronological continuation. */
+  readonly resumeAtNs?: bigint;
   /** Exact unreadable source spans, distinct from successfully inspected coverage. */
   readonly unavailableByStream?: ReadonlyMap<StreamId, readonly TimeWindow[]>;
   readonly series: readonly NumericSeriesResult[];

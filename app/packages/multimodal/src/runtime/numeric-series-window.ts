@@ -14,6 +14,7 @@
 
 import type { NsRange } from "../ir";
 import { nsDeltaToSeconds } from "../utils/nanoseconds";
+import { numericSeriesBucketIndex } from "../utils/numeric-series-buckets";
 import type { TimelineIndex } from "./timeline-index";
 
 export type { NsRange } from "../ir";
@@ -119,6 +120,48 @@ export function coveredNumericSeriesSeconds(
 /** Duration of one inclusive numeric-series range in seconds. */
 export function numericSeriesRangeDurationSeconds(range: NsRange): number {
   return Number(range.endNs - range.startNs) / 1_000_000_000;
+}
+
+/** Contiguous known prefix of `window`, including unavailable source spans. */
+export function contiguousNumericSeriesPrefix(
+  window: NsRange,
+  knownRanges: readonly NsRange[],
+): NsRange | undefined {
+  const known = knownRanges
+    .map((range) => ({
+      endNs: range.endNs < window.endNs ? range.endNs : window.endNs,
+      startNs: range.startNs > window.startNs ? range.startNs : window.startNs,
+    }))
+    .filter((range) => range.endNs >= range.startNs)
+    .sort(compareByStartNs);
+  let endNs = window.startNs - 1n;
+  for (const range of known) {
+    if (range.startNs > endNs + 1n) break;
+    if (range.endNs > endNs) endNs = range.endNs;
+    if (endNs >= window.endNs) return { ...window };
+  }
+  return endNs >= window.startNs
+    ? { endNs, startNs: window.startNs }
+    : undefined;
+}
+
+/**
+ * Excludes the incomplete absolute-time bucket at a progressive prefix's
+ * right edge. Once the full viewport is known, its final partial bucket is
+ * safe to publish too.
+ */
+export function completeNumericSeriesPrefix(
+  window: NsRange,
+  prefix: NsRange | undefined,
+  bucketDurationNs: bigint,
+): NsRange | undefined {
+  if (!prefix || prefix.endNs >= window.endNs) return prefix;
+  const nextNs = prefix.endNs + 1n;
+  const bucket = numericSeriesBucketIndex(nextNs, bucketDurationNs);
+  const endNs = bucket * bucketDurationNs - 1n;
+  return endNs >= window.startNs
+    ? { endNs, startNs: window.startNs }
+    : undefined;
 }
 
 /** Clips a decoded numeric field to one recording-time range. */
