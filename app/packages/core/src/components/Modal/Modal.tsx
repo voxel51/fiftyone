@@ -159,13 +159,16 @@ const Modal = () => {
   const trackBoundaryError = useCallback(
     (error: Error) => {
       // same event the @fiftyone/components ErrorBoundary emits, so errors
-      // caught by these raw boundaries still reach analytics
+      // caught by these raw boundaries still reach analytics. Nested errors
+      // (e.g. AggregateError) can hold arbitrary values, so guard against
+      // throwing while reporting the original throw
+      const nested = (error as Error & { errors?: unknown })?.errors;
       trackEvent("uncaught_app_error", {
         error: error?.message || error?.name || error,
         stack: error?.stack,
-        messages: (error as Error & { errors?: Error[] })?.errors?.map(
-          (e) => e.message,
-        ),
+        messages: Array.isArray(nested)
+          ? nested.map((e) => (e instanceof Error ? e.message : String(e)))
+          : undefined,
       });
     },
     [trackEvent],
