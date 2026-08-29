@@ -1018,6 +1018,11 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
       );
       await flushMicrotasks();
     });
+
+    expect(context.current?.seriesByKey.get(key)?.status).toBe("ready");
+    expect(context.current?.seriesByKey.get(key)?.values).not.toBe(
+      initialValues,
+    );
   });
 
   it("does not debounce a playhead-driven fill", async () => {

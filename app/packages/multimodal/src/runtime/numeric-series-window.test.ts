@@ -209,6 +209,34 @@ describe("flattenSeriesSegments", () => {
     expect([...flat.values.slice(3)]).toEqual([50, 60]);
   });
 
+  it("assigns an absolute bucket to an inserted gap sample", () => {
+    const flat = flattenSeriesSegments(
+      [
+        {
+          bucketIndexes: BigInt64Array.from([10n, 11n]),
+          endNs: 20n,
+          startNs: 10n,
+          timesSec: Float64Array.from([1, 2]),
+          values: Float64Array.from([10, 20]),
+        },
+        {
+          bucketIndexes: BigInt64Array.from([15n, 16n]),
+          endNs: 60n,
+          startNs: 50n,
+          timesSec: Float64Array.from([5, 6]),
+          values: Float64Array.from([50, 60]),
+        },
+      ],
+      [{ endNs: 49n, startNs: 21n }],
+    );
+
+    expect([...flat.timesSec]).toEqual([1, 2, 3.5, 5, 6]);
+    expect([...flat.values]).toEqual([10, 20, Number.NaN, 50, 60]);
+    expect(flat.bucketIndexes).toEqual(
+      BigInt64Array.from([10n, 11n, 12n, 15n, 16n]),
+    );
+  });
+
   it("connects non-abutting parts across known-empty coverage", () => {
     const flat = flattenSeriesSegments(
       [

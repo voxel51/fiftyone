@@ -1186,8 +1186,9 @@ function numericSeriesDemandPointBudget(
   durationSec: number,
   viewports: Iterable<NumericSeriesViewportDemand>,
 ): number {
-  const pinned = smallestPinnedViewport(viewports);
-  const viewport = pinned ?? widestViewport(viewports);
+  const viewportList = [...viewports];
+  const pinned = smallestPinnedViewport(viewportList);
+  const viewport = pinned ?? widestViewport(viewportList);
   if (!viewport) return numericSeriesWindowPointBudget(range, durationSec);
   return Math.max(
     ALIGNED_NUMERIC_BUCKET_MAX_POINTS,
