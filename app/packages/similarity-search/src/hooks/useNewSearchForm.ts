@@ -82,7 +82,16 @@ export const useNewSearchForm = (
 
   // ─── Derived config ─────────────────────────────────────────────
 
-  const selectedConfig = compatibleKeys.find((bk) => bk.key === brainKey);
+  // Derived during render rather than via the auto-correct effect so
+  // the frame where a view change invalidates the selected key never
+  // exposes an undefined config (which would flip queryType off Text)
+  const effectiveBrainKey = compatibleKeys.some((bk) => bk.key === brainKey)
+    ? brainKey
+    : (compatibleKeys[0]?.key ?? "");
+
+  const selectedConfig = compatibleKeys.find(
+    (bk) => bk.key === effectiveBrainKey,
+  );
   const supportsPrompts = selectedConfig?.supports_prompts ?? false;
   const supportsLeast = selectedConfig?.supports_least_similarity ?? false;
   const supportsUpload =
@@ -92,12 +101,13 @@ export const useNewSearchForm = (
   // ─── Auto-correct effects ───────────────────────────────────────
 
   useEffect(() => {
-    // Also covers a selected key becoming incompatible when the view
-    // changes (samples ↔ patches) while the form is open
-    if (!compatibleKeys.some((bk) => bk.key === brainKey)) {
-      setBrainKey(compatibleKeys[0]?.key ?? "");
+    // Sync state to the render-derived effective key (covers a
+    // selected key becoming incompatible when the view changes while
+    // the form is open)
+    if (brainKey !== effectiveBrainKey) {
+      setBrainKey(effectiveBrainKey);
     }
-  }, [brainKey, compatibleKeys]);
+  }, [brainKey, effectiveBrainKey]);
 
   useEffect(() => {
     if (!supportsPrompts && queryType === QueryType.Text) {
@@ -138,7 +148,7 @@ export const useNewSearchForm = (
     canSubmit,
     submitting,
   } = useSearchSubmission({
-    brainKey,
+    brainKey: effectiveBrainKey,
     queryType,
     textQuery,
     queryIds,
@@ -158,7 +168,7 @@ export const useNewSearchForm = (
 
   return {
     // form state
-    brainKey,
+    brainKey: effectiveBrainKey,
     setBrainKey,
     queryType,
     setQueryType,
