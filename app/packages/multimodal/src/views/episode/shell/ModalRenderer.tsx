@@ -33,6 +33,7 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const timeRange = useTimeRange(sessionState.session);
   const fileName = sourceDisplayName(ctx.media.path) ?? "recording";
   const datasetId = ctx.dataset.datasetId;
+  const sampleId = ctx.sample.sample._id;
   const {
     tracks: tagTracks,
     onTagCreate,
@@ -78,6 +79,7 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
           <SourcePlayback
             defaultPinnedTrackIds={defaultPinnedTrackIds}
             decorateTrack={decorateTrack}
+            episodeContext={{ datasetId, sampleId }}
             fileName={fileName}
             initialSeekTimeNs={firstMatch?.startNs ?? null}
             layoutScopeKey={datasetId}

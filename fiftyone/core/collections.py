@@ -57,6 +57,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+fou3d = fou.lazy_import("fiftyone.utils.utils3d")
 foos = fou.lazy_import("fiftyone.operators.store")
 
 
@@ -3650,6 +3651,91 @@ class SampleCollection(object):
             warn_failures=warn_failures,
             progress=progress,
         )
+
+    def _get_media_paths(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+        flat=True,
+    ):
+        if media_fields is None:
+            media_fields = list(self._get_media_fields().keys())
+        elif etau.is_container(media_fields):
+            media_fields = list(media_fields)
+        else:
+            media_fields = [media_fields]
+
+        media_fields = [self._parse_media_field(f)[0] for f in media_fields]
+
+        if flat:
+            # Generate flat list of all media paths
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+            else:
+                view = self
+
+            filepaths = view.values(media_fields, unwind=True)
+
+            if len(media_fields) > 1:
+                filepaths = list(itertools.chain.from_iterable(filepaths))
+            else:
+                filepaths = filepaths[0]
+        else:
+            # Generate lists of lists of media paths, one per sample
+            filepaths = []
+
+            if self.media_type == fom.GROUP:
+                id_field = self.group_field + ".id"
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+                group_ids, *paths = view.values([id_field] + media_fields)
+                paths_map = defaultdict(list)
+                for _id, _paths in zip(group_ids, zip(*paths)):
+                    paths_map[_id].extend(_merge_paths(_paths))
+
+                # Intentionally only includes paths for groups in active slice
+                for _id in self.values(id_field):
+                    filepaths.append(paths_map[_id])
+            else:
+                for p in zip(*self.values(media_fields)):
+                    filepaths.append(_merge_paths(p))
+
+        if (
+            include_assets
+            and "filepath" in media_fields
+            and self._contains_media_type(fom.THREE_D, any_slice=True)
+        ):
+            self._inject_fo3d_asset_paths(filepaths, flat=flat)
+
+        return filepaths
+
+    def _inject_fo3d_asset_paths(self, filepaths, flat=True):
+        if flat:
+            _filepaths = filepaths
+        else:
+            _filepaths = itertools.chain.from_iterable(filepaths)
+
+        scene_paths = [p for p in _filepaths if p and p.endswith(".fo3d")]
+        asset_map = fou3d.get_scene_asset_paths(
+            scene_paths, abs_paths=True, skip_failures=True
+        )
+
+        if flat:
+            asset_paths = itertools.chain.from_iterable(asset_map.values())
+            filepaths.extend(set(asset_paths))
+        else:
+            for sample_paths in filepaths:
+                asset_paths = set()
+                for path in sample_paths:
+                    _asset_paths = asset_map.get(path, None)
+                    if _asset_paths is not None:
+                        asset_paths.update(_asset_paths)
+
+                sample_paths.extend(asset_paths)
 
     def generate_label_schemas(self, fields=None, scan_samples=True):
         """Generates label schemas for the
@@ -13781,6 +13867,17 @@ def _add_db_fields_to_schema(schema):
             additions[field.db_field] = field
 
     schema.update(additions)
+
+
+def _merge_paths(values):
+    flat = []
+    for v in values:
+        if isinstance(v, str):
+            flat.append(v)
+        elif v is not None:
+            flat.extend(v)
+
+    return flat
 
 
 def _none_max(*args, default=None):

@@ -54,9 +54,19 @@ describe("TilingHeader", () => {
     expect(screen.queryByTestId("tiling-header-add-tile")).toBeNull();
   });
 
-  it("renders compact header actions beside the filename stack", () => {
+  it("renders compact header actions immediately before Layout", () => {
     render(
       <TilingProvider>
+        <RegisterTiles
+          entries={[
+            {
+              type: "camera",
+              typeLabel: "Camera",
+              icon: IconName.GridView,
+              Tile: CameraTile,
+            },
+          ]}
+        />
         <TilingHeader
           fileName="session.fo"
           headerActions={<button type="button">Unmount recording</button>}
@@ -68,6 +78,9 @@ describe("TilingHeader", () => {
     expect(
       screen.getByRole("button", { name: "Unmount recording" }),
     ).toBeTruthy();
+    expect(
+      screen.getAllByRole("button").map((button) => button.textContent?.trim()),
+    ).toEqual(["Unmount recording", "Layout"]);
   });
 
   it("does not render sidebar toggles when no handlers are wired", () => {

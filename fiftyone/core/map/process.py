@@ -40,6 +40,10 @@ R = TypeVar("R")
 U = TypeVar("U")
 
 
+class _BatchDone:
+    """Sentinel a worker enqueues after the last result of a batch."""
+
+
 class ProcessMapper(fomm.LocalMapper):
     """Executes map_samples using multiprocessing."""
 
@@ -87,7 +91,6 @@ class ProcessMapper(fomm.LocalMapper):
             lock = None
 
         queue = multiprocessing.Queue()
-        batch_count = multiprocessing.Value("i", 0)
         sample_count = (
             multiprocessing.Value("i", 0) if progress is not False else None
         )
@@ -115,7 +118,6 @@ class ProcessMapper(fomm.LocalMapper):
                 view_stages,
                 pickle.dumps(iter_fcn),
                 pickle.dumps(map_fcn),
-                batch_count,
                 sample_count,
                 queue,
                 cancel_event,
@@ -142,49 +144,48 @@ class ProcessMapper(fomm.LocalMapper):
 
             sample_errors: List[Tuple[bson.ObjectId, Exception, None]] = []
 
-            # Initialize backoff parameters
-            initial_timeout = 0.1
-            max_timeout = 5.0
-            backoff_factor = 2
-            current_timeout = initial_timeout
+            # Each batch enqueues a _BatchDone sentinel after its last
+            # result. Queue puts from a given worker arrive in order, so
+            # once every sentinel has been received no results can remain
+            # in flight.
+            num_batches_done = 0
 
-            while True:
+            while num_batches_done < num_batches:
                 try:
-                    sample_id, err, result = queue.get(timeout=current_timeout)
-                    # Reset backoff on successful get
-                    current_timeout = initial_timeout
+                    item = queue.get(timeout=1.0)
                 except Empty:
-                    # Apply exponential backoff, but cap at max_timeout
-                    current_timeout = min(
-                        current_timeout * backoff_factor, max_timeout
-                    )
+                    continue
 
-                    # Reset backoff if we've hit too many consecutive timeouts
-                    # This prevents getting stuck with very long timeouts
-                    if current_timeout == max_timeout:
-                        current_timeout = initial_timeout
+                if isinstance(item, _BatchDone):
+                    num_batches_done += 1
+                    continue
 
-                    # Check if done after applying backoff
-                    if batch_count.value >= num_batches:
-                        break
-                else:
-                    # Update progress bar
-                    pb.update()
+                sample_id, err, result = item
 
-                    if err is not None:
-                        # When skipping failures, simply yield the
-                        # sample ID and the error.
-                        if skip_failures:
-                            yield sample_id, err, None
-                        # When NOT skipping failures, aggregate any errors
-                        # to allow for all successfully mapped samples from
-                        # the various workers to be yielded first.
-                        else:
-                            sample_errors.append((sample_id, err, None))
+                # Update progress bar
+                pb.update()
 
+                if err is not None:
+                    # When skipping failures, simply yield the
+                    # sample ID and the error.
+                    if skip_failures:
+                        yield sample_id, err, None
+                    # When NOT skipping failures, aggregate any errors
+                    # to allow for all successfully mapped samples from
+                    # the various workers to be yielded first.
                     else:
-                        # Yield successfully mapped sample
-                        yield sample_id, None, result
+                        sample_errors.append((sample_id, err, None))
+
+                else:
+                    # Yield successfully mapped sample
+                    yield sample_id, None, result
+
+            # All sentinels received means the workers are idle; join
+            # them so the context exit's terminate() never overlaps
+            # live worker processes (filelock>=3.30 installs a fork
+            # guard that aborts concurrent os.fork calls)
+            pool.close()
+            pool.join()
 
             queue.close()
             queue.join_thread()
@@ -201,7 +202,6 @@ def _init_worker(
     view_stages: Any,
     iter_fcn: bytes,
     map_fcn: bytes,
-    batch_count: Optional[multiprocessing.Value],  # type: ignore
     sample_count: Optional[multiprocessing.Value],  # type: ignore
     queue: Optional[multiprocessing.Queue],
     cancel_event: multiprocessing.Event,  # type: ignore
@@ -222,7 +222,6 @@ def _init_worker(
     global process_sample_collection
     global process_iter_fcn
     global process_map_fcn
-    global process_batch_count
     global process_sample_count
     global process_queue
     global process_cancel_event
@@ -245,7 +244,6 @@ def _init_worker(
 
     process_map_fcn = pickle.loads(map_fcn)
     process_iter_fcn = pickle.loads(iter_fcn)
-    process_batch_count = batch_count
     process_sample_count = sample_count
     process_queue = queue
     process_cancel_event = cancel_event
@@ -295,6 +293,4 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
                 if pb is not None:
                     pb.update()
     finally:
-        if process_batch_count is not None:
-            with process_batch_count.get_lock():
-                process_batch_count.value += 1
+        process_queue.put(_BatchDone())

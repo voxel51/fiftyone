@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@fiftyone/tiling", () => ({
   useSetTileTitle: () => mocks.setTileTitle,
+  useTileId: () => "transforms-1",
 }));
 
 vi.mock("../playback/use-playback-time-ns", () => ({
