@@ -198,15 +198,39 @@ function finiteYRange(
   data: AlignedData,
   startSec: number,
   endSec: number,
+  coverage: readonly TimeseriesCoverageRange[],
 ): readonly [number, number] | null {
   const xs = data[0];
+  const visibleCoverage =
+    coverage.length > 0
+      ? mergeCoverageRanges(coverage, startSec, endSec)
+      : null;
+  const visible = new Uint8Array(xs.length);
+  let coverageIndex = 0;
+  for (let index = 0; index < xs.length; index += 1) {
+    const x = xs[index];
+    if (x < startSec || x > endSec) continue;
+    if (!visibleCoverage) {
+      visible[index] = 1;
+      continue;
+    }
+    while (
+      coverageIndex < visibleCoverage.length &&
+      visibleCoverage[coverageIndex].endSec < x
+    ) {
+      coverageIndex += 1;
+    }
+    const range = visibleCoverage[coverageIndex];
+    if (range && x >= range.startSec && x <= range.endSec) {
+      visible[index] = 1;
+    }
+  }
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   for (let column = 1; column < data.length; column += 1) {
     const values = data[column];
     for (let index = 0; index < xs.length; index += 1) {
-      const x = xs[index];
-      if (x < startSec || x > endSec) continue;
+      if (visible[index] === 0) continue;
       const value = values[index];
       if (typeof value !== "number" || !Number.isFinite(value)) continue;
       if (value < min) min = value;
@@ -215,45 +239,31 @@ function finiteYRange(
   }
   if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
   if (min === max) {
-    const padding = Math.max(Math.abs(min) * 0.05, 1);
+    const padding = Math.max(Math.abs(min) * 0.05, 1e-6);
     return [min - padding, max + padding];
   }
   const padding = (max - min) * 0.05;
   return [min - padding, max + padding];
 }
 
-/** Recent own y writes retained to recognize their asynchronous commits. */
-const OWN_Y_WRITE_HISTORY = 4;
-
 /**
- * Expands the stable y domain from the finite data inside `window` and
- * applies it. The window is the caller's intended x viewport, never
- * `chart.scales.x`: uPlot commits scale writes asynchronously, so reading
- * scales mid-update can source a degenerate window and freeze the domain
- * on a garbage range. Every write is remembered so the y setScale hook can
- * tell this surface's own commits apart from a user zoom.
+ * Fits y to finite, coherently loaded data inside the intended x viewport.
+ * When no replacement values are ready, the last finite domain is restored.
+ * The caller supplies the x viewport because uPlot commits scale writes
+ * asynchronously and a mid-commit scale read can be degenerate.
  */
-function setStableYRange(
+function fitVisibleYRange(
   chart: uPlot,
   data: AlignedData,
-  stableRef: React.MutableRefObject<readonly [number, number] | null>,
-  ownWritesRef: React.MutableRefObject<(readonly [number, number])[]>,
+  coverage: readonly TimeseriesCoverageRange[],
+  previousRef: React.MutableRefObject<readonly [number, number] | null>,
   window: readonly [number, number],
-  reset: boolean,
 ): void {
-  if (reset) stableRef.current = null;
-  const candidate = finiteYRange(data, window[0], window[1]);
-  if (!candidate) return;
-  const previous = stableRef.current;
-  const stable: readonly [number, number] = previous
-    ? [Math.min(previous[0], candidate[0]), Math.max(previous[1], candidate[1])]
-    : candidate;
-  stableRef.current = stable;
-  ownWritesRef.current.push(stable);
-  if (ownWritesRef.current.length > OWN_Y_WRITE_HISTORY) {
-    ownWritesRef.current.shift();
-  }
-  chart.setScale("y", { min: stable[0], max: stable[1] });
+  const next = finiteYRange(data, window[0], window[1], coverage);
+  if (next) previousRef.current = next;
+  const range = next ?? previousRef.current;
+  if (!range) return;
+  chart.setScale("y", { min: range[0], max: range[1] });
 }
 
 function renderCoverageBands(
@@ -341,12 +351,14 @@ function appendCoverageBand(
  * acquired data from unread and hard-unavailable spans. Touch gestures or
  * controls pin a viewport whose range and pixel width drive acquisition.
  */
+const EMPTY_COVERAGE_RANGES: readonly TimeseriesCoverageRange[] = [];
+
 const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   data,
   durationSec,
   followWindowQuantumSeconds,
   followWindowSeconds,
-  coverageRanges = [],
+  coverageRanges = EMPTY_COVERAGE_RANGES,
   onHoverTime,
   onSeek,
   onSeekEnd,
@@ -355,7 +367,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   registerPlayheadListener,
   resetZoomRevision = 0,
   series,
-  unavailableRanges = [],
+  unavailableRanges = EMPTY_COVERAGE_RANGES,
 }) => {
   const plotRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<uPlot | null>(null);
@@ -368,8 +380,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   const hasInteractiveScaleRef = useRef(false);
   const [zoomConstrained, setZoomConstrained] = useState(false);
   const coverageLayerRef = useRef<HTMLDivElement | null>(null);
-  const stableYRangeRef = useRef<readonly [number, number] | null>(null);
-  const ownYWritesRef = useRef<(readonly [number, number])[]>([]);
+  const visibleYRangeRef = useRef<readonly [number, number] | null>(null);
   const stableXWindowRef = useRef<readonly [number, number]>([0, 0]);
   const dataRef = useRef(data);
   dataRef.current = data;
@@ -417,15 +428,19 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     }
     hasInteractiveScaleRef.current = false;
     setZoomConstrained(false);
-    resetTimeseriesChart(
+    const xRange = followTimeseriesRange(
+      playheadSecRef.current ?? 0,
+      durationSec,
+      followWindowSeconds,
+      followWindowQuantumSeconds,
+    );
+    resetTimeseriesChart(chart, dataRef.current, xRange);
+    fitVisibleYRange(
       chart,
       dataRef.current,
-      followTimeseriesRange(
-        playheadSecRef.current ?? 0,
-        durationSec,
-        followWindowSeconds,
-        followWindowQuantumSeconds,
-      ),
+      coverageRangesRef.current,
+      visibleYRangeRef,
+      xRange,
     );
     if (!pointerInsideRef.current) {
       syncLegendCursor(
@@ -448,8 +463,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     }
     hasInteractiveScaleRef.current = false;
     setZoomConstrained(false);
-    stableYRangeRef.current = null;
-    ownYWritesRef.current = [];
+    visibleYRangeRef.current = null;
     stableXWindowRef.current = [0, xMax];
     const xLimits = [0, xMax] as const;
     let viewportFrame: number | undefined;
@@ -523,13 +537,12 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
               const viewportKey = `${xWindow[0]}:${xWindow[1]}`;
               if (viewportKey !== stableViewportKey) {
                 stableViewportKey = viewportKey;
-                setStableYRange(
+                fitVisibleYRange(
                   chart,
                   dataRef.current,
-                  stableYRangeRef,
-                  ownYWritesRef,
+                  coverageRangesRef.current,
+                  visibleYRangeRef,
                   xWindow,
-                  true,
                 );
               }
               renderCoverageBands(
@@ -539,21 +552,6 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
                 unavailableRangesRef.current,
               );
               queueViewportPublication(chart);
-            } else if (key === "y") {
-              const min = chart.scales.y.min;
-              const max = chart.scales.y.max;
-              if (min === undefined || max === undefined) {
-                return;
-              }
-              // Own writes commit asynchronously, possibly after a newer
-              // write superseded them; only a range this surface never set
-              // is a user zoom worth adopting as the stable domain.
-              const own = ownYWritesRef.current.some(
-                (write) => write[0] === min && write[1] === max,
-              );
-              if (!own) {
-                stableYRangeRef.current = [min, max];
-              }
             }
           },
         ],
@@ -599,13 +597,12 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     resetTimeseriesChart(chart, dataRef.current, [0, xMax]);
     // Seed the y domain from the data over the intended follow window; the
     // chart's own scales may not have committed yet at this point.
-    setStableYRange(
+    fitVisibleYRange(
       chart,
       dataRef.current,
-      stableYRangeRef,
-      ownYWritesRef,
+      coverageRangesRef.current,
+      visibleYRangeRef,
       [0, xMax],
-      true,
     );
 
     const coverageLayer = document.createElement("div");
@@ -919,9 +916,9 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     };
   }, [durationSec, seriesIdentity, xMax]);
 
-  // This effect pushes progressive data without resetting either viewport.
-  // The y domain may expand to reveal new extrema, but never contracts while
-  // the same viewport fills, avoiding page-by-page scale oscillation.
+  // This effect pushes coherent data without resetting the x viewport. The
+  // y domain follows finite values in that viewport; the provider retains the
+  // prior coherent data while a replacement is still loading.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) {
@@ -934,13 +931,12 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       // reset sequence over the intended window once.
       resetTimeseriesChart(chart, data, stableXWindowRef.current);
     }
-    setStableYRange(
+    fitVisibleYRange(
       chart,
       data,
-      stableYRangeRef,
-      ownYWritesRef,
+      coverageRangesRef.current,
+      visibleYRangeRef,
       stableXWindowRef.current,
-      false,
     );
     chart.redraw();
     if (!pointerInsideRef.current) {
@@ -970,6 +966,13 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       coverageLayerRef.current,
       coverageRanges,
       unavailableRanges,
+    );
+    fitVisibleYRange(
+      chart,
+      dataRef.current,
+      coverageRanges,
+      visibleYRangeRef,
+      stableXWindowRef.current,
     );
   }, [coverageRanges, unavailableRanges]);
 

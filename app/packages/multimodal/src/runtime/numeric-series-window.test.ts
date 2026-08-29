@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addCoveredRange,
+  completeNumericSeriesPrefix,
+  contiguousNumericSeriesPrefix,
   coveredNumericSeriesSeconds,
   flattenSeriesSegments,
   FULL_NUMERIC_SERIES_COVERAGE,
@@ -17,6 +19,28 @@ import {
   subtractCoveredRanges,
   type NsRange,
 } from "./numeric-series-window";
+
+describe("contiguous numeric-series publication", () => {
+  it("stops before unread interior coverage", () => {
+    expect(
+      contiguousNumericSeriesPrefix({ endNs: 99n, startNs: 0n }, [
+        { endNs: 39n, startNs: 20n },
+        { endNs: 19n, startNs: 0n },
+        { endNs: 99n, startNs: 60n },
+      ]),
+    ).toEqual({ endNs: 39n, startNs: 0n });
+  });
+
+  it("publishes only complete progressive buckets", () => {
+    const window = { endNs: 99n, startNs: 5n };
+    expect(
+      completeNumericSeriesPrefix(window, { endNs: 54n, startNs: 5n }, 20n),
+    ).toEqual({ endNs: 39n, startNs: 5n });
+    expect(completeNumericSeriesPrefix(window, { ...window }, 20n)).toEqual(
+      window,
+    );
+  });
+});
 import { createTimelineIndex } from "./timeline-index";
 
 const range = (startNs: bigint, endNs: bigint): NsRange => ({ endNs, startNs });
@@ -140,80 +164,143 @@ describe("insertSeriesSegment", () => {
 
 describe("flattenSeriesSegments", () => {
   it("returns empty arrays for no segments", () => {
-    const flat = flattenSeriesSegments([]);
+    const flat = flattenSeriesSegments([], []);
     expect(flat.timesSec.length).toBe(0);
     expect(flat.values.length).toBe(0);
   });
 
   it("passes a single segment through", () => {
-    const flat = flattenSeriesSegments([
-      {
-        endNs: 20n,
-        startNs: 10n,
-        timesSec: Float64Array.from([1, 2]),
-        values: Float64Array.from([10, 20]),
-      },
-    ]);
+    const flat = flattenSeriesSegments(
+      [
+        {
+          endNs: 20n,
+          startNs: 10n,
+          timesSec: Float64Array.from([1, 2]),
+          values: Float64Array.from([10, 20]),
+        },
+      ],
+      [],
+    );
     expect([...flat.timesSec]).toEqual([1, 2]);
     expect([...flat.values]).toEqual([10, 20]);
   });
 
   it("inserts a NaN gap sample between non-abutting segments", () => {
-    const flat = flattenSeriesSegments([
-      {
-        endNs: 20n,
-        startNs: 10n,
-        timesSec: Float64Array.from([1, 2]),
-        values: Float64Array.from([10, 20]),
-      },
-      {
-        endNs: 60n,
-        startNs: 50n,
-        timesSec: Float64Array.from([5, 6]),
-        values: Float64Array.from([50, 60]),
-      },
-    ]);
+    const flat = flattenSeriesSegments(
+      [
+        {
+          endNs: 20n,
+          startNs: 10n,
+          timesSec: Float64Array.from([1, 2]),
+          values: Float64Array.from([10, 20]),
+        },
+        {
+          endNs: 60n,
+          startNs: 50n,
+          timesSec: Float64Array.from([5, 6]),
+          values: Float64Array.from([50, 60]),
+        },
+      ],
+      [{ endNs: 49n, startNs: 21n }],
+    );
     expect([...flat.timesSec]).toEqual([1, 2, 3.5, 5, 6]);
     expect(flat.values[2]).toBeNaN();
     expect([...flat.values.slice(0, 2)]).toEqual([10, 20]);
     expect([...flat.values.slice(3)]).toEqual([50, 60]);
   });
 
+  it("assigns an absolute bucket to an inserted gap sample", () => {
+    const flat = flattenSeriesSegments(
+      [
+        {
+          bucketIndexes: BigInt64Array.from([10n, 11n]),
+          endNs: 20n,
+          startNs: 10n,
+          timesSec: Float64Array.from([1, 2]),
+          values: Float64Array.from([10, 20]),
+        },
+        {
+          bucketIndexes: BigInt64Array.from([15n, 16n]),
+          endNs: 60n,
+          startNs: 50n,
+          timesSec: Float64Array.from([5, 6]),
+          values: Float64Array.from([50, 60]),
+        },
+      ],
+      [{ endNs: 49n, startNs: 21n }],
+    );
+
+    expect([...flat.timesSec]).toEqual([1, 2, 3.5, 5, 6]);
+    expect([...flat.values]).toEqual([10, 20, Number.NaN, 50, 60]);
+    expect(flat.bucketIndexes).toEqual(
+      BigInt64Array.from([10n, 11n, 12n, 15n, 16n]),
+    );
+  });
+
+  it("connects non-abutting parts across known-empty coverage", () => {
+    const flat = flattenSeriesSegments(
+      [
+        {
+          endNs: 20n,
+          startNs: 10n,
+          timesSec: Float64Array.from([1, 2]),
+          values: Float64Array.from([10, 20]),
+        },
+        {
+          endNs: 60n,
+          startNs: 50n,
+          timesSec: Float64Array.from([5, 6]),
+          values: Float64Array.from([50, 60]),
+        },
+      ],
+      [],
+    );
+
+    expect([...flat.timesSec]).toEqual([1, 2, 5, 6]);
+    expect([...flat.values]).toEqual([10, 20, 50, 60]);
+  });
+
   it("does not invent a gap between abutting immutable parts", () => {
-    const flat = flattenSeriesSegments([
-      {
-        endNs: 20n,
-        startNs: 10n,
-        timesSec: Float64Array.from([1, 2]),
-        values: Float64Array.from([10, 20]),
-      },
-      {
-        endNs: 30n,
-        startNs: 21n,
-        timesSec: Float64Array.from([3]),
-        values: Float64Array.from([30]),
-      },
-    ]);
+    const flat = flattenSeriesSegments(
+      [
+        {
+          endNs: 20n,
+          startNs: 10n,
+          timesSec: Float64Array.from([1, 2]),
+          values: Float64Array.from([10, 20]),
+        },
+        {
+          endNs: 30n,
+          startNs: 21n,
+          timesSec: Float64Array.from([3]),
+          values: Float64Array.from([30]),
+        },
+      ],
+      [],
+    );
 
     expect([...flat.timesSec]).toEqual([1, 2, 3]);
     expect([...flat.values]).toEqual([10, 20, 30]);
   });
 
   it("skips empty segments", () => {
-    const flat = flattenSeriesSegments([
-      {
-        endNs: 20n,
-        startNs: 10n,
-        timesSec: new Float64Array(0),
-        values: new Float64Array(0),
-      },
-      {
-        endNs: 60n,
-        startNs: 50n,
-        timesSec: Float64Array.from([5]),
-        values: Float64Array.from([50]),
-      },
-    ]);
+    const flat = flattenSeriesSegments(
+      [
+        {
+          endNs: 20n,
+          startNs: 10n,
+          timesSec: new Float64Array(0),
+          values: new Float64Array(0),
+        },
+        {
+          endNs: 60n,
+          startNs: 50n,
+          timesSec: Float64Array.from([5]),
+          values: Float64Array.from([50]),
+        },
+      ],
+      [],
+    );
     expect([...flat.timesSec]).toEqual([5]);
   });
 });
@@ -263,12 +350,14 @@ describe("numeric-series window policy", () => {
   it("clips decoded fields and applies proportional point budgets", () => {
     const clipped = sliceNumericFieldToRange(
       {
+        bucketIndexes: BigInt64Array.from([0n, 1n, 2n, 3n]),
         timesSec: Float64Array.from([0, 1, 2, 3]),
         values: Float64Array.from([10, 11, 12, 13]),
       },
       0n,
       range(1_000_000_000n, 2_000_000_000n),
     );
+    expect(clipped.bucketIndexes).toEqual(BigInt64Array.from([1n, 2n]));
     expect([...clipped.timesSec]).toEqual([1, 2]);
     expect([...clipped.values]).toEqual([11, 12]);
     expect(numericSeriesWindowPointBudget(null, undefined)).toBe(4_000);

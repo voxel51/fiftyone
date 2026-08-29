@@ -176,10 +176,9 @@ describe("TimeseriesChart interactions", () => {
     fireEvent.click(screen.getByLabelText("Zoom in"));
     expect(resetZoom.getAttribute("data-active")).toBe("true");
     expect(chart.scales.x).toEqual({ min: 2, max: 18 });
-    // The y domain seeds from the data ([1, 2] padded to [0.95, 2.05]),
-    // so zooming in scales that window rather than the mock's preset.
-    expect(chart.scales.y.min).toBeCloseTo(1.06, 6);
-    expect(chart.scales.y.max).toBeCloseTo(1.94, 6);
+    // No samples fall inside [2, 18], so the previous fitted y domain stays.
+    expect(chart.scales.y.min).toBeCloseTo(0.95, 6);
+    expect(chart.scales.y.max).toBeCloseTo(2.05, 6);
     expect(chart.setScale).toHaveBeenCalledWith("x", {
       min: 2,
       max: 18,
@@ -265,7 +264,7 @@ describe("TimeseriesChart interactions", () => {
     unmount();
   });
 
-  it("keeps the y domain stable while progressive data fills", () => {
+  it("auto-fits the y domain when coherent data changes", () => {
     const { rerender, unmount } = renderChart();
     const chart = lastChart();
     chart.setScale.mockClear();
@@ -282,10 +281,9 @@ describe("TimeseriesChart interactions", () => {
         series={[{ color: "#f00", label: "speed" }]}
       />,
     );
-    // The mount seed ([0.95, 2.05] from the initial data) only expands.
     expect(chart.setScale).toHaveBeenLastCalledWith("y", {
       max: 5.05,
-      min: 0.95,
+      min: 3.95,
     });
 
     const wider = [
@@ -337,56 +335,32 @@ describe("TimeseriesChart interactions", () => {
     unmount();
   });
 
-  it("ignores its own asynchronously committed y writes but adopts user zooms", () => {
-    const { rerender, unmount } = renderChart();
-    const chart = lastChart();
-    const fireSetScale = (key: string) => {
-      const hooks = chart.options.hooks?.setScale;
-      for (const hook of Array.isArray(hooks) ? hooks : [hooks]) {
-        (hook as (chart: MockChart, key: string) => void)(chart, key);
-      }
-    };
-
-    // An own write committing late must not be misread as a user zoom:
-    // the stable domain keeps expanding from the seeded range afterwards.
-    fireSetScale("y");
-    const wider = [
-      [0, 10, 20],
-      [-20, 30, 0],
+  it("excludes finite values outside coherent coverage from the y domain", () => {
+    const coveredData = [
+      [0, 5, 10, 15],
+      [1, 3, 5, 1_000],
     ] as AlignedData;
-    rerender(
+    const { unmount } = render(
       <TimeseriesChart
         {...FOLLOW_POLICY_PROPS}
-        data={wider}
+        coverageRanges={[{ endSec: 10, startSec: 0 }]}
+        data={coveredData}
         durationSec={20}
         series={[{ color: "#f00", label: "speed" }]}
       />,
     );
+    const chart = lastChart();
     expect(chart.setScale).toHaveBeenLastCalledWith("y", {
-      max: 32.5,
-      min: -22.5,
+      max: 5.2,
+      min: 0.8,
     });
 
-    // A range this surface never wrote is a real user zoom and becomes
-    // the new stable domain that later data only expands.
-    chart.scales.y.min = -50;
-    chart.scales.y.max = 60;
-    fireSetScale("y");
-    const narrower = [
-      [0, 10, 20],
-      [4, 5, 4],
-    ] as AlignedData;
-    rerender(
-      <TimeseriesChart
-        {...FOLLOW_POLICY_PROPS}
-        data={narrower}
-        durationSec={20}
-        series={[{ color: "#f00", label: "speed" }]}
-      />,
-    );
+    chart.scales.x.min = 5;
+    chart.scales.x.max = 10;
+    runHooks(chart.options.hooks?.setScale, chart, "x");
     expect(chart.setScale).toHaveBeenLastCalledWith("y", {
-      max: 60,
-      min: -50,
+      max: 5.1,
+      min: 2.9,
     });
     unmount();
   });

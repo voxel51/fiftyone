@@ -15,7 +15,6 @@ import hashlib
 import os
 import posixpath
 
-import eta.core.serial as etas
 import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
@@ -333,10 +332,6 @@ class _ReferenceAssetMaterializer(ABC):
     def get_destination_location(self, reference, asset):
         """Returns the source-relative destination for a described asset."""
 
-    @abstractmethod
-    def materialize_asset(self, asset, destination, usages):
-        """Materializes a resolved physical asset at ``destination``."""
-
     def validate_materialized_reference(self, reference, assets, root):
         """Validates a materialized reference without changing bindings."""
 
@@ -429,16 +424,6 @@ def _materialize_reference_assets(
         source.key: posixpath.join("media_sources", source.key)
         for source in plan.sources
     }
-    for relative_root in source_roots.values():
-        os.makedirs(
-            os.path.join(export_root, *relative_root.split("/")),
-            exist_ok=True,
-        )
-
-    usages_by_asset = {}
-    for usage in plan.usages:
-        usages_by_asset.setdefault(usage.asset_key, []).append(usage)
-
     try:
         with fou.ProgressBar(
             total=len(plan.assets), progress=progress
@@ -450,31 +435,9 @@ def _materialize_reference_assets(
                     )
 
                 relative_root = source_roots[asset.source.key]
-                source_root = os.path.realpath(
-                    os.path.join(export_root, *relative_root.split("/"))
-                )
-                destination = os.path.realpath(
-                    os.path.join(source_root, *asset.location.split("/"))
-                )
-                if (
-                    os.path.commonpath((source_root, destination))
-                    != source_root
-                ):
-                    raise InvalidMediaLocationError(
-                        "Materialized media asset escapes its portable source "
-                        "root"
-                    )
-
-                fos.ensure_basedir(destination)
-                materializer = _get_reference_asset_materializer(
-                    asset.reference_kind
-                )
-                media_exporter._export_reference_asset(
-                    asset,
-                    destination,
-                    tuple(usages_by_asset.get(asset.key, ())),
-                    materializer,
-                )
+                source_root = fos.join(export_root, *relative_root.split("/"))
+                destination = fos.join(source_root, *asset.location.split("/"))
+                media_exporter.export_reference_asset(asset, destination)
     finally:
         if owns_exporter:
             media_exporter.close()
@@ -498,12 +461,12 @@ def _write_media_source_manifest(plan, path, materialized_roots=None):
             for source in plan.sources
         ],
     }
-    etas.write_json(value, path)
+    fos.write_json(value, path)
 
 
 def _load_media_source_manifest(path):
     """Loads and validates a native sources-only binding manifest."""
-    value = etas.read_json(path)
+    value = fos.read_json(path)
     if not isinstance(value, dict) or set(value) != {"version", "sources"}:
         raise ValueError("Malformed media-source manifest")
 

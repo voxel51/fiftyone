@@ -35,6 +35,16 @@ export type BrainKeyConfig = {
 };
 
 /**
+ * A brain key annotated with whether it can be used in the current
+ * view. Incompatible keys are still shown in the UI (grayed out) with
+ * `incompatibleReason` as hover text.
+ */
+export type AnnotatedBrainKeyConfig = BrainKeyConfig & {
+  compatible: boolean;
+  incompatibleReason?: string;
+};
+
+/**
  * Data model for a similarity search run.
  */
 export type SimilarityRun = {

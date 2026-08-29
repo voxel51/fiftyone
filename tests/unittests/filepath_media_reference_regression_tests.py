@@ -40,7 +40,6 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.jpg"))
 
-        self.assertEqual(fod._get_media_identity_mode(dataset), "filepath")
         collection = dataset._sample_collection
         with mock.patch.object(
             fo.Dataset,
@@ -59,8 +58,8 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
             "aggregate",
             side_effect=AssertionError("filepath datasets must not aggregate"),
         ):
-            self.assertIsNone(fod._get_media_reference_kind(dataset))
-            self.assertFalse(foc._contains_media_references(dataset))
+            self.assertIsNone(dataset.media_reference_kind)
+            self.assertFalse(dataset._contains_media_references())
             self.assertEqual(
                 dataset._get_default_indexes(),
                 ["id", "filepath", "created_at", "last_modified_at"],

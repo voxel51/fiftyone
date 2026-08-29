@@ -826,7 +826,7 @@ class FiftyOneDataset(Dataset):
 
 
 class LeRobotDataset(Dataset):
-    """A local LeRobotDataset v3 represented by logical episode samples."""
+    """A LeRobotDataset v3 represented by logical episode samples."""
 
     def get_dataset_importer_cls(self):
         import fiftyone.utils.lerobot as foul

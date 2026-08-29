@@ -22,6 +22,7 @@ import eta.core.utils as etau
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+import fiftyone.multimodal.media as fmm
 
 
 def validate_constraints(
@@ -1189,48 +1190,32 @@ class MediaReferenceField(Field):
     """
 
     def validate(self, value):
-        from fiftyone.multimodal.media import (
-            MediaReference,
-            _validate_media_reference_descriptor,
-            _serialize_media_reference,
-        )
-
-        if isinstance(value, MediaReference):
-            _validate_media_reference_descriptor(
-                _serialize_media_reference(value)
+        if isinstance(value, fmm.MediaReference):
+            fmm._validate_media_reference_descriptor(
+                fmm._serialize_media_reference(value)
             )
             return
 
-        _validate_media_reference_descriptor(value)
+        fmm._validate_media_reference_descriptor(value)
 
     def to_mongo(self, value):
         if value is None:
             return None
 
-        from fiftyone.multimodal.media import (
-            MediaReference,
-            _validate_media_reference_descriptor,
-            _serialize_media_reference,
-        )
+        if isinstance(value, fmm.MediaReference):
+            return fmm._serialize_media_reference(value)
 
-        if isinstance(value, MediaReference):
-            return _serialize_media_reference(value)
-
-        _validate_media_reference_descriptor(value)
+        fmm._validate_media_reference_descriptor(value)
         return dict(value)
 
     def to_python(self, value):
         if value is None:
             return None
 
-        from fiftyone.multimodal.media import MediaReference
-
-        if isinstance(value, MediaReference):
+        if isinstance(value, fmm.MediaReference):
             return value
 
-        from fiftyone.multimodal.media import _hydrate_media_reference
-
-        return _hydrate_media_reference(value)
+        return fmm._hydrate_media_reference(value)
 
 
 class KeypointsField(ListField):
