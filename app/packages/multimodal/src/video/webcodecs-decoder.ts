@@ -15,6 +15,7 @@ const MAX_REORDERED_VIDEO_OUTPUTS = 32;
 export const VIDEO_DECODE_PROGRESS_TIMEOUT_MS = 15_000;
 
 interface PendingOutput {
+  readonly promise: Promise<VideoFrame>;
   readonly reject: (error: Error) => void;
   readonly resolve: (frame: VideoFrame) => void;
   readonly timeNs: bigint;
@@ -47,6 +48,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   private lastSubmissionTimestampUs: number | null = null;
   private readonly pending: PendingOutput[] = [];
   private pps: Uint8Array | undefined;
+  private protectedReorderedOutputTimeNs: bigint | null = null;
   private readonly reorderedOutputs = new Map<bigint, ReorderedOutput>();
   private readonly reorderedSubmitted = new Set<bigint>();
   private sps: Uint8Array | undefined;
@@ -156,6 +158,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       }, VIDEO_DECODE_PROGRESS_TIMEOUT_MS);
     };
 
+    this.protectedReorderedOutputTimeNs = targetTimeNs;
     try {
       armProgressTimer();
       this.discardReorderedOutputsBefore(targetTimeNs);
@@ -204,6 +207,9 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       this.discardSubmittedTimesBefore(targetTimeNs);
       return frame;
     } finally {
+      if (this.protectedReorderedOutputTimeNs === targetTimeNs) {
+        this.protectedReorderedOutputTimeNs = null;
+      }
       if (timer !== null) this.environment.clearTimeout(timer);
     }
   }
@@ -367,36 +373,42 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
           ? sourceTimestampUs
           : Math.max(sourceTimestampUs, this.lastSubmissionTimestampUs + 1);
     this.lastSubmissionTimestampUs = submissionTimestampUs;
-    return new Promise<VideoFrame>((resolve, reject) => {
-      const pending: PendingOutput = {
-        reject,
-        resolve: (frame) => {
-          onProgress();
-          resolve(frame);
-        },
-        timeNs: unit.timeNs,
-        submissionTimestampUs,
-      };
-      this.pending.push(pending);
-      try {
-        decoder.decode(
-          new this.environment.EncodedVideoChunk({
-            data,
-            timestamp: submissionTimestampUs,
-            type: unit.frame.keyframe ? "key" : "delta",
-          }),
-        );
-      } catch (error) {
-        const index = this.pending.indexOf(pending);
-        if (index >= 0) this.pending.splice(index, 1);
-        const failure = new VideoDecoderFailureError(
-          `Failed to submit a ${codecDisplayName(unit.frame)} access unit`,
-          { cause: error },
-        );
-        this.failDecoder(failure);
-        reject(failure);
-      }
+    let resolveOutput!: (frame: VideoFrame) => void;
+    let rejectOutput!: (error: Error) => void;
+    const promise = new Promise<VideoFrame>((resolve, reject) => {
+      resolveOutput = resolve;
+      rejectOutput = reject;
     });
+    const pending: PendingOutput = {
+      promise,
+      reject: rejectOutput,
+      resolve: (frame) => {
+        onProgress();
+        resolveOutput(frame);
+      },
+      timeNs: unit.timeNs,
+      submissionTimestampUs,
+    };
+    this.pending.push(pending);
+    try {
+      decoder.decode(
+        new this.environment.EncodedVideoChunk({
+          data,
+          timestamp: submissionTimestampUs,
+          type: unit.frame.keyframe ? "key" : "delta",
+        }),
+      );
+    } catch (error) {
+      const index = this.pending.indexOf(pending);
+      if (index >= 0) this.pending.splice(index, 1);
+      const failure = new VideoDecoderFailureError(
+        `Failed to submit a ${codecDisplayName(unit.frame)} access unit`,
+        { cause: error },
+      );
+      this.failDecoder(failure);
+      rejectOutput(failure);
+    }
+    return promise;
   }
 
   private submitReordered(
@@ -414,6 +426,10 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     this.lastSubmittedDecodeTimeNs = decodeTimeNs;
     void promise.then(
       (frame) => {
+        if (this.reorderedOutputs.get(unit.timeNs) !== output) {
+          frame.close();
+          return;
+        }
         output.frame = frame;
         this.trimReorderedOutputs();
       },
@@ -428,9 +444,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   }
 
   private async waitForReorderedProgress(signal: AbortSignal): Promise<void> {
-    const pending = [...this.reorderedOutputs.values()]
-      .filter((output) => output.frame === null)
-      .map((output) => output.promise);
+    const pending = this.pending.map((output) => output.promise);
     if (pending.length === 0) {
       throw new VideoDecoderFailureError(
         "Video decoder submission window made no progress",
@@ -478,12 +492,8 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     for (const [outputTimeNs, output] of this.reorderedOutputs) {
       if (outputTimeNs >= timeNs) continue;
       this.reorderedOutputs.delete(outputTimeNs);
+      this.reorderedSubmitted.delete(outputTimeNs);
       if (output.frame) output.frame.close();
-      else
-        void output.promise.then(
-          (frame) => frame.close(),
-          () => undefined,
-        );
     }
   }
 
@@ -498,6 +508,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   private trimReorderedOutputs(): void {
     if (this.reorderedOutputs.size <= MAX_REORDERED_VIDEO_OUTPUTS) return;
     for (const [timeNs, output] of this.reorderedOutputs) {
+      if (timeNs === this.protectedReorderedOutputTimeNs) continue;
       if (!output.frame) continue;
       this.reorderedOutputs.delete(timeNs);
       this.reorderedSubmitted.delete(timeNs);
@@ -535,12 +546,8 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     for (const pending of this.pending.splice(0)) pending.reject(error);
     for (const output of this.reorderedOutputs.values()) {
       if (output.frame) output.frame.close();
-      else
-        void output.promise.then(
-          (frame) => frame.close(),
-          () => undefined,
-        );
     }
+    this.protectedReorderedOutputTimeNs = null;
     this.reorderedOutputs.clear();
     this.reorderedSubmitted.clear();
     const decoder = this.decoder;

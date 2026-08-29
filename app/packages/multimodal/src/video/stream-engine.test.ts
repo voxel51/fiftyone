@@ -4,7 +4,10 @@ import type { EncodedH264VideoVisualization } from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
 import { VideoPlaybackManager } from "./playback-manager";
 import { SharedVideoPresentation } from "./presentation";
-import { MAX_VIDEO_DEPENDENCY_ACCESS_UNITS } from "./stream-engine";
+import {
+  MAX_VIDEO_DEPENDENCY_ACCESS_UNITS,
+  REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
+} from "./stream-engine";
 import type {
   EncodedVideoAccessUnit,
   H264AccessUnit,
@@ -619,13 +622,51 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
 
     expect(read).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        endTimeNs: target.timeNs + 250_000_000n,
+        endTimeNs: target.timeNs + REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
         startTimeNs: 1n,
       }),
     );
     expect(
       harness.decoders[0].decodeCalls.at(-1)?.units.map((unit) => unit.timeNs),
     ).toEqual([preceding.timeNs, successor.timeNs, target.timeNs]);
+    lease.release();
+  });
+
+  it("reconfigures a decode-ordered forward runway at its latest keyframe", async () => {
+    const harness = createHarness();
+    const initial = accessUnit(0, true, "avc1.4D001F", 0);
+    const nextKeyframe = accessUnit(
+      300_000_000,
+      true,
+      "avc1.640028",
+      300_000_000,
+    );
+    const target = accessUnit(333_333_333, false, "avc1.640028", 366_666_666);
+    const successor = accessUnit(
+      366_666_666,
+      false,
+      "avc1.640028",
+      333_333_333,
+    );
+    const read = vi.fn(async ({ endTimeNs, startTimeNs }) => ({
+      complete: true,
+      units: [nextKeyframe, target, successor].filter(
+        (unit) => unit.timeNs >= startTimeNs && unit.timeNs <= endTimeNs,
+      ),
+    }));
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader({ timelineStartTimeNs: 0n, read });
+    const lease = manager.acquire("/camera");
+
+    lease.request({ ...initial, priority: "playing" });
+    await presented(lease, initial.timeNs);
+    lease.request({ ...target, priority: "playing" });
+    await presented(lease, target.timeNs);
+
+    expect(harness.decoders[0].resetCount).toBe(1);
+    expect(
+      harness.decoders[0].decodeCalls.at(-1)?.units.map((unit) => unit.timeNs),
+    ).toEqual([nextKeyframe.timeNs, successor.timeNs, target.timeNs]);
     lease.release();
   });
 
@@ -665,7 +706,7 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
 
     expect(read).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        endTimeNs: target.timeNs + 250_000_000n,
+        endTimeNs: target.timeNs + REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
         startTimeNs: keyframe.timeNs,
       }),
     );

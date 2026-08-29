@@ -595,6 +595,7 @@ describe("SettingsSidebar", () => {
       recordingFacts: {
         durationNs: "1000000000",
         format: "lerobot",
+        messageCount: "30",
         lerobot: {
           codebaseVersion: "v3.0",
           episodeIndex: "7",

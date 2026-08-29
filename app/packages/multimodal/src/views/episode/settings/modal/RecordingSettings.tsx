@@ -41,7 +41,10 @@ const RecordingSettings = memo(function RecordingSettings({
     ["End time", facts.lerobot ? null : formatTimestampNs(facts.endTimeNs)],
     ["Topics", formatInteger(facts.topicCount)],
     ["Channels", formatInteger(facts.channelCount)],
-    ["Messages", formatIntegerString(facts.messageCount)],
+    [
+      "Messages",
+      facts.lerobot ? null : formatIntegerString(facts.messageCount),
+    ],
     ["Schemas", formatInteger(facts.schemaCount)],
     ["Schema coverage", formatSchemaCoverage(facts)],
     ["App support", formatApplicationSupport(facts)],

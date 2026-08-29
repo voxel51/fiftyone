@@ -100,6 +100,7 @@ describe("MCAP format adapter", () => {
           }),
           create(StreamInventorySchema, {
             metadata: {
+              "mcap.exact_browsing": "true",
               "mcap.topic": "/opaque",
               [STREAM_METADATA.DECODE_STATUS]: "schema-unavailable",
             },
@@ -123,9 +124,9 @@ describe("MCAP format adapter", () => {
 
     expect(manifest.recordingFacts).toEqual({
       applicationSupport: {
-        inspectableStreamCount: 1,
+        inspectableStreamCount: 2,
         renderableStreamCount: 1,
-        unavailableStreamCount: 1,
+        unavailableStreamCount: 0,
       },
       channelCount: 3,
       durationNs: "30000000000",
@@ -155,7 +156,7 @@ describe("MCAP format adapter", () => {
         expect.objectContaining({
           id: "3",
           metadata: expect.objectContaining({
-            [STREAM_METADATA.INSPECTABLE]: "false",
+            [STREAM_METADATA.INSPECTABLE]: "true",
           }),
         }),
       ]),

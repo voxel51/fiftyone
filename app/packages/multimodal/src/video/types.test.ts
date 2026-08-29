@@ -22,6 +22,10 @@ describe("video errors", () => {
       "VideoDecoderFailureError",
       "VideoSchedulerClosedError",
     ]);
+    for (const error of errors) {
+      error.name = "RenamedError";
+      expect(error.name).toBe("RenamedError");
+    }
   });
 });
 

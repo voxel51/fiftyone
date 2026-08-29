@@ -36,13 +36,16 @@ export function prioritizedStreams(
   streams: readonly string[],
   priorityStreams: readonly string[] | undefined,
 ): string[] {
-  if (!priorityStreams?.length) return [...streams];
   const requested = new Set(streams);
+  if (!priorityStreams?.length) return [...requested];
   const priority = [...new Set(priorityStreams)].filter((stream) =>
     requested.has(stream),
   );
   const prioritized = new Set(priority);
-  return [...priority, ...streams.filter((stream) => !prioritized.has(stream))];
+  return [
+    ...priority,
+    ...[...requested].filter((stream) => !prioritized.has(stream)),
+  ];
 }
 
 /** Resolves one read window from manifest bounds and stream sync policies. */

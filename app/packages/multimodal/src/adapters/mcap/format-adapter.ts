@@ -716,7 +716,8 @@ export function createMcapManifest(
       metadata: {
         ...topic.metadata,
         [STREAM_METADATA.INSPECTABLE]:
-          topic.metadata[STREAM_METADATA.DECODE_STATUS] === "decodable"
+          topic.metadata[STREAM_METADATA.DECODE_STATUS] === "decodable" ||
+          topic.metadata["mcap.exact_browsing"] === "true"
             ? "true"
             : "false",
         ...(calibrationSourceName

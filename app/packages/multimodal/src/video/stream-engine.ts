@@ -633,8 +633,7 @@ export class VideoStreamEngine {
   ): Promise<readonly EncodedVideoAccessUnit[]> {
     const result = await reader.read({
       budget: {
-        deadlineMs:
-          this.dependencies.nowMs() + VIDEO_SEEK_READ_POLICY.maxWallTimeMs,
+        maxWallTimeMs: VIDEO_SEEK_READ_POLICY.maxWallTimeMs,
         maxMessages: VIDEO_SEEK_READ_POLICY.maxMessages,
         maxObservedPayloadBytes: VIDEO_SEEK_READ_POLICY.maxObservedPayloadBytes,
       },
@@ -713,9 +712,13 @@ export class VideoStreamEngine {
 }
 
 function runwayStartingAtLastKeyframe(
-  units: readonly EncodedVideoAccessUnit[],
+  input: readonly EncodedVideoAccessUnit[],
   targetTimeNs: bigint,
 ): readonly EncodedVideoAccessUnit[] {
+  const reordered = input.some(
+    (unit) => unit.frame.decodeTimestampNs !== undefined,
+  );
+  const units = uniqueSortedAccessUnits(input);
   let lastKeyframe = -1;
   units.forEach((unit, index) => {
     if (unit.timeNs <= targetTimeNs && unit.frame.keyframe)
@@ -725,10 +728,10 @@ function runwayStartingAtLastKeyframe(
     throw new VideoDependencyWaitError("Waiting for a video keyframe");
   }
   const runway = units.slice(lastKeyframe);
-  if (runway.at(-1)?.timeNs !== targetTimeNs) {
+  if (!runway.some((unit) => unit.timeNs === targetTimeNs)) {
     throw new VideoDependencyWaitError("Waiting for the video seek target");
   }
-  return runway;
+  return reordered ? uniqueDecodeSortedAccessUnits(runway) : runway;
 }
 
 function strongerIntent(

@@ -228,6 +228,73 @@ describe("WebCodecsVideoDecoder", () => {
     actor.close();
   });
 
+  it("does not trim the reordered output awaited by the active transaction", async () => {
+    const harness = fakeWebCodecs({ deferOutputs: true });
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const units = Array.from({ length: 34 }, (_, index) =>
+      unit(index, index === 0, undefined, index),
+    );
+    const decode = actor.decode(units, {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+
+    await vi.waitFor(() =>
+      expect(harness.instances[0].decode).toHaveBeenCalledTimes(32),
+    );
+    harness.releaseOutputs();
+    await vi.waitFor(() =>
+      expect(harness.instances[0].decode).toHaveBeenCalledTimes(34),
+    );
+    harness.releaseOutputs();
+
+    const output = await decode;
+    expect(output).toBe(harness.frames[0].frame);
+    expect(harness.frames[0].closed()).toBe(false);
+    output.close();
+    actor.close();
+  });
+
+  it("waits on discarded pending outputs before extending the decode window", async () => {
+    const harness = fakeWebCodecs({ deferOutputs: true });
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const initial = Array.from({ length: 33 }, (_, index) =>
+      unit(index, index === 0, undefined, index),
+    );
+    const firstDecode = actor.decode(initial, {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+
+    await vi.waitFor(() =>
+      expect(harness.instances[0].decode).toHaveBeenCalledTimes(32),
+    );
+    harness.releaseOutputs(1);
+    await vi.waitFor(() =>
+      expect(harness.instances[0].decode).toHaveBeenCalledTimes(33),
+    );
+    const first = await firstDecode;
+
+    const next = unit(1_000, true, "avc1.4D001F", 1_000);
+    const secondDecode = actor.decode([next], {
+      signal: new AbortController().signal,
+      targetTimeNs: next.timeNs,
+    });
+    harness.releaseOutputs();
+    await vi.waitFor(() =>
+      expect(harness.instances[0].decode).toHaveBeenCalledTimes(34),
+    );
+    harness.releaseOutputs();
+
+    const second = await secondDecode;
+    expect(harness.frames.slice(1, -1).every((frame) => frame.closed())).toBe(
+      true,
+    );
+    first.close();
+    second.close();
+    actor.close();
+  });
+
   it("fails stalled B-frame progress at the transaction boundary", async () => {
     vi.useFakeTimers();
     const harness = fakeWebCodecs({ shouldOutput: () => false });
@@ -393,6 +460,7 @@ describe("WebCodecsVideoDecoder AV1", () => {
 
 function fakeWebCodecs(
   options: {
+    readonly deferOutputs?: boolean;
     readonly holdDecodeQueue?: boolean;
     readonly holdOutputsUntilSubmissions?: number;
     readonly isSecureContext?: boolean;
@@ -463,30 +531,14 @@ function fakeWebCodecs(
       maximumOutstanding = Math.max(maximumOutstanding, outstanding);
       if (options.shouldOutput && !options.shouldOutput(submission)) return;
       queuedOutputs.push({ chunk, decoder: this });
+      if (options.deferOutputs) return;
       if (
         this.decode.mock.calls.length <
         (options.holdOutputsUntilSubmissions ?? 1)
       ) {
         return;
       }
-      for (const queued of queuedOutputs.splice(0)) {
-        void Promise.resolve(options.outputGate).then(() => {
-          outstanding -= 1;
-          let closed = false;
-          const frame = {
-            close: () => {
-              closed = true;
-            },
-            codedHeight: 480,
-            codedWidth: 640,
-            displayHeight: 480,
-            displayWidth: 640,
-            timestamp: queued.chunk.timestamp,
-          } as unknown as VideoFrame;
-          frames.push({ closed: () => closed, frame });
-          queued.decoder.init.output(frame);
-        });
-      }
+      releaseOutputs();
     });
     readonly flush = vi.fn(async () => {
       this.keyRequired = true;
@@ -517,7 +569,32 @@ function fakeWebCodecs(
     ) {
       instances.push(this);
     }
+
+    emitOutput(chunk: FakeChunk): void {
+      void Promise.resolve(options.outputGate).then(() => {
+        outstanding -= 1;
+        let closed = false;
+        const frame = {
+          close: () => {
+            closed = true;
+          },
+          codedHeight: 480,
+          codedWidth: 640,
+          displayHeight: 480,
+          displayWidth: 640,
+          timestamp: chunk.timestamp,
+        } as unknown as VideoFrame;
+        frames.push({ closed: () => closed, frame });
+        this.init.output(frame);
+      });
+    }
   }
+
+  const releaseOutputs = (count = queuedOutputs.length) => {
+    for (const queued of queuedOutputs.splice(0, count)) {
+      queued.decoder.emitOutput(queued.chunk);
+    }
+  };
 
   const environment: WebCodecsDecoderEnvironment = {
     EncodedVideoChunk: FakeChunk as unknown as typeof EncodedVideoChunk,
@@ -532,6 +609,7 @@ function fakeWebCodecs(
     instances,
     maxDecodeQueueSize: () => maximumDecodeQueueSize,
     maxOutstanding: () => maximumOutstanding,
+    releaseOutputs,
   };
 }
 

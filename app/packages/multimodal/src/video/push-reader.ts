@@ -40,7 +40,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
   private bytes = 0;
   private readonly insertionOrder: InsertionReference[] = [];
   private nextToken = 0;
-  private readonly pushListeners = new Set<() => void>();
+  private readonly pushListeners = new Map<string, Set<() => void>>();
   private readonly streams = new Map<string, StreamHistory>();
   private units = 0;
 
@@ -111,7 +111,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
     this.insertionOrder.push({ stream, timeNs: unit.timeNs, token });
     this.bytes += unit.frame.bytes.byteLength;
     this.evictToBudget();
-    this.notifyPushListeners();
+    this.notifyPushListeners(stream);
   }
 
   async read({
@@ -123,6 +123,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
   }: Parameters<
     VideoAccessUnitReader["read"]
   >[0]): Promise<VideoAccessUnitReadResult> {
+    const deadlineMs = playbackNowMs() + budget.maxWallTimeMs;
     for (;;) {
       if (signal.aborted) throw new VideoIntentCancelledError();
       const retained = this.readRetained(
@@ -136,13 +137,14 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
         retained.complete ||
         retained.stopReason === "push-budget" ||
         !retained.canGrowToComplete ||
-        playbackNowMs() >= budget.deadlineMs
+        playbackNowMs() >= deadlineMs
       ) {
         return retained.result;
       }
       const pushed = await this.waitForPush(
+        stream,
         signal,
-        Math.min(budget.deadlineMs, playbackNowMs() + PUSH_VIDEO_QUIESCENCE_MS),
+        Math.min(deadlineMs, playbackNowMs() + PUSH_VIDEO_QUIESCENCE_MS),
       );
       if (!pushed) return retained.result;
     }
@@ -153,7 +155,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
     this.insertionOrder.length = 0;
     this.streams.clear();
     this.units = 0;
-    this.notifyPushListeners();
+    this.notifyAllPushListeners();
   }
 
   private readRetained(
@@ -219,6 +221,7 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
   }
 
   private waitForPush(
+    stream: string,
     signal: AbortSignal,
     deadlineMs: number,
   ): Promise<boolean> {
@@ -238,11 +241,18 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
         reject(new VideoIntentCancelledError());
       };
       const cleanup = () => {
-        this.pushListeners.delete(finish);
+        const listeners = this.pushListeners.get(stream);
+        listeners?.delete(finish);
+        if (listeners?.size === 0) this.pushListeners.delete(stream);
         signal.removeEventListener("abort", cancel);
         if (timer !== null) clearTimeout(timer);
       };
-      this.pushListeners.add(finish);
+      let listeners = this.pushListeners.get(stream);
+      if (!listeners) {
+        listeners = new Set();
+        this.pushListeners.set(stream, listeners);
+      }
+      listeners.add(finish);
       signal.addEventListener("abort", cancel, { once: true });
       if (Number.isFinite(deadlineMs)) {
         timer = setTimeout(quiesce, Math.max(0, deadlineMs - playbackNowMs()));
@@ -250,8 +260,16 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
     });
   }
 
-  private notifyPushListeners(): void {
-    for (const listener of [...this.pushListeners]) listener();
+  private notifyPushListeners(stream: string): void {
+    for (const listener of [...(this.pushListeners.get(stream) ?? [])]) {
+      listener();
+    }
+  }
+
+  private notifyAllPushListeners(): void {
+    for (const listeners of [...this.pushListeners.values()]) {
+      for (const listener of [...listeners]) listener();
+    }
   }
 
   private evictToBudget(): void {

@@ -8,6 +8,7 @@ import type {
 } from "../../../video/types";
 import { isSharedEncodedVideoVisualization } from "../../../video/types";
 import { VISUALIZATION_KIND } from "../../../visualization";
+import { monotonicNowMs } from "../../../utils/monotonic-time";
 import { useDataStream } from "./data-stream-context";
 
 /** Binds the source manager to the current bounded episode read port. */
@@ -34,7 +35,11 @@ export function SourceVideoPlaybackProvider({
       timelineStartTimeNs,
       read: async ({ budget, endTimeNs, signal, startTimeNs, stream }) => {
         const result = await readStreamFrames({
-          budget,
+          budget: {
+            deadlineMs: monotonicNowMs() + budget.maxWallTimeMs,
+            maxMessages: budget.maxMessages,
+            maxObservedPayloadBytes: budget.maxObservedPayloadBytes,
+          },
           endTimeNs,
           signal,
           startTimeNs,

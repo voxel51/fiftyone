@@ -117,7 +117,7 @@ export interface VideoPlaybackIntent extends EncodedVideoAccessUnit {
 }
 
 export interface VideoReadBudget {
-  readonly deadlineMs: number;
+  readonly maxWallTimeMs: number;
   readonly maxMessages: number;
   readonly maxObservedPayloadBytes: number;
 }
@@ -208,5 +208,9 @@ export class VideoSchedulerClosedError extends Error {
 
 /** Defines an own name even when the host freezes Error.prototype. */
 function setErrorName(error: Error, name: string): void {
-  Object.defineProperty(error, "name", { configurable: true, value: name });
+  Object.defineProperty(error, "name", {
+    configurable: true,
+    value: name,
+    writable: true,
+  });
 }
