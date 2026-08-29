@@ -405,6 +405,14 @@ export function GridRenderer({
           status={nativeVideoError ? "error" : preview.status}
         />
       )}
+      {nativeVideoError && (preview.frame || preview.cachedPoster) ? (
+        <div
+          className={`${classes.error} ${classes.nativeVideoError}`}
+          role="alert"
+        >
+          {nativeVideoError}
+        </div>
+      ) : null}
       {preview.frame && preview.isBuffering ? (
         <span
           className={classes.bufferingIndicator}

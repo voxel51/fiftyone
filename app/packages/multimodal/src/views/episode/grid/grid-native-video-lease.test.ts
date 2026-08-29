@@ -77,4 +77,21 @@ describe("grid native video leases", () => {
       pending: 1,
     });
   });
+
+  it("keeps an active slot when the same holder replaces its request", () => {
+    requestGridNativeVideoLease("first", "poster", vi.fn(), vi.fn());
+    requestGridNativeVideoLease("second", "poster", vi.fn(), vi.fn());
+    const queuedGrant = vi.fn();
+    requestGridNativeVideoLease("queued", "poster", queuedGrant, vi.fn());
+    const replacementGrant = vi.fn();
+
+    requestGridNativeVideoLease("first", "playing", replacementGrant, vi.fn());
+
+    expect(replacementGrant).toHaveBeenCalledOnce();
+    expect(queuedGrant).not.toHaveBeenCalled();
+    expect(gridNativeVideoLeaseStats()).toMatchObject({
+      active: 2,
+      pending: 1,
+    });
+  });
 });

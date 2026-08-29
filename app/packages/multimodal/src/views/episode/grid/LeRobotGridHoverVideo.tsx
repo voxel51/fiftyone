@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import type { EpisodePreviewNativeVideo } from "../../../ir";
 import type { BitmapDrawSize } from "../../../visualization/media-2d/BitmapImageView";
+import { useLatestRef } from "../../../visualization/media-2d/use-latest-ref";
 import classes from "./GridRenderer.module.css";
 import {
   requestGridNativeVideoLease,
@@ -53,6 +54,11 @@ export function LeRobotGridHoverVideo({
   const posterRef = useRef<HTMLCanvasElement | null>(null);
   const posterReadyRef = useRef(false);
   const requestRef = useRef<GridNativeVideoLeaseRequest | null>(null);
+  const onCanvasCommittedRef = useLatestRef(onCanvasCommitted);
+  const onErrorRef = useLatestRef(onError);
+  const onSurfaceRetainedBytesChangeRef = useLatestRef(
+    onSurfaceRetainedBytesChange,
+  );
   const holderId = useId();
   const [posterReady, setPosterReady] = useState(false);
   const { codec, codecString, endTimeSeconds, startTimeSeconds } = video;
@@ -67,7 +73,9 @@ export function LeRobotGridHoverVideo({
     const poster = posterRef.current;
     if (!element || !poster) return undefined;
     if (codec === "av1" && !supportsNativeCodec(element, codecString)) {
-      onError(new Error("AV1 video playback is unsupported by this browser"));
+      onErrorRef.current(
+        new Error("AV1 video playback is unsupported by this browser"),
+      );
       return undefined;
     }
 
@@ -141,8 +149,8 @@ export function LeRobotGridHoverVideo({
       context.drawImage(element, 0, 0, width, height);
       posterCaptured = true;
       poster.style.visibility = playing ? "hidden" : "visible";
-      onSurfaceRetainedBytesChange(width * height * 4);
-      onCanvasCommitted(poster, { height, width });
+      onSurfaceRetainedBytesChangeRef.current(width * height * 4);
+      onCanvasCommittedRef.current(poster, { height, width });
       posterReadyRef.current = true;
       setPosterReady(true);
       if (!playing) requestRef.current?.release();
@@ -194,15 +202,38 @@ export function LeRobotGridHoverVideo({
       fail(new Error(`Unable to play native ${codec.toUpperCase()} video`));
     };
 
+    const cleanupMedia = () => {
+      if (!started) return;
+      started = false;
+      playGeneration += 1;
+      cancelPendingFrame();
+      if (posterRetryTimer !== null) {
+        clearTimeout(posterRetryTimer);
+        posterRetryTimer = null;
+      }
+      element.removeEventListener("ended", startAtEpisodeStart);
+      element.removeEventListener("error", onMediaError);
+      element.removeEventListener("loadeddata", presentFallbackFrame);
+      element.removeEventListener("loadedmetadata", startAtEpisodeStart);
+      element.removeEventListener("seeked", presentFallbackFrame);
+      element.removeEventListener("timeupdate", onTimeUpdate);
+      element.style.visibility = "hidden";
+      poster.style.visibility = posterCaptured ? "visible" : "hidden";
+      element.pause();
+      element.removeAttribute("src");
+      element.load();
+    };
+
     function fail(error: unknown) {
       if (failed || disposed) return;
       failed = true;
       playGeneration += 1;
       setShowingVideo(false);
-      cancelPendingFrame();
-      element?.pause();
+      cleanupMedia();
       requestRef.current?.release();
-      onError(error instanceof Error ? error : new Error(String(error)));
+      onErrorRef.current(
+        error instanceof Error ? error : new Error(String(error)),
+      );
     }
 
     function onPresentedFrame(
@@ -229,27 +260,6 @@ export function LeRobotGridHoverVideo({
       }
     }
 
-    const cleanupMedia = () => {
-      if (!started) return;
-      started = false;
-      playGeneration += 1;
-      cancelPendingFrame();
-      if (posterRetryTimer !== null) {
-        clearTimeout(posterRetryTimer);
-        posterRetryTimer = null;
-      }
-      element.removeEventListener("ended", startAtEpisodeStart);
-      element.removeEventListener("error", onMediaError);
-      element.removeEventListener("loadeddata", presentFallbackFrame);
-      element.removeEventListener("loadedmetadata", startAtEpisodeStart);
-      element.removeEventListener("seeked", presentFallbackFrame);
-      element.removeEventListener("timeupdate", onTimeUpdate);
-      element.style.visibility = "hidden";
-      poster.style.visibility = posterCaptured ? "visible" : "hidden";
-      element.pause();
-      element.removeAttribute("src");
-      element.load();
-    };
     const startMedia = () => {
       if (disposed || started) return;
       started = true;
@@ -284,9 +294,9 @@ export function LeRobotGridHoverVideo({
     codecString,
     endTimeSeconds,
     holderId,
-    onCanvasCommitted,
-    onError,
-    onSurfaceRetainedBytesChange,
+    onCanvasCommittedRef,
+    onErrorRef,
+    onSurfaceRetainedBytesChangeRef,
     playing,
     sourceUrl,
     startTimeSeconds,
@@ -305,8 +315,8 @@ export function LeRobotGridHoverVideo({
     }
     posterReadyRef.current = false;
     setPosterReady(false);
-    onSurfaceRetainedBytesChange(0);
-  }, [active, onSurfaceRetainedBytesChange]);
+    onSurfaceRetainedBytesChangeRef.current(0);
+  }, [active, onSurfaceRetainedBytesChangeRef]);
 
   // This effect clears retained poster memory and accounting on unmount.
   useEffect(
@@ -316,9 +326,9 @@ export function LeRobotGridHoverVideo({
         poster.width = 0;
         poster.height = 0;
       }
-      onSurfaceRetainedBytesChange(0);
+      onSurfaceRetainedBytesChangeRef.current(0);
     },
-    [onSurfaceRetainedBytesChange],
+    [onSurfaceRetainedBytesChangeRef],
   );
 
   return (

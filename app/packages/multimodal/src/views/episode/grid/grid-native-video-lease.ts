@@ -30,8 +30,10 @@ export function requestGridNativeVideoLease(
   onGranted: () => void,
   onRevoked: () => void,
 ): GridNativeVideoLeaseRequest {
-  active.get(holderId)?.request.release();
-  pending.get(holderId)?.request.release();
+  const replacingActive = active.get(holderId) ?? null;
+  if (replacingActive) release(replacingActive, false);
+  const replacingPending = pending.get(holderId);
+  if (replacingPending) release(replacingPending, false);
 
   const record: LeaseRecord = {
     holderId,
@@ -40,16 +42,17 @@ export function requestGridNativeVideoLease(
     priority,
     request: {
       release() {
-        if (record.state === "released") return;
-        const wasActive = record.state === "active";
-        record.state = "released";
-        active.delete(holderId);
-        pending.delete(holderId);
-        if (wasActive) pump();
+        release(record, true);
       },
     },
     state: "pending",
   };
+
+  if (replacingActive) {
+    activate(record);
+    return record.request;
+  }
+
   pending.set(holderId, record);
 
   if (priority === "playing" && active.size >= GRID_NATIVE_VIDEO_CAP) {
@@ -89,14 +92,27 @@ function pump(): void {
     if (!record) return;
     pending.delete(record.holderId);
     if (record.state !== "pending") continue;
-    record.state = "active";
-    active.set(record.holderId, record);
-    try {
-      record.onGranted();
-    } catch {
-      record.request.release();
-    }
+    activate(record);
   }
+}
+
+function activate(record: LeaseRecord): void {
+  record.state = "active";
+  active.set(record.holderId, record);
+  try {
+    record.onGranted();
+  } catch {
+    record.request.release();
+  }
+}
+
+function release(record: LeaseRecord, shouldPump: boolean): void {
+  if (record.state === "released") return;
+  const wasActive = record.state === "active";
+  record.state = "released";
+  active.delete(record.holderId);
+  pending.delete(record.holderId);
+  if (wasActive && shouldPump) pump();
 }
 
 function revoke(record: LeaseRecord): void {

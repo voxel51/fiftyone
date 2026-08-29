@@ -203,6 +203,39 @@ describe("LeRobotGridHoverVideo", () => {
     expect(element.getAttribute("src")).toBeNull();
   });
 
+  it("releases native media state when playback fails", () => {
+    const onError = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo onError={onError} video={nativeVideo(0, 1)} />,
+    );
+    const element = screen.getByTestId(
+      "lerobot-grid-hover-video",
+    ) as HTMLVideoElement;
+
+    fireEvent.error(element);
+
+    expect(onError).toHaveBeenCalledWith(
+      new Error("Unable to play native H264 video"),
+    );
+    expect(element.getAttribute("src")).toBeNull();
+    expect(HTMLMediaElement.prototype.load).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the media lifecycle stable across callback-only rerenders", () => {
+    const rendered = render(
+      <TestLeRobotGridHoverVideo video={nativeVideo(0, 1)} />,
+    );
+    const element = screen.getByTestId(
+      "lerobot-grid-hover-video",
+    ) as HTMLVideoElement;
+    expect(HTMLMediaElement.prototype.load).toHaveBeenCalledOnce();
+
+    rendered.rerender(<TestLeRobotGridHoverVideo video={nativeVideo(0, 1)} />);
+
+    expect(HTMLMediaElement.prototype.load).toHaveBeenCalledOnce();
+    expect(element.getAttribute("src")).toContain("/asset/video.mp4");
+  });
+
   it("cancels frame work and releases the media source on cleanup", () => {
     const { unmount } = render(
       <TestLeRobotGridHoverVideo video={nativeVideo(30, 31)} />,

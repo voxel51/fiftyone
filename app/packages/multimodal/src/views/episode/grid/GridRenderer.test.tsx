@@ -148,6 +148,10 @@ const gridStreamHarness = vi.hoisted(() => ({
   selected: "__auto__",
 }));
 
+const nativeVideoHarness = vi.hoisted(() => ({
+  onError: null as ((error: Error) => void) | null,
+}));
+
 const providerHarness = vi.hoisted(() => ({
   descriptor: {
     resolved: null as ResolvedGridPosterProviderDescriptor | null,
@@ -224,12 +228,21 @@ vi.mock("./use-grid-poster-provider", () => ({
 }));
 
 vi.mock("./LeRobotGridHoverVideo", () => ({
-  LeRobotGridHoverVideo: ({ playing }: { readonly playing?: boolean }) => (
-    <div
-      data-playing={playing ? "true" : "false"}
-      data-testid="lerobot-grid-hover-video"
-    />
-  ),
+  LeRobotGridHoverVideo: ({
+    onError,
+    playing,
+  }: {
+    readonly onError: (error: Error) => void;
+    readonly playing?: boolean;
+  }) => {
+    nativeVideoHarness.onError = onError;
+    return (
+      <div
+        data-playing={playing ? "true" : "false"}
+        data-testid="lerobot-grid-hover-video"
+      />
+    );
+  },
 }));
 
 vi.mock("./grid-camera-state", () => ({
@@ -359,6 +372,7 @@ afterEach(() => {
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
   gridStreamHarness.selected = "__auto__";
+  nativeVideoHarness.onError = null;
   providerHarness.descriptor = { resolved: null, status: "miss" };
   providerHarness.poster = { entry: null, status: "miss" };
 });
@@ -732,6 +746,33 @@ describe("GridRenderer", () => {
       "false",
     );
     expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+  });
+
+  it("shows native playback failures over a retained poster", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.nativeVideo = {
+      codec: "h264",
+      codecString: "avc1.64000a",
+      endTimeSeconds: 37.5,
+      source: { sourceId: "video", url: "/asset/video.mp4" },
+      startTimeSeconds: 14.2,
+    };
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    act(() => nativeVideoHarness.onError?.(new Error("Native decode failed")));
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe("Native decode failed");
   });
 
   it("shows a tiny buffering indicator over the last rendered frame", () => {

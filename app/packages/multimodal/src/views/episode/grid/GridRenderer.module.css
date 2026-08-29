@@ -53,6 +53,17 @@
   z-index: 2;
 }
 
+.nativeVideoError {
+  background: rgba(16, 17, 20, 0.82);
+  bottom: 8px;
+  left: 50%;
+  max-width: calc(100% - 16px);
+  padding: 3px 6px;
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
 .pointCloud {
   cursor: default;
 }
