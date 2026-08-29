@@ -48,6 +48,7 @@ import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 from fiftyone.internal.docs import hide_from_docs
+import fiftyone.multimodal.media as fmm
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 foma = fou.lazy_import("fiftyone.core.media_assets")
@@ -457,6 +458,15 @@ class SampleCollection(object):
     def media_type(self):
         """The media type of the collection."""
         raise NotImplementedError("Subclass must implement media_type")
+
+    @property
+    def media_reference_kind(self):
+        """The kind of media references that this collection contains, or None
+        if the collection does not contain media references.
+        """
+        raise NotImplementedError(
+            "Subclass must implement media_reference_kind"
+        )
 
     @property
     def group_field(self):
@@ -3633,12 +3643,8 @@ class SampleCollection(object):
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
         """
-        if _contains_media_references(self):
-            from fiftyone.multimodal.media import (
-                UnsupportedMediaReferenceOperation,
-            )
-
-            raise UnsupportedMediaReferenceOperation(
+        if self._contains_media_references():
+            raise fmm.UnsupportedMediaReferenceOperation(
                 "Generic file metadata is unavailable for media-reference-"
                 "backed samples; use the registered episode resolver"
             )
@@ -3659,7 +3665,7 @@ class SampleCollection(object):
         include_assets=True,
         flat=True,
     ):
-        if self._dataset._doc.media_reference_kind is not None:
+        if self._contains_media_references():
             if self.media_type == fom.GROUP:
                 view = self.select_group_slices(
                     slices=group_slices, _allow_mixed=True
@@ -10211,7 +10217,7 @@ class SampleCollection(object):
 
         # @todo consider supporting non-default fields that are indexed
         # @todo can we support some non-full collections?
-        if field == "filepath" and _contains_media_references(self):
+        if field == "filepath" and self._contains_media_references():
             return None
 
         if field in ("id", "_id", "filepath") and self._is_full_collection():
@@ -11297,7 +11303,7 @@ class SampleCollection(object):
 
         identity_indexes = (
             ["media_reference.key"]
-            if self._dataset._doc.media_reference_kind is not None
+            if self._contains_media_references()
             else ["filepath"]
         )
 
@@ -12242,6 +12248,9 @@ class SampleCollection(object):
 
         return False
 
+    def _contains_media_references(self):
+        return self.media_reference_kind is not None
+
     def _contains_videos(self, any_slice=False):
         return self._contains_media_type(fom.VIDEO, any_slice=any_slice)
 
@@ -12844,11 +12853,7 @@ def _validate_media_reference_write(
 ):
     root_field = field_name.split(".", 1)[0]
     if root_field == "media_reference":
-        from fiftyone.multimodal.media import (
-            UnsupportedMediaReferenceOperation,
-        )
-
-        raise UnsupportedMediaReferenceOperation(
+        raise fmm.UnsupportedMediaReferenceOperation(
             "Collection-level media-reference mutation is not supported; "
             "assign a complete MediaReference to each Sample and save it"
         )
@@ -12856,33 +12861,18 @@ def _validate_media_reference_write(
     if root_field != "filepath":
         return
 
-    reference_mode = (
-        fod._get_media_identity_mode(sample_collection) == "reference"
-    )
-    if reference_mode:
-        from fiftyone.multimodal.media import (
-            UnsupportedMediaReferenceOperation,
-        )
-
-        raise UnsupportedMediaReferenceOperation(filepath_error_message)
+    if sample_collection._contains_media_references():
+        raise fmm.UnsupportedMediaReferenceOperation(filepath_error_message)
 
 
 def _validate_media_identity_read(sample_collection, field_name):
     if field_name != "filepath":
         return
 
-    if fod._get_media_identity_mode(sample_collection) != "reference":
-        return
-
-    from fiftyone.multimodal.media import UnsupportedMediaReferenceOperation
-
-    raise UnsupportedMediaReferenceOperation(
-        "Filepath operations are not supported on reference-backed datasets"
-    )
-
-
-def _contains_media_references(sample_collection):
-    return fod._get_media_identity_mode(sample_collection) == "reference"
+    if sample_collection._contains_media_references():
+        raise fmm.UnsupportedMediaReferenceOperation(
+            "Filepath operations are not supported on reference-backed datasets"
+        )
 
 
 def _unwind_values(values, level=0):
@@ -13655,15 +13645,10 @@ def _export(
             **kwargs,
         )
 
-    contains_media_references = _contains_media_references(sample_collection)
-    if contains_media_references and not getattr(
+    if sample_collection._contains_media_references() and not getattr(
         dataset_exporter, "supports_media_references", False
     ):
-        from fiftyone.multimodal.media import (
-            UnsupportedMediaReferenceOperation,
-        )
-
-        raise UnsupportedMediaReferenceOperation(
+        raise fmm.UnsupportedMediaReferenceOperation(
             "The requested exporter does not support media-reference-backed "
             "samples; use FiftyOneDataset for thin references or a registered "
             "kind-specific exporter"

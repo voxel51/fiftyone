@@ -1005,7 +1005,7 @@ def import_document(json_path):
         return json_util.loads(f.read())
 
 
-def import_collection(json_dir_or_path, key="documents", stream=False):
+def import_collection(json_dir_or_path, key="documents"):
     """Imports the collection from JSON on disk.
 
     Args:
@@ -1013,37 +1013,21 @@ def import_collection(json_dir_or_path, key="documents", stream=False):
             containing per-document JSON files
         key ("documents"): the field name under which the documents are stored
             when ``json_path`` is a single JSON file
-        stream (False): whether to stream documents from a single JSON file
-            rather than loading the complete collection into memory
 
     Returns:
         a tuple of
 
         -   an iterable of BSON documents
-        -   the number of documents, or ``None`` when streaming a single file
+        -   the number of documents, if this can be known a priori
     """
     if json_dir_or_path.endswith(".json"):
-        if stream:
-            return (
-                _import_collection_single_streaming(json_dir_or_path, key),
-                None,
-            )
-
-        return _import_collection_single(json_dir_or_path, key)
+        docs = _import_collection_single(json_dir_or_path, key)
+        return docs, None
 
     return _import_collection_multi(json_dir_or_path)
 
 
 def _import_collection_single(json_path, key):
-    with open(json_path, "r") as f:
-        docs = json_util.loads(f.read()).get(key, [])
-
-    num_docs = len(docs)
-
-    return docs, num_docs
-
-
-def _import_collection_single_streaming(json_path, key):
     decoder = json.JSONDecoder(object_hook=json_util.object_hook)
     chunk_size = 64 * 1024
 

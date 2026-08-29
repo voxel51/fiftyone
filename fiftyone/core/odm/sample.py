@@ -56,9 +56,11 @@ import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.storage as fos
+import fiftyone.multimodal.media as fmm
 
 from .document import Document, SerializableDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
+
 
 # Use our own Random object to avoid messing with the user's seed
 _random = random.Random()
@@ -99,9 +101,7 @@ class DatasetSampleDocument(DatasetMixin, Document):
         if self.media_reference is None and not self.filepath:
             raise ValidationError("Field is required: ['filepath']")
 
-        from fiftyone.multimodal.media import _validate_media_source
-
-        _validate_media_source(self.filepath, self.media_reference)
+        fmm._validate_media_source(self.filepath, self.media_reference)
 
     def _get_repr_fields(self):
         fields = self.field_names
@@ -127,9 +127,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
             filepath = fos.normalize_path(filepath)
             kwargs["filepath"] = filepath
 
-        from fiftyone.multimodal.media import _validate_media_source
-
-        _validate_media_source(filepath, media_reference)
+        fmm._validate_media_source(filepath, media_reference)
 
         kwargs["id"] = kwargs.get("id", None)
         kwargs["created_at"] = None

@@ -437,7 +437,7 @@ def _materialize_reference_assets(
                 relative_root = source_roots[asset.source.key]
                 source_root = fos.join(export_root, *relative_root.split("/"))
                 destination = fos.join(source_root, *asset.location.split("/"))
-                media_exporter._export_reference_asset(asset, destination)
+                media_exporter.export_reference_asset(asset, destination)
     finally:
         if owns_exporter:
             media_exporter.close()

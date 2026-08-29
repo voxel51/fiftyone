@@ -1159,7 +1159,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             self.assertEqual((occurrence_count, reference_count), (8, 2))
 
             materialized_calls = []
-            export_reference_asset = foud.MediaExporter._export_reference_asset
+            export_reference_asset = foud.MediaExporter.export_reference_asset
             describe_assets = LeRobotEpisode.describe_assets
             describe_calls = []
 
@@ -1217,7 +1217,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 wraps=foul._get_source_binding,
             ) as source_binding_read, mock.patch.object(
                 foud.MediaExporter,
-                "_export_reference_asset",
+                "export_reference_asset",
                 new=track_materialization,
             ):
                 selected.export(dataset_exporter=exporter)
@@ -1828,7 +1828,7 @@ finally:
 
             with mock.patch.object(
                 foud.MediaExporter,
-                "_export_reference_asset",
+                "export_reference_asset",
                 side_effect=RuntimeError("materializer failed"),
             ):
                 with self.assertRaisesRegex(

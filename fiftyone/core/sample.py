@@ -20,6 +20,8 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.singletons import SampleSingleton
 import fiftyone.core.utils as fou
+import fiftyone.multimodal.media as fmm
+
 
 logger = logging.getLogger(__name__)
 
@@ -197,11 +199,7 @@ class _SampleMixin(object):
                 raising an error if metadata cannot be computed
         """
         if self._doc.get_field("media_reference") is not None:
-            from fiftyone.multimodal.media import (
-                UnsupportedMediaReferenceOperation,
-            )
-
-            raise UnsupportedMediaReferenceOperation(
+            raise fmm.UnsupportedMediaReferenceOperation(
                 "Generic file metadata is unavailable for media-reference-"
                 "backed samples; use the registered episode resolver"
             )
@@ -559,18 +557,11 @@ class _SampleMixin(object):
                 "by assignment; create a new sample instead"
             )
 
-        from fiftyone.multimodal.media import (
-            MediaReference,
-            _persist_media_reference,
-            _serialize_media_reference,
-            _validate_media_source,
-        )
-
-        if not isinstance(reference, MediaReference):
+        if not isinstance(reference, fmm.MediaReference):
             raise TypeError("media_reference must be a MediaReference")
 
-        descriptor = _serialize_media_reference(reference)
-        _validate_media_source(self._doc.get_field("filepath"), descriptor)
+        descriptor = fmm._serialize_media_reference(reference)
+        fmm._validate_media_source(self._doc.get_field("filepath"), descriptor)
 
         new_media_type = reference.media_type
         if self.media_type != new_media_type:
@@ -586,7 +577,7 @@ class _SampleMixin(object):
         if reference == current_reference:
             return
 
-        _persist_media_reference(reference)
+        fmm._persist_media_reference(reference)
         if self.in_dataset:
             self._doc.media_reference = reference
             self._doc.metadata = None
@@ -596,30 +587,11 @@ class _SampleMixin(object):
 
     def _validate_attached_media_reference(self, reference, descriptor):
         dataset = self._dataset
-        dataset_kind = dataset._doc.media_reference_kind
-        if dataset_kind is not None and dataset_kind != descriptor["kind"]:
+        if dataset.media_reference_kind != descriptor["kind"]:
             raise ValueError(
                 "A media-reference dataset cannot contain multiple "
                 "reference kinds"
             )
-
-        if dataset_kind is None:
-            incompatible_source = dataset._sample_collection.find_one(
-                {
-                    "$or": [
-                        {"media_reference": {"$exists": False}},
-                        {"media_reference": None},
-                        {"filepath": {"$exists": True, "$ne": None}},
-                        {"media_reference.kind": {"$ne": descriptor["kind"]}},
-                    ]
-                },
-                {"_id": True},
-            )
-            if incompatible_source is not None:
-                raise ValueError(
-                    "The dataset contains a media source that is "
-                    "incompatible with this media reference"
-                )
 
         if dataset.media_type == fomm.GROUP:
             group_field = dataset.group_field
@@ -700,23 +672,17 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         media_reference=None,
         **kwargs,
     ):
-        from fiftyone.multimodal.media import (
-            MediaReference,
-            _persist_media_reference,
-            _validate_media_source,
-        )
-
         if media_reference is not None and not isinstance(
-            media_reference, MediaReference
+            media_reference, fmm.MediaReference
         ):
             raise TypeError("media_reference must be a MediaReference")
 
         if filepath is None and media_reference is None:
             raise TypeError("filepath or media_reference is required")
 
-        _validate_media_source(filepath, media_reference)
+        fmm._validate_media_source(filepath, media_reference)
         if media_reference is not None:
-            _persist_media_reference(media_reference)
+            fmm._persist_media_reference(media_reference)
 
         super().__init__(
             filepath=filepath,
@@ -843,9 +809,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         descriptor = d.get("media_reference")
         if descriptor is not None:
-            from fiftyone.multimodal.media import _hydrate_media_reference
-
-            d["media_reference"] = _hydrate_media_reference(descriptor)
+            d["media_reference"] = fmm._hydrate_media_reference(descriptor)
 
         media_type = d.get("_media_type", None)
         if media_type is None and d.get("media_reference") is not None:

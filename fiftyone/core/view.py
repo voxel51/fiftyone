@@ -122,8 +122,7 @@ class DatasetView(foc.SampleCollection):
             query = {"_id": oid}
         except:
             oid = None
-            media_mode = fod._get_media_identity_mode(self)
-            if media_mode == "reference":
+            if self._contains_media_references():
                 query = {"media_reference.key": id_filepath_slice}
             else:
                 query = {"filepath": id_filepath_slice}
@@ -135,7 +134,7 @@ class DatasetView(foc.SampleCollection):
         except StopIteration:
             if oid is not None:
                 field = "ID"
-            elif media_mode == "reference":
+            elif self._contains_media_references():
                 field = "media-reference key"
             else:
                 field = "filepath"
@@ -235,6 +234,13 @@ class DatasetView(foc.SampleCollection):
             return self.__media_type
 
         return self._dataset.media_type
+
+    @property
+    def media_reference_kind(self):
+        """The kind of media references that this view contains, or None if the
+        view does not contain media references.
+        """
+        return self._dataset.media_reference_kind
 
     @property
     def group_field(self):

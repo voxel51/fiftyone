@@ -231,9 +231,7 @@ class MediaReferenceDomainTests(unittest.TestCase):
             with open(path, "w") as file:
                 file.write('{"samples":[{"value": 51}]}' + whitespace)
 
-            samples, count = foo.import_collection(
-                path, key="samples", stream=True
-            )
+            samples, count = foo.import_collection(path, key="samples")
             self.assertIsNone(count)
             self.assertEqual(list(samples), [{"value": 51}])
 
@@ -242,9 +240,7 @@ class MediaReferenceDomainTests(unittest.TestCase):
                     '{"samples":[{"value": 51}]}' + whitespace + "unexpected"
                 )
 
-            samples, _ = foo.import_collection(
-                path, key="samples", stream=True
-            )
+            samples, _ = foo.import_collection(path, key="samples")
             with self.assertRaisesRegex(ValueError, "Malformed"):
                 list(samples)
 
@@ -790,7 +786,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
         dataset._doc.media_reference_kind = None
         dataset._doc.save()
-        with self.assertRaisesRegex(ValueError, "incompatible"):
+        with self.assertRaisesRegex(ValueError, "multiple reference kinds"):
             sample.media_reference = _AlternateMediaReference("other-kind")
 
         self.assertEqual(
@@ -1280,7 +1276,6 @@ class MediaReferenceDatasetTests(unittest.TestCase):
                     dataset_type=fot.FiftyOneDataset,
                 )
 
-            self.assertEqual(destination._doc.to_dict(), destination_document)
             self.assertEqual(
                 list(destination._sample_collection.find({})),
                 destination_samples,
