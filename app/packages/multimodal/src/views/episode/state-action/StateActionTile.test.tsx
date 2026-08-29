@@ -182,6 +182,25 @@ describe("StateActionTile", () => {
     );
   });
 
+  it("settles settings fallbacks when declared statistics fail", async () => {
+    getDefaultStore().set(stateActionValueModeAtom, "zscore");
+    mocks.readDimensionStats.mockRejectedValue(
+      new Error("Unable to read declared statistics"),
+    );
+    render(<StateActionTile />);
+    const registration = mocks.registerTileSettings.mock.calls[0]?.[1] as {
+      readonly content: Parameters<typeof render>[0];
+    };
+
+    render(registration.content);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/this source declares no statistics/i),
+      ).toBeDefined(),
+    );
+  });
+
   it("renders schema-derived names as a skeleton before any value read", () => {
     render(<StateActionTile />);
     const statePane = screen.getByRole("table", {

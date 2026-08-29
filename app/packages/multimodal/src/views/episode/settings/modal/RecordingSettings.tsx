@@ -61,7 +61,7 @@ const RecordingSettings = memo(function RecordingSettings({
           <FactRows rows={mcapRows} />
         </SidebarGroup>
       ) : null}
-      {leRobotRows.length > 0 ? (
+      {leRobotRows.some(([, value]) => value !== null) ? (
         <SidebarGroup
           defaultExpanded={false}
           summary={leRobotDetailsSummary(facts)}

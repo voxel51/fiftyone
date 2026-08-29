@@ -622,6 +622,24 @@ describe("SettingsSidebar", () => {
     expect(screen.getByText("pick up cube")).toBeTruthy();
   });
 
+  it("omits empty LeRobot recording details", () => {
+    renderSidebar({
+      recordingFacts: {
+        durationNs: "1000000000",
+        endTimeNs: "1000000000",
+        format: "lerobot",
+        lerobot: {},
+        startTimeNs: "0",
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Recording LEROBOT/ }));
+
+    expect(
+      screen.queryByRole("button", { name: /LeRobot details/ }),
+    ).toBeNull();
+  });
+
   it("opens GPS streams in a Map panel without leaving Streams", () => {
     const { probeState } = renderSidebar({
       streams: [

@@ -40,7 +40,9 @@ const StateActionTileSettings: React.FC = () => {
       (result) => {
         if (!controller.signal.aborted) setStats(result);
       },
-      () => undefined,
+      () => {
+        if (!controller.signal.aborted) setStats(null);
+      },
     );
     return () => controller.abort();
   }, [readDimensionStats]);

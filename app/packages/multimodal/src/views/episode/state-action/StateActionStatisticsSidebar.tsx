@@ -324,8 +324,8 @@ function DimensionRow({
     .filter((entry): entry is string => entry !== null)
     .join(" · ");
   return (
-    <div className={styles.dimBlock} role="row" title={detail || undefined}>
-      <div className={styles.statRow}>
+    <div className={styles.dimBlock} title={detail || undefined}>
+      <div className={styles.statRow} role="row">
         <span className={styles.statName} role="rowheader" title={name}>
           {name}
         </span>
@@ -361,9 +361,10 @@ function DimensionRow({
         // This episode's numbers ride the same columns as the declared row
         // above them — the underlined min/max are the seek affordance, and
         // the leading cell flags declared-range violations.
-        <div className={styles.statRow}>
+        <div className={styles.statRow} role="row">
           <span
             className={styles.episodeOutOfRange}
+            role="cell"
             title="Rows whose value falls outside the declared min–max"
           >
             {outOfRange !== null && outOfRange > 0

@@ -5,7 +5,7 @@ import {
   SCENE_SOURCE_TYPE,
   STREAM_CATEGORY,
   type StreamDescriptor,
-} from "../../../../ir";
+} from "../../../../ir/manifest";
 import type { EpisodeTerminology } from "../../../../ports";
 import {
   STREAM_CAPABILITY,

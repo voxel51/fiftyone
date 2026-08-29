@@ -179,7 +179,9 @@ describe("StateActionStatisticsSidebar", () => {
       "2.677",
     ]);
     // Quantiles and std ride the row's hover detail, not extra columns.
-    expect(firstRow.title).toBe("q01 -2.4 · q50 0.08 · q99 2.5 · std 0.9");
+    expect(firstRow.parentElement?.title).toBe(
+      "q01 -2.4 · q50 0.08 · q99 2.5 · std 0.9",
+    );
     // One distribution strip per dimension with declared stats.
     expect(
       within(statePane).queryAllByRole("row").length,
@@ -246,14 +248,23 @@ describe("StateActionStatisticsSidebar", () => {
     const statePane = screen.getByRole("table", {
       name: "observation.state declared statistics",
     });
-    const firstRow = within(statePane)
-      .getAllByRole("row")
-      .find((row) => within(row).queryByText("joint_0")) as HTMLElement;
+    const rows = within(statePane).getAllByRole("row");
+    const declaredRow = rows.find((row) =>
+      within(row).queryByText("joint_0"),
+    ) as HTMLElement;
+    const episodeRow = rows.find((row) =>
+      within(row).queryByText("14 outside"),
+    ) as HTMLElement;
     expect(
-      within(firstRow)
+      within(declaredRow)
         .getAllByRole("cell")
         .map((cell) => cell.textContent),
-    ).toEqual(["-2.672", "—", "2.677", "-2.1", "0.2", "1.9"]);
+    ).toEqual(["-2.672", "—", "2.677"]);
+    expect(
+      within(episodeRow)
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent),
+    ).toEqual(["14 outside", "-2.1", "0.2", "1.9"]);
     expect(screen.getByText("14 outside")).toBeDefined();
     expect(screen.getAllByText(/outside/).length).toBe(1);
     // The episode strip overlays the declared bar.
