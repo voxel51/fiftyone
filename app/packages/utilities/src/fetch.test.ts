@@ -45,6 +45,17 @@ describe("fetch", () => {
     });
   });
 
+  it("resolves configured paths and preserves absolute URLs", () => {
+    setFetchFunction("http://localhost:5151", {}, "/proxy");
+
+    expect(getFetchUrl("/dataset/sample/asset")).toBe(
+      "http://localhost:5151/proxy/dataset/sample/asset",
+    );
+    expect(getFetchUrl("https://signed.example/video.mp4?token=secret")).toBe(
+      "https://signed.example/video.mp4?token=secret",
+    );
+  });
+
   it("forwards external abort signals", async () => {
     const mockFetch = vi.fn(
       (_url: string, init: RequestInit) =>

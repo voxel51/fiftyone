@@ -14,11 +14,26 @@ import {
   episodeSourceFromByteSource,
   episodeSourceFromMediaReference,
 } from "./episode-source";
+import { episodeDisplayName } from "./episode-label";
 
 afterEach(() => {
   resetSourceBootstrapCacheForTests();
   setFetchFunction("");
   vi.unstubAllGlobals();
+});
+
+describe("episodeDisplayName", () => {
+  it("formats thin LeRobot episode metadata without requiring a filepath", () => {
+    expect(
+      episodeDisplayName({
+        _id: "sample",
+        duration: 14.2,
+        episode_index: 7,
+        task: "sort objects",
+      }),
+    ).toBe("Episode 7 · sort objects · 14.2s");
+    expect(episodeDisplayName({ _id: "sample" })).toBeNull();
+  });
 });
 
 describe("episodeSourceFromByteSource", () => {
@@ -67,6 +82,12 @@ describe("episodeSourceFromMediaReference", () => {
             asset_id: "camera",
             media_type: "video/mp4",
             role: "video-stream",
+            feature_name: "observation.images.camera",
+            selector: {
+              from_timestamp: 1.25,
+              kind: "video-timestamp-interval",
+              to_timestamp: 2.5,
+            },
             size_bytes: 1234,
             url: "/dataset/d/sample/s/multimodal/assets/camera",
           },
@@ -102,7 +123,18 @@ describe("episodeSourceFromMediaReference", () => {
     resolveRequest(response);
 
     await expect(listed).resolves.toEqual([
-      { id: "camera", mediaType: "video/mp4", role: "video-stream" },
+      {
+        featureName: "observation.images.camera",
+        id: "camera",
+        mediaType: "video/mp4",
+        metadata: { sizeBytes: "1234" },
+        role: "video-stream",
+        selector: {
+          fromTimestamp: 1.25,
+          kind: "video-timestamp-interval",
+          toTimestamp: 2.5,
+        },
+      },
     ]);
     await expect(resolved).resolves.toMatchObject({
       sizeBytes: "1234",
@@ -140,6 +172,118 @@ describe("episodeSourceFromMediaReference", () => {
     );
     await expect(source.assets.list()).resolves.toEqual([]);
     expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects unknown manifest selectors before exposing an asset", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        json: async () => ({
+          assets: [
+            {
+              asset_id: "unsafe",
+              media_type: "application/octet-stream",
+              role: "tabular-frame-data",
+              selector: { kind: "filesystem-path" },
+              size_bytes: 1,
+              url: "/asset",
+            },
+          ],
+        }),
+        ok: true,
+        status: 200,
+        statusText: "OK",
+      }),
+    );
+    const source = episodeSourceFromMediaReference("d", "s", {
+      kind: "lerobot-episode",
+      key: "source:17",
+    });
+
+    await expect(source.assets.list()).rejects.toThrow(
+      "unknown asset selector",
+    );
+  });
+
+  it("rejects unknown manifest roles before exposing an asset", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        json: async () => ({
+          assets: [
+            {
+              asset_id: "unsafe",
+              media_type: "application/octet-stream",
+              role: "filesystem-root",
+              selector: { kind: "whole-file" },
+              size_bytes: 1,
+              url: "/asset",
+            },
+          ],
+        }),
+        ok: true,
+        status: 200,
+        statusText: "OK",
+      }),
+    );
+    const source = episodeSourceFromMediaReference("d", "s", {
+      kind: "lerobot-episode",
+      key: "source:17",
+    });
+
+    await expect(source.assets.list()).rejects.toThrow("unknown asset role");
+  });
+
+  it("accepts the auxiliary metadata roles emitted by the server", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        json: async () => ({
+          assets: [
+            {
+              asset_id: "statistics",
+              media_type: "application/json",
+              role: "dataset-statistics",
+              selector: { kind: "whole-file" },
+              size_bytes: 10,
+              url: "/statistics",
+            },
+            {
+              asset_id: "tasks",
+              media_type: "application/octet-stream",
+              role: "tasks-metadata",
+              selector: { kind: "whole-file" },
+              size_bytes: 20,
+              url: "/tasks",
+            },
+          ],
+        }),
+        ok: true,
+        status: 200,
+        statusText: "OK",
+      }),
+    );
+    const source = episodeSourceFromMediaReference("d", "s", {
+      kind: "lerobot-episode",
+      key: "source:17",
+    });
+
+    await expect(source.assets.list()).resolves.toEqual([
+      {
+        id: "statistics",
+        mediaType: "application/json",
+        metadata: { sizeBytes: "10" },
+        role: "dataset-statistics",
+        selector: { kind: "whole-file" },
+      },
+      {
+        id: "tasks",
+        mediaType: "application/octet-stream",
+        metadata: { sizeBytes: "20" },
+        role: "tasks-metadata",
+        selector: { kind: "whole-file" },
+      },
+    ]);
   });
 
   it("isolates caller cancellation on a shared manifest request", async () => {

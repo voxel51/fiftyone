@@ -21,6 +21,10 @@ import type {
 } from "../../../ir";
 import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+} from "../../../video/types";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
 import { VideoPanel } from "../../../visualization/media-2d/VideoPanel";
@@ -924,7 +928,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         >
           {frame && playbackFrame ? (
             frame.kind === "encoded-video" ? (
-              frame.codec === "h264" ? (
+              isSharedEncodedVideoVisualization(frame) ? (
                 <VideoPanel
                   canvasSurface="modal-image"
                   className={styles.panel}
@@ -944,7 +948,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                 />
               ) : (
                 <div className={styles.panel} role="alert">
-                  Video codec {frame.codec} is unsupported
+                  {sharedVideoRejectionMessage(frame)}
                 </div>
               )
             ) : (

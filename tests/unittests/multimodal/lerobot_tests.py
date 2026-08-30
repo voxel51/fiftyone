@@ -2035,21 +2035,31 @@ class LeRobotServerTests(unittest.TestCase):
             self.assertNotIn(root, encoded)
             self.assertNotIn("relative_path", encoded)
             self.assertNotIn("locator", encoded)
-            self.assertNotIn("selector", encoded)
-            self.assertNotIn("feature_name", encoded)
             self.assertNotIn("fingerprint", encoded)
+            required_asset_keys = {
+                "asset_id",
+                "role",
+                "selector",
+                "size_bytes",
+                "media_type",
+                "url",
+            }
             self.assertTrue(
                 all(
-                    set(asset)
-                    == {
-                        "asset_id",
-                        "role",
-                        "size_bytes",
-                        "media_type",
-                        "url",
-                    }
+                    required_asset_keys
+                    <= set(asset)
+                    <= required_asset_keys | {"feature_name"}
                     for asset in manifest["assets"]
                 )
+            )
+            video = next(
+                asset
+                for asset in manifest["assets"]
+                if asset["role"] == "video-stream"
+            )
+            self.assertEqual(video["feature_name"], _VIDEO_FEATURE)
+            self.assertEqual(
+                video["selector"]["kind"], "video-timestamp-interval"
             )
             self.assertTrue(
                 {

@@ -328,12 +328,26 @@ const joinFetchUrl = (
   return `${base}/${relative}`;
 };
 
+const resolveFetchUrl = (
+  origin: string | undefined,
+  pathPrefix: string,
+  path: string,
+): string => {
+  try {
+    new URL(path);
+    return path;
+  } catch {
+    if (typeof origin !== "string") {
+      throw new Error("Fetch parameters are not configured");
+    }
+
+    return joinFetchUrl(origin, pathPrefix, path);
+  }
+};
+
 /** Builds an absolute URL from the configured fetch origin and path prefix. */
 export const getFetchUrl = (path: string): string => {
-  if (typeof fetchOrigin !== "string") {
-    throw new Error("Fetch parameters are not configured");
-  }
-  return joinFetchUrl(fetchOrigin, fetchPathPrefix, path);
+  return resolveFetchUrl(fetchOrigin, fetchPathPrefix, path);
 };
 
 // Identical GraphQL QUERIES that are in flight at the same moment share one
@@ -383,16 +397,8 @@ export const setFetchFunction = (
     signal,
     onProgress,
   ) => {
-    let url: string;
     const controller = new AbortController();
-
-    try {
-      // if a valid URL is provided, make no adjustments
-      new URL(path);
-      url = path;
-    } catch {
-      url = joinFetchUrl(origin, fetchPathPrefix, path);
-    }
+    const url = resolveFetchUrl(origin, fetchPathPrefix, path);
 
     // set content type only if body is present, otherwise it can cause Bad Request
     // errors for endpoints that don't expect a body

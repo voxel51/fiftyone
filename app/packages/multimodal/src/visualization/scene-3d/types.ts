@@ -3,12 +3,12 @@ import * as THREE from "three";
 
 import type {
   CameraCalibrationVisualization,
-  EncodedH264VideoVisualization,
   GridVisualization,
   ImageVisualization,
   PointCloudVisualization,
   SceneUpdateVisualization,
 } from "../../ir";
+import type { SharedEncodedVideoVisualization } from "../../video/types";
 import type {
   ThreeCameraPose,
   ThreeCameraPoseChangeSource,
@@ -299,8 +299,8 @@ export interface CameraFrustumPanelLayer {
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;
   readonly image?: ImageVisualization;
-  /** H.264 content is presented by the source-scoped video engine. */
-  readonly video?: EncodedH264VideoVisualization;
+  /** Encoded content is presented by the source-scoped video engine. */
+  readonly video?: SharedEncodedVideoVisualization;
   readonly imageContentTimeNs?: bigint;
   /**
    * Presentational distance from optical center to image plane, in scene

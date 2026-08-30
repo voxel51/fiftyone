@@ -8,6 +8,7 @@ import { getFetchFunctionExtended } from "@fiftyone/utilities";
 
 import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../../ir";
 import type {
+  AssetSelectorDescriptor,
   EpisodeOpenOptions,
   EpisodeSource,
   ManifestEpisodeSource,
@@ -161,9 +162,12 @@ export function episodeSourceFromMediaReference(
     assets: {
       list: async (options) =>
         (await getManifest(options)).assets.map((asset) => ({
+          ...(asset.feature_name ? { featureName: asset.feature_name } : {}),
           id: asset.asset_id,
           mediaType: asset.media_type,
-          role: asset.role,
+          metadata: { sizeBytes: normalizedSizeBytes(asset.size_bytes) },
+          role: normalizedAssetRole(asset.role),
+          selector: normalizeAssetSelector(asset.selector),
         })),
       resolve: async (assetId, options) => {
         const resolvedManifest = await getManifest(options);
@@ -254,8 +258,98 @@ type TransportMediaAssetManifest = {
 
 type TransportMediaAsset = {
   readonly asset_id: string;
+  readonly feature_name?: string | null;
   readonly media_type: string;
   readonly role: string;
+  readonly selector: TransportMediaAssetSelector;
   readonly size_bytes: number;
   readonly url: string;
 };
+
+type TransportMediaAssetSelector =
+  | { readonly kind: "whole-file" }
+  | {
+      readonly coordinate_system: string;
+      readonly end: number;
+      readonly kind: "row-interval";
+      readonly start: number;
+    }
+  | {
+      readonly from_timestamp: number;
+      readonly kind: "video-timestamp-interval";
+      readonly to_timestamp: number;
+    };
+
+function normalizedSizeBytes(value: number): string {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error("Episode manifest contains an invalid asset size");
+  }
+  return value.toString();
+}
+
+const LEROBOT_ASSET_ROLES = new Set([
+  "dataset-info",
+  "dataset-statistics",
+  "episode-metadata",
+  "image-payload",
+  "tabular-frame-data",
+  "tasks-metadata",
+  "video-stream",
+]);
+
+function normalizedAssetRole(value: string): string {
+  if (!LEROBOT_ASSET_ROLES.has(value)) {
+    throw new Error("Episode manifest contains an unknown asset role");
+  }
+  return value;
+}
+
+function normalizeAssetSelector(selector: unknown): AssetSelectorDescriptor {
+  if (!selector || typeof selector !== "object" || !("kind" in selector)) {
+    throw new Error("Episode manifest contains a malformed asset selector");
+  }
+  const value = selector as Record<string, unknown>;
+  switch (value.kind) {
+    case "whole-file":
+      return { kind: "whole-file" };
+    case "row-interval":
+      if (
+        (value.coordinate_system !== "parquet-file-row" &&
+          value.coordinate_system !== "lerobot-v3-global-dataset-row") ||
+        typeof value.start !== "number" ||
+        !Number.isSafeInteger(value.start) ||
+        typeof value.end !== "number" ||
+        !Number.isSafeInteger(value.end) ||
+        value.start < 0 ||
+        value.start >= value.end
+      ) {
+        throw new Error(
+          "Episode manifest contains an unsupported row selector",
+        );
+      }
+      return {
+        coordinateSystem: value.coordinate_system,
+        end: value.end,
+        kind: value.kind,
+        start: value.start,
+      };
+    case "video-timestamp-interval":
+      if (
+        typeof value.from_timestamp !== "number" ||
+        !Number.isFinite(value.from_timestamp) ||
+        value.from_timestamp < 0 ||
+        typeof value.to_timestamp !== "number" ||
+        !Number.isFinite(value.to_timestamp) ||
+        value.from_timestamp >= value.to_timestamp
+      ) {
+        throw new Error("Episode manifest contains an invalid video selector");
+      }
+      return {
+        fromTimestamp: value.from_timestamp,
+        kind: value.kind,
+        toTimestamp: value.to_timestamp,
+      };
+    default:
+      throw new Error("Episode manifest contains an unknown asset selector");
+  }
+}

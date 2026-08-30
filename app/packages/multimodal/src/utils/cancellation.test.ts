@@ -4,6 +4,7 @@ import {
   ABORT_ERROR_NAME,
   createAbortError,
   DEFAULT_ABORT_ERROR_MESSAGE,
+  linkAbortSignals,
   throwIfAborted,
 } from "./cancellation";
 
@@ -19,6 +20,52 @@ describe("cancellation identity", () => {
     expect(first.stack).toContain("createAbortError");
     expect(second).not.toBe(first);
     expect(second.message).toBe("Indexed read aborted");
+  });
+
+  it("links an epoch with optional request cancellation", () => {
+    const epoch = new AbortController();
+    const request = new AbortController();
+    const linked = linkAbortSignals(epoch.signal, request.signal);
+
+    expect(linked.signal.aborted).toBe(false);
+    request.abort();
+    expect(linked.signal.aborted).toBe(true);
+    linked.cleanup();
+
+    const epochOnly = linkAbortSignals(epoch.signal);
+    expect(epochOnly.signal).toBe(epoch.signal);
+    epochOnly.cleanup();
+  });
+
+  it("propagates epoch cancellation through a linked request", () => {
+    const epoch = new AbortController();
+    const request = new AbortController();
+    const linked = linkAbortSignals(epoch.signal, request.signal);
+
+    epoch.abort();
+
+    expect(linked.signal.aborted).toBe(true);
+    linked.cleanup();
+  });
+
+  it("links already-aborted epochs and requests as aborted", () => {
+    const abortedEpoch = new AbortController();
+    abortedEpoch.abort();
+    const fromEpoch = linkAbortSignals(
+      abortedEpoch.signal,
+      new AbortController().signal,
+    );
+    expect(fromEpoch.signal.aborted).toBe(true);
+    fromEpoch.cleanup();
+
+    const abortedRequest = new AbortController();
+    abortedRequest.abort();
+    const fromRequest = linkAbortSignals(
+      new AbortController().signal,
+      abortedRequest.signal,
+    );
+    expect(fromRequest.signal.aborted).toBe(true);
+    fromRequest.cleanup();
   });
 
   it("accepts absent and active signals without throwing", () => {

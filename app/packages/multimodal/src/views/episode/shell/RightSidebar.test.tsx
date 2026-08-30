@@ -11,6 +11,15 @@ import RightSidebar from "./RightSidebar";
 vi.mock("../scene/picking/InspectorSidebar", () => ({
   default: () => <div data-testid="stub-inspector" />,
 }));
+vi.mock("../state-action/StateActionStatisticsSidebar", () => ({
+  default: () => <div data-testid="stub-statistics" />,
+}));
+const stateActionMocks = vi.hoisted(() => ({
+  schema: null as unknown,
+}));
+vi.mock("../state-action/state-action-context", () => ({
+  useStateActionSchemaIfPresent: () => stateActionMocks.schema,
+}));
 vi.mock("./FieldsSidebar", () => ({
   default: () => <div data-testid="stub-fields" />,
 }));
@@ -82,5 +91,18 @@ describe("RightSidebar", () => {
 
     expect(screen.getByTestId("stub-fields")).toBeTruthy();
     expect(screen.queryByTestId("stub-inspector")).toBeNull();
+  });
+
+  it("swaps Inspect for Statistics when the session has state/action", () => {
+    stateActionMocks.schema = { rowCount: 167 };
+    try {
+      render(<RightSidebar />);
+      expect(screen.getByText("Statistics")).toBeTruthy();
+      expect(screen.queryByText("Inspect")).toBeNull();
+      expect(screen.getByTestId("stub-statistics")).toBeTruthy();
+      expect(screen.queryByTestId("stub-inspector")).toBeNull();
+    } finally {
+      stateActionMocks.schema = null;
+    }
   });
 });

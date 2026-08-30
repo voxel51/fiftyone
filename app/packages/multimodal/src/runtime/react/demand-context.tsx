@@ -60,6 +60,12 @@ export interface DemandContextProviderFactory<
     Value,
     Handlers
   >;
+  /** Nullable accessor for surfaces that may render without the provider. */
+  readonly useOptionalDemandContext: () => DemandContextController<
+    InventoryState,
+    Value,
+    Handlers
+  > | null;
 }
 
 /** Creates the shared state, registry, inventory, and reset provider scaffold. */
@@ -150,7 +156,9 @@ export function createDemandContextProvider<
     return value;
   };
 
-  return { Provider, useDemandContext };
+  const useOptionalDemandContext = () => useContext(Context);
+
+  return { Provider, useDemandContext, useOptionalDemandContext };
 }
 
 /** Clears provider-owned publications after its bridge leaves the tree. */
