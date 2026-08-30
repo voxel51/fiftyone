@@ -550,19 +550,17 @@ def _bind_materialized_media_sources(manifest_sources, dataset_dir):
 def _validate_materialized_media_sources(manifest_sources, dataset_dir):
     """Validates materialized source roots without changing bindings."""
     validated = []
-    dataset_root = os.path.realpath(dataset_dir)
+    dataset_root = fos.realpath(dataset_dir)
     for source, relative_root, required in manifest_sources:
         if relative_root is None:
             validated.append((source, None, required))
             continue
 
-        root = os.path.realpath(
-            os.path.join(dataset_root, *relative_root.split("/"))
-        )
-        if os.path.commonpath((dataset_root, root)) != dataset_root:
+        root = fos.realpath(fos.join(dataset_root, *relative_root.split("/")))
+        if fos.commonpath((dataset_root, root)) != dataset_root:
             raise ValueError("Materialized media source escapes the dataset")
 
-        if not os.path.isdir(root):
+        if not fos.isdir(root):
             raise ValueError(
                 "Materialized media source '%s' is missing" % relative_root
             )
@@ -590,13 +588,13 @@ def _validate_materialized_reference_assets(
         if root is None:
             continue
 
-        path = os.path.realpath(os.path.join(root, *asset.location.split("/")))
-        if os.path.commonpath((root, path)) != root:
+        path = fos.realpath(fos.join(root, *asset.location.split("/")))
+        if fos.commonpath((root, path)) != root:
             raise InvalidMediaLocationError(
                 "Materialized media asset escapes its portable source root"
             )
 
-        if not os.path.isfile(path):
+        if not fos.isfile(path):
             raise ValueError(
                 "Materialized media asset '%s' is missing" % asset.location
             )

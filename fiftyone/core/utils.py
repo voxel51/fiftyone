@@ -1244,10 +1244,12 @@ class BaseChunkyBatcher(Batcher):
                 batch.append(next(self._iter))
                 idx += 1
         except StopIteration:
-            if not batch:
-                raise StopIteration
+            pass
 
         self._last_batch_size = len(batch)
+
+        if not batch:
+            raise StopIteration
 
         return batch
 
