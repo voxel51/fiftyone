@@ -287,6 +287,7 @@ describe("WebCodecsVideoDecoder", () => {
     harness.releaseOutputs();
 
     const second = await secondDecode;
+    expect(harness.frames).toHaveLength(34);
     expect(harness.frames.slice(1, -1).every((frame) => frame.closed())).toBe(
       true,
     );
