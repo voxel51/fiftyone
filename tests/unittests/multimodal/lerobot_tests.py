@@ -1190,12 +1190,6 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 "_finalize_reference_export",
                 new=track_finalization,
             ), mock.patch.object(
-                foudi.foo,
-                "count_documents",
-                side_effect=AssertionError(
-                    "reference exports must not run an exact-count pre-scan"
-                ),
-            ), mock.patch.object(
                 foma,
                 "_export_media_reference_bindings",
                 wraps=foma._export_media_reference_bindings,

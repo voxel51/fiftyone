@@ -2401,10 +2401,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         logger.info("Exporting samples...")
 
         coll, pipeline = fod._get_samples_pipeline(_sample_collection)
-        if not self._media_exporter.is_reference_export:
-            num_samples = foo.count_documents(coll, pipeline)
-        else:
-            num_samples = None
+        num_samples = foo.count_documents(coll, pipeline)
 
         _samples = foo.aggregate(coll, pipeline)
 
