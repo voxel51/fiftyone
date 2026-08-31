@@ -699,7 +699,6 @@ const ViewBar: React.FC<{
   const [searchK, setSearchK] = React.useState(LANGUAGE_SEARCH_K);
   // bumps after every search so the ordering reflects the use just recorded
   const [recencyStamp, setRecencyStamp] = React.useState(0);
-  const datasetName = fos.useCurrentDatasetName();
   const orderedPromptKeys = useMemo(
     () =>
       orderBySearchRecency(
