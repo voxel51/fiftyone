@@ -258,8 +258,9 @@ aggregates:
   access to.
 
 The stage filter next to it adapts to the scope. Within **This workflow**
-you can drill into any individual stage of the pipeline. In the two
-aggregated scopes, stages combine by type instead: **All stages**,
+you can drill into any individual stage of the pipeline — for example,
+*Annotate*, *First review*, and *Final review* in a two-tier pipeline. In
+the two aggregated scopes, stages combine by type instead: **All stages**,
 **Annotate**, or **Review**.
 
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_metrics_scope_filters.webp
