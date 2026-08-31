@@ -1,5 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useStream } from "@fiftyone/playback";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  setPresentedTime,
+  usePlaybackStore,
+  useStream,
+} from "@fiftyone/playback";
+import { useModalSample } from "@fiftyone/state";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import { useLighterTileScene } from "../hooks/useLighterTileScene";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
 import { IMAVID_STREAM_ID } from "../utils/ids";
@@ -23,6 +29,7 @@ interface ImageDimensions {
 function usePaintFrameToCanvas(
   frame: ImaVidImageFrame | undefined,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
+  onPainted: (frameNumber: number | null) => void,
 ): ImageDimensions | null {
   const [dims, setDims] = useState<ImageDimensions | null>(null);
 
@@ -38,6 +45,7 @@ function usePaintFrameToCanvas(
     if (!frame) {
       const ctx = canvasEl.getContext("2d");
       ctx?.clearRect(0, 0, canvasEl.width, canvasEl.height);
+      onPainted(null);
       return;
     }
 
@@ -68,10 +76,14 @@ function usePaintFrameToCanvas(
     ctx.drawImage(frame.bitmap, 0, 0);
     ctx.imageSmoothingEnabled = priorImageSmoothing;
 
+    // The frame is on glass as of this draw — the presented-frame authority
+    // for decoded tiles, the vfc callback's analogue
+    onPainted(frame.frameNumber);
+
     if (dims === null || dims.w !== w || dims.h !== h) {
       setDims({ w, h });
     }
-  }, [frame, dims, canvasRef]);
+  }, [frame, dims, canvasRef, onPainted]);
 
   return dims;
 }
@@ -94,7 +106,26 @@ export const ImaVidLighterTile: React.FC = () => {
   // only changes when the frame actually changes.
   const frame = useStream<ImaVidImageFrame>(sourceId);
 
-  const imageDims = usePaintFrameToCanvas(frame, frameCanvasRef);
+  // The presented-frame authority for decoded tiles: publish the media time
+  // of the bitmap the moment it is drawn, so overlay clocks track the
+  // picture through a scrub instead of the requested playhead
+  const store = usePlaybackStore();
+  const sample = useModalSample();
+  const fps = getModalSampleFrameRate(sample);
+  const onPainted = useCallback(
+    (frameNumber: number | null) => {
+      setPresentedTime(
+        store,
+        frameNumber == null || !fps || fps <= 0
+          ? null
+          : (frameNumber - 1) / fps,
+      );
+    },
+    [store, fps],
+  );
+  useEffect(() => () => setPresentedTime(store, null), [store]);
+
+  const imageDims = usePaintFrameToCanvas(frame, frameCanvasRef, onPainted);
 
   // Scene lifecycle: once-per-mount scene; `dims` from the decoded bitmap.
   const { scene, canonicalMediaReady, revealed } = useLighterTileScene({

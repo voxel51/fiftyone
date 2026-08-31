@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { frameAt, usePlayhead } from "@fiftyone/playback";
+import { frameAt, usePlayhead, usePresentedTime } from "@fiftyone/playback";
 import { useModalSample } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
 import { resolveFrameCount } from "../utils/frameCount";
@@ -28,13 +28,22 @@ import { useModalSampleFrameRate } from "./accessors";
 export const useCurrentFrame = (): number => {
   const sample = useModalSample();
   const playhead = usePlayhead();
+  const presented = usePresentedTime();
   const fps = useModalSampleFrameRate(sample);
 
   if (!fps || !Number.isFinite(fps) || fps <= 0) {
     return -1;
   }
 
-  return frameAt(playhead, fps, resolveFrameCount(sample, fps) ?? undefined);
+  // The frame actually on glass, when the tile publishes one — during a
+  // scrub the picture can trail the requested playhead without bound
+  // (browser seek pipeline, chunk fetch + decode), and every consumer of
+  // "current frame" — overlay clock, TD gates, gesture frame-stamping —
+  // should track what the user sees. The playhead is the fallback for
+  // tiles that never present (no media, no vfc support).
+  const time = presented ?? playhead;
+
+  return frameAt(time, fps, resolveFrameCount(sample, fps) ?? undefined);
 };
 
 /**

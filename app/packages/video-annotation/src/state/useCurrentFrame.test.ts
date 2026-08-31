@@ -11,6 +11,7 @@ const DURATION = TOTAL_FRAMES / FPS;
 const { source } = vi.hoisted(() => ({
   source: {
     playhead: 0,
+    presented: null as number | null,
     frameRate: undefined as number | undefined,
     totalFrameCount: undefined as number | undefined,
   },
@@ -22,6 +23,7 @@ const { source } = vi.hoisted(() => ({
 vi.mock("@fiftyone/playback", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@fiftyone/playback")>()),
   usePlayhead: () => source.playhead,
+  usePresentedTime: () => source.presented,
 }));
 
 vi.mock("@fiftyone/state", () => ({
@@ -44,6 +46,7 @@ import { useCurrentFrame } from "./useCurrentFrame";
 describe("useCurrentFrame", () => {
   it("converts the playhead to a 1-indexed frame", () => {
     source.playhead = 0;
+    source.presented = null;
     source.frameRate = FPS;
     source.totalFrameCount = TOTAL_FRAMES;
 
@@ -76,5 +79,29 @@ describe("useCurrentFrame", () => {
 
     const { result } = renderHook(() => useCurrentFrame());
     expect(result.current).toBe(-1);
+  });
+});
+
+describe("useCurrentFrame presented-frame authority", () => {
+  it("prefers the presented time over the playhead", () => {
+    // Mid-scrub shape: the user requested ~frame 90, but the tile has only
+    // presented frame 30 — overlays must track the picture
+    source.playhead = 3;
+    source.presented = 1;
+    source.frameRate = FPS;
+    source.totalFrameCount = TOTAL_FRAMES;
+
+    const { result } = renderHook(() => useCurrentFrame());
+    expect(result.current).toBe(30);
+  });
+
+  it("falls back to the playhead when nothing has presented", () => {
+    source.playhead = 1;
+    source.presented = null;
+    source.frameRate = FPS;
+    source.totalFrameCount = TOTAL_FRAMES;
+
+    const { result } = renderHook(() => useCurrentFrame());
+    expect(result.current).toBe(30);
   });
 });
