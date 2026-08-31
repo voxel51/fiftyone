@@ -153,4 +153,31 @@ describe("useColorColumn", () => {
     unmount();
     expect(signals[1].aborted).toBe(true);
   });
+
+  // A field restored from panel state can resolve before the source's plan
+  // has arrived; the rejection must not outlive the plan landing
+  it("re-resolves and clears the error when the source's revision changes", async () => {
+    const resolve = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("column unavailable"))
+      .mockResolvedValueOnce(RESPONSE);
+    const source = (revision: string) => ({
+      choices: ["a"],
+      resolve,
+      revision,
+    });
+    const { result, rerender } = renderHook(
+      ({ revision }: { revision: string }) =>
+        useColorColumn("ds", "viz", RUN, "a", source(revision)),
+      { initialProps: { revision: "no-plan" } },
+    );
+    await waitFor(() =>
+      expect(result.current.error).toMatch("column unavailable"),
+    );
+
+    rerender({ revision: "plan:v1" });
+    await waitFor(() => expect(result.current.values).not.toBeNull());
+    expect(result.current.error).toBeNull();
+    expect(resolve).toHaveBeenCalledTimes(2);
+  });
 });

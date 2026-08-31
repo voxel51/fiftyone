@@ -19,6 +19,7 @@ import "./panel.css";
 import {
   EmbeddingsView,
   type CameraAdapterFactory,
+  type CellMembership,
   type HoverHit,
   type InteractionMode,
 } from "./renderer";
@@ -32,7 +33,7 @@ export interface FacetCellProps {
   /** Row/col category labels for this cell; null when that axis is absent */
   rowLabel: string | null;
   colLabel: string | null;
-  /** Number of points visible in this cell (from the cell mask) */
+  /** Number of points visible in this cell (from its `visible` membership) */
   count: number;
   /** Caller-supplied controls rendered at the header's right edge */
   headerActions?: ReactNode;
@@ -40,8 +41,10 @@ export interface FacetCellProps {
   loaded: Loaded;
   colors: Float32Array | null;
   selected: number[] | null;
-  /** plot visibility ∧ this cell's membership */
-  visible: Uint8Array;
+  /** plot visibility ∧ this cell's membership: a plain mask for a single
+   * full-size cell, or membership in the facet layout's SHARED per-point
+   * ordinal array (no per-cell n-sized mask ever exists) */
+  visible: Uint8Array | CellMembership;
   /** The renderer's own mode — the shell maps any extension mode before
    * it reaches the cell */
   mode: InteractionMode;
@@ -60,6 +63,10 @@ export interface FacetCellProps {
   onHover: (hit: HoverHit | null) => void;
   /** Keeps the hover card alive while the pointer is over it */
   onKeepHover: () => void;
+  /** The card is frozen on a clicked point. */
+  pinned?: boolean;
+  /** Releases the freeze; rendered as the card's close control. */
+  onClosePinned?: () => void;
   /** An extension action offered on the hover card; null = no button */
   hoverAction: HoverAction | null;
   registerChart: (key: string, handle: EmbeddingsViewHandle | null) => void;
@@ -90,21 +97,50 @@ export default function FacetCell({
   onError,
   onHover,
   onKeepHover,
+  pinned = false,
+  onClosePinned,
   hoverAction,
   registerChart,
   hover,
   hoverHit = null,
 }: FacetCellProps) {
   const sceneRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<EmbeddingsViewHandle | null>(null);
   const setChart = useCallback(
-    (handle: EmbeddingsViewHandle | null) => registerChart(cellKey, handle),
+    (handle: EmbeddingsViewHandle | null) => {
+      chartRef.current = handle;
+      registerChart(cellKey, handle);
+    },
     [cellKey, registerChart],
   );
 
   const label = [rowLabel, colLabel].filter((v) => v !== null).join(" · ");
-  const showHover = hover != null && visible[hover.hit.index] === 1;
+  const isMember = (index: number) =>
+    visible instanceof Uint8Array
+      ? visible[index] === 1
+      : visible.ordinals[index] === visible.ordinal;
+  const showHover = hover != null && isMember(hover.hit.index);
   // Same membership rule as the card: a point rings only in its own cell
-  const showRing = hoverHit != null && visible[hoverHit.index] === 1;
+  const showRing = hoverHit != null && isMember(hoverHit.index);
+
+  // What the camera has to keep the ring and the frozen card on. Only a
+  // PINNED point needs it: a live hover is re-anchored by the hit-test that
+  // follows the pointer, and re-anchoring it here would claim the pointer is
+  // still over a point the camera just moved out from under it.
+  const anchored = useRef<HoverHit | null>(null);
+  anchored.current = pinned && showRing ? hoverHit : null;
+
+  // A pin marks a POINT, but its coordinates are the pixel the pointer was
+  // over — which a pan or zoom leaves ringing empty space. Re-project the
+  // point instead, through the host path that already re-anchors a frozen
+  // card on a camera move.
+  const reanchor = useCallback(() => {
+    const hit = anchored.current;
+    if (!hit) return;
+    const at = chartRef.current?.projectPoint(hit.index);
+    if (!at || (at.x === hit.x && at.y === hit.y)) return;
+    onHover({ ...hit, x: at.x, y: at.y });
+  }, [onHover]);
 
   return (
     <div className="emb-facet-cell">
@@ -141,6 +177,7 @@ export default function FacetCell({
           onBackgroundClick={onBackgroundClick}
           onError={onError}
           onHover={onHover}
+          onCameraChange={reanchor}
         />
         {showRing && hoverHit && (
           <span
@@ -156,12 +193,16 @@ export default function FacetCell({
               return { left: rect?.left ?? 0, top: rect?.top ?? 0 };
             })()}
             onKeepHover={onKeepHover}
-            onLeave={() => onHover(null)}
+            // A frozen card outlives the pointer, so leaving it must not take
+            // it away — only its own close control does
+            onLeave={pinned ? undefined : () => onHover(null)}
+            onClose={pinned ? onClosePinned : undefined}
             action={
               hoverAction
                 ? {
                     label: hoverAction.label,
                     run: () => hoverAction.run(hover.hit),
+                    loading: hoverAction.loading,
                   }
                 : undefined
             }

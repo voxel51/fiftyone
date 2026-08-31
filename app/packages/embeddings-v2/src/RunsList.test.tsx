@@ -113,6 +113,13 @@ describe("RunsList", () => {
       ),
     ).toBeDefined();
     expect(screen.queryByText("Visualize your embeddings")).toBeNull();
+    // The upsell page never offers in-app compute
+    expect(screen.queryByText("New visualization")).toBeNull();
+    // FOEPD-4401: the 3D banner earns its slot only once a run exists —
+    // this state already carries the landing CTA
+    expect(
+      screen.queryByText("Explore clusters in three dimensions"),
+    ).toBeNull();
   });
 
   it("keeps the neutral empty state when not upselling", () => {
@@ -126,16 +133,6 @@ describe("RunsList", () => {
     );
 
     expect(screen.getByText("Visualize your embeddings")).toBeDefined();
-  });
-
-  // FOEPD-4401: the 3D banner earns its slot only once a run exists —
-  // the no-runs state already carries the landing CTA
-  it("holds the 3D upsell banner until a first run exists", () => {
-    render(<RunsList runs={[]} onOpen={vi.fn()} onDelete={vi.fn()} />);
-
-    expect(
-      screen.queryByText("Explore clusters in three dimensions"),
-    ).toBeNull();
   });
 
   it("shows the upsell until dismissed", () => {
@@ -207,5 +204,34 @@ describe("RunsList", () => {
     fireEvent.click(screen.getByText("Delete run"));
     expect(onDelete).toHaveBeenCalledWith("clip_umap");
     expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  // The server's DateTime scalar sends epoch MILLISECONDS, not ISO — the
+  // card silently dropped its date for every run because `new Date(string)`
+  // cannot parse "1755913481733"
+  it("dates a run whose timestamp arrives as epoch milliseconds", () => {
+    render(
+      <RunsList
+        // Noon UTC: the card formats in the viewer's zone, so a midnight
+        // instant would render as the previous day west of Greenwich
+        runs={[run("plain", { timestamp: String(Date.UTC(2026, 7, 23, 12)) })]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("last updated 08/23/2026")).toBeDefined();
+  });
+
+  it("dates a run from its creation timestamp", () => {
+    render(
+      <RunsList
+        runs={[run("plain", { timestamp: "2026-01-02T00:00:00" })]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("last updated 01/02/2026")).toBeDefined();
   });
 });

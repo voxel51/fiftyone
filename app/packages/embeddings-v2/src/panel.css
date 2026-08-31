@@ -339,10 +339,46 @@
   border-color: var(--emb-fg);
 }
 
+/* The facet control is a filter over the plot's own cells, not a field being
+   picked, so it reads as text on the header rather than as another bordered
+   select beside Color-by. The pill appears only while the control is being
+   used — a permanently filled chip competes with the plot for attention every
+   moment the reader is not touching it */
+.emb-facet-trigger--pill {
+  min-width: 0;
+  gap: 0.375rem;
+  padding: 0 0.625rem;
+  border-color: transparent;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.emb-facet-trigger--pill:hover,
+.emb-facet-trigger--pill[data-open="true"] {
+  border-color: transparent;
+  background: var(--emb-card-elevated);
+}
+
 .emb-facet-trigger-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The control's name and the value it names, held together so the trigger's
+   space-between only ever pushes the caret away from them. The name never
+   wraps or shrinks — a long value ellipsizes instead, so "Color by" cannot
+   break onto two lines when the value crowds it */
+.emb-facet-trigger-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.emb-facet-trigger-pair > :first-child {
+  flex-shrink: 0;
 }
 
 .emb-facet-panel {
@@ -662,6 +698,13 @@
   flex-shrink: 0;
 }
 
+/* Below the options it will add to, so the list does not reflow around it */
+.emb-colorby-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* --- FloatingPanel (generic; VOODO candidate) -------------------------- */
 
 .emb-floating-panel {
@@ -885,8 +928,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  width: 10.5rem;
-  padding: 0.375rem;
+  width: 12rem;
+  padding: 0.5rem;
   border-radius: 0.5rem;
   border: 1px solid var(--emb-border-subtle);
   background: var(--emb-popover);
@@ -897,6 +940,34 @@
    (and so the grace-keep mouseenter fires) */
 .emb-hover-card[data-interactive="true"] {
   pointer-events: auto;
+}
+
+/* The card's heading: what the point is, when it is, and the way out of a
+   frozen card. The note wraps rather than truncating — a time range is short
+   and losing half of it says nothing */
+.emb-hover-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+/* The title is the half that gives: an episode name is long and its tail is
+   the part that identifies it, so it truncates while the range stays whole */
+.emb-hover-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  unicode-bidi: plaintext;
+  text-align: left;
+}
+
+.emb-hover-note {
+  flex-shrink: 0;
+  text-align: right;
 }
 
 /* Multimodal hover: cheap per-point detail rows in place of the mcap image */

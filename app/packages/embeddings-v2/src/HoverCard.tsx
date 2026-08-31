@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import "./panel.css";
@@ -43,8 +44,15 @@ export interface HoverContent {
   value: { label: string; swatch: string | null } | null;
   /** The sample's media filename (basename), when known */
   filename: string | null;
+  /** What the point IS, and when — the card's heading. `note` sits beside the
+   * title (a time range, say), so the two read as one line. */
+  header?: { title: string; note?: string | null };
+  /** Extension-owned media for the card, rendered where `src` would go. Its
+   * lifetime IS the card's, so anything it starts is cancelled by the card
+   * going away — which is what lets an expensive read hang off a pin. */
+  media?: ReactNode;
   /** Cheap per-point detail (multimodal): label/value rows shown instead of
-   * an image, e.g. Stream, Time, Model — all held client-side */
+   * an image, e.g. stream — all held client-side */
   details?: { label: string; value: string }[];
 }
 
@@ -54,18 +62,22 @@ export default function HoverCard({
   action,
   onKeepHover,
   onLeave,
+  onClose,
 }: {
   content: HoverContent;
   /** The plot container's viewport offset; `hit.x/y` are relative to it */
   origin: { left: number; top: number };
   /** When set, the card renders the action's button and becomes
    * pointer-interactive (so the button is clickable) */
-  action?: { label: string; run: () => void };
+  action?: { label: string; run: () => void; loading?: boolean };
   /** Keeps the hover alive while the pointer is over the card */
   onKeepHover?: () => void;
   onLeave?: () => void;
+  /** Set when the card is FROZEN: a pinned card outlives the pointer, so it
+   * needs a way out that leaving does not provide. */
+  onClose?: () => void;
 }) {
-  const { hit, src, value, filename, details } = content;
+  const { hit, src, value, filename, header, media, details } = content;
   const [settled, setSettled] = useState<{ src: string; ok: boolean } | null>(
     null,
   );
@@ -79,6 +91,9 @@ export default function HoverCard({
   const anchorX = origin.left + hit.x;
   const anchorY = origin.top + hit.y;
   const showImage = src !== null && settled?.ok === true;
+  // A variable rather than an inline expression, so the dependency is
+  // statically checkable
+  const hasAction = action != null;
   useLayoutEffect(() => {
     const el = cardRef.current;
     if (!el) return;
@@ -91,7 +106,7 @@ export default function HoverCard({
     left = Math.max(4, Math.min(left, window.innerWidth - w - 4));
     top = Math.max(4, Math.min(top, window.innerHeight - h - 4));
     setPos({ left, top });
-  }, [anchorX, anchorY, showImage, details, value, filename, action != null]);
+  }, [anchorX, anchorY, showImage, details, value, filename, hasAction]);
 
   // Preload off-DOM; the card appears only once the image is ready — or
   // has failed, in which case the metadata still shows (an unloadable
@@ -108,13 +123,29 @@ export default function HoverCard({
     };
   }, [src]);
 
+  // A frozen card outlives the pointer, so anything the reader clicks next
+  // that is not the card itself means "not that one" — the plot's empty
+  // space, another point, the legend, the world outside the panel. The
+  // click is left to propagate: it still does whatever it was aimed at.
+  useEffect(() => {
+    if (!onClose) return undefined;
+    const onDown = (event: Event) => {
+      if (cardRef.current?.contains(event.target as Node)) return;
+      onClose();
+    };
+    // Capture phase: the plot canvas stopPropagation()s its pointer events,
+    // so a bubbling listener never sees an outside click on it
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [onClose]);
+
   if (src && settled?.src !== src) return null;
 
   return createPortal(
     <div
       ref={cardRef}
       className="emb-hover-card"
-      data-interactive={action ? "true" : "false"}
+      data-interactive={action || onClose ? "true" : "false"}
       onMouseEnter={onKeepHover}
       onMouseLeave={onLeave}
       style={{
@@ -129,6 +160,32 @@ export default function HoverCard({
     >
       {showImage && (
         <img key={src} src={src} alt="" className="emb-hover-image" />
+      )}
+      {media}
+      {header && (
+        <div className="emb-hover-header">
+          <span className="emb-hover-title" title={header.title}>
+            <Text variant={TextVariant.Md} color={TextColor.Fg}>
+              {header.title}
+            </Text>
+          </span>
+          {header.note && (
+            <span className="emb-hover-note">
+              <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+                {header.note}
+              </Text>
+            </span>
+          )}
+          {onClose && (
+            <Button
+              variant={Variant.Icon}
+              size={Size.Xs}
+              leadingIcon={IconName.Close}
+              aria-label="Close"
+              onClick={onClose}
+            />
+          )}
+        </div>
       )}
       {details?.map((d) => (
         <div className="emb-hover-detail" key={d.label} title={d.value}>
@@ -168,10 +225,24 @@ export default function HoverCard({
         <Button
           variant={Variant.Secondary}
           size={Size.Xs}
-          leadingIcon={IconName.Search}
+          leadingIcon={action.loading ? IconName.Spinner : IconName.Search}
+          disabled={action.loading}
           onClick={action.run}
         >
           {action.label}
+        </Button>
+      )}
+      {/* A card with no header has nowhere to put the close control, so a
+          pinned one grows a footer for it rather than becoming untouchable */}
+      {onClose && !header && (
+        <Button
+          variant={Variant.Borderless}
+          size={Size.Xs}
+          leadingIcon={IconName.Close}
+          aria-label="Close"
+          onClick={onClose}
+        >
+          Close
         </Button>
       )}
     </div>,
