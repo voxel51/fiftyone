@@ -1,11 +1,22 @@
 import { Box, Grid } from "@mui/material";
+import {
+  Clickable,
+  Collapsible,
+  Icon,
+  IconName,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
 import { HeaderView } from ".";
 import { getComponentProps, getPath } from "../utils";
 import DynamicIO from "./DynamicIO";
 
 export default function ObjectView(props) {
   const { schema, path, data } = props;
-  const { properties } = schema;
+  const { properties, view = {} } = schema;
+  const { collapsible, default_expanded: defaultExpanded, label } = view;
 
   const propertiesAsArray = [];
 
@@ -13,37 +24,68 @@ export default function ObjectView(props) {
     propertiesAsArray.push({ id: property, ...properties[property] });
   }
 
+  const grid = (
+    <Grid
+      spacing={2}
+      container
+      sx={{ pl: 1 }}
+      {...getComponentProps(props, "gridContainer")}
+    >
+      {propertiesAsArray.map((property) => {
+        const space = property?.view?.space || 12;
+        const { id } = property;
+        return (
+          <Grid
+            key={id}
+            item
+            xs={space}
+            {...getComponentProps(props, "gridItem")}
+          >
+            <DynamicIO
+              {...props}
+              schema={property}
+              path={getPath(path, id)}
+              data={data?.[id]}
+              parentSchema={schema}
+              relativePath={id}
+            />
+          </Grid>
+        );
+      })}
+    </Grid>
+  );
+
   return (
     <Box {...getComponentProps(props, "container")}>
-      <HeaderView {...props} divider nested />
-      <Grid
-        spacing={2}
-        container
-        sx={{ pl: 1 }}
-        {...getComponentProps(props, "gridContainer")}
-      >
-        {propertiesAsArray.map((property) => {
-          const space = property?.view?.space || 12;
-          const { id } = property;
-          return (
-            <Grid
-              key={id}
-              item
-              xs={space}
-              {...getComponentProps(props, "gridItem")}
+      {collapsible ? (
+        // The trigger carries the label, so HeaderView is skipped here — it
+        // would print the same heading a second time above the strip
+        <Collapsible
+          defaultOpen={Boolean(defaultExpanded)}
+          header={({ open, toggle }) => (
+            <Clickable
+              onClick={toggle}
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
             >
-              <DynamicIO
-                {...props}
-                schema={property}
-                path={getPath(path, id)}
-                data={data?.[id]}
-                parentSchema={schema}
-                relativePath={id}
+              <Icon
+                name={open ? IconName.ChevronBottom : IconName.ChevronRight}
+                size={Size.Sm}
+                color={TextColor.Secondary}
               />
-            </Grid>
-          );
-        })}
-      </Grid>
+              <Text variant={TextVariant.Md} color={TextColor.Fg}>
+                {label}
+              </Text>
+            </Clickable>
+          )}
+        >
+          {grid}
+        </Collapsible>
+      ) : (
+        <>
+          <HeaderView {...props} divider nested />
+          {grid}
+        </>
+      )}
     </Box>
   );
 }
