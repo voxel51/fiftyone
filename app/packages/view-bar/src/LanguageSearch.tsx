@@ -6,7 +6,6 @@
  * the dataset has a sample-level similarity index that accepts text prompts.
  */
 
-import { LoadingDots } from "@fiftyone/components";
 import { useViewChangePending } from "@fiftyone/state";
 import { Icon, IconName, Input, Size } from "@voxel51/voodo";
 import React from "react";
@@ -41,7 +40,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
       {/* voodo's Input roots itself in a block-level Field, so it fills a
           block parent but never grows as a flex item — the growing is this
           wrapper's job, and the field then takes its full width */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
         <Input
           size={Size.Sm}
           value={query}
@@ -60,10 +59,32 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
               setQuery("");
             }
           }}
-          style={{ background: "transparent", border: "none" }}
+          style={{
+            background: "transparent",
+            border: "none",
+            ...(pending ? { color: "transparent" } : {}),
+          }}
         />
+        {pending && (
+          <span
+            style={{
+              position: "absolute",
+              left: 8,
+              right: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+              color: "var(--fo-palette-text-tertiary)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            pixelating... {query.trim()}
+          </span>
+        )}
       </div>
-      {query.trim() && (
+      {query.trim() && !pending && (
         <span
           style={{
             fontSize: 11,
@@ -72,13 +93,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({ onSubmit }) => {
             flexShrink: 0,
           }}
         >
-          {pending ? (
-            <>
-              <LoadingDots text="pixelating" /> {query.trim()}
-            </>
-          ) : (
-            "⏎ Similarity search"
-          )}
+          ⏎ Similarity search
         </span>
       )}
     </div>
