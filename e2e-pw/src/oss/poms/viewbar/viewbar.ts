@@ -54,7 +54,13 @@ export class ViewBarPom {
 
   /** Appends a stage and returns its open editor. */
   async addStage(name: string) {
-    await this.locator.getByLabel("Insert stage").last().click();
+    // An empty bar pins its insert slot open — the typeahead input IS the
+    // slot, so there is no "+" button to click. Focusing it opens the list.
+    await this.locator
+      .getByLabel("Insert stage")
+      .last()
+      .or(this.insertTypeahead)
+      .click();
     await this.page
       .getByRole("listbox")
       .getByRole("option", { name, exact: true })

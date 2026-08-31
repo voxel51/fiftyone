@@ -54,6 +54,10 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
   const [open, setOpen] = React.useState(false);
   const [focused, setFocused] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  // Whether the keyboard has expressed a choice (typed or arrowed). A pinned
+  // slot is focusable by a plain Tab, and Enter there must not insert the
+  // top-ranked stage out of nowhere.
+  const [navigated, setNavigated] = React.useState(false);
   // Highlighted stage, driven by the arrow keys. Clamped on read rather than
   // reset by an effect, so it stays valid as the filtered set changes.
   const [highlight, setHighlight] = React.useState(0);
@@ -88,6 +92,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
     onInsert(cls, index);
     setOpen(false);
     setQuery("");
+    setNavigated(false);
   };
 
   if (!isOpen) {
@@ -149,7 +154,10 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
         autoFocus={!pinned}
         {...NO_BROWSER_SUGGESTIONS}
         onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onBlur={() => {
+          setFocused(false);
+          setNavigated(false);
+        }}
         onChange={(e) => {
           setQuery(e.target.value);
           setHighlight(0);
@@ -158,6 +166,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
           if (e.key === "Escape") {
             setOpen(false);
             setQuery("");
+            setNavigated(false);
             if (pinned) {
               // The input stays; dropping focus is what dismisses the list
               (e.target as HTMLElement).blur();
@@ -165,11 +174,17 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
           } else if (e.key === "ArrowDown") {
             // Arrow keys must not also move the text cursor
             e.preventDefault();
+            setNavigated(true);
             setHighlight(Math.min(active + 1, filtered.length - 1));
           } else if (e.key === "ArrowUp") {
             e.preventDefault();
+            setNavigated(true);
             setHighlight(Math.max(active - 1, 0));
-          } else if (e.key === "Enter" && filtered[active]) {
+          } else if (
+            e.key === "Enter" &&
+            filtered[active] &&
+            (query.trim() || navigated)
+          ) {
             insert(filtered[active]);
           }
         }}
