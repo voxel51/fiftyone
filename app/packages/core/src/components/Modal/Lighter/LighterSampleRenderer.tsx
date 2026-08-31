@@ -26,7 +26,6 @@ import { LighterToolbar } from "./LighterToolbar";
 import styles from "./LighterSampleRenderer.module.css";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
-import { useExposeMediaBoundsForTest } from "./useExposeMediaBoundsForTest";
 import useRetrieveViewport from "./useRetrieveViewport";
 import useViewport from "./useViewport";
 
@@ -193,8 +192,6 @@ const LighterSetupImpl = (props: {
       onReveal();
     }
   }, [revealed, onReveal]);
-
-  useExposeMediaBoundsForTest(scene);
 
   useViewport(sampleId);
 

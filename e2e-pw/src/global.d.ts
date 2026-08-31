@@ -14,18 +14,6 @@ interface Window {
   /** Tracks the most recently observed CSS cursor value for cursor-change events. */
   __FO_PLAYWRIGHT_CURRENT_CURSOR: string;
 
-  /**
-   * Published by the image Lighter surface (`useExposeMediaBoundsForTest`):
-   * the canonical media's live screen bounds in page coordinates, or `null`
-   * before the media mounts. Absent outside the image annotate surface.
-   */
-  __FO_PLAYWRIGHT_MEDIA_SCREEN_BOUNDS?: () => {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null;
-
   /** Disables analytics and QA performance toast banners during test runs. */
   IS_PLAYWRIGHT: boolean;
 }
