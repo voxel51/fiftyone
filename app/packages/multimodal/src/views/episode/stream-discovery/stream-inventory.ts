@@ -1,26 +1,22 @@
 import {
   SCENE_SOURCE_METADATA,
   SCENE_SOURCE_TYPE,
+  STREAM_CATEGORY,
+  STREAM_COUNT_NOUN,
   STREAM_METADATA,
   type SceneSource,
   type SceneSourceType,
   type StreamDescriptor,
+  type StreamCategory,
+  type StreamCountNoun,
+  type StreamKind,
   type StreamId,
 } from "../../../ir/index";
 
-export const STREAM_CATEGORY = {
-  SENSORS: "sensors",
-  ANNOTATIONS_PLANNING: "annotations-planning",
-  TRANSFORMS_POSES: "transforms-poses",
-  DIAGNOSTICS: "diagnostics",
-  TELEMETRY: "telemetry",
-  CUSTOM: "custom",
-} as const;
-
-export type StreamCategory =
-  (typeof STREAM_CATEGORY)[keyof typeof STREAM_CATEGORY];
-
 export const STREAM_CATEGORY_ORDER: readonly StreamCategory[] = [
+  STREAM_CATEGORY.OBSERVATIONS,
+  STREAM_CATEGORY.ACTIONS,
+  STREAM_CATEGORY.INSTRUCTIONS,
   STREAM_CATEGORY.SENSORS,
   STREAM_CATEGORY.ANNOTATIONS_PLANNING,
   STREAM_CATEGORY.TRANSFORMS_POSES,
@@ -30,8 +26,11 @@ export const STREAM_CATEGORY_ORDER: readonly StreamCategory[] = [
 ];
 
 export const STREAM_CATEGORY_LABEL: Record<StreamCategory, string> = {
+  [STREAM_CATEGORY.ACTIONS]: "Actions",
   [STREAM_CATEGORY.SENSORS]: "Sensors",
   [STREAM_CATEGORY.ANNOTATIONS_PLANNING]: "Annotations & Planning",
+  [STREAM_CATEGORY.INSTRUCTIONS]: "Instructions",
+  [STREAM_CATEGORY.OBSERVATIONS]: "Observations",
   [STREAM_CATEGORY.TRANSFORMS_POSES]: "Transforms & Poses",
   [STREAM_CATEGORY.DIAGNOSTICS]: "Diagnostics",
   [STREAM_CATEGORY.TELEMETRY]: "Telemetry",
@@ -78,11 +77,12 @@ export interface StreamInventoryRow {
   readonly canInspect: boolean;
   readonly capabilities: readonly StreamCapability[];
   readonly category: StreamCategory;
-  readonly countLabel: string;
+  readonly countLabel: string | null;
   readonly encoding: string;
   readonly rateHz: number | null;
   readonly rateLabel: string | null;
   readonly recordCount: number | null;
+  readonly kind: StreamKind;
   readonly schemaName: string;
   readonly sourceName: string;
   readonly sourceType: SceneSourceType | null;
@@ -149,7 +149,8 @@ export function buildStreamInventoryRows({
       const decodeStatus = genericDecodeStatus(
         stream.metadata?.[STREAM_METADATA.DECODE_STATUS],
       );
-      const canInspect = decodeStatus === "decodable";
+      const canInspect =
+        stream.metadata?.[STREAM_METADATA.INSPECTABLE] === "true";
       const schemaName = schemaNameFor(stream);
       const telemetry = isTelemetrySchema(schemaName);
       const rateHz = messageRateHz(stream.approxRateHz);
@@ -166,13 +167,15 @@ export function buildStreamInventoryRows({
           frameTransform,
           sourceName,
           sourceType,
+          stream,
           telemetry,
         }),
-        countLabel: messageCountLabel(stream.count),
+        countLabel: countLabelFor(stream),
         encoding: encodingFor(stream),
         rateHz,
         rateLabel: messageRateLabel(rateHz),
         recordCount: recordCountFor(stream.count),
+        kind: stream.kind,
         schemaName,
         sourceName,
         sourceType,
@@ -211,12 +214,44 @@ export function filterStreamInventoryRows(
   );
 }
 
-function messageCountLabel(recordCount: number | undefined): string {
-  const count = recordCountFor(recordCount);
-  if (count === null) {
-    return "unknown msgs";
+function countLabelFor(stream: StreamDescriptor): string | null {
+  const count = recordCountFor(stream.count);
+  if (count === null) return null;
+  const noun =
+    knownCountNoun(stream.metadata?.[STREAM_METADATA.COUNT_NOUN]) ??
+    countNoun(stream.kind);
+  return `${count.toLocaleString()} ${count === 1 ? singularNoun(noun) : noun}`;
+}
+
+function countNoun(kind: StreamKind): StreamCountNoun {
+  switch (kind) {
+    case "image":
+    case "video":
+      return STREAM_COUNT_NOUN.FRAMES;
+    case "audio":
+    case "scalar":
+      return STREAM_COUNT_NOUN.SAMPLES;
+    default:
+      return STREAM_COUNT_NOUN.MESSAGES;
   }
-  return `${count.toLocaleString()} ${count === 1 ? "msg" : "msgs"}`;
+}
+
+function knownCountNoun(value: string | undefined): StreamCountNoun | null {
+  return value !== undefined &&
+    Object.values(STREAM_COUNT_NOUN).includes(value as StreamCountNoun)
+    ? (value as StreamCountNoun)
+    : null;
+}
+
+function singularNoun(noun: StreamCountNoun): string {
+  switch (noun) {
+    case STREAM_COUNT_NOUN.FRAMES:
+      return "frame";
+    case STREAM_COUNT_NOUN.SAMPLES:
+      return "sample";
+    case STREAM_COUNT_NOUN.MESSAGES:
+      return "message";
+  }
 }
 
 function messageRateLabel(
@@ -238,13 +273,22 @@ function categoryForStream({
   frameTransform,
   sourceName,
   sourceType,
+  stream,
   telemetry,
 }: {
   readonly frameTransform: boolean;
   readonly sourceName: string;
   readonly sourceType: SceneSourceType | null;
+  readonly stream: StreamDescriptor;
   readonly telemetry: boolean;
 }): StreamCategory {
+  const adapterCategory = stream.metadata?.[STREAM_METADATA.CATEGORY];
+  if (
+    adapterCategory &&
+    Object.values(STREAM_CATEGORY).includes(adapterCategory as StreamCategory)
+  ) {
+    return adapterCategory as StreamCategory;
+  }
   if (/(?:^|\/)imu(?:\/|$)/i.test(sourceName)) {
     return STREAM_CATEGORY.SENSORS;
   }

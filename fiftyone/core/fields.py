@@ -22,6 +22,7 @@ import eta.core.utils as etau
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+import fiftyone.multimodal.media as fmm
 
 
 def validate_constraints(
@@ -1177,6 +1178,44 @@ class DictField(mongoengine.fields.DictField, Field):
         if self.field is not None:
             for _value in value.values():
                 self.field.validate(_value)
+
+
+class MediaReferenceField(Field):
+    """The protected immutable media-reference descriptor field.
+
+    Values are exposed as :class:`fiftyone.multimodal.MediaReference`
+    instances and stored as public ``{"kind": ..., "key": ...}``
+    descriptors. Resolver details are hydrated from the private bindings
+    collection.
+    """
+
+    def validate(self, value):
+        if isinstance(value, fmm.MediaReference):
+            fmm._validate_media_reference_descriptor(
+                fmm._serialize_media_reference(value)
+            )
+            return
+
+        fmm._validate_media_reference_descriptor(value)
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        if isinstance(value, fmm.MediaReference):
+            return fmm._serialize_media_reference(value)
+
+        fmm._validate_media_reference_descriptor(value)
+        return dict(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        if isinstance(value, fmm.MediaReference):
+            return value
+
+        return fmm._hydrate_media_reference(value)
 
 
 class KeypointsField(ListField):

@@ -23,6 +23,15 @@
   font-size: 11px;
 }
 
+.transitionStatus {
+  color: var(--color-content-text-muted);
+  font-size: 0.75rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .playbackRoot {
   height: 100%;
   position: relative;
@@ -40,13 +49,17 @@
   visibility: hidden;
 }
 
-/* Grid entry intentionally carries its target poster through this interval. */
+/* A grid-captured poster belongs to the incoming source, so it is safe to
+   paint inside its destination tile while outgoing media remains hidden. */
 .playbackRoot[data-episode-source-transitioning="true"]
-  .posterOverlay
+  :global([data-episode-destination-poster])
   :global(canvas),
 .playbackRoot[data-episode-source-transitioning="true"]
-  .posterOverlay
-  :global(img) {
+  :global([data-episode-destination-poster])
+  :global(img),
+.playbackRoot[data-episode-source-transitioning="true"]
+  :global([data-episode-destination-poster])
+  :global(video) {
   visibility: visible;
 }
 /* stylelint-enable selector-pseudo-class-no-unknown */
@@ -156,18 +169,8 @@
   top: 30px;
 }
 
-.posterOverlay {
-  display: grid;
-  grid-template-columns: minmax(280px, 2fr) minmax(160px, 1fr);
-  inset: 6px;
-  pointer-events: none;
-  position: absolute;
-  z-index: 5;
-}
-
 @media (max-width: 760px) {
-  .preparingTiles,
-  .posterOverlay {
+  .preparingTiles {
     grid-template-columns: 1fr;
   }
 

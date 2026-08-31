@@ -394,11 +394,11 @@ class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
   async isClosed() {
-    await expect(this.modalPom.modalContainer).toBeHidden();
+    await expect(this.modalPom.locator).toBeHidden();
   }
 
   async isOpen() {
-    await expect(this.modalPom.modalContainer).toBeVisible();
+    await expect(this.modalPom.locator).toBeVisible();
   }
 
   async verifyModalOpenedSuccessfully() {

@@ -332,6 +332,40 @@ export const getFetchParameters = () => {
   };
 };
 
+const joinFetchUrl = (
+  origin: string,
+  pathPrefix: string,
+  path: string,
+): string => {
+  const prefix = pathPrefix.replace(/^\/+|\/+$/g, "");
+  const suffix = path.replace(/^\/+/, "");
+  const relative = [prefix, suffix].filter(Boolean).join("/");
+  const base = origin.replace(/\/+$/, "");
+  return `${base}/${relative}`;
+};
+
+const resolveFetchUrl = (
+  origin: string | undefined,
+  pathPrefix: string,
+  path: string,
+): string => {
+  try {
+    new URL(path);
+    return path;
+  } catch {
+    if (typeof origin !== "string") {
+      throw new Error("Fetch parameters are not configured");
+    }
+
+    return joinFetchUrl(origin, pathPrefix, path);
+  }
+};
+
+/** Builds an absolute URL from the configured fetch origin and path prefix. */
+export const getFetchUrl = (path: string): string => {
+  return resolveFetchUrl(fetchOrigin, fetchPathPrefix, path);
+};
+
 // Identical GraphQL QUERIES that are in flight at the same moment share one
 // request. Several independent subscribers commonly derive the same
 // dataset-level aggregation from one view change, and each duplicate costs a
@@ -380,22 +414,8 @@ export const setFetchFunction = (
     onProgress,
     browserCache,
   ) => {
-    let url: string;
     const controller = new AbortController();
-
-    try {
-      // if a valid URL is provided, make no adjustments
-      new URL(path);
-      url = path;
-    } catch {
-      if (fetchPathPrefix) {
-        path = `${fetchPathPrefix}${path}`.replaceAll("//", "/");
-      }
-
-      url = `${origin}${
-        !origin.endsWith("/") && !path.startsWith("/") ? "/" : ""
-      }${path}`;
-    }
+    const url = resolveFetchUrl(origin, fetchPathPrefix, path);
 
     // set content type only if body is present, otherwise it can cause Bad Request
     // errors for endpoints that don't expect a body

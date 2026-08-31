@@ -35,10 +35,28 @@ import type { VisualizationRun } from "./protocol";
 import { RunCard } from "./RunCard";
 import { UpsellBanner } from "./UpsellBanner";
 
+// MM/DD/YYYY per the card spec — a fixed format, not the viewer locale
 const formatTimestamp = (timestamp: string | null): string | null => {
   if (!timestamp) return null;
   const date = new Date(timestamp);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
+  return Number.isNaN(date.getTime())
+    ? null
+    : date.toLocaleDateString("en-US", {
+        month: "2-digit",
+        day: "2-digit",
+        year: "numeric",
+      });
+};
+
+/** "clip-vit-base32-torch (UMAP)", or the precomputed fallback */
+const embeddingsSource = (run: VisualizationRun): string => {
+  const source = run.model ?? "pre-computed embeddings";
+  return run.method ? `${source} (${run.method.toUpperCase()})` : source;
+};
+
+const lastUpdated = (timestamp: string | null): string | null => {
+  const formatted = formatTimestamp(timestamp);
+  return formatted ? `last updated ${formatted}` : null;
 };
 
 export default function RunsList({
@@ -227,13 +245,13 @@ export default function RunsList({
                 }
                 meta={[
                   run.error,
-                  run.method,
                   // Same brain key semantics, very different plots —
                   // which granularity a run embeds must be readable
-                  // from the card
+                  // from the card. (The point count joins this segment
+                  // once runs record it.)
                   run.patchesField ? `${run.patchesField} patches` : "samples",
-                  run.model,
-                  formatTimestamp(run.timestamp),
+                  embeddingsSource(run),
+                  lastUpdated(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}
                 onClick={
                   run.ready && !run.error

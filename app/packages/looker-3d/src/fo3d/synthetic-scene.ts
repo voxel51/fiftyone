@@ -5,6 +5,7 @@ import {
   isWrappableDirect3dSamplePath,
 } from "@fiftyone/utilities";
 import type { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
+import type { DirectPcdWorldTransforms } from "./direct-pcd-world-alignment";
 import { DEFAULT_SPLAT_OPACITY, DEFAULT_SPLAT_TINT } from "./splat/settings";
 import { getMediaPathForFo3dSample } from "./utils";
 
@@ -155,10 +156,12 @@ const buildSyntheticNode = ({
   sample,
   slice,
   mediaField,
+  worldTransformsBySlice,
 }: {
   sample: ModalSample;
   slice: string;
   mediaField: string;
+  worldTransformsBySlice?: DirectPcdWorldTransforms;
 }): FiftyoneSceneRawJson | null => {
   const mediaPath =
     getMediaPathForFo3dSample(sample, mediaField) ?? sample.sample.filepath;
@@ -175,6 +178,15 @@ const buildSyntheticNode = ({
     defaultMaterial: nodeConfig.defaultMaterial,
     ...EMPTY_SCENE_NODE_PROPS,
   };
+
+  const worldTransform =
+    nodeConfig.nodeType === "PointCloud"
+      ? worldTransformsBySlice?.[slice]
+      : undefined;
+  if (worldTransform) {
+    node.position = [...worldTransform.translation];
+    node.quaternion = [...worldTransform.quaternion];
+  }
 
   // Each loader expects the source path on a node-type-specific media field.
   node[nodeConfig.mediaFieldName] = mediaPath;
@@ -201,10 +213,12 @@ export const buildSyntheticSceneNodesForDirect3dSamples = ({
   sample,
   mediaField,
   sampleMap,
+  worldTransformsBySlice,
 }: {
   sample: ModalSample;
   mediaField: string;
   sampleMap?: SliceToSampleMap;
+  worldTransformsBySlice?: DirectPcdWorldTransforms;
 }): FiftyoneSceneRawJson[] => {
   const sceneSamples =
     sampleMap && Object.keys(sampleMap).length > 0
@@ -217,6 +231,7 @@ export const buildSyntheticSceneNodesForDirect3dSamples = ({
         sample: currentSample,
         slice,
         mediaField,
+        worldTransformsBySlice,
       }),
     )
     .filter((node): node is FiftyoneSceneRawJson => Boolean(node));
@@ -230,15 +245,18 @@ export const buildSyntheticSceneForDirect3dSamples = ({
   sample,
   mediaField,
   sampleMap,
+  worldTransformsBySlice,
 }: {
   sample: ModalSample;
   mediaField: string;
   sampleMap?: SliceToSampleMap;
+  worldTransformsBySlice?: DirectPcdWorldTransforms;
 }): FiftyoneSceneRawJson | null => {
   const children = buildSyntheticSceneNodesForDirect3dSamples({
     sample,
     mediaField,
     sampleMap,
+    worldTransformsBySlice,
   });
 
   if (!children.length) {

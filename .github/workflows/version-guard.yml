@@ -15,7 +15,7 @@ jobs:
   version-guard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # full commit graph for the merge-base diff, but no blobs up front —
           # git pulls the few setup.py blobs on demand

@@ -9,6 +9,7 @@ import { useStore } from "jotai";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -20,9 +21,14 @@ import type {
 } from "../../../ir";
 import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+} from "../../../video/types";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
 import { VideoPanel } from "../../../visualization/media-2d/VideoPanel";
+import { BitmapImageFrameView } from "../../../visualization/media-2d/BitmapImageView";
 import GpuImageAnnotationLayer from "../../../visualization/media-2d/GpuImageAnnotationLayer";
 import { GpuImageAnnotationPicker } from "../../../visualization/media-2d/GpuImageAnnotationPicker";
 import { imageTextureCacheKey } from "../../../visualization/media-2d/image-texture-cache";
@@ -88,6 +94,9 @@ import {
   getRectifiedDisplayIssue,
 } from "./image-camera-status";
 import { projectionStreamsForHover } from "./hover-projection-streams";
+import { useSourcePoster } from "./source-poster-context";
+import { shouldPresentDestinationPoster } from "./destination-poster";
+import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
@@ -105,9 +114,11 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     sourceKey: string;
     stream: string;
   } | null>(null);
+  const [committedPosterKey, setCommittedPosterKey] = useState("");
   const projectionPickerRef =
     useRef<GpuPointCloudProjectionPickerHandle | null>(null);
   const sharedHover = useHoverEcho();
+  const sourcePoster = useSourcePoster();
   const images = useSceneSourcesByType(SCENE_SOURCE_TYPE.IMAGE);
   const sourceIdentity = useSidebarSourceIdentity();
   const preferredImageTileStream = usePreferredImageTileStream();
@@ -217,6 +228,17 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const playbackFrame = useStreamContentFrame<CameraVisualization>(stream);
   const frame = playbackFrame?.frame ?? null;
   const sourceKey = useDataStream()?.sourceKey ?? "";
+  const previousDataStreamSourceKeyRef = useRef(sourceKey);
+  // This layout effect clears the transition latch when the provider unbinds
+  // the outgoing stream, so rapid A -> B -> A navigation can present A's
+  // poster again even when B never committed a frame.
+  useLayoutEffect(() => {
+    if (previousDataStreamSourceKeyRef.current === sourceKey) return;
+    previousDataStreamSourceKeyRef.current = sourceKey;
+    setCommittedImage(null);
+    setCommittedPosterKey("");
+    setImageDims(null);
+  }, [sourceKey]);
   // Shared texture key per (recording, stream, frame). The 3D tile's
   // frustum image planes form the same key, so both surfaces share one
   // decode and one GPU texture for the same camera frame.
@@ -234,6 +256,13 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     committedImage.stream === stream
       ? committedImage.contentTimeNs
       : null;
+  const updateImageDimensions = useCallback((width: number, height: number) => {
+    setImageDims((previous) =>
+      previous?.width === width && previous.height === height
+        ? previous
+        : { width, height },
+    );
+  }, []);
   const handleImageLoaded = useCallback(
     (width: number, height: number) => {
       if (requestedImageContentTimeNs !== null) {
@@ -243,14 +272,32 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           stream,
         });
       }
-      setImageDims((previous) =>
-        previous?.width === width && previous?.height === height
-          ? previous
-          : { width, height },
-      );
+      updateImageDimensions(width, height);
     },
-    [requestedImageContentTimeNs, sourceKey, stream],
+    [requestedImageContentTimeNs, sourceKey, stream, updateImageDimensions],
   );
+  const destinationPoster =
+    sourcePoster &&
+    shouldPresentDestinationPoster({
+      committedSourceKey: committedImage?.sourceKey ?? null,
+      committedStream: committedImage?.stream ?? null,
+      dataStreamSourceKey: sourceKey,
+      posterSourceKey: sourcePoster.sourceKey,
+      posterStreamId: sourcePoster.streamId,
+      stream,
+    })
+      ? sourcePoster.frame
+      : null;
+  const posterSessionKey = useMemo(
+    () => `${sourcePoster?.sourceKey ?? ""}\n${stream}`,
+    [sourcePoster?.sourceKey, stream],
+  );
+  const destinationPosterKey = destinationPoster ? posterSessionKey : null;
+  const handleDestinationPosterLoaded = useCallback(() => {
+    // Poster decode is only a display-ready edge. Real stream frames remain
+    // authoritative for calibration, annotations, and projection geometry.
+    if (destinationPosterKey) setCommittedPosterKey(destinationPosterKey);
+  }, [destinationPosterKey]);
   const selectedImageSource =
     images.find((source) => source.id === stream) ?? null;
   const annotationStreams = useMemo(
@@ -471,6 +518,11 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     pointCloudProjection.enabled,
     pointCloudProjection.streams,
     pointCloudStreams,
+  ]);
+  usePublishVisibleStreams([
+    ...activeStreams,
+    ...selectedProjectionStreams,
+    ...(explicitCalibrationStream ? [explicitCalibrationStream] : []),
   ]);
   const projectionGeometry =
     effectiveImageDims &&
@@ -863,7 +915,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
 
   return (
     <>
-      {frame && playbackFrame ? (
+      {(frame && playbackFrame) || destinationPoster ? (
         <div
           className={styles.imageStack}
           {...hoverProps}
@@ -874,9 +926,33 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           ref={imagePanZoom.surfaceRef}
           style={imagePanZoom.surfaceStyle}
         >
-          {frame.kind === "encoded-video" ? (
-            frame.codec === "h264" ? (
-              <VideoPanel
+          {frame && playbackFrame ? (
+            frame.kind === "encoded-video" ? (
+              isSharedEncodedVideoVisualization(frame) ? (
+                <VideoPanel
+                  canvasSurface="modal-image"
+                  className={styles.panel}
+                  fit={IMAGE_FIT}
+                  frame={frame}
+                  notices={imageNotices}
+                  onImageLoaded={handleImageLoaded}
+                  onResetView={imagePanZoom.resetView}
+                  priority={isPlaying ? "playing" : "visible"}
+                  sceneChildren={panelSceneChildren}
+                  stream={stream}
+                  targetTimeNs={playbackFrame.contentTimeNs}
+                  textureMesh={
+                    rectifiedViewActive ? rectifiedDisplay?.textureMesh : null
+                  }
+                  viewTransform={imagePanZoom.viewTransform}
+                />
+              ) : (
+                <div className={styles.panel} role="alert">
+                  {sharedVideoRejectionMessage(frame)}
+                </div>
+              )
+            ) : (
+              <ImagePanel
                 canvasSurface="modal-image"
                 className={styles.panel}
                 fit={IMAGE_FIT}
@@ -884,37 +960,33 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                 notices={imageNotices}
                 onImageLoaded={handleImageLoaded}
                 onResetView={imagePanZoom.resetView}
-                priority={isPlaying ? "playing" : "visible"}
                 sceneChildren={panelSceneChildren}
-                stream={stream}
-                targetTimeNs={playbackFrame.contentTimeNs}
                 textureMesh={
                   rectifiedViewActive ? rectifiedDisplay?.textureMesh : null
                 }
+                textureKey={textureKey}
                 viewTransform={imagePanZoom.viewTransform}
               />
-            ) : (
-              <div className={styles.panel} role="alert">
-                Video codec {frame.codec} is unsupported
-              </div>
             )
-          ) : (
-            <ImagePanel
-              canvasSurface="modal-image"
-              className={styles.panel}
-              fit={IMAGE_FIT}
-              frame={frame}
-              notices={imageNotices}
-              onImageLoaded={handleImageLoaded}
-              onResetView={imagePanZoom.resetView}
-              sceneChildren={panelSceneChildren}
-              textureMesh={
-                rectifiedViewActive ? rectifiedDisplay?.textureMesh : null
+          ) : null}
+          {destinationPoster ? (
+            <div
+              className={styles.destinationPoster}
+              data-episode-destination-poster=""
+              data-episode-destination-poster-ready={
+                committedPosterKey === destinationPosterKey || undefined
               }
-              textureKey={textureKey}
-              viewTransform={imagePanZoom.viewTransform}
-            />
-          )}
+              data-testid="episode-destination-poster"
+            >
+              <BitmapImageFrameView
+                className={styles.panel}
+                fit={IMAGE_FIT}
+                frame={destinationPoster}
+                onImageLoaded={handleDestinationPosterLoaded}
+                videoSessionKey={posterSessionKey}
+              />
+            </div>
+          ) : null}
           {activeDepthHover ? (
             <DepthHoverOverlay
               {...activeDepthHover}

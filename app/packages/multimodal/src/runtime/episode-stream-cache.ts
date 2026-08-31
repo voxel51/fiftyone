@@ -453,6 +453,12 @@ export class EpisodeStreamCache {
     this.bumpRevision();
   }
 
+  /** Clears entries and releases timeline identity at a source boundary. */
+  reset(): void {
+    this.clear();
+    this.coverage = null;
+  }
+
   private retainEntry(entry: CacheEntry): void {
     this._placementBytes += entry.placementBytes;
     if (!entry.msg) return;

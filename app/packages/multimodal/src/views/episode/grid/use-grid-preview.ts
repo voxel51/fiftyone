@@ -2,13 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type ByteSourceDescriptor,
   type EpisodePosterFrame,
+  type EpisodePreviewNativeVideo,
   type EpisodePreviewReadResult,
 } from "../../../ir";
 import type { EpisodePreviewSession } from "../../../ports";
 import {
+  EpisodePreviewPlaybackScheduler,
   episodePreviewPlaybackDelayMs,
-  publishEpisodeTimeRange,
-  publishSourceBootstrap,
+  publishEpisodePreviewBootstrap,
+  recordPreviewSourceFacts,
+  type SourceFactsScope,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
 import type { GridPosterCacheEntry } from "./grid-poster-cache";
@@ -28,6 +31,7 @@ export interface GridPreviewSnapshot {
   readonly error: string | null;
   readonly frame: EpisodePosterFrame | null;
   readonly hasPreviewStreams: boolean;
+  readonly nativeVideo: EpisodePreviewNativeVideo | null;
   readonly streamId: string | null;
   readonly streamSourceName: string | null;
   readonly streamSourceNames: readonly string[];
@@ -39,6 +43,7 @@ export interface GridPreviewSnapshot {
  */
 export interface GridPreviewState extends GridPreviewSnapshot {
   readonly isBuffering: boolean;
+  readonly isPlaying: boolean;
   pause(): void;
   play(): void;
 }
@@ -53,6 +58,8 @@ export interface UseGridPreviewOptions {
   readonly enabled?: boolean;
   /** Whether this tile is the user's current interactive target. */
   readonly hovered?: boolean;
+  /** Initial forward coverage required by the mounted video decoder. */
+  readonly initialVideoDecodeLookaheadNs?: bigint;
   /** Receives every adapter result, including frames skipped by UI pacing. */
   readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
   /** Capture time the still frame should show, instead of the recording
@@ -71,6 +78,7 @@ export interface UseGridPreviewOptions {
     | "unavailable";
   readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
+  readonly sourceFactsScope?: SourceFactsScope;
 }
 
 /** Suppresses buffering chrome for ordinary fast grid frame reads. */
@@ -81,6 +89,7 @@ const IDLE_PREVIEW_STATE: GridPreviewSnapshot = {
   error: null,
   frame: null,
   hasPreviewStreams: false,
+  nativeVideo: null,
   streamId: null,
   streamSourceName: null,
   streamSourceNames: [],
@@ -97,6 +106,7 @@ export function useGridPreview({
   cachedPoster = null,
   enabled = true,
   hovered = false,
+  initialVideoDecodeLookaheadNs,
   onReadResult,
   posterStartTimeNs = null,
   posterSourceName = null,
@@ -105,6 +115,7 @@ export function useGridPreview({
   previewSessionStatus = "idle",
   selectedSourceName,
   source,
+  sourceFactsScope,
 }: UseGridPreviewOptions): GridPreviewState {
   const [state, setState] = useState<GridPreviewSnapshot>(() =>
     seededSnapshot(source, cachedPoster),
@@ -165,6 +176,14 @@ export function useGridPreview({
     setState(seededSnapshot(source, cachedPosterRef.current));
   }, [cacheRequestKey, finishBuffering, selectedSourceName, source]);
 
+  // IndexedDB hydration completes after the cache key is already mounted.
+  // Adopt that same-key poster in place without resetting a live frame or
+  // starting a second preview read.
+  useEffect(() => {
+    if (!cachedPoster || stateOwnerKey !== cacheRequestKey) return;
+    setState((current) => adoptCachedPoster(current, cachedPoster));
+  }, [cacheRequestKey, cachedPoster, stateOwnerKey]);
+
   // This effect surfaces adapter failures and unsupported preview providers
   // without exposing format details to the grid.
   useEffect(() => {
@@ -219,6 +238,9 @@ export function useGridPreview({
     nextStartTimeNsRef.current = undefined;
 
     const request = {
+      ...(initialVideoDecodeLookaheadNs === undefined
+        ? {}
+        : { decodeLookaheadNs: initialVideoDecodeLookaheadNs }),
       ...(effectiveSourceName ? { sourceName: effectiveSourceName } : {}),
       ...(posterStartTimeNs === null ? {} : { startTimeNs: posterStartTimeNs }),
     };
@@ -230,7 +252,10 @@ export function useGridPreview({
       .then((result) => {
         if (active) {
           notifyReadResult(onReadResultRef.current, result);
-          publishGridBootstrap(source, result);
+          publishEpisodePreviewBootstrap(source, result);
+          if (sourceFactsScope) {
+            recordPreviewSourceFacts(source, sourceFactsScope, result);
+          }
           loadedRequestRef.current = {
             posterStartTimeNs,
             source,
@@ -267,9 +292,11 @@ export function useGridPreview({
     enabled,
     effectiveSourceName,
     hovered,
+    initialVideoDecodeLookaheadNs,
     posterStartTimeNs,
     previewSession,
     source,
+    sourceFactsScope,
   ]);
 
   // This effect runs the hover playback loop: while playing, it keeps
@@ -282,6 +309,7 @@ export function useGridPreview({
       !source ||
       !previewSession ||
       state.status !== "ready" ||
+      state.nativeVideo !== null ||
       initialLoadInFlightRef.current
     ) {
       return undefined;
@@ -290,8 +318,33 @@ export function useGridPreview({
     let active = true;
     const controller = new AbortController();
     let bootstrapPublished = false;
-    let previousFrameTimeNs = frameTimeNsRef.current;
-    let presentedAtMs = performance.now();
+    let deferredSkippedFrame: {
+      readonly result: EpisodePreviewReadResult;
+    } | null = null;
+    const playbackScheduler = new EpisodePreviewPlaybackScheduler();
+    playbackScheduler.reset(frameTimeNsRef.current, performance.now());
+
+    const presentResult = async (
+      result: EpisodePreviewReadResult,
+      playbackDelayMs: number,
+    ): Promise<boolean> => {
+      await delayMs(playbackDelayMs, controller.signal);
+      if (!active) return false;
+
+      if (!bootstrapPublished) {
+        publishEpisodePreviewBootstrap(source, result);
+        if (sourceFactsScope) {
+          recordPreviewSourceFacts(source, sourceFactsScope, result);
+        }
+        bootstrapPublished = true;
+      }
+
+      frameTimeNsRef.current = result.frameTimeNs;
+      nextStartTimeNsRef.current = result.nextStartTimeNs;
+      setState((current) => resultPreservingCachedPoster(current, result));
+      playbackScheduler.markPresented(result.frameTimeNs, performance.now());
+      return true;
+    };
 
     const run = async () => {
       try {
@@ -322,11 +375,24 @@ export function useGridPreview({
           notifyReadResult(onReadResultRef.current, result);
 
           if (!result.frame) {
+            if (deferredSkippedFrame) {
+              const deferred = deferredSkippedFrame;
+              const flushDelayMs =
+                playbackScheduler.nextDelayMs(
+                  deferred.result.frameTimeNs,
+                  performance.now(),
+                  true,
+                ) ?? 0;
+              if (!(await presentResult(deferred.result, flushDelayMs))) {
+                break;
+              }
+              deferredSkippedFrame = null;
+            }
             frameTimeNsRef.current = undefined;
             nextStartTimeNsRef.current = undefined;
-            previousFrameTimeNs = undefined;
+            playbackScheduler.reset(undefined, performance.now());
             await delayMs(
-              episodePreviewPlaybackDelayMs(undefined, undefined) ?? 0,
+              episodePreviewPlaybackDelayMs(undefined, undefined),
               controller.signal,
             );
             if (!active) {
@@ -335,31 +401,20 @@ export function useGridPreview({
             continue;
           }
 
-          const playbackDelayMs = episodePreviewPlaybackDelayMs(
-            previousFrameTimeNs,
+          const playbackDelayMs = playbackScheduler.nextDelayMs(
             result.frameTimeNs,
-            performance.now() - presentedAtMs,
+            performance.now(),
           );
           if (playbackDelayMs === null) {
+            deferredSkippedFrame = { result };
             nextStartTimeNsRef.current = result.nextStartTimeNs;
             continue;
           }
 
-          await delayMs(playbackDelayMs, controller.signal);
-          if (!active) {
+          deferredSkippedFrame = null;
+          if (!(await presentResult(result, playbackDelayMs))) {
             break;
           }
-
-          if (!bootstrapPublished) {
-            publishGridBootstrap(source, result);
-            bootstrapPublished = true;
-          }
-
-          frameTimeNsRef.current = result.frameTimeNs;
-          nextStartTimeNsRef.current = result.nextStartTimeNs;
-          setState((current) => resultPreservingCachedPoster(current, result));
-          previousFrameTimeNs = result.frameTimeNs;
-          presentedAtMs = performance.now();
         }
       } catch (caughtError) {
         finishBuffering();
@@ -388,15 +443,23 @@ export function useGridPreview({
     playing,
     previewSession,
     source,
+    sourceFactsScope,
     startBuffering,
     state.status,
+    state.nativeVideo,
   ]);
 
   const visibleState =
     stateOwnerKey === cacheRequestKey
       ? state
       : seededSnapshot(source, cachedPoster);
-  return { ...visibleState, isBuffering, pause, play };
+  return {
+    ...visibleState,
+    isBuffering,
+    isPlaying: enabled && stateOwnerKey === cacheRequestKey && playing,
+    pause,
+    play,
+  };
 }
 
 function seededSnapshot(
@@ -412,6 +475,7 @@ function seededSnapshot(
     error: null,
     frame: null,
     hasPreviewStreams: cachedPoster.streamSourceNames.length > 0,
+    nativeVideo: null,
     streamId: cachedPoster.streamId,
     streamSourceName: cachedPoster.streamSourceName,
     streamSourceNames: cachedPoster.streamSourceNames,
@@ -426,6 +490,27 @@ function preservingCachedPoster(
   return current.cachedPoster
     ? current
     : { ...IDLE_PREVIEW_STATE, status: fallbackStatus };
+}
+
+function adoptCachedPoster(
+  current: GridPreviewSnapshot,
+  cachedPoster: GridPosterCacheEntry,
+): GridPreviewSnapshot {
+  if (current.cachedPoster === cachedPoster) return current;
+  return {
+    ...current,
+    cachedPoster,
+    error: current.frame ? current.error : null,
+    hasPreviewStreams:
+      current.hasPreviewStreams || cachedPoster.streamSourceNames.length > 0,
+    streamId: current.streamId ?? cachedPoster.streamId,
+    streamSourceName: current.streamSourceName ?? cachedPoster.streamSourceName,
+    streamSourceNames:
+      current.streamSourceNames.length > 0
+        ? current.streamSourceNames
+        : cachedPoster.streamSourceNames,
+    status: current.frame ? current.status : "ready",
+  };
 }
 
 function resultPreservingCachedPoster(
@@ -492,43 +577,6 @@ function useGridPreviewBufferingIndicator() {
   return { finish, start, visible };
 }
 
-function publishGridBootstrap(
-  source: ByteSourceDescriptor,
-  result: EpisodePreviewReadResult,
-): void {
-  if (
-    !result.bootstrapManifest &&
-    !result.bootstrapTimeline &&
-    !result.bootstrapTimeRange &&
-    !result.frame
-  ) {
-    return;
-  }
-
-  publishSourceBootstrap(source, {
-    ...(result.bootstrapManifest ? { manifest: result.bootstrapManifest } : {}),
-    ...(result.bootstrapTimeline ? { timeline: result.bootstrapTimeline } : {}),
-    ...(result.bootstrapTimeRange
-      ? { timeRange: result.bootstrapTimeRange }
-      : {}),
-    ...(result.frame
-      ? {
-          poster: result.frame,
-          ...(result.streamId ? { posterStreamId: result.streamId } : {}),
-        }
-      : {}),
-  });
-  const timeRange = result.bootstrapTimeline
-    ? {
-        endNs: result.bootstrapTimeline.endNs,
-        startNs: result.bootstrapTimeline.startNs,
-      }
-    : result.bootstrapTimeRange;
-  if (timeRange) {
-    publishEpisodeTimeRange(source.sourceId, timeRange);
-  }
-}
-
 function snapshotFromResult(
   result: EpisodePreviewReadResult,
 ): GridPreviewSnapshot {
@@ -548,6 +596,7 @@ function snapshotFromResult(
     error: null,
     frame: timestampedFrame,
     hasPreviewStreams: result.streamSourceNames.length > 0,
+    nativeVideo: result.nativeVideo ?? null,
     streamId: result.streamId,
     streamSourceName: result.streamSourceName,
     streamSourceNames: result.streamSourceNames,

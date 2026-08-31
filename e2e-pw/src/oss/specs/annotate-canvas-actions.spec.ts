@@ -126,7 +126,7 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sidebar.annotate.assert.selectIsActive();
   });
 
-  test("clicking an existing detection overlay in detection mode selects it", async ({
+  test("clicking an existing detection overlay in detection mode does not select it", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
@@ -140,19 +140,19 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sidebar.annotate.assert.detectionModeIsActive();
 
-    // Click on the existing detection at (0.4-0.6, 0.4-0.6)
-    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+    // the existing detection at (0.4-0.6, 0.4-0.6) doesn't claim the click
+    await modal.sampleCanvas.move(0.5, 0.5, "crosshair");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
 
-    // detection mode should remain active (it's a detection being edited)
-    await modal.sidebar.annotate.assert.detectionModeIsActive();
+    // click-to-quit applies over overlays like empty canvas
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
+    await modal.sidebar.annotate.assert.selectIsActive();
 
-    // The label list should be hidden (edit form is showing)
-    const labelListHeader = modal.sidebar.locator.getByText("Edit", {
-      exact: true,
-    });
-    await expect(labelListHeader).toBeHidden();
+    // the "Edit" header belongs to the label list, which unmounts while editing
+    await expect(
+      modal.sidebar.locator.getByText("Edit", { exact: true }),
+    ).toBeVisible();
   });
 
   test("clicking an existing detection overlay activates detection mode", async ({

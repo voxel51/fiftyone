@@ -7,21 +7,30 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { RecoilRoot } from "recoil";
+import { RecoilRoot, useSetRecoilState } from "recoil";
+import { multimodalGridFit } from "@fiftyone/state";
 import { publishMcapEmbeddingSelection } from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   WEBGPU_DEVICE_BUDGET,
-  registerWebGpuRenderer,
-  resetWebGpuDeviceRegistryForTests,
-} from "../../../visualization/webgpu/webgpu-device-registry";
+  registerGraphicsRenderer,
+  resetGraphicsRendererRegistryForTests,
+} from "../../../visualization/webgpu/graphics-renderer-registry";
 import {
   acquireGridLiveLease,
   gridLiveLeaseStats,
   resetGridLiveLeasesForTests,
 } from "../../../visualization/webgpu/webgpu-live-lease";
-import type { ByteSourceDescriptor, EpisodePosterFrame } from "../../../ir";
+import type {
+  ByteSourceDescriptor,
+  EpisodePosterFrame,
+  EpisodePreviewNativeVideo,
+  EpisodePreviewReadResult,
+} from "../../../ir";
+import { PushVideoAccessUnitReader } from "../../../video/push-reader";
+import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import {
+  gridPreviewStateKey,
   pointCloudPoseKey,
   type GridPosterCacheEntry,
 } from "./grid-poster-cache";
@@ -32,11 +41,40 @@ import {
 } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
+import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
+import type {
+  GridPosterProviderLookupStatus,
+  ResolvedGridPosterProviderDescriptor,
+} from "./use-grid-poster-provider";
 
 // The grid mounts custom renderers under a RecoilBridge, which is what lets
 // the tile read the embeddings panel's published match for its episode.
 function render(ui: ReactElement) {
   return renderBare(ui, { wrapper: RecoilRoot });
+}
+
+function renderWithGridFit(ui: ReactElement, fit: "contain" | "cover") {
+  return renderBare(
+    <RecoilRoot initializeState={({ set }) => set(multimodalGridFit, fit)}>
+      {ui}
+    </RecoilRoot>,
+  );
+}
+
+let setGridFit: ((fit: "contain" | "cover") => void) | null = null;
+
+function renderWithMutableGridFit(ui: ReactElement) {
+  return renderBare(
+    <RecoilRoot>
+      <GridFitController />
+      {ui}
+    </RecoilRoot>,
+  );
+}
+
+function GridFitController() {
+  setGridFit = useSetRecoilState(multimodalGridFit);
+  return null;
 }
 
 type PublishedWindows = Record<
@@ -52,12 +90,15 @@ function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
 }
 
 const previewHarness = vi.hoisted(() => ({
+  onReadResult: null as ((result: EpisodePreviewReadResult) => void) | null,
   preview: {
     cachedPoster: null as GridPosterCacheEntry | null,
     error: null as string | null,
     frame: null as EpisodePosterFrame | null,
     hasPreviewStreams: false,
     isBuffering: false,
+    isPlaying: false,
+    nativeVideo: null as EpisodePreviewNativeVideo | null,
     pause: vi.fn(),
     play: vi.fn(),
     streamId: null as string | null,
@@ -68,11 +109,21 @@ const previewHarness = vi.hoisted(() => ({
 }));
 
 const bitmapViewHarness = vi.hoisted(() => ({
+  commitOnFitEffect: false,
   lastProps: null as {
     fit?: string;
     frame: Extract<EpisodePosterFrame, { kind: "image" }>["image"];
     onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
+    onCanvasCommitted?: (
+      canvas: HTMLCanvasElement,
+      size: { readonly height: number; readonly width: number },
+    ) => void;
+    videoPriority?: "playing" | "visible";
   } | null,
+}));
+
+const cachedBitmapViewHarness = vi.hoisted(() => ({
+  fit: null as string | null,
 }));
 
 const bitmapHostHarness = vi.hoisted(() => ({
@@ -91,6 +142,25 @@ const posterCaptureHarness = vi.hoisted(() => ({
 
 const sourceHarness = vi.hoisted(() => ({
   byteSource: null as ByteSourceDescriptor | null,
+}));
+
+const gridStreamHarness = vi.hoisted(() => ({
+  selected: "__auto__",
+}));
+
+const nativeVideoHarness = vi.hoisted(() => ({
+  onError: null as ((error: Error) => void) | null,
+}));
+
+const providerHarness = vi.hoisted(() => ({
+  descriptor: {
+    resolved: null as ResolvedGridPosterProviderDescriptor | null,
+    status: "miss" as GridPosterProviderLookupStatus,
+  },
+  poster: {
+    entry: null as GridPosterCacheEntry | null,
+    status: "miss" as GridPosterProviderLookupStatus,
+  },
 }));
 
 interface SnapshotRequest {
@@ -142,7 +212,37 @@ vi.mock("../../session/use-episode-preview-session", () => ({
 }));
 
 vi.mock("./use-grid-preview", () => ({
-  useGridPreview: vi.fn(() => previewHarness.preview),
+  useGridPreview: vi.fn(
+    (options: {
+      readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
+    }) => {
+      previewHarness.onReadResult = options.onReadResult ?? null;
+      return previewHarness.preview;
+    },
+  ),
+}));
+
+vi.mock("./use-grid-poster-provider", () => ({
+  useGridPosterProviderDescriptor: () => providerHarness.descriptor,
+  useProvidedGridPoster: () => providerHarness.poster,
+}));
+
+vi.mock("./LeRobotGridHoverVideo", () => ({
+  LeRobotGridHoverVideo: ({
+    onError,
+    playing,
+  }: {
+    readonly onError: (error: Error) => void;
+    readonly playing?: boolean;
+  }) => {
+    nativeVideoHarness.onError = onError;
+    return (
+      <div
+        data-playing={playing ? "true" : "false"}
+        data-testid="lerobot-grid-hover-video"
+      />
+    );
+  },
 }));
 
 vi.mock("./grid-camera-state", () => ({
@@ -163,7 +263,7 @@ vi.mock("../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer", () => ({
 
 vi.mock("./grid-stream-state", () => ({
   GRID_STREAM_AUTO: "__auto__",
-  useGridSelectedStream: vi.fn(() => ["__auto__", vi.fn()]),
+  useGridSelectedStream: vi.fn(() => [gridStreamHarness.selected, vi.fn()]),
   useRegisterGridStreams: vi.fn(() => vi.fn()),
 }));
 
@@ -179,6 +279,7 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
         canvas: HTMLCanvasElement,
         size: { readonly height: number; readonly width: number },
       ) => void;
+      readonly videoPriority?: "playing" | "visible";
     }) => {
       bitmapHostHarness.lastBitmap = bitmap;
       bitmapHostHarness.onCanvasCommitted = onCanvasCommitted ?? null;
@@ -190,9 +291,11 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
       );
     },
     BitmapImageView: (props: {
+      readonly fit?: string;
       readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
     }) => {
-      const { onBitmapRetainedBytesChange } = props;
+      const { fit, onBitmapRetainedBytesChange } = props;
+      cachedBitmapViewHarness.fit = fit ?? null;
       useEffect(() => {
         onBitmapRetainedBytesChange?.(320 * 180 * 4);
       }, [onBitmapRetainedBytesChange]);
@@ -202,13 +305,26 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
       readonly fit?: string;
       readonly frame: Extract<EpisodePosterFrame, { kind: "image" }>["image"];
       readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
+      readonly onCanvasCommitted?: (
+        canvas: HTMLCanvasElement,
+        size: { readonly height: number; readonly width: number },
+      ) => void;
     }) => {
       bitmapViewHarness.lastProps = props;
-      const { onBitmapRetainedBytesChange } = props;
+      const { fit, onBitmapRetainedBytesChange, onCanvasCommitted } = props;
       // This effect reports decoded bitmap retention like the real view does.
       useEffect(() => {
         onBitmapRetainedBytesChange?.(640 * 480 * 4);
       }, [onBitmapRetainedBytesChange]);
+      // This effect mirrors the real bitmap view's fit-triggered canvas commit.
+      useEffect(() => {
+        if (bitmapViewHarness.commitOnFitEffect) {
+          onCanvasCommitted?.(document.createElement("canvas"), {
+            height: 100,
+            width: 100,
+          });
+        }
+      }, [fit, onCanvasCommitted]);
       return <div data-testid="bitmap-image-view" />;
     },
   };
@@ -230,16 +346,22 @@ afterEach(() => {
   publishMcapEmbeddingSelection(null);
   vi.useRealTimers();
   resetGridLiveLeasesForTests();
-  resetWebGpuDeviceRegistryForTests();
+  resetGraphicsRendererRegistryForTests();
   bitmapHostHarness.lastBitmap = null;
   bitmapHostHarness.onCanvasCommitted = null;
+  cachedBitmapViewHarness.fit = null;
+  bitmapViewHarness.commitOnFitEffect = false;
   bitmapViewHarness.lastProps = null;
+  setGridFit = null;
   cameraPoseHarness.pose = null;
+  previewHarness.onReadResult = null;
   previewHarness.preview.error = null;
   previewHarness.preview.cachedPoster = null;
   previewHarness.preview.frame = null;
   previewHarness.preview.hasPreviewStreams = false;
   previewHarness.preview.isBuffering = false;
+  previewHarness.preview.isPlaying = false;
+  previewHarness.preview.nativeVideo = null;
   previewHarness.preview.status = "idle";
   previewHarness.preview.streamId = null;
   previewHarness.preview.streamSourceName = null;
@@ -249,9 +371,137 @@ afterEach(() => {
   snapshotHarness.requests.length = 0;
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
+  gridStreamHarness.selected = "__auto__";
+  nativeVideoHarness.onError = null;
+  providerHarness.descriptor = { resolved: null, status: "miss" };
+  providerHarness.poster = { entry: null, status: "miss" };
 });
 
 describe("GridRenderer", () => {
+  it("waits for the optional cold tier before opening a source session", () => {
+    sourceHarness.byteSource = {
+      sourceId: "cold-tier-loading",
+      url: "https://example.test/cold-tier-loading.mcap",
+    };
+    providerHarness.descriptor = { resolved: null, status: "loading" };
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+  });
+
+  it("uses a revision-keyed provided poster without opening the source", () => {
+    sourceHarness.byteSource = {
+      sourceId: "provider-hit",
+      url: "https://example.test/provider-hit.mcap",
+    };
+    const provider = {
+      id: "test:posters",
+      resolveDescriptor: vi.fn(),
+    };
+    const descriptor = {
+      cacheRevision: "source-rev",
+      select: vi.fn(() => null),
+    };
+    providerHarness.descriptor = {
+      resolved: { descriptor, provider },
+      status: "hit",
+    };
+    const providedPoster: GridPosterCacheEntry = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 288,
+      mimeType: "image/webp",
+      provider: {
+        artifactIdentity: "artifact",
+        id: provider.id,
+        mediaKind: "image",
+        policyVersion: "image-grid-poster-v1",
+        revision: "source-rev",
+        variant: "frame",
+      },
+      sourceKind: "image",
+      streamId: "camera",
+      streamSourceName: "/camera/front",
+      streamSourceNames: ["/camera/front"],
+      width: 512,
+    };
+    providerHarness.poster = { entry: providedPoster, status: "hit" };
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      cachedPoster: providedPoster,
+    });
+    expect(
+      vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey,
+    ).toContain("source-rev");
+    expect(
+      vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey,
+    ).toContain(provider.id);
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+  });
+
+  it("keeps provider misses in the non-provider cache namespace", () => {
+    const source = {
+      sourceId: "provider-miss",
+      url: "https://example.test/provider-miss.mcap",
+    };
+    sourceHarness.byteSource = source;
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey).toBe(
+      gridPreviewStateKey({
+        datasetId: "dataset-id",
+        mediaField: undefined,
+        selectedSourceName: null,
+        source,
+      }),
+    );
+  });
+
+  it("isolates cache keys for providers with the same revision", () => {
+    const source = {
+      sourceId: "provider-scope",
+      url: "https://example.test/provider-scope.mcap",
+    };
+    sourceHarness.byteSource = source;
+    const descriptor = {
+      cacheRevision: "shared-revision",
+      select: vi.fn(() => null),
+    };
+    const firstProvider = {
+      id: "test:first-provider",
+      resolveDescriptor: vi.fn(),
+    };
+    providerHarness.descriptor = {
+      resolved: { descriptor, provider: firstProvider },
+      status: "hit",
+    };
+    const ctx = rendererCtx();
+    const view = render(<GridRenderer ctx={ctx} />);
+    const firstKey = vi.mocked(useGridPreview).mock.lastCall?.[0]
+      .cacheRequestKey as string;
+
+    const secondProvider = {
+      id: "test:second-provider",
+      resolveDescriptor: vi.fn(),
+    };
+    providerHarness.descriptor = {
+      resolved: { descriptor, provider: secondProvider },
+      status: "hit",
+    };
+    view.rerender(<GridRenderer ctx={ctx} />);
+    const secondKey = vi.mocked(useGridPreview).mock.lastCall?.[0]
+      .cacheRequestKey as string;
+
+    expect(secondKey).not.toBe(firstKey);
+    expect(firstKey).toContain(firstProvider.id);
+    expect(secondKey).toContain(secondProvider.id);
+    expect(firstKey).toContain(descriptor.cacheRevision);
+    expect(secondKey).toContain(descriptor.cacheRevision);
+  });
+
   it("posters at the earliest window the embeddings panel matched", () => {
     renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
       "1": [
@@ -274,9 +524,48 @@ describe("GridRenderer", () => {
     });
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      initialVideoDecodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
       posterStartTimeNs: null,
       posterSourceName: null,
     });
+  });
+
+  it("retains the complete initial H.264 decode runway", () => {
+    sourceHarness.byteSource = {
+      sourceId: "video-runway",
+      url: "memory://video-runway",
+    };
+    const push = vi.spyOn(PushVideoAccessUnitReader.prototype, "push");
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    const keyframe = videoFrame(new Uint8Array([1]), 0n, true);
+    const successor = videoFrame(new Uint8Array([2]), 33_333_333n, false);
+    act(() => {
+      previewHarness.onReadResult?.({
+        frame: keyframe,
+        frameTimeNs: 0n,
+        streamId: "/camera/front",
+        streamSourceName: "/camera/front",
+        streamSourceNames: ["/camera/front"],
+        status: "ready",
+        videoDecodeRunway: [keyframe, successor],
+      });
+    });
+
+    expect(push.mock.calls).toEqual([
+      [
+        "/camera/front",
+        expect.objectContaining({ frame: keyframe.image, timeNs: 0n }),
+      ],
+      [
+        "/camera/front",
+        expect.objectContaining({
+          frame: successor.image,
+          timeNs: 33_333_333n,
+        }),
+      ],
+    ]);
+    push.mockRestore();
   });
 
   it("renders a cached point-cloud poster with point-cloud activation semantics", () => {
@@ -300,6 +589,7 @@ describe("GridRenderer", () => {
     );
 
     expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(cachedBitmapViewHarness.fit).toBe("cover");
     const root = getGridRendererRoot(container);
     expect(root.classList.contains(classes.modalActivationSurface)).toBe(false);
     fireEvent.click(root);
@@ -348,6 +638,141 @@ describe("GridRenderer", () => {
     expect(bitmapViewHarness.lastProps.frame.bytes).toBe(bytes);
     expect(bitmapViewHarness.lastProps?.fit).toBe("cover");
     expect(bitmapViewHarness.lastProps.frame.mimeType).toBe("image/jpeg");
+  });
+
+  it("honors the contain fit setting for multimodal grid frames", () => {
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+
+    renderWithGridFit(<GridRenderer ctx={rendererCtx()} />, "contain");
+
+    expect(bitmapViewHarness.lastProps?.fit).toBe("contain");
+  });
+
+  it("captures the same frame separately when its fit changes", async () => {
+    sourceHarness.byteSource = {
+      sourceId: "fit-capture",
+      url: "memory://fit-capture",
+    };
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+    bitmapViewHarness.commitOnFitEffect = true;
+
+    renderWithMutableGridFit(<GridRenderer ctx={rendererCtx()} />);
+    await waitFor(() =>
+      expect(posterCaptureHarness.capture).toHaveBeenCalledTimes(1),
+    );
+    const coverKey = posterCaptureHarness.capture.mock.calls[0]?.[0].key;
+
+    act(() => setGridFit?.("contain"));
+
+    await waitFor(() =>
+      expect(posterCaptureHarness.capture).toHaveBeenCalledTimes(2),
+    );
+    expect(posterCaptureHarness.capture.mock.calls[1]?.[0].key).not.toBe(
+      coverKey,
+    );
+  });
+
+  it("keeps the cached poster visible until a new image decode family commits", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.frame = videoFrame(new Uint8Array([9, 9, 9]));
+    previewHarness.preview.status = "ready";
+    previewHarness.preview.streamId = "/cam/video";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
+
+    act(() => {
+      bitmapViewHarness.lastProps?.onCanvasCommitted?.(
+        document.createElement("canvas"),
+        { height: 180, width: 320 },
+      );
+    });
+
+    expect(screen.queryByTestId("bitmap-cached-image-view")).toBeNull();
+    expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
+  });
+
+  it("activates native LeRobot playback over the retained poster only while playing", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.frame = videoFrame(new Uint8Array([9, 9, 9]));
+    previewHarness.preview.nativeVideo = {
+      codec: "h264",
+      codecString: "avc1.64000a",
+      endTimeSeconds: 37.5,
+      source: { sourceId: "video", url: "/asset/video.mp4" },
+      startTimeSeconds: 14.2,
+    };
+    previewHarness.preview.status = "ready";
+    previewHarness.preview.streamId = "/cam/video";
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByTestId("lerobot-grid-hover-video").dataset.playing).toBe(
+      "false",
+    );
+
+    previewHarness.preview.isPlaying = true;
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByTestId("lerobot-grid-hover-video").dataset.playing).toBe(
+      "true",
+    );
+
+    previewHarness.preview.isPlaying = false;
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.getByTestId("lerobot-grid-hover-video").dataset.playing).toBe(
+      "false",
+    );
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+  });
+
+  it("shows native playback failures over a retained poster", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.nativeVideo = {
+      codec: "h264",
+      codecString: "avc1.64000a",
+      endTimeSeconds: 37.5,
+      source: { sourceId: "video", url: "/asset/video.mp4" },
+      startTimeSeconds: 14.2,
+    };
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    act(() => nativeVideoHarness.onError?.(new Error("Native decode failed")));
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe("Native decode failed");
   });
 
   it("shows a tiny buffering indicator over the last rendered frame", () => {
@@ -455,12 +880,14 @@ describe("GridRenderer", () => {
     previewHarness.preview.status = "ready";
 
     render(<GridRenderer ctx={rendererCtx()} />);
+    expect(bitmapViewHarness.lastProps?.videoPriority).toBe("visible");
     const root = screen.getByTestId("bitmap-image-view").parentElement;
     if (!root) {
       throw new Error("Expected bitmap view to have a grid root");
     }
 
     fireEvent.pointerOver(root);
+    expect(bitmapViewHarness.lastProps?.videoPriority).toBe("playing");
     expect(vi.mocked(useGridPreview)).toHaveBeenLastCalledWith(
       expect.objectContaining({ hovered: true }),
     );
@@ -470,6 +897,7 @@ describe("GridRenderer", () => {
     expect(previewHarness.preview.play).not.toHaveBeenCalled();
 
     fireEvent.pointerOut(root);
+    expect(bitmapViewHarness.lastProps?.videoPriority).toBe("visible");
     expect(vi.mocked(useGridPreview)).toHaveBeenLastCalledWith(
       expect.objectContaining({ hovered: false }),
     );
@@ -700,6 +1128,40 @@ describe("GridRenderer", () => {
     expect(snapshotHarness.requests).toHaveLength(1);
   });
 
+  it("withdraws preview demand as soon as modal activation makes the grid inactive", async () => {
+    const { rerender } = render(
+      <GridRenderer ctx={rendererCtx()} isGridActive />,
+    );
+    await waitFor(() =>
+      expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+        enabled: true,
+      }),
+    );
+
+    rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      enabled: false,
+    });
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+  });
+
+  it("keeps same-source preview demand while a new stream key checks persistence", async () => {
+    sourceHarness.byteSource = {
+      sourceId: "stream-switch",
+      url: "https://example.test/stream-switch.mcap",
+    };
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    await waitFor(() =>
+      expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(true),
+    );
+
+    gridStreamHarness.selected = "/camera/rear";
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(true);
+  });
+
   it("stays on the snapshot when the device budget denies going live", () => {
     vi.useFakeTimers();
     previewHarness.preview.frame = pointCloudFrame();
@@ -708,7 +1170,7 @@ describe("GridRenderer", () => {
     // The page is already at the device budget before the hover (say, a
     // heavy modal layout owns every slot).
     for (let i = 0; i < WEBGPU_DEVICE_BUDGET; i += 1) {
-      registerWebGpuRenderer("modal-3d");
+      registerGraphicsRenderer("modal-3d", "auto");
     }
 
     render(<GridRenderer ctx={rendererCtx()} />);
@@ -893,7 +1355,7 @@ describe("GridRenderer", () => {
 
 function rendererCtx() {
   return {
-    dataset: { name: "dataset" },
+    dataset: { datasetId: "dataset-id", name: "dataset" },
     sample: { sample: { id: "1" } },
   } as never;
 }
@@ -913,6 +1375,25 @@ function imageFrame(bytes: Uint8Array): EpisodePosterFrame {
     image: { bytes, kind: "encoded-image", mimeType: "image/jpeg" },
     kind: "image",
   } as unknown as EpisodePosterFrame;
+}
+
+function videoFrame(
+  bytes: Uint8Array,
+  timestampNs = 0n,
+  keyframe = true,
+): Extract<EpisodePosterFrame, { kind: "image" }> {
+  return {
+    image: {
+      bytes,
+      codec: "h264",
+      format: "h264",
+      h264: { codecString: "avc1.4D001F", hasFrame: true },
+      keyframe,
+      kind: "encoded-video",
+      timestampNs,
+    },
+    kind: "image",
+  } as unknown as Extract<EpisodePosterFrame, { kind: "image" }>;
 }
 
 function pointCloudFrame(): EpisodePosterFrame {

@@ -20,6 +20,7 @@ import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
   TimelineWithTracks,
   TrackProvider,
+  type TimelineTracksScroller,
   type Track,
   type TrackEventMenuItem,
   useActivateStream,
@@ -92,6 +93,71 @@ type TrackDecoration = BaseTrackDecoration & {
 
 /** Row height (px) for a dynamic-attribute sub-track — shorter than a parent. */
 const SUB_TRACK_ROW_HEIGHT = 22;
+
+/**
+ * Most "Merge into …" entries to offer on one track's menu.
+ *
+ * A merge target has to be a different track of the same class on the same
+ * field, which on a densely tracked sample can be thousands of rows — a menu
+ * nobody can use, and one whose element tree we'd rebuild on every render of
+ * the row. Capping keeps the common case (a handful of fragments of the same
+ * object) intact; past that the menu stops being the right tool and the user
+ * wants the merge dialog.
+ */
+const MAX_MERGE_TARGETS = 12;
+
+/** Bucket key gating merge: same field path AND same class. */
+const mergeGroupKey = (
+  path: string | null,
+  classLabel: string | null,
+): string => `${path ?? ""}\u0000${classLabel ?? ""}`;
+
+/** A merge candidate plus where it sits in time, for proximity ranking. */
+interface MergeCandidate {
+  id: string;
+  label: string;
+  /** Start of the track's first presence bar; its position on the timeline. */
+  startSec: number;
+}
+
+/** Where a track begins, for ranking merge candidates against it. */
+const trackStartSec = (track: Track): number => track.events[0]?.startSec ?? 0;
+
+/**
+ * The merge targets offered for `track`: its own bucket, minus itself, nearest
+ * first, capped at {@link MAX_MERGE_TARGETS}, plus how many the cap dropped.
+ *
+ * Ranked by distance in time rather than list position. Merging almost always
+ * means rejoining fragments of one object that got split, and those sit next
+ * to each other on the timeline — taking the head of the bucket instead would
+ * offer a late-ordered track twelve unrelated candidates and silently omit its
+ * actual neighbour.
+ */
+function mergeTargetsFor(
+  groups: ReadonlyMap<string, MergeCandidate[]>,
+  track: Track,
+): { mergeTargets: { id: string; label: string }[]; omitted: number } {
+  const bucket = groups.get(
+    mergeGroupKey(objectTrackPathOf(track), objectTrackClassOf(track)),
+  );
+  if (!bucket) return { mergeTargets: [], omitted: 0 };
+
+  const from = trackStartSec(track);
+  const ranked = bucket
+    .filter((candidate) => candidate.id !== track.id)
+    .sort(
+      (a, b) =>
+        Math.abs(a.startSec - from) - Math.abs(b.startSec - from) ||
+        a.id.localeCompare(b.id),
+    );
+
+  return {
+    mergeTargets: ranked
+      .slice(0, MAX_MERGE_TARGETS)
+      .map(({ id, label }) => ({ id, label })),
+    omitted: Math.max(0, ranked.length - MAX_MERGE_TARGETS),
+  };
+}
 
 /** Resolves the row color for a temporal-detection track. */
 type TemporalDetectionColorResolver = (
@@ -341,19 +407,64 @@ function useTrackDecorator({
   // implicit context).
   const splitFrameRef = useRef(1);
 
-  // id + label + class of every object track, the universe of merge targets;
-  // each row filters itself out and to its own class below.
-  const mergeCandidates = useMemo(
+  // Merge targets, bucketed by the pair that gates them — same class, same
+  // field. Grouping once turns the per-row lookup into a map hit; the previous
+  // shape was a flat list every row re-filtered, which is O(tracks) per
+  // rendered row and showed up as scroll cost on big samples.
+  const mergeCandidatesByGroup = useMemo(() => {
+    const groups = new Map<string, MergeCandidate[]>();
+
+    for (const track of objectTracks) {
+      if (parseSubTrackId(track.id)) continue;
+
+      const key = mergeGroupKey(
+        objectTrackPathOf(track),
+        objectTrackClassOf(track),
+      );
+      const candidate: MergeCandidate = {
+        id: track.id,
+        label: track.label,
+        startSec: trackStartSec(track),
+      };
+      const bucket = groups.get(key);
+      if (bucket) {
+        bucket.push(candidate);
+      } else {
+        groups.set(key, [candidate]);
+      }
+    }
+
+    return groups;
+  }, [objectTracks]);
+
+  /**
+   * Row decorations, keyed on the track object and validated against the
+   * interaction decoration it was built from.
+   *
+   * `baseDecorate` changes identity on every hover and selection move (it
+   * closes over the id sets), which would otherwise re-mint every mounted
+   * row's decoration on the hottest interaction there is. It hands back a
+   * stable object per row when that row's own state hasn't changed, so
+   * comparing it is enough to reuse the whole decoration — and the memoized
+   * rows then skip re-rendering. Everything else the decoration reads resets
+   * the cache through the dependency list below.
+   */
+  const cache = useMemo(
     () =>
-      objectTracks
-        .filter((t) => !parseSubTrackId(t.id))
-        .map((t) => ({
-          id: t.id,
-          label: t.label,
-          classLabel: objectTrackClassOf(t),
-          path: objectTrackPathOf(t),
-        })),
-    [objectTracks],
+      new WeakMap<
+        Track,
+        { base: BaseTrackDecoration; built: TrackDecoration }
+      >(),
+    [
+      fps,
+      snapStepSec,
+      actions,
+      stream,
+      getCurrentFrame,
+      mergeCandidatesByGroup,
+      expansion,
+      expandableParentIds,
+    ],
   );
 
   return useCallback(
@@ -361,20 +472,31 @@ function useTrackDecorator({
       // A sub-track row links its hover / selection to the PARENT instance and
       // renders as an indented child; it owns no presence-bar edits.
       const sub = parseSubTrackId(track.id);
+      const base = sub
+        ? baseDecorate({ ...track, id: sub.parentId })
+        : baseDecorate(track);
+
+      const cached = cache.get(track);
+      if (cached && cached.base === base) return cached.built;
+
+      const remember = (built: TrackDecoration): TrackDecoration => {
+        cache.set(track, { base, built });
+        return built;
+      };
+
       if (sub) {
-        const parentLink = baseDecorate({ ...track, id: sub.parentId });
-        return {
+        const parentLink = base;
+        return remember({
           ...parentLink,
           expansionGutter: true,
           depth: 1,
           isChild: true,
           height: SUB_TRACK_ROW_HEIGHT,
-        };
+        });
       }
 
-      const base = baseDecorate(track);
       if (!fps) {
-        return { ...base, expansionGutter: true };
+        return remember({ ...base, expansionGutter: true });
       }
 
       // A TD row is identified by its structured event payload; anything else
@@ -397,37 +519,31 @@ function useTrackDecorator({
           // the track's own frames field — the per-frame ops address it directly,
           // so a track on a non-primary field still deletes / splits / merges
           trackPath: objectTrackPathOf(track),
-          // merge only into a different track OF THE SAME CLASS on the SAME field
-          // (a cross-field merge is meaningless)
-          mergeTargets: mergeCandidates
-            .filter(
-              (c) =>
-                c.id !== track.id &&
-                c.classLabel === objectTrackClassOf(track) &&
-                c.path === objectTrackPathOf(track),
-            )
-            .map((c) => ({ id: c.id, label: c.label })),
+          // merge only into a different track OF THE SAME CLASS on the SAME
+          // field (a cross-field merge is meaningless), capped so a class with
+          // thousands of instances doesn't build — or show — a menu that long
+          ...mergeTargetsFor(mergeCandidatesByGroup, track),
         });
 
         if (!expandableParentIds.has(track.id)) {
-          return { ...decorated, expansionGutter: true };
+          return remember({ ...decorated, expansionGutter: true });
         }
 
-        return {
+        return remember({
           ...decorated,
           expansionGutter: true,
           expandable: true,
           expanded: expansion.isExpanded(track.id),
           onToggleExpand: () => expansion.toggle(track.id),
-        };
+        });
       }
 
       // Object track with no stream yet: can't wire frame edits — base only.
       if (isObjectTrack) {
-        return { ...base, expansionGutter: true };
+        return remember({ ...base, expansionGutter: true });
       }
 
-      return {
+      return remember({
         ...decorateTemporalDetectionTrack({
           tdEvent: tdEvent as TemporalDetectionEventData,
           base,
@@ -436,16 +552,17 @@ function useTrackDecorator({
           actions,
         }),
         expansionGutter: true,
-      };
+      });
     },
     [
+      cache,
       baseDecorate,
       fps,
       snapStepSec,
       actions,
       stream,
       getCurrentFrame,
-      mergeCandidates,
+      mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
     ],
@@ -541,7 +658,10 @@ export const FrameLabelsTracks: React.FC<{
   // tracks land, leaving frame tracks unpinned.
   const ready = frameTracksResolved;
 
-  useScrollTrackToAnchor();
+  // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
+  // row has to go through the list rather than the DOM.
+  const timelineScroller = useRef<TimelineTracksScroller | null>(null);
+  useScrollTrackToAnchor(timelineScroller);
   const decorateTrack = useTrackDecorator({
     sample,
     objectTracks: frameTracks,
@@ -558,6 +678,7 @@ export const FrameLabelsTracks: React.FC<{
     >
       <TimelineWithTracks
         decorateTrack={decorateTrack}
+        scrollerRef={timelineScroller}
         extraControls={<VideoAnnotationToolbar />}
         loaded={timelineLoaded}
         maxSize={maxSize}
@@ -580,6 +701,7 @@ function decorateObjectTrack({
   splitFrameRef,
   trackPath,
   mergeTargets,
+  omitted,
 }: {
   track: Track;
   base: BaseTrackDecoration;
@@ -591,6 +713,8 @@ function decorateObjectTrack({
   splitFrameRef: React.MutableRefObject<number>;
   trackPath: string | null;
   mergeTargets: { id: string; label: string }[];
+  /** Same-class targets dropped by the cap, so the menu can say so. */
+  omitted: number;
 }): TrackDecoration {
   // Address the track's own frames field so a non-primary-field track still
   // operates; `undefined` falls back to the stream's primary field in the action.
@@ -621,6 +745,16 @@ function decorateObjectTrack({
       onSelect: () => actions.mergeTracks(track.id, target.id, fieldPath),
     })),
   ];
+
+  // Say so rather than let the list look complete — a silently truncated menu
+  // reads as "there is nothing else to merge into".
+  if (omitted > 0) {
+    menuItems.push({
+      label: `…and ${omitted} more not shown`,
+      disabled: true,
+      onSelect: () => undefined,
+    });
+  }
 
   return {
     ...base,

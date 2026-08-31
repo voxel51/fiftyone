@@ -8,18 +8,20 @@
 /* Non-scrolling wrapper that acts as the positioning context for the
    PlayheadLine and LoopOverlays. Keeping them here (rather than inside
    tracksArea) means they always cover the full visible height regardless
-   of how far the user has scrolled inside the tracks region. */
+   of how far the user has scrolled inside the tracks region.
+   Its height is set inline to the virtualized list's total height, capped
+   at the drawer's maxSize: the Drawer auto-sizes by measuring this element's
+   offsetHeight, and a virtual list's own DOM height is only the window it
+   renders — so the height has to be stated rather than left to the content. */
 .tracksOuter {
   position: relative;
-  height: 100%;
   overflow: hidden;
 }
 
-/* Inner scroll container for the tracks. PlayheadLine / LoopOverlays
-   intentionally do NOT live here — see tracksOuter above.
-   `height: 100%` (not `flex: 1`) because the Drawer's internal `.content`
-   wrapper isn't a flex container — `flex: 1` would be ignored and we'd
-   fall back to natural content height, defeating the overflow:auto.
+/* The virtualizer's scroll container (react-virtuoso's scroller element).
+   PlayheadLine / LoopOverlays intentionally do NOT live here — see
+   tracksOuter above. Virtuoso sets height:100% / overflow-y:auto itself;
+   what this class adds is horizontal containment and scrollbar hiding.
    Vertical scroll only — the playhead's translate3d intentionally extends
    past the visible width and must NOT trigger horizontal scrolling.
    The scrollbar is hidden visually (wheel / keyboard scrolling still
@@ -27,9 +29,7 @@
    ruler doesn't have a scrollbar, and a mismatched width would desync
    the ruler playhead from the in-tracks playhead. */
 .tracksArea {
-  height: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
   scrollbar-width: none;
 }
 

@@ -1,0 +1,37 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.metadata {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-content-border-default);
+  flex-shrink: 0;
+}
+
+.ruler {
+  flex-shrink: 0;
+}
+
+/* The waveform canvas takes all remaining height under the metadata row and
+   ruler; `min-height: 0` is required for it to shrink below its content size
+   inside this flex column. */
+.waveform {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Wraps the ruler and the waveform so wheel-zoom covers both. Must not
+   introduce a new scroll/stacking context or change the column's sizing:
+   it inherits the flex behaviour the waveform relied on from the root. */
+.zoomSurface {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}

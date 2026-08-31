@@ -6,12 +6,21 @@ import * as THREE from "three/webgpu";
 
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../panel-ui/style-tokens";
 import {
-  registerWebGpuRenderer,
-  type WebGpuRendererRegistration,
-} from "./webgpu-device-registry";
+  registerGraphicsRenderer,
+  type GraphicsRendererRegistration,
+} from "./graphics-renderer-registry";
+import {
+  GRAPHICS_POWER_PREFERENCE,
+  disposeGraphicsRenderer,
+  graphicsBackendForRenderer,
+  requestedGraphicsBackend,
+  type GraphicsBackend,
+  type GraphicsRuntime,
+} from "./graphics-backend";
+import { GraphicsRuntimeProvider } from "./graphics-runtime-context";
 import { errorMessage } from "../../utils/errors";
 
-type WebGpuRootState = RootState & {
+type GraphicsRootState = RootState & {
   readonly gl: THREE.WebGPURenderer;
 };
 
@@ -59,7 +68,7 @@ const styles: Record<string, CSSProperties> = {
 };
 
 /**
- * Props for the shared React Three Fiber WebGPU canvas root.
+ * Props for the shared React Three Fiber graphics canvas root.
  */
 export interface WebGpuCanvasProps {
   /**
@@ -78,18 +87,18 @@ export interface WebGpuCanvasProps {
   readonly role?: string;
   readonly style?: CSSProperties;
   /**
-   * Device-registry surface tag ("modal-3d", "grid-preview", ...) for the
+   * Graphics-registry surface tag ("modal-3d", "grid-preview", ...) for the
    * renderer this canvas constructs. Bookkeeping only — it never affects
    * rendering. Sampled when the renderer is created; later prop changes
    * do not retag an already-live renderer.
    */
   readonly surface?: string;
   readonly onError?: (error: string | null) => void;
-  readonly onReady?: (state: WebGpuRootState) => void;
+  readonly onReady?: (state: GraphicsRootState) => void;
 }
 
 /**
- * R3F root backed by Three's WebGPU renderer.
+ * R3F root backed by Three's WebGPU renderer with its WebGL2 fallback.
  */
 export function WebGpuCanvas({
   antialias = true,
@@ -107,27 +116,30 @@ export function WebGpuCanvas({
   surface = DEFAULT_SURFACE,
 }: WebGpuCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const canvasStateRef = useRef<WebGpuRootState | null>(null);
+  const canvasStateRef = useRef<GraphicsRootState | null>(null);
   const antialiasRef = useRef(antialias);
   const clearColorRef = useRef(clearColor);
   const mountedRef = useRef(true);
   const onErrorRef = useRef(onError);
   const onReadyRef = useRef(onReady);
-  // Device-registry bookkeeping, keyed by renderer instance so each
+  // Renderer-lifecycle bookkeeping, keyed by instance so each
   // registration is released exactly once no matter which dispose site
   // (unmount, failed init, superseded init) retires the renderer — or
   // whether more than one fires for the same instance.
   const registrationsRef = useRef(
-    new Map<THREE.WebGPURenderer, WebGpuRendererRegistration>(),
+    new Map<THREE.WebGPURenderer, GraphicsRendererRegistration>(),
   );
   const rendererReadyRef = useRef(false);
   const rendererRef = useRef<THREE.WebGPURenderer | null>(null);
   const readyNotifiedRef = useRef(false);
+  // A renderer keeps the surface identity it was mounted with. A prop update
+  // while async init is pending must not split its registry, DOM, and runtime
+  // identities across different surface labels.
   const surfaceRef = useRef(surface);
   antialiasRef.current = antialias;
-  surfaceRef.current = surface;
 
-  const [isReady, setIsReady] = useState(false);
+  const [runtime, setRuntime] = useState<GraphicsRuntime | null>(null);
+  const isReady = runtime !== null;
 
   const notifyReady = useCallback(() => {
     if (
@@ -146,22 +158,36 @@ export function WebGpuCanvas({
   const createRenderer = useCallback<
     (canvas: HTMLCanvasElement | OffscreenCanvas) => RootState["gl"]
   >((canvas) => {
-    const renderer = new THREE.WebGPURenderer({
+    const rendererSurface = surfaceRef.current;
+    const backendRequest = requestedGraphicsBackend();
+    const rendererOptions: ConstructorParameters<
+      typeof THREE.WebGPURenderer
+    >[0] & { readonly forceWebGL?: boolean } = {
       alpha: false,
       antialias: antialiasRef.current,
       canvas: canvas as HTMLCanvasElement,
       depth: true,
-      powerPreference: "high-performance",
+      forceWebGL: backendRequest === "webgl2",
+      powerPreference: GRAPHICS_POWER_PREFERENCE,
       stencil: false,
-    });
+    };
+    const renderer = new THREE.WebGPURenderer(rendererOptions);
+    const previousRenderer = rendererRef.current;
+    if (previousRenderer) {
+      disposeRegisteredGraphicsRenderer(
+        registrationsRef.current,
+        previousRenderer,
+      );
+    }
+    setRuntime(null);
     rendererRef.current = renderer;
     rendererReadyRef.current = false;
-    // Bookkeeping only: record the renderer (one GPUDevice) in the device
-    // registry. Every dispose site below releases this registration via
-    // the instance-keyed map, so counts stay balanced.
+    readyNotifiedRef.current = false;
+    // Construction reserves a possible WebGPU device. The registration is
+    // resolved to the backend Three actually selected only after init.
     registrationsRef.current.set(
       renderer,
-      registerWebGpuRenderer(surfaceRef.current),
+      registerGraphicsRenderer(rendererSurface, backendRequest),
     );
     // Hidden or mid-relayout hosts can measure 0x0; a zero-size setSize
     // makes the WebGPU backend configure an empty swapchain/depth texture
@@ -181,13 +207,14 @@ export function WebGpuCanvas({
       if (!mountedRef.current || rendererRef.current !== renderer) {
         return;
       }
-      // A lost device makes this renderer permanently unusable. Clear the
-      // identity before surfacing the error so later effects cannot prepare or
-      // invalidate it as though it were still the active backend.
+      // A lost device makes this renderer permanently unusable. Retire its
+      // lifecycle accounting and browser resources before dropping the last
+      // active identity.
+      registrationsRef.current.get(renderer)?.markLost(info);
+      disposeRegisteredGraphicsRenderer(registrationsRef.current, renderer);
       rendererRef.current = null;
       rendererReadyRef.current = false;
-      releaseRendererRegistration(registrationsRef.current, renderer);
-      setIsReady(false);
+      setRuntime(null);
       const reason = info.reason ? ` (${info.reason})` : "";
       onErrorRef.current?.(
         `${info.api ?? "WebGPU"} device lost${reason}: ${
@@ -197,32 +224,37 @@ export function WebGpuCanvas({
     };
     // Canvas may ask for a renderer before React rebuilds callbacks. Read the
     // color from a ref so renderer creation stays stable across color changes.
-    prepareWebGpuRenderer(renderer, clearColorRef.current);
+    prepareGraphicsRenderer(renderer, clearColorRef.current);
 
     renderer
       .init()
       .then(() => {
         if (!mountedRef.current || rendererRef.current !== renderer) {
-          releaseRendererRegistration(registrationsRef.current, renderer);
-          renderer.dispose();
+          disposeRegisteredGraphicsRenderer(registrationsRef.current, renderer);
           return;
         }
 
+        const backend = graphicsBackendForRenderer(renderer);
+        registrationsRef.current.get(renderer)?.markReady(backend);
+        prepareGraphicsRenderer(renderer, clearColorRef.current, backend);
         rendererReadyRef.current = true;
-        setIsReady(true);
+        setRuntime({ backend, surface: rendererSurface });
         onErrorRef.current?.(null);
       })
       .catch((error: unknown) => {
-        if (mountedRef.current && rendererRef.current === renderer) {
-          // A failed WebGPU init can leave GPU/browser resources attached to
-          // the renderer object. Dispose only the current renderer instance.
-          releaseRendererRegistration(registrationsRef.current, renderer);
-          renderer.dispose();
-          rendererRef.current = null;
-          rendererReadyRef.current = false;
-          setIsReady(false);
-          onErrorRef.current?.(errorMessage(error));
+        const isCurrent =
+          mountedRef.current && rendererRef.current === renderer;
+        // A rejected init can leave GPU/browser resources behind even if R3F
+        // superseded the renderer while the promise was pending.
+        registrationsRef.current.get(renderer)?.markFailed(error);
+        disposeRegisteredGraphicsRenderer(registrationsRef.current, renderer);
+        if (!isCurrent) {
+          return;
         }
+        rendererRef.current = null;
+        rendererReadyRef.current = false;
+        setRuntime(null);
+        onErrorRef.current?.(errorMessage(error));
       });
 
     return renderer as unknown as RootState["gl"];
@@ -233,13 +265,17 @@ export function WebGpuCanvas({
     onErrorRef.current = onError;
   }, [onError]);
 
-  // This effect keeps the latest ready callback available after WebGPU initialization.
+  // This effect keeps the latest ready callback available after renderer initialization.
   useEffect(() => {
     onReadyRef.current = onReady;
   }, [onReady]);
 
-  // This effect disposes the WebGPU renderer and clears lifecycle refs on unmount.
+  // This effect disposes the graphics renderer and clears lifecycle refs on unmount.
   useEffect(() => {
+    // React StrictMode replays effects without recreating refs. Restore the
+    // mounted state so async renderer initialization from the replayed mount
+    // remains eligible to publish its runtime.
+    mountedRef.current = true;
     // The map instance is created once per component and never replaced,
     // so capturing it here keeps the cleanup read stable.
     const registrations = registrationsRef.current;
@@ -248,8 +284,7 @@ export function WebGpuCanvas({
       canvasStateRef.current = null;
       readyNotifiedRef.current = false;
       rendererReadyRef.current = false;
-      releaseRendererRegistration(registrations, rendererRef.current);
-      rendererRef.current?.dispose();
+      disposeRegisteredGraphicsRenderer(registrations, rendererRef.current);
       rendererRef.current = null;
     };
   }, []);
@@ -258,12 +293,12 @@ export function WebGpuCanvas({
   useEffect(() => {
     clearColorRef.current = clearColor;
     if (rendererRef.current) {
-      prepareWebGpuRenderer(rendererRef.current, clearColor);
+      prepareGraphicsRenderer(rendererRef.current, clearColor);
       canvasStateRef.current?.invalidate();
     }
   }, [clearColor]);
 
-  // This effect notifies consumers once Canvas state and WebGPU initialization are ready.
+  // This effect notifies consumers once Canvas state and renderer initialization are ready.
   useEffect(() => {
     if (isReady) {
       notifyReady();
@@ -274,13 +309,15 @@ export function WebGpuCanvas({
     <Canvas
       camera={camera}
       className={className}
-      data-webgpu-surface={surface}
+      data-graphics-backend={runtime?.backend}
+      data-graphics-surface={surfaceRef.current}
+      data-webgpu-surface={surfaceRef.current}
       dpr={dpr}
       flat
       frameloop={isReady ? frameloop : "never"}
       gl={createRenderer as CanvasProps["gl"]}
       onCreated={(state) => {
-        canvasStateRef.current = state as WebGpuRootState;
+        canvasStateRef.current = state as GraphicsRootState;
         notifyReady();
       }}
       orthographic={orthographic}
@@ -288,18 +325,21 @@ export function WebGpuCanvas({
       role={role}
       style={{ ...styles.root, ...style }}
     >
-      {isReady ? children : null}
+      {runtime ? (
+        <GraphicsRuntimeProvider runtime={runtime}>
+          {children}
+        </GraphicsRuntimeProvider>
+      ) : null}
     </Canvas>
   );
 }
 
 /**
- * Releases a renderer's device-registry registration exactly once: the
- * instance-keyed map entry is deleted on the first call, so overlapping
- * dispose sites (e.g. unmount racing a pending init) cannot double-release.
+ * Releases and disposes a renderer exactly once. The instance-keyed map entry
+ * is the ownership token shared by every overlapping retirement path.
  */
-function releaseRendererRegistration(
-  registrations: Map<THREE.WebGPURenderer, WebGpuRendererRegistration>,
+function disposeRegisteredGraphicsRenderer(
+  registrations: Map<THREE.WebGPURenderer, GraphicsRendererRegistration>,
   renderer: THREE.WebGPURenderer | null,
 ): void {
   if (!renderer) {
@@ -313,11 +353,13 @@ function releaseRendererRegistration(
 
   registrations.delete(renderer);
   registration.release();
+  disposeGraphicsRenderer(renderer);
 }
 
-function prepareWebGpuRenderer(
+function prepareGraphicsRenderer(
   renderer: THREE.WebGPURenderer,
   clearColor: THREE.ColorRepresentation,
+  backend?: GraphicsBackend,
 ) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(clearColor, OPAQUE_CLEAR_ALPHA);
@@ -328,6 +370,9 @@ function prepareWebGpuRenderer(
     getMaxAnisotropy:
       rendererWithCompat.capabilities?.getMaxAnisotropy ??
       (() => renderer.getMaxAnisotropy?.() ?? DEFAULT_MAX_ANISOTROPY),
-    isWebGL2: rendererWithCompat.capabilities?.isWebGL2 ?? false,
+    isWebGL2:
+      backend === "webgl2" ||
+      (backend === undefined &&
+        (rendererWithCompat.capabilities?.isWebGL2 ?? false)),
   };
 }

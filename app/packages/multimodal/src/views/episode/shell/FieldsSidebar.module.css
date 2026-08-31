@@ -1,0 +1,125 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.searchBar {
+  flex: 0 0 auto;
+}
+
+.searchInput {
+  min-width: 0;
+  width: 100%;
+}
+
+.fieldList {
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.fieldNode {
+  border-bottom: 1px solid var(--color-border);
+  min-width: 0;
+}
+
+.fieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px 0;
+}
+
+.fieldLabel {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fieldValue {
+  color: var(--color-content-text);
+  font-size: 12px;
+  line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.mutedValue,
+.groupSummary,
+.description,
+.emptyText {
+  color: var(--color-content-text-muted);
+}
+
+.description,
+.emptyText {
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.groupHeader {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  min-width: 0;
+  padding: 9px 0;
+  text-align: left;
+  width: 100%;
+}
+
+.groupHeader::-webkit-details-marker {
+  display: none;
+}
+
+.groupHeader:focus-visible {
+  outline: 1px solid var(--color-content-border-focus);
+  outline-offset: 2px;
+}
+
+.chevron {
+  border-right: 1.5px solid var(--color-content-text-muted);
+  border-top: 1.5px solid var(--color-content-text-muted);
+  flex: 0 0 auto;
+  height: 5px;
+  transform: rotate(45deg);
+  transition: transform 120ms ease;
+  width: 5px;
+}
+
+.fieldNode[open] > .groupHeader .chevron {
+  transform: rotate(135deg);
+}
+
+.groupSummary {
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1.2;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.children {
+  border-left: 1px solid var(--color-border);
+  margin: 0 0 8px 3px;
+  padding-left: 10px;
+}
+
+.children > .description {
+  display: block;
+  padding: 0 0 9px;
+}
+
+.children > .fieldNode:last-child {
+  border-bottom: 0;
+}

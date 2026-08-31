@@ -23,6 +23,13 @@ type GridCustomRendererItemConfig = {
   ctx: SampleRendererRenderContext;
   clickBehavior?: SampleRendererGridClickBehavior;
   symbol: ID;
+  /**
+   * Synchronous lookup against the true `selectedSamples` source of truth,
+   * used to reconcile this item's local `selected` flag when it's reattached
+   * from the cache (`attach()`), since offscreen cached items don't receive
+   * `updateOptions()` calls while hidden.
+   */
+  isSampleSelected?: (sampleId: string) => boolean;
 };
 
 /** Dimensions as [width, height] in pixels. */
@@ -372,7 +379,11 @@ export class GridCustomRendererItem {
       <RecoilBridge>
         <GridCustomRendererErrorBoundary
           onError={(error) => this.switchToFallback(error)}
-          key={ctx.media.url ?? this.config.pluginName}
+          key={
+            ctx.media.url ??
+            ctx.media.mediaReference?.key ??
+            this.config.pluginName
+          }
         >
           <GridCustomRendererWrapper
             clickBehavior={this.config.clickBehavior}
@@ -400,10 +411,14 @@ export class GridCustomRendererItem {
     );
   }
 
+  private getSampleId(): string {
+    const sample = this.config.ctx.sample?.sample;
+    return sample?._id ?? sample?.["id"] ?? this.config.symbol.description;
+  }
+
   private getSelectionPayload(event: React.MouseEvent<HTMLButtonElement>) {
     const sample = this.config.ctx.sample?.sample;
-    const sampleId =
-      sample?._id ?? sample?.["id"] ?? this.config.symbol.description;
+    const sampleId = this.getSampleId();
 
     return buildThumbnailSelectionDetail({
       id: sampleId,
@@ -491,6 +506,26 @@ export class GridCustomRendererItem {
     if (this.hostElement.parentElement !== resolvedElement) {
       // Replace all children of the target element with the host element.
       resolvedElement.replaceChildren(this.hostElement);
+    }
+
+    // Reconcile against the true selection state on (re)attach: while this
+    // item was scrolled offscreen it stayed alive in the grid's cache but
+    // stopped receiving updateOptions() calls (those only reach currently
+    // shown rows), so its local `selected` flag can be stale relative to the
+    // real selectedSamples atom.
+    //
+    // Known trade-off: the selection click handler applies its toggle to
+    // `this.selected` optimistically, before the Recoil write it dispatches
+    // has actually committed (that round-trip is async). If this exact
+    // instance were detached and reattached inside that narrow window, this
+    // reconciliation would read the not-yet-committed snapshot and revert the
+    // optimistic toggle. In practice a reattach is driven by scroll/relayout,
+    // which cannot happen inside the same microtask window as the click, so
+    // this hasn't been observed — flagging for future readers rather than
+    // guarding against it, since a guard would have to reintroduce the same
+    // staleness this reconciliation exists to fix.
+    if (this.config.isSampleSelected) {
+      this.selected = this.config.isSampleSelected(this.getSampleId());
     }
 
     this.renderPluginRenderer();

@@ -318,8 +318,17 @@ export const computeTagData = ({
     },
   };
 
-  const CLASSIFICATION_RENDERER = (path, param: Classification): TagData => {
+  const CLASSIFICATION_RENDERER = (
+    path: string,
+    param: Classification,
+  ): TagData | null => {
     const attributes = shownLabelAttributes?.[path];
+
+    // all attributes off — no tag
+    if (attributes && !attributes.length) {
+      return null;
+    }
+
     const label = attributes
       ? getLabelAttributesText(param, attributes) || "null"
       : (param.label ?? "null");

@@ -134,6 +134,11 @@ export class ByteClientReadable implements McapTypes.IReadable {
     return byteSourceAccessKey(this.source);
   }
 
+  /** Total source size already known from the descriptor or byte transport. */
+  knownSizeBytes(): bigint | undefined {
+    return this.resolvedSizeBytes ?? sourceSizeBytes(this.source);
+  }
+
   async size(): Promise<bigint> {
     const signal = this.options.readSignal?.current ?? undefined;
     if (signal?.aborted) throw createAbortError("MCAP read aborted");
@@ -153,7 +158,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
 
     // Prefer cheap transport metadata before doing a tiny ranged GET; many
     // object stores allow range reads but block HEAD, so both paths are needed.
-    const statSource = await this.byteClient.stat?.(this.source);
+    const statSource = await this.byteClient.stat?.(this.source, signal);
     if (signal?.aborted) throw createAbortError("MCAP read aborted");
     if (statSource) {
       this.updateSource(statSource);

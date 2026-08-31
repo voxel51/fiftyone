@@ -146,6 +146,10 @@ export function usePlugins() {
   }, [setState]);
 
   return {
+    // Plugin metadata and JavaScript bundles must register before rendering
+    // surfaces that select plugin-provided components, such as grid renderers.
+    // Operator definitions can initialize behind those surfaces.
+    isLoadingPlugins: state === "loading",
     isLoading: state === "loading" || operatorIsLoading,
     hasError: state === "error" || operatorHasError,
     ready: state === "ready" && operatorsReady,
@@ -219,12 +223,14 @@ export {
   getMatchingSampleRenderer,
   getSampleRendererGridSlotComponent,
   getSampleRendererComponent,
+  hasSampleRendererSource,
   isSampleRendererModalPersistent,
   SAMPLE_RENDERER_GRID_SLOT,
 } from "./sample-renderer";
 export type {
   GridConfig,
   MatchMedia,
+  MediaReferenceDescriptor,
   ModalConfig,
   SampleRendererGridClickBehavior,
   SampleRendererGridSlot,

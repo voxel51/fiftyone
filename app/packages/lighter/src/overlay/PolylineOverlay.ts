@@ -4,6 +4,7 @@
 
 import {
   EDGE_THRESHOLD,
+  KEYPOINT_SELECTED_RADIUS,
   LABEL_ARCHETYPE_PRIORITY,
   PREVIEW_LINE_OPACITY,
 } from "../constants";
@@ -40,6 +41,9 @@ export interface PolylineOptions {
 }
 
 const DEFAULT_FILL_OPACITY = 0.3;
+
+/** Screen-space gap between a lone vertex's marker and its label text. */
+const SINGLE_POINT_LABEL_GAP = 4;
 
 export type SegmentEndpoint = {
   segmentIdx: number;
@@ -884,6 +888,9 @@ export class PolylineOverlay extends KeypointOverlay {
    * Renders the label text at the centroid of the polyline's points.
    * Anchoring on the centroid reads more clearly for polylines/polygons,
    * where the bounding-box corner can sit far from any actual geometry.
+   *
+   * A lone vertex is its own centroid, so the text anchors above the marker
+   * instead of covering it.
    */
   protected override renderLabelText(
     renderer: Renderer2D,
@@ -904,17 +911,29 @@ export class PolylineOverlay extends KeypointOverlay {
       return;
     }
 
-    const centroid = PolylineOverlay.computeCentroid(ctx.absPoints);
+    const single = ctx.absPoints.length === 1;
+    const scale = renderer.getScale() || 1;
+    const position = single
+      ? {
+          x: ctx.absPoints[0].x,
+          y:
+            ctx.absPoints[0].y -
+            (KEYPOINT_SELECTED_RADIUS + SINGLE_POINT_LABEL_GAP) / scale,
+        }
+      : PolylineOverlay.computeCentroid(ctx.absPoints);
 
     // `drawText` returns the absolute-space background rect; retain it for
     // hover/selection hit-testing.
     this.textBounds = renderer.drawText(
       this.label.label,
-      centroid,
+      position,
       {
         fontColor: "#ffffff",
         backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
-        anchor: { vertical: "center", horizontal: "center" },
+        anchor: {
+          vertical: single ? "bottom" : "center",
+          horizontal: "center",
+        },
       },
       this.containerId,
     );

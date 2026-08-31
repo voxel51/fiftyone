@@ -21,6 +21,7 @@ import styles from "./SettingsSidebar.module.css";
 import { TileStreamNoticeStrip } from "../../tiles/TileStreamState";
 import StreamsSettings from "./StreamsSettings";
 import TimelinePlaybackSettings from "./TimelinePlaybackSettings";
+import AudioSettings from "./AudioSettings";
 import RecordingSettings from "./RecordingSettings";
 
 type ActiveSettingsTab = "panel" | "scene" | "streams";
@@ -224,6 +225,7 @@ function GlobalSceneSettings({
     <div className={styles.root}>
       <SceneStatusStrip recordingFacts={recordingFacts} sampling={sampling} />
       <RecordingSettings facts={recordingFacts} />
+      <AudioSettings />
       <SceneWorldSettings />
       <TimelinePlaybackSettings
         onRateChange={onTimelineSamplingRateChange}

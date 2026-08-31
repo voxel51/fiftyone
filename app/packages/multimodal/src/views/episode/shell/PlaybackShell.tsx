@@ -72,7 +72,20 @@ export interface PlaybackShellProps {
    * transport buttons) — e.g. an absolute-timestamp readout. Composed
    * with the timeline's own actions, not replacing them.
    */
+  /**
+   * Clock-adjacent readout rendered beside the playhead time (the absolute
+   * UTC stamp) rather than in the trailing action run.
+   */
+  timelineReadouts?: ReactNode;
   timelineExtraActions?: ReactNode;
+
+  /**
+   * Buttons pinned to the right edge of the timeline's controls row,
+   * behind their own divider and before the drawer chevron — e.g.
+   * the timeline's own audio controls (master volume + Mixed
+   * dropdown) for a recording with audio tracks.
+   */
+  timelineTrailingActions?: ReactNode;
 
   /** Tracks broadcast through the embedded TrackProvider. */
   tracks?: Track[];
@@ -139,8 +152,12 @@ export interface PlaybackShellProps {
    * Override for the right sidebar. Defaults to {@link TilingInspectorSidebar}
    * (focused tile's selection payload as JSON). Pass `null` explicitly to
    * remove the right sidebar entirely — no drawer and no header toggle.
+   *
+   * May be a function of the drawer's open state: the `Drawer` renders its
+   * children whether open or closed (it only animates their width), so content
+   * that shouldn't do work until visible needs to know.
    */
-  rightSidebar?: ReactNode;
+  rightSidebar?: ReactNode | ((state: { open: boolean }) => ReactNode);
   /** Whether the left sidebar starts open. @default true */
   defaultLeftOpen?: boolean;
   /** Whether the right sidebar starts open. @default true */
@@ -173,6 +190,8 @@ export interface PlaybackShellProps {
    * the temporal-tag workflow is enabled in the timeline (button, `T`
    * hotkey, Shift+drag).
    */
+  /** Dataset-wide tag labels for the creation popup's dropdown. */
+  existingTags?: TemporalTagTimelineProps["existingTags"];
   onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
   onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   /** Callback that deletes an existing temporal tag by its backend id. */
@@ -231,7 +250,9 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   headerCaption,
   headerActions,
   addTileMenu,
+  timelineReadouts,
   timelineExtraActions,
+  timelineTrailingActions,
   tracks,
   defaultPinnedTrackIds,
   decorateTrack,
@@ -257,6 +278,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   mainOverlay,
   leftSidebarWidth,
   onLeftSidebarWidthChange,
+  existingTags,
   onTagCreate,
   onTagUpdate,
   onTagDelete,
@@ -293,7 +315,9 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               headerCaption={headerCaption}
               headerActions={headerActions}
               addTileMenu={addTileMenu}
+              timelineReadouts={timelineReadouts}
               timelineExtraActions={timelineExtraActions}
+              timelineTrailingActions={timelineTrailingActions}
               leftSidebar={leftSidebar}
               rightSidebar={rightSidebar}
               deselectFocusedTileOnRepeatSelect={
@@ -306,6 +330,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               mainOverlay={mainOverlay}
               leftSidebarWidth={leftSidebarWidth}
               onLeftSidebarWidthChange={onLeftSidebarWidthChange}
+              existingTags={existingTags}
               onTagCreate={onTagCreate}
               onTagUpdate={onTagUpdate}
               onTagDelete={onTagDelete}
@@ -330,9 +355,15 @@ interface LayoutProps {
   headerCaption?: TilingHeaderCaption;
   headerActions?: ReactNode;
   addTileMenu?: ReactNode;
+  /**
+   * Clock-adjacent readout rendered beside the playhead time (the absolute
+   * UTC stamp) rather than in the trailing action run.
+   */
+  timelineReadouts?: ReactNode;
   timelineExtraActions?: ReactNode;
+  timelineTrailingActions?: ReactNode;
   leftSidebar: ReactNode;
-  rightSidebar: ReactNode;
+  rightSidebar: ReactNode | ((state: { open: boolean }) => ReactNode);
   deselectFocusedTileOnRepeatSelect: boolean;
   defaultLeftOpen: boolean;
   defaultRightOpen: boolean;
@@ -341,6 +372,8 @@ interface LayoutProps {
   mainOverlay?: ReactNode;
   leftSidebarWidth?: number;
   onLeftSidebarWidthChange?: (px: number) => void;
+  /** Dataset-wide tag labels for the creation popup's dropdown. */
+  existingTags?: PlaybackShellProps["existingTags"];
   onTagCreate?: PlaybackShellProps["onTagCreate"];
   onTagUpdate?: PlaybackShellProps["onTagUpdate"];
   onTagDelete?: PlaybackShellProps["onTagDelete"];
@@ -358,7 +391,9 @@ function Layout({
   headerCaption,
   headerActions,
   addTileMenu,
+  timelineReadouts,
   timelineExtraActions,
+  timelineTrailingActions,
   leftSidebar,
   rightSidebar,
   deselectFocusedTileOnRepeatSelect,
@@ -369,6 +404,7 @@ function Layout({
   mainOverlay,
   leftSidebarWidth,
   onLeftSidebarWidthChange,
+  existingTags,
   onTagCreate,
   onTagUpdate,
   onTagDelete,
@@ -575,7 +611,9 @@ function Layout({
               className={styles.sidebarPane}
               style={{ width: SIDEBAR_SIZE_PX }}
             >
-              {rightSidebar}
+              {typeof rightSidebar === "function"
+                ? rightSidebar({ open: rightOpen })
+                : rightSidebar}
             </div>
           </Drawer>
         ) : null}
@@ -585,8 +623,11 @@ function Layout({
         drawerOpen={timelineTracksOpen}
         maxSize={timelineDrawerMaxSize}
         onDrawerOpenChange={updateTimelineTracksOpen}
+        trailingActions={timelineTrailingActions}
         decorateTrack={decorateTrack}
+        readouts={timelineReadouts}
         extraActions={timelineExtraActions}
+        existingTags={existingTags}
         onTagCreate={onTagCreate}
         onTagUpdate={onTagUpdate}
         eventMenuItems={

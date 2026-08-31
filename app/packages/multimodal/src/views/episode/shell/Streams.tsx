@@ -19,6 +19,7 @@ import { LocationTracksBridge } from "../map/tracks/context";
 import { NumericSeriesBridge } from "../plots/numeric-series-context";
 import { PoseTrajectoriesStartupGate } from "../scene/entities/pose-trajectories-context";
 import { RawMessageBridge } from "../raw/raw-message-context";
+import { StateActionBridge } from "../state-action/state-action-context";
 import { SceneUpdateHistoryBridge } from "../scene/entities/scene-update-history-context";
 import { useDataStream } from "../playback/data-stream-context";
 import { useFrameTransforms } from "../spatial/frame-transforms/use-frame-transforms";
@@ -74,6 +75,7 @@ export function Streams({
     fullHistoryStreams.get("scene-update") ?? EMPTY_STREAMS;
   const numericSeries = session?.numericSeries ?? null;
   const rawRecords = session?.rawRecords ?? null;
+  const stateAction = session?.stateAction ?? null;
   const transformRead = useMemo(
     () => (session ? createEpisodeTransformReadRuntime(session) : null),
     [session],
@@ -126,10 +128,39 @@ export function Streams({
             s.type !== SCENE_SOURCE_TYPE.CAMERA_CALIBRATION &&
             s.type !== SCENE_SOURCE_TYPE.POSE &&
             s.type !== SCENE_SOURCE_TYPE.LOCATION &&
-            s.type !== SCENE_SOURCE_TYPE.LOG,
+            s.type !== SCENE_SOURCE_TYPE.LOG &&
+            // `useMcapAudioStream` reads outside this buffered-read system:
+            // it needs a runway of contiguous samples ahead of the playhead
+            // to keep its ring fed, which point-in-time frame selection
+            // cannot provide. So an audio source never "covers the playhead"
+            // from this system's perspective — counting it as blocking here
+            // means `onPlayheadDataReady` (which clears the poster
+            // /"Preparing viewer" overlay) never fires for an audio-only
+            // recording.
+            s.type !== SCENE_SOURCE_TYPE.AUDIO,
         )
         .map((s) => s.id),
     [sources],
+  );
+  const firstUsefulSettlementStreams = useMemo(
+    () =>
+      sources
+        .filter((source) => source.type === SCENE_SOURCE_TYPE.IMAGE)
+        .map((source) => source.id),
+    [sources],
+  );
+  const settlementPriorityStreams = useMemo(
+    () => [
+      ...firstUsefulSettlementStreams,
+      ...blockingStreams.filter(
+        (stream) =>
+          !sources.some(
+            (source) =>
+              source.id === stream && source.type === SCENE_SOURCE_TYPE.IMAGE,
+          ),
+      ),
+    ],
+    [blockingStreams, firstUsefulSettlementStreams, sources],
   );
   const poseStreams = useMemo(
     () =>
@@ -167,8 +198,10 @@ export function Streams({
   useRegisterDataStream({
     blockingStreams,
     endBoundedStreams,
+    firstUsefulSettlementStreams,
     initialSeekTimeNs,
     onPlayheadDataReady,
+    settlementPriorityStreams,
     session,
     source,
     allStreams,
@@ -204,6 +237,7 @@ export function Streams({
       />
       <NumericSeriesBridge capability={numericSeries} sourceKey={sourceKey} />
       <RawMessageBridge capability={rawRecords} sourceKey={sourceKey} />
+      <StateActionBridge capability={stateAction} sourceKey={sourceKey} />
     </>
   );
 }

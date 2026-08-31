@@ -24,6 +24,7 @@ import type {
   EpisodeTransformTopologyEdgeObservation,
   EpisodeTransformTopologyFrameUse,
 } from "../ir";
+import type { StateActionCapability } from "./state-action";
 
 /** Four proven scheduling lanes exposed by every episode session. */
 export type ReadPriority = "bulk" | "current" | "idle" | "playback";
@@ -271,11 +272,40 @@ export interface TransformPlacementReadResult {
   readonly samples: readonly TransformSample[];
 }
 
+/** One authoritative stream result within a synchronized presentation read. */
+export interface SynchronizedStreamSettlement {
+  /** The only stream whose ownership is settled by this window. */
+  readonly stream: StreamId;
+  /** Authoritative payload, empty result, or diagnostics for `stream`. */
+  readonly window: SynchronizedFrameWindow;
+}
+
 /** One synchronized playback read around a single presentation time. */
 export interface SynchronizedPlaybackReadRequest {
   readonly defaultStreamPolicy?: StreamSyncPolicy;
+  /** Streams eligible for the first independently useful settlement. */
+  readonly firstUsefulSettlementStreams?: readonly StreamId[];
+  /**
+   * Receives ordered, authoritative per-stream ownership settlements.
+   * Adapters may also report the same settlement through
+   * `onStreamSettlements`, so consumers registering both must be idempotent.
+   */
+  readonly onStreamSettlement?: (
+    settlement: SynchronizedStreamSettlement,
+  ) => void;
+  /**
+   * Receives one ordered transport delivery group. Every member remains an
+   * independent authoritative stream settlement; the group lets consumers
+   * publish simultaneously available presentation surfaces in one store turn.
+   * Members may also be reported through `onStreamSettlement` when registered.
+   */
+  readonly onStreamSettlements?: (
+    settlements: readonly SynchronizedStreamSettlement[],
+  ) => void;
   /** Active point-cloud color source requested per stream. */
   readonly pointCloudColorBy?: Readonly<Record<StreamId, string>>;
+  /** Stable presentation order for streams that gate current-tick readiness. */
+  readonly settlementPriorityStreams?: readonly StreamId[];
   readonly streamPolicies?: StreamSyncPolicies;
   readonly streams: readonly StreamId[];
   readonly signal?: AbortSignal;
@@ -368,10 +398,11 @@ export interface NumericSeriesSliceSelection {
 export interface NumericSeriesSliceRequest {
   readonly absoluteBudget: ReadWorkBudget;
   readonly absoluteMaxChunks: number;
+  /** Absolute-time-aligned aggregate resolution requested by the viewport. */
+  readonly bucketDurationNs: bigint;
   readonly budget: ReadWorkBudget;
   readonly continuation?: ReadContinuation;
   readonly maxChunks: number;
-  readonly maxPointsPerField?: number;
   readonly preferredTimeNs?: bigint;
   readonly selections: readonly NumericSeriesSliceSelection[];
   readonly signal?: AbortSignal;
@@ -382,6 +413,8 @@ export interface NumericSeriesSliceRequest {
 export interface NumericSeriesSliceResult {
   readonly continuation?: ReadContinuation;
   readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
+  /** Earliest timestamp not yet inspected by a chronological continuation. */
+  readonly resumeAtNs?: bigint;
   /** Exact unreadable source spans, distinct from successfully inspected coverage. */
   readonly unavailableByStream?: ReadonlyMap<StreamId, readonly TimeWindow[]>;
   readonly series: readonly NumericSeriesResult[];
@@ -403,6 +436,12 @@ export interface RawRecordCapability {
      */
     readonly intent?: "background" | "paused-inspection" | "export";
     readonly prune?: RawRecordPruneBudgets;
+    /**
+     * Selects whether the adapter should decode the record body or return only
+     * message metadata. Metadata reads are intended for callers such as size
+     * estimators that only need payload byte counts.
+     */
+    readonly select?: "metadata" | "record";
     readonly signal?: AbortSignal;
     readonly stream: StreamId;
     readonly timestampNs: bigint;
@@ -456,6 +495,7 @@ export interface EpisodeSession {
   readonly playback?: PlaybackReadCapability;
   readonly pointCloudProjection?: PointCloudProjectionCapability;
   readonly rawRecords?: RawRecordCapability;
+  readonly stateAction?: StateActionCapability;
   readonly synchronizedRead?: SynchronizedReadAcceleration;
   readonly terminology?: EpisodeTerminology;
   readonly transformRead?: TransformReadAcceleration;

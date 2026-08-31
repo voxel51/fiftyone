@@ -5,11 +5,17 @@ import type {
   EpisodePosterFrame,
   TimeWindow,
 } from "../ir";
+import { getEpisodeTimeRange } from "./episode-time-range-registry";
 import {
   getSourceBootstrap,
   getSourceBootstrapSnapshot,
+  getSourceSessionHints,
   peekSourceBootstrap,
+  publishCurrentSourceFacts,
+  publishDurableSourceFacts,
+  publishEpisodePreviewBootstrap,
   publishSourceBootstrap,
+  retractDurableSourceFacts,
   resetSourceBootstrapCacheForTests,
   subscribeSourceBootstrap,
 } from "./source-bootstrap-cache";
@@ -41,15 +47,15 @@ describe("source bootstrap cache", () => {
     const first = createSource("source-0");
     publishSourceBootstrap(first, { manifest: createManifest("first") });
 
-    for (let index = 1; index <= 32; index++) {
+    for (let index = 1; index <= 64; index++) {
       publishSourceBootstrap(createSource(`source-${index}`), {
         manifest: createManifest(`topic-${index}`),
       });
     }
 
     expect(getSourceBootstrap(first)).toBeNull();
-    expect(getSourceBootstrap(createSource("source-32"))?.manifest).toEqual(
-      createManifest("topic-32"),
+    expect(getSourceBootstrap(createSource("source-64"))?.manifest).toEqual(
+      createManifest("topic-64"),
     );
   });
 
@@ -63,7 +69,7 @@ describe("source bootstrap cache", () => {
       notified++;
     });
 
-    for (let index = 1; index <= 32; index++) {
+    for (let index = 1; index <= 64; index++) {
       publishSourceBootstrap(createSource(`source-${index}`), {
         manifest: createManifest(`topic-${index}`),
       });
@@ -93,6 +99,73 @@ describe("source bootstrap cache", () => {
     });
   });
 
+  it("publishes the timeline-derived range into the bootstrap cache", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("timeline-range");
+    const timeline = {
+      endNs: 30n,
+      startNs: 10n,
+      timeDomainId: "recording",
+    } as const;
+
+    publishEpisodePreviewBootstrap(source, {
+      bootstrapTimeline: timeline,
+      frame: null,
+      status: "ready",
+      streamId: null,
+      streamSourceName: null,
+      streamSourceNames: [],
+    });
+
+    expect(peekSourceBootstrap(source)?.timeRange).toEqual({
+      endNs: 30n,
+      startNs: 10n,
+    });
+    expect(peekSourceBootstrap(source)?.timeline).toBe(timeline);
+    expect(peekSourceBootstrap(source)?.previewReadComplete).toBe(true);
+    expect(getEpisodeTimeRange(source.sourceId)).toEqual({
+      endNs: 30n,
+      startNs: 10n,
+    });
+  });
+
+  it("retains a bounded marker for a completed posterless preview", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("posterless");
+
+    publishEpisodePreviewBootstrap(source, {
+      frame: null,
+      status: "empty",
+      streamId: null,
+      streamSourceName: null,
+      streamSourceNames: [],
+    });
+
+    expect(peekSourceBootstrap(source)).toEqual({
+      previewReadComplete: true,
+    });
+  });
+
+  it("publishes the explicit preview range when no timeline is available", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("explicit-preview-range");
+    const timeRange = createTimeRange();
+
+    publishEpisodePreviewBootstrap(source, {
+      bootstrapTimeRange: timeRange,
+      frame: null,
+      status: "ready",
+      streamId: null,
+      streamSourceName: null,
+      streamSourceNames: [],
+    });
+
+    expect(peekSourceBootstrap(source)).toEqual({
+      previewReadComplete: true,
+      timeRange,
+    });
+  });
+
   it("does not reuse bootstrap facts after the source validator changes", () => {
     resetSourceBootstrapCacheForTests();
     const initial = createSource("rewritten", "etag-a");
@@ -105,6 +178,169 @@ describe("source bootstrap cache", () => {
     ).toEqual(createManifest("initial"));
     expect(peekSourceBootstrap(replacement)).toBeNull();
   });
+
+  it("shows provisional durable facts to the UI but never to the adapter", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("provisional");
+    const manifest = createManifest("/camera");
+
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest },
+      trust: "provisional",
+    });
+    publishSourceBootstrap(source, { poster: createPoster([1]) });
+
+    expect(peekSourceBootstrap(source)?.manifest).toBe(manifest);
+    expect(getSourceSessionHints(source, "mcap")).toBeNull();
+  });
+
+  it("drops the provisional lane when a partial live fact is published", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("partial-current");
+    const timeRange = createTimeRange();
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest: createManifest("stale") },
+      trust: "provisional",
+    });
+
+    publishSourceBootstrap(source, { timeRange });
+
+    expect(peekSourceBootstrap(source)).toEqual({ timeRange });
+    expect(getSourceSessionHints(source, "mcap")).toBeNull();
+  });
+
+  it("replaces validated durable hints with authoritative current facts", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("authoritative-current");
+    const durableManifest = createManifest("durable", "log");
+    const currentManifest = createManifest("current", "log");
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest: durableManifest },
+      trust: "validated",
+    });
+
+    publishCurrentSourceFacts(source, { manifest: currentManifest });
+
+    expect(getSourceSessionHints(source, "mcap")).toEqual({
+      manifestHint: currentManifest,
+    });
+    expect(peekSourceBootstrap(source)?.manifest).toBe(currentManifest);
+  });
+
+  it("retains canonical LeRobot catalog and recording facts in current hints", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("lerobot-current");
+    const base = createManifest("lerobot:action", "episode");
+    const manifest: EpisodeManifest = {
+      ...base,
+      recordingFacts: {
+        durationNs: "1000000000",
+        format: "lerobot",
+        lerobot: {
+          codebaseVersion: "v3.0",
+          episodeIndex: "4",
+          featureCount: 8,
+          fps: 30,
+          logicalRowCount: 30,
+          mediaFeatureCount: 2,
+          robotType: "so101",
+          taskLabels: ["pick up cube"],
+          videoCodecs: ["h264"],
+        },
+      },
+      streams: base.streams.map((stream) => ({
+        ...stream,
+        metadata: {
+          "stream.category": "actions",
+          "stream.count_noun": "samples",
+          "stream.inspectable": "true",
+        },
+      })),
+    };
+
+    publishSourceBootstrap(source, { manifest });
+
+    expect(getSourceSessionHints(source, "lerobot-v3")).toEqual({
+      manifestHint: manifest,
+    });
+  });
+
+  it("uses validated durable hints only for their adapter", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("validated");
+    const manifest = createManifest("/camera", "log");
+    const timeline = {
+      endNs: 30n,
+      startNs: 10n,
+      timeDomainId: "log",
+    } as const;
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest, timeline },
+      trust: "validated",
+    });
+
+    expect(getSourceSessionHints(source, "mcap")).toEqual({
+      manifestHint: manifest,
+      playbackHint: timeline,
+    });
+    expect(getSourceSessionHints(source, "fixture")).toBeNull();
+  });
+
+  it("never treats a non-log MCAP timeline as a playback hint", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("publish-time");
+    const manifest = createManifest("/camera", "publish");
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: {
+        manifest,
+        timeline: {
+          endNs: 20n,
+          startNs: 10n,
+          timeDomainId: "publish",
+        },
+      },
+      trust: "validated",
+    });
+
+    expect(getSourceSessionHints(source, "mcap")).toEqual({
+      manifestHint: manifest,
+    });
+  });
+
+  it("does not publish durable hydration into the grid time-range registry", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("durable-grid-range");
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { timeRange: createTimeRange() },
+      trust: "provisional",
+    });
+
+    expect(getEpisodeTimeRange(source.sourceId)).toBeNull();
+  });
+
+  it("retracts only the durable lane produced by the expected disk read", () => {
+    resetSourceBootstrapCacheForTests();
+    const source = createSource("retracted-durable");
+    const revision = {};
+    publishDurableSourceFacts(source, {
+      adapterId: "mcap",
+      facts: { manifest: createManifest("stale") },
+      revision,
+      trust: "provisional",
+    });
+
+    retractDurableSourceFacts(source, {});
+    expect(peekSourceBootstrap(source)?.manifest).toBeDefined();
+
+    retractDurableSourceFacts(source, revision);
+    expect(peekSourceBootstrap(source)).toBeNull();
+  });
 });
 
 function createTimeRange(): TimeWindow {
@@ -115,7 +351,10 @@ function createSource(sourceId: string, etag?: string): ByteSourceDescriptor {
   return { sourceId, url: `memory://${sourceId}.mcap`, etag };
 }
 
-function createManifest(streamId: string): EpisodeManifest {
+function createManifest(
+  streamId: string,
+  timeDomainId = "recording",
+): EpisodeManifest {
   return {
     episodeId: "episode",
     streams: [
@@ -127,7 +366,7 @@ function createManifest(streamId: string): EpisodeManifest {
         timeRange: createTimeRange(),
       },
     ],
-    timeDomain: { id: "recording", kind: "timestamp" },
+    timeDomain: { id: timeDomainId, kind: "timestamp" },
     timeRange: createTimeRange(),
   };
 }

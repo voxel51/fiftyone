@@ -24,9 +24,9 @@ jobs:
           - windows-x86_64
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up Python 3.13
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Install dependencies
@@ -84,7 +84,7 @@ jobs:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Download fiftyone-db
         id: download-fiftyone-db
         uses: actions/download-artifact@v8
@@ -93,7 +93,7 @@ jobs:
           path: downloads
         background: true
       - name: Set up Python 3.13
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Wait for fiftyone-db

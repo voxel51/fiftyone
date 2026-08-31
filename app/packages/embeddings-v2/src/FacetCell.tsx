@@ -67,6 +67,9 @@ export interface FacetCellProps {
   /** Shared hover state; the card shows only when the hovered point is a
    * member of this cell */
   hover: HoverContent | null;
+  /** The live hovered hit — rings the point instantly, ahead of the card's
+   * dwell. Optional so extension-rendered cells opt in when ready. */
+  hoverHit?: HoverHit | null;
 }
 
 export default function FacetCell({
@@ -90,6 +93,7 @@ export default function FacetCell({
   hoverAction,
   registerChart,
   hover,
+  hoverHit = null,
 }: FacetCellProps) {
   const sceneRef = useRef<HTMLDivElement>(null);
   const setChart = useCallback(
@@ -99,6 +103,8 @@ export default function FacetCell({
 
   const label = [rowLabel, colLabel].filter((v) => v !== null).join(" · ");
   const showHover = hover != null && visible[hover.hit.index] === 1;
+  // Same membership rule as the card: a point rings only in its own cell
+  const showRing = hoverHit != null && visible[hoverHit.index] === 1;
 
   return (
     <div className="emb-facet-cell">
@@ -136,6 +142,12 @@ export default function FacetCell({
           onError={onError}
           onHover={onHover}
         />
+        {showRing && hoverHit && (
+          <span
+            className="emb-hover-ring"
+            style={{ left: hoverHit.x, top: hoverHit.y }}
+          />
+        )}
         {showHover && (
           <HoverCard
             content={hover}
