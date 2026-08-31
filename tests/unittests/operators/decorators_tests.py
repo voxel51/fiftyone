@@ -152,15 +152,26 @@ class TestCoroutineTimeoutDecorator(unittest.TestCase):
             asyncio.run(decorated_function())
 
 
+@unittest.skipUnless(
+    hasattr(signal, "SIGALRM"),
+    "timeout() is built on SIGALRM/ITIMER_REAL, which Windows has no "
+    "equivalent of",
+)
 class TestTimeoutContextManager(unittest.TestCase):
     # Every test disarms the shared ITIMER_REAL timer and restores the
     # handler it found, so no test can leak an armed timer into another
     def setUp(self):
         self._prev_handler = signal.getsignal(signal.SIGALRM)
+        # pytest-timeout arms ITIMER_REAL for the length of the test, and
+        # timeout() faithfully restores whatever it displaced -- so without
+        # this the assertions below read that timer rather than this one
+        self._prev_timer = signal.setitimer(signal.ITIMER_REAL, 0)
 
     def tearDown(self):
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, self._prev_handler)
+        if self._prev_timer[0]:
+            signal.setitimer(signal.ITIMER_REAL, *self._prev_timer)
 
     def test_prior_sigalrm_handler_is_restored_and_no_timer_is_pending(self):
         # The context manager must hand the process back exactly as it found
