@@ -1,15 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-vi.mock("recoil");
-vi.mock("recoil-relay");
-vi.mock("../recoil/atoms", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../recoil/atoms")>()),
+// An explicit factory, NOT importOriginal: the real atoms module reaches this
+// hook again through the package barrel, and loading it here instantiates the
+// hook against the unmocked module before the mock can take effect
+vi.mock("../recoil/atoms", () => ({
   clearExtendedSelectionMirror: vi.fn(),
-  // Distinct sentinels: with recoil auto-mocked the real atoms evaluate to
-  // undefined, and both reset assertions below would match one call
-  extendedSelection: { key: "extendedSelection" } as never,
-  extendedSelectionOverrideStage: {
-    key: "extendedSelectionOverrideStage",
-  } as never,
+  // Distinct sentinels, so the two reset assertions below cannot both match
+  // one call
+  extendedSelection: { key: "extendedSelection" },
+  extendedSelectionOverrideStage: { key: "extendedSelectionOverrideStage" },
 }));
 
 import {
