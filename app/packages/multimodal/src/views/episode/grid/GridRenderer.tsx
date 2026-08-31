@@ -58,6 +58,7 @@ import {
   useGridPosterProviderDescriptor,
   useProvidedGridPoster,
 } from "./use-grid-poster-provider";
+import { useHydratedSourceFacts } from "./use-hydrated-source-facts";
 import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
 
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
@@ -211,6 +212,15 @@ export function GridRenderer({
     freshness,
     hovered,
     sourceId: source?.sourceId ?? null,
+    visible,
+  });
+  useHydratedSourceFacts({
+    // A provider-answered tile skips the preview session exactly like a cache
+    // hit, so it needs the same facts republish
+    cachedPoster: effectivePoster,
+    previewSessionDemand,
+    source,
+    sourceFactsScope,
     visible,
   });
   const gridVideoPlayback = useGridVideoPlayback(source?.sourceId ?? null);

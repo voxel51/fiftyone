@@ -27,8 +27,16 @@ const cacheHarness = vi.hoisted(() => {
   };
 });
 
+// The error class rides along: production code constructs it, and a factory
+// without it dies on `undefined` the moment a test reaches that path
 vi.mock("./image-texture-cache", () => ({
   acquireImageTexture: cacheHarness.acquire,
+  ImageTextureDecodeCancelledError: class extends Error {
+    constructor() {
+      super("image texture decode cancelled");
+      this.name = "ImageTextureDecodeCancelledError";
+    }
+  },
 }));
 
 interface TestLease {
@@ -152,6 +160,10 @@ describe("useImageTextureLease", () => {
     await waitFor(() =>
       expect(rendered.result.current.handle).toBe(secondHandle),
     );
+    // The retire chain is scheduled by a passive effect that can trail the
+    // commit the waitFor above observed, and the decode can queue a frame of
+    // its own: wait for a frame to exist and drain whatever is queued, rather
+    // than pinning a count the scheduling order does not guarantee
     await waitFor(() =>
       expect(animationFrames.length).toBeGreaterThanOrEqual(1),
     );
