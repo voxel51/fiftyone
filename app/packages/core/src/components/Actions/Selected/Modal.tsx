@@ -1,5 +1,6 @@
 import type { Lookers } from "@fiftyone/looker";
 import { VideoLooker } from "@fiftyone/looker";
+import { useRequestPlaybackPause } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
 import { useCallback, useLayoutEffect } from "react";
@@ -40,15 +41,23 @@ export default ({
   const isRoot = useRecoilValue(fos.isRootView);
   const isVideo = useRecoilValue(fos.isVideoDataset) && isRoot;
   const lighterFrameLabels = useVisibleFrameLabels();
+  const requestPlaybackPause = useRequestPlaybackPause();
   const visibleFrameLabels =
     lookerRef?.current instanceof VideoLooker
       ? lookerRef.current.getCurrentFrameLabels()
       : lighterFrameLabels;
 
+  // Freeze the frame while the menu is open: "select visible labels in this
+  // frame" is meaningless if the frame advances underneath the choice. The
+  // looker path pauses itself; the timeline surface publishes its `pause`
+  // through an atom because this menu renders outside its provider.
   useLayoutEffect(() => {
-    lookerRef?.current instanceof VideoLooker &&
-      lookerRef.current.pause &&
-      lookerRef.current.pause();
+    if (lookerRef?.current instanceof VideoLooker) {
+      lookerRef.current.pause?.();
+      return;
+    }
+
+    requestPlaybackPause();
   });
 
   fos.useEventHandler(lookerRef?.current, "play", close);

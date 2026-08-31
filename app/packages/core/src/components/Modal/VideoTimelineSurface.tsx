@@ -104,7 +104,34 @@ export interface VideoTimelineSurfaceProps {
  *
  * Tiling belongs to the *group* case, which this file does not cover: there,
  * the same timeline gains a mosaic with one tile per selected video slice,
- * all driven by this same clock.
+ * all driven by this same clock. Groups render one slice at a time today
+ * (`GroupImageVideoSample` mounts a single `ModalLooker` for the active
+ * slice), so that is an addition rather than a regression.
+ *
+ * ## Parity with `VideoLookerReact`
+ *
+ * This surface replaced the looker unconditionally, so what the looker bound
+ * and this does not is a real gap for users, not a theoretical one. Ported:
+ * play/pause (`Space`), frame stepping (the looker's `<` / `>`, rebound to
+ * `,` / `.` to match the rest of the app), zoom (`+` / `-` and scroll), and
+ * the JSON and help panels, which moved from looker controls to
+ * `VideoExploreToolbar`. Everything this surface binds is listed in that
+ * toolbar's `HELP_ITEMS`.
+ *
+ * NOT ported, each from the looker's `VIDEO_SHORTCUTS` / `COMMON_SHORTCUTS`:
+ *
+ * - `m` mute / unmute. Audio moved to the timeline's own volume control, so
+ *   the capability exists; only the keyboard binding is missing.
+ * - `0`-`9` seek to 0%, 10%, … of the duration.
+ * - `l` support lock — toggling the lock on a sample's support frames. The
+ *   support-frame concept has no equivalent on this surface at all.
+ * - `z` crop to content. The toolbar's Fit is `resetZoom`, not this.
+ * - `p` the settings / options panel.
+ * - `c` toggle the controls row.
+ * - Holding `shift` to hide overlays (`toggleOverlays`).
+ *
+ * Per-frame label types are NO LONGER a gap: detections, polylines, keypoints
+ * and classifications all render (see `framesData`'s `ELEMENT_CLS`).
  */
 export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   sample,

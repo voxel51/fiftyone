@@ -26,8 +26,42 @@ const HelpIcon: React.FC = () => <Icon name={IconName.Info} />;
  * What this surface actually binds. Deliberately not the looker's
  * `VIDEO_SHORTCUTS`: none of those are registered here, and listing them
  * would advertise keys that do nothing. Grows as bindings are ported.
+ *
+ * The keyboard entries mirror two registration sites, so they have to be kept
+ * in step by hand: `TimelineControls` registers space / `.` / `,` into the
+ * modal context, and `useVideoExploreKeybindings` registers the zoom pair.
+ * Both are covered by tests that assert the bindings match the characters a
+ * layout actually produces — this list is the only place a user can discover
+ * them.
  */
 const HELP_ITEMS = [
+  {
+    shortcut: "Space",
+    title: "Play / Pause",
+    detail: "Toggle playback",
+  },
+  {
+    shortcut: ".",
+    title: "Step forward",
+    detail: "Advance one frame",
+  },
+  {
+    shortcut: ",",
+    title: "Step back",
+    detail: "Go back one frame",
+  },
+  {
+    // Both characters are bound, shifted or not, so the layout that puts
+    // "+" on its own key works the same as the one that shifts "=".
+    shortcut: "+ / =",
+    title: "Zoom in",
+    detail: "Zoom into the video and its labels",
+  },
+  {
+    shortcut: "- / _",
+    title: "Zoom out",
+    detail: "Zoom out of the video and its labels",
+  },
   {
     shortcut: "Scroll",
     title: "Zoom",

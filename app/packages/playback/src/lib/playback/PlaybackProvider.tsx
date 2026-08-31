@@ -12,6 +12,7 @@ import type {
   PlaybackContextValue,
   TimelineMode,
 } from "./types";
+import { usePublishPauseHandle } from "./pause-handle";
 import { useDuration, useStepInterval } from "./use-playback-state";
 import { usePlaybackEngine } from "./use-playback-engine";
 
@@ -122,6 +123,11 @@ function PlaybackContextHost({
 }) {
   const liveDuration = useDuration();
   const liveStepInterval = useStepInterval();
+
+  // Reachable from outside this provider — the modal's action bar is a
+  // sibling of the media container, not a descendant. See `pause-handle`.
+  usePublishPauseHandle(baseContext.pause);
+
   const value = useMemo<PlaybackContextValue>(
     () => ({
       ...baseContext,

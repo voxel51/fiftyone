@@ -7,6 +7,10 @@ export * from "./src/lib/timeline/use-timeline";
 export * from "./src/lib/timeline/use-timeline-viz-utils";
 export * from "./src/lib/timeline/utils";
 export * from "./src/lib/playback/PlaybackProvider";
+export {
+  usePublishPauseHandle,
+  useRequestPlaybackPause,
+} from "./src/lib/playback/pause-handle";
 export * from "./src/lib/playback/playback-store-context";
 export * from "./src/lib/playback/use-playback-state";
 export * from "./src/lib/playback/use-stream";
