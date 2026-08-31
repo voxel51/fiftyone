@@ -71,7 +71,7 @@ import { SceneUpdateHistoryProvider } from "../scene/entities/scene-update-histo
 import { SelectionHotkeys } from "../interaction/selection/selected-object";
 import AddTileMenu from "./AddTileMenu";
 import { tileTypesFor, getTileDefinition } from "./tile-catalog";
-import RightSidebar from "./RightSidebar";
+import RightSidebarWithTrays from "./RightSidebarWithTrays";
 import styles from "./ModalRenderer.module.css";
 import { NetworkHealthTracker, NetworkStatusPill } from "./NetworkStatus";
 import { FullHistoryInterestsProvider } from "../playback/full-history-interests";
@@ -125,6 +125,15 @@ type PosterImage = Extract<
 export interface SourcePlaybackProps {
   readonly cameraPreferenceField?: string;
   readonly children?: React.ReactNode;
+  /**
+   * Override for the right sidebar, forwarded to the playback shell. Defaults
+   * to {@link RightSidebarWithTrays}. A surface that shouldn't host trays —
+   * the grid-surface MCAP Explorer, which plays a local file with no dataset
+   * sample behind it — passes the plain {@link RightSidebar} instead.
+   */
+  readonly rightSidebar?:
+    | React.ReactNode
+    | ((state: { open: boolean }) => React.ReactNode);
   readonly session: EpisodeSession | null;
   readonly sessionError?: string | null;
   /** Track ids to start pinned to the timeline (e.g. from a grid tag filter). */
@@ -188,6 +197,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   onTagDelete,
   onTimelineDrawerOpenChange,
   timelineDrawerMaxSize,
+  rightSidebar,
   session,
   sessionError = null,
   source,
@@ -680,7 +690,18 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                       />
                                     ) : null
                                   }
-                                  rightSidebar={<RightSidebar />}
+                                  rightSidebar={
+                                    // `null` explicitly removes the sidebar,
+                                    // so only an absent prop takes the
+                                    // default.
+                                    rightSidebar === undefined
+                                      ? ({ open }) => (
+                                          <RightSidebarWithTrays
+                                            sidebarOpen={open}
+                                          />
+                                        )
+                                      : rightSidebar
+                                  }
                                   sharedImageWebGpuViews
                                   defaultRightOpen={false}
                                   defaultLeftOpen={defaultLeftOpen}

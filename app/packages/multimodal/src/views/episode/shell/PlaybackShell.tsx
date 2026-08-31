@@ -152,8 +152,12 @@ export interface PlaybackShellProps {
    * Override for the right sidebar. Defaults to {@link TilingInspectorSidebar}
    * (focused tile's selection payload as JSON). Pass `null` explicitly to
    * remove the right sidebar entirely — no drawer and no header toggle.
+   *
+   * May be a function of the drawer's open state: the `Drawer` renders its
+   * children whether open or closed (it only animates their width), so content
+   * that shouldn't do work until visible needs to know.
    */
-  rightSidebar?: ReactNode;
+  rightSidebar?: ReactNode | ((state: { open: boolean }) => ReactNode);
   /** Whether the left sidebar starts open. @default true */
   defaultLeftOpen?: boolean;
   /** Whether the right sidebar starts open. @default true */
@@ -359,7 +363,7 @@ interface LayoutProps {
   timelineExtraActions?: ReactNode;
   timelineTrailingActions?: ReactNode;
   leftSidebar: ReactNode;
-  rightSidebar: ReactNode;
+  rightSidebar: ReactNode | ((state: { open: boolean }) => ReactNode);
   deselectFocusedTileOnRepeatSelect: boolean;
   defaultLeftOpen: boolean;
   defaultRightOpen: boolean;
@@ -607,7 +611,9 @@ function Layout({
               className={styles.sidebarPane}
               style={{ width: SIDEBAR_SIZE_PX }}
             >
-              {rightSidebar}
+              {typeof rightSidebar === "function"
+                ? rightSidebar({ open: rightOpen })
+                : rightSidebar}
             </div>
           </Drawer>
         ) : null}

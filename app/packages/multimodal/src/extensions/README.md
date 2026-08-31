@@ -13,3 +13,12 @@ through this boundary.
 The grid-poster extension supplies optional precomputed raster posters. The
 shared grid stays on its memory, IndexedDB, and live-preview tiers until a
 product entrypoint registers a provider through this boundary.
+
+The sidebar tray extension registers content into the episode right sidebar,
+below its tab shell. A tray takes no props: whether a surface hosts trays at
+all is decided where that surface builds its sidebar, so a tray never has to
+interpret facts about where it ended up.
+
+A registry may opt into a `replace` duplicate-id policy when its registration
+module is evaluated by a bundler that gives it no disposal hook. Ordering stays
+`order`-driven regardless, so replacement never changes placement.
