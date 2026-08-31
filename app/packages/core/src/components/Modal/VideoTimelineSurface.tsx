@@ -179,8 +179,16 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
     [frameRate],
   );
 
+  // `PlaybackProvider` only resolves `mode` at mount — a later prop change
+  // without a remount would leave the engine's clock domain and fallback
+  // `stepInterval` on the first sample's mode. Keying on the resolved mode
+  // (kind + fps) forces the remount switching samples needs while staying
+  // stable across renders that don't change it.
+  const playbackKey =
+    mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
+
   return (
-    <PlaybackProvider mode={mode} defaultDisplay="duration">
+    <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
       {/* Hydrates the frame labels onto the tile's Lighter scene. A SIBLING
           of `RegisterFrameLabels`, not a child — that component swaps its
           wrapper when duration lands, which would remount the store. */}

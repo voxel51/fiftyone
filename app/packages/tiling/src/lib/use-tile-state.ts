@@ -34,7 +34,7 @@ function useScopedTileKey(tileId: string | null): string {
 // first (same quirk documented in @fiftyone/playback's atoms.ts). The
 // cast preserves the writable shape so `useSetAtom` type-checks.
 const tileHeaderExtraAtom = atomFamily(
-  (_tileId: string) => atom<ReactNode>(null) as PrimitiveAtom<ReactNode>,
+  (_scopedKey: string) => atom<ReactNode>(null) as PrimitiveAtom<ReactNode>,
 );
 
 export function useTileSelection<T = unknown>(): T | null {
@@ -110,13 +110,12 @@ export function useSetTileTitleHighlighted(): (highlighted: boolean) => void {
 
 /** The surrounding tile's extra header content, or `null` if none was published. */
 export function useTileHeaderExtra(): ReactNode {
-  const tileId = useTileId();
-  return useAtomValue(tileHeaderExtraAtom(tileId ?? NO_TILE));
+  return useAtomValue(tileHeaderExtraAtom(useScopedTileKey(useTileId())));
 }
 
 /** Reads a specific tile's extra header content by id — used by `MosaicGrid`. */
 export function useTileHeaderExtraFor(tileId: string | null): ReactNode {
-  return useAtomValue(tileHeaderExtraAtom(tileId ?? NO_TILE));
+  return useAtomValue(tileHeaderExtraAtom(useScopedTileKey(tileId)));
 }
 
 /**
@@ -126,7 +125,7 @@ export function useTileHeaderExtraFor(tileId: string | null): ReactNode {
  */
 export function useSetTileHeaderExtra(): (node: ReactNode) => void {
   const tileId = useTileId();
-  const setExtra = useSetAtom(tileHeaderExtraAtom(tileId ?? NO_TILE));
+  const setExtra = useSetAtom(tileHeaderExtraAtom(useScopedTileKey(tileId)));
   return useCallback(
     (node: ReactNode) => {
       if (!tileId) return;

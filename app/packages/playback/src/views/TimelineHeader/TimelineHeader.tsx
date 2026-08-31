@@ -31,11 +31,6 @@ export interface TimelineHeaderProps {
    */
   rulerOverlay?: ReactNode;
   /**
-   * Host content forwarded to {@link TimelineControls}' `extraActions` —
-   * rendered after the playback cluster, behind a divider (the video
-   * annotation toolbar, the temporal tag-mode button, a timestamp readout).
-   */
-  /**
    * Optional content forwarded to {@link TimelineControls}' `extraControls` —
    * rendered inline between the playback control buttons and the playhead time
    * display. Feature toolbars slot here (video annotation's Mark Keyframe /
