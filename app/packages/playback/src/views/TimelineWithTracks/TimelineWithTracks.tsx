@@ -82,8 +82,15 @@ export interface TimelineWithTracksProps {
   drawerOpen?: boolean;
   /** Called when the tracks drawer requests an open-state change. */
   onDrawerOpenChange?: (open: boolean) => void;
-  /** Overlay rendered on top of the ruler row in each TimelineHeader. */
-  rulerOverlay?: React.ReactNode;
+  /**
+   * Overlay rendered on top of the ruler row in each TimelineHeader. Accepts
+   * a render function instead of a plain node when the overlay's own layout
+   * math needs the *effective* label width — the gutter can collapse to `0`
+   * (see `labelWidth` below) independently of the requested width, and a
+   * caller computing its own copy of that logic can drift out of sync with
+   * it (as `TemporalTagRangeOverlay` once did).
+   */
+  rulerOverlay?: React.ReactNode | ((labelWidth: number) => React.ReactNode);
   /**
    * Custom context-menu items added to every track's events. Per-row overrides
    * can still be supplied via {@link decorateTrack}. See
@@ -259,6 +266,13 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     pinned.length > 0 || (drawerOpen && tracks.length > 0)
       ? resolvedLabelWidth
       : 0;
+
+  // Resolve a render-prop `rulerOverlay` against the *effective* width above
+  // rather than `requestedLabelWidth` — see the prop doc.
+  const resolvedRulerOverlay =
+    typeof rulerOverlay === "function"
+      ? rulerOverlay(labelWidth)
+      : rulerOverlay;
 
   /**
    * Index range the virtualizer currently has mounted, as a `start:end` key.
@@ -536,7 +550,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         <TimelineHeader
           labelWidth={labelWidth}
           zoomRef={containerRef}
-          rulerOverlay={rulerOverlay}
+          rulerOverlay={resolvedRulerOverlay}
           extraControls={extraControls}
           readouts={readouts}
           extraActions={extraActions}
@@ -564,7 +578,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             zoomRef={containerRef}
             onToggle={toggle}
             expanded={open}
-            rulerOverlay={rulerOverlay}
+            rulerOverlay={resolvedRulerOverlay}
             extraControls={extraControls}
             readouts={readouts}
             extraActions={extraActions}
