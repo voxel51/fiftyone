@@ -94,8 +94,13 @@ async function handleFetchChunk(msg: FetchChunkMessage): Promise<void> {
 
   // Kick off every frame's fetch+decode in parallel; post each one as
   // soon as it's ready so the main-thread cache fills incrementally.
+  const mediaField =
+    (msg.request as { mediaField?: string })?.mediaField ?? "filepath";
+
   await Promise.all(
-    frames.frames.map((frame) => decodeAndDispatch(msg.reqId, frame)),
+    frames.frames.map((frame) =>
+      decodeAndDispatch(msg.reqId, frame, mediaField),
+    ),
   );
 
   postOutbound({
@@ -107,13 +112,19 @@ async function handleFetchChunk(msg: FetchChunkMessage): Promise<void> {
 
 async function decodeAndDispatch(
   reqId: number,
-  frame: { frame_number: number; filepath?: string },
+  frame: { frame_number: number; media_url?: string } & Record<string, unknown>,
+  mediaField: string,
 ): Promise<void> {
-  if (!frame.filepath || typeof frame.filepath !== "string") {
+  const mediaPath = frame[mediaField];
+  if (!mediaPath || typeof mediaPath !== "string") {
     return;
   }
 
-  const src = resolveMediaSrc(frame.filepath);
+  // An enterprise server signs cloud media into `media_url`, leaving the
+  // media field's own value untouched for display
+  const src = resolveMediaSrc(
+    typeof frame.media_url === "string" ? frame.media_url : mediaPath,
+  );
 
   let bitmap: ImageBitmap;
   try {
@@ -150,8 +161,9 @@ async function decodeAndDispatch(
       width: bitmap.width,
       height: bitmap.height,
       // filepath: each ImaVid "frame" is its own image sample — the header
-      // filename tracks the frame under the playhead.
-      meta: { src, filepath: frame.filepath },
+      // filename tracks the frame under the playhead, showing the media
+      // field's raw value (never a signed URL).
+      meta: { src, filepath: mediaPath },
     },
     [bitmap],
   );

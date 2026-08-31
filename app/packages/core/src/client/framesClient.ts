@@ -43,6 +43,12 @@ export type GetFramesRequest = {
    * document when a caller needs just a few fields (e.g. `["filepath"]`).
    */
   fields?: string[];
+  /**
+   * The media field frame media is read from (default `filepath`). A server
+   * with cloud-backed media signs this field's path into each frame's
+   * `media_url` rather than mutating the field itself.
+   */
+  mediaField?: string;
 };
 
 /**

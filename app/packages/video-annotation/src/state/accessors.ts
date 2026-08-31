@@ -13,6 +13,7 @@ import {
   groupSlice,
   type ModalSample,
   modalSampleId,
+  selectedMediaField,
   useCurrentDatasetId,
   useIsImageDynamicGroupVideo,
   view,
@@ -162,6 +163,13 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
  * rate, so fall back to the dataset's
  * `app_config.dynamic_groups_target_frame_rate`.
  */
+/**
+ * The dataset's configured MODAL media field (default `filepath`) — the field
+ * whose value names and locates each frame's media.
+ */
+export const useModalMediaField = (): string =>
+  useRecoilValue(selectedMediaField(true));
+
 export const useModalSampleFrameRate = (
   sample: ModalSample | null | undefined,
 ): number => {

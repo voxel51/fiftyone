@@ -33,6 +33,11 @@ export interface ImaVidImageStreamOptions extends FrameBitmapStreamOptions {
    * image dataset grouped into a video).
    */
   dynamicGroup?: string | null;
+  /**
+   * The dataset's modal media field (default `filepath`) — the field each
+   * frame's media path is read from, and the value the header displays.
+   */
+  mediaField?: string;
 }
 
 /**
@@ -50,6 +55,7 @@ export class ImaVidImageStream extends FrameBitmapStream<ImaVidFrameMeta> {
   private readonly view: Stage[];
   private readonly groupSlice: string | null;
   private readonly dynamicGroup: string | null;
+  private readonly mediaField: string;
 
   constructor(opts: ImaVidImageStreamOptions) {
     super(opts);
@@ -57,6 +63,7 @@ export class ImaVidImageStream extends FrameBitmapStream<ImaVidFrameMeta> {
     this.view = opts.view;
     this.groupSlice = opts.groupSlice ?? null;
     this.dynamicGroup = opts.dynamicGroup ?? null;
+    this.mediaField = opts.mediaField ?? "filepath";
   }
 
   protected createWorker(): Worker {
@@ -91,8 +98,10 @@ export class ImaVidImageStream extends FrameBitmapStream<ImaVidFrameMeta> {
       slice: this.groupSlice ?? undefined,
       dynamicGroup: this.dynamicGroup ?? undefined,
       // The image stream only needs each frame's media path; project to it so
-      // `/frames` doesn't ship every label field per frame.
-      fields: ["filepath"],
+      // `/frames` doesn't ship every label field per frame. An enterprise
+      // server signs the named field's cloud path into `media_url`.
+      fields: [this.mediaField],
+      mediaField: this.mediaField,
     };
   }
 
