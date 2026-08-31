@@ -86,18 +86,6 @@ export const inspectionMarkerAtom = atom<PlaybackInspectionMarker | null>(
  */
 export const currentTimeAtom = atom(0);
 
-/**
- * The media time (seconds) of the frame actually on glass, published by the
- * tile that painted it — a `requestVideoFrameCallback` for an html `<video>`,
- * the just-drawn bitmap's frame for decoded tiles. Null when nothing has
- * presented (no media, no vfc support), and consumers fall back to the
- * playhead. Overlay clocks read this so labels track the picture rather than
- * the requested scrub position, which the picture can trail without bound.
- */
-export const presentedTimeAtom = atom<number | null>(null) as PrimitiveAtom<
-  number | null
->;
-
 export const isPlayingAtom = atom(false);
 
 /**
