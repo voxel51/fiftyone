@@ -16,7 +16,11 @@ export {
   toLabelRef,
   TRACK_INDEX_PREFIX,
 } from "./identity/ref";
-export { FRAMES_PREFIX, toSchemaField } from "./identity/framePath";
+export {
+  FRAMES_PREFIX,
+  isFrameScopedPath,
+  toSchemaField,
+} from "./identity/framePath";
 export type { EntityId, EntityIdentity } from "./identity/entityId";
 export {
   decodeEntityId,

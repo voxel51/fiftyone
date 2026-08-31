@@ -27,6 +27,8 @@ const mockBus = { dispatch: vi.fn() };
 
 vi.mock("@fiftyone/annotation", () => ({
   FRAMES_PREFIX: "frames.",
+  isFrameScopedPath: (path: string, isDgva: boolean) =>
+    isDgva ? !path.startsWith("frames.") : path.startsWith("frames."),
   useAnnotationEngine: () => mockEngine,
   useActiveSampleId: () => SAMPLE,
   useAnnotationEventBus: () => mockBus,
