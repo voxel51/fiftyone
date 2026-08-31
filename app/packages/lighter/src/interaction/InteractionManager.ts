@@ -374,11 +374,8 @@ export class InteractionManager {
     this.clickStartPoint = point;
 
     let handler: InteractionHandler | undefined = undefined;
-    // Read-only never consults an interactive (draw) handler: entering one is
-    // an annotate-only path, but a shared scene could still have one set.
-    const interactiveHandler = this.readOnly
-      ? undefined
-      : this.getInteractiveHandler();
+    // `getInteractiveHandler` already returns undefined when read-only.
+    const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
       handler = isSelfManagedInteractiveHandler(interactiveHandler)
@@ -1080,8 +1077,13 @@ export class InteractionManager {
       return;
     }
 
-    // Delete/Backspace: remove sub-selected keypoint
-    if (event.key === "Delete" || event.key === "Backspace") {
+    // Delete/Backspace: remove sub-selected keypoint. Read-only refuses it —
+    // `removePoint` mutates geometry on a surface with no way to save, which
+    // is exactly what read-only promises cannot happen.
+    if (
+      !this.readOnly &&
+      (event.key === "Delete" || event.key === "Backspace")
+    ) {
       const selectedId = this.selectionManager.getSelectedIds()[0];
       if (selectedId) {
         const handler = this.handlers.find((h) => h.id === selectedId);
@@ -1532,6 +1534,14 @@ export class InteractionManager {
   }
 
   private getInteractiveHandler(): InteractionHandler | undefined {
+    // Read-only never yields a draw handler. Entering one is an annotate-only
+    // path, but a shared scene can still have one installed — and this is the
+    // single choke point for that, so pointer-move/right-click/pending-move
+    // are covered too rather than only pointer-down.
+    if (this.readOnly) {
+      return undefined;
+    }
+
     // self-managed handlers take precedence to allow editing on top of
     // other overlays
     const selfManaged = this.handlers.find((h) =>

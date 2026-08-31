@@ -229,3 +229,59 @@ describe("KeyParser", () => {
     }
   });
 });
+
+/**
+ * The video Explore zoom bindings. Two of the four originally could never
+ * fire: `"shift+\\+"` resolved to the key `"="` WITH shift, but a US layout
+ * reports `event.key === "+"` for that press, and likewise `"_"` rather than
+ * `"-"`. The matcher demands an exact modifier state, so each produced
+ * character needs its own binding.
+ */
+describe("zoom bindings match the characters a layout actually produces", () => {
+  const press = (key: string, shiftKey = false) =>
+    ({
+      key,
+      shiftKey,
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false,
+    }) as KeyboardEvent;
+
+  const matchesAny = (bindings: string[], event: KeyboardEvent) =>
+    bindings.some((binding) =>
+      KeyParser.parseBinding(binding).some((sequence) =>
+        sequence.matches(event),
+      ),
+    );
+
+  const ZOOM_IN = ["=", "\\+", "shift+\\+"];
+  const ZOOM_OUT = ["-", "_", "shift+_"];
+
+  it("zooms in on a shifted '+' (US layout) and a bare '='", () => {
+    expect(matchesAny(ZOOM_IN, press("+", true))).toBe(true);
+    expect(matchesAny(ZOOM_IN, press("=", false))).toBe(true);
+  });
+
+  it("zooms in on an unshifted '+' (layouts with its own key)", () => {
+    expect(matchesAny(ZOOM_IN, press("+", false))).toBe(true);
+  });
+
+  it("zooms out on a shifted '_' (US layout) and a bare '-'", () => {
+    expect(matchesAny(ZOOM_OUT, press("_", true))).toBe(true);
+    expect(matchesAny(ZOOM_OUT, press("-", false))).toBe(true);
+  });
+
+  it("does not cross the two directions", () => {
+    expect(matchesAny(ZOOM_IN, press("-", false))).toBe(false);
+    expect(matchesAny(ZOOM_OUT, press("=", false))).toBe(false);
+  });
+
+  it("ignores a shifted '=' , which produces '+' rather than '='", () => {
+    // The original bug in one assertion: a binding for the key "=" with shift
+    // is unreachable, because that press never reports "=".
+    const shiftEquals = KeyParser.parseBinding("shift+\\+");
+    expect(shiftEquals[0].key).toBe("+");
+    expect(shiftEquals[0].isShift).toBe(true);
+    expect(shiftEquals[0].matches(press("=", true))).toBe(false);
+  });
+});

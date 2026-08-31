@@ -69,10 +69,20 @@ export class ModalVideoControlsPom {
    * have moved should not have to care which.
    */
   async playUntilAdvanced() {
+    // Anchor on a real reading first. If the readout is absent or mid-swap,
+    // `start` is null/empty and the "has changed" assertion below is satisfied
+    // by the first non-empty value — the helper would return without playback
+    // having advanced at all, and its callers would pass vacuously.
+    await expect(this.time).not.toHaveText("", { timeout: READOUT_TIMEOUT });
     const start = await this.time.textContent();
+    if (!start) {
+      throw new Error(
+        "timeline readout is empty; cannot detect playback advancing",
+      );
+    }
 
     await this.togglePlay();
-    await expect(this.time).not.toHaveText(start ?? "", {
+    await expect(this.time).not.toHaveText(start, {
       timeout: READOUT_TIMEOUT,
     });
     await this.togglePlay();

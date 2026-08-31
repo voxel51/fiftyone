@@ -14,6 +14,7 @@ import {
   useHideSelected,
   useSelectVisible,
   useUnselectVisible,
+  useVisibleFrameLabels,
   useVisibleSampleLabels,
 } from "./hooks";
 import { hasSetDiff, hasSetInt, toIds } from "./utils";
@@ -25,7 +26,12 @@ export default ({
 }: {
   anchorRef: MutableRefObject<HTMLDivElement | null>;
   close: () => void;
-  lookerRef: MutableRefObject<Lookers | undefined>;
+  /**
+   * Optional: video Explore renders through Lighter and mounts no `Looker`,
+   * so every read below degrades to a looker-free source rather than gating
+   * this whole menu off (which silently fell back to the Grid variant).
+   */
+  lookerRef?: MutableRefObject<Lookers | undefined>;
 }) => {
   const selected = useRecoilValue(fos.selectedSamples);
   const clearSelection = useClearSampleSelection(close);
@@ -33,19 +39,19 @@ export default ({
   const visibleSampleLabels = useVisibleSampleLabels(lookerRef);
   const isRoot = useRecoilValue(fos.isRootView);
   const isVideo = useRecoilValue(fos.isVideoDataset) && isRoot;
+  const lighterFrameLabels = useVisibleFrameLabels();
   const visibleFrameLabels =
-    lookerRef.current instanceof VideoLooker
+    lookerRef?.current instanceof VideoLooker
       ? lookerRef.current.getCurrentFrameLabels()
-      : new Array<fos.State.SelectedLabel>();
+      : lighterFrameLabels;
 
   useLayoutEffect(() => {
-    lookerRef &&
-      lookerRef.current instanceof VideoLooker &&
+    lookerRef?.current instanceof VideoLooker &&
       lookerRef.current.pause &&
       lookerRef.current.pause();
   });
 
-  fos.useEventHandler(lookerRef.current, "play", close);
+  fos.useEventHandler(lookerRef?.current, "play", close);
 
   const closeAndCall = (callback) => {
     return useCallback(() => {

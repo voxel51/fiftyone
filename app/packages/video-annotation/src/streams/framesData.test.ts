@@ -8,7 +8,11 @@ import { LabelType } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 
 import type { FrameDocLike } from "./framesData";
-import { parseFramesData } from "./framesData";
+import {
+  ELEMENT_CLS,
+  parseFramesData,
+  PROJECTABLE_FRAME_LABEL_TYPES,
+} from "./framesData";
 
 const DETECTIONS = { "frames.detections": LabelType.Detections };
 
@@ -109,5 +113,111 @@ describe("parseFramesData", () => {
 
     expect(data[3]["frames.detections"]).toEqual([]);
     expect(data[4]["frames.detections"]).toEqual([]);
+  });
+});
+
+/**
+ * Regression cover for the parity gap: keypoints and classifications are
+ * painted by the Lighter adapters and were painted by the video looker, but
+ * the frame projection used to know only Detections and Polylines — so an
+ * active `frames.keypoints` registered into the store and then silently
+ * rendered nothing.
+ */
+describe("per-frame label type coverage", () => {
+  it("projects keypoints, stamping the singular _cls", () => {
+    const data = parseFramesData(
+      [
+        {
+          frame_number: 1,
+          keypoints: {
+            keypoints: [
+              {
+                _id: "k1",
+                points: [
+                  [0.1, 0.2],
+                  [0.3, 0.4],
+                ],
+              },
+            ],
+          },
+        },
+      ],
+      { "frames.keypoints": LabelType.Keypoints },
+    );
+
+    const [keypoint] = data[1]["frames.keypoints"];
+    expect(keypoint._cls).toBe("Keypoint");
+    expect(keypoint._id).toBe("k1");
+    // Geometry survives the projection whole — the adapter reads `points`.
+    expect(keypoint.points).toEqual([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
+  });
+
+  it("projects classifications, stamping the singular _cls", () => {
+    const data = parseFramesData(
+      [
+        {
+          frame_number: 4,
+          classifications: {
+            classifications: [{ _id: "c1", label: "sunny", confidence: 0.9 }],
+          },
+        },
+      ],
+      { "frames.classifications": LabelType.Classifications },
+    );
+
+    const [classification] = data[4]["frames.classifications"];
+    expect(classification._cls).toBe("Classification");
+    expect(classification.label).toBe("sunny");
+    expect(classification.confidence).toBe(0.9);
+  });
+
+  it("projects every advertised type in one pass", () => {
+    const data = parseFramesData(
+      [
+        {
+          frame_number: 1,
+          detections: { detections: [{ _id: "d" }] },
+          polylines: { polylines: [{ _id: "p", points: [[[0, 0]]] }] },
+          keypoints: { keypoints: [{ _id: "k", points: [[0, 0]] }] },
+          classifications: { classifications: [{ _id: "c" }] },
+        },
+      ],
+      {
+        "frames.detections": LabelType.Detections,
+        "frames.polylines": LabelType.Polylines,
+        "frames.keypoints": LabelType.Keypoints,
+        "frames.classifications": LabelType.Classifications,
+      },
+    );
+
+    expect(Object.keys(data[1]).sort()).toEqual([
+      "frames.classifications",
+      "frames.detections",
+      "frames.keypoints",
+      "frames.polylines",
+    ]);
+  });
+
+  it("advertises exactly the types it can project", () => {
+    // The guard against the original bug: anything in this set but missing an
+    // ELEMENT_CLS entry is dropped by `toFieldSpecs` and never paints, so the
+    // set is derived rather than restated. Keep them in lockstep.
+    expect([...PROJECTABLE_FRAME_LABEL_TYPES].sort()).toEqual(
+      Object.keys(ELEMENT_CLS).sort(),
+    );
+  });
+
+  it("drops a type it has no element _cls for", () => {
+    // Segmentations have no per-element list, so they must not be projected —
+    // registering one would add a store field that never seeds.
+    const data = parseFramesData(
+      [{ frame_number: 1, segmentations: { segmentations: [{ _id: "s" }] } }],
+      { "frames.segmentations": LabelType.Segmentation },
+    );
+
+    expect(data[1]).toEqual({});
   });
 });

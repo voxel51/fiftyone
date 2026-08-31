@@ -5,24 +5,21 @@
 import { FRAMES_PREFIX } from "@fiftyone/annotation";
 import * as fos from "@fiftyone/state";
 import { LabelType } from "@fiftyone/utilities";
+import { PROJECTABLE_FRAME_LABEL_TYPES } from "../streams/framesData";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
 /**
  * Label types the per-frame pipeline can actually paint.
  *
- * The binding constraint is `framesData`'s projection, NOT the breadth of the
- * Lighter adapters: `toFieldSpecs` builds a spec only for types present in both
- * `LIST_LABEL_CHILD` and `ELEMENT_CLS`, and `continue`s past the rest. A type
- * admitted here but absent there registers into the `FrameStore` — and into
- * every `pendingPaths` / `frameEquals` walk — while never being seeded and
- * never painting. So this set must stay a subset of `ELEMENT_CLS`'s keys;
- * widening it means teaching `framesData` the new element shape first.
+ * Derived from `framesData`'s projection rather than restated: `toFieldSpecs`
+ * builds a spec only for types it knows the element `_cls` for, and skips the
+ * rest. A type admitted here but absent there would register into the
+ * `FrameStore` — and into every `pendingPaths` / `frameEquals` walk — while
+ * never being seeded and never painting. Deriving makes that drift impossible,
+ * so widening support is a one-line change in `ELEMENT_CLS`.
  */
-const RENDERABLE = new Set<LabelType>([
-  LabelType.Detections,
-  LabelType.Polylines,
-]);
+const RENDERABLE = PROJECTABLE_FRAME_LABEL_TYPES;
 
 /**
  * `fiftyone.core.labels.Detections` -> `LabelType.Detections`. The enum's
@@ -51,33 +48,53 @@ const toLabelType = (embeddedDocType?: string | null): LabelType | null => {
  * the `frames.*` namespace the video store owns, and resolve each one's type
  * from the frame field schema.
  */
+/**
+ * Pure half of {@link useExploreFrameLabelFields}: sidebar active paths plus a
+ * frame field schema in, paintable `frames.*` fields out. Separated from the
+ * hook so the selection rules are testable without Recoil.
+ *
+ * @param active - Sidebar active paths, `frames.`-prefixed for frame fields.
+ * @param schema - Frame field schema, keyed WITHOUT the `frames.` prefix.
+ */
+export const toExploreFrameLabelFields = (
+  active: readonly string[],
+  schema: Record<string, { embeddedDocType?: string | null }> | null,
+): Record<string, LabelType> => {
+  const fields: Record<string, LabelType> = {};
+
+  for (const path of active) {
+    if (!path.startsWith(FRAMES_PREFIX)) continue;
+
+    // The frame schema is keyed without the `frames.` prefix the sidebar
+    // paths carry.
+    const bare = path.slice(FRAMES_PREFIX.length);
+    const type = toLabelType(schema?.[bare]?.embeddedDocType);
+
+    if (type) {
+      fields[path] = type;
+    }
+  }
+
+  return fields;
+};
+
 export const useExploreFrameLabelFields = (): Record<string, LabelType> => {
   const active = useRecoilValue(fos.activeFields({ modal: true }));
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.FRAME }),
   );
 
-  return useMemo(() => {
-    const fields: Record<string, LabelType> = {};
-
-    for (const path of active) {
-      if (!path.startsWith(FRAMES_PREFIX)) continue;
-
-      // The frame schema is keyed without the `frames.` prefix the sidebar
-      // paths carry.
-      const bare = path.slice(FRAMES_PREFIX.length);
-      const type = toLabelType(schema?.[bare]?.embeddedDocType);
-
-      if (type) {
-        fields[path] = type;
-      }
-    }
-
-    return fields;
-  }, [active, schema]);
+  return useMemo(
+    () => toExploreFrameLabelFields(active, schema),
+    [active, schema],
+  );
 };
 
-/** The same set as bare paths — the bridge's projection scope. */
+/**
+ * The same fields as a set of paths — the bridge's projection scope. These stay
+ * `frames.`-prefixed (the form the sidebar and the store both address by), NOT
+ * the `bare` form stripped above for the frame schema lookup.
+ */
 export const useExploreFrameLabelPaths = (): ReadonlySet<string> => {
   const fields = useExploreFrameLabelFields();
   return useMemo(() => new Set(Object.keys(fields)), [fields]);

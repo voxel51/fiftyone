@@ -67,7 +67,7 @@ vi.mock("@fiftyone/lighter", () => ({
   useLighter: () => ({ scene: refs.scene }),
 }));
 
-import { useUnselectVisible } from "./hooks";
+import { overlaysToFrameLabels, useUnselectVisible } from "./hooks";
 
 type LabelEntry = { sampleId: string; field: string; frameNumber?: number };
 type LabelMap = Record<string, LabelEntry>;
@@ -251,5 +251,73 @@ describe("useUnselectVisible", () => {
     expect(result.current.map).toEqual({
       "label-b": { sampleId: "s2", field: "detections" },
     });
+  });
+});
+
+/**
+ * Video Explore paints through Lighter and mounts no `Looker`, so the modal's
+ * "select visible labels in this frame" action reads the scene's overlays
+ * instead of `VideoLooker.getCurrentFrameLabels()`.
+ */
+describe("overlaysToFrameLabels", () => {
+  const overlay = (
+    id: string,
+    field: string,
+    label?: Record<string, unknown> | null,
+  ) => ({ id, field, label });
+
+  it("keeps only frames.* overlays", () => {
+    const result = overlaysToFrameLabels(
+      [
+        overlay("o1", "frames.detections", { _id: "L1" }),
+        overlay("o2", "ground_truth", { _id: "L2" }),
+        overlay("o3", "frames.keypoints", { _id: "L3" }),
+      ],
+      "S1",
+    );
+
+    expect(result.map((label) => label.labelId)).toEqual(["L1", "L3"]);
+    expect(result.every((label) => label.sampleId === "S1")).toBe(true);
+  });
+
+  it("addresses labels by their backend _id, not the overlay's instance id", () => {
+    // The engine keys overlays by instance id; the selection atoms key by the
+    // canonical label id, so confusing the two silently selects nothing.
+    const [label] = overlaysToFrameLabels(
+      [overlay("instance-1", "frames.detections", { _id: "L1" })],
+      "S1",
+    );
+
+    expect(label.labelId).toBe("L1");
+  });
+
+  it("falls back to id, then the overlay id, when _id is absent", () => {
+    const result = overlaysToFrameLabels(
+      [
+        overlay("o1", "frames.detections", { id: "L1" }),
+        overlay("o2", "frames.detections", {}),
+        overlay("o3", "frames.detections", null),
+      ],
+      "S1",
+    );
+
+    expect(result.map((label) => label.labelId)).toEqual(["L1", "o2", "o3"]);
+  });
+
+  it("carries frame_number through when present, and omits it otherwise", () => {
+    const [withFrame, withoutFrame] = overlaysToFrameLabels(
+      [
+        overlay("o1", "frames.detections", { _id: "L1", frame_number: 7 }),
+        overlay("o2", "frames.detections", { _id: "L2" }),
+      ],
+      "S1",
+    );
+
+    expect(withFrame.frameNumber).toBe(7);
+    expect("frameNumber" in withoutFrame).toBe(false);
+  });
+
+  it("returns nothing for a scene with no overlays", () => {
+    expect(overlaysToFrameLabels([], "S1")).toEqual([]);
   });
 });
