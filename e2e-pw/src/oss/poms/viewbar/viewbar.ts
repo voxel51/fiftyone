@@ -40,10 +40,11 @@ export class ViewBarPom {
 
   /**
    * Expands a collapsed bar into its stage pills. A bar hydrated from a
-   * saved view starts as the summary chip; hover is the expansion gesture.
+   * saved view starts as the summary chip; clicking it is the expansion
+   * gesture.
    */
   async expand() {
-    await this.currentViewChip.hover();
+    await this.currentViewChip.click();
     await expect(this.viewStages.first()).toBeVisible();
   }
 
