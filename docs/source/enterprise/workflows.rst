@@ -286,15 +286,15 @@ The Per-Person Table
 ~~~~~~~~~~~~~~~~~~~~
 
 Below the cards, one row per person per assigned stage breaks the same
-numbers down. Rows measure **throughput**: an annotator\'s submissions and
-a reviewer\'s decisions both count as work, so someone who annotates in
+numbers down. Rows measure **throughput**: an annotator's submissions and
+a reviewer's decisions both count as work, so someone who annotates in
 one stage and reviews in another appears once per role.
 
 Alongside the volume columns (**Samples**, **Labels touched**, **Added**,
 **Deleted**, **Modified**) and pace columns (**Total time**,
-**Avg time / sample**, **Trend**), an annotator\'s row carries two quality
+**Avg time / sample**, **Trend**), an annotator's row carries two quality
 columns — **First-pass approval** and **Rejection rate** — which reflect
-how that person\'s submissions fared in review. Use the **Columns** menu
+how that person's submissions fared in review. Use the **Columns** menu
 to choose which columns are shown. A dash means the value is not available
 yet — for example, an annotator none of whose submissions has been
 reviewed.
@@ -326,11 +326,35 @@ A worked example: an annotator submits 3 samples, and a reviewer approves
 
 The rejected sample is then reworked, resubmitted, and approved:
 
-- First-pass approval **stays 67%** — that sample\'s first decision was
+- First-pass approval **stays 67%** — that sample's first decision was
   still a rejection, and first decisions are a permanent record.
 - Rejection rate **falls to 25%** — 1 rejection out of 4 total decisions.
 
-What Counts (and What Doesn\'t)
+Who Reviews What in Longer Pipelines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In a pipeline with several annotate and review stages, each review stage
+judges the work that reaches it — and a reviewer's own approvals can be
+judged by a later review in turn. Consider a six-stage pipeline:
+
+.. code-block:: text
+
+    Annotate 1 → Annotate 2 → Review 1 → Annotate 3 → Review 2 → Review 3
+
+- **Review 1** is the first review after Annotate 1 *and* Annotate 2, so
+  its decisions judge the combined work of both stages — each label counts
+  toward the person who authored it.
+- **Review 2** judges the new work from Annotate 3.
+- **Review 3** follows another review directly, so it re-judges what
+  passed Review 2: its decisions reflect on Annotate 3's labels *and* on
+  Review 2's approvals.
+
+When Review 3 rejects a sample that Review 2 approved, the rejection
+counts against Review 2's row as well — which is why a *review* stage can
+itself show a rejection rate. This is how a two-tier review pipeline
+surfaces reviewer quality, not just annotator quality.
+
+What Counts (and What Doesn't)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Only **submitted** work counts. Labels edited but never submitted stay
