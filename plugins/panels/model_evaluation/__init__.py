@@ -880,8 +880,22 @@ class EvaluationPanel(Panel):
                     metrics["incorrect"],
                 ) = self.get_correct_incorrect(results)
 
+            # Recompute custom metrics for this subset
+            original_custom_metrics = results.custom_metrics
+            try:
+                results.custom_metrics = None
+                results.backend.compute_custom_metrics(
+                    results.samples, results.key, results
+                )
+                custom_metrics = self.get_custom_metrics(results)
+            except Exception:
+                custom_metrics = None
+            finally:
+                results.custom_metrics = original_custom_metrics
+
             return {
                 "metrics": metrics,
+                "custom_metrics": custom_metrics,
                 "distribution": len(results.ytrue_ids),
                 "confusion_matrix": self.get_confusion_matrix(results),
                 "confidences": confidences,
