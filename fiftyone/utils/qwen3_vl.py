@@ -9,6 +9,7 @@ wrapper for the FiftyOne Model Zoo.
 
 import json
 import logging
+import os
 
 import eta.core.video as etav
 
@@ -38,6 +39,240 @@ transformers = fou.lazy_import("transformers", callback=_ensure_qwen3_vl)
 qwen_vl_utils = fou.lazy_import("qwen_vl_utils", callback=_ensure_qwen3_vl)
 
 from PIL import Image as PILImage
+
+
+def merge_prepared_inputs(inputs_list, pad_token_id):
+    """Merges per-clip processor outputs into ONE batched inputs mapping.
+
+    ``input_ids``/``attention_mask`` are LEFT-padded: the embedding pools the
+    hidden state at the LAST position, which right padding would replace with
+    a pad token for every shorter row. Visual tensors concatenate along their
+    first axis, which is how the model consumes multi-clip batches (one
+    ``*_grid_thw`` row per clip indexes its patches).
+
+    Returns ``None`` when a clip carries a key this merge does not
+    understand, so the caller can fall back to one forward per clip rather
+    than batch something subtly wrong.
+    """
+    keys = set(inputs_list[0].keys())
+    for inputs in inputs_list[1:]:
+        if set(inputs.keys()) != keys:
+            return None
+
+    pad_keys = {"input_ids", "attention_mask"}
+    cat_keys = {
+        "pixel_values_videos",
+        "video_grid_thw",
+        "pixel_values",
+        "image_grid_thw",
+    }
+    if not pad_keys <= keys:
+        return None
+
+    max_len = max(int(i["input_ids"].shape[-1]) for i in inputs_list)
+    merged = {}
+    for key in keys:
+        vals = [i[key] for i in inputs_list]
+        if not all(isinstance(v, torch.Tensor) for v in vals):
+            return None
+
+        if key in pad_keys:
+            fill = pad_token_id if key == "input_ids" else 0
+            rows = []
+            for v in vals:
+                if v.ndim != 2 or v.shape[0] != 1:
+                    return None
+
+                rows.append(
+                    torch.nn.functional.pad(
+                        v, (max_len - v.shape[-1], 0), value=fill
+                    )
+                )
+
+            merged[key] = torch.cat(rows, dim=0)
+        elif key in cat_keys:
+            merged[key] = torch.cat(vals, dim=0)
+        else:
+            return None
+
+    return merged
+
+
+#: Where a checkpoint keeps the language tower's weights, most specific first.
+#: DISCOVERED rather than assumed: a wrong guess loads no weights at all, and a
+#: freshly initialized tower still answers every prompt — with noise.
+_TEXT_WEIGHT_PREFIXES = (
+    "model.language_model.",
+    "language_model.",
+    "model.",
+    "",
+)
+
+_SAFETENSORS_INDEX = "model.safetensors.index.json"
+_SAFETENSORS_FILE = "model.safetensors"
+
+
+def _checkpoint_index(name_or_path):
+    """Returns a checkpoint's ``{weight name: shard file}`` map, or ``None``
+    when it is one unsharded file."""
+    # pylint: disable=import-error
+    if os.path.isdir(name_or_path):
+        path = os.path.join(name_or_path, _SAFETENSORS_INDEX)
+        if not os.path.isfile(path):
+            return None
+    else:
+        from huggingface_hub import hf_hub_download
+
+        try:
+            path = hf_hub_download(name_or_path, _SAFETENSORS_INDEX)
+        except Exception as e:  # pylint: disable=broad-except
+            # An unsharded repo has no index, which is the common case for the
+            # smaller checkpoints; anything else fails on the read below
+            logger.debug("no shard index for %s: %s", name_or_path, e)
+            return None
+
+    with open(path, "rt") as f:
+        return json.load(f)["weight_map"]
+
+
+def _shard_path(name_or_path, filename):
+    """The local path of one checkpoint file, fetching it if needed."""
+    if os.path.isdir(name_or_path):
+        return os.path.join(name_or_path, filename)
+
+    # pylint: disable=import-error
+    from huggingface_hub import hf_hub_download
+
+    return hf_hub_download(name_or_path, filename)
+
+
+def _text_prefix(keys, wanted):
+    """The prefix a checkpoint stores the text tower under.
+
+    Every wanted weight must be present under it, so a prefix that happens to
+    match a few names cannot be chosen over the one that holds the tower.
+    """
+    for prefix in _TEXT_WEIGHT_PREFIXES:
+        if all(prefix + name in keys for name in wanted):
+            return prefix
+
+    raise ValueError(
+        "This checkpoint holds no Qwen3-VL language tower under any known "
+        "prefix (%s), so its text encoder cannot be loaded on its own"
+        % ", ".join(repr(p) for p in _TEXT_WEIGHT_PREFIXES)
+    )
+
+
+def _materialize_buffers(model):
+    """Recomputes the buffers a meta-device skeleton left empty.
+
+    Non-persistent buffers — the rotary frequencies — are computed in their
+    module's constructor and stored in no checkpoint, so loading one does not
+    restore them; rebuilding the module that owns them does. Raises if anything
+    is still empty afterwards, because a meta tensor that reaches the forward
+    pass fails there instead, naming a device rather than a weight.
+    """
+    for name, module in list(model.named_modules()):
+        if not any(b.is_meta for b in module.buffers(recurse=False)):
+            continue
+
+        parent, _, attr = name.rpartition(".")
+        owner = model.get_submodule(parent) if parent else model
+        setattr(owner, attr, type(module)(config=model.config))
+
+    empty = [
+        name
+        for name, tensor in (
+            *model.named_parameters(),
+            *model.named_buffers(),
+        )
+        if tensor.is_meta
+    ]
+    if empty:
+        raise ValueError(
+            "The text tower was loaded with no values for %s" % empty
+        )
+
+
+def load_text_model(name_or_path, dtype=None, device=None):
+    """Loads ONLY the language tower of a Qwen3-VL checkpoint.
+
+    Encoding a prompt runs no part of the vision tower, so a process that will
+    do nothing else need not hold it: this builds the text model alone and
+    reads only its weights out of the checkpoint. On a sharded checkpoint the
+    shards holding vision weights are never even fetched.
+
+    The result is the same tower the full model calls for a text-only input —
+    :class:`Qwen3VLModel` forwards text through ``language_model`` either way,
+    and for input carrying no image the 3D rope positions the full model
+    computes are the plain sequence positions the text model defaults to — so
+    the vectors match those the full model produces.
+
+    Args:
+        name_or_path: a HuggingFace repo id or local checkpoint directory
+        dtype (None): the dtype to load the weights in; the checkpoint's own
+            if None
+        device (None): the device to place the model on
+
+    Returns:
+        a ``transformers.Qwen3VLTextModel`` in eval mode
+    """
+    # pylint: disable=import-error
+    from safetensors import safe_open
+
+    config = transformers.AutoConfig.from_pretrained(name_or_path)
+    text_config = getattr(config, "text_config", config)
+
+    # Built on the meta device, since every parameter is REPLACED by one read
+    # from the checkpoint below — materializing them first would cost the
+    # tower's full size in host memory to then throw away
+    with torch.device("meta"):
+        model = transformers.Qwen3VLTextModel._from_config(text_config)
+
+    wanted = set(model.state_dict())
+    weight_map = _checkpoint_index(name_or_path)
+    if weight_map is None:
+        paths = [_shard_path(name_or_path, _SAFETENSORS_FILE)]
+        with safe_open(paths[0], framework="pt") as f:
+            prefix = _text_prefix(set(f.keys()), wanted)
+    else:
+        prefix = _text_prefix(set(weight_map), wanted)
+        # Only the shards a wanted weight lives in. This is what a text-only
+        # load saves on a cold box: the vision tower is not downloaded either
+        shards = sorted(
+            {
+                shard
+                for key, shard in weight_map.items()
+                if key.startswith(prefix) and key[len(prefix) :] in wanted
+            }
+        )
+        paths = [_shard_path(name_or_path, shard) for shard in shards]
+
+    state = {}
+    for path in paths:
+        with safe_open(path, framework="pt") as f:
+            for key in f.keys():
+                name = key[len(prefix) :]
+                if key.startswith(prefix) and name in wanted:
+                    tensor = f.get_tensor(key)
+                    state[name] = tensor if dtype is None else tensor.to(dtype)
+
+    # ``assign`` makes the tensors just read BECOME the parameters; copying
+    # them into the meta ones instead would raise, and is the whole reason the
+    # skeleton could be built without allocating
+    model.load_state_dict(state, strict=True, assign=True)
+    _materialize_buffers(model)
+    if device is not None:
+        model = model.to(device)
+
+    model.eval()
+    logger.info(
+        "loaded the text tower of %s from %d shard(s), skipping its vision "
+        "tower",
+        name_or_path,
+        len(paths),
+    )
+    return model
 
 
 DEFAULT_QWEN3_VL_MODEL = "Qwen/Qwen3-VL-2B-Instruct"
@@ -159,6 +394,10 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             prevents OOM on long videos. Matches qwen-vl-utils MAX_FRAMES.
         mode (None): the media type mode, "image" or "video"; if None,
             defaults to the dataset's media type at inference time
+        text_only (False): whether to load ONLY the language tower, for a
+            model that will do nothing but :meth:`Qwen3VLModel.embed_prompt`.
+            The vision tower's weights are then neither downloaded nor
+            resident, and every image/video method raises
     """
 
     def __init__(self, d):
@@ -191,6 +430,20 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         if self.mode is not None and self.mode not in ("image", "video"):
             raise ValueError(
                 "mode must be 'image', 'video', or None; got %r" % self.mode
+            )
+
+        self.text_only = self.parse_bool(d, "text_only", default=False)
+        # Refused rather than ignored: an output processor means this instance
+        # was configured to generate from images, which a model with no vision
+        # tower cannot do at all
+        if self.text_only and (
+            d.get("output_processor") is not None
+            or d.get("output_processor_cls") is not None
+        ):
+            raise ValueError(
+                "text_only loads no vision tower, so it cannot be combined "
+                "with an output processor. Load an embedding model "
+                "(e.g. qwen3-vl-embedding-2b-torch) instead"
             )
 
         self.raw_inputs = True
@@ -248,6 +501,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
     def __init__(self, config):
         self._processor = None
         self._mode = config.mode
+        self._warned_unmergeable = False
         super().__init__(config)
 
     @property
@@ -264,11 +518,21 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
 
     @property
     def has_embeddings(self):
-        return self._output_processor is None
+        # A text-only load holds no vision tower, so it embeds no media
+        return self._output_processor is None and not self.config.text_only
 
     @property
     def can_embed_prompts(self):
-        return self.has_embeddings
+        return self._output_processor is None
+
+    def _require_vision(self):
+        """Refuses the media paths of a model loaded without a vision tower."""
+        if self.config.text_only:
+            raise ValueError(
+                "This model was loaded with text_only=True, so it holds no "
+                "vision tower and can only embed prompts. Load it without "
+                "text_only to embed images or video"
+            )
 
     def _download_model(self, config):
         pass
@@ -276,6 +540,16 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
     def _load_model(self, config):
         model_cls = transformers.Qwen3VLForConditionalGeneration
         dtype = torch.bfloat16 if self._using_gpu else torch.float32
+
+        if config.text_only:
+            # The processor still comes from the same checkpoint: it is the
+            # chat template and tokenizer, which are kilobytes
+            self._processor = transformers.AutoProcessor.from_pretrained(
+                config.name_or_path
+            )
+            return load_text_model(
+                config.name_or_path, dtype=dtype, device=self._device
+            )
 
         # HuggingFace models loaded with `device_map="auto"` may end up on an
         # unexpected GPU in multi-GPU environments. If the user explicitly
@@ -320,6 +594,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         return DEFAULT_DETECTION_PROMPT
 
     def _forward_pass(self, imgs):
+        self._require_vision()
         if self._output_processor is None:
             return self._embed_images(imgs)
         else:
@@ -414,9 +689,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         """The last layer's hidden states, however the loaded model reports
         them.
 
-        The model is asked for the whole stack, whose last entry is the
-        normed output; a model that does not populate the stack reports that
-        same tensor as ``last_hidden_state``.
+        The full model is asked for the whole stack, whose last entry is the
+        normed output; a text tower loaded on its own returns that same tensor
+        as ``last_hidden_state``.
         """
         hidden = getattr(outputs, "hidden_states", None)
         if hidden:
@@ -483,7 +758,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         """
         return self._predict_all(args)
 
-    def embed_frames(self, frames, fps=None):
+    def embed_frames(self, frames, fps=None, subsample=True):
         """Generates a single embedding for an ordered list of in-memory
         frames.
 
@@ -493,31 +768,65 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         counterpart to passing an ``eta.core.video.FFmpegVideoReader`` to
         :meth:`embed`, for callers that already hold decoded frames.
 
-        The frames are subsampled toward ``config.video_fps`` (treating
-        ``fps`` as the source rate) and capped at
+        By default the frames are subsampled toward ``config.video_fps``
+        (treating ``fps`` as the source rate) and capped at
         ``config.max_video_frames``, matching how :meth:`embed` handles a
-        video file.
+        video file. Pass ``subsample=False`` when the frames are ALREADY the
+        intended selection — e.g. every frame in a fixed time window — so
+        they are embedded as given.
 
         Args:
             frames: an ordered iterable of in-memory frames (PIL images,
                 numpy arrays, or torch tensors)
-            fps (None): the rate the frames were sampled at, used to decide
-                how aggressively to subsample. If ``None`` or non-positive,
-                the frames are used as-is and ``config.video_fps`` is
-                reported to the model as the playback rate
+            fps (None): the rate the frames were sampled at. When
+                ``subsample`` is True this is the source rate that decides
+                how aggressively to subsample; when False it is reported to
+                the model as the clip's playback rate and nothing else. If
+                ``None`` or non-positive, ``config.video_fps`` is reported
+                as the playback rate
+            subsample (True): whether ``fps`` may be used to thin the frames
+                toward ``config.video_fps``. When False every frame is
+                embedded, subject only to ``config.max_video_frames``
 
         Returns:
             a 1D numpy array embedding
         """
+        return self.embed_prepared(
+            self.prepare_frames(frames, fps=fps, subsample=subsample)
+        )
+
+    def prepare_frames(self, frames, fps=None, subsample=True):
+        """The CPU half of :meth:`embed_frames`: thins, converts and runs the
+        processor over one clip, returning host-side model inputs.
+
+        Split from the forward pass so a pipeline can prepare clip N+1 on
+        another thread while clip N is on the device — the processor is the
+        expensive, GIL-releasing part of a clip embed.
+
+        Args:
+            frames: an ordered iterable of in-memory frames
+            fps (None): as :meth:`embed_frames`
+            subsample (True): as :meth:`embed_frames`
+
+        Returns:
+            an opaque inputs object for :meth:`embed_prepared`
+        """
+        self._require_vision()
         frames = list(frames)
         if not frames:
             raise ValueError("Cannot embed an empty list of frames")
 
         sample_fps = self.config.video_fps
+        cap = self.config.max_video_frames
 
         has_fps = fps is not None and fps > 0
 
-        if has_fps and sample_fps > 0:
+        if not subsample:
+            # These frames ARE the selection, so only the model's frame cap
+            # may thin them — by a uniform stride rather than truncation, so
+            # the kept frames still span the whole clip
+            step = max(1, -(-len(frames) // cap))
+        elif has_fps and sample_fps > 0:
             step = max(1, round(fps / sample_fps))
         else:
             step = 1
@@ -525,12 +834,74 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         sampled = []
         for i in range(0, len(frames), step):
             sampled.append(self._prepare_image(frames[i]))
-            if len(sampled) >= self.config.max_video_frames:
+            if len(sampled) >= cap:
                 break
 
         effective_fps = fps / step if has_fps else sample_fps
 
-        return self._embed_frame_list(sampled, effective_fps)
+        return self._prepare_frame_list(sampled, effective_fps)
+
+    def embed_prepared(self, inputs):
+        """The GPU half of :meth:`embed_frames`: forwards one
+        :meth:`prepare_frames` clip and returns a 1D numpy array embedding."""
+        self._require_vision()
+        inputs = {
+            k: v.to(self._model.device) if hasattr(v, "to") else v
+            for k, v in inputs.items()
+        }
+
+        with torch.no_grad():
+            outputs = self._model(
+                **inputs,
+                output_hidden_states=True,
+                return_dict=True,
+            )
+
+        return self._postprocess_embedding(outputs).squeeze(0)
+
+    def embed_prepared_all(self, inputs_list):
+        """Forwards several :meth:`prepare_frames` clips as ONE batch and
+        returns a ``(num_clips, embedding_dim)`` numpy array.
+
+        Per-clip forwards pay a launch train and the Python round-trip per
+        window; batching amortizes both, which is what keeps a fast device
+        busy on short clips. Clips whose inputs cannot be merged fall back
+        to one forward each, so a processor-version drift degrades to the
+        serial speed rather than to wrong vectors.
+        """
+        self._require_vision()
+        if len(inputs_list) == 1:
+            return self.embed_prepared(inputs_list[0])[None, :]
+
+        pad_id = getattr(self._processor.tokenizer, "pad_token_id", None)
+        if pad_id is None:
+            pad_id = getattr(self._processor.tokenizer, "eos_token_id", 0)
+
+        merged = merge_prepared_inputs(inputs_list, pad_id)
+        if merged is None:
+            if not self._warned_unmergeable:
+                self._warned_unmergeable = True
+                logger.warning(
+                    "prepared clip inputs are not batchable with this "
+                    "processor version; embedding one clip per forward"
+                )
+
+            return np.stack(
+                [self.embed_prepared(i) for i in inputs_list], axis=0
+            )
+
+        merged = {
+            k: v.to(self._model.device) if hasattr(v, "to") else v
+            for k, v in merged.items()
+        }
+        with torch.no_grad():
+            outputs = self._model(
+                **merged,
+                output_hidden_states=True,
+                return_dict=True,
+            )
+
+        return self._postprocess_embedding(outputs)
 
     def embed_prompt(self, prompt):
         """Generates an embedding for the given text prompt.
@@ -586,12 +957,14 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             )
             inputs = inputs.to(self._model.device)
 
+            # A text tower returns its final hidden state as a matter of
+            # course, so the stack is asked for only where it is the only way
+            # to reach it
+            extra = (
+                {} if self.config.text_only else {"output_hidden_states": True}
+            )
             with torch.no_grad():
-                outputs = self._model(
-                    **inputs,
-                    output_hidden_states=True,
-                    return_dict=True,
-                )
+                outputs = self._model(**inputs, return_dict=True, **extra)
 
             embeddings.append(self._postprocess_embedding(outputs))
 
@@ -610,6 +983,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         Returns:
             a 1D numpy array embedding
         """
+        self._require_vision()
         raw_fps = video_reader.frame_rate
         sample_fps = self.config.video_fps
 
@@ -634,6 +1008,11 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         effective_fps = raw_fps / step if raw_fps > 0 else sample_fps
 
         return self._embed_frame_list(frames, effective_fps)
+
+    def _embed_frame_list(self, frames, fps):
+        """Embeds an ordered list of prepared frames as one native Qwen3-VL
+        video message and returns a 1D numpy array embedding."""
+        return self.embed_prepared(self._prepare_frame_list(frames, fps))
 
     @staticmethod
     def _video_metadata(num_frames, fps):
@@ -669,16 +1048,15 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         except TypeError:
             return fields
 
-    def _embed_frame_list(self, frames, fps):
-        """Embeds an ordered list of prepared frames as one native Qwen3-VL
-        video message and returns a 1D numpy array embedding.
+    def _prepare_frame_list(self, frames, fps):
+        """Runs the processor over one clip, returning host-side inputs.
 
         Args:
             frames: a list of prepared frames (e.g. PIL images), in order
             fps: the playback frame rate to report to the model
 
         Returns:
-            a 1D numpy array embedding
+            the processor's inputs dict, on the host
         """
         messages = [
             {
@@ -716,11 +1094,10 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         # The convention is a fact about the processor VERSION, so a failed
         # richer attempt — which can die mid-processor after real work — is
         # skipped for every clip after the first
-        inputs = None
         start = getattr(self, "_call_convention", 0)
         for i, extra in enumerate(attempts[start:], start):
             try:
-                inputs = self._processor(
+                out = self._processor(
                     text=[text],
                     images=image_inputs,
                     videos=video_inputs,
@@ -729,7 +1106,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
                     **extra,
                 )
                 self._call_convention = i
-                break
+                return out
             except (TypeError, AttributeError):
                 # TypeError: a kwarg this processor version does not take.
                 # AttributeError: metadata whose shape it cannot digest —
@@ -737,26 +1114,12 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
                 # a reason to fail the clip.
                 continue
 
-        if inputs is None:
-            self._call_convention = len(attempts)
-            inputs = self._processor(
-                text=[text],
-                images=image_inputs,
-                videos=video_inputs,
-                return_tensors="pt",
-                padding=True,
-            )
+        self._call_convention = len(attempts)
 
-        inputs = {
-            k: v.to(self._model.device) if hasattr(v, "to") else v
-            for k, v in inputs.items()
-        }
-
-        with torch.no_grad():
-            outputs = self._model(
-                **inputs,
-                output_hidden_states=True,
-                return_dict=True,
-            )
-
-        return self._postprocess_embedding(outputs).squeeze(0)
+        return self._processor(
+            text=[text],
+            images=image_inputs,
+            videos=video_inputs,
+            return_tensors="pt",
+            padding=True,
+        )
