@@ -6,8 +6,8 @@ torchvision
 typing_extensions==4.16.0
 
 # precommit requirements
-pre-commit==4.6.1
-pylint==4.0.6
+pre-commit==4.6.2
+pylint==4.0.7
 jupyter-client==8.9.1
 
 # docs requirements
@@ -17,7 +17,7 @@ autodocsumm==0.2.15
 # Using latest compatible version from 0.22.x series
 docutils==0.22.4
 pypandoc>=1.17
-sphinx-markdown-builder==0.6.10
+sphinx-markdown-builder==0.6.11
 huggingface_hub>=1.17.0
 requests>=2.34.2
 ipykernel==7.3.0
@@ -36,7 +36,7 @@ Sphinx==9.1.0
 sphinx-copybutton==0.5.2
 sphinxcontrib-jquery==4.1
 sphinx-pushfeedback==0.1.8
-sphinx-docsearch==0.3.0
+sphinx-docsearch==0.3.1
 sphinx-remove-toctrees==1.0.0.post1
 sphinx-autoapi==3.8.0
 sphinx-sitemap==2.9.0
