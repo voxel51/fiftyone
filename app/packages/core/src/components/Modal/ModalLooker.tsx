@@ -119,7 +119,10 @@ const ModalLookerContent = React.memo(
         return <VideoAnnotationSurface sample={sample} />;
       }
       return isVideoTimelineEnabled ? (
-        <VideoTimelineSurface sample={sample} />
+        <VideoTimelineSurface
+          sample={sample}
+          videoPath={selectedMedia.selectedMediaPath}
+        />
       ) : (
         <VideoLookerReact sample={sample} showControls />
       );

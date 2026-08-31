@@ -118,6 +118,12 @@ const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
 
 export interface VideoTimelineSurfaceProps {
   sample: fos.ModalSample;
+  /**
+   * The selected media field's resolved URL (`resolveMediaFieldLooker`'s
+   * `selectedMediaPath`) — an alternate video field otherwise renders
+   * whichever URL happens to be first in `sample.urls`.
+   */
+  videoPath: string | null | undefined;
 }
 
 /**
@@ -136,11 +142,12 @@ export interface VideoTimelineSurfaceProps {
  */
 export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   sample,
+  videoPath,
 }) => {
   const videoSrc = useMemo(() => {
-    const url = sample.urls?.[0]?.url;
+    const url = videoPath ?? sample.urls?.[0]?.url;
     return url ? fos.getSampleSrc(url) : null;
-  }, [sample]);
+  }, [sample, videoPath]);
 
   // `+` / `-` zoom. The rest of this surface's keys are already registered
   // elsewhere — see the hook's doc comment.

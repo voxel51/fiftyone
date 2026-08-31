@@ -61,31 +61,28 @@ export class ModalVideoControlsPom {
    */
   async playUntilAdvanced() {
     const start = await this.time.textContent();
+    const readout = await this.time.elementHandle();
 
     await this.togglePlay();
     await this.page.waitForFunction(
-      (start_) =>
-        document.querySelector("[data-testid=timeline-playhead-time]")
-          ?.textContent !== start_,
-      start,
+      ({ readout_, start_ }) => readout_?.textContent !== start_,
+      { readout_: readout, start_: start },
     );
     await this.togglePlay();
   }
 
   /** Play until the readout reads `text`, then pause. */
   private async playUntilReadout(text: string, matchBeginning: boolean) {
+    const readout = await this.time.elementHandle();
+
     await this.togglePlay();
 
     await this.page.waitForFunction(
-      ({ text_, matchBeginning_ }) => {
-        const readout = document.querySelector(
-          "[data-testid=timeline-playhead-time]",
-        )?.textContent;
-        return matchBeginning_
-          ? !!readout?.startsWith(text_)
-          : readout === text_;
+      ({ readout_, text_, matchBeginning_ }) => {
+        const value = readout_?.textContent;
+        return matchBeginning_ ? !!value?.startsWith(text_) : value === text_;
       },
-      { text_: text, matchBeginning_: matchBeginning },
+      { readout_: readout, text_: text, matchBeginning_: matchBeginning },
     );
 
     await this.togglePlay();
