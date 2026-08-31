@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EncodedH264VideoVisualization } from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
@@ -7,12 +7,16 @@ import type { H264AccessUnit } from "./types";
 import { VideoIntentCancelledError } from "./types";
 
 const budget = {
-  deadlineMs: Number.POSITIVE_INFINITY,
+  maxWallTimeMs: Number.POSITIVE_INFINITY,
   maxMessages: 100,
   maxObservedPayloadBytes: 1_024,
 };
 
 describe("PushVideoAccessUnitReader", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("returns a complete retained keyframe-to-target span", async () => {
     const reader = new PushVideoAccessUnitReader();
     reader.push("camera", unit(0, true));
@@ -70,6 +74,123 @@ describe("PushVideoAccessUnitReader", () => {
         stream: "camera",
       }),
     ).rejects.toBeInstanceOf(VideoIntentCancelledError);
+  });
+
+  it("waits for future pushed coverage", async () => {
+    const reader = new PushVideoAccessUnitReader();
+    reader.push("camera", unit(0, true));
+    let settled = false;
+    const read = reader
+      .read({
+        budget,
+        endTimeNs: 2n,
+        signal: new AbortController().signal,
+        startTimeNs: 0n,
+        stream: "camera",
+      })
+      .finally(() => {
+        settled = true;
+      });
+
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    reader.push("camera", unit(1));
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    reader.push("camera", unit(2));
+
+    await expect(read).resolves.toMatchObject({
+      complete: true,
+      units: [unit(0, true), unit(1), unit(2)],
+    });
+  });
+
+  it("returns an incomplete read when its deadline expires", async () => {
+    vi.useFakeTimers();
+    const reader = new PushVideoAccessUnitReader();
+    reader.push("camera", unit(0, true));
+    const read = reader.read({
+      budget: { ...budget, maxWallTimeMs: 10 },
+      endTimeNs: 2n,
+      signal: new AbortController().signal,
+      startTimeNs: 0n,
+      stream: "camera",
+    });
+
+    await vi.advanceTimersByTimeAsync(11);
+
+    await expect(read).resolves.toMatchObject({
+      complete: false,
+      stopReason: "push-history",
+      units: [unit(0, true)],
+    });
+  });
+
+  it("does not restart one stream's quiescence window for another stream", async () => {
+    vi.useFakeTimers();
+    const reader = new PushVideoAccessUnitReader();
+    reader.push("camera-a", unit(0, true));
+    let settled = false;
+    const read = reader
+      .read({
+        budget,
+        endTimeNs: 2n,
+        signal: new AbortController().signal,
+        startTimeNs: 0n,
+        stream: "camera-a",
+      })
+      .finally(() => {
+        settled = true;
+      });
+
+    await vi.advanceTimersByTimeAsync(50);
+    reader.push("camera-b", unit(0, true));
+    await vi.advanceTimersByTimeAsync(51);
+
+    expect(settled).toBe(true);
+    await expect(read).resolves.toMatchObject({
+      complete: false,
+      stopReason: "push-history",
+      units: [unit(0, true)],
+    });
+  });
+
+  it("returns retained history when the producer becomes quiescent", async () => {
+    vi.useFakeTimers();
+    const reader = new PushVideoAccessUnitReader();
+    reader.push("camera", unit(0, true));
+    const read = reader.read({
+      budget,
+      endTimeNs: 2n,
+      signal: new AbortController().signal,
+      startTimeNs: 0n,
+      stream: "camera",
+    });
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    await expect(read).resolves.toMatchObject({
+      complete: false,
+      stopReason: "push-history",
+      units: [unit(0, true)],
+    });
+  });
+
+  it("cancels a read waiting for future pushed coverage", async () => {
+    const reader = new PushVideoAccessUnitReader();
+    const controller = new AbortController();
+    reader.push("camera", unit(0, true));
+    const read = reader.read({
+      budget,
+      endTimeNs: 2n,
+      signal: controller.signal,
+      startTimeNs: 0n,
+      stream: "camera",
+    });
+
+    controller.abort();
+
+    await expect(read).rejects.toBeInstanceOf(VideoIntentCancelledError);
   });
 
   it("reports whether a retained keyframe can bootstrap a target", () => {

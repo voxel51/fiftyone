@@ -697,6 +697,7 @@ describe("BitmapImageFrameView", () => {
         frame={frames[0]}
         onCanvasCommitted={onCanvasCommitted}
         onImageLoaded={onImageLoaded}
+        videoPriority="playing"
       />,
     );
     for (let index = 1; index < frames.length; index += 1) {
@@ -706,6 +707,7 @@ describe("BitmapImageFrameView", () => {
           frame={frames[index]}
           onCanvasCommitted={onCanvasCommitted}
           onImageLoaded={onImageLoaded}
+          videoPriority="playing"
         />,
       );
       await act(async () => {
@@ -743,7 +745,7 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() =>
       expect(onError).toHaveBeenCalledWith(
-        new Error("H.264 preview is waiting for a keyframe"),
+        new Error("Video preview is waiting for a keyframe"),
       ),
     );
     expect(decoder.instances).toHaveLength(0);
@@ -815,9 +817,23 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
     expect(onError.mock.calls[0]?.[0]).toEqual(
-      new Error("WebCodecs H.264 decoding is unavailable"),
+      new Error("WebCodecs video decoding is unavailable"),
     );
     expect(onImageLoaded).not.toHaveBeenCalled();
+  });
+
+  it("reports unavailable H.264 frame data separately from codec support", async () => {
+    const onError = vi.fn();
+
+    render(
+      <BitmapImageFrameView frame={videoFrame(false)} onError={onError} />,
+    );
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith(
+        new Error("H.264 video frame data is unavailable"),
+      ),
+    );
   });
 });
 
@@ -987,14 +1003,14 @@ function depthFrame(): RawImageVisualization {
   };
 }
 
-function videoFrame(): EncodedVideoVisualization {
+function videoFrame(hasFrame = true): EncodedVideoVisualization {
   return {
     bytes: Uint8Array.of(0, 0, 1, 0x65),
     codec: "h264",
     format: "h264",
     h264: {
       codecString: "avc1.4D001F",
-      hasFrame: true,
+      hasFrame,
       pps: Uint8Array.of(0x68, 0xce),
       sps: Uint8Array.of(0x67, 0x4d, 0x00, 0x1f),
     },

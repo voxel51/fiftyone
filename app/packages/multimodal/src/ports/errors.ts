@@ -10,7 +10,7 @@ export class EpisodeReadCancelledError extends Error {
 
   constructor() {
     super(EPISODE_READ_CANCELLED_MESSAGE);
-    this.name = "EpisodeReadCancelledError";
+    setErrorName(this, "EpisodeReadCancelledError");
   }
 }
 
@@ -45,6 +45,40 @@ export class EpisodeReadUnsupportedError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = "EpisodeReadUnsupportedError";
+    setErrorName(this, "EpisodeReadUnsupportedError");
   }
+}
+
+/** Stable code for an unknown or stale-epoch exact-row cursor. */
+export const EPISODE_EXACT_CURSOR_INVALID_CODE = "episode-exact-cursor-invalid";
+
+/**
+ * Typed rejection for an exact-row read whose cursor is unknown or belongs to
+ * another source epoch. Raised instead of silently substituting a nearby row.
+ */
+export class EpisodeExactCursorError extends Error {
+  readonly code = EPISODE_EXACT_CURSOR_INVALID_CODE;
+
+  constructor(message: string) {
+    super(message);
+    setErrorName(this, "EpisodeExactCursorError");
+  }
+}
+
+/** Returns whether an error represents an unknown or stale exact-row cursor. */
+export function isEpisodeExactCursorError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as {
+    readonly code?: unknown;
+    readonly name?: unknown;
+  };
+  return (
+    candidate.name === "EpisodeExactCursorError" ||
+    candidate.code === EPISODE_EXACT_CURSOR_INVALID_CODE
+  );
+}
+
+/** Defines an own name even when the host freezes Error.prototype. */
+function setErrorName(error: Error, name: string): void {
+  Object.defineProperty(error, "name", { configurable: true, value: name });
 }

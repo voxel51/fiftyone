@@ -124,6 +124,26 @@ describe("resolveMediaFieldLooker", () => {
     });
   });
 
+  it("keeps a logical media reference off all native looker paths", () => {
+    expect(
+      resolveMediaFieldLooker({
+        mediaField: "media_reference",
+        sample: {
+          media_reference: {
+            kind: "lerobot-episode",
+            key: "source:17",
+          },
+          _media_type: "multimodal",
+        },
+        urls: {},
+      }),
+    ).toMatchObject({
+      hasMediaReference: true,
+      nativeLookerType: null,
+      selectedMediaPath: null,
+    });
+  });
+
   it("routes an alternate image from a multimodal sample to ImageLooker", () => {
     expect(
       resolveMediaFieldLooker({

@@ -38,6 +38,7 @@ import type { EpisodeTileProps } from "../tiles/tile-types";
 import { joinNumericSeries } from "./numeric-series-join";
 import plotStyles from "./PlotTile.module.css";
 import PlotTileSettings from "./PlotTileSettings";
+import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import styles from "../tiles/Tile.module.css";
 
@@ -57,6 +58,11 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
   );
   useRegisterTileSettings(tileId, settingsRegistration);
   const seriesConfigs = usePlotTileSeries();
+  const visibleStreams = useMemo(
+    () => seriesConfigs.map((config) => config.stream),
+    [seriesConfigs],
+  );
+  usePublishVisibleStreams(visibleStreams);
   const setTileTitle = useSetTileTitle();
   const { ensureEnumeration, enumeration, setViewportDemand, subscribeSeries } =
     useNumericSeriesContext();

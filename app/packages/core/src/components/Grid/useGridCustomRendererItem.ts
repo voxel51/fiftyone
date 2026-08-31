@@ -5,6 +5,7 @@ import {
   getComponent,
   getMatchingSampleRenderer,
   getSampleRendererComponent,
+  hasSampleRendererSource,
   PluginComponentType,
   useActivePlugins,
 } from "@fiftyone/plugins";
@@ -71,7 +72,11 @@ export function useGridCustomRendererItem(
         ? getComponent(matchedRenderer.name)
         : null;
 
-      if (!matchedRenderer || !ctx.media.url || !canonicalRenderer) {
+      if (
+        !matchedRenderer ||
+        !hasSampleRendererSource(ctx.media) ||
+        !canonicalRenderer
+      ) {
         return null;
       }
 
@@ -99,7 +104,10 @@ export function useGridCustomRendererItem(
       const looker = createDefaultLooker.current?.(
         {
           ...result,
+          frameNumber: result.frameNumber,
+          frameRate: result.frameRate,
           symbol: id,
+          urls: result.urls ?? {},
         },
         { fontSize },
       ) as fos.Lookers;

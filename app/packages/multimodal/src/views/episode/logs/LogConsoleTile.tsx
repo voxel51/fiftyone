@@ -33,6 +33,7 @@ import { shouldDeferBulkHistory } from "../playback/bulk-stream-lifecycle";
 import { useDataStream } from "../playback/data-stream-context";
 import { useProgressiveHistories } from "../playback/use-progressive-history";
 import type { EpisodeTileProps } from "../tiles/tile-types";
+import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
 import { useLogConsoleContext } from "./log-console-context";
 import {
   logWindowForCenter,
@@ -147,6 +148,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     () => [...selectedStreams].sort().join("\0"),
     [selectedStreams],
   );
+  usePublishVisibleStreams(selectedStreams);
   const sourceScopeKey = `${sourceKey ?? ""}\0${activeViewMode}\0${selectedStreamsKey}`;
 
   const moveHorizon = useCallback(

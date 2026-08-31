@@ -378,6 +378,8 @@ export interface McapReadNumericSeriesRequest {
  * render gaps.
  */
 export interface McapNumericSeriesField {
+  /** Exact absolute bucket identity for aligned bounded-read summaries. */
+  readonly bucketIndexes?: BigInt64Array;
   /** Per-decimation-bucket discontinuity bits, when decimation was applied. */
   readonly bucketGapMask?: Uint8Array;
   readonly path: string;
@@ -422,11 +424,12 @@ export interface McapReadNumericSeriesSliceRequest {
   readonly absoluteBudget: ReadWorkBudget;
   readonly absoluteMaxChunks: number;
   readonly activeTimeline?: McapActiveTimeline;
+  /** Absolute-time-aligned aggregate resolution requested by the viewport. */
+  readonly bucketDurationNs: bigint;
   readonly budget: ReadWorkBudget;
   readonly continuation?: ReadContinuation;
   readonly endTimeNs: bigint;
   readonly maxChunks: number;
-  readonly maxPointsPerField?: number;
   readonly preferredTimeNs?: bigint;
   readonly selections: readonly McapNumericSeriesSelection[];
   readonly source: ByteSourceDescriptor;
@@ -445,6 +448,8 @@ export interface McapNumericSeriesSliceResult {
   readonly baseTimeNs: bigint;
   readonly continuation?: ReadContinuation;
   readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
+  /** Earliest timestamp not yet inspected by a chronological continuation. */
+  readonly resumeAtNs?: bigint;
   /** Exact source spans omitted because one atomic unit exceeded the hard ceiling. */
   readonly skippedByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
   readonly series: readonly McapNumericTopicSeries[];
@@ -585,6 +590,13 @@ export interface McapReadRawMessageRecordRequest {
   readonly prune?: McapRawPruneBudgets;
 
   /**
+   * Selects whether to decode the record body or return only message metadata.
+   * Metadata reads still select and materialize the matching message so the
+   * encoded payload size is authoritative.
+   */
+  readonly select?: "metadata" | "record";
+
+  /**
    * MCAP source to read through the shared byte query layer.
    */
   readonly source: ByteSourceDescriptor;
@@ -665,7 +677,8 @@ export interface McapReadPointCloudChannelRequest {
 export type McapPointCloudChannelResult = PointCloudRenderChannelPayload;
 
 /**
- * Raw record read outcome: `ok` carries a pruned record tree;
+ * Raw record read outcome: `ok` carries message metadata and, for full-record
+ * reads, a pruned record tree;
  * `unsupported` carries message metadata when a generic decode path is
  * unavailable; `decode-error` marks a corrupt or schema-mismatched payload;
  * `empty` means the topic has no message at or before the requested time.

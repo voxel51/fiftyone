@@ -26,6 +26,7 @@ import {
   publishSourceBootstrap,
   resetSourceBootstrapCacheForTests,
 } from "../../../runtime";
+import { registerEpisodeHeaderAction } from "../../../extensions/episode-actions";
 import { useSourcePoster } from "../image/source-poster-context";
 import { TILE_TYPE } from "../tiles/tile-types";
 import { SourcePlayback, TRANSITION_STATUS_DELAY_MS } from "./SourcePlayback";
@@ -339,6 +340,57 @@ describe("SourcePlayback", () => {
     );
 
     expect(sourceFactsHarness.recordSessionSourceFacts).not.toHaveBeenCalled();
+  });
+
+  it("passes optional session capabilities to registered header actions", () => {
+    const manifest = bootstrapManifest("/camera/front");
+    const recordingFacts: EpisodeRecordingFacts = {
+      format: "mcap",
+      sizeBytes: "1024",
+    };
+    const rawRecords = {
+      listRawRecordStreams: vi.fn(async () => []),
+      readRawRecord: vi.fn(),
+    } as EpisodeSession["rawRecords"];
+    const unregister = registerEpisodeHeaderAction({
+      Component: (context) => (
+        <span data-testid="header-action-capabilities">
+          {context.rawRecords === rawRecords &&
+          context.recordingFacts === recordingFacts
+            ? "available"
+            : "missing"}
+        </span>
+      ),
+      id: "test:session-capabilities",
+      order: 1,
+    });
+    playbackHarness.sceneInventory = readyInventory(
+      "/camera/front",
+      manifest.streams as StreamDescriptor[],
+    );
+
+    try {
+      render(
+        <SourcePlayback
+          episodeContext={{ datasetId: "dataset", sampleId: "sample" }}
+          fileName="recording.mcap"
+          session={
+            {
+              activate: vi.fn(),
+              manifest: { ...manifest, recordingFacts },
+              rawRecords,
+            } as unknown as EpisodeSession
+          }
+          source={createSource("recording")}
+        />,
+      );
+
+      expect(screen.getByTestId("header-action-capabilities").textContent).toBe(
+        "available",
+      );
+    } finally {
+      unregister();
+    }
   });
 
   it("builds the destination shell and poster from a buffered grid bootstrap", () => {

@@ -21,6 +21,10 @@ import type {
 } from "../../../ir";
 import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+} from "../../../video/types";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
 import { VideoPanel } from "../../../visualization/media-2d/VideoPanel";
@@ -92,6 +96,7 @@ import {
 import { projectionStreamsForHover } from "./hover-projection-streams";
 import { useSourcePoster } from "./source-poster-context";
 import { shouldPresentDestinationPoster } from "./destination-poster";
+import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
@@ -514,6 +519,11 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     pointCloudProjection.streams,
     pointCloudStreams,
   ]);
+  usePublishVisibleStreams([
+    ...activeStreams,
+    ...selectedProjectionStreams,
+    ...(explicitCalibrationStream ? [explicitCalibrationStream] : []),
+  ]);
   const projectionGeometry =
     effectiveImageDims &&
     playbackFrame &&
@@ -918,7 +928,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         >
           {frame && playbackFrame ? (
             frame.kind === "encoded-video" ? (
-              frame.codec === "h264" ? (
+              isSharedEncodedVideoVisualization(frame) ? (
                 <VideoPanel
                   canvasSurface="modal-image"
                   className={styles.panel}
@@ -938,7 +948,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                 />
               ) : (
                 <div className={styles.panel} role="alert">
-                  Video codec {frame.codec} is unsupported
+                  {sharedVideoRejectionMessage(frame)}
                 </div>
               )
             ) : (

@@ -7,7 +7,7 @@ import type {
   VideoPlaybackIntent,
   VideoStreamSnapshot,
 } from "./types";
-import { WebCodecsH264Decoder } from "./webcodecs-decoder";
+import { WebCodecsVideoDecoder } from "./webcodecs-decoder";
 
 interface RegisteredEngine {
   readonly engine: VideoStreamEngine;
@@ -30,7 +30,7 @@ export interface VideoPlaybackManagerStats {
 
 const DEFAULT_DEPENDENCIES: VideoEngineDependencies = {
   copyPresentation: copyVideoFramePresentation,
-  createDecoder: () => new WebCodecsH264Decoder(),
+  createDecoder: () => new WebCodecsVideoDecoder(),
   nowMs: () => performance.now(),
 };
 
