@@ -118,15 +118,6 @@ export interface PlaybackShellProps {
   /** Optional geometry-aware builder for Reset Layout. */
   resetLayoutStrategy?: TilingAutoLayoutStrategy;
 
-  /**
-   * Whether the embedded `TilingProvider` owns a private Jotai store.
-   * Defaults to `true` (standalone surfaces). Pass `false` when hosting
-   * the shell inside something that already owns Jotai state its own
-   * chrome reads — e.g. the sample modal, whose sidebar writes
-   * modal-scoped atoms a private store would shadow.
-   */
-  isolateStore?: boolean;
-
   /** Discoverable data sources for the current scene. */
   sceneSources?: readonly SceneSource[];
 
@@ -274,7 +265,6 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   resetManualTileTitles,
   resetLayout,
   resetLayoutStrategy,
-  isolateStore,
   sceneSources = EMPTY_SOURCES,
   mode,
   sharedImageWebGpuViews = false,
@@ -318,7 +308,6 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
             resetManualTileTitles={resetManualTileTitles}
             resetLayout={resetLayout}
             resetLayoutStrategy={resetLayoutStrategy}
-            isolateStore={isolateStore}
           >
             {children}
             <Layout
