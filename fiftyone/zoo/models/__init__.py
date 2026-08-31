@@ -7,6 +7,7 @@ The FiftyOne Model Zoo.
 """
 from collections import defaultdict
 from copy import deepcopy
+import functools
 import importlib
 import logging
 import os
@@ -408,6 +409,7 @@ def register_zoo_model_source(url_or_gh_repo, overwrite=False):
         overwrite (False): whether to overwrite any existing files
     """
     _parse_model_identifier(url_or_gh_repo, overwrite=overwrite)
+    _invalidate_zoo_models_manifest()
 
 
 def delete_zoo_model_source(url_or_gh_repo):
@@ -432,6 +434,7 @@ def delete_zoo_model_source(url_or_gh_repo):
         models_dir = os.path.dirname(manifest.path)
         if models_dir != fo.config.model_zoo_dir:
             etau.delete_dir(models_dir)
+            _invalidate_zoo_models_manifest()
         else:
             logger.warning("Cannot delete top-level model zoo directory")
     else:
@@ -620,7 +623,18 @@ class RemoteZooModelsManifest(ZooModelsManifest):
     _MODEL_CLS = RemoteZooModel
 
 
+@functools.lru_cache(maxsize=1)
 def _load_zoo_models_manifest():
+    """Returns ``(manifest, remote_sources)`` for the model zoo.
+
+    Memoized for the life of the process: the builtin manifests ship inside the
+    package, so they change only when it is upgraded. Building this parses every
+    manifest and walks ``model_zoo_dir``, and callers on request paths reach it
+    per request.
+
+    :func:`_invalidate_zoo_models_manifest` clears it, and the operations that
+    add or remove a source call it.
+    """
     manifest = ZooModelsManifest()
     remote_sources = {}
 
@@ -638,6 +652,12 @@ def _load_zoo_models_manifest():
         _merge_remote_manifest(manifest, remote_sources, manifest_path)
 
     return manifest, remote_sources
+
+
+def _invalidate_zoo_models_manifest():
+    """Drops the memoized manifest, for the operations that change what is on
+    disk under ``model_zoo_dir``."""
+    _load_zoo_models_manifest.cache_clear()
 
 
 def _merge_manifest(manifest, manifest_path, sources=None):
