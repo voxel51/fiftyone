@@ -54,9 +54,6 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
   const { setPinned } = useTrackPinning();
   const { state, actions } = useTemporalTagMode();
 
-  // Mirror TimelineWithTracks's own labelWidth logic so the overlay aligns.
-  const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
-
   const existingTags = useMemo(() => {
     const onTimeline = tracks
       .filter((t) => t.id.startsWith(TEMPORAL_TAG_TRACK_PREFIX))
@@ -116,13 +113,19 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
         labelWidth={requestedLabelWidth}
         // Compose caller-provided slot content with the tag UI instead of
         // replacing it — hosts inject their own controls (e.g. a timestamp
-        // readout) through the same slots.
-        rulerOverlay={
+        // readout) through the same slots. Resolved against
+        // TimelineWithTracks's *effective* label width (a render prop,
+        // since that width can collapse to 0 independently of
+        // `requestedLabelWidth` — see that prop's doc) so the overlay's own
+        // offset math never drifts from where the gutter actually renders.
+        rulerOverlay={(effectiveLabelWidth: number) => (
           <>
-            {rulerOverlay}
-            <TemporalTagRangeOverlay labelWidth={labelWidth} />
+            {typeof rulerOverlay === "function"
+              ? rulerOverlay(effectiveLabelWidth)
+              : rulerOverlay}
+            <TemporalTagRangeOverlay labelWidth={effectiveLabelWidth} />
           </>
-        }
+        )}
         extraActions={
           <>
             {extraActions}
