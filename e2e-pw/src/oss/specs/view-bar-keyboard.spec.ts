@@ -80,13 +80,12 @@ test.describe("view bar keyboard", () => {
     request,
     baseURL,
   }) => {
-    // Seed focus on the insert slot; everything after this is keys
-    await viewBar.locator.getByLabel("Insert stage").last().focus();
-    await page.keyboard.press("Enter");
-
-    // The typeahead owns the keyboard: type to filter, Enter inserts.
-    // Keys go nowhere until the typeahead mounts and takes focus.
+    // An empty bar pins its insert slot open — the typeahead IS the slot.
+    // Seed focus there; everything after this is keys.
+    await viewBar.insertTypeahead.focus();
     await expect(viewBar.insertTypeahead).toBeFocused();
+
+    // Type to filter, Enter inserts (typed text is the intent Enter needs)
     await page.keyboard.type("Skip");
     await page.keyboard.press("Enter");
     await viewBar.stageEditor.assert.isOpen();

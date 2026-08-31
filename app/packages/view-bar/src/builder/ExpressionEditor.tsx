@@ -203,17 +203,28 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   const followKeyboard = useRef(false);
   // Which suggestion the arrow keys have landed on
   const [active, setActive] = useState(0);
+  // Whether the arrow keys have landed anywhere since the list re-aimed —
+  // a row merely highlighted by default is not something Enter may take
+  const [navigated, setNavigated] = useState(false);
   // The mounted handlers read through refs, so they never go stale
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
   const navRef = useRef<{
     visible: boolean;
+    /**
+     * Whether a plain Enter means "take the active row": the user arrowed to
+     * it, or it completes the token being typed (a field path). A list that
+     * is merely open with follow-up operators must not eat the Enter that
+     * finishes the stage.
+     */
+    plainEnterTakes: boolean;
     count: number;
     move: (delta: number) => void;
     accept: () => boolean;
     dismiss: () => void;
   }>({
     visible: false,
+    plainEnterTakes: false,
     count: 0,
     move: () => undefined,
     accept: () => false,
@@ -240,7 +251,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
       const nav = navRef.current;
 
       if (e.keyCode === monaco.KeyCode.Enter && !e.shiftKey) {
-        if (!nav.visible || !nav.accept()) {
+        if (!nav.visible || !nav.plainEnterTakes || !nav.accept()) {
           onSubmitRef.current?.();
         }
       } else if (!nav.visible) {
@@ -380,6 +391,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   }, [value, offset]);
   React.useEffect(() => {
     setActive(0);
+    setNavigated(false);
   }, [entries]);
 
   React.useEffect(() => {
@@ -392,9 +404,12 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
 
   navRef.current = {
     visible: listOpen && entries.some((entry) => entry.choose),
+    plainEnterTakes:
+      navigated || Boolean(entries[active]?.id.startsWith("field:")),
     count: entries.length,
     move: (delta: number) => {
       followKeyboard.current = true;
+      setNavigated(true);
       setActive((current) => {
         // Land only on rows that can be accepted
         let next = current;
