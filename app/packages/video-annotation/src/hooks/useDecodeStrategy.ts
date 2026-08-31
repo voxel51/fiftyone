@@ -37,6 +37,12 @@ export interface DecodeStrategyInput {
   frameCount: number | undefined;
   /** Metadata is resolved — safe to probe. */
   enabled: boolean;
+  /**
+   * Caller-known strategy that skips both probes (a URL override still wins).
+   * The dynamic-group ImaVid path forces `fetch`: its frames are the group's
+   * ordered samples — there is no source video to extract or play.
+   */
+  force?: DecodeStrategy;
 }
 
 /**
@@ -57,7 +63,7 @@ export function useDecodeStrategy(
   const dataset = useDatasetName();
   const sampleId = useModalSampleId();
 
-  const forced = useForcedStrategy();
+  const forced = useForcedStrategy() ?? input.force;
   const active = enabled && !forced;
 
   const framesState = useSampledFramesProbe(frameCount, active);

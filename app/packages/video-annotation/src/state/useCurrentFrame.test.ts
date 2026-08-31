@@ -31,6 +31,14 @@ vi.mock("@fiftyone/state", () => ({
   }),
 }));
 
+// The accessor falls back to the dataset's dynamic-group target frame rate
+// through recoil; the native-video path under test only reads the sample's
+// own frame rate.
+vi.mock("./accessors", () => ({
+  useModalSampleFrameRate: (sample?: { frameRate?: number }) =>
+    sample?.frameRate,
+}));
+
 import { useCurrentFrame } from "./useCurrentFrame";
 
 describe("useCurrentFrame", () => {

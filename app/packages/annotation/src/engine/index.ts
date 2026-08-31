@@ -31,6 +31,7 @@ export type {
   LabelChange,
   LabelChangeKind,
   LabelStore,
+  PersistenceAdapter,
 } from "./store/types";
 export { isWholeSampleReset, wholeSampleReset } from "./store/types";
 export { SampleLabelStore } from "./store/sampleLabelStore";

@@ -1,4 +1,9 @@
 import type { ModalSample } from "@fiftyone/state";
+import { useIsImageDynamicGroupVideo } from "@fiftyone/state";
+import {
+  useDynamicGroupElementCount,
+  useModalSampleFrameRate,
+} from "../state/accessors";
 import { resolveFrameCount } from "../utils/frameCount";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 
@@ -37,6 +42,33 @@ export interface AnnotatePrerequisites {
 export const useAnnotatePrerequisites = (
   sample: ModalSample,
 ): AnnotatePrerequisites => {
+  // An image dataset dynamically grouped into a video (ImaVid) has no
+  // VideoMetadata: its frame rate falls back to the dataset's
+  // `dynamic_groups_target_frame_rate` and its frame count is the group's
+  // element count. Both hooks run unconditionally to keep hook order stable;
+  // the count aggregation only mounts on the ImaVid path.
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
+  const imaVidFrameRate = useModalSampleFrameRate(sample);
+  const elementCount = useDynamicGroupElementCount(isImageDynamicGroupVideo);
+
+  if (isImageDynamicGroupVideo) {
+    const ok =
+      Number.isFinite(imaVidFrameRate) &&
+      imaVidFrameRate > 0 &&
+      elementCount !== null &&
+      elementCount > 0;
+
+    if (!ok) {
+      return { status: "blocked", blocker: "metadata" };
+    }
+
+    return {
+      status: "ready",
+      frameRate: imaVidFrameRate,
+      frameCount: elementCount,
+    };
+  }
+
   const frameRate = getModalSampleFrameRate(sample);
   const hasFrameRate =
     frameRate !== undefined && Number.isFinite(frameRate) && frameRate > 0;

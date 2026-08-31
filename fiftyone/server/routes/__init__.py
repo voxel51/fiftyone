@@ -12,6 +12,7 @@ from fiftyone.operators.server import OperatorRoutes
 
 from .aggregate import Aggregate
 from .camera import CameraRoutes
+from .dynamic_group import DynamicGroupRoutes
 from .embeddings import EmbeddingsRoutes
 from .embeddings_v2 import EmbeddingsV2Routes
 from .event import Event
@@ -44,6 +45,7 @@ if is_feature_enabled("VFF_MULTIMODAL"):
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
     CameraRoutes
+    + DynamicGroupRoutes
     + EmbeddingsRoutes
     + EmbeddingsV2Routes
     + GroupsRoutes

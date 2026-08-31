@@ -190,6 +190,40 @@ class ExecutionStoreService(object):
             store_name, key, value, ttl=ttl, policy="evict"
         )
 
+    def set_key_if_absent(
+        self,
+        store_name: str,
+        key: str,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy: str = "persist",
+    ) -> bool:
+        """Sets a key only when no value is already stored for it."""
+
+        return self._repo.set_key_if_absent(
+            store_name, key, value, ttl=ttl, policy=policy
+        )
+
+    def compare_and_set_key(
+        self,
+        store_name: str,
+        key: str,
+        expected: Any,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy: Optional[str] = None,
+    ) -> bool:
+        """Atomically replaces a key whose value matches ``expected``."""
+
+        return self._repo.compare_and_set_key(
+            store_name,
+            key,
+            expected,
+            value,
+            ttl=ttl,
+            policy=policy,
+        )
+
     def has_key(self, store_name: str, key: str) -> bool:
         """Determines whether the specified key exists in the specified store.
 

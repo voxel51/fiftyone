@@ -5,9 +5,9 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { usePlayhead } from "@fiftyone/playback";
 import { resolveFrameCount } from "../utils/frameCount";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 import {
   labelSchemaData,
+  useModalSampleFrameRate,
   useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
@@ -93,7 +93,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
 
     return active[0] ?? null;
   }, [tdFieldPaths, visible, selectedTdField]);
-  const fps = getModalSampleFrameRate(modalSample);
+  const fps = useModalSampleFrameRate(modalSample);
   const canCreateTd =
     !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
 
