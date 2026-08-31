@@ -11,7 +11,15 @@
  */
 
 import { AnchoredListbox, useAnchorRect } from "@fiftyone/components";
-import { Icon, IconName, Input, Size, Tooltip, Anchor } from "@voxel51/voodo";
+import {
+  Anchor,
+  Clickable,
+  Icon,
+  IconName,
+  Input,
+  Size,
+  Tooltip,
+} from "@voxel51/voodo";
 import React from "react";
 
 import { StageDescription } from "./description";
@@ -27,11 +35,13 @@ export interface InsertSlotProps {
   names: readonly string[];
   /** What a stage does, shown inline under its name in the list. */
   describe: (name: string) => string | undefined;
-  onInsert: (
-    cls: string,
-    index: number,
-  ) => void; /** When set, the closed slot renders as a labeled CTA ("+ <label>"). */
-  label?: string;
+  onInsert: (cls: string, index: number) => void;
+  /**
+   * Render the typeahead input persistently instead of a "+" that opens it —
+   * the empty bar's CTA is the real selector, not a button that becomes one.
+   * The stage list drops down while the input is focused.
+   */
+  pinned?: boolean;
 }
 
 export const InsertSlot: React.FC<InsertSlotProps> = ({
@@ -39,15 +49,20 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
   names,
   describe,
   onInsert,
-  label,
+  pinned,
 }) => {
   const [open, setOpen] = React.useState(false);
+  const [focused, setFocused] = React.useState(false);
   const [query, setQuery] = React.useState("");
   // Highlighted stage, driven by the arrow keys. Clamped on read rather than
   // reset by an effect, so it stays valid as the filtered set changes.
   const [highlight, setHighlight] = React.useState(0);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const rect = useAnchorRect(containerRef, open);
+  // Pinned, the input is always there and focus gates the list; unpinned,
+  // opening autofocuses the input so open alone is the gate
+  const isOpen = Boolean(pinned) || open;
+  const listVisible = pinned ? focused : open;
+  const rect = useAnchorRect(containerRef, listVisible);
 
   React.useEffect(() => {
     if (!open) return undefined;
@@ -75,9 +90,9 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
     setQuery("");
   };
 
-  if (!open) {
+  if (!isOpen) {
     const trigger = (
-      <div
+      <Clickable
         onClick={() => setOpen(true)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -89,33 +104,25 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
         tabIndex={0}
         aria-label="Insert stage"
         style={{
-          cursor: "pointer",
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 4,
           height: 24,
+          width: 24,
           borderRadius: 12,
-          padding: label ? "0 8px 0 4px" : 0,
-          width: label ? undefined : 24,
           color: "var(--fo-palette-text-secondary)",
-          whiteSpace: "nowrap",
           flexShrink: 0,
         }}
       >
         <Icon name={IconName.Add} size={Size.Sm} />
-        {label && <span style={{ fontSize: 13 }}>{label}</span>}
-      </div>
+      </Clickable>
     );
 
-    // A labeled slot says what it does; the bare "+" keeps its tooltip.
     // Anchored to the right, not below: a centered tooltip on the leftmost
     // slot extends past the bar's left edge, and voodo's Tooltip does not
     // slide itself back into view. Beside the "+" it grows away from the
     // edge instead.
-    return label ? (
-      trigger
-    ) : (
+    return (
       <Tooltip anchor={Anchor.Right} content="Insert stage">
         {trigger}
       </Tooltip>
@@ -138,8 +145,11 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
         size={Size.Sm}
         value={query}
         placeholder="Add stage…"
-        autoFocus
+        // A pinned slot renders at page load — it must not steal the keyboard
+        autoFocus={!pinned}
         {...NO_BROWSER_SUGGESTIONS}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         onChange={(e) => {
           setQuery(e.target.value);
           setHighlight(0);
@@ -148,6 +158,10 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
           if (e.key === "Escape") {
             setOpen(false);
             setQuery("");
+            if (pinned) {
+              // The input stays; dropping focus is what dismisses the list
+              (e.target as HTMLElement).blur();
+            }
           } else if (e.key === "ArrowDown") {
             // Arrow keys must not also move the text cursor
             e.preventDefault();
@@ -160,7 +174,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
           }
         }}
         role="combobox"
-        aria-expanded={open}
+        aria-expanded={listVisible}
         aria-activedescendant={
           filtered[active] ? `view-bar-stage-${active}` : undefined
         }

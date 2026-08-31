@@ -234,17 +234,21 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
     });
     // The arrow keys drive the suggestion list while it is open; Enter takes
     // the landed-on suggestion, Escape puts the list away until the caret
-    // moves. With the list closed, every key means what Monaco says it means.
+    // moves. With no suggestion to take, Enter finishes the stage — an
+    // expression is one line, so a newline is never what Enter means.
     editor.onKeyDown((e) => {
       const nav = navRef.current;
-      if (!nav.visible) return;
 
-      if (e.keyCode === monaco.KeyCode.DownArrow) {
+      if (e.keyCode === monaco.KeyCode.Enter && !e.shiftKey) {
+        if (!nav.visible || !nav.accept()) {
+          onSubmitRef.current?.();
+        }
+      } else if (!nav.visible) {
+        return;
+      } else if (e.keyCode === monaco.KeyCode.DownArrow) {
         nav.move(1);
       } else if (e.keyCode === monaco.KeyCode.UpArrow) {
         nav.move(-1);
-      } else if (e.keyCode === monaco.KeyCode.Enter && !e.shiftKey) {
-        if (!nav.accept()) return;
       } else if (e.keyCode === monaco.KeyCode.Escape) {
         nav.dismiss();
       } else {

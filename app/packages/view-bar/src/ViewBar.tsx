@@ -22,6 +22,7 @@ import {
   Align,
   Anchor,
   Button,
+  Clickable,
   Icon,
   IconName,
   Orientation,
@@ -31,6 +32,7 @@ import {
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
+import { useAnchorRect } from "@fiftyone/components";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import { kindsByFtype, operatorsFrom } from "./builder/catalog";
@@ -43,7 +45,9 @@ import { SearchSettingsPopover } from "./SearchSettingsPopover";
 import {
   orderBySearchRecency,
   readIndexUses,
+  readMatches,
   recordIndexUse,
+  recordMatches,
 } from "./searchIndexRecency";
 import {
   appliesTo,
@@ -696,7 +700,18 @@ const ViewBar: React.FC<{
   const [searchIndexKey, setSearchIndexKey] = React.useState<string | null>(
     null,
   );
-  const [searchK, setSearchK] = React.useState(LANGUAGE_SEARCH_K);
+  const [searchK, setSearchK] = React.useState(
+    () => (datasetName ? readMatches(datasetName) : null) ?? LANGUAGE_SEARCH_K,
+  );
+  const changeSearchK = useCallback(
+    (k: number) => {
+      setSearchK(k);
+      if (datasetName) {
+        recordMatches(datasetName, k);
+      }
+    },
+    [datasetName],
+  );
   // bumps after every search so the ordering reflects the use just recorded
   const [recencyStamp, setRecencyStamp] = React.useState(0);
   const orderedPromptKeys = useMemo(
@@ -716,10 +731,14 @@ const ViewBar: React.FC<{
   // The no-index wand's popover (the collapsed bar's education affordance)
   const [educationOpen, setEducationOpen] = React.useState(false);
   const educationWandRef = React.useRef<HTMLDivElement | null>(null);
+  const educationRect = useAnchorRect(educationWandRef, educationOpen);
   useEffect(() => {
     if (!educationOpen) return undefined;
     const onDown = (e: MouseEvent) => {
-      if (educationWandRef.current?.contains(e.target as Node)) return;
+      const target = e.target as Element;
+      if (educationWandRef.current?.contains(target)) return;
+      // The popover portals to the body, so it is not a DOM child of the wand
+      if (target.closest?.('[data-cy="view-bar-search-settings"]')) return;
       setEducationOpen(false);
     };
     window.addEventListener("mousedown", onDown);
@@ -974,7 +993,7 @@ const ViewBar: React.FC<{
                 selectedKey={resolvedSearchIndex?.key ?? null}
                 onSelectKey={setSearchIndexKey}
                 k={searchK}
-                onChangeK={setSearchK}
+                onChangeK={changeSearchK}
                 onOpenPanel={openSimilarityPanel}
               />
             ) : (
@@ -1048,12 +1067,8 @@ const ViewBar: React.FC<{
               onInsert={insertStage}
               // With no stages and no text search there is nothing else in
               // the bar — a bare "+" reads as a rendering failure, so the
-              // slot says what it does
-              label={
-                state.stages.length === 0 && !searchEnabled
-                  ? "Add stage"
-                  : undefined
-              }
+              // slot IS the selector, input and all
+              pinned={state.stages.length === 0 && !searchEnabled}
             />
             {state.stages.length === 0 && !searchEnabled && (
               // Educational: text search exists but needs an index — the wand
@@ -1063,7 +1078,7 @@ const ViewBar: React.FC<{
                 ref={educationWandRef}
                 style={{ position: "relative", marginLeft: 4, flexShrink: 0 }}
               >
-                <span
+                <Clickable
                   role="button"
                   tabIndex={0}
                   aria-label="Text search requires a similarity index"
@@ -1079,18 +1094,18 @@ const ViewBar: React.FC<{
                     display: "inline-flex",
                     alignItems: "center",
                     color: "var(--fo-palette-text-tertiary)",
-                    cursor: "pointer",
                   }}
                 >
                   <Icon name={IconName.AI} size={Size.Sm} />
-                </span>
+                </Clickable>
                 {educationOpen && (
                   <SearchSettingsPopover
+                    rect={educationRect}
                     promptKeys={[]}
                     selectedKey={null}
                     onSelectKey={() => undefined}
                     k={searchK}
-                    onChangeK={setSearchK}
+                    onChangeK={changeSearchK}
                     onOpenPanel={openSimilarityPanel}
                     onClose={() => setEducationOpen(false)}
                   />

@@ -9,7 +9,8 @@
  *
  * Recency is a client-side memory (localStorage, keyed per dataset): the
  * data model has no "last searched with" field, and a per-browser memory is
- * exactly the scope the convenience wants.
+ * exactly the scope the convenience wants. The match count ("Matches" in the
+ * wand popover) persists the same way.
  */
 
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
@@ -63,6 +64,35 @@ export const recordIndexUse = (
 /** The last-used timestamps for `dataset`, for ordering. */
 export const readIndexUses = (dataset: string): Record<string, number> =>
   read()[dataset] ?? {};
+
+const MATCHES_KEY = "fiftyone-quick-search-matches";
+
+/** Remember the match count the user set for `dataset`'s quick search. */
+export const recordMatches = (dataset: string, k: number): void => {
+  try {
+    const raw = window.localStorage.getItem(MATCHES_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    const store = typeof parsed === "object" && parsed !== null ? parsed : {};
+    window.localStorage.setItem(
+      MATCHES_KEY,
+      JSON.stringify({ ...store, [dataset]: k }),
+    );
+  } catch {
+    // storage may be unavailable — a forgotten preference, nothing more
+  }
+};
+
+/** The remembered match count for `dataset`, or null when never set. */
+export const readMatches = (dataset: string): number | null => {
+  try {
+    const raw = window.localStorage.getItem(MATCHES_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    const value = parsed?.[dataset];
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Order `promptKeys` (given newest-created first) by the rule above. Pure —
