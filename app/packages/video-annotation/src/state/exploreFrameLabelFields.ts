@@ -8,15 +8,19 @@ import { LabelType } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
-/** Label types the Lighter adapters can render (see `lighter/adapters.ts`). */
+/**
+ * Label types the per-frame pipeline can actually paint.
+ *
+ * The binding constraint is `framesData`'s projection, NOT the breadth of the
+ * Lighter adapters: `toFieldSpecs` builds a spec only for types present in both
+ * `LIST_LABEL_CHILD` and `ELEMENT_CLS`, and `continue`s past the rest. A type
+ * admitted here but absent there registers into the `FrameStore` — and into
+ * every `pendingPaths` / `frameEquals` walk — while never being seeded and
+ * never painting. So this set must stay a subset of `ELEMENT_CLS`'s keys;
+ * widening it means teaching `framesData` the new element shape first.
+ */
 const RENDERABLE = new Set<LabelType>([
-  LabelType.Detection,
   LabelType.Detections,
-  LabelType.Classification,
-  LabelType.Classifications,
-  LabelType.Keypoint,
-  LabelType.Keypoints,
-  LabelType.Polyline,
   LabelType.Polylines,
 ]);
 

@@ -178,7 +178,16 @@ const toPerFrameField = (field: string): string =>
  */
 export const RegisterFrameLabels: React.FC<{
   sample: ModalSample;
-  children: React.ReactNode;
+  /**
+   * Optional. Prefer rendering this registrar as a childless SIBLING of the
+   * surface: it swaps its wrapper component when duration lands, and re-keys on
+   * the resolved `frameCount`, so anything nested here is unmounted and rebuilt
+   * on the way to ready. That is ruinous when the subtree owns the `<video>`
+   * the duration comes from. Consumers reach the stream through
+   * `useFrameLabelsStream` (see `usePublishFrameLabelsStream` below) rather
+   * than through position, so nesting buys nothing.
+   */
+  children?: React.ReactNode;
 }> = ({ sample, children }) => {
   const duration = useDuration();
   const dataset = useDatasetName();
@@ -501,8 +510,7 @@ function useTrackDecorator({
       // A TD row is identified by its structured event payload; anything else
       // is an engine-addressed object track (row id == instanceId).
       const tdEvent = track.events[0]?.data as
-        | TemporalDetectionEventData
-        | undefined;
+        TemporalDetectionEventData | undefined;
       const isObjectTrack = tdEvent?.detectionId === undefined;
 
       if (isObjectTrack && stream) {

@@ -2,6 +2,15 @@ import { Locator, Page, expect } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
 /**
+ * Playback has to actually reach the target, so these waits get the long
+ * timeout rather than the default assertion one.
+ */
+const READOUT_TIMEOUT = 30_000;
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
  * Video playback controls in the modal.
  *
  * Explore-mode video is a plain `<video>` docked over the shared timeline,
@@ -61,28 +70,21 @@ export class ModalVideoControlsPom {
    */
   async playUntilAdvanced() {
     const start = await this.time.textContent();
-    const readout = await this.time.elementHandle();
 
     await this.togglePlay();
-    await this.page.waitForFunction(
-      ({ readout_, start_ }) => readout_?.textContent !== start_,
-      { readout_: readout, start_: start },
-    );
+    await expect(this.time).not.toHaveText(start ?? "", {
+      timeout: READOUT_TIMEOUT,
+    });
     await this.togglePlay();
   }
 
   /** Play until the readout reads `text`, then pause. */
   private async playUntilReadout(text: string, matchBeginning: boolean) {
-    const readout = await this.time.elementHandle();
-
     await this.togglePlay();
 
-    await this.page.waitForFunction(
-      ({ readout_, text_, matchBeginning_ }) => {
-        const value = readout_?.textContent;
-        return matchBeginning_ ? !!value?.startsWith(text_) : value === text_;
-      },
-      { readout_: readout, text_: text, matchBeginning_: matchBeginning },
+    await expect(this.time).toHaveText(
+      matchBeginning ? new RegExp(`^${escapeRegExp(text)}`) : text,
+      { timeout: READOUT_TIMEOUT },
     );
 
     await this.togglePlay();

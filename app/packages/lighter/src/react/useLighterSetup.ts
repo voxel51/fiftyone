@@ -3,7 +3,7 @@
  */
 
 import { useLookerOptions } from "@fiftyone/state";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import {
   PixiRenderer2D,
@@ -35,7 +35,10 @@ export const useLighterSetupWithPixi = (
   options: LighterOptions,
   sceneId: string,
 ) => {
-  const [scene, setScene] = useAtom(lighterSceneAtom);
+  // Read and write split rather than `useAtom`: the tuple overload does not
+  // resolve against this atom's type, which left the setter untyped.
+  const scene = useAtomValue(lighterSceneAtom);
+  const setScene = useSetAtom(lighterSceneAtom);
   const setInitError = useSetAtom(lighterInitErrorAtom);
 
   const rendererRef = useRef<PixiRenderer2D | null>(null);
@@ -89,8 +92,15 @@ export const useLighterSetupWithPixi = (
 
     return () => {
       scene.destroy();
+      // Clear the published scene too. `useLighter` reads this atom, so leaving
+      // a destroyed scene in it hands every consumer (toolbar zoom/fit, the
+      // engine bridge) a dead handle. Guarded so a remount that has already
+      // published its replacement is not clobbered: on a `sceneId` change this
+      // cleanup runs in the commit AFTER the new scene was set, and it closes
+      // over the old one.
+      setScene((current) => (current === scene ? null : current));
     };
-  }, [scene]);
+  }, [scene, setScene]);
 
   useEffect(() => {
     if (scene && !scene.isDestroyed) {

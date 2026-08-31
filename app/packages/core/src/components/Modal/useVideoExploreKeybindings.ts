@@ -9,11 +9,11 @@ import { useLighter } from "@fiftyone/lighter";
  * owns sample navigation, close, fullscreen and select. This hook covers only
  * what the toolbar dropped: the looker's `+` / `-` zoom.
  *
- * The looker bound `["+", "="]` and `["-", "_"]`. Each needs its own binding
- * here because the key matcher requires an EXACT modifier state — a shifted
- * press falls through a bare binding rather than matching it. `"\\+"` escapes
- * the reserved combiner and resolves to `=`; shift over that key is what
- * produces a literal `+` on a US layout.
+ * The looker bound `["+", "="]` and `["-", "_"]` against the produced
+ * character alone. This matcher instead requires an EXACT modifier state, so
+ * each character needs both a shifted and an unshifted binding to stay
+ * layout-independent: on a US layout `+` and `_` are shifted presses, while on
+ * layouts that give them their own cap they are not.
  */
 export const useVideoExploreKeybindings = () => {
   const { zoomIn, zoomOut } = useLighter();
@@ -23,28 +23,14 @@ export const useVideoExploreKeybindings = () => {
     [
       {
         commandId: "video-explore-zoom-in",
-        sequence: "\\+",
-        handler: zoomIn,
-        label: "Zoom in",
-        description: "Zoom into the video and its labels",
-      },
-      {
-        commandId: "video-explore-zoom-in-shift",
-        sequence: "shift+\\+",
+        sequence: ["=", "\\+", "shift+\\+"],
         handler: zoomIn,
         label: "Zoom in",
         description: "Zoom into the video and its labels",
       },
       {
         commandId: "video-explore-zoom-out",
-        sequence: "-",
-        handler: zoomOut,
-        label: "Zoom out",
-        description: "Zoom out of the video and its labels",
-      },
-      {
-        commandId: "video-explore-zoom-out-shift",
-        sequence: "shift+-",
+        sequence: ["-", "_", "shift+_"],
         handler: zoomOut,
         label: "Zoom out",
         description: "Zoom out of the video and its labels",

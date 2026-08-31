@@ -112,6 +112,17 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   children,
 }) => {
   const scopeId = useId();
+
+  // Release the scope's registry entry on unmount, the same way `removeTile` /
+  // `resetLayout` release per-tile `tileSelectionAtom` entries. Without this
+  // every modal or panel that mounts a provider leaves an `atomFamily` entry
+  // behind for the rest of the session.
+  useEffect(
+    () => () => {
+      registeredTilesAtom.remove(scopeId);
+    },
+    [scopeId],
+  );
   const initialLayoutValueRef = useRef<MosaicNode<string> | null | undefined>(
     undefined,
   );
@@ -317,7 +328,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         },
       };
     },
-    [jotaiStore],
+    [jotaiStore, scopeId],
   );
 
   const splitTile = useCallback(
@@ -407,7 +418,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       duplicatorsRef.current.delete(tileId);
       return id;
     },
-    [jotaiStore],
+    [jotaiStore, scopeId],
   );
 
   const closeOtherTiles = useCallback(
@@ -421,28 +432,31 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     [setLayout],
   );
 
-  const removeTile = useCallback((id: string) => {
-    setTiles((prev) => {
-      if (!(id in prev)) return prev;
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-    setLayoutState((prev) => {
-      if (prev === null) return null;
-      if (typeof prev === "string") return prev === id ? null : prev;
-      // Walk the tree, collapsing the parent split when one child is removed.
-      const stripped = stripTile(prev, id);
-      return stripped;
-    });
-    setFocusedTileId((current) => (current === id ? null : current));
-    setExpandedTileId((current) => (current === id ? null : current));
-    setManualTileTitles((prev) => omitKeys(prev, [id]));
-    // Release the per-tile atomFamily entry so the store doesn't
-    // grow unbounded across long sessions.
-    tileSelectionAtom.remove(tileScopedKey(scopeId, id));
-    duplicatorsRef.current.delete(id);
-  }, []);
+  const removeTile = useCallback(
+    (id: string) => {
+      setTiles((prev) => {
+        if (!(id in prev)) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setLayoutState((prev) => {
+        if (prev === null) return null;
+        if (typeof prev === "string") return prev === id ? null : prev;
+        // Walk the tree, collapsing the parent split when one child is removed.
+        const stripped = stripTile(prev, id);
+        return stripped;
+      });
+      setFocusedTileId((current) => (current === id ? null : current));
+      setExpandedTileId((current) => (current === id ? null : current));
+      setManualTileTitles((prev) => omitKeys(prev, [id]));
+      // Release the per-tile atomFamily entry so the store doesn't
+      // grow unbounded across long sessions.
+      tileSelectionAtom.remove(tileScopedKey(scopeId, id));
+      duplicatorsRef.current.delete(id);
+    },
+    [scopeId],
+  );
 
   const setTileTitle = useCallback(
     (
@@ -505,7 +519,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     );
     setFocusedTileId(null);
     setExpandedTileId(null);
-  }, []);
+  }, [scopeId]);
 
   const value = useMemo<TilingContextValue>(
     () => ({

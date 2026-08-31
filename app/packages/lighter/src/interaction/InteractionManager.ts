@@ -402,8 +402,12 @@ export class InteractionManager {
         return;
       }
 
-      // Prevent pan/zoom when target is selectable
-      if (handler && TypeGuards.isSelectable(handler)) {
+      // Prevent pan/zoom when target is selectable, so dragging an overlay
+      // moves/resizes it instead of the camera. Read-only is excluded: it bails
+      // out below rather than entering a move/resize state, so disabling the
+      // drag plugin here would strand the gesture — the press would neither
+      // move the overlay nor pan, and pan is only restored on pointerup.
+      if (!this.readOnly && handler && TypeGuards.isSelectable(handler)) {
         this.renderer.disableZoomPan();
       }
 

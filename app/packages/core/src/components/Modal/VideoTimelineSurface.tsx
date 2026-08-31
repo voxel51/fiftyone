@@ -10,6 +10,7 @@ import {
   RegisterTimelineAudio,
   RegisterVideoExploreLabels,
   VideoLighterTile,
+  getModalSampleFrameRate,
 } from "@fiftyone/video-annotation";
 import React, { useCallback, useMemo, useState } from "react";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
@@ -65,14 +66,11 @@ const TIMELINE_MIN_MAX_SIZE = 160;
  * specific to Explore: the readiness marker every sample surface publishes,
  * and the media-error fallback.
  */
-const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
-  videoSrc,
-  filepath,
-}) => {
-  // Keyed to the source rather than a bare flag so navigating to a sample
-  // that does load clears it without an effect and without a flicker.
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-
+const VideoTile: React.FC<{
+  videoSrc: string;
+  filepath: string;
+  onError: () => void;
+}> = ({ videoSrc, filepath, onError }) => {
   const onLoadStart = useCallback((element: HTMLVideoElement) => {
     // The element is reused across sources, so the previous source's
     // marker has to come down before the next one lands. `loadstart`
@@ -93,17 +91,6 @@ const VideoTile: React.FC<{ videoSrc: string; filepath: string }> = ({
     },
     [filepath],
   );
-
-  const onError = useCallback(() => setFailedSrc(videoSrc), [videoSrc]);
-
-  if (failedSrc === videoSrc) {
-    return (
-      <div className={styles.empty} data-cy="looker-error-info">
-        This video failed to load. The file may not exist, or its type may be
-        unsupported.
-      </div>
-    );
-  }
 
   return (
     <VideoLighterTile
@@ -167,9 +154,20 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
       )
     : undefined;
 
-  // `frameRate` rides along on the modal sample but isn't on the type —
-  // the same targeted cast video-annotation's `getModalSampleFrameRate` uses.
-  const frameRate = (sample as { frameRate?: number }).frameRate;
+  // Owned here rather than inside the tile: a media error unmounts the tile,
+  // and with it the <video> that is this surface's only clock source. Left
+  // nested, the timeline, its transport and the audio registrar would stay
+  // mounted around a clock that can never tick. Keyed to the source rather
+  // than a bare flag so navigating to a sample that does load clears it
+  // without an effect and without a flicker.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const onMediaError = useCallback(() => setFailedSrc(videoSrc), [videoSrc]);
+  const mediaFailed = !!videoSrc && failedSrc === videoSrc;
+
+  // `frameRate` rides along on the modal sample but isn't on `ModalSample`'s
+  // type, so it is read through the shared narrowing accessor rather than
+  // re-cast here — `RegisterFrameLabels` gates on the same value.
+  const frameRate = getModalSampleFrameRate(sample);
 
   // Sequence mode when the frame rate is known, so the engine steps whole
   // frames and the frame domain is available to switch into; elapsed seconds
@@ -206,31 +204,45 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
           drive. `hasAudio` is left unset: there is no demuxer verdict on
           this path, so the element sniffs for a track itself. */}
       <RegisterTimelineAudio videoSrc={videoSrc} />
-      {/* Registers the /frames-backed label stream. It gates on
-          `useDuration() > 0`, so it must sit inside the provider and
-          outside anything that would remount when duration lands. */}
-      <RegisterFrameLabels sample={sample}>
-        <div
-          ref={dimensions.ref as React.RefObject<HTMLDivElement>}
-          data-cy="modal-looker-container"
-          className={styles.root}
-        >
-          {/* The media area answers to `looker` the way every other sample
-              surface does: it is what hover affordances target, and it
-              survives a media error the same way the lookers' root does. */}
-          <div className={styles.media} data-cy="looker">
-            {videoSrc ? (
-              <VideoTile
-                videoSrc={videoSrc}
-                filepath={sample.sample.filepath}
-              />
-            ) : (
-              <div className={styles.empty}>No media URL on this sample.</div>
-            )}
-          </div>
-          {/* Owns its own TrackProvider + TimelineWithTracks. Track data is
-              the server label index; the annotation engine contributes only
-              an unsaved-edit overlay, empty in Explore. */}
+      {/* Registers the /frames-backed label stream. A SIBLING for the same
+          reason as the two above, and a load-bearing one: it gates on
+          `useDuration() > 0` and re-keys on the resolved `frameCount`, while
+          the duration it waits for is published by the <video> inside the tile
+          below. Nested, every sample would load, flip the gate, and then tear
+          down and rebuild the very element that fed it — a visible reload, and
+          a `canvas-loaded` marker that goes true, disappears, then true again.
+          Consumers read the stream via `useFrameLabelsStream`, not position. */}
+      <RegisterFrameLabels sample={sample} />
+      <div
+        ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+        data-cy="modal-looker-container"
+        className={styles.root}
+      >
+        {/* The media area answers to `looker` the way every other sample
+            surface does: it is what hover affordances target, and it
+            survives a media error the same way the lookers' root does. */}
+        <div className={styles.media} data-cy="looker">
+          {!videoSrc ? (
+            <div className={styles.empty}>No media URL on this sample.</div>
+          ) : mediaFailed ? (
+            <div className={styles.empty} data-cy="looker-error-info">
+              This video failed to load. The file may not exist, or its type may
+              be unsupported.
+            </div>
+          ) : (
+            <VideoTile
+              videoSrc={videoSrc}
+              filepath={sample.sample.filepath}
+              onError={onMediaError}
+            />
+          )}
+        </div>
+        {/* Owns its own TrackProvider + TimelineWithTracks. Track data is
+            the server label index; the annotation engine contributes only
+            an unsaved-edit overlay, empty in Explore. Dropped when the media
+            failed: there is no clock to drive it, so it would only ever
+            render an empty, inert transport under the error. */}
+        {!mediaFailed && (
           <div className={styles.timeline}>
             <FrameLabelsTracks
               sample={sample}
@@ -238,8 +250,8 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
               trailingActions={<VideoExploreToolbar />}
             />
           </div>
-        </div>
-      </RegisterFrameLabels>
+        )}
+      </div>
     </PlaybackProvider>
   );
 };

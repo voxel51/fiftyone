@@ -200,8 +200,12 @@ export function useLighterTileScene({
   const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);
 
   // Applied per scene, so a re-minted scene (new source) comes back read-only
-  // too. Set before overlays are installed below — nothing is on the canvas to
-  // grab in the interim.
+  // too. Not order-sensitive against overlay installation: `setReadOnly` stores
+  // the flag on the scene, re-walks the overlays already present, and
+  // `Scene2D.addOverlay` applies it to every later arrival. So overlays
+  // installed before this effect (the sync bundles run as child components, and
+  // child effects fire ahead of this one) are still stripped of their move
+  // affordances.
   useEffect(() => {
     if (!scene || scene.getSceneId() !== sceneId) {
       return;

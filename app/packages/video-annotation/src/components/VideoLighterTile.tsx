@@ -107,9 +107,11 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   });
 
   // Hover -> `fos.tooltipDetail`, which `TooltipInfo` (mounted in Modal.tsx)
-  // renders. Unconditional: both surfaces want the label tooltip, and
-  // Annotate never had it either.
-  useLighterTooltipEventHandler(scene);
+  // renders. Explore only: this replaces the tooltip the video looker drew, so
+  // Explore is where it is a restoration. Annotate never had one, and popping
+  // a tooltip over the canvas mid-draw is a product change in its own right —
+  // `null` routes the hook at the undefined channel, so it observes nothing.
+  useLighterTooltipEventHandler(mode === "explore" ? scene : null);
 
   const Sync = mode === "annotate" ? AnnotateSync : ExploreSync;
 

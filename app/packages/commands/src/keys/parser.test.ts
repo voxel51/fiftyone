@@ -62,14 +62,14 @@ describe("KeyParser", () => {
     expect(result[0].isMeta).toBeTruthy();
     expect(result[0].isShift).toBeFalsy();
     expect(result[0].key).toEqual("\\");
-    // \\+ binds to =
+    // \\+ binds to the literal "+"
     result = KeyParser.parseBinding("meta+\\+");
     expect(result.length).toEqual(1);
     expect(result[0].isAlt).toBeFalsy();
     expect(result[0].isCtrl).toBeFalsy();
     expect(result[0].isMeta).toBeTruthy();
     expect(result[0].isShift).toBeFalsy();
-    expect(result[0].key).toEqual("=");
+    expect(result[0].key).toEqual("+");
 
     result = KeyParser.parseBinding("space");
     expect(result.length).toEqual(1);
@@ -130,7 +130,7 @@ describe("KeyParser", () => {
     expect(result[1].isCtrl).toBeFalsy();
     expect(result[1].isMeta).toBeFalsy();
     expect(result[1].isShift).toBeTruthy();
-    expect(result[1].key).toEqual("=");
+    expect(result[1].key).toEqual("+");
 
     result = KeyParser.parseBinding("f,q");
     expect(result.length).toEqual(2);
