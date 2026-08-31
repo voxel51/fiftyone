@@ -27,7 +27,7 @@ import {
 } from "./SyntheticLabels";
 import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 import { VideoAnnotationTopBar } from "./VideoAnnotationTopBar";
-import { VideoLighterTile } from "./VideoLighterTile";
+import { LighterVideo } from "./LighterVideo";
 import styles from "./VideoAnnotationSurface.module.css";
 
 /**
@@ -88,7 +88,7 @@ const STRATEGY_TILE: Record<DecodeStrategy, React.FC<MediaProps>> = {
   fetch: () => <ImaVidLighterTile />,
   html: ({ videoSrc }) =>
     videoSrc ? (
-      <VideoLighterTile videoSrc={videoSrc} />
+      <LighterVideo videoSrc={videoSrc} />
     ) : (
       <div className={styles.empty}>No media URL on this sample.</div>
     ),

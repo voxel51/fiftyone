@@ -162,7 +162,7 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
  * Returns the scene plus whether its canonical media is installed; feed
  * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}.
  */
-export function useLighterTileScene({
+export function useLighterMediaScene({
   hostRef,
   dims,
   sceneIdPrefix,

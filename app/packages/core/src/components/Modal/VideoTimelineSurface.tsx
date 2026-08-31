@@ -9,7 +9,7 @@ import {
   RegisterFrameLabels,
   RegisterTimelineAudio,
   RegisterVideoExploreLabels,
-  VideoLighterTile,
+  LighterVideo,
   getModalSampleFrameRate,
 } from "@fiftyone/video-annotation";
 import React, { useCallback, useMemo, useState } from "react";
@@ -26,27 +26,6 @@ import styles from "./VideoTimelineSurface.module.css";
 const LOADED = "canvas-loaded";
 
 /**
- * Query-param escape hatch, read once at mount.
- *
- * On by default: the timeline is the direction of travel for video Explore.
- * It is not yet at parity with the looker it replaces, so `?mmtimeline=0`
- * falls back to `VideoLookerReact` for the behaviours still being ported —
- * and gives the e2e specs that cover them somewhere to run in the meantime.
- *
- * The app router preserves unknown query params (`useWriters/onSetSample.ts`
- * only rewrites `id`/`groupId`), so the opt-out survives opening the modal
- * and navigating between samples.
- */
-export function useIsVideoTimelineEnabled(): boolean {
-  return useMemo(() => {
-    if (typeof window === "undefined") return true;
-    return (
-      new URLSearchParams(window.location.search).get("mmtimeline") !== "0"
-    );
-  }, []);
-}
-
-/**
  * Fraction of the surface height the timeline may occupy before its body caps
  * and scrolls internally — so a growing track list never crowds out the media.
  * Mirrors the annotation surface so both video surfaces dock the same way.
@@ -57,16 +36,16 @@ const TIMELINE_MAX_HEIGHT_FRACTION = 0.25;
 const TIMELINE_MIN_MAX_SIZE = 160;
 
 /**
- * The media half of the surface: `VideoLighterTile` — the same Lighter-backed
- * tile the annotation surface uses — in its read-only `explore` mode.
+ * The media half of the surface: `LighterVideo` — the same Lighter-backed
+ * player the annotation surface uses — in its read-only `explore` mode.
  *
- * The tile owns the `<video>`, the engine binding (`useVideoStream` /
+ * It owns the `<video>`, the engine binding (`useVideoStream` /
  * `useVideoSync` / `useVfcClockSource`) and the Lighter scene that paints the
  * label overlays and feeds the hover tooltip. What stays here is what is
  * specific to Explore: the readiness marker every sample surface publishes,
  * and the media-error fallback.
  */
-const VideoTile: React.FC<{
+const ExploreVideo: React.FC<{
   videoSrc: string;
   filepath: string;
   onError: () => void;
@@ -93,7 +72,7 @@ const VideoTile: React.FC<{
   );
 
   return (
-    <VideoLighterTile
+    <LighterVideo
       videoSrc={videoSrc}
       mode="explore"
       onLoadStart={onLoadStart}
@@ -154,7 +133,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
       )
     : undefined;
 
-  // Owned here rather than inside the tile: a media error unmounts the tile,
+  // Owned here rather than inside `LighterVideo`: a media error unmounts it,
   // and with it the <video> that is this surface's only clock source. Left
   // nested, the timeline, its transport and the audio registrar would stay
   // mounted around a clock that can never tick. Keyed to the source rather
@@ -194,11 +173,11 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
 
   return (
     <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
-      {/* Hydrates the frame labels onto the tile's Lighter scene. A SIBLING
+      {/* Hydrates the frame labels onto the video's Lighter scene. A SIBLING
           of `RegisterFrameLabels`, not a child — that component swaps its
           wrapper when duration lands, which would remount the store. */}
       <RegisterVideoExploreLabels />
-      {/* The timeline's audio stream — the only source of sound. The tile's
+      {/* The timeline's audio stream — the only source of sound. The player's
           <video> is muted ("pixels only"), so without this the surface is
           silent, which is what the looker's own volume control used to
           drive. `hasAudio` is left unset: there is no demuxer verdict on
@@ -207,8 +186,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
       {/* Registers the /frames-backed label stream. A SIBLING for the same
           reason as the two above, and a load-bearing one: it gates on
           `useDuration() > 0` and re-keys on the resolved `frameCount`, while
-          the duration it waits for is published by the <video> inside the tile
-          below. Nested, every sample would load, flip the gate, and then tear
+          the duration it waits for is published by the <video> below. Nested, every sample would load, flip the gate, and then tear
           down and rebuild the very element that fed it — a visible reload, and
           a `canvas-loaded` marker that goes true, disappears, then true again.
           Consumers read the stream via `useFrameLabelsStream`, not position. */}
@@ -230,7 +208,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
               be unsupported.
             </div>
           ) : (
-            <VideoTile
+            <ExploreVideo
               videoSrc={videoSrc}
               filepath={sample.sample.filepath}
               onError={onMediaError}

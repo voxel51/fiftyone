@@ -1,18 +1,18 @@
 import React, { type RefObject, useRef, useState } from "react";
 import { usePlayback, useVideoStream, useVideoSync } from "@fiftyone/playback";
 import { useLighterTooltipEventHandler } from "../../../core/src/components/Modal/Lighter/useLighterTooltipEventHandler";
-import { useLighterTileScene } from "../hooks/useLighterTileScene";
+import { useLighterMediaScene } from "../hooks/useLighterMediaScene";
 import { useVfcClockSource } from "../hooks/useVfcClockSource";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
 import { useVideoExploreSyncBundle } from "../hooks/useVideoExploreSyncBundle";
 import { VIDEO_STREAM_ID } from "../utils/ids";
-import styles from "./VideoLighterTile.module.css";
+import styles from "./LighterVideo.module.css";
 
-/** Which sync bundle the tile arms. Explore is the read-only half. */
-export type VideoLighterTileMode = "annotate" | "explore";
+/** Which sync bundle this arms. Explore is the read-only half. */
+export type LighterVideoMode = "annotate" | "explore";
 
 interface SyncProps {
-  scene: ReturnType<typeof useLighterTileScene>["scene"];
+  scene: ReturnType<typeof useLighterMediaScene>["scene"];
   canonicalMediaReady: boolean;
   mediaRef: RefObject<HTMLVideoElement | null>;
 }
@@ -20,7 +20,7 @@ interface SyncProps {
 /**
  * Null-rendering hosts for the two sync bundles. Which bundle runs is a
  * per-surface choice, and hooks cannot be called conditionally — so the
- * choice becomes which component the tile renders, and each one's hooks
+ * choice becomes which component is rendered, and each one's hooks
  * stay unconditional inside it.
  */
 const AnnotateSync: React.FC<SyncProps> = (props) => {
@@ -33,7 +33,7 @@ const ExploreSync: React.FC<SyncProps> = (props) => {
   return null;
 };
 
-export interface VideoLighterTileProps {
+export interface LighterVideoProps {
   /** Resolved media URL for the video. */
   videoSrc: string;
   /**
@@ -41,12 +41,12 @@ export interface VideoLighterTileProps {
    * surface keeps its existing behaviour; Explore passes `explore` for the
    * read-only overlay path.
    */
-  mode?: VideoLighterTileMode;
+  mode?: LighterVideoMode;
   /**
-   * Media lifecycle passthroughs, fired alongside the tile's own handling
+   * Media lifecycle passthroughs, fired alongside this component's own handling
    * rather than replacing it. Explore uses them to raise the readiness
    * marker every sample surface publishes and to fall back on a load
-   * failure; the tile itself stays agnostic to both.
+   * failure; this component itself stays agnostic to both.
    */
   onLoadStart?: (element: HTMLVideoElement) => void;
   onLoadedData?: (element: HTMLVideoElement) => void;
@@ -57,7 +57,7 @@ export interface VideoLighterTileProps {
  * <video> bound to the playback engine, Lighter overlaid on top,
  * Overlays diffed in from the labels stream each commit.
  */
-export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
+export const LighterVideo: React.FC<LighterVideoProps> = ({
   videoSrc,
   mode = "annotate",
   onLoadStart,
@@ -81,7 +81,7 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   // the one that needs the kick so overlays paint on initial mount.
   const kickedSrcRef = useRef<string | null>(null);
 
-  // Bind <video> -> playback engine. The video-annotation tile uses
+  // Bind <video> -> playback engine. The video-annotation surface uses
   // video-anchored playback: `useVfcClockSource` registers the
   // element's vfc-presented mediaTime as the engine's clock source,
   // so the engine commits exactly where the picture is. We pass
@@ -96,7 +96,7 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   // Scene lifecycle (singleton canvas, pixi setup, color scheme, canonical
   // media, viewport fit). A fresh scene per `videoSrc` so a new source video
   // gets its own scene; `dims` from the <video>'s intrinsic resolution.
-  const { scene, canonicalMediaReady } = useLighterTileScene({
+  const { scene, canonicalMediaReady } = useLighterMediaScene({
     hostRef: lighterHostRef,
     dims: videoDims,
     sceneIdPrefix: "video-anno",
