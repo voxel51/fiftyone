@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // NTSC-style sample: 120 frames at 30000/1001 fps, duration 4.004s. The
 // engine's seek/step clamp is inclusive of `duration`, so the playhead can
@@ -14,6 +14,7 @@ const { source } = vi.hoisted(() => ({
     presented: null as number | null,
     frameRate: undefined as number | undefined,
     totalFrameCount: undefined as number | undefined,
+    frameTable: null as { timesSec: number[] } | null,
   },
 }));
 
@@ -41,7 +42,18 @@ vi.mock("./accessors", () => ({
     sample?.frameRate,
 }));
 
+// The surface provides the table only on the html strategy; the hook just
+// reads the context accessor.
+vi.mock("./frameTableContext", () => ({
+  useFrameTable: () => source.frameTable,
+}));
+
 import { useCurrentFrame } from "./useCurrentFrame";
+
+beforeEach(() => {
+  source.presented = null;
+  source.frameTable = null;
+});
 
 describe("useCurrentFrame", () => {
   it("converts the playhead to a 1-indexed frame", () => {
@@ -103,5 +115,58 @@ describe("useCurrentFrame presented-frame authority", () => {
 
     const { result } = renderHook(() => useCurrentFrame());
     expect(result.current).toBe(30);
+  });
+});
+
+describe("useCurrentFrame frame-table numbering", () => {
+  // A 30fps source with two dropped frames: presentation runs 0, 1/30, 2/30,
+  // then jumps to 5/30, 6/30 — so table frames 4-5 sit where the clock says
+  // frames 6-7 live. `to_frames` and the persisted labels use table order.
+  const TABLE_FPS = 30;
+  const GAPPED = {
+    timesSec: [0, 1 / TABLE_FPS, 2 / TABLE_FPS, 5 / TABLE_FPS, 6 / TABLE_FPS],
+  };
+
+  it("numbers by the table, not time × fps, inside a dropped-frame gap", () => {
+    // 3/30s is inside the gap: the picture still shows table frame 3, while
+    // clock math (the null-table fallback below) reports 4.
+    source.playhead = 3 / TABLE_FPS;
+    source.frameRate = TABLE_FPS;
+    source.totalFrameCount = GAPPED.timesSec.length;
+    source.frameTable = GAPPED;
+
+    const { result } = renderHook(() => useCurrentFrame());
+    expect(result.current).toBe(3);
+  });
+
+  it("falls back to time × fps numbering without a table", () => {
+    source.playhead = 3 / TABLE_FPS;
+    source.frameRate = TABLE_FPS;
+    source.totalFrameCount = GAPPED.timesSec.length;
+    source.frameTable = null;
+
+    const { result } = renderHook(() => useCurrentFrame());
+    expect(result.current).toBe(4);
+  });
+
+  it("clamps a table frame to the sample's frame count", () => {
+    source.playhead = 6 / TABLE_FPS;
+    source.frameRate = TABLE_FPS;
+    source.totalFrameCount = 4;
+    source.frameTable = GAPPED;
+
+    const { result } = renderHook(() => useCurrentFrame());
+    expect(result.current).toBe(4);
+  });
+
+  it("converts the presented time, not the playhead, through the table", () => {
+    source.playhead = 6 / TABLE_FPS;
+    source.presented = 3 / TABLE_FPS;
+    source.frameRate = TABLE_FPS;
+    source.totalFrameCount = GAPPED.timesSec.length;
+    source.frameTable = GAPPED;
+
+    const { result } = renderHook(() => useCurrentFrame());
+    expect(result.current).toBe(3);
   });
 });

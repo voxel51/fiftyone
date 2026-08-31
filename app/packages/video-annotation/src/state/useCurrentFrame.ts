@@ -5,7 +5,9 @@
 import { frameAt, usePlayhead, usePresentedTime } from "@fiftyone/playback";
 import { useModalSample } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
+import { frameAtTableTime } from "../streams/frameTable";
 import { resolveFrameCount } from "../utils/frameCount";
+import { useFrameTable } from "./frameTableContext";
 import { useModalSampleFrameRate } from "./accessors";
 
 /**
@@ -29,6 +31,7 @@ export const useCurrentFrame = (): number => {
   const sample = useModalSample();
   const playhead = usePlayhead();
   const presented = usePresentedTime();
+  const table = useFrameTable();
   const fps = useModalSampleFrameRate(sample);
 
   if (!fps || !Number.isFinite(fps) || fps <= 0) {
@@ -42,8 +45,19 @@ export const useCurrentFrame = (): number => {
   // should track what the user sees. The playhead is the fallback for
   // tiles that never present (no media, no vfc support).
   const time = presented ?? playhead;
+  const count = resolveFrameCount(sample, fps) ?? undefined;
 
-  return frameAt(time, fps, resolveFrameCount(sample, fps) ?? undefined);
+  // On the html strategy the surface provides the container's frame table:
+  // number by presentation order (matching `to_frames` and every persisted
+  // frame label) instead of `time × fps`, which lands ahead of the labels on
+  // dropped-frame media. `time × fps` is the fallback while the table loads
+  // or when the header can't be demuxed.
+  if (table?.timesSec.length) {
+    const frame = frameAtTableTime(table, time);
+    return count ? Math.min(frame, count) : frame;
+  }
+
+  return frameAt(time, fps, count);
 };
 
 /**
