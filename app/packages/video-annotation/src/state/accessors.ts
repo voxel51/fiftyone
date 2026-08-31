@@ -29,6 +29,7 @@ import {
 } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { useMemoOne } from "use-memo-one";
 import { constSelector, useRecoilValue } from "recoil";
 import {
   useAnnotationContext,
@@ -133,7 +134,20 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
   const polylineFields = useAnnotationFields(POLYLINE).fields;
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
-  return useMemo(() => {
+  // Keyed on CONTENT, not the source arrays' identity: a label-schema save
+  // (adding a class or dynamic attribute) recreates the schema-derived arrays
+  // with identical field sets, and a new `labelTypes` identity tears down the
+  // engine's FrameStore, which reseeds from the never-refreshed `/frames`
+  // cache — silently dropping every occurrence persisted this session (and
+  // the next autosave then diffs against that stale baseline, making the
+  // loss durable). Identity may only change when the field set truly does.
+  const contentKey = `${detectionFields.join(
+    ",",
+  )}|${polylineFields.join(",")}|${isImageDynamicGroupVideo}`;
+
+  // `useMemoOne`, not `useMemo`: React reserves the right to forget a memo,
+  // and this identity is CORRECTNESS — a new object destroys the FrameStore
+  return useMemoOne(() => {
     const fields: Record<string, LabelType> = {};
 
     const owns = (field: string): boolean =>
@@ -152,8 +166,15 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
     }
 
     return fields;
-  }, [detectionFields, polylineFields, isImageDynamicGroupVideo]);
+  }, [contentKey]);
 };
+
+/**
+ * The dataset's configured MODAL media field (default `filepath`) — the field
+ * whose value names and locates each frame's media.
+ */
+export const useModalMediaField = (): string =>
+  useRecoilValue(selectedMediaField(true));
 
 /**
  * Frame rate driving video annotation playback for the modal sample.
@@ -163,13 +184,6 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
  * rate, so fall back to the dataset's
  * `app_config.dynamic_groups_target_frame_rate`.
  */
-/**
- * The dataset's configured MODAL media field (default `filepath`) — the field
- * whose value names and locates each frame's media.
- */
-export const useModalMediaField = (): string =>
-  useRecoilValue(selectedMediaField(true));
-
 export const useModalSampleFrameRate = (
   sample: ModalSample | null | undefined,
 ): number => {
