@@ -19,8 +19,11 @@ import type {
   McapReadNumericSeriesSliceRequest,
 } from "../../contracts/index";
 import type { ReadWorkUsage } from "../../../../ports";
-import { NUMERIC_SERIES_MAX_BUCKET_SURVIVORS } from "../../../../ports/numeric-series";
 import { nsDeltaToSeconds } from "../../../../utils/nanoseconds";
+import {
+  aggregateAlignedNumericSeries,
+  numericSeriesBucketIndex,
+} from "../../../../utils/numeric-series-buckets";
 import { decimateMinMax } from "../numeric-series-decimate";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 import { throwIfAborted } from "../../../../utils/cancellation";
@@ -42,7 +45,7 @@ const MAX_SCAN_MESSAGES = 500_000;
 interface NumericSeriesAccumulator {
   readonly fieldPaths: readonly string[];
   readonly pathSegments: readonly (readonly string[])[];
-  readonly times: number[];
+  readonly timesNs: bigint[];
   readonly topic: string;
   readonly valuesByField: number[][];
   messageCount: number;
@@ -214,7 +217,6 @@ export async function readMcapNumericSeries({
       accumulator,
       message.data,
       timeline.messageTimeNs(message),
-      baseTimeNs,
       decodersByChannelId.get(message.channelId),
     );
   }
@@ -222,7 +224,7 @@ export async function readMcapNumericSeries({
 
   const maxPoints =
     request.maxPointsPerField ?? DEFAULT_NUMERIC_SERIES_MAX_POINTS;
-  const finalized = finalizeNumericSeries(accumulator, maxPoints);
+  const finalized = finalizeNumericSeries(accumulator, baseTimeNs, maxPoints);
 
   return {
     baseTimeNs,
@@ -355,7 +357,6 @@ export async function readMcapNumericSeriesSlice({
         selected.accumulator,
         message.data,
         timeline.messageTimeNs(message),
-        baseTimeNs,
         selected.decodeRecord,
       );
     },
@@ -363,19 +364,13 @@ export async function readMcapNumericSeriesSlice({
     usage: () => usage,
   });
 
-  const maxPoints =
-    request.maxPointsPerField ?? DEFAULT_NUMERIC_SERIES_MAX_POINTS;
   const series: McapNumericTopicSeries[] = [];
   for (const accumulator of accumulatorsByTopic.values()) {
     series.push(
-      finalizeNumericSeries(
+      finalizeAlignedNumericSeries(
         accumulator,
-        numericSeriesSlicePointBudget(
-          maxPoints,
-          bounded.coverageByTopic.get(accumulator.topic) ?? [],
-          request.startTimeNs,
-          request.endTimeNs,
-        ),
+        baseTimeNs,
+        request.bucketDurationNs,
       ),
     );
   }
@@ -384,50 +379,14 @@ export async function readMcapNumericSeriesSlice({
     baseTimeNs,
     ...(bounded.continuation ? { continuation: bounded.continuation } : {}),
     coverageByTopic: bounded.coverageByTopic,
+    ...(bounded.resumeAtNs !== undefined
+      ? { resumeAtNs: bounded.resumeAtNs }
+      : {}),
     skippedByTopic: bounded.skippedByTopic ?? new Map(),
     series,
     stopReason: bounded.stopReason,
     usage,
   };
-}
-
-/**
- * Allocates an M4 survivor budget in proportion to this page's inspected
- * share of the requested viewport. Continuation pages therefore converge on
- * the viewport budget instead of each independently consuming all of it.
- */
-export function numericSeriesSlicePointBudget(
-  maxPoints: number,
-  coverage: readonly { readonly endNs: bigint; readonly startNs: bigint }[],
-  startTimeNs: bigint,
-  endTimeNs: bigint,
-): number {
-  if (!Number.isFinite(maxPoints) || coverage.length === 0) return maxPoints;
-  const budget = Math.max(0, Math.floor(maxPoints));
-  const globalBuckets = Math.floor(
-    (budget - 2) / NUMERIC_SERIES_MAX_BUCKET_SURVIVORS,
-  );
-  if (globalBuckets < 1 || endTimeNs < startTimeNs) return budget;
-
-  const viewportDurationNs = endTimeNs - startTimeNs + 1n;
-  const coveredDurationNs = coverage.reduce(
-    (sum, range) => sum + (range.endNs - range.startNs + 1n),
-    0n,
-  );
-  const boundedCoveredDurationNs =
-    coveredDurationNs < viewportDurationNs
-      ? coveredDurationNs
-      : viewportDurationNs;
-  const pageBuckets = Number(
-    (BigInt(globalBuckets) * boundedCoveredDurationNs +
-      viewportDurationNs -
-      1n) /
-      viewportDurationNs,
-  );
-  return Math.min(
-    budget,
-    2 + pageBuckets * NUMERIC_SERIES_MAX_BUCKET_SURVIVORS,
-  );
 }
 
 function createNumericSeriesAccumulator(
@@ -438,7 +397,7 @@ function createNumericSeriesAccumulator(
     fieldPaths,
     messageCount: 0,
     pathSegments: fieldPaths.map((path) => path.split(".")),
-    times: [],
+    timesNs: [],
     topic,
     valuesByField: fieldPaths.map(() => []),
   };
@@ -448,10 +407,9 @@ function pushNumericSeriesMessage(
   accumulator: NumericSeriesAccumulator,
   data: Uint8Array,
   timeNs: bigint,
-  baseTimeNs: bigint,
   decodeRecord?: (data: Uint8Array) => Record<string, unknown>,
 ): void {
-  accumulator.times.push(nsDeltaToSeconds(timeNs - baseTimeNs));
+  accumulator.timesNs.push(timeNs);
   accumulator.messageCount += 1;
 
   let record: Record<string, unknown> | undefined;
@@ -470,9 +428,12 @@ function pushNumericSeriesMessage(
 
 function finalizeNumericSeries(
   accumulator: NumericSeriesAccumulator,
+  baseTimeNs: bigint,
   maxPoints: number,
 ): McapNumericTopicSeries {
-  const sharedTimes = Float64Array.from(accumulator.times);
+  const sharedTimes = Float64Array.from(accumulator.timesNs, (timeNs) =>
+    nsDeltaToSeconds(timeNs - baseTimeNs),
+  );
   return {
     fields: accumulator.fieldPaths.map((path, index) => {
       const decimated = decimateMinMax(
@@ -485,6 +446,38 @@ function finalizeNumericSeries(
         path,
         timesSec: decimated.times,
         values: decimated.values,
+      };
+    }),
+    messageCount: accumulator.messageCount,
+    topic: accumulator.topic,
+  };
+}
+
+function finalizeAlignedNumericSeries(
+  accumulator: NumericSeriesAccumulator,
+  baseTimeNs: bigint,
+  bucketDurationNs: bigint,
+): McapNumericTopicSeries {
+  const sharedTimes = Float64Array.from(accumulator.timesNs, (timeNs) =>
+    nsDeltaToSeconds(timeNs - baseTimeNs),
+  );
+  const bucketIndexes = BigInt64Array.from(accumulator.timesNs, (timeNs) =>
+    numericSeriesBucketIndex(timeNs, bucketDurationNs),
+  );
+  return {
+    fields: accumulator.fieldPaths.map((path, index) => {
+      const aggregated = aggregateAlignedNumericSeries(
+        sharedTimes,
+        Float64Array.from(accumulator.valuesByField[index]),
+        baseTimeNs,
+        bucketDurationNs,
+        bucketIndexes,
+      );
+      return {
+        bucketIndexes: aggregated.bucketIndexes,
+        path,
+        timesSec: aggregated.timesSec,
+        values: aggregated.values,
       };
     }),
     messageCount: accumulator.messageCount,

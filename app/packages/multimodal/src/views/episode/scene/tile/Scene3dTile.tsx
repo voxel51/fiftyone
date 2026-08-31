@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { usePublishAnnotationStreams } from "../../../../extensions/timeline/index";
 import { usePublishFullHistoryStreams } from "../../playback/full-history-interests";
+import { usePublishVisibleStreams } from "../../stream-discovery/visible-streams";
 import type {
   CameraCalibrationVisualization,
   GridVisualization,
@@ -230,6 +231,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     [viewpointStore],
   );
   const tileId = useTileId();
+  usePublishVisibleStreams(selectedStreams);
   const { focusedTileId } = useTiling();
   const panelHasCommittedRef = useRef(false);
   const panelBackground = useMemo<ThreeSceneBackground>(() => {

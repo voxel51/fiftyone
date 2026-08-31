@@ -19,6 +19,7 @@ import { LocationTracksBridge } from "../map/tracks/context";
 import { NumericSeriesBridge } from "../plots/numeric-series-context";
 import { PoseTrajectoriesStartupGate } from "../scene/entities/pose-trajectories-context";
 import { RawMessageBridge } from "../raw/raw-message-context";
+import { StateActionBridge } from "../state-action/state-action-context";
 import { SceneUpdateHistoryBridge } from "../scene/entities/scene-update-history-context";
 import { useDataStream } from "../playback/data-stream-context";
 import { useFrameTransforms } from "../spatial/frame-transforms/use-frame-transforms";
@@ -74,6 +75,7 @@ export function Streams({
     fullHistoryStreams.get("scene-update") ?? EMPTY_STREAMS;
   const numericSeries = session?.numericSeries ?? null;
   const rawRecords = session?.rawRecords ?? null;
+  const stateAction = session?.stateAction ?? null;
   const transformRead = useMemo(
     () => (session ? createEpisodeTransformReadRuntime(session) : null),
     [session],
@@ -235,6 +237,7 @@ export function Streams({
       />
       <NumericSeriesBridge capability={numericSeries} sourceKey={sourceKey} />
       <RawMessageBridge capability={rawRecords} sourceKey={sourceKey} />
+      <StateActionBridge capability={stateAction} sourceKey={sourceKey} />
     </>
   );
 }

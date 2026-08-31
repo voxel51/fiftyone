@@ -89,6 +89,11 @@ export const useSyncTemporalTagResults = (): void => {
       return undefined;
     }
 
+    // Clear the prior dataset's results immediately — otherwise
+    // `useTemporalTagValues` keeps returning the old dataset's vocabulary
+    // until this fetch resolves.
+    setResults({ results: [], count: null });
+
     let cancelled = false;
     fetchTemporalTagResults(currentDatasetId)
       .then((results) => {

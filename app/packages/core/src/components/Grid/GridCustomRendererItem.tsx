@@ -379,7 +379,11 @@ export class GridCustomRendererItem {
       <RecoilBridge>
         <GridCustomRendererErrorBoundary
           onError={(error) => this.switchToFallback(error)}
-          key={ctx.media.url ?? this.config.pluginName}
+          key={
+            ctx.media.url ??
+            ctx.media.mediaReference?.key ??
+            this.config.pluginName
+          }
         >
           <GridCustomRendererWrapper
             clickBehavior={this.config.clickBehavior}

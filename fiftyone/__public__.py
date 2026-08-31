@@ -203,6 +203,32 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
+from .multimodal.media import (
+    DatasetRelativeLocation,
+    InvalidMediaLocationError,
+    LeRobotEpisode,
+    LeRobotImageLocator,
+    LeRobotV3Locator,
+    LeRobotVideoLocator,
+    MalformedMediaSourceError,
+    MediaAsset,
+    MediaAssetRole,
+    MediaAssetSelector,
+    MediaReference,
+    MediaReferenceError,
+    MediaSourceAuthorizationError,
+    MissingMediaReferenceBindingError,
+    MissingMediaRootError,
+    MovedMediaRootError,
+    RowInterval,
+    StaleMediaReferenceError,
+    UnfinalizedMediaSourceError,
+    UnsupportedLeRobotExportModeError,
+    UnsupportedMediaReferenceOperation,
+    UnsupportedLeRobotVersionError,
+    VideoTimestampInterval,
+    WholeFile,
+)
 from .core.threed import (
     BoxGeometry,
     CylinderGeometry,

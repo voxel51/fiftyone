@@ -134,6 +134,11 @@ export class ByteClientReadable implements McapTypes.IReadable {
     return byteSourceAccessKey(this.source);
   }
 
+  /** Total source size already known from the descriptor or byte transport. */
+  knownSizeBytes(): bigint | undefined {
+    return this.resolvedSizeBytes ?? sourceSizeBytes(this.source);
+  }
+
   async size(): Promise<bigint> {
     const signal = this.options.readSignal?.current ?? undefined;
     if (signal?.aborted) throw createAbortError("MCAP read aborted");

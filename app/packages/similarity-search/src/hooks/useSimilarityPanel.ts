@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import {
+  AnnotatedBrainKeyConfig,
   CloneConfig,
   RunStatus,
   SimilaritySearchViewProps,
@@ -61,16 +62,37 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
     )?.[1] as string | undefined;
   }, [isPatchesView, viewStages]);
 
-  const brainKeys = useMemo(() => {
-    if (isPatchesView) {
-      return allBrainKeys.filter((bk) => bk.patches_field === patchesField);
-    }
-    return allBrainKeys.filter((bk) => !bk.patches_field);
+  // All brain keys are shown in the UI; ones that can't be used in the
+  // current view (patch index in a sample view, and vice versa) are
+  // annotated as incompatible so components can gray them out with an
+  // explanatory tooltip instead of hiding them.
+  const brainKeys = useMemo((): AnnotatedBrainKeyConfig[] => {
+    const annotated = allBrainKeys.map((bk): AnnotatedBrainKeyConfig => {
+      const compatible = isPatchesView
+        ? bk.patches_field === patchesField
+        : !bk.patches_field;
+      if (compatible) {
+        return { ...bk, compatible: true };
+      }
+      return {
+        ...bk,
+        compatible: false,
+        incompatibleReason: bk.patches_field
+          ? "Cannot use a patch index in the current view"
+          : "Cannot use a dataset index in the current view",
+      };
+    });
+    // Usable indexes first; disabled ones sink to the bottom of the
+    // index page list and the new-search dropdown
+    return [
+      ...annotated.filter((bk) => bk.compatible),
+      ...annotated.filter((bk) => !bk.compatible),
+    ];
   }, [allBrainKeys, isPatchesView, patchesField]);
 
-  // Filter runs to only those whose brain_key is in the effective set
+  // Filter runs to only those whose brain_key is usable in this view
   const effectiveBrainKeySet = useMemo(
-    () => new Set(brainKeys.map((bk) => bk.key)),
+    () => new Set(brainKeys.filter((bk) => bk.compatible).map((bk) => bk.key)),
     [brainKeys],
   );
   const runs = useMemo(

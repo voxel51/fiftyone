@@ -5,6 +5,7 @@ import {
   type ByteSourceDescriptor,
   type EncodedImageVisualization,
   type EpisodePosterFrame,
+  type EpisodePreviewNativeVideo,
   type EpisodePreviewReadResult,
   VISUALIZATION_KIND,
 } from "../../../ir";
@@ -194,6 +195,43 @@ describe("useGridPreview", () => {
     unmount();
 
     expect(signal.aborted).toBe(true);
+  });
+
+  it("delegates native hover playback without starting a frame-read loop", async () => {
+    const latest = { current: null as GridPreviewState | null };
+    const video = nativeVideo();
+    sessionHarness.session.read.mockResolvedValueOnce(
+      readyResult({ bytes: [1, 2, 3], nativeVideo: video }),
+    );
+    const source = sourceForId("native-hover");
+    const { rerender } = render(
+      <PreviewHarness
+        enabled
+        id="native-hover"
+        onState={(state) => {
+          latest.current = state;
+        }}
+        source={source}
+      />,
+    );
+    await waitFor(() => expect(latest.current?.nativeVideo).toBe(video));
+
+    act(() => latest.current?.play());
+    await waitFor(() => expect(latest.current?.isPlaying).toBe(true));
+    expect(sessionHarness.session.read).toHaveBeenCalledOnce();
+
+    rerender(
+      <PreviewHarness
+        enabled={false}
+        id="native-hover"
+        onState={(state) => {
+          latest.current = state;
+        }}
+        source={source}
+      />,
+    );
+    await waitFor(() => expect(latest.current?.isPlaying).toBe(false));
+    expect(sessionHarness.session.read).toHaveBeenCalledOnce();
   });
 
   it("cancels pending demand and starts no replacement while the grid is inactive", async () => {
@@ -1054,6 +1092,7 @@ function formatState(state: GridPreviewState): string {
 
 function readyResult({
   bytes,
+  nativeVideo,
   nextStartTimeNs = 5n,
   frameTimeNs = nextStartTimeNs === undefined
     ? undefined
@@ -1062,6 +1101,7 @@ function readyResult({
 }: {
   readonly bytes: readonly number[];
   readonly frameTimeNs?: bigint;
+  readonly nativeVideo?: EpisodePreviewNativeVideo;
   readonly streamId?: string;
   readonly nextStartTimeNs?: bigint;
 }): EpisodePreviewReadResult {
@@ -1071,11 +1111,22 @@ function readyResult({
       kind: "image",
     },
     frameTimeNs,
+    ...(nativeVideo ? { nativeVideo } : {}),
     nextStartTimeNs,
     streamId,
     streamSourceName: streamId,
     streamSourceNames: [streamId],
     status: "ready",
+  };
+}
+
+function nativeVideo(): EpisodePreviewNativeVideo {
+  return {
+    codec: "h264",
+    codecString: "avc1.64000a",
+    endTimeSeconds: 37.5,
+    source: { sourceId: "video", url: "/asset/video.mp4" },
+    startTimeSeconds: 14.2,
   };
 }
 

@@ -1,4 +1,4 @@
-import type { H264AccessUnit } from "./types";
+import type { EncodedVideoAccessUnit } from "./types";
 
 export const VIDEO_ENCODED_ACCESS_UNIT_BYTE_CAP = 128 * 1024 * 1024;
 const VIDEO_GOP_INDEX_KEYFRAME_CAP = 8_192;
@@ -22,9 +22,9 @@ export class VideoGopIndex {
 
   constructor(private readonly keyframeCap = VIDEO_GOP_INDEX_KEYFRAME_CAP) {}
 
-  observe(unit: H264AccessUnit): void {
+  observe(unit: EncodedVideoAccessUnit): void {
     if (!unit.frame.keyframe) return;
-    const signature = h264ConfigSignature(unit);
+    const signature = videoConfigSignature(unit);
     const insertionIndex = lowerBoundKeyframe(this.keyframes, unit.timeNs);
     if (this.keyframes[insertionIndex]?.timeNs === unit.timeNs) return;
     const inserted: KeyframeEntry = {
@@ -51,7 +51,7 @@ export class VideoGopIndex {
   recordReadCoverage(
     startTimeNs: bigint,
     endTimeNs: bigint,
-    units: readonly H264AccessUnit[],
+    units: readonly EncodedVideoAccessUnit[],
   ): void {
     mergeRange(this.readCoverage, { endTimeNs, startTimeNs });
     for (const unit of units) this.observe(unit);
@@ -130,7 +130,7 @@ export class VideoGopIndex {
 /** Byte-budgeted encoded access-unit LRU. No live VideoFrames are retained. */
 export class EncodedAccessUnitCache {
   private bytes = 0;
-  private readonly entries = new Map<bigint, H264AccessUnit>();
+  private readonly entries = new Map<bigint, EncodedVideoAccessUnit>();
   private readonly sortedTimes: bigint[] = [];
 
   constructor(
@@ -146,7 +146,13 @@ export class EncodedAccessUnitCache {
     return this.entries.has(timeNs);
   }
 
-  put(unit: H264AccessUnit): void {
+  get(timeNs: bigint): EncodedVideoAccessUnit | undefined {
+    const unit = this.entries.get(timeNs);
+    if (unit) this.touch(timeNs, unit);
+    return unit;
+  }
+
+  put(unit: EncodedVideoAccessUnit): void {
     const previous = this.entries.get(unit.timeNs);
     if (previous) {
       this.bytes -= previous.frame.bytes.byteLength;
@@ -167,7 +173,7 @@ export class EncodedAccessUnitCache {
     this.bytes += unit.frame.bytes.byteLength;
     while (this.bytes > this.byteCap) {
       const oldest = this.entries.entries().next().value as
-        | readonly [bigint, H264AccessUnit]
+        | readonly [bigint, EncodedVideoAccessUnit]
         | undefined;
       if (!oldest) break;
       this.entries.delete(oldest[0]);
@@ -177,12 +183,12 @@ export class EncodedAccessUnitCache {
     }
   }
 
-  putAll(units: readonly H264AccessUnit[]): void {
+  putAll(units: readonly EncodedVideoAccessUnit[]): void {
     for (const unit of units) this.put(unit);
   }
 
-  range(startTimeNs: bigint, endTimeNs: bigint): H264AccessUnit[] {
-    const units: H264AccessUnit[] = [];
+  range(startTimeNs: bigint, endTimeNs: bigint): EncodedVideoAccessUnit[] {
+    const units: EncodedVideoAccessUnit[] = [];
     const touchedTimes: bigint[] = [];
     let index = lowerBoundTime(this.sortedTimes, startTimeNs);
     while (index < this.sortedTimes.length) {
@@ -198,10 +204,22 @@ export class EncodedAccessUnitCache {
     // Refresh recency without disturbing timestamp order.
     for (const timeNs of touchedTimes) {
       const unit = this.entries.get(timeNs);
-      if (!unit) continue;
-      this.entries.delete(timeNs);
-      this.entries.set(timeNs, unit);
+      if (unit) this.touch(timeNs, unit);
     }
+    return units;
+  }
+
+  rangeByDecodeTime(
+    startTimeNs: bigint,
+    endTimeNs: bigint,
+  ): EncodedVideoAccessUnit[] {
+    const units = [...this.entries.values()]
+      .filter((unit) => {
+        const decodeTimeNs = unit.frame.decodeTimestampNs ?? unit.timeNs;
+        return decodeTimeNs >= startTimeNs && decodeTimeNs <= endTimeNs;
+      })
+      .sort(compareUnitDecodeTime);
+    for (const unit of units) this.touch(unit.timeNs, unit);
     return units;
   }
 
@@ -217,17 +235,23 @@ export class EncodedAccessUnitCache {
     const index = lowerBoundTime(this.sortedTimes, timeNs);
     if (this.sortedTimes[index] === timeNs) this.sortedTimes.splice(index, 1);
   }
+
+  private touch(timeNs: bigint, unit: EncodedVideoAccessUnit): void {
+    this.entries.delete(timeNs);
+    this.entries.set(timeNs, unit);
+  }
 }
 
 export function uniqueSortedAccessUnits(
-  units: readonly H264AccessUnit[],
-): H264AccessUnit[] {
-  const byTime = new Map<bigint, H264AccessUnit>();
+  units: readonly EncodedVideoAccessUnit[],
+): EncodedVideoAccessUnit[] {
+  const byTime = new Map<bigint, EncodedVideoAccessUnit>();
   for (const unit of units) byTime.set(unit.timeNs, unit);
   return [...byTime.values()].sort(compareUnitTime);
 }
 
-function h264ConfigSignature(unit: H264AccessUnit): string {
+function videoConfigSignature(unit: EncodedVideoAccessUnit): string {
+  if (unit.frame.codec !== "h264") return unit.frame.format;
   const { codecString = "", pps, sps } = unit.frame.h264;
   return `${codecString}:${encodeBytes(sps)}:${encodeBytes(pps)}`;
 }
@@ -242,8 +266,25 @@ function encodeBytes(bytes: Uint8Array | undefined): string {
   return encoded;
 }
 
-function compareUnitTime(left: H264AccessUnit, right: H264AccessUnit): number {
+function compareUnitTime(
+  left: EncodedVideoAccessUnit,
+  right: EncodedVideoAccessUnit,
+): number {
   return left.timeNs < right.timeNs ? -1 : left.timeNs > right.timeNs ? 1 : 0;
+}
+
+/** Orders access units by decode time, then presentation time. */
+export function compareUnitDecodeTime(
+  left: EncodedVideoAccessUnit,
+  right: EncodedVideoAccessUnit,
+): number {
+  const leftTimeNs = left.frame.decodeTimestampNs ?? left.timeNs;
+  const rightTimeNs = right.frame.decodeTimestampNs ?? right.timeNs;
+  return leftTimeNs < rightTimeNs
+    ? -1
+    : leftTimeNs > rightTimeNs
+      ? 1
+      : compareUnitTime(left, right);
 }
 
 function lowerBoundKeyframe(

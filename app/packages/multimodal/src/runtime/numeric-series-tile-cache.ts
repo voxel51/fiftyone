@@ -1,9 +1,12 @@
 import type { NsRange } from "../ir";
+import { numericSeriesBucketIndex } from "../utils/numeric-series-buckets";
 
 /** One immutable, fully addressable numeric-series tile. */
 export interface NumericSeriesTile {
   /** Resolution represented by one aggregate bucket. Smaller is finer. */
   readonly bucketDurationNs: bigint;
+  /** Exact absolute bucket identity for each retained representative. */
+  readonly bucketIndexes?: BigInt64Array;
   /** Successfully acquired source ranges, including known-empty ranges. */
   readonly coverageRanges: readonly NsRange[];
   /** Entire time range addressed by this tile. */
@@ -26,6 +29,7 @@ export interface NumericSeriesTileDemand {
 /** One independently clipped array part returned by visible assembly. */
 export interface NumericSeriesTilePart {
   readonly bucketDurationNs: bigint;
+  readonly bucketIndexes: BigInt64Array;
   /** Packed one-bit markers for retained NaN gap representatives. */
   readonly gapMask: Uint8Array;
   readonly range: NsRange;
@@ -95,6 +99,7 @@ export interface NumericSeriesTileCache {
 }
 
 interface StoredTile extends NumericSeriesTile {
+  readonly bucketIndexes: BigInt64Array;
   readonly byteLength: number;
   readonly gapMask: Uint8Array;
   readonly id: string;
@@ -379,6 +384,19 @@ function storeTile(input: NumericSeriesTile, timeOriginNs: bigint): StoredTile {
 
   const timesSec = Float64Array.from(input.timesSec);
   const values = Float64Array.from(input.values);
+  const bucketIndexes = input.bucketIndexes
+    ? BigInt64Array.from(input.bucketIndexes)
+    : BigInt64Array.from(timesSec, (timeSec) =>
+        numericSeriesBucketIndex(
+          timeOriginNs + BigInt(Math.round(timeSec * 1e9)),
+          input.bucketDurationNs,
+        ),
+      );
+  if (bucketIndexes.length !== timesSec.length) {
+    throw new Error(
+      "numeric tile bucket indexes must match times and values length",
+    );
+  }
   const gapMask = packGapMask(values);
   let previous = Number.NEGATIVE_INFINITY;
   for (const timeSec of timesSec) {
@@ -393,7 +411,12 @@ function storeTile(input: NumericSeriesTile, timeOriginNs: bigint): StoredTile {
   }
   return {
     bucketDurationNs: input.bucketDurationNs,
-    byteLength: timesSec.byteLength + values.byteLength + gapMask.byteLength,
+    bucketIndexes,
+    byteLength:
+      timesSec.byteLength +
+      values.byteLength +
+      bucketIndexes.byteLength +
+      gapMask.byteLength,
     coverageRanges,
     gapMask,
     id: tileIdFor(input),
@@ -452,9 +475,11 @@ function copyVisiblePart(
   if (start === end) return null;
   const timesSec = tile.timesSec.slice(start, end);
   const values = tile.values.slice(start, end);
+  const bucketIndexes = tile.bucketIndexes.slice(start, end);
   work.pointsCopied += end - start;
   return {
     bucketDurationNs: tile.bucketDurationNs,
+    bucketIndexes,
     gapMask: packGapMask(values),
     range: { ...range },
     tileId: tile.id,
