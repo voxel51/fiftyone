@@ -276,7 +276,8 @@ the corner. Below it, four cards summarize the scope:
 - **Labels submitted** — labels included in submitted samples, net of
   deletions.
 - **Samples submitted** — unique samples submitted.
-- **Avg time / label** — active working time divided by labels submitted.
+- **Avg time / label** — active working time divided by labels submitted;
+  shows a dash when the scope contains no labels (or no tracked time) yet.
 - **Active people** — how many people did work in the current scope and
   period.
 
@@ -293,12 +294,14 @@ one stage and reviews in another appears once per role.
 
 Alongside the volume columns (**Samples**, **Labels touched**, **Added**,
 **Deleted**, **Modified**) and pace columns (**Total time**,
-**Avg time / sample**, **Trend**), an annotator's row carries two quality
-columns — **First-pass approval** and **Rejection rate** — which reflect
-how that person's submissions fared in review. Use the **Columns** menu
-to choose which columns are shown. A dash means the value is not available
-yet — for example, an annotator none of whose submissions has been
-reviewed.
+**Avg time / sample**, **Trend**), a row carries two quality columns —
+**First-pass approval** and **Rejection rate** — reflecting how the work
+that person shipped from that stage fared in later review: an annotator's
+submissions, or, in pipelines where one review follows another, a
+reviewer's approvals (see *Who Reviews What in Longer Pipelines* below).
+Use the **Columns** menu to choose which columns are shown. A dash means
+the value is not available yet — for example, an annotator none of whose
+submissions has been reviewed.
 
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_metrics_table.webp
    :alt: Per-person metrics table with volume, quality, and pace columns
@@ -354,6 +357,28 @@ When Review 3 rejects a sample that Review 2 approved, the rejection
 counts against Review 2's row as well — which is why a *review* stage can
 itself show a rejection rate. This is how a two-tier review pipeline
 surfaces reviewer quality, not just annotator quality.
+
+How Time Is Measured
+~~~~~~~~~~~~~~~~~~~~
+
+All time metrics — **Total time**, **Avg time / label**, and
+**Avg time / sample** — are built from *active working time*, measured in
+the browser while a person has a sample open as part of a task:
+
+- **Presence is inferred from input.** Pointer, keyboard, wheel, and
+  touch activity mark you as present. Short pauses between inputs count
+  in full — reading and inspecting a sample is work — but once a pause
+  reaches a minute with no input, the clock rewinds to the last moment
+  of activity and stops. Stepping away never inflates the numbers.
+- **Hidden tabs never count.** Switching to another tab or window stops
+  the clock immediately; returning to the tab restarts it.
+- **Time follows the sample and the role.** Working time is credited to
+  the specific sample being worked on and to the stage where the work
+  happens, so annotate time and review time are tracked separately —
+  the same person shows separate times in an Annotate row and a Review
+  row.
+- **A dash means no measurable time.** Time metrics show a dash rather
+  than a zero when there is no tracked active time in the selected scope.
 
 What Counts (and What Doesn't)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
