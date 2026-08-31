@@ -12,7 +12,6 @@ import BrowseOperationsAction from "../../Actions/BrowseOperations";
 import ColorSchemeAction from "../../Actions/ColorScheme";
 import OptionsAction from "../../Actions/Options";
 import SelectedAction from "../../Actions/Selected";
-import SimilarityAction from "../../Actions/Similarity";
 import TagAction from "../../Actions/Tag";
 import ToggleSidebarAction from "../../Actions/ToggleSidebar";
 import PatchesAction from "./Patches";
@@ -33,10 +32,6 @@ const Tag = (props: AdaptiveMenuItemComponentPropsType) => (
 
 const Patches = (props: AdaptiveMenuItemComponentPropsType) => (
   <PatchesAction adaptiveMenuItemProps={props} />
-);
-
-const Similarity = (props: AdaptiveMenuItemComponentPropsType) => (
-  <SimilarityAction modal={false} adaptiveMenuItemProps={props} />
 );
 
 const SaveFilters = (props: AdaptiveMenuItemComponentPropsType) => (
@@ -80,10 +75,6 @@ export default () => {
       {
         id: "patches",
         Component: Patches,
-      },
-      {
-        id: "similarity",
-        Component: Similarity,
       },
       {
         id: "save-filters",
