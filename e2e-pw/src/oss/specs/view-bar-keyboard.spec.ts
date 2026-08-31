@@ -40,9 +40,8 @@ test.beforeEach(async ({ page, fiftyoneLoader, datasetFactory }) => {
 
 test.describe("view bar keyboard", () => {
   //
-  // Adding a stage should leave the keyboard where the value goes, and the same
-  // key that finishes the stage should run the view — describing a view without
-  // reaching for the mouse in between.
+  // Adding a stage should leave the keyboard where the value goes, and the
+  // same key that finishes the stage runs the view — one Enter, no Apply stop.
   //
   test("a stage can be added, filled and applied without the mouse", async ({
     viewBar,
@@ -58,13 +57,9 @@ test.describe("view bar keyboard", () => {
 
     await input.pressSequentially("3");
 
-    // The first Enter finishes the stage and moves the keyboard to Apply
-    await page.keyboard.press("Enter");
-    await editor.assert.isClosed();
-    await expect(viewBar.applyBtn).toBeFocused();
-
-    // The second runs the view
+    // Enter finishes the stage AND runs the view — one key, no Apply stop
     await grid.run(() => page.keyboard.press("Enter"));
+    await editor.assert.isClosed();
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 
@@ -96,24 +91,19 @@ test.describe("view bar keyboard", () => {
     await page.keyboard.press("Enter");
     await viewBar.stageEditor.assert.isOpen();
     await page.keyboard.type("2");
-    await page.keyboard.press("Enter");
-    await expect(viewBar.applyBtn).toBeFocused();
-
-    // Walk back to the nearest insert slot for the second stage — nothing
-    // destructive sits between Apply and the stages
-    await page.keyboard.press("Shift+Tab");
+    // Enter commits AND applies the stage; the keyboard lands on the next
+    // insert slot, where the second stage begins
+    await grid.run(() => page.keyboard.press("Enter"));
     await expect(
       viewBar.locator.getByLabel("Insert stage").last(),
     ).toBeFocused();
+
     await page.keyboard.press("Enter");
     await expect(viewBar.insertTypeahead).toBeFocused();
     await page.keyboard.type("Limit");
     await page.keyboard.press("Enter");
     await viewBar.stageEditor.assert.isOpen();
     await page.keyboard.type("3");
-    await page.keyboard.press("Enter");
-    await expect(viewBar.applyBtn).toBeFocused();
-
     await grid.run(() => page.keyboard.press("Enter"));
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
@@ -172,10 +162,9 @@ test.describe("view bar keyboard", () => {
   }) => {
     const editor = await viewBar.addStage("Limit");
     await editor.fill("limit", "3");
-    await page.keyboard.press("Enter");
-    await expect(viewBar.applyBtn).toBeFocused();
-
-    await grid.run(() => page.keyboard.press("Enter"));
+    // The commit applies; Apply never appears, so focus must move on rather
+    // than die with a button that isn't there
+    await grid.run(() => editor.commit("limit"));
 
     const slots = viewBar.locator.getByLabel("Insert stage");
     await expect(slots.last()).toBeFocused();
@@ -195,12 +184,12 @@ test.describe("view bar keyboard", () => {
   test("Tab and Shift+Tab traverse the bar", async ({ viewBar, page }) => {
     const editor = await viewBar.addStage("Limit");
     await editor.fill("limit", "3");
-    await page.keyboard.press("Enter");
 
-    // The commit closes the editor and hands the keyboard to Apply; Tabbing
-    // before that re-render lands walks a half-built bar
+    // Escape keeps the stage as a pending draft (a commit would apply it
+    // and dismiss Apply) — pending work is what makes Apply the exit stop
+    await page.keyboard.press("Escape");
     await editor.assert.isClosed();
-    await expect(viewBar.applyBtn).toBeFocused();
+    await expect(viewBar.applyBtn).toBeVisible();
 
     // Pending changes, so Apply is the last stop
     const slots = viewBar.locator.getByLabel("Insert stage");
@@ -249,8 +238,8 @@ test.describe("view bar keyboard", () => {
   }) => {
     const editor = await viewBar.addStage("Limit");
     await editor.fill("limit", "3");
-    await page.keyboard.press("Enter");
-    await grid.run(() => viewBar.applyBtn.click());
+    // the commit applies on its own
+    await grid.run(() => page.keyboard.press("Enter"));
 
     // Reopen the applied stage, then walk back out
     await viewBar.editStage(0);

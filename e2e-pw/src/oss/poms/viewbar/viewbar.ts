@@ -99,6 +99,11 @@ export class StageEditorPom {
     await this.param(param).getByRole("textbox").fill(value);
   }
 
+  /** Commits the stage from a param's input — Enter finishes AND applies. */
+  async commit(param: string) {
+    await this.param(param).getByRole("textbox").press("Enter");
+  }
+
   /** Picks an option in a param's picker, e.g. a field param's path. */
   async pick(param: string, option: string) {
     await this.param(param).click();

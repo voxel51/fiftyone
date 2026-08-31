@@ -22,6 +22,8 @@ import {
   Align,
   Anchor,
   Button,
+  Icon,
+  IconName,
   Orientation,
   Size,
   Spacing,
@@ -208,25 +210,24 @@ const ViewBar: React.FC<{
   }, []);
 
   /**
-   * Puts the keyboard on Apply. Deferred a frame because the button only
-   * renders once the working state diverges — it may not exist until the
-   * change that wants it focused has painted.
+   * Finishing a stage IS applying it: the same key that finished the stage
+   * runs the view, matching the text search's Enter. `apply` is declared
+   * below (it needs the serializer); the ref carries the latest instance.
+   * Only a deliberate commit applies — clicking away keeps the draft, and
+   * the Apply button remains for exactly that residual case.
    */
-  const focusApply = useCallback(() => {
-    requestAnimationFrame(() => {
-      applyRef.current?.querySelector("button")?.focus();
-    });
+  const applyFnRef = React.useRef<() => void>(() => undefined);
+  const commitStage = useCallback(() => {
+    setEditingId(null);
+    applyFnRef.current();
   }, []);
 
   /**
-   * Finishing a stage closes it and puts the keyboard on Apply, so the same key
-   * that finished the stage runs the view — no reaching for the mouse between
-   * describing a view and seeing it.
+   * Auto-apply queued behind a reducer dispatch: the dispatch's state lands
+   * next render, so applying immediately would serialize the OLD stages.
+   * Consumed by an effect below once the new state is in.
    */
-  const commitStage = useCallback(() => {
-    setEditingId(null);
-    focusApply();
-  }, [focusApply]);
+  const autoApplyQueued = React.useRef(false);
 
   const markTouched = useCallback((stageId: string, param: string) => {
     setTouched((current) => {
@@ -665,6 +666,15 @@ const ViewBar: React.FC<{
     focusLastSlot,
   ]);
 
+  applyFnRef.current = apply;
+
+  useEffect(() => {
+    if (autoApplyQueued.current) {
+      autoApplyQueued.current = false;
+      apply();
+    }
+  });
+
   // ----- Collapsed bar: summary chip + language search -----
 
   const promptKeys = fos.usePromptableSimilarityKeys();
@@ -900,11 +910,45 @@ const ViewBar: React.FC<{
               <div
                 style={{ flex: 1, height: "100%", cursor: "pointer" }}
                 onClick={() => setExpanded(true)}
-                onMouseEnter={() => setExpanded(true)}
                 aria-hidden="true"
               />
             )}
           </div>
+        )}
+        {!collapsed && (state.stages.length > 0 || searchEnabled) && (
+          <Tooltip anchor={Anchor.Right} content="Collapse to Current view">
+            <div
+              onClick={() => {
+                setEditingId(null);
+                setExpanded(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setEditingId(null);
+                  setExpanded(false);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="Collapse view stages"
+              data-cy="view-bar-collapse"
+              style={{
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                marginLeft: 4,
+                color: "var(--fo-palette-text-secondary)",
+                flexShrink: 0,
+              }}
+            >
+              <Icon name={IconName.ChevronLeft} size={Size.Sm} />
+            </div>
+          </Tooltip>
         )}
         {!collapsed && (
           <div
@@ -931,7 +975,37 @@ const ViewBar: React.FC<{
               names={insertableNames}
               describe={describeStage}
               onInsert={insertStage}
+              // With no stages and no text search there is nothing else in
+              // the bar — a bare "+" reads as a rendering failure, so the
+              // slot says what it does
+              label={
+                state.stages.length === 0 && !searchEnabled
+                  ? "Add stage"
+                  : undefined
+              }
             />
+            {state.stages.length === 0 && !searchEnabled && (
+              // Educational: text search exists but needs an index — keep the
+              // wand visible so the capability is discoverable
+              <Tooltip
+                anchor={Anchor.Right}
+                content="Search by text becomes available when this dataset has a similarity index that supports prompts"
+              >
+                <span
+                  aria-label="Text search requires a similarity index"
+                  data-cy="view-bar-search-education"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    marginLeft: 4,
+                    color: "var(--fo-palette-text-tertiary)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon name={IconName.AI} size={Size.Sm} />
+                </span>
+              </Tooltip>
+            )}
             {state.stages.map((stage, i) => {
               const def = defsByName.get(stage.cls);
               if (!def) return null;
@@ -979,8 +1053,9 @@ const ViewBar: React.FC<{
                     onRemove={() => {
                       if (editingId === stage.id) setEditingId(null);
                       dispatch({ type: "removeStage", id: stage.id });
-                      // Removing a stage is an edit like any other — Enter applies it
-                      focusApply();
+                      // Removing a stage is a finished edit — apply once the
+                      // reducer's state lands (next render)
+                      autoApplyQueued.current = true;
                     }}
                   />
                   <InsertSlot

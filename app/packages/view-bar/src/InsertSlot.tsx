@@ -27,7 +27,11 @@ export interface InsertSlotProps {
   names: readonly string[];
   /** What a stage does, shown inline under its name in the list. */
   describe: (name: string) => string | undefined;
-  onInsert: (cls: string, index: number) => void;
+  onInsert: (
+    cls: string,
+    index: number,
+  ) => void; /** When set, the closed slot renders as a labeled CTA ("+ <label>"). */
+  label?: string;
 }
 
 export const InsertSlot: React.FC<InsertSlotProps> = ({
@@ -35,6 +39,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
   names,
   describe,
   onInsert,
+  label,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -71,37 +76,48 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
   };
 
   if (!open) {
-    return (
-      // Anchored to the right, not below: a centered tooltip on the leftmost
-      // slot extends past the bar's left edge, and voodo's Tooltip does not
-      // slide itself back into view. Beside the "+" it grows away from the
-      // edge instead.
+    const trigger = (
+      <div
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Insert stage"
+        style={{
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 4,
+          height: 24,
+          borderRadius: 12,
+          padding: label ? "0 8px 0 4px" : 0,
+          width: label ? undefined : 24,
+          color: "var(--fo-palette-text-secondary)",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+        }}
+      >
+        <Icon name={IconName.Add} size={Size.Sm} />
+        {label && <span style={{ fontSize: 13 }}>{label}</span>}
+      </div>
+    );
+
+    // A labeled slot says what it does; the bare "+" keeps its tooltip.
+    // Anchored to the right, not below: a centered tooltip on the leftmost
+    // slot extends past the bar's left edge, and voodo's Tooltip does not
+    // slide itself back into view. Beside the "+" it grows away from the
+    // edge instead.
+    return label ? (
+      trigger
+    ) : (
       <Tooltip anchor={Anchor.Right} content="Insert stage">
-        <div
-          onClick={() => setOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              setOpen(true);
-            }
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="Insert stage"
-          style={{
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 24,
-            height: 24,
-            borderRadius: 12,
-            color: "var(--fo-palette-text-secondary)",
-            flexShrink: 0,
-          }}
-        >
-          <Icon name={IconName.Add} size={Size.Sm} />
-        </div>
+        {trigger}
       </Tooltip>
     );
   }
