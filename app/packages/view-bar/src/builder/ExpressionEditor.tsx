@@ -711,8 +711,11 @@ const Row: React.FC<
 > = ({ onChoose, muted, active, id, children }) => (
   // The list only scrolls to follow the keyboard, so the row identifies
   // itself and the editor decides when to bring it into view — scrolling on
-  // every render would drag the list back under the pointer
-  <div id={id}>
+  // every render would drag the list back under the pointer.
+  // mousedown must not steal Monaco's focus: the list is gated on `focused`,
+  // so a focus-stealing click would apply the completion and then leave the
+  // follow-up suggestions (the operators a completed field invites) closed
+  <div id={id} onMouseDown={(e) => e.preventDefault()}>
     <Clickable
       onClick={onChoose}
       role="option"
