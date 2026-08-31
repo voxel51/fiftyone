@@ -142,6 +142,23 @@ export const useSelectedTemporalDetectionField = (): string | null => {
   });
 };
 
+/**
+ * The field path of the (single) selected instance track — detection or
+ * polyline — or `null` when nothing track-like is selected. Track surgery
+ * (split at playhead) must address the track's OWN frames field: defaulting
+ * to the stream's primary field silently no-ops on a polyline track when
+ * detections are primary.
+ */
+export const useSelectedInstanceTrackField = (): string | null => {
+  const engine = useAnnotationEngine();
+  return useInteraction(engine, (i) => {
+    const track = i
+      .getActive()
+      .find((ref) => INSTANCE_TRACK_TYPES.has(engine.getLabelType(ref.path)));
+    return track?.path ?? null;
+  });
+};
+
 /** Read hovered track ids (engine instanceIds) from interaction state. */
 export const useHoveredTrackIds = (): ReadonlySet<string> => {
   const engine = useAnnotationEngine();
