@@ -9,7 +9,7 @@ import {
   useAtomValue,
   useSetAtom,
 } from "jotai";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
  * The active timeline's `pause`, published for callers that sit OUTSIDE the
@@ -58,15 +58,28 @@ const store = getDefaultStore();
 export const usePublishPauseHandle = (pause: () => void): void => {
   const setHandle = useSetAtom(playbackPauseHandleAtom, { store });
 
+  // `pause` is documented as stable, but it rides on the engine's `actions`
+  // memo, which depends on nine values including several callbacks that do
+  // change across stream and retry cycles. Publishing `pause` directly would
+  // therefore re-run the effect — writing the atom — on many renders in
+  // exactly the hot path. Publish a stable wrapper once per mount instead and
+  // read the current `pause` through a ref.
+  const pauseRef = useRef(pause);
   useEffect(() => {
+    pauseRef.current = pause;
+  }, [pause]);
+
+  useEffect(() => {
+    const publish = () => pauseRef.current();
+
     // Wrapped in an updater: jotai treats a bare function value as a
-    // reducer, so `setHandle(pause)` would store `pause(prev)`'s result.
-    setHandle(() => pause);
+    // reducer, so `setHandle(publish)` would store `publish(prev)`'s result.
+    setHandle(() => publish);
 
     return () => {
-      setHandle((current) => (current === pause ? null : current));
+      setHandle((current) => (current === publish ? null : current));
     };
-  }, [pause, setHandle]);
+  }, [setHandle]);
 };
 
 /**
