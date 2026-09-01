@@ -8,6 +8,10 @@
  * knowing about the other.
  */
 export { EpisodeIntervalSources } from "./chain";
+export {
+  toEpisodeRelativeNs,
+  useEpisodeTimeRange,
+} from "./use-episode-time-range";
 export { packIntervals } from "./pack-intervals";
 export {
   intervalPinnedTrackIds,

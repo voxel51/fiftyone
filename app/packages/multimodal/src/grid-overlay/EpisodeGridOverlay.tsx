@@ -1,5 +1,5 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 import type {
   EpisodeInterval,
   ResolvedEpisodeIntervals,
@@ -7,8 +7,8 @@ import type {
 import {
   EpisodeIntervalSources,
   packIntervals,
+  useEpisodeTimeRange,
 } from "../extensions/episode-intervals";
-import { getEpisodeTimeRange, subscribeEpisodeTimeRange } from "../runtime";
 import { temporalTagIntervalSource } from "./temporal-tag-interval-source";
 import styles from "./grid-overlay.module.css";
 
@@ -48,19 +48,7 @@ function IntervalLane({
   readonly ctx: SampleRendererProps["ctx"];
   readonly resolved: readonly ResolvedEpisodeIntervals[];
 }) {
-  const episodeId = ctx.sample.sample._id;
-  const subscribe = useCallback(
-    (listener: () => void) =>
-      episodeId
-        ? subscribeEpisodeTimeRange(episodeId, listener)
-        : () => undefined,
-    [episodeId],
-  );
-  const timeRange = useSyncExternalStore(
-    subscribe,
-    () => (episodeId ? getEpisodeTimeRange(episodeId) : null),
-    () => null,
-  );
+  const timeRange = useEpisodeTimeRange(ctx.sample.sample._id);
   const recordingDurationNs = timeRange
     ? Number(timeRange.endNs - timeRange.startNs)
     : undefined;
