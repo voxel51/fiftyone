@@ -1,13 +1,18 @@
 [build-system]
-requires = ["setuptools>=64", "wheel"]
+# setuptools >=77 accepts the SPDX license expression below;
+# wheel is a dynamic build requirement the backend adds itself
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "fiftyone"
 description = "FiftyOne: the open-source tool for building high-quality datasets and computer vision models"
 readme = { file = "README.md", content-type = "text/markdown" }
-license = { text = "Apache" }
-authors = [{ name = "Voxel51, Inc.", email = "info@voxel51.com" }]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+# Split entries on purpose: a name+email pair folds into Author-email only,
+# and fiftyone.constants reads the Author field (setup.py emitted both)
+authors = [{ name = "Voxel51, Inc." }, { email = "info@voxel51.com" }]
 requires-python = ">=3.10"
 # Version stays in setup.py: releases override it via the RELEASE_VERSION
 # environment variable (with a prefix check), which static metadata cannot
@@ -17,7 +22,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Image Processing",
     "Topic :: Scientific/Engineering :: Image Recognition",
@@ -99,7 +103,9 @@ fiftyone = "fiftyone.core.cli:main"
 Homepage = "https://github.com/voxel51/fiftyone"
 
 [tool.setuptools.packages.find]
-exclude = ["app*", "eta*", "package*", "requirements*", "tests*", "tools*"]
+# Exact names, as the removed setup.py had them — globs would also
+# exclude packages that merely share a prefix
+exclude = ["app", "eta", "package", "requirements", "tests", "tools"]
 
 [tool.setuptools]
 include-package-data = true
