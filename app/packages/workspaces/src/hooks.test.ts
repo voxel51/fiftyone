@@ -1,3 +1,7 @@
+/**
+ * @vitest-environment jsdom
+ */
+
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +18,9 @@ vi.mock("@fiftyone/operators", () => ({
 }));
 
 vi.mock("@fiftyone/state", () => ({
+  constants: {
+    COLOR_OPTIONS: [{ id: "gray", label: "Gray", color: "#9e9e9e" }],
+  },
   datasetName: "datasetName",
 }));
 
@@ -30,7 +37,7 @@ vi.mock("recoil", () => ({
   useResetRecoilState: vi.fn(() => mocks.resetState),
 }));
 
-vi.mock("../../state", () => ({
+vi.mock("./state", () => ({
   savedWorkspacesAtom: "savedWorkspacesAtom",
 }));
 

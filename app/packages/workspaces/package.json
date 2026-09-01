@@ -1,0 +1,30 @@
+{
+    "name": "@fiftyone/workspaces",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "test": "vitest"
+    },
+    "files": [
+        "dist"
+    ],
+    "main": "src/index.ts",
+    "dependencies": {
+        "@fiftyone/analytics": "*",
+        "@fiftyone/components": "*",
+        "@fiftyone/operators": "*",
+        "@fiftyone/state": "*",
+        "@fiftyone/utilities": "*",
+        "@voxel51/voodo": "catalog:"
+    },
+    "devDependencies": {
+        "vite": "^7.3.2"
+    },
+    "packageManager": "yarn@4.9.1",
+    "peerDependencies": {
+        "react": "*",
+        "react-dom": "*",
+        "recoil": "*"
+    }
+}
