@@ -623,37 +623,6 @@ class RemoteZooModelsManifest(ZooModelsManifest):
     _MODEL_CLS = RemoteZooModel
 
 
-def list_embedding_models(license=None):
-    """Returns the names of every zoo model that produces embeddings.
-
-    Which models carry the tag changes only when the manifest does, so the
-    answer is cached for the life of the process — callers on request paths
-    (an operator form re-rendering per keystroke) reach this constantly.
-
-    Args:
-        license (None): only include models distributed under this license or
-            any of this list of licenses
-
-    Returns:
-        a frozenset of model names
-    """
-    if license is not None and not etau.is_str(license):
-        license = tuple(license)
-
-    return _embedding_model_names(license)
-
-
-@functools.lru_cache(maxsize=None)
-def _embedding_model_names(license=None):
-    # ``has_tag`` rather than ``_list_zoo_models(tags=...)``: that filter does
-    # ``tags.issubset(model.tags)``, which raises on a model declaring no tags
-    # at all — which a remote source can register
-    models = _list_zoo_models(
-        license=list(license) if isinstance(license, tuple) else license
-    )
-    return frozenset(m.name for m in models if m.has_tag("embeddings"))
-
-
 @functools.lru_cache(maxsize=1)
 def _load_zoo_models_manifest():
     """Returns ``(manifest, remote_sources)`` for the model zoo.
@@ -689,7 +658,6 @@ def _invalidate_zoo_models_manifest():
     """Drops the memoized manifest, for the operations that change what is on
     disk under ``model_zoo_dir``."""
     _load_zoo_models_manifest.cache_clear()
-    _embedding_model_names.cache_clear()
 
 
 def _merge_manifest(manifest, manifest_path, sources=None):
