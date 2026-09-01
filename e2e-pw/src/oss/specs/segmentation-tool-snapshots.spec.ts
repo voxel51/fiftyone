@@ -81,6 +81,10 @@ const openAnnotate = async (
   });
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
+  // The canvas must be interactive before any tool draws on it — mode
+  // toggles resolve while the renderer can still be behind its loading
+  // cover, and a stroke drawn into the cover paints nothing
+  await modal.waitForLighterReady();
   await modal.sidebar.annotate.segmentationMode();
   await modal.sidebar.annotate.assert.segmentationModeIsActive();
 };
