@@ -81,10 +81,13 @@ describe("useTimelineSections", () => {
       expansionGutter: true,
     });
     expect(unpinned.className).toMatch(/hiddenTrack/);
+    // Pinned keeps the source's own decoration and gains the section name,
+    // since the pinned list is flat and the header no longer sits above it.
     expect(result.current.decorateTrack(EVENT_TRACK, true)).toEqual({
       className: "source-row",
       depth: 2,
       eventMenuItems: [],
+      secondaryLabel: "test:events",
     });
   });
 
