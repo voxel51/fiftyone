@@ -13,8 +13,6 @@ import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import {
   Align,
   Button,
-  Card,
-  CardBackground,
   Icon,
   IconName,
   Input,
@@ -85,99 +83,102 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
       role="dialog"
       aria-label="Text search settings"
       data-cy="view-bar-search-settings"
-      // Positioned and shadowed exactly like the stage editor popover — the
-      // wand's settings are the same kind of surface
+      // The same surface the bar's dropdowns wear (AnchoredListbox) — every
+      // floating element reads as one family. level3 is the DARK tier of
+      // the palette (level1 is the lightest); the light Card this replaced
+      // is why the popover once read grey
       style={{
         position: "fixed",
         top: rect.top + 6,
         left,
         zIndex: 10001,
         width: POPOVER_WIDTH,
-        boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
-        borderRadius: 6,
+        padding: 12,
+        background: "var(--fo-palette-background-level3)",
+        border: "1px solid var(--fo-palette-primary-plainBorder)",
+        borderRadius: 4,
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
       }}
     >
-      <Card background={CardBackground.Primary} outlined compact>
-        <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
-          {promptKeys.length > 0 ? (
-            <>
-              <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-                <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
-                  Similarity index
-                </Text>
-                <Select
-                  aria-label="Similarity index"
-                  data-cy="search-settings-indexes"
-                  exclusive
-                  portal
-                  // The popover card sits above the app at 10001; the menu
-                  // must land above the card, not under it
-                  zIndex={ZIndex.AboveModal}
-                  value={selectedKey ?? undefined}
-                  onChange={(value) => {
-                    if (typeof value === "string") {
-                      onSelectKey(value);
-                    }
-                  }}
-                  options={promptKeys.map((index) => ({
-                    id: index.key,
-                    data: {
-                      label: index.patchesField
-                        ? `${index.key} (patches: ${index.patchesField})`
-                        : index.key,
-                    },
-                  }))}
-                />
-              </Stack>
-              <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-                <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
-                  Matches
-                </Text>
-                <Input
-                  size={Size.Sm}
-                  type={InputType.Number}
-                  value={String(k)}
-                  data-cy="search-settings-k"
-                  aria-label="Number of matches"
-                  onChange={(e) =>
-                    onChangeK(clampMatches(Number(e.target.value), k))
+      <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
+        {promptKeys.length > 0 ? (
+          <>
+            <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+              <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
+                Similarity index
+              </Text>
+              <Select
+                aria-label="Similarity index"
+                data-cy="search-settings-indexes"
+                exclusive
+                portal
+                // The popover card sits above the app at 10001; the menu
+                // must land above the card, not under it
+                zIndex={ZIndex.AboveModal}
+                value={selectedKey ?? undefined}
+                onChange={(value) => {
+                  if (typeof value === "string") {
+                    onSelectKey(value);
                   }
-                />
-              </Stack>
-            </>
-          ) : (
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              Text search requires a similarity index that supports prompts.
-            </Text>
-          )}
+                }}
+                options={promptKeys.map((index) => ({
+                  id: index.key,
+                  data: {
+                    label: index.patchesField
+                      ? `${index.key} (patches: ${index.patchesField})`
+                      : index.key,
+                  },
+                }))}
+              />
+            </Stack>
+            <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+              <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
+                Matches
+              </Text>
+              <Input
+                size={Size.Sm}
+                type={InputType.Number}
+                value={String(k)}
+                data-cy="search-settings-k"
+                aria-label="Number of matches"
+                onChange={(e) =>
+                  onChangeK(clampMatches(Number(e.target.value), k))
+                }
+              />
+            </Stack>
+          </>
+        ) : (
+          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            Text search requires a similarity index that supports prompts.
+          </Text>
+        )}
 
-          <Button
-            variant={Variant.Secondary}
-            size={Size.Sm}
-            data-cy="search-settings-open-panel"
-            onClick={() => {
-              onOpenPanel();
-              onClose();
-            }}
-          >
-            {promptKeys.length > 0 ? (
-              <Stack
-                orientation={Orientation.Row}
-                align={Align.Center}
-                spacing={Spacing.Xs}
-              >
-                Open
-                {/* the Similarity Search panel's own icon, so the button
+        <Button
+          variant={Variant.Secondary}
+          size={Size.Sm}
+          data-cy="search-settings-open-panel"
+          onClick={() => {
+            onOpenPanel();
+            onClose();
+          }}
+        >
+          {promptKeys.length > 0 ? (
+            <Stack
+              orientation={Orientation.Row}
+              align={Align.Center}
+              spacing={Spacing.Xs}
+            >
+              Open
+              {/* the Similarity Search panel's own icon, so the button
                     reads as a pointer to that panel */}
-                <Icon name={IconName.ImageSearch} size={Size.Sm} />
-                Similarity Search
-              </Stack>
-            ) : (
-              "Create a similarity index"
-            )}
-          </Button>
-        </Stack>
-      </Card>
+              <Icon name={IconName.ImageSearch} size={Size.Sm} />
+              Similarity Search
+            </Stack>
+          ) : (
+            "Create a similarity index"
+          )}
+        </Button>
+      </Stack>
     </div>,
     document.body,
   );

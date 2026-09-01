@@ -15,7 +15,7 @@
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
-import { executeOperator } from "@fiftyone/operators";
+import { executeOperator, useOperatorAvailability } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { buildSimilarityRunName } from "@fiftyone/utilities";
 import {
@@ -697,10 +697,18 @@ const ViewBarInner: React.FC<{
   // ----- Collapsed bar: summary chip + language search -----
 
   const promptKeys = fos.usePromptableSimilarityKeys();
+  // The search runs through the similarity_search operator — a deployment
+  // whose plugins never registered (or an install without them) must not
+  // offer a box whose Enter goes nowhere
+  const searchOperatorAvailable = useOperatorAvailability(
+    SIMILARITY_SEARCH_OPERATOR,
+  );
   // The language search turns Enter into a SortBySimilarity stage, so it
   // needs a prompt-capable index and the stage itself to be offerable here
   const searchEnabled =
-    promptKeys.length > 0 && defsByName.has("SortBySimilarity");
+    searchOperatorAvailable &&
+    promptKeys.length > 0 &&
+    defsByName.has("SortBySimilarity");
 
   // The wand popover's settings: which index the search uses and how many
   // matches it asks for. Default ordering = the top 5 indexes actually
@@ -977,17 +985,23 @@ const ViewBarInner: React.FC<{
           borderRadius: 4,
         }}
       >
-        <LanguageSearch
-          onSubmit={submitLanguageQuery}
-          enabled={searchEnabled}
-          history={searchHistory}
-          promptKeys={orderedPromptKeys}
-          selectedKey={resolvedSearchIndex?.key ?? null}
-          onSelectKey={setSearchIndexKey}
-          k={searchK}
-          onChangeK={changeSearchK}
-          onOpenPanel={openSimilarityPanel}
-        />
+        {searchOperatorAvailable ? (
+          <LanguageSearch
+            onSubmit={submitLanguageQuery}
+            enabled={searchEnabled}
+            history={searchHistory}
+            promptKeys={orderedPromptKeys}
+            selectedKey={resolvedSearchIndex?.key ?? null}
+            onSelectKey={setSearchIndexKey}
+            k={searchK}
+            onChangeK={changeSearchK}
+            onOpenPanel={openSimilarityPanel}
+          />
+        ) : (
+          // No similarity_search operator (plugins absent): a search box
+          // whose every path dead-ends is hidden, not disabled
+          <div style={{ flex: 1 }} aria-hidden="true" />
+        )}
         {/* The stages toggle: opens the second row where the view is built.
             Carries the stage count so an applied view stays discoverable
             while the row is folded away. */}

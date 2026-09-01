@@ -139,7 +139,10 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
       ref={containerRef}
       style={{
         position: "relative",
-        width: 200,
+        // Just enough for the placeholder and a typed stage name — the
+        // suggestion list is portaled wider (LIST_WIDTH), so the input
+        // itself never needs the room
+        width: 128,
         flexShrink: 0,
         background: "var(--fo-palette-background-level2)",
         borderRadius: 4,
