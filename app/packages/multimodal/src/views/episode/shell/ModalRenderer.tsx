@@ -10,6 +10,12 @@ import {
   useSampleRendererFirstMatch,
   type TimelineSection,
 } from "../../../extensions/timeline";
+import {
+  EpisodeIntervalSources,
+  intervalPinnedTrackIds,
+  intervalTimelineSections,
+  type ResolvedEpisodeIntervals,
+} from "../../../extensions/episode-intervals";
 import { SourcePlayback } from "./SourcePlayback";
 import { sourceDisplayName } from "./source-display-name";
 import {
@@ -19,11 +25,28 @@ import {
 import { useTimeRange } from "../playback/use-time-range";
 
 /**
- * SampleRenderer wrapper for episode media. It translates the sample renderer
- * context into a byte source, then delegates the actual playback shell to the
- * source-oriented host shared with the ad hoc episode panel.
+ * SampleRenderer wrapper for episode media. Registered episode-interval
+ * sources are mounted first, so their sections and pin ids are available to
+ * the shell below; temporal tags are deliberately not among them, since they
+ * already have their own section carrying the create / update / delete
+ * behavior the read-only interval shape has no room for.
  */
-const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
+const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => (
+  <EpisodeIntervalSources ctx={ctx}>
+    {(intervalSources) => (
+      <EpisodeModal ctx={ctx} intervalSources={intervalSources} />
+    )}
+  </EpisodeIntervalSources>
+);
+
+const EpisodeModal: React.FC<
+  SampleRendererProps & {
+    readonly intervalSources: readonly ResolvedEpisodeIntervals[];
+  }
+> = ({ ctx, intervalSources }) => {
+  // Translates the sample renderer context into a byte source, then delegates
+  // the playback shell to the source-oriented host shared with the ad hoc
+  // episode panel.
   const {
     byteSource: source,
     episodeSource,
@@ -45,9 +68,14 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     onTagUpdate,
     onTagDelete,
   } = useTemporalTags(ctx);
-  // Auto-pin the timeline tracks for the temporal tags the grid was filtered
-  // by, so opening a filtered sample surfaces the relevant tags immediately.
-  const defaultPinnedTrackIds = useFilteredTemporalTagPinnedIds();
+  // Auto-pin the timeline tracks for whatever the grid was filtered by — the
+  // temporal tags, and every event name a registered interval source reports —
+  // so opening a filtered sample surfaces the matching rows immediately.
+  const tagPinnedTrackIds = useFilteredTemporalTagPinnedIds();
+  const defaultPinnedTrackIds = useMemo(
+    () => [...tagPinnedTrackIds, ...intervalPinnedTrackIds(intervalSources)],
+    [intervalSources, tagPinnedTrackIds],
+  );
   const builtInSections = useMemo<readonly TimelineSection[]>(
     () => [
       {
@@ -56,8 +84,9 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
         order: 200,
         tracks: tagTracks,
       },
+      ...intervalTimelineSections(intervalSources),
     ],
-    [tagTracks],
+    [intervalSources, tagTracks],
   );
 
   // Opening a tile the embeddings panel matched lands the playhead on the same

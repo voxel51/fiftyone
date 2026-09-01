@@ -13,6 +13,7 @@ const EPISODE_INDEX = `${EPISODE}index\\.ts$`;
 const EPISODE_SETTINGS_CONTROLS_INDEX = `${EPISODE}settings/controls/index\\.ts$`;
 const EPISODE_MAP_RENDERING = `${EPISODE}map/rendering/`;
 const EXTENSIONS = `${SRC}extensions/`;
+const GRID_OVERLAY = `${SRC}grid-overlay/`;
 const EXTENSION_HOST = `${EXTENSIONS}host/`;
 const INJECT = `${SRC}inject/`;
 const INJECT_ENTRY = `${INJECT}index\\.ts$`;
@@ -37,6 +38,7 @@ const VISUALIZATION = `${SRC}visualization/`;
 
 const ENTERPRISE_SHARED_FACADES =
   `${SRC}(extensions/(grid-posters|timeline|tiles)/(index|runtime)\\.ts$|` +
+  `extensions/episode-intervals/index\\.ts$|` +
   `extensions/(mcap-explorer|episode-actions)/index\\.ts$|` +
   `ir/index\\.ts$|query/bytes/index\\.ts$|temporal-tags/index\\.ts$|` +
   `utils/(bigint|cancellation|relative-time)\\.ts$|` +
@@ -371,6 +373,19 @@ module.exports = {
       severity: "error",
       from: { path: STREAM_SELECTION, pathNot: TEST_MODULE },
       to: { path: SRC, pathNot: `${SRC}(stream-selection|ir|utils)/` },
+    },
+    {
+      // The grid tile's interval lane composes the episode-interval seam over
+      // the one open-source source (temporal tags) and the runtime's episode
+      // time range. It is presentation only: nothing else may hang off it, and
+      // it may not reach product views or source adapters.
+      name: "grid-overlay-imports-only-interval-sources",
+      severity: "error",
+      from: { path: GRID_OVERLAY, pathNot: TEST_MODULE },
+      to: {
+        path: SRC,
+        pathNot: `${SRC}(grid-overlay|extensions|temporal-tags|runtime|ir|utils)/`,
+      },
     },
     {
       // Keep temporal-tag contributions format-neutral and dependent only on

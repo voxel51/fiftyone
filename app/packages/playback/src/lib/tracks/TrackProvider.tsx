@@ -81,10 +81,17 @@ export interface TrackProviderProps {
   tracks?: Track[];
   /**
    * Track ids that should start pinned to the timeline. Anything else
-   * sits in the "unpinned" pool, browsable but not rendered. **Mount-time
-   * only** — captured into local state on the first render and never read
-   * again. To mutate pin state after mount, call `togglePin` / `setPinned`
-   * from `useTrackPinning()`.
+   * sits in the "unpinned" pool, browsable but not rendered.
+   *
+   * Applied at mount, and again to any id in this list whose track had not yet
+   * appeared — a track loaded asynchronously (a filter-match query resolving
+   * after the modal opens) still starts pinned when it lands. Each id is
+   * applied at most once, so unpinning one of these rows sticks. Ignored
+   * entirely when `persistKey` finds a stored pin set: a remembered choice
+   * outranks the caller's default.
+   *
+   * To mutate pin state directly, call `togglePin` / `setPinned` from
+   * `useTrackPinning()`.
    */
   initialPinnedIds?: string[];
   /**
@@ -153,10 +160,17 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   persistKey,
   children,
 }) => {
+  // Whether a stored pin set won at mount. When it did, `initialPinnedIds` is
+  // a default that has already been overridden, so late-appearing tracks must
+  // not resurrect it.
+  const restoredFromStorageRef = useRef(false);
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(() => {
     if (persistKey) {
       const persisted = readPersistedPinnedIds(persistKey);
-      if (persisted) return persisted;
+      if (persisted) {
+        restoredFromStorageRef.current = true;
+        return persisted;
+      }
     }
 
     return new Set(initialPinnedIds);
@@ -177,6 +191,36 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   // appears after that initial hydration is a new creation and gets pinned.
   const hydratedRef = useRef(tracks.length > 0);
   const seenTrackIdsRef = useRef<Set<string>>(new Set(tracks.map((t) => t.id)));
+
+  // Pin ids that JOIN `initialPinnedIds` after mount, once their track exists.
+  // The mount-time ids need nothing here — they were seeded into the pinned set
+  // above whether or not their track had loaded, so a track arriving late for
+  // one of them is already pinned. What does need this is a source that decides
+  // late *what* to pin: a filter-match query naming its rows only once it
+  // answers. Such an id waits here until its track appears, then is pinned and
+  // recorded, so unpinning that row afterwards sticks.
+  const appliedPinIdsRef = useRef<Set<string>>(new Set(initialPinnedIds));
+  useEffect(() => {
+    // A stored pin set already overrode these defaults; don't reinstate them.
+    if (restoredFromStorageRef.current) return;
+    // `initialPinnedIds` defaults to a fresh array, so this effect re-runs on
+    // every render; leave before doing any work in the common empty case.
+    if (initialPinnedIds.length === 0) return;
+
+    const applied = appliedPinIdsRef.current;
+    const present = new Set(tracks.map((t) => t.id));
+    const arrived = initialPinnedIds.filter(
+      (id) => !applied.has(id) && present.has(id),
+    );
+    if (arrived.length === 0) return;
+
+    for (const id of arrived) applied.add(id);
+    setPinnedSet((prev) => {
+      const next = new Set(prev);
+      for (const id of arrived) next.add(id);
+      return next;
+    });
+  }, [initialPinnedIds, tracks]);
   useEffect(() => {
     // Opt-out: the surface drives all pinning explicitly, so a new track must
     // not pin itself.

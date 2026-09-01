@@ -12,8 +12,8 @@ import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
 // The multimodal guard also mounts the temporal-tag overlay, which reaches
 // for an mcap source these tests do not build
-vi.mock("@fiftyone/multimodal/temporal-tags/grid-overlay", () => ({
-  TemporalTagGridOverlay: () => null,
+vi.mock("@fiftyone/multimodal/grid-overlay", () => ({
+  EpisodeGridOverlay: () => null,
 }));
 
 vi.mock("./GridTagBubbles", () => ({

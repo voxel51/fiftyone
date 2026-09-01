@@ -26,13 +26,25 @@ vi.mock("@fiftyone/utilities", async (importOriginal) => {
 // don't pull the full sidebar/graphQL machinery into the test.
 vi.mock("./sidebar", () => ({ TEMPORAL_TAGS_FIELD: "_temporal_tags" }));
 vi.mock("./filters", async () => {
-  const { atom } = await vi.importActual<typeof import("recoil")>("recoil");
-  return {
-    filters: atom<Record<string, unknown>>({
-      key: "test_filters",
-      default: {},
-    }),
+  const { atom, useRecoilValue } =
+    await vi.importActual<typeof import("recoil")>("recoil");
+  const testFilters = atom<Record<string, unknown>>({
+    key: "test_filters",
+    default: {},
+  });
+  // `useActiveTemporalTagFilterValues` delegates here, so the mock has to
+  // carry the generic hook too — reading the same test atom.
+  const useActiveFilterValues = (path: string): string[] => {
+    const current = useRecoilValue(testFilters);
+    const filter = current?.[path] as
+      | { values?: (string | null)[]; exclude?: boolean }
+      | undefined;
+    if (!filter || filter.exclude) return [];
+    return (filter.values ?? []).filter(
+      (value): value is string => typeof value === "string",
+    );
   };
+  return { filters: testFilters, useActiveFilterValues };
 });
 vi.mock("./selectors", async () => {
   const { atom } = await vi.importActual<typeof import("recoil")>("recoil");

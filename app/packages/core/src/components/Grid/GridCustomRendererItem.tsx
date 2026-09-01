@@ -7,7 +7,7 @@ import {
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/timeline";
-import { TemporalTagGridOverlay } from "@fiftyone/multimodal/temporal-tags/grid-overlay";
+import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
@@ -400,7 +400,7 @@ export class GridCustomRendererItem {
               <GridTagBubbles sample={sample} />
               {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
                 <>
-                  <TemporalTagGridOverlay ctx={ctx} />
+                  <EpisodeGridOverlay ctx={ctx} />
                   <McapGridOverlays ctx={ctx} />
                 </>
               ) : null}
