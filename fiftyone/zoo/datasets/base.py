@@ -3465,7 +3465,7 @@ class RoboLabDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        19.84 GB
+        21.85 GB
     """
 
     _REPO_ID = "Voxel51/RoboLab-EgoX"

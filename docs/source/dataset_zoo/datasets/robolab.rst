@@ -22,7 +22,7 @@ telemetry carry 81, so align streams by timestamp rather than by index.
 
 -   Dataset name: ``robolab``
 -   Dataset source: https://huggingface.co/datasets/Voxel51/RoboLab-EgoX
--   Dataset size: 19.84 GB
+-   Dataset size: 21.85 GB
 -   Dataset license: Apache-2.0
 -   Tags: ``multimodal, mcap, robotics, manipulation, depth``
 -   Supported splits: ``N/A``
