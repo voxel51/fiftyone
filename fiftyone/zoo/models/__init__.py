@@ -87,7 +87,9 @@ def _list_zoo_models(tags=None, source=None, license=None):
         else:
             tags = set(tags)
 
-        manifest = [model for model in manifest if tags.issubset(model.tags)]
+        manifest = [
+            model for model in manifest if tags.issubset(model.tags or [])
+        ]
 
     if license is not None:
         if etau.is_str(license):
