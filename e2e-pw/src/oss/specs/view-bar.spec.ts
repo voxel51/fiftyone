@@ -97,11 +97,11 @@ test.describe("view bar", () => {
     // One-row bar: nothing wrapped or spilled vertically
     expect(layout.barHeight).toBeLessThan(48);
 
-    // Apply is pinned outside the scroll region, visible without scrolling —
-    // prove it by running the view from where the bar sits untouched
-    await viewBar.viewStages.first().getByLabel("Remove stage").click();
-    await expect(viewBar.applyBtn).toBeVisible();
-    await grid.run(() => viewBar.applyBtn.click());
+    // Removing a stage is a finished edit: it applies on its own, no Apply
+    // stop — the grid reload is the proof the removal ran
+    await grid.run(() =>
+      viewBar.viewStages.first().getByLabel("Remove stage").click(),
+    );
     await expect(viewBar.viewStages).toHaveCount(7);
   });
 
@@ -118,8 +118,9 @@ test.describe("view bar", () => {
     const editor = await viewBar.addStage("Limit");
     await editor.fill("limit", "3");
 
-    // Armed before the click, so nothing waits on elapsed time
-    await grid.run(() => viewBar.apply());
+    // Committing the stage applies it — armed before the key, so nothing
+    // waits on elapsed time
+    await grid.run(() => editor.commit("limit"));
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 
@@ -149,7 +150,7 @@ test.describe("view bar", () => {
     await editor.pick("field", "ground_truth");
     await editor.fill("filter", 'F("label") == "cat"');
 
-    await grid.run(() => viewBar.apply());
+    await grid.run(() => editor.commit("filter"));
 
     const stages = await getSessionView(request, baseURL, datasetName);
     expect(stages).toHaveLength(1);

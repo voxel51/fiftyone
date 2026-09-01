@@ -74,7 +74,6 @@ export const CurrentViewChip: React.FC<CurrentViewChipProps> = ({
     outlined
     compact
     data-cy="view-bar-current-view"
-    onMouseEnter={onExpand}
     onClick={onExpand}
     onKeyDown={(e) => {
       if (e.key === "Enter" || e.key === " ") {

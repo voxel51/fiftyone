@@ -11,7 +11,15 @@
  */
 
 import { AnchoredListbox, useAnchorRect } from "@fiftyone/components";
-import { Icon, IconName, Input, Size, Tooltip, Anchor } from "@voxel51/voodo";
+import {
+  Anchor,
+  Clickable,
+  Icon,
+  IconName,
+  Input,
+  Size,
+  Tooltip,
+} from "@voxel51/voodo";
 import React from "react";
 
 import { StageDescription } from "./description";
@@ -28,6 +36,12 @@ export interface InsertSlotProps {
   /** What a stage does, shown inline under its name in the list. */
   describe: (name: string) => string | undefined;
   onInsert: (cls: string, index: number) => void;
+  /**
+   * Render the typeahead input persistently instead of a "+" that opens it —
+   * the empty bar's CTA is the real selector, not a button that becomes one.
+   * The stage list drops down while the input is focused.
+   */
+  pinned?: boolean;
 }
 
 export const InsertSlot: React.FC<InsertSlotProps> = ({
@@ -35,14 +49,24 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
   names,
   describe,
   onInsert,
+  pinned,
 }) => {
   const [open, setOpen] = React.useState(false);
+  const [focused, setFocused] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  // Whether the keyboard has expressed a choice (typed or arrowed). A pinned
+  // slot is focusable by a plain Tab, and Enter there must not insert the
+  // top-ranked stage out of nowhere.
+  const [navigated, setNavigated] = React.useState(false);
   // Highlighted stage, driven by the arrow keys. Clamped on read rather than
   // reset by an effect, so it stays valid as the filtered set changes.
   const [highlight, setHighlight] = React.useState(0);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const rect = useAnchorRect(containerRef, open);
+  // Pinned, the input is always there and focus gates the list; unpinned,
+  // opening autofocuses the input so open alone is the gate
+  const isOpen = Boolean(pinned) || open;
+  const listVisible = pinned ? focused : open;
+  const rect = useAnchorRect(containerRef, listVisible);
 
   React.useEffect(() => {
     if (!open) return undefined;
@@ -68,40 +92,44 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
     onInsert(cls, index);
     setOpen(false);
     setQuery("");
+    setNavigated(false);
   };
 
-  if (!open) {
+  if (!isOpen) {
+    const trigger = (
+      <Clickable
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Insert stage"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: 24,
+          width: 24,
+          borderRadius: 12,
+          color: "var(--fo-palette-text-secondary)",
+          flexShrink: 0,
+        }}
+      >
+        <Icon name={IconName.Add} size={Size.Sm} />
+      </Clickable>
+    );
+
+    // Anchored to the right, not below: a centered tooltip on the leftmost
+    // slot extends past the bar's left edge, and voodo's Tooltip does not
+    // slide itself back into view. Beside the "+" it grows away from the
+    // edge instead.
     return (
-      // Anchored to the right, not below: a centered tooltip on the leftmost
-      // slot extends past the bar's left edge, and voodo's Tooltip does not
-      // slide itself back into view. Beside the "+" it grows away from the
-      // edge instead.
       <Tooltip anchor={Anchor.Right} content="Insert stage">
-        <div
-          onClick={() => setOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              setOpen(true);
-            }
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="Insert stage"
-          style={{
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 24,
-            height: 24,
-            borderRadius: 12,
-            color: "var(--fo-palette-text-secondary)",
-            flexShrink: 0,
-          }}
-        >
-          <Icon name={IconName.Add} size={Size.Sm} />
-        </div>
+        {trigger}
       </Tooltip>
     );
   }
@@ -122,8 +150,14 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
         size={Size.Sm}
         value={query}
         placeholder="Add stage…"
-        autoFocus
+        // A pinned slot renders at page load — it must not steal the keyboard
+        autoFocus={!pinned}
         {...NO_BROWSER_SUGGESTIONS}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          setNavigated(false);
+        }}
         onChange={(e) => {
           setQuery(e.target.value);
           setHighlight(0);
@@ -132,19 +166,30 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
           if (e.key === "Escape") {
             setOpen(false);
             setQuery("");
+            setNavigated(false);
+            if (pinned) {
+              // The input stays; dropping focus is what dismisses the list
+              (e.target as HTMLElement).blur();
+            }
           } else if (e.key === "ArrowDown") {
             // Arrow keys must not also move the text cursor
             e.preventDefault();
+            setNavigated(true);
             setHighlight(Math.min(active + 1, filtered.length - 1));
           } else if (e.key === "ArrowUp") {
             e.preventDefault();
+            setNavigated(true);
             setHighlight(Math.max(active - 1, 0));
-          } else if (e.key === "Enter" && filtered[active]) {
+          } else if (
+            e.key === "Enter" &&
+            filtered[active] &&
+            (query.trim() || navigated)
+          ) {
             insert(filtered[active]);
           }
         }}
         role="combobox"
-        aria-expanded={open}
+        aria-expanded={listVisible}
         aria-activedescendant={
           filtered[active] ? `view-bar-stage-${active}` : undefined
         }

@@ -91,19 +91,11 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.sampleCanvas.movePixels(150, 0);
     await modal.sampleCanvas.up();
 
-    // Cross-mode clip: Annotate's canvas sits below the annotation top bar
-    // and the viewport transfer is canvas-local, so Annotate shows exactly
-    // Explore's top rows — the plain element screenshot could never match.
-    await modal.sampleCanvas.assert.hasCrossModeScreenshot(
-      "cross-renderer.png",
-    );
+    await modal.sampleCanvas.assert.hasScreenshot("cross-renderer.png");
 
     await modal.sidebar.switchMode("annotate");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
-    await modal.waitForLighterReady();
 
-    await modal.sampleCanvas.assert.hasCrossModeScreenshot(
-      "cross-renderer.png",
-    );
+    await modal.sampleCanvas.assert.hasScreenshot("cross-renderer.png");
   });
 });

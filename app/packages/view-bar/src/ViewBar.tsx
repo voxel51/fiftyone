@@ -22,6 +22,9 @@ import {
   Align,
   Anchor,
   Button,
+  Clickable,
+  Icon,
+  IconName,
   Orientation,
   Size,
   Spacing,
@@ -29,6 +32,7 @@ import {
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
+import { useAnchorRect } from "@fiftyone/components";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import { kindsByFtype, operatorsFrom } from "./builder/catalog";
@@ -37,6 +41,14 @@ import { ClearViewButton, CurrentViewChip } from "./CurrentViewChip";
 import { allowedFields } from "./fields";
 import { InsertSlot } from "./InsertSlot";
 import { LanguageSearch } from "./LanguageSearch";
+import { SearchSettingsPopover } from "./SearchSettingsPopover";
+import {
+  orderBySearchRecency,
+  readIndexUses,
+  readMatches,
+  recordIndexUse,
+  recordMatches,
+} from "./searchIndexRecency";
 import {
   appliesTo,
   defaultKwargs,
@@ -208,25 +220,24 @@ const ViewBar: React.FC<{
   }, []);
 
   /**
-   * Puts the keyboard on Apply. Deferred a frame because the button only
-   * renders once the working state diverges — it may not exist until the
-   * change that wants it focused has painted.
+   * Finishing a stage IS applying it: the same key that finished the stage
+   * runs the view, matching the text search's Enter. `apply` is declared
+   * below (it needs the serializer); the ref carries the latest instance.
+   * Only a deliberate commit applies — clicking away keeps the draft, and
+   * the Apply button remains for exactly that residual case.
    */
-  const focusApply = useCallback(() => {
-    requestAnimationFrame(() => {
-      applyRef.current?.querySelector("button")?.focus();
-    });
+  const applyFnRef = React.useRef<() => void>(() => undefined);
+  const commitStage = useCallback(() => {
+    setEditingId(null);
+    applyFnRef.current();
   }, []);
 
   /**
-   * Finishing a stage closes it and puts the keyboard on Apply, so the same key
-   * that finished the stage runs the view — no reaching for the mouse between
-   * describing a view and seeing it.
+   * Auto-apply queued behind a reducer dispatch: the dispatch's state lands
+   * next render, so applying immediately would serialize the OLD stages.
+   * Consumed by an effect below once the new state is in.
    */
-  const commitStage = useCallback(() => {
-    setEditingId(null);
-    focusApply();
-  }, [focusApply]);
+  const autoApplyQueued = React.useRef(false);
 
   const markTouched = useCallback((stageId: string, param: string) => {
     setTouched((current) => {
@@ -665,6 +676,15 @@ const ViewBar: React.FC<{
     focusLastSlot,
   ]);
 
+  applyFnRef.current = apply;
+
+  useEffect(() => {
+    if (autoApplyQueued.current) {
+      autoApplyQueued.current = false;
+      apply();
+    }
+  });
+
   // ----- Collapsed bar: summary chip + language search -----
 
   const promptKeys = fos.usePromptableSimilarityKeys();
@@ -672,6 +692,67 @@ const ViewBar: React.FC<{
   // needs a prompt-capable index and the stage itself to be offerable here
   const searchEnabled =
     promptKeys.length > 0 && defsByName.has("SortBySimilarity");
+
+  // The wand popover's settings: which index the search uses and how many
+  // matches it asks for. Default ordering = the top 5 indexes actually
+  // searched with in the past week (most recent first), then newest-created;
+  // an explicit pick overrides. Session-local pick; per-dataset recency.
+  const [searchIndexKey, setSearchIndexKey] = React.useState<string | null>(
+    null,
+  );
+  const [searchK, setSearchK] = React.useState(
+    () => (datasetName ? readMatches(datasetName) : null) ?? LANGUAGE_SEARCH_K,
+  );
+  const changeSearchK = useCallback(
+    (k: number) => {
+      setSearchK(k);
+      if (datasetName) {
+        recordMatches(datasetName, k);
+      }
+    },
+    [datasetName],
+  );
+  // bumps after every search so the ordering reflects the use just recorded
+  const [recencyStamp, setRecencyStamp] = React.useState(0);
+  const orderedPromptKeys = useMemo(
+    () =>
+      orderBySearchRecency(
+        promptKeys,
+        datasetName ? readIndexUses(datasetName) : {},
+      ),
+    // recencyStamp invalidates the localStorage read
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [promptKeys, datasetName, recencyStamp],
+  );
+  const resolvedSearchIndex =
+    orderedPromptKeys.find((index) => index.key === searchIndexKey) ??
+    orderedPromptKeys[0];
+
+  // The no-index wand's popover (the collapsed bar's education affordance)
+  const [educationOpen, setEducationOpen] = React.useState(false);
+  const educationWandRef = React.useRef<HTMLDivElement | null>(null);
+  const educationRect = useAnchorRect(educationWandRef, educationOpen);
+  useEffect(() => {
+    if (!educationOpen) return undefined;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (educationWandRef.current?.contains(target)) return;
+      // The popover portals to the body, so it is not a DOM child of the wand
+      if (target.closest?.('[data-cy="view-bar-search-settings"]')) return;
+      setEducationOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [educationOpen]);
+
+  const openSimilarityPanel = useCallback(() => {
+    trackEvent("view_bar_search_settings_panel_opened");
+    executeOperator("open_panel", {
+      name: "similarity_search_panel",
+      isActive: true,
+      layout: "horizontal",
+    });
+  }, [trackEvent]);
 
   /** The chip's [x]: back to the root view, drafts and all. */
   const clearView = useCallback(() => {
@@ -689,10 +770,14 @@ const ViewBar: React.FC<{
 
   const submitLanguageQuery = useCallback(
     (query: string) => {
-      // The most recently computed prompt-capable index — sample- or
-      // patches-level; never an index that cannot embed the typed prompt
-      const index = promptKeys[0];
+      // The wand's picked index, else the most recently computed
+      // prompt-capable one — never an index that cannot embed the typed prompt
+      const index = resolvedSearchIndex;
       if (!index) return;
+      if (datasetName) {
+        recordIndexUse(datasetName, index.key);
+        setRecencyStamp((stamp) => stamp + 1);
+      }
       trackEvent("view_bar_text_search", {
         patches: Boolean(index.patchesField),
       });
@@ -707,7 +792,7 @@ const ViewBar: React.FC<{
         query_type: "text",
         query,
         reverse: false,
-        k: LANGUAGE_SEARCH_K,
+        k: searchK,
         run_name: buildSimilarityRunName({
           isImageSearch: false,
           textQuery: query,
@@ -742,7 +827,14 @@ const ViewBar: React.FC<{
         },
       });
     },
-    [promptKeys, trackEvent, setViewChangePending, currentView],
+    [
+      resolvedSearchIndex,
+      datasetName,
+      trackEvent,
+      setViewChangePending,
+      currentView,
+      searchK,
+    ],
   );
 
   // With no stages and no search there is nothing to summarize and nothing
@@ -895,16 +987,58 @@ const ViewBar: React.FC<{
               />
             )}
             {searchEnabled ? (
-              <LanguageSearch onSubmit={submitLanguageQuery} />
+              <LanguageSearch
+                onSubmit={submitLanguageQuery}
+                promptKeys={orderedPromptKeys}
+                selectedKey={resolvedSearchIndex?.key ?? null}
+                onSelectKey={setSearchIndexKey}
+                k={searchK}
+                onChangeK={changeSearchK}
+                onOpenPanel={openSimilarityPanel}
+              />
             ) : (
               <div
                 style={{ flex: 1, height: "100%", cursor: "pointer" }}
                 onClick={() => setExpanded(true)}
-                onMouseEnter={() => setExpanded(true)}
                 aria-hidden="true"
               />
             )}
           </div>
+        )}
+        {!collapsed && (state.stages.length > 0 || searchEnabled) && (
+          <Tooltip anchor={Anchor.Right} content="Collapse to Current view">
+            <div
+              onClick={() => {
+                setEditingId(null);
+                setExpanded(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setEditingId(null);
+                  setExpanded(false);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="Collapse view stages"
+              data-cy="view-bar-collapse"
+              style={{
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                marginLeft: 4,
+                color: "var(--fo-palette-text-secondary)",
+                flexShrink: 0,
+              }}
+            >
+              <Icon name={IconName.ChevronLeft} size={Size.Sm} />
+            </div>
+          </Tooltip>
         )}
         {!collapsed && (
           <div
@@ -931,7 +1065,53 @@ const ViewBar: React.FC<{
               names={insertableNames}
               describe={describeStage}
               onInsert={insertStage}
+              // With no stages and no text search there is nothing else in
+              // the bar — a bare "+" reads as a rendering failure, so the
+              // slot IS the selector, input and all
+              pinned={state.stages.length === 0 && !searchEnabled}
             />
+            {state.stages.length === 0 && !searchEnabled && (
+              // Educational: text search exists but needs an index — the wand
+              // stays visible and opens the same settings popover, in its
+              // "enable semantic search" form
+              <div
+                ref={educationWandRef}
+                style={{ position: "relative", marginLeft: 4, flexShrink: 0 }}
+              >
+                <Clickable
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Text search requires a similarity index"
+                  data-cy="view-bar-search-education"
+                  onClick={() => setEducationOpen((open) => !open)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setEducationOpen((open) => !open);
+                    }
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    color: "var(--fo-palette-text-tertiary)",
+                  }}
+                >
+                  <Icon name={IconName.AI} size={Size.Sm} />
+                </Clickable>
+                {educationOpen && (
+                  <SearchSettingsPopover
+                    rect={educationRect}
+                    promptKeys={[]}
+                    selectedKey={null}
+                    onSelectKey={() => undefined}
+                    k={searchK}
+                    onChangeK={changeSearchK}
+                    onOpenPanel={openSimilarityPanel}
+                    onClose={() => setEducationOpen(false)}
+                  />
+                )}
+              </div>
+            )}
             {state.stages.map((stage, i) => {
               const def = defsByName.get(stage.cls);
               if (!def) return null;
@@ -979,8 +1159,9 @@ const ViewBar: React.FC<{
                     onRemove={() => {
                       if (editingId === stage.id) setEditingId(null);
                       dispatch({ type: "removeStage", id: stage.id });
-                      // Removing a stage is an edit like any other — Enter applies it
-                      focusApply();
+                      // Removing a stage is a finished edit — apply once the
+                      // reducer's state lands (next render)
+                      autoApplyQueued.current = true;
                     }}
                   />
                   <InsertSlot

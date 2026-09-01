@@ -203,17 +203,28 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   const followKeyboard = useRef(false);
   // Which suggestion the arrow keys have landed on
   const [active, setActive] = useState(0);
+  // Whether the arrow keys have landed anywhere since the list re-aimed —
+  // a row merely highlighted by default is not something Enter may take
+  const [navigated, setNavigated] = useState(false);
   // The mounted handlers read through refs, so they never go stale
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
   const navRef = useRef<{
     visible: boolean;
+    /**
+     * Whether a plain Enter means "take the active row": the user arrowed to
+     * it, or it completes the token being typed (a field path). A list that
+     * is merely open with follow-up operators must not eat the Enter that
+     * finishes the stage.
+     */
+    plainEnterTakes: boolean;
     count: number;
     move: (delta: number) => void;
     accept: () => boolean;
     dismiss: () => void;
   }>({
     visible: false,
+    plainEnterTakes: false,
     count: 0,
     move: () => undefined,
     accept: () => false,
@@ -234,17 +245,21 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
     });
     // The arrow keys drive the suggestion list while it is open; Enter takes
     // the landed-on suggestion, Escape puts the list away until the caret
-    // moves. With the list closed, every key means what Monaco says it means.
+    // moves. With no suggestion to take, Enter finishes the stage — an
+    // expression is one line, so a newline is never what Enter means.
     editor.onKeyDown((e) => {
       const nav = navRef.current;
-      if (!nav.visible) return;
 
-      if (e.keyCode === monaco.KeyCode.DownArrow) {
+      if (e.keyCode === monaco.KeyCode.Enter && !e.shiftKey) {
+        if (!nav.visible || !nav.plainEnterTakes || !nav.accept()) {
+          onSubmitRef.current?.();
+        }
+      } else if (!nav.visible) {
+        return;
+      } else if (e.keyCode === monaco.KeyCode.DownArrow) {
         nav.move(1);
       } else if (e.keyCode === monaco.KeyCode.UpArrow) {
         nav.move(-1);
-      } else if (e.keyCode === monaco.KeyCode.Enter && !e.shiftKey) {
-        if (!nav.accept()) return;
       } else if (e.keyCode === monaco.KeyCode.Escape) {
         nav.dismiss();
       } else {
@@ -376,6 +391,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   }, [value, offset]);
   React.useEffect(() => {
     setActive(0);
+    setNavigated(false);
   }, [entries]);
 
   React.useEffect(() => {
@@ -388,9 +404,12 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
 
   navRef.current = {
     visible: listOpen && entries.some((entry) => entry.choose),
+    plainEnterTakes:
+      navigated || Boolean(entries[active]?.id.startsWith("field:")),
     count: entries.length,
     move: (delta: number) => {
       followKeyboard.current = true;
+      setNavigated(true);
       setActive((current) => {
         // Land only on rows that can be accepted
         let next = current;
@@ -711,8 +730,11 @@ const Row: React.FC<
 > = ({ onChoose, muted, active, id, children }) => (
   // The list only scrolls to follow the keyboard, so the row identifies
   // itself and the editor decides when to bring it into view — scrolling on
-  // every render would drag the list back under the pointer
-  <div id={id}>
+  // every render would drag the list back under the pointer.
+  // mousedown must not steal Monaco's focus: the list is gated on `focused`,
+  // so a focus-stealing click would apply the completion and then leave the
+  // follow-up suggestions (the operators a completed field invites) closed
+  <div id={id} onMouseDown={(e) => e.preventDefault()}>
     <Clickable
       onClick={onChoose}
       role="option"

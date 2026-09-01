@@ -40,10 +40,11 @@ export class ViewBarPom {
 
   /**
    * Expands a collapsed bar into its stage pills. A bar hydrated from a
-   * saved view starts as the summary chip; hover is the expansion gesture.
+   * saved view starts as the summary chip; clicking it is the expansion
+   * gesture.
    */
   async expand() {
-    await this.currentViewChip.hover();
+    await this.currentViewChip.click();
     await expect(this.viewStages.first()).toBeVisible();
   }
 
@@ -53,7 +54,13 @@ export class ViewBarPom {
 
   /** Appends a stage and returns its open editor. */
   async addStage(name: string) {
-    await this.locator.getByLabel("Insert stage").last().click();
+    // An empty bar pins its insert slot open — the typeahead input IS the
+    // slot, so there is no "+" button to click. Focusing it opens the list.
+    await this.locator
+      .getByLabel("Insert stage")
+      .last()
+      .or(this.insertTypeahead)
+      .click();
     await this.page
       .getByRole("listbox")
       .getByRole("option", { name, exact: true })
@@ -97,6 +104,11 @@ export class StageEditorPom {
   /** Types into a text, numeric, list or expression control. */
   async fill(param: string, value: string) {
     await this.param(param).getByRole("textbox").fill(value);
+  }
+
+  /** Commits the stage from a param's input — Enter finishes AND applies. */
+  async commit(param: string) {
+    await this.param(param).getByRole("textbox").press("Enter");
   }
 
   /** Picks an option in a param's picker, e.g. a field param's path. */

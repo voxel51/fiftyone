@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { frameAt, usePlayhead, usePresentedTime } from "@fiftyone/playback";
+import { frameAt, useCurrentTime } from "@fiftyone/playback";
 import { useModalSample } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
 import { frameAtTableTime } from "../streams/frameTable";
@@ -19,8 +19,7 @@ import { useModalSampleFrameRate } from "./accessors";
  * timeline-state machinery (which is never created here, so its frame number
  * stays frozen). Everything that needs the live frame — the engine clock,
  * the canvas bridge's `frameOf`, timeline select/hover frame-stamping — must
- * read it from here, converting the playhead seconds to a 1-indexed frame via
- * the shared `frameAt`.
+ * read it from here.
  *
  * Clamped to the sample's real frame range: the engine allows the playhead to
  * rest at exactly `duration` (seek/step clamp inclusively), where an unclamped
@@ -29,8 +28,13 @@ import { useModalSampleFrameRate } from "./accessors";
  */
 export const useCurrentFrame = (): number => {
   const sample = useModalSample();
-  const playhead = usePlayhead();
-  const presented = usePresentedTime();
+  // The COMMITTED time, not the requested playhead: the engine advances
+  // `currentTime` only after every blocking stream confirms the target is
+  // ready (the html stream's readiness includes a presented-frame drift
+  // check; the bitmap streams gate on delivery). During a scrub the request
+  // runs ahead while the picture holds the last ready frame — overlays, TD
+  // gates, and gesture frame-stamping must hold with it.
+  const time = useCurrentTime();
   const table = useFrameTable();
   const fps = useModalSampleFrameRate(sample);
 
@@ -38,20 +42,14 @@ export const useCurrentFrame = (): number => {
     return -1;
   }
 
-  // The frame actually on glass, when the tile publishes one — during a
-  // scrub the picture can trail the requested playhead without bound
-  // (browser seek pipeline, chunk fetch + decode), and every consumer of
-  // "current frame" — overlay clock, TD gates, gesture frame-stamping —
-  // should track what the user sees. The playhead is the fallback for
-  // tiles that never present (no media, no vfc support).
-  const time = presented ?? playhead;
   const count = resolveFrameCount(sample, fps) ?? undefined;
 
   // On the html strategy the surface provides the container's frame table:
-  // number by presentation order (matching `to_frames` and every persisted
-  // frame label) instead of `time × fps`, which lands ahead of the labels on
-  // dropped-frame media. `time × fps` is the fallback while the table loads
-  // or when the header can't be demuxed.
+  // frame N is the N-th stored picture, and the table maps the `<video>`
+  // clock's time to the picture actually on glass. `time × fps` assumes the
+  // pictures sit on a uniform grid — a lie on dropped-frame/VFR media, where
+  // it drifts off the labels by the dropped count. The arithmetic remains the
+  // fallback while the table loads or when the header can't be demuxed.
   if (table?.timesSec.length) {
     const frame = frameAtTableTime(table, time);
     return count ? Math.min(frame, count) : frame;
