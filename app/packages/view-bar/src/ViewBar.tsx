@@ -183,6 +183,8 @@ const ViewBarInner: React.FC<{
   // Unset means "follow the view": a bar holding stages opens with them
   // visible; an empty one stays a single search row until toggled.
   const [stagesOpen, setStagesOpen] = React.useState<boolean | null>(null);
+  // The click-out handler (mounted once) reads the row's LIVE open state
+  const stagesRowOpenRef = useRef(false);
   // Which stage's editor popover is open, by stage id. Only one at
   // a time; clicking another collapses the previous.
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -854,6 +856,7 @@ const ViewBarInner: React.FC<{
 
   // Unset follows the view: stages present means the row starts visible
   const stagesRowOpen = stagesOpen ?? state.stages.length > 0;
+  stagesRowOpenRef.current = stagesRowOpen;
   // The stages row is portaled (the header the bar lives in cannot grow), so
   // it anchors to the bar's live viewport rect
   const barRef = useRef<HTMLDivElement | null>(null);
@@ -905,8 +908,13 @@ const ViewBarInner: React.FC<{
 
       setEditingId(null);
       applyOnLeaveRef.current();
-      // Leaving the bar folds the stages row away too
-      setStagesOpen(false);
+      // Leaving the bar folds an OPEN stages row away. A closed row stays
+      // in its follow-the-view state — an explicit false here would also
+      // cancel the auto-open when a view arrives later (e.g. an operator
+      // or a search applying stages while the user works elsewhere)
+      if (stagesRowOpenRef.current) {
+        setStagesOpen(false);
+      }
     };
 
     window.addEventListener("mousedown", onDown);
