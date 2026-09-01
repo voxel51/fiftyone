@@ -10,9 +10,7 @@ description = "FiftyOne: the open-source tool for building high-quality datasets
 readme = { file = "README.md", content-type = "text/markdown" }
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-# Split entries on purpose: a name+email pair folds into Author-email only,
-# and fiftyone.constants reads the Author field (setup.py emitted both)
-authors = [{ name = "Voxel51, Inc." }, { email = "info@voxel51.com" }]
+authors = [{ name = "Voxel51, Inc.", email = "info@voxel51.com" }]
 requires-python = ">=3.10"
 # Version stays in setup.py: releases override it via the RELEASE_VERSION
 # environment variable (with a prefix check), which static metadata cannot
