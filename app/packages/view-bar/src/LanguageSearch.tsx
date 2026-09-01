@@ -111,6 +111,8 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   const pick = React.useCallback(
     (option: string) => {
       if (!enabled) {
+        // The hand-off closes the dropdown: the keyboard moves to the panel
+        inputWrapRef.current?.querySelector("input")?.blur();
         onOpenPanel();
         return;
       }

@@ -160,7 +160,7 @@ const LANGUAGE_SEARCH_K = 25;
 /** The Similarity action's server-side search operator. */
 const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
 
-const ViewBar: React.FC<{
+const ViewBarInner: React.FC<{
   /** What this surface may offer; everything, unless the host says less. */
   capabilities?: ViewBarCapabilities;
 }> = ({ capabilities = OPEN_CAPABILITIES }) => {
@@ -1175,6 +1175,19 @@ const ViewBar: React.FC<{
         )}
     </Stack>
   );
+};
+
+/**
+ * The bar remounts per dataset: every piece of its local state — working
+ * stages, drafts, the stages-row toggle, the search box — describes ONE
+ * dataset, and the per-dataset conveniences (match count, index recency,
+ * query history) initialize on mount.
+ */
+const ViewBar: React.FC<{
+  capabilities?: ViewBarCapabilities;
+}> = (props) => {
+  const datasetName = fos.useCurrentDatasetName();
+  return <ViewBarInner key={datasetName ?? ""} {...props} />;
 };
 
 export default ViewBar;

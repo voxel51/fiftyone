@@ -397,10 +397,14 @@ const createDataset = (() => {
             embeddings=np.random.RandomState(51).rand(${numSamples}, 8),
             brain_key=_key,
             backend="sklearn",
-            # Never loaded (embeddings are supplied); its name marks the
-            # index prompt-capable so the quick-search UI lights up
-            model="clip-vit-base32-torch",
-        )`
+        )
+        # Promptability is flipped on the saved run doc: naming a model
+        # would make compute_similarity load it, and the quick-search UI
+        # reads only this flag. Text prompts still cannot execute — specs
+        # query by sample id, which ranks by the stored embeddings.
+        _run_doc = dataset._doc.brain_methods[_key]
+        _run_doc.config["supports_prompts"] = True
+        _run_doc.save()`
         : ""
     }
     `);
