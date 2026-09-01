@@ -221,8 +221,6 @@ describe("ColorByMenu", () => {
 });
 
 describe("choices that arrive while the menu is open", () => {
-  // The whole point of `loading`: a source whose fields land on a later round
-  // trip grows the list under an already-open menu
   it("resets the highlighted option when the options change", () => {
     const onChange = vi.fn();
     const { rerender } = render(
@@ -235,7 +233,6 @@ describe("choices that arrive while the menu is open", () => {
     );
 
     fireEvent.click(control());
-    // Move off the first option, then let a wider list land beneath it
     fireEvent.keyDown(control(), { key: "ArrowDown" });
     fireEvent.keyDown(control(), { key: "ArrowDown" });
 
@@ -247,7 +244,6 @@ describe("choices that arrive while the menu is open", () => {
       />,
     );
 
-    // Back to the top of the new list rather than pointing into the old one
     fireEvent.keyDown(control(), { key: "Enter" });
     expect(onChange).toHaveBeenCalledWith(NONE);
   });

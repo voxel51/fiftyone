@@ -60,14 +60,23 @@ export default function ObjectView(props) {
     <Box {...getComponentProps(props, "container")}>
       {collapsible ? (
         // The trigger carries the label, so HeaderView is skipped here — it
-        // would print the same heading a second time above the strip. Its
-        // errors are rendered beside the trigger rather than lost with it.
+        // would print the same heading a second time above the strip
         <Collapsible
           defaultOpen={Boolean(defaultExpanded)}
           header={({ open, toggle }) => (
             <>
               <Clickable
                 onClick={toggle}
+                role="button"
+                tabIndex={0}
+                aria-expanded={open}
+                aria-label={label ? undefined : "Toggle section"}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggle();
+                  }
+                }}
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
               >
                 <Icon

@@ -81,8 +81,6 @@ export function ColorByMenu({
   // the end of the new list
   useEffect(() => {
     setActiveIndex(0);
-    // `filtered` covers `query`, and also the case this menu now has: choices
-    // that arrive while it is open, which would leave the index past the end
   }, [open, filtered]);
 
   const selectedLabel = options.find((o) => o.id === value)?.data.label ?? "";

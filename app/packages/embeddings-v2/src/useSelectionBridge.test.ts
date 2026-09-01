@@ -730,8 +730,6 @@ describe("useSelectionBridge", () => {
       } satisfies SampleInfo);
     });
 
-    // Restoring it here would resurrect a selection that was deliberately
-    // dropped, with no gesture to explain it
     expect(opts.publishSelection).not.toHaveBeenCalled();
   });
 
