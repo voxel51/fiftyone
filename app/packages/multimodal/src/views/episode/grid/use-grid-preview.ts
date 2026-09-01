@@ -150,6 +150,11 @@ export function useGridPreview({
   const frameTimeNsRef = useRef<bigint | undefined>(undefined);
   const episodeIdRef = useRef(episodeId);
   episodeIdRef.current = episodeId;
+  // Which episode currently holds a published playhead. Tracked separately
+  // from `episodeIdRef` because the tile can be pointed at a new episode while
+  // the old one still owns a published value, and only the owner may be
+  // released.
+  const publishedOwnerRef = useRef<string | null>(null);
   // Every write to the presented-frame time goes through here so the published
   // playhead cannot drift from the ref the scheduler reads. Publishing to an
   // external store rather than into state is deliberate: the frame time
@@ -159,16 +164,37 @@ export function useGridPreview({
     frameTimeNsRef.current = timeNs;
     const id = episodeIdRef.current;
     if (!id) return;
-    if (timeNs === undefined) releaseEpisodePlayhead(id);
-    else publishEpisodePlayhead(id, timeNs);
+    if (timeNs === undefined) {
+      releaseEpisodePlayhead(id);
+      publishedOwnerRef.current = null;
+      return;
+    }
+    publishEpisodePlayhead(id, timeNs);
+    publishedOwnerRef.current = id;
   }, []);
+
+  // This effect hands the playhead over when the tile is pointed at a new
+  // episode. Without it the previous episode keeps a published instant nothing
+  // is presenting any more, and the unmount cleanup below — which can only
+  // release the current owner — would never reach it.
+  useEffect(() => {
+    const previous = publishedOwnerRef.current;
+    if (previous === null || previous === episodeId) return;
+    releaseEpisodePlayhead(previous);
+    publishedOwnerRef.current = null;
+    const presented = frameTimeNsRef.current;
+    if (episodeId && presented !== undefined) {
+      publishEpisodePlayhead(episodeId, presented);
+      publishedOwnerRef.current = episodeId;
+    }
+  }, [episodeId]);
 
   // This effect withdraws the playhead when the tile stops presenting, so the
   // lane never marks a position nothing is showing.
   useEffect(
     () => () => {
-      const id = episodeIdRef.current;
-      if (id) releaseEpisodePlayhead(id);
+      const owner = publishedOwnerRef.current;
+      if (owner) releaseEpisodePlayhead(owner);
     },
     [],
   );

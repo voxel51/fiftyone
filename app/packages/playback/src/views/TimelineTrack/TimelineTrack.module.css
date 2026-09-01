@@ -104,8 +104,14 @@
  * the name ellipsises first.
  */
 .secondaryLabel {
-  flex-shrink: 0;
+  /* Shrinkable and capped: a long section name must not push the row's own
+     name out of the column. The name still gives way first, since it has
+     `flex: 1` against this one's `flex: 0 1 auto`. */
+  flex: 0 1 auto;
+  max-width: 40%;
   margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 0.66rem;
   color: var(--color-content-text-secondary);
   white-space: nowrap;

@@ -69,6 +69,39 @@ describe("packIntervals", () => {
     expect(levels).toEqual([1, 0]);
   });
 
+  it("stacks two instants at the same moment on separate levels", () => {
+    // An instant is drawn at a minimum width rather than its true zero width,
+    // so two sharing a level would paint over each other and read as one.
+    const { levels, levelCount } = packIntervals(
+      [span(10, 10), span(10, 10)],
+      3,
+    );
+
+    expect(levels).toEqual([0, 1]);
+    expect(levelCount).toBe(2);
+  });
+
+  it("does not let an instant share the boundary of the span before it", () => {
+    const { levels } = packIntervals([span(0, 10), span(10, 10)], 3);
+
+    expect(levels).toEqual([0, 1]);
+  });
+
+  it("does not let a span start on an instant's boundary", () => {
+    const { levels } = packIntervals([span(10, 10), span(10, 20)], 3);
+
+    expect(levels).toEqual([0, 1]);
+  });
+
+  it("still shares a level between two back-to-back spans", () => {
+    // The boundary case that must keep working: neither side is an instant, so
+    // they read as one continuous run.
+    const { levels, levelCount } = packIntervals([span(0, 5), span(5, 9)], 3);
+
+    expect(levels).toEqual([0, 0]);
+    expect(levelCount).toBe(1);
+  });
+
   it("reports one level for an empty input", () => {
     const { levels, levelCount } = packIntervals([], 3);
 

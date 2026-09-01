@@ -11,7 +11,9 @@ import {
 } from "../../../ir";
 import type { EpisodePreviewSession } from "../../../ports";
 import {
+  getEpisodePlayhead,
   getSourceBootstrap,
+  resetEpisodePlayheadsForTests,
   resetSourceBootstrapCacheForTests,
 } from "../../../runtime";
 import {
@@ -33,6 +35,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   resetSourceBootstrapCacheForTests();
+  resetEpisodePlayheadsForTests();
 });
 
 describe("useGridPreview", () => {
@@ -1021,10 +1024,75 @@ describe("useGridPreview", () => {
   });
 });
 
+describe("useGridPreview episode playhead", () => {
+  beforeEach(() => {
+    sessionHarness.session.read.mockReset();
+  });
+
+  const FRAME_NS = 1_800_000_000_000_000_000n;
+
+  const harness = (episodeId: string | null) => (
+    <PreviewHarness
+      cacheRequestKey="playhead-key"
+      episodeId={episodeId}
+      id="playhead"
+      source={sourceForId("playhead")}
+    />
+  );
+
+  it("publishes the presented frame time under its episode", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+
+    render(harness("episode-a"));
+
+    await waitFor(() => expect(getEpisodePlayhead("episode-a")).toBe(FRAME_NS));
+  });
+
+  it("publishes nothing when no episode identity is given", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+
+    render(harness(null));
+
+    await waitFor(() => expect(sessionHarness.session.read).toHaveBeenCalled());
+    expect(getEpisodePlayhead("episode-a")).toBeNull();
+  });
+
+  it("hands the playhead over when the tile is pointed at another episode", async () => {
+    // Without the handover the old episode keeps an instant nothing is
+    // presenting, and its grid overlay goes on marking a stale position.
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+    const { rerender } = render(harness("episode-a"));
+    await waitFor(() => expect(getEpisodePlayhead("episode-a")).toBe(FRAME_NS));
+
+    rerender(harness("episode-b"));
+
+    await waitFor(() => expect(getEpisodePlayhead("episode-a")).toBeNull());
+  });
+
+  it("withdraws the playhead when the tile unmounts", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+    const { unmount } = render(harness("episode-a"));
+    await waitFor(() => expect(getEpisodePlayhead("episode-a")).toBe(FRAME_NS));
+
+    unmount();
+
+    expect(getEpisodePlayhead("episode-a")).toBeNull();
+  });
+});
+
 function PreviewHarness({
   cacheRequestKey,
   cachedPoster,
   enabled,
+  episodeId,
   hovered,
   id,
   onReadResult,
@@ -1039,6 +1107,7 @@ function PreviewHarness({
   readonly cacheRequestKey?: string | null;
   readonly cachedPoster?: GridPosterCacheEntry | null;
   readonly enabled?: boolean;
+  readonly episodeId?: string | null;
   readonly hovered?: boolean;
   readonly id: string;
   readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
@@ -1059,6 +1128,7 @@ function PreviewHarness({
     cacheRequestKey,
     cachedPoster,
     enabled,
+    episodeId,
     hovered,
     onReadResult,
     posterStartTimeNs,

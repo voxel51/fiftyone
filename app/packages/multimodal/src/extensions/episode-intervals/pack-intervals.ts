@@ -55,18 +55,33 @@ export function packIntervals(
         intervals[a].end - intervals[b].end,
     );
   const levelEnds: number[] = [];
+  // Whether the interval currently ending each level is an instant. An instant
+  // is drawn at its minimum width rather than its true zero width, so it
+  // occupies space to the right of its own end and cannot share a boundary.
+  const levelEndsInstant: boolean[] = [];
   const levels = new Array<number>(intervals.length);
   for (const index of order) {
     const interval = intervals[index];
-    const free = levelEnds.findIndex((end) => end <= interval.start);
+    const isInstant = interval.end === interval.start;
+    // A level is free strictly before its end. Sharing the boundary exactly is
+    // allowed only between two intervals that both have width — back-to-back
+    // spans read as one continuous run, whereas an instant on either side would
+    // be painted over its neighbour.
+    const free = levelEnds.findIndex(
+      (end, level) =>
+        end < interval.start ||
+        (end === interval.start && !levelEndsInstant[level] && !isInstant),
+    );
     if (free !== -1) {
       levelEnds[free] = interval.end;
+      levelEndsInstant[free] = isInstant;
       levels[index] = free;
       continue;
     }
     if (levelEnds.length < maxLevels) {
       levels[index] = levelEnds.length;
       levelEnds.push(interval.end);
+      levelEndsInstant.push(isInstant);
       continue;
     }
     levels[index] = UNPLACED;
