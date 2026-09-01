@@ -28,8 +28,10 @@ import {
   Size,
   Spacing,
   Stack,
+  Text,
   TextBadge,
   TextColor,
+  TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
 import { useAnchorRect } from "@fiftyone/components";
@@ -209,9 +211,13 @@ const ViewBarInner: React.FC<{
   // over an unmodified result view REPLACES the search (via the run's
   // recorded base) instead of refining 25 results down to 25 results.
   const pendingSearchRunId = React.useRef<string | null>(null);
-  const lastSearch = React.useRef<{ runId: string; viewFp: string } | null>(
-    null,
-  );
+  const lastSearch = React.useRef<{
+    runId: string;
+    viewFp: string;
+    /** The view the search was typed over — what clearing restores. */
+    base: SerializedStage[];
+  } | null>(null);
+  const pendingSearchBase = React.useRef<SerializedStage[]>([]);
 
   /**
    * Puts the keyboard on the trailing insert slot — where describing the next
@@ -280,6 +286,7 @@ const ViewBarInner: React.FC<{
         lastSearch.current = {
           runId: pendingSearchRunId.current,
           viewFp: viewFingerprint(currentView),
+          base: pendingSearchBase.current,
         };
         pendingSearchRunId.current = null;
       } else if (
@@ -771,11 +778,35 @@ const ViewBarInner: React.FC<{
     });
   }, [trackEvent]);
 
+  // Bumped when the view clears: the search box remounts empty — a typed
+  // query describes the view that was just discarded
+  const [searchEpoch, setSearchEpoch] = React.useState(0);
+
+  /**
+   * The search box's own [x]. With a search applied and untouched, clearing
+   * restores the view the search was typed over; a draft just clears.
+   */
+  const clearSearch = useCallback(() => {
+    if (
+      lastSearch.current &&
+      viewFingerprint(currentView) === lastSearch.current.viewFp
+    ) {
+      const base = lastSearch.current.base;
+      lastSearch.current = null;
+      setView(base as unknown as Parameters<typeof setView>[0]);
+      setInFlight(inFlightFingerprint(base));
+      dispatch({ type: "hydrate", stages: workingStagesFromView(base) });
+      trackEvent("view_bar_text_search_cleared");
+    }
+    setSearchEpoch((epoch) => epoch + 1);
+  }, [currentView, setView, inFlightFingerprint, trackEvent]);
+
   /** The stages row's [x]: back to the root view, drafts and all. */
   const clearView = useCallback(() => {
     setTouched(new Set());
     setModeOverrides({});
     setEditingId(null);
+    setSearchEpoch((epoch) => epoch + 1);
     // An emptied bar folds back to the single search row
     setStagesOpen(false);
     setView([]);
@@ -798,6 +829,8 @@ const ViewBarInner: React.FC<{
       trackEvent("view_bar_text_search", {
         patches: Boolean(index.patchesField),
       });
+      // What clearing the search restores
+      pendingSearchBase.current = [...currentView];
       // The pending treatment every view change gets, for the operator's
       // whole run — the router clears it when the resulting entry loads
       setViewChangePending(true);
@@ -995,6 +1028,8 @@ const ViewBarInner: React.FC<{
       >
         {searchOperatorAvailable ? (
           <LanguageSearch
+            key={`search-${searchEpoch}`}
+            onClear={clearSearch}
             onSubmit={submitLanguageQuery}
             enabled={searchEnabled}
             history={searchHistory}
@@ -1051,6 +1086,9 @@ const ViewBarInner: React.FC<{
             }}
           >
             <Icon name={IconName.Sliders} size={Size.Sm} />
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              Stages
+            </Text>
             {state.stages.length > 0 && (
               <TextBadge color={TextColor.Secondary} style={{ lineHeight: 1 }}>
                 {state.stages.length}

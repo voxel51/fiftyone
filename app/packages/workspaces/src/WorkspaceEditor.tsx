@@ -6,11 +6,13 @@
  * with level3 fields, like the saved-views dialog.
  */
 
-import { useAnchorRect } from "@fiftyone/components";
+import { AnchoredListbox, useAnchorRect } from "@fiftyone/components";
 import { executeOperator } from "@fiftyone/operators";
 import { constants, sessionSpaces } from "@fiftyone/state";
 import {
   Button,
+  Card,
+  CardBackground,
   Clickable,
   Heading,
   HeadingLevel,
@@ -27,7 +29,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRecoilCallback, useRecoilState, useResetRecoilState } from "recoil";
-import { ColorDot, POPOUT_SURFACE } from "./Workspaces";
+import { ColorDot } from "./Workspaces";
 import {
   DELETE_WORKSPACE_OPERATOR,
   LOAD_WORKSPACE_OPERATOR,
@@ -96,59 +98,35 @@ const ColorSelect: React.FC<{
           />
         </span>
       </Clickable>
-      {open &&
-        rect &&
-        createPortal(
-          <div
-            data-cy="workspaces-color-popout"
-            role="listbox"
-            onMouseDown={(e) => e.stopPropagation()}
-            style={{
-              position: "fixed",
-              top: rect.top + 4,
-              left: rect.left,
-              width: rect.width,
-              zIndex: 10002,
-              maxHeight: 280,
-              overflowY: "auto",
-              color: "var(--fo-palette-text-primary)",
-              ...POPOUT_SURFACE,
-            }}
-          >
-            {COLOR_OPTIONS.map((option) => (
-              <div
-                key={option.id}
-                role="option"
-                aria-selected={option.color === selected?.color}
-                aria-label={option.label}
-                onClick={() => {
-                  if (option.color) onSelect(option.color);
-                  setOpen(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    if (option.color) onSelect(option.color);
-                    setOpen(false);
-                  }
-                }}
-                tabIndex={0}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 10px",
-                  cursor: "pointer",
-                }}
-              >
-                <ColorDot color={option.color} />
-                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-                  {option.label}
-                </Text>
-              </div>
-            ))}
-          </div>,
-          document.body,
+      <AnchoredListbox
+        rect={rect}
+        data-cy="workspaces-color-popout"
+        options={COLOR_OPTIONS.map((option) => option.label)}
+        activeIndex={COLOR_OPTIONS.findIndex(
+          (option) => option.color === selected?.color,
         )}
+        onPick={(label) => {
+          const option = COLOR_OPTIONS.find((o) => o.label === label);
+          if (option?.color) onSelect(option.color);
+          setOpen(false);
+        }}
+        onHighlight={() => undefined}
+        optionId={(i) => `workspaces-color-${i}`}
+        optionAriaLabel={(label) => label}
+        isSelected={(label) => label === selected?.label}
+        maxHeight={Math.min(280, window.innerHeight - (rect?.top ?? 0) - 12)}
+        renderOption={(label) => {
+          const option = COLOR_OPTIONS.find((o) => o.label === label);
+          return (
+            <span
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
+              <ColorDot color={option?.color} />
+              {label}
+            </span>
+          );
+        }}
+      />
     </div>
   );
 };
@@ -195,122 +173,164 @@ export default function WorkspaceEditor() {
     >
       <div
         data-cy="workspaces-editor"
+        // The stage editor popover's surface, centered — every floating
+        // editor in the app family wears the same card
         style={{
           width: 500,
           maxWidth: "90vw",
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
           pointerEvents: "auto",
-          color: "var(--fo-palette-text-primary)",
-          ...POPOUT_SURFACE,
-          // The dropdowns' near-black tier reads heavy at modal size — the
-          // body takes the lighter tier and the fields keep level3
-          background: "var(--fo-palette-background-level1)",
           boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
+          borderRadius: 6,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+        <Card
+          background={CardBackground.Primary}
+          outlined
+          compact
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
         >
-          <Heading level={HeadingLevel.H3}>Workspace Editor</Heading>
-          <Clickable
-            role="button"
-            tabIndex={0}
-            aria-label="close"
-            data-cy="workspaces-btn-close"
-            onClick={handleClose}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleClose();
-              }
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
-            style={{ display: "inline-flex", alignItems: "center" }}
           >
-            <Icon name={IconName.Close} size={Size.Sm} />
-          </Clickable>
-        </div>
+            <Heading level={HeadingLevel.H3}>Workspace Editor</Heading>
+            <Clickable
+              role="button"
+              tabIndex={0}
+              aria-label="close"
+              data-cy="workspaces-btn-close"
+              onClick={handleClose}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleClose();
+                }
+              }}
+              style={{ display: "inline-flex", alignItems: "center" }}
+            >
+              <Icon name={IconName.Close} size={Size.Sm} />
+            </Clickable>
+          </div>
 
-        <div>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            Name
-          </Text>
-          <Input
-            data-cy="workspaces-input-name"
-            autoFocus
-            placeholder="Your workspace name"
-            value={name}
-            onChange={(e) =>
-              setState((current) => ({ ...current, name: e.target.value }))
-            }
-            style={{ background: "var(--fo-palette-background-level3)" }}
-          />
-        </div>
+          <div>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              Name
+            </Text>
+            <Input
+              data-cy="workspaces-input-name"
+              autoFocus
+              placeholder="Your workspace name"
+              value={name}
+              onChange={(e) =>
+                setState((current) => ({ ...current, name: e.target.value }))
+              }
+            />
+          </div>
 
-        <div>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            Description
-          </Text>
-          <TextArea
-            data-cy="workspaces-input-description"
-            rows={5}
-            placeholder="Enter a description"
-            value={description}
-            onChange={(e) =>
-              setState((current) => ({
-                ...current,
-                description: e.target.value,
-              }))
-            }
-            style={{ background: "var(--fo-palette-background-level3)" }}
-          />
-        </div>
+          <div>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              Description
+            </Text>
+            <TextArea
+              data-cy="workspaces-input-description"
+              rows={5}
+              placeholder="Enter a description"
+              value={description}
+              onChange={(e) =>
+                setState((current) => ({
+                  ...current,
+                  description: e.target.value,
+                }))
+              }
+            />
+          </div>
 
-        <div>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            Color
-          </Text>
-          <ColorSelect
-            selected={colorObject}
-            onSelect={(picked) =>
-              setState((current) => ({ ...current, color: picked }))
-            }
-          />
-        </div>
+          <div>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              Color
+            </Text>
+            <ColorSelect
+              selected={colorObject}
+              onSelect={(picked) =>
+                setState((current) => ({ ...current, color: picked }))
+              }
+            />
+          </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginTop: 12,
-          }}
-        >
-          <span>
-            {edit && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginTop: 12,
+            }}
+          >
+            <span>
+              {edit && (
+                <Button
+                  variant={Variant.Secondary}
+                  size={Size.Sm}
+                  data-cy="workspaces-btn-delete"
+                  leadingIcon={IconName.Delete}
+                  disabled={isDeleting}
+                  onClick={() => {
+                    setStatus("deleting");
+                    executeOperator(
+                      DELETE_WORKSPACE_OPERATOR,
+                      { names: [name] },
+                      {
+                        callback: (result) => {
+                          if (!result.error) {
+                            reset();
+                            handleClose();
+                            setStatus("");
+                          }
+                        },
+                        skipOutput: true,
+                      },
+                    );
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
+            </span>
+            <span style={{ display: "inline-flex", gap: 12 }}>
               <Button
                 variant={Variant.Secondary}
                 size={Size.Sm}
-                data-cy="workspaces-btn-delete"
-                leadingIcon={IconName.Delete}
-                disabled={isDeleting}
-                onClick={() => {
-                  setStatus("deleting");
+                onClick={handleClose}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant={Variant.Primary}
+                size={Size.Sm}
+                data-cy="workspaces-btn-save"
+                disabled={isSaving || !name}
+                onClick={async () => {
+                  setStatus("saving");
                   executeOperator(
-                    DELETE_WORKSPACE_OPERATOR,
-                    { names: [name] },
+                    SAVE_WORKSPACE_OPERATOR,
+                    {
+                      ...state,
+                      current_name: edit ? state.old_name : undefined,
+                      spaces: await getSessionSpaces(),
+                    },
                     {
                       callback: (result) => {
                         if (!result.error) {
                           reset();
                           handleClose();
                           setStatus("");
+                          executeOperator(
+                            LOAD_WORKSPACE_OPERATOR,
+                            { name: state.name },
+                            { skipOutput: true },
+                          );
                         }
                       },
                       skipOutput: true,
@@ -318,54 +338,11 @@ export default function WorkspaceEditor() {
                   );
                 }}
               >
-                Delete
+                Save
               </Button>
-            )}
-          </span>
-          <span style={{ display: "inline-flex", gap: 12 }}>
-            <Button
-              variant={Variant.Secondary}
-              size={Size.Sm}
-              onClick={handleClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant={Variant.Primary}
-              size={Size.Sm}
-              data-cy="workspaces-btn-save"
-              disabled={isSaving || !name}
-              onClick={async () => {
-                setStatus("saving");
-                executeOperator(
-                  SAVE_WORKSPACE_OPERATOR,
-                  {
-                    ...state,
-                    current_name: edit ? state.old_name : undefined,
-                    spaces: await getSessionSpaces(),
-                  },
-                  {
-                    callback: (result) => {
-                      if (!result.error) {
-                        reset();
-                        handleClose();
-                        setStatus("");
-                        executeOperator(
-                          LOAD_WORKSPACE_OPERATOR,
-                          { name: state.name },
-                          { skipOutput: true },
-                        );
-                      }
-                    },
-                    skipOutput: true,
-                  },
-                );
-              }}
-            >
-              Save
-            </Button>
-          </span>
-        </div>
+            </span>
+          </div>
+        </Card>
       </div>
     </div>,
     document.body,

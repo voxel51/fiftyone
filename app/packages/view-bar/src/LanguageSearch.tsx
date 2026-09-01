@@ -42,6 +42,8 @@ const CONFIGURE_CTA = "Configure similarity search";
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
+  /** The [x]: clears the draft — and an applied, untouched search's view. */
+  onClear: () => void;
   /** Whether a prompt-capable index exists — typing only searches with one. */
   enabled: boolean;
   /** The dataset's previous queries, most recent first. */
@@ -58,6 +60,7 @@ export interface LanguageSearchProps {
 
 export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   onSubmit,
+  onClear,
   enabled,
   history,
   promptKeys,
@@ -177,7 +180,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         <Input
           size={Size.Sm}
           value={query}
-          placeholder="Search by similarity"
+          placeholder="Search by natural language"
           data-cy={LANGUAGE_SEARCH_INPUT_CY}
           {...NO_BROWSER_SUGGESTIONS}
           onFocus={() => setFocused(true)}
@@ -217,6 +220,32 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
             ...(pending ? { color: "transparent" } : {}),
           }}
         />
+        {query && !pending && (
+          <Clickable
+            role="button"
+            tabIndex={0}
+            aria-label="Clear search"
+            data-cy="view-bar-search-clear"
+            onClick={onClear}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClear();
+              }
+            }}
+            style={{
+              position: "absolute",
+              right: 6,
+              top: "50%",
+              transform: "translateY(-50%)",
+              display: "inline-flex",
+              alignItems: "center",
+              color: "var(--fo-palette-text-tertiary)",
+            }}
+          >
+            <Icon name={IconName.Close} size={Size.Sm} />
+          </Clickable>
+        )}
         {pending && (
           <Text
             color={TextColor.Tertiary}

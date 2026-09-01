@@ -6,11 +6,13 @@
  * surface — no MUI. data-cy names mirror the legacy dialog exactly.
  */
 
-import { useAnchorRect } from "@fiftyone/components";
+import { AnchoredListbox, useAnchorRect } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
 import {
   Button,
+  Card,
+  CardBackground,
   Clickable,
   Heading,
   HeadingLevel,
@@ -27,7 +29,7 @@ import {
 import React, { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
-import { ColorDot, POPOUT_SURFACE } from "./SavedViewSelector";
+import { ColorDot } from "./SavedViewSelector";
 import { viewDialogContent, viewDialogOpen } from "./state";
 
 const {
@@ -111,62 +113,41 @@ const ColorSelect: React.FC<{
           />
         </span>
       </Clickable>
-      {open &&
-        rect &&
-        createPortal(
-          <div
-            data-cy={`${id}-selection-view`}
-            role="listbox"
-            onMouseDown={(e) => e.stopPropagation()}
-            style={{
-              position: "fixed",
-              top: rect.top + 4,
-              left: rect.left,
-              width: rect.width,
-              zIndex: 10002,
-              maxHeight: 280,
-              overflowY: "auto",
-              color: "var(--fo-palette-text-primary)",
-              ...POPOUT_SURFACE,
-            }}
-          >
-            {COLOR_OPTIONS.map((option) => (
-              <div
-                key={option.id}
-                role="option"
-                aria-selected={option.id === selected.id}
-                aria-label={option.label}
-                onClick={() => {
-                  onSelect(option);
-                  setOpen(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    onSelect(option);
-                    setOpen(false);
-                  }
-                }}
-                tabIndex={0}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 10px",
-                  cursor: "pointer",
-                }}
-              >
-                <ColorDot color={option.color} />
-                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-                  {option.label}
-                </Text>
-              </div>
-            ))}
-          </div>,
-          document.body,
+      <AnchoredListbox
+        rect={rect}
+        data-cy={`${id}-selection-view`}
+        options={COLOR_OPTIONS.map((option) => option.label)}
+        activeIndex={COLOR_OPTIONS.findIndex(
+          (option) => option.id === selected.id,
         )}
+        onPick={(label) => {
+          const option = COLOR_OPTIONS.find((o) => o.label === label);
+          if (option) onSelect(option);
+          setOpen(false);
+        }}
+        onHighlight={() => undefined}
+        optionId={(i) => `${id}-color-${i}`}
+        optionAriaLabel={(label) => label}
+        isSelected={(label) => label === selected.label}
+        maxHeight={Math.min(280, window.innerHeight - (rect?.top ?? 0) - 12)}
+        renderOption={(label) => {
+          const option = COLOR_OPTIONS.find((o) => o.label === label);
+          return (
+            <span
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
+              <ColorDot color={option?.color} />
+              {label}
+            </span>
+          );
+        }}
+      />
     </div>
   );
 };
+
+/** Test-only export: the color select in isolation. */
+export const COLOR_SELECT_TEST_EXPORT = ColorSelect;
 
 export default function ViewDialog({
   id,
@@ -322,132 +303,134 @@ export default function ViewDialog({
     >
       <div
         data-cy={`${id}-modal-body-container`}
+        // The stage editor popover's surface, centered — every floating
+        // editor in the app family wears the same card
         style={{
           width: 500,
           maxWidth: "90vw",
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
           pointerEvents: "auto",
-          color: "var(--fo-palette-text-primary)",
-          ...POPOUT_SURFACE,
-          // A 500px modal on the dropdowns' near-black tier reads heavy —
-          // the body takes the lighter tier and the fields keep level3,
-          // the same relationship the legacy dialog had
-          background: "var(--fo-palette-background-level1)",
           boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
+          borderRadius: 6,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+        <Card
+          background={CardBackground.Primary}
+          outlined
+          compact
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
         >
-          <Heading level={HeadingLevel.H3}>
-            {isCreating ? "Create view" : "Edit view"}
-          </Heading>
-          <Clickable
-            role="button"
-            tabIndex={0}
-            aria-label="close"
-            data-cy={`${id}-btn-close`}
-            onClick={close}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                close();
-              }
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
-            style={{ display: "inline-flex", alignItems: "center" }}
           >
-            <Icon name={IconName.Close} size={Size.Sm} />
-          </Clickable>
-        </div>
+            <Heading level={HeadingLevel.H3}>
+              {isCreating ? "Create view" : "Edit view"}
+            </Heading>
+            <Clickable
+              role="button"
+              tabIndex={0}
+              aria-label="close"
+              data-cy={`${id}-btn-close`}
+              onClick={close}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  close();
+                }
+              }}
+              style={{ display: "inline-flex", alignItems: "center" }}
+            >
+              <Icon name={IconName.Close} size={Size.Sm} />
+            </Clickable>
+          </div>
 
-        <div>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            Name
-          </Text>
-          <Input
-            data-cy={`${id}-input-name`}
-            autoFocus
-            placeholder="Your view name"
-            value={nameValue}
-            error={Boolean(nameError)}
-            onChange={(e) => setNameValue(e.target.value)}
-            style={{ background: "var(--fo-palette-background-level3)" }}
-          />
-          {nameError && (
-            <Text variant={TextVariant.Xs} color={TextColor.Destructive}>
-              {nameError}
+          <div>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              Name
             </Text>
-          )}
-        </div>
+            <Input
+              data-cy={`${id}-input-name`}
+              autoFocus
+              placeholder="Your view name"
+              value={nameValue}
+              error={Boolean(nameError)}
+              onChange={(e) => setNameValue(e.target.value)}
+            />
+            {nameError && (
+              <Text variant={TextVariant.Xs} color={TextColor.Destructive}>
+                {nameError}
+              </Text>
+            )}
+          </div>
 
-        <div>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            Description
-          </Text>
-          <TextArea
-            data-cy={`${id}-input-description`}
-            rows={5}
-            placeholder="Enter a description"
-            value={descriptionValue}
-            onChange={(e) => setDescriptionValue(e.target.value)}
-            style={{ background: "var(--fo-palette-background-level3)" }}
-          />
-        </div>
+          <div>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              Description
+            </Text>
+            <TextArea
+              data-cy={`${id}-input-description`}
+              rows={5}
+              placeholder="Enter a description"
+              value={descriptionValue}
+              onChange={(e) => setDescriptionValue(e.target.value)}
+            />
+          </div>
 
-        <div>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            Color
-          </Text>
-          <ColorSelect
-            id={`${id}-input-color-selection`}
-            selected={colorOption}
-            onSelect={setColorOption}
-          />
-        </div>
+          <div>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              Color
+            </Text>
+            <ColorSelect
+              id={`${id}-input-color-selection`}
+              selected={colorOption}
+              onSelect={setColorOption}
+            />
+          </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginTop: 12,
-          }}
-        >
-          <span>
-            {!isCreating && canEdit && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginTop: 12,
+            }}
+          >
+            <span>
+              {!isCreating && canEdit && (
+                <Button
+                  variant={Variant.Secondary}
+                  size={Size.Sm}
+                  data-cy={`${id}-btn-delete`}
+                  onClick={onDeleteView}
+                  leadingIcon={IconName.Delete}
+                >
+                  Delete
+                </Button>
+              )}
+            </span>
+            <span style={{ display: "inline-flex", gap: 12 }}>
               <Button
                 variant={Variant.Secondary}
                 size={Size.Sm}
-                data-cy={`${id}-btn-delete`}
-                onClick={onDeleteView}
-                leadingIcon={IconName.Delete}
+                onClick={close}
               >
-                Delete
+                Cancel
               </Button>
-            )}
-          </span>
-          <span style={{ display: "inline-flex", gap: 12 }}>
-            <Button variant={Variant.Secondary} size={Size.Sm} onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              variant={Variant.Primary}
-              size={Size.Sm}
-              data-cy={`${id}-btn-save`}
-              disabled={saveDisabled}
-              onClick={onSaveView}
-            >
-              Save view
-            </Button>
-          </span>
-        </div>
+              <Button
+                variant={Variant.Primary}
+                size={Size.Sm}
+                data-cy={`${id}-btn-save`}
+                disabled={saveDisabled}
+                onClick={onSaveView}
+              >
+                Save view
+              </Button>
+            </span>
+          </div>
+        </Card>
       </div>
     </div>,
     document.body,

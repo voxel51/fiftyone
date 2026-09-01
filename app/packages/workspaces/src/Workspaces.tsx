@@ -64,6 +64,7 @@ const ROW_STYLE: React.CSSProperties = {
 
 export default function Workspaces() {
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const {
     workspaces,
@@ -139,11 +140,23 @@ export default function Workspaces() {
             setOpen((current) => !current);
           }
         }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        // The saved-views trigger's treatment, compact: a quiet pill that
+        // reads as a control, not floating text
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          padding: "2px 10px",
+          height: 26,
+          padding: "0 10px",
+          boxSizing: "border-box",
+          borderRadius: 13,
+          border: "1px solid var(--fo-palette-primary-plainBorder)",
+          background:
+            hovered || open
+              ? "var(--fo-palette-background-level2)"
+              : "var(--fo-palette-background-level1)",
           color: "var(--fo-palette-text-secondary)",
         }}
       >
@@ -175,7 +188,10 @@ export default function Workspaces() {
               left: Math.max(8, rect.left + rect.width - 300),
               width: 300,
               zIndex: 10000,
-              maxHeight: 380,
+              // Clamped to the viewport: a popout opened low on screen (e.g. a
+              // dialog's color picker) must keep its last rows reachable —
+              // rows scrolled into an offscreen band cannot be clicked
+              maxHeight: Math.min(380, window.innerHeight - rect.top - 12),
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",

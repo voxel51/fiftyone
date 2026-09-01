@@ -201,7 +201,10 @@ export const SavedViewSelector: React.FC<SavedViewSelectorProps> = ({
               left: rect.left,
               width: rect.width,
               zIndex: 10000,
-              maxHeight: 380,
+              // Clamped to the viewport: a popout opened low on screen (e.g. a
+              // dialog's color picker) must keep its last rows reachable —
+              // rows scrolled into an offscreen band cannot be clicked
+              maxHeight: Math.min(380, window.innerHeight - rect.top - 12),
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
