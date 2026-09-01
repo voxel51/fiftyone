@@ -91,6 +91,82 @@ describe("useTimelineSections", () => {
     });
   });
 
+  it("names no section beside a pinned row when only one section has tracks", () => {
+    // With one group there is nothing to disambiguate, so the name would be
+    // noise. This is the same threshold that decides whether headers appear.
+    const { result } = renderHook(() =>
+      useTimelineSections([
+        section("test:events", 210, EVENT_TRACK),
+        {
+          id: "fiftyone:temporal-tags",
+          label: "Temporal tags",
+          order: 200,
+          tracks: [],
+        },
+      ]),
+    );
+
+    expect(
+      result.current.decorateTrack(EVENT_TRACK, true).secondaryLabel,
+    ).toBeUndefined();
+  });
+
+  it("names the section beside a pinned row once a second section has tracks", () => {
+    const { result } = renderHook(() =>
+      useTimelineSections([
+        {
+          id: "test:events",
+          label: "Events",
+          order: 210,
+          tracks: [EVENT_TRACK],
+        },
+        section("fiftyone:temporal-tags", 200, TAG_TRACK),
+      ]),
+    );
+
+    expect(result.current.decorateTrack(EVENT_TRACK, true).secondaryLabel).toBe(
+      "Events",
+    );
+  });
+
+  it("leaves an unpinned row's secondary label alone", () => {
+    // Unpinned rows sit under their header, which already says the group.
+    const { result } = renderHook(() =>
+      useTimelineSections([
+        {
+          id: "test:events",
+          label: "Events",
+          order: 210,
+          tracks: [EVENT_TRACK],
+        },
+        section("fiftyone:temporal-tags", 200, TAG_TRACK),
+      ]),
+    );
+
+    expect(
+      result.current.decorateTrack(EVENT_TRACK, false).secondaryLabel,
+    ).toBeUndefined();
+  });
+
+  it("lets a source's own secondary label win over the section name", () => {
+    const { result } = renderHook(() =>
+      useTimelineSections([
+        {
+          id: "test:events",
+          label: "Events",
+          order: 210,
+          tracks: [EVENT_TRACK],
+          decorateTrack: () => ({ secondaryLabel: "from the source" }),
+        },
+        section("fiftyone:temporal-tags", 200, TAG_TRACK),
+      ]),
+    );
+
+    expect(result.current.decorateTrack(EVENT_TRACK, true).secondaryLabel).toBe(
+      "from the source",
+    );
+  });
+
   it("rejects duplicate sections, tracks, and header collisions", () => {
     const consoleError = vi
       .spyOn(console, "error")

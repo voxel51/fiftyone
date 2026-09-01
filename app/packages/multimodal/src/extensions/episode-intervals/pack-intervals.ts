@@ -39,6 +39,14 @@ export function packIntervals(
   intervals: readonly PackableInterval[],
   maxLevels: number,
 ): PackedIntervals {
+  // A non-integer or non-positive cap has no sensible reading: zero or less
+  // leaves nowhere to put anything, and a fractional or infinite cap silently
+  // removes the bound the lane depends on. Callers pass a constant, so this is
+  // a contract check rather than input handling.
+  if (!Number.isInteger(maxLevels) || maxLevels < 1) {
+    throw new RangeError(`maxLevels must be a positive integer: ${maxLevels}`);
+  }
+
   const order = intervals
     .map((_, index) => index)
     .sort(
