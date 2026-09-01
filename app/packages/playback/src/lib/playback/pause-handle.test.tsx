@@ -6,6 +6,7 @@
  */
 
 import { act, cleanup, render, renderHook } from "@testing-library/react";
+import { createStore, Provider } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -55,6 +56,29 @@ describe("playback pause handle", () => {
     act(() => result.current());
 
     expect(pause).not.toHaveBeenCalled();
+  });
+
+  it("survives a JotaiProvider mounted between publisher and consumer", () => {
+    // Publisher and consumer live in different subtrees by construction, so
+    // "nearest provider wins" would route the write and the read to separate
+    // stores and the pause would silently no-op. Both sides therefore target
+    // the default store explicitly. PlaybackProvider documents this exact
+    // hazard (a nested provider from another package shadowing its store).
+    const pause = vi.fn();
+    render(
+      <Provider store={createStore()}>
+        <Publisher pause={pause} />
+      </Provider>,
+    );
+
+    const { result } = renderHook(() => useRequestPlaybackPause(), {
+      wrapper: ({ children }) => (
+        <Provider store={createStore()}>{children}</Provider>
+      ),
+    });
+    act(() => result.current());
+
+    expect(pause).toHaveBeenCalledTimes(1);
   });
 
   it("a provider swap does not blank out its replacement's handle", () => {

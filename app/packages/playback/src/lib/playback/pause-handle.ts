@@ -2,7 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
+import {
+  atom,
+  getDefaultStore,
+  type PrimitiveAtom,
+  useAtomValue,
+  useSetAtom,
+} from "jotai";
 import { useCallback, useEffect } from "react";
 
 /**
@@ -26,6 +32,22 @@ const playbackPauseHandleAtom = atom<(() => void) | null>(
 ) as PrimitiveAtom<(() => void) | null>;
 
 /**
+ * Both sides target the process-wide default store EXPLICITLY rather than
+ * resolving through Jotai context.
+ *
+ * Publisher and consumer sit in different subtrees by construction — that is
+ * the whole reason this handle exists — so "nearest provider wins" would let
+ * any `<JotaiProvider>` mounted between them route the write and the read to
+ * different stores, and the pause would silently do nothing. `PlaybackProvider`
+ * documents this exact hazard as the reason it mounts no provider of its own.
+ *
+ * `@fiftyone/state`'s `jotaiStore` is this same `getDefaultStore()`, so app
+ * code sharing this atom lands in the same place without this package taking
+ * a dependency on `@fiftyone/state`.
+ */
+const store = getDefaultStore();
+
+/**
  * Publish this provider's `pause`. Called by `PlaybackProvider` itself.
  *
  * Only one timeline is mounted in the modal at a time (Explore and Annotate
@@ -34,7 +56,7 @@ const playbackPauseHandleAtom = atom<(() => void) | null>(
  * provider swap cannot blank out its replacement's.
  */
 export const usePublishPauseHandle = (pause: () => void): void => {
-  const setHandle = useSetAtom(playbackPauseHandleAtom);
+  const setHandle = useSetAtom(playbackPauseHandleAtom, { store });
 
   useEffect(() => {
     // Wrapped in an updater: jotai treats a bare function value as a
@@ -54,7 +76,7 @@ export const usePublishPauseHandle = (pause: () => void): void => {
  * returned callback is stable for as long as the handle is.
  */
 export const useRequestPlaybackPause = (): (() => void) => {
-  const pause = useAtomValue(playbackPauseHandleAtom);
+  const pause = useAtomValue(playbackPauseHandleAtom, { store });
 
   return useCallback(() => pause?.(), [pause]);
 };
