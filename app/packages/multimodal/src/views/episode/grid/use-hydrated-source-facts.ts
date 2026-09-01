@@ -13,10 +13,9 @@ import type { GridPosterCacheEntry } from "./grid-poster-cache";
 /**
  * Republishes a cached tile's persisted source facts.
  *
- * A poster-cache hit answers the tile without opening a preview session, and
- * that read is the only thing that publishes the recording's own time range.
- * Without it the temporal-tag lane scales its marks against the last tag's end
- * instead, so a tile served from cache draws them at the wrong offsets.
+ * A poster-cache hit answers the tile without opening the preview session that
+ * would otherwise publish the source's time range, which the tile's overlays
+ * need as the domain to place a mark in.
  */
 export function useHydratedSourceFacts({
   cachedPoster,
@@ -43,9 +42,7 @@ export function useHydratedSourceFacts({
     // Not aborted on cleanup: the publish is what a later tile for this source
     // reads, so a scroll-away mid-lookup should still leave the facts behind
     void hydratePersistedSourceFacts(source, sourceFactsScope).then(() => {
-      // The durable lane is published wholesale and leaves the shared episode
-      // range alone; a preview read publishes both, and the temporal-tag lane
-      // scales its marks against that one
+      // A preview read also publishes the shared episode range
       const timeRange = peekSourceBootstrap(source)?.timeRange;
       if (timeRange) publishEpisodeTimeRange(source.sourceId, timeRange);
     });

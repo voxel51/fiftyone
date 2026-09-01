@@ -14,6 +14,7 @@
 import {
   BackgroundColor,
   BorderColor,
+  BrandColor,
   Button,
   getColorCssVar,
   Icon,
@@ -45,6 +46,7 @@ const TOKEN_VARS = {
   "--emb-card-elevated": `var(${getColorCssVar(BackgroundColor.CardElevated)})`,
   "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
   "--emb-border-strong": `var(${getColorCssVar(BorderColor.Strong)})`,
+  "--emb-brand": `var(${getColorCssVar(BrandColor.Primary)})`,
   "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
 } as CSSProperties;
 
@@ -154,17 +156,13 @@ export default function PlotView({
     mode === "explore" || mode === "select"
       ? (mode as InteractionMode)
       : "select";
-  // Select CHOOSES a point; Explore FREEZES its card, which is the only way
-  // to reach the card's own actions — the pointer cannot cross the gap to a
-  // button on a card that follows it
+  // Explore freezes the card so its actions are reachable by pointer
   const cellPointClick = mode === "select" ? handlePointClick : pinHover;
 
   const subtitle = `${run.method ?? "visualization"}${
     run.dims ? ` (${run.dims}D)` : ""
   }`;
 
-  // A cell's `visible` prop is a total mask; the plain plot's single cell is
-  // everything the plot-level mask admits (or everything, when null).
   // Memoized so the cell's chart doesn't re-diff a fresh array every render
   const n = loaded?.points.length ?? 0;
   const singleCellMask = useMemo(() => {

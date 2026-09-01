@@ -30,9 +30,11 @@ import { createPortal } from "react-dom";
 import "./panel.css";
 import type { HoverHit } from "./renderer";
 
+// Portaled to body, so the tokens its CSS reads must be declared here
 const TOKEN_VARS = {
   "--emb-popover": `var(${getColorCssVar(BackgroundColor.Popover)})`,
   "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
+  "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
 } as CSSProperties;
 
 export interface HoverContent {
@@ -84,10 +86,8 @@ export default function HoverCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
-  // The card must be able to overlay the plot's bounds — a facet cell is
-  // often shorter than the card — so it renders in a body portal at fixed
-  // viewport coordinates, flipped and clamped against the viewport using
-  // its MEASURED size (quadrant-guessing clipped tall cards near edges)
+  // Portaled so the card can overlay the plot, then flipped and clamped
+  // against the viewport using its measured size
   const anchorX = origin.left + hit.x;
   const anchorY = origin.top + hit.y;
   const showImage = src !== null && settled?.ok === true;
@@ -108,9 +108,7 @@ export default function HoverCard({
     setPos({ left, top });
   }, [anchorX, anchorY, showImage, details, value, filename, hasAction]);
 
-  // Preload off-DOM; the card appears only once the image is ready — or
-  // has failed, in which case the metadata still shows (an unloadable
-  // thumbnail must not suppress the value/filename lines)
+  // Preload off-DOM; on failure the metadata still shows
   useEffect(() => {
     if (!src) return undefined;
     let stale = false;
@@ -123,10 +121,7 @@ export default function HoverCard({
     };
   }, [src]);
 
-  // A frozen card outlives the pointer, so anything the reader clicks next
-  // that is not the card itself means "not that one" — the plot's empty
-  // space, another point, the legend, the world outside the panel. The
-  // click is left to propagate: it still does whatever it was aimed at.
+  // A click outside the frozen card dismisses it, and still propagates
   useEffect(() => {
     if (!onClose) return undefined;
     const onDown = (event: Event) => {

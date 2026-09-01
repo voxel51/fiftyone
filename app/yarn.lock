@@ -1840,7 +1840,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/embeddings-v2@workspace:packages/embeddings-v2":
+"@fiftyone/embeddings-v2@npm:*, @fiftyone/embeddings-v2@workspace:packages/embeddings-v2":
   version: 0.0.0-use.local
   resolution: "@fiftyone/embeddings-v2@workspace:packages/embeddings-v2"
   dependencies:
@@ -1856,7 +1856,7 @@ __metadata:
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
     "@types/react": "catalog:"
-    "@types/react-dom": "npm:^18.3.1"
+    "@types/react-dom": "catalog:"
     "@types/three": "npm:^0.182.0"
     "@voxel51/voodo": "catalog:"
     jotai: "catalog:"
@@ -2157,8 +2157,11 @@ __metadata:
     "@bufbuild/protobuf": "npm:^2.11.0"
     "@date-fns/tz": "npm:^1.5.0"
     "@fiftyone/components": "npm:*"
+    "@fiftyone/embeddings-v2": "npm:*"
+    "@fiftyone/operators": "npm:*"
     "@fiftyone/playback": "workspace:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@fiftyone/utilities": "npm:*"
@@ -2202,6 +2205,9 @@ __metadata:
     uplot: "npm:^1.6.32"
     vite: "catalog:"
     vite-plugin-relay: "catalog:"
+  peerDependencies:
+    react: "*"
+    recoil: "*"
   languageName: unknown
   linkType: soft
 

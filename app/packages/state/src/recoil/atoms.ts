@@ -261,11 +261,8 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-// Both atoms below sync to the dataset fragment, and their `read` runs on EVERY
-// fragment update rather than only on a dataset change — so it has to hand back
-// the last write, or an ordinary refetch drops a live selection and unfilters
-// the grid. Same closure + onSet shape as `modal` above; at module scope only
-// so the reset can clear it, since atom effects do not fire in a transaction.
+// `read` runs on every fragment update, so it must hand back the last write
+// or a refetch drops the selection. Module scope so the reset can clear it.
 let currentSelection = { selection: null };
 let currentOverrideStage = null;
 
