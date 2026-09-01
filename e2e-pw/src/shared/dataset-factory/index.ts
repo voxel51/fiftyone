@@ -192,6 +192,17 @@ interface DatasetOptions {
   labelSchemas?: { [field: string]: JSONObject };
 
   /**
+   * Keys of text-promptable similarity indexes to register on the dataset.
+   *
+   * Registers the brain RUN DOCUMENT only — no embeddings are computed and
+   * no model is loaded, so this is instant and dependency-free. It lights up
+   * every promptable-index UI affordance (the quick search, its settings
+   * popover); actually executing a search against it will fail server-side,
+   * so specs stub the operator endpoint when they submit.
+   */
+  promptableIndexes?: string[];
+
+  /**
    * A factory function that populates a sample with data.
    * Receives an empty `SampleScaffold` and should return a `JSONObject`
    * representing the fully populated sample.
@@ -249,6 +260,7 @@ const createDataset = (() => {
     labelSchemas = {},
     numSamples = 1,
     numbered = false,
+    promptableIndexes = [],
     savedViews = {},
     schema = {},
     withSampleData = () => ({}),
@@ -372,6 +384,34 @@ const createDataset = (() => {
         return `dataset.save_view("${name}", ${view})`;
       })
       .join("\n    ")}
+
+    ${
+      promptableIndexes.length
+        ? `from fiftyone.core.odm.runs import RunDocument
+    for _key in json.loads('${JSON.stringify(promptableIndexes)}'):
+        _run = RunDocument(
+            dataset_id=dataset._doc.id,
+            key=_key,
+            version="",
+            timestamp=now,
+            config={
+                "cls": "fiftyone.brain.similarity.SimilarityConfig",
+                "type": "similarity",
+                "method": "sklearn",
+                "supports_prompts": True,
+                "supports_least_similarity": False,
+                "max_k": None,
+                "patches_field": None,
+                "embeddings_field": None,
+                "model": "clip-vit-base32-torch",
+            },
+            view_stages=[],
+        )
+        _run.save()
+        dataset._doc.brain_methods[_key] = _run
+    dataset._doc.save()`
+        : ""
+    }
     `);
   };
 })();
