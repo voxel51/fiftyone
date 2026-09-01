@@ -45,6 +45,22 @@ export class ViewBarPom {
     return this.stagesRow.getByPlaceholder("Add stage…");
   }
 
+  /** The previous-queries dropdown under the search input (portaled). */
+  get searchHistory() {
+    return this.page.getByTestId("view-bar-search-history");
+  }
+
+  /** Clears any draft query and drops focus from the search input. */
+  async clearSearch() {
+    await this.searchInput.press("Escape");
+    await this.searchInput.blur();
+  }
+
+  /** Focuses the search input, which opens its history dropdown. */
+  async openSearchHistory() {
+    await this.searchInput.click();
+  }
+
   /**
    * Makes the stages row visible. A bar holding stages opens it on its own;
    * an empty bar needs the toggle. The toggle's aria-expanded reflects the
@@ -163,6 +179,16 @@ class ViewBarAsserter {
 
   async stageCount(n: number) {
     await expect(this.viewBar.viewStages).toHaveCount(n);
+  }
+
+  /** The history dropdown offers `query` as a previous search. */
+  async searchHistoryOffers(query: string) {
+    await expect(
+      this.viewBar.searchHistory.getByRole("option", {
+        name: query,
+        exact: true,
+      }),
+    ).toBeVisible();
   }
 }
 

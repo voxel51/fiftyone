@@ -84,14 +84,9 @@ test.describe("view bar quick search", () => {
     expect(params.apply_results).toBe(true);
 
     // The query was remembered at submit time: refocusing the box offers it
-    await page.keyboard.press("Escape"); // clears the draft text
-    await input.blur();
-    await input.click();
-    await expect(
-      page
-        .getByTestId("view-bar-search-history")
-        .getByRole("option", { name: "hello world" }),
-    ).toBeVisible();
+    await viewBar.clearSearch();
+    await viewBar.openSearchHistory();
+    await viewBar.assert.searchHistoryOffers("hello world");
   });
 
   test("opening the stages row focuses the typeahead and its stage list", async ({
