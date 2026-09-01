@@ -55,6 +55,7 @@ import {
   recordMatches,
 } from "./searchIndexRecency";
 import { readSearchQueries, recordSearchQuery } from "./searchQueryHistory";
+import { patchesFieldOfView, resolveSearchIndex } from "./searchIndexSelection";
 import { createPortal } from "react-dom";
 import {
   appliesTo,
@@ -738,9 +739,18 @@ const ViewBar: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [promptKeys, datasetName, recencyStamp],
   );
-  const resolvedSearchIndex =
-    orderedPromptKeys.find((index) => index.key === searchIndexKey) ??
-    orderedPromptKeys[0];
+  // A view standing in patches prefers a patches index on its field: a
+  // sample-level index cannot rank patches, and the server would flatten
+  // the view (dropping ToPatches) to satisfy it. An explicit pick wins.
+  const viewPatchesField = useMemo(
+    () => patchesFieldOfView(currentView),
+    [currentView],
+  );
+  const resolvedSearchIndex = resolveSearchIndex(
+    orderedPromptKeys,
+    searchIndexKey,
+    viewPatchesField,
+  );
 
   const openSimilarityPanel = useCallback(() => {
     trackEvent("view_bar_search_settings_panel_opened");

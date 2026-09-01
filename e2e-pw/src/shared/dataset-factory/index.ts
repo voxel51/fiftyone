@@ -192,13 +192,14 @@ interface DatasetOptions {
   labelSchemas?: { [field: string]: JSONObject };
 
   /**
-   * Keys of text-promptable similarity indexes to register on the dataset.
+   * Keys of text-promptable similarity indexes to compute on the dataset.
    *
-   * Registers the brain RUN DOCUMENT only — no embeddings are computed and
-   * no model is loaded, so this is instant and dependency-free. It lights up
-   * every promptable-index UI affordance (the quick search, its settings
-   * popover); actually executing a search against it will fail server-side,
-   * so specs stub the operator endpoint when they submit.
+   * Each is a REAL sklearn similarity index over deterministic random
+   * embeddings — no model is loaded and nothing downloads, so this is
+   * instant. The recorded model name marks the index prompt-capable, which
+   * lights up every promptable-index UI affordance. Searching by a SAMPLE ID
+   * string executes for real against the stored embeddings; only free-text
+   * prompts would need the actual model, so specs query by id.
    */
   promptableIndexes?: string[];
 
@@ -387,29 +388,19 @@ const createDataset = (() => {
 
     ${
       promptableIndexes.length
-        ? `from fiftyone.core.odm.runs import RunDocument
+        ? `import numpy as np
+    import fiftyone.brain as fob
+
     for _key in json.loads('${JSON.stringify(promptableIndexes)}'):
-        _run = RunDocument(
-            dataset_id=dataset._doc.id,
-            key=_key,
-            version="",
-            timestamp=now,
-            config={
-                "cls": "fiftyone.brain.similarity.SimilarityConfig",
-                "type": "similarity",
-                "method": "sklearn",
-                "supports_prompts": True,
-                "supports_least_similarity": False,
-                "max_k": None,
-                "patches_field": None,
-                "embeddings_field": None,
-                "model": "clip-vit-base32-torch",
-            },
-            view_stages=[],
-        )
-        _run.save()
-        dataset._doc.brain_methods[_key] = _run
-    dataset._doc.save()`
+        fob.compute_similarity(
+            dataset,
+            embeddings=np.random.RandomState(51).rand(${numSamples}, 8),
+            brain_key=_key,
+            backend="sklearn",
+            # Never loaded (embeddings are supplied); its name marks the
+            # index prompt-capable so the quick-search UI lights up
+            model="clip-vit-base32-torch",
+        )`
         : ""
     }
     `);

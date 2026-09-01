@@ -61,6 +61,24 @@ export class ViewBarPom {
     await this.searchInput.click();
   }
 
+  /** The magnifying glass that opens the search settings popover. */
+  get searchSettingsTrigger() {
+    return this.locator.getByTestId("view-bar-search-settings-trigger");
+  }
+
+  /** The search settings popover (portaled). */
+  get searchSettings() {
+    return this.page.getByTestId("view-bar-search-settings");
+  }
+
+  /** Sets the search's match count through the magnifier's settings. */
+  async setSearchMatches(k: number) {
+    await this.searchSettingsTrigger.click();
+    await this.searchSettings.getByTestId("search-settings-k").fill(String(k));
+    await this.searchSettingsTrigger.click();
+    await expect(this.searchSettings).toBeHidden();
+  }
+
   /**
    * Makes the stages row visible. A bar holding stages opens it on its own;
    * an empty bar needs the toggle. The toggle's aria-expanded reflects the

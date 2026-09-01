@@ -1,19 +1,16 @@
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 //
-// The quick search's client contract and the stages row's focus hand-off.
+// The quick search end-to-end, and the stages row's focus hand-off.
 //
-// The dataset factory registers a promptable index RUN DOCUMENT only — no
-// embeddings exist, so a real search cannot execute. The submit test stubs
-// the operator endpoint instead: the interesting assertions are what the
-// client sends (query, index, k) and what it remembers (the history
-// dropdown), not the brain backend.
+// The dataset factory computes a REAL sklearn similarity index over random
+// embeddings — instant, no model. A free-text prompt would need the model,
+// but a SAMPLE ID query ranks by the stored embeddings, so searching an id
+// exercises the whole path for real: operator, brain backend, applied view.
 //
-let datasetName: string;
-
 const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
   viewBar: async ({ page }, use) => {
     await use(new ViewBarPom(page));
@@ -32,7 +29,7 @@ test.beforeAll(async ({ foWebServer }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader, datasetFactory }) => {
-  datasetName = getUniqueDatasetNameWithPrefix("view-bar-quick-search");
+  const datasetName = getUniqueDatasetNameWithPrefix("view-bar-quick-search");
 
   await datasetFactory.createDataset({
     datasetName,
@@ -44,49 +41,34 @@ test.beforeEach(async ({ page, fiftyoneLoader, datasetFactory }) => {
 });
 
 test.describe("view bar quick search", () => {
-  test("a query submits the search contract and is remembered", async ({
+  test("a query runs a real search and applies a subset view", async ({
     viewBar,
+    grid,
     page,
   }) => {
-    // The index exists only as a run document, so the operator must not
-    // reach the real backend: answer with a well-formed error, which the
-    // bar's callback uses to release the pending treatment
-    await page.route("**/operators/execute", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ error: "e2e stub", error_message: "e2e stub" }),
-      }),
-    );
+    // The factory's fixed sample ids (`{idx:024x}`) make a real query: the
+    // sklearn index ranks by the stored embeddings, no model involved
+    const query = "2".padStart(24, "0");
+
+    // Three matches, set through the magnifier's settings
+    await viewBar.setSearchMatches(3);
 
     const input = viewBar.searchInput;
     await input.click();
-    await input.fill("hello world");
+    await input.fill(query);
+    // The search applies its own result view; the grid reload is the proof
+    await grid.run(() => page.keyboard.press("Enter"));
 
-    // Armed before the key, so the submission is awaited, never polled
-    const executeRequest = page.waitForRequest((request) =>
-      request.url().includes("/operators/execute"),
-    );
-    await page.keyboard.press("Enter");
-    const executed = (await executeRequest).postDataJSON() as Record<
-      string,
-      unknown
-    >;
-
-    // The stub's error settles the submission; the typed query survives it
-    await expect(input).toHaveValue("hello world");
-
-    const params = executed.params as Record<string, unknown>;
-    expect(executed.operator_uri).toContain("similarity_search");
-    expect(params.query).toBe("hello world");
-    expect(params.brain_key).toBe("clip");
-    expect(params.query_type).toBe("text");
-    expect(params.apply_results).toBe(true);
+    await grid.assert.isEntryCountTextEqualTo("3 samples");
+    // A static run applies its results as a Select over the ranked ids —
+    // and an applied view auto-opens the stages row
+    await viewBar.expand();
+    await viewBar.assert.hasViewStage("Select");
 
     // The query was remembered at submit time: refocusing the box offers it
     await viewBar.clearSearch();
     await viewBar.openSearchHistory();
-    await viewBar.assert.searchHistoryOffers("hello world");
+    await viewBar.assert.searchHistoryOffers(query);
   });
 
   test("opening the stages row focuses the typeahead and its stage list", async ({
