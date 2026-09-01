@@ -1,6 +1,11 @@
 import { useCallback, useSyncExternalStore } from "react";
 import type { TimeWindow } from "../../ir";
-import { getEpisodeTimeRange, subscribeEpisodeTimeRange } from "../../runtime";
+import {
+  getEpisodePlayhead,
+  getEpisodeTimeRange,
+  subscribeEpisodePlayhead,
+  subscribeEpisodeTimeRange,
+} from "../../runtime";
 
 /**
  * The episode's time axis, once the active format has published it.
@@ -45,4 +50,32 @@ export function toEpisodeRelativeNs(
   range: TimeWindow,
 ): number {
   return Number(absoluteNs - range.startNs);
+}
+
+/**
+ * The instant the episode's grid tile is currently presenting, rebased onto the
+ * episode's 0-based axis, or null when nothing is presenting or the axis is not
+ * yet known.
+ *
+ * Published by whichever renderer owns the frame; see
+ * `runtime/episode-playhead-registry`.
+ */
+export function useEpisodePlayheadNs(
+  episodeId: string | undefined,
+  range: TimeWindow | null,
+): number | null {
+  const subscribe = useCallback(
+    (listener: () => void) =>
+      episodeId
+        ? subscribeEpisodePlayhead(episodeId, listener)
+        : () => undefined,
+    [episodeId],
+  );
+  const absoluteNs = useSyncExternalStore(
+    subscribe,
+    () => (episodeId ? getEpisodePlayhead(episodeId) : null),
+    () => null,
+  );
+  if (absoluteNs === null || !range) return null;
+  return toEpisodeRelativeNs(absoluteNs, range);
 }

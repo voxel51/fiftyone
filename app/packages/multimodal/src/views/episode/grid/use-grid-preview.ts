@@ -9,8 +9,10 @@ import type { EpisodePreviewSession } from "../../../ports";
 import {
   EpisodePreviewPlaybackScheduler,
   episodePreviewPlaybackDelayMs,
+  publishEpisodePlayhead,
   publishEpisodePreviewBootstrap,
   recordPreviewSourceFacts,
+  releaseEpisodePlayhead,
   type SourceFactsScope,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
@@ -56,6 +58,12 @@ export interface UseGridPreviewOptions {
   /** Snapshot for `cacheRequestKey`; keep its identity stable while the key is unchanged. */
   readonly cachedPoster?: GridPosterCacheEntry | null;
   readonly enabled?: boolean;
+  /**
+   * Episode identity the presented frame time is published under, for chrome
+   * outside this tree that draws against the tile's playhead (the interval
+   * lane). Omit to publish nothing.
+   */
+  readonly episodeId?: string | null;
   /** Whether this tile is the user's current interactive target. */
   readonly hovered?: boolean;
   /** Initial forward coverage required by the mounted video decoder. */
@@ -105,6 +113,7 @@ export function useGridPreview({
   cacheRequestKey = null,
   cachedPoster = null,
   enabled = true,
+  episodeId = null,
   hovered = false,
   initialVideoDecodeLookaheadNs,
   onReadResult,
@@ -139,6 +148,30 @@ export function useGridPreview({
     readonly sourceName: string | null;
   } | null>(null);
   const frameTimeNsRef = useRef<bigint | undefined>(undefined);
+  const episodeIdRef = useRef(episodeId);
+  episodeIdRef.current = episodeId;
+  // Every write to the presented-frame time goes through here so the published
+  // playhead cannot drift from the ref the scheduler reads. Publishing to an
+  // external store rather than into state is deliberate: the frame time
+  // changes on every presented frame, and only the chrome that draws it should
+  // re-render, never this tile.
+  const setFrameTimeNs = useCallback((timeNs: bigint | undefined) => {
+    frameTimeNsRef.current = timeNs;
+    const id = episodeIdRef.current;
+    if (!id) return;
+    if (timeNs === undefined) releaseEpisodePlayhead(id);
+    else publishEpisodePlayhead(id, timeNs);
+  }, []);
+
+  // This effect withdraws the playhead when the tile stops presenting, so the
+  // lane never marks a position nothing is showing.
+  useEffect(
+    () => () => {
+      const id = episodeIdRef.current;
+      if (id) releaseEpisodePlayhead(id);
+    },
+    [],
+  );
   const nextStartTimeNsRef = useRef<bigint | undefined>(undefined);
   const {
     finish: finishBuffering,
@@ -168,13 +201,19 @@ export function useGridPreview({
   useEffect(() => {
     initialLoadInFlightRef.current = false;
     loadedRequestRef.current = null;
-    frameTimeNsRef.current = undefined;
+    setFrameTimeNs(undefined);
     nextStartTimeNsRef.current = undefined;
     finishBuffering();
     setPlaying(false);
     setStateOwnerKey(cacheRequestKey);
     setState(seededSnapshot(source, cachedPosterRef.current));
-  }, [cacheRequestKey, finishBuffering, selectedSourceName, source]);
+  }, [
+    cacheRequestKey,
+    finishBuffering,
+    selectedSourceName,
+    setFrameTimeNs,
+    source,
+  ]);
 
   // IndexedDB hydration completes after the cache key is already mounted.
   // Adopt that same-key poster in place without resetting a live frame or
@@ -234,7 +273,7 @@ export function useGridPreview({
     let active = true;
     const controller = new AbortController();
     initialLoadInFlightRef.current = true;
-    frameTimeNsRef.current = undefined;
+    setFrameTimeNs(undefined);
     nextStartTimeNsRef.current = undefined;
 
     const request = {
@@ -261,7 +300,7 @@ export function useGridPreview({
             source,
             sourceName: effectiveSourceName,
           };
-          frameTimeNsRef.current = result.frameTimeNs;
+          setFrameTimeNs(result.frameTimeNs);
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState((current) => resultPreservingCachedPoster(current, result));
           setLoadGeneration((g) => g + 1);
@@ -295,6 +334,7 @@ export function useGridPreview({
     initialVideoDecodeLookaheadNs,
     posterStartTimeNs,
     previewSession,
+    setFrameTimeNs,
     source,
     sourceFactsScope,
   ]);
@@ -339,7 +379,7 @@ export function useGridPreview({
         bootstrapPublished = true;
       }
 
-      frameTimeNsRef.current = result.frameTimeNs;
+      setFrameTimeNs(result.frameTimeNs);
       nextStartTimeNsRef.current = result.nextStartTimeNs;
       setState((current) => resultPreservingCachedPoster(current, result));
       playbackScheduler.markPresented(result.frameTimeNs, performance.now());
@@ -388,7 +428,7 @@ export function useGridPreview({
               }
               deferredSkippedFrame = null;
             }
-            frameTimeNsRef.current = undefined;
+            setFrameTimeNs(undefined);
             nextStartTimeNsRef.current = undefined;
             playbackScheduler.reset(undefined, performance.now());
             await delayMs(
@@ -442,6 +482,7 @@ export function useGridPreview({
     loadGeneration,
     playing,
     previewSession,
+    setFrameTimeNs,
     source,
     sourceFactsScope,
     startBuffering,

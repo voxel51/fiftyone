@@ -4,8 +4,17 @@ export interface PackableInterval {
   readonly end: number;
 }
 
+/**
+ * Level of an interval that did not fit: every level was already busy where it
+ * starts. It is not drawn.
+ */
+export const UNPLACED = -1;
+
 export interface PackedIntervals {
-  /** Assigned level per input interval, in input order. */
+  /**
+   * Assigned level per input interval, in input order, or {@link UNPLACED} for
+   * one that did not fit.
+   */
   readonly levels: readonly number[];
   /** Levels actually used; at least 1, even for an empty input. */
   readonly levelCount: number;
@@ -13,8 +22,14 @@ export interface PackedIntervals {
 
 /**
  * Greedy interval packing: assign each interval (earliest first) to the lowest
- * level free at its start; overflow past `maxLevels` stacks onto the top level
- * rather than growing the lane unbounded.
+ * level free at its start.
+ *
+ * An interval arriving when every one of `maxLevels` levels is busy is left
+ * {@link UNPLACED} rather than stacked onto the top level. Stacking it there
+ * would draw it over the interval already occupying that level, which reads as
+ * a mark floating loose on top of the lane and misrepresents both — better to
+ * draw neither than to draw one wrong. Callers that must not lose it can still
+ * report it some other way; only its place in the lane is gone.
  *
  * Source-agnostic on purpose — the grid tile packs every source's intervals
  * together in one call, so intervals from different sources share levels and
@@ -35,19 +50,18 @@ export function packIntervals(
   const levels = new Array<number>(intervals.length);
   for (const index of order) {
     const interval = intervals[index];
-    let assigned = levelEnds.findIndex((end) => end <= interval.start);
-    if (assigned === -1) {
-      if (levelEnds.length < maxLevels) {
-        assigned = levelEnds.length;
-        levelEnds.push(interval.end);
-      } else {
-        assigned = maxLevels - 1;
-        levelEnds[assigned] = Math.max(levelEnds[assigned], interval.end);
-      }
-    } else {
-      levelEnds[assigned] = interval.end;
+    const free = levelEnds.findIndex((end) => end <= interval.start);
+    if (free !== -1) {
+      levelEnds[free] = interval.end;
+      levels[index] = free;
+      continue;
     }
-    levels[index] = assigned;
+    if (levelEnds.length < maxLevels) {
+      levels[index] = levelEnds.length;
+      levelEnds.push(interval.end);
+      continue;
+    }
+    levels[index] = UNPLACED;
   }
 
   return { levels, levelCount: Math.max(levelEnds.length, 1) };

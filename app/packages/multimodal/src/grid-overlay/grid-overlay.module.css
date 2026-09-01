@@ -3,23 +3,105 @@
   box-sizing: border-box;
   width: 100%;
   padding: 5px 6px;
-  /* Mostly opaque, slightly transparent so the preview reads faintly behind. */
-  background: rgba(16, 17, 20, 0.82);
-  /* A passive readout — let hover-to-play pass through to the cell beneath. */
+  /* The darkest of the three layers — tracks sit lighter on this, intervals
+     lighter still (in colour) on those. Slightly transparent so the preview
+     reads faintly behind. */
+  background: rgba(16, 17, 20, 0.86);
+  /* The bar itself stays passive so hover-to-play reaches the cell beneath;
+     only the lane below opts back in, to track the pointer. */
   pointer-events: none;
 }
 
-/* Single lane holding every filtered tag's intervals; height scales with the
+/* One line of "what is happening right now": a colored dot and a name per
+   interval under the readout position. Clipped rather than wrapped — the tile
+   has one line to spare, and the overflow becomes a "+N more" count. */
+.readout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  height: 12px;
+  margin-bottom: 3px;
+  font-size: 9px;
+  line-height: 12px;
+  white-space: nowrap;
+  color: rgba(245, 245, 245, 0.92);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  /* background is set inline, per interval. */
+}
+
+.overflow {
+  flex: 0 0 auto;
+  color: rgba(245, 245, 245, 0.6);
+}
+
+/* Single lane holding every source's intervals; height scales with the
    number of stacked (bumped-up) levels. */
 .lane {
   position: relative;
   width: 100%;
+  /* Stays passive, like the bar around it. The ghost playhead follows the
+     pointer via a listener on the tile instead of by capturing it here:
+     capturing would take the pointer off the cell above and cut hover-playback
+     off the moment you moved onto an interval to look at it. */
+  pointer-events: none;
+}
+
+/*
+ * The empty track behind one stacked level: a lighter grey the intervals sit
+ * on, so a level reads as a place an interval can be even where it holds none.
+ * Same pill radius as a mark, so a full-width interval covers its track
+ * exactly.
+ */
+.track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.13);
+  /* bottom and height are set inline, from the level geometry. */
 }
 
 .mark {
   position: absolute;
-  height: 4px;
   min-width: 2px;
-  border-radius: 2px;
-  /* left, width, bottom, and background are set inline per interval. */
+  border-radius: 3px;
+  /* left, width, bottom, height, and background are set inline per interval. */
+}
+
+/* Where the tile is actually presenting from. */
+.playhead {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.92);
+  pointer-events: none;
+}
+
+/*
+ * Where the pointer is, as a readable position on the lane's axis: it is what
+ * the name row above is describing. A readout, not a control — the lane takes
+ * no clicks, so this never becomes a playhead.
+ */
+.ghost {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.38);
+  pointer-events: none;
 }

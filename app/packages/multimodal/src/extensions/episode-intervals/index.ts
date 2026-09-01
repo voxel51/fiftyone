@@ -10,9 +10,10 @@
 export { EpisodeIntervalSources } from "./chain";
 export {
   toEpisodeRelativeNs,
+  useEpisodePlayheadNs,
   useEpisodeTimeRange,
 } from "./use-episode-time-range";
-export { packIntervals } from "./pack-intervals";
+export { packIntervals, UNPLACED } from "./pack-intervals";
 export {
   intervalPinnedTrackIds,
   intervalTimelineSections,

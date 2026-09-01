@@ -73,6 +73,18 @@ export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
      * source-backed content from the retained sample.
      */
     transitioning?: boolean;
+    /**
+     * Opens this sample's modal. Present on the grid surface only.
+     *
+     * The grid used to own an "open" button for every custom-rendered tile,
+     * but whether one is wanted, and where it belongs, depends on what the
+     * tile is showing — a renderer whose own surface consumes the click (an
+     * orbit-controlled point cloud) needs one, and needs it clear of its
+     * chrome, while a tile the grid can activate directly does not. Only the
+     * renderer knows which it is, so the capability is handed to it rather
+     * than the decision being guessed here.
+     */
+    openModal?: () => void;
   };
 
 /**
