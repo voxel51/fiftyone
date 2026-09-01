@@ -78,10 +78,19 @@ export class GridPom {
   async openNthSample(n: number) {
     const tile = this.getNthTile(n);
     if (await this.isCustomRendererTile(tile)) {
-      // the open button is revealed on tile hover
+      // Hover reveals whatever affordances the tile only shows on hover.
       await tile.hover();
-      await tile.getByRole("button", { name: "Open sample modal" }).click();
-      return;
+      // Only a renderer whose own surface consumes the click offers an explicit
+      // open button — a point-cloud preview orbits its camera on drag, so it
+      // suppresses grid activation and needs one. Every other custom-rendered
+      // tile opens by being clicked, the same as an ordinary looker.
+      const openButton = tile.getByRole("button", {
+        name: "Open sample modal",
+      });
+      if ((await openButton.count()) > 0) {
+        await openButton.click();
+        return;
+      }
     }
     await tile.click({ position: { x: 10, y: 80 } });
   }

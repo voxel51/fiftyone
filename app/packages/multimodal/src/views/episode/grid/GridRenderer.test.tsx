@@ -828,6 +828,64 @@ describe("GridRenderer", () => {
     expect(onContextMenu).toHaveBeenCalledTimes(1);
   });
 
+  it("offers an accessible open-modal button on a point-cloud tile", () => {
+    // A point-cloud preview consumes its own click to orbit the camera, so it
+    // is the one tile kind that needs an explicit way into the modal. The role
+    // and name here are the contract the grid e2e page object locates it by.
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+    const openModal = vi.fn();
+
+    render(<GridRenderer ctx={rendererCtx(openModal)} />);
+
+    const button = screen.getByRole("button", { name: "Open sample modal" });
+    fireEvent.click(button);
+
+    expect(openModal).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer an open-modal button on a camera tile", () => {
+    // Clicking an image tile already opens the modal, so a button would be
+    // redundant chrome sitting over the preview.
+    previewHarness.preview.frame = imageFrame(new Uint8Array([1]));
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx(vi.fn())} />);
+
+    expect(
+      screen.queryByRole("button", { name: "Open sample modal" }),
+    ).toBeNull();
+  });
+
+  it("omits the button when the grid offers no open-modal capability", () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(
+      screen.queryByRole("button", { name: "Open sample modal" }),
+    ).toBeNull();
+  });
+
+  it("keeps the open-modal click out of the point cloud beneath it", () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+    const openModal = vi.fn();
+    const parentClick = vi.fn();
+
+    render(
+      <div onClick={parentClick}>
+        <GridRenderer ctx={rendererCtx(openModal)} />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open sample modal" }));
+
+    expect(openModal).toHaveBeenCalledTimes(1);
+    expect(parentClick).not.toHaveBeenCalled();
+  });
+
   it("keeps point-cloud tile activation inside the renderer", () => {
     previewHarness.preview.frame = pointCloudFrame();
     previewHarness.preview.status = "ready";
@@ -1353,10 +1411,11 @@ describe("GridRenderer", () => {
   });
 });
 
-function rendererCtx() {
+function rendererCtx(openModal?: () => void) {
   return {
     dataset: { datasetId: "dataset-id", name: "dataset" },
     sample: { sample: { id: "1" } },
+    ...(openModal ? { openModal } : {}),
   } as never;
 }
 
