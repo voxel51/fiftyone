@@ -181,6 +181,17 @@ class ViewBarAsserter {
     await expect(this.viewBar.viewStages).toHaveCount(n);
   }
 
+  /**
+   * The stage typeahead holds the keyboard with its stage list dropped —
+   * the state an opened empty stages row lands in.
+   */
+  async stageTypeaheadIsReady() {
+    await expect(this.viewBar.insertTypeahead).toBeFocused();
+    await expect(
+      this.viewBar.page.getByRole("listbox").getByRole("option").first(),
+    ).toBeVisible();
+  }
+
   /** The history dropdown offers `query` as a previous search. */
   async searchHistoryOffers(query: string) {
     await expect(

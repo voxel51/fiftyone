@@ -91,15 +91,11 @@ test.describe("view bar quick search", () => {
 
   test("opening the stages row focuses the typeahead and its stage list", async ({
     viewBar,
-    page,
   }) => {
     await viewBar.stagesToggle.click();
 
     // The empty row pins its slot open as the typeahead, focused and with
     // the stage list already dropped — typing can start immediately
-    await expect(viewBar.insertTypeahead).toBeFocused();
-    await expect(
-      page.getByRole("listbox").getByRole("option").first(),
-    ).toBeVisible();
+    await viewBar.assert.stageTypeaheadIsReady();
   });
 });
