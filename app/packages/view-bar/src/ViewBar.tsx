@@ -21,7 +21,6 @@ import { buildSimilarityRunName } from "@fiftyone/utilities";
 import {
   Align,
   Anchor,
-  Button,
   Clickable,
   Icon,
   IconName,
@@ -29,19 +28,25 @@ import {
   Size,
   Spacing,
   Stack,
+  TextBadge,
+  TextColor,
   Tooltip,
-  Variant,
 } from "@voxel51/voodo";
 import { useAnchorRect } from "@fiftyone/components";
-import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from "react";
 
 import { kindsByFtype, operatorsFrom } from "./builder/catalog";
 import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
-import { ClearViewButton, CurrentViewChip } from "./CurrentViewChip";
+import { ClearViewButton } from "./CurrentViewChip";
 import { allowedFields } from "./fields";
 import { InsertSlot } from "./InsertSlot";
 import { LanguageSearch } from "./LanguageSearch";
-import { SearchSettingsPopover } from "./SearchSettingsPopover";
 import {
   orderBySearchRecency,
   readIndexUses,
@@ -49,6 +54,8 @@ import {
   recordIndexUse,
   recordMatches,
 } from "./searchIndexRecency";
+import { readSearchQueries, recordSearchQuery } from "./searchQueryHistory";
+import { createPortal } from "react-dom";
 import {
   appliesTo,
   defaultKwargs,
@@ -171,10 +178,10 @@ const ViewBar: React.FC<{
   const trackEvent = useTrackEvent();
 
   const [state, dispatch] = useReducer(reducer, initialState);
-  // Whether the bar shows the full stage row. Collapsed by default: the
-  // applied view reads as a single summary chip, leaving the rest of the
-  // bar to the language search. Clicking out collapses it again.
-  const [expanded, setExpanded] = React.useState(false);
+  // Whether the stages row (the second row, under the search bar) is shown.
+  // Unset means "follow the view": a bar holding stages opens with them
+  // visible; an empty one stays a single search row until toggled.
+  const [stagesOpen, setStagesOpen] = React.useState<boolean | null>(null);
   // Which stage's editor popover is open, by stage id. Only one at
   // a time; clicking another collapses the previous.
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -190,7 +197,6 @@ const ViewBar: React.FC<{
   const [touched, setTouched] = React.useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const applyRef = React.useRef<HTMLDivElement | null>(null);
   // What setView was last given, normalized to what the bar will hold:
   // `fos.view` lags a round-trip behind, and that gap must not read as
   // pending work — clearing or searching would flash Apply for one echo
@@ -210,12 +216,22 @@ const ViewBar: React.FC<{
    */
   const focusLastSlot = useCallback(() => {
     requestAnimationFrame(() => {
-      // voodo's Stack forwards no ref, so the bar is found by the test id it
-      // already carries
-      const slots = document
-        .querySelector("[data-cy='view-bar']")
-        ?.querySelectorAll<HTMLElement>("[aria-label='Insert stage']");
-      slots?.[slots.length - 1]?.focus();
+      // The stages row is portaled, so it is found by its own test id. An
+      // empty row pins its slot open as a typeahead input; otherwise the
+      // slots are "+" buttons and the last one is where the next stage goes.
+      const row = document.querySelector("[data-cy='view-bar-stages-row']");
+      if (!row) return;
+      const pinned = row.querySelector<HTMLElement>(
+        "input[placeholder='Add stage…']",
+      );
+      if (pinned) {
+        pinned.focus();
+        return;
+      }
+      const slots = row.querySelectorAll<HTMLElement>(
+        "[aria-label='Insert stage']",
+      );
+      slots[slots.length - 1]?.focus();
     });
   }, []);
 
@@ -375,9 +391,7 @@ const ViewBar: React.FC<{
       setEditingId(id);
       setRecentStages(recordRecentStage(cls));
       trackEvent("view_bar_stage_added", { stage: cls });
-      // A stage can be inserted from the collapsed empty bar; its editor
-      // opens against the full row, not the summary chip
-      setExpanded(true);
+      setStagesOpen(true);
     },
     [defsByName, trackEvent],
   );
@@ -660,13 +674,7 @@ const ViewBar: React.FC<{
     // reopens printed from its envelope — `F("x")` as typed becomes the
     // canonical `F('x')` — without waiting on any echo from the server
     dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
-    // An emptied view leaves nothing to keep building; collapse so the
-    // search input (which lives in the collapsed layout) is offered
-    if (serialized.length === 0) {
-      setExpanded(false);
-    }
-    // Apply itself vanishes once there is nothing pending, so the keyboard
-    // moves to where the next stage starts rather than nowhere
+    // The keyboard moves to where the next stage starts
     focusLastSlot();
   }, [
     paramErrors,
@@ -714,6 +722,12 @@ const ViewBar: React.FC<{
   );
   // bumps after every search so the ordering reflects the use just recorded
   const [recencyStamp, setRecencyStamp] = React.useState(0);
+  const searchHistory = useMemo(
+    () => (datasetName ? readSearchQueries(datasetName) : []),
+    // recencyStamp invalidates the localStorage read
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [datasetName, recencyStamp],
+  );
   const orderedPromptKeys = useMemo(
     () =>
       orderBySearchRecency(
@@ -728,23 +742,6 @@ const ViewBar: React.FC<{
     orderedPromptKeys.find((index) => index.key === searchIndexKey) ??
     orderedPromptKeys[0];
 
-  // The no-index wand's popover (the collapsed bar's education affordance)
-  const [educationOpen, setEducationOpen] = React.useState(false);
-  const educationWandRef = React.useRef<HTMLDivElement | null>(null);
-  const educationRect = useAnchorRect(educationWandRef, educationOpen);
-  useEffect(() => {
-    if (!educationOpen) return undefined;
-    const onDown = (e: MouseEvent) => {
-      const target = e.target as Element;
-      if (educationWandRef.current?.contains(target)) return;
-      // The popover portals to the body, so it is not a DOM child of the wand
-      if (target.closest?.('[data-cy="view-bar-search-settings"]')) return;
-      setEducationOpen(false);
-    };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [educationOpen]);
-
   const openSimilarityPanel = useCallback(() => {
     trackEvent("view_bar_search_settings_panel_opened");
     executeOperator("open_panel", {
@@ -754,14 +751,13 @@ const ViewBar: React.FC<{
     });
   }, [trackEvent]);
 
-  /** The chip's [x]: back to the root view, drafts and all. */
+  /** The stages row's [x]: back to the root view, drafts and all. */
   const clearView = useCallback(() => {
     setTouched(new Set());
     setModeOverrides({});
     setEditingId(null);
-    // Nothing is left to expand, and the search input lives in the
-    // collapsed layout — an emptied bar should offer it immediately
-    setExpanded(false);
+    // An emptied bar folds back to the single search row
+    setStagesOpen(false);
     setView([]);
     setInFlight(inFlightFingerprint([]));
     trackEvent("view_bar_view_cleared");
@@ -776,6 +772,7 @@ const ViewBar: React.FC<{
       if (!index) return;
       if (datasetName) {
         recordIndexUse(datasetName, index.key);
+        recordSearchQuery(datasetName, query);
         setRecencyStamp((stamp) => stamp + 1);
       }
       trackEvent("view_bar_text_search", {
@@ -837,9 +834,22 @@ const ViewBar: React.FC<{
     ],
   );
 
-  // With no stages and no search there is nothing to summarize and nothing
-  // to make room for, so the bar stays in its full layout
-  const collapsed = !expanded && (state.stages.length > 0 || searchEnabled);
+  // Unset follows the view: stages present means the row starts visible
+  const stagesRowOpen = stagesOpen ?? state.stages.length > 0;
+  // The stages row is portaled (the header the bar lives in cannot grow), so
+  // it anchors to the bar's live viewport rect
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const stagesRect = useAnchorRect(barRef, stagesRowOpen);
+  // Opening via the toggle lands the keyboard in the row — but the row only
+  // mounts after the anchor rect resolves (an effect), so the focus waits
+  // for it rather than racing a requestAnimationFrame against the portal
+  const focusOnOpen = useRef(false);
+  useEffect(() => {
+    if (stagesRowOpen && stagesRect && focusOnOpen.current) {
+      focusOnOpen.current = false;
+      focusLastSlot();
+    }
+  }, [stagesRowOpen, stagesRect, focusLastSlot]);
 
   /**
    * Pending changes detector: whether the working state differs
@@ -855,12 +865,14 @@ const ViewBar: React.FC<{
   serializeWorkingRef.current = serializeWorking;
 
   //
-  // Leaving the bar closes the editor but keeps the draft — a half-described
-  // stage the user clicked away from is work in progress, not a mistake to
-  // undo. Its card stays in the bar with an outline saying what it needs.
-  // Clicks inside the bar, the editing popover, or a picker's portaled options
-  // are all still "working"; everything else is leaving.
+  // Leaving the bar closes the editor and, with no manual Apply anywhere,
+  // finishes the edit: a working state that differs from the applied view and
+  // has nothing left to fill in applies itself. A half-described stage stays
+  // as a pill saying what it needs — work in progress, not a mistake to undo.
+  // Clicks inside the bar, the stages row, the editing popover, or a portaled
+  // popout are all still "working"; everything else is leaving.
   //
+  const applyOnLeaveRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -868,14 +880,13 @@ const ViewBar: React.FC<{
 
       if (!target.isConnected) return;
       if (element?.closest("[data-cy='view-bar']")) return;
+      if (element?.closest("[data-cy='view-bar-stages-row']")) return;
       if (element?.closest("[data-cy='view-stage-editor']")) return;
+      if (element?.closest("[data-cy='view-bar-search-settings']")) return;
       if (element?.closest("[data-headlessui-portal]")) return;
 
       setEditingId(null);
-      // Leaving the bar also hands its real estate back to the search:
-      // the stage row folds into the summary chip. Drafts survive — the
-      // chip counts them and expanding shows them mid-edit.
-      setExpanded(false);
+      applyOnLeaveRef.current();
     };
 
     window.addEventListener("mousedown", onDown);
@@ -889,359 +900,269 @@ const ViewBar: React.FC<{
     return working !== viewFingerprint(currentView) && working !== inFlight;
   }, [serializeWorking, currentView, inFlight]);
 
+  applyOnLeaveRef.current = () => {
+    // A stage still missing required values is not finished — it stays a
+    // pill; apply() itself refuses anything invalid
+    if (hasPendingChanges && paramErrors.labels.length === 0) {
+      apply();
+    }
+  };
+
   /**
-   * Insertion slot styled as a typeahead {@link Input} — same shape
-   * as the dataset selector. The user types to filter stage names;
-   * picking one inserts that stage at this slot's index and
-   * auto-opens its editing popover so the kwargs form is the next
-   * thing they interact with.
-   *
-   * Collapsed by default to a single "+" icon to keep the bar
-   * compact; expands inline to a full text input on focus/click.
+   * The bar's Escape: the editor popover is portaled, so an Escape here means
+   * nothing is open — it walks the working state back to what is applied and
+   * hands the keyboard back. Shared by both rows (the stages row is portaled,
+   * so key events there do not bubble here).
+   */
+  const onBarKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Escape") return;
+
+    if (
+      viewFingerprint(currentView) !==
+      viewFingerprint(serializeWorkingRef.current())
+    ) {
+      setTouched(new Set());
+      setModeOverrides({});
+      dispatch({
+        type: "hydrate",
+        stages: workingStagesFromView(currentView),
+      });
+    }
+
+    // Escaping the bar is leaving it: the stages row folds away too
+    setEditingId(null);
+    setStagesOpen(false);
+    (document.activeElement as HTMLElement | null)?.blur();
+  };
+
+  /**
+   * Two rows. The first is the search bar — always present: the similarity
+   * input with its magnifying-glass settings, and the stages toggle at the
+   * right edge. The second is the stages row (slots, pills, editors),
+   * portaled under the bar because the header the bar lives in cannot grow.
    */
   return (
     <Stack
       orientation={Orientation.Row}
       spacing={Spacing.Xs}
       align={Align.Center}
-      // The outer row carries no surface of its own: the gutter below is the
-      // bar, and Apply sits beside it rather than inside it
       style={{ width: "100%", height: CHROME_CONTROL_HEIGHT, minWidth: 0 }}
       data-cy="view-bar"
-      onKeyDown={(e) => {
-        // The editor popover is portaled, so an Escape here means nothing is
-        // open: it walks the working state back to what is actually applied.
-        // (Escape inside the popover closes it and refocuses the pill, so the
-        // next press lands here.)
-        if (e.key !== "Escape") return;
-
-        // Pending work goes back to what is applied. With nothing pending
-        // there is nothing to undo — but Escape still means "I am done here".
-        if (
-          viewFingerprint(currentView) !==
-          viewFingerprint(serializeWorkingRef.current())
-        ) {
-          setTouched(new Set());
-          setModeOverrides({});
-          dispatch({
-            type: "hydrate",
-            stages: workingStagesFromView(currentView),
-          });
-        }
-
-        // Either way the bar gives the keyboard back: the stage that held
-        // focus may not even exist after a rebuild
-        (document.activeElement as HTMLElement | null)?.blur();
-      }}
+      onKeyDown={onBarKeyDown}
     >
-      {/*
-        The gutter: the bar's own surface, a darker and cooler one than
-        level-2, pulled from the header background so the bar reads as a form
-        canvas distinct from the chrome around it. `overflow: hidden` is what
-        makes stages disappear into its border as the row scrolls — safe
-        because every popout (editor, insert list, tooltips) is portaled.
-      */}
+      {/* The gutter: the bar's own surface — the search row's canvas */}
       <div
+        ref={barRef}
         style={{
           display: "flex",
           alignItems: "center",
           flex: 1,
           minWidth: 0,
           height: "100%",
-          // Counts its own border, so the bar and the dataset selector are
-          // the same height on screen and not one border apart
           boxSizing: "border-box",
-          // No padding here: any inset would clip the stages short of the
-          // border and show a sliver of this surface beside them
           background: "var(--fo-palette-background-level1)",
           border: "1px solid var(--fo-palette-primary-plainBorder)",
           borderRadius: 4,
-          overflow: "hidden",
         }}
       >
-        {collapsed && (
-          <div
+        <LanguageSearch
+          onSubmit={submitLanguageQuery}
+          enabled={searchEnabled}
+          history={searchHistory}
+          promptKeys={orderedPromptKeys}
+          selectedKey={resolvedSearchIndex?.key ?? null}
+          onSelectKey={setSearchIndexKey}
+          k={searchK}
+          onChangeK={changeSearchK}
+          onOpenPanel={openSimilarityPanel}
+        />
+        {/* The stages toggle: opens the second row where the view is built.
+            Carries the stage count so an applied view stays discoverable
+            while the row is folded away. */}
+        <Tooltip
+          anchor={Anchor.Bottom}
+          content={stagesRowOpen ? "Hide view stages" : "View stages"}
+        >
+          <Clickable
+            role="button"
+            tabIndex={0}
+            aria-label="View stages"
+            aria-expanded={stagesRowOpen}
+            data-cy="view-bar-stages-toggle"
+            onClick={() => {
+              if (stagesRowOpen) setEditingId(null);
+              // Opening lands the keyboard where the next stage starts
+              else focusOnOpen.current = true;
+              setStagesOpen(!stagesRowOpen);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                if (stagesRowOpen) setEditingId(null);
+                else focusOnOpen.current = true;
+                setStagesOpen(!stagesRowOpen);
+              }
+            }}
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
               gap: 4,
-              flex: 1,
-              minWidth: 0,
+              flexShrink: 0,
               height: "100%",
-              padding: "0 4px",
+              padding: "0 10px",
+              borderLeft: "1px solid var(--fo-palette-primary-plainBorder)",
+              color: stagesRowOpen
+                ? "var(--fo-palette-text-primary)"
+                : "var(--fo-palette-text-secondary)",
             }}
           >
-            {state.stages.length > 0 ? (
-              <CurrentViewChip
-                count={state.stages.length}
-                onExpand={() => setExpanded(true)}
-              />
-            ) : (
-              // An empty view has nothing to summarize; the slot is the way
-              // to start one by hand while the search keeps the rest
+            <Icon name={IconName.Sliders} size={Size.Sm} />
+            {state.stages.length > 0 && (
+              <TextBadge color={TextColor.Secondary} style={{ lineHeight: 1 }}>
+                {state.stages.length}
+              </TextBadge>
+            )}
+          </Clickable>
+        </Tooltip>
+      </div>
+
+      {/* The stages row: same gutter treatment, anchored under the bar */}
+      {stagesRowOpen &&
+        stagesRect &&
+        createPortal(
+          <div
+            data-cy="view-bar-stages-row"
+            onKeyDown={onBarKeyDown}
+            style={{
+              position: "fixed",
+              top: stagesRect.top + 4,
+              left: stagesRect.left,
+              width: stagesRect.width,
+              // Above the page, below voodo tooltips (z 1000) and the portaled
+              // editors (10000+) — a tooltip must never hide behind the row
+              zIndex: 900,
+              height: CHROME_CONTROL_HEIGHT,
+              display: "flex",
+              alignItems: "center",
+              boxSizing: "border-box",
+              background: "var(--fo-palette-background-level1)",
+              border: "1px solid var(--fo-palette-primary-plainBorder)",
+              borderRadius: 4,
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
+            }}
+          >
+            <div
+              className={SCROLLER_CLASS}
+              data-cy="view-bar-scroller"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                height: "100%",
+                // Scrolls sideways for long stage chains; the scrollbar
+                // itself is hidden in every engine by SCROLLER_CLASS
+                overflowX: "auto",
+                overflowY: "hidden",
+                flex: 1,
+                minWidth: 0,
+                // The breathing room lives inside the scroller, so it
+                // scrolls away with the content
+                padding: "0 4px",
+              }}
+            >
               <InsertSlot
                 index={0}
                 names={insertableNames}
                 describe={describeStage}
                 onInsert={insertStage}
+                // An empty row's slot IS the selector, input and all — a
+                // bare "+" alone in the row reads as a rendering failure
+                pinned={state.stages.length === 0}
               />
-            )}
-            {searchEnabled ? (
-              <LanguageSearch
-                onSubmit={submitLanguageQuery}
-                promptKeys={orderedPromptKeys}
-                selectedKey={resolvedSearchIndex?.key ?? null}
-                onSelectKey={setSearchIndexKey}
-                k={searchK}
-                onChangeK={changeSearchK}
-                onOpenPanel={openSimilarityPanel}
-              />
-            ) : (
-              <div
-                style={{ flex: 1, height: "100%", cursor: "pointer" }}
-                onClick={() => setExpanded(true)}
-                aria-hidden="true"
-              />
-            )}
-          </div>
-        )}
-        {!collapsed && (state.stages.length > 0 || searchEnabled) && (
-          <Tooltip anchor={Anchor.Right} content="Collapse to Current view">
-            <div
-              onClick={() => {
-                setEditingId(null);
-                setExpanded(false);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setEditingId(null);
-                  setExpanded(false);
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="Collapse view stages"
-              data-cy="view-bar-collapse"
-              style={{
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                marginLeft: 4,
-                color: "var(--fo-palette-text-secondary)",
-                flexShrink: 0,
-              }}
-            >
-              <Icon name={IconName.ChevronLeft} size={Size.Sm} />
+              {state.stages.map((stage, i) => {
+                const def = defsByName.get(stage.cls);
+                if (!def) return null;
+                return (
+                  <React.Fragment key={stage.id}>
+                    <StageCard
+                      errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
+                      // A stage holding a rejected value is invalid; one
+                      // merely missing required values is incomplete —
+                      // orange says "finish me", red says "fix me"
+                      invalid={[
+                        ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
+                      ].some((message) => message !== "Required")}
+                      kinds={activeKinds.get(stage.id) ?? NO_KINDS}
+                      onModeChange={(param, kind) =>
+                        changeMode(stage, param, kind)
+                      }
+                      stage={stage}
+                      definition={def}
+                      fieldOptions={
+                        editingId === stage.id
+                          ? editingFieldOptions
+                          : fieldOptions
+                      }
+                      allPaths={
+                        editingId === stage.id ? editingPaths : fieldPaths
+                      }
+                      allowedFor={
+                        editingId === stage.id ? editingAllowedFor : allowedFor
+                      }
+                      choicesFor={choicesFor}
+                      operators={operators}
+                      fieldKind={
+                        editingId === stage.id ? editingFieldKind : fieldKind
+                      }
+                      expanded={editingId === stage.id}
+                      onToggle={() =>
+                        setEditingId((id) =>
+                          id === stage.id ? null : stage.id,
+                        )
+                      }
+                      onChange={(name, value) => {
+                        markTouched(stage.id, name);
+                        dispatch({
+                          type: "setKwarg",
+                          id: stage.id,
+                          name,
+                          value,
+                        });
+                      }}
+                      onCommit={commitStage}
+                      onRemove={() => {
+                        if (editingId === stage.id) setEditingId(null);
+                        dispatch({ type: "removeStage", id: stage.id });
+                        // Removing a stage is a finished edit — apply once
+                        // the reducer's state lands (next render)
+                        autoApplyQueued.current = true;
+                      }}
+                    />
+                    <InsertSlot
+                      index={i + 1}
+                      names={insertableNames}
+                      describe={describeStage}
+                      onInsert={insertStage}
+                    />
+                  </React.Fragment>
+                );
+              })}
             </div>
-          </Tooltip>
-        )}
-        {!collapsed && (
-          <div
-            className={SCROLLER_CLASS}
-            data-cy="view-bar-scroller"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              height: "100%",
-              // Scrolls sideways for long stage chains; the scrollbar itself is
-              // hidden in every engine by SCROLLER_CLASS
-              overflowX: "auto",
-              overflowY: "hidden",
-              flex: 1,
-              minWidth: 0,
-              // The breathing room lives inside the scroller, so it scrolls
-              // away with the content and the stages meet the border exactly
-              padding: "0 4px",
-            }}
-          >
-            <InsertSlot
-              index={0}
-              names={insertableNames}
-              describe={describeStage}
-              onInsert={insertStage}
-              // With no stages and no text search there is nothing else in
-              // the bar — a bare "+" reads as a rendering failure, so the
-              // slot IS the selector, input and all
-              pinned={state.stages.length === 0 && !searchEnabled}
-            />
-            {state.stages.length === 0 && !searchEnabled && (
-              // Educational: text search exists but needs an index — the wand
-              // stays visible and opens the same settings popover, in its
-              // "enable semantic search" form
+            {state.stages.length > 0 && (
               <div
-                ref={educationWandRef}
-                style={{ position: "relative", marginLeft: 4, flexShrink: 0 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0 6px",
+                  flexShrink: 0,
+                }}
               >
-                <Clickable
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Text search requires a similarity index"
-                  data-cy="view-bar-search-education"
-                  onClick={() => setEducationOpen((open) => !open)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setEducationOpen((open) => !open);
-                    }
-                  }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    color: "var(--fo-palette-text-tertiary)",
-                  }}
-                >
-                  <Icon name={IconName.AI} size={Size.Sm} />
-                </Clickable>
-                {educationOpen && (
-                  <SearchSettingsPopover
-                    rect={educationRect}
-                    promptKeys={[]}
-                    selectedKey={null}
-                    onSelectKey={() => undefined}
-                    k={searchK}
-                    onChangeK={changeSearchK}
-                    onOpenPanel={openSimilarityPanel}
-                    onClose={() => setEducationOpen(false)}
-                  />
-                )}
+                <ClearViewButton onClear={clearView} />
               </div>
             )}
-            {state.stages.map((stage, i) => {
-              const def = defsByName.get(stage.cls);
-              if (!def) return null;
-              return (
-                <React.Fragment key={stage.id}>
-                  <StageCard
-                    errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
-                    // A stage holding a rejected value is invalid; one merely
-                    // missing required values is incomplete, which the card sees
-                    // for itself — orange says "finish me", red says "fix me"
-                    invalid={[
-                      ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
-                    ].some((message) => message !== "Required")}
-                    kinds={activeKinds.get(stage.id) ?? NO_KINDS}
-                    onModeChange={(param, kind) =>
-                      changeMode(stage, param, kind)
-                    }
-                    stage={stage}
-                    definition={def}
-                    fieldOptions={
-                      editingId === stage.id
-                        ? editingFieldOptions
-                        : fieldOptions
-                    }
-                    allPaths={
-                      editingId === stage.id ? editingPaths : fieldPaths
-                    }
-                    allowedFor={
-                      editingId === stage.id ? editingAllowedFor : allowedFor
-                    }
-                    choicesFor={choicesFor}
-                    operators={operators}
-                    fieldKind={
-                      editingId === stage.id ? editingFieldKind : fieldKind
-                    }
-                    expanded={editingId === stage.id}
-                    onToggle={() =>
-                      setEditingId((id) => (id === stage.id ? null : stage.id))
-                    }
-                    onChange={(name, value) => {
-                      markTouched(stage.id, name);
-                      dispatch({ type: "setKwarg", id: stage.id, name, value });
-                    }}
-                    onCommit={commitStage}
-                    onRemove={() => {
-                      if (editingId === stage.id) setEditingId(null);
-                      dispatch({ type: "removeStage", id: stage.id });
-                      // Removing a stage is a finished edit — apply once the
-                      // reducer's state lands (next render)
-                      autoApplyQueued.current = true;
-                    }}
-                  />
-                  <InsertSlot
-                    index={i + 1}
-                    names={insertableNames}
-                    describe={describeStage}
-                    onInsert={insertStage}
-                  />
-                </React.Fragment>
-              );
-            })}
-          </div>
+          </div>,
+          document.body,
         )}
-      </div>
-
-      {/* Apply — only animates in when the working state diverges from the
-          applied view, and lives outside the gutter so the one action that
-          runs the view is never scrolled away or clipped by it. */}
-      <div
-        ref={applyRef}
-        style={{
-          marginLeft: "auto",
-          flexShrink: 0,
-          // Centered in the gutter's band at its natural Xs height — a
-          // full-height Apply reads as a second gutter rather than a button
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          // Animated reveal: clip + fade + slide. `width` collapses
-          // to 0 when there's nothing to apply so the row stays
-          // tight; `opacity` and `transform` ramp for a soft entry.
-          overflow: "hidden",
-          maxWidth: hasPendingChanges ? 120 : 0,
-          opacity: hasPendingChanges ? 1 : 0,
-          transform: hasPendingChanges ? "translateX(0)" : "translateX(8px)",
-          transition:
-            "max-width 200ms ease-out, opacity 200ms ease-out, transform 200ms ease-out",
-          pointerEvents: hasPendingChanges ? "auto" : "none",
-        }}
-        aria-hidden={!hasPendingChanges}
-      >
-        <Tooltip
-          anchor={Anchor.Bottom}
-          content={
-            paramErrors.labels.length
-              ? `Fix: ${paramErrors.labels.join(", ")}`
-              : "Apply view"
-          }
-          style={{ display: "flex", alignItems: "center" }}
-        >
-          <Button
-            variant={Variant.Primary}
-            size={Size.Xs}
-            onClick={apply}
-            disabled={paramErrors.labels.length > 0}
-            // Hidden means hidden: while the wrapper is aria-hidden the
-            // button also leaves the tab order
-            tabIndex={hasPendingChanges ? undefined : -1}
-            data-cy="btn-apply-view-bar"
-          >
-            Apply
-          </Button>
-        </Tooltip>
-      </div>
-      {/* Clearing must survive the collapse: hover expands the chip away
-          under the pointer, so the [x] holds the bar's right edge in both
-          states. It sits after Apply so walking backward from Apply reaches
-          the stages without passing a destructive control. */}
-      {state.stages.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            paddingRight: 4,
-            flexShrink: 0,
-          }}
-        >
-          <ClearViewButton onClear={clearView} />
-        </div>
-      )}
     </Stack>
   );
 };

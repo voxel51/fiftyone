@@ -1,12 +1,20 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Natural-language search in the bar: typing a prompt and pressing Enter
- * appends a `SortBySimilarity` stage to the current view. Only offered when
- * the dataset has a sample-level similarity index that accepts text prompts.
+ * Similarity search in the bar: typing a prompt and pressing Enter appends a
+ * `SortBySimilarity` stage to the current view. The box always renders —
+ * without a prompt-capable index it becomes the on-ramp: its dropdown offers
+ * "Configure similarity search", which opens the Similarity Search panel.
+ *
+ * The magnifying glass is where the search's settings live (which index, how
+ * many matches); focusing the input offers the dataset's previous queries.
  */
 
-import { LoadingDots, useAnchorRect } from "@fiftyone/components";
+import {
+  AnchoredListbox,
+  LoadingDots,
+  useAnchorRect,
+} from "@fiftyone/components";
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import { useViewChangePending } from "@fiftyone/state";
 import {
@@ -29,9 +37,16 @@ export const LANGUAGE_SEARCH_INPUT_CY = "view-bar-language-search";
 /** The bar's text size — chips and slots render at 13px, the search too. */
 const SEARCH_FONT_SIZE = 13;
 
+/** The no-index dropdown's one row: the on-ramp to creating an index. */
+const CONFIGURE_CTA = "Configure similarity search";
+
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
-  /** The dataset's prompt-capable indexes, for the wand's settings popover. */
+  /** Whether a prompt-capable index exists — typing only searches with one. */
+  enabled: boolean;
+  /** The dataset's previous queries, most recent first. */
+  history: readonly string[];
+  /** The dataset's prompt-capable indexes, for the settings popover. */
   promptKeys: PromptableSimilarityIndex[];
   /** The index quick search will use. */
   selectedKey: string | null;
@@ -43,6 +58,8 @@ export interface LanguageSearchProps {
 
 export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   onSubmit,
+  enabled,
+  history,
   promptKeys,
   selectedKey,
   onSelectKey,
@@ -65,8 +82,8 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       const target = e.target as Element;
       if (settingsRef.current?.contains(target)) return;
       // The popover portals to the body, so it is not a DOM child of the
-      // wand — and the index selector's menu portals out of the popover in
-      // turn (headlessui), so neither counts as a click-out
+      // trigger — and the index selector's menu portals out of the popover
+      // in turn (headlessui), so neither counts as a click-out
       if (target.closest?.('[data-cy="view-bar-search-settings"]')) return;
       if (target.closest?.("[data-headlessui-state]")) return;
       setSettingsOpen(false);
@@ -74,6 +91,34 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
   }, [settingsOpen]);
+
+  // The dropdown under the box: previous queries, or the configure CTA when
+  // the dataset has no prompt-capable index yet. Focus-gated; option rows
+  // preventDefault their mousedown so picking never blurs the input.
+  const [focused, setFocused] = React.useState(false);
+  const [active, setActive] = React.useState(0);
+  const inputWrapRef = React.useRef<HTMLDivElement | null>(null);
+  const options = React.useMemo(() => {
+    if (!enabled) return [CONFIGURE_CTA];
+    const q = query.trim().toLowerCase();
+    return q
+      ? history.filter((h) => h.toLowerCase().includes(q) && h !== query)
+      : [...history];
+  }, [enabled, history, query]);
+  const listOpen = focused && !pending && options.length > 0;
+  const listRect = useAnchorRect(inputWrapRef, listOpen);
+
+  const pick = React.useCallback(
+    (option: string) => {
+      if (!enabled) {
+        onOpenPanel();
+        return;
+      }
+      setQuery(option);
+      onSubmit(option);
+    },
+    [enabled, onOpenPanel, onSubmit],
+  );
 
   return (
     <div
@@ -84,16 +129,17 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         flex: 1,
         minWidth: 0,
         height: "100%",
-        padding: "0 10px 0 6px",
+        padding: "0 10px 0 8px",
       }}
     >
-      {/* The wand is where the search's settings live — which index, how
-          many matches, and the hand-off to the Similarity Search panel */}
-      <div ref={settingsRef} style={{ position: "relative", flexShrink: 0 }}>
+      {/* The magnifying glass is where the search's settings live — which
+          index, how many matches, and the hand-off to the Similarity Search
+          panel (or, with no index, the explanation and the on-ramp) */}
+      <div ref={settingsRef} style={{ display: "inline-flex", flexShrink: 0 }}>
         <Clickable
           role="button"
           tabIndex={0}
-          aria-label="Text search settings"
+          aria-label="Similarity search settings"
           data-cy="view-bar-search-settings-trigger"
           onClick={() => setSettingsOpen((open) => !open)}
           onKeyDown={(e) => {
@@ -104,7 +150,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
           }}
           style={{ display: "inline-flex", alignItems: "center" }}
         >
-          <Icon name={IconName.AI} size={Size.Sm} />
+          <Icon name={IconName.Search} size={Size.Sm} />
         </Clickable>
         {settingsOpen && (
           <SearchSettingsPopover
@@ -122,18 +168,36 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       {/* voodo's Input roots itself in a block-level Field, so it fills a
           block parent but never grows as a flex item — the growing is this
           wrapper's job, and the field then takes its full width */}
-      <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+      <div
+        ref={inputWrapRef}
+        style={{ flex: 1, minWidth: 0, position: "relative" }}
+      >
         <Input
           size={Size.Sm}
           value={query}
-          placeholder="Search by text"
+          placeholder="Search by similarity"
           data-cy={LANGUAGE_SEARCH_INPUT_CY}
           {...NO_BROWSER_SUGGESTIONS}
-          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setActive(0);
+          }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && query.trim()) {
-              // The query stays visible — it names the view now loading
-              onSubmit(query.trim());
+            if (listOpen && e.key === "ArrowDown") {
+              e.preventDefault();
+              setActive((i) => Math.min(i + 1, options.length - 1));
+            } else if (listOpen && e.key === "ArrowUp") {
+              e.preventDefault();
+              setActive((i) => Math.max(i - 1, 0));
+            } else if (e.key === "Enter") {
+              if (enabled && query.trim()) {
+                // The query stays visible — it names the view now loading
+                onSubmit(query.trim());
+              } else if (listOpen && options[active]) {
+                pick(options[active]);
+              }
             } else if (e.key === "Escape" && query) {
               // One Escape clears the draft; the bar's own handler only sees
               // the next press, so an unrelated reset never eats a typed query
@@ -175,16 +239,36 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
             <LoadingDots text={query.trim()} />
           </Text>
         )}
+        <AnchoredListbox
+          rect={listRect}
+          options={options}
+          activeIndex={active}
+          onPick={pick}
+          onHighlight={setActive}
+          optionId={(i) => `view-bar-search-history-${i}`}
+          data-cy="view-bar-search-history"
+          maxHeight={280}
+          renderOption={(option) =>
+            enabled ? (
+              option
+            ) : (
+              // The CTA row reads as an action, not a past query
+              <Text
+                variant={TextVariant.Sm}
+                color={TextColor.Secondary}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Icon name={IconName.Settings} size={Size.Sm} />
+                {option}
+              </Text>
+            )
+          }
+        />
       </div>
-      {query.trim() && !pending && (
-        <Text
-          variant={TextVariant.Xs}
-          color={TextColor.Tertiary}
-          style={{ whiteSpace: "nowrap", flexShrink: 0 }}
-        >
-          ⏎ Similarity search
-        </Text>
-      )}
     </div>
   );
 };

@@ -1,9 +1,10 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 
 /**
- * The view bar: a row of stage cards with an insert slot between each pair.
- * The popover for the stage being edited is its own POM —
- * {@link StageEditorPom} — returned by `addStage` and `editStage`.
+ * The view bar: a search row in the header, with the stage cards in a
+ * portaled second row the stages toggle opens. The popover for the stage
+ * being edited is its own POM — {@link StageEditorPom} — returned by
+ * `addStage` and `editStage`.
  */
 export class ViewBarPom {
   readonly page: Page;
@@ -20,43 +21,57 @@ export class ViewBarPom {
     this.stageEditor = new StageEditorPom(page);
   }
 
-  get applyBtn() {
-    return this.locator.getByTestId("btn-apply-view-bar");
+  /** The stages row — portaled to the body, so found at the page level. */
+  get stagesRow() {
+    return this.page.getByTestId("view-bar-stages-row");
+  }
+
+  /** The search row's right-edge toggle that opens the stages row. */
+  get stagesToggle() {
+    return this.locator.getByTestId("view-bar-stages-toggle");
   }
 
   get viewStages() {
-    return this.locator.getByTestId("view-stage-container");
+    return this.stagesRow.getByTestId("view-stage-container");
   }
 
-  /** The collapsed "Current view · N stages" summary chip. */
-  get currentViewChip() {
-    return this.locator.getByTestId("view-bar-current-view");
+  /** The similarity search input in the bar's first row. */
+  get searchInput() {
+    return this.locator.getByTestId("view-bar-language-search");
   }
 
   /** The typeahead input an insert slot opens into. */
   get insertTypeahead() {
-    return this.locator.getByPlaceholder("Add stage…");
+    return this.stagesRow.getByPlaceholder("Add stage…");
   }
 
   /**
-   * Expands a collapsed bar into its stage pills. A bar hydrated from a
-   * saved view starts as the summary chip; clicking it is the expansion
-   * gesture.
+   * Makes the stages row visible. A bar holding stages opens it on its own;
+   * an empty bar needs the toggle. The toggle's aria-expanded reflects the
+   * open state synchronously, so this never races the row's portal mount.
    */
-  async expand() {
-    await this.currentViewChip.click();
-    await expect(this.viewStages.first()).toBeVisible();
+  async openStages() {
+    const expanded = await this.stagesToggle.getAttribute("aria-expanded");
+    if (expanded !== "true") {
+      await this.stagesToggle.click();
+    }
+    await expect(this.stagesRow).toBeVisible();
   }
 
-  apply() {
-    return this.applyBtn.click();
+  /**
+   * Waits for the stages row of a bar that opens it on its own — a view
+   * hydrated with stages starts with the row visible.
+   */
+  async expand() {
+    await expect(this.viewStages.first()).toBeVisible();
   }
 
   /** Appends a stage and returns its open editor. */
   async addStage(name: string) {
-    // An empty bar pins its insert slot open — the typeahead input IS the
+    await this.openStages();
+    // An empty row pins its insert slot open — the typeahead input IS the
     // slot, so there is no "+" button to click. Focusing it opens the list.
-    await this.locator
+    await this.stagesRow
       .getByLabel("Insert stage")
       .last()
       .or(this.insertTypeahead)

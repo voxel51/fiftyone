@@ -80,9 +80,9 @@ test.describe("view bar keyboard", () => {
     request,
     baseURL,
   }) => {
-    // An empty bar pins its insert slot open — the typeahead IS the slot.
-    // Seed focus there; everything after this is keys.
-    await viewBar.insertTypeahead.focus();
+    // Opening the stages row lands the keyboard in the pinned typeahead —
+    // an empty row's slot IS the selector. Everything after this is keys.
+    await viewBar.openStages();
     await expect(viewBar.insertTypeahead).toBeFocused();
 
     // Type to filter, Enter inserts (typed text is the intent Enter needs)
@@ -94,7 +94,7 @@ test.describe("view bar keyboard", () => {
     // insert slot, where the second stage begins
     await grid.run(() => page.keyboard.press("Enter"));
     await expect(
-      viewBar.locator.getByLabel("Insert stage").last(),
+      viewBar.stagesRow.getByLabel("Insert stage").last(),
     ).toBeFocused();
 
     await page.keyboard.press("Enter");
@@ -138,13 +138,19 @@ test.describe("view bar keyboard", () => {
     ).toBeFocused();
 
     await page.keyboard.press("Escape");
+    // The second Escape walks the working state back AND folds the row away
+    await expect(viewBar.stagesRow).toBeHidden();
     await expect(viewBar.viewStages).toHaveCount(0);
 
     // Nothing in the bar holds focus once the draft is gone
     const focusedInBar = await page.evaluate(() => {
-      const bar = document.querySelector("[data-cy='view-bar']");
+      // The stages row is portaled, so "in the bar" spans both containers
       const active = document.activeElement;
-      return Boolean(bar && active && bar.contains(active));
+      return Boolean(
+        active?.closest(
+          "[data-cy='view-bar'], [data-cy='view-bar-stages-row']",
+        ),
+      );
     });
     expect(focusedInBar).toBe(false);
   });
@@ -165,7 +171,7 @@ test.describe("view bar keyboard", () => {
     // than die with a button that isn't there
     await grid.run(() => editor.commit("limit"));
 
-    const slots = viewBar.locator.getByLabel("Insert stage");
+    const slots = viewBar.stagesRow.getByLabel("Insert stage");
     await expect(slots.last()).toBeFocused();
 
     // And that focus is enough to describe the next stage
@@ -177,25 +183,27 @@ test.describe("view bar keyboard", () => {
   });
 
   //
-  // Tab walks the bar in reading order and Shift+Tab walks back: the first
-  // insert slot is the entry point, Apply is the exit.
+  // Tab walks the stages row in reading order and Shift+Tab walks back: the
+  // first insert slot is the entry point, the last insert slot is the exit —
+  // there is no Apply button; finished edits apply themselves.
   //
-  test("Tab and Shift+Tab traverse the bar", async ({ viewBar, page }) => {
+  test("Tab and Shift+Tab traverse the stages row", async ({
+    viewBar,
+    page,
+  }) => {
     const editor = await viewBar.addStage("Limit");
     await editor.fill("limit", "3");
 
-    // Escape keeps the stage as a pending draft (a commit would apply it
-    // and dismiss Apply) — pending work is what makes Apply the exit stop
+    // Escape keeps the stage as a pending draft — the pill stays, saying
+    // what it needs, and the row keeps its slots on either side of it
     await page.keyboard.press("Escape");
     await editor.assert.isClosed();
-    await expect(viewBar.applyBtn).toBeVisible();
 
-    // Pending changes, so Apply is the last stop
-    const slots = viewBar.locator.getByLabel("Insert stage");
+    const slots = viewBar.stagesRow.getByLabel("Insert stage");
     await slots.first().focus();
     await expect(slots.first()).toBeFocused();
 
-    // Forward: through the stage's own controls, ending on Apply
+    // Forward: through the stage's own controls, ending on the last slot
     const forward: string[] = [];
     for (let i = 0; i < 8; i++) {
       await page.keyboard.press("Tab");
@@ -208,16 +216,14 @@ test.describe("view bar keyboard", () => {
             "",
         ),
       );
-      if (
-        await viewBar.applyBtn.evaluate((el) => el === document.activeElement)
-      )
+      if (await slots.last().evaluate((el) => el === document.activeElement))
         break;
     }
     expect(forward).toContain("Edit stage");
     expect(forward).toContain("Remove stage");
-    await expect(viewBar.applyBtn).toBeFocused();
+    await expect(slots.last()).toBeFocused();
 
-    // Backward from Apply returns through the same stops to the first slot
+    // Backward returns through the same stops to the first slot
     for (let i = 0; i < 8; i++) {
       await page.keyboard.press("Shift+Tab");
       if (await slots.first().evaluate((el) => el === document.activeElement))
@@ -251,12 +257,19 @@ test.describe("view bar keyboard", () => {
     ).toBeFocused();
     await page.keyboard.press("Escape");
     const focusedInBar = await page.evaluate(() => {
-      const bar = document.querySelector("[data-cy='view-bar']");
+      // The stages row is portaled, so "in the bar" spans both containers
       const active = document.activeElement;
-      return Boolean(bar && active && bar.contains(active));
+      return Boolean(
+        active?.closest(
+          "[data-cy='view-bar'], [data-cy='view-bar-stages-row']",
+        ),
+      );
     });
     expect(focusedInBar).toBe(false);
-    // and the applied stage is still there, since nothing was pending
+    // The row folded away with the Escape; reopening shows the applied
+    // stage untouched, since nothing was pending
+    await expect(viewBar.stagesRow).toBeHidden();
+    await viewBar.openStages();
     await expect(viewBar.viewStages).toHaveCount(1);
   });
 

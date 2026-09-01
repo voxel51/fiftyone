@@ -72,12 +72,11 @@ test.describe("view bar", () => {
       searchParams: new URLSearchParams({ view: "long-chain" }),
     });
 
-    // A hydrated bar starts as the collapsed summary chip
+    // A bar hydrated with stages opens its stages row on its own
     await viewBar.expand();
     await expect(viewBar.viewStages).toHaveCount(8);
 
-    const bar = page.getByTestId("view-bar");
-    const layout = await bar.evaluate((element) => {
+    const layout = await viewBar.stagesRow.evaluate((element) => {
       // The scroller, not its gutter wrapper: the gutter's only child is the
       // scroller's own box, which always fits, so the gutter never reports
       // the overflow being asserted
@@ -85,7 +84,7 @@ test.describe("view bar", () => {
         "[data-cy='view-bar-scroller']",
       );
       return {
-        barHeight: element.getBoundingClientRect().height,
+        rowHeight: element.getBoundingClientRect().height,
         pillsOverflow: scroller.scrollWidth > scroller.clientWidth,
         pageOverflow: document.documentElement.scrollWidth > window.innerWidth,
       };
@@ -94,8 +93,8 @@ test.describe("view bar", () => {
     // The pills overflow their scroller; the page does not grow sideways
     expect(layout.pillsOverflow).toBe(true);
     expect(layout.pageOverflow).toBe(false);
-    // One-row bar: nothing wrapped or spilled vertically
-    expect(layout.barHeight).toBeLessThan(48);
+    // One-row stages row: nothing wrapped or spilled vertically
+    expect(layout.rowHeight).toBeLessThan(48);
 
     // Removing a stage is a finished edit: it applies on its own, no Apply
     // stop — the grid reload is the proof the removal ran
@@ -171,7 +170,7 @@ test.describe("view bar", () => {
       searchParams: new URLSearchParams({ view: "built-in-python" }),
     });
 
-    // A hydrated bar starts as the collapsed summary chip
+    // A bar hydrated with stages opens its stages row on its own
     await viewBar.expand();
     await viewBar.assert.stageCount(1);
     await viewBar.assert.hasViewStage("Match");
