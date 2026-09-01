@@ -897,6 +897,8 @@ const ViewBarInner: React.FC<{
 
       setEditingId(null);
       applyOnLeaveRef.current();
+      // Leaving the bar folds the stages row away too
+      setStagesOpen(false);
     };
 
     window.addEventListener("mousedown", onDown);
@@ -1055,6 +1057,10 @@ const ViewBarInner: React.FC<{
               display: "flex",
               alignItems: "center",
               boxSizing: "border-box",
+              // Portaled to the body, the row inherits ITS text color — the
+              // enterprise shell's body is black-on-white, so the app text
+              // color is declared rather than inherited
+              color: "var(--fo-palette-text-primary)",
               background: "var(--fo-palette-background-level1)",
               border: "1px solid var(--fo-palette-primary-plainBorder)",
               borderRadius: 4,
