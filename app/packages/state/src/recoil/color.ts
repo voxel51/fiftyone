@@ -19,6 +19,7 @@ import {
   hexToRgb,
   toCamelCase,
 } from "@fiftyone/utilities";
+import { useCallback } from "react";
 import { selector, selectorFamily, useRecoilValue } from "recoil";
 import * as atoms from "./atoms";
 import { configData } from "./config";
@@ -158,6 +159,45 @@ export const pathColor = selectorFamily<string, string>({
       return map(path);
     },
 });
+
+/**
+ * Colors for a set of multimodal projection paths, resolved exactly as the
+ * sidebar resolves them, so a grain's intervals on the grid tile and its rows
+ * on the episode timeline match the sidebar entry the user filtered from.
+ *
+ * Takes the paths up front rather than returning a `(path) => color` closure
+ * the way {@link temporalTagColor} does: {@link pathColor} reads schema and
+ * color-scheme state per path through Recoil, which cannot be evaluated lazily
+ * inside a plain function.
+ */
+const grainColors = selectorFamily<Record<string, string>, readonly string[]>({
+  key: "grainColors",
+  get:
+    (paths) =>
+    ({ get }) =>
+      Object.fromEntries(paths.map((path) => [path, get(pathColor(path))])),
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+/**
+ * Domain hook for {@link grainColors}: returns a `(path: string) => string`
+ * mapping each requested multimodal projection path to its sidebar color.
+ *
+ * A path that was not requested falls back to the seeded pool, so a caller
+ * that discovers a path late still gets a stable color rather than nothing.
+ */
+export const useGrainColor = (
+  paths: readonly string[],
+): ((path: string) => string) => {
+  const colors = useRecoilValue(grainColors(paths));
+  const map = useRecoilValue(colorMap);
+  return useCallback(
+    (path: string) => colors[path] ?? map(path),
+    [colors, map],
+  );
+};
 
 export const eligibleFieldsToCustomizeColor = selector({
   key: "eligibleFieldsToCustomizeColor",
