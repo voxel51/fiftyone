@@ -409,7 +409,6 @@ def register_zoo_model_source(url_or_gh_repo, overwrite=False):
         overwrite (False): whether to overwrite any existing files
     """
     _parse_model_identifier(url_or_gh_repo, overwrite=overwrite)
-    _invalidate_zoo_models_manifest()
 
 
 def delete_zoo_model_source(url_or_gh_repo):
@@ -798,6 +797,9 @@ def _parse_model_identifier(url_or_gh_repo, overwrite=False):
 
     if overwrite or url not in remote_sources:
         _download_model_metadata(url, overwrite=overwrite)
+        # The download wrote manifests the memoized one predates, and the
+        # lookup that follows this call reads through that memo
+        _invalidate_zoo_models_manifest()
 
 
 def _get_model(name_or_url, model_name=None):

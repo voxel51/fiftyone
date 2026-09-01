@@ -621,9 +621,18 @@ def _processor_output_is_ragged(transforms):
     if not isinstance(size, dict):
         return False
 
-    if getattr(image_processor, "do_center_crop", False) and getattr(
-        image_processor, "crop_size", None
-    ):
+    # What the CALL will use: the handler forwards its kwargs to the
+    # processor, so an override there beats the processor's own default
+    kwargs = getattr(transforms, "kwargs", None) or {}
+    do_center_crop = kwargs.get(
+        "do_center_crop", getattr(image_processor, "do_center_crop", False)
+    )
+    crop_size = kwargs.get(
+        "crop_size", getattr(image_processor, "crop_size", None)
+    )
+    do_pad = kwargs.get("do_pad", getattr(image_processor, "do_pad", False))
+
+    if do_center_crop and crop_size:
         return False
 
     if size.get("height") and size.get("width"):
@@ -633,7 +642,7 @@ def _processor_output_is_ragged(transforms):
     if len(edges) == 2:
         # aspect ratio is preserved between the two bounds, so with padding
         # disabled a mixed-aspect batch cannot be stacked
-        return not getattr(image_processor, "do_pad", False)
+        return not do_pad
 
     return len(edges) == 1
 

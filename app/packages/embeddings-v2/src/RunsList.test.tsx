@@ -210,17 +210,23 @@ describe("RunsList", () => {
   // card silently dropped its date for every run because `new Date(string)`
   // cannot parse "1755913481733"
   it("dates a run whose timestamp arrives as epoch milliseconds", () => {
+    const epochMs = Date.UTC(2026, 7, 23, 12);
+    // Derived, not hardcoded: the card formats in the RUNNER's zone, so a
+    // fixed string only holds in the zones the instant happens to fall in
+    const expected = new Date(epochMs).toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
     render(
       <RunsList
-        // Noon UTC: the card formats in the viewer's zone, so a midnight
-        // instant would render as the previous day west of Greenwich
-        runs={[run("plain", { timestamp: String(Date.UTC(2026, 7, 23, 12)) })]}
+        runs={[run("plain", { timestamp: String(epochMs) })]}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("last updated 08/23/2026")).toBeDefined();
+    expect(screen.getByText(`last updated ${expected}`)).toBeDefined();
   });
 
   it("dates a run from its creation timestamp", () => {

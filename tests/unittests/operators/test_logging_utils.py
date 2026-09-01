@@ -39,7 +39,7 @@ class TestLineFlushedStdio:
             tee.write(_bar(pct, pct))
         tee.drain()
 
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
         assert len(lines) == 101
         for i, line in enumerate(lines):
             assert f" {i:3d}%|" in line
@@ -49,7 +49,7 @@ class TestLineFlushedStdio:
             tee.write(_bar(42, n))
         tee.drain()
 
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
         assert len(lines) == 1
         assert " 42%|" in lines[0]
         assert "50/100" in lines[0]
@@ -61,7 +61,7 @@ class TestLineFlushedStdio:
         tee.write(_bar(1, 1))
         tee.drain()
 
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
         pcts = [int(line.split("%")[0].strip()) for line in lines]
         assert pcts == [90, 91, 0, 1]
 
@@ -72,7 +72,7 @@ class TestLineFlushedStdio:
             tee.write(_eta_barless(1, n))
         tee.drain()
 
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
         assert len(lines) == 1
         assert lines[0].startswith("1%")
         assert "15488/1885099" in lines[0]
@@ -84,8 +84,8 @@ class TestLineFlushedStdio:
         tee.write(_eta_barless(2, 38000))
         tee.drain()
 
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
-        pcts = [int(l.split("%", 1)[0].strip()) for l in lines]
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
+        pcts = [int(line.split("%", 1)[0].strip()) for line in lines]
         assert pcts == [1, 2]
 
     def test_empty_bar_progress_is_throttled(self, tee, sink):
@@ -94,7 +94,7 @@ class TestLineFlushedStdio:
             tee.write(f"\r  1% ||{n}/1885099 [1m elapsed, 2h remaining]")
         tee.drain()
 
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
         assert len(lines) == 1
 
     def test_carriage_return_becomes_newline(self, tee, sink):
@@ -112,11 +112,11 @@ class TestLineFlushedStdio:
                 pb.update()
         tee.drain()
 
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
         assert (
             len(lines) <= 105
         ), f"throttling failed: {len(lines)} lines for {total} updates"
-        pcts = [int(l.split("%", 1)[0].strip()) for l in lines]
+        pcts = [int(line.split("%", 1)[0].strip()) for line in lines]
         assert pcts == sorted(pcts)
         assert max(pcts) >= 99
 
@@ -129,8 +129,8 @@ class TestLineFlushedStdio:
 
         # the run's true final state arrives via eta's close-time log
         # record, which carries no leading bare count and is never gated
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
-        counts = [int(l.split()[0]) for l in lines]
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
+        counts = [int(line.split()[0]) for line in lines]
         assert counts == [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
 
     def test_totalless_progress_resets_on_new_bar(self, tee, sink):
@@ -139,8 +139,8 @@ class TestLineFlushedStdio:
         tee.write(_eta_totalless(3, 10))
         tee.drain()
 
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
-        counts = [int(l.split()[0]) for l in lines]
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
+        counts = [int(line.split()[0]) for line in lines]
         assert counts == [512, 3]
 
     def test_spinnerless_lines_with_leading_numbers_are_not_throttled(
@@ -164,9 +164,9 @@ class TestLineFlushedStdio:
         )
         tee.drain()
 
-        lines = [l for l in sink.getvalue().splitlines() if l.strip()]
-        assert any("10%|" in l for l in lines)
-        assert any("some extra" in l for l in lines)
+        lines = [line for line in sink.getvalue().splitlines() if line.strip()]
+        assert any("10%|" in line for line in lines)
+        assert any("some extra" in line for line in lines)
 
     def test_drain_emits_unterminated_buffer(self, tee, sink):
         tee.write("partial line with no terminator")

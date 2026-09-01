@@ -176,6 +176,16 @@ def _materialize_buffers(model):
         if not any(b.is_meta for b in module.buffers(recurse=False)):
             continue
 
+        # Rebuilding RE-INITIALIZES: a module holding its own weights would
+        # come back with random ones, and the emptiness check below cannot
+        # tell a fresh tensor from a loaded one
+        if any(True for _ in module.parameters(recurse=False)):
+            raise ValueError(
+                "%s holds parameters as well as unmaterialized buffers, so "
+                "rebuilding it would discard its weights"
+                % (name or type(module).__name__)
+            )
+
         parent, _, attr = name.rpartition(".")
         owner = model.get_submodule(parent) if parent else model
         setattr(owner, attr, type(module)(config=model.config))

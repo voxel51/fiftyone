@@ -10,8 +10,9 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import { HeaderView } from ".";
-import { getComponentProps, getPath } from "../utils";
+import { getComponentProps, getErrorsForView, getPath } from "../utils";
 import DynamicIO from "./DynamicIO";
+import ErrorView from "./ErrorView";
 
 export default function ObjectView(props) {
   const { schema, path, data } = props;
@@ -59,23 +60,27 @@ export default function ObjectView(props) {
     <Box {...getComponentProps(props, "container")}>
       {collapsible ? (
         // The trigger carries the label, so HeaderView is skipped here — it
-        // would print the same heading a second time above the strip
+        // would print the same heading a second time above the strip. Its
+        // errors are rendered beside the trigger rather than lost with it.
         <Collapsible
           defaultOpen={Boolean(defaultExpanded)}
           header={({ open, toggle }) => (
-            <Clickable
-              onClick={toggle}
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-            >
-              <Icon
-                name={open ? IconName.ChevronBottom : IconName.ChevronRight}
-                size={Size.Sm}
-                color={TextColor.Secondary}
-              />
-              <Text variant={TextVariant.Md} color={TextColor.Fg}>
-                {label}
-              </Text>
-            </Clickable>
+            <>
+              <Clickable
+                onClick={toggle}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                <Icon
+                  name={open ? IconName.ChevronBottom : IconName.ChevronRight}
+                  size={Size.Sm}
+                  color={TextColor.Secondary}
+                />
+                <Text variant={TextVariant.Md} color={TextColor.Fg}>
+                  {label}
+                </Text>
+              </Clickable>
+              <ErrorView schema={{}} data={getErrorsForView(props)} />
+            </>
           )}
         >
           {grid}

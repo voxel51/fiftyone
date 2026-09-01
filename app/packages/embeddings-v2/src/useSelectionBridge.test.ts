@@ -697,6 +697,44 @@ describe("useSelectionBridge", () => {
     );
   });
 
+  it("drops a patches click that a clear superseded while it resolved", async () => {
+    let settle: (info: SampleInfo) => void = () => undefined;
+    vi.mocked(fetchSampleInfo).mockReturnValue(
+      new Promise<SampleInfo>((resolve) => {
+        settle = resolve;
+      }),
+    );
+    const opts = options({ patchesField: "ground_truth" });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() =>
+      result.current.handlePointClick({
+        index: 7,
+        id: "label7",
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+    // The reader gives up on the click before the server answers
+    act(() => result.current.clearAll());
+    vi.mocked(opts.publishSelection).mockClear();
+
+    await act(async () => {
+      settle({
+        id: "label7",
+        sampleId: "sample7",
+        filepath: null,
+        media: null,
+        value: null,
+      } satisfies SampleInfo);
+    });
+
+    // Restoring it here would resurrect a selection that was deliberately
+    // dropped, with no gesture to explain it
+    expect(opts.publishSelection).not.toHaveBeenCalled();
+  });
+
   it("resolves the owning sample for patches runs before toggling", async () => {
     vi.mocked(fetchSampleInfo).mockResolvedValue({
       id: "label7",

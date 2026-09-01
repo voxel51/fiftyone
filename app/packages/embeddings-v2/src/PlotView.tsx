@@ -191,7 +191,9 @@ export default function PlotView({
         onClosePinned: unpinHover,
         hover,
         hoverHit,
-        hoverAction: features.hoverAction,
+        // Select mode's card follows the pointer, so its button is out of
+        // reach — the action is offered only where the card can be frozen
+        hoverAction: mode === "select" ? null : features.hoverAction,
         registerChart,
       }
     : null;

@@ -124,6 +124,10 @@ export function useSelectionBridge({
   // would otherwise each build from the same stale render's value, the
   // second dropping the first
   const clickedSamples = useRef(new Set<string>());
+  // Invalidates a patches click still resolving server-side. NOT lassoSeq,
+  // which every click bumps — overlapping clicks must still accumulate; only
+  // a clear or a lasso replaces the click layer wholesale.
+  const clickSeq = useRef(0);
   // Which POINTS the reader clicked, per sample. A click chooses one point,
   // not everything its sample owns: a multimodal episode owns every window of
   // itself, so decorating with all of them lit the entire episode's timeline
@@ -136,6 +140,7 @@ export function useSelectionBridge({
   // Stable because the Esc effect below depends on it
   const clearAll = useCallback(() => {
     lassoSeq.current++;
+    clickSeq.current++;
     resetExtended();
     clickedPoints.current.clear();
     clickedSamples.current.clear();
@@ -232,6 +237,7 @@ export function useSelectionBridge({
   ) => {
     if (!datasetName || !brainKey) return;
     const seq = ++lassoSeq.current;
+    clickSeq.current++;
     // A failure banner describes the previous gesture; a new one starts
     // clean (the success path below still resets, as a race safeguard)
     setError(null);
@@ -390,8 +396,14 @@ export function useSelectionBridge({
     }
     if (!datasetName || !brainKey) return;
     // Patches point: resolve the label to its owning sample, server-side
+    const seq = clickSeq.current;
     fetchSampleInfo(datasetName, brainKey, hit.index, null)
-      .then((info) => toggleSample(info.sampleId, hit.index))
+      .then((info) => {
+        // A clear or a lasso landed while this resolved; toggling now would
+        // restore a click layer the reader has already replaced
+        if (seq !== clickSeq.current) return;
+        toggleSample(info.sampleId, hit.index);
+      })
       .catch(() => undefined);
   };
 
