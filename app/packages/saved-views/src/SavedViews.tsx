@@ -204,6 +204,12 @@ function SavedViewsInner({ hasUnsavedContent }: SavedViewsProps) {
         selected={selected}
         onSelect={(item) => {
           setSelected(item);
+          // "Unsaved view" is a placeholder, not a saved view: its slug must
+          // never reach the server as one — picking it clears the view
+          if (item.id === fos.DEFAULT_SELECTED.id) {
+            resetView();
+            return;
+          }
           setViewName(item.slug);
           trackEvent("select_saved_view");
         }}
