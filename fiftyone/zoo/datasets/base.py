@@ -13,6 +13,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
@@ -30,6 +31,11 @@ import fiftyone.utils.sama as fous
 import fiftyone.utils.places as foup
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
+
+hfh = fou.lazy_import(
+    "huggingface_hub",
+    callback=lambda: fou.ensure_package("huggingface_hub>=0.20.0"),
+)
 
 
 logger = logging.getLogger(__name__)
@@ -3433,6 +3439,74 @@ class UCF101Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class TaFTactileForceDataset(FiftyOneDataset):
+    """Contact-rich probing runs pairing tactile sensing with measured force,
+    as native ``.mcap`` episodes.
+
+    Every frame carries what a tactile sensor sees and what a force sensor
+    measures at the same instant: a vision-based tactile image, a 12x12
+    piezoelectric pressure map locating the contact, and a six-axis wrench
+    from an ATI sensor. Contacts reach 90.8 N and 1.58 Nm.
+
+    Six sensor configurations are represented, spanning the GelSight Mini
+    with and without markers and a custom sensor with several marker grids.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("taf-tactile-force")
+
+        # The firmest contacts
+        view = dataset.match({"peak_force": {"$gt": 50}})
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        41.65 GB
+    """
+
+    _REPO_ID = "Voxel51/TaF-Tactile-Force"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "9144ab4316e13a065cbef99f0746cac151d4cd2d"
+
+    @property
+    def name(self):
+        return "taf-tactile-force"
+
+    @property
+    def license(self):
+        return "MIT"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "tactile", "force-torque", "manipulation")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3462,6 +3536,7 @@ AVAILABLE_DATASETS = {
     "quickstart-groups": QuickstartGroupsDataset,
     "quickstart-3d": Quickstart3DDataset,
     "sama-coco": SamaCOCODataset,
+    "taf-tactile-force": TaFTactileForceDataset,
     "ucf101": UCF101Dataset,
 }
 
