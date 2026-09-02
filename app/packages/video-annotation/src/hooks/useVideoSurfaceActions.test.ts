@@ -371,6 +371,65 @@ describe("track identity ops (split / merge)", () => {
     });
   });
 
+  it("splits a track on its own field when the caller omits one", () => {
+    // Regression: the toolbar's Split button calls `splitTrack(id, frame)` with
+    // no field, which defaulted to the stream's PRIMARY field. A polyline track
+    // lives on `frames.polylines`, so the reader found no frames for it, the
+    // empty-tail guard returned, and the button silently did nothing.
+    frameData = {
+      1: { A: det("d1", "A") },
+      2: { A: det("d2", "A") },
+      3: { A: det("d3", "A") },
+    };
+    activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
+
+    render().current.splitTrack("instance-A", 2);
+
+    expect(mockActions.transaction).toHaveBeenCalledTimes(1);
+    // frames 2 and 3 move to the new instance, addressed on the POLYLINE field
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: "frames.polylines",
+      instanceId: "A",
+      frame: 2,
+    });
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: "frames.polylines", instanceId: "NEW", frame: 2 },
+      expect.anything(),
+    );
+    expect(mockBus.dispatch).toHaveBeenCalledWith(
+      "annotation:trackSplit",
+      expect.objectContaining({ instanceId: "A", newInstanceId: "NEW" }),
+    );
+  });
+
+  it("an explicit field still wins over the selection's", () => {
+    // the timeline's context menu knows the field and passes it; that must not
+    // be overridden by whatever happens to be selected
+    frameData = { 1: { A: det("d1", "A") }, 2: { A: det("d2", "A") } };
+    activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
+
+    render().current.splitTrack("instance-A", 2, "frames.detections_2");
+
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: "frames.detections_2",
+      instanceId: "A",
+      frame: 2,
+    });
+  });
+
+  it("merges on the source track's own field when the caller omits one", () => {
+    frameData = { 1: { A: det("d1", "A") }, 2: { B: det("d2", "B") } };
+    activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
+
+    render().current.mergeTracks("instance-A", "instance-B");
+
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: "frames.polylines",
+      instanceId: "A",
+      frame: 1,
+    });
+  });
+
   it("splitTrack no-ops when no frame is at or after the boundary", () => {
     frameData = { 1: { A: det("d1", "A") }, 2: { A: det("d2", "A") } };
 

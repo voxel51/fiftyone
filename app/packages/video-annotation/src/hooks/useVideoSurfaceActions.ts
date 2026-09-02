@@ -424,10 +424,24 @@ const makeTrackIdentityOps = (
       .map((frame) => ({ frame, det: r.read(instanceId, frame) }))
       .filter((s): s is FrameDetection => !!s.det);
 
+  /**
+   * The frame field a selected track actually lives on, from its active
+   * interaction ref — a track can sit on a non-primary field (a polyline does),
+   * where the stream's primary field holds no label for it. Callers that already
+   * know the field (the timeline's context menu) pass it explicitly; the toolbar
+   * doesn't, and defaulting to primary made these ops read the wrong field, find
+   * nothing, and return silently. Mirrors `markKeyframe`'s resolution.
+   */
+  const fieldFor = (instanceId: string, explicit?: string): string =>
+    explicit ??
+    engine.interaction.getActive().find((ref) => ref.instanceId === instanceId)
+      ?.path ??
+    path;
+
   const splitTrack = (
     trackId: string,
     atFrame: number,
-    fieldPath: string = path,
+    explicitPath?: string,
   ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
@@ -435,6 +449,7 @@ const makeTrackIdentityOps = (
       return;
     }
 
+    const fieldPath = fieldFor(instanceId, explicitPath);
     const r = readerFor(fieldPath);
     const tail = snapshot(r, instanceId, (frame) => frame >= atFrame);
 
@@ -465,7 +480,7 @@ const makeTrackIdentityOps = (
   const mergeTracks = (
     sourceTrackId: string,
     targetTrackId: string,
-    fieldPath: string = path,
+    explicitPath?: string,
   ): void => {
     const sourceInstanceId = instanceIdFromTrackId(sourceTrackId);
     const targetInstanceId = instanceIdFromTrackId(targetTrackId);
@@ -478,6 +493,7 @@ const makeTrackIdentityOps = (
       return;
     }
 
+    const fieldPath = fieldFor(sourceInstanceId, explicitPath);
     const r = readerFor(fieldPath);
     const occupied = new Set(r.trackFrames(targetInstanceId));
     const sources = snapshot(r, sourceInstanceId, () => true);
