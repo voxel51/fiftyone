@@ -1179,6 +1179,24 @@ class DictField(mongoengine.fields.DictField, Field):
             for _value in value.values():
                 self.field.validate(_value)
 
+    def to_mongo(self, value, use_db_field=True, fields=None):
+        # Untyped dict values bypass each subfield's own `to_mongo()`, so
+        # they aren't otherwise serialized to BSON-safe types (dates, numpy
+        # arrays, etc). `serialize_value()` already recursively handles
+        # this, so we return its result directly rather than also
+        # delegating to `super().to_mongo()`, which would recurse back into
+        # this same method for each already-serialized value (eg treating
+        # an already-serialized `Binary` as an iterable of raw bytes)
+        if self.field is None and isinstance(value, dict):
+            # Imported here to avoid a circular import with `fiftyone.core.odm`
+            import fiftyone.core.odm.utils as foou
+
+            return foou.serialize_value(value, extended=False)
+
+        return super().to_mongo(
+            value, use_db_field=use_db_field, fields=fields
+        )
+
 
 class MediaReferenceField(Field):
     """The protected immutable media-reference descriptor field.
