@@ -31,6 +31,9 @@ import "./panel.css";
 import type { HoverHit } from "./renderer";
 
 // Portaled to body, so the tokens its CSS reads must be declared here
+/** Pointer travel still counted as a click rather than a drag */
+const CLICK_SLOP_PX = 4;
+
 const TOKEN_VARS = {
   "--emb-popover": `var(${getColorCssVar(BackgroundColor.Popover)})`,
   "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
@@ -148,16 +151,41 @@ export default function HoverCard({
   // the reader keeps it while they work in the rest of the App
   useEffect(() => {
     if (!onClose) return undefined;
-    const onDown = (event: Event) => {
+    // Decided on pointerUP, and only if the pointer barely moved: a press
+    // that becomes a pan or a lasso is a drag, and dismissing on its first
+    // event would take the card away before the drag it started even runs
+    let press: { x: number; y: number; outside: boolean } | null = null;
+    const outsideCard = (event: Event) => {
       const target = event.target as Node | null;
-      if (cardRef.current?.contains(target)) return;
-      if (!(target instanceof Element) || !target.closest(".emb-plot")) return;
+      if (cardRef.current?.contains(target)) return false;
+      return target instanceof Element && Boolean(target.closest(".emb-plot"));
+    };
+    const onDown = (event: PointerEvent) => {
+      press = {
+        x: event.clientX,
+        y: event.clientY,
+        outside: outsideCard(event),
+      };
+    };
+    const onUp = (event: PointerEvent) => {
+      const start = press;
+      press = null;
+      if (!start?.outside || !outsideCard(event)) return;
+      const moved = Math.hypot(
+        event.clientX - start.x,
+        event.clientY - start.y,
+      );
+      if (moved > CLICK_SLOP_PX) return;
       onClose();
     };
     // Capture phase: the plot canvas stopPropagation()s its pointer events,
     // so a bubbling listener never sees an outside click on it
     document.addEventListener("pointerdown", onDown, true);
-    return () => document.removeEventListener("pointerdown", onDown, true);
+    document.addEventListener("pointerup", onUp, true);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("pointerup", onUp, true);
+    };
   }, [onClose]);
 
   return createPortal(
