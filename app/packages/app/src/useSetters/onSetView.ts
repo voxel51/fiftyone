@@ -53,6 +53,9 @@ const onSetView: RegisteredSetter =
       variables,
       onCompleted: ({ setView: view }, errors) => {
         if (errors?.length) {
+          // Nothing publishes on this path, so the pending reset would
+          // otherwise sit registered and fire on the next navigation
+          unsubscribe();
           handleError(errors.map((e) => e.message));
           rollbackViewBar();
           return;
@@ -71,6 +74,13 @@ const onSetView: RegisteredSetter =
             view,
           },
         );
+      },
+      onError: (error) => {
+        // A network failure never reaches onCompleted, so the pending reset
+        // has to be dropped here as well
+        unsubscribe();
+        handleError([error.message]);
+        rollbackViewBar();
       },
     });
   };

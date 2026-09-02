@@ -512,6 +512,8 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         self._processor = None
         self._mode = config.mode
         self._warned_unmergeable = False
+        self._warned_frame_cap = False
+        self._warned_video_cap = False
         super().__init__(config)
 
     @property
@@ -833,21 +835,45 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
 
         if not subsample:
             # These frames ARE the selection, so only the model's frame cap
-            # may thin them — by a uniform stride rather than truncation, so
-            # the kept frames still span the whole clip
-            step = max(1, -(-len(frames) // cap))
-        elif has_fps and sample_fps > 0:
-            step = max(1, round(fps / sample_fps))
+            # may thin them — evenly across the whole clip and keeping its
+            # first and last frame. A stride sheds whole multiples: at one
+            # frame over the cap it would keep barely half the clip.
+            if len(frames) > cap:
+                indices = np.linspace(0, len(frames) - 1, cap)
+                indices = indices.round().astype(int).tolist()
+                # Once per model: a run embeds thousands of windows and they
+                # all thin by the same rule, so the second warning says
+                # nothing the first did not
+                if not self._warned_frame_cap:
+                    self._warned_frame_cap = True
+                    logger.warning(
+                        "Clip has %d frames; thinning to max_video_frames="
+                        "%d. Raise it to embed the clip at full rate.",
+                        len(frames),
+                        cap,
+                    )
+            else:
+                indices = list(range(len(frames)))
+
+            # The kept frames span the clip, so the rate they stand for is
+            # their count over it rather than any one stride
+            effective_fps = (
+                fps * len(indices) / len(frames) if has_fps else sample_fps
+            )
         else:
-            step = 1
+            if has_fps and sample_fps > 0:
+                step = max(1, round(fps / sample_fps))
+            else:
+                step = 1
+
+            indices = range(0, len(frames), step)
+            effective_fps = fps / step if has_fps else sample_fps
 
         sampled = []
-        for i in range(0, len(frames), step):
+        for i in indices:
             sampled.append(self._prepare_image(frames[i]))
             if len(sampled) >= cap:
                 break
-
-        effective_fps = fps / step if has_fps else sample_fps
 
         return self._prepare_frame_list(sampled, effective_fps)
 
@@ -1002,12 +1028,29 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         else:
             step = 1
 
+        cap = self.config.max_video_frames
         frames = []
+        truncated = False
         for i, frame in enumerate(video_reader):
             if i % step == 0:
                 frames.append(self._prepare_image(frame))
-                if len(frames) >= self.config.max_video_frames:
+                if len(frames) >= cap:
+                    truncated = True
                     break
+
+        # A truncated clip still embeds, and its vector looks like any other
+        # -- nothing downstream can tell that the tail of the video was never
+        # seen, so say so here or it is invisible
+        if truncated and not self._warned_video_cap:
+            self._warned_video_cap = True
+            logger.warning(
+                "Video reached max_video_frames=%d after %.1fs at %g fps "
+                "sampling; the remainder is not embedded. Raise "
+                "max_video_frames or lower video_fps to cover more.",
+                cap,
+                cap * step / raw_fps if raw_fps > 0 else float("nan"),
+                sample_fps,
+            )
 
         if not frames:
             raise ValueError(

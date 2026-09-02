@@ -51,7 +51,12 @@ def timeout(seconds: int):
     Args:
         seconds: the timeout, in seconds
     """
+    # None when the displaced handler was installed outside Python, which
+    # cannot be reinstalled -- restore the default rather than raising from
+    # the finally below and masking whatever the body was already raising
     prev_handler = signal.getsignal(signal.SIGALRM)
+    if prev_handler is None:
+        prev_handler = signal.SIG_DFL
     signal.signal(
         signal.SIGALRM, lambda signum, frame: raise_timeout_error(seconds)
     )

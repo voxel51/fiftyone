@@ -533,6 +533,10 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
         if self.preprocess:
             args = {"images": args}
             args = self.collate_fn(self.transforms(args))
+        elif isinstance(args, (list, tuple)):
+            # ragged models receive uncollated feature lists from data
+            # loaders
+            args = self.collate_fn(args)
 
         with torch.no_grad():
             for k, v in args.items():
