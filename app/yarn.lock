@@ -7328,9 +7328,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:1.1.0-popover.15":
-  version: 1.1.0-popover.15
-  resolution: "@voxel51/voodo@npm:1.1.0-popover.15"
+"@voxel51/voodo@npm:1.1.0-popover.17":
+  version: 1.1.0-popover.17
+  resolution: "@voxel51/voodo@npm:1.1.0-popover.17"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7347,7 +7347,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/8bafa6b0775ca7a98dd65061701708b30a87c7d2777548a3c404b30c0d12d7331c6f6c23327b5d9dbe4c824db49e8af3b07d2765f0f8a358814f49bbe197a6b8
+  checksum: 10/ef12cae23ea69644e088fed649b33ca7ce4daf350306c35a29c37cd465edc80894011aec703c3e0cfd59463b30f47dbafc67283bedb2bdd953d2e3284c1a2d29
   languageName: node
   linkType: hard
 
