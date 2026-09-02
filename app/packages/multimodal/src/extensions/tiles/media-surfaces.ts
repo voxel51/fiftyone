@@ -47,7 +47,7 @@ export const tileMediaSurfacesAtom = atom<
   Readonly<Record<string, TileMediaSurface>>
 >({});
 
-/** Every mounted 2D-media tile surface, in registration order. */
+/** Every mounted 2D-media tile surface. */
 export function useTileMediaSurfaces(): readonly TileMediaSurface[] {
   const surfaces = useAtomValue(tileMediaSurfacesAtom);
   return useMemo(() => Object.values(surfaces), [surfaces]);

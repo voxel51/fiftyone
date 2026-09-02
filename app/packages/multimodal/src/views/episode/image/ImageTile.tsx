@@ -629,7 +629,9 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     imageSize: effectiveImageDims,
     fit: IMAGE_FIT,
     viewTransform: imagePanZoom.viewTransform,
-    contentTimeNs: playbackFrame?.contentTimeNs ?? null,
+    // The committed frame, not the requested one: decoding keeps the previous
+    // pixels visible, and an overlay must target what is actually on screen.
+    contentTimeNs: committedImageContentTimeNs,
   });
   const toggleLabelStream = useCallback(
     (labelStream: string, checked: boolean) => {
