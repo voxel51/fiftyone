@@ -36,7 +36,7 @@ Wheels are also published to PyPI under the following circumstances:
 - `fiftyone` wheels (and documentation) are published when a tag matching `v*`
   is pushed. `*` must match the version in the top-level `VERSION` file.
 - `fiftyone-db` wheels are published when a tag matching `db-v*` is pushed. `*`
-  must match the version in `package/db/setup.py`.
+  must match the version in `package/db/VERSION`.
 
 It is recommended to:
 

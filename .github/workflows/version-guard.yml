@@ -29,7 +29,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # Only the root VERSION file is guarded. package/db/setup.py
+          # Only the root VERSION file is guarded. package/db/VERSION
           # (fiftyone-db) is versioned independently of the release.
           changed=$(git diff "$BASE_SHA...$HEAD_SHA" -- VERSION)
           if [ -z "$changed" ]; then
