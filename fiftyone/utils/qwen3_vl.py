@@ -1117,11 +1117,19 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
                 )
                 self._call_convention = i
                 return out
-            except (TypeError, AttributeError):
-                # TypeError: a kwarg this processor version does not take.
-                # AttributeError: metadata whose shape it cannot digest —
-                # both mean "try the next-poorer calling convention", never
-                # a reason to fail the clip.
+            except (TypeError, AttributeError) as e:
+                # Only a complaint that NAMES one of these kwargs means this
+                # processor version does not take it. Anything else came from
+                # inside the processor and belongs to this clip: raise it
+                # rather than downgrading every later clip in the process
+                if not any(kwarg in str(e) for kwarg in extra):
+                    raise
+                logger.debug(
+                    "Qwen3-VL processor rejected %s (%s); falling back to a "
+                    "poorer calling convention",
+                    sorted(extra),
+                    e,
+                )
                 continue
 
         self._call_convention = len(attempts)

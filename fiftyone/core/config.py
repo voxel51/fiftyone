@@ -144,6 +144,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MODEL_ZOO_MANIFEST_PATHS",
             default=None,
         )
+        self.model_zoo_manifest_cache_enabled = self.parse_bool(
+            d,
+            "model_zoo_manifest_cache_enabled",
+            env_var="FIFTYONE_MODEL_ZOO_MANIFEST_CACHE_ENABLED",
+            default=False,
+        )
         self.default_dataset_dir = self.parse_path(
             d,
             "default_dataset_dir",

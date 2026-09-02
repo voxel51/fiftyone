@@ -3,10 +3,11 @@
  */
 
 import { rollbackViewBar } from "@fiftyone/core";
-import { setView, type setViewMutation } from "@fiftyone/relay";
+import { setView, subscribe, type setViewMutation } from "@fiftyone/relay";
 import {
   type State,
   datasetName,
+  resetExtendedSelectionTransaction,
   stateSubscription,
   viewStateForm_INTERNAL,
 } from "@fiftyone/state";
@@ -20,6 +21,18 @@ const onSetView: RegisteredSetter =
   ({ environment, handleError, router, sessionRef }) =>
   ({ get, set }, value: State.Stage[]) => {
     set(pendingEntry, true);
+    // A new view replaces the base the selection was made against, so it goes
+    // with the checkmarks `onCompleted` drops below. Sidebar filters never
+    // reach this setter, so a lasso still composes with them.
+    //
+    // Deferred to the publish rather than done here: a rejected view rolls
+    // back without ever publishing, and dropping the stage up front would
+    // both lose the selection and send the grid to load a wider result set
+    // for a view that never arrives.
+    const unsubscribe = subscribe((_, transaction) => {
+      resetExtendedSelectionTransaction(transaction);
+      unsubscribe();
+    });
     let view = value;
     if (view instanceof DefaultValue) {
       view = [];

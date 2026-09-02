@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import type { ByteSourceDescriptor } from "../../../ir";
 import {
+  getEpisodeTimeRange,
   hydratePersistedSourceFacts,
   peekSourceBootstrap,
   publishEpisodeTimeRange,
@@ -35,7 +36,15 @@ export function useHydratedSourceFacts({
     // A demanded session publishes its own facts on open
     if (!visible || !cachedPoster || previewSessionDemand) return;
     if (!source || !sourceFactsScope) return;
-    if (peekSourceBootstrap(source)?.timeRange) return;
+    // The modal writes facts without publishing the shared range, so a tile
+    // first seen there has one here but none in the registry
+    const bootstrapped = peekSourceBootstrap(source)?.timeRange;
+    if (bootstrapped) {
+      if (!getEpisodeTimeRange(source.sourceId)) {
+        publishEpisodeTimeRange(source.sourceId, bootstrapped);
+      }
+      return;
+    }
     const key = sourceBootstrapKey(source);
     if (hydratedKeyRef.current === key) return;
     hydratedKeyRef.current = key;

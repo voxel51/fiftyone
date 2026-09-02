@@ -621,19 +621,32 @@ export function useRunPlotData(
   });
 
   // Selection lives in global singletons (see the module docstring above)
-  // that outlive this run — `fos.selectedSamples` is a session atom, so it
-  // survives even a page reload. Without this, opening a different run
-  // inherits whatever was left selected from an unrelated one.
+  // that outlive this run, so switching runs has to abandon it: run A's
+  // points mean nothing in run B. Opening the panel does NOT — a selection
+  // made before it opened is the reader's, and the plot renders it as
+  // emphasis rather than replacing it.
   const seenRun = useRef<string | null>(null);
   useEffect(() => {
     // Keyed by dataset AND brain key: two datasets can hold same-named runs
     const runId = `${datasetName ?? ""}\0${brainKey}`;
     if (seenRun.current === runId) return;
+    const firstRun = seenRun.current === null;
     seenRun.current = runId;
-    clearAll();
-    // Mount (a fresh run we've never scoped) and every later change
-    // both need the reset; only a same-run re-render should skip it
+    if (!firstRun) clearAll();
   }, [datasetName, brainKey, clearAll]);
+
+  // The tab's pill lives outside the panel tree and outlives the plot, so
+  // the counts it reads have to be dropped here or it keeps rendering the
+  // last selection after the panel is gone
+  const resetPublishedCounts = useRecoilCallback(
+    ({ reset }) =>
+      () => {
+        reset(selectionCountState);
+        reset(selectionSampleCountState);
+      },
+    [],
+  );
+  useEffect(() => resetPublishedCounts, [resetPublishedCounts]);
 
   // Focus (selection) wins over scope (view + filters); null means
   // nothing to scope by, and the legend shows the run's full counts.

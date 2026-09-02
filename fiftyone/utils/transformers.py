@@ -618,7 +618,8 @@ def _processor_output_is_ragged(transforms):
         return False
 
     size = getattr(image_processor, "size", None)
-    if not isinstance(size, dict):
+    # transformers >= 5 hands back a ``SizeDict`` dataclass rather than a dict
+    if not hasattr(size, "get"):
         return False
 
     # What the CALL will use: the handler forwards its kwargs to the
@@ -633,6 +634,14 @@ def _processor_output_is_ragged(transforms):
     do_pad = kwargs.get("do_pad", getattr(image_processor, "do_pad", False))
 
     if do_center_crop and crop_size:
+        return False
+
+    # ConvNeXt-style: resize the short edge to ``shortest_edge / crop_pct``,
+    # then crop back to a square of ``shortest_edge``
+    crop_pct = kwargs.get(
+        "crop_pct", getattr(image_processor, "crop_pct", None)
+    )
+    if crop_pct and size.get("shortest_edge"):
         return False
 
     if size.get("height") and size.get("width"):

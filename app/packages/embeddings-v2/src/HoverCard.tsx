@@ -67,8 +67,10 @@ export default function HoverCard({
   onClose,
 }: {
   content: HoverContent;
-  /** The plot container's viewport offset; `hit.x/y` are relative to it */
-  origin: { left: number; top: number };
+  /** The plot container's viewport offset; `hit.x/y` are relative to it.
+   * `bounds` is the panel the card must stay inside — a card clamped to the
+   * viewport instead spills over whatever sits beside the panel */
+  origin: { left: number; top: number; bounds?: DOMRect | null };
   /** When set, the card renders the action's button and becomes
    * pointer-interactive (so the button is clickable) */
   action?: { label: string; run: () => void; loading?: boolean };
@@ -99,14 +101,31 @@ export default function HoverCard({
     if (!el) return;
     const w = el.offsetWidth;
     const h = el.offsetHeight;
+    const b = origin.bounds;
+    const minX = Math.max(4, b ? b.left : 0);
+    const maxX = Math.min(window.innerWidth, b ? b.right : window.innerWidth);
+    const minY = Math.max(4, b ? b.top : 0);
+    const maxY = Math.min(
+      window.innerHeight,
+      b ? b.bottom : window.innerHeight,
+    );
     let left = anchorX + 14;
-    if (left + w > window.innerWidth - 4) left = anchorX - w - 14;
+    if (left + w > maxX - 4) left = anchorX - w - 14;
     let top = anchorY + 14;
-    if (top + h > window.innerHeight - 4) top = anchorY - h - 14;
-    left = Math.max(4, Math.min(left, window.innerWidth - w - 4));
-    top = Math.max(4, Math.min(top, window.innerHeight - h - 4));
+    if (top + h > maxY - 4) top = anchorY - h - 14;
+    left = Math.max(minX, Math.min(left, maxX - w - 4));
+    top = Math.max(minY, Math.min(top, maxY - h - 4));
     setPos({ left, top });
-  }, [anchorX, anchorY, showImage, details, value, filename, hasAction]);
+  }, [
+    anchorX,
+    anchorY,
+    showImage,
+    details,
+    value,
+    filename,
+    hasAction,
+    origin.bounds,
+  ]);
 
   // Preload off-DOM; on failure the metadata still shows
   useEffect(() => {
@@ -121,11 +140,15 @@ export default function HoverCard({
     };
   }, [src]);
 
-  // A click outside the frozen card dismisses it, and still propagates
+  // A click elsewhere in the plot dismisses the frozen card, and still
+  // propagates. Clicks outside the plot leave it alone — pinning it is how
+  // the reader keeps it while they work in the rest of the App
   useEffect(() => {
     if (!onClose) return undefined;
     const onDown = (event: Event) => {
-      if (cardRef.current?.contains(event.target as Node)) return;
+      const target = event.target as Node | null;
+      if (cardRef.current?.contains(target)) return;
+      if (!(target instanceof Element) || !target.closest(".emb-plot")) return;
       onClose();
     };
     // Capture phase: the plot canvas stopPropagation()s its pointer events,

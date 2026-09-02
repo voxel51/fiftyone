@@ -922,7 +922,8 @@
 }
 
 .emb-hover-card {
-  position: absolute;
+  /* Positioned from viewport coordinates, so it must not scroll with the page */
+  position: fixed;
   z-index: 3;
   pointer-events: none;
   display: flex;

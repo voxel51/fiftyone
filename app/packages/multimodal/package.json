@@ -128,11 +128,8 @@
         "@bufbuild/protobuf": "^2.11.0",
         "@date-fns/tz": "^1.5.0",
         "@fiftyone/components": "*",
-        "@fiftyone/embeddings-v2": "*",
-        "@fiftyone/operators": "*",
         "@fiftyone/playback": "workspace:*",
         "@fiftyone/plugins": "*",
-        "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
         "@fiftyone/tiling": "*",
         "@fiftyone/utilities": "*",
@@ -158,7 +155,6 @@
         "meshoptimizer": "^0.22.0",
         "mp4box": "^2.4.1",
         "protobufjs": "^7.6.4",
-        "styled-components": "catalog:",
         "three": "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch",
         "uplot": "^1.6.32"
     },
@@ -179,9 +175,5 @@
         "styled-components": "catalog:",
         "vite": "catalog:",
         "vite-plugin-relay": "catalog:"
-    },
-    "peerDependencies": {
-        "react": "*",
-        "recoil": "*"
     }
 }

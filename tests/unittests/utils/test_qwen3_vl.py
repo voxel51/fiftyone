@@ -1068,11 +1068,13 @@ class TestFrameListMetadata:
         ]
 
     def test_metadata_names_every_frame_of_the_clip(self):
+        pytest.importorskip("transformers.video_utils")
         metadata = Qwen3VLModel._video_metadata(4, 2.0)
 
         assert _frames_indices_of(metadata) == [0, 1, 2, 3]
 
     def test_a_frames_indices_reading_processor_gets_them(self, monkeypatch):
+        pytest.importorskip("transformers.video_utils")
         monkeypatch.setattr(qwen3_vl, "qwen_vl_utils", StubVisionUtils())
         processor = StubStrictProcessor()
         model = self._model_with(processor)
@@ -1145,6 +1147,7 @@ class TestQwen3VLTextOnly:
         """The reason this is safe at all: a prompt seeded by a text-only load
         must score against vectors the full model wrote, so the two towers have
         to agree exactly rather than approximately."""
+        pytest.importorskip("transformers")
         path, full = _tiny_checkpoint(tmp_path, max_shard_size)
         lean = qwen3_vl.load_text_model(
             path, dtype=torch.float32, device="cpu"
@@ -1168,6 +1171,7 @@ class TestQwen3VLTextOnly:
     def test_the_vision_shards_are_never_read(self, tmp_path):
         """The saving, on a cold box: the vision tower is not downloaded
         either."""
+        pytest.importorskip("transformers")
         path, _ = _tiny_checkpoint(tmp_path, "30KB")
         with open(os.path.join(path, "model.safetensors.index.json")) as f:
             weight_map = json.load(f)["weight_map"]

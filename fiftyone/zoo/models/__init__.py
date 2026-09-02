@@ -623,18 +623,27 @@ class RemoteZooModelsManifest(ZooModelsManifest):
     _MODEL_CLS = RemoteZooModel
 
 
-@functools.lru_cache(maxsize=1)
 def _load_zoo_models_manifest():
     """Returns ``(manifest, remote_sources)`` for the model zoo.
 
-    Memoized for the life of the process: the builtin manifests ship inside the
-    package, so they change only when it is upgraded. Building this parses every
-    manifest and walks ``model_zoo_dir``, and callers on request paths reach it
-    per request.
-
-    :func:`_invalidate_zoo_models_manifest` clears it, and the operations that
-    add or remove a source call it.
+    Building this parses every manifest and walks ``model_zoo_dir``, which a
+    service reaching it per request pays for every time, so
+    ``model_zoo_manifest_cache_enabled`` memoizes it for the life of the
+    process. Off by default: a local session can repoint ``model_zoo_dir`` or
+    register a source from another process and expects the next call to see it.
     """
+    if fo.config.model_zoo_manifest_cache_enabled:
+        return _load_zoo_models_manifest_cached()
+
+    return _build_zoo_models_manifest()
+
+
+@functools.lru_cache(maxsize=1)
+def _load_zoo_models_manifest_cached():
+    return _build_zoo_models_manifest()
+
+
+def _build_zoo_models_manifest():
     manifest = ZooModelsManifest()
     remote_sources = {}
 
@@ -657,7 +666,7 @@ def _load_zoo_models_manifest():
 def _invalidate_zoo_models_manifest():
     """Drops the memoized manifest, for the operations that change what is on
     disk under ``model_zoo_dir``."""
-    _load_zoo_models_manifest.cache_clear()
+    _load_zoo_models_manifest_cached.cache_clear()
 
 
 def _merge_manifest(manifest, manifest_path, sources=None):

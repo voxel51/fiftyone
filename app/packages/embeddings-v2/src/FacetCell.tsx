@@ -190,7 +190,12 @@ export default function FacetCell({
             content={hover}
             origin={(() => {
               const rect = sceneRef.current?.getBoundingClientRect();
-              return { left: rect?.left ?? 0, top: rect?.top ?? 0 };
+              const panel = sceneRef.current?.closest(".emb-plot");
+              return {
+                left: rect?.left ?? 0,
+                top: rect?.top ?? 0,
+                bounds: panel?.getBoundingClientRect() ?? null,
+              };
             })()}
             onKeepHover={onKeepHover}
             // A frozen card outlives the pointer, so leaving it must not take
