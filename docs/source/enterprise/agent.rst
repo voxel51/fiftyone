@@ -256,6 +256,16 @@ attached.
    :alt: fiftyone-agent-screenshot
    :align: center
 
+If you select one or more samples in the grid first, an additional icon lets
+you attach their images directly, so you can ask the Agent about specific
+samples without describing or searching for them in words. Up to 20 samples
+can be attached at once; if more are selected, only the first 20 are
+attached.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_attach_samples.webp
+   :alt: fiftyone-agent-attach-samples
+   :align: center
+
 .. _enterprise-agent-workspace:
 
 Returning to a previous view
