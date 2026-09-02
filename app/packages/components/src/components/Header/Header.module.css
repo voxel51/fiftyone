@@ -1,10 +1,12 @@
 /* All interactive chrome in the nav bar — title, dataset selector, view bar,
    the right-side actions — shares a 36px target height so it sits on one
    baseline. The header is 56px to give 10px around that row. Layout is a
-   voodo Stack, and the surface is the design system's card-1 — white in the
-   light theme as before, and the base step the bar's gutter rises from. */
+   voodo Stack; the surface is the shell's own until the shell moves to
+   design-system tokens as a whole — no voodo surface token matches it in the
+   dark theme, and a header on a different grey than the panels around it
+   reads as a seam. */
 .header {
-  background-color: var(--color-content-bg-card-1);
+  background-color: var(--fo-palette-background-header);
   flex-shrink: 0;
   width: 100%;
   height: 56px;

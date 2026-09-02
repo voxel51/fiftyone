@@ -5,9 +5,9 @@
   min-width: 0;
 }
 
-/* The gutter: the bar's own surface — the search row's canvas. One surface
-   step above the header it sits in (card-2 over card-1), with the default
-   border: the look the bar has always had, on the design system's tokens. */
+/* The gutter: the bar's own surface — the search row's canvas. It sits in the
+   header, which is on the shell's palette, so it keeps the shell's surface and
+   border; the tokens come when the shell moves as a whole. */
 .gutter {
   display: flex;
   align-items: center;
@@ -15,9 +15,9 @@
   min-width: 0;
   height: 100%;
   box-sizing: border-box;
-  background: var(--color-content-bg-card-2);
-  border: 1px solid var(--color-content-border-default);
-  border-radius: var(--radius-sm);
+  background: var(--fo-palette-background-level1);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
+  border-radius: 4px;
 }
 
 /* Holds the width the search box would have had, so the toggle stays at the
@@ -40,7 +40,7 @@
   height: 100%;
   padding: 0 10px;
   /* Inside the gutter, so it divides with the gutter's own border color */
-  border-left: 1px solid var(--color-content-border-default);
+  border-left: 1px solid var(--fo-palette-primary-plainBorder);
 }
 
 .stagesCount {
