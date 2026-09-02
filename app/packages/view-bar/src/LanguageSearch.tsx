@@ -173,9 +173,10 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         }
       />
       {pending && (
-        // Legible even for a sub-second search: a word, not just the dots
+        // Legible even for a sub-second search: a word, not just the dots — the
+        // grid's own word for it
         <LoadingDots
-          text="Searching"
+          text="Pixelating"
           variant={TextVariant.Sm}
           color={TextColor.Tertiary}
         />
