@@ -1,9 +1,24 @@
-import { useState } from "react";
-import { Box, Typography } from "@mui/material";
-import { Tooltip, useTheme } from "@fiftyone/components";
-import { SchemaSelection } from "./SchemaSelection";
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * The "Filter rule" tab: the rule input plus the matching schema rows.
+ */
+
+import { Tooltip } from "@fiftyone/components";
 import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";
-import { Clear } from "@mui/icons-material";
+import {
+  Clickable,
+  Icon,
+  IconName,
+  Input,
+  Orientation,
+  Size,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
+import { SchemaSelection } from "./SchemaSelection";
 
 interface Props {
   searchTerm?: string;
@@ -12,8 +27,6 @@ interface Props {
 
 export const SchemaSearch = (props: Props) => {
   const { searchTerm, setSearchTerm } = props;
-  const theme = useTheme();
-  const [error, setError] = useState<string>("");
 
   const { datasetName, includeNestedFields, mergedSchema } =
     useSchemaSettings();
@@ -22,27 +35,15 @@ export const SchemaSearch = (props: Props) => {
     useSearchSchemaFields(mergedSchema);
 
   return (
-    <Box
-      style={{
-        display: "flex",
-        position: "relative",
-        flexDirection: "column",
-        marginTop: "1rem",
-      }}
+    <Stack
+      orientation={Orientation.Column}
+      style={{ position: "relative", marginTop: "1rem" }}
     >
-      <Box width="100%" paddingTop="0.5rem">
-        <input
+      <div style={{ width: "100%", position: "relative" }}>
+        <Input
           data-cy="filter-visibility-filter-rule-input"
           value={searchTerm}
           placeholder="search by fields and attributes"
-          style={{
-            color: theme.text.secondary,
-            width: "100%",
-            border: `1px solid ${theme.divider}`,
-            padding: "0.5rem 0.75rem",
-            background: theme.background.level1,
-            outline: "none",
-          }}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && datasetName) {
@@ -57,7 +58,6 @@ export const SchemaSearch = (props: Props) => {
                 checkValue = checkValue.trim();
 
                 const termSplit = finalSearchTerm.split(".");
-                const last = termSplit[termSplit.length - 1];
                 let object: object = {
                   include_nested_fields: includeNestedFields,
                 };
@@ -71,7 +71,6 @@ export const SchemaSearch = (props: Props) => {
                     }
                     ref = ref[prop];
                   });
-                  termSplit[last] = checkValue;
                 } else {
                   object = {
                     ...object,
@@ -83,62 +82,57 @@ export const SchemaSearch = (props: Props) => {
               } else {
                 setSearchResults([]);
               }
-              setError("");
             }
           }}
         />
-        <Tooltip text="Hit Enter to see results!" placement="bottom-center">
-          <Box
-            style={{
-              zIndex: 1600,
-              display: "flex",
-              position: "absolute",
-              right: "33px",
-              top: "16px",
-              background: theme.background.level2,
-              padding: "1px 4px",
-              borderRadius: "4px",
-            }}
-          >
-            <Typography
-              variant="body1"
-              component="span"
-              sx={{ color: theme.text.tertiary }}
-            >
-              Enter &crarr;
-            </Typography>
-          </Box>
-        </Tooltip>
-        <Box
-          sx={{
-            zIndex: "9999",
-            display: "flex",
+        <span
+          style={{
             position: "absolute",
-            right: "3px",
-            top: "17px",
-            padding: "1px 4px",
-            cursor: "pointer",
-            opacity: searchTerm ? 1 : 0.3,
-            background: theme.background.level1,
-            borderRadius: "50%",
-
-            "&:hover": {
-              background: theme.background.level2,
-            },
+            right: 36,
+            top: "50%",
+            transform: "translateY(-50%)",
+            display: "inline-flex",
           }}
+        >
+          <Tooltip text="Hit Enter to see results!" placement="bottom-center">
+            <span style={{ display: "inline-flex" }}>
+              <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
+                Enter &crarr;
+              </Text>
+            </span>
+          </Tooltip>
+        </span>
+        <Clickable
+          role="button"
+          tabIndex={0}
+          aria-label="Clear filter rule"
           onClick={() => {
             setSearchResults([]);
             setSearchTerm("");
-            setError("");
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setSearchResults([]);
+              setSearchTerm("");
+            }
+          }}
+          style={{
+            position: "absolute",
+            right: 8,
+            top: "50%",
+            transform: "translateY(-50%)",
+            display: "inline-flex",
+            alignItems: "center",
+            opacity: searchTerm ? 1 : 0.3,
           }}
         >
-          <Clear />
-        </Box>
-        {error && <Box sx={{ color: theme.danger[600] }}>{error}</Box>}
-      </Box>
-      <Box width="100%">
+          <Icon name={IconName.Close} size={Size.Sm} />
+        </Clickable>
+      </div>
+      <div style={{ width: "100%" }}>
         <SchemaSelection />
-      </Box>
-    </Box>
+      </div>
+    </Stack>
   );
 };

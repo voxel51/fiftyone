@@ -1758,11 +1758,13 @@ __metadata:
   dependencies:
     "@fiftyone/components": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
+    "@fiftyone/field-visibility": "npm:*"
     "@fiftyone/flashlight": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/map": "npm:*"
     "@fiftyone/multimodal": "npm:*"
     "@fiftyone/operators": "npm:*"
+    "@fiftyone/saved-views": "npm:*"
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
@@ -1952,6 +1954,22 @@ __metadata:
   peerDependencies:
     jotai: "*"
     react: "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/field-visibility@npm:*, @fiftyone/field-visibility@workspace:packages/field-visibility":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/field-visibility@workspace:packages/field-visibility"
+  dependencies:
+    "@fiftyone/components": "npm:*"
+    "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
+    "@voxel51/voodo": "catalog:"
+    vite: "npm:^7.3.2"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+    recoil: "*"
   languageName: unknown
   linkType: soft
 
@@ -2208,7 +2226,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/operators@workspace:packages/operators"
   dependencies:
+    "@fiftyone/saved-views": "npm:*"
     "@fiftyone/utilities": "workspace:^"
+    "@fiftyone/workspaces": "npm:*"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
     prettier: "catalog:"
@@ -2288,6 +2308,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/saved-views@npm:*, @fiftyone/saved-views@workspace:packages/saved-views":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/saved-views@workspace:packages/saved-views"
+  dependencies:
+    "@fiftyone/analytics": "npm:*"
+    "@fiftyone/components": "npm:*"
+    "@fiftyone/relay": "npm:*"
+    "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
+    "@voxel51/voodo": "catalog:"
+    react-relay: "catalog:"
+    vite: "npm:^7.3.2"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+    recoil: "*"
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/similarity-search@workspace:packages/similarity-search":
   version: 0.0.0-use.local
   resolution: "@fiftyone/similarity-search@workspace:packages/similarity-search"
@@ -2335,6 +2374,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/spaces@workspace:packages/spaces"
   dependencies:
+    "@fiftyone/workspaces": "npm:*"
     "@types/sortablejs": "npm:^1.15.0"
     "@vitejs/plugin-react": "catalog:"
     allotment: "npm:^1.17.0"
@@ -2498,6 +2538,24 @@ __metadata:
     "@testing-library/react": "npm:^16.2.0"
     "@voxel51/voodo": "catalog:"
     react-relay: "catalog:"
+    vite: "npm:^7.3.2"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+    recoil: "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/workspaces@npm:*, @fiftyone/workspaces@workspace:packages/workspaces":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/workspaces@workspace:packages/workspaces"
+  dependencies:
+    "@fiftyone/analytics": "npm:*"
+    "@fiftyone/components": "npm:*"
+    "@fiftyone/operators": "npm:*"
+    "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
+    "@voxel51/voodo": "catalog:"
     vite: "npm:^7.3.2"
   peerDependencies:
     react: "*"

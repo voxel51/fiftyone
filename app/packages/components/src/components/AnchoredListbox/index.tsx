@@ -76,6 +76,8 @@ export interface AnchoredListboxProps {
    */
   width?: number;
   maxHeight?: number;
+  /** Stacking override — a listbox inside a dialog must clear the dialog. */
+  zIndex?: number;
   id?: string;
   "data-cy"?: string;
   onMount?: (el: HTMLDivElement) => void;
@@ -95,6 +97,7 @@ export const AnchoredListbox: React.FC<AnchoredListboxProps> = ({
   isSelected,
   width,
   maxHeight = 280,
+  zIndex = 10000,
   id,
   "data-cy": dataCy,
   onMount,
@@ -116,7 +119,7 @@ export const AnchoredListbox: React.FC<AnchoredListboxProps> = ({
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
         maxHeight,
         overflowY: "auto",
-        zIndex: 10000,
+        zIndex,
       }}
       role="listbox"
       id={id}

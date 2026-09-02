@@ -17,7 +17,7 @@ import Panel from "./Panel";
 import PanelTab from "./PanelTab";
 import SplitPanelButton from "./SplitPanelButton";
 import { PanelContainer, PanelTabs, SpaceContainer } from "./StyledElements";
-import Workspaces from "./Workspaces";
+import { Workspaces } from "@fiftyone/workspaces";
 
 export default function Space({ node, id, archetype }: SpaceProps) {
   const { spaces, updateSpaces } = useSpaces(id);

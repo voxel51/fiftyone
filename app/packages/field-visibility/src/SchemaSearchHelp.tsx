@@ -1,12 +1,24 @@
-import { Box, Typography } from "@mui/material";
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * The filter-rule examples shown before a rule returns results.
+ */
 
-import { CodeBlock, useTheme } from "@fiftyone/components";
+import { CodeBlock } from "@fiftyone/components";
+import {
+  Orientation,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
 
 interface Example {
   title: string;
   code?: string;
   primaryTextColor?: boolean;
 }
+
 const EXAMPLES = [
   {
     primaryTextColor: true,
@@ -29,47 +41,34 @@ const EXAMPLES = [
     title: 'Match fields whose description contains "foo"',
     code: "description:foo",
   },
-  // {
-  //   title: "# Match fields whose info.created_at is less than YYYY-MM-DD",
-  //   code: "info.created_at:<2022-11-10",
-  // },
 ] as Example[];
 
 export const SchemaSearchHelp = () => {
-  const theme = useTheme();
-
   return (
-    <Box display="flex" flexDirection="column" data-cy="filter-rule-container">
+    <Stack data-cy="filter-rule-container" orientation={Orientation.Column}>
       {EXAMPLES.map(({ title, primaryTextColor, code }: Example) => (
-        <Box
+        <Stack
           key={title}
-          width="100%"
-          display="flex"
-          flexDirection="column"
-          padding="0.5rem 0"
+          orientation={Orientation.Column}
+          style={{ width: "100%", padding: "0.5rem 0" }}
         >
-          <Typography
-            variant="body1"
-            component="span"
-            sx={{
-              color: primaryTextColor
-                ? theme.text.primary
-                : theme.text.secondary,
-            }}
+          <Text
+            variant={TextVariant.Md}
+            color={primaryTextColor ? TextColor.Primary : TextColor.Secondary}
           >
             {title}
-          </Typography>
+          </Text>
           {code && (
-            <Box paddingTop="0.25rem">
+            <div style={{ paddingTop: "0.25rem" }}>
               <CodeBlock
                 text={code}
                 language="python"
                 showLineNumbers={false}
               />
-            </Box>
+            </div>
           )}
-        </Box>
+        </Stack>
       ))}
-    </Box>
+    </Stack>
   );
 };

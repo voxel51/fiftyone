@@ -7,12 +7,15 @@ import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import MainSpace from "./MainSpace";
-import SchemaSettings from "./Schema/SchemaSettings";
+import { FieldVisibility } from "@fiftyone/field-visibility";
 import { Entries, default as RenderSidebar } from "./Sidebar";
 import { Filter } from "./Sidebar/Entries";
 import { createExploreIsDisabled } from "./Sidebar/InteractiveSidebar";
 import SidebarContainer from "./Sidebar/SidebarContainer";
-import ViewSelection from "./Sidebar/ViewSelection";
+import { SavedViews } from "@fiftyone/saved-views";
+import { useRecoilValue as useRecoilValueForSavedViews } from "recoil";
+import { shouldToggleBookMarkIconOnSelector } from "./Grid/Actions/SaveFilters";
+import { extendedStages as extendedStagesAtom } from "@fiftyone/state";
 
 const { IS_APP_MODE_FIFTYONE } = constants;
 
@@ -119,10 +122,10 @@ const Sidebar = () => {
 
   return (
     <SidebarContainer modal={false}>
-      <SchemaSettings />
+      <FieldVisibility />
 
       <TopContainer>
-        <ViewSelection />
+        <SavedViewsControl />
         <Filter />
       </TopContainer>
 
@@ -162,3 +165,15 @@ function SamplesContainer() {
 }
 
 export default React.memo(SamplesContainer);
+
+/**
+ * Adapter: the saved-views package takes "is there unsaved view content"
+ * as a prop, keeping the host's bookmark/extended-stages wiring out of it.
+ */
+function SavedViewsControl() {
+  const bookmarkIconOn = useRecoilValueForSavedViews(
+    shouldToggleBookMarkIconOnSelector,
+  );
+  const extended = useRecoilValueForSavedViews(extendedStagesAtom);
+  return <SavedViews hasUnsavedContent={bookmarkIconOn || Boolean(extended)} />;
+}
