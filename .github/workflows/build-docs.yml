@@ -28,7 +28,7 @@ on:
       - fiftyone/**
       - plugins/**
       - requirements/**
-      - setup.py
+      - pyproject.toml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -118,7 +118,7 @@ jobs:
           cache: pip
           cache-dependency-path: |
             requirements/docs.txt
-            setup.py
+            pyproject.toml
       - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
         uses: ./.github/actions/free-disk-space
       - name: Install pip dependencies

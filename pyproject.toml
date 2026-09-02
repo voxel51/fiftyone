@@ -12,9 +12,8 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Voxel51, Inc.", email = "info@voxel51.com" }]
 requires-python = ">=3.10"
-# Version stays in setup.py: releases override it via the RELEASE_VERSION
-# environment variable (with a prefix check), which static metadata cannot
-# express, and CI greps setup.py's VERSION line
+# The version lives in the VERSION file (see [tool.setuptools.dynamic]);
+# release builds overwrite that file from the tag before building
 dynamic = ["version"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -101,12 +100,14 @@ fiftyone = "fiftyone.core.cli:main"
 Homepage = "https://github.com/voxel51/fiftyone"
 
 [tool.setuptools.packages.find]
-# Exact names, as the removed setup.py had them — globs would also
-# exclude packages that merely share a prefix
+# Exact names: globs would also exclude packages that merely share a prefix
 exclude = ["app", "eta", "package", "requirements", "tests", "tools"]
 
 [tool.setuptools]
 include-package-data = true
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
 
 [tool.black]
 line-length = 79

@@ -21,7 +21,7 @@ RUN apt-get update \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Bake fiftyone's dependency tree exactly as setup.py resolves it, then drop
+# Bake fiftyone's dependency tree exactly as pyproject.toml resolves it, then drop
 # fiftyone itself — the test job reinstalls it from the PR's source, which
 # is fast once the dependencies are already present.
 COPY . /tmp/fiftyone-src

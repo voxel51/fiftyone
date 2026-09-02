@@ -26,7 +26,8 @@ It uses:
   source of truth
 - vendored protobuf imports under `include`
 - project-local `protoc-gen-es` from `app/package.json`
-- local `protoc` matching the Python protobuf runtime pinned in `setup.py`
+- local `protoc` matching the Python protobuf runtime pinned in
+  `pyproject.toml`
 
 `protoc` generates the Python output natively. TypeScript generation is not a
 built-in `protoc` feature, so it uses the external `protoc-gen-es` plugin. The
@@ -42,7 +43,7 @@ protoc --version
 python schemas/multimodal/build.py
 ```
 
-If your default `protoc` does not match the `setup.py` protobuf pin,
+If your default `protoc` does not match the `pyproject.toml` protobuf pin,
 install/select the matching version and point the build at it:
 
 ```bash
@@ -50,7 +51,7 @@ PROTOC=/path/to/protoc python schemas/multimodal/build.py
 ```
 
 The Python package version and `protoc` version differ by the Python major
-prefix. For example, `protobuf==6.33.6` in `setup.py` requires
+prefix. For example, `protobuf==6.33.6` in `pyproject.toml` requires
 `protoc --version` to print `libprotoc 33.6`.
 
 For macOS and Linux binaries, use the official Protocol Buffers release page:
