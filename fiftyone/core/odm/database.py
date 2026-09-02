@@ -489,6 +489,50 @@ def ensure_connection():
     _connect()
 
 
+def _install_connection_bootstrap():
+    """Wraps ``mongoengine.connection.get_connection`` so that mongoengine's
+    default connection is established on demand.
+
+    FiftyOne's connection setup is lazy: entry points in FiftyOne code funnel
+    through :func:`ensure_connection`, which connects on first use and
+    reconnects after a teardown. But operations that mongoengine performs
+    natively — queryset access, lazy dereference of reference fields, GridFS
+    reads — resolve the connection registry directly and would otherwise
+    raise ``You have not defined a default connection`` in a process that
+    has not (or no longer has) an established connection, e.g. a cold
+    process in API mode or a forked worker after ``_disconnect()``.
+
+    ``get_connection`` is the choke point that every such operation resolves
+    at call time, and the spot where the error above is raised.
+    """
+    default_alias = mongoengine.connection.DEFAULT_CONNECTION_NAME
+    original = mongoengine.connection.get_connection
+
+    if getattr(original, "_fiftyone_bootstrap", False):
+        return
+
+    def get_connection(alias=default_alias, reconnect=False):
+        if (
+            alias == default_alias
+            and alias not in mongoengine.connection._connection_settings
+        ):
+            ensure_connection()
+
+        return original(alias=alias, reconnect=reconnect)
+
+    get_connection._fiftyone_bootstrap = True
+    mongoengine.connection.get_connection = get_connection
+
+    # The one mongoengine module that holds a direct reference rather than
+    # resolving via ``mongoengine.connection`` at call time
+    from mongoengine import mongodb_support
+
+    mongodb_support.get_connection = get_connection
+
+
+_install_connection_bootstrap()
+
+
 def get_db_client():
     """Returns a database client.
 
