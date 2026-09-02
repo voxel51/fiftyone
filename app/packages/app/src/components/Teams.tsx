@@ -97,7 +97,7 @@ export default function Teams({
         }
       >
         <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
-          <Heading level={HeadingLevel.H4}>Accelerate your workflow</Heading>
+          <Heading level={HeadingLevel.H2}>Accelerate your workflow</Heading>
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>
             With FiftyOne Enterprise you can connect to your data lake, automate
             your data curation and model analysis tasks, securely collaborate

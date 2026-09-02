@@ -145,6 +145,8 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         commitOnBlur={false}
         // The bar's gutter clips overflow — the list must escape it
         portal
+        // The field sits flush in the bar; the bar is its frame
+        borderless
         emptyMessage={
           enabled ? (
             "No previous searches"

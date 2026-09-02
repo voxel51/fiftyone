@@ -50,7 +50,7 @@ const Header: React.FC<
           }}
         >
           <animated.img className={style.logo} style={logoProps} src={logo} />
-          <Heading level={HeadingLevel.H4} className={style.wordmark}>
+          <Heading level={HeadingLevel.H1} className={style.wordmark}>
             {title}
           </Heading>
         </Stack>
