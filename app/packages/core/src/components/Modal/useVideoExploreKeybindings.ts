@@ -1,7 +1,6 @@
 import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
 import { useClearSelectedLabels } from "../Actions/Selected/hooks";
 
 /**
@@ -25,7 +24,7 @@ export const useVideoExploreKeybindings = () => {
   // Read as a value so the hook re-renders when the selection empties or
   // fills: `useKeyBindings` re-reads the binding list every render, so the
   // enablement predicate below closes over a fresh answer each time.
-  const hasSelection = useRecoilValue(fos.selectedLabelIds).size > 0;
+  const hasSelection = fos.useSelectedLabelIds().size > 0;
 
   useKeyBindings(
     KnownContexts.Modal,

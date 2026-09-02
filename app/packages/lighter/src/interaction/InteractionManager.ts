@@ -19,6 +19,7 @@ import type { InteractionState } from "../overlay/DetectionOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
+import { resolveSelectionClick } from "./resolveSelectionClick";
 import type { Point, Rect } from "../types";
 import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveCreationHandler } from "./InteractiveCreationHandler";
@@ -421,28 +422,24 @@ export class InteractionManager {
 
       const isSelectableOverlay = !!handler && TypeGuards.isSelectable(handler);
 
-      // If clicking an overlay, select it
-      const isUnselectedOverlay =
-        isSelectableOverlay && !this.selectionManager.isSelected(handler!.id);
-
       // the selected overlay still wins the hit test so drag/resize works
       const drawOverOverlay = this.isDrawingOverUnselected(handler);
 
-      // A multi-select scene TOGGLES, and acts on an already-selected overlay
-      // too: with several overlays selected at once, clicking one again is the
-      // only gesture that takes it back out. A single-select scene keeps its
-      // existing behavior — there, re-clicking is the start of a drag on the
-      // overlay you already picked, and deselecting it would strand the
-      // gesture. The pointer event only rides along on the multi-select path
-      // for the same reason: it decides the `isShiftPressed` the select event
-      // carries, and no single-select surface should change what it reports.
-      const multipleSelection = this.selectionManager.isMultipleSelection();
-      const isSelectionClick = multipleSelection
-        ? isSelectableOverlay
-        : isUnselectedOverlay;
+      // See `resolveSelectionClick` for the rule. The pointer event rides
+      // along only on the toggle path: it decides the `isShiftPressed` the
+      // select event carries, and no single-select surface should change what
+      // it reports.
+      const selectionAction = resolveSelectionClick({
+        isSelectableOverlay,
+        isSelected: isSelectableOverlay
+          ? this.selectionManager.isSelected(handler!.id)
+          : false,
+        isDrawingOver: drawOverOverlay,
+        multipleSelection: this.selectionManager.isMultipleSelection(),
+      });
 
-      if (isSelectionClick && !drawOverOverlay) {
-        if (multipleSelection) {
+      if (selectionAction !== "none") {
+        if (selectionAction === "toggle") {
           this.selectionManager.toggle(handler!.id, { event });
         } else {
           this.selectionManager.select(handler!.id);

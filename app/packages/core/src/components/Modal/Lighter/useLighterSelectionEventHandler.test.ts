@@ -5,71 +5,45 @@
  */
 
 import { act, renderHook } from "@testing-library/react";
-import React from "react";
-import {
-  RecoilRoot,
-  useRecoilValue,
-  type MutableSnapshot,
-  DefaultValue as DV,
-} from "recoil";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const stubs = vi.hoisted(() => ({
-  selectedLabels: null as any,
-  selectedLabelMap: null as any,
-  selectedLabelIds: null as any,
-  modalSampleId: null as any,
+/**
+ * The selection, as this surface sees it: whatever the `@fiftyone/state`
+ * accessors hand back. Those are Recoil-backed in the app and tested there
+ * (`useOnSelectLabel.test`), so nothing here needs to know that — the subject
+ * of this file is which overlay maps to which label and which events are acted
+ * on at all.
+ */
+const selection = vi.hoisted(() => ({
+  map: {} as Record<string, unknown>,
+  ids: new Set<string>(),
+  reset(initial: Record<string, unknown> = {}) {
+    this.map = { ...initial };
+    this.ids = new Set(Object.keys(this.map));
+  },
 }));
 
-vi.mock("@fiftyone/state", async () => {
-  const { atom, selector } = await import("recoil");
-
-  stubs.selectedLabels = atom<any[]>({
-    key: "_test/LighterSelection/selectedLabels",
-    default: [],
-  });
-
-  stubs.modalSampleId = atom<string>({
-    key: "_test/LighterSelection/modalSampleId",
-    default: "s1",
-  });
-
-  stubs.selectedLabelMap = selector<Record<string, any>>({
-    key: "_test/LighterSelection/selectedLabelMap",
-    get: ({ get }) =>
-      (get(stubs.selectedLabels) as any[]).reduce(
-        (acc: Record<string, any>, { labelId, ...label }: any) => ({
-          [labelId]: label,
-          ...acc,
-        }),
-        {} as Record<string, any>,
-      ),
-    set: ({ set }, newValue) => {
-      if (newValue instanceof DV) {
-        set(stubs.selectedLabels, []);
-        return;
+vi.mock("@fiftyone/state", () => ({
+  useModalSampleId: () => "s1",
+  useSelectedLabelIds: () => selection.ids,
+  useApplySelectedLabelsDelta:
+    () =>
+    ({
+      add = [],
+      remove = [],
+    }: {
+      add?: { labelId: string }[];
+      remove?: string[];
+    }) => {
+      for (const labelId of remove) {
+        delete selection.map[labelId];
       }
-      set(
-        stubs.selectedLabels,
-        Object.entries(newValue as Record<string, any>).map(
-          ([labelId, label]) => ({ ...label, labelId }),
-        ),
-      );
+      for (const { labelId, ...label } of add) {
+        selection.map[labelId] = label;
+      }
+      selection.ids = new Set(Object.keys(selection.map));
     },
-  });
-
-  stubs.selectedLabelIds = selector<Set<string>>({
-    key: "_test/LighterSelection/selectedLabelIds",
-    get: ({ get }) => new Set(Object.keys(get(stubs.selectedLabelMap))),
-  });
-
-  return {
-    selectedLabels: stubs.selectedLabels,
-    selectedLabelMap: stubs.selectedLabelMap,
-    selectedLabelIds: stubs.selectedLabelIds,
-    modalSampleId: stubs.modalSampleId,
-  };
-});
+}));
 
 /** Lighter event handlers the hook registers, by event name. */
 const handlers = new Map<string, (payload: unknown) => void>();
@@ -105,27 +79,10 @@ const frameOverlay = (id: string, labelId: string, frame = 7): Overlay => ({
   label: { _id: labelId, frame_number: frame },
 });
 
-const wrapper =
-  (initial: Record<string, unknown> = {}) =>
-  ({ children }: { children: React.ReactNode }) =>
-    React.createElement(
-      RecoilRoot,
-      {
-        initializeState: ({ set }: MutableSnapshot) => {
-          set(stubs.selectedLabelMap, initial);
-        },
-      },
-      children,
-    );
-
-const mount = (scene: never, initial?: Record<string, unknown>) =>
-  renderHook(
-    () => {
-      useLighterSelectionEventHandler(scene);
-      return useRecoilValue(stubs.selectedLabelMap);
-    },
-    { wrapper: wrapper(initial) },
-  );
+const mount = (scene: never, initial: Record<string, unknown> = {}) => {
+  selection.reset(initial);
+  return renderHook(() => useLighterSelectionEventHandler(scene));
+};
 
 const fire = (payload: {
   selectedIds?: string[];
@@ -144,15 +101,15 @@ describe("useLighterSelectionEventHandler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     handlers.clear();
+    selection.reset();
   });
 
   it("adds a clicked label, keyed by its backend id and stamped with its frame", async () => {
-    const scene = makeScene([frameOverlay("inst-a", "label-a", 12)]);
-    const { result } = mount(scene);
+    mount(makeScene([frameOverlay("inst-a", "label-a", 12)]));
 
     await fire({ selectedIds: ["inst-a"] });
 
-    expect(result.current).toEqual({
+    expect(selection.map).toEqual({
       "label-a": {
         field: "frames.detections",
         sampleId: "s1",
@@ -162,31 +119,34 @@ describe("useLighterSelectionEventHandler", () => {
   });
 
   it("accumulates across clicks rather than replacing", async () => {
-    const scene = makeScene([
-      frameOverlay("inst-a", "label-a"),
-      frameOverlay("inst-b", "label-b"),
-    ]);
-    const { result } = mount(scene);
+    mount(
+      makeScene([
+        frameOverlay("inst-a", "label-a"),
+        frameOverlay("inst-b", "label-b"),
+      ]),
+    );
 
     await fire({ selectedIds: ["inst-a"] });
     await fire({ selectedIds: ["inst-b"] });
 
-    expect(Object.keys(result.current).sort()).toEqual(["label-a", "label-b"]);
+    expect(Object.keys(selection.map).sort()).toEqual(["label-a", "label-b"]);
   });
 
   it("removes a label the user clicked back off, leaving the rest", async () => {
-    const scene = makeScene([
-      frameOverlay("inst-a", "label-a"),
-      frameOverlay("inst-b", "label-b"),
-    ]);
-    const { result } = mount(scene, {
-      "label-a": { field: "frames.detections", sampleId: "s1" },
-      "label-b": { field: "frames.detections", sampleId: "s1" },
-    });
+    mount(
+      makeScene([
+        frameOverlay("inst-a", "label-a"),
+        frameOverlay("inst-b", "label-b"),
+      ]),
+      {
+        "label-a": { field: "frames.detections", sampleId: "s1" },
+        "label-b": { field: "frames.detections", sampleId: "s1" },
+      },
+    );
 
     await fire({ deselectedIds: ["inst-a"] });
 
-    expect(Object.keys(result.current)).toEqual(["label-b"]);
+    expect(Object.keys(selection.map)).toEqual(["label-b"]);
   });
 
   /**
@@ -196,14 +156,13 @@ describe("useLighterSelectionEventHandler", () => {
    * built up, just by letting the video play.
    */
   it("ignores a flagged deselect, so scrubbing past a label keeps it selected", async () => {
-    const scene = makeScene([frameOverlay("inst-a", "label-a")]);
-    const { result } = mount(scene, {
+    mount(makeScene([frameOverlay("inst-a", "label-a")]), {
       "label-a": { field: "frames.detections", sampleId: "s1" },
     });
 
     await fire({ deselectedIds: ["inst-a"], ignoreSideEffects: true });
 
-    expect(Object.keys(result.current)).toEqual(["label-a"]);
+    expect(Object.keys(selection.map)).toEqual(["label-a"]);
   });
 
   /**
@@ -212,65 +171,39 @@ describe("useLighterSelectionEventHandler", () => {
    * at best and, for any listener that toggles, wrong.
    */
   it("ignores a flagged select", async () => {
-    const scene = makeScene([frameOverlay("inst-a", "label-a")]);
-    const { result } = mount(scene);
+    mount(makeScene([frameOverlay("inst-a", "label-a")]));
 
     await fire({ selectedIds: ["inst-a"], ignoreSideEffects: true });
 
-    expect(result.current).toEqual({});
-  });
-
-  /**
-   * The two hooks in this file form a loop: this one writes the atom from
-   * scene events, `useSelectedLabelsSceneSync` writes the scene from the atom.
-   * Republishing an unchanged map would still hand `selectedLabelIds` a fresh
-   * identity and kick the reconciler off again for nothing, on every echo.
-   */
-  it("does not republish the map when the label is already selected", async () => {
-    const scene = makeScene([frameOverlay("inst-a", "label-a")]);
-    const { result } = mount(scene, {
-      "label-a": { field: "frames.detections", sampleId: "s1" },
-    });
-
-    const before = result.current;
-
-    await fire({ selectedIds: ["inst-a"] });
-
-    expect(result.current).toBe(before);
+    expect(selection.map).toEqual({});
   });
 
   it("leaves a sample-level label frame-less", async () => {
-    const scene = makeScene([
-      { id: "inst-td", field: "events", label: { _id: "label-td" } },
-    ]);
-    const { result } = mount(scene);
+    mount(
+      makeScene([
+        { id: "inst-td", field: "events", label: { _id: "label-td" } },
+      ]),
+    );
 
     await fire({ selectedIds: ["inst-td"] });
 
-    expect(result.current).toEqual({
+    expect(selection.map).toEqual({
       "label-td": { field: "events", sampleId: "s1" },
     });
   });
 
   it("does nothing when the scene no longer holds the overlay", async () => {
-    const scene = makeScene([]);
-    const { result } = mount(scene);
+    mount(makeScene([]));
 
     await fire({ selectedIds: ["gone"] });
 
-    expect(result.current).toEqual({});
+    expect(selection.map).toEqual({});
   });
 });
 
 describe("useSelectedLabelsSceneSync", () => {
   /** A scene that records what was asked of it and answers about its state. */
-  const makeSyncScene = (
-    overlays: (Overlay & { selected?: boolean })[],
-  ): {
-    scene: never;
-    selectOverlay: ReturnType<typeof vi.fn>;
-    deselectOverlay: ReturnType<typeof vi.fn>;
-  } => {
+  const makeSyncScene = (overlays: (Overlay & { selected?: boolean })[]) => {
     const selectOverlay = vi.fn();
     const deselectOverlay = vi.fn();
 
@@ -287,14 +220,15 @@ describe("useSelectedLabelsSceneSync", () => {
     };
   };
 
-  const mountSync = (scene: never, initial: Record<string, unknown> = {}) =>
-    renderHook(() => useSelectedLabelsSceneSync(scene), {
-      wrapper: wrapper(initial),
-    });
+  const mountSync = (scene: never, initial: Record<string, unknown> = {}) => {
+    selection.reset(initial);
+    return renderHook(() => useSelectedLabelsSceneSync(scene));
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     handlers.clear();
+    selection.reset();
   });
 
   it("selects an overlay the atom holds and the canvas does not", () => {
@@ -376,9 +310,7 @@ describe("useSelectedLabelsSceneSync", () => {
 
   it("does nothing without a scene", () => {
     expect(() =>
-      renderHook(() => useSelectedLabelsSceneSync(null), {
-        wrapper: wrapper({}),
-      }),
+      renderHook(() => useSelectedLabelsSceneSync(null)),
     ).not.toThrow();
   });
 });

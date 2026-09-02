@@ -8,8 +8,7 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { useEffect } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useCallback, useEffect } from "react";
 import { overlayToSelectedLabel } from "../../Actions/Selected/hooks";
 
 /**
@@ -39,78 +38,52 @@ export const useLighterSelectionEventHandler = (scene: Scene2D | null) => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
+  const applyDelta = fos.useApplySelectedLabelsDelta();
+  const sampleId = fos.useModalSampleId();
+
   useEventHandler(
     "lighter:selection-changed",
-    useRecoilCallback(
-      ({ snapshot, set }) =>
-        ({ selectedIds, deselectedIds, ignoreSideEffects }) => {
-          // Flagged payloads are not user intent, and both producers have
-          // already settled the atom themselves or must not touch it:
-          //
-          // - the "Manage selected" menu applies its choice to the scene with
-          //   `ignoreSideEffects` after writing recoil, so acting here would
-          //   re-toggle every label it just selected;
-          // - removing an overlay drops its selection as a side effect of
-          //   removal. A track leaving the current frame must NOT deselect its
-          //   label, or scrubbing past a box would silently empty a selection
-          //   the user built up.
-          if (ignoreSideEffects || !scene) {
-            return;
-          }
+    useCallback(
+      ({
+        selectedIds,
+        deselectedIds,
+        ignoreSideEffects,
+      }: {
+        selectedIds: string[];
+        deselectedIds: string[];
+        ignoreSideEffects?: boolean;
+      }) => {
+        // Flagged payloads are not user intent, and both producers have
+        // already settled the atom themselves or must not touch it:
+        //
+        // - the "Manage selected" menu applies its choice to the scene with
+        //   `ignoreSideEffects` after writing recoil, so acting here would
+        //   re-toggle every label it just selected;
+        // - removing an overlay drops its selection as a side effect of
+        //   removal. A track leaving the current frame must NOT deselect its
+        //   label, or scrubbing past a box would silently empty a selection
+        //   the user built up.
+        if (ignoreSideEffects || !scene) {
+          return;
+        }
 
-          const sampleId = snapshot.getLoadable(fos.modalSampleId).getValue();
-          const labels = {
-            ...snapshot.getLoadable(fos.selectedLabelMap).getValue(),
-          };
+        // The overlay is still registered at deselect time — the manager flips
+        // its state and emits before anything unregisters it — so its label id
+        // is readable, and it is the label id (not the overlay's instance id)
+        // these atoms key by.
+        const remove = deselectedIds
+          .map((id) => scene.getOverlay(id))
+          .filter((overlay) => !!overlay)
+          .map((overlay) => overlayToSelectedLabel(overlay, sampleId).labelId);
 
-          let changed = false;
+        const add = selectedIds
+          .map((id) => scene.getOverlay(id))
+          .filter((overlay) => !!overlay)
+          .map((overlay) => overlayToSelectedLabel(overlay, sampleId));
 
-          for (const id of deselectedIds) {
-            const overlay = scene.getOverlay(id);
-
-            // The overlay is still registered at deselect time — the manager
-            // flips its state and emits before anything unregisters it — so
-            // its label id is readable, and it is the label id (not the
-            // overlay's instance id) these atoms key by.
-            const labelId = overlay
-              ? overlayToSelectedLabel(overlay, sampleId).labelId
-              : undefined;
-
-            if (labelId && labelId in labels) {
-              delete labels[labelId];
-              changed = true;
-            }
-          }
-
-          for (const id of selectedIds) {
-            const overlay = scene.getOverlay(id);
-
-            if (!overlay) {
-              continue;
-            }
-
-            const { labelId, ...label } = overlayToSelectedLabel(
-              overlay,
-              sampleId,
-            );
-
-            // Only a genuinely new entry counts. Re-adding one that is already
-            // there would still publish a fresh map, and `selectedLabelIds`
-            // recomputes off identity — enough to re-run the reconciler below
-            // for nothing, on every echo.
-            if (labelId in labels) {
-              continue;
-            }
-
-            labels[labelId] = label;
-            changed = true;
-          }
-
-          if (changed) {
-            set(fos.selectedLabelMap, labels);
-          }
-        },
-      [scene],
+        applyDelta({ add, remove });
+      },
+      [applyDelta, sampleId, scene],
     ),
   );
 };
@@ -140,8 +113,8 @@ export const useLighterSelectionEventHandler = (scene: Scene2D | null) => {
  * survives scrubbing exactly like a clicked one.
  */
 export const useSelectedLabelsSceneSync = (scene: Scene2D | null) => {
-  const selectedLabelIds = useRecoilValue(fos.selectedLabelIds);
-  const sampleId = useRecoilValue(fos.modalSampleId);
+  const selectedLabelIds = fos.useSelectedLabelIds();
+  const sampleId = fos.useModalSampleId();
 
   useEffect(() => {
     if (!scene) {
