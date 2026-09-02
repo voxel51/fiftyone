@@ -115,8 +115,8 @@ const DatasetSelector: React.FC<{
         autoHighlight
         // The header clips overflow — the list must escape it
         portal
-        inputAttributes={{ "data-cy": "selector-dataset" }}
-        listAttributes={{ "data-cy": "selector-results-container-dataset" }}
+        inputProps={{ "data-cy": "selector-dataset" }}
+        listProps={{ "data-cy": "selector-results-container-dataset" }}
         onOpenChange={(isOpen) => {
           setOpen(isOpen);
           if (isOpen) {

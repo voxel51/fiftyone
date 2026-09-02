@@ -23,7 +23,6 @@ import {
   Size,
   Spacing,
   Stack,
-  Text,
   TextColor,
   Variant,
 } from "@voxel51/voodo";
@@ -158,11 +157,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         portal
         emptyMessage={enabled ? "No previous searches" : undefined}
       />
-      {pending && (
-        <Text color={TextColor.Tertiary}>
-          <LoadingDots />
-        </Text>
-      )}
+      {pending && <LoadingDots color={TextColor.Tertiary} />}
     </Stack>
   );
 };

@@ -111,7 +111,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
       autoHighlight
       // An unpinned slot was just asked for — the keyboard goes straight in.
       // A pinned one renders at page load and must not steal it.
-      autoFocus={!pinned}
+      focusOnMount={!pinned}
       // The bar's gutter clips overflow — the list must escape it
       portal
       onOpenChange={(isOpen) => {
