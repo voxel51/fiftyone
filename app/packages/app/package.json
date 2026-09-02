@@ -68,7 +68,6 @@
         "vite-plugin-wasm": "catalog:"
     },
     "peerDependencies": {
-        "@mui/icons-material": "*",
-        "@react-spring/web": "*"
+        "@mui/icons-material": "*"
     }
 }

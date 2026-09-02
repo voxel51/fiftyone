@@ -25,6 +25,7 @@ import {
   Spacing,
   Stack,
   TextColor,
+  TextVariant,
   Variant,
 } from "@voxel51/voodo";
 import React from "react";
@@ -165,7 +166,14 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
           )
         }
       />
-      {pending && <LoadingDots color={TextColor.Tertiary} />}
+      {pending && (
+        // Legible even for a sub-second search: a word, not just the dots
+        <LoadingDots
+          text="Searching"
+          variant={TextVariant.Sm}
+          color={TextColor.Tertiary}
+        />
+      )}
     </Stack>
   );
 };

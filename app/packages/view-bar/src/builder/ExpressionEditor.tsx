@@ -33,11 +33,8 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { tryParse } from "../expression/parse";
 import type { Node } from "../expression/types";
 import type { Kind, Operator } from "./catalog";
-import {
-  EDITOR_HEADER_HEIGHT,
-  ERROR_COLOR,
-  EXPRESSION_BOX_HEIGHT,
-} from "../params";
+import { EDITOR_HEADER_HEIGHT, EXPRESSION_BOX_HEIGHT } from "../params";
+import styles from "./ExpressionEditor.module.css";
 import {
   caretContext,
   completeField,
@@ -70,6 +67,9 @@ export interface ExpressionEditorProps {
   /** The stage is done being described — wired to Shift+Enter. */
   onSubmit?: () => void;
 }
+
+const cx = (...names: (string | false | undefined)[]) =>
+  names.filter(Boolean).join(" ");
 
 /**
  * How the operator is written into the source once chosen.
@@ -441,11 +441,8 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
         align={Align.Center}
-        style={{
-          height: EDITOR_HEADER_HEIGHT,
-          minWidth: 0,
-          overflow: "hidden",
-        }}
+        className={styles.header}
+        style={{ height: EDITOR_HEADER_HEIGHT }}
       >
         {tabs}
         {disabled ? (
@@ -460,12 +457,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
             <Text
               variant={TextVariant.Caption}
               color={TextColor.Muted}
-              style={{
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                minWidth: 0,
-              }}
+              className={styles.ellipsis}
             >
               {disabledReason ?? "Waiting on required values"}
             </Text>
@@ -499,12 +491,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               <Text
                 variant={TextVariant.Caption}
                 color={STATUS_COLOR[status.state]}
-                style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  minWidth: 0,
-                }}
+                className={styles.ellipsis}
               >
                 {status.state === "invalid"
                   ? status.message
@@ -517,31 +504,14 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
         )}
       </Stack>
 
-      <div
-        style={{
-          position: "relative",
-          // The box below swallows no events while disabled, so the cursor
-          // that says so lives here — the same one every voodo control shows
-          cursor: disabled ? "not-allowed" : undefined,
-        }}
-      >
+      <div className={cx(styles.editor, disabled && styles.notAllowed)}>
         <div
-          style={{
-            position: "relative",
-            height: EXPRESSION_BOX_HEIGHT,
-            overflow: "hidden",
-            borderRadius: 4,
-            // Disabled means disabled: no clicks, no caret, and the same
-            // dimming every other locked control wears
-            ...(disabled ? { pointerEvents: "none", opacity: 0.5 } : null),
-            // Monaco's loading state paints nothing, so the box holds the
-            // editor's surface color from the first frame
-            background: "var(--fo-palette-background-level2)",
-            border:
-              status.state === "invalid"
-                ? `1px solid ${ERROR_COLOR}`
-                : "1px solid var(--fo-palette-primary-plainBorder)",
-          }}
+          className={cx(
+            styles.frame,
+            status.state === "invalid" && styles.frameInvalid,
+            disabled && styles.frameDisabled,
+          )}
+          style={{ height: EXPRESSION_BOX_HEIGHT }}
         >
           <Code
             height="100%"
@@ -585,13 +555,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
             <Text
               variant={TextVariant.Caption}
               color={TextColor.Placeholder}
-              style={{
-                position: "absolute",
-                left: 10,
-                top: 7,
-                // The click belongs to the editor underneath
-                pointerEvents: "none",
-              }}
+              className={styles.placeholder}
             >
               {disabled ? (disabledReason ?? "") : placeholder}
             </Text>
@@ -608,26 +572,12 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
             // Choosing a suggestion must not blur the editor — the list
             // would close under the pointer before the click lands
             onMouseDown={(e) => e.preventDefault()}
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              marginTop: 4,
-              zIndex: 10001,
-              maxHeight: wantsDate ? 320 : 240,
-              overflowY: "auto",
-              overflowX: "hidden",
-              borderRadius: 4,
-              border: "1px solid var(--fo-palette-primary-plainBorder)",
-              background: "var(--fo-palette-background-level2)",
-              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
-            }}
+            className={cx(styles.list, wantsDate && styles.listWithDate)}
           >
             {wantsDate && (
               // The caret wants a date, so offer one the way a person picks
               // one — inserted as `datetime(y, m, d)` at the caret
-              <div style={{ padding: 6 }}>
+              <div className={styles.datePicker}>
                 <DatePicker inline onChange={chooseDate} />
               </div>
             )}
@@ -672,38 +622,28 @@ const Signature: React.FC<{
   <Stack
     orientation={Orientation.Row}
     spacing={Spacing.Xs}
-    style={{
-      alignItems: "center",
-      flex: 1,
-      minWidth: 0,
-      overflow: "hidden",
-      whiteSpace: "nowrap",
-    }}
+    align={Align.Center}
+    className={styles.signature}
   >
     <Text
       variant={TextVariant.Caption}
       color={TextColor.Secondary}
-      style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+      className={styles.noShrink}
     >
       {operator.display}(arg {argIndex + 1})
     </Text>
-    <div style={{ flexShrink: 0, display: "inline-flex" }}>
+    <Stack orientation={Orientation.Row} className={styles.noShrink}>
       <Pill size={Size.Xs}>{KIND_LABEL[argKind]}</Pill>
-    </div>
+    </Stack>
     <Tooltip
       anchor={Anchor.Bottom}
       content={operator.summary}
-      style={{ minWidth: 0, overflow: "hidden" }}
+      wrapperClassName={styles.shrinkable}
     >
       <Text
         variant={TextVariant.Caption}
         color={TextColor.Muted}
-        style={{
-          display: "block",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
+        className={styles.summary}
       >
         {operator.summary}
       </Text>
@@ -740,14 +680,11 @@ const Row: React.FC<
       role="option"
       aria-selected={Boolean(active)}
       aria-disabled={!onChoose}
-      style={{
-        display: "block",
-        padding: "3px 6px",
-        borderRadius: 3,
-        opacity: onChoose ? 1 : 0.6,
-        cursor: onChoose ? "pointer" : "not-allowed",
-        background: active ? "var(--fo-palette-background-level1)" : undefined,
-      }}
+      className={cx(
+        styles.row,
+        active && styles.rowActive,
+        !onChoose && styles.rowUnavailable,
+      )}
     >
       <Text
         variant={TextVariant.Sm}

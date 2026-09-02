@@ -9,6 +9,8 @@
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+  /* A pill, as it has always been */
+  border-radius: 9999px;
 }
 
 /* A sheen sweeps across on hover */

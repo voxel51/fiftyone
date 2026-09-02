@@ -13,10 +13,7 @@ import {
   Align,
   Button,
   DarkModeIcon,
-  DiscordIcon,
-  GitHubIcon,
   LightModeIcon,
-  MenuBookIcon,
   Orientation,
   Size,
   Spacing,
@@ -30,6 +27,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { graphql } from "relay-runtime";
 import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
+import HeaderLinks from "./HeaderLinks";
 import styles from "./Nav.module.css";
 import Teams from "./Teams";
 import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
@@ -137,36 +135,7 @@ const Nav: React.FC<
             aria-label={mode === "dark" ? "Light mode" : "Dark mode"}
             onClick={toggleTheme}
           />
-          <Button
-            variant={Variant.Icon}
-            size={Size.Md}
-            borderless
-            leadingIcon={DiscordIcon}
-            href="https://community.voxel51.com/"
-            target="_blank"
-            title="Discord"
-            aria-label="Discord"
-          />
-          <Button
-            variant={Variant.Icon}
-            size={Size.Md}
-            borderless
-            leadingIcon={GitHubIcon}
-            href="https://github.com/voxel51/fiftyone"
-            target="_blank"
-            title="GitHub"
-            aria-label="GitHub"
-          />
-          <Button
-            variant={Variant.Icon}
-            size={Size.Md}
-            borderless
-            leadingIcon={MenuBookIcon}
-            href="https://docs.voxel51.com/user_guide/app.html"
-            target="_blank"
-            title="Documentation"
-            aria-label="Documentation"
-          />
+          <HeaderLinks />
           <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
         </Stack>
       </Header>

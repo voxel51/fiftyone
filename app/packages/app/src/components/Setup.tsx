@@ -1,57 +1,36 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * What the App shows with no session to connect to: how to start one.
  */
 
-import {
-  DiscordLink,
-  DocsLink,
-  GitHubLink,
-  Header,
-  iconContainer,
-  useTheme,
-} from "@fiftyone/components";
+import { Header } from "@fiftyone/components";
 import { isNotebook } from "@fiftyone/state";
-import { styles } from "@fiftyone/utilities";
-import { animated, useSpring } from "@react-spring/web";
+import {
+  Align,
+  Button,
+  Heading,
+  HeadingLevel,
+  Justify,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import { useState } from "react";
 import { useRecoilValue } from "recoil";
-import styled from "styled-components";
 
-const SectionTitle = styled.div`
-  font-size: 2rem;
-  line-height: 3rem;
-  color: ${({ theme }) => theme.text.primary};
-  font-weight: bold;
-`;
-
-const Text = styled.p`
-  font-size: 1rem;
-  line-height: 1.5rem;
-  margin: 0;
-  padding: 0;
-  color: ${({ theme }) => theme.text.secondary};
-
-  & > a {
-    color: ${({ theme }) => theme.primary.plainColor};
-  }
-`;
-
-const Code = styled.pre`
-  padding: 2rem;
-  background-color: ${({ theme }) => theme.background.level3};
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  color: ${({ theme }) => theme.text.primary};
-  border-radius: 3px;
-  overflow: auto;
-
-  ${styles.scrollbarStyles}
-`;
+import HeaderLinks from "./HeaderLinks";
+import styles from "./Setup.module.css";
 
 const port = (() => {
   if (typeof window !== "undefined" && window.location.port !== undefined) {
     return Number.parseInt(window.location.port);
   }
-
   return "";
 })();
 
@@ -64,6 +43,10 @@ dataset = fo.load_dataset(...)
 session = fo.launch_app(dataset, remote=True, port=XXXX)
 `;
 
+const Code = ({ children }: { children: string }) => (
+  <pre className={styles.code}>{children}</pre>
+);
+
 const LocalInstructions = () => {
   const localSnippet = `import fiftyone as fo
 
@@ -74,11 +57,13 @@ dataset = fo.load_dataset(...)
 session = fo.launch_app(dataset, port=${port})
 `;
   return (
-    <>
-      <SectionTitle>Local sessions</SectionTitle>
-      <Text>Here&apos;s how to connect to a local session from Python:</Text>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
+      <Heading level={HeadingLevel.H2}>Local sessions</Heading>
+      <Text color={TextColor.Secondary}>
+        Here&apos;s how to connect to a local session from Python:
+      </Text>
       <Code>{localSnippet}</Code>
-    </>
+    </Stack>
   );
 };
 
@@ -92,9 +77,9 @@ fiftyone app connect --destination [<username>@]<hostname> \\
     --port XXXX --local-port ${port}
 `;
   return (
-    <>
-      <SectionTitle>Remote sessions</SectionTitle>
-      <Text>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
+      <Heading level={HeadingLevel.H2}>Remote sessions</Heading>
+      <Text color={TextColor.Secondary}>
         You can work with data on a remote machine by launching a remote App
         session and connecting to it from your local machine. See{" "}
         <a
@@ -106,115 +91,78 @@ fiftyone app connect --destination [<username>@]<hostname> \\
         </a>{" "}
         for more information.
       </Text>
-      <Subtitle>On your remote machine</Subtitle>
+      <Heading level={HeadingLevel.H3}>On your remote machine</Heading>
       <Code>{remoteSnippet}</Code>
-      <Subtitle>On your local machine</Subtitle>
+      <Heading level={HeadingLevel.H3}>On your local machine</Heading>
       <Code>{bashSnippet}</Code>
-    </>
+    </Stack>
   );
 };
 
-const NotebookInstructions = () => {
-  return (
-    <>
-      <SectionTitle>Notebook sessions</SectionTitle>
-      <Text>Re-run the cell that created the session shown here.</Text>
-    </>
-  );
-};
+const NotebookInstructions = () => (
+  <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
+    <Heading level={HeadingLevel.H2}>Notebook sessions</Heading>
+    <Text color={TextColor.Secondary}>
+      Re-run the cell that created the session shown here.
+    </Text>
+  </Stack>
+);
 
-const SetupWrapper = styled.div`
-  width: 100%;
-  overflow: auto;
-  background: ${({ theme }) => theme.background.level2};
-  border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
-
-  ${styles.scrollbarStyles}
-`;
-
-const SetupContainer = styled.div`
-  width: 80%;
-  padding: 3rem 1rem;
-  margin: 0 auto;
-`;
-
-const Title = styled.div`
-  font-size: 2.5rem;
-  line-height: 3.5rem;
-  color: ${({ theme }) => theme.text.primary};
-  font-weight: bold;
-`;
-
-const Subtitle = styled.div`
-  font-size: 1.5rem;
-  color: ${({ theme }) => theme.text.secondary};
-  font-weight: 500;
-`;
-
-const TabsContainer = styled.div`
-  display: flex;
-  justify-content: flex-start;
-  margin: 1em 0 3em 0;
-  border-bottom-width: 2px;
-  border-bottom-style: solid;
-  border-bottom-color: ${({ theme }) => theme.primary.plainBorder};
-  height: 53px;
-`;
-
-const Tab = animated(styled.div`
-  font-size: 1rem;
-  line-height: 3em;
-  font-weight: bold;
-  padding: 0 0.5em;
-  cursor: pointer;
-  border-bottom-width: 3px;
-  border-bottom-style: solid;
-`);
+const TABS = [
+  { id: "local", label: "Local sessions" },
+  { id: "remote", label: "Remote sessions" },
+] as const;
 
 const Setup = () => {
-  const theme = useTheme();
-  const [activeTab, setActiveTab] = useState<string>("local");
-  const localProps = useSpring({
-    borderBottomColor:
-      activeTab === "local"
-        ? theme.primary.plainColor
-        : theme.background.level2,
-    color: activeTab === "local" ? theme.text.primary : theme.text.secondary,
-  });
-  const remoteProps = useSpring({
-    borderBottomColor:
-      activeTab === "remote"
-        ? theme.primary.plainColor
-        : theme.background.level2,
-    color: activeTab === "remote" ? theme.text.primary : theme.text.secondary,
-  });
+  const [activeTab, setActiveTab] = useState<"local" | "remote">("local");
   const notebook = useRecoilValue(isNotebook);
 
   return (
     <div data-cy="setup-page">
       <Header title={"FiftyOne"}>
-        <div className={iconContainer} style={{ flex: 1 }}>
-          <DiscordLink />
-          <GitHubLink />
-          <DocsLink />
-        </div>
+        <Stack
+          orientation={Orientation.Row}
+          align={Align.Center}
+          justify={Justify.End}
+          spacing={Spacing.Sm}
+          className={styles.links}
+        >
+          <HeaderLinks />
+        </Stack>
       </Header>
-      <SetupWrapper>
-        <SetupContainer>
-          <Title>Welcome to FiftyOne!</Title>
-          <Subtitle>It looks like you are not connected to a session</Subtitle>
+      <div className={styles.page}>
+        <Stack
+          orientation={Orientation.Column}
+          spacing={Spacing.Sm}
+          className={styles.content}
+        >
+          <Heading level={HeadingLevel.H1}>Welcome to FiftyOne!</Heading>
+          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            It looks like you are not connected to a session
+          </Text>
           {notebook ? (
             <NotebookInstructions />
           ) : (
             <>
-              <TabsContainer>
-                <Tab onClick={() => setActiveTab("local")} style={localProps}>
-                  Local sessions
-                </Tab>
-                <Tab onClick={() => setActiveTab("remote")} style={remoteProps}>
-                  Remote sessions
-                </Tab>
-              </TabsContainer>
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Sm}
+                className={styles.tabs}
+              >
+                {TABS.map(({ id, label }) => (
+                  <Button
+                    key={id}
+                    variant={
+                      activeTab === id ? Variant.Primary : Variant.Secondary
+                    }
+                    size={Size.Md}
+                    aria-pressed={activeTab === id}
+                    onClick={() => setActiveTab(id)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </Stack>
               {activeTab === "remote" ? (
                 <RemoteInstructions />
               ) : (
@@ -222,8 +170,8 @@ const Setup = () => {
               )}
             </>
           )}
-        </SetupContainer>
-      </SetupWrapper>
+        </Stack>
+      </div>
     </div>
   );
 };

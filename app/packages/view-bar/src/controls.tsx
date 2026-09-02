@@ -31,10 +31,10 @@ import React from "react";
 import type { Kind, Operator } from "./builder/catalog";
 import { ExpressionEditor } from "./builder/ExpressionEditor";
 import { isEnvelope, sourceOf } from "./builder/envelope";
+import styles from "./controls.module.css";
 import { scopedEntries } from "./fields";
 import {
   EDITOR_HEADER_HEIGHT,
-  ERROR_COLOR,
   EXPRESSION_BOX_HEIGHT,
   humanize,
   isEmptyValue,
@@ -89,41 +89,16 @@ interface ParamInputProps {
  * per control and reads as a form; the name belongs in the control it names.
  * Removable once `placeholder` lands on `Select` in voxel51/design-system.
  */
-/**
- * voodo's single-select trigger wraps its `w-full` input in a Stack with no
- * width of its own, so the input's 100% resolves against the input's intrinsic
- * size and the picker renders narrow. Sizes the Stack until the fix lands in
- * voxel51/design-system; the multi-select trigger has no wrapper and no bug.
- */
-const SELECT_WIDTH_CLASS = "fo-view-bar-select";
-const SELECT_WIDTH_STYLE_ID = "fo-view-bar-select-width";
-if (
-  typeof document !== "undefined" &&
-  !document.getElementById(SELECT_WIDTH_STYLE_ID)
-) {
-  const style = document.createElement("style");
-  style.id = SELECT_WIDTH_STYLE_ID;
-  style.textContent = `.${SELECT_WIDTH_CLASS} div:has(> input[role="combobox"]){width:100%}`;
-  document.head.appendChild(style);
-}
-
 const PlaceheldSelect: React.FC<
   React.PropsWithChildren<{ placeholder: string; empty: boolean }>
 > = ({ placeholder, empty, children }) => (
-  <div className={SELECT_WIDTH_CLASS} style={{ position: "relative" }}>
+  <div className={styles.selectShell}>
     {children}
     {empty && (
       <Text
         variant={TextVariant.Caption}
         color={TextColor.Placeholder}
-        style={{
-          position: "absolute",
-          left: 10,
-          top: "50%",
-          transform: "translateY(-50%)",
-          // The click belongs to the select underneath
-          pointerEvents: "none",
-        }}
+        className={styles.selectPlaceholder}
       >
         {placeholder}
       </Text>
@@ -210,9 +185,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
             empty={asList(value).length === 0}
           >
             <Select
-              // Spans the popover like every other control; voodo's Select
-              // otherwise sits at its intrinsic width
-              style={{ width: "100%" }}
+              className={styles.select}
               portal
               disabled={disabled || barren}
               value={asList(value)}
@@ -228,7 +201,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           empty={typeof value !== "string"}
         >
           <Select
-            style={{ width: "100%" }}
+            className={styles.select}
             exclusive
             portal
             disabled={disabled || barren}
@@ -249,7 +222,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           empty={typeof value !== "string"}
         >
           <Select
-            style={{ width: "100%" }}
+            className={styles.select}
             exclusive
             portal
             disabled={disabled || options.length === 0}
@@ -269,7 +242,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           empty={asList(value).length === 0}
         >
           <Select
-            style={{ width: "100%" }}
+            className={styles.select}
             portal
             disabled={disabled || options.length === 0}
             value={asList(value)}
@@ -394,7 +367,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
         <Stack
           orientation={Orientation.Column}
           spacing={Spacing.Xs}
-          style={{ cursor: disabled ? "not-allowed" : undefined }}
+          className={disabled ? styles.disabledCursor : undefined}
         >
           {/*
             The same header the expression editor has: switcher and status on
@@ -431,12 +404,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
                   <Text
                     variant={TextVariant.Caption}
                     color={TextColor.Muted}
-                    style={{
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      minWidth: 0,
-                    }}
+                    className={styles.truncate}
                   >
                     {blockedReason}
                   </Text>
@@ -448,18 +416,12 @@ const ParamControl: React.FC<ParamInputProps> = ({
                   // and the message runs out of the popover
                   <Tooltip
                     content={error ?? ""}
-                    style={{ minWidth: 0, overflow: "hidden" }}
+                    wrapperClassName={styles.shrinkable}
                   >
                     <Text
                       variant={TextVariant.Caption}
                       color={TextColor.Destructive}
-                      style={{
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        minWidth: 0,
-                        display: "block",
-                      }}
+                      className={styles.truncateBlock}
                     >
                       {error}
                     </Text>
@@ -475,19 +437,17 @@ const ParamControl: React.FC<ParamInputProps> = ({
                   anchor={Anchor.Bottom}
                   content="View expression documentation"
                 >
-                  <a
+                  <Button
                     href="https://docs.voxel51.com/api/fiftyone.core.expressions.html#fiftyone.core.expressions.ViewExpression"
                     target="_blank"
                     rel="noreferrer"
                     aria-label="View expression documentation"
-                    style={{
-                      marginLeft: "auto",
-                      display: "inline-flex",
-                      color: "var(--fo-palette-text-secondary)",
-                    }}
-                  >
-                    <Icon name={IconName.ExternalLink} size={Size.Sm} />
-                  </a>
+                    variant={Variant.Icon}
+                    size={Size.Sm}
+                    borderless
+                    leadingIcon={IconName.ExternalLink}
+                    className={styles.docsLink}
+                  />
                 </Tooltip>
               )}
             </Stack>
@@ -498,22 +458,14 @@ const ParamControl: React.FC<ParamInputProps> = ({
             watching, because the box changes when the editor is swapped in
           */}
           <div
-            style={{
-              position: "relative",
-              width: "100%",
-              height: EXPRESSION_BOX_HEIGHT,
-              overflow: "hidden",
-              borderRadius: 4,
-              // Disabled means disabled: no clicks, no caret, the dimming and
-              // cursor every other locked control wears
-              ...(disabled ? { pointerEvents: "none", opacity: 0.5 } : null),
-              // Monaco's loading state paints nothing, so the box holds the
-              // editor's surface color from the first frame
-              background: "var(--fo-palette-background-level2)",
-              border: invalid
-                ? `1px solid ${ERROR_COLOR}`
-                : "1px solid var(--fo-palette-primary-plainBorder)",
-            }}
+            className={[
+              styles.editorBox,
+              invalid ? styles.editorBoxInvalid : null,
+              disabled ? styles.editorBoxDisabled : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            style={{ height: EXPRESSION_BOX_HEIGHT }}
           >
             <Code
               height="100%"
@@ -551,13 +503,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
               <Text
                 variant={TextVariant.Caption}
                 color={TextColor.Placeholder}
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  top: 7,
-                  // The click belongs to the editor underneath
-                  pointerEvents: "none",
-                }}
+                className={styles.editorPlaceholder}
               >
                 {/* An expression param shows an operator example; a dict a
                     mapping one. Other data params (a list of values, a
@@ -577,9 +523,6 @@ const ParamControl: React.FC<ParamInputProps> = ({
   }
 };
 
-/** Reserved for a rejection reason, so its arrival moves nothing. */
-const STATUS_LINE_HEIGHT = 15;
-
 /**
  * A parameter's control, the editors it can be entered with, and the reason its
  * value was rejected. voodo's `Input` takes only a boolean error, so for most
@@ -595,7 +538,7 @@ export const ParamInput: React.FC<
       orientation={Orientation.Row}
       spacing={Spacing.None}
       role="tablist"
-      style={{ flexShrink: 0 }}
+      className={styles.tabs}
     >
       {modes.map((mode) => {
         // An expression cannot be recovered from lowered MongoDB, so the
@@ -617,15 +560,7 @@ export const ParamInput: React.FC<
             aria-selected={mode === props.kind}
             disabled={unavailable}
             onClick={unavailable ? undefined : () => onModeChange(mode)}
-            style={
-              mode === props.kind
-                ? {
-                    background:
-                      "color-mix(in srgb, var(--fo-palette-primary-plainColor) 12%, transparent)",
-                    color: "var(--fo-palette-text-primary)",
-                  }
-                : undefined
-            }
+            className={mode === props.kind ? styles.activeTab : undefined}
           >
             {MODE_LABELS[mode]}
           </Button>
@@ -649,13 +584,7 @@ export const ParamInput: React.FC<
     <Text
       variant={TextVariant.Caption}
       color={TextColor.Destructive}
-      // A JSON parse error is one long unbroken token; without a break
-      // opportunity it runs out of the popover instead of wrapping
-      style={{
-        minHeight: STATUS_LINE_HEIGHT,
-        minWidth: 0,
-        overflowWrap: "anywhere",
-      }}
+      className={styles.status}
     >
       {props.error ?? " "}
     </Text>
@@ -685,15 +614,14 @@ export const ParamInput: React.FC<
       align={Align.Start}
       data-cy={props.testId}
     >
-      {/* The Xs tab strip is shorter than the control beside it; nudge it
-          to the control's vertical center rather than its top edge. Rendered
-          only when there are tabs: an empty slot still costs the row's flex
-          gap, leaving single-mode controls a gap thinner than their peers. */}
-      {tabs ? <div style={{ marginTop: 4 }}>{tabs}</div> : null}
+      {/* Rendered only when there are tabs: an empty slot still costs the
+          row's flex gap, leaving single-mode controls a gap thinner than
+          their peers. */}
+      {tabs ? <div className={styles.tabsSlot}>{tabs}</div> : null}
       <Stack
         orientation={Orientation.Column}
         spacing={Spacing.None}
-        style={{ flex: 1, minWidth: 0 }}
+        className={styles.control}
       >
         <ParamControl {...props} />
         {status}

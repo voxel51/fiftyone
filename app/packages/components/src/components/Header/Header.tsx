@@ -1,4 +1,3 @@
-import { animated, useSpring } from "@react-spring/web";
 import {
   Align,
   Heading,
@@ -7,6 +6,7 @@ import {
   Spacing,
   Stack,
 } from "@voxel51/voodo";
+import clsx from "clsx";
 import React, { useState } from "react";
 
 import logo from "../../images/logo.png";
@@ -20,10 +20,9 @@ const Header: React.FC<
     navChildren?: React.ReactNode;
   }>
 > = ({ children, title, navChildren, onRefresh }) => {
-  const [toggle, setToggle] = useState(false);
-  const logoProps = useSpring({
-    transform: toggle ? `rotate(0turn)` : `rotate(1turn)`,
-  });
+  // Each refresh spins the logo one full turn: the class toggles between two
+  // rotations a full turn apart, and the transition carries it there
+  const [turned, setTurned] = useState(false);
 
   return (
     <Stack
@@ -45,11 +44,15 @@ const Header: React.FC<
           className={style.title}
           data-cy="refresh-fo"
           onClick={() => {
-            setToggle(!toggle);
+            setTurned(!turned);
             onRefresh && onRefresh();
           }}
         >
-          <animated.img className={style.logo} style={logoProps} src={logo} />
+          <img
+            className={clsx(style.logo, turned && style.turned)}
+            src={logo}
+            alt=""
+          />
           <Heading level={HeadingLevel.H1} className={style.wordmark}>
             {title}
           </Heading>

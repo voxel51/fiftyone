@@ -29,7 +29,13 @@
 .logo {
   height: 28px;
   width: 28px;
+  transform: rotate(1turn);
+  transition: transform 0.6s ease-in-out;
   will-change: transform;
+}
+
+.turned {
+  transform: rotate(0turn);
 }
 
 .wordmark {
