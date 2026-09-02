@@ -16,7 +16,6 @@
         "@fiftyone/map": "*",
         "@fiftyone/multimodal": "*",
         "@fiftyone/operators": "*",
-        "@fiftyone/saved-views": "*",
         "@fiftyone/spotlight": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",

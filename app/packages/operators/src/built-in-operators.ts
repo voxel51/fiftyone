@@ -14,7 +14,7 @@ import * as types from "./types";
 import { useTrackEvent } from "@fiftyone/analytics";
 import { setPathUserUnchanged } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import * as fop from "@fiftyone/playback";
-import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/workspaces";
+import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
 import { cloneDeep, merge, set as setValue } from "lodash";
@@ -26,7 +26,7 @@ import {
 } from "recoil";
 import { loadPlugins } from "@fiftyone/plugins";
 import { useOperatorExecutor } from ".";
-import { useRefetchableSavedViews } from "@fiftyone/saved-views";
+import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import { useRefreshOperators } from "./loader";
 import registerPanel from "./Panel/register";
 import "./builtin";
