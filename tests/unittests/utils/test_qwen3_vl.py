@@ -841,7 +841,7 @@ class TestQwen3VLEmbedFrames:
         assert len(captured["frames"]) == n_frames
         assert captured["fps"] == native_fps
 
-    def test_embed_frames_no_subsample_strides_past_cap(self):
+    def test_embed_frames_no_subsample_spans_the_clip_past_cap(self):
         model = self._make_model()
         model.config.video_fps = 2.0
         model.config.max_video_frames = 3
@@ -853,10 +853,11 @@ class TestQwen3VLEmbedFrames:
             subsample=False,
         )
 
-        # over the cap the clip is thinned by a uniform stride, so its frames
-        # still span the window rather than stopping at the third one
-        assert self._marks(captured["frames"]) == [0, 4, 8]
-        assert captured["fps"] == 2.5
+        # Over the cap the clip keeps a cap's worth of frames spread across
+        # the whole window, its last frame included, and reports the rate
+        # those frames actually represent
+        assert self._marks(captured["frames"]) == [0, 4, 9]
+        assert captured["fps"] == 3.0
 
     def test_embed_frames_subsample_default_is_unchanged(self):
         model = self._make_model()
