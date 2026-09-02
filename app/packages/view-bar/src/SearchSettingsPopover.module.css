@@ -1,0 +1,4 @@
+/* One width for the bar's popovers — the stage editor is the same size */
+.panel {
+  width: 360px;
+}

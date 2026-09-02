@@ -10,22 +10,21 @@
  * many matches); focusing the input offers the dataset's previous queries.
  */
 
-import {
-  AnchoredListbox,
-  LoadingDots,
-  useAnchorRect,
-} from "@fiftyone/components";
+import { AnchoredListbox, useAnchorRect } from "@fiftyone/components";
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import { useViewChangePending } from "@fiftyone/state";
 import {
-  Clickable,
+  Button,
   Icon,
   IconName,
   Input,
+  LoadingDots,
+  SearchIcon,
   Size,
   Text,
   TextColor,
   TextVariant,
+  Variant,
 } from "@voxel51/voodo";
 import React from "react";
 
@@ -82,28 +81,6 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   // Set when the submitted search is still resolving into a view — only the
   // quick search drives the flag, so it can't fire for unrelated loads
   const pending = useViewChangePending();
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
-  const settingsRef = React.useRef<HTMLDivElement | null>(null);
-  const settingsRect = useAnchorRect(settingsRef, settingsOpen);
-
-  // Click-out closes the settings; clicks inside it are configuration
-  React.useEffect(() => {
-    if (!settingsOpen) return undefined;
-    const onDown = (e: MouseEvent) => {
-      const target = e.target as Element;
-      if (settingsRef.current?.contains(target)) return;
-      // The popover portals to the body, so it is not a DOM child of the
-      // trigger — and the index selector's menu portals out of the popover
-      // in turn (headlessui), so neither counts as a click-out. Only the
-      // portaled MENU is exempt: voodo builds its inputs on headlessui too,
-      // so matching any headlessui node would exempt the whole bar
-      if (target.closest?.('[data-cy="view-bar-search-settings"]')) return;
-      if (target.closest?.('[role="listbox"][data-headlessui-state]')) return;
-      setSettingsOpen(false);
-    };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [settingsOpen]);
 
   // The dropdown under the box: previous queries, or the configure CTA when
   // the dataset has no prompt-capable index yet. Focus-gated; option rows
@@ -155,36 +132,24 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       {/* The magnifying glass is where the search's settings live — which
           index, how many matches, and the hand-off to the Similarity Search
           panel (or, with no index, the explanation and the on-ramp) */}
-      <div ref={settingsRef} style={{ display: "inline-flex", flexShrink: 0 }}>
-        <Clickable
-          role="button"
-          tabIndex={0}
-          aria-label="Similarity search settings"
-          data-cy="view-bar-search-settings-trigger"
-          onClick={() => setSettingsOpen((open) => !open)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              setSettingsOpen((open) => !open);
-            }
-          }}
-          style={{ display: "inline-flex", alignItems: "center" }}
-        >
-          <Icon name={IconName.Search} size={Size.Sm} />
-        </Clickable>
-        {settingsOpen && (
-          <SearchSettingsPopover
-            rect={settingsRect}
-            promptKeys={promptKeys}
-            selectedKey={selectedKey}
-            onSelectKey={onSelectKey}
-            k={k}
-            onChangeK={onChangeK}
-            onOpenPanel={onOpenPanel}
-            onClose={() => setSettingsOpen(false)}
+      <SearchSettingsPopover
+        trigger={
+          <Button
+            variant={Variant.Icon}
+            size={Size.Sm}
+            borderless
+            leadingIcon={SearchIcon}
+            aria-label="Similarity search settings"
+            data-cy="view-bar-search-settings-trigger"
           />
-        )}
-      </div>
+        }
+        promptKeys={promptKeys}
+        selectedKey={selectedKey}
+        onSelectKey={onSelectKey}
+        k={k}
+        onChangeK={onChangeK}
+        onOpenPanel={onOpenPanel}
+      />
       {/* voodo's Input roots itself in a block-level Field, so it fills a
           block parent but never grows as a flex item — the growing is this
           wrapper's job, and the field then takes its full width */}

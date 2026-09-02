@@ -8,7 +8,6 @@
  * and hands off to the panel to create one.
  */
 
-import type { AnchorRect } from "@fiftyone/components";
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import {
   Align,
@@ -18,6 +17,7 @@ import {
   Input,
   InputType,
   Orientation,
+  Popover,
   Select,
   Size,
   Spacing,
@@ -29,15 +29,12 @@ import {
   ZIndex,
 } from "@voxel51/voodo";
 import React from "react";
-import { createPortal } from "react-dom";
+
+import styles from "./SearchSettingsPopover.module.css";
 
 export interface SearchSettingsPopoverProps {
-  /**
-   * The trigger's viewport rect (from `useAnchorRect`); null renders nothing.
-   * The card portals to the body — the bar's overflow-hidden gutter would
-   * clip an in-place absolute child.
-   */
-  rect: AnchorRect | null;
+  /** The magnifier: clicking it opens the settings under it. */
+  trigger: React.ReactNode;
   promptKeys: PromptableSimilarityIndex[];
   /** The index quick search will use (the resolved value, never null). */
   selectedKey: string | null;
@@ -45,7 +42,6 @@ export interface SearchSettingsPopoverProps {
   k: number;
   onChangeK: (k: number) => void;
   onOpenPanel: () => void;
-  onClose: () => void;
 }
 
 /** Clamp a typed match count to something the search can actually run. */
@@ -54,53 +50,24 @@ export const clampMatches = (raw: number, fallback: number): number => {
   return Math.min(Math.max(Math.round(raw), 1), 10_000);
 };
 
-// The stage editor's width — the settings popover is the same kind of surface
-const POPOVER_WIDTH = 360;
-
 export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
-  rect,
+  trigger,
   promptKeys,
   selectedKey,
   onSelectKey,
   k,
   onChangeK,
   onOpenPanel,
-  onClose,
-}) => {
-  if (!rect) {
-    return null;
-  }
-
-  // anchored under the trigger's left edge, pulled back from the viewport's
-  // right edge when the trigger sits near it
-  const left = Math.max(
-    8,
-    Math.min(rect.left, window.innerWidth - POPOVER_WIDTH - 8),
-  );
-
-  return createPortal(
-    <div
-      role="dialog"
-      aria-label="Text search settings"
-      data-cy="view-bar-search-settings"
-      // The same surface the bar's dropdowns wear (AnchoredListbox) — every
-      // floating element reads as one family. level3 is the DARK tier of
-      // the palette (level1 is the lightest); the light Card this replaced
-      // is why the popover once read grey
-      style={{
-        position: "fixed",
-        top: rect.top + 6,
-        left,
-        zIndex: 10001,
-        width: POPOVER_WIDTH,
-        padding: 12,
-        background: "var(--fo-palette-background-level3)",
-        border: "1px solid var(--fo-palette-primary-plainBorder)",
-        borderRadius: 4,
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
-      }}
-    >
-      <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
+}) => (
+  <Popover trigger={trigger} panelClassName={styles.panel}>
+    {({ close }) => (
+      <Stack
+        role="dialog"
+        aria-label="Text search settings"
+        data-cy="view-bar-search-settings"
+        orientation={Orientation.Column}
+        spacing={Spacing.Md}
+      >
         {promptKeys.length > 0 ? (
           <>
             <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
@@ -112,8 +79,7 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
                 data-cy="search-settings-indexes"
                 exclusive
                 portal
-                // The popover card sits above the app at 10001; the menu
-                // must land above the card, not under it
+                // The menu must land above the popover panel, not under it
                 zIndex={ZIndex.AboveModal}
                 value={selectedKey ?? undefined}
                 onChange={(value) => {
@@ -159,7 +125,7 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
           data-cy="search-settings-open-panel"
           onClick={() => {
             onOpenPanel();
-            onClose();
+            close();
           }}
         >
           {promptKeys.length > 0 ? (
@@ -179,7 +145,6 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
           )}
         </Button>
       </Stack>
-    </div>,
-    document.body,
-  );
-};
+    )}
+  </Popover>
+);
