@@ -10,41 +10,42 @@
  * many matches); focusing the input offers the dataset's previous queries.
  */
 
-import { AnchoredListbox, useAnchorRect } from "@fiftyone/components";
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import { useViewChangePending } from "@fiftyone/state";
 import {
+  Align,
   Button,
-  Icon,
-  IconName,
-  Input,
+  Combobox,
+  type ComboboxOption,
   LoadingDots,
+  Orientation,
   SearchIcon,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
-  TextVariant,
   Variant,
 } from "@voxel51/voodo";
 import React from "react";
 
-import { NO_BROWSER_SUGGESTIONS } from "./params";
+import styles from "./LanguageSearch.module.css";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 
-export const LANGUAGE_SEARCH_INPUT_CY = "view-bar-language-search";
-
-/** The bar's text size — chips and slots render at 13px, the search too. */
-const SEARCH_FONT_SIZE = 13;
+export const LANGUAGE_SEARCH_LABEL = "Search by similarity";
 
 /** The no-index dropdown's one row: the on-ramp to creating an index. */
-const CONFIGURE_CTA = "Configure similarity search";
+const CONFIGURE_CTA: ComboboxOption = {
+  id: "configure",
+  label: "Configure similarity search",
+  description: "Text search needs a similarity index that supports prompts",
+};
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
   /**
-   * Reports whether the input holds text — while it does, this component's
-   * own [x] is the bar's one clear affordance, and the bar hides its
-   * clear-view [x] rather than showing two.
+   * Reports whether the input holds text — while it does, the bar's clear
+   * [x] shows even with no stages applied.
    */
   onHasTextChange?: (hasText: boolean) => void;
   /** Whether a prompt-capable index exists — typing only searches with one. */
@@ -82,52 +83,40 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   // quick search drives the flag, so it can't fire for unrelated loads
   const pending = useViewChangePending();
 
-  // The dropdown under the box: previous queries, or the configure CTA when
-  // the dataset has no prompt-capable index yet. Focus-gated; option rows
-  // preventDefault their mousedown so picking never blurs the input.
-  const [focused, setFocused] = React.useState(false);
-  const [active, setActive] = React.useState(0);
-  // The list offers PREVIOUS queries while composing — a submitted query is
-  // no longer a draft, so submitting suppresses the list until the next
-  // keystroke or a fresh focus
-  const [suppressed, setSuppressed] = React.useState(false);
-  const inputWrapRef = React.useRef<HTMLDivElement | null>(null);
-  const options = React.useMemo(() => {
+  // The dropdown under the box: previous queries matching the draft, or the
+  // configure CTA when the dataset has no prompt-capable index yet
+  const options = React.useMemo<ComboboxOption[]>(() => {
     if (!enabled) return [CONFIGURE_CTA];
     const q = query.trim().toLowerCase();
-    return q
-      ? history.filter((h) => h.toLowerCase().includes(q) && h !== query)
-      : [...history];
+    return history
+      .filter((h) => !q || h.toLowerCase().includes(q))
+      .map((h) => ({ id: h, label: h }));
   }, [enabled, history, query]);
-  const listOpen = focused && !pending && !suppressed && options.length > 0;
-  const listRect = useAnchorRect(inputWrapRef, listOpen);
 
-  const pick = React.useCallback(
-    (option: string) => {
+  // A picked row or committed text: a previous query re-runs, typed text
+  // runs, and the CTA hands off to the panel
+  const commit = React.useCallback(
+    (option: ComboboxOption | null) => {
+      if (!option) return;
       if (!enabled) {
-        // The hand-off closes the dropdown: the keyboard moves to the panel
-        inputWrapRef.current?.querySelector("input")?.blur();
         onOpenPanel();
         return;
       }
-      setQuery(option);
-      setSuppressed(true);
-      onSubmit(option);
+      const text = option.label.trim();
+      if (!text) return;
+      // The query stays visible — it names the view now loading
+      setQuery(text);
+      onSubmit(text);
     },
     [enabled, onOpenPanel, onSubmit],
   );
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        flex: 1,
-        minWidth: 0,
-        height: "100%",
-        padding: "0 10px 0 8px",
-      }}
+    <Stack
+      orientation={Orientation.Row}
+      align={Align.Center}
+      spacing={Spacing.Sm}
+      className={styles.root}
     >
       {/* The magnifying glass is where the search's settings live — which
           index, how many matches, and the hand-off to the Similarity Search
@@ -150,115 +139,30 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         onChangeK={onChangeK}
         onOpenPanel={onOpenPanel}
       />
-      {/* voodo's Input roots itself in a block-level Field, so it fills a
-          block parent but never grows as a flex item — the growing is this
-          wrapper's job, and the field then takes its full width */}
-      <div
-        ref={inputWrapRef}
-        style={{ flex: 1, minWidth: 0, position: "relative" }}
-      >
-        <Input
-          size={Size.Sm}
-          value={query}
-          placeholder="Search by natural language"
-          data-cy={LANGUAGE_SEARCH_INPUT_CY}
-          {...NO_BROWSER_SUGGESTIONS}
-          onFocus={() => {
-            setFocused(true);
-            setSuppressed(false);
-          }}
-          onBlur={() => setFocused(false)}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setActive(0);
-            setSuppressed(false);
-          }}
-          onKeyDown={(e) => {
-            if (listOpen && e.key === "ArrowDown") {
-              e.preventDefault();
-              setActive((i) => Math.min(i + 1, options.length - 1));
-            } else if (listOpen && e.key === "ArrowUp") {
-              e.preventDefault();
-              setActive((i) => Math.max(i - 1, 0));
-            } else if (e.key === "Enter") {
-              if (enabled && query.trim()) {
-                // The query stays visible — it names the view now loading
-                setSuppressed(true);
-                onSubmit(query.trim());
-              } else if (listOpen && options[active]) {
-                pick(options[active]);
-              }
-            } else if (e.key === "Escape" && query) {
-              // One Escape clears the draft; the bar's own handler only sees
-              // the next press, so an unrelated reset never eats a typed query
-              e.stopPropagation();
-              setQuery("");
-            }
-          }}
-          style={{
-            background: "transparent",
-            border: "none",
-            // Pinned on the input AND the pending overlay: the overlay must
-            // render the term exactly as the input did, and voodo's Sm input
-            // (12px) sits under the bar's 13px — one explicit size for both
-            fontSize: SEARCH_FONT_SIZE,
-            ...(pending ? { color: "transparent" } : {}),
-          }}
-        />
-        {pending && (
-          <Text
-            color={TextColor.Tertiary}
-            style={{
-              position: "absolute",
-              // The input's own text inset (voodo Sm pads 10px), so the
-              // overlay's term sits exactly where the typed term was
-              left: 10,
-              right: 0,
-              top: "50%",
-              transform: "translateY(-50%)",
-              pointerEvents: "none",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              fontSize: SEARCH_FONT_SIZE,
-              // Room for descenders — a tight line box plus overflow:hidden
-              // cuts the tail off a "g"
-              lineHeight: "normal",
-            }}
-          >
-            <LoadingDots text={query.trim()} />
-          </Text>
-        )}
-        <AnchoredListbox
-          rect={listRect}
-          options={options}
-          activeIndex={active}
-          onPick={pick}
-          onHighlight={setActive}
-          optionId={(i) => `view-bar-search-history-${i}`}
-          data-cy="view-bar-search-history"
-          maxHeight={280}
-          renderOption={(option) =>
-            enabled ? (
-              option
-            ) : (
-              // The CTA row reads as an action, not a past query
-              <Text
-                variant={TextVariant.Sm}
-                color={TextColor.Secondary}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <Icon name={IconName.Settings} size={Size.Sm} />
-                {option}
-              </Text>
-            )
-          }
-        />
-      </div>
-    </div>
+      <Combobox
+        aria-label={LANGUAGE_SEARCH_LABEL}
+        placeholder={LANGUAGE_SEARCH_LABEL}
+        size={Size.Sm}
+        className={styles.field}
+        options={options}
+        // Nothing is ever "picked": a search is an action, so every commit
+        // arrives through onChange and the field keeps the text it ran with
+        value={null}
+        inputValue={query}
+        onInputChange={setQuery}
+        onChange={commit}
+        allowFreeText={enabled}
+        // Enter runs the search; clicking elsewhere must not
+        commitOnBlur={false}
+        // The bar's gutter clips overflow — the list must escape it
+        portal
+        emptyMessage={enabled ? "No previous searches" : undefined}
+      />
+      {pending && (
+        <Text color={TextColor.Tertiary}>
+          <LoadingDots />
+        </Text>
+      )}
+    </Stack>
   );
 };

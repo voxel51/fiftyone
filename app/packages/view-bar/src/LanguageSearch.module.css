@@ -1,0 +1,13 @@
+/* The search row fills the bar; the field takes whatever the magnifier and
+   the pending indicator leave */
+.root {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px 0 8px;
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+}

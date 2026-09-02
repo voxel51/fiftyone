@@ -35,9 +35,9 @@ export class ViewBarPom {
     return this.stagesRow.getByTestId("view-stage-container");
   }
 
-  /** The similarity search input in the bar's first row. */
+  /** The similarity search field in the bar's first row (a voodo Combobox). */
   get searchInput() {
-    return this.locator.getByTestId("view-bar-language-search");
+    return this.locator.getByRole("combobox", { name: "Search by similarity" });
   }
 
   /** The typeahead input an insert slot opens into. */
@@ -45,9 +45,11 @@ export class ViewBarPom {
     return this.stagesRow.getByPlaceholder("Add stage…");
   }
 
-  /** The previous-queries dropdown under the search input (portaled). */
+  /** The previous-queries list under the search field (portaled). */
   get searchHistory() {
-    return this.page.getByTestId("view-bar-search-history");
+    // The list has no name of its own; while the stages row is folded it is
+    // the only listbox on the page
+    return this.page.getByRole("listbox");
   }
 
   /** Clears any draft query and drops focus from the search input. */
