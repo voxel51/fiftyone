@@ -223,6 +223,13 @@
     :tags: 3d,point-cloud,mesh,quickstart
 
 .. customcarditem::
+    :header: RTK-SLAM Absolute Accuracy
+    :description: Four handheld walking sequences in native MCAP format pairing LiDAR, camera, IMU and GNSS with 87 total-station checkpoints and three published SLAM trajectories measured against them.
+    :link: datasets/rtk_slam_absolute_accuracy.html
+    :image: ../_images/rtk-slam-absolute-accuracy.png
+    :tags: multimodal,mcap,slam,lidar,gnss
+
+.. customcarditem::
     :header: Sama-COCO
     :description: Improved version of COCO-2017 with tighter segmentation masks and better crowd annotations. Large-scale object detection and segmentation dataset with enhanced quality.
     :link: datasets/sama_coco.html
