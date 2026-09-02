@@ -30,9 +30,13 @@ const onSetView: RegisteredSetter =
     // both lose the selection and send the grid to load a wider result set
     // for a view that never arrives.
     const unsubscribe = subscribe((_, transaction) => {
-      resetExtendedSelectionTransaction(transaction);
-      unsubscribe();
+      try {
+        resetExtendedSelectionTransaction(transaction);
+      } finally {
+        unsubscribe();
+      }
     });
+
     let view = value;
     if (view instanceof DefaultValue) {
       view = [];
