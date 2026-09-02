@@ -1,4 +1,25 @@
 .. customcarditem::
+    :header: 2026 Humanoid IKEA Assembly Challenge
+    :description: Six humanoid furniture-assembly episodes in native MCAP format, with stereo head and wrist cameras, infrared, 35-motor telemetry, odometry, and annotated subtasks.
+    :link: datasets/humanoid_ikea_assembly_challenge.html
+    :image: ../_images/2026-humanoid-ikea-assembly-challenge.png
+    :tags: multimodal,mcap,robotics,humanoid
+
+.. customcarditem::
+    :header: ABC-130k
+    :description: 40 bimanual robot teleoperation episodes from the ABC-130k corpus in native MCAP format, with synchronized multi-camera video and robot telemetry on the timeline.
+    :link: datasets/abc_130k.html
+    :image: ../_images/abc-130k.png
+    :tags: multimodal,mcap,robotics,video
+
+.. customcarditem::
+    :header: APAC Egocentric Stereo
+    :description: 12 first-person work sequences in native MCAP format, with rectified stereo video, a depth render, hand and head tracking, and 248 densely captioned action segments.
+    :link: datasets/apac_egocentric_stereo.html
+    :image: ../_images/apac-egocentric-stereo.png
+    :tags: multimodal,mcap,egocentric,stereo
+
+.. customcarditem::
     :header: ActivityNet 100
     :description: Large-scale video dataset for human activity understanding with 100 activity classes. Supports video classification and temporal activity detection tasks.
     :link: datasets/activitynet_100.html
@@ -55,6 +76,13 @@
     :tags: image,multilabel,automotive,manual
 
 .. customcarditem::
+    :header: CMHT Autonomous Driving
+    :description: Autonomous driving episodes with camera, infrared, lidar, radar, and GPS streams in native MCAP format, with expert object detection annotations across diverse conditions.
+    :link: datasets/cmht_autonomous_driving.html
+    :image: ../_images/cmht-autonomous-driving.png
+    :tags: multimodal,mcap,automotive,lidar
+
+.. customcarditem::
     :header: COCO-2014
     :description: Large-scale object detection and segmentation dataset with 80 object classes. Contains images, bounding boxes, and segmentations for comprehensive computer vision tasks.
     :link: datasets/coco_2014.html
@@ -76,11 +104,25 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: GR00T-X-Embodiment-Sim
+    :description: 42 robot manipulation episodes across seven embodiments from NVIDIA's GR00T-X-Embodiment-Sim corpus in native MCAP format, with cameras, per-part telemetry, and task instructions.
+    :link: datasets/gr00t_x_embodiment_sim.html
+    :image: ../_images/gr00t-x-embodiment-sim.png
+    :tags: multimodal,mcap,robotics,simulation
+
+.. customcarditem::
     :header: Families in the Wild
     :description: Family recognition benchmark with 26,642 images of 5,037 faces across family relationships. Designed for kinship recognition and family structure analysis tasks.
     :link: datasets/fiw.html
     :image: ../_images/fiw.png
     :tags: image,classification
+
+.. customcarditem::
+    :header: Hilti SLAM Challenge 2022
+    :description: 16 handheld runs through a construction site and the Sheldonian Theatre in native MCAP format, with five cameras, LiDAR, IMU, and surveyed reference positions.
+    :link: datasets/hilti_slam_challenge_2022.html
+    :image: ../_images/hilti-slam-challenge-2022.png
+    :tags: multimodal,mcap,slam,lidar
 
 .. customcarditem::
     :header: HMDB51
@@ -160,6 +202,13 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: MirrorSentinel Elevator
+    :description: 8 elevator traversals in native MCAP format, with camera, Ouster LiDAR, IMU, sensor transforms, and hand-measured cabin geometry for studying mirror interference.
+    :link: datasets/mirror_elevator.html
+    :image: ../_images/mirror-elevator.png
+    :tags: multimodal,mcap,slam,lidar
+
+.. customcarditem::
     :header: Open Images V6
     :description: Massive dataset with ~9M images, 2M annotated. Features classification, detection, segmentation, and relationship annotations across 600 object classes.
     :link: datasets/open_images_v6.html
@@ -223,11 +272,39 @@
     :tags: 3d,point-cloud,mesh,quickstart
 
 .. customcarditem::
+    :header: RoboMIND
+    :description: 32 real-robot manipulation episodes across four embodiments from the RoboMIND benchmark in native MCAP format, with RGB and depth cameras, joint telemetry, and language instructions.
+    :link: datasets/robomind.html
+    :image: ../_images/robomind.png
+    :tags: multimodal,mcap,robotics,manipulation
+
+.. customcarditem::
     :header: Sama-COCO
     :description: Improved version of COCO-2017 with tighter segmentation masks and better crowd annotations. Large-scale object detection and segmentation dataset with enhanced quality.
     :link: datasets/sama_coco.html
     :image: ../_images/sama-coco-validation.png
     :tags: image,detection,segmentation
+
+.. customcarditem::
+    :header: SEW Multimodal AMR
+    :description: 55 autonomous mobile robot sessions in native MCAP format, with RGB, thermal, time-of-flight, 4D radar, laser scanners, and ultrasonic across seasons, weather, and lighting.
+    :link: datasets/sew_multimodal_amr.html
+    :image: ../_images/sew-multimodal-amr.png
+    :tags: multimodal,mcap,robotics,thermal
+
+.. customcarditem::
+    :header: TartanGround
+    :description: Six ground-robot trajectories across distinct simulation environments in native MCAP format, with camera, segmentation, lidar point clouds, ego pose, and IMU streams.
+    :link: datasets/tartanground.html
+    :image: ../_images/tartanground.png
+    :tags: multimodal,mcap,robotics,lidar
+
+.. customcarditem::
+    :header: TreeScope Multimodal
+    :description: 10 UAV lidar episodes from the TreeScope forestry robotics dataset in native MCAP format, with point cloud and odometry streams from agricultural environments.
+    :link: datasets/treescope_multimodal.html
+    :image: ../_images/treescope-multimodal.png
+    :tags: multimodal,mcap,robotics,lidar
 
 .. customcarditem::
     :header: UCF101
