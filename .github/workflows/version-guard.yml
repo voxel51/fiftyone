@@ -38,6 +38,11 @@ jobs:
           fi
 
           got=$(tr -d '\r\n' < VERSION)
+          was=$(git show "$BASE_SHA:VERSION" 2>/dev/null | tr -d '\r\n' || true)
+          if [ "$got" = "$was" ]; then
+            echo "VERSION value unchanged ($got). OK."
+            exit 0
+          fi
 
           # On a release branch the VERSION must match the branch name:
           # release/v<X> -> <X>, optionally with a pre-release suffix
