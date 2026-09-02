@@ -508,12 +508,15 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         config: a :class:`Qwen3VLModelConfig`
     """
 
+    #: Once-per-model warnings, at class scope so they read correctly on an
+    #: instance built without ``__init__``
+    _warned_frame_cap = False
+    _warned_video_cap = False
+
     def __init__(self, config):
         self._processor = None
         self._mode = config.mode
         self._warned_unmergeable = False
-        self._warned_frame_cap = False
-        self._warned_video_cap = False
         super().__init__(config)
 
     @property
