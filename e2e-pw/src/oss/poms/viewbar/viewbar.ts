@@ -93,10 +93,12 @@ export class ViewBarPom {
   }
 
   /**
-   * Waits for the stages row of a bar that opens it on its own — a view
-   * hydrated with stages starts with the row visible.
+   * Makes the stages of a non-empty bar visible. Only bar-originated actions
+   * open the row on their own (a quick search landing); a view applied from
+   * outside stays folded behind the toggle, so this opens it when needed.
    */
   async expand() {
+    await this.openStages();
     await expect(this.viewStages.first()).toBeVisible();
   }
 

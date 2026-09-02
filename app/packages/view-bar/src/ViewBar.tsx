@@ -182,9 +182,10 @@ const ViewBarInner: React.FC<{
 
   const [state, dispatch] = useReducer(reducer, initialState);
   // Whether the stages row (the second row, under the search bar) is shown.
-  // Unset means "follow the view": a bar holding stages opens with them
-  // visible; an empty one stays a single search row until toggled.
-  const [stagesOpen, setStagesOpen] = React.useState<boolean | null>(null);
+  // Only actions IN the bar open it — the toggle and adding a stage. A view
+  // arriving from outside (a saved view, an operator, the URL, a quick
+  // search landing) stays folded behind the toggle's count badge.
+  const [stagesOpen, setStagesOpen] = React.useState(false);
   // The click-out handler (mounted once) reads the row's LIVE open state
   const stagesRowOpenRef = useRef(false);
   // Which stage's editor popover is open, by stage id. Only one at
@@ -214,10 +215,7 @@ const ViewBarInner: React.FC<{
   const lastSearch = React.useRef<{
     runId: string;
     viewFp: string;
-    /** The view the search was typed over — what clearing restores. */
-    base: SerializedStage[];
   } | null>(null);
-  const pendingSearchBase = React.useRef<SerializedStage[]>([]);
 
   /**
    * Puts the keyboard on the trailing insert slot — where describing the next
@@ -286,7 +284,6 @@ const ViewBarInner: React.FC<{
         lastSearch.current = {
           runId: pendingSearchRunId.current,
           viewFp: viewFingerprint(currentView),
-          base: pendingSearchBase.current,
         };
         pendingSearchRunId.current = null;
       } else if (
@@ -781,27 +778,11 @@ const ViewBarInner: React.FC<{
   // Bumped when the view clears: the search box remounts empty — a typed
   // query describes the view that was just discarded
   const [searchEpoch, setSearchEpoch] = React.useState(0);
+  // Whether the search input holds text — its inline [x] then stands in for
+  // the bar's clear-view [x]
+  const [searchHasText, setSearchHasText] = React.useState(false);
 
-  /**
-   * The search box's own [x]. With a search applied and untouched, clearing
-   * restores the view the search was typed over; a draft just clears.
-   */
-  const clearSearch = useCallback(() => {
-    if (
-      lastSearch.current &&
-      viewFingerprint(currentView) === lastSearch.current.viewFp
-    ) {
-      const base = lastSearch.current.base;
-      lastSearch.current = null;
-      setView(base as unknown as Parameters<typeof setView>[0]);
-      setInFlight(inFlightFingerprint(base));
-      dispatch({ type: "hydrate", stages: workingStagesFromView(base) });
-      trackEvent("view_bar_text_search_cleared");
-    }
-    setSearchEpoch((epoch) => epoch + 1);
-  }, [currentView, setView, inFlightFingerprint, trackEvent]);
-
-  /** The stages row's [x]: back to the root view, drafts and all. */
+  /** The bar's one [x]: back to the root view — stages, drafts, search text. */
   const clearView = useCallback(() => {
     setTouched(new Set());
     setModeOverrides({});
@@ -829,8 +810,6 @@ const ViewBarInner: React.FC<{
       trackEvent("view_bar_text_search", {
         patches: Boolean(index.patchesField),
       });
-      // What clearing the search restores
-      pendingSearchBase.current = [...currentView];
       // The pending treatment every view change gets, for the operator's
       // whole run — the router clears it when the resulting entry loads
       setViewChangePending(true);
@@ -888,7 +867,7 @@ const ViewBarInner: React.FC<{
   );
 
   // Unset follows the view: stages present means the row starts visible
-  const stagesRowOpen = stagesOpen ?? state.stages.length > 0;
+  const stagesRowOpen = stagesOpen;
   stagesRowOpenRef.current = stagesRowOpen;
   // The stages row is portaled (the header the bar lives in cannot grow), so
   // it anchors to the bar's live viewport rect
@@ -1029,7 +1008,7 @@ const ViewBarInner: React.FC<{
         {searchOperatorAvailable ? (
           <LanguageSearch
             key={`search-${searchEpoch}`}
-            onClear={clearSearch}
+            onHasTextChange={setSearchHasText}
             onSubmit={submitLanguageQuery}
             enabled={searchEnabled}
             history={searchHistory}
@@ -1044,6 +1023,22 @@ const ViewBarInner: React.FC<{
           // No similarity_search operator (plugins absent): a search box
           // whose every path dead-ends is hidden, not disabled
           <div style={{ flex: 1 }} aria-hidden="true" />
+        )}
+        {/* THE one [x]: clears every stage and any search text, and it lives
+            on the always-visible first row so it stays reachable while the
+            stages row is folded. It sits before the toggle's divider. */}
+        {(state.stages.length > 0 || searchHasText) && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              flexShrink: 0,
+              padding: "0 6px",
+              height: "100%",
+            }}
+          >
+            <ClearViewButton onClear={clearView} />
+          </span>
         )}
         {/* The stages toggle: opens the second row where the view is built.
             Carries the stage count so an applied view stays discoverable
@@ -1224,18 +1219,6 @@ const ViewBarInner: React.FC<{
                 );
               })}
             </div>
-            {state.stages.length > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0 6px",
-                  flexShrink: 0,
-                }}
-              >
-                <ClearViewButton onClear={clearView} />
-              </div>
-            )}
           </div>,
           document.body,
         )}

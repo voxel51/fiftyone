@@ -60,8 +60,8 @@ test.describe("view bar quick search", () => {
     await grid.run(() => page.keyboard.press("Enter"));
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
-    // A static run applies its results as a Select over the ranked ids —
-    // and an applied view auto-opens the stages row
+    // A static run applies its results as a Select over the ranked ids;
+    // the row stays folded until the toggle opens it
     await viewBar.expand();
     await viewBar.assert.hasViewStage("Select");
 

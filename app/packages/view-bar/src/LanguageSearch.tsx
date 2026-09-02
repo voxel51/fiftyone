@@ -42,8 +42,12 @@ const CONFIGURE_CTA = "Configure similarity search";
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
-  /** The [x]: clears the draft — and an applied, untouched search's view. */
-  onClear: () => void;
+  /**
+   * Reports whether the input holds text — while it does, this component's
+   * own [x] is the bar's one clear affordance, and the bar hides its
+   * clear-view [x] rather than showing two.
+   */
+  onHasTextChange?: (hasText: boolean) => void;
   /** Whether a prompt-capable index exists — typing only searches with one. */
   enabled: boolean;
   /** The dataset's previous queries, most recent first. */
@@ -60,7 +64,7 @@ export interface LanguageSearchProps {
 
 export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   onSubmit,
-  onClear,
+  onHasTextChange,
   enabled,
   history,
   promptKeys,
@@ -71,6 +75,10 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   onOpenPanel,
 }) => {
   const [query, setQuery] = React.useState("");
+  React.useEffect(() => {
+    onHasTextChange?.(!!query);
+    return () => onHasTextChange?.(false);
+  }, [query, onHasTextChange]);
   // Set when the submitted search is still resolving into a view — only the
   // quick search drives the flag, so it can't fire for unrelated loads
   const pending = useViewChangePending();
@@ -86,9 +94,11 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       if (settingsRef.current?.contains(target)) return;
       // The popover portals to the body, so it is not a DOM child of the
       // trigger — and the index selector's menu portals out of the popover
-      // in turn (headlessui), so neither counts as a click-out
+      // in turn (headlessui), so neither counts as a click-out. Only the
+      // portaled MENU is exempt: voodo builds its inputs on headlessui too,
+      // so matching any headlessui node would exempt the whole bar
       if (target.closest?.('[data-cy="view-bar-search-settings"]')) return;
-      if (target.closest?.("[data-headlessui-state]")) return;
+      if (target.closest?.('[role="listbox"][data-headlessui-state]')) return;
       setSettingsOpen(false);
     };
     window.addEventListener("mousedown", onDown);
@@ -100,6 +110,10 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   // preventDefault their mousedown so picking never blurs the input.
   const [focused, setFocused] = React.useState(false);
   const [active, setActive] = React.useState(0);
+  // The list offers PREVIOUS queries while composing — a submitted query is
+  // no longer a draft, so submitting suppresses the list until the next
+  // keystroke or a fresh focus
+  const [suppressed, setSuppressed] = React.useState(false);
   const inputWrapRef = React.useRef<HTMLDivElement | null>(null);
   const options = React.useMemo(() => {
     if (!enabled) return [CONFIGURE_CTA];
@@ -108,7 +122,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       ? history.filter((h) => h.toLowerCase().includes(q) && h !== query)
       : [...history];
   }, [enabled, history, query]);
-  const listOpen = focused && !pending && options.length > 0;
+  const listOpen = focused && !pending && !suppressed && options.length > 0;
   const listRect = useAnchorRect(inputWrapRef, listOpen);
 
   const pick = React.useCallback(
@@ -120,6 +134,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         return;
       }
       setQuery(option);
+      setSuppressed(true);
       onSubmit(option);
     },
     [enabled, onOpenPanel, onSubmit],
@@ -183,11 +198,15 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
           placeholder="Search by natural language"
           data-cy={LANGUAGE_SEARCH_INPUT_CY}
           {...NO_BROWSER_SUGGESTIONS}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            setSuppressed(false);
+          }}
           onBlur={() => setFocused(false)}
           onChange={(e) => {
             setQuery(e.target.value);
             setActive(0);
+            setSuppressed(false);
           }}
           onKeyDown={(e) => {
             if (listOpen && e.key === "ArrowDown") {
@@ -199,6 +218,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
             } else if (e.key === "Enter") {
               if (enabled && query.trim()) {
                 // The query stays visible — it names the view now loading
+                setSuppressed(true);
                 onSubmit(query.trim());
               } else if (listOpen && options[active]) {
                 pick(options[active]);
@@ -220,32 +240,6 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
             ...(pending ? { color: "transparent" } : {}),
           }}
         />
-        {query && !pending && (
-          <Clickable
-            role="button"
-            tabIndex={0}
-            aria-label="Clear search"
-            data-cy="view-bar-search-clear"
-            onClick={onClear}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onClear();
-              }
-            }}
-            style={{
-              position: "absolute",
-              right: 6,
-              top: "50%",
-              transform: "translateY(-50%)",
-              display: "inline-flex",
-              alignItems: "center",
-              color: "var(--fo-palette-text-tertiary)",
-            }}
-          >
-            <Icon name={IconName.Close} size={Size.Sm} />
-          </Clickable>
-        )}
         {pending && (
           <Text
             color={TextColor.Tertiary}

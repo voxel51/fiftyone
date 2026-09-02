@@ -72,7 +72,7 @@ test.describe("view bar", () => {
       searchParams: new URLSearchParams({ view: "long-chain" }),
     });
 
-    // A bar hydrated with stages opens its stages row on its own
+    // A hydrated view stays folded behind the toggle's count badge
     await viewBar.expand();
     await expect(viewBar.viewStages).toHaveCount(8);
 
@@ -170,7 +170,7 @@ test.describe("view bar", () => {
       searchParams: new URLSearchParams({ view: "built-in-python" }),
     });
 
-    // A bar hydrated with stages opens its stages row on its own
+    // A hydrated view stays folded behind the toggle's count badge
     await viewBar.expand();
     await viewBar.assert.stageCount(1);
     await viewBar.assert.hasViewStage("Match");
