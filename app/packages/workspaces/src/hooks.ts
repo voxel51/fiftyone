@@ -3,7 +3,7 @@ import { datasetName } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
-import { savedWorkspacesAtom, Workspace } from "../../state";
+import { savedWorkspacesAtom, Workspace } from "./state";
 import { LIST_WORKSPACES_OPERATOR, LOAD_WORKSPACE_OPERATOR } from "./constants";
 
 export function useWorkspaces() {

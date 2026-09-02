@@ -11,11 +11,13 @@
     "dependencies": {
         "@fiftyone/components": "*",
         "@fiftyone/feature-flags": "*",
+        "@fiftyone/field-visibility": "*",
         "@fiftyone/flashlight": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/map": "*",
         "@fiftyone/multimodal": "*",
         "@fiftyone/operators": "*",
+        "@fiftyone/saved-views": "*",
         "@fiftyone/spotlight": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",

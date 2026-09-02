@@ -32,5 +32,9 @@
         "@mui/icons-material": "*",
         "@mui/material": "*",
         "react": "*"
+    },
+    "dependencies": {
+        "@fiftyone/saved-views": "*",
+        "@fiftyone/workspaces": "*"
     }
 }

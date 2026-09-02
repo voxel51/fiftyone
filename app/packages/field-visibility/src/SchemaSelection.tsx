@@ -1,10 +1,15 @@
-import { useEffect } from "react";
-import { Box } from "@mui/material";
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * The "Selection" tab: the toggle controls row and the schema rows.
+ */
 
 import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";
-import { SchemaSelectionControls } from "./SchemaSelectControls";
-import { SchemaSearchHelp } from "./SchemaSearchHelp";
 import { EMBEDDED_DOCUMENT_FIELD } from "@fiftyone/utilities";
+import { Orientation, Stack } from "@voxel51/voodo";
+import { useEffect } from "react";
+import { SchemaSearchHelp } from "./SchemaSearchHelp";
+import { SchemaSelectionControls } from "./SchemaSelectControls";
 import { SchemaSelectionRow } from "./SchemaSelectionRow";
 
 export const SchemaSelection = () => {
@@ -37,21 +42,9 @@ export const SchemaSelection = () => {
   }, [expandedPaths, finalSchema, setExpandedPaths, showMetadata]);
 
   return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      sx={{ position: "relative !important" }}
-    >
+    <Stack orientation={Orientation.Column}>
       <SchemaSelectionControls />
-      <Box
-        style={{
-          position: "relative",
-          height: "100%",
-          marginTop: "1rem",
-          overflow: "auto",
-          color: "#232323",
-        }}
-      >
+      <div style={{ marginTop: "1rem", overflow: "auto" }}>
         {showSearchHelp && <SchemaSearchHelp />}
         {showSelection &&
           finalSchema?.map(
@@ -93,7 +86,7 @@ export const SchemaSelection = () => {
               );
             },
           )}
-      </Box>
-    </Box>
+      </div>
+    </Stack>
   );
 };
