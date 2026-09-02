@@ -17,6 +17,7 @@ import {
   Button,
   Combobox,
   type ComboboxOption,
+  IconName,
   LoadingDots,
   Orientation,
   SearchIcon,
@@ -32,13 +33,6 @@ import styles from "./LanguageSearch.module.css";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 
 export const LANGUAGE_SEARCH_LABEL = "Search by similarity";
-
-/** The no-index dropdown's one row: the on-ramp to creating an index. */
-const CONFIGURE_CTA: ComboboxOption = {
-  id: "configure",
-  label: "Configure similarity search",
-  description: "Text search needs a similarity index that supports prompts",
-};
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
@@ -82,32 +76,28 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   // quick search drives the flag, so it can't fire for unrelated loads
   const pending = useViewChangePending();
 
-  // The dropdown under the box: previous queries matching the draft, or the
-  // configure CTA when the dataset has no prompt-capable index yet
+  // The dropdown under the box: previous queries matching the draft. With no
+  // prompt-capable index there is nothing to offer, and the empty state is
+  // the on-ramp to creating one
   const options = React.useMemo<ComboboxOption[]>(() => {
-    if (!enabled) return [CONFIGURE_CTA];
+    if (!enabled) return [];
     const q = query.trim().toLowerCase();
     return history
       .filter((h) => !q || h.toLowerCase().includes(q))
       .map((h) => ({ id: h, label: h }));
   }, [enabled, history, query]);
 
-  // A picked row or committed text: a previous query re-runs, typed text
-  // runs, and the CTA hands off to the panel
+  // A picked row or committed text: a previous query re-runs, typed text runs
   const commit = React.useCallback(
     (option: ComboboxOption | null) => {
-      if (!option) return;
-      if (!enabled) {
-        onOpenPanel();
-        return;
-      }
+      if (!option || !enabled) return;
       const text = option.label.trim();
       if (!text) return;
       // The query stays visible — it names the view now loading
       setQuery(text);
       onSubmit(text);
     },
-    [enabled, onOpenPanel, onSubmit],
+    [enabled, onSubmit],
   );
 
   return (
@@ -155,7 +145,22 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         commitOnBlur={false}
         // The bar's gutter clips overflow — the list must escape it
         portal
-        emptyMessage={enabled ? "No previous searches" : undefined}
+        emptyMessage={
+          enabled ? (
+            "No previous searches"
+          ) : (
+            // Text search needs a similarity index that supports prompts;
+            // the list's one offer is to go make one
+            <Button
+              variant={Variant.Secondary}
+              size={Size.Sm}
+              leadingIcon={IconName.Settings}
+              onClick={onOpenPanel}
+            >
+              Configure similarity search
+            </Button>
+          )
+        }
       />
       {pending && <LoadingDots color={TextColor.Tertiary} />}
     </Stack>

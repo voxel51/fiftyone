@@ -1,4 +1,12 @@
 import { animated, useSpring } from "@react-spring/web";
+import {
+  Align,
+  Heading,
+  HeadingLevel,
+  Orientation,
+  Spacing,
+  Stack,
+} from "@voxel51/voodo";
 import React, { useState } from "react";
 
 import logo from "../../images/logo.png";
@@ -18,9 +26,22 @@ const Header: React.FC<
   });
 
   return (
-    <div className={style.header}>
-      <div className={style.left}>
-        <div
+    <Stack
+      orientation={Orientation.Row}
+      align={Align.Center}
+      spacing={Spacing.Lg}
+      className={style.header}
+    >
+      <Stack
+        orientation={Orientation.Row}
+        align={Align.Center}
+        spacing={Spacing.Md}
+        className={style.left}
+      >
+        <Stack
+          orientation={Orientation.Row}
+          align={Align.Center}
+          spacing={Spacing.Md}
           className={style.title}
           data-cy="refresh-fo"
           onClick={() => {
@@ -29,12 +50,14 @@ const Header: React.FC<
           }}
         >
           <animated.img className={style.logo} style={logoProps} src={logo} />
-          <div className={style.fiftyone}>{title}</div>
-        </div>
+          <Heading level={HeadingLevel.H4} className={style.wordmark}>
+            {title}
+          </Heading>
+        </Stack>
         {navChildren}
-      </div>
+      </Stack>
       {children}
-    </div>
+    </Stack>
   );
 };
 

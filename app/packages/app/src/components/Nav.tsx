@@ -3,19 +3,26 @@
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
-import {
-  DiscordLink,
-  DocsLink,
-  GitHubLink,
-  Header,
-  iconContainer,
-} from "@fiftyone/components";
+import { Header } from "@fiftyone/components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
 import { ViewBar } from "@fiftyone/view-bar";
-import { DarkMode, LightMode } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
+import {
+  Align,
+  Button,
+  DarkModeIcon,
+  DiscordIcon,
+  GitHubIcon,
+  LightModeIcon,
+  MenuBookIcon,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Variant,
+} from "@voxel51/voodo";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -23,6 +30,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { graphql } from "relay-runtime";
 import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
+import styles from "./Nav.module.css";
 import Teams from "./Teams";
 import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
@@ -105,46 +113,62 @@ const Nav: React.FC<
         onRefresh={refresh}
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >
-        {hasDataset && (
-          <Suspense fallback={<div style={{ flex: 1 }} />}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+        {hasDataset ? (
+          <Suspense fallback={<div className={styles.spacer} />}>
+            <div className={styles.bar}>
               <ViewBar />
             </div>
           </Suspense>
+        ) : (
+          <div className={styles.spacer} />
         )}
-        {!hasDataset && <div style={{ flex: 1 }} />}
-        <div style={{ padding: "0.5rem" }}>
+        <Stack
+          orientation={Orientation.Row}
+          align={Align.Center}
+          spacing={Spacing.Sm}
+        >
           <Teams />
-        </div>
-        <div className={iconContainer}>
-          <button
-            type="button"
+          <Button
+            variant={Variant.Icon}
+            size={Size.Md}
+            borderless
+            leadingIcon={mode === "dark" ? LightModeIcon : DarkModeIcon}
             title={mode === "dark" ? "Light mode" : "Dark mode"}
             aria-label={mode === "dark" ? "Light mode" : "Dark mode"}
             onClick={toggleTheme}
-            style={{
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "0.5rem",
-              background: "none",
-              border: "none",
-              color: "var(--fo-palette-text-secondary)",
-            }}
-          >
-            {mode === "dark" ? (
-              <LightMode color="inherit" />
-            ) : (
-              <DarkMode color="inherit" />
-            )}
-          </button>
-          <DiscordLink />
-          <GitHubLink />
-          <DocsLink />
-          <div style={{ marginLeft: "0.5rem" }}>
-            <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
-          </div>
-        </div>
+          />
+          <Button
+            variant={Variant.Icon}
+            size={Size.Md}
+            borderless
+            leadingIcon={DiscordIcon}
+            href="https://community.voxel51.com/"
+            target="_blank"
+            title="Discord"
+            aria-label="Discord"
+          />
+          <Button
+            variant={Variant.Icon}
+            size={Size.Md}
+            borderless
+            leadingIcon={GitHubIcon}
+            href="https://github.com/voxel51/fiftyone"
+            target="_blank"
+            title="GitHub"
+            aria-label="GitHub"
+          />
+          <Button
+            variant={Variant.Icon}
+            size={Size.Md}
+            borderless
+            leadingIcon={MenuBookIcon}
+            href="https://docs.voxel51.com/user_guide/app.html"
+            target="_blank"
+            title="Documentation"
+            aria-label="Documentation"
+          />
+          <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
+        </Stack>
       </Header>
       {children}
       <Analytics fragment={data} />
