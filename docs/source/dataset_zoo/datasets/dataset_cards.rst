@@ -69,6 +69,13 @@
     :tags: image,detection,segmentation
 
 .. customcarditem::
+    :header: Egocentric EMG-Force
+    :description: Eight first-person household task recordings in native MCAP format, pairing RGB-D video with eight-channel wrist EMG, hand skeletons, per-finger contact force and 122 English-labelled subtasks.
+    :link: datasets/egocentric_emg_force.html
+    :image: ../_images/egocentric-emg-force.png
+    :tags: multimodal,mcap,egocentric,emg,force
+
+.. customcarditem::
     :header: Fashion MNIST
     :description: A modern alternative to MNIST featuring 70,000 28x28 grayscale images of fashion items (shirts, shoes, bags, etc.). More complex than digit recognition.
     :link: datasets/fashion_mnist.html
