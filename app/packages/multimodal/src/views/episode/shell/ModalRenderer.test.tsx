@@ -180,10 +180,9 @@ describe("ModalRenderer", () => {
 
     await act(async () => vi.runAllTimersAsync());
 
-    // `sample._id` is what `useEpisodeTimeRange` is called with in the grid
-    // overlay and in every interval source. Keying this by the byte source
-    // instead misses whenever the sample carries a media reference, which
-    // leaves every source without an origin and contributing nothing.
+    // `sample._id` is the key `useEpisodeTimeRange` is called with, in the grid
+    // overlay and in every interval source. A source that cannot find its
+    // episode's axis contributes nothing, so this key has to match theirs.
     expect(rendererHarness.publishEpisodeTimeRange).toHaveBeenCalledWith(
       "current",
       { endNs: 30n, startNs: 10n },

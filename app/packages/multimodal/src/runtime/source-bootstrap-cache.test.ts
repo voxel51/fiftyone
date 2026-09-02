@@ -124,9 +124,8 @@ describe("source bootstrap cache", () => {
     expect(peekSourceBootstrap(source)?.timeline).toBe(timeline);
     expect(peekSourceBootstrap(source)?.previewReadComplete).toBe(true);
     expect(range).toEqual({ endNs: 30n, startNs: 10n });
-    // Handed back for the caller to file under the episode identity. Publishing
-    // it here keyed this cache's `sourceId` — which is the media-reference key,
-    // not `sample._id`, whenever the sample carries a media reference.
+    // Handed back for the caller to file under the episode identity; a
+    // `sourceId` is not one.
     expect(getEpisodeTimeRange(source.sourceId)).toBeNull();
   });
 

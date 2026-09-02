@@ -163,12 +163,10 @@ export function retractDurableSourceFacts(
  * Publishes every reusable fact learned by one lightweight preview read, and
  * returns the episode time range the read established, if any.
  *
- * The range is returned rather than published to the episode registry here:
- * this cache is keyed by byte source, and `sourceId` is only sometimes an
- * episode identity — `byteSourceFromSample` mints it from `sample._id`, while
- * a media-reference source mints it from the reference key. Publishing under
- * it therefore filed the range where no consumer looks whenever the sample
- * carried a media reference. Only the caller knows the episode.
+ * The range is handed back rather than published to the episode registry here.
+ * This cache is keyed by byte source, and a `sourceId` is not an episode
+ * identity — a media-reference source mints it from the reference key — so only
+ * the caller can say which episode the read was standing in for.
  */
 export function publishEpisodePreviewBootstrap(
   source: ByteSourceDescriptor,
