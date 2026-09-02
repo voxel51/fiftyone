@@ -7,7 +7,6 @@ Package-wide constants.
 """
 
 from datetime import datetime
-from email.utils import parseaddr
 import os
 
 from packaging.version import Version
@@ -50,10 +49,8 @@ _META = metadata("fiftyone")
 NAME = _META["name"]
 VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
-# PEP 621 folds a name+email author pair into the Author-email field
-_AUTHOR_NAME, _AUTHOR_EMAIL = parseaddr(_META.get("author-email", ""))
-AUTHOR = _META.get("author") or _AUTHOR_NAME
-AUTHOR_EMAIL = _AUTHOR_EMAIL
+AUTHOR = "Voxel51, Inc."
+AUTHOR_EMAIL = "info@voxel51.com"
 URL = _META.get("home-page", "https://github.com/voxel51/fiftyone")
 LICENSE = _META.get("license", "Apache")
 VERSION_LONG = "FiftyOne v%s, %s" % (VERSION, AUTHOR)

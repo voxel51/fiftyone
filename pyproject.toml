@@ -10,7 +10,8 @@ description = "FiftyOne: the open-source tool for building high-quality datasets
 readme = { file = "README.md", content-type = "text/markdown" }
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [{ name = "Voxel51, Inc.", email = "info@voxel51.com" }]
+# PEP 621 forbids commas in author names; the legal name lives in fiftyone.constants
+authors = [{ name = "Voxel51", email = "info@voxel51.com" }]
 requires-python = ">=3.10"
 # The version lives in the VERSION file (see [tool.setuptools.dynamic]);
 # release builds overwrite that file from the tag before building
