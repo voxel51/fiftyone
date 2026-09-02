@@ -10,7 +10,7 @@
  * Recency is a client-side memory (localStorage, keyed per dataset): the
  * data model has no "last searched with" field, and a per-browser memory is
  * exactly the scope the convenience wants. The match count ("Matches" in the
- * wand popover) persists the same way.
+ * search settings popover) persists the same way.
  */
 
 import type { PromptableSimilarityIndex } from "@fiftyone/state";

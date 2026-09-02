@@ -716,7 +716,7 @@ const ViewBarInner: React.FC<{
     promptKeys.length > 0 &&
     defsByName.has("SortBySimilarity");
 
-  // The wand popover's settings: which index the search uses and how many
+  // The search settings popover: which index the search uses and how many
   // matches it asks for. Default ordering = the top 5 indexes actually
   // searched with in the past week (most recent first), then newest-created;
   // an explicit pick overrides. Session-local pick; per-dataset recency.
@@ -798,7 +798,7 @@ const ViewBarInner: React.FC<{
 
   const submitLanguageQuery = useCallback(
     (query: string) => {
-      // The wand's picked index, else the most recently computed
+      // The settings popover's picked index, else the most recently computed
       // prompt-capable one — never an index that cannot embed the typed prompt
       const index = resolvedSearchIndex;
       if (!index) return;

@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * The wand's popover: where the quick search's similarity settings live.
+ * The magnifier's popover: where the quick search's similarity settings live.
  * With prompt-capable indexes present it offers the index to search with,
  * the number of matches, and a hand-off to the Similarity Search panel for
  * everything richer; with none it explains that text search needs an index,
@@ -54,7 +54,7 @@ export const clampMatches = (raw: number, fallback: number): number => {
   return Math.min(Math.max(Math.round(raw), 1), 10_000);
 };
 
-// The stage editor's width — the wand's popover is the same kind of surface
+// The stage editor's width — the settings popover is the same kind of surface
 const POPOVER_WIDTH = 360;
 
 export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
