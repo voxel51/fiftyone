@@ -30,7 +30,7 @@ import {
 } from "@voxel51/voodo";
 import React from "react";
 
-import styles from "./SearchSettingsPopover.module.css";
+import styles from "./panel.module.css";
 
 export interface SearchSettingsPopoverProps {
   /** The magnifier: clicking it opens the settings under it. */

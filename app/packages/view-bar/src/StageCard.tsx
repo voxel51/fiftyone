@@ -13,14 +13,13 @@ import {
   Icon,
   IconName,
   Orientation,
+  Popover,
   Size,
   Spacing,
   Stack,
   Tooltip,
 } from "@voxel51/voodo";
-import { useAnchorRect } from "@fiftyone/components";
 import React from "react";
-import { createPortal } from "react-dom";
 
 import type { Kind, Operator } from "./builder/catalog";
 import { ParamInput } from "./controls";
@@ -35,9 +34,7 @@ import {
 } from "./params";
 import type { InputKind, ParamDef, StageDefinition } from "./params";
 import type { WorkingStage } from "./state";
-
-/** Every stage's editor is this wide, so none of them surprises the next. */
-const POPOVER_WIDTH = 360;
+import styles from "./panel.module.css";
 
 /**
  * A pill sits inside the bar's gutter with a hair of it showing above and
@@ -124,9 +121,8 @@ export const StageCard: React.FC<StageCardProps> = ({
   onCommit,
 }) => {
   const firstParam = definition.params[0];
-  const triggerRef = React.useRef<HTMLDivElement | null>(null);
+  const editButtonRef = React.useRef<HTMLDivElement | null>(null);
   const popoverContentRef = React.useRef<HTMLDivElement | null>(null);
-  const rect = useAnchorRect(triggerRef, expanded);
 
   // A stage still missing required values cannot be finished with Enter, and
   // wears the same red outline a rejected value does
@@ -137,26 +133,11 @@ export const StageCard: React.FC<StageCardProps> = ({
       isEmptyValue(stage.kwargs[param.name]),
   );
 
-  //
   // The stage was just added or just clicked; either way the next thing the
-  // user wants is to type into it.
-  //
-  // Depends on `rect` as well as `expanded`, because the popover is portaled
-  // and only mounts once the anchor has been measured — one render after
-  // `expanded` turns true. Watching `expanded` alone looks for the input
-  // before it exists.
-  //
-  const focused = React.useRef(false);
+  // user wants is to type into it. The popover mounts its panel in the same
+  // commit that opens it, so the content is there when this runs.
   React.useEffect(() => {
-    if (!expanded) {
-      focused.current = false;
-      return;
-    }
-
-    // `rect` is remeasured on every scroll; focus belongs to the user after
-    // the first time, not to whichever effect ran last
-    if (!rect || focused.current) return;
-    focused.current = true;
+    if (!expanded) return;
 
     const popover = popoverContentRef.current;
     // Not a combobox: voodo's Select opens its options on focus, and opening
@@ -168,260 +149,209 @@ export const StageCard: React.FC<StageCardProps> = ({
     // Otherwise the popover itself takes focus, so Tab reaches the first
     // control in one keystroke and Escape and Enter already work
     (typeable ?? popover)?.focus();
-  }, [expanded, rect]);
+  }, [expanded]);
 
-  // Outside-click closes the editing popover. Must check the trigger (so
-  // re-clicking the card doesn't close-then-immediately-reopen), the portaled
-  // popover content (so interacting with form fields inside doesn't close it),
-  // and the layer a portaled dropdown opens into — a select's options render
-  // outside this subtree, and picking one is not a click away.
-  React.useEffect(() => {
-    if (!expanded) return undefined;
-    const onClick = (e: MouseEvent) => {
-      const t = e.target as Node;
-      const element = t instanceof Element ? t : null;
-
-      if (
-        triggerRef.current?.contains(t) ||
-        popoverContentRef.current?.contains(t) ||
-        element?.closest("[data-headlessui-portal]") ||
-        // Already detached: the click landed on something that has since gone,
-        // which is what a menu closing under the pointer looks like
-        !t.isConnected
-      ) {
-        return;
-      }
-
-      onToggle();
-    };
-    window.addEventListener("mousedown", onClick);
-    return () => window.removeEventListener("mousedown", onClick);
-  }, [expanded, incomplete, onToggle]);
-
-  return (
-    <div
-      ref={triggerRef}
-      style={{ position: "relative" }}
-      data-cy="view-stage-container"
+  const pill = (
+    <Card
+      background={CardBackground.Primary}
+      outlined
+      compact
+      style={{
+        height: PILL_HEIGHT,
+        display: "flex",
+        alignItems: "center",
+        // A stage that cannot be applied says so once its editor closes —
+        // while the popover is open the user is mid-thought, not in error
+        ...(!expanded && (invalid || incomplete)
+          ? {
+              borderColor: ERROR_COLOR,
+              outline: `1px solid ${ERROR_COLOR}`,
+              outlineOffset: -1,
+            }
+          : null),
+      }}
     >
-      <Card
-        background={CardBackground.Primary}
-        outlined
-        compact
-        style={{
-          height: PILL_HEIGHT,
-          display: "flex",
-          alignItems: "center",
-          // A stage that cannot be applied says so once its editor closes —
-          // while the popover is open the user is mid-thought, not in error
-          ...(!expanded && (invalid || incomplete)
-            ? {
-                borderColor: ERROR_COLOR,
-                outline: `1px solid ${ERROR_COLOR}`,
-                outlineOffset: -1,
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        align={Align.Center}
+      >
+        {/* Always-visible compact preview: name + first-arg value.
+              Click opens the editing popover below. */}
+        <Tooltip
+          anchor={Anchor.Bottom}
+          content={expanded ? "Close editor" : "Edit stage"}
+        >
+          <div
+            ref={editButtonRef}
+            onClick={onToggle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggle();
               }
-            : null),
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={expanded ? "Close editor" : "Edit stage"}
+            style={{ cursor: "pointer", display: "inline-flex", gap: 6 }}
+          >
+            <span style={{ fontWeight: 600, fontSize: 13 }}>
+              {definition.name}
+            </span>
+            {firstParam && (
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "var(--fo-palette-text-secondary)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {previewValue(stage.kwargs[firstParam.name])}
+              </span>
+            )}
+          </div>
+        </Tooltip>
+
+        {/* The stage's full story lives in its API docs — a quiet link on
+              the pill itself, out of the popover's way */}
+        <Tooltip
+          anchor={Anchor.Bottom}
+          content={`${definition.name} API documentation`}
+        >
+          <a
+            href={`https://docs.voxel51.com/api/fiftyone.core.stages.html#fiftyone.core.stages.${definition.name}`}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`${definition.name} API documentation`}
+            onClick={(e) => e.stopPropagation()}
+            // The same wrapper metrics as the remove button beside it, so the
+            // two icons sit on one baseline at one size
+            style={{
+              display: "inline-flex",
+              padding: 2,
+              color: "var(--fo-palette-text-secondary)",
+            }}
+          >
+            <Icon name={IconName.ExternalLink} size={Size.Sm} />
+          </a>
+        </Tooltip>
+
+        <Tooltip anchor={Anchor.Bottom} content="Remove stage">
+          <div
+            onClick={onRemove}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onRemove();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Remove stage"
+            style={{ cursor: "pointer", display: "inline-flex", padding: 2 }}
+          >
+            <Icon name={IconName.Close} size={Size.Sm} />
+          </div>
+        </Tooltip>
+      </Stack>
+    </Card>
+  );
+
+  // The editor: a controlled popover anchored to the pill. The bar decides
+  // when it opens (a click on the pill, or the stage having just been added)
+  // and the popover reports Escape and outside clicks back through
+  // onOpenChange. It wears the same card surface as the pill, so it reads as
+  // a continuation of the clicked pill rather than a separate overlay.
+  return (
+    <Popover
+      data-cy="view-stage-container"
+      trigger={pill}
+      open={expanded}
+      onOpenChange={(open) => {
+        if (!open && expanded) onToggle();
+      }}
+      // One width for every stage: sizing to content made the popover jump
+      // as the editor changed and gave two stages holding the same parameter
+      // two different shapes
+      panelClassName={styles.panel}
+      // Focus is placed by the effect above — on the first typeable control,
+      // not the panel
+      focusOnOpen={false}
+    >
+      <div
+        ref={popoverContentRef}
+        tabIndex={-1}
+        data-cy="view-stage-editor"
+        onKeyDown={(e) => {
+          // Escape closes the editor and puts the keyboard back on the
+          // pill, so the next Escape reaches the bar
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle();
+            requestAnimationFrame(() => editButtonRef.current?.focus());
+            return;
+          }
+
+          // Enter finishes the stage and hands the keyboard to Apply, so a
+          // second Enter runs the view. The code editor keeps its newlines,
+          // and a stage still missing a required value is not finished.
+          if (e.key !== "Enter" || e.shiftKey || incomplete) return;
+          if ((e.target as Element).closest?.(".monaco-editor")) return;
+
+          e.preventDefault();
+          onCommit();
         }}
       >
-        <Stack
-          orientation={Orientation.Row}
-          spacing={Spacing.Sm}
-          align={Align.Center}
-        >
-          {/* Always-visible compact preview: name + first-arg value.
-              Click opens the editing popover below. */}
-          <Tooltip
-            anchor={Anchor.Bottom}
-            content={expanded ? "Close editor" : "Edit stage"}
-          >
-            <div
-              onClick={onToggle}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onToggle();
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label={expanded ? "Close editor" : "Edit stage"}
-              style={{ cursor: "pointer", display: "inline-flex", gap: 6 }}
-            >
-              <span style={{ fontWeight: 600, fontSize: 13 }}>
-                {definition.name}
-              </span>
-              {firstParam && (
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "var(--fo-palette-text-secondary)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {previewValue(stage.kwargs[firstParam.name])}
-                </span>
-              )}
-            </div>
-          </Tooltip>
-
-          {/* The stage's full story lives in its API docs — a quiet link on
-              the pill itself, out of the popover's way */}
-          <Tooltip
-            anchor={Anchor.Bottom}
-            content={`${definition.name} API documentation`}
-          >
-            <a
-              href={`https://docs.voxel51.com/api/fiftyone.core.stages.html#fiftyone.core.stages.${definition.name}`}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`${definition.name} API documentation`}
-              onClick={(e) => e.stopPropagation()}
-              // The same wrapper metrics as the remove button beside it, so the
-              // two icons sit on one baseline at one size
-              style={{
-                display: "inline-flex",
-                padding: 2,
-                color: "var(--fo-palette-text-secondary)",
-              }}
-            >
-              <Icon name={IconName.ExternalLink} size={Size.Sm} />
-            </a>
-          </Tooltip>
-
-          <Tooltip anchor={Anchor.Bottom} content="Remove stage">
-            <div
-              onClick={onRemove}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onRemove();
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="Remove stage"
-              style={{ cursor: "pointer", display: "inline-flex", padding: 2 }}
-            >
-              <Icon name={IconName.Close} size={Size.Sm} />
-            </div>
-          </Tooltip>
-        </Stack>
-      </Card>
-
-      {/* Editing popover — portaled to document.body so it escapes
-          the bar's overflow clipping. Surface matches the stage
-          pill (voodo `Card.Primary` = Card1 token) so the popover
-          reads as a continuation of the clicked pill, not a
-          separate lighter overlay. */}
-      {expanded &&
-        rect &&
-        createPortal(
-          <div
-            ref={popoverContentRef}
-            tabIndex={-1}
-            data-cy="view-stage-editor"
-            onKeyDown={(e) => {
-              // Escape closes the editor and puts the keyboard back on the
-              // pill, so the next Escape reaches the bar
-              if (e.key === "Escape") {
-                e.preventDefault();
-                e.stopPropagation();
-                onToggle();
-                requestAnimationFrame(() => {
-                  triggerRef.current
-                    ?.querySelector<HTMLElement>("[role='button']")
-                    ?.focus();
-                });
-                return;
-              }
-
-              // Enter finishes the stage and hands the keyboard to Apply, so a
-              // second Enter runs the view. The code editor keeps its newlines,
-              // and a stage still missing a required value is not finished.
-              if (e.key !== "Enter" || e.shiftKey || incomplete) return;
-              if ((e.target as Element).closest?.(".monaco-editor")) return;
-
-              e.preventDefault();
-              onCommit();
-            }}
-            style={{
-              position: "fixed",
-              top: rect.top + 6,
-              // Clamped to the viewport: a stage far right in the bar would
-              // otherwise push its editor partially off-screen
-              left: Math.max(
-                8,
-                Math.min(rect.left, window.innerWidth - POPOVER_WIDTH - 8),
-              ),
-              zIndex: 10000,
-              // One width for every stage. Sizing to content made the popover
-              // jump as the editor changed and gave two stages holding the
-              // same parameter two different shapes
-              width: POPOVER_WIDTH,
-              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
-              borderRadius: 6,
-            }}
-          >
-            <Card background={CardBackground.Primary} outlined compact>
-              {/* Each control names itself — text inputs through their
+        {/* Each control names itself — text inputs through their
                   placeholder, toggles through their label — so there is no
                   label column and no gutter beside the narrow controls. */}
-              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-                {rows(
-                  definition.params.filter((p) => !isPrivate(p)),
-                  (p) => kinds.get(p.name) ?? pickInput(p),
-                ).map((row) => (
-                  <Stack
-                    key={row.map((p) => p.name).join(",")}
-                    orientation={
-                      row.length > 1 ? Orientation.Row : Orientation.Column
-                    }
-                    spacing={Spacing.Md}
-                    style={row.length > 1 ? { flexWrap: "wrap" } : undefined}
-                  >
-                    {row.map((p) => {
-                      const blockedOn = blockedBy(
-                        p,
-                        definition.params,
-                        stage.kwargs,
-                      );
-                      return (
-                        <ParamInput
-                          key={p.name}
-                          param={p}
-                          value={stage.kwargs[p.name]}
-                          error={errors.get(p.name)}
-                          disabled={blockedOn !== null}
-                          blockedOn={blockedOn}
-                          kind={kinds.get(p.name) ?? pickInput(p)}
-                          onModeChange={(kind) => onModeChange(p.name, kind)}
-                          onChange={(v) => onChange(p.name, v)}
-                          fieldOptions={fieldOptions}
-                          allowedFor={allowedFor}
-                          choicesFor={choicesFor}
-                          operators={operators}
-                          fieldKind={fieldKind}
-                          scope={expressionScope(
-                            p,
-                            definition.params,
-                            stage.kwargs,
-                          )}
-                          allPaths={allPaths}
-                          lowered={stage.lowered[p.name]}
-                          onCommit={() => {
-                            if (!incomplete) onCommit();
-                          }}
-                          testId={`view-stage-param-${p.name}`}
-                        />
-                      );
-                    })}
-                  </Stack>
-                ))}
-              </Stack>
-            </Card>
-          </div>,
-          document.body,
-        )}
-    </div>
+        <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+          {rows(
+            definition.params.filter((p) => !isPrivate(p)),
+            (p) => kinds.get(p.name) ?? pickInput(p),
+          ).map((row) => (
+            <Stack
+              key={row.map((p) => p.name).join(",")}
+              orientation={
+                row.length > 1 ? Orientation.Row : Orientation.Column
+              }
+              spacing={Spacing.Md}
+              style={row.length > 1 ? { flexWrap: "wrap" } : undefined}
+            >
+              {row.map((p) => {
+                const blockedOn = blockedBy(p, definition.params, stage.kwargs);
+                return (
+                  <ParamInput
+                    key={p.name}
+                    param={p}
+                    value={stage.kwargs[p.name]}
+                    error={errors.get(p.name)}
+                    disabled={blockedOn !== null}
+                    blockedOn={blockedOn}
+                    kind={kinds.get(p.name) ?? pickInput(p)}
+                    onModeChange={(kind) => onModeChange(p.name, kind)}
+                    onChange={(v) => onChange(p.name, v)}
+                    fieldOptions={fieldOptions}
+                    allowedFor={allowedFor}
+                    choicesFor={choicesFor}
+                    operators={operators}
+                    fieldKind={fieldKind}
+                    scope={expressionScope(p, definition.params, stage.kwargs)}
+                    allPaths={allPaths}
+                    lowered={stage.lowered[p.name]}
+                    onCommit={() => {
+                      if (!incomplete) onCommit();
+                    }}
+                    testId={`view-stage-param-${p.name}`}
+                  />
+                );
+              })}
+            </Stack>
+          ))}
+        </Stack>
+      </div>
+    </Popover>
   );
 };
