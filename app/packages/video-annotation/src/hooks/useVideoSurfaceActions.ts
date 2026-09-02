@@ -442,14 +442,29 @@ const makeTrackIdentityOps = (
       return;
     }
 
+    // The frames on either side of the cut become keyframes: interpolation
+    // runs between keyframes, so without them the left track would drift
+    // toward nothing after its last keyframe and the right track would have
+    // no anchor before its first
+    const head = r.trackFrames(instanceId).filter((frame) => frame < atFrame);
+    const lastLeft = head.length > 0 ? head[head.length - 1] : undefined;
+    const leftEdge =
+      lastLeft === undefined ? undefined : r.read(instanceId, lastLeft);
+
     const newInstanceId = engine.mintInstanceId();
 
     actions.transaction(() => {
-      for (const { frame, det } of tail) {
+      if (lastLeft !== undefined && leftEdge && !leftEdge.keyframe) {
+        actions.updateLabel(
+          { path: fieldPath, instanceId, frame: lastLeft },
+          { keyframe: true },
+        );
+      }
+      for (const [i, { frame, det }] of tail.entries()) {
         actions.deleteLabel({ path: fieldPath, instanceId, frame });
         actions.updateLabel(
           { path: fieldPath, instanceId: newInstanceId, frame },
-          r.content(det),
+          i === 0 ? { ...r.content(det), keyframe: true } : r.content(det),
         );
       }
     });
