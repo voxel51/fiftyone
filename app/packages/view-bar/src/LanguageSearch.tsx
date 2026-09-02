@@ -33,7 +33,7 @@ import React from "react";
 import styles from "./LanguageSearch.module.css";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 
-export const LANGUAGE_SEARCH_LABEL = "Search by similarity";
+export const LANGUAGE_SEARCH_LABEL = "Search by natural language";
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
