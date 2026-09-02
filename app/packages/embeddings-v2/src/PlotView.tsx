@@ -156,8 +156,16 @@ export default function PlotView({
     mode === "explore" || mode === "select"
       ? (mode as InteractionMode)
       : "select";
-  // Explore freezes the card so its actions are reachable by pointer
-  const cellPointClick = mode === "select" ? handlePointClick : pinHover;
+  // Select chooses a point. Explore freezes the card so its action is
+  // reachable by pointer — a card that follows the pointer cannot be clicked.
+  // With no action to reach, freezing only costs the reader their hover, so
+  // the click stays inert and the card remains hover-only.
+  const cellPointClick =
+    mode === "select"
+      ? handlePointClick
+      : features.hoverAction
+        ? pinHover
+        : undefined;
 
   const subtitle = `${run.method ?? "visualization"}${
     run.dims ? ` (${run.dims}D)` : ""

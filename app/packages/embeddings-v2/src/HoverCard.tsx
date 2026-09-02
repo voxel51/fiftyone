@@ -127,7 +127,10 @@ export default function HoverCard({
     origin.bounds,
   ]);
 
-  // Preload off-DOM; on failure the metadata still shows
+  // Preload off-DOM and show the image once it is decoded, so it appears at
+  // its own size rather than reflowing as it streams. The card does not wait
+  // on it: the metadata rows are the point, and an unreachable thumbnail may
+  // resolve neither handler.
   useEffect(() => {
     if (!src) return undefined;
     let stale = false;
@@ -156,8 +159,6 @@ export default function HoverCard({
     document.addEventListener("pointerdown", onDown, true);
     return () => document.removeEventListener("pointerdown", onDown, true);
   }, [onClose]);
-
-  if (src && settled?.src !== src) return null;
 
   return createPortal(
     <div
