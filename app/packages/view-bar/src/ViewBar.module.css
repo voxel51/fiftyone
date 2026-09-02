@@ -47,24 +47,21 @@
   line-height: 1;
 }
 
-/* Same gutter treatment, anchored under the bar */
-.stagesRow {
-  position: fixed;
-  /* Above the page, below voodo tooltips (z 1000) and the portaled editors
-     (10000+) — a tooltip must never hide behind the row */
-  z-index: 900;
+/* The stages row is the panel of a controlled voodo Popover hung from the
+   gutter: the popover positions it, sizes it to the bar and gives it the
+   floating surface and shadow. The row itself is a gapless 40px strip with
+   the gutter's border and radius — the double class outranks the panel's
+   own padding and radius utilities. */
+.stagesRow.stagesRow {
+  padding: 0;
   box-sizing: border-box;
   /* Portaled to the body, the row inherits ITS text color — the enterprise
      shell's body is black-on-white, so the app text color is declared rather
      than inherited */
   color: var(--color-content-text-primary);
-  /* A floating panel wears the popover surface like every other panel */
-  background: var(--color-content-bg-popover);
   border: 1px solid var(--color-content-border-default);
   border-radius: var(--radius-sm);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
 }
-
 /* Scrolls sideways for long stage chains. The breathing room lives inside the
    scroller, so it scrolls away with the content. */
 .scroller {

@@ -57,4 +57,3 @@ export { default as Tooltip } from "./Tooltip";
 export { default as TooltipProvider } from "./TooltipProvider";
 
 export * from "./types";
-export { useAnchorRect, type AnchorRect } from "./useAnchorRect";
