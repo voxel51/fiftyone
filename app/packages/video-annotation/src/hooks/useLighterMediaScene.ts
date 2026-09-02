@@ -168,6 +168,7 @@ export function useLighterMediaScene({
   sceneIdPrefix,
   sceneIdDeps = [],
   readOnly = false,
+  multipleSelection = false,
 }: {
   hostRef: RefObject<HTMLDivElement | null>;
   dims: Dimensions | null;
@@ -179,6 +180,13 @@ export function useLighterMediaScene({
    * would otherwise commit a silent edit.
    */
   readOnly?: boolean;
+  /**
+   * Let the user build up a selection of several overlays at once, each click
+   * toggling one in or out. Explore sets this: selecting labels IS the
+   * interaction there (it feeds tagging), where on the annotation surfaces a
+   * selection is the target of the next edit and only one can be.
+   */
+  multipleSelection?: boolean;
 }): {
   scene: LighterScene;
   canonicalMediaReady: boolean;
@@ -212,6 +220,17 @@ export function useLighterMediaScene({
     }
     scene.setReadOnly(readOnly);
   }, [scene, sceneId, readOnly]);
+
+  // Same per-scene application as `readOnly` above, and for the same reason: a
+  // re-minted scene (new source) starts out single-select and has to be told
+  // again. Selection is scene state rather than an overlay affordance, so
+  // unlike read-only this one needs no walk over the overlays.
+  useEffect(() => {
+    if (!scene || scene.getSceneId() !== sceneId) {
+      return;
+    }
+    scene.setMultipleSelection(multipleSelection);
+  }, [scene, sceneId, multipleSelection]);
 
   useSceneColorScheme(scene, sceneId);
   const canonicalMediaReady = useCanonicalMediaInstall(scene, sceneId, dims);

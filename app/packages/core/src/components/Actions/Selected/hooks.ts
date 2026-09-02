@@ -8,21 +8,37 @@ import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { toLabelMap } from "./utils";
 
-export const useClearSelectedLabels = (close) => {
+/**
+ * Drop every selected label — from the atom, the canvas, and (through the
+ * canvas) whatever else owns selection on this surface.
+ *
+ * The scene clear is deliberately NOT flagged. On a surface whose canvas
+ * selection is reconciled from the annotation engine's active set (video
+ * Explore), a flagged clear is invisible to the engine: the canvas and the
+ * atom would empty while the engine went on believing those labels were
+ * active, and the next time one of their tracks re-entered the projection the
+ * engine would paint it selected again with nothing selected. Unflagged, the
+ * deselects reach the engine and all three end up empty together.
+ *
+ * The echo back into the atom that this allows is harmless — it removes labels
+ * that the `set` below removes anyway — and only reaches labels the scene is
+ * actually painting, which is why the `set` still has to run.
+ *
+ * @param close optional popout dismissal; omitted when a keybinding calls this
+ */
+export const useClearSelectedLabels = (close?: () => void) => {
   const { scene } = useLighter();
 
   return useRecoilCallback(
     ({ set }) =>
       async () => {
-        if (scene) {
-          scene.clearSelection({ ignoreSideEffects: true });
-        }
+        scene?.clearSelection();
 
         set(fos.selectedLabels, []);
 
-        close();
+        close?.();
       },
-    [],
+    [scene, close],
   );
 };
 
@@ -120,35 +136,52 @@ export const useVisibleSampleLabels = (
 /** `frames.`-prefixed overlays are the per-frame labels currently painted. */
 const FRAME_FIELD_PREFIX = "frames.";
 
+/** The shape of a Lighter overlay this module reads, and nothing more. */
+export interface SelectableOverlay {
+  id: string;
+  field?: string;
+  label?: { _id?: string; id?: string; frame_number?: number } | null;
+}
+
 /**
- * The per-frame labels a Lighter scene is painting right now, as
- * {@link State.SelectedLabel}s.
+ * One Lighter overlay as a {@link State.SelectedLabel}.
  *
  * Pure so it can be tested without a scene. `label._id` is the canonical
  * backend id the selection atoms key by; `overlay.id` is the engine's
  * instance id, which is only a last-resort fallback (an untracked element
  * with no `_id` would otherwise be unaddressable).
+ *
+ * A `frames.`-prefixed overlay carries the frame it was painted for, so the
+ * selection addresses one occurrence rather than the whole track; a
+ * sample-level overlay stays frame-less, which is what the modal's sample
+ * label actions expect.
+ */
+export const overlayToSelectedLabel = (
+  overlay: SelectableOverlay,
+  sampleId: string,
+): State.SelectedLabel => {
+  const frameNumber = overlay.label?.frame_number;
+  const isFrameLabel = !!overlay.field?.startsWith(FRAME_FIELD_PREFIX);
+
+  return {
+    labelId: overlay.label?._id ?? overlay.label?.id ?? overlay.id,
+    field: overlay.field as string,
+    sampleId,
+    ...(isFrameLabel && frameNumber !== undefined ? { frameNumber } : {}),
+  };
+};
+
+/**
+ * The per-frame labels a Lighter scene is painting right now, as
+ * {@link State.SelectedLabel}s.
  */
 export const overlaysToFrameLabels = (
-  overlays: readonly {
-    id: string;
-    field?: string;
-    label?: { _id?: string; id?: string; frame_number?: number } | null;
-  }[],
+  overlays: readonly SelectableOverlay[],
   sampleId: string,
 ): State.SelectedLabel[] =>
   overlays
     .filter((overlay) => overlay.field?.startsWith(FRAME_FIELD_PREFIX))
-    .map((overlay) => {
-      const frameNumber = overlay.label?.frame_number;
-
-      return {
-        labelId: overlay.label?._id ?? overlay.label?.id ?? overlay.id,
-        field: overlay.field as string,
-        sampleId,
-        ...(frameNumber === undefined ? {} : { frameNumber }),
-      };
-    });
+    .map((overlay) => overlayToSelectedLabel(overlay, sampleId));
 
 /**
  * Visible per-frame labels, read off the Lighter scene rather than a

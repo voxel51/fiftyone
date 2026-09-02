@@ -419,17 +419,34 @@ export class InteractionManager {
         return;
       }
 
+      const isSelectableOverlay = !!handler && TypeGuards.isSelectable(handler);
+
       // If clicking an overlay, select it
       const isUnselectedOverlay =
-        !!handler &&
-        TypeGuards.isSelectable(handler) &&
-        !this.selectionManager.isSelected(handler.id);
+        isSelectableOverlay && !this.selectionManager.isSelected(handler!.id);
 
       // the selected overlay still wins the hit test so drag/resize works
       const drawOverOverlay = this.isDrawingOverUnselected(handler);
 
-      if (isUnselectedOverlay && !drawOverOverlay) {
-        this.selectionManager.select(handler!.id);
+      // A multi-select scene TOGGLES, and acts on an already-selected overlay
+      // too: with several overlays selected at once, clicking one again is the
+      // only gesture that takes it back out. A single-select scene keeps its
+      // existing behavior — there, re-clicking is the start of a drag on the
+      // overlay you already picked, and deselecting it would strand the
+      // gesture. The pointer event only rides along on the multi-select path
+      // for the same reason: it decides the `isShiftPressed` the select event
+      // carries, and no single-select surface should change what it reports.
+      const multipleSelection = this.selectionManager.isMultipleSelection();
+      const isSelectionClick = multipleSelection
+        ? isSelectableOverlay
+        : isUnselectedOverlay;
+
+      if (isSelectionClick && !drawOverOverlay) {
+        if (multipleSelection) {
+          this.selectionManager.toggle(handler!.id, { event });
+        } else {
+          this.selectionManager.select(handler!.id);
+        }
 
         // Select an overlay before issuing any edits. The cursor at this point
         // is a 'pointer' indicating selection, not painting/erasing/keypoint.

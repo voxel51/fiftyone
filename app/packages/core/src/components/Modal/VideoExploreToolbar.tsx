@@ -68,6 +68,21 @@ const HELP_ITEMS = [
     detail: "Zoom the video and its labels together",
   },
   {
+    shortcut: "Click label",
+    title: "Select label",
+    detail: "Toggle a label in or out of the selection, for tagging",
+  },
+  {
+    shortcut: "Click background",
+    title: "Clear selection",
+    detail: "Deselect every selected label",
+  },
+  {
+    shortcut: "Escape",
+    title: "Clear selection",
+    detail: "Deselect every selected label; closes the modal when none is",
+  },
+  {
     shortcut: "Right-click ruler",
     title: "Loop range",
     detail: "Loop the portion of the timeline on screen",

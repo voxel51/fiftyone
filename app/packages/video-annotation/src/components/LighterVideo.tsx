@@ -1,5 +1,9 @@
 import React, { type RefObject, useRef, useState } from "react";
 import { usePlayback, useVideoStream, useVideoSync } from "@fiftyone/playback";
+import {
+  useLighterSelectionEventHandler,
+  useSelectedLabelsSceneSync,
+} from "../../../core/src/components/Modal/Lighter/useLighterSelectionEventHandler";
 import { useLighterTooltipEventHandler } from "../../../core/src/components/Modal/Lighter/useLighterTooltipEventHandler";
 import { useLighterMediaScene } from "../hooks/useLighterMediaScene";
 import { useVfcClockSource } from "../hooks/useVfcClockSource";
@@ -104,6 +108,11 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
     // Explore renders labels it cannot save — lock geometry so a stray drag
     // can't commit a silent edit. Selection and hover still work.
     readOnly: mode === "explore",
+    // ...and in Explore selecting labels is the whole point of clicking one:
+    // the selection feeds the modal's Tag and "Manage selected" actions, which
+    // act on any number of labels at once. Annotate stays single-select — a
+    // selection there is the target of the next edit.
+    multipleSelection: mode === "explore",
   });
 
   // Hover -> `fos.tooltipDetail`, which `TooltipInfo` (mounted in Modal.tsx)
@@ -112,6 +121,19 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   // a tooltip over the canvas mid-draw is a product change in its own right —
   // `null` routes the hook at the undefined channel, so it observes nothing.
   useLighterTooltipEventHandler(mode === "explore" ? scene : null);
+
+  // Canvas selection -> `fos.selectedLabels`, which the modal's Tag and
+  // "Manage selected" actions read. Explore only, and routed at the undefined
+  // channel otherwise: in Annotate a selection belongs to the annotation
+  // engine's active handles, and mirroring it into this atom would make the
+  // label actions act on whatever the user is mid-edit on.
+  useLighterSelectionEventHandler(mode === "explore" ? scene : null);
+
+  // ...and back, so the canvas follows the atom when something other than a
+  // click changes it — the "Manage selected" menu, a successful tag (which
+  // resets the selection), hiding labels, an operator. Explore only, for the
+  // same reason as above.
+  useSelectedLabelsSceneSync(mode === "explore" ? scene : null);
 
   const Sync = mode === "annotate" ? AnnotateSync : ExploreSync;
 

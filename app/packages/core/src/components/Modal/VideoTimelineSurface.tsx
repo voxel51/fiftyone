@@ -132,6 +132,16 @@ export interface VideoTimelineSurfaceProps {
  *
  * Per-frame label types are NO LONGER a gap: detections, polylines, keypoints
  * and classifications all render (see `framesData`'s `ELEMENT_CLS`).
+ *
+ * Label selection is NO LONGER a gap either: clicking labels accumulates a
+ * selection in `fos.selectedLabels` — the atom Tag and "Manage selected" act
+ * on — via `useLighterSelectionEventHandler`, mounted by `LighterVideo`. One
+ * deliberate difference from the looker: clicking the media away from any
+ * label clears the selection, because Lighter treats a background click as a
+ * clear (`InteractionManager.handleClick`) and the highlighted boxes have to
+ * keep matching the atom. Escape clears it too — the looker's escape ladder
+ * cleared before closing, and `useVideoExploreKeybindings` restores that rung.
+ * All three gestures are listed in `HELP_ITEMS`.
  */
 export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   sample,

@@ -347,6 +347,47 @@ describe("KeyManager", () => {
     expect(state.full?.id).toBe("fo.test.command1");
   });
 
+  /**
+   * The "ladder" a surface builds on a shared key: a high-priority rung that
+   * only applies sometimes, over a default that always does. Video Explore
+   * binds Escape this way — clear the selected labels when there are any,
+   * otherwise let the modal's own Escape close it — which only works if a
+   * DISABLED high-priority rung falls through instead of swallowing the key.
+   */
+  it("falls through a disabled high-priority binding to the enabled default", async () => {
+    let rungApplies = false;
+
+    commandRegistry.registerCommand(
+      "fo.test.rung",
+      async () => {
+        return;
+      },
+      () => rungApplies,
+    );
+    commandRegistry.registerCommand(
+      "fo.test.default",
+      async () => {
+        return;
+      },
+      () => true,
+    );
+
+    keyManager.bindKey("Escape", "fo.test.rung", 1);
+    keyManager.bindKey("Escape", "fo.test.default");
+
+    const press = () =>
+      keyManager.match(new KeyboardEvent("keydown", { key: "Escape" })).full
+        ?.id;
+
+    // rung does not apply -> the default runs untouched
+    expect(press()).toBe("fo.test.default");
+
+    rungApplies = true;
+
+    // rung applies -> it takes the key, and the default does NOT also run
+    expect(press()).toBe("fo.test.rung");
+  });
+
   it("can unbind one duplicate binding without removing the fallback", async () => {
     commandRegistry.registerCommand(
       "fo.test.command1",

@@ -827,6 +827,38 @@ export class Scene2D {
   }
 
   /**
+   * Allows more than one overlay to be selected at a time.
+   *
+   * A surface-lifetime property, stored the same way and for the same reason
+   * as {@link setReadOnly}: `SceneOptions` is replaced wholesale by
+   * `updateOptions`, so a flag living there would be dropped the first time
+   * the sidebar toggled a field.
+   *
+   * On for surfaces that select labels rather than edit them — video Explore,
+   * where clicking boxes builds up `selectedLabels` for tagging. Off for the
+   * annotation surfaces, whose drag / resize / paint handlers act on a single
+   * selected overlay.
+   *
+   * This is the ONE switch for that behavior, and it reaches past the scene:
+   * `InteractionManager` reads it to decide whether a click toggles an overlay
+   * or replaces the selection, and the annotation engine's Lighter bridge
+   * reads it back off the scene to decide whether a click is additive in the
+   * engine's active set. Everything that has to agree about "can this surface
+   * hold several selected labels?" derives from here rather than being told
+   * separately, because a surface that set only some of them would show a
+   * canvas that collapses to one highlighted overlay while the other layers
+   * accumulate.
+   */
+  setMultipleSelection(multipleSelection: boolean): void {
+    this.selectionManager.setMultipleSelection(multipleSelection);
+  }
+
+  /** Whether this scene allows more than one overlay to be selected. */
+  isMultipleSelection(): boolean {
+    return this.selectionManager.isMultipleSelection();
+  }
+
+  /**
    * Determines if overlay order should be recalculated based on cursor position.
    * Only recalculates if the cursor is over a non-canonical overlay.
    * @returns True if overlay order should be recalculated.

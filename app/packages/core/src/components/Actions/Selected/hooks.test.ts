@@ -67,7 +67,12 @@ vi.mock("@fiftyone/lighter", () => ({
   useLighter: () => ({ scene: refs.scene }),
 }));
 
-import { overlaysToFrameLabels, useUnselectVisible } from "./hooks";
+import {
+  overlaysToFrameLabels,
+  overlayToSelectedLabel,
+  useClearSelectedLabels,
+  useUnselectVisible,
+} from "./hooks";
 
 type LabelEntry = { sampleId: string; field: string; frameNumber?: number };
 type LabelMap = Record<string, LabelEntry>;
@@ -255,6 +260,52 @@ describe("useUnselectVisible", () => {
 });
 
 /**
+ * The shared overlay -> SelectedLabel mapping. Both the "select visible labels
+ * in this frame" action and the canvas selection bridge address labels through
+ * this, so they cannot key the selection atoms differently.
+ */
+describe("overlayToSelectedLabel", () => {
+  it("keys by the backend id and stamps the frame for a frame label", () => {
+    expect(
+      overlayToSelectedLabel(
+        {
+          id: "inst-1",
+          field: "frames.detections",
+          label: { _id: "L1", frame_number: 42 },
+        },
+        "S1",
+      ),
+    ).toEqual({
+      labelId: "L1",
+      field: "frames.detections",
+      sampleId: "S1",
+      frameNumber: 42,
+    });
+  });
+
+  it("leaves a sample-level label frame-less", () => {
+    // a temporal detection sharing the video scene addresses the whole sample;
+    // stamping the playhead's frame would make each surface point at a
+    // different occurrence of it
+    expect(
+      overlayToSelectedLabel(
+        { id: "inst-2", field: "events", label: { _id: "L2" } },
+        "S1",
+      ),
+    ).toEqual({ labelId: "L2", field: "events", sampleId: "S1" });
+  });
+
+  it("falls back to the overlay's instance id when the label carries none", () => {
+    expect(
+      overlayToSelectedLabel(
+        { id: "inst-3", field: "frames.detections", label: null },
+        "S1",
+      ).labelId,
+    ).toBe("inst-3");
+  });
+});
+
+/**
  * Video Explore paints through Lighter and mounts no `Looker`, so the modal's
  * "select visible labels in this frame" action reads the scene's overlays
  * instead of `VideoLooker.getCurrentFrameLabels()`.
@@ -319,5 +370,60 @@ describe("overlaysToFrameLabels", () => {
 
   it("returns nothing for a scene with no overlays", () => {
     expect(overlaysToFrameLabels([], "S1")).toEqual([]);
+  });
+});
+
+describe("useClearSelectedLabels", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    refs.scene = { clearSelection: vi.fn() };
+  });
+
+  /**
+   * Unflagged on purpose. Where the canvas selection is reconciled from the
+   * annotation engine's active set (video Explore), a flagged clear never
+   * reaches the engine — it would go on believing those labels were active and
+   * repaint one selected the next time its track re-entered the projection,
+   * with nothing selected in the atom.
+   */
+  it("clears the scene as a user gesture, so other owners of the selection hear it", async () => {
+    const { result } = renderHook(
+      () => ({
+        callback: useClearSelectedLabels(),
+        map: useRecoilValue(stubs.selectedLabelMap),
+      }),
+      {
+        wrapper: makeWrapper({
+          "label-a": { sampleId: "s1", field: "detections" },
+        }),
+      },
+    );
+
+    await act(async () => {
+      await result.current.callback();
+    });
+
+    expect(refs.scene?.clearSelection).toHaveBeenCalledWith();
+    expect(result.current.map).toEqual({});
+  });
+
+  it("dismisses the popout when given one, and copes without", async () => {
+    const close = vi.fn();
+
+    const { result } = renderHook(
+      () => ({
+        withClose: useClearSelectedLabels(close),
+        withoutClose: useClearSelectedLabels(),
+      }),
+      { wrapper: makeWrapper({}) },
+    );
+
+    await act(async () => {
+      await result.current.withClose();
+      // a keybinding calls this with no popout to dismiss
+      await result.current.withoutClose();
+    });
+
+    expect(close).toHaveBeenCalledTimes(1);
   });
 });
