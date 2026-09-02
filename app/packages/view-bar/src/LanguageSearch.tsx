@@ -156,6 +156,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
             <Button
               variant={Variant.Secondary}
               size={Size.Sm}
+              className={styles.configure}
               leadingIcon={IconName.Settings}
               onClick={onOpenPanel}
             >

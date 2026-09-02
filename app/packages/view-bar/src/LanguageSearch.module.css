@@ -11,3 +11,9 @@
   flex: 1;
   min-width: 0;
 }
+
+/* The no-index list's one offer fills the row like an option would */
+.configure {
+  display: flex;
+  width: 100%;
+}
