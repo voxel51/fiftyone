@@ -22,6 +22,7 @@ function renderCard(
   const plotDown = vi.fn();
   render(
     <div
+      className="emb-plot"
       data-testid="plot"
       onPointerDownCapture={(e) => {
         e.stopPropagation();
@@ -39,44 +40,75 @@ function renderCard(
   return { plotDown };
 }
 
+/** jsdom has no PointerEvent, and fireEvent drops clientX/clientY without it
+ * -- dispatched as a MouseEvent the coordinates survive, which is the whole
+ * point of these cases */
+function press(target: Element, type: string, x: number, y: number) {
+  target.dispatchEvent(
+    new MouseEvent(type, { bubbles: true, clientX: x, clientY: y }),
+  );
+}
+
+/** One press that does not move, i.e. a click rather than a drag */
+function click(target: Element, x = 8, y = 8) {
+  press(target, "pointerdown", x, y);
+  press(target, "pointerup", x, y);
+}
+
 describe("HoverCard", () => {
-  it("closes a pinned card on a pointerdown outside it", () => {
+  it("closes a pinned card when the plot is clicked elsewhere", () => {
     const onClose = vi.fn();
     const { plotDown } = renderCard(onClose);
 
-    fireEvent.pointerDown(screen.getByTestId("plot"));
+    click(screen.getByTestId("plot"));
 
     expect(onClose).toHaveBeenCalledTimes(1);
     // The dismissing click still reaches what it was aimed at
     expect(plotDown).toHaveBeenCalledTimes(1);
   });
 
-  it("closes a pinned card on a pointerdown outside the panel entirely", () => {
+  it("keeps a pinned card when the press becomes a drag", () => {
     const onClose = vi.fn();
     renderCard(onClose);
 
-    fireEvent.pointerDown(document.body);
+    // A pan or a lasso starts exactly like a dismissing click; only the
+    // distance travelled by the time the pointer lifts tells them apart
+    const plot = screen.getByTestId("plot");
+    press(plot, "pointerdown", 8, 8);
+    press(plot, "pointerup", 80, 60);
 
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("keeps a pinned card when the pointerdown lands on the card", () => {
+  it("keeps a pinned card when the click lands outside the plot", () => {
     const onClose = vi.fn();
     renderCard(onClose);
 
-    fireEvent.pointerDown(screen.getByText("camera_front"));
+    // Pinning is how the reader keeps the card while they work in the rest
+    // of the App, so the view bar and the sidebar must not take it away
+    click(document.body);
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("keeps a pinned card when the click lands on the card", () => {
+    const onClose = vi.fn();
+    renderCard(onClose);
+
+    click(screen.getByText("camera_front"));
 
     expect(onClose).not.toHaveBeenCalled();
   });
 
   it("stops closing once the card is gone", () => {
     const onClose = vi.fn();
-    renderCard(onClose);
+    const { plotDown } = renderCard(onClose);
     cleanup();
 
-    fireEvent.pointerDown(document.body);
+    click(screen.queryByTestId("plot") ?? document.body);
 
     expect(onClose).not.toHaveBeenCalled();
+    expect(plotDown).not.toHaveBeenCalled();
   });
 
   it("spins the action's own button while it runs", () => {
