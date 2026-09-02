@@ -38,7 +38,11 @@ jobs:
           fi
 
           got=$(tr -d '\r\n' < VERSION)
-          was=$(git show "$BASE_SHA:VERSION" 2>/dev/null | tr -d '\r\n' || true)
+          # Base commits that predate the VERSION file carry the version as
+          # setup.py's VERSION constant
+          was=$(git show "$BASE_SHA:VERSION" 2>/dev/null | tr -d '\r\n' \
+            || git show "$BASE_SHA:setup.py" 2>/dev/null \
+               | sed -nE 's/^VERSION = "([^"]+)".*/\1/p' | head -1 || true)
           if [ "$got" = "$was" ]; then
             echo "VERSION value unchanged ($got). OK."
             exit 0
