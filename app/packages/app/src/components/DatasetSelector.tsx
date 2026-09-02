@@ -102,7 +102,6 @@ const DatasetSelector: React.FC<{
       <Combobox
         aria-label="Dataset"
         placeholder="Select dataset"
-        icon={IconName.Database}
         size={Size.Sm}
         options={options}
         value={value}
