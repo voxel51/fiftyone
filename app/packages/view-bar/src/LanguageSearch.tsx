@@ -151,19 +151,25 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         // With previous searches to offer the list is the offer; with none it
         // is noise, so it stays hidden
         emptyMessage={
-          enabled ? null : (
-            // Text search needs a similarity index that supports prompts;
-            // the list's one offer is to go make one
-            <Button
-              variant={Variant.Secondary}
-              size={Size.Sm}
-              className={styles.configure}
-              leadingIcon={IconName.Settings}
-              onClick={onOpenPanel}
-            >
-              Configure similarity search
-            </Button>
-          )
+          enabled
+            ? null
+            : // Text search needs a similarity index that supports prompts;
+              // the list's one offer is to go make one, and taking it is
+              // leaving the field
+              ({ close }) => (
+                <Button
+                  variant={Variant.Secondary}
+                  size={Size.Sm}
+                  className={styles.configure}
+                  leadingIcon={IconName.Settings}
+                  onClick={() => {
+                    close();
+                    onOpenPanel();
+                  }}
+                >
+                  Configure similarity search
+                </Button>
+              )
         }
       />
       {pending && (
