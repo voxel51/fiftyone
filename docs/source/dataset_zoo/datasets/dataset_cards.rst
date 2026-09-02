@@ -230,6 +230,13 @@
     :tags: image,detection,segmentation
 
 .. customcarditem::
+    :header: TII-RATM Drone Racing
+    :description: Six indoor drone racing flights in native MCAP format, pairing onboard fisheye video and a 500 Hz IMU with visual-inertial odometry and motion capture ground truth on one clock.
+    :link: datasets/tii_ratm_drone_racing.html
+    :image: ../_images/tii-ratm-drone-racing.png
+    :tags: multimodal,mcap,drone,slam,ground-truth
+
+.. customcarditem::
     :header: UCF101
     :description: Action recognition dataset with 13,320 realistic YouTube videos across 101 action categories. Features diverse camera motion, lighting, and viewpoints - challenging for video understanding.
     :link: datasets/ucf101.html

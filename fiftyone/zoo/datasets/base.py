@@ -13,6 +13,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
@@ -30,6 +31,11 @@ import fiftyone.utils.sama as fous
 import fiftyone.utils.places as foup
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
+
+hfh = fou.lazy_import(
+    "huggingface_hub",
+    callback=lambda: fou.ensure_package("huggingface_hub>=0.20.0"),
+)
 
 
 logger = logging.getLogger(__name__)
@@ -3433,6 +3439,75 @@ class UCF101Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class TIIRATMDroneRacingDataset(FiftyOneDataset):
+    """Indoor drone racing flights pairing onboard visual-inertial odometry
+    with motion capture ground truth, as native ``.mcap`` episodes.
+
+    A quadrotor flies laps of a four-gate track, three on an ellipse and
+    three on a lemniscate, carrying a fisheye camera and a 500 Hz IMU while a
+    motion capture system watches the room. Each episode carries both the
+    estimate the drone computed for itself and the reference measured at the
+    same instant, along with the distance between them.
+
+    Six flights, 10.9 minutes and 2,563 metres flown. Tracking error ranges
+    from 0.61 m to 1.66 m RMSE across the six.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("tii-ratm-drone-racing")
+
+        # The flights the odometry found hardest
+        view = dataset.sort_by("tracking_error_rmse_m", reverse=True)
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        0.58 GB
+    """
+
+    _REPO_ID = "Voxel51/TII-RATM-Drone-Racing"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "cf5751f3693331301d42ea025dfb7d16ed5195ec"
+
+    @property
+    def name(self):
+        return "tii-ratm-drone-racing"
+
+    @property
+    def license(self):
+        return "CC BY 4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "drone", "uav", "slam", "ground-truth")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3462,6 +3537,7 @@ AVAILABLE_DATASETS = {
     "quickstart-groups": QuickstartGroupsDataset,
     "quickstart-3d": Quickstart3DDataset,
     "sama-coco": SamaCOCODataset,
+    "tii-ratm-drone-racing": TIIRATMDroneRacingDataset,
     "ucf101": UCF101Dataset,
 }
 
