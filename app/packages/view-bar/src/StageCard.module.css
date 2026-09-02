@@ -1,0 +1,32 @@
+/* The card is the pill's frame; its content sits on one line inside it */
+.pill {
+  display: flex;
+  align-items: center;
+}
+
+/* A stage that cannot be applied says so once its editor closes — while the
+   popover is open the user is mid-thought, not in error */
+.pillInvalid {
+  border-color: var(--color-content-border-error);
+  outline: 1px solid var(--color-content-border-error);
+  outline-offset: -1px;
+}
+
+/* voodo's Clickable is a plain span that takes no ref, so the ref used to put
+   the keyboard back on the pill after Escape lives on this wrapper */
+.trigger {
+  display: inline-flex;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.preview {
+  white-space: nowrap;
+}
+
+/* A row holding several controls wraps rather than overflowing the popover */
+.wrapRow {
+  flex-wrap: wrap;
+}

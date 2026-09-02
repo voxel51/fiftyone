@@ -11,16 +11,26 @@
  */
 
 import {
+  Align,
   Anchor,
+  Button,
   Card,
   CardBackground,
   Icon,
   IconName,
+  Orientation,
   Size,
+  Spacing,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
   Tooltip,
+  Variant,
 } from "@voxel51/voodo";
 import React from "react";
 
+import styles from "./CurrentViewChip.module.css";
 import { PILL_HEIGHT } from "./StageCard";
 
 /**
@@ -31,32 +41,16 @@ export const ClearViewButton: React.FC<{ onClear: () => void }> = ({
   onClear,
 }) => (
   <Tooltip anchor={Anchor.Bottom} content="Clear view">
-    <div
+    <Button
       onClick={onClear}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClear();
-        }
-      }}
-      role="button"
-      tabIndex={0}
       aria-label="Clear view"
       data-cy="view-bar-clear-view"
-      style={{
-        cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        color: "var(--fo-palette-text-secondary)",
-        flexShrink: 0,
-      }}
-    >
-      <Icon name={IconName.Close} size={Size.Sm} />
-    </div>
+      variant={Variant.Icon}
+      size={Size.Sm}
+      borderless
+      leadingIcon={IconName.Close}
+      className={styles.clear}
+    />
   </Tooltip>
 );
 
@@ -84,28 +78,25 @@ export const CurrentViewChip: React.FC<CurrentViewChipProps> = ({
     role="button"
     tabIndex={0}
     aria-label="Show view stages"
-    style={{
-      height: PILL_HEIGHT,
-      display: "flex",
-      alignItems: "center",
-      flexShrink: 0,
-      cursor: "pointer",
-    }}
+    className={styles.chip}
+    style={{ height: PILL_HEIGHT }}
   >
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <Stack
+      orientation={Orientation.Row}
+      spacing={Spacing.Sm}
+      align={Align.Center}
+    >
       <Icon name={IconName.Boxes} size={Size.Sm} />
-      <span style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>
+      <Text variant={TextVariant.Md} className={styles.label}>
         Current view
-      </span>
-      <span
-        style={{
-          fontSize: 12,
-          color: "var(--fo-palette-text-secondary)",
-          whiteSpace: "nowrap",
-        }}
+      </Text>
+      <Text
+        variant={TextVariant.Sm}
+        color={TextColor.Secondary}
+        className={styles.count}
       >
         {count} {count === 1 ? "stage" : "stages"}
-      </span>
-    </div>
+      </Text>
+    </Stack>
   </Card>
 );

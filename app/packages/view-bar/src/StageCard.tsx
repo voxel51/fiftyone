@@ -8,16 +8,21 @@
 import {
   Align,
   Anchor,
+  Button,
   Card,
   CardBackground,
-  Icon,
+  Clickable,
   IconName,
   Orientation,
   Popover,
   Size,
   Spacing,
   Stack,
+  Text,
+  TextColor,
+  TextVariant,
   Tooltip,
+  Variant,
 } from "@voxel51/voodo";
 import React from "react";
 
@@ -25,7 +30,6 @@ import type { Kind, Operator } from "./builder/catalog";
 import { ParamInput } from "./controls";
 import {
   blockedBy,
-  ERROR_COLOR,
   expressionScope,
   isEmptyValue,
   isPrivate,
@@ -34,7 +38,8 @@ import {
 } from "./params";
 import type { InputKind, ParamDef, StageDefinition } from "./params";
 import type { WorkingStage } from "./state";
-import styles from "./panel.module.css";
+import panelStyles from "./panel.module.css";
+import styles from "./StageCard.module.css";
 
 /**
  * A pill sits inside the bar's gutter with a hair of it showing above and
@@ -121,7 +126,7 @@ export const StageCard: React.FC<StageCardProps> = ({
   onCommit,
 }) => {
   const firstParam = definition.params[0];
-  const editButtonRef = React.useRef<HTMLDivElement | null>(null);
+  const editButtonRef = React.useRef<HTMLSpanElement | null>(null);
   const popoverContentRef = React.useRef<HTMLDivElement | null>(null);
 
   // A stage still missing required values cannot be finished with Enter, and
@@ -156,20 +161,15 @@ export const StageCard: React.FC<StageCardProps> = ({
       background={CardBackground.Primary}
       outlined
       compact
-      style={{
-        height: PILL_HEIGHT,
-        display: "flex",
-        alignItems: "center",
+      className={[
+        styles.pill,
         // A stage that cannot be applied says so once its editor closes —
         // while the popover is open the user is mid-thought, not in error
-        ...(!expanded && (invalid || incomplete)
-          ? {
-              borderColor: ERROR_COLOR,
-              outline: `1px solid ${ERROR_COLOR}`,
-              outlineOffset: -1,
-            }
-          : null),
-      }}
+        !expanded && (invalid || incomplete) ? styles.pillInvalid : null,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{ height: PILL_HEIGHT }}
     >
       <Stack
         orientation={Orientation.Row}
@@ -182,35 +182,41 @@ export const StageCard: React.FC<StageCardProps> = ({
           anchor={Anchor.Bottom}
           content={expanded ? "Close editor" : "Edit stage"}
         >
-          <div
-            ref={editButtonRef}
-            onClick={onToggle}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onToggle();
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label={expanded ? "Close editor" : "Edit stage"}
-            style={{ cursor: "pointer", display: "inline-flex", gap: 6 }}
-          >
-            <span style={{ fontWeight: 600, fontSize: 13 }}>
-              {definition.name}
-            </span>
-            {firstParam && (
-              <span
-                style={{
-                  fontSize: 12,
-                  color: "var(--fo-palette-text-secondary)",
-                  whiteSpace: "nowrap",
-                }}
+          {/* voodo's Clickable takes no ref, so the wrapper carries the one
+              Escape refocuses through */}
+          <span ref={editButtonRef} className={styles.trigger}>
+            <Clickable
+              onClick={onToggle}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onToggle();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={expanded ? "Close editor" : "Edit stage"}
+            >
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Xs}
+                align={Align.Center}
               >
-                {previewValue(stage.kwargs[firstParam.name])}
-              </span>
-            )}
-          </div>
+                <Text variant={TextVariant.Md} className={styles.name}>
+                  {definition.name}
+                </Text>
+                {firstParam && (
+                  <Text
+                    variant={TextVariant.Sm}
+                    color={TextColor.Secondary}
+                    className={styles.preview}
+                  >
+                    {previewValue(stage.kwargs[firstParam.name])}
+                  </Text>
+                )}
+              </Stack>
+            </Clickable>
+          </span>
         </Tooltip>
 
         {/* The stage's full story lives in its API docs — a quiet link on
@@ -219,40 +225,28 @@ export const StageCard: React.FC<StageCardProps> = ({
           anchor={Anchor.Bottom}
           content={`${definition.name} API documentation`}
         >
-          <a
+          <Button
             href={`https://docs.voxel51.com/api/fiftyone.core.stages.html#fiftyone.core.stages.${definition.name}`}
             target="_blank"
             rel="noreferrer"
             aria-label={`${definition.name} API documentation`}
             onClick={(e) => e.stopPropagation()}
-            // The same wrapper metrics as the remove button beside it, so the
-            // two icons sit on one baseline at one size
-            style={{
-              display: "inline-flex",
-              padding: 2,
-              color: "var(--fo-palette-text-secondary)",
-            }}
-          >
-            <Icon name={IconName.ExternalLink} size={Size.Sm} />
-          </a>
+            variant={Variant.Icon}
+            size={Size.Sm}
+            borderless
+            leadingIcon={IconName.ExternalLink}
+          />
         </Tooltip>
 
         <Tooltip anchor={Anchor.Bottom} content="Remove stage">
-          <div
+          <Button
             onClick={onRemove}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onRemove();
-              }
-            }}
-            role="button"
-            tabIndex={0}
             aria-label="Remove stage"
-            style={{ cursor: "pointer", display: "inline-flex", padding: 2 }}
-          >
-            <Icon name={IconName.Close} size={Size.Sm} />
-          </div>
+            variant={Variant.Icon}
+            size={Size.Sm}
+            borderless
+            leadingIcon={IconName.Close}
+          />
         </Tooltip>
       </Stack>
     </Card>
@@ -274,7 +268,7 @@ export const StageCard: React.FC<StageCardProps> = ({
       // One width for every stage: sizing to content made the popover jump
       // as the editor changed and gave two stages holding the same parameter
       // two different shapes
-      panelClassName={styles.panel}
+      panelClassName={panelStyles.panel}
       // Focus is placed by the effect above — on the first typeable control,
       // not the panel
       focusOnOpen={false}
@@ -290,7 +284,11 @@ export const StageCard: React.FC<StageCardProps> = ({
             e.preventDefault();
             e.stopPropagation();
             onToggle();
-            requestAnimationFrame(() => editButtonRef.current?.focus());
+            requestAnimationFrame(() =>
+              editButtonRef.current
+                ?.querySelector<HTMLElement>('[role="button"]')
+                ?.focus(),
+            );
             return;
           }
 
@@ -318,7 +316,7 @@ export const StageCard: React.FC<StageCardProps> = ({
                 row.length > 1 ? Orientation.Row : Orientation.Column
               }
               spacing={Spacing.Md}
-              style={row.length > 1 ? { flexWrap: "wrap" } : undefined}
+              className={row.length > 1 ? styles.wrapRow : undefined}
             >
               {row.map((p) => {
                 const blockedOn = blockedBy(p, definition.params, stage.kwargs);

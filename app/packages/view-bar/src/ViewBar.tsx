@@ -49,6 +49,7 @@ import { ClearViewButton } from "./CurrentViewChip";
 import { allowedFields } from "./fields";
 import { InsertSlot } from "./InsertSlot";
 import { LanguageSearch } from "./LanguageSearch";
+import styles from "./ViewBar.module.css";
 import {
   orderBySearchRecency,
   readIndexUses,
@@ -131,26 +132,6 @@ const ALL_SLICE_MEDIA_TYPES: fos.GroupSliceMediaType[] = [
   "3d",
   "multimodal",
 ];
-
-/**
- * Hides the gutter's scrollbar in every engine — `scrollbar-width` covers
- * Firefox and recent Chrome, the pseudo-element covers the rest. A 36px row
- * has no room to give a scrollbar, and stages clipping at the border is the
- * affordance instead.
- */
-const SCROLLER_CLASS = "view-bar-scroller";
-const SCROLLER_STYLE_ID = "view-bar-scroller-style";
-if (
-  typeof document !== "undefined" &&
-  !document.getElementById(SCROLLER_STYLE_ID)
-) {
-  const style = document.createElement("style");
-  style.id = SCROLLER_STYLE_ID;
-  style.textContent =
-    `.${SCROLLER_CLASS}{scrollbar-width:none;-ms-overflow-style:none}` +
-    `.${SCROLLER_CLASS}::-webkit-scrollbar{display:none;width:0;height:0}`;
-  document.head.appendChild(style);
-}
 
 /**
  * How many samples a typed language query keeps, matching the modal
@@ -986,25 +967,15 @@ const ViewBarInner: React.FC<{
       orientation={Orientation.Row}
       spacing={Spacing.Xs}
       align={Align.Center}
-      style={{ width: "100%", height: CHROME_CONTROL_HEIGHT, minWidth: 0 }}
+      className={styles.bar}
+      style={{ height: CHROME_CONTROL_HEIGHT }}
       data-cy="view-bar"
       onKeyDown={onBarKeyDown}
     >
-      {/* The gutter: the bar's own surface — the search row's canvas */}
-      <div
-        ref={barRef}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          flex: 1,
-          minWidth: 0,
-          height: "100%",
-          boxSizing: "border-box",
-          background: "var(--fo-palette-background-level1)",
-          border: "1px solid var(--fo-palette-primary-plainBorder)",
-          borderRadius: 4,
-        }}
-      >
+      {/* The gutter: the bar's own surface — the search row's canvas. A plain
+          element rather than a `Stack`: the stages row is positioned off this
+          ref, and voodo's `Stack` forwards none. */}
+      <div ref={barRef} className={styles.gutter}>
         {searchOperatorAvailable ? (
           <LanguageSearch
             key={`search-${searchEpoch}`}
@@ -1022,23 +993,20 @@ const ViewBarInner: React.FC<{
         ) : (
           // No similarity_search operator (plugins absent): a search box
           // whose every path dead-ends is hidden, not disabled
-          <div style={{ flex: 1 }} aria-hidden="true" />
+          <div className={styles.spacer} aria-hidden="true" />
         )}
         {/* THE one [x]: clears every stage and any search text, and it lives
             on the always-visible first row so it stays reachable while the
             stages row is folded. It sits before the toggle's divider. */}
         {(state.stages.length > 0 || searchHasText) && (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              flexShrink: 0,
-              padding: "0 6px",
-              height: "100%",
-            }}
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.None}
+            align={Align.Center}
+            className={styles.clearSlot}
           >
             <ClearViewButton onClear={clearView} />
-          </span>
+          </Stack>
         )}
         {/* The stages toggle: opens the second row where the view is built.
             Carries the stage count so an applied view stays discoverable
@@ -1067,25 +1035,21 @@ const ViewBarInner: React.FC<{
                 setStagesOpen(!stagesRowOpen);
               }
             }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              flexShrink: 0,
-              height: "100%",
-              padding: "0 10px",
-              borderLeft: "1px solid var(--fo-palette-primary-plainBorder)",
-              color: stagesRowOpen
-                ? "var(--fo-palette-text-primary)"
-                : "var(--fo-palette-text-secondary)",
-            }}
+            className={styles.stagesToggle}
           >
-            <Icon name={IconName.Sliders} size={Size.Sm} />
+            <Icon
+              name={IconName.Sliders}
+              size={Size.Sm}
+              color={stagesRowOpen ? TextColor.Primary : TextColor.Secondary}
+            />
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
               Stages
             </Text>
             {state.stages.length > 0 && (
-              <TextBadge color={TextColor.Secondary} style={{ lineHeight: 1 }}>
+              <TextBadge
+                color={TextColor.Secondary}
+                className={styles.stagesCount}
+              >
                 {state.stages.length}
               </TextBadge>
             )}
@@ -1097,49 +1061,27 @@ const ViewBarInner: React.FC<{
       {stagesRowOpen &&
         stagesRect &&
         createPortal(
-          <div
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.None}
+            align={Align.Center}
             data-cy="view-bar-stages-row"
             onKeyDown={onBarKeyDown}
+            className={styles.stagesRow}
+            // Where the bar is, measured; the rest of the row is in CSS
             style={{
-              position: "fixed",
               top: stagesRect.top + 4,
               left: stagesRect.left,
               width: stagesRect.width,
-              // Above the page, below voodo tooltips (z 1000) and the portaled
-              // editors (10000+) — a tooltip must never hide behind the row
-              zIndex: 900,
               height: CHROME_CONTROL_HEIGHT,
-              display: "flex",
-              alignItems: "center",
-              boxSizing: "border-box",
-              // Portaled to the body, the row inherits ITS text color — the
-              // enterprise shell's body is black-on-white, so the app text
-              // color is declared rather than inherited
-              color: "var(--fo-palette-text-primary)",
-              background: "var(--fo-palette-background-level1)",
-              border: "1px solid var(--fo-palette-primary-plainBorder)",
-              borderRadius: 4,
-              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
             }}
           >
-            <div
-              className={SCROLLER_CLASS}
+            <Stack
+              orientation={Orientation.Row}
+              spacing={Spacing.Xs}
+              align={Align.Center}
+              className={styles.scroller}
               data-cy="view-bar-scroller"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                height: "100%",
-                // Scrolls sideways for long stage chains; the scrollbar
-                // itself is hidden in every engine by SCROLLER_CLASS
-                overflowX: "auto",
-                overflowY: "hidden",
-                flex: 1,
-                minWidth: 0,
-                // The breathing room lives inside the scroller, so it
-                // scrolls away with the content
-                padding: "0 4px",
-              }}
             >
               <InsertSlot
                 index={0}
@@ -1218,8 +1160,8 @@ const ViewBarInner: React.FC<{
                   </React.Fragment>
                 );
               })}
-            </div>
-          </div>,
+            </Stack>
+          </Stack>,
           document.body,
         )}
     </Stack>

@@ -10,6 +10,8 @@
 
 import React from "react";
 
+import styles from "./description.module.css";
+
 export type DescriptionToken =
   | { kind: "text"; text: string }
   | { kind: "code"; text: string }
@@ -68,7 +70,7 @@ export const StageDescription: React.FC<{ text: string }> = ({ text }) => (
     {tokenize(text).map((token, i) => {
       if (token.kind === "code") {
         return (
-          <code key={i} style={{ fontSize: "0.95em" }}>
+          <code key={i} className={styles.code}>
             {token.text}
           </code>
         );
@@ -83,7 +85,7 @@ export const StageDescription: React.FC<{ text: string }> = ({ text }) => (
             // The link sits inside listbox options that insert on mousedown;
             // following it must not also pick the option
             onMouseDown={(e) => e.stopPropagation()}
-            style={{ color: "inherit", textDecoration: "underline" }}
+            className={styles.ref}
           >
             {token.text}
           </a>

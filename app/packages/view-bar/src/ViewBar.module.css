@@ -1,0 +1,85 @@
+/* Two rows in one control's worth of height: the search row is the bar, and
+   the stages row is portaled under it */
+.bar {
+  width: 100%;
+  min-width: 0;
+}
+
+/* The gutter: the bar's own surface — the search row's canvas */
+.gutter {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--color-content-bg-card-1);
+  border: 1px solid var(--color-content-border-default);
+  border-radius: var(--radius-sm);
+}
+
+/* Holds the width the search box would have had, so the toggle stays at the
+   right edge whether or not the search operator is installed */
+.spacer {
+  flex: 1;
+}
+
+.clearSlot {
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 6px;
+}
+
+.stagesToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 10px;
+  border-left: 1px solid var(--color-content-border-default);
+}
+
+.stagesCount {
+  line-height: 1;
+}
+
+/* Same gutter treatment, anchored under the bar */
+.stagesRow {
+  position: fixed;
+  /* Above the page, below voodo tooltips (z 1000) and the portaled editors
+     (10000+) — a tooltip must never hide behind the row */
+  z-index: 900;
+  box-sizing: border-box;
+  /* Portaled to the body, the row inherits ITS text color — the enterprise
+     shell's body is black-on-white, so the app text color is declared rather
+     than inherited */
+  color: var(--color-content-text-primary);
+  background: var(--color-content-bg-card-1);
+  border: 1px solid var(--color-content-border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+/* Scrolls sideways for long stage chains. The breathing room lives inside the
+   scroller, so it scrolls away with the content. */
+.scroller {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--spacing-xs);
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Hides the gutter's scrollbar in every engine — `scrollbar-width` covers
+     Firefox and recent Chrome, the pseudo-element covers the rest. A 36px row
+     has no room to give a scrollbar, and stages clipping at the border is the
+     affordance instead. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
