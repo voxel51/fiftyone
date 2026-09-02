@@ -459,12 +459,33 @@ const makeTrackIdentityOps = (
 
     const newInstanceId = engine.mintInstanceId();
 
+    // Pin both sides of the cut as keyframes: the head's last frame and the
+    // tail's first. Those two frames are typically interpolated filler, and a
+    // split makes each half an independent track — so without pinning them the
+    // next re-lerp on either half recomputes its boundary frame from that half's
+    // own remaining keyframes and the shape at the cut jumps. Pinning retains
+    // whatever lerp was already there. Idempotent when the frame is already a
+    // keyframe, and skipped for the head when the cut is at the track's first
+    // frame (there is no head to pin).
+    const headFrames = r.trackFrames(instanceId).filter((f) => f < atFrame);
+    const lastHeadFrame = headFrames.at(-1);
+    const firstTailFrame = tail[0].frame;
+
     actions.transaction(() => {
       for (const { frame, det } of tail) {
         actions.deleteLabel({ path: fieldPath, instanceId, frame });
         actions.updateLabel(
           { path: fieldPath, instanceId: newInstanceId, frame },
-          r.content(det),
+          frame === firstTailFrame
+            ? { ...r.content(det), keyframe: true }
+            : r.content(det),
+        );
+      }
+
+      if (lastHeadFrame !== undefined) {
+        actions.updateLabel(
+          { path: fieldPath, instanceId, frame: lastHeadFrame },
+          { keyframe: true },
         );
       }
     });

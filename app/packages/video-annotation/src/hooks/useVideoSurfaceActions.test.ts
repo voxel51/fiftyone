@@ -343,7 +343,10 @@ describe("track identity ops (split / merge)", () => {
     });
 
     // ...and re-laid under the minted instance, identity stripped, content kept
-    expect(mockActions.updateLabel).toHaveBeenCalledTimes(2);
+    // 2 re-stamps onto the new instance + 1 keyframe pin on the head's last
+    // frame (the cut is pinned on both sides so the lerp there is retained)
+    expect(mockActions.updateLabel).toHaveBeenCalledTimes(3);
+
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "NEW", frame: 3 },
       {
@@ -399,6 +402,54 @@ describe("track identity ops (split / merge)", () => {
     expect(mockBus.dispatch).toHaveBeenCalledWith(
       "annotation:trackSplit",
       expect.objectContaining({ instanceId: "A", newInstanceId: "NEW" }),
+    );
+  });
+
+  it("pins both sides of the cut as keyframes, retaining the lerp there", () => {
+    // A split makes each half an independent track. The two frames either side
+    // of the cut are usually interpolated filler, so without pinning them the
+    // next re-lerp on either half recomputes its boundary frame from that half's
+    // own keyframes and the shape at the cut jumps.
+    frameData = {
+      1: { A: det("d1", "A", { keyframe: true }) },
+      2: { A: det("d2", "A") },
+      3: { A: det("d3", "A") },
+      4: { A: det("d4", "A", { keyframe: true }) },
+    };
+
+    render().current.splitTrack("instance-A", 3);
+
+    // head: frame 2 is now its last frame, pinned in place
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 2 },
+      { keyframe: true },
+    );
+    // tail: frame 3 arrives on the new instance already a keyframe
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "NEW", frame: 3 },
+      expect.objectContaining({ keyframe: true }),
+    );
+    // the rest of the tail is copied as filler, not promoted
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "NEW", frame: 4 },
+      expect.objectContaining({ keyframe: true }),
+    );
+  });
+
+  it("does not pin a head that does not exist (cut at the first frame)", () => {
+    frameData = { 1: { A: det("d1", "A") }, 2: { A: det("d2", "A") } };
+
+    render().current.splitTrack("instance-A", 1);
+
+    // nothing stays behind, so there is no head frame to pin
+    expect(mockActions.updateLabel).not.toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: "A" }),
+      { keyframe: true },
+    );
+    // the tail's first frame is still pinned
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "NEW", frame: 1 },
+      expect.objectContaining({ keyframe: true }),
     );
   });
 
