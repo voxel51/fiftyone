@@ -56,6 +56,7 @@ import {
   usePreferredImageTileStream,
   usePublishImageTileBinding,
 } from "../tiles/tile-source-bindings";
+import { useRegisterTileMediaSurface } from "../tiles/tile-media-surfaces";
 import ImageAnnotationOverlay from "./ImageAnnotationOverlay";
 import DepthHoverOverlay from "./DepthHoverOverlay";
 import ImageProjectionOverlay from "./ImageProjectionOverlay";
@@ -610,6 +611,26 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     imageSize: effectiveImageDims,
     resetKey: `${stream}\n${cameraProjection.display}\n${rectifiedViewActive}`,
   });
+  // The pan/zoom hook keeps the surface element to itself; tee its ref so
+  // the media-surface registry (external overlays) can portal into it.
+  const [mediaSurfaceElement, setMediaSurfaceElement] =
+    useState<HTMLDivElement | null>(null);
+  const { surfaceRef: panZoomSurfaceRef } = imagePanZoom;
+  const mediaSurfaceRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      panZoomSurfaceRef(element);
+      setMediaSurfaceElement(element);
+    },
+    [panZoomSurfaceRef],
+  );
+  useRegisterTileMediaSurface({
+    element: mediaSurfaceElement,
+    source: selectedImageSource,
+    imageSize: effectiveImageDims,
+    fit: IMAGE_FIT,
+    viewTransform: imagePanZoom.viewTransform,
+    contentTimeNs: playbackFrame?.contentTimeNs ?? null,
+  });
   const toggleLabelStream = useCallback(
     (labelStream: string, checked: boolean) => {
       if (!stream) return;
@@ -923,7 +944,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           onPointerDown={imagePanZoom.onPointerDown}
           onPointerMove={imagePanZoom.onPointerMove}
           onPointerUp={imagePanZoom.onPointerUp}
-          ref={imagePanZoom.surfaceRef}
+          ref={mediaSurfaceRef}
           style={imagePanZoom.surfaceStyle}
         >
           {frame && playbackFrame ? (

@@ -78,12 +78,14 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
           decorateTrack,
           onDrawerOpenChange,
           preferences,
+          rulerOverlay,
           runtime,
           tracks,
         }) => (
           <SourcePlayback
             defaultPinnedTrackIds={defaultPinnedTrackIds}
             decorateTrack={decorateTrack}
+            timelineRulerOverlay={rulerOverlay}
             episodeContext={{ datasetId, sampleId }}
             fileName={fileName}
             initialSeekTimeNs={firstMatch?.startNs ?? null}
