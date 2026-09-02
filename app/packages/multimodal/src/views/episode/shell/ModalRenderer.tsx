@@ -1,5 +1,5 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { sampleDescriptorFromContext } from "../../session/episode-source";
 import { useEpisodeSession } from "../../session/use-episode-session";
 import { useStableEpisodeSource } from "../../session/use-stable-episode-source";
@@ -16,6 +16,7 @@ import {
   intervalTimelineSections,
   type ResolvedEpisodeIntervals,
 } from "../../../extensions/episode-intervals";
+import { publishEpisodeTimeRange } from "../../../runtime";
 import { SourcePlayback } from "./SourcePlayback";
 import { sourceDisplayName } from "./source-display-name";
 import {
@@ -61,6 +62,14 @@ const EpisodeModal: React.FC<
     "recording";
   const datasetId = ctx.dataset.datasetId;
   const sampleId = ctx.sample.sample._id;
+  // The modal resolves the episode's axis from its own session rather than
+  // from a grid preview read, so it has to publish it: a modal opened
+  // directly — deep link, or a tile whose preview never ran — would otherwise
+  // leave every interval source without an origin to rebase onto.
+  useEffect(() => {
+    if (!timeRange) return;
+    publishEpisodeTimeRange(sampleId, timeRange);
+  }, [sampleId, timeRange]);
   const {
     tracks: tagTracks,
     existingTags,

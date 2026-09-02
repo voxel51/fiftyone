@@ -8,6 +8,8 @@ const rendererHarness = vi.hoisted(() => ({
   openEpisodePreviewSession: vi.fn(),
   peek: vi.fn(),
   prewarmEpisodeSource: vi.fn(),
+  publishEpisodeTimeRange: vi.fn(),
+  timeRange: null as { endNs: bigint; startNs: bigint } | null,
 }));
 
 vi.mock("react", async (importOriginal) => {
@@ -65,6 +67,7 @@ vi.mock("../../../runtime", () => ({
   // the no-network assertions below fail at every speculative stage.
   prewarmEpisodeSource: rendererHarness.prewarmEpisodeSource,
   publishEpisodePreviewBootstrap: vi.fn(),
+  publishEpisodeTimeRange: rendererHarness.publishEpisodeTimeRange,
   publishSourceBootstrap: vi.fn(),
 }));
 
@@ -110,7 +113,7 @@ vi.mock("../playback/use-temporal-tags", () => ({
 }));
 
 vi.mock("../playback/use-time-range", () => ({
-  useTimeRange: () => null,
+  useTimeRange: () => rendererHarness.timeRange,
 }));
 
 vi.mock("./SourcePlayback", () => ({
@@ -130,6 +133,8 @@ describe("ModalRenderer", () => {
     rendererHarness.peek.mockResolvedValue({ sample: { _id: "neighbor" } });
     rendererHarness.prewarmEpisodeSource.mockReset();
     rendererHarness.prewarmEpisodeSource.mockResolvedValue(true);
+    rendererHarness.publishEpisodeTimeRange.mockReset();
+    rendererHarness.timeRange = null;
   });
 
   afterEach(() => {
@@ -156,5 +161,50 @@ describe("ModalRenderer", () => {
     expect(rendererHarness.peek).not.toHaveBeenCalled();
     expect(rendererHarness.openEpisodePreviewSession).not.toHaveBeenCalled();
     expect(rendererHarness.prewarmEpisodeSource).not.toHaveBeenCalled();
+  });
+
+  it("publishes the episode time range under the id its consumers read", async () => {
+    rendererHarness.timeRange = { endNs: 30n, startNs: 10n };
+
+    render(
+      <ModalRenderer
+        ctx={
+          {
+            dataset: { datasetId: "dataset", mediaType: "group" },
+            media: { field: "mcap", path: "current.mcap" },
+            sample: { sample: { _id: "current" } },
+          } as never
+        }
+      />,
+    );
+
+    await act(async () => vi.runAllTimersAsync());
+
+    // `sample._id` is what `useEpisodeTimeRange` is called with in the grid
+    // overlay and in every interval source. Keying this by the byte source
+    // instead misses whenever the sample carries a media reference, which
+    // leaves every source without an origin and contributing nothing.
+    expect(rendererHarness.publishEpisodeTimeRange).toHaveBeenCalledWith(
+      "current",
+      { endNs: 30n, startNs: 10n },
+    );
+  });
+
+  it("publishes no range before the session resolves one", async () => {
+    render(
+      <ModalRenderer
+        ctx={
+          {
+            dataset: { datasetId: "dataset", mediaType: "group" },
+            media: { field: "mcap", path: "current.mcap" },
+            sample: { sample: { _id: "current" } },
+          } as never
+        }
+      />,
+    );
+
+    await act(async () => vi.runAllTimersAsync());
+
+    expect(rendererHarness.publishEpisodeTimeRange).not.toHaveBeenCalled();
   });
 });

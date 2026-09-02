@@ -4,6 +4,7 @@ import {
   type EpisodePosterFrame,
   type EpisodePreviewNativeVideo,
   type EpisodePreviewReadResult,
+  type TimeWindow,
 } from "../../../ir";
 import type { EpisodePreviewSession } from "../../../ports";
 import {
@@ -11,6 +12,7 @@ import {
   episodePreviewPlaybackDelayMs,
   publishEpisodePlayhead,
   publishEpisodePreviewBootstrap,
+  publishEpisodeTimeRange,
   recordPreviewSourceFacts,
   releaseEpisodePlayhead,
   type SourceFactsScope,
@@ -173,6 +175,15 @@ export function useGridPreview({
     publishedOwnerRef.current = id;
   }, []);
 
+  // The preview read is what learns the episode's extent, so it is also what
+  // publishes it — keyed by episode identity, the way the playhead above is
+  // and the way the overlay and the interval sources read it back.
+  const publishEpisodeRange = useCallback((range: TimeWindow | null) => {
+    const id = episodeIdRef.current;
+    if (!range || !id) return;
+    publishEpisodeTimeRange(id, range);
+  }, []);
+
   // This effect hands the playhead over when the tile is pointed at a new
   // episode. Without it the previous episode keeps a published instant nothing
   // is presenting any more, and the unmount cleanup below — which can only
@@ -317,7 +328,7 @@ export function useGridPreview({
       .then((result) => {
         if (active) {
           notifyReadResult(onReadResultRef.current, result);
-          publishEpisodePreviewBootstrap(source, result);
+          publishEpisodeRange(publishEpisodePreviewBootstrap(source, result));
           if (sourceFactsScope) {
             recordPreviewSourceFacts(source, sourceFactsScope, result);
           }
@@ -360,6 +371,7 @@ export function useGridPreview({
     initialVideoDecodeLookaheadNs,
     posterStartTimeNs,
     previewSession,
+    publishEpisodeRange,
     setFrameTimeNs,
     source,
     sourceFactsScope,
@@ -398,7 +410,7 @@ export function useGridPreview({
       if (!active) return false;
 
       if (!bootstrapPublished) {
-        publishEpisodePreviewBootstrap(source, result);
+        publishEpisodeRange(publishEpisodePreviewBootstrap(source, result));
         if (sourceFactsScope) {
           recordPreviewSourceFacts(source, sourceFactsScope, result);
         }
@@ -508,6 +520,7 @@ export function useGridPreview({
     loadGeneration,
     playing,
     previewSession,
+    publishEpisodeRange,
     setFrameTimeNs,
     source,
     sourceFactsScope,
