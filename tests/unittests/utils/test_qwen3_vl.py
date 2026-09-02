@@ -7,6 +7,7 @@ Tests for fiftyone/utils/qwen3_vl.py output processor and parsing.
 """
 
 import json
+import logging
 import uuid
 import os
 
@@ -1039,16 +1040,29 @@ class StubStrictProcessor:
         return {"stub": True}
 
 
-class StubMetadataRejectingProcessor(StubStrictProcessor):
-    """A processor that cannot digest metadata AT ALL, so the call must fall
-    through to the plainer conventions instead of failing the clip."""
+class StubKwargRejectingProcessor(StubStrictProcessor):
+    """An older processor that does not take ``video_metadata`` and names it
+    when refusing, so the call must fall through to the plainer convention
+    instead of failing the clip."""
 
     def __call__(self, text, images, videos, return_tensors, padding, **extra):
         self.calls.append(extra)
         if "video_metadata" in extra:
-            raise AttributeError("unexpected metadata shape")
+            raise TypeError(
+                "__call__() got an unexpected keyword argument "
+                "'video_metadata'"
+            )
 
         return {"stub": True}
+
+
+class StubBrokenClipProcessor(StubStrictProcessor):
+    """A processor that takes the kwargs but dies inside on this clip's
+    frames — a fact about the data, not about the processor's version."""
+
+    def __call__(self, text, images, videos, return_tensors, padding, **extra):
+        self.calls.append(extra)
+        raise AttributeError("'NoneType' object has no attribute 'size'")
 
 
 class TestFrameListMetadata:
@@ -1085,17 +1099,38 @@ class TestFrameListMetadata:
         metadata = processor.calls[0]["video_metadata"][0]
         assert _frames_indices_of(metadata) == [0, 1, 2]
 
-    def test_a_metadata_rejecting_processor_falls_through(self, monkeypatch):
+    def test_a_kwarg_rejecting_processor_falls_through(
+        self, monkeypatch, caplog
+    ):
         monkeypatch.setattr(qwen3_vl, "qwen_vl_utils", StubVisionUtils())
-        processor = StubMetadataRejectingProcessor()
+        processor = StubKwargRejectingProcessor()
         model = self._model_with(processor)
 
-        result = model._prepare_frame_list(self._frames(3), 2.0)
+        with caplog.at_level(logging.DEBUG, logger=qwen3_vl.logger.name):
+            result = model._prepare_frame_list(self._frames(3), 2.0)
 
         assert result == {"stub": True}
         # The metadata-free convention that succeeded still suppresses the
         # processor's own frame resampling
         assert processor.calls[-1] == {"do_sample_frames": False}
+        # A clip embedded with poorer metadata than asked for says so
+        assert "video_metadata" in caplog.text
+
+    def test_a_clip_that_breaks_the_processor_costs_only_that_clip(
+        self, monkeypatch
+    ):
+        # The error names no kwarg, so it is the data rather than the
+        # processor version — downgrading here would silently strip the
+        # metadata from every later clip in the process
+        monkeypatch.setattr(qwen3_vl, "qwen_vl_utils", StubVisionUtils())
+        processor = StubBrokenClipProcessor()
+        model = self._model_with(processor)
+
+        with pytest.raises(AttributeError, match="no attribute 'size'"):
+            model._prepare_frame_list(self._frames(3), 2.0)
+
+        assert len(processor.calls) == 1
+        assert not hasattr(model, "_call_convention")
 
 
 def _tiny_checkpoint(tmp_path, max_shard_size):
