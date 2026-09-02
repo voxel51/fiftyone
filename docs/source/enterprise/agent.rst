@@ -6,7 +6,7 @@ FiftyOne Agent
 .. default-role:: code
 
 .. customavailablein::
-    :enterprise_version: 2.19.0
+    :enterprise_version: 2.25.0
 
 The FiftyOne Agent is an AI-powered assistant built into the
 :ref:`FiftyOne Enterprise App <enterprise-app>`. It lets you work with your
