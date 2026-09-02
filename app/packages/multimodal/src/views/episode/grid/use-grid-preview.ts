@@ -131,6 +131,10 @@ export function useGridPreview({
   // frames from the old poster's timeline
   const [loadGeneration, setLoadGeneration] = useState(0);
   const initialLoadInFlightRef = useRef(false);
+  // A poster stream this source turned out not to preview. Remembered so the
+  // retry falls back to the auto pick instead of asking again forever.
+  const refusedPosterSourceRef = useRef<string | null>(null);
+  const [, setPosterRefusals] = useState(0);
   const onReadResultRef = useRef(onReadResult);
   onReadResultRef.current = onReadResult;
   const loadedRequestRef = useRef<{
@@ -152,12 +156,17 @@ export function useGridPreview({
     }
   }, [enabled]);
 
-  // An explicit grid selection always wins; the poster's preferred stream
-  // applies only once this source has reported it as previewable, so an
-  // unpreviewable match never requests a source the session would refuse.
+  // An explicit grid selection always wins. The poster's preferred stream is
+  // then asked for OUTRIGHT — never gated on `streamSourceNames`, which is
+  // filled BY a completed read: on the first one it is empty, so the match's
+  // stream was always dropped and the tile postered its auto-picked camera at
+  // the matched instant. A frame from the wrong camera, presented as the one
+  // that matched. The session refuses a stream it cannot preview, and
+  // `refusedPosterSource` below turns that refusal into the auto pick.
+  const posterRefused = refusedPosterSourceRef.current;
   const effectiveSourceName =
     selectedSourceName ??
-    (posterSourceName && state.streamSourceNames.includes(posterSourceName)
+    (posterSourceName && posterSourceName !== posterRefused
       ? posterSourceName
       : null);
 
@@ -170,6 +179,9 @@ export function useGridPreview({
     loadedRequestRef.current = null;
     frameTimeNsRef.current = undefined;
     nextStartTimeNsRef.current = undefined;
+    // A refusal belongs to one source and one stream; carrying it across
+    // either would keep falling back for a stream this source does preview
+    refusedPosterSourceRef.current = null;
     finishBuffering();
     setPlaying(false);
     setStateOwnerKey(cacheRequestKey);
@@ -251,6 +263,17 @@ export function useGridPreview({
       })
       .then((result) => {
         if (active) {
+          // The session says it cannot preview this stream. Now — with the
+          // inventory it just returned — the auto pick is an informed
+          // fallback rather than a guess made before anything was known.
+          if (
+            result.status === "unavailable" &&
+            effectiveSourceName &&
+            effectiveSourceName === posterSourceName
+          ) {
+            refusedPosterSourceRef.current = posterSourceName;
+            setPosterRefusals((n) => n + 1);
+          }
           notifyReadResult(onReadResultRef.current, result);
           publishEpisodePreviewBootstrap(source, result);
           if (sourceFactsScope) {
@@ -293,6 +316,9 @@ export function useGridPreview({
     effectiveSourceName,
     hovered,
     initialVideoDecodeLookaheadNs,
+    // Read when a refusal is recorded; `effectiveSourceName` already tracks
+    // its value, so listing it changes nothing about when this runs
+    posterSourceName,
     posterStartTimeNs,
     previewSession,
     source,

@@ -37,6 +37,7 @@ vi.mock("../query/bytes/default-byte-client", async (importOriginal) => {
 
 import {
   getSourceFactsDiagnostics,
+  hydratePersistedSourceFacts,
   recordPreviewSourceFacts,
   recordSessionSourceFacts,
   resetSourceFactsServiceForTests,
@@ -118,6 +119,27 @@ describe("source facts service", () => {
 
     expect(peekSourceBootstrap(source)?.manifest).toEqual(manifest());
     expect(getSourceSessionHints(source, "mcap")).toBeNull();
+  });
+
+  it("republishes a cached tile's persisted range without a transport probe", async () => {
+    const source = createSource();
+    vi.mocked(persistence.get).mockResolvedValue(entry(source));
+
+    await hydratePersistedSourceFacts(source, SCOPE);
+
+    expect(peekSourceBootstrap(source)?.timeRange).toEqual({
+      endNs: 20n,
+      startNs: 10n,
+    });
+    expect(byteClientHarness.stat).not.toHaveBeenCalled();
+  });
+
+  it("leaves a tile with nothing persisted unpublished", async () => {
+    const source = createSource();
+
+    await hydratePersistedSourceFacts(source, SCOPE);
+
+    expect(peekSourceBootstrap(source)).toBeNull();
   });
 
   it("continues cold when IndexedDB exceeds the local lookup deadline", async () => {

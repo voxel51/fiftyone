@@ -930,54 +930,49 @@ describe("useGridPreview", () => {
     });
   });
 
-  it("posters from the matched stream once it is known previewable", async () => {
-    // The reported /camera/rear source triggers a third request beyond the
-    // two asserted below; leave it pending so the mock never returns undefined
-    sessionHarness.session.read
-      .mockResolvedValueOnce(
-        readyResult({ bytes: [1], streamId: "/camera/front" }),
-      )
-      .mockResolvedValueOnce(
-        readyResult({ bytes: [2], streamId: "/camera/rear" }),
-      )
-      .mockReturnValue(deferred<EpisodePreviewReadResult>().promise);
-    const source = sourceForId("poster-stream");
+  it("asks for the matched stream on the FIRST read", async () => {
+    // Gating this on `streamSourceNames` — which only a completed read fills
+    // — dropped the match's stream from the first request every time, so the
+    // tile postered its automatic camera at the matched instant: a frame from
+    // the wrong stream, shown as the one that matched
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], streamId: "/camera/front" }),
+    );
 
     render(
       <PreviewHarness
         id="poster-stream"
         posterStartTimeNs={500n}
         posterSourceName="/camera/front"
-        source={source}
+        source={sourceForId("poster-stream")}
       />,
     );
 
-    // The first request cannot name the stream — nothing has reported which
-    // sources this episode can preview yet.
     await waitFor(() => {
-      expect(sessionHarness.session.read).toHaveBeenCalledTimes(2);
+      expect(sessionHarness.session.read).toHaveBeenCalled();
     });
     expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({
-      startTimeNs: 500n,
-    });
-    expect(sessionHarness.session.read.mock.calls[1]?.[0]).toEqual({
       sourceName: "/camera/front",
       startTimeNs: 500n,
     });
   });
 
-  it("keeps the automatic stream when the match is not previewable", async () => {
-    sessionHarness.session.read.mockResolvedValue(
-      readyResult({ bytes: [1], streamId: "/camera/front" }),
-    );
-    const source = sourceForId("poster-fused");
+  it("falls back to the automatic stream once the match is refused", async () => {
+    // The session is what knows whether a stream is previewable, so it is
+    // asked — and its refusal, which carries the inventory, is what makes the
+    // automatic pick an informed fallback rather than a guess
+    sessionHarness.session.read
+      .mockResolvedValueOnce(unavailableResult())
+      .mockResolvedValue(
+        readyResult({ bytes: [1], streamId: "/camera/front" }),
+      );
 
     render(
       <PreviewHarness
         id="poster-fused"
         posterStartTimeNs={500n}
         posterSourceName="fused::cameras"
-        source={source}
+        source={sourceForId("poster-fused")}
       />,
     );
 
@@ -986,8 +981,11 @@ describe("useGridPreview", () => {
         "ready:1:frame:",
       );
     });
-    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
     expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({
+      sourceName: "fused::cameras",
+      startTimeNs: 500n,
+    });
+    expect(sessionHarness.session.read.mock.calls[1]?.[0]).toEqual({
       startTimeNs: 500n,
     });
   });
@@ -1117,6 +1115,18 @@ function readyResult({
     streamSourceName: streamId,
     streamSourceNames: [streamId],
     status: "ready",
+  };
+}
+
+/** The session refusing a stream it cannot preview, with the inventory it
+ * learned while refusing. */
+function unavailableResult(): EpisodePreviewReadResult {
+  return {
+    frame: null,
+    streamId: null,
+    streamSourceName: null,
+    streamSourceNames: ["/camera/front"],
+    status: "unavailable",
   };
 }
 

@@ -6,14 +6,7 @@
  * on the card.
  */
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
-import MoreHoriz from "@mui/icons-material/MoreHoriz";
-import {
-  IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-} from "@mui/material";
+import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import {
   BackgroundColor,
   Button,
@@ -38,7 +31,10 @@ import { UpsellBanner } from "./UpsellBanner";
 // MM/DD/YYYY per the card spec — a fixed format, not the viewer locale
 const formatTimestamp = (timestamp: string | null): string | null => {
   if (!timestamp) return null;
-  const date = new Date(timestamp);
+  // A run's timestamp crosses GraphQL as epoch MILLISECONDS (the server's
+  // DateTime scalar), which `new Date(string)` parses as Invalid Date
+  const epochMs = Number(timestamp);
+  const date = new Date(Number.isFinite(epochMs) ? epochMs : timestamp);
   return Number.isNaN(date.getTime())
     ? null
     : date.toLocaleDateString("en-US", {
@@ -48,11 +44,15 @@ const formatTimestamp = (timestamp: string | null): string | null => {
       });
 };
 
-/** "clip-vit-base32-torch (UMAP)", or the precomputed fallback */
+/** "clip-vit-base32-torch (UMAP)", or the precomputed fallback. */
 const embeddingsSource = (run: VisualizationRun): string => {
-  const source = run.model ?? "pre-computed embeddings";
+  const source = run.model || "pre-computed embeddings";
   return run.method ? `${source} (${run.method.toUpperCase()})` : source;
 };
+
+/** What one point on this run's plot is: "gt patches" or "samples". */
+const covers = (run: VisualizationRun): string =>
+  run.patchesField ? `${run.patchesField} patches` : "samples";
 
 const lastUpdated = (timestamp: string | null): string | null => {
   const formatted = formatTimestamp(timestamp);
@@ -134,18 +134,18 @@ export default function RunsList({
       );
     }
     return (
-      <IconButton
-        size="small"
+      <Button
         aria-label="Run actions"
+        leadingIcon={IconName.MoreHorizontal}
         onClick={(event) =>
           setMenu({
             key: run.brainKey,
             anchor: event.currentTarget,
           })
         }
-      >
-        <MoreHoriz fontSize="small" />
-      </IconButton>
+        size={Size.Sm}
+        variant={Variant.Icon}
+      />
     );
   };
 
@@ -243,13 +243,14 @@ export default function RunsList({
                         // still-computing from failed
                         { label: "Pending", color: TextColor.Secondary }
                 }
+                // One shape for every run: what it covers, what produced it,
+                // when it last changed
                 meta={[
                   run.error,
                   // Same brain key semantics, very different plots —
                   // which granularity a run embeds must be readable
-                  // from the card. (The point count joins this segment
-                  // once runs record it.)
-                  run.patchesField ? `${run.patchesField} patches` : "samples",
+                  // from the card
+                  covers(run),
                   embeddingsSource(run),
                   lastUpdated(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}

@@ -132,7 +132,10 @@ export const aggregations = selectorFamily({
     ({ get }) => {
       if (params) {
         let extended = params.extended;
-        if (extended && !get(filterAtoms.hasFilters(params.modal))) {
+        // Field filters, not `hasFilters`: an extended selection is already in
+        // `extendedStages` for both variants, so keeping `extended` for one
+        // fires a second query whose response cannot differ
+        if (extended && !get(filterAtoms.hasFieldFilters(params.modal))) {
           extended = false;
         }
 

@@ -113,6 +113,13 @@ describe("RunsList", () => {
       ),
     ).toBeDefined();
     expect(screen.queryByText("Visualize your embeddings")).toBeNull();
+    // The upsell page never offers in-app compute
+    expect(screen.queryByText("New visualization")).toBeNull();
+    // FOEPD-4401: the 3D banner earns its slot only once a run exists —
+    // this state already carries the landing CTA
+    expect(
+      screen.queryByText("Explore clusters in three dimensions"),
+    ).toBeNull();
   });
 
   it("keeps the neutral empty state when not upselling", () => {
@@ -126,16 +133,6 @@ describe("RunsList", () => {
     );
 
     expect(screen.getByText("Visualize your embeddings")).toBeDefined();
-  });
-
-  // FOEPD-4401: the 3D banner earns its slot only once a run exists —
-  // the no-runs state already carries the landing CTA
-  it("holds the 3D upsell banner until a first run exists", () => {
-    render(<RunsList runs={[]} onOpen={vi.fn()} onDelete={vi.fn()} />);
-
-    expect(
-      screen.queryByText("Explore clusters in three dimensions"),
-    ).toBeNull();
   });
 
   it("shows the upsell until dismissed", () => {
@@ -207,5 +204,35 @@ describe("RunsList", () => {
     fireEvent.click(screen.getByText("Delete run"));
     expect(onDelete).toHaveBeenCalledWith("clip_umap");
     expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("dates a run whose timestamp arrives as epoch milliseconds", () => {
+    const epochMs = Date.UTC(2026, 7, 23, 12);
+    const expected = new Date(epochMs).toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
+    render(
+      <RunsList
+        runs={[run("plain", { timestamp: String(epochMs) })]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(`last updated ${expected}`)).toBeDefined();
+  });
+
+  it("dates a run from its creation timestamp", () => {
+    render(
+      <RunsList
+        runs={[run("plain", { timestamp: "2026-01-02T00:00:00" })]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("last updated 01/02/2026")).toBeDefined();
   });
 });

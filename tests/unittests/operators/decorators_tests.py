@@ -8,6 +8,7 @@ Unit tests for operators/decorators.
 import asyncio
 import os
 import shutil
+import signal
 import tempfile
 import unittest
 import time
@@ -16,6 +17,7 @@ from unittest.mock import patch
 from fiftyone.operators.decorators import (
     coroutine_timeout,
     dir_state,
+    timeout,
 )
 
 
@@ -148,3 +150,94 @@ class TestCoroutineTimeoutDecorator(unittest.TestCase):
         decorated_function = coroutine_timeout(0.2)(non_coroutine_fn)
         with self.assertRaises(TypeError):
             asyncio.run(decorated_function())
+
+
+@unittest.skipUnless(
+    hasattr(signal, "SIGALRM"),
+    "timeout() is built on SIGALRM/ITIMER_REAL, which Windows has no "
+    "equivalent of",
+)
+class TestTimeoutContextManager(unittest.TestCase):
+    # Every test disarms the shared ITIMER_REAL timer and restores the
+    # handler it found, so no test can leak an armed timer into another
+    def setUp(self):
+        self._prev_handler = signal.getsignal(signal.SIGALRM)
+        # pytest-timeout arms ITIMER_REAL for the length of the test, and
+        # timeout() faithfully restores whatever it displaced -- so without
+        # this the assertions below read that timer rather than this one
+        self._prev_timer = signal.setitimer(signal.ITIMER_REAL, 0)
+
+    def tearDown(self):
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, self._prev_handler)
+        if self._prev_timer[0]:
+            signal.setitimer(signal.ITIMER_REAL, *self._prev_timer)
+
+    def test_prior_sigalrm_handler_is_restored_and_no_timer_is_pending(self):
+        # The context manager must hand the process back exactly as it found
+        # it; installing SIG_IGN on exit would silently disarm every other
+        # SIGALRM-based timeout in the process.
+        def sentinel_handler(signum, frame):
+            pass
+
+        signal.signal(signal.SIGALRM, sentinel_handler)
+
+        with timeout(60):
+            pass
+
+        self.assertIs(signal.getsignal(signal.SIGALRM), sentinel_handler)
+        self.assertEqual(signal.setitimer(signal.ITIMER_REAL, 0), (0.0, 0.0))
+
+    def test_a_pending_outer_timer_is_rearmed_on_exit(self):
+        # A nested timeout() must not permanently cancel an enclosing
+        # SIGALRM-based timer; the outer deadline resumes once the inner
+        # scope exits.
+        signal.signal(signal.SIGALRM, lambda signum, frame: None)
+        signal.setitimer(signal.ITIMER_REAL, 60)
+
+        with timeout(5):
+            pass
+
+        delay, interval = signal.setitimer(signal.ITIMER_REAL, 0)
+        self.assertGreater(delay, 55)
+        self.assertLessEqual(delay, 60)
+        self.assertEqual(interval, 0)
+
+    def test_a_repeating_outer_timer_keeps_its_interval(self):
+        # A periodic ITIMER_REAL timer carries a repeat interval that
+        # alarm() cannot see; the context manager must restore both values.
+        signal.signal(signal.SIGALRM, lambda signum, frame: None)
+        signal.setitimer(signal.ITIMER_REAL, 60, 5)
+
+        with timeout(1):
+            pass
+
+        delay, interval = signal.setitimer(signal.ITIMER_REAL, 0)
+        self.assertGreater(delay, 55)
+        self.assertLessEqual(delay, 60)
+        self.assertEqual(interval, 5.0)
+
+    def test_an_outer_deadline_that_lapses_inside_fires_after_exit(self):
+        # The outer timer wanted to fire while it was displaced; it must be
+        # re-armed to fire as soon as possible, never cancelled outright.
+        fired = []
+        signal.signal(signal.SIGALRM, lambda signum, frame: fired.append(1))
+        signal.setitimer(signal.ITIMER_REAL, 0.2)
+
+        with timeout(5):
+            time.sleep(0.4)
+
+        time.sleep(0.05)
+        self.assertTrue(fired)
+
+    def test_a_body_that_outlives_the_deadline_raises_timeout_error(self):
+        prev_handler = signal.getsignal(signal.SIGALRM)
+        try:
+            with self.assertRaises(TimeoutError):
+                with timeout(1):
+                    time.sleep(2)
+
+            self.assertIs(signal.getsignal(signal.SIGALRM), prev_handler)
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, prev_handler)

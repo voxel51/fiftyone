@@ -38,6 +38,7 @@ export function graphQLSelectorFamily<
       return mockValues[options.key];
     }
     resolver.key = options.key;
+    resolver.params = params;
     resolver.variables = () => {
       if (options.variables instanceof Function) {
         const resolved = options.variables(params);

@@ -94,7 +94,49 @@ export async function resolveSourceFactsHints(
     recordLookup("memory-current", 0);
     return { adapterId, ...memory };
   }
-  if (options.signal?.aborted) return null;
+  const published = await publishPersistedSourceFacts(
+    source,
+    scope,
+    adapterId,
+    options,
+    true,
+  );
+  if (!published) return null;
+  const hints = getSourceSessionHints(source, adapterId);
+  return hints ? { adapterId, ...hints } : null;
+}
+
+/**
+ * Publishes one source's persisted facts without opening a session. A grid
+ * tile answered from the poster cache runs no preview read, so nothing else
+ * republishes the recording time range its overlays are drawn against.
+ */
+export async function hydratePersistedSourceFacts(
+  source: ByteSourceDescriptor,
+  scope: SourceFactsScope,
+  options: EpisodeOpenOptions = {},
+): Promise<void> {
+  await publishPersistedSourceFacts(
+    source,
+    scope,
+    SOURCE_FACTS_MCAP_ADAPTER_ID,
+    options,
+    // A tile served from cache stays off the network: a provisional lane
+    // already carries the range, and the per-tile HEAD is what the poster
+    // cache exists to avoid
+    false,
+  );
+}
+
+/** Publishes one durable disk entry as this source's UI lane. */
+async function publishPersistedSourceFacts(
+  source: ByteSourceDescriptor,
+  scope: SourceFactsScope,
+  adapterId: string,
+  options: EpisodeOpenOptions,
+  validateRemote: boolean,
+): Promise<boolean> {
+  if (options.signal?.aborted) return false;
 
   const identity = sourceFactsIdentity(source);
   const key = sourceFactsKey(scope, identity);
@@ -107,12 +149,12 @@ export async function resolveSourceFactsHints(
   const durationMs = nowMs() - startedAt;
   if (result === LOOKUP_TIMEOUT) {
     recordLookup("timeout", durationMs);
-    return null;
+    return false;
   }
-  if (result === LOOKUP_ABORTED || options.signal?.aborted) return null;
+  if (result === LOOKUP_ABORTED || options.signal?.aborted) return false;
   if (!result) {
     recordLookup("miss", durationMs);
-    return null;
+    return false;
   }
   if (
     !sameIdentity(result.identity, identity) ||
@@ -120,19 +162,19 @@ export async function resolveSourceFactsHints(
   ) {
     recordLookup("invalid", durationMs);
     void getSourceFactsPersistence().delete(key, result.createdAt);
-    return null;
+    return false;
   }
   if (result.adapterId !== adapterId) {
     recordLookup("stale", durationMs);
     void getSourceFactsPersistence().delete(key, result.createdAt);
-    return null;
+    return false;
   }
 
   const validation = validateSourceFactsContent(result.validator, source);
   if (validation === "stale") {
     recordLookup("stale", durationMs);
     void getSourceFactsPersistence().delete(key, result.createdAt);
-    return null;
+    return false;
   }
   publishDurableSourceFacts(source, {
     adapterId,
@@ -145,7 +187,12 @@ export async function resolveSourceFactsHints(
     durationMs,
   );
 
-  if (validation === "provisional" && !source.localFile && !source.etag) {
+  if (
+    validateRemote &&
+    validation === "provisional" &&
+    !source.localFile &&
+    !source.etag
+  ) {
     void validateRemoteFactsInBackground({
       entry: result,
       key,
@@ -153,8 +200,7 @@ export async function resolveSourceFactsHints(
       source,
     });
   }
-  const hints = getSourceSessionHints(source, adapterId);
-  return hints ? { adapterId, ...hints } : null;
+  return true;
 }
 
 /** Records immutable metadata produced by a successful lightweight preview. */

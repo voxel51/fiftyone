@@ -31,6 +31,9 @@ module.exports = {
       },
     ],
     "@typescript-eslint/no-explicit-any": "error",
+    // an empty catch is self-explanatory best-effort; a comment inside it
+    // would only restate that
+    "no-empty": ["error", { allowEmptyCatch: true }],
   },
   settings: {
     react: {

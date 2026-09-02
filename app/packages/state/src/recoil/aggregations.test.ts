@@ -86,10 +86,42 @@ describe("test aggregation path accumulation", () => {
     }));
 
     setMockAtoms({
-      aggregationQuery: null,
+      aggregationQuery: () => null,
       hasFilters: () => false,
     });
 
     expect(testAggregations()).toStrictEqual([]);
+  });
+});
+
+describe("extended aggregation requests", () => {
+  const grid = <TestSelectorFamily<typeof aggregations.aggregations>>(
+    (<unknown>aggregations.aggregations({
+      extended: true,
+      modal: false,
+      paths: [""],
+    }))
+  );
+
+  // An extended selection rides in ``extendedStages``, which both the extended
+  // and the unextended query send — so an extended query with no field filters
+  // is a second, identical round trip
+  it.each([
+    ["a lasso selection and no field filters", false, false],
+    ["field filters", true, true],
+  ])("requests extended data with %s: %s", (_name, hasFields, expected) => {
+    let requested: boolean | undefined;
+    setMockAtoms({
+      // A lasso is in play, so the grid "has filters" either way
+      hasFilters: () => true,
+      hasFieldFilters: () => hasFields,
+      aggregationQuery: (params) => {
+        requested = params.extended;
+        return [];
+      },
+    });
+
+    grid();
+    expect(requested).toBe(expected);
   });
 });
