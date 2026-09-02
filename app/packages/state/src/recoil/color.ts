@@ -11,6 +11,7 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import {
+  COLOR_BY,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   RGB,
   createColorGenerator,
@@ -161,40 +162,96 @@ export const pathColor = selectorFamily<string, string>({
 });
 
 /**
- * Colors for a set of multimodal projection paths, resolved exactly as the
- * sidebar resolves them, so a grain's intervals on the grid tile and its rows
- * on the episode timeline match the sidebar entry the user filtered from.
+ * Resolver for the values of one path, under whichever color-by mode is set:
+ * the path's own field color when coloring by field, and the value's own color
+ * when coloring by value, honoring any per-value colors configured for the
+ * field.
  *
- * Takes the paths up front rather than returning a `(path) => color` closure
- * the way {@link temporalTagColor} does: {@link pathColor} reads schema and
- * color-scheme state per path through Recoil, which cannot be evaluated lazily
- * inside a plain function.
+ * This is what the sidebar paints a filter value's dot with, so anything else
+ * that shows the same value — a grid overlay's interval marks, a timeline row —
+ * matches the sidebar by resolving through here rather than reaching for
+ * {@link pathColor} directly. Coloring by instance has no meaning for a
+ * primitive value and resolves as coloring by field does.
  */
-const grainColors = selectorFamily<Record<string, string>, readonly string[]>({
-  key: "grainColors",
+export const valueColor = selectorFamily<
+  (value: string | null) => string,
+  string
+>({
+  key: "valueColor",
   get:
-    (paths) =>
-    ({ get }) =>
-      Object.fromEntries(paths.map((path) => [path, get(pathColor(path))])),
+    (path) =>
+    ({ get }) => {
+      const scheme = get(atoms.colorScheme);
+      const field = get(pathColor(path));
+
+      if (scheme.colorBy !== COLOR_BY.VALUE) {
+        return () => field;
+      }
+
+      const setting = scheme.fields?.find((x) => x.path === path);
+      const configured = new Map(
+        (setting?.valueColors ?? []).map((v) => [v.value, v.color]),
+      );
+      const map = get(colorMap);
+
+      // A null value is the "no value" row, which names nothing to color by.
+      return (value) =>
+        value === null ? field : (configured.get(value) ?? map(value));
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
 });
 
 /**
- * Domain hook for {@link grainColors}: returns a `(path: string) => string`
- * mapping each requested multimodal projection path to its sidebar color.
+ * Domain hook for {@link valueColor}: returns a `(value) => color` for `path`.
+ */
+export const useValueColor = (path: string) => useRecoilValue(valueColor(path));
+
+/**
+ * Value resolvers for a set of multimodal projection paths, each resolved
+ * exactly as the sidebar resolves that row, so a grain's intervals on the grid
+ * tile and its rows on the episode timeline match the sidebar entry the user
+ * filtered from — in either color-by mode.
  *
- * A path that was not requested falls back to the seeded pool, so a caller
- * that discovers a path late still gets a stable color rather than nothing.
+ * Takes the paths up front rather than returning a `(path) => color` closure
+ * the way {@link temporalTagColor} does: {@link valueColor} reads schema and
+ * color-scheme state per path through Recoil, which cannot be evaluated lazily
+ * inside a plain function.
+ */
+const grainColors = selectorFamily<
+  Record<string, (value: string | null) => string>,
+  readonly string[]
+>({
+  key: "grainColors",
+  get:
+    (paths) =>
+    ({ get }) =>
+      Object.fromEntries(paths.map((path) => [path, get(valueColor(path))])),
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+/**
+ * Domain hook for {@link grainColors}: returns a
+ * `(path: string, value?: string) => string` mapping a multimodal projection
+ * path — and, where the row is named by something the sidebar also lists as a
+ * filter value, that value — to the color the sidebar shows for it.
+ *
+ * Omit `value` for a row the sidebar has no value dot for, such as a signals
+ * projection: those take the field's color in both modes. A path that was not
+ * requested falls back to the seeded pool, so a caller that discovers a path
+ * late still gets a stable color rather than nothing.
  */
 export const useGrainColor = (
   paths: readonly string[],
-): ((path: string) => string) => {
+): ((path: string, value?: string) => string) => {
   const colors = useRecoilValue(grainColors(paths));
   const map = useRecoilValue(colorMap);
   return useCallback(
-    (path: string) => colors[path] ?? map(path),
+    (path: string, value?: string) =>
+      colors[path]?.(value ?? null) ?? map(path),
     [colors, map],
   );
 };

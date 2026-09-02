@@ -56,3 +56,82 @@ describe("temporalTagColor", () => {
     expect(colorFor("hard_brake")).toBe("fallback:hard_brake");
   });
 });
+
+describe("valueColor", () => {
+  const resolver = <TestSelector<typeof color.valueColor>>(
+    (<unknown>color.valueColor)
+  );
+
+  const setScheme = (scheme: object) =>
+    setMockAtoms({
+      __colorScheme_selector: scheme,
+      colorMap: () => (value: string) => `fallback:${value}`,
+      pathColor: (path: string) => `field:${path}`,
+    });
+
+  it("gives every value the field's color when coloring by field", () => {
+    setScheme({
+      colorBy: "field",
+      fields: [
+        {
+          path: "events.collisions",
+          valueColors: [{ value: "near_miss", color: "#3b82f6" }],
+        },
+      ],
+    });
+
+    const colorFor = resolver("events.collisions")();
+    // The per-value setting is configuration for the other mode; in this one
+    // the sidebar row and everything under it are one color.
+    expect(colorFor("near_miss")).toBe("field:events.collisions");
+    expect(colorFor("hard_brake")).toBe("field:events.collisions");
+  });
+
+  it("gives each value its own color when coloring by value", () => {
+    setScheme({ colorBy: "value", fields: [] });
+
+    const colorFor = resolver("events.collisions")();
+    expect(colorFor("near_miss")).toBe("fallback:near_miss");
+    expect(colorFor("hard_brake")).toBe("fallback:hard_brake");
+  });
+
+  it("prefers a value's configured color to the hashed fallback", () => {
+    setScheme({
+      colorBy: "value",
+      fields: [
+        {
+          path: "events.collisions",
+          valueColors: [{ value: "near_miss", color: "#3b82f6" }],
+        },
+      ],
+    });
+
+    const colorFor = resolver("events.collisions")();
+    expect(colorFor("near_miss")).toBe("#3b82f6");
+    expect(colorFor("hard_brake")).toBe("fallback:hard_brake");
+  });
+
+  it("colors the no-value row by field, since it names nothing", () => {
+    setScheme({ colorBy: "value", fields: [] });
+
+    expect(resolver("events.collisions")()(null)).toBe(
+      "field:events.collisions",
+    );
+  });
+
+  it("ignores another field's per-value colors", () => {
+    setScheme({
+      colorBy: "value",
+      fields: [
+        {
+          path: "events.other",
+          valueColors: [{ value: "near_miss", color: "#3b82f6" }],
+        },
+      ],
+    });
+
+    expect(resolver("events.collisions")()("near_miss")).toBe(
+      "fallback:near_miss",
+    );
+  });
+});
