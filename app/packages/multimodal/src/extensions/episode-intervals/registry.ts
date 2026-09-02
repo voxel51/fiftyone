@@ -1,33 +1,15 @@
 import { useSyncExternalStore } from "react";
+import { createExtensionRegistry } from "../host/registry";
 import type { EpisodeIntervalSource } from "./types";
-
-/**
- * Registry of episode-interval sources. Mirrors the timeline-extension
- * registry: the shared grid tile and modal timeline render whatever is
- * registered and render nothing before registration, so no shared file ever
- * imports edition code.
- */
-
-interface EpisodeIntervalSourceRegistry {
-  readonly sources: Map<string, EpisodeIntervalSource>;
-  readonly listeners: Set<() => void>;
-  snapshot: readonly EpisodeIntervalSource[];
-}
 
 const REGISTRY_KEY = Symbol.for(
   "@fiftyone/multimodal:episode-interval-source-registry",
 );
-const globalRegistry = globalThis as Record<PropertyKey, unknown>;
-const registry = (globalRegistry[REGISTRY_KEY] ??= {
-  sources: new Map(),
-  listeners: new Set(),
-  snapshot: [],
-} satisfies EpisodeIntervalSourceRegistry) as EpisodeIntervalSourceRegistry;
-
-function rebuildSnapshot(): void {
-  registry.snapshot = sortSources([...registry.sources.values()]);
-  for (const listener of registry.listeners) listener();
-}
+const registry = createExtensionRegistry<EpisodeIntervalSource>(
+  REGISTRY_KEY,
+  "episode interval source",
+  { duplicateIdPolicy: "replace" },
+);
 
 /** Order, then id, so the snapshot is independent of registration order. */
 export function sortSources(
@@ -54,26 +36,14 @@ export function registerEpisodeIntervalSource(
       `Episode interval source ids must be namespaced: ${source.id}`,
     );
   }
-  registry.sources.set(source.id, source);
-  rebuildSnapshot();
-  return () => {
-    // Only withdraw the entry still pointing at this registration — a later
-    // re-registration of the same id owns it now.
-    if (registry.sources.get(source.id) !== source) return;
-    registry.sources.delete(source.id);
-    rebuildSnapshot();
-  };
+  return registry.register(source);
 }
-
-const subscribe = (listener: () => void): (() => void) => {
-  registry.listeners.add(listener);
-  return () => {
-    registry.listeners.delete(listener);
-  };
-};
-const getSnapshot = () => registry.snapshot;
 
 /** The registered sources, in order; empty before anything registers. */
 export function useEpisodeIntervalSources(): readonly EpisodeIntervalSource[] {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  return useSyncExternalStore(
+    registry.subscribe,
+    registry.getSnapshot,
+    registry.getSnapshot,
+  );
 }
