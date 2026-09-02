@@ -35,6 +35,10 @@ jobs:
 
       - name: Install Dependencies
         run: cd app && yarn install
+      - name: Check constraints
+        # app/yarn.config.cjs: singleton dependencies (the design system) are
+        # declared through the yarn catalog only
+        run: cd app && yarn constraints
 
       - parallel:
           - name: Lint ESLint packages
