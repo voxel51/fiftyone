@@ -139,22 +139,26 @@ export const StageCard: React.FC<StageCardProps> = ({
   );
 
   // The stage was just added or just clicked; either way the next thing the
-  // user wants is to type into it. The popover mounts its panel in the same
-  // commit that opens it, so the content is there when this runs.
-  React.useEffect(() => {
-    if (!expanded) return;
+  // user wants is to type into it. The popover portals its panel, which
+  // mounts a render after `expanded` flips, so an effect keyed on `expanded`
+  // runs before the content exists. The panel's ref callback is the one
+  // moment the content is guaranteed to be in the DOM.
+  const focusEditor = React.useCallback((el: HTMLDivElement | null) => {
+    popoverContentRef.current = el;
+    if (!el) return;
 
-    const popover = popoverContentRef.current;
     // Not a combobox: voodo's Select opens its options on focus, and opening
     // a dropdown nobody asked for is not what starting the keyboard means
-    const typeable = popover?.querySelector<HTMLElement>(
+    const typeable = el.querySelector<HTMLElement>(
       "input:not([disabled]):not([role='combobox']), textarea:not([disabled])",
     );
 
-    // Otherwise the popover itself takes focus, so Tab reaches the first
-    // control in one keystroke and Escape and Enter already work
-    (typeable ?? popover)?.focus();
-  }, [expanded]);
+    // Otherwise the panel itself takes focus, so Tab reaches the first
+    // control in one keystroke and Escape and Enter already work. The panel
+    // is positioned a moment later; focusing must not scroll to where it is
+    // now.
+    (typeable ?? el).focus({ preventScroll: true });
+  }, []);
 
   const pill = (
     <Card
@@ -269,12 +273,12 @@ export const StageCard: React.FC<StageCardProps> = ({
       // as the editor changed and gave two stages holding the same parameter
       // two different shapes
       panelClassName={panelStyles.panel}
-      // Focus is placed by the effect above — on the first typeable control,
-      // not the panel
+      // Focus is placed by the panel's ref callback — on the first typeable
+      // control, not the panel
       focusOnOpen={false}
     >
       <div
-        ref={popoverContentRef}
+        ref={focusEditor}
         tabIndex={-1}
         data-cy="view-stage-editor"
         onKeyDown={(e) => {
