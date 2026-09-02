@@ -5,6 +5,13 @@
   min-width: 0;
 }
 
+/* The popover wraps its trigger in a block of its own; the bar's height has
+   to reach the gutter through it, or the gutter's 100% resolves to nothing
+   and it sits at the top */
+.bar > div {
+  height: 100%;
+}
+
 /* The gutter: the bar's own surface — the search row's canvas. It sits in the
    header, which is on the shell's palette, so it keeps the shell's surface and
    border; the tokens come when the shell moves as a whole. */
