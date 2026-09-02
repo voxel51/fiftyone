@@ -40,7 +40,8 @@
   flex-shrink: 0;
   height: 100%;
   padding: 0 10px;
-  border-left: 1px solid var(--color-content-border-default);
+  /* Inside the gutter, so it divides with the gutter's own border color */
+  border-left: 1px solid var(--fo-palette-primary-plainBorder);
 }
 
 .stagesCount {
