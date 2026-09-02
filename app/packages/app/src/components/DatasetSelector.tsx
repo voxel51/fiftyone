@@ -4,7 +4,7 @@
 
 import type { UseSearch } from "@fiftyone/components";
 import { datasetName, useSetDataset } from "@fiftyone/state";
-import { Combobox, type ComboboxOption, Size } from "@voxel51/voodo";
+import { Combobox, type ComboboxOption, IconName, Size } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -102,6 +102,7 @@ const DatasetSelector: React.FC<{
       <Combobox
         aria-label="Dataset"
         placeholder="Select dataset"
+        icon={IconName.Database}
         size={Size.Sm}
         options={options}
         value={value}

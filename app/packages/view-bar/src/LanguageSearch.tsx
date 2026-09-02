@@ -105,7 +105,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
     <Stack
       orientation={Orientation.Row}
       align={Align.Center}
-      spacing={Spacing.Sm}
+      spacing={Spacing.Xs}
       className={styles.root}
     >
       {/* The magnifying glass is where the search's settings live — which
@@ -115,7 +115,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         trigger={
           <Button
             variant={Variant.Icon}
-            size={Size.Sm}
+            size={Size.Xs}
             borderless
             leadingIcon={SearchIcon}
             aria-label="Similarity search settings"
@@ -148,10 +148,10 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         portal
         // The field sits flush in the bar; the bar is its frame
         borderless
+        // With previous searches to offer the list is the offer; with none it
+        // is noise, so it stays hidden
         emptyMessage={
-          enabled ? (
-            "No previous searches"
-          ) : (
+          enabled ? null : (
             // Text search needs a similarity index that supports prompts;
             // the list's one offer is to go make one
             <Button

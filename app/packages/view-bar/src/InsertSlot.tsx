@@ -99,6 +99,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
     <Combobox
       aria-label="Insert stage"
       placeholder="Add stage…"
+      icon={IconName.Add}
       size={Size.Sm}
       className={styles.slot}
       options={options}

@@ -5,7 +5,8 @@
   min-width: 0;
 }
 
-/* The gutter: the bar's own surface — the search row's canvas */
+/* The gutter: the bar's own surface — the search row's canvas. Raised a step
+   above the header so the row reads as a control, not a hole */
 .gutter {
   display: flex;
   align-items: center;
@@ -13,7 +14,7 @@
   min-width: 0;
   height: 100%;
   box-sizing: border-box;
-  background: var(--color-content-bg-card-1);
+  background: var(--color-content-bg-raised);
   border: 1px solid var(--color-content-border-default);
   border-radius: var(--radius-sm);
 }
@@ -55,7 +56,8 @@
      shell's body is black-on-white, so the app text color is declared rather
      than inherited */
   color: var(--color-content-text-primary);
-  background: var(--color-content-bg-card-1);
+  /* A floating panel wears the popover surface like every other panel */
+  background: var(--color-content-bg-popover);
   border: 1px solid var(--color-content-border-default);
   border-radius: var(--radius-sm);
   box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
