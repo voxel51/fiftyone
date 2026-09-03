@@ -192,8 +192,17 @@ const valueColoring = (
     return { applies: true, configured: configured(scheme.labelTags) };
   }
 
-  // Same derivation as `pathColor`: a label field owns every path beneath it,
-  // and under video the frames prefix is part of the field's name.
+  // A label field owns every path beneath it, and under video the frames
+  // prefix is part of the field's name — the same parent derivation
+  // `pathColor` uses for its fallback.
+  //
+  // Not the same as `pathColor`'s *setting* lookup, which resolves an embedded
+  // document leaf to its parent and then back again for a
+  // `DynamicEmbeddedDocument`. That question does not arise here: every path
+  // this is called with is a string-filter leaf, `_label_tags`, or a
+  // projection path, so the leaf is never an embedded document. A dynamic
+  // embedded document is not a Label either, so it never appears in
+  // `labelFields` and takes the per-path branch below regardless.
   const video = get(atoms.mediaType) !== "image";
   const parentPath =
     video && path.startsWith("frames.")
