@@ -18,6 +18,7 @@ import {
   alignCyclic,
   interpolatePoints,
   interpolateRing,
+  matchRings,
   padTo,
   type Point,
   type Ring,
@@ -437,5 +438,74 @@ describe("correspond — a coincidental shared vertex is not an anchor", () => {
     const atZero = interpolateRing(SQUARE, redrawn, 0, true);
 
     expect(outlineDistance(atZero, SQUARE)).toBeLessThan(1e-9);
+  });
+});
+
+describe("correspond — equal counts from a deletion plus an insertion", () => {
+  // The annotator deletes one vertex and inserts another on the same keyframe,
+  // so the counts match but the indices no longer line up: trusting them would
+  // pair the deleted vertex with an untouched one and drag it across the span.
+  const P0: Point = [0, 0];
+  const X: Point = [0.5, 0.1];
+  const P1: Point = [1, 0];
+  const Y: Point = [1, 0.5];
+  const P2: Point = [1, 1];
+  const before: Ring = [P0, X, P1, P2];
+  const after: Ring = [P0, P1, Y, P2];
+
+  const holds = (ring: Ring, p: Point) =>
+    ring.some(
+      ([x, y]) => Math.abs(x - p[0]) < 1e-12 && Math.abs(y - p[1]) < 1e-12,
+    );
+
+  it.each([true, false])(
+    "keeps every untouched vertex exactly still (closed=%s)",
+    (closed) => {
+      for (const t of [0.25, 0.5, 0.75]) {
+        const mid = interpolateRing(before, after, t, closed);
+
+        for (const p of [P0, P1, P2]) {
+          expect(holds(mid, p), `t=${t}: ${JSON.stringify(p)}`).toBe(true);
+        }
+      }
+    },
+  );
+
+  it.each([true, false])(
+    "emits a stable vertex count across the span (closed=%s)",
+    (closed) => {
+      const counts = new Set(
+        [0.1, 0.5, 0.9].map(
+          (t) => interpolateRing(before, after, t, closed).length,
+        ),
+      );
+
+      expect(counts.size).toBe(1);
+    },
+  );
+});
+
+describe("matchRings — shape order is known within a track", () => {
+  it("pairs rings by index when the counts match", () => {
+    const near = SQUARE;
+    const far = translate(SQUARE, 2, 0);
+    // centroid matching would cross-pair these; the list order says otherwise
+    const pairs = matchRings([near, far], [far, near]);
+
+    expect(pairs).toEqual([
+      { from: near, to: far },
+      { from: far, to: near },
+    ]);
+  });
+
+  it("falls back to centroid matching when a ring was added", () => {
+    const near = SQUARE;
+    const far = translate(SQUARE, 2, 0);
+    const pairs = matchRings([far], [near, far]);
+
+    expect(pairs).toEqual([
+      { from: far, to: far },
+      { from: null, to: near },
+    ]);
   });
 });

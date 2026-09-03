@@ -161,7 +161,6 @@ export const alignOpen = (a: Ring, b: Ring): Ring => {
 export const lerpRing = (a: Ring, b: Ring, t: number): Ring =>
   a.map((p, i) => lerpPoint(p, b[i], t));
 
-
 /**
  * Two vertices count as "the same vertex" when they're bitwise-ish equal. An
  * untouched vertex is copied verbatim from one keyframe to the next, so exact
@@ -219,6 +218,18 @@ export const anchorPairs = (a: Ring, b: Ring): Array<[number, number]> => {
 const rotateRing = (ring: Ring, k: number): Ring =>
   k === 0 ? ring : [...ring.slice(k), ...ring.slice(0, k)];
 
+/** Whether every vertex of `a` moved by the same vector to reach `b`. */
+const isTranslation = (a: Ring, b: Ring): boolean => {
+  const dx = b[0][0] - a[0][0];
+  const dy = b[0][1] - a[0][1];
+
+  return a.every(
+    (p, i) =>
+      Math.abs(b[i][0] - p[0] - dx) <= SAME_VERTEX_EPS &&
+      Math.abs(b[i][1] - p[1] - dy) <= SAME_VERTEX_EPS,
+  );
+};
+
 /**
  * Grow a gap's run of vertices to `target`, inserting along the run *and its
  * bounding anchors* so new vertices land on the shape's own geometry between the
@@ -258,30 +269,29 @@ const growRun = (
  * redrawn from scratch, so identity genuinely is unknown) do we fall back to the
  * positional search over cyclic offset + winding.
  */
-export const correspond = (
-  a: Ring,
-  b: Ring,
-  closed: boolean,
-): [Ring, Ring] => {
-  // Equal counts mean no vertex was inserted or deleted between the keyframes,
-  // so within one track index `i` already corresponds to index `i` — anchoring
-  // exists only to absorb count changes, and running it here actively hurts:
-  //
-  // - A vertex that coincidentally lands on *another* vertex's old position
-  //   reads as an anchor ("untouched"), pinning it while its neighbours move.
-  //   A shape translated by the spacing between two of its own vertices then
-  //   squirms mid-span instead of translating.
-  // - The per-gap padding is independent, so the runs can sum past
-  //   `max(a.length, b.length)` and emit a duplicate vertex — an extra
-  //   draggable point appearing on filler frames.
+export const correspond = (a: Ring, b: Ring, closed: boolean): [Ring, Ring] => {
+  const shared = anchorPairs(a, b);
+
+  // Equal counts usually mean no vertex was inserted or deleted, so index `i`
+  // already corresponds to index `i`. Trust the indices when the anchors agree
+  // with them, or when the whole shape moved rigidly: a vertex that lands on
+  // another vertex's old position (a shape translated by its own vertex spacing)
+  // reads as an anchor but is a coincidence, and anchoring on it would pin it
+  // while its neighbours move. Equal counts with anchors that DISAGREE with the
+  // indices mean a deletion and an insertion in the same keyframe; the anchored
+  // path below is what keeps the untouched vertices still there.
   //
   // A redraw (equal counts, no shared vertices) still needs the positional
   // search below, so require at least one anchor before trusting the indices.
-  if (a.length === b.length && anchorPairs(a, b).length > 0) {
+  if (
+    a.length === b.length &&
+    shared.length > 0 &&
+    (shared.every(([i, j]) => i === j) || isTranslation(a, b))
+  ) {
     return [a, b];
   }
 
-  if (anchorPairs(a, b).length === 0) {
+  if (shared.length === 0) {
     const n = Math.max(a.length, b.length);
     const pa = padTo(a, n, closed);
     const pb = padTo(b, n, closed);
@@ -293,12 +303,12 @@ export const correspond = (
   let ra = a;
   let rb = b;
   if (closed) {
-    const [ai, bj] = anchorPairs(a, b)[0];
+    const [ai, bj] = shared[0];
     ra = rotateRing(a, ai);
     rb = rotateRing(b, bj);
   }
 
-  const anchors = anchorPairs(ra, rb);
+  const anchors = closed ? anchorPairs(ra, rb) : shared;
   const outA: Ring = [];
   const outB: Ring = [];
 
@@ -348,16 +358,25 @@ export const interpolateRing = (
 };
 
 /**
- * Pair up the shapes of two keyframes. Rings are matched greedily by centroid
- * distance normalised by sqrt(area), which is scale-tolerant and cheap (shape
- * counts are tiny). Unmatched rings are reported with a `null` counterpart —
- * callers step-hold those rather than interpolating them (a ring growing out of
- * a point reads as a rendering bug, not as motion).
+ * Pair up the shapes of two keyframes. Within one track the shape order is
+ * known — the same list, edited — so equal counts pair by index. When a shape
+ * was added or removed, rings are matched greedily by centroid distance
+ * normalised by sqrt(area), which is scale-tolerant and cheap (shape counts are
+ * tiny). Unmatched rings are reported with a `null` counterpart — callers
+ * step-hold those rather than interpolating them (a ring growing out of a point
+ * reads as a rendering bug, not as motion).
  */
 export const matchRings = (
   a: Ring[],
   b: Ring[],
 ): Array<{ from: Ring | null; to: Ring | null }> => {
+  const ringsA = a.filter((ring) => ring.length > 0);
+  const ringsB = b.filter((ring) => ring.length > 0);
+
+  if (ringsA.length === ringsB.length) {
+    return ringsA.map((from, i) => ({ from, to: ringsB[i] }));
+  }
+
   const pairs: Array<{ from: Ring | null; to: Ring | null }> = [];
   const takenB = new Set<number>();
 
