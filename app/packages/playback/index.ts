@@ -98,6 +98,7 @@ export {
   useVideoStream,
 } from "./src/lib/playback/use-video-stream";
 export { useVideoSync } from "./src/lib/playback/use-video-sync";
+export { useVideoElementAudio } from "./src/lib/playback/use-video-audio";
 export { useActivateStream, useStream } from "./src/lib/playback/use-stream";
 export { frameAt } from "./src/lib/playback/utils";
 export { PlaybackStreamBase } from "./src/lib/playback/stream-base";

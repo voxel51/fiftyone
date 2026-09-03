@@ -57,6 +57,8 @@ function useLabelsMode(): LabelsMode {
 
 interface MediaProps {
   videoSrc: string | null;
+  /** Demuxer verdict on audio-track presence; undefined = unknown. */
+  hasAudio?: boolean;
 }
 
 interface RegistrarProps {
@@ -74,17 +76,32 @@ interface RegistrarProps {
  * that drives the timeline's duration (`extract`/`fetch` register an ImaVid
  * frame stream; `html` registers nothing — the `<video>` element is its own
  * clock source).
+ *
+ * Audio follows the same split. The `html` tile's `<video>` already holds the
+ * sound, so `LighterVideo` plays it from that element; only the ImaVid paths,
+ * which have no media element of their own, mount a separate audio element
+ * (see `AUDIO_ONLY_STRATEGIES` below).
  */
 const STRATEGY_TILE: Record<DecodeStrategy, React.FC<MediaProps>> = {
   extract: () => <ImaVidLighterTile />,
   fetch: () => <ImaVidLighterTile />,
-  html: ({ videoSrc }) =>
+  html: ({ videoSrc, hasAudio }) =>
     videoSrc ? (
-      <LighterVideo videoSrc={videoSrc} />
+      <LighterVideo videoSrc={videoSrc} hasAudio={hasAudio} />
     ) : (
       <div className={styles.empty}>No media URL on this sample.</div>
     ),
 };
+
+/**
+ * Strategies whose timeline needs its own `HTMLAudioElement`: the ImaVid
+ * paths render decoded frames or per-frame images, so nothing on the surface
+ * is playing the source container's audio track. The `html` tile is excluded
+ * deliberately — a second element over the same URL there would fetch and
+ * decode the whole video a second time for sound the `<video>` already has.
+ */
+const AUDIO_ONLY_STRATEGIES: ReadonlySet<DecodeStrategy> =
+  new Set<DecodeStrategy>(["extract", "fetch"]);
 
 const STRATEGY_REGISTRAR: Record<DecodeStrategy, React.FC<RegistrarProps>> = {
   extract: ({ children, ...props }) => (
@@ -188,7 +205,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     >
       <VideoAnnotationTopBar sample={sample} />
       <div className={styles.media}>
-        <Tile videoSrc={videoSrc} />
+        <Tile videoSrc={videoSrc} hasAudio={resolution.hasAudio} />
       </div>
       <div className={styles.timeline}>
         {labelsMode === "synthetic" ? (
@@ -240,10 +257,12 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     // Scrubbing stays continuous — only the settle position snaps.
     <PlaybackProvider snapToFrameOnSettle>
       <VideoAnnotationHandlerRegistration />
-      <RegisterTimelineAudio
-        videoSrc={videoSrc}
-        hasAudio={resolution.hasAudio}
-      />
+      {AUDIO_ONLY_STRATEGIES.has(strategy) && (
+        <RegisterTimelineAudio
+          videoSrc={videoSrc}
+          hasAudio={resolution.hasAudio}
+        />
+      )}
       {registered}
     </PlaybackProvider>
   );

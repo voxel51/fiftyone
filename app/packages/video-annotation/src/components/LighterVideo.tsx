@@ -2,6 +2,7 @@ import React, { type RefObject, useRef, useState } from "react";
 import {
   usePlayback,
   usePublishCurrentFrame,
+  useVideoElementAudio,
   useVideoStream,
   useVideoSync,
 } from "@fiftyone/playback";
@@ -50,6 +51,12 @@ export interface LighterVideoProps {
    */
   mode?: LighterVideoMode;
   /**
+   * Demuxer verdict on whether the source has an audio track, when the
+   * caller has one. `false` hides the volume control without waiting on the
+   * element's own inconclusive sniffing; omit it and the element decides.
+   */
+  hasAudio?: boolean;
+  /**
    * Media lifecycle passthroughs, fired alongside this component's own handling
    * rather than replacing it. Explore uses them to raise the readiness
    * marker every sample surface publishes and to fall back on a load
@@ -67,6 +74,7 @@ export interface LighterVideoProps {
 export const LighterVideo: React.FC<LighterVideoProps> = ({
   videoSrc,
   mode = "annotate",
+  hasAudio,
   onLoadStart,
   onLoadedData,
   onError,
@@ -98,6 +106,15 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   useVideoStream(sourceId, videoRef, { blocking: false });
   useVideoSync(videoRef);
   useVfcClockSource(videoRef);
+
+  // This element is also the timeline's audio source. The sound is already
+  // in the file the <video> is fetching, so the timeline's volume control
+  // drives THIS element rather than a second one over the same URL —
+  // `useAudioStream` would download and decode the whole video again for
+  // its audio track. The element is deliberately not `muted`: the hook
+  // writes `.muted` from the mixer state, starting muted for the autoplay
+  // policy and unmuting on the first play.
+  useVideoElementAudio(sourceId, videoRef, { hasAudio });
   const { seek } = usePlayback();
 
   // Publish the playhead frame for the consumers that sit OUTSIDE this
@@ -159,8 +176,10 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
         src={videoSrc}
         preload="auto"
         playsInline
-        // pixels only
-        muted
+        // No `muted` here: `useVideoElementAudio` above owns `.muted` and
+        // this element is where the timeline's sound comes from. A muted
+        // attribute would be re-asserted on every render and no mixer state
+        // could ever override it.
         onLoadedMetadata={(e) => {
           const v = e.currentTarget;
           setVideoDims({ w: v.videoWidth, h: v.videoHeight });

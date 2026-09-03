@@ -3,7 +3,6 @@ import * as fos from "@fiftyone/state";
 import {
   FrameLabelsTracks,
   RegisterFrameLabels,
-  RegisterTimelineAudio,
   RegisterVideoExploreLabels,
   LighterVideo,
   getModalSampleFrameRate,
@@ -28,9 +27,11 @@ const LOADED = "canvas-loaded";
  *
  * It owns the `<video>`, the engine binding (`useVideoStream` /
  * `useVideoSync` / `useVfcClockSource`) and the Lighter scene that paints the
- * label overlays and feeds the hover tooltip. What stays here is what is
- * specific to Explore: the readiness marker every sample surface publishes,
- * and the media-error fallback.
+ * label overlays and feeds the hover tooltip. Sound comes from that same
+ * `<video>` — the timeline's volume control drives the element directly
+ * (`useVideoElementAudio`), so nothing fetches the file a second time for its
+ * audio track. What stays here is what is specific to Explore: the readiness
+ * marker every sample surface publishes, and the media-error fallback.
  */
 const ExploreVideo: React.FC<{
   videoSrc: string;
@@ -207,12 +208,6 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
           of `RegisterFrameLabels`, not a child — that component swaps its
           wrapper when duration lands, which would remount the store. */}
       <RegisterVideoExploreLabels />
-      {/* The timeline's audio stream — the only source of sound. The player's
-          <video> is muted ("pixels only"), so without this the surface is
-          silent, which is what the looker's own volume control used to
-          drive. `hasAudio` is left unset: there is no demuxer verdict on
-          this path, so the element sniffs for a track itself. */}
-      <RegisterTimelineAudio videoSrc={videoSrc} />
       {/* Registers the /frames-backed label stream. A SIBLING for the same
           reason as the two above, and a load-bearing one: it gates on
           `useDuration() > 0` and re-keys on the resolved `frameCount`, while

@@ -346,6 +346,31 @@ export function isMasterMuteAtSessionDefault(): boolean {
 
 const MASTER_MUTED_STORAGE_KEY = "fo-playback-audio-muted";
 
+/**
+ * Mute everything because the browser's autoplay policy refused an unmuted
+ * element — a constraint of the environment, not a choice the viewer made.
+ *
+ * Distinct from {@link setMasterMuted} in exactly one way: it leaves the
+ * session-default flag intact, so {@link isMasterMuteAtSessionDefault} still
+ * reports "the viewer has expressed no preference" and a later real play
+ * gesture can unmute. Recording the concession as a deliberate mute would
+ * silence every subsequent sample and surface for the rest of the session
+ * on the strength of one refusal.
+ */
+export function concedeMasterMuteToAutoplayPolicy(store: PlaybackStore): void {
+  setMasterMuted(store, true);
+  if (typeof window === "undefined") return;
+  try {
+    // `audioMasterMutedAtom` is an `atomWithStorage`, so the write above
+    // persisted the key. Drop it again: the stored value and the untouched
+    // default are both "muted", so a reload lands in the same state either
+    // way, and the flag goes back to meaning what it says.
+    window.sessionStorage.removeItem(MASTER_MUTED_STORAGE_KEY);
+  } catch {
+    // Unreadable/unwritable storage already reads as "no preference".
+  }
+}
+
 /** Non-reactive read of one track's volume fader, in [0, 1]. */
 export function getTrackVolume(store: PlaybackStore, trackId: string): number {
   return store.get(audioTrackVolumeAtom(trackId));

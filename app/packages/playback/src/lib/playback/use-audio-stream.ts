@@ -130,9 +130,9 @@ export function shouldChaseAudioClock(args: {
  * track table) should prefer that and pass `enabled: false` when absent.
  */
 export function detectElementHasAudio(
-  element: HTMLAudioElement,
+  element: HTMLMediaElement,
 ): boolean | null {
-  const probed = element as HTMLAudioElement & {
+  const probed = element as HTMLMediaElement & {
     mozHasAudio?: boolean;
     webkitAudioDecodedByteCount?: number;
     audioTracks?: { length: number };
@@ -152,7 +152,11 @@ export function detectElementHasAudio(
 
 /**
  * Drives timeline audio from a hidden `HTMLAudioElement` owned by this
- * hook. Registers the element as a **blocking** `PlaybackStream` — the
+ * hook. For a surface that already mounts a `<video>` over the same URL,
+ * use `useVideoElementAudio` instead — this hook's element would fetch and
+ * decode the whole file a second time for a track the `<video>` has already.
+ * This one is for sound with no picture of its own: an audio-only source, or
+ * a surface whose frames come from somewhere else (the ImaVid paths). Registers the element as a **blocking** `PlaybackStream` — the
  * engine's barrier holds the playhead until sound is buffered at the
  * target time, so the picture never runs ahead of audio — but the stream
  * is only *subscribed* while `enabled` and unmuted. Muted or audio-less
