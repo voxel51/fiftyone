@@ -4,9 +4,12 @@ import {
   type SampleRendererSampleLike,
 } from "@fiftyone/plugins";
 import { getSampleSrc } from "@fiftyone/state";
-import { getFetchFunctionExtended } from "@fiftyone/utilities";
 
-import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../../ir";
+import {
+  BYTE_SOURCE_READ_PROFILE,
+  type ByteSourceDescriptor,
+  type ByteSourceReadProfile,
+} from "../../ir";
 import type {
   AssetSelectorDescriptor,
   EpisodeOpenOptions,
@@ -22,6 +25,12 @@ import {
   type SourceFactsScope,
 } from "../../runtime";
 import { createAbortError } from "../../utils/cancellation";
+import { monotonicNowMs } from "../../utils/monotonic-time";
+import {
+  manifestMaxAgeMs,
+  type TransportMediaAssetManifest,
+} from "../../runtime/episode-manifest-transport";
+import { requestEpisodeManifest } from "../../runtime/episode-manifests";
 
 /** Builds the format-neutral sample facts used by lazy adapter detection. */
 export function sampleDescriptorFromContext(
@@ -108,12 +117,9 @@ export function episodeSourceFromMediaReference(
   sampleId: string,
   mediaReference: MediaReferenceDescriptor,
 ): ManifestEpisodeSource {
-  const manifestUrl = `/dataset/${encodeURIComponent(
-    datasetId,
-  )}/sample/${encodeURIComponent(sampleId)}/multimodal/manifest`;
   let manifest: TransportMediaAssetManifest | null = null;
+  let manifestExpiresAtMs = 0;
   let manifestPromise: Promise<TransportMediaAssetManifest> | null = null;
-  const fetchFunction = getFetchFunctionExtended();
 
   const getManifest = async (
     options?: EpisodeOpenOptions,
@@ -122,7 +128,10 @@ export function episodeSourceFromMediaReference(
       throw createAbortError("Episode manifest request aborted");
     }
 
-    if (manifest) {
+    // Held only while the URLs inside it still grant access. A session open
+    // past that re-resolves rather than reading against a lapsed
+    // authorization, which nothing below this can renew.
+    if (manifest && monotonicNowMs() < manifestExpiresAtMs) {
       return awaitCaller(
         Promise.resolve(manifest),
         options?.signal,
@@ -131,16 +140,22 @@ export function episodeSourceFromMediaReference(
     }
 
     if (!manifestPromise) {
-      const request = fetchFunction<undefined, TransportMediaAssetManifest>({
-        method: "GET",
-        path: manifestUrl,
-        result: "json",
-      })
-        .then(({ response }) => {
+      const request = requestEpisodeManifest(datasetId, sampleId)
+        .then((response) => {
           manifest = response;
+          manifestExpiresAtMs = monotonicNowMs() + manifestMaxAgeMs(response);
+          // Cleared so the next read past the expiry above resolves again
+          if (manifestPromise === request) manifestPromise = null;
           return response;
         })
         .catch((error: unknown) => {
+          // Wrapping hides the cause from the tile, which shows only a
+          // sentence; the console keeps what actually failed
+          console.error(
+            "[multimodal] manifest resolve failed",
+            { datasetId, sampleId },
+            error,
+          );
           throw new Error("Unable to resolve episode assets", {
             cause: error,
           });
@@ -160,12 +175,14 @@ export function episodeSourceFromMediaReference(
 
   return {
     assets: {
+      describeEpisode: async (options) =>
+        (await getManifest(options)).episode ?? null,
       list: async (options) =>
         (await getManifest(options)).assets.map((asset) => ({
           ...(asset.feature_name ? { featureName: asset.feature_name } : {}),
           id: asset.asset_id,
           mediaType: asset.media_type,
-          metadata: { sizeBytes: normalizedSizeBytes(asset.size_bytes) },
+          metadata: optionalSizeMetadata(asset.size_bytes),
           role: normalizedAssetRole(asset.role),
           selector: normalizeAssetSelector(asset.selector),
         })),
@@ -179,12 +196,14 @@ export function episodeSourceFromMediaReference(
         }
 
         return {
-          readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
-          sizeBytes:
-            typeof asset.size_bytes === "number" &&
-            Number.isFinite(asset.size_bytes)
-              ? Math.max(0, Math.trunc(asset.size_bytes)).toString()
-              : undefined,
+          ...(asset.content_id ? { contentId: asset.content_id } : {}),
+          readProfile: normalizedReadProfile(asset.read_profile),
+          ...(typeof asset.size_bytes === "number" &&
+          Number.isFinite(asset.size_bytes)
+            ? {
+                sizeBytes: Math.max(0, Math.trunc(asset.size_bytes)).toString(),
+              }
+            : {}),
           sourceId: asset.asset_id,
           url: asset.url,
         };
@@ -252,39 +271,33 @@ function byteSourceFromSample(
   };
 }
 
-type TransportMediaAssetManifest = {
-  readonly assets: readonly TransportMediaAsset[];
-};
+function normalizedReadProfile(
+  value: string | undefined,
+): ByteSourceReadProfile {
+  if (
+    value === BYTE_SOURCE_READ_PROFILE.LOCAL ||
+    value === BYTE_SOURCE_READ_PROFILE.REMOTE
+  ) {
+    return value;
+  }
 
-type TransportMediaAsset = {
-  readonly asset_id: string;
-  readonly feature_name?: string | null;
-  readonly media_type: string;
-  readonly role: string;
-  readonly selector: TransportMediaAssetSelector;
-  readonly size_bytes: number;
-  readonly url: string;
-};
+  // A server too old to say. Remote is the safer of the two to be wrong
+  // about: it over-fetches, where local under-caches a read that needs it.
+  return BYTE_SOURCE_READ_PROFILE.REMOTE;
+}
 
-type TransportMediaAssetSelector =
-  | { readonly kind: "whole-file" }
-  | {
-      readonly coordinate_system: string;
-      readonly end: number;
-      readonly kind: "row-interval";
-      readonly start: number;
-    }
-  | {
-      readonly from_timestamp: number;
-      readonly kind: "video-timestamp-interval";
-      readonly to_timestamp: number;
-    };
+function optionalSizeMetadata(value: number | undefined): {
+  readonly sizeBytes?: string;
+} {
+  if (value === undefined) {
+    return {};
+  }
 
-function normalizedSizeBytes(value: number): string {
   if (!Number.isSafeInteger(value) || value < 0) {
     throw new Error("Episode manifest contains an invalid asset size");
   }
-  return value.toString();
+
+  return { sizeBytes: value.toString() };
 }
 
 const LEROBOT_ASSET_ROLES = new Set([

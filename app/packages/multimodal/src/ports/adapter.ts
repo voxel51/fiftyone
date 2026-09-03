@@ -37,11 +37,33 @@ export type AssetSelectorDescriptor =
 
 /** Resolves one or more physical assets that make up an episode. */
 export interface AssetResolver {
+  /**
+   * What the server recorded about this episode, where it recorded anything.
+   *
+   * A format's own metadata files describe the episode too, but they live in
+   * the source and cost a storage round trip each to read - per episode, per
+   * viewer. An adapter given these should prefer them and read the source
+   * only for what they do not cover.
+   */
+  describeEpisode?(
+    options?: EpisodeOpenOptions,
+  ): Promise<EpisodeDescription | null>;
   list(options?: EpisodeOpenOptions): Promise<readonly AssetDescriptor[]>;
   resolve(
     assetId: string,
     options?: EpisodeOpenOptions,
   ): Promise<ByteSourceDescriptor>;
+}
+
+/**
+ * Episode facts the server holds without reading the source.
+ *
+ * Deliberately loose: it carries whatever the server recorded, and an
+ * adapter validates what it uses, exactly as it would validate a row parsed
+ * out of the source's own metadata.
+ */
+export interface EpisodeDescription {
+  readonly [field: string]: unknown;
 }
 
 /** Format-neutral source facts resolved before an adapter opens. */

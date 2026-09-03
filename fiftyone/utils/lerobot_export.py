@@ -18,6 +18,7 @@ import numpy as np
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 from fiftyone.multimodal.media import (
     LEROBOT_EPISODE_KIND,
@@ -311,7 +312,12 @@ def _write_lerobot_export(export_dir, specs):
             export_dir, video_export.destination_location
         )
         etau.ensure_basedir(output_path)
-        shutil.copy2(video_export.source_asset.path, output_path)
+        source_path = video_export.source_asset.path
+        if fos.is_local(source_path):
+            shutil.copy2(source_path, output_path)
+        else:
+            # Remote source assets carry no local file metadata to preserve.
+            fos.copy_file(source_path, output_path)
 
 
 def _plan_video_exports(info, specs):
@@ -535,7 +541,7 @@ def _read_selected_data_table(path, locator, source_tables=None):
 
 def _validate_lerobot_export(export_dir, expected_episodes):
     resolver = _get_media_resolver(LEROBOT_EPISODE_KIND)
-    source = resolver.inspect_local_source(export_dir)
+    source = resolver.inspect_source(export_dir)
     if len(source.rows) != expected_episodes:
         raise MalformedMediaSourceError(
             "Completed LeRobot export did not preserve the selected episodes"

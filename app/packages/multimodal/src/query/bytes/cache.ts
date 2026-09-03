@@ -91,7 +91,12 @@ export function createMemoryByteRangeCache(
 export function byteSourceCacheKey(source: ByteSourceDescriptor): string {
   // Source size can be discovered after the first read, and fetch URLs can
   // rotate without changing bytes. Keep durable caches tied only to content.
-  return serializeCacheKey([source.sourceId]);
+  //
+  // `contentId` names the object; `sourceId` names one consumer's view of it,
+  // and several consumers routinely read the same object - every episode in a
+  // LeRobot source shares its `info.json`, and many share a video file. Keyed
+  // by consumer, each of them would fetch those bytes again.
+  return serializeCacheKey([source.contentId ?? source.sourceId]);
 }
 
 /**

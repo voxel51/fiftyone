@@ -6,6 +6,7 @@ import {
 import { createAbortError } from "../../utils/cancellation";
 import { safeNumber } from "./bigint-utils";
 import { parseByteSize } from "./byte-size";
+import { createByteSourceLocationRegistry } from "./resolved-location-registry";
 import type { ByteClient } from "./types";
 
 const DEFAULT_HTTP_BYTE_READ_RETRIES = 2;
@@ -24,6 +25,11 @@ type AbortableFetchFunction = <Body, Result>(
 export function createHttpByteClient(
   fetchFunction?: AbortableFetchFunction,
 ): ByteClient {
+  // A manifest publishes handles, and redeeming one authorizes the read and
+  // mints a signature. Held per content so that hop is paid once for a
+  // source rather than once per range a reader asks for.
+  const locations = createByteSourceLocationRegistry();
+
   return {
     async stat(source, signal) {
       if (signal?.aborted) {
@@ -91,42 +97,65 @@ export function createHttpByteClient(
       const endOffset = request.range.offset + request.range.length - 1n;
       const fetchBytes: AbortableFetchFunction =
         fetchFunction ?? getFetchFunctionExtended();
-      // Abort is best-effort; Promise.race below is the actual guarantee that
-      // readBytes does not wait forever on a hung range request.
-      const controller = new AbortController();
-      const onExternalAbort = () => controller.abort();
-      request.signal?.addEventListener("abort", onExternalAbort);
-      let headers: Headers | undefined;
-      let buffer: ArrayBuffer;
-      try {
-        ({ headers, response: buffer } = await withHttpByteReadTimeout(
-          (onProgress) =>
-            fetchBytes<undefined, ArrayBuffer>({
-              headers: {
-                Range: `bytes=${request.range.offset.toString()}-${endOffset.toString()}`,
-              },
-              method: "GET",
-              path: request.source.url,
-              result: "arrayBuffer",
-              retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
-              signal: controller.signal,
-              onProgress,
-              // The app has its own byte caches; letting the browser HTTP
-              // cache store these blocks risks a cached superset answering a
-              // narrower Range with a mismatched Content-Range.
-              browserCache: "no-store",
-            }),
-          controller,
-          httpByteReadInactivityTimeoutMs(expectedLength),
-        ));
-      } catch (error) {
-        // Deliberate aborts must be distinguishable from transport failures.
-        if (request.signal?.aborted) {
-          throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
+      const readFrom = async (path: string) => {
+        // Abort is best-effort; withHttpByteReadTimeout is the actual
+        // guarantee that readBytes does not wait forever on a hung request.
+        const controller = new AbortController();
+        const onExternalAbort = () => controller.abort();
+        request.signal?.addEventListener("abort", onExternalAbort);
+        try {
+          return await withHttpByteReadTimeout(
+            (onProgress) =>
+              fetchBytes<undefined, ArrayBuffer>({
+                headers: {
+                  Range: `bytes=${request.range.offset.toString()}-${endOffset.toString()}`,
+                },
+                method: "GET",
+                path,
+                result: "arrayBuffer",
+                retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
+                signal: controller.signal,
+                onProgress,
+                // The app has its own byte caches; letting the browser HTTP
+                // cache store these blocks risks a cached superset answering a
+                // narrower Range with a mismatched Content-Range.
+                browserCache: "no-store",
+              }),
+            controller,
+            httpByteReadInactivityTimeoutMs(expectedLength),
+          );
+        } catch (error) {
+          // Deliberate aborts must be distinguishable from transport failures.
+          if (request.signal?.aborted) {
+            throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
+          }
+          throw error;
+        } finally {
+          request.signal?.removeEventListener("abort", onExternalAbort);
         }
-        throw error;
-      } finally {
-        request.signal?.removeEventListener("abort", onExternalAbort);
+      };
+
+      // A location resolved by an earlier read skips the hop that resolved
+      // it. Should it have lapsed, the handle is what re-authorizes, so it is
+      // redeemed again rather than failing a read the caller can still have.
+      const known = locations.recall(request.source);
+      let result: FetchFunctionResult<ArrayBuffer>;
+      if (known === undefined) {
+        result = await readFrom(request.source.url);
+      } else {
+        try {
+          result = await readFrom(known);
+        } catch (error) {
+          if (request.signal?.aborted || !isStaleLocationError(error)) {
+            throw error;
+          }
+          locations.forget(request.source);
+          result = await readFrom(request.source.url);
+        }
+      }
+      const { headers, response: buffer } = result;
+      if (result.redirected && result.url) {
+        locations.remember(request.source, result.url);
       }
       let bytes = new Uint8Array(buffer);
 
@@ -147,9 +176,22 @@ export function createHttpByteClient(
 
       const contentRangeStart = BigInt(contentRangeMatch[1]);
       const contentRangeEnd = BigInt(contentRangeMatch[2]);
+      const totalSizeBytes =
+        contentRangeMatch[3] === "*" ? undefined : BigInt(contentRangeMatch[3]);
+      if (totalSizeBytes !== undefined && contentRangeEnd >= totalSizeBytes) {
+        throw new Error(`Invalid Content-Range header '${contentRange}'`);
+      }
+
+      // A response stopping at the end of the object satisfies a request that
+      // reached past it. Refusing it forces a reader with no recorded size to
+      // spend a round trip asking for one before every read - which is what a
+      // manifest derived from a stored reference always is.
+      const endsAtObjectEnd =
+        totalSizeBytes !== undefined && contentRangeEnd + 1n === totalSizeBytes;
       if (
         contentRangeStart > request.range.offset ||
-        contentRangeEnd < request.range.offset + request.range.length - 1n
+        (!endsAtObjectEnd &&
+          contentRangeEnd < request.range.offset + request.range.length - 1n)
       ) {
         throw new Error(
           `Expected Content-Range covering ${request.range.offset.toString()}-${
@@ -158,18 +200,15 @@ export function createHttpByteClient(
         );
       }
 
-      const totalSizeBytes =
-        contentRangeMatch[3] === "*" ? undefined : BigInt(contentRangeMatch[3]);
-      if (totalSizeBytes !== undefined && contentRangeEnd >= totalSizeBytes) {
-        throw new Error(`Invalid Content-Range header '${contentRange}'`);
-      }
-
       const spanLength = safeNumber(contentRangeEnd - contentRangeStart + 1n);
       if (bytes.byteLength !== spanLength) {
         throw new Error(
           `Expected ${spanLength} bytes but received ${bytes.byteLength}`,
         );
       }
+      const sliceStart = safeNumber(request.range.offset - contentRangeStart);
+      const availableLength = Math.max(0, spanLength - sliceStart);
+      const returnedLength = Math.min(expectedLength, availableLength);
       if (
         contentRangeStart !== request.range.offset ||
         spanLength !== expectedLength
@@ -177,8 +216,7 @@ export function createHttpByteClient(
         // Browser HTTP caches may answer a narrow Range with a stored
         // superset block; a copy of the requested window keeps the oversized
         // backing buffer collectable.
-        const sliceStart = safeNumber(request.range.offset - contentRangeStart);
-        bytes = bytes.slice(sliceStart, sliceStart + expectedLength);
+        bytes = bytes.slice(sliceStart, sliceStart + returnedLength);
       }
 
       // Preserve discovered source size and content validator so later cache
@@ -203,11 +241,34 @@ export function createHttpByteClient(
 
       return {
         bytes,
-        range: request.range,
+        // What actually arrived, which for a read that ran past the end of
+        // the object is shorter than what was asked for. `source.sizeBytes`
+        // now carries the total the response reported.
+        range:
+          bytes.byteLength === expectedLength
+            ? request.range
+            : {
+                length: BigInt(bytes.byteLength),
+                offset: request.range.offset,
+              },
         source,
       };
     },
   };
+}
+
+/**
+ * Whether a read failed because the location it used is no longer honoured.
+ *
+ * An object store answers an expired or withdrawn signature with a refusal
+ * rather than a redirect, and that refusal is about the location, not the
+ * bytes: the same read against the handle re-authorizes and succeeds.
+ */
+function isStaleLocationError(error: unknown): boolean {
+  const code = (error as { code?: number } | null)?.code;
+  return (
+    code === 400 || code === 401 || code === 403 || code === 404 || code === 410
+  );
 }
 
 /**

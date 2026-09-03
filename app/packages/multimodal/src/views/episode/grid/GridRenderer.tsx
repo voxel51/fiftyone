@@ -269,10 +269,15 @@ export function GridRenderer({
   const [nativeSurfaceRetainedBytes, setNativeSurfaceRetainedBytes] =
     useState(0);
   const [nativeVideoError, setNativeVideoError] = useState<string | null>(null);
+  // A native poster is painted by the video element, long after the read that
+  // supplied its source settled. Tracked so the tile can keep loading until
+  // there is something to see rather than sitting black.
+  const [nativePosterPainted, setNativePosterPainted] = useState(false);
   // This effect clears a native-playback failure when the selected episode
   // video changes so a previous source cannot poison the next preview.
   useEffect(() => {
     setNativeVideoError(null);
+    setNativePosterPainted(false);
   }, [preview.nativeVideo]);
   const surfaceRetainedBytes =
     surfaceRetention && surfaceRetention.owner === displayOwner
@@ -341,8 +346,10 @@ export function GridRenderer({
     ],
   );
   const handleNativePosterCanvasCommitted = useCallback(
-    (canvas: HTMLCanvasElement, size: BitmapDrawSize) =>
-      handlePosterCanvasCommitted("image", canvas, size),
+    (canvas: HTMLCanvasElement, size: BitmapDrawSize) => {
+      setNativePosterPainted(true);
+      handlePosterCanvasCommitted("image", canvas, size);
+    },
     [handlePosterCanvasCommitted],
   );
   const handleNativeVideoError = useCallback(
@@ -408,11 +415,22 @@ export function GridRenderer({
           mimeType={preview.cachedPoster.mimeType}
           onBitmapRetainedBytesChange={handleSurfaceRetainedBytesChange}
         />
-      ) : (
+      ) : preview.nativeVideo &&
+        !nativeVideoError &&
+        nativePosterPainted ? null : ( // "no preview frames" over a visible video. // element has something on screen the status block would announce // design and is painted by the native element below, so once that // A stream the grid decoder will not take - AV1 - has no frame by
         <PreviewStatus
           error={nativeVideoError ?? preview.error}
           hasPreviewStreams={preview.hasPreviewStreams}
-          status={nativeVideoError ? "error" : preview.status}
+          status={
+            nativeVideoError
+              ? "error"
+              : // The read that resolved this video settled before the element
+                // fetched a frame of it; the tile is still loading until one
+                // is painted, and reporting "ready" leaves it black meanwhile.
+                preview.nativeVideo && !nativePosterPainted
+                ? "loading"
+                : preview.status
+          }
         />
       )}
       {nativeVideoError && (preview.frame || preview.cachedPoster) ? (

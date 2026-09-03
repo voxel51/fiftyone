@@ -470,6 +470,43 @@ describe("LeRobot format adapter", () => {
     }
   });
 
+  it("takes the episode from the server rather than its metadata shard", async () => {
+    // Reading that shard costs a storage round trip per tile for facts
+    // recorded at import, and it serializes the data read behind itself.
+    const described: EpisodeSource = {
+      ...source,
+      assets: {
+        ...source.assets,
+        describeEpisode: async () => ({
+          dataset_from_index: 0,
+          episode_index: 0,
+          length: 3,
+          tasks: ["reach for the cube"],
+        }),
+      },
+    };
+    const metadataReads = () =>
+      readParquetObjects.mock.calls.filter(([options]) => !options.columns);
+
+    readParquetObjects.mockClear();
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(described, io);
+
+    expect(metadataReads()).toHaveLength(0);
+    expect(session.manifest.streams.length).toBeGreaterThan(0);
+    session.dispose();
+
+    // Without a description the shard is still the only place to get them
+    readParquetObjects.mockClear();
+    const unDescribed = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(source, io);
+
+    expect(metadataReads()).toHaveLength(1);
+    unDescribed.dispose();
+  });
+
   it("cancels speculative reads without cancelling current reads", async () => {
     const session = await createLeRobotFormatAdapter({
       readParquetObjects,
@@ -811,6 +848,167 @@ describe("LeRobot format adapter", () => {
       ).resolves.toMatchObject({
         frameTimeNs: 500_000_000n,
         status: "ready",
+      });
+    } finally {
+      preview.dispose();
+    }
+  });
+
+  // A grid tile draws one poster off the video, whose span the manifest's
+  // selector already states, so reading the episode's rows to find it is a
+  // storage round trip per tile for a fact the tile was handed.
+  describe("grid previews and the data shard", () => {
+    const timelineReads = () =>
+      readParquetObjects.mock.calls.filter(([options]) =>
+        options.columns?.includes("episode_index"),
+      );
+
+    it("draws a video poster without reading the episode's rows", async () => {
+      readParquetObjects.mockClear();
+      const preview = await createLeRobotFormatAdapter({
+        readParquetObjects,
+      }).openPreview?.(source, io);
+      if (!preview) throw new Error("LeRobot preview session is unavailable");
+      try {
+        await expect(
+          preview.read({ sourceName: "observation.images.test" }),
+        ).resolves.toMatchObject({ status: "ready" });
+        expect(timelineReads()).toHaveLength(0);
+      } finally {
+        preview.dispose();
+      }
+    });
+
+    it("reads the episode's rows once a preview needs a row", async () => {
+      readParquetObjects.mockClear();
+      const preview = await createLeRobotFormatAdapter({
+        readParquetObjects,
+      }).openPreview?.(source, io);
+      if (!preview) throw new Error("LeRobot preview session is unavailable");
+      try {
+        await expect(
+          preview.read({ sourceName: "observation.images.embedded" }),
+        ).resolves.toMatchObject({ status: "ready" });
+        expect(timelineReads()).toHaveLength(1);
+      } finally {
+        preview.dispose();
+      }
+    });
+
+    it("reads the episode's rows when a full session opens", async () => {
+      readParquetObjects.mockClear();
+      const session = await createLeRobotFormatAdapter({
+        readParquetObjects,
+      }).open(source, io);
+      try {
+        expect(timelineReads()).toHaveLength(1);
+      } finally {
+        session.dispose();
+      }
+    });
+
+    // Every episode of this dataset is its own source, so their camera sets
+    // differ; selecting one camera must not label the rest "no frames".
+    it("reports a camera this episode does not have as unavailable", async () => {
+      const preview = await createLeRobotFormatAdapter({
+        readParquetObjects,
+      }).openPreview?.(source, io);
+      if (!preview) throw new Error("LeRobot preview session is unavailable");
+      try {
+        await expect(
+          preview.read({ sourceName: "observation.images.absent" }),
+        ).resolves.toMatchObject({
+          frame: null,
+          status: "unavailable",
+          streamSourceName: null,
+          streamSourceNames: [
+            "observation.images.embedded",
+            "observation.images.test",
+          ],
+        });
+      } finally {
+        preview.dispose();
+      }
+    });
+
+    it("reads the episode's rows when no video states the episode span", async () => {
+      readParquetObjects.mockClear();
+      const withoutVideo: EpisodeSource = {
+        ...source,
+        assets: {
+          ...source.assets,
+          list: async () => assets.filter((asset) => asset.id !== "video"),
+        },
+      };
+      const preview = await createLeRobotFormatAdapter({
+        readParquetObjects,
+      }).openPreview?.(withoutVideo, io);
+      if (!preview) throw new Error("LeRobot preview session is unavailable");
+      try {
+        await expect(
+          preview.read({ sourceName: "observation.images.embedded" }),
+        ).resolves.toMatchObject({ status: "ready" });
+        expect(timelineReads()).toHaveLength(1);
+      } finally {
+        preview.dispose();
+      }
+    });
+  });
+
+  // LeRobot records whatever encoded the video, so ordinary H.264 arrives as
+  // FFmpeg's `libx264`. Read as an unknown codec it takes the whole camera
+  // out of the grid, and an episode whose every camera is tagged that way
+  // has nothing left to draw.
+  it("previews H.264 recorded under its FFmpeg encoder name", async () => {
+    const encoderInfoBytes = new TextEncoder().encode(
+      JSON.stringify({
+        ...info,
+        features: {
+          ...info.features,
+          "observation.images.test": {
+            ...info.features["observation.images.test"],
+            info: { "video.codec": "libx264", "video.fps": 2 },
+          },
+        },
+      }),
+    );
+    const encoderAssets = assets.map((asset) =>
+      asset.id === "info"
+        ? {
+            ...asset,
+            metadata: { sizeBytes: encoderInfoBytes.byteLength.toString() },
+          }
+        : asset,
+    );
+    const encoderIo: ByteResources = {
+      readBytes: async (request) => {
+        if (request.source.sourceId !== "info") return io.readBytes(request);
+        const start = Number(request.range.offset);
+        const end = start + Number(request.range.length);
+        return {
+          bytes: encoderInfoBytes.slice(start, end),
+          range: request.range,
+          source: request.source,
+        };
+      },
+    };
+    const preview = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).openPreview?.(
+      {
+        ...source,
+        assets: { ...source.assets, list: async () => encoderAssets },
+      },
+      encoderIo,
+    );
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      await expect(
+        preview.read({ sourceName: "observation.images.test" }),
+      ).resolves.toMatchObject({
+        nativeVideo: { codec: "h264" },
+        status: "ready",
+        streamSourceName: "observation.images.test",
       });
     } finally {
       preview.dispose();

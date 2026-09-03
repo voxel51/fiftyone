@@ -6,10 +6,15 @@ import type {
   EpisodeSource,
   SampleDescriptor,
 } from "../ports";
-import { byteSourceAccessKey, createDefaultByteClient } from "../query/bytes";
+import { byteSourceAccessKey } from "../query/bytes";
+import { createMultimodalQueryClient } from "../query";
 import { loadFormatAdapter } from "./adapter-registry";
 
-const episodeByteResources = createDefaultByteClient();
+// The cached client, not the raw one: block fill, the memory and Cache API
+// layers, and in-flight coalescing all live here. Reading straight through
+// puts one request on the wire per demuxer read - tens of KB each - which a
+// remote source cannot serve fast enough to keep playback fed.
+const episodeByteResources = createMultimodalQueryClient().bytes;
 
 /** Stable identity for one concrete source access path. */
 export function episodeSourceAccessKey(source: ByteSourceDescriptor): string {

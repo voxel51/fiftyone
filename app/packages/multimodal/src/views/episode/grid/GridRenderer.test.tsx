@@ -149,6 +149,9 @@ const gridStreamHarness = vi.hoisted(() => ({
 }));
 
 const nativeVideoHarness = vi.hoisted(() => ({
+  onCanvasCommitted: null as
+    | ((canvas: HTMLCanvasElement, size: unknown) => void)
+    | null,
   onError: null as ((error: Error) => void) | null,
 }));
 
@@ -229,12 +232,18 @@ vi.mock("./use-grid-poster-provider", () => ({
 
 vi.mock("./LeRobotGridHoverVideo", () => ({
   LeRobotGridHoverVideo: ({
+    onCanvasCommitted,
     onError,
     playing,
   }: {
+    readonly onCanvasCommitted: (
+      canvas: HTMLCanvasElement,
+      size: unknown,
+    ) => void;
     readonly onError: (error: Error) => void;
     readonly playing?: boolean;
   }) => {
+    nativeVideoHarness.onCanvasCommitted = onCanvasCommitted;
     nativeVideoHarness.onError = onError;
     return (
       <div
@@ -372,6 +381,7 @@ afterEach(() => {
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
   gridStreamHarness.selected = "__auto__";
+  nativeVideoHarness.onCanvasCommitted = null;
   nativeVideoHarness.onError = null;
   providerHarness.descriptor = { resolved: null, status: "miss" };
   providerHarness.poster = { entry: null, status: "miss" };
@@ -746,6 +756,35 @@ describe("GridRenderer", () => {
       "false",
     );
     expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+  });
+
+  // An AV1 tile has no decoded frame by design, and the read that resolved
+  // its video settles long before the element fetches a frame of it. Calling
+  // that "ready" leaves the tile black with no indication anything is coming.
+  it("keeps loading until a native video paints its first frame", () => {
+    previewHarness.preview.cachedPoster = null;
+    previewHarness.preview.frame = null;
+    previewHarness.preview.nativeVideo = {
+      codec: "av1",
+      codecString: "av01.0.04M.08",
+      endTimeSeconds: 37.5,
+      source: { sourceId: "video", url: "/asset/video.mp4" },
+      startTimeSeconds: 14.2,
+    };
+    previewHarness.preview.status = "ready";
+
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.getByTestId("episode-loading-ascii")).toBeTruthy();
+    expect(screen.queryByText("No preview frames")).toBeNull();
+
+    act(() =>
+      nativeVideoHarness.onCanvasCommitted?.(document.createElement("canvas"), {
+        height: 180,
+        width: 320,
+      }),
+    );
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.queryByTestId("episode-loading-ascii")).toBeNull();
   });
 
   it("shows native playback failures over a retained poster", () => {

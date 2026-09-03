@@ -156,13 +156,15 @@ export function useGridPreview({
     }
   }, [enabled]);
 
-  // An explicit grid selection always wins. The poster's preferred stream is
-  // then asked for OUTRIGHT — never gated on `streamSourceNames`, which is
-  // filled BY a completed read: on the first one it is empty, so the match's
-  // stream was always dropped and the tile postered its auto-picked camera at
-  // the matched instant. A frame from the wrong camera, presented as the one
-  // that matched. The session refuses a stream it cannot preview, and
-  // `refusedPosterSource` below turns that refusal into the auto pick.
+  // A chosen stream is the only stream: episodes carry different cameras, and
+  // drawing a substitute under the name of the one that was asked for
+  // misrepresents which camera the tile shows. An absent stream stays blank.
+  //
+  // Only the automatic path substitutes, and only for the poster's preferred
+  // stream — a match can land on a stream that is not previewable at all, and
+  // there the alternative is no poster rather than the wrong camera. That
+  // preference is asked for OUTRIGHT, never gated on `streamSourceNames`,
+  // which is filled BY a completed read and so is empty on the first one.
   const posterRefused = refusedPosterSourceRef.current;
   const effectiveSourceName =
     selectedSourceName ??
@@ -266,11 +268,12 @@ export function useGridPreview({
           // The session says it cannot preview this stream. Now — with the
           // inventory it just returned — the auto pick is an informed
           // fallback rather than a guess made before anything was known.
-          if (
+          const willRetryWithAutoPick =
             result.status === "unavailable" &&
-            effectiveSourceName &&
-            effectiveSourceName === posterSourceName
-          ) {
+            selectedSourceName == null &&
+            effectiveSourceName !== null &&
+            effectiveSourceName === posterSourceName;
+          if (willRetryWithAutoPick) {
             refusedPosterSourceRef.current = posterSourceName;
             setPosterRefusals((n) => n + 1);
           }
@@ -286,6 +289,13 @@ export function useGridPreview({
           };
           frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
+          if (willRetryWithAutoPick) {
+            // A refusal that is about to be retried is not an outcome. Painting
+            // it puts the terminal message on the tile for the length of one
+            // read, between the spinner and the poster that does arrive.
+            return;
+          }
+
           setState((current) => resultPreservingCachedPoster(current, result));
           setLoadGeneration((g) => g + 1);
         }
@@ -295,6 +305,13 @@ export function useGridPreview({
           return;
         }
 
+        // The tile can only show a sentence; the chain that produced it is
+        // what makes a failure diagnosable
+        console.error(
+          "[multimodal] grid preview failed",
+          { sourceName: effectiveSourceName },
+          caughtError,
+        );
         setState((current) => ({
           ...preservingCachedPoster(current, "error"),
           error: errorMessage(caughtError),

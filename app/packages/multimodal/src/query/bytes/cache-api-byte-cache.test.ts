@@ -43,13 +43,17 @@ describe("createCacheApiByteRangeCache", () => {
     expect(hit?.bytes).toEqual(new Uint8Array([9, 9]));
   });
 
-  it("misses when the discovered source size changes", async () => {
+  it("hits once the source size is discovered", async () => {
+    // A remote source arrives without a size and learns it from the first
+    // response. Keyed by size, everything stored before that moment would be
+    // filed under one key and looked up under another, which silently
+    // disabled this layer for the sources that need it most.
     const cache = createCache();
     await cache.put(
       result({
         bytes: new Uint8Array([5]),
         offset: 0n,
-        source: source({ sizeBytes: "1000" }),
+        source: source({ sizeBytes: undefined }),
       }),
     );
 
@@ -58,6 +62,30 @@ describe("createCacheApiByteRangeCache", () => {
         length: 1n,
         offset: 0n,
         source: source({ sizeBytes: "2000" }),
+      }),
+    );
+
+    expect(hit?.bytes).toEqual(new Uint8Array([5]));
+  });
+
+  it("misses when the source contents are identified differently", async () => {
+    // What a size change used to stand in for: a rewritten object. The
+    // content id carries that now, and carries it across the whole session
+    // rather than only once a length has been discovered.
+    const cache = createCache();
+    await cache.put(
+      result({
+        bytes: new Uint8Array([5]),
+        offset: 0n,
+        source: source({ contentId: "object:1" }),
+      }),
+    );
+
+    const hit = await cache.get(
+      request({
+        length: 1n,
+        offset: 0n,
+        source: source({ contentId: "object:2" }),
       }),
     );
 

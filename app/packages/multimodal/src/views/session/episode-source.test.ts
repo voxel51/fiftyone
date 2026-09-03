@@ -16,7 +16,27 @@ import {
 } from "./episode-source";
 import { episodeDisplayName } from "./episode-label";
 
+const manifestHarness = vi.hoisted(() => ({
+  nowMs: { value: 0 },
+  requestEpisodeManifest: vi.fn(),
+}));
+
+// The manifest's own lifetime is what is under test, so the clock it is
+// measured against is driven rather than waited on
+vi.mock("../../utils/monotonic-time", () => ({
+  monotonicNowMs: () => manifestHarness.nowMs.value,
+}));
+
+// The source's job is normalizing one manifest and sharing one request
+// between callers; batching a page of them is the transport's, and has its
+// own tests
+vi.mock("../../runtime/episode-manifests", () => ({
+  requestEpisodeManifest: manifestHarness.requestEpisodeManifest,
+}));
+
 afterEach(() => {
+  manifestHarness.nowMs.value = 0;
+  manifestHarness.requestEpisodeManifest.mockReset();
   resetSourceBootstrapCacheForTests();
   setFetchFunction("");
   vi.unstubAllGlobals();
@@ -73,58 +93,94 @@ describe("episodeSourceFromByteSource", () => {
 });
 
 describe("episodeSourceFromMediaReference", () => {
-  it("deduplicates concurrent manifest-backed asset requests", async () => {
-    setFetchFunction("http://fiftyone.test", {}, "/proxy");
-    const response = {
-      json: async () => ({
-        assets: [
-          {
-            asset_id: "camera",
-            media_type: "video/mp4",
-            role: "video-stream",
-            feature_name: "observation.images.camera",
-            selector: {
-              from_timestamp: 1.25,
-              kind: "video-timestamp-interval",
-              to_timestamp: 2.5,
-            },
-            size_bytes: 1234,
-            url: "/dataset/d/sample/s/multimodal/assets/camera",
-          },
-        ],
-      }),
-      ok: true,
-      status: 200,
-      statusText: "OK",
-    };
-    let resolveRequest: (value: typeof response) => void = () => undefined;
-    const request = vi.fn().mockImplementation(
-      () =>
-        new Promise<typeof response>((resolve) => {
-          resolveRequest = resolve;
-        }),
-    );
-    vi.stubGlobal("fetch", request);
+  const manifestAsset = (overrides: Record<string, unknown> = {}) => ({
+    asset_id: "camera",
+    content_id: "object-1",
+    media_type: "video/mp4",
+    role: "video-stream",
+    selector: {
+      from_timestamp: 1.25,
+      kind: "video-timestamp-interval",
+      to_timestamp: 2.5,
+    },
+    url: "https://store.test/videos/file-000.mp4?signature=1",
+    ...overrides,
+  });
 
-    const source = episodeSourceFromMediaReference("d", "s", {
+  const source = () =>
+    episodeSourceFromMediaReference("d", "s", {
       kind: "lerobot-episode",
       key: "source:17",
     });
 
-    expect(source.episodeId).toBe("source:17");
-    expect(request).not.toHaveBeenCalled();
-    const listed = source.assets.list();
-    const resolved = source.assets.resolve("camera");
-    expect(request).toHaveBeenCalledTimes(1);
-    expect(request).toHaveBeenCalledWith(
-      "http://fiftyone.test/proxy/dataset/d/sample/s/multimodal/manifest",
-      expect.any(Object),
+  it("keeps reading one manifest while its URLs still grant access", async () => {
+    manifestHarness.requestEpisodeManifest.mockResolvedValue({
+      assets: [manifestAsset()],
+      max_age_seconds: 60,
+    });
+    const episode = source();
+
+    await episode.assets.resolve("camera");
+    manifestHarness.nowMs.value = 59_000;
+    await episode.assets.resolve("camera");
+
+    expect(manifestHarness.requestEpisodeManifest).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves again once the manifest outlives the bound it was served with", async () => {
+    // Its URLs are what the byte layer fetches with, and nothing down there
+    // can renew one, so a session open past their life must ask again rather
+    // than keep reading against a lapsed authorization.
+    manifestHarness.requestEpisodeManifest.mockResolvedValue({
+      assets: [manifestAsset()],
+      max_age_seconds: 60,
+    });
+    const episode = source();
+
+    await episode.assets.resolve("camera");
+    manifestHarness.nowMs.value = 60_001;
+    await episode.assets.resolve("camera");
+
+    expect(manifestHarness.requestEpisodeManifest).toHaveBeenCalledTimes(2);
+  });
+
+  it("holds a manifest served without a bound no longer than the ceiling", async () => {
+    manifestHarness.requestEpisodeManifest.mockResolvedValue({
+      assets: [manifestAsset()],
+    });
+    const episode = source();
+
+    await episode.assets.resolve("camera");
+    manifestHarness.nowMs.value = 5 * 60 * 1000 + 1;
+    await episode.assets.resolve("camera");
+
+    expect(manifestHarness.requestEpisodeManifest).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks the transport once however many callers want the manifest", async () => {
+    let settle: (value: { assets: unknown[] }) => void = () => undefined;
+    manifestHarness.requestEpisodeManifest.mockImplementation(
+      () =>
+        new Promise<{ assets: unknown[] }>((resolve) => {
+          settle = resolve;
+        }),
     );
-    resolveRequest(response);
+    const episode = source();
+
+    expect(episode.episodeId).toBe("source:17");
+    expect(manifestHarness.requestEpisodeManifest).not.toHaveBeenCalled();
+    const listed = episode.assets.list();
+    const resolved = episode.assets.resolve("camera");
+    expect(manifestHarness.requestEpisodeManifest).toHaveBeenCalledTimes(1);
+    expect(manifestHarness.requestEpisodeManifest).toHaveBeenCalledWith(
+      "d",
+      "s",
+    );
+    settle({ assets: [manifestAsset({ size_bytes: 1234 })] });
 
     await expect(listed).resolves.toEqual([
       {
-        featureName: "observation.images.camera",
+        featureName: undefined,
         id: "camera",
         mediaType: "video/mp4",
         metadata: { sizeBytes: "1234" },
@@ -137,139 +193,106 @@ describe("episodeSourceFromMediaReference", () => {
       },
     ]);
     await expect(resolved).resolves.toMatchObject({
+      contentId: "object-1",
       sizeBytes: "1234",
       sourceId: "camera",
-      url: "/dataset/d/sample/s/multimodal/assets/camera",
+      url: "https://store.test/videos/file-000.mp4?signature=1",
     });
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(manifestHarness.requestEpisodeManifest).toHaveBeenCalledTimes(1);
   });
 
-  it("retries a manifest request after a failed in-flight fetch", async () => {
-    const request = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        statusText: "Bad Request",
-        url: "/manifest",
-        json: async () => ({}),
-      })
-      .mockResolvedValueOnce({
-        json: async () => ({ assets: [] }),
-        ok: true,
-        status: 200,
-        statusText: "OK",
-      });
-    vi.stubGlobal("fetch", request);
-
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
+  it("carries the content id so shared objects are read once", async () => {
+    // Two episodes of one source share a video file. Identified per
+    // episode, each would fetch those bytes again.
+    manifestHarness.requestEpisodeManifest.mockResolvedValue({
+      assets: [manifestAsset()],
     });
 
-    await expect(source.assets.list()).rejects.toThrow(
+    await expect(source().assets.resolve("camera")).resolves.toMatchObject({
+      contentId: "object-1",
+      sourceId: "camera",
+    });
+  });
+
+  it("resolves an asset whose size the manifest does not record", async () => {
+    // A manifest derived from the stored reference carries no size; a
+    // ranged reader learns it from the response it was making anyway
+    manifestHarness.requestEpisodeManifest.mockResolvedValue({
+      assets: [manifestAsset()],
+    });
+    const episode = source();
+
+    await expect(episode.assets.list()).resolves.toMatchObject([
+      { metadata: {} },
+    ]);
+    const descriptor = await episode.assets.resolve("camera");
+    expect(descriptor).not.toHaveProperty("sizeBytes");
+  });
+
+  it("retries after a failed manifest request", async () => {
+    manifestHarness.requestEpisodeManifest
+      .mockRejectedValueOnce(new Error("transport failed"))
+      .mockResolvedValueOnce({ assets: [] });
+    const episode = source();
+
+    await expect(episode.assets.list()).rejects.toThrow(
       "Unable to resolve episode assets",
     );
-    await expect(source.assets.list()).resolves.toEqual([]);
-    expect(request).toHaveBeenCalledTimes(2);
+    await expect(episode.assets.list()).resolves.toEqual([]);
+    expect(manifestHarness.requestEpisodeManifest).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects unknown manifest selectors before exposing an asset", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => ({
-          assets: [
-            {
-              asset_id: "unsafe",
-              media_type: "application/octet-stream",
-              role: "tabular-frame-data",
-              selector: { kind: "filesystem-path" },
-              size_bytes: 1,
-              url: "/asset",
-            },
-          ],
-        }),
-        ok: true,
-        status: 200,
-        statusText: "OK",
-      }),
-    );
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
-    });
+  it("refuses assets it cannot describe safely", async () => {
+    const cases = [
+      {
+        expected: "unknown asset selector",
+        overrides: {
+          role: "tabular-frame-data",
+          selector: { kind: "filesystem-path" },
+        },
+        label: "an unknown selector",
+      },
+      {
+        expected: "unknown asset role",
+        overrides: {
+          role: "filesystem-root",
+          selector: { kind: "whole-file" },
+        },
+        label: "an unknown role",
+      },
+    ];
+    for (const { expected, label, overrides } of cases) {
+      manifestHarness.requestEpisodeManifest.mockResolvedValue({
+        assets: [manifestAsset({ ...overrides, size_bytes: 1 })],
+      });
 
-    await expect(source.assets.list()).rejects.toThrow(
-      "unknown asset selector",
-    );
-  });
-
-  it("rejects unknown manifest roles before exposing an asset", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => ({
-          assets: [
-            {
-              asset_id: "unsafe",
-              media_type: "application/octet-stream",
-              role: "filesystem-root",
-              selector: { kind: "whole-file" },
-              size_bytes: 1,
-              url: "/asset",
-            },
-          ],
-        }),
-        ok: true,
-        status: 200,
-        statusText: "OK",
-      }),
-    );
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
-    });
-
-    await expect(source.assets.list()).rejects.toThrow("unknown asset role");
+      await expect(source().assets.list(), label).rejects.toThrow(expected);
+    }
   });
 
   it("accepts the auxiliary metadata roles emitted by the server", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => ({
-          assets: [
-            {
-              asset_id: "statistics",
-              media_type: "application/json",
-              role: "dataset-statistics",
-              selector: { kind: "whole-file" },
-              size_bytes: 10,
-              url: "/statistics",
-            },
-            {
-              asset_id: "tasks",
-              media_type: "application/octet-stream",
-              role: "tasks-metadata",
-              selector: { kind: "whole-file" },
-              size_bytes: 20,
-              url: "/tasks",
-            },
-          ],
+    manifestHarness.requestEpisodeManifest.mockResolvedValue({
+      assets: [
+        manifestAsset({
+          asset_id: "statistics",
+          media_type: "application/json",
+          role: "dataset-statistics",
+          selector: { kind: "whole-file" },
+          size_bytes: 10,
         }),
-        ok: true,
-        status: 200,
-        statusText: "OK",
-      }),
-    );
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
+        manifestAsset({
+          asset_id: "tasks",
+          media_type: "application/octet-stream",
+          role: "tasks-metadata",
+          selector: { kind: "whole-file" },
+          size_bytes: 20,
+        }),
+      ],
     });
 
-    await expect(source.assets.list()).resolves.toEqual([
+    await expect(source().assets.list()).resolves.toEqual([
       {
+        featureName: undefined,
         id: "statistics",
         mediaType: "application/json",
         metadata: { sizeBytes: "10" },
@@ -277,6 +300,7 @@ describe("episodeSourceFromMediaReference", () => {
         selector: { kind: "whole-file" },
       },
       {
+        featureName: undefined,
         id: "tasks",
         mediaType: "application/octet-stream",
         metadata: { sizeBytes: "20" },
@@ -287,49 +311,33 @@ describe("episodeSourceFromMediaReference", () => {
   });
 
   it("isolates caller cancellation on a shared manifest request", async () => {
-    const response = {
-      json: async () => ({ assets: [] }),
-      ok: true,
-      status: 200,
-      statusText: "OK",
-    };
-    let resolveRequest: (value: typeof response) => void = () => undefined;
-    const request = vi.fn().mockImplementation(
+    let settle: (value: { assets: unknown[] }) => void = () => undefined;
+    manifestHarness.requestEpisodeManifest.mockImplementation(
       () =>
-        new Promise<typeof response>((resolve) => {
-          resolveRequest = resolve;
+        new Promise<{ assets: unknown[] }>((resolve) => {
+          settle = resolve;
         }),
     );
-    vi.stubGlobal("fetch", request);
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
-    });
+    const episode = source();
     const controller = new AbortController();
 
-    const aborted = source.assets.list({ signal: controller.signal });
-    const surviving = source.assets.list();
+    const aborted = episode.assets.list({ signal: controller.signal });
+    const surviving = episode.assets.list();
     controller.abort();
-    resolveRequest(response);
+    settle({ assets: [] });
 
     await expect(aborted).rejects.toMatchObject({ name: "AbortError" });
     await expect(surviving).resolves.toEqual([]);
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(manifestHarness.requestEpisodeManifest).toHaveBeenCalledTimes(1);
   });
 
-  it("does not fetch for an already-aborted caller", async () => {
-    const request = vi.fn();
-    vi.stubGlobal("fetch", request);
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
-    });
+  it("does not ask for an already-aborted caller", async () => {
     const controller = new AbortController();
     controller.abort();
 
     await expect(
-      source.assets.list({ signal: controller.signal }),
+      source().assets.list({ signal: controller.signal }),
     ).rejects.toMatchObject({ name: "AbortError" });
-    expect(request).not.toHaveBeenCalled();
+    expect(manifestHarness.requestEpisodeManifest).not.toHaveBeenCalled();
   });
 });

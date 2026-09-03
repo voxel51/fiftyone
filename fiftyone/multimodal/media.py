@@ -14,6 +14,7 @@ from enum import Enum
 import hashlib
 import json
 import math
+import os
 import posixpath
 import re
 from typing import (
@@ -31,7 +32,10 @@ from typing import (
 
 from pymongo.errors import DuplicateKeyError
 
+import eta.core.utils as etau
+
 import fiftyone.core.media as fom
+import fiftyone.core.storage as fos
 
 LEROBOT_EPISODE_KIND = "lerobot-episode"
 MAX_MEDIA_REFERENCE_BYTES = 64 * 1024
@@ -41,6 +45,7 @@ _MEDIA_REFERENCE_BINDING_QUERY_BATCH_SIZE = 1000
 
 _DRIVE_PREFIX_PATTERN = re.compile(r"^[A-Za-z]:")
 _SHA256_FINGERPRINT_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+_MAX_RESOURCE_REVISION_LENGTH = 512
 _ROW_COORDINATE_SYSTEMS = {
     "lerobot-v3-global-dataset-row",
     "parquet-file-row",
@@ -295,7 +300,8 @@ class LeRobotVideoLocator:
     chunk_index: int
     file_index: int
     timestamps: VideoTimestampInterval
-    content_fingerprint: str
+    content_fingerprint: Optional[str]
+    content_revision: Optional[str] = None
 
     def __post_init__(self):
         _validate_nonempty_string(self.feature_name, "video feature_name")
@@ -310,8 +316,8 @@ class LeRobotVideoLocator:
 
         _validate_nonnegative_int(self.chunk_index, "video chunk_index")
         _validate_nonnegative_int(self.file_index, "video file_index")
-        _validate_fingerprint(
-            self.content_fingerprint, "video content_fingerprint"
+        _validate_asset_identity(
+            self.content_fingerprint, self.content_revision, label="video"
         )
 
 
@@ -344,7 +350,7 @@ class LeRobotV3Locator:
     episode_metadata_location: DatasetRelativeLocation
     episode_metadata_row: int
     data_location: DatasetRelativeLocation
-    data_content_fingerprint: str
+    data_content_fingerprint: Optional[str]
     data_chunk_index: int
     data_file_index: int
     global_dataset_rows: RowInterval
@@ -352,13 +358,13 @@ class LeRobotV3Locator:
     parquet_row_groups: Tuple[int, ...]
     videos: Tuple[LeRobotVideoLocator, ...]
     images: Tuple[LeRobotImageLocator, ...]
+    data_content_revision: Optional[str] = None
+    statistics_content_revision: Optional[str] = None
+    tasks_content_revision: Optional[str] = None
 
     def __post_init__(self):
         _validate_fingerprint(self.source_fingerprint, "source_fingerprint")
         _validate_fingerprint(self.locator_fingerprint, "locator_fingerprint")
-        _validate_fingerprint(
-            self.data_content_fingerprint, "data content_fingerprint"
-        )
         for label, location in (
             ("info", self.info_location),
             ("episode metadata", self.episode_metadata_location),
@@ -370,30 +376,43 @@ class LeRobotV3Locator:
                     % label
                 )
 
-        for label, location, fingerprint in (
+        for label, location, fingerprint, revision in (
+            (
+                "data",
+                self.data_location,
+                self.data_content_fingerprint,
+                self.data_content_revision,
+            ),
             (
                 "statistics",
                 self.statistics_location,
                 self.statistics_content_fingerprint,
+                self.statistics_content_revision,
             ),
-            ("tasks", self.tasks_location, self.tasks_content_fingerprint),
+            (
+                "tasks",
+                self.tasks_location,
+                self.tasks_content_fingerprint,
+                self.tasks_content_revision,
+            ),
         ):
-            if (location is None) != (fingerprint is None):
+            if (location is None) != (
+                fingerprint is None and revision is None
+            ):
                 raise MediaReferenceError(
-                    "LeRobot %s location and fingerprint must appear together"
+                    "LeRobot %s location and identity must appear together"
                     % label
                 )
-            if location is not None and not isinstance(
-                location, DatasetRelativeLocation
-            ):
+            if location is None:
+                continue
+
+            if not isinstance(location, DatasetRelativeLocation):
                 raise TypeError(
                     "LeRobot %s location must be a DatasetRelativeLocation"
                     % label
                 )
-            if fingerprint is not None:
-                _validate_fingerprint(
-                    fingerprint, "%s content_fingerprint" % label
-                )
+
+            _validate_asset_identity(fingerprint, revision, label)
         _validate_nonnegative_int(
             self.episode_metadata_row, "episode metadata row"
         )
@@ -468,6 +487,22 @@ class MediaReference(ABC):
         """The stable logical media key."""
 
     @property
+    def superseded_keys(self) -> Tuple[str, ...]:
+        """Keys this reference was persisted under before its formula changed.
+
+        A key is recomputed from the payload and checked against the one
+        stored beside the sample, which is what catches a payload bound to
+        the wrong reference. Changing how a key is derived would otherwise
+        make every sample imported before the change unreadable, so a kind
+        that has changed its formula names the keys it used to produce.
+
+        Temporary by nature: an entry belongs here only while data persisted
+        under it may still exist, and this branch's schema is unreleased, so
+        the LeRobot entry comes out once these datasets are re-imported.
+        """
+        return ()
+
+    @property
     @abstractmethod
     def media_type(self) -> str:
         """The FiftyOne media type."""
@@ -536,9 +571,43 @@ class LeRobotEpisode(MediaReference):
 
     @property
     def key(self) -> str:
-        identity = "%s\0%d" % (self.source_identity, self.episode_index)
+        """This episode's key, which is also the identity of its resolution.
+
+        A key maps to exactly one immutable set of private resolution data,
+        so it must differ whenever that data would. Three things cover it:
+        the source identity, which is a fingerprint of the metadata
+        describing the source; the episode; and what import recorded about
+        the contents of the assets this episode selects.
+
+        Two datasets importing the same episode of the same unchanged source
+        agree on it and share one binding. Re-importing after one of this
+        episode's videos was replaced mints a new key, leaving datasets
+        imported from the old contents bound to what they were imported
+        with - and leaving this episode's neighbours alone.
+
+        Deliberately not a digest of the whole locator: the locator also
+        holds addresses and row bounds, so hashing all of it would re-key
+        every episode in existence whenever a field is added to it.
+        """
+        tokens = "\n".join(
+            "%s\0%s" % (location, token or "")
+            for location, token in locator_content_tokens(self.locator)
+        )
+        identity = "%s\0%d\0%s" % (
+            self.source_identity,
+            self.episode_index,
+            tokens,
+        )
         digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
         return "lerobot:%s" % digest
+
+    @property
+    def superseded_keys(self) -> Tuple[str, ...]:
+        # Episodes imported before the key covered what import recorded about
+        # this episode's asset contents. Remove once those are re-imported
+        identity = "%s\0%d" % (self.source_identity, self.episode_index)
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        return ("lerobot:%s" % digest,)
 
     @property
     def media_type(self) -> str:
@@ -617,6 +686,24 @@ class LeRobotEpisode(MediaReference):
 
 
 @dataclass(frozen=True)
+class _DerivedMediaAsset:
+    """One asset located from the stored reference, without asking storage.
+
+    Interchangeable with :class:`_ResolvedMediaAsset` wherever bytes are
+    served, except that ``size_bytes`` and ``etag`` are absent until whoever
+    needs them asks storage.
+    """
+
+    asset_id: str
+    description: MediaAsset
+    path: str
+    media_type: str
+    content_id: str
+    size_bytes: Optional[int] = None
+    etag: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class _ResolvedMediaAsset:
     """A private server-side resolution of one described media asset."""
 
@@ -626,6 +713,9 @@ class _ResolvedMediaAsset:
     size_bytes: int
     media_type: str
     shared_resource_key: str
+    content_id: str
+    revision: Optional[str] = None
+    etag: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -644,25 +734,6 @@ class _MediaAssetManifest:
     source_fingerprint: str
     assets: Sequence[_ResolvedMediaAsset]
 
-    def to_public_dict(self) -> Dict[str, Any]:
-        """Serializes browser-safe asset handles for the manifest."""
-        assets = []
-        for asset in self.assets:
-            description = asset.description
-            public = {
-                "asset_id": asset.asset_id,
-                "role": description.role.value,
-                "selector": _serialize_selector(description.selector),
-                "size_bytes": asset.size_bytes,
-                "media_type": asset.media_type,
-            }
-            if description.feature_name is not None:
-                public["feature_name"] = description.feature_name
-
-            assets.append(public)
-
-        return {"assets": assets}
-
 
 class _MediaResolver(ABC):
     """A private resolver for one registered media-reference kind."""
@@ -675,6 +746,18 @@ class _MediaResolver(ABC):
         """Resolves assets already obtained from ``describe_assets()``."""
         return self.resolve_assets(reference, assets)
 
+    def derive_assets(self, reference: MediaReference, binding=None):
+        """Locates a reference's assets from what import already recorded.
+
+        ``binding`` lets a caller resolving a whole page supply the source
+        binding it already loaded, so the page pays one lookup rather than one
+        per reference.
+
+        Returns ``None`` when this kind cannot answer without reading storage,
+        and the caller falls back to a full resolve.
+        """
+        return None
+
     @abstractmethod
     def resolve_assets(
         self,
@@ -682,6 +765,123 @@ class _MediaResolver(ABC):
         assets: Sequence[MediaAsset],
     ) -> _MediaAssetManifest:
         """Resolves typed asset descriptions for the media reference."""
+
+
+class _RangedAssetRead:
+    """One open, seekable read of an asset, whatever backs it.
+
+    ``source`` is what a reader should be handed: a path where the reader
+    opens files better itself, an open stream where it cannot reach them at
+    all. Closing belongs to the caller and does nothing for a source that
+    holds nothing open.
+    """
+
+    def __init__(self, source, stream=None):
+        self.source = source
+        self._stream = stream
+
+    def close(self):
+        if self._stream is None:
+            return
+
+        try:
+            self._stream.close()
+        finally:
+            self._stream = None
+
+
+class _MediaAssetStorage(ABC):
+    """How the assets on one file system are reached.
+
+    Everything this library does with an asset path that depends on *where*
+    the path is goes through here, so a call site reads the same whatever
+    backs it. One backend is registered per file system, which makes the set
+    of reachable file systems a property of the installation rather than of
+    every call site that handles a path.
+
+    The members are exactly the questions a caller cannot answer from a path
+    alone. Size, listing and path arithmetic are not among them: those are
+    plain storage functions that work the same everywhere.
+    """
+
+    @abstractmethod
+    def open_ranged(self, path):
+        """Opens an asset for reads that seek, such as a Parquet footer.
+
+        Returns a :class:`_RangedAssetRead` the caller owns and closes.
+        """
+
+    @abstractmethod
+    def read_range(self, path, start, end):
+        """Returns the bytes of one inclusive byte range.
+
+        Separate from :meth:`open_ranged` because they answer different
+        questions: that one hands a reader library whatever it opens best,
+        which for a local file is a path and not readable bytes at all.
+        """
+
+    @abstractmethod
+    def resolve_location(self, path):
+        """A URL a reader can fetch these bytes from without this server.
+
+        None where this server is the only way to reach them. Resolved per
+        request rather than published in a manifest, because an authorization
+        is minted for a moment and a manifest outlives it.
+        """
+
+    @abstractmethod
+    def location_max_age(self):
+        """How long a :meth:`resolve_location` URL grants access, in seconds.
+
+        None where such a URL does not expire, so nothing that hands one out
+        has to bound how long it may be reused.
+        """
+
+    @abstractmethod
+    def credential_key(self, path):
+        """What scopes a cache of these bytes to whoever may read them.
+
+        None where every reader of this file system is the same reader, so a
+        cache needs no such scoping.
+        """
+
+    @abstractmethod
+    def is_authorization_failure(self, path, error):
+        """Whether a read failure was really a matter of permission.
+
+        Some storage cannot distinguish "missing" from "not yours", so this
+        answers for the backend rather than being guessed from the error.
+        """
+
+
+class _LocalMediaAssetStorage(_MediaAssetStorage):
+    """The file system this process reads directly."""
+
+    def open_ranged(self, path):
+        # The path, not a stream: a reader opens a local file with its own
+        # reader, which beats anything that could be handed to it here.
+        return _RangedAssetRead(path)
+
+    def read_range(self, path, start, end):
+        with open(path, "rb") as handle:
+            handle.seek(start)
+            return handle.read(end - start + 1)
+
+    def resolve_location(self, path):
+        # This process is the only way to its own disk, so a reader is served
+        # from here rather than sent elsewhere
+        return None
+
+    def location_max_age(self):
+        return None
+
+    def credential_key(self, path):
+        # One reader, so nothing to scope a cache by
+        return None
+
+    def is_authorization_failure(self, path, error):
+        # A local read that failed says so itself, through the error it raised
+        return False
 
 
 @dataclass(frozen=True)
@@ -697,6 +897,9 @@ _SERIALIZERS_BY_TYPE: Dict[
     Type[MediaReference], _MediaReferenceSerializer
 ] = {}
 _RESOLVERS_BY_KIND: Dict[str, _MediaResolver] = {}
+_ASSET_STORAGE_BY_FILE_SYSTEM: Dict[
+    fos.FileSystem, _MediaAssetStorage
+] = {}
 _EXPORT_PLANNERS_BY_KIND_AND_FORMAT: Dict[Tuple[str, str], Callable] = {}
 
 
@@ -797,13 +1000,14 @@ def _hydrate_media_reference_binding(descriptor, binding):
             % (kind, type(reference))
         )
 
+    keys = (reference.key,) + tuple(reference.superseded_keys)
     expected = (
-        reference.key,
+        descriptor["key"] in keys,
         reference.media_type,
         reference.display_name,
     )
     actual = (
-        descriptor["key"],
+        True,
         binding["media_type"],
         binding["display_name"],
     )
@@ -813,6 +1017,40 @@ def _hydrate_media_reference_binding(descriptor, binding):
         )
 
     return reference
+
+
+def _register_media_asset_storage(
+    file_system: fos.FileSystem, storage: _MediaAssetStorage
+) -> None:
+    """Registers the backend that reaches assets on one file system."""
+    if not isinstance(storage, _MediaAssetStorage):
+        raise TypeError("storage must be a _MediaAssetStorage")
+
+    if file_system in _ASSET_STORAGE_BY_FILE_SYSTEM:
+        raise ValueError(
+            "Media asset storage for '%s' is already registered"
+            % file_system.value
+        )
+
+    _ASSET_STORAGE_BY_FILE_SYSTEM[file_system] = storage
+
+
+def _get_media_asset_storage(path: str) -> _MediaAssetStorage:
+    """Gets the backend that reaches one asset's path.
+
+    Which file systems are reachable is a property of the installation: a
+    backend for one it cannot reach is simply never registered, and a path on
+    it is refused here rather than misread further in.
+    """
+    file_system = fos.get_file_system(path)
+    storage = _ASSET_STORAGE_BY_FILE_SYSTEM.get(file_system)
+    if storage is None:
+        raise UnsupportedMediaReferenceOperation(
+            "Media assets on the '%s' file system cannot be reached by this "
+            "installation" % file_system.value
+        )
+
+    return storage
 
 
 def _register_media_resolver(kind: str, resolver: _MediaResolver) -> None:
@@ -947,25 +1185,202 @@ def _get_selected_media_asset_key(
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def locator_content_tokens(locator):
+    """``((location, token),)`` for the assets a locator records contents for.
+
+    A token is whatever identifies those contents: the revision its storage
+    reports, or a fingerprint of the bytes where hashing them was affordable.
+    Identical for every episode selecting the same asset, and different when
+    that asset's contents are.
+
+    ``meta/info.json`` and the episode metadata shard are absent because no
+    token is recorded for them - they are read in full by anything that
+    resolves, and the source fingerprint already covers their contents.
+    """
+    tokens = {
+        locator.data_location.path: (
+            locator.data_content_revision or locator.data_content_fingerprint
+        )
+    }
+    if locator.statistics_location is not None:
+        tokens[locator.statistics_location.path] = (
+            locator.statistics_content_revision
+            or locator.statistics_content_fingerprint
+        )
+
+    if locator.tasks_location is not None:
+        tokens[locator.tasks_location.path] = (
+            locator.tasks_content_revision or locator.tasks_content_fingerprint
+        )
+
+    for video in locator.videos:
+        tokens[video.location.path] = (
+            video.content_revision or video.content_fingerprint
+        )
+
+    return tuple(sorted(tokens.items()))
+
+
+def _get_media_asset_content_id(shared_resource_key, content_token):
+    """Identifies the bytes one asset holds, across every reference to them.
+
+    The sharing key says which object this is; the token says which contents
+    it held when import recorded it. Every episode selecting from one object
+    records the same token, so they agree - and a reader that caches by this
+    fetches the object once for all of them. Replace the object and re-import
+    and the token changes, so nothing cached under the old id is served for
+    the new bytes.
+
+    Assets import records no token for - the source metadata that names the
+    others - are covered by the source fingerprint inside the sharing key.
+    """
+    value = "%s\0%s" % (shared_resource_key, content_token or "")
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def derive_media_assets(reference, root, content_tokens, resolve_path):
+    """Derives one reference's assets from what import already recorded.
+
+    Every field needed to fetch an asset is a property of the stored
+    reference: the path is the bound root joined with the asset's own
+    location, the media type follows from the asset, and the identity is the
+    reference key, the selected asset and the revision recorded for it. None
+    of that is a question for storage, so this asks storage nothing.
+
+    ``size_bytes`` is deliberately absent. It is the one fact import does not
+    record, and a ranged reader learns it from the ``Content-Range`` of the
+    first request it was going to make anyway.
+
+    Args:
+        reference: the stored :class:`MediaReference`
+        root: the bound source root
+        content_tokens: a ``{location path: token}`` mapping from the
+            locator, where a token identifies what that asset held at import
+        resolve_path: a ``(root, location) -> path`` callable owning the
+            kind's path policy, so that an asset reached this way is
+            confined to the source root exactly as a full resolve confines it
+
+    Returns:
+        a tuple of :class:`_DerivedMediaAsset`, server-side only
+    """
+    derived = []
+    for asset in reference.describe_assets():
+        location = asset.location.path
+        identity = (
+            reference.key
+            + "\0"
+            + _get_selected_media_asset_key(reference, asset)
+        )
+        derived.append(
+            _DerivedMediaAsset(
+                asset_id=hashlib.sha256(identity.encode("utf-8")).hexdigest(),
+                description=asset,
+                path=resolve_path(root, location),
+                content_id=_get_media_asset_content_id(
+                    _get_shared_media_asset_key(reference, asset),
+                    content_tokens.get(location),
+                ),
+                media_type=asset.media_type
+                or etau.guess_mime_type(location)
+                or "application/octet-stream",
+            )
+        )
+
+    return tuple(derived)
+
+
+def publish_media_assets(assets, url_for):
+    """Renders server-side assets - derived or resolved - for a browser.
+
+    The source path never crosses this boundary; ``url_for`` decides where
+    the browser reads each asset's bytes instead.
+
+    ``content_id`` names the physical resource, where ``asset_id`` names one
+    episode's selection from it. Many episodes of a source share one video
+    file, one data shard and one ``info.json``, so a reader that caches by
+    content fetches each object once for a whole page rather than once per
+    episode.
+    """
+    public_assets = []
+    for asset in assets:
+        description = asset.description
+        public = {
+            "asset_id": asset.asset_id,
+            "content_id": asset.content_id,
+            "read_profile": _read_profile_for_path(asset.path),
+            "role": description.role.value,
+            "selector": _serialize_selector(description.selector),
+            "media_type": asset.media_type,
+            "url": url_for(asset),
+        }
+        if description.feature_name is not None:
+            public["feature_name"] = description.feature_name
+
+        if asset.size_bytes is not None:
+            public["size_bytes"] = asset.size_bytes
+
+        public_assets.append(public)
+
+    return {"assets": public_assets}
+
+
+#: What a reader sizes its block fills and prefetch by
+_LOCAL_READ_PROFILE = "local"
+_REMOTE_READ_PROFILE = "remote"
+
+
+def _read_profile_for_path(path):
+    """Whether reading these bytes costs a round trip.
+
+    Derived from where the bytes are, because that is the only thing that
+    decides it. A reader sizes its block fills and its prefetch by this, so a
+    value fixed here would have one backend paying the other's tuning: a
+    local file read in megabyte blocks it does not need, or a remote object
+    read in kilobytes it cannot afford.
+    """
+    return _LOCAL_READ_PROFILE if fos.is_local(path) else _REMOTE_READ_PROFILE
+
+
 def _build_resolved_media_asset(
     reference: MediaReference,
     asset: MediaAsset,
     path: str,
     size_bytes: int,
     media_type: str,
+    revision: Optional[str] = None,
+    etag: Optional[str] = None,
+    content_token: Optional[str] = None,
 ) -> _ResolvedMediaAsset:
-    """Builds a server-only resolution for a typed media asset."""
+    """Builds a server-only resolution for a typed media asset.
+
+    A resource's revision participates in its public asset identity, so a
+    browser holding a manifest for replaced contents cannot keep reading the
+    bytes it cached for them. Resources without a revision - local files - keep
+    the identity they have always had.
+
+    Its ``etag`` is separate and is not an identity: it is the validator the
+    resource's own storage will send, which anything serving bytes for it has
+    to agree with or a browser will treat its cached ranges as stale.
+    """
     selected_key = _get_selected_media_asset_key(reference, asset)
-    asset_id = hashlib.sha256(
-        (reference.key + "\0" + selected_key).encode("utf-8")
-    ).hexdigest()
+    identity = reference.key + "\0" + selected_key
+    if revision is not None:
+        identity += "\0" + revision
+
+    asset_id = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+    shared_resource_key = _get_shared_media_asset_key(reference, asset)
     return _ResolvedMediaAsset(
         description=asset,
         asset_id=asset_id,
         path=path,
         size_bytes=size_bytes,
         media_type=media_type,
-        shared_resource_key=_get_shared_media_asset_key(reference, asset),
+        shared_resource_key=shared_resource_key,
+        content_id=_get_media_asset_content_id(
+            shared_resource_key, content_token
+        ),
+        revision=revision,
+        etag=etag,
     )
 
 
@@ -1120,6 +1535,50 @@ def _normalize_media_reference_descriptors(descriptors):
     return normalized
 
 
+def hydrate_media_references(descriptors):
+    """Hydrates many descriptors against their private bindings, in one query.
+
+    A page of samples carries a page of descriptors, and each is bound by its
+    own document. Fetched one at a time that is a round trip per sample; the
+    keys are known up front, so they are fetched together.
+
+    Args:
+        descriptors: a ``{sample id: descriptor}`` mapping
+
+    Returns:
+        a ``({sample id: MediaReference}, {sample id: Exception})`` pair
+    """
+    import fiftyone.core.odm as foo
+
+    keys = [
+        descriptor["key"]
+        for descriptor in descriptors.values()
+        if isinstance(descriptor, Mapping) and descriptor.get("key")
+    ]
+    collection = foo.get_db_conn()[_MEDIA_REFERENCE_BINDINGS_COLLECTION]
+    bindings = _find_media_reference_bindings(collection, keys) if keys else {}
+
+    references = {}
+    failures = {}
+    for sample_id, descriptor in descriptors.items():
+        try:
+            _validate_media_reference_descriptor(descriptor)
+            binding = bindings.get(descriptor["key"])
+            if binding is None:
+                raise MissingMediaReferenceBindingError(
+                    "No private media binding exists for reference '%s'"
+                    % descriptor["key"]
+                )
+
+            references[sample_id] = _hydrate_media_reference_binding(
+                descriptor, binding
+            )
+        except MediaReferenceError as error:
+            failures[sample_id] = error
+
+    return references, failures
+
+
 def _find_media_reference_bindings(collection, keys):
     bindings = {}
     for offset in range(
@@ -1249,6 +1708,41 @@ def _validate_fingerprint(value, label):
         )
 
 
+def _validate_resource_revision(value, label):
+    """Validates one physical asset's opaque storage revision.
+
+    A revision is whatever version its storage reports - an object version,
+    generation or entity tag - so it is validated as an opaque token rather
+    than as a fingerprint of the asset's bytes.
+    """
+    _validate_nonempty_string(value, label)
+    if len(value) > _MAX_RESOURCE_REVISION_LENGTH or any(
+        character in value for character in ("\x00", "\n", "\r")
+    ):
+        raise MediaReferenceError(
+            "LeRobot %s must be a bounded single-line token" % label
+        )
+
+
+def _validate_asset_identity(fingerprint, revision, label):
+    """Validates that one asset carries exactly one identity.
+
+    Assets a resolution can afford to read whole are identified by a content
+    fingerprint; assets it cannot - remote objects reached over the network -
+    are identified by the revision their storage reports.
+    """
+    if (fingerprint is None) == (revision is None):
+        raise MediaReferenceError(
+            "LeRobot %s must carry either a content fingerprint or a content "
+            "revision" % label
+        )
+
+    if fingerprint is not None:
+        _validate_fingerprint(fingerprint, "%s content_fingerprint" % label)
+    else:
+        _validate_resource_revision(revision, "%s content_revision" % label)
+
+
 def _serialize_selector(selector):
     if isinstance(selector, WholeFile):
         return {"kind": selector.kind}
@@ -1291,7 +1785,9 @@ def _hydrate_row_interval(value):
 
 
 def _serialize_lerobot_locator(locator):
-    return {
+    # Revision keys are omitted when absent so payloads persisted before
+    # remote sources existed serialize byte-for-byte as they did then.
+    payload = {
         "source_fingerprint": locator.source_fingerprint,
         "locator_fingerprint": locator.locator_fingerprint,
         "info_location": locator.info_location.path,
@@ -1344,6 +1840,21 @@ def _serialize_lerobot_locator(locator):
             for image in locator.images
         ],
     }
+    for key, revision in (
+        ("statistics_content_revision", locator.statistics_content_revision),
+        ("tasks_content_revision", locator.tasks_content_revision),
+    ):
+        if revision is not None:
+            payload[key] = revision
+
+    if locator.data_content_revision is not None:
+        payload["data"]["content_revision"] = locator.data_content_revision
+
+    for video, serialized in zip(locator.videos, payload["videos"]):
+        if video.content_revision is not None:
+            serialized["content_revision"] = video.content_revision
+
+    return payload
 
 
 def _hydrate_lerobot_locator(value):
@@ -1360,7 +1871,12 @@ def _hydrate_lerobot_locator(value):
         "videos",
         "images",
     }
-    if not isinstance(value, Mapping) or set(value) != required:
+    optional = {"statistics_content_revision", "tasks_content_revision"}
+    if (
+        not isinstance(value, Mapping)
+        or not required <= set(value)
+        or not set(value) <= required | optional
+    ):
         raise MediaReferenceError("Malformed persisted LeRobot locator")
 
     episode_metadata = value["episode_metadata"]
@@ -1371,7 +1887,7 @@ def _hydrate_lerobot_locator(value):
         raise MediaReferenceError("Malformed episode metadata locator")
 
     data = value["data"]
-    if not isinstance(data, Mapping) or set(data) != {
+    data_required = {
         "location",
         "content_fingerprint",
         "chunk_index",
@@ -1379,7 +1895,12 @@ def _hydrate_lerobot_locator(value):
         "global_rows",
         "file_rows",
         "row_groups",
-    }:
+    }
+    if (
+        not isinstance(data, Mapping)
+        or not data_required <= set(data)
+        or not set(data) <= data_required | {"content_revision"}
+    ):
         raise MediaReferenceError("Malformed episode data locator")
     if not isinstance(data["row_groups"], list):
         raise MediaReferenceError("Malformed episode data row groups")
@@ -1409,6 +1930,9 @@ def _hydrate_lerobot_locator(value):
         episode_metadata_row=episode_metadata["row"],
         data_location=DatasetRelativeLocation(data["location"]),
         data_content_fingerprint=data["content_fingerprint"],
+        data_content_revision=data.get("content_revision"),
+        statistics_content_revision=value.get("statistics_content_revision"),
+        tasks_content_revision=value.get("tasks_content_revision"),
         data_chunk_index=data["chunk_index"],
         data_file_index=data["file_index"],
         global_dataset_rows=_hydrate_row_interval(data["global_rows"]),
@@ -1433,7 +1957,11 @@ def _hydrate_lerobot_video_locator(value):
         "to_timestamp",
         "content_fingerprint",
     }
-    if not isinstance(value, Mapping) or set(value) != required:
+    if (
+        not isinstance(value, Mapping)
+        or not required <= set(value)
+        or not set(value) <= required | {"content_revision"}
+    ):
         raise MediaReferenceError("Malformed LeRobot video locator")
 
     return LeRobotVideoLocator(
@@ -1445,6 +1973,7 @@ def _hydrate_lerobot_video_locator(value):
             value["from_timestamp"], value["to_timestamp"]
         ),
         content_fingerprint=value["content_fingerprint"],
+        content_revision=value.get("content_revision"),
     )
 
 
@@ -1499,4 +2028,8 @@ _register_media_reference(
     LeRobotEpisode,
     _serialize_lerobot_episode,
     _hydrate_lerobot_episode,
+)
+
+_register_media_asset_storage(
+    fos.FileSystem.LOCAL, _LocalMediaAssetStorage()
 )

@@ -990,6 +990,61 @@ describe("useGridPreview", () => {
     });
   });
 
+  // Episodes of one dataset need not carry the same cameras, so a grid-wide
+  // choice lands on episodes that do not have it. Substituting another camera
+  // there would present it as the one that was chosen.
+  it("draws nothing rather than another camera when the choice is absent", async () => {
+    sessionHarness.session.read
+      .mockResolvedValueOnce(unavailableResult())
+      .mockResolvedValue(
+        readyResult({ bytes: [1], streamId: "/camera/front" }),
+      );
+
+    render(
+      <PreviewHarness
+        id="absent-choice"
+        selectedSourceName="/camera/rear_side"
+        source={sourceForId("absent-choice")}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-absent-choice").textContent).toBe(
+        "unavailable:1:no-frame:",
+      );
+    });
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+    expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({
+      sourceName: "/camera/rear_side",
+    });
+  });
+
+  // The automatic path may substitute, so a chosen stream that happens to
+  // equal the poster's preference must not inherit that substitution.
+  it("keeps a chosen stream strict even when it matches the poster's", async () => {
+    sessionHarness.session.read
+      .mockResolvedValueOnce(unavailableResult())
+      .mockResolvedValue(
+        readyResult({ bytes: [1], streamId: "/camera/front" }),
+      );
+
+    render(
+      <PreviewHarness
+        id="chosen-equals-poster"
+        posterSourceName="/camera/rear_side"
+        selectedSourceName="/camera/rear_side"
+        source={sourceForId("chosen-equals-poster")}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("preview-chosen-equals-poster").textContent,
+      ).toBe("unavailable:1:no-frame:");
+    });
+    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
+  });
+
   it("lets an explicit grid stream choice outrank the matched stream", async () => {
     sessionHarness.session.read.mockResolvedValue(
       readyResult({ bytes: [1], streamId: "/camera/rear" }),

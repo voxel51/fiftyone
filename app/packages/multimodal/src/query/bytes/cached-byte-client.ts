@@ -13,6 +13,7 @@ import {
   tryAcquireByteFillSlot,
 } from "./fill-lock";
 import { parseByteSize } from "./byte-size";
+import { createByteSourceSizeRegistry } from "./source-size-registry";
 import { monotonicNowMs } from "../../utils/monotonic-time";
 import { createAbortError } from "../../utils/cancellation";
 import type {
@@ -101,6 +102,9 @@ export function createCachedByteClient(
   caches: ByteCacheLayers,
 ): ByteClient {
   const pendingByteReads = new Map<string, Promise<ByteFillOutcome>>();
+  // A source whose manifest carried no size is unwidenable and unprefetchable
+  // until some read reports its length; this is what keeps that report.
+  const sizes = createByteSourceSizeRegistry();
   const fillLocks = caches.locks || undefined;
   const fillSlotFloor = byteFillSlotFloor(caches.fillSlotClass);
   const readaheadIssuedAtMs = new Map<string, number>();
@@ -116,6 +120,9 @@ export function createCachedByteClient(
     fillRequest: ByteRangeReadRequest,
   ): Promise<ByteFillOutcome> => {
     const result = await reader.readBytes(fillRequest);
+    // A ranged response reports the object's total length, so every later
+    // read of these contents can widen and chain readahead.
+    sizes.remember(result.source);
     await caches.memory.put(result);
     return { cacheResult: "fetched", result };
   };
@@ -432,7 +439,8 @@ export function createCachedByteClient(
   };
 
   return {
-    planRead(request) {
+    planRead(readRequest) {
+      const request = sizes.complete(readRequest);
       return planByteCacheFillRequest(request, resolveBlockSizeBytes(request));
     },
 
@@ -440,8 +448,12 @@ export function createCachedByteClient(
       return reader.stat?.(source, signal);
     },
 
-    async readBytes(request) {
+    async readBytes(readRequest) {
       const startMs = byteReadNowMs();
+      // Planned against the size a previous read resolved, where the manifest
+      // carried none: without a size neither widening nor readahead can run,
+      // and a remote source read bare cannot keep a decoder fed.
+      const request = sizes.complete(readRequest);
       const fillRequest = planByteCacheFillRequest(
         request,
         resolveBlockSizeBytes(request),

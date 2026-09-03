@@ -20,6 +20,7 @@ import unittest
 from unittest import mock
 import uuid
 
+from bson import ObjectId
 from decorators import drop_datasets
 import pytest
 from starlette.applications import Starlette
@@ -43,6 +44,7 @@ from fiftyone.multimodal.media import (
 )
 from fiftyone.server import utils as fosu
 from fiftyone.server.routes.groups import _filter_dict_by_fields
+import fiftyone.server.routes.media_reference as fosmr
 from fiftyone.server.routes.media_reference import MediaReferenceRoutes
 from fiftyone.server.routes.sample import SampleRoutes, generate_sample_etag
 from fiftyone.server.samples import _create_sample_item
@@ -323,20 +325,80 @@ class LeRobotImporterTests(unittest.TestCase):
                 shutil.rmtree(relocated_root)
 
     @drop_datasets
-    def test_source_content_changes_identity_and_stales_locator(self):
+    def test_replaced_asset_rekeys_its_episode_and_stales_the_reference(self):
+        """A changed asset invalidates the episodes that select it, alone.
+
+        Identifying a source by hashing every asset it holds costs one
+        storage round trip per file before a single sample exists, so a
+        source is identified by the metadata that describes it. What an
+        asset held is recorded per episode instead, which is both what
+        detects a change and what confines it: episodes that do not select
+        the changed asset keep resolving.
+        """
         with tempfile.TemporaryDirectory() as root:
-            video_path = _write_v3_source(root)
-            first = _import(root, max_samples=1).first().media_reference
+            video_path = _write_v3_source(root, episodes=2)
+            before = [
+                sample.media_reference for sample in _import(root, name="a")
+            ]
 
             with open(video_path, "ab") as file:
                 file.write(b"changed")
 
-            second = _import(root, max_samples=1).first().media_reference
-            self.assertNotEqual(first.source_identity, second.source_identity)
+            foul._clear_resolution_caches()
+            after = [
+                sample.media_reference for sample in _import(root, name="b")
+            ]
+
+            self.assertEqual(
+                before[0].source_identity, after[0].source_identity
+            )
+            self.assertNotEqual(before[0].key, after[0].key)
+            for reference in before:
+                with self.assertRaises(StaleMediaReferenceError):
+                    _LeRobotMediaResolver().resolve_assets(
+                        reference, reference.describe_assets()
+                    )
+
+    @drop_datasets
+    def test_episodes_persisted_under_a_superseded_key_still_hydrate(self):
+        """Changing how a key is derived must not orphan imported data.
+
+        A key is recomputed from the payload and checked against the one
+        stored beside the sample. A kind that has changed its formula names
+        what it used to produce, so datasets imported before the change keep
+        resolving - while a key from neither formula is still rejected,
+        which is what the check is for.
+        """
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            reference = _import(root).first().media_reference
+            self.addCleanup(unbind_lerobot_source, reference.source_identity)
+            binding = fomm._serialize_media_reference_binding(reference)
+            superseded = reference.superseded_keys[0]
+
+            self.assertNotEqual(superseded, reference.key)
+            self.assertEqual(
+                fomm._hydrate_media_reference_binding(
+                    {"kind": binding["kind"], "key": superseded}, binding
+                ),
+                reference,
+            )
+
             with self.assertRaises(StaleMediaReferenceError):
-                _LeRobotMediaResolver().resolve_assets(
-                    first, first.describe_assets()
+                fomm._hydrate_media_reference_binding(
+                    {"kind": binding["kind"], "key": "lerobot:" + "0" * 64},
+                    binding,
                 )
+
+    @drop_datasets
+    def test_unchanged_episodes_keep_their_key_across_imports(self):
+        """Two imports of one unchanged source agree on every episode key."""
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            first = [s.media_reference.key for s in _import(root, name="a")]
+            second = [s.media_reference.key for s in _import(root, name="b")]
+
+            self.assertEqual(first, second)
 
     @drop_datasets
     def test_version_and_structure_rejection(self):
@@ -446,7 +508,12 @@ class LeRobotImporterTests(unittest.TestCase):
 
     @drop_datasets
     def test_import_and_resolution_close_parquet_files(self):
-        real_parquet_file = papq.ParquetFile
+        # Patched on the module under test's own reference, not on
+        # pyarrow.parquet: that reference is a fou.lazy_import proxy, which
+        # copies the module's attributes into its own dict once resolved, so
+        # patching the real module stops reaching this code the moment
+        # anything else has already resolved the proxy
+        real_parquet_file = foul.papq.ParquetFile
         opened = []
 
         class _TrackedParquetFile:
@@ -469,7 +536,7 @@ class LeRobotImporterTests(unittest.TestCase):
                 self.closed = True
 
         with tempfile.TemporaryDirectory() as temp_dir, mock.patch.object(
-            papq, "ParquetFile", _TrackedParquetFile
+            foul.papq, "ParquetFile", _TrackedParquetFile
         ):
             source_root = os.path.join(temp_dir, "source")
             export_root = os.path.join(temp_dir, "export")
@@ -1052,9 +1119,18 @@ class LeRobotExporterTests(unittest.TestCase):
 
 class MediaAssetLifecycleTests(unittest.TestCase):
     @drop_datasets
-    def test_native_materialized_import_validates_every_asset_before_mutation(
+    def test_native_materialized_import_reports_broken_assets_on_first_use(
         self,
     ):
+        """A bundled asset's guarantee is enforced, at the first read of it.
+
+        Importing a bundle writes metadata; it does not read the media it
+        names. A missing or replaced asset is therefore reported by the first
+        resolution that needs it - which reads it anyway - rather than by a
+        pass over every asset of every source before the first document is
+        written. What a location claims is still checked eagerly, because
+        that is path math and costs no round trip.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             materialized_root = os.path.join(temp_dir, "materialized")
@@ -1068,22 +1144,32 @@ class MediaAssetLifecycleTests(unittest.TestCase):
 
             missing_root = os.path.join(temp_dir, "missing")
             shutil.copytree(materialized_root, missing_root)
+            # A media asset, which is what import stopped reading; metadata
+            # is still read by any resolution and reported as malformed
             missing_asset = next(
                 os.path.join(root, filename)
                 for root, _, filenames in os.walk(
                     os.path.join(missing_root, "media_sources")
                 )
                 for filename in filenames
+                if filename.endswith(".mp4")
             )
             os.remove(missing_asset)
             missing_name = "native-materialized-missing-asset"
-            with self.assertRaisesRegex(ValueError, "asset.*missing"):
-                fo.Dataset.from_dir(
-                    dataset_dir=missing_root,
-                    dataset_type=fot.FiftyOneDataset,
-                    name=missing_name,
-                )
-            self.assertTrue(fo.dataset_exists(missing_name))
+            missing_dataset = fo.Dataset.from_dir(
+                dataset_dir=missing_root,
+                dataset_type=fot.FiftyOneDataset,
+                name=missing_name,
+            )
+            self.assertEqual(len(missing_dataset), len(dataset))
+
+            foul._clear_resolution_caches()
+            with self.assertRaises(StaleMediaReferenceError):
+                for sample in missing_dataset:
+                    reference = sample.media_reference
+                    _LeRobotMediaResolver().resolve_assets(
+                        reference, reference.describe_assets()
+                    )
 
             stale_root = os.path.join(temp_dir, "stale")
             shutil.copytree(materialized_root, stale_root)
@@ -1099,13 +1185,20 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 file.write(b"stale")
 
             stale_name = "native-materialized-stale-asset"
+            stale_dataset = fo.Dataset.from_dir(
+                dataset_dir=stale_root,
+                dataset_type=fot.FiftyOneDataset,
+                name=stale_name,
+            )
+            self.assertEqual(len(stale_dataset), len(dataset))
+
+            foul._clear_resolution_caches()
             with self.assertRaises(StaleMediaReferenceError):
-                fo.Dataset.from_dir(
-                    dataset_dir=stale_root,
-                    dataset_type=fot.FiftyOneDataset,
-                    name=stale_name,
-                )
-            self.assertTrue(fo.dataset_exists(stale_name))
+                for sample in stale_dataset:
+                    reference = sample.media_reference
+                    _LeRobotMediaResolver().resolve_assets(
+                        reference, reference.describe_assets()
+                    )
 
             if os.name == "posix":
                 escaping_root = os.path.join(temp_dir, "escaping")
@@ -1121,6 +1214,8 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 shutil.copy2(escaping_asset, outside_asset)
                 os.remove(escaping_asset)
                 os.symlink(outside_asset, escaping_asset)
+                # Still eager: a location that escapes its source root is
+                # rejected by path math, which costs no round trip
                 escaping_name = "native-materialized-escaping-asset"
                 with self.assertRaises(InvalidMediaLocationError):
                     fo.Dataset.from_dir(
@@ -1763,7 +1858,9 @@ try:
         assert os.path.isfile(os.path.join(copied_root, "media_sources.json"))
     index = materialized.get_index_information()["media_reference.key"]
     assert not index.get("unique", False) and index["sparse"]
-    print(json.dumps({
+    # Marked because FiftyOne logs JSON records to stdout, so the last line
+    # is not necessarily this one
+    print("OUTCOME " + json.dumps({
         "thin_missing_binding": missing_binding,
         "thin_rebound": True,
         "materialized_bound": True,
@@ -1795,7 +1892,13 @@ finally:
                 },
             )
             self.assertEqual(result.returncode, 0, result.stderr)
-            outcome = json.loads(result.stdout.strip().splitlines()[-1])
+            outcome = json.loads(
+                next(
+                    line[len("OUTCOME ") :]
+                    for line in reversed(result.stdout.splitlines())
+                    if line.startswith("OUTCOME ")
+                )
+            )
             self.assertEqual(
                 outcome,
                 {
@@ -1844,54 +1947,50 @@ finally:
 
 class LeRobotServerTests(unittest.TestCase):
     @drop_datasets
-    def test_manifest_cache_avoids_rehashing_and_detects_changes(self):
+    def test_serving_never_reads_the_source_to_answer(self):
+        """Serving a sample costs a binding lookup, not a source read.
+
+        A manifest is built from what import recorded, so it neither hashes
+        an asset nor opens the episode's Parquet shards - the work that made
+        a grid page cost one full episode resolution per tile. Byte reads
+        that follow re-read nothing either.
+
+        Nothing here re-checks that an asset still holds what import saw:
+        that costs a storage round trip per asset per sample. A replaced
+        asset is caught by the re-import that re-keys its episode and by the
+        resolve behind export and materialization - see
+        ``test_replaced_asset_rekeys_its_episode_and_stales_the_reference``.
+        """
         with tempfile.TemporaryDirectory() as root:
-            video_path = _write_v3_source(root)
+            _write_v3_source(root)
             dataset = _import(root, max_samples=1)
             sample = dataset.first()
-            reference = sample.media_reference
             client = TestClient(_make_route_app())
             manifest_path = "/dataset/%s/sample/%s/multimodal/manifest" % (
                 dataset._doc.id,
                 sample.id,
             )
 
-            bind_lerobot_source(
-                reference.source_identity,
-                root,
-                reference.source_fingerprint,
-            )
+            foul._clear_resolution_caches()
             with mock.patch.object(
                 foul, "_sha256_file", wraps=foul._sha256_file
-            ) as fingerprint:
+            ) as fingerprint, mock.patch.object(
+                foul, "_open_parquet", wraps=foul._open_parquet
+            ) as parquet:
                 manifest = client.get(manifest_path).json()
                 video = next(
                     asset
                     for asset in manifest["assets"]
                     if asset["role"] == "video-stream"
                 )
-                first_hash_count = fingerprint.call_count
-                self.assertGreater(first_hash_count, 0)
-
                 for _ in range(2):
                     response = client.get(
                         video["url"], headers={"Range": "bytes=0-3"}
                     )
                     self.assertEqual(response.status_code, 206)
 
-                self.assertEqual(fingerprint.call_count, first_hash_count)
-
-                with open(video_path, "ab") as file:
-                    file.write(b"changed")
-
-                stale = client.get(
-                    video["url"], headers={"Range": "bytes=0-3"}
-                )
-                self.assertEqual(stale.status_code, 409)
-                self.assertEqual(
-                    stale.headers["X-FiftyOne-Error-Kind"],
-                    "stale-media-reference",
-                )
+                self.assertEqual(fingerprint.call_count, 0)
+                self.assertEqual(parquet.call_count, 0)
 
     @drop_datasets
     def test_range_stat_races_have_typed_public_errors(self):
@@ -1998,8 +2097,8 @@ class LeRobotServerTests(unittest.TestCase):
                 video.asset_id,
             )
             with mock.patch(
-                "fiftyone.server.routes.media_reference._resolve_manifest",
-                return_value=(dataset, sample, manifest),
+                "fiftyone.server.routes.media_reference._reference_assets",
+                return_value=manifest.assets,
             ):
                 response = client.get(url)
 
@@ -2025,13 +2124,33 @@ class LeRobotServerTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             manifest = response.json()
             encoded = json.dumps(manifest)
-            self.assertEqual(set(manifest), {"assets"})
+            self.assertEqual(
+                set(manifest), {"assets", "episode", "max_age_seconds"}
+            )
+            # An allow-list, so anything new in the description is a
+            # deliberate addition to what crosses this boundary
+            self.assertLessEqual(
+                set(manifest["episode"]),
+                {
+                    "dataset_from_index",
+                    "dataset_to_index",
+                    "duration",
+                    "episode_index",
+                    "fps",
+                    "length",
+                    "robot_type",
+                    "task",
+                    "tasks",
+                },
+            )
             self.assertNotIn(root, encoded)
             self.assertNotIn("relative_path", encoded)
             self.assertNotIn("locator", encoded)
             self.assertNotIn("fingerprint", encoded)
             required_asset_keys = {
                 "asset_id",
+                "content_id",
+                "read_profile",
                 "role",
                 "selector",
                 "size_bytes",
@@ -2241,6 +2360,258 @@ class LeRobotServerTests(unittest.TestCase):
                 "malformed-media-reference",
             )
             self.assertNotIn(root, malformed.text)
+
+
+class MediaAssetManifestPageTests(unittest.TestCase):
+    """The page route a grid uses instead of one request per tile."""
+
+    def _page(self, client, dataset, sample_ids):
+        response = client.post(
+            "/dataset/%s/multimodal/manifests" % dataset._doc.id,
+            json={"sample_ids": sample_ids},
+        )
+        return response
+
+    @drop_datasets
+    def test_a_page_answers_every_sample_it_was_asked_for(self):
+        """One request per page, not per tile.
+
+        Unbatched, a page of tiles issues a request each and they queue
+        behind the browser's connection limit, which is what a user waits
+        on however cheap each one is.
+        """
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=4)
+            dataset = _import(root)
+            self.addCleanup(
+                unbind_lerobot_source,
+                dataset.first().media_reference.source_identity,
+            )
+            client = TestClient(_make_route_app())
+            sample_ids = [sample.id for sample in dataset]
+
+            page = self._page(client, dataset, sample_ids)
+
+            self.assertEqual(page.status_code, 200)
+            body = page.json()
+            self.assertEqual(body["errors"], {})
+            self.assertEqual(set(body["manifests"]), set(sample_ids))
+            for manifest in body["manifests"].values():
+                self.assertTrue(manifest["assets"])
+
+    @drop_datasets
+    def test_a_page_and_a_single_sample_agree(self):
+        """Both entry points must publish the same handles.
+
+        A tile that took its manifest from one and read bytes through the
+        other would be asking for an asset id the other never issued.
+        """
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            dataset = _import(root)
+            self.addCleanup(
+                unbind_lerobot_source,
+                dataset.first().media_reference.source_identity,
+            )
+            client = TestClient(_make_route_app())
+            sample = dataset.first()
+
+            page = self._page(client, dataset, [sample.id]).json()
+            single = client.get(
+                "/dataset/%s/sample/%s/multimodal/manifest"
+                % (dataset._doc.id, sample.id)
+            ).json()
+
+            self.assertEqual(page["manifests"][sample.id], single)
+
+    @drop_datasets
+    def test_a_manifest_describes_the_episode_a_reader_would_parse(self):
+        """The facts a reader opens the source's own metadata to rediscover.
+
+        Given these, a reader skips the episode metadata shard entirely -
+        one storage round trip per tile. Which fields it needs is therefore
+        a contract: the episode, how many rows it has, and where those rows
+        start in the shard, all of which import already recorded.
+        """
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=3)
+            dataset = _import(root)
+            self.addCleanup(
+                unbind_lerobot_source,
+                dataset.first().media_reference.source_identity,
+            )
+            client = TestClient(_make_route_app())
+            sample = list(dataset)[1]
+
+            episode = self._page(client, dataset, [sample.id]).json()[
+                "manifests"
+            ][sample.id]["episode"]
+
+            self.assertEqual(episode["episode_index"], sample.episode_index)
+            self.assertEqual(episode["length"], sample.length)
+            self.assertEqual(episode["fps"], sample.fps)
+            self.assertEqual(episode["tasks"], sample.tasks)
+            locator = sample.media_reference.locator
+            self.assertEqual(
+                episode["dataset_from_index"],
+                locator.global_dataset_rows.start,
+            )
+            self.assertEqual(
+                episode["dataset_to_index"], locator.global_dataset_rows.end
+            )
+
+    @drop_datasets
+    def test_one_broken_sample_does_not_deny_its_page(self):
+        """A page reports per sample, so one bad episode costs one tile."""
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            dataset = _import(root)
+            self.addCleanup(
+                unbind_lerobot_source,
+                dataset.first().media_reference.source_identity,
+            )
+            client = TestClient(_make_route_app())
+            good = dataset.first().id
+            unknown = str(ObjectId())
+
+            body = self._page(
+                client, dataset, [good, unknown, "not-an-id"]
+            ).json()
+
+            self.assertEqual(set(body["manifests"]), {good})
+            self.assertEqual(set(body["errors"]), {unknown, "not-an-id"})
+            self.assertEqual(body["errors"][unknown]["status"], 404)
+            self.assertEqual(
+                body["errors"]["not-an-id"]["kind"],
+                "malformed-media-reference",
+            )
+
+    @drop_datasets
+    def test_repeated_ids_are_answered_once(self):
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            dataset = _import(root)
+            self.addCleanup(
+                unbind_lerobot_source,
+                dataset.first().media_reference.source_identity,
+            )
+            client = TestClient(_make_route_app())
+            sample = dataset.first()
+
+            body = self._page(
+                client, dataset, [sample.id, sample.id, sample.id]
+            ).json()
+
+            self.assertEqual(set(body["manifests"]), {sample.id})
+
+    @drop_datasets
+    def test_malformed_page_requests_are_refused(self):
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            dataset = _import(root)
+            self.addCleanup(
+                unbind_lerobot_source,
+                dataset.first().media_reference.source_identity,
+            )
+            client = TestClient(_make_route_app())
+            cases = (
+                ("not a list", {"sample_ids": "abc"}),
+                ("missing key", {}),
+                ("non-string entries", {"sample_ids": [1, 2]}),
+                ("empty entries", {"sample_ids": [""]}),
+                (
+                    "over the cap",
+                    {
+                        "sample_ids": [
+                            str(ObjectId())
+                            for _ in range(fosmr._MANIFEST_PAGE_LIMIT + 1)
+                        ]
+                    },
+                ),
+            )
+            for label, body in cases:
+                with self.subTest(case=label):
+                    response = client.post(
+                        "/dataset/%s/multimodal/manifests" % dataset._doc.id,
+                        json=body,
+                    )
+
+                    self.assertEqual(response.status_code, 400)
+                    self.assertEqual(
+                        response.headers["X-FiftyOne-Error-Kind"],
+                        "malformed-manifest-request",
+                    )
+
+    @drop_datasets
+    def test_an_empty_page_asks_nothing_of_the_database(self):
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            dataset = _import(root)
+            self.addCleanup(
+                unbind_lerobot_source,
+                dataset.first().media_reference.source_identity,
+            )
+            client = TestClient(_make_route_app())
+
+            body = self._page(client, dataset, []).json()
+
+            self.assertEqual(body, {"manifests": {}, "errors": {}})
+
+
+class ManifestLifetimeTests(unittest.TestCase):
+    """How long a browser may reuse what this route hands it."""
+
+    @drop_datasets
+    def test_a_manifest_tells_the_browser_how_long_to_hold_it(self):
+        # Every URL in a manifest is a handle this server answers, so nothing
+        # inside one lapses; how long a replaced source may go unnoticed is
+        # the only thing bounding it.
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            dataset = _import(root)
+            sample = dataset.first()
+            self.addCleanup(
+                unbind_lerobot_source, sample.media_reference.source_identity
+            )
+            client = TestClient(_make_route_app())
+
+            response = client.get(
+                "/dataset/%s/sample/%s/multimodal/manifest"
+                % (dataset._doc.id, sample.id)
+            )
+
+            self.assertEqual(response.status_code, 200)
+            max_age = response.json()["max_age_seconds"]
+            self.assertGreater(max_age, 0)
+            self.assertLessEqual(max_age, 300)
+
+
+class ByteRangeParsingTests(unittest.TestCase):
+    """Range headers this server answers itself, when it cannot redirect."""
+
+    def test_ranges_are_parsed_or_refused(self):
+        unsatisfiable = fosmr._UNSATISFIABLE_RANGE
+        cases = (
+            ("absent", None, 10, None),
+            ("empty", "", 10, None),
+            ("closed", "bytes=0-3", 10, (0, 3)),
+            ("open ended", "bytes=5-", 10, (5, 9)),
+            ("suffix", "bytes=-4", 10, (6, 9)),
+            ("clamped to the resource", "bytes=0-99", 10, (0, 9)),
+            ("case insensitive", "BYTES=1-2", 10, (1, 2)),
+            ("zero-length suffix", "bytes=-0", 10, unsatisfiable),
+            ("past the end", "bytes=10-", 10, unsatisfiable),
+            ("reversed", "bytes=3-1", 10, unsatisfiable),
+            ("empty resource", "bytes=0-", 0, unsatisfiable),
+            # Unparseable and multi-range headers are ignored, as HTTP allows
+            ("unsupported unit", "items=0-3", 10, None),
+            ("multiple ranges", "bytes=0-1,4-5", 10, None),
+        )
+        for label, header, size_bytes, expected in cases:
+            with self.subTest(case=label):
+                self.assertEqual(
+                    fosmr._parse_single_range(header, size_bytes), expected
+                )
 
 
 if __name__ == "__main__":

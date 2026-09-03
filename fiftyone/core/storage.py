@@ -1051,6 +1051,41 @@ def _to_bytes(val, encoding="utf-8"):
     return b
 
 
+def get_file_metadata(path):
+    """Returns metadata about the given file, or None if it does not exist.
+
+    Example usage::
+
+        import fiftyone.core.storage as fos
+
+        fos.get_file_metadata("/path/to/video.mp4")
+        # {"name": "video.mp4", "size": 12345, "mime_type": "video/mp4",
+        #  "last_modified": ..., "etag": None, "revision": None}
+
+    The ``revision`` is an opaque token that changes whenever the file's
+    contents do, for storage that tracks one. It is ``None`` for files this
+    process reads directly, whose contents are cheap to fingerprint instead.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        a metadata dict, or None if the file does not exist
+    """
+    if not os.path.isfile(path):
+        return None
+
+    result = os.stat(path)
+    return {
+        "name": os.path.basename(path),
+        "size": result.st_size,
+        "mime_type": etau.guess_mime_type(path),
+        "last_modified": datetime.fromtimestamp(result.st_mtime),
+        "etag": None,
+        "revision": None,
+    }
+
+
 def get_file_size(path_or_file):
     """
     Returns the size of the file at the given path in bytes.

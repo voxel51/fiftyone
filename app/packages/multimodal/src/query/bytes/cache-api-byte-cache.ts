@@ -11,10 +11,14 @@ import type { ByteRangeCache, ByteRangeReadResult } from "./types";
  * reloads, which matters most on remote object-storage transports where a
  * refetch costs a round trip plus transfer instead of microseconds.
  *
- * Entries are keyed by content identity (stable source id plus discovered
- * byte size), never by access URL, so rotating signed URLs keep hitting.
- * A changed file size invalidates naturally; same-size content rewrites are
- * not detected (an ETag validator is a known follow-up).
+ * Entries are keyed by content identity, never by access URL, so rotating
+ * signed URLs keep hitting. Identity is the content id where a source has
+ * one - two episodes reading one object agree on it, and a rewritten object
+ * gets a new one - falling back to the source id otherwise. Size is
+ * deliberately not part of it: a remote source discovers its length from its
+ * first response, so keying by size files everything read before that moment
+ * under a key nothing looks up again. Rewrites are caught by the content id
+ * and, where the store sends one, by the stored ETag validator.
  *
  * Storage discipline: only deterministic read shapes (block fills and chunk
  * ranges) should reach this layer — the cached byte client gates exact
@@ -172,11 +176,7 @@ export function createCacheApiByteRangeCache(
           return undefined;
         }
 
-        const url = entryUrl(
-          sourceKey,
-          request.source.sizeBytes,
-          request.range,
-        );
+        const url = entryUrl(sourceKey, request.range);
         const match = await cache.match(url);
         if (!match) {
           return undefined;
@@ -225,7 +225,7 @@ export function createCacheApiByteRangeCache(
           return;
         }
 
-        const url = entryUrl(sourceKey, result.source.sizeBytes, result.range);
+        const url = entryUrl(sourceKey, result.range);
         // Response bodies adopt the buffer, so copy: callers keep mutating
         // views over pooled read buffers.
         await cache.put(
@@ -254,14 +254,17 @@ export function createCacheApiByteRangeCache(
 
 function entryUrl(
   sourceKey: string,
-  sizeBytes: string | undefined,
   range: { readonly length: bigint; readonly offset: bigint },
 ): string {
+  // Deliberately not keyed by the source's size. A size is discovered from
+  // the first response, so ranges read before it was known would be filed
+  // under one key and looked up under another - which silently disabled this
+  // layer for any source whose size the manifest did not carry. The source
+  // key identifies the contents; a rewrite gives it a new one.
   return [
     ENTRY_ORIGIN,
     "v1",
     encodeURIComponent(sourceKey),
-    sizeBytes ?? "size-unknown",
     `${range.offset.toString()}-${range.length.toString()}`,
   ].join("/");
 }

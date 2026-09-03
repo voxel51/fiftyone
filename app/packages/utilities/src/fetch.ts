@@ -98,6 +98,14 @@ export type FetchFunctionConfig<T> = {
 export type FetchFunctionResult<T> = {
   response: T;
   headers?: Headers;
+  /**
+   * Where the response actually came from, after any redirects. A caller
+   * handed a stable handle needs this to read again without going back
+   * through the hop that resolved it.
+   */
+  url?: string;
+  /** Whether a redirect was followed to produce it. */
+  redirected?: boolean;
 };
 
 export interface FetchFunction {
@@ -498,6 +506,8 @@ export const setFetchFunction = (
       return {
         response: new JSONStreamParser(response, controller),
         headers: response.headers,
+        url: response.url,
+        redirected: response.redirected,
       };
     }
 
@@ -505,6 +515,8 @@ export const setFetchFunction = (
       return {
         response,
         headers: response.headers,
+        url: response.url,
+        redirected: response.redirected,
       };
     }
 
@@ -514,12 +526,16 @@ export const setFetchFunction = (
           await readResponseArrayBuffer(response, onProgress),
         ),
         headers: response.headers,
+        url: response.url,
+        redirected: response.redirected,
       };
     }
 
     return {
       response: await response[result](),
       headers: response.headers,
+      url: response.url,
+      redirected: response.redirected,
     };
   };
 

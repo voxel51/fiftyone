@@ -47,14 +47,18 @@ export function defaultByteFillLockManager(): ByteFillLockManager | undefined {
 
 /**
  * Lock name for one fill shape, aligned with persistent-cache entry
- * identity (content id + discovered size + exact fill range) so contexts
- * that would share a persistent entry contend on the same lock.
+ * identity (content id + exact fill range) so contexts that would share a
+ * persistent entry contend on the same lock.
+ *
+ * Deliberately not keyed by size: a source discovers its length from its
+ * first response, so two contexts reading the same block - one that has
+ * learned it, one that has not - would take different locks and each fetch,
+ * then each write the one entry they were meant to hand off.
  */
 export function byteFillLockName(request: ByteRangeReadRequest): string {
   return serializeCacheKey([
     FILL_LOCK_PREFIX,
     byteSourceCacheKey(request.source),
-    request.source.sizeBytes ?? "size-unknown",
     request.range.offset.toString(),
     request.range.length.toString(),
   ]);

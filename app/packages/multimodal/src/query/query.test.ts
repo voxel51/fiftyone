@@ -260,6 +260,34 @@ describe("multimodal query clients", () => {
     );
   });
 
+  it("gives two readers of one object the same cache key", () => {
+    // Every episode of a LeRobot source reads the same `info.json`, and many
+    // share a video file. Keyed by the reader rather than by the object,
+    // each of them fetches those bytes again - one round trip per tile for
+    // something the page already has.
+    expect(
+      byteSourceCacheKey({
+        contentId: "object:1",
+        sourceId: "episode-3-video",
+        url: "https://store.test/file-000.mp4?signature=1",
+      }),
+    ).toBe(
+      byteSourceCacheKey({
+        contentId: "object:1",
+        sourceId: "episode-4-video",
+        url: "https://store.test/file-000.mp4?signature=2",
+      }),
+    );
+  });
+
+  it("separates readers of objects with different contents", () => {
+    expect(
+      byteSourceCacheKey({ contentId: "object:1", sourceId: "a", url: "u" }),
+    ).not.toBe(
+      byteSourceCacheKey({ contentId: "object:2", sourceId: "a", url: "u" }),
+    );
+  });
+
   it("reuses byte cache entries across discovered size and URL changes", async () => {
     const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
     const cached = createByteRangeReadRequest({

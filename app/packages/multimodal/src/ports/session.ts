@@ -31,6 +31,15 @@ export type ReadPriority = "bulk" | "current" | "idle" | "playback";
 
 /** One cloneable byte read request issued by a format adapter. */
 export interface ByteResourceReadRequest {
+  /**
+   * Per-read cache behavior, for an adapter that knows its access pattern.
+   * A container header walked from the front gains nothing from a block fill
+   * sized for streaming, and pays megabytes for it.
+   */
+  readonly cachePolicy?: {
+    readonly blockFill?: boolean;
+    readonly readahead?: boolean;
+  };
   readonly range: ByteRange;
   readonly signal?: AbortSignal;
   readonly source: ByteSourceDescriptor;

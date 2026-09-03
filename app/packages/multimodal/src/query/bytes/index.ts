@@ -50,6 +50,14 @@ export {
 export { parseByteSize } from "./byte-size";
 
 /**
+ * Public discovered-size registry, one per cached client.
+ */
+export {
+  createByteSourceSizeRegistry,
+  type ByteSourceSizeRegistry,
+} from "./source-size-registry";
+
+/**
  * Public byte-query contracts.
  */
 export type {

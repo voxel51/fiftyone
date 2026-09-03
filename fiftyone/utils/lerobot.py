@@ -11,18 +11,18 @@ from collections.abc import Mapping
 from contextlib import contextmanager
 import contextvars
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import wraps
 import hashlib
 import json
 import logging
 import math
-import mimetypes
 import os
 import posixpath
 import re
 import string
 import threading
+from time import monotonic
 import uuid
 
 import cachetools
@@ -31,6 +31,7 @@ from pymongo.errors import DuplicateKeyError
 import eta.core.utils as etau
 import fiftyone.core.fields as fof
 from fiftyone.core.media_assets import (
+    _MEDIA_SOURCE_MANIFEST_FILENAME,
     _MediaSourceDescriptor,
     _ReferenceAssetMaterializer,
     _register_reference_asset_materializer,
@@ -40,6 +41,8 @@ from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 from fiftyone.multimodal.media import (
+    derive_media_assets,
+    locator_content_tokens,
     LEROBOT_EPISODE_KIND,
     DatasetRelativeLocation,
     InvalidMediaLocationError,
@@ -58,6 +61,7 @@ from fiftyone.multimodal.media import (
     UnsupportedLeRobotVersionError,
     VideoTimestampInterval,
     _build_resolved_media_asset,
+    _get_media_asset_storage,
     _get_media_resolver,
     _get_selected_media_asset_key,
     _MediaAssetManifest,
@@ -101,13 +105,45 @@ _REQUIRED_EPISODE_FIELDS = {
 _RESOLUTION_SOURCE_CACHE = contextvars.ContextVar(
     "lerobot_resolution_source_cache", default=None
 )
+_RESOURCE_CACHE = contextvars.ContextVar(
+    "lerobot_resource_cache", default=None
+)
+
+#: How long a resolution of remote assets may be reused before they are
+#: described again. Every byte range a browser reads would otherwise
+#: re-describe the whole episode's assets first.
+_REMOTE_REVALIDATE_SECONDS = 30.0
+
+#: The largest object whose bytes are worth holding to serve other episodes
+_SHARED_BYTES_LIMIT = 8 * 1024 * 1024
+
+
+_SOURCE_METADATA_CACHE = cachetools.TTLCache(
+    maxsize=8192, ttl=_REMOTE_REVALIDATE_SECONDS
+)
+_SOURCE_BYTES_CACHE = cachetools.TTLCache(
+    maxsize=256, ttl=_REMOTE_REVALIDATE_SECONDS
+)
+_VALIDATED_ROOT_CACHE = cachetools.TTLCache(
+    maxsize=1024, ttl=_REMOTE_REVALIDATE_SECONDS
+)
+
+_WARNED_UNVERIFIABLE_IDENTITY = False
 
 
 @dataclass(frozen=True)
-class _LocalLeRobotSourceBinding:
+class _LeRobotSourceBinding:
     root: str
     source_fingerprint: str
     revision: str
+
+
+@dataclass(frozen=True)
+class _AssetIdentity:
+    """One physical asset's persisted identity, as its storage supports it."""
+
+    content_fingerprint: str = None
+    revision: str = None
 
 
 @dataclass(frozen=True)
@@ -115,6 +151,7 @@ class _ManifestCacheEntry:
     binding_revision: str
     manifest: _MediaAssetManifest
     file_signatures: tuple
+    validated_at: float
 
 
 @dataclass
@@ -130,7 +167,7 @@ class _InspectedLeRobotSource:
     codebase_version: str
     rows: tuple
     data_shard_bases: dict
-    asset_fingerprints: dict
+    asset_identities: dict
     source_fingerprint: str
 
 
@@ -140,6 +177,14 @@ _MANIFEST_CACHE = cachetools.LRUCache(maxsize=512)
 _ASSET_FINGERPRINT_CACHE = cachetools.LRUCache(maxsize=4096)
 _RESOLUTION_LOCKS = {}
 _CACHE_LOCK = threading.RLock()
+
+
+#: The server resolves concurrent requests on worker threads and cachetools
+#: containers do no locking of their own
+_SHARED_CACHE_LOCK = threading.Lock()
+
+#: Distinguishes a cache miss from a cached ``None``
+_MISSING = object()
 
 
 def _deduplicate_resolutions(method):
@@ -170,10 +215,11 @@ def _deduplicate_resolutions(method):
 
 
 class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
-    """Imports logical episodes from a local LeRobotDataset v3 source.
+    """Imports logical episodes from a LeRobotDataset v3 source.
 
     Args:
-        dataset_dir: the local LeRobot dataset root
+        dataset_dir: the LeRobot dataset root, either local or in cloud
+            storage
         episodes (None): optional episode indexes to import
         source_identity (None): an explicit immutable source identity. By
             default, a deterministic metadata fingerprint is used
@@ -237,11 +283,15 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         return deepcopy(self._dataset_info)
 
     def setup(self):
+        with _resource_scope():
+            self._setup()
+
+    def _setup(self):
         resolver = _get_media_resolver(LEROBOT_EPISODE_KIND)
         if not isinstance(resolver, _LeRobotMediaResolver):
             raise TypeError("Registered LeRobot resolver has the wrong type")
 
-        source = resolver.inspect_local_source(self.dataset_dir)
+        source = resolver.inspect_source(self.dataset_dir)
         root = source.root
         info = source.info
         rows = source.rows
@@ -249,7 +299,10 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         source_fingerprint = source.source_fingerprint
         source_identity = self.source_identity
         if source_identity is None:
-            source_identity = "local:%s" % source_fingerprint
+            source_identity = "%s:%s" % (
+                _source_identity_scope(root),
+                source_fingerprint,
+            )
         elif (
             not isinstance(source_identity, str) or not source_identity.strip()
         ):
@@ -323,14 +376,14 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
 
 
 def bind_lerobot_source(source_identity, dataset_root, source_fingerprint):
-    """Binds a LeRobot source identity to an authorized local root."""
+    """Binds a LeRobot source identity to an authorized root."""
     if not isinstance(source_identity, str) or not source_identity.strip():
         raise ValueError("source_identity must be a non-empty string")
 
     if not dataset_root:
-        raise MissingMediaRootError("A local LeRobot dataset root is required")
+        raise MissingMediaRootError("A LeRobot dataset root is required")
 
-    root = os.path.realpath(fos.normalize_path(dataset_root))
+    root = _normalize_root(dataset_root)
     if not isinstance(source_fingerprint, str) or not source_fingerprint:
         raise ValueError("source_fingerprint must be a non-empty string")
     source_identity = source_identity.strip()
@@ -377,7 +430,7 @@ def bind_lerobot_source(source_identity, dataset_root, source_fingerprint):
 
 
 def unbind_lerobot_source(source_identity):
-    """Removes the local binding for a LeRobot source identity."""
+    """Removes the binding for a LeRobot source identity."""
     foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION].delete_one(
         {"_id": source_identity}
     )
@@ -386,7 +439,7 @@ def unbind_lerobot_source(source_identity):
 
 def relocate_lerobot_source(source_identity, dataset_root):
     """Relocates an existing LeRobot binding without changing its identity."""
-    root = os.path.realpath(fos.normalize_path(dataset_root))
+    root = _normalize_root(dataset_root)
     collection = foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION]
     for _ in range(_SOURCE_BINDING_MAX_ATTEMPTS):
         binding = _get_source_binding(source_identity)
@@ -410,21 +463,68 @@ def relocate_lerobot_source(source_identity, dataset_root):
 
 
 class _LeRobotMediaResolver(_MediaResolver):
-    """Resolves LeRobot v3 assets through server-side source bindings."""
+    """Resolves LeRobot v3 assets through server-side source bindings.
 
-    def inspect_local_source(self, dataset_root):
-        """Reads and validates one local v3 source for the importer."""
+    Assets resolve to whatever storage their bound source root lives in, so a
+    cloud-hosted source resolves to cloud object paths that callers can sign.
+    """
+
+    def derive_assets(self, reference, binding=None):
+        """Locates this episode's assets from what import already recorded.
+
+        Everything needed to fetch an asset was recorded at import: the bound
+        root, each asset's location, and the identity its contents had. A grid
+        tile needs exactly that, so it costs one binding lookup and, for a
+        remote source, no storage round trips at all - where a full
+        resolution reads the source's metadata and both Parquet shards to
+        rebuild facts already in the locator.
+
+        Nothing here asks storage whether those contents are still what
+        import saw. That question is one round trip per asset per episode,
+        which is the entire cost this exists to remove; it is answered
+        instead by the per-asset identity check on the path that reads the
+        asset. A local size is filled in because a stat is not a round trip
+        and a reader that knows a length can plan its reads.
+        """
+        if not isinstance(reference, LeRobotEpisode):
+            return None
+
+        if binding is None:
+            binding = _get_source_binding(reference.source_identity)
+
+        if binding is None or binding.source_fingerprint != (
+            reference.source_fingerprint
+        ):
+            return None
+
+        root = _bound_root_for_derive(binding)
+        derived = derive_media_assets(
+            reference,
+            root,
+            dict(locator_content_tokens(reference.locator)),
+            _resolve_under_canonical_root,
+        )
+        if not fos.is_local(root):
+            return derived
+
+        return tuple(_with_local_size(asset) for asset in derived)
+
+    def inspect_source(self, dataset_root):
+        """Reads and validates one local or cloud v3 source for the importer."""
         root = _validate_dataset_root(dataset_root)
         info_path = _resolve_under_root(root, "meta/info.json")
-        info, info_bytes = _load_info(info_path)
+        try:
+            info, info_bytes = _load_info(info_path)
+        except MalformedMediaSourceError:
+            # Asked only of a root that is already failing, so naming what it
+            # holds instead costs a healthy import nothing
+            _reject_exported_dataset_root(root)
+            raise
+
         codebase_version = _validate_v3_info(info)
 
         metadata_paths = sorted(
-            etau.list_files(
-                os.path.join(root, "meta", "episodes"),
-                recursive=True,
-                abs_paths=True,
-            )
+            _list_files(fos.join(root, "meta", "episodes"))
         )
         metadata_paths = [
             path for path in metadata_paths if path.endswith(".parquet")
@@ -438,7 +538,7 @@ class _LeRobotMediaResolver(_MediaResolver):
         rows, shard_bytes = _read_episode_metadata(root, metadata_paths)
         for relative_path in ("meta/stats.json", "meta/tasks.parquet"):
             path = _resolve_under_root(root, relative_path)
-            if not os.path.isfile(path):
+            if not _resource_exists(path):
                 continue
 
             raw = _read_bytes(path)
@@ -447,10 +547,9 @@ class _LeRobotMediaResolver(_MediaResolver):
                     pass
             shard_bytes.append((relative_path, raw))
 
-        asset_sizes = _collect_source_asset_sizes(root, info, rows)
         data_shard_bases = _get_data_shard_bases(root, info, rows)
         source_fingerprint = "sha256:" + _compute_source_fingerprint(
-            info, info_bytes, shard_bytes, asset_sizes
+            info, info_bytes, shard_bytes
         )
         return _InspectedLeRobotSource(
             root=root,
@@ -458,7 +557,9 @@ class _LeRobotMediaResolver(_MediaResolver):
             codebase_version=codebase_version,
             rows=tuple(rows),
             data_shard_bases=data_shard_bases,
-            asset_fingerprints={},
+            # Collected per selected episode by prepare_source_assets, so
+            # inspecting a source costs nothing per episode it holds
+            asset_identities={},
             source_fingerprint=source_fingerprint,
         )
 
@@ -467,7 +568,7 @@ class _LeRobotMediaResolver(_MediaResolver):
         if not isinstance(source, _InspectedLeRobotSource):
             raise TypeError("source must be an inspected LeRobot source")
 
-        asset_fingerprints, data_shard_bases = _validate_source_assets(
+        asset_identities, data_shard_bases = _validate_source_assets(
             source.root,
             source.info,
             rows,
@@ -479,7 +580,7 @@ class _LeRobotMediaResolver(_MediaResolver):
             codebase_version=source.codebase_version,
             rows=source.rows,
             data_shard_bases=data_shard_bases,
-            asset_fingerprints=asset_fingerprints,
+            asset_identities=asset_identities,
             source_fingerprint=source.source_fingerprint,
         )
 
@@ -494,7 +595,7 @@ class _LeRobotMediaResolver(_MediaResolver):
             row,
             source.data_shard_bases,
             source.source_fingerprint,
-            source.asset_fingerprints,
+            source.asset_identities,
         )
 
     def resolve_assets(self, reference, assets):
@@ -513,19 +614,21 @@ class _LeRobotMediaResolver(_MediaResolver):
     def operation_context(self):
         token = _RESOLUTION_SOURCE_CACHE.set({})
         try:
-            yield
+            with _resource_scope():
+                yield
         finally:
             _RESOLUTION_SOURCE_CACHE.reset(token)
 
     @_deduplicate_resolutions
     def resolve_described_assets(self, reference, assets):
-        root, binding = _validate_resolver_root(reference)
-        return _resolve_lerobot_assets_at_root(
-            reference,
-            assets,
-            root,
-            cache_revision=binding.revision,
-        )
+        with _resource_scope():
+            root, binding = _validate_resolver_root(reference)
+            return _resolve_lerobot_assets_at_root(
+                reference,
+                assets,
+                root,
+                cache_revision=binding.revision,
+            )
 
 
 def _resolve_lerobot_assets_at_root(
@@ -544,12 +647,12 @@ def _resolve_lerobot_assets_at_root(
 
     locator = reference.locator
     info_path = _resolve_under_root(root, locator.info_location.path)
-    info, info_bytes = _load_info(info_path)
-    detected_version = _validate_v3_info(info)
-
     metadata_path = _resolve_under_root(
         root, locator.episode_metadata_location.path
     )
+    info, info_bytes = _load_info(info_path)
+    detected_version = _validate_v3_info(info)
+
     row = _read_episode_metadata_row(
         root, metadata_path, locator.episode_metadata_row
     )
@@ -571,38 +674,17 @@ def _resolve_lerobot_assets_at_root(
             "dataset to refresh its episode locators"
         )
 
-    _validate_asset_fingerprint(
-        root,
-        locator.data_location.path,
-        locator.data_content_fingerprint,
-        reference.source_fingerprint,
-    )
-    for location, fingerprint in (
-        (
-            locator.statistics_location,
-            locator.statistics_content_fingerprint,
-        ),
-        (locator.tasks_location, locator.tasks_content_fingerprint),
-    ):
-        if location is not None:
-            _validate_asset_fingerprint(
-                root,
-                location.path,
-                fingerprint,
-                reference.source_fingerprint,
-            )
-
-    _validate_resolved_data_slice(root, reference, locator)
-    for video in locator.videos:
-        _validate_asset_fingerprint(
-            root,
-            video.location.path,
-            video.content_fingerprint,
-            reference.source_fingerprint,
+    for location, identity in _locator_identities(locator).items():
+        _validate_stored_asset_identity(
+            root, location, identity, reference.source_fingerprint
         )
 
+    _validate_resolved_data_slice(root, reference, locator)
+
+    content_tokens = dict(locator_content_tokens(locator))
     resolved_assets = tuple(
-        _resolve_media_asset(reference, root, asset) for asset in assets
+        _resolve_media_asset(reference, root, asset, content_tokens)
+        for asset in assets
     )
     tasks = tuple(row["tasks"] or [])
     fps = float(info["fps"])
@@ -651,7 +733,7 @@ class _LeRobotAssetMaterializer(_ReferenceAssetMaterializer):
         return (
             binding is not None
             and binding.source_fingerprint == source.source_fingerprint
-            and os.path.isdir(binding.root)
+            and _isdir(binding.root)
         )
 
     def bind_source(self, source, root):
@@ -699,26 +781,99 @@ class _LeRobotAssetMaterializer(_ReferenceAssetMaterializer):
     def get_destination_location(self, reference, asset):
         return asset.location.path
 
-    def validate_materialized_reference(self, reference, assets, root):
-        _resolve_lerobot_assets_at_root(reference, assets, root)
+
+def _with_local_size(asset):
+    """A local asset's size, which costs a stat rather than a round trip."""
+    metadata = _get_file_metadata(asset.path, required=False)
+    if metadata is None:
+        # Reported by the read that needs the bytes, not by the manifest
+        return asset
+
+    return replace(asset, size_bytes=metadata["size"])
+
+
+def _locator_identities(locator):
+    """The identity import recorded for each asset an episode selects.
+
+    Only the assets whose contents a resolution must not transfer to check
+    appear here; ``meta/info.json`` and the episode metadata shard are read
+    in full by anything that resolves, which checks them by reading them.
+    """
+    identities = {
+        locator.data_location.path: _AssetIdentity(
+            locator.data_content_fingerprint, locator.data_content_revision
+        )
+    }
+    if locator.statistics_location is not None:
+        identities[locator.statistics_location.path] = _AssetIdentity(
+            locator.statistics_content_fingerprint,
+            locator.statistics_content_revision,
+        )
+
+    if locator.tasks_location is not None:
+        identities[locator.tasks_location.path] = _AssetIdentity(
+            locator.tasks_content_fingerprint,
+            locator.tasks_content_revision,
+        )
+
+    for video in locator.videos:
+        identities[video.location.path] = _AssetIdentity(
+            video.content_fingerprint, video.content_revision
+        )
+
+    return identities
 
 
 def _validate_dataset_root(dataset_root):
     if not dataset_root:
-        raise MissingMediaRootError("A local LeRobot dataset root is required")
+        raise MissingMediaRootError("A LeRobot dataset root is required")
 
     root = fos.normalize_path(dataset_root)
-    if not os.path.exists(root):
+    remote = not fos.is_local(root)
+    if remote:
+        # A source binding pins its root, and its revision changes whenever
+        # the binding does, so re-listing the root on every resolve of every
+        # episode buys nothing.
+        with _SHARED_CACHE_LOCK:
+            validated = _VALIDATED_ROOT_CACHE.get(root)
+
+        if validated is not None:
+            return validated
+
+    if not _isdir(root):
+        # Roots in object storage exist only in the sense that objects live
+        # under them, so an empty prefix reads as a missing one.
+        if _get_file_metadata(root, required=False) is not None:
+            raise MissingMediaRootError(
+                "LeRobot dataset root '%s' is not a directory" % root
+            )
+
         raise MissingMediaRootError(
             "LeRobot dataset root '%s' does not exist" % root
         )
 
-    if not os.path.isdir(root):
-        raise MissingMediaRootError(
-            "LeRobot dataset root '%s' is not a directory" % root
-        )
+    validated = fos.realpath(root)
+    if remote:
+        with _SHARED_CACHE_LOCK:
+            _VALIDATED_ROOT_CACHE[root] = validated
 
-    return os.path.realpath(root)
+    return validated
+
+
+def _normalize_root(dataset_root):
+    """Canonicalizes a local or cloud LeRobot source root for binding."""
+    return fos.realpath(fos.normalize_path(dataset_root))
+
+
+def _source_identity_scope(root):
+    """Scopes a default source identity to the storage its assets live in.
+
+    A local copy and a remote copy of one source carry the same content
+    fingerprint but are identified by different means - hashed bytes versus
+    storage revisions - so they cannot share an identity, a source binding or
+    a reference key.
+    """
+    return "local" if fos.is_local(root) else "remote"
 
 
 def _validate_resolver_root(reference):
@@ -738,21 +893,77 @@ def _validate_resolver_root(reference):
             "The LeRobot source binding fingerprint does not match the reference"
         )
 
-    try:
-        resolved = (_validate_dataset_root(binding.root), binding)
-        if cache is not None:
-            cache[cache_key] = resolved
+    resolved = (_validate_bound_root(binding), binding)
+    if cache is not None:
+        cache[cache_key] = resolved
 
-        return resolved
+    return resolved
+
+
+def _validate_bound_root(binding):
+    """Validates one binding's root, reporting a move as a move.
+
+    One check per source, not per asset: a root that is gone or was renamed
+    is a fact about the source, and the answer is cached for every episode
+    that resolves from it. Reporting it here is what turns a page of tiles
+    that cannot read their bytes into one actionable error.
+    """
+    try:
+        return _validate_dataset_root(binding.root)
     except MissingMediaRootError as exc:
-        parent = os.path.dirname(binding.root)
-        if os.path.isdir(parent):
+        parent = _dirname(binding.root)
+        if parent and _isdir(parent):
             raise MovedMediaRootError(
                 "LeRobot source root moved or was renamed; relocate the "
                 "server-side source binding before resolving assets"
             ) from exc
 
         raise
+
+
+def _bound_root_for_derive(binding):
+    """The bound root, without a liveness check object storage would charge
+    a LIST per source for. Local roots keep it; there it is free, and there
+    is where a rename actually happens.
+    """
+    if not binding.root:
+        raise MissingMediaRootError("A LeRobot dataset root is required")
+
+    root = fos.normalize_path(binding.root)
+    if fos.is_local(root):
+        return _validate_bound_root(binding)
+
+    return fos.realpath(root)
+
+
+def _get_source_bindings(source_identities):
+    """Loads many source bindings in one query.
+
+    A grid page's tiles usually share few sources, and each binding is the
+    same document for every episode of its source, so a page asks for them
+    once rather than once per tile.
+    """
+    identities = list(dict.fromkeys(source_identities))
+    if not identities:
+        return {}
+
+    documents = foo.get_db_conn()[_SOURCE_BINDINGS_COLLECTION].find(
+        {"_id": {"$in": identities}, "kind": LEROBOT_EPISODE_KIND}
+    )
+    bindings = {}
+    for document in documents:
+        try:
+            bindings[document["_id"]] = _LeRobotSourceBinding(
+                root=document["root"],
+                source_fingerprint=document["source_fingerprint"],
+                revision=document["revision"],
+            )
+        except (KeyError, TypeError) as exc:
+            raise MissingMediaRootError(
+                "The authorized LeRobot source binding is malformed"
+            ) from exc
+
+    return bindings
 
 
 def _get_source_binding(source_identity):
@@ -763,7 +974,7 @@ def _get_source_binding(source_identity):
         return None
 
     try:
-        return _LocalLeRobotSourceBinding(
+        return _LeRobotSourceBinding(
             root=document["root"],
             source_fingerprint=document["source_fingerprint"],
             revision=document["revision"],
@@ -774,15 +985,31 @@ def _get_source_binding(source_identity):
         ) from exc
 
 
+def _reject_exported_dataset_root(root):
+    """Rejects a root that holds an exported dataset rather than a source.
+
+    A FiftyOne export of a media-reference dataset holds the sources it
+    materialized in subdirectories, so pointing the LeRobot importer at one
+    otherwise fails only by the absence of its own metadata.
+    """
+    manifest = _resolve_under_root(root, _MEDIA_SOURCE_MANIFEST_FILENAME)
+    if not _resource_exists(manifest):
+        return
+
+    raise MalformedMediaSourceError(
+        "'%s' holds an exported FiftyOne dataset, not a LeRobot source; "
+        "import it with dataset_type=fiftyone.types.FiftyOneDataset" % root
+    )
+
+
 def _load_info(info_path):
-    if not os.path.isfile(info_path):
+    if not _resource_exists(info_path):
         raise MalformedMediaSourceError(
-            "LeRobot source is missing meta/info.json"
+            "LeRobot source is missing '%s'" % info_path
         )
 
     try:
-        with open(info_path, "rb") as file:
-            raw = file.read()
+        raw = _read_bytes(info_path)
         info = json.loads(raw)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise MalformedMediaSourceError(
@@ -975,20 +1202,36 @@ def _select_episode_indexes(rows_by_index, episodes, preprocess):
     return list(preprocess(indexes))
 
 
-def _collect_source_asset_paths(root, info, rows):
+def _group_rows_by_data_file(root, info, rows):
+    """Groups episode rows by the data shard that holds them.
+
+    Which shard an episode lives in is recorded in its own metadata row, so
+    this is arithmetic over rows already in memory and asks storage nothing.
+    """
     by_data_file = defaultdict(list)
     byte_asset_paths = set()
-    video_features = _video_features(info)
     for row in rows:
         relative_path = _format_source_path(
             info["data_path"],
             chunk_index=row["data/chunk_index"],
             file_index=row["data/file_index"],
         )
-        path = _resolve_under_root(root, relative_path)
-        by_data_file[path].append(row)
+        by_data_file[_resolve_under_root(root, relative_path)].append(row)
         byte_asset_paths.add(relative_path)
 
+    return by_data_file, byte_asset_paths
+
+
+def _collect_source_asset_paths(root, info, rows):
+    """Locates and validates the byte assets the given rows select.
+
+    Scoped to the rows it is given, because every video it names costs a
+    storage round trip. Never call it for a whole source to answer a question
+    about part of one.
+    """
+    by_data_file, byte_asset_paths = _group_rows_by_data_file(root, info, rows)
+    video_features = _video_features(info)
+    for row in rows:
         for feature_name in video_features:
             chunk_field = "videos/%s/chunk_index" % feature_name
             file_field = "videos/%s/file_index" % feature_name
@@ -1014,7 +1257,7 @@ def _collect_source_asset_paths(root, info, rows):
             )
             video_path = _resolve_under_root(root, video_relative_path)
             byte_asset_paths.add(video_relative_path)
-            if not os.path.isfile(video_path):
+            if not _resource_exists(video_path):
                 raise MalformedMediaSourceError(
                     "LeRobot video asset '%s' does not exist"
                     % video_relative_path
@@ -1043,18 +1286,8 @@ def _collect_source_asset_paths(root, info, rows):
     return by_data_file, byte_asset_paths
 
 
-def _collect_source_asset_sizes(root, info, rows):
-    _, byte_asset_paths = _collect_source_asset_paths(root, info, rows)
-    return {
-        relative_path: _file_signature(
-            _resolve_under_root(root, relative_path)
-        )[2]
-        for relative_path in sorted(byte_asset_paths)
-    }
-
-
 def _get_data_shard_bases(root, info, rows):
-    by_data_file, _ = _collect_source_asset_paths(root, info, rows)
+    by_data_file, _ = _group_rows_by_data_file(root, info, rows)
     data_shard_bases = {}
     for shard_rows in by_data_file.values():
         base = min(row["dataset_from_index"] for row in shard_rows)
@@ -1079,10 +1312,10 @@ def _validate_source_assets(root, info, rows, data_shard_bases=None):
         data_shard_bases = dict(data_shard_bases)
 
     for path, shard_rows in by_data_file.items():
-        if not os.path.isfile(path):
+        if not _resource_exists(path):
             raise MalformedMediaSourceError(
                 "LeRobot data asset '%s' does not exist"
-                % os.path.relpath(path, root)
+                % _get_dataset_relative_path(path, root)
             )
 
         with _open_parquet(path, "episode data") as parquet_file:
@@ -1097,14 +1330,17 @@ def _validate_source_assets(root, info, rows, data_shard_bases=None):
                 if local_end > parquet_file.metadata.num_rows:
                     raise MalformedMediaSourceError(
                         "LeRobot episode %d row bounds exceed data shard '%s'"
-                        % (row["episode_index"], os.path.relpath(path, root))
+                        % (
+                            row["episode_index"],
+                            _get_dataset_relative_path(path, root),
+                        )
                     )
 
             columns = set(parquet_file.schema_arrow.names)
             if "episode_index" not in columns or "index" not in columns:
                 raise MalformedMediaSourceError(
                     "LeRobot data shard '%s' must contain episode_index and "
-                    "index" % os.path.relpath(path, root)
+                    "index" % _get_dataset_relative_path(path, root)
                 )
 
             table = parquet_file.read(columns=["episode_index", "index"])
@@ -1124,11 +1360,11 @@ def _validate_source_assets(root, info, rows, data_shard_bases=None):
                     "slice" % row["episode_index"]
                 )
 
-    asset_fingerprints = {
-        relative_path: _sha256_file(_resolve_under_root(root, relative_path))
+    asset_identities = {
+        relative_path: _asset_identity(root, relative_path)
         for relative_path in sorted(byte_asset_paths)
     }
-    return asset_fingerprints, data_shard_bases
+    return asset_identities, data_shard_bases
 
 
 def _build_locator(
@@ -1137,7 +1373,7 @@ def _build_locator(
     row,
     data_shard_bases,
     source_fingerprint,
-    asset_fingerprints,
+    asset_identities,
 ):
     chunk_index = row["data/chunk_index"]
     file_index = row["data/file_index"]
@@ -1177,7 +1413,12 @@ def _build_locator(
                     row[prefix + "from_timestamp"],
                     row[prefix + "to_timestamp"],
                 ),
-                content_fingerprint=asset_fingerprints[video_relative_path],
+                content_fingerprint=asset_identities[
+                    video_relative_path
+                ].content_fingerprint,
+                content_revision=asset_identities[
+                    video_relative_path
+                ].revision,
             )
         )
 
@@ -1201,8 +1442,14 @@ def _build_locator(
     )
     stats_path = "meta/stats.json"
     tasks_path = "meta/tasks.parquet"
-    has_stats = os.path.isfile(_resolve_under_root(root, stats_path))
-    has_tasks = os.path.isfile(_resolve_under_root(root, tasks_path))
+    has_stats = _resource_exists(_resolve_under_root(root, stats_path))
+    has_tasks = _resource_exists(_resolve_under_root(root, tasks_path))
+    stats_identity = (
+        _asset_identity(root, stats_path) if has_stats else _AssetIdentity()
+    )
+    tasks_identity = (
+        _asset_identity(root, tasks_path) if has_tasks else _AssetIdentity()
+    )
     return LeRobotV3Locator(
         source_fingerprint=source_fingerprint,
         locator_fingerprint=locator_fingerprint,
@@ -1211,24 +1458,29 @@ def _build_locator(
             DatasetRelativeLocation(stats_path) if has_stats else None
         ),
         statistics_content_fingerprint=(
-            _sha256_file(_resolve_under_root(root, stats_path))
-            if has_stats
-            else None
+            stats_identity.content_fingerprint if has_stats else None
+        ),
+        statistics_content_revision=(
+            stats_identity.revision if has_stats else None
         ),
         tasks_location=(
             DatasetRelativeLocation(tasks_path) if has_tasks else None
         ),
         tasks_content_fingerprint=(
-            _sha256_file(_resolve_under_root(root, tasks_path))
-            if has_tasks
-            else None
+            tasks_identity.content_fingerprint if has_tasks else None
+        ),
+        tasks_content_revision=(
+            tasks_identity.revision if has_tasks else None
         ),
         episode_metadata_location=DatasetRelativeLocation(
             metadata_relative_path
         ),
         episode_metadata_row=row["_metadata_row_index"],
         data_location=DatasetRelativeLocation(data_relative_path),
-        data_content_fingerprint=asset_fingerprints[data_relative_path],
+        data_content_fingerprint=asset_identities[
+            data_relative_path
+        ].content_fingerprint,
+        data_content_revision=asset_identities[data_relative_path].revision,
         data_chunk_index=chunk_index,
         data_file_index=file_index,
         global_dataset_rows=RowInterval(
@@ -1245,47 +1497,67 @@ def _build_locator(
     )
 
 
-def _resolve_media_asset(reference, root, asset):
+def _resolve_media_asset(reference, root, asset, content_tokens=None):
     path = _resolve_under_root(root, asset.location.path)
-    if not os.path.isfile(path):
+    metadata = _get_file_metadata(path, required=False)
+    if metadata is None:
         raise StaleMediaReferenceError(
             "LeRobot %s asset '%s' is missing"
             % (asset.role.value, asset.location.path)
         )
 
-    media_type = asset.media_type
-    if media_type is None:
-        media_type = (
-            mimetypes.guess_type(path)[0] or "application/octet-stream"
-        )
-
-    try:
-        size_bytes = os.path.getsize(path)
-    except (FileNotFoundError, NotADirectoryError) as exc:
-        raise StaleMediaReferenceError(
-            "The resolved LeRobot asset disappeared during resolution"
-        ) from exc
-    except PermissionError as exc:
-        raise MediaSourceAuthorizationError(
-            "The resolved LeRobot asset is not readable"
-        ) from exc
-    except OSError as exc:
-        raise MalformedMediaSourceError(
-            "Unable to inspect the resolved LeRobot asset"
-        ) from exc
-
+    media_type = (
+        asset.media_type
+        or metadata.get("mime_type")
+        or etau.guess_mime_type(path)
+    )
     return _build_resolved_media_asset(
         reference,
         asset,
         path=path,
-        size_bytes=size_bytes,
+        size_bytes=metadata["size"],
         media_type=media_type,
+        revision=metadata.get("revision"),
+        etag=metadata.get("etag"),
+        content_token=(content_tokens or {}).get(asset.location.path),
     )
 
 
+class _ParquetSource:
+    """Owns one Parquet reader and whatever it reads through."""
+
+    def __init__(self, parquet_file, stream=None):
+        self._parquet_file = parquet_file
+        self._stream = stream
+
+    def __enter__(self):
+        return self._parquet_file
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        try:
+            self._parquet_file.close()
+        finally:
+            if self._stream is not None:
+                self._stream.close()
+
+
 def _open_parquet(path, role):
+    """Opens one of a source's Parquet files for reads that seek.
+
+    What the reader is handed comes from the backend for the path's own file
+    system: a path where PyArrow opens the file better itself, a bounded
+    seekable stream where it cannot reach the bytes at all. Either way this
+    reads the same, and whatever was opened is owned by the returned source.
+    """
+    read = None
+    opened = None
     try:
-        return papq.ParquetFile(path)
+        read = _get_media_asset_storage(path).open_ranged(path)
+        opened = _ParquetSource(papq.ParquetFile(read.source), stream=read)
+        return opened
     except PermissionError as exc:
         raise MediaSourceAuthorizationError(
             "LeRobot %s Parquet file is not readable" % role
@@ -1303,6 +1575,21 @@ def _open_parquet(path, role):
             "LeRobot %s Parquet file '%s' has no readable footer; finalize "
             "or repair the recording before import" % (role, path)
         ) from exc
+    finally:
+        # A read nothing took ownership of would otherwise hold whatever it
+        # opened until it was collected
+        if opened is None:
+            _close_quietly(read)
+
+
+def _close_quietly(stream):
+    if stream is None:
+        return
+
+    try:
+        stream.close()
+    except Exception:  # pylint: disable=broad-except
+        logger.debug("Failed to close LeRobot source stream", exc_info=True)
 
 
 def _overlapping_row_groups(parquet_file, start, end):
@@ -1389,9 +1676,14 @@ def _format_source_path(template, **coordinates):
 
 
 def _get_dataset_relative_path(path, root):
-    relative_path = os.path.relpath(path, root)
-    if os.sep != "/":
-        relative_path = relative_path.replace(os.sep, "/")
+    if fos.is_local(path):
+        relative_path = os.path.relpath(path, root)
+        if os.sep != "/":
+            relative_path = relative_path.replace(os.sep, "/")
+    else:
+        relative_path = posixpath.relpath(
+            fos.split_prefix(path)[1], fos.split_prefix(root)[1]
+        )
 
     try:
         return DatasetRelativeLocation(relative_path).path
@@ -1402,6 +1694,13 @@ def _get_dataset_relative_path(path, root):
 
 
 def _resolve_under_root(root, relative_path):
+    return _resolve_under_canonical_root(fos.realpath(root), relative_path)
+
+
+def _resolve_under_canonical_root(root, relative_path):
+    """Joins one asset's location under an already-canonical root, so a
+    derive canonicalizes its root once rather than once per asset.
+    """
     try:
         location = DatasetRelativeLocation(relative_path)
     except InvalidMediaLocationError as exc:
@@ -1410,9 +1709,8 @@ def _resolve_under_root(root, relative_path):
             "the dataset root"
         ) from exc
 
-    root = os.path.realpath(root)
-    path = os.path.realpath(os.path.join(root, *location.path.split("/")))
-    if os.path.commonpath((root, path)) != root:
+    path = fos.realpath(fos.join(root, *location.path.split("/")))
+    if fos.commonpath((root, path)) != root:
         raise MalformedMediaSourceError(
             "LeRobot asset path escapes the dataset root: '%s'" % relative_path
         )
@@ -1420,18 +1718,29 @@ def _resolve_under_root(root, relative_path):
     return path
 
 
-def _compute_source_fingerprint(info, info_bytes, shard_bytes, asset_sizes):
+def _compute_source_fingerprint(info, info_bytes, shard_bytes):
+    """Identifies a source by the metadata that describes it.
+
+    Covers everything that says what this source *is*: its ``info.json`` and
+    every metadata shard - the episode table, statistics and tasks - all of
+    which are read in full to build the importer's row set anyway. So the
+    identity costs nothing beyond that.
+
+    It deliberately does not cover the byte assets those rows point at.
+    Identifying them here means one storage round trip per video and per
+    shard in the entire source, sequential, before a single sample exists -
+    hours on a fleet-scale source, and paid again in full on every retry.
+    Nothing consults this value afterwards to detect a changed asset: each
+    asset's own revision is recorded in its episode's locator and checked
+    when that asset is read. A replaced video is caught there, by the
+    episode that references it, rather than by re-identifying the source.
+    """
     digest = hashlib.sha256()
     digest.update(_canonical_info(info, info_bytes))
     for relative_path, raw in shard_bytes:
         digest.update(relative_path.encode("utf-8"))
         digest.update(b"\0")
         digest.update(hashlib.sha256(raw).digest())
-
-    for relative_path, size_bytes in sorted(asset_sizes.items()):
-        digest.update(relative_path.encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(str(size_bytes).encode("ascii"))
 
     return digest.hexdigest()
 
@@ -1457,17 +1766,62 @@ def _canonical_info(info, info_bytes):
 
 
 def _read_bytes(path):
+    """Reads one metadata asset into memory.
+
+    Only assets the LeRobot format defines as metadata are read whole. Media
+    is never read by this server: it is delivered to the browser, or streamed
+    in bounded ranges, and never written to local storage.
+
+    These assets belong to the source, not to an episode, so every episode of
+    a source reads the same bytes; they are held briefly, per credential and
+    per storage revision, rather than fetched once per episode.
+    """
+    key = _shared_bytes_key(path)
+    if key is not None:
+        with _SHARED_CACHE_LOCK:
+            cached = _SOURCE_BYTES_CACHE.get(key, _MISSING)
+
+        if cached is not _MISSING:
+            return cached
+
     try:
-        with open(path, "rb") as file:
-            return file.read()
-    except PermissionError as exc:
-        raise MediaSourceAuthorizationError(
-            "The LeRobot source asset is not readable"
-        ) from exc
-    except OSError as exc:
-        raise MalformedMediaSourceError(
-            "Unable to read LeRobot source asset '%s'" % path
-        ) from exc
+        raw = fos.read_file(path, binary=True)
+    except Exception as exc:  # pylint: disable=broad-except
+        _raise_storage_error(path, exc)
+
+    if key is not None and len(raw) <= _SHARED_BYTES_LIMIT:
+        with _SHARED_CACHE_LOCK:
+            _SOURCE_BYTES_CACHE[key] = raw
+
+    return raw
+
+
+def _shared_cache_key(path):
+    """A cache key scoped to whoever may read this path.
+
+    None where every reader of the path's file system is the same reader, so
+    there is nothing for a shared cache to be scoped by.
+    """
+    try:
+        credential = _get_media_asset_storage(path).credential_key(path)
+    except Exception:  # pylint: disable=broad-except
+        return None
+
+    return None if credential is None else (credential, path)
+
+
+def _shared_bytes_key(path):
+    """A cache key that also pins the storage revision of the contents."""
+    key = _shared_cache_key(path)
+    if key is None:
+        return None
+
+    metadata = _get_file_metadata(path, required=False)
+    if metadata is None:
+        return None
+
+    revision = metadata.get("revision")
+    return None if not revision else key + (revision,)
 
 
 def _sha256_file(path):
@@ -1492,38 +1846,198 @@ def _sha256_file(path):
     return "sha256:" + digest.hexdigest()
 
 
-def _validate_asset_fingerprint(
+def _asset_identity(root, relative_path, metadata=None):
+    """Captures one physical asset's identity for later staleness checks.
+
+    Assets a resolution can afford to re-read are identified by a fingerprint
+    of their bytes. Assets it cannot - remote objects reached over the network
+    - are identified by the revision their storage reports.
+    """
+    path = _resolve_under_root(root, relative_path)
+    if fos.is_local(path):
+        return _AssetIdentity(content_fingerprint=_sha256_file(path))
+
+    if metadata is None:
+        metadata = _get_file_metadata(path)
+
+    revision = metadata.get("revision")
+    if not revision:
+        raise MalformedMediaSourceError(
+            "Storage reports no revision for LeRobot asset '%s', so its "
+            "contents cannot be identified without transferring them"
+            % relative_path
+        )
+
+    return _AssetIdentity(revision=revision)
+
+
+def _get_file_metadata(path, required=True):
+    """Reads one asset's storage metadata, memoizing remote lookups.
+
+    One import inspects the same shared video and Parquet objects once per
+    episode, so a lookup that costs a round trip is made once per operation.
+    """
+    cache = None if fos.is_local(path) else _RESOURCE_CACHE.get()
+    if cache is not None and path in cache:
+        metadata = cache[path]
+    else:
+        shared_key = _shared_cache_key(path)
+        metadata = _MISSING
+        if shared_key is not None:
+            with _SHARED_CACHE_LOCK:
+                metadata = _SOURCE_METADATA_CACHE.get(shared_key, _MISSING)
+
+        if metadata is _MISSING:
+            try:
+                metadata = fos.get_file_metadata(path)
+            except Exception as exc:  # pylint: disable=broad-except
+                _raise_storage_error(path, exc)
+
+            if shared_key is not None:
+                with _SHARED_CACHE_LOCK:
+                    _SOURCE_METADATA_CACHE[shared_key] = metadata
+
+        if cache is not None:
+            cache[path] = metadata
+
+    if metadata is None and required:
+        raise StaleMediaReferenceError(
+            "The LeRobot source asset '%s' is no longer available" % path
+        )
+
+    return metadata
+
+
+def _raise_storage_error(path, error):
+    """Re-raises a storage failure as a typed media-reference error."""
+    if isinstance(error, MediaReferenceError):
+        raise error
+
+    if isinstance(error, PermissionError):
+        raise MediaSourceAuthorizationError(
+            "The LeRobot source asset is not readable"
+        ) from error
+
+    if fos.is_local(path):
+        raise MalformedMediaSourceError(
+            "Unable to inspect LeRobot source asset '%s'" % path
+        ) from error
+
+    # Where the backend can tell, a definite "no" is an authorization failure
+    # rather than a missing object
+    if _get_media_asset_storage(path).is_authorization_failure(path, error):
+        raise MediaSourceAuthorizationError(
+            "The LeRobot asset '%s' is not readable with the current "
+            "credentials" % path
+        ) from error
+
+    raise error
+
+
+def _cache_identity(metadata):
+    """The part of an asset's metadata that changes whenever it does."""
+    revision = metadata.get("revision")
+    if revision:
+        return (revision,)
+
+    return (
+        metadata.get("size"),
+        str(metadata.get("etag") or ""),
+        str(metadata.get("last_modified") or ""),
+    )
+
+
+@contextmanager
+def _resource_scope():
+    """Scopes memoized storage lookups to one operation."""
+    if _RESOURCE_CACHE.get() is not None:
+        yield
+        return
+
+    token = _RESOURCE_CACHE.set({})
+    try:
+        yield
+    finally:
+        _RESOURCE_CACHE.reset(token)
+
+
+def _validate_stored_asset_identity(
     root, relative_path, expected, source_fingerprint
 ):
+    """Validates that one asset still matches the identity stored at import."""
     path = _resolve_under_root(root, relative_path)
-    if not os.path.isfile(path):
+
+    # Unverifiable without transferring the bytes, so a describe would only
+    # prove the object exists - which the read that wants them proves anyway.
+    if expected.revision is None and not fos.is_local(path):
+        _warn_unverifiable_identity_once(relative_path)
+        return
+
+    metadata = _get_file_metadata(path, required=False)
+    if metadata is None:
         raise StaleMediaReferenceError(
             "LeRobot asset '%s' is missing; re-import or repair the source"
             % relative_path
         )
 
-    signature = _file_signature(path)
+    if expected.revision is not None:
+        if not metadata.get("revision"):
+            raise StaleMediaReferenceError(
+                "LeRobot asset '%s' was imported from versioned storage but "
+                "now resolves to storage without revisions; re-import the "
+                "dataset from its current location" % relative_path
+            )
+
+        if metadata["revision"] != expected.revision:
+            raise StaleMediaReferenceError(
+                "LeRobot asset '%s' changed since import; re-import the "
+                "dataset" % relative_path
+            )
+
+        return
+
     cache_key = (source_fingerprint, relative_path)
+    identity = _cache_identity(metadata)
     with _CACHE_LOCK:
         cached = _ASSET_FINGERPRINT_CACHE.get(cache_key)
-    if cached == (expected, signature):
+    if cached == (expected.content_fingerprint, identity):
         return
 
     actual = _sha256_file(path)
-    if _file_signature(path) != signature:
+    current = _get_file_metadata(path, required=False)
+    if current is None or _cache_identity(current) != identity:
         raise StaleMediaReferenceError(
             "LeRobot asset '%s' changed while it was being validated; retry "
             "or re-import the dataset" % relative_path
         )
 
-    if actual != expected:
+    if actual != expected.content_fingerprint:
         raise StaleMediaReferenceError(
             "LeRobot asset '%s' changed since import; re-import the dataset"
             % relative_path
         )
 
     with _CACHE_LOCK:
-        _ASSET_FINGERPRINT_CACHE[cache_key] = (expected, signature)
+        _ASSET_FINGERPRINT_CACHE[cache_key] = (
+            expected.content_fingerprint,
+            identity,
+        )
+
+
+def _warn_unverifiable_identity_once(relative_path):
+    global _WARNED_UNVERIFIABLE_IDENTITY  # pylint: disable=global-statement
+
+    if _WARNED_UNVERIFIABLE_IDENTITY:
+        return
+
+    _WARNED_UNVERIFIABLE_IDENTITY = True
+    logger.warning(
+        "LeRobot asset '%s' was imported from local storage and now resolves "
+        "to remote storage, whose contents cannot be verified without "
+        "transferring them. Re-import the dataset from its current location "
+        "to restore change detection",
+        relative_path,
+    )
 
 
 def _get_cached_manifest(cache_key, binding_revision):
@@ -1533,18 +2047,39 @@ def _get_cached_manifest(cache_key, binding_revision):
     if entry is None or entry.binding_revision != binding_revision:
         return None
 
+    interval = _manifest_revalidate_interval(entry.manifest)
+    if interval and monotonic() - entry.validated_at < interval:
+        return entry.manifest
+
     try:
         signatures = _manifest_file_signatures(entry.manifest)
     except MediaReferenceError:
         signatures = None
 
     if signatures == entry.file_signatures:
+        with _CACHE_LOCK:
+            _MANIFEST_CACHE[cache_key] = replace(
+                entry, validated_at=monotonic()
+            )
+
         return entry.manifest
 
     with _CACHE_LOCK:
         _MANIFEST_CACHE.pop(cache_key, None)
 
     return None
+
+
+def _manifest_revalidate_interval(manifest):
+    """How long this manifest may be reused before its resources are reread.
+
+    Describing every resource of an episode on every byte range a browser
+    requests would put a storage round trip in front of each read.
+    """
+    if any(not fos.is_local(asset.path) for asset in manifest.assets):
+        return _REMOTE_REVALIDATE_SECONDS
+
+    return 0.0
 
 
 def _resolution_cache_key(reference, assets):
@@ -1569,6 +2104,7 @@ def _cache_manifest(cache_key, binding_revision, manifest):
         binding_revision=binding_revision,
         manifest=manifest,
         file_signatures=_manifest_file_signatures(manifest),
+        validated_at=monotonic(),
     )
     with _CACHE_LOCK:
         _MANIFEST_CACHE[cache_key] = entry
@@ -1576,38 +2112,50 @@ def _cache_manifest(cache_key, binding_revision, manifest):
 
 def _manifest_file_signatures(manifest):
     return tuple(
-        (path, _file_signature(path))
+        (path, _resource_cache_identity(path))
         for path in sorted({asset.path for asset in manifest.assets})
     )
 
 
-def _file_signature(path):
+def _resource_cache_identity(path):
+    return _cache_identity(_get_file_metadata(path))
+
+
+def _resource_exists(path):
+    return _get_file_metadata(path, required=False) is not None
+
+
+def _isdir(dirpath):
     try:
-        result = os.stat(path)
-    except PermissionError as exc:
-        raise MediaSourceAuthorizationError(
-            "The LeRobot source asset cannot be inspected"
-        ) from exc
-    except (FileNotFoundError, NotADirectoryError) as exc:
-        raise StaleMediaReferenceError(
-            "The LeRobot source asset is no longer available"
-        ) from exc
-    except OSError as exc:
-        raise MalformedMediaSourceError(
-            "Unable to inspect the LeRobot source asset"
-        ) from exc
-    return (
-        result.st_dev,
-        result.st_ino,
-        result.st_size,
-        result.st_mtime_ns,
-    )
+        return fos.isdir(dirpath)
+    except Exception as exc:  # pylint: disable=broad-except
+        _raise_storage_error(dirpath, exc)
+
+
+def _list_files(dirpath):
+    try:
+        return fos.list_files(dirpath, abs_paths=True, recursive=True)
+    except Exception as exc:  # pylint: disable=broad-except
+        _raise_storage_error(dirpath, exc)
+
+
+def _dirname(path):
+    if fos.is_local(path):
+        return os.path.dirname(path)
+
+    prefix, remainder = fos.split_prefix(path)
+    parent = posixpath.dirname(remainder)
+    return prefix + parent if parent else None
 
 
 def _clear_resolution_caches():
     with _CACHE_LOCK:
         _MANIFEST_CACHE.clear()
         _ASSET_FINGERPRINT_CACHE.clear()
+        with _SHARED_CACHE_LOCK:
+            _SOURCE_METADATA_CACHE.clear()
+            _SOURCE_BYTES_CACHE.clear()
+            _VALIDATED_ROOT_CACHE.clear()
 
 
 def _validate_resolved_data_slice(root, episode, locator):

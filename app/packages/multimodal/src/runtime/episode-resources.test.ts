@@ -12,9 +12,18 @@ const resourceHarness = vi.hoisted(() => ({
   loadFormatAdapter: vi.fn(),
 }));
 
-vi.mock("../query/bytes", () => ({
+vi.mock("../query/bytes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../query/bytes")>()),
   byteSourceAccessKey: vi.fn(),
-  createDefaultByteClient: () => resourceHarness.byteResources,
+}));
+
+// Episode byte reads go through the cached client the query package builds,
+// so that is the seam - reading straight through it puts one request on the
+// wire per demuxer read
+vi.mock("../query", () => ({
+  createMultimodalQueryClient: () => ({
+    bytes: resourceHarness.byteResources,
+  }),
 }));
 
 vi.mock("./adapter-registry", () => ({

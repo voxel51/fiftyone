@@ -332,9 +332,6 @@ class _ReferenceAssetMaterializer(ABC):
     def get_destination_location(self, reference, asset):
         """Returns the source-relative destination for a described asset."""
 
-    def validate_materialized_reference(self, reference, assets, root):
-        """Validates a materialized reference without changing bindings."""
-
 
 _MATERIALIZERS_BY_KIND = {}
 
@@ -560,11 +557,6 @@ def _validate_materialized_media_sources(manifest_sources, dataset_dir):
         if fos.commonpath((dataset_root, root)) != dataset_root:
             raise ValueError("Materialized media source escapes the dataset")
 
-        if not fos.isdir(root):
-            raise ValueError(
-                "Materialized media source '%s' is missing" % relative_root
-            )
-
         _get_reference_asset_materializer(source.kind)
         validated.append((source, root, required))
 
@@ -574,7 +566,13 @@ def _validate_materialized_media_sources(manifest_sources, dataset_dir):
 def _validate_materialized_reference_assets(
     plan, manifest_sources, dataset_dir
 ):
-    """Validates every bundled physical asset before import mutation."""
+    """Validates the asset locations a bundled dataset declares.
+
+    Locations are checked as paths, not as storage: importing a dataset writes
+    metadata, and no other importer reads the media it names either. A missing
+    or replaced asset is reported by the first resolution that needs it, which
+    reads it anyway.
+    """
     validated_sources = _validate_materialized_media_sources(
         manifest_sources, dataset_dir
     )
@@ -593,25 +591,6 @@ def _validate_materialized_reference_assets(
             raise InvalidMediaLocationError(
                 "Materialized media asset escapes its portable source root"
             )
-
-        if not fos.isfile(path):
-            raise ValueError(
-                "Materialized media asset '%s' is missing" % asset.location
-            )
-
-    for planned_reference in plan.references:
-        root = roots.get(planned_reference.source.key)
-        if root is None:
-            continue
-
-        materializer = _get_reference_asset_materializer(
-            planned_reference.reference
-        )
-        materializer.validate_materialized_reference(
-            planned_reference.reference,
-            planned_reference.descriptions,
-            root,
-        )
 
     return validated_sources
 
