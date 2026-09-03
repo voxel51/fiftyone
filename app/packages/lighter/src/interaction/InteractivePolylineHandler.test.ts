@@ -69,8 +69,9 @@ describe("InteractivePolylineHandler pointer-up", () => {
       position: [0.5, 0.5],
     } as never);
     (handler as unknown as { dragPointId: string | null }).dragPointId = "p1";
-    (handler as unknown as { dragStartRelative: [number, number] | null }).dragStartRelative =
-      [0.1, 0.1];
+    (
+      handler as unknown as { dragStartRelative: [number, number] | null }
+    ).dragStartRelative = [0.1, 0.1];
 
     handler.onPointerUp(pointerEvent());
 

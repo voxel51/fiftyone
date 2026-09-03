@@ -16,8 +16,8 @@ const emptyResult = async () => ({
 });
 
 // One spy per registered agent: which spy ran IS the dispatch assertion.
-const { inferBox, inferPolyline, applyPropagation, labelTypeRef } =
-  vi.hoisted(() => ({
+const { inferBox, inferPolyline, applyPropagation, labelTypeRef } = vi.hoisted(
+  () => ({
     inferBox: vi.fn(async () => ({
       labelId: "instance-1",
       type: "sync",
@@ -30,7 +30,8 @@ const { inferBox, inferPolyline, applyPropagation, labelTypeRef } =
     })),
     applyPropagation: vi.fn(),
     labelTypeRef: { current: "Detections" },
-  }));
+  }),
+);
 
 const LEFT = {
   _id: "left",

@@ -62,9 +62,11 @@ const geometryAt = (
   perFrame: Awaited<ReturnType<typeof run>>,
   frame: number,
 ): Ring[] =>
-  (perFrame.find((f) => f.frameNumber === frame)?.detection as unknown as {
-    points: Ring[];
-  }).points;
+  (
+    perFrame.find((f) => f.frameNumber === frame)?.detection as unknown as {
+      points: Ring[];
+    }
+  ).points;
 
 /**
  * A closed ring has no canonical start vertex, and the interpolator rotates its

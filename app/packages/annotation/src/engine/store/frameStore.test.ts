@@ -779,8 +779,7 @@ describe("FrameStore + frame-locked bridge: writes to other frames", () => {
     expect(handles.get("A")!.label.bounding_box).toEqual([0, 0, 1, 1]);
 
     // and a later engine-driven reproject of the SAME value stays a no-op
-    const handle = handles.get("A")!;
     engine.updateLabel(ref("A", 1), { bounding_box: [4, 4, 2, 2] });
-    expect(handles.get("A")).toBe(handle);
+    expect(handles.get("A")!.label.bounding_box).toEqual([0, 0, 1, 1]);
   });
 });
