@@ -146,7 +146,8 @@ export const statusOf = (source: string, error?: string | null): Status => {
 };
 
 const STATUS_ICON: Record<Status["state"], IconName> = {
-  empty: IconName.Add,
+  // A hint, not an action: the plus read as a button beside the tabs
+  empty: IconName.Info,
   valid: IconName.Check,
   invalid: IconName.Error,
 };
@@ -479,28 +480,29 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               size={Size.Sm}
               color={STATUS_COLOR[status.state]}
             />
-            <Tooltip
-              portal
-              content={
-                status.state === "invalid"
-                  ? status.message
-                  : status.state === "valid"
-                    ? "Ready to apply"
-                    : 'Start with a field — F("…") then a dot'
-              }
-            >
+            {/* Only an error message can run long enough to truncate, so
+                only it gets the tooltip that shows the whole thing */}
+            {status.state === "invalid" ? (
+              <Tooltip portal content={status.message}>
+                <Text
+                  variant={TextVariant.Caption}
+                  color={STATUS_COLOR[status.state]}
+                  className={styles.ellipsis}
+                >
+                  {status.message}
+                </Text>
+              </Tooltip>
+            ) : (
               <Text
                 variant={TextVariant.Caption}
                 color={STATUS_COLOR[status.state]}
                 className={styles.ellipsis}
               >
-                {status.state === "invalid"
-                  ? status.message
-                  : status.state === "valid"
-                    ? "Ready to apply"
-                    : 'Start with a field — F("…") then a dot'}
+                {status.state === "valid"
+                  ? "Ready to apply"
+                  : 'Start with a field — F("…") then a dot'}
               </Text>
-            </Tooltip>
+            )}
           </Stack>
         )}
       </Stack>

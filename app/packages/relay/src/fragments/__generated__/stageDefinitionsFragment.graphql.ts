@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6c9f5c6b159cf41a51a3b7c4211b89a8>>
+ * @generated SignedSource<<f8d4fee60980098bd6cbf5b21655b02c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -30,6 +30,7 @@ export type stageDefinitionsFragment$data = {
         readonly values: ReadonlyArray<string>;
       };
       readonly default: string | null;
+      readonly description: string | null;
       readonly name: string;
       readonly nullable: boolean;
       readonly placeholder: string | null;
@@ -52,6 +53,13 @@ var v0 = {
   "kind": "ScalarField",
   "name": "name",
   "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
 };
 return {
   "argumentDefinitions": [],
@@ -68,13 +76,7 @@ return {
       "plural": true,
       "selections": [
         (v0/*: any*/),
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "description",
-          "storageKey": null
-        },
+        (v1/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -133,6 +135,7 @@ return {
               "name": "placeholder",
               "storageKey": null
             },
+            (v1/*: any*/),
             {
               "alias": null,
               "args": null,
@@ -209,6 +212,6 @@ return {
 };
 })();
 
-(node as any).hash = "f88a1d31e099a8ec4f1caad9fdebed81";
+(node as any).hash = "897f401867c51d6674bdcc055e72c55e";
 
 export default node;

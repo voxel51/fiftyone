@@ -13,6 +13,7 @@ parameter may be omitted, and learns where its valid values come from.
 
 from enum import Enum
 import inspect
+import re
 import typing as t
 
 import strawberry as gql
@@ -106,6 +107,7 @@ class StageParameter:
     choices: StageParameterChoices
     default: t.Optional[str] = None
     placeholder: t.Optional[str] = None
+    description: t.Optional[str] = None
 
 
 @gql.type
@@ -175,7 +177,9 @@ def _choices(
     return _FREE_TEXT
 
 
-def _stage_parameter(param: t.Dict[str, t.Any]) -> StageParameter:
+def _stage_parameter(
+    param: t.Dict[str, t.Any], descriptions: t.Dict[str, str]
+) -> StageParameter:
     tokens = param["type"].split("|")
     nullable = _NONE_TOKEN in tokens
     default = param.get("default")
@@ -189,7 +193,47 @@ def _stage_parameter(param: t.Dict[str, t.Any]) -> StageParameter:
         choices=_choices(param, tokens),
         default=default,
         placeholder=param.get("placeholder"),
+        description=descriptions.get(param["name"]),
     )
+
+
+# `name: text` or `name (default): text`, at the Args block's indentation
+_ARG_LINE = re.compile(r"^(\w+)(?: \([^)]*\))?: (.*)$")
+
+
+def _arg_descriptions(stage: type) -> t.Dict[str, str]:
+    """Each parameter's description from the docstring's ``Args:`` block.
+
+    A parameter's entry is its first line plus the more-indented continuation
+    lines beneath it; a blank line ends the block.
+    """
+    doc = inspect.getdoc(stage)
+    if not doc:
+        return {}
+
+    lines = doc.split("\n")
+    try:
+        start = next(i for i, l in enumerate(lines) if l.strip() == "Args:")
+    except StopIteration:
+        return {}
+
+    descriptions: t.Dict[str, str] = {}
+    name = None
+    for line in lines[start + 1 :]:
+        if not line.strip():
+            break
+
+        indent = len(line) - len(line.lstrip())
+        match = _ARG_LINE.match(line.strip())
+        if match and indent <= 4:
+            name = match.group(1)
+            descriptions[name] = match.group(2).strip()
+        elif name is not None:
+            descriptions[name] += " " + line.strip()
+        else:
+            break
+
+    return descriptions
 
 
 def _summary(stage: type) -> t.Optional[str]:
@@ -210,7 +254,10 @@ def stage_definitions() -> t.List[StageDefinition]:
             name=stage.__name__,
             description=_summary(stage),
             media_types=list(stage._media_types() or []),
-            params=[_stage_parameter(param) for param in stage._params()],
+            params=[
+                _stage_parameter(param, _arg_descriptions(stage))
+                for param in stage._params()
+            ],
         )
         for stage in _STAGES
     ]

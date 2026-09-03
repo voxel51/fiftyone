@@ -4,12 +4,19 @@
   align-items: center;
 }
 
-/* A stage that cannot be applied says so once its editor closes — while the
+/* A stage the server rejected says so once its editor closes — while the
    popover is open the user is mid-thought, not in error */
 .pillInvalid {
   border-color: var(--color-content-border-error);
   outline: 1px solid var(--color-content-border-error);
   outline-offset: -1px;
+}
+
+/* A stage still missing a required value is unfinished, not wrong: a dashed
+   frame in the ordinary border color */
+.pillDraft {
+  border-style: dashed;
+  border-color: var(--color-content-border-default);
 }
 
 /* voodo's Clickable is a plain span that takes no ref, so the ref used to put

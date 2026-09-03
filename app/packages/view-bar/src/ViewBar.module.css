@@ -27,12 +27,6 @@
   border-radius: 4px;
 }
 
-/* Holds the width the search box would have had, so the toggle stays at the
-   right edge whether or not the search operator is installed */
-.spacer {
-  flex: 1;
-}
-
 .clearSlot {
   flex-shrink: 0;
   height: 100%;
