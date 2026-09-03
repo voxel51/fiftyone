@@ -101,3 +101,42 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/*
+ * Opens the modal from a point-cloud tile.
+ *
+ * Point-cloud previews consume the click themselves — it orbits the camera —
+ * so they are the one tile kind that needs an explicit way in. Top-right, well
+ * clear of the interval lane along the bottom edge. Revealed on hover where
+ * there is a real pointer, always visible on touch.
+ */
+.openModalButton {
+  align-items: center;
+  background: rgba(18, 18, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  color: #f5f5f5;
+  display: flex;
+  height: 22px;
+  justify-content: center;
+  opacity: 1;
+  pointer-events: auto;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 22px;
+  z-index: 20;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .openModalButton {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .root:hover .openModalButton,
+  .root:focus-within .openModalButton {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

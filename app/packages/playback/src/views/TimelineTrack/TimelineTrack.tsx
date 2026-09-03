@@ -130,6 +130,15 @@ export interface TimelineTrackProps {
   eventMenuItems?: TrackEventMenuItem[];
   /** Override the label column text. Defaults to `id`. */
   label?: string;
+  /**
+   * Subordinate text at the right of the label column — what kind of thing this
+   * row is, or where it came from.
+   *
+   * Exists for the pinned section, which is a flat list and so drops the
+   * grouping that would otherwise say so. Omit it for a row whose context is
+   * already visible from its position.
+   */
+  secondaryLabel?: string;
   height?: number;
   labelWidth?: number;
   pinned?: boolean;
@@ -271,6 +280,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   onEventClick,
   eventMenuItems,
   label,
+  secondaryLabel,
   height = TIMELINE_TRACK_ROW_HEIGHT,
   labelWidth = 0,
   pinned = false,
@@ -599,6 +609,16 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               {labelText}
             </Text>
           </Tooltip>
+          {secondaryLabel && !isChild && (
+            <Text
+              variant={TextVariant.Xs}
+              color={TextColor.Secondary}
+              className={styles.secondaryLabel}
+              data-track-secondary-label
+            >
+              {secondaryLabel}
+            </Text>
+          )}
           {onPinClick && !isChild && (
             <Button
               variant={Variant.Icon}

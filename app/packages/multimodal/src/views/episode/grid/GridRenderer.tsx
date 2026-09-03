@@ -1,6 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { multimodalGridFit, type MultimodalGridFit } from "@fiftyone/state";
-import { Size, Spinner } from "@voxel51/voodo";
+import { Clickable, Icon, IconName, Size, Spinner } from "@voxel51/voodo";
 import {
   useCallback,
   useEffect,
@@ -78,6 +78,32 @@ const stopGridActivationPropagation = (
 ) => {
   event.stopPropagation();
 };
+
+/**
+ * Explicit way into the modal for a tile whose own surface takes the click.
+ *
+ * Only point-cloud previews get one: their click orbits the camera, so grid
+ * activation is suppressed and there would otherwise be no way to open the
+ * sample from the tile. Every other tile kind opens by being clicked, which is
+ * why this is the renderer's call to make rather than the grid's.
+ */
+const OpenModalButton = ({ openModal }: { readonly openModal: () => void }) => (
+  <Clickable
+    aria-label="Open sample modal"
+    className={classes.openModalButton}
+    onClick={(event) => {
+      // The tile suppresses grid activation, so this must not read as a click
+      // on the point cloud either.
+      event.preventDefault();
+      event.stopPropagation();
+      openModal();
+    }}
+    role="button"
+    title="Open sample modal"
+  >
+    <Icon name={IconName.Fullscreen} size={Size.Sm} />
+  </Clickable>
+);
 
 /**
  * Grid renderer for episode-backed multimodal samples. Shows one camera
@@ -233,6 +259,7 @@ export function GridRenderer({
     cacheRequestKey: previewStateKey,
     cachedPoster: effectivePoster,
     enabled: visible,
+    episodeId: sampleId,
     hovered,
     initialVideoDecodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
     onReadResult: gridVideoPlayback.onReadResult,
@@ -382,6 +409,9 @@ export function GridRenderer({
       onPointerLeave={playbackIntent.leave}
       ref={setRootElement}
     >
+      {blocksGridActivation && ctx.openModal ? (
+        <OpenModalButton openModal={ctx.openModal} />
+      ) : null}
       {preview.frame ? (
         <VideoPlaybackManagerProvider manager={gridVideoPlayback.manager}>
           <PreviewFrame
@@ -438,6 +468,7 @@ export function GridRenderer({
           key={`${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.codec}:${preview.nativeVideo.startTimeSeconds}:${preview.nativeVideo.endTimeSeconds}`}
           onCanvasCommitted={handleNativePosterCanvasCommitted}
           onError={handleNativeVideoError}
+          onPresentedTimeSeconds={preview.presentNativeTimeSeconds}
           onSurfaceRetainedBytesChange={setNativeSurfaceRetainedBytes}
           playing={preview.isPlaying}
           video={preview.nativeVideo}
