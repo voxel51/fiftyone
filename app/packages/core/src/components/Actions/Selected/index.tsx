@@ -1,4 +1,5 @@
 import { PillButton } from "@fiftyone/components";
+import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { Check } from "@mui/icons-material";
 import type { MutableRefObject } from "react";
@@ -25,6 +26,20 @@ export default ({
   const labels = useRecoilValue(fos.selectedLabelIds);
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
+
+  // Which menu this offers depends on whether the surface paints labels at
+  // all, not merely on being in the modal.
+  //
+  // The Modal variant's items are label actions ("Select visible labels",
+  // "Hide selected labels", …) sourced from the painted overlays; the Grid
+  // variant offers the sample actions ("Only show selected samples", …). The
+  // test used to be `lookerRef?.current`, which video Explore fails because it
+  // mounts no looker — but so do 3D samples, `ModalSampleRenderer`, and the
+  // multimodal shell, and those want the sample actions they have always had.
+  // A Lighter scene is the other way a surface paints labels, so ask for
+  // either.
+  const { scene } = useLighter();
+  const paintsLabels = !!lookerRef?.current || !!scene;
 
   useEffect(() => {
     /** refresh **/
@@ -80,7 +95,7 @@ export default ({
         data-cy="action-manage-selected"
       />
       {open &&
-        (modal ? (
+        (modal && paintsLabels ? (
           <Modal
             anchorRef={ref}
             close={() => setOpen(false)}

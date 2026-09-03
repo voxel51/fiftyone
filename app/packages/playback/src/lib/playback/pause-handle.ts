@@ -93,3 +93,36 @@ export const useRequestPlaybackPause = (): (() => void) => {
 
   return useCallback(() => pause?.(), [pause]);
 };
+
+/**
+ * Whether the active timeline is playing, published for the same callers and
+ * for the same reason as the pause handle above.
+ *
+ * `useIsPlaying()` is not an option outside the provider: it resolves the
+ * per-instance store through `usePlaybackStore()`, which THROWS when there is
+ * no `<PlaybackProvider>` above it.
+ *
+ * False whenever no timeline is mounted, which is the normal state for an
+ * image sample — so consumers need no media-type check.
+ */
+const playbackIsPlayingAtom = atom<boolean>(false);
+
+/** Publish this provider's playing flag. Called by `PlaybackProvider`. */
+export const usePublishIsPlaying = (isPlaying: boolean): void => {
+  const setIsPlaying = useSetAtom(playbackIsPlayingAtom, { store });
+
+  useEffect(() => {
+    setIsPlaying(isPlaying);
+  }, [isPlaying, setIsPlaying]);
+
+  useEffect(
+    () => () => {
+      setIsPlaying(false);
+    },
+    [setIsPlaying],
+  );
+};
+
+/** Whether the active timeline is playing, from anywhere in the app. */
+export const useIsPlaybackPlaying = (): boolean =>
+  useAtomValue(playbackIsPlayingAtom, { store });

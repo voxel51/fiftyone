@@ -376,7 +376,8 @@ export const useLighterEngineBridge = ({
           //
           // Optional-called because `scene` is duck-typed at this boundary
           // (surfaces and tests supply their own), and an older scene without
-          // the method is single-select — the historical behavior.
+          // the method is single-select, which is what Annotate wants: a
+          // selection there is the target of the next edit.
           additive:
             (scene as Scene2D).isMultipleSelection?.() === true ||
             event.isShiftPressed,

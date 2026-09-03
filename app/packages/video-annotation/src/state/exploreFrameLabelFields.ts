@@ -7,7 +7,7 @@ import * as fos from "@fiftyone/state";
 import { LabelType } from "@fiftyone/utilities";
 import { PROJECTABLE_FRAME_LABEL_TYPES } from "../streams/framesData";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useTemporalDetectionFieldPaths } from "./accessors";
 
 /**
  * Label types the per-frame pipeline can actually paint.
@@ -33,25 +33,9 @@ const toLabelType = (embeddedDocType?: string | null): LabelType | null => {
 };
 
 /**
- * The per-frame label fields the EXPLORE surface should paint, keyed to their
- * label type — the Explore analogue of `useFrameLabelFields`.
- *
- * That hook derives from the annotation schemas (`activeLabelSchemas`), which
- * are populated by `useLoadSchemas` when the Annotate sidebar opens and by
- * `useEnsureSchemasLoaded` from the Schema Manager. Neither runs in Explore,
- * so the atom stays `null` there and every schema-gated derivation collapses
- * to empty — which is why the engine store registered no fields and the
- * bridge scoped to nothing.
- *
- * Explore's own source of truth is the sidebar's active paths, which is what
- * the video looker painted before this surface replaced it. Read those, keep
- * the `frames.*` namespace the video store owns, and resolve each one's type
- * from the frame field schema.
- */
-/**
  * Pure half of {@link useExploreFrameLabelFields}: sidebar active paths plus a
  * frame field schema in, paintable `frames.*` fields out. Separated from the
- * hook so the selection rules are testable without Recoil.
+ * hook so the selection rules are testable without a state provider.
  *
  * @param active - Sidebar active paths, `frames.`-prefixed for frame fields.
  * @param schema - Frame field schema, keyed WITHOUT the `frames.` prefix.
@@ -78,11 +62,28 @@ export const toExploreFrameLabelFields = (
   return fields;
 };
 
+/**
+ * The per-frame label fields the EXPLORE surface should paint, keyed to their
+ * label type — the Explore analogue of `useFrameLabelFields`.
+ *
+ * That hook derives from the annotation schemas, which know only the types the
+ * editor can create (Detections and Polylines) and only the fields activated
+ * in the Schema Manager. Using it in Explore meant `frames.keypoints` and
+ * `frames.classifications` never painted, and a field checked in the sidebar
+ * but inactive in the Schema Manager never painted either — both of which the
+ * video looker drew.
+ *
+ * It also couples Explore to whether annotation is enabled at all: the modal
+ * sidebar calls `useLoadSchemas()` whenever the annotation tab is available,
+ * in BOTH modes, so the annotation-derived set is neither reliably empty nor
+ * reliably right in Explore. Explore's own source of truth is the sidebar's
+ * active paths, which is what the video looker painted from. Read those, keep
+ * the `frames.*` namespace the video store owns, and resolve each one's type
+ * from the frame field schema.
+ */
 export const useExploreFrameLabelFields = (): Record<string, LabelType> => {
-  const active = useRecoilValue(fos.activeFields({ modal: true }));
-  const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.FRAME }),
-  );
+  const active = fos.useActiveFields({ modal: true });
+  const schema = fos.useFrameSchema();
 
   return useMemo(
     () => toExploreFrameLabelFields(active, schema),
@@ -99,3 +100,32 @@ export const useExploreFrameLabelPaths = (): ReadonlySet<string> => {
   const fields = useExploreFrameLabelFields();
   return useMemo(() => new Set(Object.keys(fields)), [fields]);
 };
+
+/**
+ * The sample-level TemporalDetections fields Explore should paint.
+ *
+ * A TemporalDetection is sample-level, not `frames.*`, so it is a separate
+ * question from every hook above — {@link useExploreFrameLabelFields} only
+ * ever answers for the per-frame namespace. `useTemporalOverlaySync` (the
+ * canvas side of a TD) and its Annotate counterpart both gate on
+ * `useVisibleLabelSchemas()` (annotation-active ∩ explore-active), which is
+ * the same annotation-schema derivation `useExploreFrameLabelFields`'s own doc
+ * comment explains stays empty in Explore: `useLoadSchemas()` only runs when
+ * the Annotate sidebar has been opened this session. A TD field checked in
+ * the Explore sidebar of a session that never opened Annotate therefore paints
+ * nothing.
+ *
+ * The fix mirrors the per-frame one: read the sidebar's own active paths
+ * rather than the annotation schema, narrowed to the fields the dataset schema
+ * says are actually TemporalDetections.
+ */
+export const useExploreTemporalDetectionFieldPaths =
+  (): ReadonlySet<string> => {
+    const active = fos.useActiveFields({ modal: true });
+    const tdFields = useTemporalDetectionFieldPaths();
+
+    return useMemo(() => {
+      const tdSet = new Set(tdFields);
+      return new Set(active.filter((path) => tdSet.has(path)));
+    }, [active, tdFields]);
+  };

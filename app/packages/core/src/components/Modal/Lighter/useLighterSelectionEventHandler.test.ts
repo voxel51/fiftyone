@@ -113,6 +113,7 @@ describe("useLighterSelectionEventHandler", () => {
       "label-a": {
         field: "frames.detections",
         sampleId: "s1",
+        type: "default",
         frameNumber: 12,
       },
     });
@@ -188,7 +189,7 @@ describe("useLighterSelectionEventHandler", () => {
     await fire({ selectedIds: ["inst-td"] });
 
     expect(selection.map).toEqual({
-      "label-td": { field: "events", sampleId: "s1" },
+      "label-td": { field: "events", sampleId: "s1", type: "default" },
     });
   });
 

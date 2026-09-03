@@ -8,6 +8,13 @@ export * from "./src/lib/timeline/use-timeline-viz-utils";
 export * from "./src/lib/timeline/utils";
 export * from "./src/lib/playback/PlaybackProvider";
 export {
+  useCurrentPublishedFrame,
+  useCurrentPublishedFrameGetter,
+  usePublishCurrentFrame,
+} from "./src/lib/playback/frame-handle";
+export {
+  useIsPlaybackPlaying,
+  usePublishIsPlaying,
   usePublishPauseHandle,
   useRequestPlaybackPause,
 } from "./src/lib/playback/pause-handle";

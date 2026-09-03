@@ -171,7 +171,11 @@ describe("useUnselectVisible", () => {
     expect(result.current.map).toEqual({});
   });
 
-  it("calls scene.clearSelection when a lighter scene is present", async () => {
+  it("clears the scene selection UNFLAGGED so the engine hears it", async () => {
+    // A flagged clear never reaches the annotation engine — its deselect
+    // handler returns early on the flag — so the engine's active set would go
+    // on holding these labels and repaint them the next time their track
+    // re-entered the projection, with the atom empty.
     const { result } = renderHook(
       () => useUnselectVisible(undefined, new Set(["label-a"])),
       {
@@ -186,9 +190,9 @@ describe("useUnselectVisible", () => {
     });
 
     expect(refs.scene!.clearSelection).toHaveBeenCalledOnce();
-    expect(refs.scene!.clearSelection).toHaveBeenCalledWith({
-      ignoreSideEffects: true,
-    });
+    expect(refs.scene!.clearSelection).not.toHaveBeenCalledWith(
+      expect.objectContaining({ ignoreSideEffects: true }),
+    );
   });
 
   it("does not call scene.clearSelection when scene is null", async () => {
@@ -279,6 +283,7 @@ describe("overlayToSelectedLabel", () => {
       labelId: "L1",
       field: "frames.detections",
       sampleId: "S1",
+      type: "default",
       frameNumber: 42,
     });
   });
@@ -292,7 +297,12 @@ describe("overlayToSelectedLabel", () => {
         { id: "inst-2", field: "events", label: { _id: "L2" } },
         "S1",
       ),
-    ).toEqual({ labelId: "L2", field: "events", sampleId: "S1" });
+    ).toEqual({
+      labelId: "L2",
+      field: "events",
+      sampleId: "S1",
+      type: "default",
+    });
   });
 
   it("falls back to the overlay's instance id when the label carries none", () => {

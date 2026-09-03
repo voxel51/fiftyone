@@ -1,9 +1,12 @@
 import type { Lookers } from "@fiftyone/looker";
 import { VideoLooker } from "@fiftyone/looker";
-import { useRequestPlaybackPause } from "@fiftyone/playback";
+import {
+  useIsPlaybackPlaying,
+  useRequestPlaybackPause,
+} from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
-import { useCallback, useLayoutEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect } from "react";
 import { useRecoilValue } from "recoil";
 import type { ActionOptionProps } from "../Common";
 import { ActionOption } from "../Common";
@@ -51,6 +54,10 @@ export default ({
   // frame" is meaningless if the frame advances underneath the choice. The
   // looker path pauses itself; the timeline surface publishes its `pause`
   // through an atom because this menu renders outside its provider.
+  //
+  // Once per mount. Without a dependency list this ran on EVERY render of the
+  // menu, re-issuing the pause each time — which on the multimodal surface
+  // meant opening this menu repeatedly stopped episode playback.
   useLayoutEffect(() => {
     if (lookerRef?.current instanceof VideoLooker) {
       lookerRef.current.pause?.();
@@ -58,9 +65,26 @@ export default ({
     }
 
     requestPlaybackPause();
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Close if playback starts anyway, so the menu cannot act on a moving frame.
+  //
+  // Two ways in, because the two surfaces announce it differently: the looker
+  // fires its own `play` event, while the timeline surface has no looker at
+  // all — there, `TimelineControls` binds Space in `KnownContexts.Modal` and
+  // `CommandContextManager` dispatches from `document` unless the target is a
+  // text input, which this popout is not. So Space reaches playback with the
+  // menu open, and only the playing flag reports it.
   fos.useEventHandler(lookerRef?.current, "play", close);
+
+  const isPlaying = useIsPlaybackPlaying();
+
+  useEffect(() => {
+    if (isPlaying) {
+      close();
+    }
+  }, [isPlaying, close]);
 
   const closeAndCall = (callback) => {
     return useCallback(() => {
@@ -81,6 +105,10 @@ export default ({
   const hasVisibleSelection = hasSetInt(
     selectedLabels,
     toIds(visibleSampleLabels),
+  );
+  const hasFrameVisibleSelection = hasSetInt(
+    selectedLabels,
+    toIds(visibleFrameLabels),
   );
 
   const items: ({ key: string } & ActionOptionProps)[] = [];
@@ -121,7 +149,7 @@ export default ({
       {
         key: "unselect-frame",
         text: "Unselect visible labels (current frame)",
-        hidden: !hasVisibleSelection,
+        hidden: !hasFrameVisibleSelection,
         onClick: closeAndCall(
           useUnselectVisible(undefined, toIds(visibleFrameLabels)),
         ),

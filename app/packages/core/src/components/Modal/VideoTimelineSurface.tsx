@@ -1,8 +1,4 @@
-import {
-  PlaybackProvider,
-  TIMELINE_DRAWER_MAX_SIZE,
-  type TimelineMode,
-} from "@fiftyone/playback";
+import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
   FrameLabelsTracks,
@@ -11,6 +7,7 @@ import {
   RegisterVideoExploreLabels,
   LighterVideo,
   getModalSampleFrameRate,
+  useTimelineMaxSize,
 } from "@fiftyone/video-annotation";
 import React, { useCallback, useMemo, useState } from "react";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
@@ -24,16 +21,6 @@ import styles from "./VideoTimelineSurface.module.css";
  * watching for a sample to land has to know which surface rendered it.
  */
 const LOADED = "canvas-loaded";
-
-/**
- * Fraction of the surface height the timeline may occupy before its body caps
- * and scrolls internally — so a growing track list never crowds out the media.
- * Mirrors the annotation surface so both video surfaces dock the same way.
- */
-const TIMELINE_MAX_HEIGHT_FRACTION = 0.25;
-
-/** Floor for the timeline body cap so it stays usable on a short surface. */
-const TIMELINE_MIN_MAX_SIZE = 160;
 
 /**
  * The media half of the surface: `LighterVideo` — the same Lighter-backed
@@ -108,40 +95,54 @@ export interface VideoTimelineSurfaceProps {
  * (`GroupImageVideoSample` mounts a single `ModalLooker` for the active
  * slice), so that is an addition rather than a regression.
  *
- * ## Parity with `VideoLookerReact`
+ * ## What this surface binds
  *
- * This surface replaced the looker unconditionally, so what the looker bound
- * and this does not is a real gap for users, not a theoretical one. Ported:
- * play/pause (`Space`), frame stepping (the looker's `<` / `>`, rebound to
- * `,` / `.` to match the rest of the app), zoom (`+` / `-` and scroll), and
- * the JSON and help panels, which moved from looker controls to
- * `VideoExploreToolbar`. Everything this surface binds is listed in that
- * toolbar's `HELP_ITEMS`.
+ * Play/pause (`Space`), frame stepping (`,` / `.`), zoom (`+` / `-` and
+ * scroll), pan, and the JSON and help panels, which live in
+ * `VideoExploreToolbar`. Everything bound here is listed in that toolbar's
+ * `HELP_ITEMS`.
  *
- * NOT ported, each from the looker's `VIDEO_SHORTCUTS` / `COMMON_SHORTCUTS`:
+ * Per-frame label types: detections, polylines, keypoints and classifications
+ * all render (see `framesData`'s `ELEMENT_CLS`), across the fields the SIDEBAR
+ * has active — `RegisterFrameLabels` and `FrameLabelsTracks` both take
+ * `mode="explore"` so the set fetched is the set painted.
+ *
+ * Label selection: clicking labels accumulates a selection in
+ * `fos.selectedLabels` — the atom Tag and "Manage selected" act on — via
+ * `useLighterSelectionBridge`, mounted by `LighterVideo`. A selection
+ * addresses one occurrence on one frame, as it did in the looker, so a
+ * highlight shows only on the frame it was made on. One deliberate difference:
+ * clicking the media away from any label clears the selection, because Lighter
+ * treats a background click as a clear (`InteractionManager.handleClick`) and
+ * the highlighted boxes have to keep matching the atom. Escape clears it too.
+ *
+ * ## Not bound on this surface
+ *
+ * Keys, each from the looker's `VIDEO_SHORTCUTS` / `COMMON_SHORTCUTS`:
  *
  * - `m` mute / unmute. Audio moved to the timeline's own volume control, so
  *   the capability exists; only the keyboard binding is missing.
  * - `0`-`9` seek to 0%, 10%, … of the duration.
  * - `l` support lock — toggling the lock on a sample's support frames. The
  *   support-frame concept has no equivalent on this surface at all.
- * - `z` crop to content. The toolbar's Fit is `resetZoom`, not this.
+ * - `z` crop to content. The capability exists — the toolbar's Fit frames the
+ *   overlays' bounding box via `scene.fitToContent()` — but no key is bound.
  * - `p` the settings / options panel.
  * - `c` toggle the controls row.
  * - Holding `shift` to hide overlays (`toggleOverlays`).
  *
- * Per-frame label types are NO LONGER a gap: detections, polylines, keypoints
- * and classifications all render (see `framesData`'s `ELEMENT_CLS`).
+ * Behavior:
  *
- * Label selection is NO LONGER a gap either: clicking labels accumulates a
- * selection in `fos.selectedLabels` — the atom Tag and "Manage selected" act
- * on — via `useLighterSelectionEventHandler`, mounted by `LighterVideo`. One
- * deliberate difference from the looker: clicking the media away from any
- * label clears the selection, because Lighter treats a background click as a
- * clear (`InteractionManager.handleClick`) and the highlighted boxes have to
- * keep matching the atom. Escape clears it too — the looker's escape ladder
- * cleared before closing, and `useVideoExploreKeybindings` restores that rung.
- * All three gestures are listed in `HELP_ITEMS`.
+ * - Sidebar FILTERS and "Hide selected labels" do not reach the canvas. The
+ *   looker was handed `filter: pathFilter(modal)`; this scene takes only
+ *   `activePaths` / `showOverlays` / `alpha`, and nothing under `lighter/`,
+ *   `video-annotation/` or `annotation/` reads `pathFilter`, `fos.filters` or
+ *   `hiddenLabels`. Setting a confidence / label / label-tag filter changes
+ *   the sidebar counts while every overlay keeps drawing.
+ * - A video with no usable frame rate paints no frame labels and no tracks:
+ *   `RegisterFrameLabels` gates on a finite `frameRate` because the whole
+ *   per-frame pipeline addresses frames, not seconds. The ruler still falls
+ *   back to elapsed time, so playback and scrubbing work.
  */
 export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   sample,
@@ -160,15 +161,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   // the cap the drawer scrolls internally instead of growing into the media.
   const dimensions = fos.useDimensions();
   const surfaceHeight = dimensions.bounds?.height ?? 0;
-  const timelineMaxSize = surfaceHeight
-    ? Math.min(
-        TIMELINE_DRAWER_MAX_SIZE,
-        Math.max(
-          TIMELINE_MIN_MAX_SIZE,
-          Math.round(surfaceHeight * TIMELINE_MAX_HEIGHT_FRACTION),
-        ),
-      )
-    : undefined;
+  const timelineMaxSize = useTimelineMaxSize(surfaceHeight);
 
   // Owned here rather than inside `LighterVideo`: a media error unmounts it,
   // and with it the <video> that is this surface's only clock source. Left
@@ -187,8 +180,8 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
 
   // Sequence mode when the frame rate is known, so the engine steps whole
   // frames and the frame domain is available to switch into; elapsed seconds
-  // if not. This is what retires the looker's "use frame number" preference
-  // — the readout in the controls row switches between the two at a click.
+  // if not. The readout in the controls row switches between the two at a
+  // click, which is where the frame-number preference now lives.
   //
   // The DISPLAY still opens on timecode (`defaultDisplay` below): frames were
   // opt-in on the looker too, behind `UseFrameNumberOptionElement`.
@@ -227,7 +220,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
           down and rebuild the very element that fed it — a visible reload, and
           a `canvas-loaded` marker that goes true, disappears, then true again.
           Consumers read the stream via `useFrameLabelsStream`, not position. */}
-      <RegisterFrameLabels sample={sample} />
+      <RegisterFrameLabels sample={sample} mode="explore" />
       <div
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         data-cy="modal-looker-container"
@@ -262,6 +255,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
             <FrameLabelsTracks
               sample={sample}
               maxSize={timelineMaxSize}
+              mode="explore"
               trailingActions={<VideoExploreToolbar />}
             />
           </div>

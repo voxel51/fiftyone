@@ -1,11 +1,14 @@
 import React, { type RefObject, useRef, useState } from "react";
-import { usePlayback, useVideoStream, useVideoSync } from "@fiftyone/playback";
 import {
-  useLighterSelectionEventHandler,
-  useSelectedLabelsSceneSync,
-} from "../../../core/src/components/Modal/Lighter/useLighterSelectionEventHandler";
+  usePlayback,
+  usePublishCurrentFrame,
+  useVideoStream,
+  useVideoSync,
+} from "@fiftyone/playback";
+import { useLighterSelectionBridge } from "../../../core/src/components/Modal/Lighter/useLighterSelectionEventHandler";
 import { useLighterTooltipEventHandler } from "../../../core/src/components/Modal/Lighter/useLighterTooltipEventHandler";
 import { useLighterMediaScene } from "../hooks/useLighterMediaScene";
+import { useCurrentFrame } from "../state/useCurrentFrame";
 import { useVfcClockSource } from "../hooks/useVfcClockSource";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
 import { useVideoExploreSyncBundle } from "../hooks/useVideoExploreSyncBundle";
@@ -42,7 +45,7 @@ export interface LighterVideoProps {
   videoSrc: string;
   /**
    * Which sync bundle to arm. Defaults to `annotate` so the annotation
-   * surface keeps its existing behaviour; Explore passes `explore` for the
+   * surface keeps its existing behavior; Explore passes `explore` for the
    * read-only overlay path.
    */
   mode?: LighterVideoMode;
@@ -97,6 +100,13 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   useVfcClockSource(videoRef);
   const { seek } = usePlayback();
 
+  // Publish the playhead frame for the consumers that sit OUTSIDE this
+  // provider and so cannot convert playhead seconds themselves: the modal's
+  // action bar is a sibling of the media container, and both the label
+  // selection and "Select visible labels (current frame)" have to agree with
+  // the canvas about which frame is current.
+  usePublishCurrentFrame(useCurrentFrame());
+
   // Scene lifecycle (singleton canvas, pixi setup, color scheme, canonical
   // media, viewport fit). A fresh scene per `videoSrc` so a new source video
   // gets its own scene; `dims` from the <video>'s intrinsic resolution.
@@ -122,18 +132,16 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   // `null` routes the hook at the undefined channel, so it observes nothing.
   useLighterTooltipEventHandler(mode === "explore" ? scene : null);
 
-  // Canvas selection -> `fos.selectedLabels`, which the modal's Tag and
-  // "Manage selected" actions read. Explore only, and routed at the undefined
-  // channel otherwise: in Annotate a selection belongs to the annotation
-  // engine's active handles, and mirroring it into this atom would make the
-  // label actions act on whatever the user is mid-edit on.
-  useLighterSelectionEventHandler(mode === "explore" ? scene : null);
-
-  // ...and back, so the canvas follows the atom when something other than a
-  // click changes it — the "Manage selected" menu, a successful tag (which
-  // resets the selection), hiding labels, an operator. Explore only, for the
-  // same reason as above.
-  useSelectedLabelsSceneSync(mode === "explore" ? scene : null);
+  // Canvas selection <-> `fos.selectedLabels`, which the modal's Tag and
+  // "Manage selected" actions read. Both directions: a click writes the atom,
+  // and the atom writes the canvas back when something else changes it (the
+  // "Manage selected" menu, a successful tag, hiding labels, an operator).
+  //
+  // Explore only, and routed at the undefined channel otherwise: in Annotate a
+  // selection belongs to the annotation engine's active handles, and mirroring
+  // it into this atom would make the label actions act on whatever the user is
+  // mid-edit on.
+  useLighterSelectionBridge(mode === "explore" ? scene : null);
 
   const Sync = mode === "annotate" ? AnnotateSync : ExploreSync;
 

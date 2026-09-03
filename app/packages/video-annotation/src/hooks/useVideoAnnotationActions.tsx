@@ -138,8 +138,13 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             id: "create-temporal-detection",
             label: "New TD",
             icon: <Icon name={IconName.Add} size={Size.Sm} />,
-            tooltip: `Create a TemporalDetection on \`${tdFieldPath}\``,
-            isVisible: canCreateTd,
+            // Disabled with an explanation rather than hidden: on a dataset
+            // with no TemporalDetections field, a button that simply is not
+            // there tells the user nothing about why.
+            tooltip: canCreateTd
+              ? `Create a TemporalDetection on \`${tdFieldPath}\``
+              : "No TemporalDetections field on this dataset",
+            isDisabled: !canCreateTd,
             onClick: () => {
               if (!canCreateTd || !tdFieldPath || !fps) return;
               // Default: 1-second window starting at the playhead frame,
@@ -178,10 +183,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             icon: <Icon name={IconName.UnfoldMore} size={Size.Sm} />,
             tooltip: canSplit
               ? "Split the selected track at this frame"
-              : selectedIds.length === 1 && !selectionIsInstanceTrack
-                ? "Splitting is only available for detections and polylines"
-                : "Select one track to split it at the playhead",
-            isVisible: hasUsableFps,
+              : !hasUsableFps
+                ? "This video has no usable frame rate"
+                : selectedIds.length === 1 && !selectionIsInstanceTrack
+                  ? "Splitting is only available for detections and polylines"
+                  : "Select one track to split it at the playhead",
             isDisabled: !canSplit,
             onClick: () => {
               if (!canSplit || !fps) {

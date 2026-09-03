@@ -8,8 +8,8 @@ import {
   useEngineSelector,
 } from "@fiftyone/annotation";
 import type { Track } from "@fiftyone/playback";
-import type { LabelData } from "@fiftyone/utilities";
-import { useMemo } from "react";
+import type { LabelData, LabelType } from "@fiftyone/utilities";
+import { useCallback, useMemo } from "react";
 import { useVideoLabelsIndex } from "../hooks/useVideoLabelsIndex";
 import {
   useFrameLabelFields,
@@ -36,6 +36,18 @@ export type ObjectTrackColorResolver = (
 export function useFrameDerivedTracks(
   resolveColor: ObjectTrackColorResolver,
   getDynamicAttributes: (path: string | null) => string[],
+  /**
+   * Explore's per-frame field set, when this is driving the Explore surface.
+   *
+   * Both gates below derive from the annotation schemas by default, and
+   * neither is populated in Explore unless the Schema Manager happens to have
+   * activated them: `useFrameLabelFields` knows only Detections and Polylines,
+   * and `useVisibleLabelSchemas` is annotation-active ∩ explore-active, which
+   * is empty when the first half is. That left Explore showing no frame-label
+   * tracks at all. When this is supplied it IS the visible set — the sidebar's
+   * active paths are exactly what Explore means by visible.
+   */
+  exploreLabelTypes?: Record<string, LabelType>,
 ): {
   tracks: Track[];
   resolved: boolean;
@@ -43,8 +55,15 @@ export function useFrameDerivedTracks(
   const stream = useFrameLabelsStream();
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
-  const visible = useVisibleLabelSchemas();
-  const labelTypes = useFrameLabelFields();
+  const annotationVisible = useVisibleLabelSchemas();
+  const annotationLabelTypes = useFrameLabelFields();
+
+  const labelTypes = exploreLabelTypes ?? annotationLabelTypes;
+  const explicitVisible = useMemo(
+    () => (exploreLabelTypes ? new Set(Object.keys(exploreLabelTypes)) : null),
+    [exploreLabelTypes],
+  );
+  const visible = explicitVisible ?? annotationVisible;
 
   // Fetch the index for every declared frame label field (stable per dataset/
   // view) so visibility toggles filter client-side without re-fetching.
@@ -91,26 +110,40 @@ export function useFrameDerivedTracks(
   // track-identical results, and a raw-version subscription re-rendered the
   // entire timeline subtree on every bump. Only a rebuild that actually moves
   // a row reaches React.
-  const tracks = useEngineSelector(
-    engine,
-    () => {
-      if (!stream || !sampleId || !loaded || paths.length === 0) {
-        return EMPTY_TRACKS;
-      }
+  // Memoized rather than inline: `useEngineSelector` caches by the selector's
+  // OWN identity as well as the engine's version (its doc comment: "an inline
+  // closure captures fresh props each render"), so a fresh closure every
+  // render defeats that cache entirely — every render re-walks every visible
+  // field's index and rebuilds every track, even when nothing in the engine
+  // changed. `tracksEqual` below still gates the re-RENDER; this is what lets
+  // it also gate the (much more expensive) rebuild.
+  const selectTracks = useCallback(() => {
+    if (!stream || !sampleId || !loaded || paths.length === 0) {
+      return EMPTY_TRACKS;
+    }
 
-      return paths.flatMap((path) =>
-        buildTracksFromIndex({
-          path,
-          index: indexByPath[path] ?? [],
-          overlay: readEngineOverlay(engine, sampleId, path),
-          fps: stream.fps,
-          resolveColor,
-          dynamicAttributes: dynamicByPath[path] ?? [],
-        }),
-      );
-    },
-    tracksEqual,
-  );
+    return paths.flatMap((path) =>
+      buildTracksFromIndex({
+        path,
+        index: indexByPath[path] ?? [],
+        overlay: readEngineOverlay(engine, sampleId, path),
+        fps: stream.fps,
+        resolveColor,
+        dynamicAttributes: dynamicByPath[path] ?? [],
+      }),
+    );
+  }, [
+    engine,
+    stream,
+    sampleId,
+    loaded,
+    paths,
+    indexByPath,
+    resolveColor,
+    dynamicByPath,
+  ]);
+
+  const tracks = useEngineSelector(engine, selectTracks, tracksEqual);
 
   return { tracks, resolved: loaded };
 }

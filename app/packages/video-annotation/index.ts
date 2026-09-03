@@ -26,6 +26,7 @@ export {
   VIDEO_STREAM_ID,
 } from "./src/utils/ids";
 export { getModalSampleFrameRate } from "./src/utils/modalSample";
+export { useTimelineMaxSize } from "./src/hooks/useTimelineMaxSize";
 export { ImaVidImageStream } from "./src/streams/ImaVidImageStream";
 export type { ImaVidImageFrame } from "./src/streams/ImaVidImageStream";
 export { useFrameLabelsStream } from "./src/streams/frameLabelsStream";

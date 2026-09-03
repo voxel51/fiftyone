@@ -1,5 +1,6 @@
 import { useLighter } from "@fiftyone/lighter";
 import type { Lookers } from "@fiftyone/looker";
+import { useCurrentPublishedFrame } from "@fiftyone/playback";
 import type { State } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
@@ -92,10 +93,17 @@ export const useSelectVisible = (
           scene.getVisibleSelectableOverlayIds();
 
         if (visibleSelectableOverlayIds.length > 0) {
-          scene.clearSelection({ ignoreSideEffects: true });
+          // UNFLAGGED, for the reason `useClearSelectedLabels` documents: a
+          // flagged select never reaches the annotation engine, so its active
+          // set — which is what repaints an overlay that leaves the frame and
+          // comes back — would not learn about this selection. Scrubbing away
+          // and back would then mount every one of these labels unselected
+          // while the atom still held them: N in the Tag count, none
+          // highlighted.
+          scene.clearSelection();
 
           visibleSelectableOverlayIds.forEach((overlayId) => {
-            scene.selectOverlay(overlayId, { ignoreSideEffects: true });
+            scene.selectOverlay(overlayId);
           });
         }
       } catch (error) {
@@ -140,7 +148,12 @@ const FRAME_FIELD_PREFIX = "frames.";
 export interface SelectableOverlay {
   id: string;
   field?: string;
-  label?: { _id?: string; id?: string; frame_number?: number } | null;
+  label?: {
+    _id?: string;
+    id?: string;
+    frame_number?: number;
+    instance?: { _id?: string } | null;
+  } | null;
 }
 
 /**
@@ -151,23 +164,42 @@ export interface SelectableOverlay {
  * instance id, which is only a last-resort fallback (an untracked element
  * with no `_id` would otherwise be unaddressable).
  *
- * A `frames.`-prefixed overlay carries the frame it was painted for, so the
- * selection addresses one occurrence rather than the whole track; a
- * sample-level overlay stays frame-less, which is what the modal's sample
- * label actions expect.
+ * A selection addresses ONE OCCURRENCE, not the whole track — the semantics
+ * the video looker had, and the only ones the server's label ids can express:
+ * `select_labels`' `labels` argument matches per-frame label documents, so a
+ * track's `instance._id` in the `labelId` slot would match nothing. `frames.`
+ * fields therefore carry `frameNumber`, and `instanceId` rides along for the
+ * consumers that want the track (operator context, similarity queries).
+ *
+ * `frameNumber` must be PASSED IN: it is the playhead's frame, not a property
+ * of the label. The looker read it from its own render state
+ * (`overlays/base.ts`'s `getSelectData` -> `state.frameNumber`), and the
+ * per-frame documents this pipeline paints from carry no `frame_number` field
+ * of their own — only the frame document that contains them does. Reading one
+ * off the label yielded `undefined` every time, which silently made every
+ * frame-label selection frame-less.
  */
 export const overlayToSelectedLabel = (
   overlay: SelectableOverlay,
   sampleId: string,
+  frameNumber?: number,
 ): State.SelectedLabel => {
-  const frameNumber = overlay.label?.frame_number;
   const isFrameLabel = !!overlay.field?.startsWith(FRAME_FIELD_PREFIX);
+  // Fall back to the label's own field for the sample-level pipelines that do
+  // populate it; the video path supplies the playhead frame explicitly.
+  const frame = frameNumber ?? overlay.label?.frame_number;
+  const instanceId = overlay.label?.instance?._id;
 
   return {
     labelId: overlay.label?._id ?? overlay.label?.id ?? overlay.id,
     field: overlay.field as string,
     sampleId,
-    ...(isFrameLabel && frameNumber !== undefined ? { frameNumber } : {}),
+    // The looker stamped `"default"` for a plain click and `"alt"` only for
+    // alt-click (a negative similarity query). Alt is not bound on the video
+    // Explore surface, so every selection it makes is a default one.
+    type: "default",
+    ...(instanceId ? { instanceId } : {}),
+    ...(isFrameLabel && frame !== undefined ? { frameNumber: frame } : {}),
   };
 };
 
@@ -178,26 +210,33 @@ export const overlayToSelectedLabel = (
 export const overlaysToFrameLabels = (
   overlays: readonly SelectableOverlay[],
   sampleId: string,
+  frameNumber?: number,
 ): State.SelectedLabel[] =>
   overlays
     .filter((overlay) => overlay.field?.startsWith(FRAME_FIELD_PREFIX))
-    .map((overlay) => overlayToSelectedLabel(overlay, sampleId));
+    .map((overlay) => overlayToSelectedLabel(overlay, sampleId, frameNumber));
 
 /**
  * Visible per-frame labels, read off the Lighter scene rather than a
  * `VideoLooker`. Video Explore mounts no looker at all, so the looker's
  * `getCurrentFrameLabels()` is unavailable there; the scene holds exactly the
  * overlays on screen for the current frame, which is the same question.
+ *
+ * The frame comes from the surface's published playhead rather than a
+ * `usePlayhead()` read: this hook is called from the modal's action bar, which
+ * is a SIBLING of the media container, so the surface's `PlaybackProvider` is
+ * not an ancestor of it.
  */
 export const useVisibleFrameLabels = (): State.SelectedLabel[] => {
   const { scene } = useLighter();
   const sampleId = useRecoilValue(fos.modalSampleId);
+  const frameNumber = useCurrentPublishedFrame();
 
   if (!scene) {
     return [];
   }
 
-  return overlaysToFrameLabels(scene.getAllOverlays(), sampleId);
+  return overlaysToFrameLabels(scene.getAllOverlays(), sampleId, frameNumber);
 };
 
 export const useUnselectVisible = (
@@ -208,7 +247,11 @@ export const useUnselectVisible = (
 
   return useRecoilCallback(({ snapshot, set }) => async () => {
     if (scene) {
-      scene.clearSelection({ ignoreSideEffects: true });
+      // UNFLAGGED, matching `useSelectVisible` and `useClearSelectedLabels`:
+      // the deselects have to reach the annotation engine, or its active set
+      // goes on holding labels this just unselected and repaints them the
+      // next time their track re-enters the projection.
+      scene.clearSelection();
     }
 
     const selected = await snapshot.getPromise(fos.selectedLabelMap);

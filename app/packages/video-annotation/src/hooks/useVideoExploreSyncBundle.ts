@@ -7,6 +7,7 @@ import type { RefObject } from "react";
 import { useExposeSceneOverlayFieldsForTest } from "../sync/useExposeSceneOverlayFieldsForTest";
 import { useSyncMediaTransform } from "../sync/useSyncMediaTransform";
 import { useTemporalOverlaySync } from "../sync/useTemporalOverlaySync";
+import { useExploreTemporalDetectionFieldPaths } from "../state/exploreFrameLabelFields";
 
 type TileScene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
 
@@ -30,7 +31,8 @@ export function useVideoExploreSyncBundle<T extends HTMLElement>({
   canonicalMediaReady: boolean;
   mediaRef: RefObject<T | null>;
 }): void {
-  useTemporalOverlaySync(scene, canonicalMediaReady);
+  const exploreTdPaths = useExploreTemporalDetectionFieldPaths();
+  useTemporalOverlaySync(scene, canonicalMediaReady, exploreTdPaths);
   useSyncMediaTransform(scene, mediaRef);
   useExposeSceneOverlayFieldsForTest(scene);
 }

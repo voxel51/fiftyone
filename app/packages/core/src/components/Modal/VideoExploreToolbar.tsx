@@ -12,7 +12,6 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback } from "react";
-import { useRecoilValue } from "recoil";
 
 // Button's string `leadingIcon` is wrapped in a component type created on
 // every render, so React remounts the SVG each render and a click that starts
@@ -138,7 +137,7 @@ export const VideoExploreToolbar: React.FC = () => {
   const { scene } = useLighter();
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
-  const sample = useRecoilValue(fos.modalSample);
+  const sample = fos.useModalSample();
 
   // `fitToContent` frames the overlays' bounding box — the looker's
   // crop-to-content. It is a documented no-op when nothing qualifies, which

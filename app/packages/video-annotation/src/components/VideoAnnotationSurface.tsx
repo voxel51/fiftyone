@@ -12,7 +12,8 @@ import { useFollowAnchorFrame } from "../state/useVideoInteraction";
 import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useDecodeStrategy } from "../hooks/useDecodeStrategy";
 import type { DecodeStrategy } from "../utils/decodeStrategy";
-import { PlaybackProvider, TIMELINE_DRAWER_MAX_SIZE } from "@fiftyone/playback";
+import { useTimelineMaxSize } from "../hooks/useTimelineMaxSize";
+import { PlaybackProvider } from "@fiftyone/playback";
 import {
   AnnotatePrerequisiteChecking,
   AnnotatePrerequisiteNotice,
@@ -40,15 +41,6 @@ import styles from "./VideoAnnotationSurface.module.css";
  * Read once at mount; flipping requires reopening the modal.
  */
 type LabelsMode = "real" | "synthetic";
-
-/**
- * Fraction of the surface height the timeline may occupy before its body caps
- * and scrolls internally — so a growing track list never crowds out the media.
- */
-const TIMELINE_MAX_HEIGHT_FRACTION = 0.25;
-
-/** Floor for the timeline body cap so it stays usable on a short surface. */
-const TIMELINE_MIN_MAX_SIZE = 160;
 
 function useLabelsMode(): LabelsMode {
   const [mode] = useState<LabelsMode>(() => {
@@ -135,15 +127,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   // cap the drawer scrolls internally instead of growing into the media area.
   const dimensions = useDimensions();
   const surfaceHeight = dimensions.bounds?.height ?? 0;
-  const timelineMaxSize = surfaceHeight
-    ? Math.min(
-        TIMELINE_DRAWER_MAX_SIZE,
-        Math.max(
-          TIMELINE_MIN_MAX_SIZE,
-          Math.round(surfaceHeight * TIMELINE_MAX_HEIGHT_FRACTION),
-        ),
-      )
-    : undefined;
+  const timelineMaxSize = useTimelineMaxSize(surfaceHeight);
 
   // Resolved top-level media URL. The `html` tile binds to it and the `extract`
   // source decodes it in a worker; the `fetch` source resolves per-frame URLs
