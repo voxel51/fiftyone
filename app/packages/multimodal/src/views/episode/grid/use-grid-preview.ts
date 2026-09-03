@@ -50,6 +50,12 @@ export interface GridPreviewState extends GridPreviewSnapshot {
   readonly isPlaying: boolean;
   pause(): void;
   play(): void;
+  /**
+   * Reports the instant a native-video surface is presenting, on its own media
+   * clock. Native playback advances a media element rather than the read loop
+   * below, so nothing else can keep the published playhead moving.
+   */
+  presentNativeTimeSeconds(mediaTimeSeconds: number): void;
 }
 
 /**

@@ -249,19 +249,22 @@ describe("ModalRenderer interval sources", () => {
     rendererHarness.builtInSections = undefined;
     rendererHarness.defaultPinnedTrackIds = undefined;
     unregister = registerEpisodeIntervalSource({
-      Component: ({ children }) =>
-        children({
-          intervals: [
-            {
-              color: "#fff",
-              endNs: 2,
-              eventName: "grasp",
-              sourceId: "test:events",
-              startNs: 1,
-            },
-          ],
-          pinnedEventNames: ["grasp"],
-        }),
+      Component: ({ children }) => (
+        <>
+          {children({
+            intervals: [
+              {
+                color: "#fff",
+                endNs: 2,
+                eventName: "grasp",
+                sourceId: "test:events",
+                startNs: 1,
+              },
+            ],
+            pinnedEventNames: ["grasp"],
+          })}
+        </>
+      ),
       id: "test:events",
       label: "Test events",
       order: 300,
