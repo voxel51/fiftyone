@@ -1046,8 +1046,8 @@ const ViewBarInner: React.FC<{
       onOpenChange={(open) => {
         if (!open && stagesRowOpen) closeStagesRow();
       }}
-      // The row spans the bar, and sits under the tooltips and editors that
-      // open from inside it
+      // The row spans the bar. Its tier is High, which voodo's tooltips share;
+      // the panel class pins it just below them (see .stagesRow)
       matchTriggerWidth
       zIndex={ZIndex.High}
       // Escape belongs to the bar: it walks working state back, and folds the

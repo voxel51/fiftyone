@@ -62,6 +62,10 @@
 .stagesRow.stagesRow {
   padding: 0;
   box-sizing: border-box;
+  /* Under voodo's tooltips (1000), which share the popover's High tier and
+     would otherwise lose to the row on DOM order — the toggle's own tooltip
+     hid behind it. Editors and popouts open above the modal tier. */
+  z-index: 900;
   /* Portaled to the body, the row inherits ITS text color — the enterprise
      shell's body is black-on-white, so the app text color is declared rather
      than inherited */
