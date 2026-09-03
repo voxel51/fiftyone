@@ -296,9 +296,9 @@ export const StageCard: React.FC<StageCardProps> = ({
             return;
           }
 
-          // Enter finishes the stage and hands the keyboard to Apply, so a
-          // second Enter runs the view. The code editor keeps its newlines,
-          // and a stage still missing a required value is not finished.
+          // Enter finishes the stage, which applies it and puts the keyboard
+          // on the next insert slot. The code editor keeps its newlines, and
+          // a stage still missing a required value is not finished.
           if (e.key !== "Enter" || e.shiftKey || incomplete) return;
           if ((e.target as Element).closest?.(".monaco-editor")) return;
 

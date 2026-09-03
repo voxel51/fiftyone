@@ -914,8 +914,8 @@ Each stage opens as a form generated from its parameters:
     expression as it was written — including expressions from views saved in
     Python
 
-The bar is fully keyboard accessible: :kbd:`Enter` finishes a stage and moves
-to the Apply button, :kbd:`Enter` again runs the view, and :kbd:`Esc` closes
+The bar is fully keyboard accessible: :kbd:`Enter` finishes a stage and
+applies it, the keyboard lands on the next insert slot, and :kbd:`Esc` closes
 an editor or discards pending work.
 
 .. note::

@@ -89,6 +89,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
           borderless
           leadingIcon={IconName.Add}
           aria-label="Insert stage"
+          data-cy="view-bar-insert-slot"
           onClick={() => setOpen(true)}
         />
       </Tooltip>
@@ -99,6 +100,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
     <Combobox
       aria-label="Insert stage"
       placeholder="Add stage…"
+      inputProps={{ "data-cy": "view-bar-insert-typeahead" }}
       size={Size.Sm}
       className={styles.slot}
       options={options}

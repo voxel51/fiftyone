@@ -13,7 +13,9 @@ import {
   parentMediaTypeSelector,
   selectedMediaField,
   skeleton,
+  stageDefinitions,
   State,
+  view,
 } from "../recoil";
 
 /**
@@ -198,3 +200,9 @@ export const useIsImageDynamicGroupVideo = (): boolean => {
  * treat as "suggest nothing rather than something wrong".
  */
 export const useExpressionCatalog = () => useRecoilValue(expressionCatalog);
+
+/** The server's stage descriptors, as `fiftyone/core/stages.py` describes them. */
+export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
+
+/** The applied view's stages. */
+export const useView = (): State.Stage[] => useRecoilValue(view);

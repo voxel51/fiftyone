@@ -4,8 +4,8 @@
  * The dataset view bar: a horizontal row of stage cards, each with a
  * dynamic form keyed by the stage's parameter definitions, and an
  * insertion slot between every pair of stages. Local React state owns
- * the in-progress edit; the Apply button serializes the whole working
- * state and pushes it through `fos.useSetView`.
+ * the in-progress edit; finishing a stage or leaving the bar serializes the
+ * whole working state and pushes it through `fos.useSetView`.
  *
  * Stage schemas come from the `stageDefinitions` atom, which mirrors
  * the server's `fiftyone/core/stages.py`. Param `type` strings are
@@ -46,7 +46,7 @@ import React, {
 
 import { kindsByFtype, operatorsFrom } from "./builder/catalog";
 import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
-import { ClearViewButton } from "./CurrentViewChip";
+import { ClearViewButton } from "./ClearViewButton";
 import { allowedFields } from "./fields";
 import { InsertSlot } from "./InsertSlot";
 import { LanguageSearch } from "./LanguageSearch";
@@ -95,7 +95,6 @@ import {
 import { usePrefixSchema } from "./prefix-schema";
 import type { SerializedStage } from "./state";
 import type { WorkingStage } from "./state";
-import { useRecoilValue } from "recoil";
 
 // ---------------------------------------------------------------
 // Param type → input kind resolver
@@ -147,15 +146,15 @@ const ViewBarInner: React.FC<{
   /** What this surface may offer; everything, unless the host says less. */
   capabilities?: ViewBarCapabilities;
 }> = ({ capabilities = OPEN_CAPABILITIES }) => {
-  const servedDefs = useRecoilValue(fos.stageDefinitions);
+  const servedDefs = fos.useStageDefinitions();
   const stageDefs = useMemo(
     () => gateDefinitions(servedDefs as StageDefinition[], capabilities),
     [servedDefs, capabilities],
   );
-  const fieldPaths = useRecoilValue(fos.fieldPaths({}));
+  const fieldPaths = fos.useFieldPaths({});
   const fieldTypes = fos.useFieldTypes();
   const mediaType = fos.useDatasetMediaType();
-  const currentView = useRecoilValue(fos.view);
+  const currentView = fos.useView();
   const datasetName = fos.useCurrentDatasetName();
   const setView = fos.useSetView();
   const setViewChangePending = fos.useSetViewChangePending();
@@ -198,24 +197,38 @@ const ViewBarInner: React.FC<{
 
   /**
    * Puts the keyboard on the trailing insert slot — where describing the next
-   * stage begins. Deferred a frame because applying re-renders the bar.
+   * stage begins. Deferred a frame because applying re-renders the bar; the
+   * frame is dropped if the bar unmounts first.
    */
+  const focusFrameRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (focusFrameRef.current !== null) {
+        cancelAnimationFrame(focusFrameRef.current);
+      }
+    },
+    [],
+  );
   const focusLastSlot = useCallback(() => {
-    requestAnimationFrame(() => {
+    if (focusFrameRef.current !== null) {
+      cancelAnimationFrame(focusFrameRef.current);
+    }
+    focusFrameRef.current = requestAnimationFrame(() => {
+      focusFrameRef.current = null;
       // The stages row is portaled, so it is found by its own test id. An
       // empty row pins its slot open as a typeahead input; otherwise the
       // slots are "+" buttons and the last one is where the next stage goes.
       const row = document.querySelector("[data-cy='view-bar-stages-row']");
       if (!row) return;
-      const pinned = row.querySelector<HTMLElement>(
-        "input[placeholder='Add stage…']",
+      const typeahead = row.querySelector<HTMLElement>(
+        "[data-cy='view-bar-insert-typeahead']",
       );
-      if (pinned) {
-        pinned.focus();
+      if (typeahead) {
+        typeahead.focus();
         return;
       }
       const slots = row.querySelectorAll<HTMLElement>(
-        "[aria-label='Insert stage']",
+        "[data-cy='view-bar-insert-slot']",
       );
       slots[slots.length - 1]?.focus();
     });
@@ -225,8 +238,8 @@ const ViewBarInner: React.FC<{
    * Finishing a stage IS applying it: the same key that finished the stage
    * runs the view, matching the text search's Enter. `apply` is declared
    * below (it needs the serializer); the ref carries the latest instance.
-   * Only a deliberate commit applies — clicking away keeps the draft, and
-   * the Apply button remains for exactly that residual case.
+   * Leaving the bar applies too (see the blur handling below); an incomplete
+   * draft is the one thing neither path applies.
    */
   const applyFnRef = React.useRef<() => void>(() => undefined);
   const commitStage = useCallback(() => {
@@ -667,6 +680,7 @@ const ViewBarInner: React.FC<{
     serializeWorking,
     inFlightFingerprint,
     setView,
+    trackEvent,
     focusLastSlot,
   ]);
 
@@ -857,17 +871,6 @@ const ViewBarInner: React.FC<{
     }
   }, [stagesRowOpen, focusLastSlot]);
 
-  /**
-   * Pending changes detector: whether the working state differs
-   * from what's currently applied to the view. The Apply button
-   * only animates in when this is true — when the user has nothing
-   * to apply, the button stays hidden so the bar isn't cluttered
-   * by a no-op affordance.
-   *
-   * Comparison is on the SERIALIZED shape (the same payload Apply
-   * would push), so kwarg-order differences and dropped-empty
-   * kwargs don't cause false positives.
-   */
   serializeWorkingRef.current = serializeWorking;
 
   //
@@ -880,6 +883,12 @@ const ViewBarInner: React.FC<{
   //
   const applyOnLeaveRef = useRef<() => void>(() => undefined);
 
+  /**
+   * Whether the working state differs from what is applied to the view; only
+   * then does finishing a stage or leaving the bar push anything. Compared on
+   * the SERIALIZED shape (the payload that would be pushed), so kwarg-order
+   * differences and dropped-empty kwargs are not false positives.
+   */
   const hasPendingChanges = useMemo(() => {
     const working = viewFingerprint(serializeWorking());
     // A working state that matches what was just sent is applied work still

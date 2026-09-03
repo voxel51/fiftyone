@@ -461,17 +461,6 @@ export const PLACES_ITS_OWN_TABS: ReadonlySet<InputKind> = new Set<InputKind>([
 ]);
 
 /**
- * The colour an unappliable value wears.
- *
- * `--fo-palette-error-*` exists as `main`; the `plainColor` shade the rest of
- * the chrome uses for primary has no error counterpart, and a var that
- * resolves to nothing silently leaves the element with its default border —
- * which is how an invalid stage came to look fine. The literal is the same
- * red, for any surface that renders outside the theme provider.
- */
-export const ERROR_COLOR = "var(--fo-palette-error-main, hsl(0, 87%, 53%))";
-
-/**
  * Spread into every text input: the bar brings its own suggestions, and the
  * browser's autofill dropdown painted over them is two lists fighting for one
  * input.

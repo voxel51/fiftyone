@@ -36,4 +36,3 @@ pyvenv.cfg
 .env
 
 .playwright-mcp
-storybook-static
