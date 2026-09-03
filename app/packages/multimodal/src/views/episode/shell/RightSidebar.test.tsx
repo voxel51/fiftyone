@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import styles from "../settings/controls/EpisodeSidebarTabs.module.css";
+import tabStyles from "../settings/controls/EpisodeSidebarTabs.module.css";
 import RightSidebar from "./RightSidebar";
 
 // Isolates this test to RightSidebar's own wiring (the tab list padding
@@ -10,6 +10,15 @@ import RightSidebar from "./RightSidebar";
 // content/data plumbing is relevant here and each has its own test coverage.
 vi.mock("../scene/picking/InspectorSidebar", () => ({
   default: () => <div data-testid="stub-inspector" />,
+}));
+vi.mock("../state-action/StateActionStatisticsSidebar", () => ({
+  default: () => <div data-testid="stub-statistics" />,
+}));
+const stateActionMocks = vi.hoisted(() => ({
+  schema: null as unknown,
+}));
+vi.mock("../state-action/state-action-context", () => ({
+  useStateActionSchemaIfPresent: () => stateActionMocks.schema,
 }));
 vi.mock("./FieldsSidebar", () => ({
   default: () => <div data-testid="stub-fields" />,
@@ -66,7 +75,7 @@ describe("RightSidebar", () => {
     // Whatever `styles.tabList` resolves to (its plain source name under
     // this package's own `classNameStrategy: "non-scoped"` vitest config,
     // or a hashed name under any other), the rendered tablist must carry it.
-    expect(screen.getByRole("tablist").className).toContain(styles.tabList);
+    expect(screen.getByRole("tablist").className).toContain(tabStyles.tabList);
   });
 
   it("shows the Inspect tab's content by default", () => {
@@ -82,5 +91,30 @@ describe("RightSidebar", () => {
 
     expect(screen.getByTestId("stub-fields")).toBeTruthy();
     expect(screen.queryByTestId("stub-inspector")).toBeNull();
+  });
+
+  it("swaps Inspect for Statistics when the session has state/action", () => {
+    stateActionMocks.schema = { rowCount: 167 };
+    try {
+      render(<RightSidebar />);
+      expect(screen.getByText("Statistics")).toBeTruthy();
+      expect(screen.queryByText("Inspect")).toBeNull();
+      expect(screen.getByTestId("stub-statistics")).toBeTruthy();
+      expect(screen.queryByTestId("stub-inspector")).toBeNull();
+    } finally {
+      stateActionMocks.schema = null;
+    }
+  });
+
+  it("renders a tray below the tabs when given one", () => {
+    render(<RightSidebar tray={<div data-testid="stub-tray" />} />);
+
+    expect(screen.getByTestId("stub-tray")).toBeTruthy();
+  });
+
+  it("renders no tray region when given none", () => {
+    const { container } = render(<RightSidebar />);
+
+    expect(container.querySelector("[data-testid='stub-tray']")).toBeNull();
   });
 });

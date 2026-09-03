@@ -75,6 +75,7 @@ function renderLayoutHook(
       availableTileTypes: tileTypesFor({
         hasNumericSeries: true,
         hasRawRecords: true,
+        hasStateAction: false,
         hasTransformTopology: false,
         sourceTypes: sources.map((source) => source.type),
       }),
@@ -752,6 +753,7 @@ describe("useModalLayout", () => {
           availableTileTypes: tileTypesFor({
             hasNumericSeries: true,
             hasRawRecords: true,
+            hasStateAction: false,
             hasTransformTopology: false,
             sourceTypes: SCENE_SOURCES.map((source) => source.type),
           }),

@@ -42,7 +42,10 @@ export { default as useRefresh } from "./useRefresh";
 export * from "./useRefreshSample";
 export * from "./useRenderConfig3d";
 export { default as useReset } from "./useReset";
-export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
+export {
+  default as useResetExtendedSelection,
+  resetExtendedSelectionTransaction,
+} from "./useResetExtendedSelection";
 export * from "./extendedSelectionReset";
 export * from "./useRetryController";
 export { default as useSampleFields } from "./useSampleFields";

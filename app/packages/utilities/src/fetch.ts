@@ -55,6 +55,13 @@ export type FetchResultType =
   | "json-stream";
 
 /**
+ * Browser HTTP cache modes callers may request. "only-if-cached" is
+ * excluded: it is only valid with mode "same-origin", and every request
+ * here is sent with mode "cors", where the fetch would throw.
+ */
+export type BrowserCacheMode = Exclude<RequestCache, "only-if-cached">;
+
+/**
  * Configuration for a `fetch` call.
  */
 export type FetchFunctionConfig<T> = {
@@ -72,6 +79,13 @@ export type FetchFunctionConfig<T> = {
    * @default false
    */
   cache?: boolean;
+  /**
+   * Browser HTTP cache mode for the underlying fetch. Byte-range readers
+   * pass "no-store": Chrome may answer a Range request from a cached
+   * superset block whose Content-Range does not match what was asked.
+   * @default "no-cache"
+   */
+  browserCache?: BrowserCacheMode;
   /** Cancels the request and response-body read. */
   signal?: AbortSignal;
   /** Reports cumulative response-body bytes as they arrive. */
@@ -114,6 +128,7 @@ export interface FetchFunctionExtended {
     headers?: Record<string, string>,
     signal?: AbortSignal,
     onProgress?: (loadedBytes: number) => void,
+    browserCache?: BrowserCacheMode,
   ): Promise<FetchFunctionResult<R>>;
 }
 
@@ -226,6 +241,7 @@ export const getFetchFunctionExtended =
         config.headers,
         config.signal,
         config.onProgress,
+        config.browserCache,
       );
 
     if (config.cache && config.result !== "response") {
@@ -328,12 +344,26 @@ const joinFetchUrl = (
   return `${base}/${relative}`;
 };
 
+const resolveFetchUrl = (
+  origin: string | undefined,
+  pathPrefix: string,
+  path: string,
+): string => {
+  try {
+    new URL(path);
+    return path;
+  } catch {
+    if (typeof origin !== "string") {
+      throw new Error("Fetch parameters are not configured");
+    }
+
+    return joinFetchUrl(origin, pathPrefix, path);
+  }
+};
+
 /** Builds an absolute URL from the configured fetch origin and path prefix. */
 export const getFetchUrl = (path: string): string => {
-  if (typeof fetchOrigin !== "string") {
-    throw new Error("Fetch parameters are not configured");
-  }
-  return joinFetchUrl(fetchOrigin, fetchPathPrefix, path);
+  return resolveFetchUrl(fetchOrigin, fetchPathPrefix, path);
 };
 
 // Identical GraphQL QUERIES that are in flight at the same moment share one
@@ -382,17 +412,10 @@ export const setFetchFunction = (
     headers,
     signal,
     onProgress,
+    browserCache,
   ) => {
-    let url: string;
     const controller = new AbortController();
-
-    try {
-      // if a valid URL is provided, make no adjustments
-      new URL(path);
-      url = path;
-    } catch {
-      url = joinFetchUrl(origin, fetchPathPrefix, path);
-    }
+    const url = resolveFetchUrl(origin, fetchPathPrefix, path);
 
     // set content type only if body is present, otherwise it can cause Bad Request
     // errors for endpoints that don't expect a body
@@ -420,7 +443,7 @@ export const setFetchFunction = (
 
     const response = await fetchCall(url, {
       method: method,
-      cache: "no-cache",
+      cache: browserCache ?? "no-cache",
       headers,
       mode: "cors",
       body: body ? JSON.stringify(body) : null,

@@ -3,6 +3,7 @@ import React, { useMemo } from "react";
 import { sampleDescriptorFromContext } from "../../session/episode-source";
 import { useEpisodeSession } from "../../session/use-episode-session";
 import { useStableEpisodeSource } from "../../session/use-stable-episode-source";
+import { episodeDisplayName } from "../../session/episode-label";
 import {
   AnnotationStreamsProvider,
   TimelineExtensionHost,
@@ -31,11 +32,15 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const sampleDescriptor = sampleDescriptorFromContext(ctx);
   const sessionState = useEpisodeSession(sampleDescriptor, episodeSource);
   const timeRange = useTimeRange(sessionState.session);
-  const fileName = sourceDisplayName(ctx.media.path) ?? "recording";
+  const fileName =
+    episodeDisplayName(ctx.sample.sample) ??
+    sourceDisplayName(ctx.media.path) ??
+    "recording";
   const datasetId = ctx.dataset.datasetId;
   const sampleId = ctx.sample.sample._id;
   const {
     tracks: tagTracks,
+    existingTags,
     onTagCreate,
     onTagUpdate,
     onTagDelete,
@@ -84,6 +89,7 @@ const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             initialSeekTimeNs={firstMatch?.startNs ?? null}
             layoutScopeKey={datasetId}
             cameraPreferenceField={ctx.media.field}
+            existingTags={existingTags}
             onTagCreate={onTagCreate}
             onTagUpdate={onTagUpdate}
             onTagDelete={onTagDelete}

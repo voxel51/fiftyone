@@ -223,12 +223,14 @@ export {
   getMatchingSampleRenderer,
   getSampleRendererGridSlotComponent,
   getSampleRendererComponent,
+  hasSampleRendererSource,
   isSampleRendererModalPersistent,
   SAMPLE_RENDERER_GRID_SLOT,
 } from "./sample-renderer";
 export type {
   GridConfig,
   MatchMedia,
+  MediaReferenceDescriptor,
   ModalConfig,
   SampleRendererGridClickBehavior,
   SampleRendererGridSlot,

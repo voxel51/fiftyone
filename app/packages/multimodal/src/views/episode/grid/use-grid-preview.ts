@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type ByteSourceDescriptor,
   type EpisodePosterFrame,
+  type EpisodePreviewNativeVideo,
   type EpisodePreviewReadResult,
 } from "../../../ir";
 import type { EpisodePreviewSession } from "../../../ports";
@@ -30,6 +31,7 @@ export interface GridPreviewSnapshot {
   readonly error: string | null;
   readonly frame: EpisodePosterFrame | null;
   readonly hasPreviewStreams: boolean;
+  readonly nativeVideo: EpisodePreviewNativeVideo | null;
   readonly streamId: string | null;
   readonly streamSourceName: string | null;
   readonly streamSourceNames: readonly string[];
@@ -41,6 +43,7 @@ export interface GridPreviewSnapshot {
  */
 export interface GridPreviewState extends GridPreviewSnapshot {
   readonly isBuffering: boolean;
+  readonly isPlaying: boolean;
   pause(): void;
   play(): void;
 }
@@ -55,6 +58,8 @@ export interface UseGridPreviewOptions {
   readonly enabled?: boolean;
   /** Whether this tile is the user's current interactive target. */
   readonly hovered?: boolean;
+  /** Initial forward coverage required by the mounted video decoder. */
+  readonly initialVideoDecodeLookaheadNs?: bigint;
   /** Receives every adapter result, including frames skipped by UI pacing. */
   readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
   /** Capture time the still frame should show, instead of the recording
@@ -84,6 +89,7 @@ const IDLE_PREVIEW_STATE: GridPreviewSnapshot = {
   error: null,
   frame: null,
   hasPreviewStreams: false,
+  nativeVideo: null,
   streamId: null,
   streamSourceName: null,
   streamSourceNames: [],
@@ -100,6 +106,7 @@ export function useGridPreview({
   cachedPoster = null,
   enabled = true,
   hovered = false,
+  initialVideoDecodeLookaheadNs,
   onReadResult,
   posterStartTimeNs = null,
   posterSourceName = null,
@@ -124,6 +131,10 @@ export function useGridPreview({
   // frames from the old poster's timeline
   const [loadGeneration, setLoadGeneration] = useState(0);
   const initialLoadInFlightRef = useRef(false);
+  // A poster stream this source turned out not to preview. Remembered so the
+  // retry falls back to the auto pick instead of asking again forever.
+  const refusedPosterSourceRef = useRef<string | null>(null);
+  const [, setPosterRefusals] = useState(0);
   const onReadResultRef = useRef(onReadResult);
   onReadResultRef.current = onReadResult;
   const loadedRequestRef = useRef<{
@@ -145,12 +156,17 @@ export function useGridPreview({
     }
   }, [enabled]);
 
-  // An explicit grid selection always wins; the poster's preferred stream
-  // applies only once this source has reported it as previewable, so an
-  // unpreviewable match never requests a source the session would refuse.
+  // An explicit grid selection always wins. The poster's preferred stream is
+  // then asked for OUTRIGHT — never gated on `streamSourceNames`, which is
+  // filled BY a completed read: on the first one it is empty, so the match's
+  // stream was always dropped and the tile postered its auto-picked camera at
+  // the matched instant. A frame from the wrong camera, presented as the one
+  // that matched. The session refuses a stream it cannot preview, and
+  // `refusedPosterSource` below turns that refusal into the auto pick.
+  const posterRefused = refusedPosterSourceRef.current;
   const effectiveSourceName =
     selectedSourceName ??
-    (posterSourceName && state.streamSourceNames.includes(posterSourceName)
+    (posterSourceName && posterSourceName !== posterRefused
       ? posterSourceName
       : null);
 
@@ -163,6 +179,9 @@ export function useGridPreview({
     loadedRequestRef.current = null;
     frameTimeNsRef.current = undefined;
     nextStartTimeNsRef.current = undefined;
+    // A refusal belongs to one source and one stream; carrying it across
+    // either would keep falling back for a stream this source does preview
+    refusedPosterSourceRef.current = null;
     finishBuffering();
     setPlaying(false);
     setStateOwnerKey(cacheRequestKey);
@@ -231,6 +250,9 @@ export function useGridPreview({
     nextStartTimeNsRef.current = undefined;
 
     const request = {
+      ...(initialVideoDecodeLookaheadNs === undefined
+        ? {}
+        : { decodeLookaheadNs: initialVideoDecodeLookaheadNs }),
       ...(effectiveSourceName ? { sourceName: effectiveSourceName } : {}),
       ...(posterStartTimeNs === null ? {} : { startTimeNs: posterStartTimeNs }),
     };
@@ -241,6 +263,17 @@ export function useGridPreview({
       })
       .then((result) => {
         if (active) {
+          // The session says it cannot preview this stream. Now — with the
+          // inventory it just returned — the auto pick is an informed
+          // fallback rather than a guess made before anything was known.
+          if (
+            result.status === "unavailable" &&
+            effectiveSourceName &&
+            effectiveSourceName === posterSourceName
+          ) {
+            refusedPosterSourceRef.current = posterSourceName;
+            setPosterRefusals((n) => n + 1);
+          }
           notifyReadResult(onReadResultRef.current, result);
           publishEpisodePreviewBootstrap(source, result);
           if (sourceFactsScope) {
@@ -282,6 +315,10 @@ export function useGridPreview({
     enabled,
     effectiveSourceName,
     hovered,
+    initialVideoDecodeLookaheadNs,
+    // Read when a refusal is recorded; `effectiveSourceName` already tracks
+    // its value, so listing it changes nothing about when this runs
+    posterSourceName,
     posterStartTimeNs,
     previewSession,
     source,
@@ -298,6 +335,7 @@ export function useGridPreview({
       !source ||
       !previewSession ||
       state.status !== "ready" ||
+      state.nativeVideo !== null ||
       initialLoadInFlightRef.current
     ) {
       return undefined;
@@ -434,13 +472,20 @@ export function useGridPreview({
     sourceFactsScope,
     startBuffering,
     state.status,
+    state.nativeVideo,
   ]);
 
   const visibleState =
     stateOwnerKey === cacheRequestKey
       ? state
       : seededSnapshot(source, cachedPoster);
-  return { ...visibleState, isBuffering, pause, play };
+  return {
+    ...visibleState,
+    isBuffering,
+    isPlaying: enabled && stateOwnerKey === cacheRequestKey && playing,
+    pause,
+    play,
+  };
 }
 
 function seededSnapshot(
@@ -456,6 +501,7 @@ function seededSnapshot(
     error: null,
     frame: null,
     hasPreviewStreams: cachedPoster.streamSourceNames.length > 0,
+    nativeVideo: null,
     streamId: cachedPoster.streamId,
     streamSourceName: cachedPoster.streamSourceName,
     streamSourceNames: cachedPoster.streamSourceNames,
@@ -576,6 +622,7 @@ function snapshotFromResult(
     error: null,
     frame: timestampedFrame,
     hasPreviewStreams: result.streamSourceNames.length > 0,
+    nativeVideo: result.nativeVideo ?? null,
     streamId: result.streamId,
     streamSourceName: result.streamSourceName,
     streamSourceNames: result.streamSourceNames,

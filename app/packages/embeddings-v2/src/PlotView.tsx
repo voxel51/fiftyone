@@ -14,6 +14,7 @@
 import {
   BackgroundColor,
   BorderColor,
+  BrandColor,
   Button,
   getColorCssVar,
   Icon,
@@ -45,6 +46,7 @@ const TOKEN_VARS = {
   "--emb-card-elevated": `var(${getColorCssVar(BackgroundColor.CardElevated)})`,
   "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
   "--emb-border-strong": `var(${getColorCssVar(BorderColor.Strong)})`,
+  "--emb-brand": `var(${getColorCssVar(BrandColor.Primary)})`,
   "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
 } as CSSProperties;
 
@@ -104,6 +106,7 @@ export default function PlotView({
     colorOptions,
     colorMeta,
     colorLoading,
+    choicesLoading,
     pointColors,
     streamField,
     coloredByStream,
@@ -111,8 +114,12 @@ export default function PlotView({
     visibleCount,
     selectedIndices,
     chipCount,
+    chipSampleCount,
     handleLasso,
     handlePointClick,
+    pinHover,
+    unpinHover,
+    pinned,
     handleBackgroundClick,
     clearAll,
     hover,
@@ -143,34 +150,27 @@ export default function PlotView({
     resetAll,
   } = data;
 
-  const extraMode = features.extraMode;
-  const inExtraMode = extraMode != null && mode === extraMode.key;
-
-  // The renderer only knows explore/select; an extension mode uses SELECT
-  // interaction (only select fires point clicks) and routes its gestures
-  // through the shell's handlers
   // Cast, not narrowed: `PanelMode`'s open string member defeats literal
   // narrowing, but the guarded branch is by construction a renderer mode
   const rendererMode: InteractionMode =
     mode === "explore" || mode === "select"
       ? (mode as InteractionMode)
       : "select";
+  // Select chooses a point. Explore freezes the card so its action is
+  // reachable by pointer — a card that follows the pointer cannot be clicked.
+  // With no action to reach, freezing only costs the reader their hover, so
+  // the click stays inert and the card remains hover-only.
   const cellPointClick =
     mode === "select"
       ? handlePointClick
-      : inExtraMode
-        ? extraMode.onPointClick
+      : features.hoverAction
+        ? pinHover
         : undefined;
-  // An extension mode already acts on point click, so the card's action
-  // button is redundant there; explore/select reach it here
-  const hoverAction = inExtraMode ? null : features.hoverAction;
 
   const subtitle = `${run.method ?? "visualization"}${
     run.dims ? ` (${run.dims}D)` : ""
   }`;
 
-  // A cell's `visible` prop is a total mask; the plain plot's single cell is
-  // everything the plot-level mask admits (or everything, when null).
   // Memoized so the cell's chart doesn't re-diff a fresh array every render
   const n = loaded?.points.length ?? 0;
   const singleCellMask = useMemo(() => {
@@ -193,9 +193,13 @@ export default function PlotView({
         onError: onRendererError,
         onHover: handleHover,
         onKeepHover: keepHover,
+        pinned,
+        onClosePinned: unpinHover,
         hover,
         hoverHit,
-        hoverAction,
+        // Select mode's card follows the pointer, so its button is out of
+        // reach — the action is offered only where the card can be frozen
+        hoverAction: mode === "select" ? null : features.hoverAction,
         registerChart,
       }
     : null;
@@ -224,7 +228,7 @@ export default function PlotView({
           {/* Fixed-width slot so the spinner's appearance never nudges
               the control row */}
           <span className="emb-colorby-spinner">
-            {colorLoading && (
+            {(colorLoading || choicesLoading) && (
               <Icon
                 name={IconName.Spinner}
                 size={Size.Sm}
@@ -232,15 +236,11 @@ export default function PlotView({
               />
             )}
           </span>
-          <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
-            className="emb-nowrap"
-          >
-            Color by
-          </Text>
           <ColorByMenu
-            disabled={!choices.length}
+            // Openable while the list is still filling: a dead pill gives a
+            // reader nothing to read, and the panel is where we say why
+            disabled={!choices.length && !choicesLoading}
+            loading={choicesLoading}
             value={colorField ?? NONE_FIELD}
             options={colorOptions}
             onChange={(value) =>
@@ -283,19 +283,8 @@ export default function PlotView({
               label="Select"
               onClick={() => setMode("select")}
             />
-            {extraMode?.control({
-              active: inExtraMode,
-              onActivate: () => setMode(extraMode.key),
-            })}
           </div>
           <span className="emb-plot-divider" />
-          <SettingsMenu
-            rampId={rampId}
-            colorscaleTarget={colorscaleTarget}
-            onRampChange={setRampId}
-            renderBefore={features.renderSettingsBefore}
-            renderAfter={features.renderSettingsAfter}
-          />
           {/* Two distinct actions: clear all filters/selections vs recenter
               the cameras. portal: inline rendering clips against the chrome */}
           <Tooltip content="Clear filters & selection" portal>
@@ -316,6 +305,15 @@ export default function PlotView({
               onClick={resetCameras}
             />
           </Tooltip>
+          {/* Last, where a settings cog conventionally sits: the actions
+              beside it act on the plot, this one configures it */}
+          <SettingsMenu
+            rampId={rampId}
+            colorscaleTarget={colorscaleTarget}
+            onRampChange={setRampId}
+            renderBefore={features.renderSettingsBefore}
+            renderAfter={features.renderSettingsAfter}
+          />
         </div>
       </div>
       {error && (
@@ -368,6 +366,8 @@ export default function PlotView({
                 onError={shared.onError}
                 onHover={shared.onHover}
                 onKeepHover={shared.onKeepHover}
+                pinned={shared.pinned}
+                onClosePinned={shared.onClosePinned}
                 hoverAction={shared.hoverAction}
                 registerChart={shared.registerChart}
                 hover={shared.hover}
@@ -375,6 +375,9 @@ export default function PlotView({
               />
             </div>
           ))}
+        {/* The extension's own controls over the plot: what belongs ON the
+            points rather than in the toolbar */}
+        {features.plotOverlay}
         {/* One shared legend floating over the whole plot area — color is
             computed once at the run level, so every rendered cell uses the
             identical class→hue mapping and there is exactly one legend */}
@@ -405,7 +408,19 @@ export default function PlotView({
               color={TextColor.Secondary}
             />
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              <strong>{chipCount.toLocaleString()}</strong> selected
+              {/* Samples when knowable — the footer already counts points,
+                  and one sample can own many points, so an unlabeled point
+                  count here reads as a wrong sample count */}
+              {chipSampleCount != null ? (
+                <>
+                  <strong>{chipSampleCount.toLocaleString()}</strong>{" "}
+                  {chipSampleCount === 1 ? "sample" : "samples"}
+                </>
+              ) : (
+                <>
+                  <strong>{chipCount.toLocaleString()}</strong> selected
+                </>
+              )}
             </Text>
             <Button
               variant={Variant.Icon}
@@ -421,10 +436,8 @@ export default function PlotView({
           <div className="emb-plot-overlay emb-plot-hint">
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
               {mode === "explore"
-                ? "Drag to pan · scroll to zoom"
-                : mode === "select"
-                  ? "Drag to lasso · click points to toggle"
-                  : (extraMode?.hint ?? "")}
+                ? "Drag to pan · scroll to zoom · click a point for details"
+                : "Drag to lasso · click points to toggle"}
             </Text>
           </div>
         )}

@@ -1216,6 +1216,7 @@ class BaseChunkyBatcher(Batcher):
 
         if self.return_views:
             if self._last_offset >= self._num_samples:
+                self._last_batch_size = 0
                 raise StopIteration
 
             offset = self._last_offset
@@ -1244,10 +1245,12 @@ class BaseChunkyBatcher(Batcher):
                 batch.append(next(self._iter))
                 idx += 1
         except StopIteration:
-            if not batch:
-                raise StopIteration
+            pass
 
         self._last_batch_size = len(batch)
+
+        if not batch:
+            raise StopIteration
 
         return batch
 

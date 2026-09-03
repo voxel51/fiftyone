@@ -1,9 +1,4 @@
-import {
-  useAudio,
-  useIsPlaying,
-  usePlaybackStore,
-  setAudioAvailable,
-} from "@fiftyone/playback";
+import { useAudio, useIsPlaying } from "@fiftyone/playback";
 import React, { useEffect, useState } from "react";
 
 import {
@@ -84,33 +79,6 @@ const AudioSourceRegistrar: React.FC<{
 };
 
 /**
- * TEMPORARY stub: when a scene has no real audio scene source yet (no
- * decoder support for the file's encoding, e.g. JSON-encoded
- * `foxglove.RawAudio`), register one synthetic placeholder track anyway so
- * the master volume control, the Mixed dropdown, and the main-timeline
- * audio row are all reachable/testable in a real browser before the real
- * decode path is debugged. Remove once every real audio source classifies
- * and decodes correctly end to end.
- */
-const StubAudioTrack: React.FC = () => {
-  const store = usePlaybackStore();
-  const { registerAudioTrack } = useAudio();
-  useEffect(() => {
-    setAudioAvailable(store, "available");
-    const unregister = registerAudioTrack({
-      id: "audio-stub",
-      label: "Audio (stub)",
-      kind: "native-element",
-    });
-    return () => {
-      unregister();
-      setAudioAvailable(store, "unavailable");
-    };
-  }, [store, registerAudioTrack]);
-  return null;
-};
-
-/**
  * Ambient audio registrar for the MCAP scene viewer — mirrors
  * `video-annotation`'s `RegisterTimelineAudio`, which mounts unconditionally
  * alongside the video so native audio plays/mixes regardless of which tile
@@ -133,17 +101,13 @@ const RegisterMcapAudioStreams: React.FC = () => {
   const sources = useOptionalSceneSourcesByType(SCENE_SOURCE_TYPE.AUDIO);
   return (
     <>
-      {sources.length === 0 ? (
-        <StubAudioTrack />
-      ) : (
-        sources.map((source) => (
-          <AudioSourceRegistrar
-            key={source.id}
-            label={source.label}
-            sourceId={source.id}
-          />
-        ))
-      )}
+      {sources.map((source) => (
+        <AudioSourceRegistrar
+          key={source.id}
+          label={source.label}
+          sourceId={source.id}
+        />
+      ))}
     </>
   );
 };

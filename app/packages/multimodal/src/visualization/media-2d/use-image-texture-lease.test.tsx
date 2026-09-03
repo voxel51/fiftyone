@@ -27,8 +27,16 @@ const cacheHarness = vi.hoisted(() => {
   };
 });
 
+// The error class rides along: production code constructs it, and a factory
+// without it dies on `undefined` the moment a test reaches that path
 vi.mock("./image-texture-cache", () => ({
   acquireImageTexture: cacheHarness.acquire,
+  ImageTextureDecodeCancelledError: class extends Error {
+    constructor() {
+      super("image texture decode cancelled");
+      this.name = "ImageTextureDecodeCancelledError";
+    }
+  },
 }));
 
 interface TestLease {
@@ -152,12 +160,21 @@ describe("useImageTextureLease", () => {
     await waitFor(() =>
       expect(rendered.result.current.handle).toBe(secondHandle),
     );
-    await waitFor(() => expect(animationFrames).toHaveLength(1));
+    // The retire chain is scheduled by a passive effect that can trail the
+    // commit the waitFor above observed, and the decode can queue a frame of
+    // its own: wait for a frame to exist and drain whatever is queued, rather
+    // than pinning a count the scheduling order does not guarantee
+    await waitFor(() =>
+      expect(animationFrames.length).toBeGreaterThanOrEqual(1),
+    );
 
     expect(handlesAtRelease).toEqual([]);
-    act(() => animationFrames.shift()?.(0));
+    act(() => flushAnimationFrame(animationFrames, 0));
     expect(handlesAtRelease).toEqual([]);
-    act(() => animationFrames.shift()?.(16));
+    await waitFor(() =>
+      expect(animationFrames.length).toBeGreaterThanOrEqual(1),
+    );
+    act(() => flushAnimationFrame(animationFrames, 16));
     expect(handlesAtRelease).toEqual([secondHandle]);
 
     rendered.unmount();
@@ -202,6 +219,35 @@ describe("useImageTextureLease", () => {
 
     rendered.unmount();
   });
+
+  it("keeps the last committed texture visible when a later frame fails", async () => {
+    const first = deferred<ImageTextureHandle>();
+    const second = deferred<ImageTextureHandle>();
+    cacheHarness.leases.push(
+      { promise: first.promise, release: vi.fn() },
+      { promise: second.promise, release: vi.fn() },
+    );
+
+    const rendered = renderHook(
+      ({ id }) => useImageTextureLease({ frame: rawFrame(), identity: id }),
+      { initialProps: { id: 1 } },
+    );
+
+    const firstHandle = textureHandle();
+    await act(() => first.resolve(firstHandle));
+    await waitFor(() =>
+      expect(rendered.result.current.handle).toBe(firstHandle),
+    );
+
+    rendered.rerender({ id: 2 });
+    await act(async () => second.reject(new Error("byte read failed")));
+
+    await waitFor(() => expect(rendered.result.current.status).toBe("error"));
+    expect(rendered.result.current.errorMessage).toBe("byte read failed");
+    expect(rendered.result.current.handle).toBe(firstHandle);
+
+    rendered.unmount();
+  });
 });
 
 function rawFrame(): RawImageVisualization {
@@ -231,10 +277,22 @@ function textureHandle(): ImageTextureHandle {
   };
 }
 
+function flushAnimationFrame(
+  animationFrames: FrameRequestCallback[],
+  timestamp: number,
+) {
+  const callbacks = animationFrames.splice(0);
+  for (const callback of callbacks) {
+    callback(timestamp);
+  }
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }

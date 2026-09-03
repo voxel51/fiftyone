@@ -261,57 +261,80 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const extendedSelection = (() => {
-  let current = { selection: null };
-  return graphQLSyncFragmentAtom<
-    datasetFragment$key,
-    {
-      selection: string[];
-      scope?: string;
-      spatialSelection?: {
-        polygon: Array<Array<number>>;
-        field: string;
-      } | null;
-    }
-  >(
-    {
-      fragments: [datasetFragment],
-      keys: ["dataset"],
-      default: { selection: null },
-      read: (data, previous) => {
-        if (previous && data.id !== previous?.id) {
-          current = { selection: null };
-        }
+// `read` runs on every fragment update, so it must hand back the last write
+// or a refetch drops the selection. Module scope so the reset can clear it.
+let currentSelection = { selection: null };
+let currentOverrideStage = null;
 
-        return current;
+/** Clears what `read` hands back, so a reset survives the next update. */
+export function clearExtendedSelectionMirror(): void {
+  currentSelection = { selection: null };
+  currentOverrideStage = null;
+}
+
+export const extendedSelection = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  {
+    selection: string[];
+    scope?: string;
+    spatialSelection?: {
+      polygon: Array<Array<number>>;
+      field: string;
+    } | null;
+  }
+>(
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset"],
+    default: { selection: null },
+    read: (data, previous) => {
+      if (previous && data.id !== previous?.id) {
+        currentSelection = { selection: null };
+      }
+
+      return currentSelection;
+    },
+  },
+  {
+    key: "extendedSelection",
+    effects: [
+      ({ onSet }) => {
+        onSet((value) => {
+          currentSelection =
+            value instanceof DefaultValue ? { selection: null } : value;
+        });
       },
-    },
-    {
-      key: "extendedSelection",
-    },
-  );
-})();
+    ],
+  },
+);
 
-export const extendedSelectionOverrideStage = (() => {
-  let current = null;
-  return graphQLSyncFragmentAtom<datasetFragment$key, any>(
-    {
-      fragments: [datasetFragment],
-      keys: ["dataset"],
-      default: null,
-      read: (data, previous) => {
-        if (previous && data.id !== previous?.id) {
-          current = null;
-        }
+export const extendedSelectionOverrideStage = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  any
+>(
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset"],
+    default: null,
+    read: (data, previous) => {
+      if (previous && data.id !== previous?.id) {
+        currentOverrideStage = null;
+      }
 
-        return current;
+      return currentOverrideStage;
+    },
+  },
+  {
+    key: "extendedSelectionOverrideStage",
+    effects: [
+      ({ onSet }) => {
+        onSet((value) => {
+          currentOverrideStage = value instanceof DefaultValue ? null : value;
+        });
       },
-    },
-    {
-      key: "extendedSelectionOverrideStage",
-    },
-  );
-})();
+    ],
+  },
+);
 
 export const similarityParameters = (() => {
   let update = false;

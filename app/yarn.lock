@@ -1854,7 +1854,7 @@ __metadata:
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
     "@types/react": "catalog:"
-    "@types/react-dom": "npm:^18.3.1"
+    "@types/react-dom": "catalog:"
     "@types/three": "npm:^0.182.0"
     "@voxel51/voodo": "catalog:"
     jotai: "catalog:"

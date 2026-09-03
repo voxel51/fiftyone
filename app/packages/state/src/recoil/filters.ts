@@ -101,6 +101,21 @@ export const filter = selectorFamily<
     },
 });
 
+/**
+ * Field filters alone — the only input an aggregation's `extended` flag
+ * controls. An extended selection (grid checkboxes, a plot lasso, an override
+ * stage) rides in `extendedStages`, which every aggregation sends whether or
+ * not it is extended, so counting it as a filter made the extended
+ * aggregation a byte-identical twin of the unextended one.
+ */
+export const hasFieldFilters = selectorFamily<boolean, boolean>({
+  key: "hasFieldFilters",
+  get:
+    (modal) =>
+    ({ get }) =>
+      Object.keys(get(modal ? modalFilters : filters)).length > 0,
+});
+
 export const hasFilters = selectorFamily<boolean, boolean>({
   key: "hasFilters",
   get:

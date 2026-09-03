@@ -5,6 +5,7 @@ import {
   getFetchUrl,
   setFetchParameters,
   setFetchFunction,
+  type BrowserCacheMode,
 } from "./fetch";
 
 describe("fetch", () => {
@@ -43,6 +44,17 @@ describe("fetch", () => {
       const [, init] = mockFetch.mock.calls[0];
       expect(init.headers["Content-Type"]).toBeUndefined();
     });
+  });
+
+  it("resolves configured paths and preserves absolute URLs", () => {
+    setFetchFunction("http://localhost:5151", {}, "/proxy");
+
+    expect(getFetchUrl("/dataset/sample/asset")).toBe(
+      "http://localhost:5151/proxy/dataset/sample/asset",
+    );
+    expect(getFetchUrl("https://signed.example/video.mp4?token=secret")).toBe(
+      "https://signed.example/video.mp4?token=secret",
+    );
   });
 
   it("forwards external abort signals", async () => {
@@ -202,5 +214,16 @@ describe("fetch", () => {
       ]),
     ).resolves.toEqual(["stream me", "stream me", "stream me", "stream me"]);
     expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("rejects the only-if-cached browser cache mode at compile time", () => {
+    // Every request is sent with mode "cors", where the Request constructor
+    // throws on "only-if-cached" — the type must not admit it
+    // @ts-expect-error -- excluded from BrowserCacheMode
+    const invalid: BrowserCacheMode = "only-if-cached";
+    void invalid;
+
+    const valid: BrowserCacheMode = "no-store";
+    expect(valid).toBe("no-store");
   });
 });

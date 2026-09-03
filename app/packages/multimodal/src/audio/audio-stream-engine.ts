@@ -13,7 +13,6 @@
 // timeline with no way to notice.
 // ---------------------------------------------------------------------------
 
-import workletUrl from "./audio-stream-processor.worklet?worker&url";
 import {
   AudioRingBuffer,
   allocateAudioRing,
@@ -119,6 +118,37 @@ declare global {
 // in the render thread.
 // ---------------------------------------------------------------------------
 
+/**
+ * Resolved on first use rather than imported at module scope.
+ *
+ * `?worker&url` is a bundler contract, not a language feature. A bundler
+ * that does not implement it evaluates the worklet inside the app bundle
+ * instead of emitting a separate module asset, and the worklet then throws
+ * `AudioWorkletProcessor is not defined` — a global that only exists on the
+ * render thread. As a static import that happened during module evaluation,
+ * before any caller existed to catch it, so a shell that mis-bundles the
+ * worklet lost the whole episode modal rather than just its audio.
+ *
+ * Deferring it moves that failure inside `acquireAudioContext`, where it
+ * surfaces as a rejected `ready` and the existing handler in
+ * `use-audio-stream-playback.ts` degrades it to an audio-only error.
+ *
+ * The promise is memoized so concurrent sources share one fetch, but cleared
+ * on rejection: this is a chunk load, so a transient network failure must not
+ * poison every later attempt.
+ */
+let workletUrlPromise: Promise<string> | undefined;
+
+function resolveWorkletUrl(): Promise<string> {
+  workletUrlPromise ??= import("./audio-stream-processor.worklet?worker&url")
+    .then((module) => module.default)
+    .catch((error: unknown) => {
+      workletUrlPromise = undefined;
+      throw error;
+    });
+  return workletUrlPromise;
+}
+
 interface ContextLease {
   readonly audioContext: AudioContext;
   release(): Promise<void>;
@@ -142,7 +172,9 @@ async function acquireAudioContext(sampleRate: number): Promise<ContextLease> {
       // Registered once per context, not once per engine: `addModule` is
       // idempotent but re-awaiting it per source serialises engine startup
       // behind a fetch that has already happened.
-      ready: audioContext.audioWorklet.addModule(workletUrl),
+      ready: resolveWorkletUrl().then((url) =>
+        audioContext.audioWorklet.addModule(url),
+      ),
       leases: 0,
     };
     SHARED_CONTEXTS.set(sampleRate, shared);

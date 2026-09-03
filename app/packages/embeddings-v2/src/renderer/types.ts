@@ -46,6 +46,17 @@ export interface HoverHit {
 export type Polygon = Array<[number, number]>;
 
 /**
+ * Visibility as membership in a SHARED per-point cell-ordinal array: point
+ * `i` is visible when `ordinals[i] === ordinal`. A facet layout passes one
+ * ordinal array to every cell instead of allocating a per-cell n-sized
+ * mask; the chart fills its own GPU-side mask from it directly.
+ */
+export interface CellMembership {
+  ordinals: Int16Array;
+  ordinal: number;
+}
+
+/**
  * Who owns a plain drag: "select" draws the lasso (the default),
  * "explore" gives it to the camera. Modified gestures (wheel zoom,
  * shift/middle-drag pan) work in both modes.

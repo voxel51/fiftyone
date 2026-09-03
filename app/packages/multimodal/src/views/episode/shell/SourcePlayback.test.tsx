@@ -138,7 +138,7 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", () => ({
 }));
 
 vi.mock("./AddTileMenu", () => ({ default: () => null }));
-vi.mock("./RightSidebar", () => ({
+vi.mock("./RightSidebarWithTrays", () => ({
   default: () => null,
 }));
 vi.mock("./NetworkStatus", () => ({

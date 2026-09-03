@@ -39,6 +39,7 @@ const createRegistration = (
     supports:
       | {
           extensions?: string[];
+          mediaReferenceKinds?: string[];
           mimeTypes?: string[];
           mediaTypes?: string[];
         }
@@ -173,6 +174,48 @@ describe("sample renderer matcher utilities", () => {
     expect(ctx.surface).toBe("modal");
   });
 
+  it("builds a pathless media-reference context without a native looker", () => {
+    const media = createSampleRendererMediaContext(
+      {
+        sample: {
+          _id: "episode",
+          media_reference: {
+            kind: "lerobot-episode",
+            key: "source:17",
+          },
+          _media_type: "multimodal",
+        },
+      },
+      "media_reference",
+    );
+
+    expect(media).toMatchObject({
+      extension: null,
+      isNative: false,
+      mediaReference: {
+        kind: "lerobot-episode",
+        key: "source:17",
+      },
+      mediaType: "multimodal",
+      path: null,
+      url: null,
+    });
+    expect(
+      matchesMatchMedia({ mediaReferenceKinds: ["LEROBOT-EPISODE"] }, media),
+    ).toBe(true);
+
+    const filepathMedia = createSampleRendererMediaContext(
+      createSample(),
+      "filepath",
+    );
+    expect(
+      matchesMatchMedia(
+        { mediaReferenceKinds: ["lerobot-episode"] },
+        filepathMedia,
+      ),
+    ).toBe(false);
+  });
+
   it("detects matcher presence only when a matcher field is populated", () => {
     expect(hasMatchMediaMatchers(undefined)).toBe(false);
     expect(hasMatchMediaMatchers({})).toBe(false);
@@ -236,6 +279,30 @@ describe("sample renderer selection", () => {
     });
 
     expect(supportsSampleRenderer(registration, ctx)).toBe(true);
+  });
+
+  it("selects a media-reference renderer without a filepath or URL", () => {
+    const ctx = createSampleRendererRenderContext(
+      {
+        sample: {
+          _id: "episode",
+          media_reference: {
+            kind: "lerobot-episode",
+            key: "source:17",
+          },
+          _media_type: "multimodal",
+        },
+      },
+      "media_reference",
+      dataset,
+      schema,
+      "modal",
+    );
+    const registration = createRegistration("logical-episode", {
+      supports: { mediaReferenceKinds: ["lerobot-episode"] },
+    });
+
+    expect(getMatchingSampleRenderer([registration], ctx)).toBe(registration);
   });
 
   it("supports predicate matchers", () => {

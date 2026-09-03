@@ -79,7 +79,11 @@ describe("MCAP format adapter", () => {
       recordingInventory(
         [
           create(StreamInventorySchema, {
-            metadata: { "mcap.topic": "/camera" },
+            metadata: {
+              "mcap.topic": "/camera",
+              [SCENE_SOURCE_METADATA.TYPE]: "image",
+              [STREAM_METADATA.DECODE_STATUS]: "decodable",
+            },
             payload: {
               encoding: "cdr",
               schema: "sensor_msgs/msg/Image",
@@ -96,6 +100,7 @@ describe("MCAP format adapter", () => {
           }),
           create(StreamInventorySchema, {
             metadata: {
+              "mcap.exact_browsing": "true",
               "mcap.topic": "/opaque",
               [STREAM_METADATA.DECODE_STATUS]: "schema-unavailable",
             },
@@ -119,9 +124,9 @@ describe("MCAP format adapter", () => {
 
     expect(manifest.recordingFacts).toEqual({
       applicationSupport: {
-        inspectableStreamCount: 1,
+        inspectableStreamCount: 2,
         renderableStreamCount: 1,
-        unavailableStreamCount: 1,
+        unavailableStreamCount: 0,
       },
       channelCount: 3,
       durationNs: "30000000000",
@@ -134,6 +139,28 @@ describe("MCAP format adapter", () => {
       startTimeNs: "10000000000",
       topicCount: 3,
     });
+    expect(manifest.streams).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "1",
+          metadata: expect.objectContaining({
+            [STREAM_METADATA.INSPECTABLE]: "true",
+          }),
+        }),
+        expect.objectContaining({
+          id: "2",
+          metadata: expect.objectContaining({
+            [STREAM_METADATA.INSPECTABLE]: "true",
+          }),
+        }),
+        expect.objectContaining({
+          id: "3",
+          metadata: expect.objectContaining({
+            [STREAM_METADATA.INSPECTABLE]: "true",
+          }),
+        }),
+      ]),
+    );
   });
 
   it("preserves source size discovered while reading inventory", () => {
@@ -1221,6 +1248,7 @@ describe("MCAP format adapter", () => {
       const slice = await session.numericSeries?.readNumericSeriesSlice?.({
         absoluteBudget: budget,
         absoluteMaxChunks: 2,
+        bucketDurationNs: 1_000_000_000n,
         budget,
         maxChunks: 1,
         selections: [{ fields: ["exposure"], stream: "camera" }],

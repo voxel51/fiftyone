@@ -32,8 +32,8 @@ import type {
 import type { Loaded } from "./useRunColumns";
 import { useLocalColorMask } from "./useLocalColorMask";
 
-/** The panel's interaction mode: the renderer's own modes, plus at most one
- * extension-registered mode (see {@link RunFeatures.extraMode}). */
+/** The panel's interaction mode. Kept open beyond the renderer's own two so
+ * a mode can be added without threading a new type through every cell. */
 export type PanelMode = InteractionMode | (string & NonNullable<unknown>);
 
 /** Streams a run's geometry client-side. Present only once the extension
@@ -49,9 +49,14 @@ export type GeometryLoader = (
 export interface ColorColumnSource {
   /** The fields offered for color-by. */
   choices: string[];
+  /** `signal` (when the host passes one) releases this resolve's interest in
+   * the column — the host superseded the field or unmounted. Sources may
+   * ignore it; sources with cancellable work stop when every interested
+   * caller has released. */
   resolve: (
     field: string,
     onPartial: (partial: ColorResponse) => void,
+    signal?: AbortSignal,
   ) => Promise<ColorResponse>;
   /** Changes whenever the source's SEMANTICS change (its choices or what
    * `resolve` would answer) under the same dataset and run — e.g. a run
@@ -59,6 +64,13 @@ export interface ColorColumnSource {
    * identity, which extension hooks may recreate every render. Optional:
    * omitted means identity-stable semantics per (dataset, brainKey). */
   revision?: string | number;
+  /** `choices` is INCOMPLETE — more are still resolving. A source whose
+   * fields arrive on a later round trip sets this so the host can say so:
+   * a short list reads as "this run has no such fields", and a reader who
+   * concludes that closes the menu and does not look again. Must go false
+   * when the round trip settles, failure included, or the host spins
+   * forever. */
+  pending?: boolean;
 }
 
 /** What the extension's early per-run hook owns. */
@@ -84,12 +96,20 @@ export type SelectionDecorator = (
 ) => void;
 
 /** Commits stage + count + the extension's decoration in ONE batched
- * commit (see useRunPlotData). */
-export type PublishSelection = (next: {
-  stage?: Record<string, unknown> | null;
-  count?: number | null;
-  decorate?: SelectionDecorator | null;
-}) => void;
+ * commit (see useRunPlotData). A caller already inside a Recoil transaction
+ * passes its interface as `io` so the publish joins that commit — a second
+ * transaction is a second sidebar-aggregation round. */
+export type PublishSelection = (
+  next: {
+    stage?: Record<string, unknown> | null;
+    /** Selected points. One sample can own many points. */
+    count?: number | null;
+    /** Distinct selected samples; null when only points are knowable. */
+    sampleCount?: number | null;
+    decorate?: SelectionDecorator | null;
+  },
+  io?: Pick<CallbackInterface, "set" | "reset">,
+) => void;
 
 /** Everything a client-side lasso resolver needs to build a view stage. */
 export interface LassoStageInput {
@@ -118,23 +138,20 @@ export interface RunFeaturesContext {
   /** The run's wire-order id column and how many points are loaded. */
   loadedIds: IdColumn | null;
   loadedCount: number;
+  /** The run's full point count. Above `loadedCount` while chunks are still
+   * landing, so an interaction can say it acted on part of the run. */
+  loadedTotal: number;
+  /** What the view leaves on screen, per point, in wire order — filters, view
+   * stages and the legend, together.
+   *
+   * A REF because the mask is derived from what this hook returns, so it does
+   * not exist when the hook runs. Read it when an interaction happens, never
+   * during render: a search needs what is visible at the moment it is issued.
+   */
+  visibleRef: { current: Uint8Array | null };
   publishSelection: PublishSelection;
   setOverrideStage: (stage: Record<string, unknown> | null) => void;
   resetExtended: () => void;
-}
-
-/** An extension-registered interaction mode (rendered as a third mode
- * segment). The renderer only ever sees explore/select — an extra mode uses
- * SELECT interaction and routes its gestures here. */
-export interface ExtraInteractionMode {
-  /** The mode's `PanelMode` value. */
-  key: string;
-  /** The mode's control segment (a button/popover beside Explore/Select). */
-  control: (props: { active: boolean; onActivate: () => void }) => ReactNode;
-  /** The plot's idle hint while the mode is active. */
-  hint: string;
-  onLasso: (indices: number[]) => void;
-  onPointClick: (hit: HoverHit) => void;
 }
 
 /** An action offered on the hover card for extensions that can act on a
@@ -142,6 +159,10 @@ export interface ExtraInteractionMode {
 export interface HoverAction {
   label: string;
   run: (hit: HoverHit) => void;
+  /** The action it started is still running. The button says so itself —
+   * spinning where its icon was — rather than through a notice somewhere
+   * else on the plot, which is not where the reader is looking. */
+  loading?: boolean;
 }
 
 /** Everything the shared shell hands the plot-area slot: the run-level
@@ -167,6 +188,10 @@ export interface SharedPlotProps {
   onError: (e: Error) => void;
   onHover: (hit: HoverHit | null) => void;
   onKeepHover: () => void;
+  /** The hover card is frozen on a clicked point. */
+  pinned: boolean;
+  /** Releases the freeze; the card renders it as its close control. */
+  onClosePinned: () => void;
   hover: HoverContent | null;
   /** The live hovered hit, before the card's dwell — anchors the ring. */
   hoverHit: HoverHit | null;
@@ -191,11 +216,19 @@ export interface RunFeatures {
   /** What produced the current selection ("lasso", or an extension-defined
    * origin); drives background-click layer peeling. */
   selectionOrigin: string | null;
-  /** Hover-card content from resident data (no fetch); null → server path. */
-  localDetail: (hit: HoverHit) => HoverContent | null;
+  /** Hover-card content from resident data (no fetch); null → server path.
+   *
+   * `pinned` says the reader CLICKED this point rather than passed over it,
+   * which is the only place work too expensive for a hover belongs. */
+  localDetail: (hit: HoverHit, pinned?: boolean) => HoverContent | null;
   /** The legend just changed the color field's filter (null = cleared);
-   * extensions sync their own selection artifacts to it. */
-  onLegendFilterChange: (next: CategoricalFilter | null) => void;
+   * extensions sync their own selection artifacts to it. Called INSIDE the
+   * legend click's transaction, whose interface is `io` — publishing through
+   * it keeps the whole gesture one commit. */
+  onLegendFilterChange: (
+    next: CategoricalFilter | null,
+    io?: Pick<CallbackInterface, "set" | "reset">,
+  ) => void;
   /** Joins each published selection's commit; called with the kept wire
    * indices (null = selection cleared). */
   decorateSelection: ((kept: number[] | null) => SelectionDecorator) | null;
@@ -203,9 +236,10 @@ export interface RunFeatures {
   resolveLassoStage:
     | ((input: LassoStageInput) => Record<string, unknown> | null)
     | null;
-  /** At most one extension interaction mode (e.g. an action that consumes a
-   * lasso instead of selecting it). */
-  extraMode: ExtraInteractionMode | null;
+  /** An extension's own controls floated over the plot area, positioning
+   * themselves inside the scene. For what belongs on the plot rather than in
+   * the toolbar — a search over the points, a read-out of what is drawn. */
+  plotOverlay: ReactNode;
   hoverAction: HoverAction | null;
   /** Header controls rendered before the color-by menu. */
   headerControls: ReactNode;
@@ -317,7 +351,7 @@ export function useFallbackRunFeatures(ctx: RunFeaturesContext): RunFeatures {
     onLegendFilterChange: noop,
     decorateSelection: null,
     resolveLassoStage: null,
-    extraMode: null,
+    plotOverlay: null,
     hoverAction: null,
     headerControls: null,
     banner: null,

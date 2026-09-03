@@ -21,7 +21,14 @@ import {
   gridLiveLeaseStats,
   resetGridLiveLeasesForTests,
 } from "../../../visualization/webgpu/webgpu-live-lease";
-import type { ByteSourceDescriptor, EpisodePosterFrame } from "../../../ir";
+import type {
+  ByteSourceDescriptor,
+  EpisodePosterFrame,
+  EpisodePreviewNativeVideo,
+  EpisodePreviewReadResult,
+} from "../../../ir";
+import { PushVideoAccessUnitReader } from "../../../video/push-reader";
+import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import {
   gridPreviewStateKey,
   pointCloudPoseKey,
@@ -83,12 +90,15 @@ function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
 }
 
 const previewHarness = vi.hoisted(() => ({
+  onReadResult: null as ((result: EpisodePreviewReadResult) => void) | null,
   preview: {
     cachedPoster: null as GridPosterCacheEntry | null,
     error: null as string | null,
     frame: null as EpisodePosterFrame | null,
     hasPreviewStreams: false,
     isBuffering: false,
+    isPlaying: false,
+    nativeVideo: null as EpisodePreviewNativeVideo | null,
     pause: vi.fn(),
     play: vi.fn(),
     streamId: null as string | null,
@@ -108,6 +118,7 @@ const bitmapViewHarness = vi.hoisted(() => ({
       canvas: HTMLCanvasElement,
       size: { readonly height: number; readonly width: number },
     ) => void;
+    videoPriority?: "playing" | "visible";
   } | null,
 }));
 
@@ -135,6 +146,10 @@ const sourceHarness = vi.hoisted(() => ({
 
 const gridStreamHarness = vi.hoisted(() => ({
   selected: "__auto__",
+}));
+
+const nativeVideoHarness = vi.hoisted(() => ({
+  onError: null as ((error: Error) => void) | null,
 }));
 
 const providerHarness = vi.hoisted(() => ({
@@ -197,12 +212,37 @@ vi.mock("../../session/use-episode-preview-session", () => ({
 }));
 
 vi.mock("./use-grid-preview", () => ({
-  useGridPreview: vi.fn(() => previewHarness.preview),
+  useGridPreview: vi.fn(
+    (options: {
+      readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
+    }) => {
+      previewHarness.onReadResult = options.onReadResult ?? null;
+      return previewHarness.preview;
+    },
+  ),
 }));
 
 vi.mock("./use-grid-poster-provider", () => ({
   useGridPosterProviderDescriptor: () => providerHarness.descriptor,
   useProvidedGridPoster: () => providerHarness.poster,
+}));
+
+vi.mock("./LeRobotGridHoverVideo", () => ({
+  LeRobotGridHoverVideo: ({
+    onError,
+    playing,
+  }: {
+    readonly onError: (error: Error) => void;
+    readonly playing?: boolean;
+  }) => {
+    nativeVideoHarness.onError = onError;
+    return (
+      <div
+        data-playing={playing ? "true" : "false"}
+        data-testid="lerobot-grid-hover-video"
+      />
+    );
+  },
 }));
 
 vi.mock("./grid-camera-state", () => ({
@@ -239,6 +279,7 @@ vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
         canvas: HTMLCanvasElement,
         size: { readonly height: number; readonly width: number },
       ) => void;
+      readonly videoPriority?: "playing" | "visible";
     }) => {
       bitmapHostHarness.lastBitmap = bitmap;
       bitmapHostHarness.onCanvasCommitted = onCanvasCommitted ?? null;
@@ -313,11 +354,14 @@ afterEach(() => {
   bitmapViewHarness.lastProps = null;
   setGridFit = null;
   cameraPoseHarness.pose = null;
+  previewHarness.onReadResult = null;
   previewHarness.preview.error = null;
   previewHarness.preview.cachedPoster = null;
   previewHarness.preview.frame = null;
   previewHarness.preview.hasPreviewStreams = false;
   previewHarness.preview.isBuffering = false;
+  previewHarness.preview.isPlaying = false;
+  previewHarness.preview.nativeVideo = null;
   previewHarness.preview.status = "idle";
   previewHarness.preview.streamId = null;
   previewHarness.preview.streamSourceName = null;
@@ -328,6 +372,7 @@ afterEach(() => {
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
   gridStreamHarness.selected = "__auto__";
+  nativeVideoHarness.onError = null;
   providerHarness.descriptor = { resolved: null, status: "miss" };
   providerHarness.poster = { entry: null, status: "miss" };
 });
@@ -479,9 +524,48 @@ describe("GridRenderer", () => {
     });
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      initialVideoDecodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
       posterStartTimeNs: null,
       posterSourceName: null,
     });
+  });
+
+  it("retains the complete initial H.264 decode runway", () => {
+    sourceHarness.byteSource = {
+      sourceId: "video-runway",
+      url: "memory://video-runway",
+    };
+    const push = vi.spyOn(PushVideoAccessUnitReader.prototype, "push");
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    const keyframe = videoFrame(new Uint8Array([1]), 0n, true);
+    const successor = videoFrame(new Uint8Array([2]), 33_333_333n, false);
+    act(() => {
+      previewHarness.onReadResult?.({
+        frame: keyframe,
+        frameTimeNs: 0n,
+        streamId: "/camera/front",
+        streamSourceName: "/camera/front",
+        streamSourceNames: ["/camera/front"],
+        status: "ready",
+        videoDecodeRunway: [keyframe, successor],
+      });
+    });
+
+    expect(push.mock.calls).toEqual([
+      [
+        "/camera/front",
+        expect.objectContaining({ frame: keyframe.image, timeNs: 0n }),
+      ],
+      [
+        "/camera/front",
+        expect.objectContaining({
+          frame: successor.image,
+          timeNs: 33_333_333n,
+        }),
+      ],
+    ]);
+    push.mockRestore();
   });
 
   it("renders a cached point-cloud poster with point-cloud activation semantics", () => {
@@ -590,6 +674,107 @@ describe("GridRenderer", () => {
     );
   });
 
+  it("keeps the cached poster visible until a new image decode family commits", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.frame = videoFrame(new Uint8Array([9, 9, 9]));
+    previewHarness.preview.status = "ready";
+    previewHarness.preview.streamId = "/cam/video";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
+
+    act(() => {
+      bitmapViewHarness.lastProps?.onCanvasCommitted?.(
+        document.createElement("canvas"),
+        { height: 180, width: 320 },
+      );
+    });
+
+    expect(screen.queryByTestId("bitmap-cached-image-view")).toBeNull();
+    expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
+  });
+
+  it("activates native LeRobot playback over the retained poster only while playing", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.frame = videoFrame(new Uint8Array([9, 9, 9]));
+    previewHarness.preview.nativeVideo = {
+      codec: "h264",
+      codecString: "avc1.64000a",
+      endTimeSeconds: 37.5,
+      source: { sourceId: "video", url: "/asset/video.mp4" },
+      startTimeSeconds: 14.2,
+    };
+    previewHarness.preview.status = "ready";
+    previewHarness.preview.streamId = "/cam/video";
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByTestId("lerobot-grid-hover-video").dataset.playing).toBe(
+      "false",
+    );
+
+    previewHarness.preview.isPlaying = true;
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByTestId("lerobot-grid-hover-video").dataset.playing).toBe(
+      "true",
+    );
+
+    previewHarness.preview.isPlaying = false;
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.getByTestId("lerobot-grid-hover-video").dataset.playing).toBe(
+      "false",
+    );
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+  });
+
+  it("shows native playback failures over a retained poster", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.nativeVideo = {
+      codec: "h264",
+      codecString: "avc1.64000a",
+      endTimeSeconds: 37.5,
+      source: { sourceId: "video", url: "/asset/video.mp4" },
+      startTimeSeconds: 14.2,
+    };
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    act(() => nativeVideoHarness.onError?.(new Error("Native decode failed")));
+
+    expect(screen.getByTestId("bitmap-cached-image-view")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe("Native decode failed");
+  });
+
   it("shows a tiny buffering indicator over the last rendered frame", () => {
     previewHarness.preview.frame = imageFrame(new Uint8Array([1]));
     previewHarness.preview.isBuffering = true;
@@ -695,12 +880,14 @@ describe("GridRenderer", () => {
     previewHarness.preview.status = "ready";
 
     render(<GridRenderer ctx={rendererCtx()} />);
+    expect(bitmapViewHarness.lastProps?.videoPriority).toBe("visible");
     const root = screen.getByTestId("bitmap-image-view").parentElement;
     if (!root) {
       throw new Error("Expected bitmap view to have a grid root");
     }
 
     fireEvent.pointerOver(root);
+    expect(bitmapViewHarness.lastProps?.videoPriority).toBe("playing");
     expect(vi.mocked(useGridPreview)).toHaveBeenLastCalledWith(
       expect.objectContaining({ hovered: true }),
     );
@@ -710,6 +897,7 @@ describe("GridRenderer", () => {
     expect(previewHarness.preview.play).not.toHaveBeenCalled();
 
     fireEvent.pointerOut(root);
+    expect(bitmapViewHarness.lastProps?.videoPriority).toBe("visible");
     expect(vi.mocked(useGridPreview)).toHaveBeenLastCalledWith(
       expect.objectContaining({ hovered: false }),
     );
@@ -1187,6 +1375,25 @@ function imageFrame(bytes: Uint8Array): EpisodePosterFrame {
     image: { bytes, kind: "encoded-image", mimeType: "image/jpeg" },
     kind: "image",
   } as unknown as EpisodePosterFrame;
+}
+
+function videoFrame(
+  bytes: Uint8Array,
+  timestampNs = 0n,
+  keyframe = true,
+): Extract<EpisodePosterFrame, { kind: "image" }> {
+  return {
+    image: {
+      bytes,
+      codec: "h264",
+      format: "h264",
+      h264: { codecString: "avc1.4D001F", hasFrame: true },
+      keyframe,
+      kind: "encoded-video",
+      timestampNs,
+    },
+    kind: "image",
+  } as unknown as Extract<EpisodePosterFrame, { kind: "image" }>;
 }
 
 function pointCloudFrame(): EpisodePosterFrame {
