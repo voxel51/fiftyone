@@ -84,9 +84,9 @@ at the top of the Connections list.
 
 .. note::
 
-    Need help configuring a provider? Contact your Customer Success
-    representative, or see :ref:`Secrets <enterprise-secrets>` for how to
-    store API keys securely in your deployment.
+    API keys are automatically stored securely using FiftyOne
+    Enterprise's :ref:`Secrets <enterprise-secrets>` infrastructure. No
+    manual secret configuration is required.
 
 .. _enterprise-agent-permissions:
 
