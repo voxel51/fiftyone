@@ -82,6 +82,7 @@ const DatasetSelector: React.FC<{
     [dataset],
   );
 
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const pick = useCallback(
     (option: ComboboxOption | null) => {
       // Typing past the applied name reports null; nothing was picked
@@ -90,13 +91,15 @@ const DatasetSelector: React.FC<{
       setPending(option.id);
       setDataset(option.id);
       setQuery(option.id);
+      // Choosing a dataset ends the interaction: the keyboard goes back to
+      // the page, as it did with the previous selector
+      rootRef.current?.querySelector("input")?.blur();
     },
     [setDataset],
   );
 
   // The e2e harness arms a listener for this before opening the dropdown;
   // the old selector announced its results the same way
-  const rootRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!open) return;
     rootRef.current?.dispatchEvent(

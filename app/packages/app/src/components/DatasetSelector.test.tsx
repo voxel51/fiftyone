@@ -48,6 +48,18 @@ describe("DatasetSelector", () => {
     expect((input as HTMLInputElement).value).toBe("quickstart");
   });
 
+  it("gives focus back to the page once a dataset is picked", () => {
+    setup();
+    const input = screen.getByRole("combobox", { name: "Dataset" });
+
+    input.focus();
+    fireEvent.focus(input);
+    expect(document.activeElement).toBe(input);
+    fireEvent.mouseDown(screen.getByRole("option", { name: "quickstart" }));
+
+    expect(document.activeElement).not.toBe(input);
+  });
+
   it("restores the current dataset when the list closes without a pick", () => {
     setup();
     const input = screen.getByRole("combobox", { name: "Dataset" });
