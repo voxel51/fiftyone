@@ -37,6 +37,9 @@ const DatasetSelector: React.FC<{
   // overwrite the pick with the dataset still applied — blank, when picking
   // the first dataset from the empty page.
   const [pending, setPending] = useState<string | null>(null);
+  // The close that follows a pick runs in the same event as the pick, before
+  // `pending` has re-rendered; the ref is what that handler reads
+  const pendingRef = useRef<string | null>(null);
   // Whether the visible text is a search the user typed, as opposed to the
   // seeded applied-dataset name. Searching by the seed is worse than useless:
   // the picker opens to browse OTHER datasets, and the debounced refetch made
@@ -54,7 +57,10 @@ const DatasetSelector: React.FC<{
     if (open) return;
 
     if (pending !== null) {
-      if (dataset === pending) setPending(null);
+      if (dataset === pending) {
+        pendingRef.current = null;
+        setPending(null);
+      }
       return;
     }
 
@@ -80,6 +86,7 @@ const DatasetSelector: React.FC<{
     (option: ComboboxOption | null) => {
       // Typing past the applied name reports null; nothing was picked
       if (!option) return;
+      pendingRef.current = option.id;
       setPending(option.id);
       setDataset(option.id);
       setQuery(option.id);
@@ -124,7 +131,8 @@ const DatasetSelector: React.FC<{
             setDirty(false);
           } else {
             // Closed with nothing picked: back to the applied name
-            setQuery(pending ?? dataset ?? "");
+            // A pick keeps its name in the field while the dataset loads
+            setQuery(pendingRef.current ?? dataset ?? "");
           }
         }}
       />
