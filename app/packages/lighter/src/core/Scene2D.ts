@@ -178,6 +178,19 @@ export class Scene2D {
       this.eventChannel,
     );
 
+    // A filtered-out label must not be clickable at its old position, or
+    // hiding it in the sidebar makes empty canvas do something. Set once as a
+    // live closure over `this` rather than re-pushed on every options change:
+    // `shouldShowOverlay` already reads `this.sceneOptions` fresh each call,
+    // so this predicate stays correct as options change without needing its
+    // own update path. `id` may not resolve to a registered overlay at all —
+    // a self-managed draw/paint tool handler is not one — in which case there
+    // is nothing to filter and the handler stays hit-testable.
+    this.interactionManager.setVisibilityPredicate((id) => {
+      const overlay = this.overlays.get(id);
+      return overlay ? this.shouldShowOverlay(overlay) : true;
+    });
+
     this.eventBus = getEventBus<LighterEventGroup>(this.eventChannel);
 
     // Listen for canonical media bounds changes to update coordinate system and overlays
@@ -194,8 +207,15 @@ export class Scene2D {
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
-      const { activePaths, showOverlays, alpha } = event;
-      this.updateOptions({ activePaths, showOverlays, alpha });
+      // `updateOptions` REPLACES `sceneOptions` wholesale (see its own doc
+      // comment) — every field this handler receives has to be re-listed
+      // here or it is silently dropped the next time ANY option changes,
+      // `filter` included. `readOnly` avoided this trap entirely by living
+      // in its own field instead of this bag; `filter` doesn't need that,
+      // since it belongs with `activePaths`/`showOverlays` as one more
+      // per-render display option, but it does need to be named here.
+      const { activePaths, showOverlays, alpha, filter } = event;
+      this.updateOptions({ activePaths, showOverlays, alpha, filter });
 
       this.overlays.forEach((overlay) => {
         overlay.markDirty();
@@ -1707,8 +1727,18 @@ export class Scene2D {
     if (this.sceneOptions?.showOverlays === false) return false;
 
     const activePaths = this.sceneOptions?.activePaths;
-    if (activePaths && overlay.field) {
-      return activePaths.includes(overlay.field);
+    if (activePaths && overlay.field && !activePaths.includes(overlay.field)) {
+      return false;
+    }
+
+    // Per-label filter (sidebar confidence / value / tag filters, and hidden
+    // labels — both fold into the one predicate the looker checked in
+    // `Overlay.isShown`). Skipped for a field-less overlay: the canonical
+    // media is already returned above, and any other field-less overlay is
+    // not a label the filter has an opinion about.
+    const filter = this.sceneOptions?.filter;
+    if (filter && overlay.field && !filter(overlay.field, overlay.label)) {
+      return false;
     }
 
     return true;

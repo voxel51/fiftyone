@@ -56,6 +56,7 @@ export const useLighterSetupWithPixi = (
       activePaths: options.activePaths,
       showOverlays: options.showOverlays,
       alpha: options.alpha,
+      filter: options.filter,
     };
 
     const newScene = new Scene2D({
@@ -108,6 +109,7 @@ export const useLighterSetupWithPixi = (
         activePaths: options.activePaths,
         showOverlays: options.showOverlays,
         alpha: options.alpha,
+        filter: options.filter,
       });
     }
   }, [scene, options, eventBus]);

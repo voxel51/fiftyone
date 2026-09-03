@@ -3,6 +3,7 @@
  */
 
 import type { Undoable } from "@fiftyone/commands";
+import type { SceneOptions } from "../core/SceneConfig";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { PaintStrokeData } from "../overlay/MaskCanvas";
@@ -271,6 +272,7 @@ export type LighterEventGroup = {
     activePaths?: string[];
     showOverlays?: boolean;
     alpha?: number;
+    filter?: SceneOptions["filter"];
   };
   /** Emitted when the scene interactive mode changes */
   "lighter:scene-interactive-mode-changed": { interactiveMode: boolean };

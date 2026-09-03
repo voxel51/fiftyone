@@ -123,6 +123,12 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
     // act on any number of labels at once. Annotate stays single-select — a
     // selection there is the target of the next edit.
     multipleSelection: mode === "explore",
+    // ...and the sidebar's confidence / label / tag filters, and hidden
+    // labels, should make a label disappear from the canvas exactly like the
+    // looker did — the looker's `pathFilter` and this predicate are the same
+    // function. Annotate leaves this off: a label an annotator filtered out
+    // of the sidebar view is still a label they may need to select and edit.
+    filterLabels: mode === "explore",
   });
 
   // Hover -> `fos.tooltipDetail`, which `TooltipInfo` (mounted in Modal.tsx)

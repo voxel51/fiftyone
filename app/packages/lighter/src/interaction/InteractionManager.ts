@@ -236,6 +236,12 @@ export class InteractionManager {
   /** See {@link setReadOnly}. */
   private readOnly = false;
 
+  /**
+   * See {@link setVisibilityPredicate}. `undefined` = every handler is
+   * hit-testable, matching every caller that never sets one.
+   */
+  private visibilityPredicate?: (id: string) => boolean;
+
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
@@ -299,6 +305,20 @@ export class InteractionManager {
   /** Whether geometry mutation is currently blocked. */
   public isReadOnly(): boolean {
     return this.readOnly;
+  }
+
+  /**
+   * Which handlers are currently hit-testable, by id.
+   *
+   * Rendering (`Scene2D.shouldShowOverlay`) and hit-testing are separate
+   * systems by construction — this manager has no reference back to the
+   * scene or its overlays — so a label the scene stops PAINTING (a sidebar
+   * filter, a deactivated field) stays fully clickable at its last drawn
+   * position unless this is set. Scene2D injects a predicate that answers
+   * exactly what it paints, so the two agree without this class knowing why.
+   */
+  public setVisibilityPredicate(predicate?: (id: string) => boolean): void {
+    this.visibilityPredicate = predicate;
   }
 
   /**
@@ -1606,6 +1626,10 @@ export class InteractionManager {
       const handler = this.handlers[i];
 
       if (skipCanonicalMedia && handler.id === this.canonicalMediaId) {
+        continue;
+      }
+
+      if (this.visibilityPredicate && !this.visibilityPredicate(handler.id)) {
         continue;
       }
 

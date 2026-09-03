@@ -169,6 +169,7 @@ export function useLighterMediaScene({
   sceneIdDeps = [],
   readOnly = false,
   multipleSelection = false,
+  filterLabels = false,
 }: {
   hostRef: RefObject<HTMLDivElement | null>;
   dims: Dimensions | null;
@@ -187,14 +188,24 @@ export function useLighterMediaScene({
    * selection is the target of the next edit and only one can be.
    */
   multipleSelection?: boolean;
+  /**
+   * Apply the sidebar's confidence / label / tag filters and hidden-labels
+   * set to the canvas, the way the looker's `Overlay.isShown` did. Off by
+   * default (and for Annotate) for the same reason `useModalLookerOptions`
+   * itself defaults `withFilter` to `false`: computing it costs a Recoil
+   * read on every filter change, worth paying only where a hidden label is
+   * actually meant to disappear rather than stay editable.
+   */
+  filterLabels?: boolean;
 }): {
   scene: LighterScene;
   canonicalMediaReady: boolean;
 } {
   const canvas = useAttachedSingletonCanvas(hostRef);
 
-  // Modal options so activePaths / showOverlays / alpha match the sidebar.
-  const options = useModalLookerOptions();
+  // Modal options so activePaths / showOverlays / alpha (and, for Explore,
+  // the sidebar filter) match the sidebar.
+  const options = useModalLookerOptions(filterLabels);
 
   // Fresh scene id whenever `sceneIdDeps` change, so a new source gets its
   // own scene.
