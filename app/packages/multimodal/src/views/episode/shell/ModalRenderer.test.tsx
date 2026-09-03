@@ -250,7 +250,7 @@ function TestIntervalSource({
             startNs: 1,
           },
         ],
-        pinnedEventNames: ["grasp"],
+        pinnedRowKeys: ["grasp"],
       })}
     </>
   );

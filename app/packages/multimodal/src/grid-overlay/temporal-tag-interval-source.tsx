@@ -85,7 +85,7 @@ const TemporalTagIntervals: React.FC<
       intervals,
       // Only an explicit filter selection pins; merely enabling the field
       // shows the lane without pinning every tag in the modal.
-      pinnedEventNames: activeValues,
+      pinnedRowKeys: activeValues,
       domainEndNs,
     };
   }, [activeValues, colorForTag, showAll, temporalTags]);

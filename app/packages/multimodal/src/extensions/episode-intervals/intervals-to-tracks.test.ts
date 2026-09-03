@@ -41,12 +41,12 @@ const interval = (
 const resolved = (
   src: EpisodeIntervalSource,
   intervals: EpisodeInterval[],
-  pinnedEventNames?: string[],
+  pinnedRowKeys?: string[],
 ): ResolvedEpisodeIntervals => ({
   source: src,
   contribution: {
     intervals,
-    ...(pinnedEventNames ? { pinnedEventNames } : {}),
+    ...(pinnedRowKeys ? { pinnedRowKeys } : {}),
   },
 });
 
@@ -176,5 +176,58 @@ describe("intervalTimelineSections", () => {
     ]);
 
     expect(sections.map((section) => section.id)).toEqual(["teams:signals"]);
+  });
+});
+
+// A source whose display names collide must not disambiguate by renaming the
+// row — that puts its bookkeeping in front of the user. It supplies a row key
+// instead, and the label stays the name the filter used.
+describe("row keys", () => {
+  const src = source("teams:events", "Events", 210);
+
+  it("separates rows that share a name but not a key", () => {
+    const tracks = intervalsToTracks(
+      resolved(src, [
+        { ...interval("teams:events", "hard_brake", 0, 1), rowKey: "radar/hb" },
+        {
+          ...interval("teams:events", "hard_brake", 2, 3),
+          rowKey: "camera/hb",
+        },
+      ]),
+    );
+
+    expect(tracks).toHaveLength(2);
+    expect(tracks.map((t) => t.id)).toEqual([
+      "teams:events::radar/hb",
+      "teams:events::camera/hb",
+    ]);
+    // Both still read as the event the user filtered for.
+    expect(tracks.map((t) => t.label)).toEqual(["hard_brake", "hard_brake"]);
+  });
+
+  it("keeps one row for many intervals sharing a key", () => {
+    const tracks = intervalsToTracks(
+      resolved(src, [
+        { ...interval("teams:events", "hard_brake", 0, 1), rowKey: "radar/hb" },
+        { ...interval("teams:events", "hard_brake", 4, 5), rowKey: "radar/hb" },
+      ]),
+    );
+
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0].events).toHaveLength(2);
+  });
+
+  it("falls back to the name when a source supplies no key", () => {
+    const tracks = intervalsToTracks(
+      resolved(src, [interval("teams:events", "collision", 0, 1)]),
+    );
+
+    expect(tracks[0].id).toBe("teams:events::collision");
+  });
+
+  it("pins by row key", () => {
+    expect(
+      intervalPinnedTrackIds([resolved(src, [], ["radar/hb", "camera/hb"])]),
+    ).toEqual(["teams:events::radar/hb", "teams:events::camera/hb"]);
   });
 });

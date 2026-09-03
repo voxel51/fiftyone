@@ -50,10 +50,10 @@ Three things a source is responsible for:
 2. **Memoizing its contribution.** The chain memoizes on contribution identity;
    a fresh object each render defeats every memo downstream, in a subtree that
    includes the whole playback shell.
-3. **Naming its pins separately.** `pinnedEventNames` says which rows the grid
-   was filtered by. Derive it from the filter, not from the fetched intervals,
-   so it is known before they load — that is what makes a track pin when it
-   lands rather than being missed.
+3. **Naming its pins separately.** `pinnedRowKeys` says which rows the grid was
+   filtered by. Derive it from the filter, not from the fetched intervals, so
+   it is known before they load — that is what makes a track pin when it lands
+   rather than being missed.
 
 ## What the consumers do with it
 

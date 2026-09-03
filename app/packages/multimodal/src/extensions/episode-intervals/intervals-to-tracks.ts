@@ -4,35 +4,39 @@ import type { EpisodeIntervalSource, ResolvedEpisodeIntervals } from "./types";
 const NS_PER_SEC = 1_000_000_000;
 
 /**
- * Timeline track id for one event name from one source. Namespacing by source
- * id keeps two sources that happen to use the same event name on separate
- * rows, which `useTimelineSections` requires (it rejects duplicate track ids).
+ * Timeline track id for one row of one source. Namespacing by source id keeps
+ * two sources that happen to use the same row key on separate rows, which
+ * `useTimelineSections` requires (it rejects duplicate track ids).
  */
-export const intervalTrackId = (sourceId: string, eventName: string): string =>
-  `${sourceId}::${eventName}`;
+export const intervalTrackId = (sourceId: string, rowKey: string): string =>
+  `${sourceId}::${rowKey}`;
 
 /**
- * One timeline track per distinct event name, each carrying that name's
- * intervals as track events. Names are ordered alphabetically: the shared shape
- * carries no creation time to order by, and a stable order matters more than a
- * clever one when a filter is what put these rows on screen.
+ * One timeline track per distinct row, each carrying that row's intervals as
+ * track events. Rows are ordered alphabetically by the label they show: the
+ * shared shape carries no creation time to order by, and a stable order
+ * matters more than a clever one when a filter is what put these rows on
+ * screen.
  */
 export function intervalsToTracks(resolved: ResolvedEpisodeIntervals): Track[] {
   const { intervals } = resolved.contribution;
   if (intervals.length === 0) return [];
 
-  const byName = new Map<string, (typeof intervals)[number][]>();
+  const byRow = new Map<string, (typeof intervals)[number][]>();
   for (const interval of intervals) {
-    const group = byName.get(interval.eventName) ?? [];
+    const key = interval.rowKey ?? interval.eventName;
+    const group = byRow.get(key) ?? [];
     group.push(interval);
-    byName.set(interval.eventName, group);
+    byRow.set(key, group);
   }
 
-  return [...byName.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([eventName, group]) => ({
-      id: intervalTrackId(resolved.source.id, eventName),
-      label: eventName,
+  return [...byRow.entries()]
+    .sort(([, left], [, right]) =>
+      left[0].eventName.localeCompare(right[0].eventName),
+    )
+    .map(([rowKey, group]) => ({
+      id: intervalTrackId(resolved.source.id, rowKey),
+      label: group[0].eventName,
       color: group[0].color,
       events: [...group]
         .sort((a, b) => a.startNs - b.startNs || a.endNs - b.endNs)
@@ -45,19 +49,19 @@ export function intervalsToTracks(resolved: ResolvedEpisodeIntervals): Track[] {
 }
 
 /**
- * Track ids to pin when the modal opens, one per event name each source says
- * the grid is filtered by.
+ * Track ids to pin when the modal opens, one per row key each source says the
+ * grid is filtered by.
  *
- * Derived from the sources' `pinnedEventNames` rather than from their
- * intervals, so an id is produced even while that source's intervals are still
- * loading — the pin then applies as the track appears.
+ * Derived from the sources' `pinnedRowKeys` rather than from their intervals,
+ * so an id is produced even while that source's intervals are still loading —
+ * the pin then applies as the track appears.
  */
 export function intervalPinnedTrackIds(
   resolved: readonly ResolvedEpisodeIntervals[],
 ): string[] {
   return resolved.flatMap(({ source, contribution }) =>
-    (contribution.pinnedEventNames ?? []).map((eventName) =>
-      intervalTrackId(source.id, eventName),
+    (contribution.pinnedRowKeys ?? []).map((rowKey) =>
+      intervalTrackId(source.id, rowKey),
     ),
   );
 }

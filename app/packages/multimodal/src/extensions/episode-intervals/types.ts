@@ -16,6 +16,18 @@ export interface EpisodeInterval {
   readonly sourceId: string;
   /** Display name: the tag, event class, signal name, … */
   readonly eventName: string;
+  /**
+   * What makes this interval's row a row, when the display name does not.
+   *
+   * Rows are grouped and pinned by this; `eventName` is only what the user
+   * reads. They are the same thing for a source whose names are unique, so it
+   * can be omitted — but a source whose names collide must not solve that by
+   * changing the name, which puts its bookkeeping on screen. The events source
+   * is the case in point: event ids are scoped to a projection, so two
+   * projections can legitimately both emit `hard_brake`, and the row key is
+   * the `(projection, id)` pair while the label stays `hard_brake`.
+   */
+  readonly rowKey?: string;
   readonly color: string;
   /** Nanoseconds from the episode start. */
   readonly startNs: number;
@@ -30,14 +42,17 @@ export interface EpisodeInterval {
 export interface EpisodeIntervalContribution {
   readonly intervals: readonly EpisodeInterval[];
   /**
-   * Event names to start pinned in the modal timeline — the ones the grid is
-   * filtered by. Kept separate from `intervals` because it is derived from the
-   * filter, not from the sample: it is known synchronously even when the
-   * intervals themselves are still loading, which is what lets an
-   * asynchronously loaded source still pin on open. A name the sample has no
-   * interval for is harmless; only tracks that exist can be pinned.
+   * Rows to start pinned in the modal timeline — the ones the grid is filtered
+   * by, named by the same key the intervals use (`rowKey`, or `eventName`
+   * where a source has no separate key).
+   *
+   * Kept separate from `intervals` because it is derived from the filter, not
+   * from the sample: it is known synchronously even when the intervals
+   * themselves are still loading, which is what lets an asynchronously loaded
+   * source still pin on open. A key the sample has no interval for is
+   * harmless; only tracks that exist can be pinned.
    */
-  readonly pinnedEventNames?: readonly string[];
+  readonly pinnedRowKeys?: readonly string[];
   /**
    * The source's own notion of how far the episode extends (ns), used only as
    * a fallback for the tile lane's time axis before the active format has

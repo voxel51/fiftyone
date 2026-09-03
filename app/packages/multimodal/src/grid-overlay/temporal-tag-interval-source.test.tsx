@@ -133,7 +133,7 @@ describe("temporalTagIntervalSource", () => {
       temporalTags: [tag("a", 0, 1), tag("b", 2, 3)],
     });
 
-    expect(contribute().pinnedEventNames).toEqual([]);
+    expect(contribute().pinnedRowKeys).toEqual([]);
   });
 
   it("pins the filtered values", () => {
@@ -142,7 +142,7 @@ describe("temporalTagIntervalSource", () => {
       temporalTags: [tag("a", 0, 1)],
     });
 
-    expect(contribute().pinnedEventNames).toEqual(["a", "b"]);
+    expect(contribute().pinnedRowKeys).toEqual(["a", "b"]);
   });
 
   it("reports the extent of every tag, not just the shown ones", () => {
