@@ -1,0 +1,11 @@
+/* A literal inside a sentence, sized to sit level with the prose around it */
+.code {
+  font-size: 0.95em;
+}
+
+/* A reference reads as part of the sentence it sits in, underlined so it is
+   still recognizably a link */
+.ref {
+  color: inherit;
+  text-decoration: underline;
+}

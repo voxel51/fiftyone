@@ -3,13 +3,14 @@
  */
 
 import {
-  FRAMES_PREFIX,
   useActiveSampleId,
   useAnnotationEngine,
   useLighterEngineBridge,
 } from "@fiftyone/annotation";
+import { useIsImageDynamicGroupVideo } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useDatasetId, useVisibleLabelSchemas } from "../state/accessors";
+import { isFrameScopedPath } from "../state/framePaths";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 import { stashEstablishKey } from "../sync/establishKeyRelay";
 import { useKeyframePromotionOnEdit } from "./useKeyframePromotionOnEdit";
@@ -44,13 +45,20 @@ export const useVideoLighterEngineBridge = (): void => {
   // bridge (clear + rehydrate); the playhead value is read live at call time
   const getFrame = useCurrentFrameGetter();
 
-  // Stamp the playhead frame only onto frame-scoped paths (`frames.*`). A
-  // sample-level temporal detection sharing this scene must stay frame-less so
-  // its engine ref matches the sidebar / timeline; stamping a frame would make
-  // each surface address a different occurrence and break cross-surface select.
+  // Stamp the playhead frame only onto frame-scoped paths (`frames.*` on real
+  // video, bare paths on a dynamic group). A sample-level temporal detection
+  // sharing this scene must stay frame-less so its engine ref matches the
+  // sidebar / timeline; stamping a frame would make each surface address a
+  // different occurrence and break cross-surface select. A frame-less ref on a
+  // frame-scoped path is worse than a mismatch: the `FrameStore` silently
+  // drops its writes, so gesture commits never land.
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const frameOf = useCallback(
-    (path: string) => (path.startsWith(FRAMES_PREFIX) ? getFrame() : undefined),
-    [getFrame],
+    (path: string) =>
+      isFrameScopedPath(path, isImageDynamicGroupVideo)
+        ? getFrame()
+        : undefined,
+    [getFrame, isImageDynamicGroupVideo],
   );
 
   // After a box drag / resize commits, promote the touched frame to a keyframe

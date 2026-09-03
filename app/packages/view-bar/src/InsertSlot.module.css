@@ -1,0 +1,6 @@
+/* Just enough for the placeholder and a typed stage name — the list is at
+   least this wide and grows for descriptions */
+.slot {
+  width: 128px;
+  flex-shrink: 0;
+}

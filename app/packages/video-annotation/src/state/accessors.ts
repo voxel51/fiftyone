@@ -6,13 +6,19 @@ import {
   colorScheme,
   colorSeed,
   datasetName,
+  dynamicGroupsElementCount,
+  dynamicGroupsTargetFrameRate,
   fieldPaths,
+  groupByFieldValue,
   groupSlice,
+  type ModalSample,
   modalSampleId,
+  selectedMediaField,
   useCurrentDatasetId,
+  useIsImageDynamicGroupVideo,
   view,
 } from "@fiftyone/state";
-import { FRAMES_PREFIX } from "@fiftyone/annotation";
+import { isFrameScopedPath } from "./framePaths";
 import {
   DETECTION,
   EMBEDDED_DOCUMENT_FIELD,
@@ -23,7 +29,8 @@ import {
 } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useMemoOne } from "use-memo-one";
+import { constSelector, useRecoilValue } from "recoil";
 import {
   useAnnotationContext,
   useAnnotationFields,
@@ -32,6 +39,7 @@ import {
   activeLabelSchemas,
   visibleLabelSchemas,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
  * Read accessors for the external recoil / jotai atoms the video surface
@@ -115,32 +123,99 @@ export const useLabelSchemasLoaded = (): boolean =>
  * surface, which paints every active field of each supported type).
  *
  * Drawn from the annotation schema's active fields per type (read-only fields
- * already filtered out by {@link useAnnotationFields}) and narrowed to the
- * `frames.*` namespace, since the video surface only owns per-frame labels.
- * Detection masks ride their parent detection field, so no separate entry.
+ * already filtered out by {@link useAnnotationFields}). A real video owns its
+ * `frames.*` fields. An image dataset dynamically grouped into a video (ImaVid)
+ * has no `frames.*` namespace — each "frame" is a sample, so it owns its
+ * sample-level (non-`frames.*`) fields instead. Detection masks ride their
+ * parent detection field, so no separate entry.
  */
 export const useFrameLabelFields = (): Record<string, LabelType> => {
   const detectionFields = useAnnotationFields(DETECTION).fields;
   const polylineFields = useAnnotationFields(POLYLINE).fields;
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
-  return useMemo(() => {
+  // Keyed on CONTENT, not the source arrays' identity: a label-schema save
+  // (adding a class or dynamic attribute) recreates the schema-derived arrays
+  // with identical field sets, and a new `labelTypes` identity tears down the
+  // engine's FrameStore, which reseeds from the never-refreshed `/frames`
+  // cache — silently dropping every occurrence persisted this session (and
+  // the next autosave then diffs against that stale baseline, making the
+  // loss durable). Identity may only change when the field set truly does.
+  const contentKey = `${detectionFields.join(
+    ",",
+  )}|${polylineFields.join(",")}|${isImageDynamicGroupVideo}`;
+
+  // `useMemoOne`, not `useMemo`: React reserves the right to forget a memo,
+  // and this identity is CORRECTNESS — a new object destroys the FrameStore
+  return useMemoOne(() => {
     const fields: Record<string, LabelType> = {};
 
+    const owns = (field: string): boolean =>
+      isFrameScopedPath(field, isImageDynamicGroupVideo);
+
     for (const field of detectionFields) {
-      if (field.startsWith(FRAMES_PREFIX)) {
+      if (owns(field)) {
         fields[field] = LabelType.Detections;
       }
     }
 
     for (const field of polylineFields) {
-      if (field.startsWith(FRAMES_PREFIX)) {
+      if (owns(field)) {
         fields[field] = LabelType.Polylines;
       }
     }
 
     return fields;
-  }, [detectionFields, polylineFields]);
+  }, [contentKey]);
 };
+
+/**
+ * The dataset's configured MODAL media field (default `filepath`) — the field
+ * whose value names and locates each frame's media.
+ */
+export const useModalMediaField = (): string =>
+  useRecoilValue(selectedMediaField(true));
+
+/**
+ * Frame rate driving video annotation playback for the modal sample.
+ *
+ * Native video samples carry `frameRate` on the sample response. An image
+ * dataset dynamically grouped into a video (ImaVid) has no per-sample frame
+ * rate, so fall back to the dataset's
+ * `app_config.dynamic_groups_target_frame_rate`.
+ */
+export const useModalSampleFrameRate = (
+  sample: ModalSample | null | undefined,
+): number => {
+  const targetFrameRate = useRecoilValue(dynamicGroupsTargetFrameRate);
+  return getModalSampleFrameRate(sample) ?? targetFrameRate;
+};
+
+/**
+ * Number of samples in the current modal dynamic group — the frame count for
+ * an image dataset dynamically grouped into a video. Suspends until the
+ * aggregation resolves rather than returning a placeholder, so the ImaVid
+ * stream registers against the real count.
+ *
+ * Pass `enabled: false` outside the dynamic-group path to skip the count
+ * aggregation entirely (returns null) while keeping hook order stable.
+ */
+export const useDynamicGroupElementCount = (enabled = true): number | null =>
+  useRecoilValue(
+    enabled ? dynamicGroupsElementCount({ modal: true }) : constSelector(null),
+  );
+
+/**
+ * Value of the current modal dynamic group's group-by field — identifies which
+ * group the `/frames` route should return ordered samples for. Suspends with
+ * the rest of the modal sample resolution.
+ *
+ * `groupByFieldValue` reads the sample's `_group` (typed loosely as a dict, but
+ * a scalar key in practice); the rest of the app treats it as a string (e.g.
+ * `dynamicGroupPageSelector`) and the server accepts it as opaque BSON.
+ */
+export const useDynamicGroupValue = (): string | null =>
+  (useRecoilValue(groupByFieldValue) as unknown as string | null) ?? null;
 
 /**
  * Dynamic-attribute names for a label field path. Re-exported from core so the

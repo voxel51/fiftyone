@@ -10,7 +10,7 @@ const DURATION = TOTAL_FRAMES / FPS;
 
 const { source } = vi.hoisted(() => ({
   source: {
-    playhead: 0,
+    committed: 0,
     frameRate: undefined as number | undefined,
     totalFrameCount: undefined as number | undefined,
   },
@@ -21,7 +21,7 @@ const { source } = vi.hoisted(() => ({
 // source is stubbed.
 vi.mock("@fiftyone/playback", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@fiftyone/playback")>()),
-  usePlayhead: () => source.playhead,
+  useCurrentTime: () => source.committed,
 }));
 
 vi.mock("@fiftyone/state", () => ({
@@ -31,11 +31,19 @@ vi.mock("@fiftyone/state", () => ({
   }),
 }));
 
+// The accessor falls back to the dataset's dynamic-group target frame rate
+// through recoil; the native-video path under test only reads the sample's
+// own frame rate.
+vi.mock("./accessors", () => ({
+  useModalSampleFrameRate: (sample?: { frameRate?: number }) =>
+    sample?.frameRate,
+}));
+
 import { useCurrentFrame } from "./useCurrentFrame";
 
 describe("useCurrentFrame", () => {
   it("converts the playhead to a 1-indexed frame", () => {
-    source.playhead = 0;
+    source.committed = 0;
     source.frameRate = FPS;
     source.totalFrameCount = TOTAL_FRAMES;
 
@@ -44,7 +52,7 @@ describe("useCurrentFrame", () => {
   });
 
   it("clamps a playhead resting at duration to the last real frame", () => {
-    source.playhead = DURATION;
+    source.committed = DURATION;
     source.frameRate = FPS;
     source.totalFrameCount = TOTAL_FRAMES;
 
@@ -53,7 +61,7 @@ describe("useCurrentFrame", () => {
   });
 
   it("stays unclamped when the sample has no frame count", () => {
-    source.playhead = DURATION;
+    source.committed = DURATION;
     source.frameRate = FPS;
     source.totalFrameCount = undefined;
 
@@ -62,7 +70,7 @@ describe("useCurrentFrame", () => {
   });
 
   it("returns -1 without a frame rate", () => {
-    source.playhead = 1;
+    source.committed = 1;
     source.frameRate = undefined;
     source.totalFrameCount = TOTAL_FRAMES;
 

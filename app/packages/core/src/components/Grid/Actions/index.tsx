@@ -5,18 +5,13 @@ import {
   types,
   useOperatorPlacements,
 } from "@fiftyone/operators";
-import * as fos from "@fiftyone/state";
-import {
-  MEDIA_TYPE_MULTIMODAL,
-  useItemsWithOrderPersistence,
-} from "@fiftyone/utilities";
+import { useItemsWithOrderPersistence } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { useMemo } from "react";
 import BrowseOperationsAction from "../../Actions/BrowseOperations";
 import ColorSchemeAction from "../../Actions/ColorScheme";
 import OptionsAction from "../../Actions/Options";
 import SelectedAction from "../../Actions/Selected";
-import SimilarityAction from "../../Actions/Similarity";
 import TagAction from "../../Actions/Tag";
 import ToggleSidebarAction from "../../Actions/ToggleSidebar";
 import PatchesAction from "./Patches";
@@ -37,10 +32,6 @@ const Tag = (props: AdaptiveMenuItemComponentPropsType) => (
 
 const Patches = (props: AdaptiveMenuItemComponentPropsType) => (
   <PatchesAction adaptiveMenuItemProps={props} />
-);
-
-const Similarity = (props: AdaptiveMenuItemComponentPropsType) => (
-  <SimilarityAction modal={false} adaptiveMenuItemProps={props} />
 );
 
 const SaveFilters = (props: AdaptiveMenuItemComponentPropsType) => (
@@ -66,7 +57,6 @@ export default () => {
   const { placements: secondaryPlacements } = useOperatorPlacements(
     types.Places.SAMPLES_GRID_SECONDARY_ACTIONS,
   );
-  const isMultimodal = fos.useIsMediaType(MEDIA_TYPE_MULTIMODAL);
   const initialItems = useMemo(() => {
     return [
       {
@@ -86,15 +76,6 @@ export default () => {
         id: "patches",
         Component: Patches,
       },
-      // Similarity panel not currently supported for multimodal
-      ...(isMultimodal
-        ? []
-        : [
-            {
-              id: "similarity",
-              Component: Similarity,
-            },
-          ]),
       {
         id: "save-filters",
         Component: SaveFilters,
@@ -140,7 +121,7 @@ export default () => {
         };
       }),
     ];
-  }, [primaryPlacements, secondaryPlacements, isMultimodal]);
+  }, [primaryPlacements, secondaryPlacements]);
   const { orderedItems, setOrder } = useItemsWithOrderPersistence(
     initialItems,
     "grid-actions-row",

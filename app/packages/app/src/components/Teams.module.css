@@ -1,0 +1,60 @@
+/* The Enterprise call to action: brand gradient on the label and the sparkle,
+   a gentle pulse on hover. Brand color, not a theme token. */
+.cta {
+  --cta-gradient: linear-gradient(45deg, #ff6d04 0%, #b681ff 100%);
+  background-image: var(--cta-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+  /* A pill, as it has always been */
+  border-radius: 9999px;
+}
+
+/* A sheen sweeps across on hover */
+.cta::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+
+.cta:hover::before {
+  left: 100%;
+}
+
+.cta svg {
+  fill: url(#fo-enterprise-gradient);
+}
+
+.cta:hover svg {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+.panel {
+  width: 310px;
+}

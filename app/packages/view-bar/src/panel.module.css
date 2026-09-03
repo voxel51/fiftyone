@@ -1,0 +1,5 @@
+/* One width for every popover the bar opens — the stage editor and the
+   search settings are the same kind of surface */
+.panel {
+  width: 360px;
+}

@@ -1,0 +1,5 @@
+/* Snug: a typical dataset name fits, and the view bar keeps its room */
+.selector {
+  width: 180px;
+  flex-shrink: 0;
+}

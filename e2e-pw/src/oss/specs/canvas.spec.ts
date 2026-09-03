@@ -69,6 +69,7 @@ test.describe.serial("Canvas Rendering Regressions", () => {
 
     // Switch to Annotate mode and assert pixelated rendering there as well
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
     await modal.sampleCanvas.assert.hasScreenshot("pixelated.png");
   });
 });

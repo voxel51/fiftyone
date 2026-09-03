@@ -65,6 +65,8 @@ export interface FrameStoreOptions {
   labelTypes: Record<string, LabelType>;
   /** Initial server frames. */
   data?: FramesData;
+  /** Start in the seed-in-flight state (see {@link LabelStore.isLoading}). */
+  loading?: boolean;
 }
 
 /**
@@ -92,23 +94,55 @@ export class FrameStore implements LabelStore {
   private working = new Map<number, FrameDoc>();
   private readonly displayListeners = new Set<DisplayListener>();
   private readonly changeListeners = new Set<ChangeListener>();
+  private loading = false;
 
   constructor(sample: string, options: FrameStoreOptions) {
     this.sample = sample;
     this.labelTypes = options.labelTypes;
     this.source = this.parse(options.data ?? {});
+    this.loading = options.loading ?? false;
+  }
+
+  isLoading(): boolean {
+    return this.loading;
+  }
+
+  /** Flip the seed-in-flight state (see {@link LabelStore.isLoading}). The
+   *  owner drives this from its source stream. */
+  setLoading(loading: boolean): void {
+    if (this.loading === loading) {
+      return;
+    }
+
+    this.loading = loading;
+    for (const listener of this.displayListeners) {
+      listener();
+    }
   }
 
   // ---- resolution ----
 
   getLabel(ref: LabelRef): LabelData | undefined {
-    if (ref.frame == null) {
-      return undefined;
+    if (ref.frame != null) {
+      return this.listAt(ref.frame, ref.path).find(
+        (label) => addressIdOf(label) === ref.instanceId,
+      );
     }
 
-    return this.listAt(ref.frame, ref.path).find(
-      (label) => addressIdOf(label) === ref.instanceId,
-    );
+    // A frameless ref still identifies one label: the surface's selection
+    // refs carry no frame, and the interaction GC's read-through liveness
+    // check resolves through here — answering undefined deselected every
+    // frame label on the next sample-level reset (any modal data refresh)
+    for (const frame of this.frames()) {
+      const hit = this.listAt(frame, ref.path).find(
+        (label) => addressIdOf(label) === ref.instanceId,
+      );
+      if (hit) {
+        return hit;
+      }
+    }
+
+    return undefined;
   }
 
   listLabels(path: string, frame?: number): LabelData[] {

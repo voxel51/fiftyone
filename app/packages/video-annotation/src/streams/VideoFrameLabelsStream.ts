@@ -33,6 +33,13 @@ export interface VideoFrameLabelsStreamOptions {
   dataset: string;
   /** Active view stages — same shape sent on every dataset query. */
   view: Stage[];
+  /**
+   * Dynamic-group value, when the clip is a dynamic group rather than a video
+   * sample. Routes the window read to that group's ordered samples and their
+   * sample-level label fields (ImaVid for an image dataset grouped into a
+   * video).
+   */
+  dynamicGroup?: string | null;
   /** Total frame count of the clip (1-indexed up to this number). */
   frameCount: number;
   /** Frame rate in frames per second. */
@@ -124,6 +131,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly sampleId: string;
   private readonly dataset: string;
   private readonly view: Stage[];
+  private readonly dynamicGroup: string | null;
   private readonly frameCount: number;
   private readonly frameRate: number;
   private frameField: string;
@@ -178,6 +186,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     this.sampleId = opts.sampleId;
     this.dataset = opts.dataset;
     this.view = opts.view;
+    this.dynamicGroup = opts.dynamicGroup ?? null;
     this.frameCount = opts.frameCount;
     this.frameRate = opts.frameRate;
     this.frameField = opts.frameField ?? DEFAULT_FRAME_FIELD;
@@ -267,6 +276,19 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
+   * Engine label path for the primary field — the path the frame store keys
+   * labels under (see `parseFramesData`). A video namespaces frame fields as
+   * `frames.<field>`; a dynamic group's labels are sample-level, so the path is
+   * the bare field. Use this (not a hardcoded `frames.` prefix) when addressing
+   * the engine.
+   */
+  get labelsPath(): string {
+    return this.dynamicGroup !== null
+      ? this.frameField
+      : `frames.${this.frameField}`;
+  }
+
+  /**
    * Repoint the primary label field the read-only snapshot ({@link getValue})
    * extracts from. Every field in {@link frameFields} is already fetched into
    * the per-frame cache, so this only changes which one the snapshot reads — no
@@ -281,8 +303,18 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * The dataset query this stream reads against — the params the
    * `/video-labels/{index,window}` fetches share with the `/frames` seed.
    */
-  labelQuery(): { sampleId: string; dataset: string; view: Stage[] } {
-    return { sampleId: this.sampleId, dataset: this.dataset, view: this.view };
+  labelQuery(): {
+    sampleId: string;
+    dataset: string;
+    view: Stage[];
+    dynamicGroup: string | null;
+  } {
+    return {
+      sampleId: this.sampleId,
+      dataset: this.dataset,
+      view: this.view,
+      dynamicGroup: this.dynamicGroup,
+    };
   }
 
   bufferState(time: number): BufferReadiness {
@@ -744,6 +776,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         sampleId: this.sampleId,
         dataset: this.dataset,
         view: this.view,
+        dynamicGroup: this.dynamicGroup ?? undefined,
         fields: this.frameFields,
         startFrame,
         endFrame,

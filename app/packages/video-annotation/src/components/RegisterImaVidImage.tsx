@@ -4,7 +4,9 @@ import { usePlaybackStream } from "@fiftyone/playback";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
   useDatasetName,
+  useDynamicGroupValue,
   useGroupSlice,
+  useModalMediaField,
   useModalSampleId,
   useView,
 } from "../state/accessors";
@@ -48,14 +50,19 @@ export const RegisterImaVidImage: React.FC<{
   const slice = useGroupSlice();
   const sampleId = useModalSampleId();
 
+  // Identifies which dynamic group `/frames` returns ordered samples for
+  // (null outside a dynamic group).
+  const dynamicGroup = useDynamicGroupValue();
+  const mediaField = useModalMediaField();
+
   const ready = !!sampleId && !!dataset;
   if (!ready) {
     return <>{children}</>;
   }
 
-  const key = `${source}|${sampleId}|${dataset}|${
-    slice ?? ""
-  }|${frameRate}|${frameCount}`;
+  const key = `${source}|${sampleId}|${dataset}|${slice ?? ""}|${
+    dynamicGroup ?? ""
+  }|${frameRate}|${frameCount}|${mediaField}`;
 
   return (
     <ImaVidImageRegistration
@@ -65,6 +72,8 @@ export const RegisterImaVidImage: React.FC<{
       dataset={dataset}
       view={view}
       groupSlice={slice ?? null}
+      dynamicGroup={dynamicGroup}
+      mediaField={mediaField}
       frameCount={frameCount}
       frameRate={frameRate}
       videoSrc={videoSrc}
@@ -80,6 +89,8 @@ interface ImaVidImageRegistrationProps {
   dataset: string;
   view: Stage[];
   groupSlice: string | null;
+  dynamicGroup: string | null;
+  mediaField: string;
   frameCount: number;
   frameRate: number;
   videoSrc: string | null;
@@ -107,6 +118,8 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
             dataset: props.dataset,
             view: props.view,
             groupSlice: props.groupSlice,
+            dynamicGroup: props.dynamicGroup,
+            mediaField: props.mediaField,
             frameCount: props.frameCount,
             frameRate: props.frameRate,
           });

@@ -40,7 +40,12 @@ const mockActions = {
 };
 
 const mockBus = { dispatch: vi.fn() };
-const mockStream = { fps: 10, totalFrames: 5, labelsField: "detections" };
+const mockStream = {
+  fps: 10,
+  totalFrames: 5,
+  labelsField: "detections",
+  labelsPath: PATH,
+};
 
 vi.mock("@fiftyone/annotation", () => ({
   useAnnotationEngine: () => mockEngine,
@@ -342,8 +347,15 @@ describe("track identity ops (split / merge)", () => {
       frame: 4,
     });
 
-    // ...and re-laid under the minted instance, identity stripped, content kept
-    expect(mockActions.updateLabel).toHaveBeenCalledTimes(2);
+    // ...the frame before the cut becomes the left track's last keyframe...
+    expect(mockActions.updateLabel).toHaveBeenCalledTimes(3);
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 2 },
+      { keyframe: true },
+    );
+
+    // ...and the tail is re-laid under the minted instance, identity
+    // stripped, content kept, its first frame a keyframe
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "NEW", frame: 3 },
       {
@@ -369,6 +381,46 @@ describe("track identity ops (split / merge)", () => {
       newInstanceId: "NEW",
       atFrame: 3,
     });
+  });
+
+  it("splitTrack makes both sides of the cut keyframes", () => {
+    frameData = {
+      1: { A: det("d1", "A", { keyframe: true }) },
+      2: { A: det("d2", "A", { keyframe: false }) },
+      3: { A: det("d3", "A", { keyframe: false }) },
+      4: { A: det("d4", "A", { keyframe: false }) },
+    };
+
+    render().current.splitTrack("instance-A", 3);
+
+    // frame 2 (left edge) is promoted in place; frame 3 (right edge) is
+    // re-laid as a keyframe; frame 4 keeps its flag
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 2 },
+      { keyframe: true },
+    );
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "NEW", frame: 3 },
+      expect.objectContaining({ keyframe: true }),
+    );
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "NEW", frame: 4 },
+      expect.objectContaining({ keyframe: false }),
+    );
+  });
+
+  it("splitTrack leaves an already-keyframed left edge alone", () => {
+    frameData = {
+      2: { A: det("d2", "A", { keyframe: true }) },
+      3: { A: det("d3", "A") },
+    };
+
+    render().current.splitTrack("instance-A", 3);
+
+    expect(mockActions.updateLabel).not.toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 2 },
+      expect.anything(),
+    );
   });
 
   it("splitTrack no-ops when no frame is at or after the boundary", () => {

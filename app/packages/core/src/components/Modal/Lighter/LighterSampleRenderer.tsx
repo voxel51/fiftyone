@@ -4,11 +4,10 @@
 import {
   ImageOptions,
   ImageOverlay,
-  UNDEFINED_LIGHTER_SCENE_ID,
   lighterInitErrorAtom,
   overlayFactory,
-  useLighterEventHandler,
   useLighterSetupWithPixi,
+  useViewportInitReveal,
 } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
@@ -37,6 +36,9 @@ export interface LighterSampleRendererProps {
   className?: string;
   /** Sample to display */
   sample: ModalSample;
+  /** Notified when the scene becomes safe to show (initial viewport settled
+   * on-canvas) — lets a host drive a loading cover over this renderer. */
+  onRevealChange?: (revealed: boolean) => void;
 }
 
 /**
@@ -45,6 +47,7 @@ export interface LighterSampleRendererProps {
 export const LighterSampleRenderer = ({
   className = "",
   sample,
+  onRevealChange,
 }: LighterSampleRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   // unique scene id allows us to destroy/recreate scenes reliably
@@ -61,6 +64,13 @@ export const LighterSampleRenderer = ({
   sampleRef.current = sample;
 
   const onReveal = useCallback(() => setIsRevealed(true), []);
+
+  useEffect(() => {
+    // An init failure renders the error panel in place of the scene and no
+    // reveal ever fires — report it as "revealed" so a host's loading cover
+    // drops and the panel is visible instead of an indefinite spinner.
+    onRevealChange?.(isRevealed || initError !== null);
+  }, [isRevealed, initError, onRevealChange]);
 
   useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
@@ -176,10 +186,12 @@ const LighterSetupImpl = (props: {
     scene.setCanonicalMedia(mediaOverlay);
   }, [scene, sceneId]);
 
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
-  );
-  useEventHandler("lighter:viewport-init-complete", onReveal, { once: true });
+  const revealed = useViewportInitReveal(scene);
+  useEffect(() => {
+    if (revealed) {
+      onReveal();
+    }
+  }, [revealed, onReveal]);
 
   useViewport(sampleId);
 

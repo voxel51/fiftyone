@@ -8,9 +8,13 @@ let mockModalSample:
   | { sample?: { _id: string; media_type?: string } }
   | undefined;
 let mockSceneSample: { sample?: { _id: string } } | undefined;
+let mockIsImageDynamicGroupVideo = false;
 
 vi.mock("@fiftyone/state", () => ({
   useModalSample: () => mockModalSample,
+  // an ImaVid (image dynamic group video) modal sample is owned by the video
+  // surface, exactly like a video sample
+  useIsImageDynamicGroupVideo: () => mockIsImageDynamicGroupVideo,
   // the 3D scene sample (stable/non-suspending variant); when its id differs
   // from the modal sample a second store is registered, otherwise the set
   // collapses to one
@@ -83,6 +87,29 @@ describe("useSyncAnnotationEngine", () => {
     ).toThrow(/no store/);
 
     unmount();
+  });
+
+  it("skips an image dynamic-group video modal sample — the video surface owns it", () => {
+    // an ImaVid frame is an image sample, but the whole group plays through
+    // the video surface, which owns its (composite) store
+    mockModalSample = { sample: { _id: "iv1", media_type: "image" } };
+    mockSceneSample = undefined;
+    mockIsImageDynamicGroupVideo = true;
+
+    try {
+      const { result, unmount } = renderSync();
+
+      expect(() =>
+        result.current.engine.updateLabel(
+          { sample: "iv1", path: "detections", instanceId: "d1" },
+          { label: "x" },
+        ),
+      ).toThrow(/no store/);
+
+      unmount();
+    } finally {
+      mockIsImageDynamicGroupVideo = false;
+    }
   });
 
   it("registers nothing without a modal sample", () => {

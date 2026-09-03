@@ -24,6 +24,7 @@ import useExit from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/us
 import { useVideoSurfaceActions } from "../hooks/useVideoSurfaceActions";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { autoExtendTargetFrames } from "../tracks/autoExtend";
+import { establishPatchFor } from "../tracks/establishPatch";
 import { useCurrentEditingOverlay } from "../state/accessors";
 import { takeEstablishKey } from "./establishKeyRelay";
 
@@ -141,14 +142,15 @@ const useRegisterDrawEstablishHandler = ({
             return;
           }
 
-          // The drawn frame is this track's first keyframe; the auto-extend
-          // fills the rest forward as non-keyframe filler, so a later edit on
-          // another frame brackets a real interpolation segment. Folded into the
-          // draw's undo unit.
-          if (!source.keyframe) {
+          // The drawn frame is this track's first keyframe, and the anchor
+          // gets the track's `instance` stamped (see `establishPatchFor`).
+          // Folded into the draw's undo unit.
+          const establishPatch = establishPatchFor(source, anchor.instanceId);
+
+          if (Object.keys(establishPatch).length > 0) {
             engine.transaction(
               () => {
-                engine.updateLabel(anchor, { keyframe: true });
+                engine.updateLabel(anchor, establishPatch);
               },
               { undoKey: drawUndoKey },
             );

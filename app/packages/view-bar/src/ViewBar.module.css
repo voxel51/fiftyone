@@ -1,0 +1,97 @@
+/* Two rows in one control's worth of height: the search row is the bar, and
+   the stages row is portaled under it */
+.bar {
+  width: 100%;
+  min-width: 0;
+}
+
+/* The popover wraps its trigger in a block of its own; the bar's height has
+   to reach the gutter through it, or the gutter's 100% resolves to nothing
+   and it sits at the top */
+.bar > div {
+  height: 100%;
+}
+
+/* The gutter: the bar's own surface — the search row's canvas. It sits in the
+   header, which is on the shell's palette, so it keeps the shell's surface and
+   border; the tokens come when the shell moves as a whole. */
+.gutter {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--fo-palette-background-level1);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
+  border-radius: 4px;
+}
+
+/* Holds the width the search box would have had, so the toggle stays at the
+   right edge whether or not the search operator is installed */
+.spacer {
+  flex: 1;
+}
+
+.clearSlot {
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 6px;
+}
+
+.stagesToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 10px;
+  /* Inside the gutter, so it divides with the gutter's own border color */
+  border-left: 1px solid var(--fo-palette-primary-plainBorder);
+}
+
+.stagesCount {
+  line-height: 1;
+}
+
+/* The stages row is the panel of a controlled voodo Popover hung from the
+   gutter: the popover positions it, sizes it to the bar and gives it the
+   floating surface and shadow. The row itself is a gapless 40px strip with
+   the gutter's border and radius — the double class outranks the panel's
+   own padding and radius utilities. */
+.stagesRow.stagesRow {
+  padding: 0;
+  box-sizing: border-box;
+  /* Under voodo's tooltips (1000), which share the popover's High tier and
+     would otherwise lose to the row on DOM order — the toggle's own tooltip
+     hid behind it. Editors and popouts open above the modal tier. */
+  z-index: 900;
+  /* Portaled to the body, the row inherits ITS text color — the enterprise
+     shell's body is black-on-white, so the app text color is declared rather
+     than inherited */
+  color: var(--color-content-text-primary);
+  border: 1px solid var(--color-content-border-default);
+  border-radius: var(--radius-sm);
+}
+/* Scrolls sideways for long stage chains. The breathing room lives inside the
+   scroller, so it scrolls away with the content. */
+.scroller {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--spacing-xs);
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Hides the gutter's scrollbar in every engine — `scrollbar-width` covers
+     Firefox and recent Chrome, the pseudo-element covers the rest. A 36px row
+     has no room to give a scrollbar, and stages clipping at the border is the
+     affordance instead. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

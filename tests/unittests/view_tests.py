@@ -11,12 +11,14 @@ from copy import deepcopy
 from datetime import date, datetime, timedelta
 import math
 
-from bson import ObjectId
+from bson import json_util, ObjectId
 import unittest
 import numpy as np
 
 import fiftyone as fo
 from fiftyone import ViewField as F, VALUE
+import fiftyone.core.expression_ast as foea
+import fiftyone.core.expressions as foe
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 import fiftyone.core.view as fov
@@ -4240,6 +4242,355 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample1.id)
 
+    def test_match_expression_round_trip(self):
+        expr = F("conf") > 0.5
+
+        stage = fosg.Match(expr)
+        d = stage._serialize()
+
+        # stages serialize their expressions as MongoDB today
+        mongo = fosg.ViewStage._from_dict(d)
+        self.assertEqual(mongo._get_mongo_expr(), stage._get_mongo_expr())
+
+        # an envelope is decoded back into the expression that built it
+        d["kwargs"] = [["filter", foea.to_envelope(expr)]]
+        decoded = fosg.ViewStage._from_dict(d)
+        self.assertIsInstance(decoded._filter, foe.ViewExpression)
+        self.assertEqual(decoded._get_mongo_expr(), stage._get_mongo_expr())
+        self.assertEqual(
+            decoded.to_mongo(self.dataset), stage.to_mongo(self.dataset)
+        )
+
+    def _setUp_envelopes(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="envelope.png")
+        sample["num"] = 1.0
+        sample["test_clf"] = fo.Classification(label="friend", confidence=0.9)
+        sample["test_dets"] = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="friend",
+                    confidence=0.9,
+                    bounding_box=[0, 0, 0.5, 0.5],
+                )
+            ]
+        )
+        sample["test_kps"] = fo.Keypoints(
+            keypoints=[
+                fo.Keypoint(
+                    label="friend",
+                    points=[[0, 0], [1, 1]],
+                    confidence=[0.1, 0.9],
+                )
+            ]
+        )
+        dataset.add_sample(sample)
+        dataset.skeletons = {
+            "test_kps": fo.KeypointSkeleton(labels=["a", "b"], edges=[[0, 1]])
+        }
+        return dataset
+
+    def _setUp_envelopes_video(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="envelope.mp4")
+        sample.frames[1]["fnum"] = 1.0
+        dataset.add_sample(sample)
+        return dataset
+
+    def _assert_envelope_round_trip(self, dataset, stage, param):
+        view = dataset.add_stage(stage)
+        stage = view._stages[0]
+
+        d = stage._serialize()
+        self.assertIn(param, d["_expr_asts"])
+
+        # the envelope must survive being persisted in a saved view
+        d = json_util.loads(json_util.dumps(d))
+
+        decoded = fosg.ViewStage._from_dict(d)
+        self.assertIsInstance(
+            getattr(decoded, "_" + param), foe.ViewExpression
+        )
+
+        reloaded = dataset.add_stage(decoded)
+
+        # some lowerings contain NaN, which never compares equal
+        self.assertEqual(
+            repr(reloaded._stages[0].to_mongo(dataset)),
+            repr(stage.to_mongo(dataset)),
+        )
+
+        # serializing must be a fixed point, else every load of a saved view
+        # rewrites it
+        self.assertEqual(
+            reloaded._serialize(include_uuids=False),
+            view._serialize(include_uuids=False),
+        )
+
+    def test_expression_envelopes(self):
+        dataset = self._setUp_envelopes()
+        video = self._setUp_envelopes_video()
+
+        self._assert_envelope_round_trip(
+            dataset, fosg.Match(F("num") > 0.5), "filter"
+        )
+        self._assert_envelope_round_trip(
+            video, fosg.MatchFrames(F("fnum") > 0.5), "filter"
+        )
+        self._assert_envelope_round_trip(
+            dataset,
+            fosg.FilterField("test_clf", F("confidence") > 0.5),
+            "filter",
+        )
+        self._assert_envelope_round_trip(
+            dataset,
+            fosg.FilterLabels("test_dets", F("confidence") > 0.5),
+            "filter",
+        )
+        self._assert_envelope_round_trip(
+            dataset,
+            fosg.MatchLabels(filter=F("confidence") > 0.5, fields="test_dets"),
+            "filter",
+        )
+        self._assert_envelope_round_trip(
+            dataset, fosg.SetField("num", F("num") * 2), "expr"
+        )
+        self._assert_envelope_round_trip(
+            dataset, fosg.SortBy(F("num") * 2), "field_or_expr"
+        )
+        self._assert_envelope_round_trip(
+            dataset, fosg.GroupBy(F("test_clf.label")), "field_or_expr"
+        )
+        self._assert_envelope_round_trip(
+            dataset,
+            fosg.GroupBy(
+                "test_clf.label",
+                flat=True,
+                match_expr=F("docs").length() > 0,
+            ),
+            "match_expr",
+        )
+        self._assert_envelope_round_trip(
+            dataset,
+            fosg.GroupBy(
+                "test_clf.label", flat=True, sort_expr=F("docs").length()
+            ),
+            "sort_expr",
+        )
+        self._assert_envelope_round_trip(
+            dataset,
+            fosg.FilterKeypoints("test_kps", filter=F("confidence") > 0.5),
+            "filter",
+        )
+
+    def test_to_clips_expression_envelope(self):
+        # `ToClips` builds a view rather than a pipeline, so its lowering is
+        # what `make_clips_dataset()` consumes
+        expr = F("frames").filter(F("fnum") > 0.5)
+        stage = fosg.ToClips(expr)
+
+        d = stage._serialize()
+        self.assertIn("field_or_expr", d["_expr_asts"])
+
+        decoded = fosg.ViewStage._from_dict(
+            json_util.loads(json_util.dumps(d))
+        )
+        self.assertIsInstance(decoded._field_or_expr, foe.ViewExpression)
+        self.assertEqual(
+            decoded._get_mongo_field_or_expr(),
+            stage._get_mongo_field_or_expr(),
+        )
+        self.assertEqual(
+            decoded._serialize(include_uuid=False),
+            stage._serialize(include_uuid=False),
+        )
+
+    def test_no_envelope_without_expressions(self):
+        # a raw MongoDB filter, a field name, and a list of sort expressions
+        # have no syntax to record, and must serialize as they always have
+        self.assertEqual(
+            fosg.Match({"num": {"$gt": 0.5}})._serialize(include_uuid=False),
+            {
+                "_cls": "fiftyone.core.stages.Match",
+                "kwargs": [["filter", {"num": {"$gt": 0.5}}]],
+            },
+        )
+        self.assertNotIn(
+            "_expr_asts", fosg.SortBy("num")._serialize(include_uuid=False)
+        )
+        self.assertNotIn(
+            "_expr_asts", fosg.Limit(1)._serialize(include_uuid=False)
+        )
+        self.assertNotIn(
+            "_expr_asts",
+            fosg.SortBy([("num", 1), ("filepath", -1)])._serialize(
+                include_uuid=False
+            ),
+        )
+
+    def test_no_envelope_for_non_reconstructible_expression(self):
+        # `let_in()` substitutes the shared `area` object into `bounds` by
+        # object identity, which a syntax tree cannot express
+        area = F("a") * F("b")
+        bounds = (area > 1) & (area < 2)
+
+        for expr in (
+            # built directly from MongoDB
+            foe.ViewExpression({"$gt": ["$num", 0.5]}),
+            # only one operand carries no syntax
+            (F("num") > 0.5) & foe.ViewExpression({"$lt": ["$num", 2]}),
+            # a slice operand cannot be serialized
+            F("nums")[1:3].length() > 0,
+            area.let_in(bounds),
+            # `let_in()` rewrote `bounds` in place, so its recorded syntax no
+            # longer describes it either
+            bounds,
+        ):
+            stage = fosg.Match(expr)
+            d = stage._serialize()
+
+            self.assertNotIn("_expr_asts", d)
+
+            decoded = fosg.ViewStage._from_dict(d)
+            self.assertEqual(
+                decoded._get_mongo_expr(), stage._get_mongo_expr()
+            )
+
+    def test_let_in_keeps_syntax_when_nothing_is_substituted(self):
+        expr = (F("a") + 1).let_in(F("b") > 2)
+
+        self.assertTrue(foea.is_reconstructible(expr))
+        self.assertEqual(
+            foea.from_envelope(foea.to_envelope(expr)).to_mongo(),
+            expr.to_mongo(),
+        )
+
+    def test_envelope_wins_over_lowered_mongo(self):
+        stage = fosg.Match(F("num") > 0.5)
+        d = stage._serialize()
+        d["kwargs"] = [["filter", {"$expr": {"$lt": ["$num", -1]}}]]
+
+        decoded = fosg.ViewStage._from_dict(d)
+        self.assertEqual(decoded._get_mongo_expr(), stage._get_mongo_expr())
+
+    def test_unreadable_envelope_falls_back_to_mongo(self):
+        stage = fosg.Match(F("num") > 0.5)
+        d = stage._serialize()
+        d["_expr_asts"]["filter"][foea.AST_KEY]["version"] = (
+            foea.AST_VERSION + 1
+        )
+
+        decoded = fosg.ViewStage._from_dict(d)
+        self.assertIsInstance(decoded._filter, dict)
+        self.assertEqual(decoded._get_mongo_expr(), stage._get_mongo_expr())
+
+    def test_compound_sort_records_each_expression(self):
+        dataset = self._setUp_envelopes()
+        view = dataset.sort_by([(F("num") * 2, 1), ("filepath", -1)])
+        stage = view._stages[0]
+
+        d = stage._serialize()
+        # The list shape survives, with an envelope only where syntax existed
+        envelopes = d["_expr_asts"]["field_or_expr"]
+        self.assertEqual(len(envelopes), 2)
+        self.assertIsNotNone(envelopes[0])
+        self.assertIsNone(envelopes[1])
+
+        decoded = fosg.ViewStage._from_dict(d)
+        restored = decoded._field_or_expr
+        self.assertEqual(len(restored), 2)
+        self.assertIsInstance(restored[0][0], foe.ViewExpression)
+        self.assertEqual(restored[0][1], 1)
+        self.assertEqual(restored[1][0], "filepath")
+        self.assertEqual(restored[1][1], -1)
+        self.assertEqual(
+            decoded._get_mongo_field_or_expr(),
+            stage._get_mongo_field_or_expr(),
+        )
+
+    def test_rendered_date_uses_a_current_api(self):
+        expr = F("created_at") > datetime(2026, 7, 29)
+        source = expr.to_python()
+        self.assertNotIn("utcfromtimestamp", source)
+        self.assertIn("timezone.utc", source)
+
+    def test_foreign_fo_expr_dict_passes_through(self):
+        # A raw kwarg dict that happens to carry the envelope key is not an
+        # envelope; it loads untouched, exactly as it did before envelopes
+        filter_dict = {"_fo_expr": {"$exists": True}}
+        stage = fosg.Match(filter_dict)
+        decoded = fosg.ViewStage._from_dict(stage._serialize())
+        self.assertEqual(decoded._filter, filter_dict)
+
+    def test_newer_envelope_in_kwargs_degrades(self):
+        # App->server traffic carries envelopes inside kwargs; a version this
+        # build cannot read passes through rather than failing the load
+        stage = fosg.Match(F("num") > 0.5)
+        d = stage._serialize()
+        envelope = {
+            foea.AST_KEY: {
+                "version": foea.AST_VERSION + 1,
+                "node": {"t": "lit", "v": 1},
+            }
+        }
+        d["kwargs"] = [["filter", envelope]]
+        d.pop("_expr_asts")
+
+        decoded = fosg.ViewStage._from_dict(d)
+        self.assertEqual(decoded._filter, envelope)
+
+    def test_decode_refuses_unknown_operators(self):
+        # `op` dispatches through getattr; anything outside the recorded
+        # operator vocabulary is refused, not resolved
+        for op in ("mro", "__subclasses__", "__class__", "__globals__"):
+            static = {"t": "static", "op": op, "args": [], "kwargs": {}}
+            call = {
+                "t": "call",
+                "op": op,
+                "self": {"t": "field", "path": "num"},
+                "args": [],
+                "kwargs": {},
+            }
+            with self.assertRaises(ValueError):
+                foea.from_node(static)
+            with self.assertRaises(ValueError):
+                foea.from_node(call)
+
+    def test_stage_without_expr_asts_key_loads(self):
+        stage = fosg.Match(F("num") > 0.5)
+        d = stage._serialize()
+        d.pop("_expr_asts")
+
+        decoded = fosg.ViewStage._from_dict(d)
+        self.assertEqual(decoded._get_mongo_expr(), stage._get_mongo_expr())
+
+    def test_saved_view_preserves_expression(self):
+        dataset = self._setUp_envelopes()
+        expr = F("num") > 0.5
+        view = dataset.filter_labels("test_dets", F("confidence") > 0.5).match(
+            expr
+        )
+
+        dataset.save_view("envelopes", view)
+        dataset.reload()
+
+        loaded = dataset.load_saved_view("envelopes")
+
+        filter_stage, match_stage = loaded._stages
+        self.assertIsInstance(filter_stage._filter, foe.ViewExpression)
+        self.assertIsInstance(match_stage._filter, foe.ViewExpression)
+
+        # the syntax survives, not just the lowering
+        self.assertEqual(match_stage._filter.to_python(), expr.to_python())
+        self.assertEqual(
+            filter_stage._filter.to_python(), "F('confidence') > 0.5"
+        )
+
+        self.assertEqual(
+            loaded._serialize(include_uuids=False),
+            view._serialize(include_uuids=False),
+        )
+
     def test_match_labels(self):
         sample1 = fo.Sample(
             filepath="image1.png",
@@ -5268,7 +5619,7 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(type(second_stage), fosg.Select)
 
     def test_selected_samples_in_group_slices(self):
-        (dataset, selected_ids) = self._make_group_by_group_dataset()
+        dataset, selected_ids = self._make_group_by_group_dataset()
         view = dataset.view()
         self.assertEqual(view.media_type, "group")
 

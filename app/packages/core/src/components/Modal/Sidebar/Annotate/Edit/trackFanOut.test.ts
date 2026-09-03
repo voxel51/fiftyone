@@ -70,6 +70,35 @@ describe("splitTrackEdit", () => {
 describe("buildForwardFill", () => {
   const dynRef = (frame: number): LabelRef => frameRef(frame);
 
+  it("forward-fills a BARE-path track (image dynamic group played as video)", () => {
+    // dgva frame occurrences live on sample-level paths, not `frames.*` —
+    // the fill must be namespace-agnostic once the caller's frame-scope gate
+    // (isFrameScopedPath) admits the field
+    const bareRef = (frame: number): LabelRef => ({
+      sample: "s1",
+      path: "boxes",
+      instanceId: "t1",
+      frame,
+    });
+    const engine = stubEngine([
+      { ref: bareRef(1), data: { _id: "a", occluded: false } },
+      { ref: bareRef(2), data: { _id: "b", occluded: false } },
+      { ref: bareRef(3), data: { _id: "c", occluded: false } },
+      { ref: bareRef(4), data: { _id: "d", occluded: true } },
+    ]);
+
+    const writes = buildForwardFill(
+      engine,
+      bareRef(1),
+      { occluded: true },
+      { occluded: false },
+    );
+
+    // frames 2 and 3 adopt the toggle; frame 4 is a preserved change point
+    expect(writes.map((w) => w.ref.frame)).toEqual([2, 3]);
+    expect(writes.every((w) => w.forward.occluded === true)).toBe(true);
+  });
+
   it("fills later frames holding the prior value, stopping at the next change", () => {
     const engine = stubEngine([
       { ref: dynRef(1), data: { _id: "a", turn_signal: "off" } },

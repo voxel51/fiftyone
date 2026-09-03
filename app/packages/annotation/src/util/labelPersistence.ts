@@ -99,7 +99,16 @@ export const doPatchSample = async ({
   const versionToken = getVersionToken();
 
   if (!datasetId || !sample?._id || !versionToken) {
-    return false;
+    // a sample without `last_modified_at` mints no token — name the failed
+    // precondition instead of silently reporting "rejected"
+    throw new Error(
+      "cannot patch sample: missing write precondition " +
+        JSON.stringify({
+          hasDatasetId: !!datasetId,
+          sampleId: sample?._id ?? null,
+          hasVersionToken: !!versionToken,
+        }),
+    );
   }
 
   let caughtErr: Error;
@@ -173,7 +182,7 @@ export const doPatchSample = async ({
 
       console.error("error patching sample", error);
 
-      return false;
+      throw error;
     }
   }
 

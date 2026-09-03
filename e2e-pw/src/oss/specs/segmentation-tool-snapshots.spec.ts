@@ -81,8 +81,23 @@ const openAnnotate = async (
   });
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
+  // The canvas must be interactive before any tool draws on it — mode
+  // toggles resolve while the renderer can still be behind its loading
+  // cover, and a stroke drawn into the cover paints nothing
+  await modal.waitForLighterReady();
   await modal.sidebar.annotate.segmentationMode();
   await modal.sidebar.annotate.assert.segmentationModeIsActive();
+};
+
+/**
+ * Deterministic screenshot state: the freshly-touched label's selection
+ * scrim sometimes survives save settlement, dimming the whole canvas in
+ * some captures — switch to Select and click empty canvas so screenshots
+ * never race selection state.
+ */
+const deselectAll = async (modal: ModalPom) => {
+  await modal.sidebar.annotate.pickTool("Select");
+  await modal.sampleCanvas.click(0.05, 0.05);
 };
 
 test.describe.serial("segmentation tool snapshots", () => {
@@ -99,6 +114,7 @@ test.describe.serial("segmentation tool snapshots", () => {
 
     await modal.sidebar.annotate.waitForSavesSettled();
 
+    await deselectAll(modal);
     await modal.sampleCanvas.assert.hasScreenshot("seg-pen-rectangle.png");
   });
 
@@ -112,6 +128,7 @@ test.describe.serial("segmentation tool snapshots", () => {
 
     await modal.sidebar.annotate.waitForSavesSettled();
 
+    await deselectAll(modal);
     await modal.sampleCanvas.assert.hasScreenshot("seg-brush-stroke.png");
   });
 
@@ -142,6 +159,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     // overlay (and its ripple animation), leaving only the mask render.
     await modal.sampleCanvas.rightClick(0.5, 0.5);
 
+    await deselectAll(modal);
     await modal.sampleCanvas.assert.hasScreenshot("seg-ai-mask.png");
   });
 
@@ -176,6 +194,7 @@ test.describe.serial("segmentation tool snapshots", () => {
 
     await modal.sidebar.annotate.waitForSavesSettled();
 
+    await deselectAll(modal);
     await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
 
     // Sanity check: the merge collapsed the pair into a single detection.

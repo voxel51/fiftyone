@@ -13,6 +13,8 @@ import {
   themeConfig,
   useSetExpandedSample,
   useSetModalState,
+  useViewChangePending,
+  viewChangePending,
 } from "@fiftyone/state";
 import { useColorScheme } from "@mui/material";
 import {
@@ -61,6 +63,7 @@ const Renderer = () => {
   const routeEntry = useRecoilValue(entry);
 
   const [pending, setPending] = useRecoilState(pendingEntry);
+  const viewPending = useViewChangePending();
   const router = useRouterContext();
   const [ready, setReady] = useState(false);
   const setModalState = useSetModalState();
@@ -89,6 +92,9 @@ const Renderer = () => {
     subscribe((_, { set }) => {
       set(entry, router.get(true));
       set(pendingEntry, false);
+      // An operator-driven view change lands here too; its pending
+      // treatment ends with the entry that carries it
+      set(viewChangePending, false);
     });
   }, [init, router]);
 
@@ -107,7 +113,7 @@ const Renderer = () => {
       <ColorScheme key={"color-scheme"} />
       <Modal key={"modal"} />
       <Route key={"route"} route={routeEntry} />
-      {pending && <Pending key={"pending"} />}
+      {(pending || viewPending) && <Pending key={"pending"} />}
     </Suspense>
   );
 };

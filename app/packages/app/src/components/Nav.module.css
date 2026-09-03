@@ -1,0 +1,9 @@
+/* The bar takes what the title, selector and right-side actions leave */
+.bar {
+  flex: 1;
+  min-width: 0;
+}
+
+.spacer {
+  flex: 1;
+}

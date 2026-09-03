@@ -132,6 +132,11 @@ const VolumeControl: React.FC = () => {
       })}
       data-testid="timeline-controls-volume-control"
       title={errored ? ERROR_TITLE : undefined}
+      // The voodo slider's track is bare divs no interactive-element
+      // selector can recognize, so the whole group opts out of the
+      // controls row's click-anywhere-to-toggle — declaratively, and by
+      // stopping the events for anything the row's selector misses
+      data-toggle-exempt=""
       onClick={stopRowToggle}
       onPointerDown={stopRowToggle}
     >
