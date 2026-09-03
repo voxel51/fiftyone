@@ -79,8 +79,24 @@ export interface CapabilityMessage {
   hasAudio?: boolean;
 }
 
+/**
+ * worker → main: the verdict of a `tableOnly` init — the source's
+ * presentation-order frame table (sorted start timestamps, µs; index i is
+ * frame i+1), or `null` when the header couldn't be demuxed. Emitted only by
+ * the WebCodecs worker's table branch (the frame-table fetcher awaits it and
+ * then terminates the worker).
+ */
+export interface FrameTableMessage {
+  type: "frameTable";
+  /** Sorted presentation start times in µs; index i ↔ frame i+1. */
+  timesMicros: number[] | null;
+  /** Why the table is unavailable, when `timesMicros` is null (diagnostics). */
+  reason?: string;
+}
+
 export type FrameWorkerOutbound =
   | FrameReadyMessage
   | ChunkDoneMessage
   | ChunkFailedMessage
-  | CapabilityMessage;
+  | CapabilityMessage
+  | FrameTableMessage;
