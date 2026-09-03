@@ -67,7 +67,7 @@ setup(
         "jsonpatch>=1,<2",
         "mongoengine~=0.29.1",  # Keep small bounds on mongo-related libraries
         "Pillow>=12.2",
-        "plotly>=6.1.1,<7",
+        "plotly>=7,<8",
         "pprintpp>=0.1,<0.5",
         "psutil>=5,<8",
         "pydash>=6,<9",
@@ -87,7 +87,7 @@ setup(
         # ML Libraries
         "matplotlib<4",
         "numpy<3",
-        "opencv-python-headless<5",
+        "opencv-python-headless<6",
         "pandas<4",
         "pypcd4>=1.4,<2",
         "rtree<2",
@@ -124,7 +124,7 @@ setup(
     python_requires=">=3.10",
     extras_require={
         "multimodal-mcap": [
-            "protobuf==6.33.6",
+            "protobuf==7.36.1",
         ],
         "multimodal": ["fiftyone[multimodal-mcap]"],
     },
