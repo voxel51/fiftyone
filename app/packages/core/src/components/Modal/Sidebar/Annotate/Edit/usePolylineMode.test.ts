@@ -27,14 +27,18 @@ vi.mock("@fiftyone/lighter", () => ({
       exitInteractiveMode: hoisted.exitInteractiveMode,
       enterInteractiveMode: hoisted.enterInteractiveMode,
       hasOverlay: () => hoisted.hasOverlayRef.current,
+      getOverlay: () =>
+        hoisted.hasOverlayRef.current
+          ? (hoisted.selectedRef.current as { overlay?: unknown } | null)
+              ?.overlay
+          : undefined,
       getEventChannel: () => "channel",
       getInteractionManager: () => ({ getPixelCoordinates: () => null }),
     },
   }),
-  useLighterEventHandler:
-    () => (event: string, cb: () => void) => {
-      hoisted.lighterHandlers.set(event, cb);
-    },
+  useLighterEventHandler: () => (event: string, cb: () => void) => {
+    hoisted.lighterHandlers.set(event, cb);
+  },
   useLighterEventBus: () => ({ dispatch: vi.fn() }),
   UNDEFINED_LIGHTER_SCENE_ID: "undefined-scene",
   PolylineOverlay: class PolylineOverlay {},
@@ -146,8 +150,7 @@ describe("usePolylineModeInstaller — which handler is installed", () => {
     };
   };
 
-  const installed = () =>
-    hoisted.enterInteractiveMode.mock.calls.at(-1)?.[0];
+  const installed = () => hoisted.enterInteractiveMode.mock.calls.at(-1)?.[0];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -182,7 +185,16 @@ describe("usePolylineModeInstaller — which handler is installed", () => {
     // Crossing a track's extent changes which handler belongs installed without
     // `selected` ever changing, so the install effect has to be driven by the
     // scene's overlay events too.
-    expect(hoisted.lighterHandlers.has("lighter:overlay-added")).toBe(true);
-    expect(hoisted.lighterHandlers.has("lighter:overlay-removed")).toBe(true);
+    selectPolyline();
+    renderHook(() => usePolylineModeInstaller());
+    expect(installed()).toBeInstanceOf(InteractivePolylineHandler);
+
+    hoisted.hasOverlayRef.current = false;
+    act(() => hoisted.lighterHandlers.get("lighter:overlay-removed")?.());
+    expect(installed()).toBeInstanceOf(InteractiveCreationHandler);
+
+    hoisted.hasOverlayRef.current = true;
+    act(() => hoisted.lighterHandlers.get("lighter:overlay-added")?.());
+    expect(installed()).toBeInstanceOf(InteractivePolylineHandler);
   });
 });

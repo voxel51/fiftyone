@@ -265,12 +265,14 @@ export const usePolylineModeInstaller = (): void => {
     // means no creation handler is installed, so clicks did nothing at all.
     // Treat "selected but off-extent" as "nothing to edit" and fall through to
     // the creation handler, so a click starts a NEW polyline the way it does for
-    // detections.
-    const isPolyline2d = !!candidate && scene.hasOverlay(candidate.id);
+    // detections. Look the overlay up live by id: the bridge mounts a fresh
+    // instance when the playhead re-enters the extent, and the selection's
+    // snapshot may still point at the unmounted one.
+    const targetOverlay = candidate
+      ? (scene.getOverlay(candidate.id) as PolylineOverlay | undefined)
+      : undefined;
 
-    if (isPolyline2d) {
-      const targetOverlay = candidate as PolylineOverlay;
-
+    if (targetOverlay) {
       const installed = installedHandlerRef.current;
       if (
         installed instanceof InteractivePolylineHandler &&
