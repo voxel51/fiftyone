@@ -11,6 +11,7 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import {
+  COLOR_BY,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   RGB,
   createColorGenerator,
@@ -19,6 +20,8 @@ import {
   hexToRgb,
   toCamelCase,
 } from "@fiftyone/utilities";
+import { useCallback } from "react";
+import type { GetRecoilValue } from "recoil";
 import { selector, selectorFamily, useRecoilValue } from "recoil";
 import * as atoms from "./atoms";
 import { configData } from "./config";
@@ -158,6 +161,167 @@ export const pathColor = selectorFamily<string, string>({
       return map(path);
     },
 });
+
+/**
+ * How a sidebar filter path's values are colored when coloring by value: the
+ * per-value colors that apply to it, and whether value coloring reaches the
+ * path at all.
+ *
+ * The color scheme stores value colors under the *label field*
+ * (`ground_truth`), not under the filter path the sidebar row sits at
+ * (`ground_truth.detections.label`), and the looker paints them only for the
+ * one attribute that field is colored by — `colorByAttribute`, defaulting to
+ * `label`. A row for any other attribute is not what the overlays key on, so
+ * it takes the field color rather than a hash of its own values; looking the
+ * setting up under the filter path instead would miss every configured color
+ * and hash all of them.
+ *
+ * A path outside any label field owns its own entry, and every value on it
+ * applies.
+ */
+const valueColoring = (
+  get: GetRecoilValue,
+  path: string,
+): { readonly applies: boolean; readonly configured: Map<string, string> } => {
+  const scheme = get(atoms.colorScheme);
+  const configured = (setting?: {
+    valueColors?: readonly { value: string; color: string }[] | null;
+  }) => new Map((setting?.valueColors ?? []).map((v) => [v.value, v.color]));
+
+  if (path === "_label_tags") {
+    return { applies: true, configured: configured(scheme.labelTags) };
+  }
+
+  // A label field owns every path beneath it, and under video the frames
+  // prefix is part of the field's name — the same parent derivation
+  // `pathColor` uses for its fallback.
+  //
+  // Not the same as `pathColor`'s *setting* lookup, which resolves an embedded
+  // document leaf to its parent and then back again for a
+  // `DynamicEmbeddedDocument`. That question does not arise here: every path
+  // this is called with is a string-filter leaf, `_label_tags`, or a
+  // projection path, so the leaf is never an embedded document. A dynamic
+  // embedded document is not a Label either, so it never appears in
+  // `labelFields` and takes the per-path branch below regardless.
+  const video = get(atoms.mediaType) !== "image";
+  const parentPath =
+    video && path.startsWith("frames.")
+      ? path.split(".").slice(0, 2).join(".")
+      : path.split(".")[0];
+
+  if (!get(schemaAtoms.labelFields({})).includes(parentPath)) {
+    return {
+      applies: true,
+      configured: configured(scheme.fields?.find((x) => x.path === path)),
+    };
+  }
+
+  const setting = scheme.fields?.find((x) => x.path === parentPath);
+  const attribute = path
+    .slice(parentPath.length + 1)
+    .split(".")
+    .pop();
+
+  if ((setting?.colorByAttribute || "label") !== attribute) {
+    return { applies: false, configured: new Map<string, string>() };
+  }
+
+  return { applies: true, configured: configured(setting) };
+};
+
+/**
+ * Resolver for the values of one path, under whichever color-by mode is set:
+ * the path's own field color when coloring by field, and the value's own color
+ * when coloring by value, honoring any per-value colors configured for the
+ * field.
+ *
+ * This is what the sidebar paints a filter value's dot with, so anything else
+ * that shows the same value — a grid overlay's interval marks, a timeline row —
+ * matches the sidebar by resolving through here rather than reaching for
+ * {@link pathColor} directly. Coloring by instance has no meaning for a
+ * primitive value and resolves as coloring by field does.
+ */
+export const valueColor = selectorFamily<
+  (value: string | null) => string,
+  string
+>({
+  key: "valueColor",
+  get:
+    (path) =>
+    ({ get }) => {
+      const scheme = get(atoms.colorScheme);
+      const field = get(pathColor(path));
+
+      if (scheme.colorBy !== COLOR_BY.VALUE) {
+        return () => field;
+      }
+
+      const { applies, configured } = valueColoring(get, path);
+
+      if (!applies) {
+        return () => field;
+      }
+
+      const map = get(colorMap);
+
+      // A null value is the "no value" row, which names nothing to color by.
+      return (value) =>
+        value === null ? field : (configured.get(value) ?? map(value));
+    },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+/**
+ * Domain hook for {@link valueColor}: returns a `(value) => color` for `path`.
+ */
+export const useValueColor = (path: string) => useRecoilValue(valueColor(path));
+
+/**
+ * {@link valueColor} resolvers for a set of paths, resolved together.
+ *
+ * Takes the paths up front rather than returning a `(path) => color` closure
+ * the way {@link temporalTagColor} does: {@link valueColor} reads schema and
+ * color-scheme state per path through Recoil, which cannot be evaluated lazily
+ * inside a plain function.
+ */
+const pathValueColors = selectorFamily<
+  Record<string, (value: string | null) => string>,
+  readonly string[]
+>({
+  key: "pathValueColors",
+  get:
+    (paths) =>
+    ({ get }) =>
+      Object.fromEntries(paths.map((path) => [path, get(valueColor(path))])),
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+/**
+ * Domain hook for {@link pathValueColors}: returns a
+ * `(path: string, value?: string) => string` resolving any of `paths` — and,
+ * where the caller names one of that path's values, that value — to the color
+ * the sidebar shows for it.
+ *
+ * Omit `value` for something the sidebar has no value dot for: those take the
+ * field's color in both modes. A path that was not requested falls back to the
+ * seeded pool, so a caller that discovers a path late still gets a stable
+ * color rather than nothing.
+ */
+export const usePathValueColors = (
+  paths: readonly string[],
+): ((path: string, value?: string) => string) => {
+  const colors = useRecoilValue(pathValueColors(paths));
+  const map = useRecoilValue(colorMap);
+  return useCallback(
+    (path: string, value?: string) =>
+      colors[path]?.(value ?? null) ?? map(path),
+    [colors, map],
+  );
+};
 
 export const eligibleFieldsToCustomizeColor = selector({
   key: "eligibleFieldsToCustomizeColor",

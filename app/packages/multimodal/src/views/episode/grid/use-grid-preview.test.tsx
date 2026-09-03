@@ -11,7 +11,11 @@ import {
 } from "../../../ir";
 import type { EpisodePreviewSession } from "../../../ports";
 import {
+  getEpisodePlayhead,
+  getEpisodeTimeRange,
   getSourceBootstrap,
+  resetEpisodePlayheadsForTests,
+  resetEpisodeTimeRangesForTests,
   resetSourceBootstrapCacheForTests,
 } from "../../../runtime";
 import {
@@ -33,6 +37,8 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   resetSourceBootstrapCacheForTests();
+  resetEpisodePlayheadsForTests();
+  resetEpisodeTimeRangesForTests();
 });
 
 describe("useGridPreview", () => {
@@ -930,54 +936,49 @@ describe("useGridPreview", () => {
     });
   });
 
-  it("posters from the matched stream once it is known previewable", async () => {
-    // The reported /camera/rear source triggers a third request beyond the
-    // two asserted below; leave it pending so the mock never returns undefined
-    sessionHarness.session.read
-      .mockResolvedValueOnce(
-        readyResult({ bytes: [1], streamId: "/camera/front" }),
-      )
-      .mockResolvedValueOnce(
-        readyResult({ bytes: [2], streamId: "/camera/rear" }),
-      )
-      .mockReturnValue(deferred<EpisodePreviewReadResult>().promise);
-    const source = sourceForId("poster-stream");
+  it("asks for the matched stream on the FIRST read", async () => {
+    // Gating this on `streamSourceNames` — which only a completed read fills
+    // — dropped the match's stream from the first request every time, so the
+    // tile postered its automatic camera at the matched instant: a frame from
+    // the wrong stream, shown as the one that matched
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], streamId: "/camera/front" }),
+    );
 
     render(
       <PreviewHarness
         id="poster-stream"
         posterStartTimeNs={500n}
         posterSourceName="/camera/front"
-        source={source}
+        source={sourceForId("poster-stream")}
       />,
     );
 
-    // The first request cannot name the stream — nothing has reported which
-    // sources this episode can preview yet.
     await waitFor(() => {
-      expect(sessionHarness.session.read).toHaveBeenCalledTimes(2);
+      expect(sessionHarness.session.read).toHaveBeenCalled();
     });
     expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({
-      startTimeNs: 500n,
-    });
-    expect(sessionHarness.session.read.mock.calls[1]?.[0]).toEqual({
       sourceName: "/camera/front",
       startTimeNs: 500n,
     });
   });
 
-  it("keeps the automatic stream when the match is not previewable", async () => {
-    sessionHarness.session.read.mockResolvedValue(
-      readyResult({ bytes: [1], streamId: "/camera/front" }),
-    );
-    const source = sourceForId("poster-fused");
+  it("falls back to the automatic stream once the match is refused", async () => {
+    // The session is what knows whether a stream is previewable, so it is
+    // asked — and its refusal, which carries the inventory, is what makes the
+    // automatic pick an informed fallback rather than a guess
+    sessionHarness.session.read
+      .mockResolvedValueOnce(unavailableResult())
+      .mockResolvedValue(
+        readyResult({ bytes: [1], streamId: "/camera/front" }),
+      );
 
     render(
       <PreviewHarness
         id="poster-fused"
         posterStartTimeNs={500n}
         posterSourceName="fused::cameras"
-        source={source}
+        source={sourceForId("poster-fused")}
       />,
     );
 
@@ -986,8 +987,11 @@ describe("useGridPreview", () => {
         "ready:1:frame:",
       );
     });
-    expect(sessionHarness.session.read).toHaveBeenCalledTimes(1);
     expect(sessionHarness.session.read.mock.calls[0]?.[0]).toEqual({
+      sourceName: "fused::cameras",
+      startTimeNs: 500n,
+    });
+    expect(sessionHarness.session.read.mock.calls[1]?.[0]).toEqual({
       startTimeNs: 500n,
     });
   });
@@ -1021,10 +1025,114 @@ describe("useGridPreview", () => {
   });
 });
 
+describe("useGridPreview episode playhead", () => {
+  beforeEach(() => {
+    sessionHarness.session.read.mockReset();
+  });
+
+  const FRAME_NS = 1_800_000_000_000_000_000n;
+
+  const harness = (episodeId: string | null) => (
+    <PreviewHarness
+      cacheRequestKey="playhead-key"
+      episodeId={episodeId}
+      id="playhead"
+      source={sourceForId("playhead")}
+    />
+  );
+
+  it("publishes the presented frame time under its episode", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+
+    render(harness("episode-a"));
+
+    await waitFor(() => expect(getEpisodePlayhead("episode-a")).toBe(FRAME_NS));
+  });
+
+  it("publishes nothing when no episode identity is given", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+
+    render(harness(null));
+
+    await waitFor(() => expect(sessionHarness.session.read).toHaveBeenCalled());
+    expect(getEpisodePlayhead("episode-a")).toBeNull();
+  });
+
+  it("hands the playhead over when the tile is pointed at another episode", async () => {
+    // Without the handover the old episode keeps an instant nothing is
+    // presenting, and its grid overlay goes on marking a stale position.
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+    const { rerender } = render(harness("episode-a"));
+    await waitFor(() => expect(getEpisodePlayhead("episode-a")).toBe(FRAME_NS));
+
+    rerender(harness("episode-b"));
+
+    await waitFor(() => expect(getEpisodePlayhead("episode-a")).toBeNull());
+    // The retained frame moves with the tile: releasing the old episode
+    // without republishing under the new one leaves the new lane with no
+    // playhead until the next presented frame, which on a paused tile never
+    // comes.
+    expect(getEpisodePlayhead("episode-b")).toBe(FRAME_NS);
+  });
+
+  it("publishes a frame retained before the tile had an identity", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+    const { rerender } = render(harness(null));
+    await waitFor(() => expect(sessionHarness.session.read).toHaveBeenCalled());
+
+    rerender(harness("episode-b"));
+
+    await waitFor(() => expect(getEpisodePlayhead("episode-b")).toBe(FRAME_NS));
+  });
+
+  // The lane draws its axis from this range. Publishing the bootstrap under
+  // the source id alone — as it was before the episode seam — leaves every
+  // absolute-ns tile with no axis at all.
+  it("publishes the episode's time range under its episode", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({
+        bootstrapTimeRange: { endNs: FRAME_NS + 100n, startNs: FRAME_NS },
+        bytes: [1],
+        frameTimeNs: FRAME_NS,
+      }),
+    );
+
+    render(harness("episode-a"));
+
+    await waitFor(() =>
+      expect(getEpisodeTimeRange("episode-a")).toEqual({
+        endNs: FRAME_NS + 100n,
+        startNs: FRAME_NS,
+      }),
+    );
+  });
+
+  it("withdraws the playhead when the tile unmounts", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+    const { unmount } = render(harness("episode-a"));
+    await waitFor(() => expect(getEpisodePlayhead("episode-a")).toBe(FRAME_NS));
+
+    unmount();
+
+    expect(getEpisodePlayhead("episode-a")).toBeNull();
+  });
+});
+
 function PreviewHarness({
   cacheRequestKey,
   cachedPoster,
   enabled,
+  episodeId,
   hovered,
   id,
   onReadResult,
@@ -1039,6 +1147,7 @@ function PreviewHarness({
   readonly cacheRequestKey?: string | null;
   readonly cachedPoster?: GridPosterCacheEntry | null;
   readonly enabled?: boolean;
+  readonly episodeId?: string | null;
   readonly hovered?: boolean;
   readonly id: string;
   readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
@@ -1059,6 +1168,7 @@ function PreviewHarness({
     cacheRequestKey,
     cachedPoster,
     enabled,
+    episodeId,
     hovered,
     onReadResult,
     posterStartTimeNs,
@@ -1091,6 +1201,7 @@ function formatState(state: GridPreviewState): string {
 }
 
 function readyResult({
+  bootstrapTimeRange,
   bytes,
   nativeVideo,
   nextStartTimeNs = 5n,
@@ -1099,6 +1210,10 @@ function readyResult({
     : nextStartTimeNs - 1n,
   streamId = "/camera/front",
 }: {
+  readonly bootstrapTimeRange?: {
+    readonly startNs: bigint;
+    readonly endNs: bigint;
+  };
   readonly bytes: readonly number[];
   readonly frameTimeNs?: bigint;
   readonly nativeVideo?: EpisodePreviewNativeVideo;
@@ -1106,6 +1221,7 @@ function readyResult({
   readonly nextStartTimeNs?: bigint;
 }): EpisodePreviewReadResult {
   return {
+    ...(bootstrapTimeRange ? { bootstrapTimeRange } : {}),
     frame: {
       image: createImage(bytes),
       kind: "image",
@@ -1117,6 +1233,18 @@ function readyResult({
     streamSourceName: streamId,
     streamSourceNames: [streamId],
     status: "ready",
+  };
+}
+
+/** The session refusing a stream it cannot preview, with the inventory it
+ * learned while refusing. */
+function unavailableResult(): EpisodePreviewReadResult {
+  return {
+    frame: null,
+    streamId: null,
+    streamSourceName: null,
+    streamSourceNames: ["/camera/front"],
+    status: "unavailable",
   };
 }
 

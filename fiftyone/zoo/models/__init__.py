@@ -7,6 +7,7 @@ The FiftyOne Model Zoo.
 """
 from collections import defaultdict
 from copy import deepcopy
+import functools
 import importlib
 import logging
 import os
@@ -410,6 +411,7 @@ def register_zoo_model_source(url_or_gh_repo, overwrite=False):
         overwrite (False): whether to overwrite any existing files
     """
     _parse_model_identifier(url_or_gh_repo, overwrite=overwrite)
+    _invalidate_zoo_models_manifest()
 
 
 def delete_zoo_model_source(url_or_gh_repo):
@@ -434,6 +436,7 @@ def delete_zoo_model_source(url_or_gh_repo):
         models_dir = os.path.dirname(manifest.path)
         if models_dir != fo.config.model_zoo_dir:
             etau.delete_dir(models_dir)
+            _invalidate_zoo_models_manifest()
         else:
             logger.warning("Cannot delete top-level model zoo directory")
     else:
@@ -623,6 +626,26 @@ class RemoteZooModelsManifest(ZooModelsManifest):
 
 
 def _load_zoo_models_manifest():
+    """Returns ``(manifest, remote_sources)`` for the model zoo.
+
+    Building this parses every manifest and walks ``model_zoo_dir``, which a
+    service reaching it per request pays for every time, so
+    ``model_zoo_manifest_cache_enabled`` memoizes it for the life of the
+    process. Off by default: a local session can repoint ``model_zoo_dir`` or
+    register a source from another process and expects the next call to see it.
+    """
+    if fo.config.model_zoo_manifest_cache_enabled:
+        return _load_zoo_models_manifest_cached()
+
+    return _build_zoo_models_manifest()
+
+
+@functools.lru_cache(maxsize=1)
+def _load_zoo_models_manifest_cached():
+    return _build_zoo_models_manifest()
+
+
+def _build_zoo_models_manifest():
     manifest = ZooModelsManifest()
     remote_sources = {}
 
@@ -640,6 +663,12 @@ def _load_zoo_models_manifest():
         _merge_remote_manifest(manifest, remote_sources, manifest_path)
 
     return manifest, remote_sources
+
+
+def _invalidate_zoo_models_manifest():
+    """Drops the memoized manifest, for the operations that change what is on
+    disk under ``model_zoo_dir``."""
+    _load_zoo_models_manifest_cached.cache_clear()
 
 
 def _merge_manifest(manifest, manifest_path, sources=None):
@@ -780,6 +809,9 @@ def _parse_model_identifier(url_or_gh_repo, overwrite=False):
 
     if overwrite or url not in remote_sources:
         _download_model_metadata(url, overwrite=overwrite)
+        # The download wrote manifests the memoized one predates, and the
+        # lookup that follows this call reads through that memo
+        _invalidate_zoo_models_manifest()
 
 
 def _get_model(name_or_url, model_name=None):

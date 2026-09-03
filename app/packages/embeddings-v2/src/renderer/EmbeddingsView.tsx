@@ -11,6 +11,7 @@ import "./embeddings.css";
 import type { EmbeddingsChart } from "./EmbeddingsChart";
 import type {
   CameraAdapterFactory,
+  CellMembership,
   EmbeddingPoint,
   HoverHit,
   InteractionMode,
@@ -21,8 +22,10 @@ export interface EmbeddingsViewProps {
   points: EmbeddingPoint[];
   /** Per-point rgb triplets in [0, 1]; omit for the default label palette */
   colors?: Float32Array | null;
-  /** Per-point 0/1 visibility (view membership); omit for all visible */
-  visible?: Uint8Array | null;
+  /** Per-point 0/1 visibility (view membership), or membership in a shared
+   * cell-ordinal array (`ordinals[i] === ordinal` — one array serves every
+   * facet cell, no per-cell mask); omit for all visible */
+  visible?: Uint8Array | CellMembership | null;
   /** External selection by point index; the lasso replaces it on drag */
   selected?: number[] | null;
   settings?: RenderSettings;
@@ -44,6 +47,9 @@ export interface EmbeddingsViewProps {
   onError?: (error: Error) => void;
   /** Debounced hover hit, or null the moment hovering breaks */
   onHover?: (hit: HoverHit | null) => void;
+  /** The camera moved or the viewport resized: every point is somewhere
+   * else now. Hosts anchoring chrome to a point re-project it from here. */
+  onCameraChange?: () => void;
   /** Render the built-in tooltip (default). Hosts with their own hover
    * card pass false and drive it from onHover. */
   tooltip?: boolean;
@@ -63,6 +69,11 @@ export interface EmbeddingsViewHandle {
   resetCamera(): void;
   /** Clears the chart's local selection dimming (lasso state) */
   clearSelection(): void;
+  /** Where a point sits on screen now (CSS px, relative to the cell), or
+   * null when it has none — an unknown index, a point behind the camera, or
+   * a chart that has not loaded yet. Chrome anchored to a point re-reads it
+   * on every `onCameraChange`. */
+  projectPoint(index: number): { x: number; y: number } | null;
 }
 
 /**
@@ -89,6 +100,7 @@ export const EmbeddingsView = forwardRef<
     onPointClick,
     onBackgroundClick,
     onHover,
+    onCameraChange,
     onError,
     tooltip = true,
     mode,
@@ -101,6 +113,7 @@ export const EmbeddingsView = forwardRef<
   const onPointClickRef = useRef(onPointClick);
   const onBackgroundClickRef = useRef(onBackgroundClick);
   const onHoverRef = useRef(onHover);
+  const onCameraChangeRef = useRef(onCameraChange);
   const onErrorRef = useRef(onError);
   // Captured once: the chart is constructed a single time per mount
   const zCameraRef = useRef(zCamera);
@@ -112,13 +125,22 @@ export const EmbeddingsView = forwardRef<
     onPointClickRef.current = onPointClick;
     onBackgroundClickRef.current = onBackgroundClick;
     onHoverRef.current = onHover;
+    onCameraChangeRef.current = onCameraChange;
     onErrorRef.current = onError;
-  }, [onSelection, onPointClick, onBackgroundClick, onHover, onError]);
+  }, [
+    onSelection,
+    onPointClick,
+    onBackgroundClick,
+    onHover,
+    onCameraChange,
+    onError,
+  ]);
 
   useImperativeHandle(
     ref,
     () => ({
       resetCamera: () => chart?.resetCamera(),
+      projectPoint: (index: number) => chart?.projectPoint(index) ?? null,
       // Drops BOTH selection layers (host + lasso) — this is the
       // explicit-clear path (Esc, clear affordances)
       clearSelection: () => chart?.clearSelection(),
@@ -143,6 +165,7 @@ export const EmbeddingsView = forwardRef<
               onSelectionRef.current?.(indices, dataPolygon),
             onPointClick: (hit) => onPointClickRef.current?.(hit),
             onBackgroundClick: () => onBackgroundClickRef.current?.(),
+            onCameraChange: () => onCameraChangeRef.current?.(),
             onHover: (hit) => {
               onHoverRef.current?.(hit);
               setTooltipState(
@@ -195,15 +218,30 @@ export const EmbeddingsView = forwardRef<
     }
   }, [chart, colors, points]);
 
+  // Destructured so the effect keys on the SHARED ordinal array and the
+  // cell's ordinal, not on the wrapper object a facet layout recreates
+  // every render
+  const visibleMask = visible instanceof Uint8Array ? visible : null;
+  const visibleOrdinals =
+    visible && !(visible instanceof Uint8Array) ? visible.ordinals : null;
+  const visibleOrdinal =
+    visible && !(visible instanceof Uint8Array) ? visible.ordinal : -1;
   useEffect(() => {
     // Same stale-prop rule as colors; null restores full visibility
-    if (!visible) {
+    if (visibleMask) {
+      if (visibleMask.length === points.length) chart?.setVisible(visibleMask);
+    } else if (visibleOrdinals) {
+      if (visibleOrdinals.length === points.length) {
+        chart?.setVisible({
+          ordinals: visibleOrdinals,
+          ordinal: visibleOrdinal,
+        });
+      }
+    } else {
       chart?.setVisible(null);
-    } else if (visible.length === points.length) {
-      chart?.setVisible(visible);
     }
     // points is a dep because setData resets visibility
-  }, [chart, visible, points]);
+  }, [chart, visibleMask, visibleOrdinals, visibleOrdinal, points]);
 
   useEffect(() => {
     chart?.setSelected(selected);

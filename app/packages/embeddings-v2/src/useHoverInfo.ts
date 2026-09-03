@@ -30,7 +30,7 @@ export function useHoverInfo(
    * and decode (an extension-owned run reading its own storage) shows cheap
    * per-point detail instead of an image. Returns null to fall through to
    * the normal fetch path. */
-  localDetail?: (hit: HoverHit) => HoverContent | null,
+  localDetail?: (hit: HoverHit, pinned?: boolean) => HoverContent | null,
 ): {
   hover: HoverContent | null;
   /** The live hit, before the card's dwell — anchors the hover ring */
@@ -39,9 +39,31 @@ export function useHoverInfo(
   /** Cancels a pending clear — call when the pointer enters the hover card,
    * so moving from the point onto the card's actions doesn't dismiss it */
   keepHover: () => void;
+  /** Freezes the card on what it is showing, so the pointer can leave the
+   * point and reach the card's actions without a race against the grace
+   * timer. The card's own actions are the whole reason a reader clicks. */
+  pinHover: () => void;
+  /** Releases the freeze and drops the card. */
+  unpinHover: () => void;
+  /** The card is frozen; the renderer stops re-anchoring it. */
+  pinned: boolean;
 } {
   const [hover, setHover] = useState<HoverContent | null>(null);
+  // Mirrors `hover` for the freeze check below: reading it from a state
+  // updater would make that updater impure, which React is free to run twice
+  const hoverRef = useRef<HoverContent | null>(null);
+  hoverRef.current = hover;
+  // The pin reads this rather than closing over the prop: `localDetail` is
+  // rebuilt every render, and a pin callback that changed identity with it
+  // would re-bind everything downstream on every frame
+  const localDetailRef = useRef(localDetail);
+  localDetailRef.current = localDetail;
   const [hoverHit, setHoverHit] = useState<HoverHit | null>(null);
+  // A pinned card ignores every hover transition until it is released: the
+  // reader is aiming at its button, and crossing points on the way must not
+  // rewrite what they are aiming at
+  const [pinned, setPinned] = useState(false);
+  const pinnedRef = useRef(false);
   // The card doesn't vanish the instant the pointer leaves a point: a short
   // grace lets the pointer cross the gap onto the card to click an action
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,9 +97,13 @@ export function useHoverInfo(
     hoverSeq.current++;
     cancelDwell();
     cancelClear();
+    pinnedRef.current = false;
+    setPinned(false);
     setHover(null);
     setHoverHit(null);
-  }, [datasetName, brainKey]);
+    // The cancel callbacks are stable ([]-dep useCallbacks), so listing them
+    // satisfies the checker without changing when this runs
+  }, [datasetName, brainKey, cancelDwell, cancelClear]);
 
   // The card's value line describes the color-by field: a field change
   // under a stationary pointer (keyboard-driven — a mouse trip to the
@@ -87,6 +113,8 @@ export function useHoverInfo(
   useEffect(() => {
     hoverSeq.current++;
     cancelDwell();
+    pinnedRef.current = false;
+    setPinned(false);
     setHover(null);
   }, [colorField, cancelDwell]);
 
@@ -95,10 +123,25 @@ export function useHoverInfo(
       cancelDwell();
       cancelClear();
     },
-    [],
+    // Both are stable ([]-dep useCallbacks): this still runs only on unmount
+    [cancelDwell, cancelClear],
   );
 
   const handleHover = (hit: HoverHit | null) => {
+    if (pinnedRef.current) {
+      // A camera move re-emits the SAME point at new screen coordinates. The
+      // frozen card and its ring are about a point, not a place, so they
+      // follow it — without this the ring drifts off the point the reader
+      // clicked the moment they pan, which is the only thing marking it.
+      const current = hoverRef.current;
+      if (hit && current && hit.index === current.hit.index) {
+        setHoverHit(hit);
+        setHover({ ...current, hit });
+      }
+      // Any OTHER transition is the pointer wandering; the freeze is exactly
+      // the instruction to ignore it
+      return;
+    }
     // Every transition restarts the dwell and invalidates the previous
     // card work; jitter over one point never reaches here (the picker
     // only reports changes)
@@ -169,7 +212,46 @@ export function useHoverInfo(
     }, CARD_DWELL_MS);
   };
 
-  return { hover, hoverHit, handleHover, keepHover: cancelClear };
+  // Only ever freezes a card that EXISTS: a click on empty space, or on a
+  // point whose card has not resolved, would otherwise lock the hover into a
+  // state nothing can be read from and only Escape could leave
+  const pinHover = useCallback(() => {
+    const current = hoverRef.current;
+    if (!current) return;
+    cancelClear();
+    cancelDwell();
+    pinnedRef.current = true;
+    setPinned(true);
+    // Re-anchored from the CARD's hit, never left to whatever the live one
+    // happens to be. EVERY pointerdown drops the hover — the picker forgets
+    // the pointer so a post-drag hit-test cannot use the pre-drag spot — so
+    // by the time a click reaches here the live hit is always null, while the
+    // card is still up on its clear timer. Without this the pin would freeze
+    // a card whose ring had already gone, marking nothing.
+    setHoverHit(current.hit);
+    // Rebuilt for the pin, because a click is a different question from a
+    // hover: it is the one place an extension may spend on work — a seek, a
+    // decode — that gliding over a dense cloud must never pay for
+    const detailed = localDetailRef.current?.(current.hit, true);
+    if (detailed) setHover(detailed);
+  }, [cancelClear, cancelDwell]);
+
+  const unpinHover = useCallback(() => {
+    pinnedRef.current = false;
+    setPinned(false);
+    setHover(null);
+    setHoverHit(null);
+  }, []);
+
+  return {
+    hover,
+    hoverHit,
+    handleHover,
+    keepHover: cancelClear,
+    pinHover,
+    unpinHover,
+    pinned,
+  };
 }
 
 /** How long the card survives the pointer leaving a point. */

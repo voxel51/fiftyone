@@ -30,7 +30,7 @@ import {
 import { ClickDetector } from "./interaction/ClickDetector";
 import { HoverPicker } from "./interaction/HoverPicker";
 import { LassoOverlay } from "./interaction/LassoOverlay";
-import { nearestPoint, selectInPolygon } from "./math";
+import { nearestPoint, projectPoint, selectInPolygon } from "./math";
 import { SelectionLayers } from "./selectionLayers";
 import { DensityPipeline } from "./pipeline";
 import {
@@ -42,6 +42,7 @@ import {
 import type {
   CameraAdapter,
   CameraAdapterFactory,
+  CellMembership,
   EmbeddingPoint,
   HoverHit,
   InteractionMode,
@@ -77,6 +78,12 @@ export interface EmbeddingsChartCallbacks {
    * own layers (filters, chrome) beyond the selection.
    */
   onBackgroundClick?: () => void;
+  /**
+   * The camera moved (pan, zoom, reset) or the viewport resized, so every
+   * point is somewhere else on screen. Hosts with chrome anchored to a
+   * point re-read {@link EmbeddingsChart.projectPoint} from here.
+   */
+  onCameraChange?: () => void;
 }
 
 export interface EmbeddingsChartOptions {
@@ -328,27 +335,41 @@ export class EmbeddingsChart {
   }
 
   /**
-   * Per-point visibility as 0/1 bytes (null = all visible) — in FiftyOne
-   * terms, the current view's membership mask. Hidden points are clipped
-   * in the vertex shader and skipped by every hit-test. The current view
-   * never moves when visibility changes, but the camera's FOCUS follows
-   * the visible subset: reset() re-frames to it, and orbit-style cameras
-   * pivot around it.
+   * Per-point visibility as 0/1 bytes, or as membership in a shared
+   * cell-ordinal array (`ordinals[i] === ordinal` — a facet layout shares
+   * one array across cells instead of allocating a mask per cell); null =
+   * all visible. In FiftyOne terms, the current view's membership mask.
+   * Hidden points are clipped in the vertex shader and skipped by every
+   * hit-test. The current view never moves when visibility changes, but the
+   * camera's FOCUS follows the visible subset: reset() re-frames to it, and
+   * orbit-style cameras pivot around it.
    */
-  setVisible(mask: Uint8Array | null): void {
+  setVisible(mask: Uint8Array | CellMembership | null): void {
     const { cols, visibleAttribute } = this;
     if (!cols || !visibleAttribute) return;
-    if (mask && mask.length !== cols.n) {
+    const length = mask
+      ? mask instanceof Uint8Array
+        ? mask.length
+        : mask.ordinals.length
+      : cols.n;
+    if (mask && length !== cols.n) {
       throw new Error(
-        `setVisible expects ${cols.n} bytes (one per point), got ${mask.length}`,
+        `setVisible expects ${cols.n} entries (one per point), got ${length}`,
       );
     }
     const array = visibleAttribute.array as Uint8Array;
-    if (mask) {
+    if (mask instanceof Uint8Array) {
       array.set(mask);
       // Point hit-tests at the chart-owned copy the GPU renders from —
       // holding the caller's array would let later caller mutations
       // desynchronize picking from what's drawn
+      this.visibleMask = array;
+    } else if (mask) {
+      // Filled straight from the shared ordinals — no intermediate mask
+      const { ordinals, ordinal } = mask;
+      for (let i = 0; i < ordinals.length; i++) {
+        array[i] = ordinals[i] === ordinal ? 1 : 0;
+      }
       this.visibleMask = array;
     } else {
       array.fill(1);
@@ -357,7 +378,7 @@ export class EmbeddingsChart {
     if (this.adapter?.setFocus) {
       // An empty visible subset keeps the previous focus — framing
       // nothing helps no one
-      const focus = mask ? visibleBounds(cols, mask) : null;
+      const focus = mask ? visibleBounds(cols, array) : null;
       if (!mask || focus) this.adapter.setFocus(focus);
     }
     visibleAttribute.needsUpdate = true;
@@ -461,6 +482,7 @@ export class EmbeddingsChart {
     const onChange = () => {
       this.requestRender();
       this.picker.viewChanged();
+      this.callbacks.onCameraChange?.();
     };
     this.adapter =
       hasZ && this.zCamera
@@ -493,6 +515,20 @@ export class EmbeddingsChart {
       camera.projectionMatrix,
       camera.matrixWorldInverse,
     ).elements;
+  }
+
+  /**
+   * Where a point sits on screen right now (CSS px, container-relative), or
+   * null when it has no projection — an unknown index, or a point behind the
+   * camera. For host chrome anchored to a point: read it again on
+   * `onCameraChange`, since panning and zooming move the point out from
+   * under whatever marks it.
+   */
+  projectPoint(index: number): { x: number; y: number } | null {
+    const { cols } = this;
+    const m = this.currentViewProjection();
+    if (!cols || !m) return null;
+    return projectPoint(cols, m, this.width, this.height, index);
   }
 
   private pick(x: number, y: number): HoverHit | null {
@@ -565,6 +601,9 @@ export class EmbeddingsChart {
     this.pipeline.setSize(Math.round(width * dpr), Math.round(height * dpr));
     this.adapter?.resize(width, height);
     this.requestRender();
+    // Even an adapter that re-frames without notifying has moved every
+    // projected position here: the viewport itself changed
+    this.callbacks.onCameraChange?.();
   }
 
   /** Coalesce render requests into one render per animation frame */

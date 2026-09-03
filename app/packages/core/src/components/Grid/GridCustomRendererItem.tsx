@@ -7,13 +7,11 @@ import {
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/timeline";
-import { TemporalTagGridOverlay } from "@fiftyone/multimodal/temporal-tags/grid-overlay";
+import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
-import classes from "./GridCustomRendererItem.module.css";
 import GridTagBubbles from "./GridTagBubbles";
 
 type GridCustomRendererItemConfig = {
@@ -85,25 +83,6 @@ const HOST_ELEMENT_STYLES: React.CSSProperties = {
   height: "100%",
   position: "relative",
   overflow: "hidden",
-};
-
-const OPEN_MODAL_BUTTON_STYLES: React.CSSProperties = {
-  position: "absolute",
-  right: "8px",
-  bottom: "8px",
-  width: "22px",
-  height: "22px",
-  border: "1px solid rgba(255, 255, 255, 0.28)",
-  borderRadius: "6px",
-  background: "rgba(18, 18, 18, 0.72)",
-  color: "#f5f5f5",
-  fontSize: "14px",
-  alignItems: "center",
-  display: "flex",
-  justifyContent: "center",
-  padding: 0,
-  cursor: "pointer",
-  zIndex: 20,
 };
 
 // Bottom chrome for a tile: stacks the tag bubbles and (for multimodal) the
@@ -178,7 +157,6 @@ function getSourceSizeHintBytes(
 type GridCustomRendererWrapperProps = React.PropsWithChildren<{
   clickBehavior?: SampleRendererGridClickBehavior;
   selected: boolean;
-  onOpenModal: React.MouseEventHandler<HTMLButtonElement>;
   onSelect: React.MouseEventHandler<HTMLButtonElement>;
 }>;
 
@@ -192,7 +170,6 @@ const GridCustomRendererWrapper = ({
   children,
   clickBehavior = "renderer",
   selected,
-  onOpenModal,
   onSelect,
 }: GridCustomRendererWrapperProps) => {
   const [hovering, setHovering] = React.useState(false);
@@ -201,9 +178,13 @@ const GridCustomRendererWrapper = ({
 
   return (
     <div
-      className={classes.container}
       style={CONTAINER_STYLES}
       data-cy="grid-custom-renderer"
+      // Stable handle on the tile's outer bounds, for renderer-owned chrome
+      // that has to track the pointer across the whole cell rather than only
+      // its own subtree. Production code depends on this; unlike `data-cy` it
+      // is not a test hook and must not be renamed with one.
+      data-grid-tile=""
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
@@ -223,15 +204,6 @@ const GridCustomRendererWrapper = ({
           onClick={onSelect}
         />
       )}
-      <button
-        aria-label="Open sample modal"
-        className={classes.openModalButton}
-        title="Open sample modal"
-        onClick={onOpenModal}
-        style={OPEN_MODAL_BUTTON_STYLES}
-      >
-        <OpenInFullIcon fontSize="inherit" />
-      </button>
     </div>
   );
 };
@@ -317,6 +289,9 @@ export class GridCustomRendererItem {
   private dimensions?: GridItemDimensions;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
+    // Assigned rather than spread into a new context so the identity stays
+    // stable across renders; `config.ctx` is never reassigned.
+    config.ctx.openModal = this.openModal;
     Object.assign(this.hostElement.style, HOST_ELEMENT_STYLES);
     this.pluginFailed = fos.isGridCustomRendererFailOpen(
       this.config.ctx.dataset.name,
@@ -388,7 +363,6 @@ export class GridCustomRendererItem {
           <GridCustomRendererWrapper
             clickBehavior={this.config.clickBehavior}
             selected={this.selected}
-            onOpenModal={this.handleOpenModalClick}
             onSelect={this.handleSelectSampleClick}
           >
             <GridCustomRenderer
@@ -400,7 +374,7 @@ export class GridCustomRendererItem {
               <GridTagBubbles sample={sample} />
               {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
                 <>
-                  <TemporalTagGridOverlay ctx={ctx} />
+                  <EpisodeGridOverlay ctx={ctx} />
                   <McapGridOverlays ctx={ctx} />
                 </>
               ) : null}
@@ -443,12 +417,14 @@ export class GridCustomRendererItem {
     this.renderPluginRenderer();
   };
 
-  private handleOpenModalClick = (
-    event: React.MouseEvent<HTMLButtonElement>,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-
+  /**
+   * Opens this sample's modal, handed to the renderer as `ctx.openModal`.
+   *
+   * Reuses the grid's own activation path — a click on the mounted element —
+   * rather than reaching for the modal directly, so a renderer-owned button
+   * lands the user in exactly the same place a click on an ordinary tile does.
+   */
+  private openModal = () => {
     if (!this.mountedElement || this.destroyed) {
       return;
     }

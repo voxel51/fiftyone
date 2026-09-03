@@ -73,6 +73,15 @@ export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
      * source-backed content from the retained sample.
      */
     transitioning?: boolean;
+    /**
+     * Opens this sample's modal. Present on the grid surface only.
+     *
+     * A renderer whose own surface consumes the click — an orbit-controlled
+     * point cloud, say — renders its own affordance and calls this, placing it
+     * clear of its chrome. A tile the grid can activate directly needs
+     * nothing: see {@link SampleRendererGridClickBehavior}.
+     */
+    openModal?: () => void;
   };
 
 /**
@@ -100,15 +109,15 @@ export type SampleRendererGridSlot =
  * Controls how otherwise-unhandled grid-tile activation events are routed.
  *
  * - `"renderer"` (default) keeps click and context-menu events inside the
- *   sample renderer. Users open the sample modal with the grid's explicit
- *   open-modal control.
+ *   sample renderer. The grid draws no open-modal control of its own, so a
+ *   renderer on this mode owes its users an affordance that calls
+ *   `ctx.openModal` — otherwise the tile has no route to the sample modal.
  * - `"passthrough"` allows those events to bubble to the host grid, where a
  *   normal tile click opens the sample modal. Renderer-owned interactive
  *   regions can still call `stopPropagation()` to retain their interactions.
  *
  * This option does not disable pointer events or affect hover behavior,
- * renderer-owned controls, the sample-selection checkbox, or the explicit
- * open-modal control.
+ * renderer-owned controls, or the sample-selection checkbox.
  */
 export type SampleRendererGridClickBehavior = "renderer" | "passthrough";
 

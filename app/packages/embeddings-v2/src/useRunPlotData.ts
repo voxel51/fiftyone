@@ -54,7 +54,11 @@ import {
 } from "./legendFilter";
 import { type ColorMeta, type VisualizationRun } from "./protocol";
 import type { EmbeddingsViewHandle, HoverHit } from "./renderer";
-import { clearSelectionNonceState, selectionCountState } from "./state";
+import {
+  clearSelectionNonceState,
+  selectionCountState,
+  selectionSampleCountState,
+} from "./state";
 import {
   getEmbeddingsPanelExtension,
   useFallbackRunFeatures,
@@ -86,6 +90,9 @@ export interface RunPlotData {
   colorOptions: { id: string; data: { label: string } }[];
   colorMeta: ColorMeta | null;
   colorLoading: boolean;
+  /** More color-by choices are still resolving — the list is short, not
+   * empty, and a reader must be told which */
+  choicesLoading: boolean;
   pointColors: Float32Array | null;
   /** The App color scheme's palette/colorscale for the color-by field —
    * the legend and the points read the same ones */
@@ -118,6 +125,8 @@ export interface RunPlotData {
   selectedSamples: Map<string, SelectionType>;
   selectionCount: number | null;
   chipCount: number | null;
+  /** Distinct selected samples; null when only points are knowable. */
+  chipSampleCount: number | null;
   handleLasso: (
     indices: number[],
     polygon?: Array<[number, number]> | null,
@@ -132,6 +141,13 @@ export interface RunPlotData {
   hoverHit: ReturnType<typeof useHoverInfo>["hoverHit"];
   handleHover: ReturnType<typeof useHoverInfo>["handleHover"];
   keepHover: () => void;
+  /** Freezes the hover card, so the pointer can leave the point and reach the
+   * card's own actions. */
+  pinHover: () => void;
+  /** Releases the freeze and drops the card. */
+  unpinHover: () => void;
+  /** The hover card is currently frozen. */
+  pinned: boolean;
 
   // The extension's per-run feature surface (masks and slots); the shell
   // renders its header controls, banner, notice, settings sections and
@@ -194,18 +210,24 @@ export function useRunPlotData(
   // the extension's decorator joins the same commit.
   const publishSelection: PublishSelection = useRecoilCallback(
     ({ set, reset }) =>
-      (next) => {
+      (next, io) => {
+        // `io` is a caller's already-open transaction; writing through it
+        // joins that commit instead of opening a second one
+        const cb = io ?? { set, reset };
         if (next.stage !== undefined) {
-          set(fos.extendedSelectionOverrideStage, (current) =>
+          cb.set(fos.extendedSelectionOverrideStage, (current) =>
             current && JSON.stringify(current) === JSON.stringify(next.stage)
               ? current
               : (next.stage as never),
           );
         }
         if (next.count !== undefined) {
-          set(selectionCountState, next.count as never);
+          cb.set(selectionCountState, next.count as never);
         }
-        next.decorate?.({ set, reset });
+        if (next.sampleCount !== undefined) {
+          cb.set(selectionSampleCountState, next.sampleCount as never);
+        }
+        next.decorate?.(cb);
       },
     [],
   );
@@ -297,6 +319,7 @@ export function useRunPlotData(
     values: colorValues,
     meta: colorMeta,
     loading: colorLoading,
+    choicesLoading,
     error: colorError,
   } = useColorColumn(
     datasetName,
@@ -396,6 +419,9 @@ export function useRunPlotData(
   // extension-owned paths, so only the browser can narrow the plot by
   // them; what it does not own passes through below.
   const useRunFeatures = extension?.useRunFeatures ?? useFallbackRunFeatures;
+  // Filled below, once the masks it is derived from resolve. Stable, so the
+  // features hook keeps one identity across mask changes.
+  const visibleRef = useRef<Uint8Array | null>(null);
   const features = useRunFeatures({
     datasetName,
     brainKey,
@@ -408,9 +434,11 @@ export function useRunPlotData(
     colorMeta,
     loadedIds: idColumn,
     loadedCount,
+    loadedTotal: total,
     publishSelection,
     setOverrideStage,
     resetExtended,
+    visibleRef,
   });
 
   // Filters the extension answered locally are its own; everything else
@@ -477,13 +505,17 @@ export function useRunPlotData(
     // Don't mutate the shared mask from useMasks
     const out = base === visibleMask ? base.slice() : base;
     const classes = colorMeta.classes ?? [];
+    // Probed per class, not per point: a per-point stringify-and-hash is the
+    // loop's whole cost
+    const hidden = new Uint8Array(classes.length);
+    for (let ci = 0; ci < classes.length; ci++) {
+      if (off.has(String(classes[ci]?.label))) hidden[ci] = 1;
+    }
     const indices = colorValues.indices;
     const limit = Math.min(n, indices.length);
     for (let i = 0; i < limit; i++) {
       const ci = indices[i];
-      if (ci === MISSING_CATEGORY) continue;
-      const label = classes[ci]?.label;
-      if (label !== undefined && off.has(String(label))) out[i] = 0;
+      if (ci !== MISSING_CATEGORY && hidden[ci]) out[i] = 0;
     }
     return out;
   }, [
@@ -495,6 +527,10 @@ export function useRunPlotData(
     colorValues,
     colorMeta,
   ]);
+
+  // Assigned during render rather than in an effect: an interaction that fires
+  // before effects flush must still see the mask this render computed.
+  visibleRef.current = plotVisible;
 
   /** Points actually drawn. Counted from the rendered mask rather than taken
    * from useMasks: that count knows only about the server/client filters, so
@@ -516,7 +552,15 @@ export function useRunPlotData(
       : categoryCss(palette, valueIndex);
   };
 
-  const { hover, hoverHit, handleHover, keepHover } = useHoverInfo(
+  const {
+    hover,
+    hoverHit,
+    handleHover,
+    keepHover,
+    pinHover,
+    unpinHover,
+    pinned,
+  } = useHoverInfo(
     datasetName,
     brainKey,
     colorField,
@@ -546,6 +590,9 @@ export function useRunPlotData(
         chartsRef.current.forEach((chart) => chart.resetCamera()),
       clearSelection: () =>
         chartsRef.current.forEach((chart) => chart.clearSelection()),
+      // Fan-out only: a point projects through ONE cell's camera, and this
+      // handle stands for every cell at once
+      projectPoint: () => null,
     },
   }).current;
 
@@ -572,6 +619,34 @@ export function useRunPlotData(
     resolveLassoStage: features.resolveLassoStage,
     publishSelection,
   });
+
+  // Selection lives in global singletons (see the module docstring above)
+  // that outlive this run, so switching runs has to abandon it: run A's
+  // points mean nothing in run B. Opening the panel does NOT — a selection
+  // made before it opened is the reader's, and the plot renders it as
+  // emphasis rather than replacing it.
+  const seenRun = useRef<string | null>(null);
+  useEffect(() => {
+    // Keyed by dataset AND brain key: two datasets can hold same-named runs
+    const runId = `${datasetName ?? ""}\0${brainKey}`;
+    if (seenRun.current === runId) return;
+    const firstRun = seenRun.current === null;
+    seenRun.current = runId;
+    if (!firstRun) clearAll();
+  }, [datasetName, brainKey, clearAll]);
+
+  // The tab's pill lives outside the panel tree and outlives the plot, so
+  // the counts it reads have to be dropped here or it keeps rendering the
+  // last selection after the panel is gone
+  const resetPublishedCounts = useRecoilCallback(
+    ({ reset }) =>
+      () => {
+        reset(selectionCountState);
+        reset(selectionSampleCountState);
+      },
+    [],
+  );
+  useEffect(() => resetPublishedCounts, [resetPublishedCounts]);
 
   // Focus (selection) wins over scope (view + filters); null means
   // nothing to scope by, and the legend shows the run's full counts.
@@ -627,7 +702,9 @@ export function useRunPlotData(
         } else {
           reset(filterState);
         }
-        onLegendFilterChangeRef.current(next);
+        // Same transaction: the extension's stage/marks publish must not be
+        // a second commit (each commit costs a sidebar aggregation round)
+        onLegendFilterChangeRef.current(next, { set, reset });
       },
     [filterPath, legend],
   );
@@ -635,13 +712,14 @@ export function useRunPlotData(
   const handleLegendSolo = (label: string) => handleLegendClick(label, true);
 
   const resetLegendFilter = useRecoilCallback(
-    ({ reset }) =>
+    ({ set, reset }) =>
       () => {
         if (filterPath) {
           reset(fos.filter({ path: filterPath, modal: false }));
           // Clearing the class filter also clears anything the extension
-          // derived from it (e.g. legend-driven linked-view marks)
-          onLegendFilterChangeRef.current(null);
+          // derived from it (e.g. legend-driven linked-view marks) — in the
+          // SAME commit, so the sidebar aggregates once
+          onLegendFilterChangeRef.current(null, { set, reset });
         }
       },
     [filterPath],
@@ -655,15 +733,16 @@ export function useRunPlotData(
       () => {
         reset(fos.filters);
         set(fos.extendedSelectionOverrideStage, null);
-        onLegendFilterChangeRef.current(null);
+        onLegendFilterChangeRef.current(null, { set, reset });
       },
     [],
   );
 
   // EVERYTHING to no-selection-anywhere: lasso, grid checkboxes, extended
-  // stages, every sidebar filter. The color-by field stays — its column
-  // aggregates server-side and re-selecting it would pay that cost again.
-  // Distinct from resetCameras, which only recenters.
+  // stages and every sidebar filter. NOT the color-by field: coloring narrows
+  // nothing, so clearing it is a second, unasked-for change — and re-picking
+  // the field costs a round trip for a column the reader never stopped
+  // wanting. Distinct from resetCameras, which only recenters.
   const resetAll = useCallback(() => {
     clearAll();
     resetAllFilters();
@@ -699,10 +778,7 @@ export function useRunPlotData(
   // A completed 3D lasso returns gestures to the camera — orbiting to
   // inspect the selection is the natural next step. 2D stays in select
   // mode so lassos can be redrawn without re-arming the tool
-  // (FOEPD-4319); each new lasso replaces the previous selection. NOT in
-  // an extension mode: a lasso there IS that mode's input (e.g. a query),
-  // and dropping to explore would turn the mode off under the user
-  const extraMode = features.extraMode;
+  // (FOEPD-4319); each new lasso replaces the previous selection.
   const handleLasso = useCallback(
     (indices: number[], polygon?: Array<[number, number]> | null) => {
       // A lasso that caught nothing is not an instruction. Every rendered
@@ -711,15 +787,10 @@ export function useRunPlotData(
       // "deselect everything" wipes a selection made in another cell
       if (!indices.length) return;
 
-      if (extraMode && mode === extraMode.key) {
-        extraMode.onLasso(indices);
-        return;
-      }
-
       handleSelection(indices, polygon);
       if (run.dims === 3) setMode("explore");
     },
-    [mode, handleSelection, extraMode, run.dims],
+    [handleSelection, run.dims],
   );
 
   // The published count IS the count. Every selection — lasso, grid, an
@@ -730,10 +801,19 @@ export function useRunPlotData(
   // appeared for anything but a grid checkbox.
   const publishedCount = useRecoilValue(selectionCountState);
   const chipCount = publishedCount ?? (selectedSamples.size || null);
+  const publishedSampleCount = useRecoilValue(selectionSampleCountState);
+  // In the unpublished (grid-checkbox) fallback, the selection size IS a
+  // sample count
+  const chipSampleCount =
+    publishedCount == null ? chipCount : publishedSampleCount;
 
   // chipCount is the pre-click value — the chart clears its own lasso layer
   // before this fires. See backgroundClickAction for which layer comes off
   const handleBackgroundClick = useCallback(() => {
+    // A frozen card is about a point; clicking away from every point is the
+    // plainest way to say "not that one" — its own close control is for
+    // readers whose next click is somewhere the plot would act on
+    unpinHover();
     const action = backgroundClickAction({
       chipCount,
       origin: features.selectionOrigin,
@@ -746,6 +826,7 @@ export function useRunPlotData(
     clearAll,
     legendFilter,
     resetLegendFilter,
+    unpinHover,
     features.selectionOrigin,
   ]);
 
@@ -768,6 +849,7 @@ export function useRunPlotData(
     colorOptions,
     colorMeta,
     colorLoading,
+    choicesLoading,
     pointColors,
     palette,
     colorscale,
@@ -783,6 +865,7 @@ export function useRunPlotData(
     selectedSamples,
     selectionCount: chipCount,
     chipCount,
+    chipSampleCount,
     handleLasso,
     handlePointClick,
     handleBackgroundClick,
@@ -791,6 +874,9 @@ export function useRunPlotData(
     hoverHit,
     handleHover,
     keepHover,
+    pinHover,
+    unpinHover,
+    pinned,
     features,
     legend,
     legendFilter,
