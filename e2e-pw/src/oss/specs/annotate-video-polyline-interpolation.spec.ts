@@ -281,3 +281,34 @@ test.describe.serial("polyline interpolation on video", () => {
     ).toBeGreaterThan(5);
   });
 });
+
+test.describe("polyline track deletion on video", () => {
+  test("Backspace deletes a selected polyline track on the first press", async ({
+    fiftyoneLoader,
+    modal,
+    page,
+  }) => {
+    // Reported: deleting a polyline track with Backspace took two rounds of
+    // select-then-press before the track went away.
+    await openAnnotate(fiftyoneLoader, modal, page);
+
+    const id = await drawPolyline(modal);
+    await blur(page);
+    await modal.videoAnnotate.assert.objectTrackCount(2);
+
+    // a body click selects the shape without sub-selecting a vertex, so
+    // Backspace reads as "delete the track", not "remove a vertex"
+    await modal.sampleCanvas.click(BODY[0], BODY[1]);
+    await page.keyboard.press("Backspace");
+
+    await expect
+      .poll(
+        () => polylineIds(modal),
+        "the drawn track should leave the canvas on the first press",
+      )
+      .not.toContain(id);
+    await modal.videoAnnotate.assert.objectTrackCount(1);
+    // the delete flushes before the test ends
+    await modal.sidebar.annotate.waitForSavesSettled();
+  });
+});
