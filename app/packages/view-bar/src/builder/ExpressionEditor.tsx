@@ -480,6 +480,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               color={STATUS_COLOR[status.state]}
             />
             <Tooltip
+              portal
               content={
                 status.state === "invalid"
                   ? status.message
@@ -636,6 +637,7 @@ const Signature: React.FC<{
       <Pill size={Size.Xs}>{KIND_LABEL[argKind]}</Pill>
     </Stack>
     <Tooltip
+      portal
       anchor={Anchor.Bottom}
       content={operator.summary}
       wrapperClassName={styles.shrinkable}
@@ -723,7 +725,7 @@ const Suggestion: React.FC<{
   // Every operator explains itself on hover — its docstring summary from the
   // catalog, or the reason it does not apply here
   return (
-    <Tooltip content={reason ?? operator.summary} anchor={Anchor.Right}>
+    <Tooltip portal content={reason ?? operator.summary} anchor={Anchor.Right}>
       {row}
     </Tooltip>
   );

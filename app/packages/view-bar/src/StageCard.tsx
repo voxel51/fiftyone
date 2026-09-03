@@ -183,6 +183,7 @@ export const StageCard: React.FC<StageCardProps> = ({
         {/* Always-visible compact preview: name + first-arg value.
               Click opens the editing popover below. */}
         <Tooltip
+          portal
           anchor={Anchor.Bottom}
           content={expanded ? "Close editor" : "Edit stage"}
         >
@@ -226,6 +227,7 @@ export const StageCard: React.FC<StageCardProps> = ({
         {/* The stage's full story lives in its API docs — a quiet link on
               the pill itself, out of the popover's way */}
         <Tooltip
+          portal
           anchor={Anchor.Bottom}
           content={`${definition.name} API documentation`}
         >
@@ -242,7 +244,7 @@ export const StageCard: React.FC<StageCardProps> = ({
           />
         </Tooltip>
 
-        <Tooltip anchor={Anchor.Bottom} content="Remove stage">
+        <Tooltip portal anchor={Anchor.Bottom} content="Remove stage">
           <Button
             onClick={onRemove}
             aria-label="Remove stage"

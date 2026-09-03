@@ -82,7 +82,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
     // slide itself back into view. Beside the "+" it grows away from the
     // edge instead.
     return (
-      <Tooltip anchor={Anchor.Right} content="Insert stage">
+      <Tooltip portal anchor={Anchor.Right} content="Insert stage">
         <Button
           variant={Variant.Icon}
           size={Size.Sm}

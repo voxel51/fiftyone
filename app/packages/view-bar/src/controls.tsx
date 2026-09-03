@@ -415,6 +415,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
                   // must be allowed to shrink, or the ellipsis never engages
                   // and the message runs out of the popover
                   <Tooltip
+                    portal
                     content={error ?? ""}
                     wrapperClassName={styles.shrinkable}
                   >
@@ -434,6 +435,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
                 the pill */}
               {param.tokens.includes("expr") && (
                 <Tooltip
+                  portal
                   anchor={Anchor.Bottom}
                   content="View expression documentation"
                 >
@@ -568,6 +570,7 @@ export const ParamInput: React.FC<
 
         return unavailable ? (
           <Tooltip
+            portal
             key={mode}
             content="This filter was not written as an expression, so it can only be edited as JSON"
           >
