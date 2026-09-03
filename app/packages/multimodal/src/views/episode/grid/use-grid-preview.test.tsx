@@ -12,8 +12,10 @@ import {
 import type { EpisodePreviewSession } from "../../../ports";
 import {
   getEpisodePlayhead,
+  getEpisodeTimeRange,
   getSourceBootstrap,
   resetEpisodePlayheadsForTests,
+  resetEpisodeTimeRangesForTests,
   resetSourceBootstrapCacheForTests,
 } from "../../../runtime";
 import {
@@ -36,6 +38,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   resetSourceBootstrapCacheForTests();
   resetEpisodePlayheadsForTests();
+  resetEpisodeTimeRangesForTests();
 });
 
 describe("useGridPreview", () => {
@@ -1073,6 +1076,45 @@ describe("useGridPreview episode playhead", () => {
     rerender(harness("episode-b"));
 
     await waitFor(() => expect(getEpisodePlayhead("episode-a")).toBeNull());
+    // The retained frame moves with the tile: releasing the old episode
+    // without republishing under the new one leaves the new lane with no
+    // playhead until the next presented frame, which on a paused tile never
+    // comes.
+    expect(getEpisodePlayhead("episode-b")).toBe(FRAME_NS);
+  });
+
+  it("publishes a frame retained before the tile had an identity", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({ bytes: [1], frameTimeNs: FRAME_NS }),
+    );
+    const { rerender } = render(harness(null));
+    await waitFor(() => expect(sessionHarness.session.read).toHaveBeenCalled());
+
+    rerender(harness("episode-b"));
+
+    await waitFor(() => expect(getEpisodePlayhead("episode-b")).toBe(FRAME_NS));
+  });
+
+  // The lane draws its axis from this range. Publishing the bootstrap under
+  // the source id alone — as it was before the episode seam — leaves every
+  // absolute-ns tile with no axis at all.
+  it("publishes the episode's time range under its episode", async () => {
+    sessionHarness.session.read.mockResolvedValue(
+      readyResult({
+        bootstrapTimeRange: { endNs: FRAME_NS + 100n, startNs: FRAME_NS },
+        bytes: [1],
+        frameTimeNs: FRAME_NS,
+      }),
+    );
+
+    render(harness("episode-a"));
+
+    await waitFor(() =>
+      expect(getEpisodeTimeRange("episode-a")).toEqual({
+        endNs: FRAME_NS + 100n,
+        startNs: FRAME_NS,
+      }),
+    );
   });
 
   it("withdraws the playhead when the tile unmounts", async () => {
@@ -1161,6 +1203,7 @@ function formatState(state: GridPreviewState): string {
 }
 
 function readyResult({
+  bootstrapTimeRange,
   bytes,
   nativeVideo,
   nextStartTimeNs = 5n,
@@ -1169,6 +1212,10 @@ function readyResult({
     : nextStartTimeNs - 1n,
   streamId = "/camera/front",
 }: {
+  readonly bootstrapTimeRange?: {
+    readonly startNs: bigint;
+    readonly endNs: bigint;
+  };
   readonly bytes: readonly number[];
   readonly frameTimeNs?: bigint;
   readonly nativeVideo?: EpisodePreviewNativeVideo;
@@ -1176,6 +1223,7 @@ function readyResult({
   readonly nextStartTimeNs?: bigint;
 }): EpisodePreviewReadResult {
   return {
+    ...(bootstrapTimeRange ? { bootstrapTimeRange } : {}),
     frame: {
       image: createImage(bytes),
       kind: "image",

@@ -162,6 +162,73 @@ export const pathColor = selectorFamily<string, string>({
 });
 
 /**
+ * How a sidebar filter path's values are colored when coloring by value: the
+ * per-value colors that apply to it, and whether value coloring reaches the
+ * path at all.
+ *
+ * The color scheme stores value colors under the *label field*
+ * (`ground_truth`), not under the filter path the sidebar row sits at
+ * (`ground_truth.detections.label`), and the looker paints them only for the
+ * one attribute that field is colored by — `colorByAttribute`, defaulting to
+ * `label`. A row for any other attribute is not what the overlays key on, so
+ * it takes the field color rather than a hash of its own values; looking the
+ * setting up under the filter path instead would miss every configured color
+ * and hash all of them.
+ *
+ * A path outside any label field owns its own entry, and every value on it
+ * applies.
+ */
+const valueColoring = selectorFamily<
+  { readonly applies: boolean; readonly configured: Map<string, string> },
+  string
+>({
+  key: "valueColoring",
+  get:
+    (path) =>
+    ({ get }) => {
+      const scheme = get(atoms.colorScheme);
+      const configured = (setting?: {
+        valueColors?: readonly { value: string; color: string }[] | null;
+      }) =>
+        new Map((setting?.valueColors ?? []).map((v) => [v.value, v.color]));
+
+      if (path === "_label_tags") {
+        return { applies: true, configured: configured(scheme.labelTags) };
+      }
+
+      // Same derivation as `pathColor`: a label field owns every path beneath
+      // it, and under video the frames prefix is part of the field's name.
+      const video = get(atoms.mediaType) !== "image";
+      const parentPath =
+        video && path.startsWith("frames.")
+          ? path.split(".").slice(0, 2).join(".")
+          : path.split(".")[0];
+
+      if (!get(schemaAtoms.labelFields({})).includes(parentPath)) {
+        return {
+          applies: true,
+          configured: configured(scheme.fields?.find((x) => x.path === path)),
+        };
+      }
+
+      const setting = scheme.fields?.find((x) => x.path === parentPath);
+      const attribute = path
+        .slice(parentPath.length + 1)
+        .split(".")
+        .pop();
+
+      if ((setting?.colorByAttribute || "label") !== attribute) {
+        return { applies: false, configured: new Map<string, string>() };
+      }
+
+      return { applies: true, configured: configured(setting) };
+    },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+/**
  * Resolver for the values of one path, under whichever color-by mode is set:
  * the path's own field color when coloring by field, and the value's own color
  * when coloring by value, honoring any per-value colors configured for the
@@ -188,10 +255,12 @@ export const valueColor = selectorFamily<
         return () => field;
       }
 
-      const setting = scheme.fields?.find((x) => x.path === path);
-      const configured = new Map(
-        (setting?.valueColors ?? []).map((v) => [v.value, v.color]),
-      );
+      const { applies, configured } = get(valueColoring(path));
+
+      if (!applies) {
+        return () => field;
+      }
+
       const map = get(colorMap);
 
       // A null value is the "no value" row, which names nothing to color by.
@@ -209,21 +278,18 @@ export const valueColor = selectorFamily<
 export const useValueColor = (path: string) => useRecoilValue(valueColor(path));
 
 /**
- * Value resolvers for a set of multimodal projection paths, each resolved
- * exactly as the sidebar resolves that row, so a grain's intervals on the grid
- * tile and its rows on the episode timeline match the sidebar entry the user
- * filtered from — in either color-by mode.
+ * {@link valueColor} resolvers for a set of paths, resolved together.
  *
  * Takes the paths up front rather than returning a `(path) => color` closure
  * the way {@link temporalTagColor} does: {@link valueColor} reads schema and
  * color-scheme state per path through Recoil, which cannot be evaluated lazily
  * inside a plain function.
  */
-const grainColors = selectorFamily<
+const pathValueColors = selectorFamily<
   Record<string, (value: string | null) => string>,
   readonly string[]
 >({
-  key: "grainColors",
+  key: "pathValueColors",
   get:
     (paths) =>
     ({ get }) =>
@@ -234,20 +300,20 @@ const grainColors = selectorFamily<
 });
 
 /**
- * Domain hook for {@link grainColors}: returns a
- * `(path: string, value?: string) => string` mapping a multimodal projection
- * path — and, where the row is named by something the sidebar also lists as a
- * filter value, that value — to the color the sidebar shows for it.
+ * Domain hook for {@link pathValueColors}: returns a
+ * `(path: string, value?: string) => string` resolving any of `paths` — and,
+ * where the caller names one of that path's values, that value — to the color
+ * the sidebar shows for it.
  *
- * Omit `value` for a row the sidebar has no value dot for, such as a signals
- * projection: those take the field's color in both modes. A path that was not
- * requested falls back to the seeded pool, so a caller that discovers a path
- * late still gets a stable color rather than nothing.
+ * Omit `value` for something the sidebar has no value dot for: those take the
+ * field's color in both modes. A path that was not requested falls back to the
+ * seeded pool, so a caller that discovers a path late still gets a stable
+ * color rather than nothing.
  */
-export const useGrainColor = (
+export const usePathValueColors = (
   paths: readonly string[],
 ): ((path: string, value?: string) => string) => {
-  const colors = useRecoilValue(grainColors(paths));
+  const colors = useRecoilValue(pathValueColors(paths));
   const map = useRecoilValue(colorMap);
   return useCallback(
     (path: string, value?: string) =>

@@ -441,6 +441,18 @@ describe("GridRenderer", () => {
     expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
   });
 
+  // The tile is the only thing that knows which episode it is showing, and the
+  // interval lane is a sibling that reads the playhead and range back by that
+  // identity. Without this the lane has nothing to key on and every tile
+  // silently loses its axis.
+  it("hands the sample's identity to the preview hook as the episode id", () => {
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      episodeId: "1",
+    });
+  });
+
   it("keeps provider misses in the non-provider cache namespace", () => {
     const source = {
       sourceId: "provider-miss",

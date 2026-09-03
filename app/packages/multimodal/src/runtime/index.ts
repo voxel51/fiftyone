@@ -45,6 +45,7 @@ export {
   getEpisodeTimeRange,
   publishEpisodeTimeRange,
   releaseEpisodeTimeRange,
+  resetEpisodeTimeRangesForTests,
   subscribeEpisodeTimeRange,
 } from "./episode-time-range-registry";
 export {

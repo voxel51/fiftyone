@@ -180,6 +180,11 @@ const GridCustomRendererWrapper = ({
     <div
       style={CONTAINER_STYLES}
       data-cy="grid-custom-renderer"
+      // Stable handle on the tile's outer bounds, for renderer-owned chrome
+      // that has to track the pointer across the whole cell rather than only
+      // its own subtree. Production code depends on this; unlike `data-cy` it
+      // is not a test hook and must not be renamed with one.
+      data-grid-tile=""
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}

@@ -458,6 +458,7 @@ export function GridRenderer({
           key={`${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.codec}:${preview.nativeVideo.startTimeSeconds}:${preview.nativeVideo.endTimeSeconds}`}
           onCanvasCommitted={handleNativePosterCanvasCommitted}
           onError={handleNativeVideoError}
+          onPresentedTimeSeconds={preview.presentNativeTimeSeconds}
           onSurfaceRetainedBytesChange={setNativeSurfaceRetainedBytes}
           playing={preview.isPlaying}
           video={preview.nativeVideo}

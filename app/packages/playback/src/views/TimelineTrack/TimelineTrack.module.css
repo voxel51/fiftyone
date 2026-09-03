@@ -112,8 +112,6 @@
   margin-left: auto;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 0.66rem;
-  color: var(--color-content-text-secondary);
   white-space: nowrap;
 }
 

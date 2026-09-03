@@ -1,5 +1,10 @@
-const playheads = new Map<string, bigint>();
-const listeners = new Map<string, Set<() => void>>();
+import { createKeyedExternalStore } from "./keyed-external-store";
+
+// Republished on every presented frame, so an unchanged instant is dropped
+// rather than woken through to the lane.
+const playheads = createKeyedExternalStore<bigint>({
+  skipUnchanged: (previous, next) => previous === next,
+});
 
 /**
  * Publishes the instant a grid tile is currently presenting, in absolute
@@ -17,15 +22,12 @@ export function publishEpisodePlayhead(
   episodeId: string,
   timestampNs: bigint,
 ): void {
-  const current = playheads.get(episodeId);
-  if (current === timestampNs) return;
-  playheads.set(episodeId, timestampNs);
-  for (const listener of listeners.get(episodeId) ?? []) listener();
+  playheads.publish(episodeId, timestampNs);
 }
 
 /** Returns a stable external-store snapshot for one episode. */
 export function getEpisodePlayhead(episodeId: string): bigint | null {
-  return playheads.get(episodeId) ?? null;
+  return playheads.get(episodeId);
 }
 
 /**
@@ -35,8 +37,7 @@ export function getEpisodePlayhead(episodeId: string): bigint | null {
  * leave the lane marking a position nothing is showing any more.
  */
 export function releaseEpisodePlayhead(episodeId: string): void {
-  if (!playheads.delete(episodeId)) return;
-  for (const listener of listeners.get(episodeId) ?? []) listener();
+  playheads.release(episodeId);
 }
 
 /** Subscribes to playhead changes for one episode. */
@@ -44,24 +45,10 @@ export function subscribeEpisodePlayhead(
   episodeId: string,
   listener: () => void,
 ): () => void {
-  const episodeListeners = listeners.get(episodeId) ?? new Set<() => void>();
-  episodeListeners.add(listener);
-  listeners.set(episodeId, episodeListeners);
-  return () => {
-    if (listeners.get(episodeId) !== episodeListeners) return;
-    episodeListeners.delete(listener);
-    if (episodeListeners.size === 0) listeners.delete(episodeId);
-  };
+  return playheads.subscribe(episodeId, listener);
 }
 
 /** Clears shared episode playheads between tests. */
 export function resetEpisodePlayheadsForTests(): void {
-  playheads.clear();
-  try {
-    for (const episodeListeners of listeners.values()) {
-      for (const listener of episodeListeners) listener();
-    }
-  } finally {
-    listeners.clear();
-  }
+  playheads.resetForTests();
 }

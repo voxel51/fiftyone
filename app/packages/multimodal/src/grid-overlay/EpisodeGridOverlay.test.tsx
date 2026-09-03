@@ -77,14 +77,21 @@ function useSourceWith(intervals: EpisodeInterval[], id = "test:events") {
 
 /** The tile element the overlay finds by `closest` to track the pointer on. */
 function tileOf(container: HTMLElement): HTMLElement {
-  const tile = container.querySelector<HTMLElement>("[data-cy]");
+  const tile = container.querySelector<HTMLElement>("[data-grid-tile]");
   if (!tile) throw new Error("expected the tile wrapper to be rendered");
   return tile;
 }
 
-/** A tile wrapper carrying the hook the overlay tracks the pointer on. */
+/**
+ * A tile wrapper carrying the attribute the overlay tracks the pointer on.
+ *
+ * The same attribute the grid publishes in
+ * `core/src/components/Grid/GridCustomRendererItem.tsx` — a production handle,
+ * not the `data-cy` test hook, so renaming the latter cannot silently take the
+ * ghost line and the size gates with it.
+ */
 const Tile = ({ children }: { readonly children: React.ReactNode }) => (
-  <div data-cy="grid-custom-renderer">{children}</div>
+  <div data-grid-tile="">{children}</div>
 );
 
 beforeEach(() => {
@@ -107,7 +114,7 @@ beforeEach(() => {
     }) as DOMRect;
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
     function (this: HTMLElement) {
-      return this.dataset?.cy === "grid-custom-renderer"
+      return this.dataset?.gridTile !== undefined
         ? box(0, TILE_HEIGHT)
         : box(OVERLAY_TOP, TILE_HEIGHT);
     },

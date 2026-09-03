@@ -47,10 +47,10 @@ const HIT_TOLERANCE = 0.005;
  * The pointer is tracked on the tile rather than on the lane, so that moving
  * onto an interval — or onto the readout above it — neither takes the pointer
  * off the cell (which would stop hover playback) nor ends the readout. That
- * means reaching one element up and out of this package; the grid's own test
- * hook is the stable handle it offers for exactly this element.
+ * means reaching one element up and out of this package, through the attribute
+ * the grid publishes for exactly this purpose.
  */
-const TILE_SELECTOR = "[data-cy='grid-custom-renderer']";
+const TILE_SELECTOR = "[data-grid-tile]";
 
 /**
  * Tile sizes the lane stops being worth its space at.
@@ -234,10 +234,11 @@ function IntervalLane({
             data-testid="episode-grid-overlay-mark"
             style={{
               left: `${offsetPercent(mark.interval.startNs, domainSpan)}%`,
-              width: `${
-                ((mark.interval.endNs - mark.interval.startNs) / domainSpan) *
-                100
-              }%`,
+              width: `${spanPercent(
+                mark.interval.startNs,
+                mark.interval.endNs,
+                domainSpan,
+              )}%`,
               bottom: mark.level * LEVEL_STEP,
               height: MARK_HEIGHT,
               background: mark.interval.color,
@@ -281,7 +282,10 @@ function useElementSize(
     readonly height: number;
   } | null>(null);
 
-  useEffect(() => {
+  // Layout effect, not a passive one: an unmeasured tile is treated as "fits"
+  // below, so measuring after paint would let the lane paint one frame on a
+  // tile it is about to be pulled off.
+  useLayoutEffect(() => {
     if (!element) {
       setSize(null);
       return;
@@ -316,6 +320,23 @@ function clamp(value: number, low: number, high: number): number {
 
 function offsetPercent(timeNs: number, domainSpan: number): number {
   return clamp((timeNs / domainSpan) * 100, 0, 100);
+}
+
+/**
+ * The part of an interval that falls on the axis, as a width.
+ *
+ * Sources rebase their own spans and are not required to have taken them from
+ * the same clock the playback plan did, so an interval can start before the
+ * published range or run past its end. Clamping both ends — rather than
+ * clamping `left` alone and taking the raw span as the width — keeps such an
+ * interval inside the lane it is drawn in.
+ */
+function spanPercent(
+  startNs: number,
+  endNs: number,
+  domainSpan: number,
+): number {
+  return offsetPercent(endNs, domainSpan) - offsetPercent(startNs, domainSpan);
 }
 
 /**

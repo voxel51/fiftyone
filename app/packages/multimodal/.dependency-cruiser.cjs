@@ -384,7 +384,7 @@ module.exports = {
       from: { path: GRID_OVERLAY, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(grid-overlay|extensions|temporal-tags|runtime|ir|utils)/`,
+        pathNot: `${SRC}(grid-overlay|extensions/episode-intervals|temporal-tags)/`,
       },
     },
     {

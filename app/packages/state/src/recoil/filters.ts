@@ -7,6 +7,7 @@ import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { DefaultValue, selectorFamily, useRecoilValue } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
+import { activeFilterValues } from "./activeFilterValues";
 import { extendedSelection, extendedSelectionOverrideStage } from "./atoms";
 import { pathHasIndexes, queryPerformance } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
@@ -64,35 +65,12 @@ export const filters = (() => {
   );
 })();
 
-/**
- * Stable empty result, so a consumer's `useMemo` dependency on the return
- * value doesn't change identity every render while nothing is filtered.
- */
-const NO_VALUES: string[] = [];
+export { activeFilterValues } from "./activeFilterValues";
 
-/**
- * String values the grid is currently filtering *for* at `path` — inclusive
- * selections only, empty when the filter is unset or set to exclude.
- *
- * The shape read here is the string filter's (`{ values, exclude }`), so this
- * applies to any path whose sidebar filter is a string filter. Non-string
- * filters at `path` yield an empty list rather than an error: a caller asking
- * "which values is this filtered to" gets "none it can name".
- */
+/** Recoil-bound {@link activeFilterValues} for the grid's filter set. */
 export const useActiveFilterValues = (path: string): string[] => {
   const current = useRecoilValue(filters);
-  return useMemo(() => {
-    const filter = current?.[path] as
-      | { values?: (string | null)[]; exclude?: boolean }
-      | undefined;
-    if (!filter || filter.exclude) {
-      return NO_VALUES;
-    }
-    const values = (filter.values ?? []).filter(
-      (value): value is string => typeof value === "string",
-    );
-    return values.length ? values : NO_VALUES;
-  }, [current, path]);
+  return useMemo(() => activeFilterValues(current, path), [current, path]);
 };
 
 export const filter = selectorFamily<

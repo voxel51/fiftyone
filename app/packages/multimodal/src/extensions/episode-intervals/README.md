@@ -25,9 +25,13 @@ registerEpisodeIntervalSource({
 lifecycle and mount providers:
 
 ```tsx
+// Module level, so the inactive contribution keeps one identity across every
+// render of every tile — see rule 2 below.
+const INACTIVE = { intervals: [] };
+
 const EventIntervalSource = ({ ctx, children }) => {
     const filterValues = useActiveFilterValues(EVENTS_PATH);
-    if (filterValues.length === 0) return <>{children({ intervals: [] })}</>;
+    if (filterValues.length === 0) return <>{children(INACTIVE)}</>;
     return (
         <FetchAndReport ctx={ctx} values={filterValues}>
             {children}

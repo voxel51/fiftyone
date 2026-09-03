@@ -165,6 +165,16 @@ export function useGridPreview({
   const setFrameTimeNs = useCallback((timeNs: bigint | undefined) => {
     frameTimeNsRef.current = timeNs;
     const id = episodeIdRef.current;
+    // A stale owner is released here rather than only in the effect below,
+    // because `episodeIdRef` is assigned during render: a frame presented
+    // between the commit that changed the episode and the effect flush already
+    // publishes under the new id, and the old one would otherwise never be
+    // released by anything.
+    const owner = publishedOwnerRef.current;
+    if (owner !== null && owner !== id) {
+      releaseEpisodePlayhead(owner);
+      publishedOwnerRef.current = null;
+    }
     if (!id) return;
     if (timeNs === undefined) {
       releaseEpisodePlayhead(id);
@@ -184,15 +194,41 @@ export function useGridPreview({
     publishEpisodeTimeRange(id, range);
   }, []);
 
+  // Native playback (LeRobot MP4) advances a media element rather than the
+  // read loop below, so the element's own clock is the only thing that knows
+  // where the playhead is. The poster read anchors that clock: it presents the
+  // frame the element reports at `startTimeSeconds`, so its absolute instant
+  // plus the element's offset from that mark is the presented instant.
+  const nativeAnchorRef = useRef<{
+    readonly anchorNs: bigint;
+    readonly startTimeSeconds: number;
+  } | null>(null);
+  const presentNativeTimeSeconds = useCallback(
+    (mediaTimeSeconds: number) => {
+      const anchor = nativeAnchorRef.current;
+      if (!anchor) return;
+      const offsetNs = Math.round(
+        (mediaTimeSeconds - anchor.startTimeSeconds) * 1e9,
+      );
+      setFrameTimeNs(anchor.anchorNs + BigInt(offsetNs));
+    },
+    [setFrameTimeNs],
+  );
+
   // This effect hands the playhead over when the tile is pointed at a new
   // episode. Without it the previous episode keeps a published instant nothing
   // is presenting any more, and the unmount cleanup below — which can only
   // release the current owner — would never reach it.
   useEffect(() => {
     const previous = publishedOwnerRef.current;
-    if (previous === null || previous === episodeId) return;
-    releaseEpisodePlayhead(previous);
-    publishedOwnerRef.current = null;
+    if (previous === episodeId) return;
+    if (previous !== null) {
+      releaseEpisodePlayhead(previous);
+      publishedOwnerRef.current = null;
+    }
+    // A frame retained while the tile had no episode identity still belongs to
+    // the episode it is now pointed at, so the `null -> id` transition publishes
+    // it rather than waiting for the next presented frame.
     const presented = frameTimeNsRef.current;
     if (episodeId && presented !== undefined) {
       publishEpisodePlayhead(episodeId, presented);
@@ -337,6 +373,13 @@ export function useGridPreview({
             source,
             sourceName: effectiveSourceName,
           };
+          nativeAnchorRef.current =
+            result.nativeVideo && result.frameTimeNs !== undefined
+              ? {
+                  anchorNs: result.frameTimeNs,
+                  startTimeSeconds: result.nativeVideo.startTimeSeconds,
+                }
+              : null;
           setFrameTimeNs(result.frameTimeNs);
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState((current) => resultPreservingCachedPoster(current, result));
@@ -539,6 +582,7 @@ export function useGridPreview({
     isPlaying: enabled && stateOwnerKey === cacheRequestKey && playing,
     pause,
     play,
+    presentNativeTimeSeconds,
   };
 }
 

@@ -33,17 +33,14 @@ vi.mock("./filters", async () => {
     default: {},
   });
   // `useActiveTemporalTagFilterValues` delegates here, so the mock has to
-  // carry the generic hook too — reading the same test atom.
-  const useActiveFilterValues = (path: string): string[] => {
-    const current = useRecoilValue(testFilters);
-    const filter = current?.[path] as
-      | { values?: (string | null)[]; exclude?: boolean }
-      | undefined;
-    if (!filter || filter.exclude) return [];
-    return (filter.values ?? []).filter(
-      (value): value is string => typeof value === "string",
-    );
-  };
+  // carry the generic hook too. It reads the test atom but runs the real rule,
+  // so nothing below is asserting a re-implementation of it — the rule's own
+  // cases live in `filters.test.ts`.
+  const { activeFilterValues } = await vi.importActual<
+    typeof import("./activeFilterValues")
+  >("./activeFilterValues");
+  const useActiveFilterValues = (path: string): string[] =>
+    activeFilterValues(useRecoilValue(testFilters), path);
   return { filters: testFilters, useActiveFilterValues };
 });
 vi.mock("./selectors", async () => {
