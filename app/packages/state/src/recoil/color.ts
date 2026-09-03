@@ -21,6 +21,7 @@ import {
   toCamelCase,
 } from "@fiftyone/utilities";
 import { useCallback } from "react";
+import type { GetRecoilValue } from "recoil";
 import { selector, selectorFamily, useRecoilValue } from "recoil";
 import * as atoms from "./atoms";
 import { configData } from "./config";
@@ -178,55 +179,46 @@ export const pathColor = selectorFamily<string, string>({
  * A path outside any label field owns its own entry, and every value on it
  * applies.
  */
-const valueColoring = selectorFamily<
-  { readonly applies: boolean; readonly configured: Map<string, string> },
-  string
->({
-  key: "valueColoring",
-  get:
-    (path) =>
-    ({ get }) => {
-      const scheme = get(atoms.colorScheme);
-      const configured = (setting?: {
-        valueColors?: readonly { value: string; color: string }[] | null;
-      }) =>
-        new Map((setting?.valueColors ?? []).map((v) => [v.value, v.color]));
+const valueColoring = (
+  get: GetRecoilValue,
+  path: string,
+): { readonly applies: boolean; readonly configured: Map<string, string> } => {
+  const scheme = get(atoms.colorScheme);
+  const configured = (setting?: {
+    valueColors?: readonly { value: string; color: string }[] | null;
+  }) => new Map((setting?.valueColors ?? []).map((v) => [v.value, v.color]));
 
-      if (path === "_label_tags") {
-        return { applies: true, configured: configured(scheme.labelTags) };
-      }
+  if (path === "_label_tags") {
+    return { applies: true, configured: configured(scheme.labelTags) };
+  }
 
-      // Same derivation as `pathColor`: a label field owns every path beneath
-      // it, and under video the frames prefix is part of the field's name.
-      const video = get(atoms.mediaType) !== "image";
-      const parentPath =
-        video && path.startsWith("frames.")
-          ? path.split(".").slice(0, 2).join(".")
-          : path.split(".")[0];
+  // Same derivation as `pathColor`: a label field owns every path beneath it,
+  // and under video the frames prefix is part of the field's name.
+  const video = get(atoms.mediaType) !== "image";
+  const parentPath =
+    video && path.startsWith("frames.")
+      ? path.split(".").slice(0, 2).join(".")
+      : path.split(".")[0];
 
-      if (!get(schemaAtoms.labelFields({})).includes(parentPath)) {
-        return {
-          applies: true,
-          configured: configured(scheme.fields?.find((x) => x.path === path)),
-        };
-      }
+  if (!get(schemaAtoms.labelFields({})).includes(parentPath)) {
+    return {
+      applies: true,
+      configured: configured(scheme.fields?.find((x) => x.path === path)),
+    };
+  }
 
-      const setting = scheme.fields?.find((x) => x.path === parentPath);
-      const attribute = path
-        .slice(parentPath.length + 1)
-        .split(".")
-        .pop();
+  const setting = scheme.fields?.find((x) => x.path === parentPath);
+  const attribute = path
+    .slice(parentPath.length + 1)
+    .split(".")
+    .pop();
 
-      if ((setting?.colorByAttribute || "label") !== attribute) {
-        return { applies: false, configured: new Map<string, string>() };
-      }
+  if ((setting?.colorByAttribute || "label") !== attribute) {
+    return { applies: false, configured: new Map<string, string>() };
+  }
 
-      return { applies: true, configured: configured(setting) };
-    },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
+  return { applies: true, configured: configured(setting) };
+};
 
 /**
  * Resolver for the values of one path, under whichever color-by mode is set:
@@ -255,7 +247,7 @@ export const valueColor = selectorFamily<
         return () => field;
       }
 
-      const { applies, configured } = get(valueColoring(path));
+      const { applies, configured } = valueColoring(get, path);
 
       if (!applies) {
         return () => field;

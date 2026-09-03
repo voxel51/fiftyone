@@ -1,7 +1,9 @@
 import { act, cleanup, render } from "@testing-library/react";
+import type React from "react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { EpisodeIntervalSourceProps } from "../../../extensions/episode-intervals";
 import {
   intervalTrackId,
   registerEpisodeIntervalSource,
@@ -232,6 +234,28 @@ describe("ModalRenderer", () => {
   });
 });
 
+/** A registered source contributing one interval, with one name to pin. */
+function TestIntervalSource({
+  children,
+}: EpisodeIntervalSourceProps): React.ReactElement {
+  return (
+    <>
+      {children({
+        intervals: [
+          {
+            color: "#fff",
+            endNs: 2,
+            eventName: "grasp",
+            sourceId: "test:events",
+            startNs: 1,
+          },
+        ],
+        pinnedEventNames: ["grasp"],
+      })}
+    </>
+  );
+}
+
 // A registered source reaches the modal timeline through exactly two spreads
 // in `ModalRenderer`. Both are invisible to the rest of the suite: drop either
 // and every Enterprise section or auto-pin silently stops arriving.
@@ -249,22 +273,7 @@ describe("ModalRenderer interval sources", () => {
     rendererHarness.builtInSections = undefined;
     rendererHarness.defaultPinnedTrackIds = undefined;
     unregister = registerEpisodeIntervalSource({
-      Component: ({ children }) => (
-        <>
-          {children({
-            intervals: [
-              {
-                color: "#fff",
-                endNs: 2,
-                eventName: "grasp",
-                sourceId: "test:events",
-                startNs: 1,
-              },
-            ],
-            pinnedEventNames: ["grasp"],
-          })}
-        </>
-      ),
+      Component: TestIntervalSource,
       id: "test:events",
       label: "Test events",
       order: 300,
