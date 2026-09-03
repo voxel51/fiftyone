@@ -279,6 +279,8 @@ export interface ParamDef {
   choices: ParamChoices;
   default: string | null | undefined;
   placeholder: string | null | undefined;
+  /** What the parameter does — its entry in the stage's docstring. */
+  description?: string | null;
 }
 
 /**

@@ -14,6 +14,7 @@ export default graphql`
         required
         default
         placeholder
+        description
         choices {
           source
           values

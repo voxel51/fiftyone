@@ -711,6 +711,7 @@ type StageParameter {
   choices: StageParameterChoices!
   default: String
   placeholder: String
+  description: String
 }
 
 enum StageParameterChoiceSource {

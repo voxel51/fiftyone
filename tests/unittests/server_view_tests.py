@@ -1453,6 +1453,22 @@ class StageDefinitionTests(unittest.TestCase):
             "dynamic grouped collection.",
         )
 
+    def test_parameter_descriptions(self):
+        filter_labels = next(
+            d for d in fosd.stage_definitions() if d.name == "FilterLabels"
+        )
+        by_name = {p.name: p.description for p in filter_labels.params}
+        self.assertEqual(by_name["field"], "the label field to filter")
+        self.assertTrue(
+            by_name["only_matches"].startswith(
+                "whether to only include samples with at least one label"
+            )
+        )
+        # a continuation line joins its parameter's entry
+        self.assertIn(
+            "Only applicable to video datasets", by_name["trajectories"]
+        )
+
     def test_choices(self):
         choices = _choices()
 

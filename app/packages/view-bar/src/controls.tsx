@@ -159,8 +159,8 @@ const ParamControl: React.FC<ParamInputProps> = ({
     : undefined;
 
   switch (kind) {
-    case "bool":
-      return (
+    case "bool": {
+      const toggle = (
         <Toggle
           disabled={disabled}
           checked={Boolean(value)}
@@ -169,6 +169,15 @@ const ParamControl: React.FC<ParamInputProps> = ({
           aria-label={param.name}
         />
       );
+      // A toggle's name is all the row shows; its docstring says what it does
+      return param.description ? (
+        <Tooltip portal anchor={Anchor.Bottom} content={param.description}>
+          {toggle}
+        </Tooltip>
+      ) : (
+        toggle
+      );
+    }
 
     case "select": {
       const values = choicesFor?.(param) ?? [];
