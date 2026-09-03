@@ -24,6 +24,8 @@
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
+  /* The canvas is transparent; the area around the picture is this surface */
+  background: var(--color-content-bg-card-1);
 }
 
 .timeline {
