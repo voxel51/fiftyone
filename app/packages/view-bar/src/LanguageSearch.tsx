@@ -42,6 +42,13 @@ export interface LanguageSearchProps {
    * [x] shows even with no stages applied.
    */
   onHasTextChange?: (hasText: boolean) => void;
+  /**
+   * Whether the similarity search operator is registered at all. Without it
+   * the field still shows, and a click explains itself through `onUnavailable`
+   * instead of offering anything.
+   */
+  available: boolean;
+  onUnavailable: () => void;
   /** Whether a prompt-capable index exists — typing only searches with one. */
   enabled: boolean;
   /** The dataset's previous queries, most recent first. */
@@ -59,6 +66,8 @@ export interface LanguageSearchProps {
 export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   onSubmit,
   onHasTextChange,
+  available,
+  onUnavailable,
   enabled,
   history,
   promptKeys,
@@ -81,24 +90,24 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   // prompt-capable index there is nothing to offer, and the empty state is
   // the on-ramp to creating one
   const options = React.useMemo<ComboboxOption[]>(() => {
-    if (!enabled) return [];
+    if (!available || !enabled) return [];
     const q = query.trim().toLowerCase();
     return history
       .filter((h) => !q || h.toLowerCase().includes(q))
       .map((h) => ({ id: h, label: h }));
-  }, [enabled, history, query]);
+  }, [available, enabled, history, query]);
 
   // A picked row or committed text: a previous query re-runs, typed text runs
   const commit = React.useCallback(
     (option: ComboboxOption | null) => {
-      if (!option || !enabled) return;
+      if (!option || !available || !enabled) return;
       const text = option.label.trim();
       if (!text) return;
       // The query stays visible — it names the view now loading
       setQuery(text);
       onSubmit(text);
     },
-    [enabled, onSubmit],
+    [available, enabled, onSubmit],
   );
 
   return (
@@ -141,7 +150,12 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         inputValue={query}
         onInputChange={setQuery}
         onChange={commit}
-        allowFreeText={enabled}
+        allowFreeText={available && enabled}
+        // Without the operator there is nothing to open; the click gets an
+        // explanation instead
+        onOpenChange={(isOpen) => {
+          if (isOpen && !available) onUnavailable();
+        }}
         // Enter runs the search; clicking elsewhere must not
         commitOnBlur={false}
         // The bar's gutter clips overflow — the list must escape it
@@ -151,7 +165,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         // With previous searches to offer the list is the offer; with none it
         // is noise, so it stays hidden
         emptyMessage={
-          enabled
+          !available || enabled
             ? null
             : // Text search needs a similarity index that supports prompts;
               // the list's one offer is to go make one, and taking it is

@@ -702,6 +702,15 @@ const ViewBarInner: React.FC<{
   const searchOperatorAvailable = useOperatorAvailability(
     SIMILARITY_SEARCH_OPERATOR,
   );
+  const notify = fos.useNotification();
+  const notifySearchUnavailable = useCallback(
+    () =>
+      notify({
+        key: "view-bar-search-unavailable",
+        msg: "Natural language search needs the similarity search plugin, which is not installed here",
+      }),
+    [notify],
+  );
   // The language search turns Enter into a SortBySimilarity stage, so it
   // needs a prompt-capable index and the stage itself to be offerable here
   const searchEnabled =
@@ -960,25 +969,21 @@ const ViewBarInner: React.FC<{
   // the popover reports a press outside everything as leaving.
   const gutter = (
     <div className={styles.gutter}>
-      {searchOperatorAvailable ? (
-        <LanguageSearch
-          key={`search-${searchEpoch}`}
-          onHasTextChange={setSearchHasText}
-          onSubmit={submitLanguageQuery}
-          enabled={searchEnabled}
-          history={searchHistory}
-          promptKeys={orderedPromptKeys}
-          selectedKey={resolvedSearchIndex?.key ?? null}
-          onSelectKey={setSearchIndexKey}
-          k={searchK}
-          onChangeK={changeSearchK}
-          onOpenPanel={openSimilarityPanel}
-        />
-      ) : (
-        // No similarity_search operator (plugins absent): a search box
-        // whose every path dead-ends is hidden, not disabled
-        <div className={styles.spacer} aria-hidden="true" />
-      )}
+      <LanguageSearch
+        key={`search-${searchEpoch}`}
+        onHasTextChange={setSearchHasText}
+        onSubmit={submitLanguageQuery}
+        available={searchOperatorAvailable}
+        onUnavailable={notifySearchUnavailable}
+        enabled={searchEnabled}
+        history={searchHistory}
+        promptKeys={orderedPromptKeys}
+        selectedKey={resolvedSearchIndex?.key ?? null}
+        onSelectKey={setSearchIndexKey}
+        k={searchK}
+        onChangeK={changeSearchK}
+        onOpenPanel={openSimilarityPanel}
+      />
       {/* THE one [x]: clears every stage and any search text, and it lives
             on the always-visible first row so it stays reachable while the
             stages row is folded. It sits before the toggle's divider. */}

@@ -167,9 +167,14 @@ export const StageCard: React.FC<StageCardProps> = ({
       compact
       className={[
         styles.pill,
-        // A stage that cannot be applied says so once its editor closes —
-        // while the popover is open the user is mid-thought, not in error
-        !expanded && (invalid || incomplete) ? styles.pillInvalid : null,
+        // Once its editor closes, a stage the server rejected wears the error
+        // outline; one still missing a required value is a draft, not an
+        // error. While the popover is open the user is mid-thought.
+        !expanded && invalid
+          ? styles.pillInvalid
+          : !expanded && incomplete
+            ? styles.pillDraft
+            : null,
       ]
         .filter(Boolean)
         .join(" ")}
@@ -182,13 +187,11 @@ export const StageCard: React.FC<StageCardProps> = ({
       >
         {/* Always-visible compact preview: name + first-arg value.
               Click opens the editing popover below. */}
-        <Tooltip
-          portal
-          anchor={Anchor.Bottom}
-          content={expanded ? "Close editor" : "Edit stage"}
-        >
-          {/* voodo's Clickable takes no ref, so the wrapper carries the one
-              Escape refocuses through */}
+        {/* voodo's Clickable takes no ref, so the wrapper carries the one
+            Escape refocuses through */}
+        {/* Hovering the pill while its editor is open would only cover the
+            editor's own controls, so the hint shows for the collapsed pill */}
+        {expanded ? (
           <span ref={editButtonRef} className={styles.trigger}>
             <Clickable
               onClick={onToggle}
@@ -222,7 +225,43 @@ export const StageCard: React.FC<StageCardProps> = ({
               </Stack>
             </Clickable>
           </span>
-        </Tooltip>
+        ) : (
+          <Tooltip portal anchor={Anchor.Bottom} content="Edit stage">
+            <span ref={editButtonRef} className={styles.trigger}>
+              <Clickable
+                onClick={onToggle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onToggle();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={expanded ? "Close editor" : "Edit stage"}
+              >
+                <Stack
+                  orientation={Orientation.Row}
+                  spacing={Spacing.Xs}
+                  align={Align.Center}
+                >
+                  <Text variant={TextVariant.Md} className={styles.name}>
+                    {definition.name}
+                  </Text>
+                  {firstParam && (
+                    <Text
+                      variant={TextVariant.Sm}
+                      color={TextColor.Secondary}
+                      className={styles.preview}
+                    >
+                      {previewValue(stage.kwargs[firstParam.name])}
+                    </Text>
+                  )}
+                </Stack>
+              </Clickable>
+            </span>
+          </Tooltip>
+        )}
 
         {/* The stage's full story lives in its API docs — a quiet link on
               the pill itself, out of the popover's way */}
