@@ -1,0 +1,42 @@
+import { useEffect, useRef, useState } from "react";
+import { queueThumbnail, isImageFile } from "@fiftyone/upload";
+
+/**
+ * Lazily generates and returns a thumbnail data-URL for an image file.
+ * Defers work until the element attached to the returned ref scrolls into view.
+ */
+export function useFileThumbnailSrc(file: File) {
+  const isImage = isImageFile(file);
+  const [src, setSrc] = useState<string>();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hasBeenVisible, setHasBeenVisible] = useState(false);
+
+  useEffect(() => {
+    if (!isImage || hasBeenVisible) return undefined;
+    const el = containerRef.current;
+    if (!el) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setHasBeenVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "100px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isImage, hasBeenVisible]);
+
+  useEffect(() => {
+    if (!isImage || !hasBeenVisible) return undefined;
+    const controller = new AbortController();
+    queueThumbnail(file, controller.signal)
+      .then(setSrc)
+      .catch(() => {});
+    return () => controller.abort();
+  }, [file, isImage, hasBeenVisible]);
+
+  return { src, containerRef };
+}
