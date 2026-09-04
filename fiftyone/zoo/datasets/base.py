@@ -3508,10 +3508,96 @@ class RoboLabDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class BoilingBenchMultimodalDataset(FiftyOneDataset):
+    """Pool-boiling and immersion-cooling experiments pairing high-speed or
+    infrared video with thermal and acoustic sensing, as native ``.mcap``
+    episodes.
+
+    A copper surface is driven past the onset of boiling while a high-speed
+    camera watches from the side and a hydrophone, a microphone and an
+    acoustic-emission sensor listen. Boiling changes character before it
+    changes appearance, and every modality carries a recorded clock offset
+    against the temperature acquisition, so the sound, the surface
+    temperature and the frames sit on one timeline.
+
+    Each pool-boiling episode carries the camera, surface temperature and
+    heat flux, the four embedded thermocouples, acoustic band power and
+    characteristic frequencies per sensor, per-hit acoustic-emission
+    parameters, and the release's derived markers stamped where they were
+    found: departure from nucleate boiling, the surface temperature peak,
+    the critical-heat-flux marker and the DC power start and shutoff. Two
+    closed-loop immersion-cooling runs are carried alongside them, recorded
+    in infrared with HFE-7100 and water.
+
+    The critical-heat-flux figures are the release's own screening markers
+    rather than validated measurements, and each episode carries the
+    source's ``chf_event_status`` beside them.
+
+    The camera carries no clock offset of its own, so its frames are placed
+    by scaling container time onto the run; each episode records the
+    ``video_time_scale`` it was placed with.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("boilingbench-multimodal")
+
+        # The runs that reached the highest wall temperature
+        view = dataset.sort_by("max_surface_temp_C", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        2.90 GB
+    """
+
+    _REPO_ID = "Voxel51/BoilingBench-Multimodal"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "5c5149975cbf3bc2bf42bd48184505c0eb09bc1e"
+
+    @property
+    def name(self):
+        return "boilingbench-multimodal"
+
+    @property
+    def license(self):
+        return "CC BY 4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "heat-transfer", "acoustic", "thermal")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
     "bdd100k": BDD100KDataset,
+    "boilingbench-multimodal": BoilingBenchMultimodalDataset,
     "caltech101": Caltech101Dataset,
     "caltech256": Caltech256Dataset,
     "cityscapes": CityscapesDataset,
