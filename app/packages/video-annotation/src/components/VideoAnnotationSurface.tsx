@@ -136,7 +136,21 @@ export interface VideoAnnotationSurfaceProps {
  */
 export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   sample,
-}) => {
+}) => (
+  // One mount per sample. Everything below is resolved from the sample at mount
+  // and never rebuilt: the frame stream `RegisterImaVidImage` constructs, the
+  // decode strategy the probes settle on, and `PlaybackProvider`'s engine mode.
+  // The modal renders this component in place across sample navigation, so
+  // without the key the next sample inherits the previous one's stream.
+  <VideoAnnotationSurfaceForSample
+    key={sample.sample._id ?? sample.sample.id}
+    sample={sample}
+  />
+);
+
+const VideoAnnotationSurfaceForSample: React.FC<
+  VideoAnnotationSurfaceProps
+> = ({ sample }) => {
   const labelsMode = useLabelsMode();
   const prerequisites = useAnnotatePrerequisites(sample);
 
@@ -154,15 +168,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     return url ? getSampleSrc(url) : null;
   }, [sample]);
 
-  // Sequence mode makes the frame domain available to switch into, which is
-  // what turns the controls row's readout into a button (see `PlayheadTime`).
-  // `useAnnotatePrerequisites` blocks the surface unless the frame rate is
-  // finite and positive, so by the time this provider mounts there is always
-  // one — no `duration` fallback, and no remount key: the gates below hold the
-  // provider back until `frameRate` has resolved, so it never changes under it.
-  //
-  // The display still opens on timecode (`defaultDisplay` below); frames are
-  // opt-in, matching Explore.
+  // Sequence mode gives the readout a frame domain to switch into.
   const mode = useMemo<TimelineMode>(
     () => ({ kind: "sequence", fps: prerequisites.frameRate as number }),
     [prerequisites.frameRate],
