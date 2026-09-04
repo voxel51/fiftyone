@@ -12442,6 +12442,39 @@
                 }
             ],
             "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "unlimited-ocr-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Unlimited-OCR document parser that reads a page into layout elements (titles, paragraphs, tables, figures) with recognized text, including long and multi-column documents",
+            "source": "https://huggingface.co/baidu/Unlimited-OCR",
+            "author": "Baidu",
+            "license": "MIT",
+            "size_bytes": 6672547120,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.unlimited_ocr.UnlimitedOCRModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.49,<5",
+                    "easydict",
+                    "einops",
+                    "addict"
+                ],
+                "cpu": {
+                    "support": false
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch", "transformer", "vlm"],
+            "training_data": [],
+            "date_added": "2026-07-14 12:00:00"
         }
     ]
 }
