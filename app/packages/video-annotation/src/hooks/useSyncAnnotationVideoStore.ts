@@ -38,7 +38,28 @@ export const useSyncAnnotationVideoStore = (
    * below is empty outside Annotate mode.
    */
   labelTypesOverride?: Record<string, LabelType>,
+  options: {
+    /**
+     * Fetch every frame of the clip up front (see `warmupAll`).
+     *
+     * Annotate needs it: propagation, interpolation and track ops walk every
+     * frame of the engine's store, and a windowed seed would hide frames
+     * they have to see.
+     *
+     * Explore must NOT. It is read-only, so nothing walks the whole clip
+     * there, and the cost is paid three times over during playback:
+     * `warmupAll` dispatches every chunk at once with no concurrency cap,
+     * crowding the `<video>`'s own byte fetch off the connection pool; the
+     * stream is `blocking: true`, so the engine's barrier holds the playhead
+     * on every frame those requests haven't reached yet; and each chunk that
+     * lands re-seeds the whole store on the main thread. `prefetch()` — the
+     * windowed path the engine already calls as the playhead advances — is
+     * what should be feeding this surface, and `warmupAll` competes with it.
+     */
+    seedWholeClip?: boolean;
+  } = {},
 ): void => {
+  const seedWholeClip = options.seedWholeClip ?? true;
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
   const getSample = useSampleInstanceGetter();
@@ -94,9 +115,12 @@ export const useSyncAnnotationVideoStore = (
     carry.current = null;
 
     // Whole-clip seed for engine consumers that still walk every frame
-    // (propagation, interpolation, track ops). The timeline no longer needs
-    // it — it reads the server index. Retire once those ops fetch per-range.
-    void stream.warmupAll();
+    // (propagation, interpolation, track ops). The timeline never needed it —
+    // it reads the server index — and a read-only surface has no such
+    // consumers at all, so it opts out. See `seedWholeClip`.
+    if (seedWholeClip) {
+      void stream.warmupAll();
+    }
 
     return () => {
       // Carry unsaved edits to the next FrameStore (this same hook stays
@@ -110,7 +134,7 @@ export const useSyncAnnotationVideoStore = (
       sampleLevel.dispose();
       sampleLevelRef.current = null;
     };
-  }, [engine, sampleId, labelTypes, getSample, stream]);
+  }, [engine, sampleId, labelTypes, getSample, stream, seedWholeClip]);
 
   useHydrateSampleLevelOverlays(engine, sampleId, sampleLevelRef);
 };
