@@ -1,4 +1,4 @@
-import { IconName } from "@voxel51/voodo";
+import { JSONIcon } from "@voxel51/voodo";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -9,7 +9,7 @@ import {
 import type { EpisodeTileExtension } from "./types";
 
 const extension: EpisodeTileExtension = {
-  icon: IconName.JSON,
+  icon: JSONIcon,
   id: "test:events",
   isAvailable: () => true,
   order: 10,
