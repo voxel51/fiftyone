@@ -19,7 +19,7 @@ import {
   getEffectiveTrackMuted,
   getTrackVolumeMagnitude,
   registerAudioTrack,
-  setAudioAvailable,
+  setSourceAudioAvailable,
   setMasterMuted,
 } from "./store-access";
 import type { BufferReadiness, PlaybackStream } from "./types";
@@ -130,9 +130,9 @@ export function shouldChaseAudioClock(args: {
  * track table) should prefer that and pass `enabled: false` when absent.
  */
 export function detectElementHasAudio(
-  element: HTMLAudioElement,
+  element: HTMLMediaElement,
 ): boolean | null {
-  const probed = element as HTMLAudioElement & {
+  const probed = element as HTMLMediaElement & {
     mozHasAudio?: boolean;
     webkitAudioDecodedByteCount?: number;
     audioTracks?: { length: number };
@@ -152,7 +152,11 @@ export function detectElementHasAudio(
 
 /**
  * Drives timeline audio from a hidden `HTMLAudioElement` owned by this
- * hook. Registers the element as a **blocking** `PlaybackStream` — the
+ * hook. For a surface that already mounts a `<video>` over the same URL,
+ * use `useVideoElementAudio` instead — this hook's element would fetch and
+ * decode the whole file a second time for a track the `<video>` has already.
+ * This one is for sound with no picture of its own: an audio-only source, or
+ * a surface whose frames come from somewhere else (the ImaVid paths). Registers the element as a **blocking** `PlaybackStream` — the
  * engine's barrier holds the playhead until sound is buffered at the
  * target time, so the picture never runs ahead of audio — but the stream
  * is only *subscribed* while `enabled` and unmuted. Muted or audio-less
@@ -229,7 +233,7 @@ export function useAudioStream(
     const onError = () => {
       // `element.error` stays null for non-fatal error events
       if (element.error) {
-        setAudioAvailable(store, "error");
+        setSourceAudioAvailable(store, id, "error");
       }
       wakeEngine();
     };
@@ -262,7 +266,7 @@ export function useAudioStream(
       // below never ran — its cleanup can't clear the status, so the
       // element's own teardown must.
       if (getAudioAvailable(store) === "error") {
-        setAudioAvailable(store, "unavailable");
+        setSourceAudioAvailable(store, id, "unavailable");
       }
       setMetadataReady(false);
       setHasAudio(null);
@@ -319,8 +323,8 @@ export function useAudioStream(
     if (!available) {
       return undefined;
     }
-    setAudioAvailable(store, "available");
-    return () => setAudioAvailable(store, "unavailable");
+    setSourceAudioAvailable(store, id, "available");
+    return () => setSourceAudioAvailable(store, id, null);
   }, [available, store]);
 
   // Roster registration: this element is "just another audio source" in

@@ -104,16 +104,16 @@ export interface TimelineWithTracksProps {
    */
   extraControls?: React.ReactNode;
   /**
+   * Clock-adjacent host readouts (the absolute/UTC timestamp). Forwarded to
+   * {@link TimelineHeader}'s `readouts`; renders in both layouts.
+   */
+  readouts?: React.ReactNode;
+  /**
    * Optional content rendered inline after the playhead time, preceded by a
    * divider. Forwarded to {@link TimelineHeader}'s `extraActions`; renders in
    * both the empty-timeline and drawer layouts. Readouts belong here — for
    * right-edge buttons use {@link trailingActions}.
    */
-  /**
-   * Clock-adjacent host readouts (the absolute/UTC timestamp). Forwarded to
-   * {@link TimelineHeader}'s `readouts`; renders in both layouts.
-   */
-  readouts?: React.ReactNode;
   extraActions?: React.ReactNode;
   /**
    * Bring-your-own buttons, pinned to the right edge of the controls row

@@ -108,6 +108,40 @@ export interface RawPolylinesField {
   polylines?: RawPolyline[];
 }
 
+export interface RawKeypoint {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  /** Flat list of `[x, y]` vertices in normalized coordinates. */
+  points?: [number, number][];
+  confidence?: number[] | null;
+  instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+}
+
+export interface RawKeypointsField {
+  keypoints?: RawKeypoint[];
+}
+
+/**
+ * Non-spatial: a per-frame classification has no geometry, so the Lighter
+ * `ClassificationOverlay` renders it as a label chip rather than a shape.
+ */
+export interface RawClassification {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  confidence?: number | null;
+  instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+}
+
+export interface RawClassificationsField {
+  classifications?: RawClassification[];
+}
+
 /**
  * Shape callers pass to {@link VideoFrameLabelsStream.updateLabel}.
  * Lines up with the `Detection` wire format — `bounding_box` is required
