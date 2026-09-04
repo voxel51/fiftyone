@@ -3924,6 +3924,77 @@
             "date_added": "2026-02-03 12:00:00"
         },
         {
+            "base_name": "moge-3-vitl-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "MoGe-3 ViT-L (370M): metric monocular geometry from a single image, with depth, a camera-space point map, surface normals and camera intrinsics, refined by a sparse volumetric stage",
+            "source": "https://github.com/microsoft/MoGe",
+            "author": "Lingyu Kong, Ruicheng Li, Ruicheng Wang, et al.",
+            "license": "MIT",
+            "size_bytes": 1481333394,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.moge.MoGeModel",
+                "config": {
+                    "name_or_path": "Ruicheng/moge-3-vitl"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "depth",
+                "3d",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [],
+            "date_added": "2026-09-02 12:00:00"
+        },        {
+            "base_name": "moge-3-vitg-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "MoGe-3 ViT-g (1.25B): the largest MoGe-3 model for metric monocular geometry, with depth, a camera-space point map, surface normals and camera intrinsics, refined by a sparse volumetric stage",
+            "source": "https://github.com/microsoft/MoGe",
+            "author": "Lingyu Kong, Ruicheng Li, Ruicheng Wang, et al.",
+            "license": "MIT",
+            "size_bytes": 5003249242,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.moge.MoGeModel",
+                "config": {
+                    "name_or_path": "Ruicheng/moge-3-vitg"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "depth",
+                "3d",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [],
+            "date_added": "2026-09-02 12:00:00"
+        },
+        {
             "base_name": "zero-shot-classification-transformer-torch",
             "base_filename": null,
             "version": null,
