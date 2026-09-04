@@ -12442,6 +12442,41 @@
                 }
             ],
             "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "muse-glimmer-30b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Agentic 30B vision-language model for object detection via 2D grounding",
+            "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B",
+            "author": "Meta",
+            "license": "Apache 2.0",
+            "size_bytes": 59600000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.muse_glimmer.MuseGlimmerModel",
+                "config": {
+                    "name_or_path": "meta-models/Muse-Glimmer-30B",
+                    "output_processor_cls": "fiftyone.utils.muse_glimmer.MuseGlimmerOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.15.0",
+                    "accelerate",
+                    "bitsandbytes"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-08-10 12:00:00"
         }
     ]
 }
