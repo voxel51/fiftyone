@@ -220,17 +220,25 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         <div className={styles.trailing}>
           {trailingActions ? (
             <>
-              <span
-                className={styles.divider}
-                data-testid="timeline-controls-divider"
-                aria-hidden
-              />
               <div
                 className={styles.trailingActions}
                 data-testid="timeline-controls-trailing-actions"
               >
                 {trailingActions}
               </div>
+              {/* After the actions, not before: the rule separates them from
+                  the drawer chevron that sits last, rather than fencing them
+                  off from the readouts on their left. Only when that chevron
+                  is actually there — a timeline with no tracks renders no
+                  toggle (see `TimelineWithTracks`), and the rule would then
+                  hang off the right edge with nothing after it. */}
+              {onToggle ? (
+                <span
+                  className={styles.divider}
+                  data-testid="timeline-controls-divider"
+                  aria-hidden
+                />
+              ) : null}
             </>
           ) : null}
           {onToggle ? (

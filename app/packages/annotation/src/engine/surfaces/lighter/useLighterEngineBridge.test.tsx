@@ -13,6 +13,10 @@ const mockOn = vi.fn((event: string, handler: (payload: unknown) => void) => {
 const ownedIds = new Set<string>();
 const maskedIds = new Set<string>();
 
+// whether the scene under test allows several overlays selected at once —
+// what the bridge reads to decide if a click is additive
+let multipleSelection = false;
+
 class MockDetectionOverlay {
   constructor(
     readonly id: string,
@@ -32,6 +36,7 @@ vi.mock("@fiftyone/lighter", () => ({
           ? new MockDetectionOverlay(id, maskedIds.has(id))
           : undefined,
       isDestroyed: false,
+      isMultipleSelection: () => multipleSelection,
       setExternalUndoAuthority: mockSetExternalUndoAuthority,
     },
     overlayFactory: {},
@@ -263,5 +268,86 @@ describe("useLighterEngineBridge — undo authority", () => {
     );
 
     expect(mockSetExternalUndoAuthority).not.toHaveBeenCalled();
+  });
+});
+
+describe("useLighterEngineBridge — click selection semantics", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    handlers.clear();
+    ownedIds.clear();
+    multipleSelection = false;
+  });
+
+  const mount = () =>
+    renderHook(() =>
+      useLighterEngineBridge({
+        engine: makeEngine(),
+        sample: "s1",
+        dataset: "ds",
+      }),
+    );
+
+  const click = (id: string, isShiftPressed = false) =>
+    handlers.get("lighter:overlay-select")?.({ id, isShiftPressed });
+
+  it("replaces the selection on a plain click when the scene is single-select", () => {
+    ownedIds.add("a");
+    mount();
+
+    click("a");
+
+    // additive false => `selectHandle` falls through to setActive([ref]), and
+    // the engine's reconcile deselects everything else on the canvas
+    expect(mockSelectHandle).toHaveBeenCalledWith(expect.anything(), {
+      additive: false,
+    });
+  });
+
+  it("still extends on a shift-click when the scene is single-select", () => {
+    ownedIds.add("a");
+    mount();
+
+    click("a", true);
+
+    expect(mockSelectHandle).toHaveBeenCalledWith(expect.anything(), {
+      additive: true,
+    });
+  });
+
+  /**
+   * The regression this pair exists for: a multi-select surface (video
+   * Explore) whose clicks were NOT additive selected boxes in Lighter and then
+   * had them deselected a tick later, when the engine's active set — replaced
+   * by the click — reconciled back onto the scene through `applySelected`. The
+   * canvas collapsed to one highlighted box however many the user clicked,
+   * while `selectedLabels` kept them all.
+   */
+  it("accumulates on a plain click when the scene is multi-select", () => {
+    ownedIds.add("a");
+    multipleSelection = true;
+    mount();
+
+    click("a");
+
+    expect(mockSelectHandle).toHaveBeenCalledWith(expect.anything(), {
+      additive: true,
+    });
+  });
+
+  it("reads the mode off the scene, so the two cannot be configured apart", () => {
+    ownedIds.add("a").add("b");
+    multipleSelection = true;
+    mount();
+
+    click("a");
+    click("b");
+
+    // every click of a multi-select scene is additive — nothing else has to be
+    // told, so nothing else can be told wrong
+    expect(mockSelectHandle.mock.calls.map(([, opts]) => opts)).toEqual([
+      { additive: true },
+      { additive: true },
+    ]);
   });
 });

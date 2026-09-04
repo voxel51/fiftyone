@@ -25,7 +25,15 @@ export interface SelectionOptions {
  * Manages selection state for overlays in a scene.
  */
 export class SelectionManager {
-  private readonly multipleSelection = false;
+  /**
+   * Whether more than one overlay may be selected at a time.
+   *
+   * Off by default: the editing surfaces drive drag / resize / paint from
+   * "the" selected overlay, so a second selection has nowhere to go there.
+   * Read-only surfaces that select labels rather than edit them (video
+   * Explore) turn it on — see {@link Scene2D.setMultipleSelection}.
+   */
+  private multipleSelection = false;
 
   private selectedOverlays = new Set<string>();
   private selectableOverlays = new Map<string, Selectable>();
@@ -33,6 +41,28 @@ export class SelectionManager {
 
   constructor(eventChannel: string) {
     this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
+  }
+
+  /**
+   * Allows or forbids selecting more than one overlay at a time.
+   *
+   * Turning it OFF with a multi-selection standing collapses that selection to
+   * nothing rather than picking an arbitrary survivor, so the manager's state
+   * and the overlays' own `isSelected()` cannot disagree.
+   */
+  setMultipleSelection(multipleSelection: boolean): void {
+    if (this.multipleSelection === multipleSelection) return;
+
+    this.multipleSelection = multipleSelection;
+
+    if (!multipleSelection && this.selectedOverlays.size > 1) {
+      this.clearSelection();
+    }
+  }
+
+  /** See {@link setMultipleSelection}. */
+  isMultipleSelection(): boolean {
+    return this.multipleSelection;
   }
 
   /**
@@ -90,7 +120,11 @@ export class SelectionManager {
       isShiftPressed: event?.shiftKey || false,
     });
 
-    this.emitSelectionChanged([id], []);
+    // Carries the flag the same way `deselect` does. A programmatic select —
+    // the "Manage selected" menu applying its choice to the scene — is an echo
+    // of state its caller has already settled, so a listener that mirrors this
+    // event somewhere else must be able to tell it from a click.
+    this.emitSelectionChanged([id], [], ignoreSideEffects);
   }
 
   /**

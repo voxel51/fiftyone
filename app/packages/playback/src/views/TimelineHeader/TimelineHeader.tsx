@@ -38,15 +38,15 @@ export interface TimelineHeaderProps {
    */
   extraControls?: ReactNode;
   /**
-   * Optional content forwarded to {@link TimelineControls}' `extraActions` —
-   * rendered far-right after the playhead time, preceded by a divider (e.g.
-   * the temporal tag-mode button).
-   */
-  /**
    * Forwarded to {@link TimelineControls}' `readouts` — clock-adjacent host
    * readouts (the absolute/UTC timestamp), rendered inside the time group.
    */
   readouts?: ReactNode;
+  /**
+   * Optional content forwarded to {@link TimelineControls}' `extraActions` —
+   * rendered far-right after the playhead time, preceded by a divider (e.g.
+   * the temporal tag-mode button).
+   */
   extraActions?: ReactNode;
   /**
    * Optional content forwarded to {@link TimelineControls}' `trailingActions`
