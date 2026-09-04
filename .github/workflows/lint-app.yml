@@ -48,7 +48,24 @@ jobs:
               cd app
               yarn format:check
 
-          - name: Check strict packages (multimodal, embeddings-v2)
-            run: |
-              cd app
-              yarn check
+      - name: Check strict packages (multimodal, embeddings-v2)
+        run: |
+          cd app
+          yarn check
+
+      # Error-count ratchet: fails if TypeScript errors or ESLint warnings exceed
+      # the committed ceilings in app/error-baseline.json (`yarn baseline:update`).
+      # NOTE: if the typecheck flags missing __generated__ modules, uncomment the
+      # Compile Relay step so counts match a normal dev typecheck.
+      # - name: Compile Relay
+      #   run: |
+      #     cd app
+      #     yarn compile
+      - name: Error-count ratchet
+        # OSS-only: the Enterprise repo has different code and therefore
+        # different counts — it needs its own seeded error-baseline.json
+        # before enabling this there.
+        if: github.repository == 'voxel51/fiftyone'
+        run: |
+          cd app
+          yarn check:baselines
