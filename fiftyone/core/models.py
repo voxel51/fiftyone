@@ -1035,6 +1035,8 @@ def compute_embeddings(
     -   Using an image model to compute embeddings for an image collection
     -   Using an image model to compute frame embeddings for a video collection
     -   Using a video model to compute embeddings for a video collection
+    -   Using a point cloud model to compute embeddings for a point-cloud or
+        3D collection
 
     The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
     must return ``True``.
@@ -1102,6 +1104,17 @@ def compute_embeddings(
         raise ValueError(
             "Model must expose embeddings; found model.has_embeddings = %s"
             % model.has_embeddings
+        )
+
+    if model.media_type in (fom.POINT_CLOUD, fom.THREE_D):
+        return _compute_pointcloud_embeddings(
+            samples,
+            model,
+            embeddings_field,
+            batch_size,
+            num_workers,
+            skip_failures,
+            progress,
         )
 
     if samples.media_type == fom.IMAGE:
@@ -1214,6 +1227,105 @@ def compute_embeddings(
         return _compute_image_embeddings_single(
             samples, model, embeddings_field, skip_failures, progress
         )
+
+
+def _compute_pointcloud_embeddings(
+    samples,
+    model,
+    embeddings_field,
+    batch_size,
+    num_workers,
+    skip_failures,
+    progress,
+):
+    if samples.media_type == fom.GROUP:
+        raise fom.SelectGroupSlicesError((fom.POINT_CLOUD, fom.THREE_D))
+
+    if samples.media_type not in (fom.POINT_CLOUD, fom.THREE_D):
+        raise fom.MediaTypeError(
+            "Point cloud models can only be applied to point-cloud or 3D "
+            "collections; found media type '%s'" % samples.media_type
+        )
+
+    if embeddings_field is not None:
+        dataset = samples._dataset
+        if not dataset.has_sample_field(embeddings_field):
+            dataset.add_sample_field(embeddings_field, fof.VectorField)
+
+    if batch_size is None:
+        batch_size = 1
+
+    # Load point clouds in worker processes so that disk I/O overlaps with GPU
+    # inference, mirroring the image embeddings data loader
+    data_loader = _make_data_loader(
+        samples,
+        model,
+        batch_size,
+        num_workers,
+        skip_failures,
+        field_mapping=None,
+        pin_memory=False,
+    )
+
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
+
+    embeddings = []
+    errors = False
+
+    with contextlib.ExitStack() as context:
+        pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
+        if embeddings_field is not None:
+            ctx = context.enter_context(
+                foc.SaveContext(samples, async_writes=True)
+            )
+        else:
+            ctx = None
+
+        context.enter_context(model)
+
+        for sample_batch, clouds in zip(
+            fou.iter_batches(samples, batch_size),
+            data_loader,
+        ):
+            embeddings_batch = [None] * len(sample_batch)
+
+            try:
+                if isinstance(clouds, Exception):
+                    raise clouds
+
+                embeddings_batch = list(model.embed_all(clouds))
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors = True
+                logger.warning(
+                    "Batch: %s - %s\nError: %s\n",
+                    sample_batch[0].id,
+                    sample_batch[-1].id,
+                    e,
+                )
+
+            if embeddings_field is not None:
+                for sample, embedding in zip(sample_batch, embeddings_batch):
+                    sample[embeddings_field] = embedding
+                    if ctx:
+                        ctx.save(sample)
+            else:
+                embeddings.extend(embeddings_batch)
+
+            pb.update(len(sample_batch))
+
+    if embeddings_field is not None:
+        return None
+
+    if errors:
+        return embeddings  # may contain None, must return as list
+
+    if not embeddings:
+        return np.empty((0, 0), dtype=float)
+
+    return np.stack(embeddings)
 
 
 def _compute_image_embeddings_single(
