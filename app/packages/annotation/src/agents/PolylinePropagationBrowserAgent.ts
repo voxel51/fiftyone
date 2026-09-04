@@ -14,27 +14,16 @@ import type {
   PropagationInferenceResult,
 } from "./types";
 import { AgentTaskType, InferenceCapability } from "./types";
-import type { SyntheticKeyframe, SyntheticPolyline } from "@fiftyone/utilities";
+import {
+  objectId,
+  type SyntheticKeyframe,
+  type SyntheticPolyline,
+} from "@fiftyone/utilities";
 import { interpolatePoints, type Ring } from "./polylineInterp";
 
 /** Exclusive integer range `[start, end)` as an array. */
 function range(start: number, end: number): number[] {
   return Array.from({ length: Math.max(0, end - start) }, (_, i) => start + i);
-}
-
-/**
- * Generate a 24-char hex string matching the MongoDB ObjectId format —
- * 4-byte timestamp + 8-byte random. Not a real BSON ObjectId (no machine
- * id / counter), but the wire format is identical and the DB accepts it.
- */
-function generateObjectIdHex(): string {
-  const timestamp = Math.floor(Date.now() / 1000)
-    .toString(16)
-    .padStart(8, "0");
-  const random = Array.from({ length: 16 }, () =>
-    Math.floor(Math.random() * 16).toString(16),
-  ).join("");
-  return timestamp + random;
 }
 
 /** Narrows a propagation keyframe to the vertex geometry this agent lerps. */
@@ -47,18 +36,13 @@ const isPolylineKeyframe = (
  * Linearly interpolates a tracked object's `Polyline` geometry between two
  * bracketing keyframes, emitting one Polyline per in-between frame.
  *
- * The sibling of {@link PropagationBrowserAgent} (which does the same for a
- * `bounding_box`) — same registry, lifecycle, provenance blob and dispatch
- * path, same "deterministic math dressed as an agent" shape, and likewise
- * synchronous on the main thread. The geometry work lives in
- * {@link interpolatePoints}; see that module for why vertex counts are matched
- * by edge-splitting rather than arc-length resampling.
+ * The sibling of {@link PropagationBrowserAgent}, which does the same for a
+ * `bounding_box`: same registry, lifecycle and dispatch path, and likewise
+ * synchronous on the main thread. The geometry lives in
+ * {@link interpolatePoints}.
  *
  * Each emitted Polyline carries `keyframe: false` and the shared `instance.id`
- * from the source keyframes. No provenance blob — the propagation path dropped
- * `propagation` (writing `propagation: null` on promotion seeded a null baseline
- * that the next re-lerp diffed as a `replace` over a server-absent path), so
- * this mirrors `PropagationBrowserAgent`.
+ * from the source keyframes.
  */
 export class PolylinePropagationBrowserAgent implements AnnotationAgent<PropagationInferenceResult> {
   private lifecycleStatus: AnnotationAgentLifecycleStatus = "idle";
@@ -76,9 +60,7 @@ export class PolylinePropagationBrowserAgent implements AnnotationAgent<Propagat
     this.setStatus("inferring");
 
     try {
-      // `useVideoPropagate` resolves the agent from the field's label type, so a
-      // polyline keyframe is what reaches this agent. Narrow explicitly rather
-      // than asserting, so a future dispatch bug surfaces here instead of
+      // Narrow rather than assert, so a dispatch bug surfaces here instead of
       // silently interpolating an empty shape.
       const [leftKeyframe, rightKeyframe] = context.parentKeyframes;
 
@@ -105,7 +87,7 @@ export class PolylinePropagationBrowserAgent implements AnnotationAgent<Propagat
       range(context.fromFrame + 1, context.toFrame).forEach((n) => {
         const t: number = (n - context.fromFrame) / span;
         const polyline: PropagatedPolyline = {
-          _id: generateObjectIdHex(),
+          _id: objectId(),
           _cls: "Polyline" as const,
           points: interpolatePoints(left, right, t, closed),
           closed,

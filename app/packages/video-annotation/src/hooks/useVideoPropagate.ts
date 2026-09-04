@@ -57,9 +57,6 @@ const toSyntheticPolyline = (label: LabelData): SyntheticPolyline => ({
   index: label.index as number | undefined,
   instance: label.instance as SyntheticPolyline["instance"],
   keyframe: (label.keyframe as boolean) ?? false,
-  // No `propagation`: provenance was dropped from the propagation path (writing
-  // `propagation: null` on promotion seeded a null baseline the next re-lerp
-  // diffed as a `replace` over a server-absent path). Mirrors `toSyntheticBox`.
 });
 
 /** The engine's stored detection as the `SyntheticBox` the agents consume. */

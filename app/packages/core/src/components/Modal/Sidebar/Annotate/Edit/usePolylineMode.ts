@@ -187,6 +187,12 @@ export const usePolylineModeInstaller = (): void => {
   // Overlays mount / unmount as the playhead crosses a track's extent, which
   // changes which handler belongs installed without `selected` ever changing.
   // Bump an epoch on those events so the install effect re-runs.
+  //
+  // Scene events are the wrong source for this: they couple a sidebar hook to
+  // how the canvas signals overlay lifecycle. The engine-native form is to
+  // observe label presence — `subscribePresence` already emits enter / exit /
+  // refresh as the playhead crosses a track's extent — which would point this
+  // hook at the engine instead of at lighter.
   const [sceneEpoch, setSceneEpoch] = useState(0);
   const bumpEpoch = useCallback(() => setSceneEpoch((n) => n + 1), []);
   useLighterEvent("lighter:overlay-added", bumpEpoch);

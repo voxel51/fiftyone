@@ -15,11 +15,9 @@
  *   identically to the original, which makes `interpolate(A, B, 0)`
  *   geometrically equal to A and `interpolate(A, B, 1)` equal to B.
  *
- * Equal-arc-length **resampling** is the obvious alternative and is wrong here:
- * it moves every vertex to a uniform perimeter position, cutting corners, so
- * the span's endpoints become `resample(A)` / `resample(B)` and the shape
- * visibly snaps at both ends of every segment (measured at ~10x the interior
- * per-frame step on a 9 -> 10 vertex pair).
+ * Equal-arc-length resampling would instead move every vertex to a uniform
+ * perimeter position, so the span's endpoints become `resample(A)` /
+ * `resample(B)` rather than A / B.
  *
  * Deliberately simple beyond that — one cyclic-offset search, then a plain
  * component-wise lerp. Two known and accepted limitations:
@@ -67,8 +65,7 @@ const signedArea = (ring: Ring): number => {
 /**
  * Grow `ring` to `n` vertices by repeatedly splitting its longest edge at the
  * midpoint. Never moves an existing vertex, so the result is geometrically
- * identical to the input — that exactness at `t = 0` / `t = 1` is the whole
- * point (see the module docstring).
+ * identical to the input, which keeps `t = 0` / `t = 1` exact.
  *
  * @param ring - Ring to pad. Returned as-is when already at least `n` long.
  * @param n - Target vertex count.
