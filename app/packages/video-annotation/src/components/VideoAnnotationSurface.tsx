@@ -13,7 +13,7 @@ import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useDecodeStrategy } from "../hooks/useDecodeStrategy";
 import type { DecodeStrategy } from "../utils/decodeStrategy";
 import { useTimelineMaxSize } from "../hooks/useTimelineMaxSize";
-import { PlaybackProvider } from "@fiftyone/playback";
+import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
 import {
   AnnotatePrerequisiteChecking,
   AnnotatePrerequisiteNotice,
@@ -154,6 +154,20 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     return url ? getSampleSrc(url) : null;
   }, [sample]);
 
+  // Sequence mode makes the frame domain available to switch into, which is
+  // what turns the controls row's readout into a button (see `PlayheadTime`).
+  // `useAnnotatePrerequisites` blocks the surface unless the frame rate is
+  // finite and positive, so by the time this provider mounts there is always
+  // one — no `duration` fallback, and no remount key: the gates below hold the
+  // provider back until `frameRate` has resolved, so it never changes under it.
+  //
+  // The display still opens on timecode (`defaultDisplay` below); frames are
+  // opt-in, matching Explore.
+  const mode = useMemo<TimelineMode>(
+    () => ({ kind: "sequence", fps: prerequisites.frameRate as number }),
+    [prerequisites.frameRate],
+  );
+
   // Decide the decode strategy up front. Runs unconditionally (before the gates
   // below) to keep hook order stable across the resolving → resolved transition.
   const resolution = useDecodeStrategy({
@@ -255,7 +269,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     // Annotation wants the playhead to rest on a real frame after a pause or
     // scrub-drag, so the labels snapshot and any keyframe op align to a frame.
     // Scrubbing stays continuous — only the settle position snaps.
-    <PlaybackProvider snapToFrameOnSettle>
+    <PlaybackProvider snapToFrameOnSettle mode={mode} defaultDisplay="duration">
       <VideoAnnotationHandlerRegistration />
       {AUDIO_ONLY_STRATEGIES.has(strategy) && (
         <RegisterTimelineAudio
