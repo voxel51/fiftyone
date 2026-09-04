@@ -19,7 +19,7 @@ import {
   getEffectiveTrackMuted,
   getTrackVolumeMagnitude,
   registerAudioTrack,
-  setAudioAvailable,
+  setSourceAudioAvailable,
   setMasterMuted,
 } from "./store-access";
 import type { BufferReadiness, PlaybackStream } from "./types";
@@ -233,7 +233,7 @@ export function useAudioStream(
     const onError = () => {
       // `element.error` stays null for non-fatal error events
       if (element.error) {
-        setAudioAvailable(store, "error");
+        setSourceAudioAvailable(store, id, "error");
       }
       wakeEngine();
     };
@@ -266,7 +266,7 @@ export function useAudioStream(
       // below never ran — its cleanup can't clear the status, so the
       // element's own teardown must.
       if (getAudioAvailable(store) === "error") {
-        setAudioAvailable(store, "unavailable");
+        setSourceAudioAvailable(store, id, "unavailable");
       }
       setMetadataReady(false);
       setHasAudio(null);
@@ -323,8 +323,8 @@ export function useAudioStream(
     if (!available) {
       return undefined;
     }
-    setAudioAvailable(store, "available");
-    return () => setAudioAvailable(store, "unavailable");
+    setSourceAudioAvailable(store, id, "available");
+    return () => setSourceAudioAvailable(store, id, null);
   }, [available, store]);
 
   // Roster registration: this element is "just another audio source" in

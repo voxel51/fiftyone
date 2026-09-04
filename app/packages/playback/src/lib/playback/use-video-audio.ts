@@ -12,7 +12,7 @@ import {
   getTrackVolumeMagnitude,
   isMasterMuteAtSessionDefault,
   registerAudioTrack,
-  setAudioAvailable,
+  setSourceAudioAvailable,
   setMasterMuted,
 } from "./store-access";
 import { detectElementHasAudio } from "./use-audio-stream";
@@ -139,9 +139,11 @@ export function useVideoElementAudio(
     if (!available) {
       return undefined;
     }
-    setAudioAvailable(store, "available");
-    return () => setAudioAvailable(store, "unavailable");
-  }, [available, store]);
+    // Per-source, so a swap here cannot hide another source's controls —
+    // see `setSourceAudioAvailable`.
+    setSourceAudioAvailable(store, id, "available");
+    return () => setSourceAudioAvailable(store, id, null);
+  }, [available, store, id]);
 
   // Roster entry, so the Mixed dropdown / tile mute button can see and
   // control this source like any other audio track.

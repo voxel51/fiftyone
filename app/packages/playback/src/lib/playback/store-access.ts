@@ -292,6 +292,58 @@ export function setAudioAvailable(
   store.set(audioAvailableAtom, availability);
 }
 
+/**
+ * Per-source availability, aggregated into the one flag the volume UI reads.
+ *
+ * `audioAvailableAtom` is a single value, but a timeline can have more than
+ * one audio source at once — a `<video>` playing its own track
+ * (`useVideoElementAudio`) alongside separately-fetched streams
+ * (`useAudioStream`, which the MCAP episode viewer mounts per topic). With
+ * each source writing the flag directly, the last writer won: a `<video>`
+ * swapping source resets its readiness and its teardown published
+ * "unavailable", which hid the volume control AND the mixer for every other
+ * source that was still registered and audible.
+ *
+ * So sources report their own state here and the flag is derived: "error" if
+ * any source errored (it is the state that needs surfacing), otherwise
+ * "available" if any source has audio, otherwise "unavailable".
+ *
+ * Pass `null` to withdraw a source, which is what its effect teardown should
+ * do rather than publishing "unavailable" on everyone's behalf.
+ */
+export function setSourceAudioAvailable(
+  store: PlaybackStore,
+  sourceId: string,
+  availability: AudioAvailability | null,
+): void {
+  const sources = sourceAvailability.get(store) ?? new Map();
+  sourceAvailability.set(store, sources);
+
+  if (availability === null) {
+    sources.delete(sourceId);
+  } else {
+    sources.set(sourceId, availability);
+  }
+
+  const states = [...sources.values()];
+  const aggregate: AudioAvailability = states.includes("error")
+    ? "error"
+    : states.includes("available")
+      ? "available"
+      : "unavailable";
+
+  store.set(audioAvailableAtom, aggregate);
+}
+
+/**
+ * Per-store, per-source availability. Keyed weakly by store so a torn-down
+ * provider's entry goes with it rather than leaking for the session.
+ */
+const sourceAvailability = new WeakMap<
+  PlaybackStore,
+  Map<string, AudioAvailability>
+>();
+
 // ---------------------------------------------------------------------------
 // Per-track audio state (multi-track model). `audioVolumeAtom`/
 // `audioMutedAtom` above remain the storage-backed atoms; the accessors
