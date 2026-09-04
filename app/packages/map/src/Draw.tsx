@@ -1,27 +1,70 @@
 import React from "react";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
-import { useControl } from "react-map-gl";
+import type { IControl } from "maplibre-gl";
+import { useControl as useMapboxControl } from "react-map-gl/mapbox-legacy";
+import { useControl as useMaplibreControl } from "react-map-gl/maplibre";
+
+export type DrawCreateEvent = {
+  features: [GeoJSON.Feature<GeoJSON.Polygon>];
+};
+
+type DrawEventMap = {
+  on: (type: "draw.create", listener: (event: DrawCreateEvent) => void) => void;
+  off: (
+    type: "draw.create",
+    listener: (event: DrawCreateEvent) => void,
+  ) => void;
+};
 
 interface DrawControlProps {
   draw: MapboxDraw;
-  onCreate?: (event: { features: [GeoJSON.Feature<GeoJSON.Polygon>] }) => void;
+  onCreate?: (event: DrawCreateEvent) => void;
 }
 
-export default function DrawControl({ draw, onCreate }: DrawControlProps) {
+const useCreateHandler = ({ draw, onCreate }: DrawControlProps) => {
   const create = React.useRef(onCreate);
   create.current = onCreate;
-  useControl<MapboxDraw>(
+
+  return React.useCallback(
+    (event: DrawCreateEvent) => {
+      create.current?.(event);
+      const featureId = event.features[0].id;
+      if (featureId !== undefined) {
+        draw.delete(String(featureId));
+      }
+    },
+    [draw],
+  );
+};
+
+export function MapLibreDrawControl(props: DrawControlProps) {
+  const handleCreate = useCreateHandler(props);
+
+  useMaplibreControl<IControl>(
     ({ map }) => {
-      map.on("draw.create", (event) => {
-        create.current(event);
+      (map as unknown as DrawEventMap).on("draw.create", handleCreate);
 
-        draw.delete(event.features[0].id);
-      });
-
-      return draw;
+      // MapboxDraw supports MapLibre at runtime, but its types use Mapbox GL.
+      return props.draw as unknown as IControl;
     },
     ({ map }) => {
-      map.off("draw.create", create.current);
+      (map as unknown as DrawEventMap).off("draw.create", handleCreate);
+    },
+  );
+
+  return null;
+}
+
+export function MapboxDrawControl(props: DrawControlProps) {
+  const handleCreate = useCreateHandler(props);
+
+  useMapboxControl<MapboxDraw>(
+    ({ map }) => {
+      (map as unknown as DrawEventMap).on("draw.create", handleCreate);
+      return props.draw;
+    },
+    ({ map }) => {
+      (map as unknown as DrawEventMap).off("draw.create", handleCreate);
     },
   );
 
