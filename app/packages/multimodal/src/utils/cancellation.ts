@@ -11,6 +11,11 @@ export function createAbortError(message = DEFAULT_ABORT_ERROR_MESSAGE): Error {
   return error;
 }
 
+/** Whether a thrown value is a cancellation rather than a real failure. */
+export function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === ABORT_ERROR_NAME;
+}
+
 /** Throws a fresh cancellation error when the optional signal is aborted. */
 export function throwIfAborted(
   signal: AbortSignal | null | undefined,

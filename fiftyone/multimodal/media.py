@@ -897,9 +897,7 @@ _SERIALIZERS_BY_TYPE: Dict[
     Type[MediaReference], _MediaReferenceSerializer
 ] = {}
 _RESOLVERS_BY_KIND: Dict[str, _MediaResolver] = {}
-_ASSET_STORAGE_BY_FILE_SYSTEM: Dict[
-    fos.FileSystem, _MediaAssetStorage
-] = {}
+_ASSET_STORAGE_BY_FILE_SYSTEM: Dict[fos.FileSystem, _MediaAssetStorage] = {}
 _EXPORT_PLANNERS_BY_KIND_AND_FORMAT: Dict[Tuple[str, str], Callable] = {}
 
 
@@ -2030,6 +2028,4 @@ _register_media_reference(
     _hydrate_lerobot_episode,
 )
 
-_register_media_asset_storage(
-    fos.FileSystem.LOCAL, _LocalMediaAssetStorage()
-)
+_register_media_asset_storage(fos.FileSystem.LOCAL, _LocalMediaAssetStorage())

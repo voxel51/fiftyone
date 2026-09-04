@@ -38,6 +38,14 @@ export interface ByteResourceReadRequest {
    */
   readonly cachePolicy?: {
     readonly blockFill?: boolean;
+    /**
+     * Whether the durable layer may keep these bytes. Separate from
+     * `blockFill`, because refusing to widen a read says nothing about
+     * whether its range is worth remembering: a poster frame's range is
+     * derived from the sample table and is identical every time the tile is
+     * drawn, while a one-byte size probe is worth nothing to anyone.
+     */
+    readonly persist?: boolean;
     readonly readahead?: boolean;
   };
   readonly range: ByteRange;

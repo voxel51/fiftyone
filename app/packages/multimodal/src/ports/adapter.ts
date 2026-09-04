@@ -23,8 +23,7 @@ export type AssetSelectorDescriptor =
   | { readonly kind: "whole-file" }
   | {
       readonly coordinateSystem:
-        | "lerobot-v3-global-dataset-row"
-        | "parquet-file-row";
+        "lerobot-v3-global-dataset-row" | "parquet-file-row";
       readonly end: number;
       readonly kind: "row-interval";
       readonly start: number;
@@ -45,6 +44,16 @@ export interface AssetResolver {
    * viewer. An adapter given these should prefer them and read the source
    * only for what they do not cover.
    */
+  /**
+   * What the server recorded about the whole source.
+   *
+   * A source's own metadata describes it too, but that is one file per
+   * source and reading it costs a storage round trip per episode that opens.
+   * An adapter given this should prefer it.
+   */
+  describeSource?(
+    options?: EpisodeOpenOptions,
+  ): Promise<EpisodeDescription | null>;
   describeEpisode?(
     options?: EpisodeOpenOptions,
   ): Promise<EpisodeDescription | null>;

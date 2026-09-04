@@ -3,7 +3,6 @@ import {
   type SampleRendererProps,
   type SampleRendererSampleLike,
 } from "@fiftyone/plugins";
-import { getSampleSrc } from "@fiftyone/state";
 
 import {
   BYTE_SOURCE_READ_PROFILE,
@@ -32,6 +31,16 @@ import {
 } from "../../runtime/episode-manifest-transport";
 import { requestEpisodeManifest } from "../../runtime/episode-manifests";
 
+// teams-only:begin — byte-source derivation lives in runtime/ so the
+// enterprise grid overlay reaches it through the extensions facade;
+// re-exported here for view-side callers. In OSS these functions live in
+// this file directly (not synced).
+export {
+  episodeByteSourceFromContext,
+  episodeByteSourceFromSample,
+} from "../../runtime/episode-byte-source";
+// teams-only:end
+
 /** Builds the format-neutral sample facts used by lazy adapter detection. */
 export function sampleDescriptorFromContext(
   ctx: SampleRendererProps["ctx"],
@@ -55,22 +64,6 @@ export function sampleDescriptorFromSample(
     mediaType: mediaType ?? media.mediaType ?? undefined,
     path: media.path ?? undefined,
   };
-}
-
-/** Builds a byte-addressable episode source from the active sample. */
-export function episodeByteSourceFromContext(
-  ctx: SampleRendererProps["ctx"],
-): ByteSourceDescriptor | null {
-  return byteSourceFromSample(ctx.sample.sample, ctx.media?.path ?? null);
-}
-
-/** Builds a byte-addressable episode source for an arbitrary sample. */
-export function episodeByteSourceFromSample(
-  sample: SampleRendererSampleLike,
-  mediaField: string,
-): ByteSourceDescriptor | null {
-  const media = createSampleRendererMediaContext(sample, mediaField);
-  return byteSourceFromSample(sample.sample, media.path);
 }
 
 /** Wraps one physical recording in the multi-asset episode port. */
@@ -177,6 +170,8 @@ export function episodeSourceFromMediaReference(
     assets: {
       describeEpisode: async (options) =>
         (await getManifest(options)).episode ?? null,
+      describeSource: async (options) =>
+        (await getManifest(options)).source ?? null,
       list: async (options) =>
         (await getManifest(options)).assets.map((asset) => ({
           ...(asset.feature_name ? { featureName: asset.feature_name } : {}),
@@ -252,25 +247,13 @@ export function episodeManifestSourceFromContext(
   );
 }
 
-function byteSourceFromSample(
-  sample: SampleRendererSampleLike["sample"],
-  mediaPath: string | null,
-): ByteSourceDescriptor | null {
-  if (!mediaPath) return null;
-  const sizeBytes = sample.metadata?.size_bytes;
-  return {
-    readProfile: /^(https?|s3|gs|gcs|az|abfs|abfss):\/\//i.test(mediaPath)
-      ? BYTE_SOURCE_READ_PROFILE.REMOTE
-      : BYTE_SOURCE_READ_PROFILE.LOCAL,
-    sizeBytes:
-      typeof sizeBytes === "number" && Number.isFinite(sizeBytes)
-        ? Math.max(0, Math.trunc(sizeBytes)).toString()
-        : undefined,
-    sourceId: sample._id,
-    url: getSampleSrc(mediaPath),
-  };
-}
-
+/**
+ * The profile the server derived for these bytes.
+ *
+ * Not decided here: this side cannot tell a local file from a remote object,
+ * and guessing it wrong means either reading a local file in blocks it does
+ * not need or a remote one in ranges it cannot afford.
+ */
 function normalizedReadProfile(
   value: string | undefined,
 ): ByteSourceReadProfile {

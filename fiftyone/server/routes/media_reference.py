@@ -166,6 +166,7 @@ def _page_manifests(dataset_id, sample_ids):
                 ),
                 _episode_description(episodes[sample_id], reference),
                 reference=reference,
+                source=_source_info(bindings.get(reference.source_identity)),
             )
         except HTTPException as exc:
             errors[sample_id] = _manifest_error(exc)
@@ -333,9 +334,7 @@ async def _serve_asset_bytes(request, asset):
 
         url = await anyio.to_thread.run_sync(_asset_location, asset.path)
         if url is not None:
-            return _redirect_response(
-                url, _asset_location_max_age(asset.path)
-            )
+            return _redirect_response(url, _asset_location_max_age(asset.path))
 
         # Signing is unavailable here, so the bytes come through this
         # server rather than not at all.
@@ -397,12 +396,16 @@ def _resolve_public_manifest(request):
     dataset = get_dataset(dataset_id)
     sample = _get_sample(dataset, sample_id)
     reference = _require_media_reference(sample)
+    binding = _load_source_bindings([reference]).get(
+        getattr(reference, "source_identity", None)
+    )
     return _public_manifest(
         dataset_id,
         sample_id,
-        _reference_assets(reference),
+        _reference_assets(reference, binding=binding),
         _episode_description(sample.to_mongo_dict(), reference),
         reference=reference,
+        source=_source_info(binding),
     )
 
 
@@ -427,26 +430,41 @@ def _reference_assets(reference, binding=None):
     return _resolve_reference_assets(reference).assets
 
 
-def _public_manifest(
-    dataset_id, sample_id, assets, episode=None, reference=None
-):
-    """Publishes a sample's assets, and what import recorded about the episode.
+def _source_info(binding):
+    """What the whole source declares, from the binding a page already read.
 
-    The episode description is what a reader would otherwise rediscover by
-    opening the source's own metadata - ``info.json`` and a row of the episode
-    metadata shard - which is two storage round trips per tile for facts
-    already sitting on the sample.
+    A source's ``meta/info.json`` is one file shared by every episode in it,
+    so a reader is handed what it says instead of fetching that file once per
+    tile. None for a source bound before this was recorded, which leaves a
+    reader to read it as before.
+    """
+    info = getattr(binding, "source_info", None)
+    return info if isinstance(info, dict) and info else None
+
+
+def _public_manifest(
+    dataset_id, sample_id, assets, episode=None, reference=None, source=None
+):
+    """Publishes a sample's assets and what import recorded about them.
+
+    Between the episode description and the source facts, a reader needs no
+    storage round trip to open an episode: both are things it would otherwise
+    rediscover from the source's own metadata - ``info.json`` and a row of the
+    episode metadata shard - per tile, for facts already recorded at import.
     """
     base_url = "/dataset/%s" % quote(str(dataset_id), safe="")
     manifest = publish_media_assets(
         assets,
         functools.partial(_asset_url, base_url, sample_id, reference),
     )
-    # How long this may be reused. Every URL in it is a handle this server
-    # answers, so holding one only risks missing a replaced source.
+    # How long this may be reused. A reader that held it longer would keep
+    # fetching with URLs whose authorization has lapsed.
     manifest["max_age_seconds"] = _manifest_max_age()
     if episode:
         manifest["episode"] = episode
+
+    if source:
+        manifest["source"] = source
 
     return manifest
 

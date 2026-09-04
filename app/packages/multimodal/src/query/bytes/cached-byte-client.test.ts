@@ -514,6 +514,59 @@ describe("createCachedByteClient sequential remote readahead", () => {
   });
 });
 
+describe("createCachedByteClient object sharing", () => {
+  it("fetches one object once however many consumers ask for it", async () => {
+    // Every episode of a LeRobot source selects from the same few files, so a
+    // page of tiles asks for one object's bytes many times over. Keyed per
+    // consumer they each fetched, and the caches could only merge them after
+    // the first landed - which on a cold page is never in time.
+    const controlled = createControlledReader();
+    const { client } = createClient({ reads: controlled.reader });
+    const range = { length: 8n, offset: 0n };
+    const object = { contentId: "object:info.json" };
+
+    const reads = [
+      client.readBytes({
+        range,
+        source: source({ ...object, sourceId: "episode-1:info" }),
+      }),
+      client.readBytes({
+        range,
+        source: source({ ...object, sourceId: "episode-2:info" }),
+      }),
+      client.readBytes({
+        range,
+        source: source({ ...object, sourceId: "episode-3:info" }),
+      }),
+    ];
+    await flushAsync();
+
+    expect(controlled.pending).toHaveLength(1);
+
+    controlled.pending[0].resolve(fillResult(controlled.pending[0].request));
+    const settled = await Promise.all(reads);
+    expect(settled.map((entry) => entry.bytes.byteLength)).toEqual([8, 8, 8]);
+  });
+
+  it("keeps distinct objects apart", async () => {
+    const controlled = createControlledReader();
+    const { client } = createClient({ reads: controlled.reader });
+    const range = { length: 8n, offset: 0n };
+
+    const reads = [
+      client.readBytes({ range, source: source({ contentId: "object:a" }) }),
+      client.readBytes({ range, source: source({ contentId: "object:b" }) }),
+    ];
+    await flushAsync();
+
+    expect(controlled.pending).toHaveLength(2);
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await Promise.all(reads);
+  });
+});
+
 describe("createCachedByteClient remote fill slots", () => {
   // No sizeBytes: reads stay exact-shape, so these tests exercise slot
   // metering without block-widening or readahead in the way.

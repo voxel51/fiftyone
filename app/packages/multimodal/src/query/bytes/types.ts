@@ -24,6 +24,13 @@ export interface ByteRangeReadRequest {
     readonly blockFill?: boolean;
 
     /**
+     * Whether the durable layer may keep these bytes. Separate from
+     * `blockFill`: refusing to widen a read says nothing about whether its
+     * range is worth remembering again.
+     */
+    readonly persist?: boolean;
+
+    /**
      * Whether a cache wrapper may queue autonomous successor-block readahead.
      * Bounded grants disable this so no unadmitted range outlives the grant.
      */
@@ -52,8 +59,7 @@ export interface ByteRangeReadRequest {
  * Fixed or source-aware byte-cache fill block size.
  */
 export type ByteCacheBlockSizeBytes =
-  | number
-  | ((request: ByteRangeReadRequest) => number | undefined);
+  number | ((request: ByteRangeReadRequest) => number | undefined);
 
 /**
  * Bytes returned for one source byte range.
@@ -101,11 +107,7 @@ export interface ByteReadDebugLog {
 }
 
 type ByteCacheReadResult =
-  | "coalesced"
-  | "fill-hit"
-  | "fetched"
-  | "persistent-hit"
-  | "request-hit";
+  "coalesced" | "fill-hit" | "fetched" | "persistent-hit" | "request-hit";
 
 export interface ByteReadDebugOptions {
   readonly enabled?: boolean;

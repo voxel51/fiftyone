@@ -23,6 +23,7 @@ import re
 import string
 import threading
 from time import monotonic
+from typing import Optional
 import uuid
 
 import cachetools
@@ -136,6 +137,11 @@ class _LeRobotSourceBinding:
     root: str
     source_fingerprint: str
     revision: str
+    #: What `meta/info.json` says, recorded once for the whole source. Every
+    #: episode of a source shares it, so a reader is handed it rather than
+    #: fetching the same file per tile. None for a source bound before this
+    #: was recorded, which makes a reader fall back to reading it.
+    source_info: Optional[dict] = None
 
 
 @dataclass(frozen=True)
@@ -363,7 +369,12 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
 
         self.dataset_dir = root
         self._samples = samples
-        bind_lerobot_source(source_identity, root, source_fingerprint)
+        bind_lerobot_source(
+            source_identity,
+            root,
+            source_fingerprint,
+            source_info=_extract_source_info(info),
+        )
         self._dataset_info = {
             "lerobot": {
                 "format": "LeRobotDataset",
@@ -375,8 +386,35 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         }
 
 
-def bind_lerobot_source(source_identity, dataset_root, source_fingerprint):
-    """Binds a LeRobot source identity to an authorized root."""
+def _extract_source_info(info):
+    """The `meta/info.json` fields a reader needs, and only those.
+
+    Not the whole file: totals and path templates are the source's own
+    bookkeeping, while a reader needs the stream schema, the frame rate and
+    the format version it has to validate.
+    """
+    if not isinstance(info, dict):
+        return None
+
+    info_fields = {
+        field: info[field]
+        for field in ("features", "fps", "codebase_version", "robot_type")
+        if info.get(field) is not None
+    }
+    return info_fields or None
+
+
+def bind_lerobot_source(
+    source_identity, dataset_root, source_fingerprint, source_info=None
+):
+    """Binds a LeRobot source identity to an authorized root.
+
+    ``source_info`` is what the source's own ``meta/info.json`` declares,
+    which import has already parsed. Recorded here because it describes the
+    source rather than any one episode, so a reader can be handed it instead
+    of fetching that file once per tile. Omitted on a rebind, which leaves
+    whatever the original bind recorded in place.
+    """
     if not isinstance(source_identity, str) or not source_identity.strip():
         raise ValueError("source_identity must be a non-empty string")
 
@@ -400,6 +438,11 @@ def bind_lerobot_source(source_identity, dataset_root, source_fingerprint):
                         "root": root,
                         "source_fingerprint": source_fingerprint,
                         "revision": revision,
+                        **(
+                            {"source_info": source_info}
+                            if source_info is not None
+                            else {}
+                        ),
                     }
                 )
                 break
@@ -417,7 +460,17 @@ def bind_lerobot_source(source_identity, dataset_root, source_fingerprint):
 
         result = collection.update_one(
             {"_id": source_identity, "revision": existing.get("revision")},
-            {"$set": {"root": root, "revision": revision}},
+            {
+                "$set": {
+                    "root": root,
+                    "revision": revision,
+                    **(
+                        {"source_info": source_info}
+                        if source_info is not None
+                        else {}
+                    ),
+                }
+            },
         )
         if result.matched_count:
             break
@@ -957,6 +1010,7 @@ def _get_source_bindings(source_identities):
                 root=document["root"],
                 source_fingerprint=document["source_fingerprint"],
                 revision=document["revision"],
+                source_info=document.get("source_info"),
             )
         except (KeyError, TypeError) as exc:
             raise MissingMediaRootError(

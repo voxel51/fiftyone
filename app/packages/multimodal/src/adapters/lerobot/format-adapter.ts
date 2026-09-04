@@ -261,7 +261,10 @@ export function createLeRobotFormatAdapter(
     // for facts recorded at import, and it serializes the data read behind
     // itself - the data selector's bounds come out of this row.
     const [info, episodeRow] = await Promise.all([
-      readInfo(source, io, infoAsset, openOptions?.signal),
+      describedInfo(source, openOptions).then(
+        (described) =>
+          described ?? readInfo(source, io, infoAsset, openOptions?.signal),
+      ),
       describedEpisodeRow(source, openOptions).then((described) =>
         described
           ? described
@@ -798,6 +801,11 @@ class LeRobotEpisodeSession implements EpisodeSession {
       binding.asset,
       samples,
       request.signal,
+      // Only a playback sweep reads forward through the file. A poster or a
+      // seek wants one span and nothing after it, so widening the read to a
+      // fill sized for streaming fetches a large share of the object to
+      // answer a single frame.
+      (request.priority ?? "playback") === "playback",
     );
     const avc =
       declaredCodec === "h264"
@@ -963,6 +971,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     asset: AssetDescriptor,
     samples: readonly Sample[],
     signal?: AbortSignal,
+    sequential = true,
   ): Promise<Uint8Array> {
     const start = samples[0].offset;
     const end = Math.max(
@@ -982,6 +991,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
       if (cached && cached.end >= end) return cached;
       const readStart = cached?.end ?? start;
       const result = await this.state.io.readBytes({
+        ...(sequential ? {} : { cachePolicy: { blockFill: false } }),
         range: {
           length: BigInt(end - readStart),
           offset: BigInt(readStart),
@@ -1737,7 +1747,24 @@ async function readInfo(
   if (!value.features || !Number.isFinite(value.fps) || value.fps <= 0) {
     throw new Error("Invalid LeRobot meta/info.json");
   }
-  const version = value.codebase_version?.trim();
+  requireSupportedVersion(value);
+  return value;
+}
+
+/** Whether a description carries everything the reader needs from info. */
+function isReadableInfo(info: LeRobotInfo): boolean {
+  if (!info.features || !Number.isFinite(info.fps) || info.fps <= 0) {
+    return false;
+  }
+
+  // A version this viewer cannot read must fail rather than be skipped over
+  // and rediscovered from the file, which would report it as missing
+  requireSupportedVersion(info);
+  return true;
+}
+
+function requireSupportedVersion(info: LeRobotInfo): void {
+  const version = info.codebase_version?.trim();
   const match = version?.match(
     /^v?(\d+)(?:\.\d+){0,2}(?:[-+][0-9A-Za-z.-]+)?$/i,
   );
@@ -1748,7 +1775,28 @@ async function readInfo(
       }'`,
     );
   }
-  return value;
+}
+
+/**
+ * What `meta/info.json` declares, from the server rather than the source.
+ *
+ * One file describes a whole source, so reading it per episode costs a
+ * storage round trip per tile for facts recorded at import. Returns null when
+ * the server described nothing, or described too little to stand in for the
+ * file - the same validation the reader applies either way, so a partial
+ * description is not worth guessing around.
+ */
+async function describedInfo(
+  source: EpisodeSource,
+  options?: EpisodeOpenOptions,
+): Promise<LeRobotInfo | null> {
+  const described = await source.assets.describeSource?.(options);
+  if (!described) {
+    return null;
+  }
+
+  const info = described as LeRobotInfo;
+  return isReadableInfo(info) ? info : null;
 }
 
 /**
@@ -1896,7 +1944,9 @@ async function asyncBufferForSource(
       const probe = await io.readBytes({
         // Exact: this asks for a length, not for bytes. Widened to the remote
         // block size it would fetch megabytes of a shard to read a header.
-        cachePolicy: { blockFill: false },
+        // Not kept either - one byte at offset zero is worth nothing to any
+        // later read.
+        cachePolicy: { blockFill: false, persist: false },
         range: { length: 1n, offset: 0n },
         signal,
         source: descriptor,

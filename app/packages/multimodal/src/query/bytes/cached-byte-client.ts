@@ -5,7 +5,7 @@ import {
 } from "./constants";
 import { safeNumber } from "./bigint-utils";
 import { serializeCacheKey } from "../cache-utils";
-import { byteSourceAccessKey } from "./cache";
+import { byteSourceCacheKey } from "./cache";
 import {
   acquireByteFillSlot,
   byteFillLockName,
@@ -15,7 +15,7 @@ import {
 import { parseByteSize } from "./byte-size";
 import { createByteSourceSizeRegistry } from "./source-size-registry";
 import { monotonicNowMs } from "../../utils/monotonic-time";
-import { createAbortError } from "../../utils/cancellation";
+import { createAbortError, isAbortError } from "../../utils/cancellation";
 import type {
   ByteClient,
   ByteCacheLayers,
@@ -82,6 +82,17 @@ interface ByteFillOutcome {
   readonly cacheResult: "fetched" | "persistent-hit";
   readonly result: ByteRangeReadResult;
 }
+
+/**
+ * Times a reader re-issues a fill that another reader's abort killed.
+ *
+ * One physical fetch serves everyone who joined it, and it follows the signal
+ * of whichever request started it. So a reader that merely joined can be
+ * cancelled by a reader that left - a grid tile scrolled out of view killing
+ * the fetch a tile still on screen is waiting on. Bounded because a genuine
+ * cancellation storm must not turn into an unbounded retry storm.
+ */
+const COALESCED_ABORT_ATTEMPTS = 3;
 
 /**
  * Minimum delay before re-evaluating readahead for the same fill shape.
@@ -497,11 +508,13 @@ export function createCachedByteClient(
         }
       }
 
-      // Exact one-off reads stay out of the persistent layer: their ranges
-      // are not deterministic shapes, so they would fragment it with entries
-      // the block/chunk read paths can never match again.
+      // Reads whose range nothing will ask for again stay out of the durable
+      // layer, or they fill it with entries no later read can match. That is
+      // a property of the range, not of whether the read was widened, so the
+      // caller says so: a poster frame reads the same span every time its
+      // tile is drawn and belongs here; a one-byte size probe does not.
       const persistent =
-        request.source.localFile || request.cachePolicy?.blockFill === false
+        request.source.localFile || request.cachePolicy?.persist === false
           ? undefined
           : caches.persistent || undefined;
 
@@ -524,31 +537,50 @@ export function createCachedByteClient(
       // In-flight request coalescing follows the active access URL, while the
       // durable byte cache above follows stable sourceId content identity.
       const fillKey = byteRangeAccessKey(fillRequest);
-      let fill = pendingByteReads.get(fillKey);
-      const coalesced = fill !== undefined;
-      if (!fill) {
-        fill = fillExclusive(fillRequest, persistent).finally(() => {
-          pendingByteReads.delete(fillKey);
-        });
-        pendingByteReads.set(fillKey, fill);
-      }
+      for (let attempt = 1; ; attempt++) {
+        let fill = pendingByteReads.get(fillKey);
+        const coalesced = fill !== undefined;
+        if (!fill) {
+          fill = fillExclusive(fillRequest, persistent).finally(() => {
+            pendingByteReads.delete(fillKey);
+          });
+          pendingByteReads.set(fillKey, fill);
+        }
 
-      const outcome = await waitForByteFill(fill, request.signal);
-      logByteRead(caches, {
-        cacheResult: coalesced ? "coalesced" : outcome.cacheResult,
-        fillRequest,
-        request,
-        result: outcome.result,
-        startMs,
-      });
-      return sliceByteRangeResult(
-        withByteReadUsage(
-          outcome.result,
-          fillRequest.range,
-          coalesced ? "coalesced" : outcome.cacheResult,
-        ),
-        request.range,
-      );
+        let outcome: ByteFillOutcome;
+        try {
+          outcome = await waitForByteFill(fill, request.signal);
+        } catch (error: unknown) {
+          // This reader still wants its bytes: the abort belonged to whoever
+          // started the fetch, not to it. Failing here would surface someone
+          // else's cancellation as this read's error.
+          if (
+            !isAbortError(error) ||
+            request.signal?.aborted ||
+            attempt >= COALESCED_ABORT_ATTEMPTS
+          ) {
+            throw error;
+          }
+
+          continue;
+        }
+
+        logByteRead(caches, {
+          cacheResult: coalesced ? "coalesced" : outcome.cacheResult,
+          fillRequest,
+          request,
+          result: outcome.result,
+          startMs,
+        });
+        return sliceByteRangeResult(
+          withByteReadUsage(
+            outcome.result,
+            fillRequest.range,
+            coalesced ? "coalesced" : outcome.cacheResult,
+          ),
+          request.range,
+        );
+      }
     },
   };
 }
@@ -651,8 +683,14 @@ function byteReadNowMs(): number {
 }
 
 function byteRangeAccessKey(request: ByteRangeReadRequest): string {
+  // Keyed by which bytes these are, not by who asked for them. Every episode
+  // of a source selects from the same few files, so a page of tiles asks for
+  // one object's bytes many times over; keyed per consumer they each fetch,
+  // and the caches only merge them after the first lands - which on a cold
+  // page is never in time. This is the same identity the memory cache, the
+  // durable cache and the fill locks already agree on.
   return serializeCacheKey([
-    byteSourceAccessKey(request.source),
+    byteSourceCacheKey(request.source),
     request.range.offset.toString(),
     request.range.length.toString(),
   ]);

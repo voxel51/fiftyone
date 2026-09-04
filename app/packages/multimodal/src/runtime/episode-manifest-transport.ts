@@ -19,6 +19,13 @@ export type TransportMediaAssetManifest = {
    * own metadata files - which is a storage round trip each.
    */
   readonly episode?: Readonly<Record<string, unknown>>;
+  /**
+   * What the source's own `meta/info.json` declares, recorded once for the
+   * whole source. Every episode of a source shares that file, so a reader is
+   * handed what it says instead of fetching it once per tile. Absent for a
+   * source bound before it was recorded, which makes a reader read the file.
+   */
+  readonly source?: Readonly<Record<string, unknown>>;
 };
 
 type TransportMediaAsset = {
