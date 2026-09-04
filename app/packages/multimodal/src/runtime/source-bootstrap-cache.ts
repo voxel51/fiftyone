@@ -7,7 +7,6 @@ import type {
   TimeWindow,
 } from "../ir";
 import { byteSourceAccessKey } from "../query/bytes";
-import { publishEpisodeTimeRange } from "./episode-time-range-registry";
 import {
   normalizeSourceFactsPayload,
   SOURCE_FACTS_MCAP_ADAPTER_ID,
@@ -160,11 +159,19 @@ export function retractDurableSourceFacts(
   }
 }
 
-/** Publishes every reusable fact learned by one lightweight preview read. */
+/**
+ * Publishes every reusable fact learned by one lightweight preview read, and
+ * returns the episode time range the read established, if any.
+ *
+ * The range is handed back rather than published to the episode registry here.
+ * This cache is keyed by byte source, and a `sourceId` is not an episode
+ * identity — a media-reference source mints it from the reference key — so only
+ * the caller can say which episode the read was standing in for.
+ */
 export function publishEpisodePreviewBootstrap(
   source: ByteSourceDescriptor,
   result: EpisodePreviewReadResult,
-): void {
+): TimeWindow | null {
   const timeRange = result.bootstrapTimeline
     ? {
         endNs: result.bootstrapTimeline.endNs,
@@ -183,7 +190,7 @@ export function publishEpisodePreviewBootstrap(
       : {}),
     previewReadComplete: true,
   });
-  if (timeRange) publishEpisodeTimeRange(source.sourceId, timeRange);
+  return timeRange ?? null;
 }
 
 /** Returns the UI bootstrap projection without changing its LRU position. */

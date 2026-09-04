@@ -1,5 +1,6 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { COLOR_BY } from "@fiftyone/utilities";
 import React from "react";
 import type { RecoilState } from "recoil";
 import { useRecoilValue } from "recoil";
@@ -48,8 +49,11 @@ interface Props {
   resultsAtom: ResultsAtom;
   selectedAtom: RecoilState<(string | null)[]>;
   /**
-   * Optional per-value color for the checkbox dot (e.g. temporal-tag colors),
-   * so each value shows its own color rather than the shared field color.
+   * Overrides the per-value color of the checkbox dot for fields whose values
+   * are colored by something other than the color scheme's rules for `path`
+   * (temporal tags, which are always colored by their name). Left unset, the
+   * dot follows the color scheme: the field's color when coloring by field,
+   * the value's own color when coloring by value.
    */
   resultColor?: (value: string | null) => string;
 }
@@ -79,6 +83,13 @@ const StringFilter = ({
   resultColor,
 }: Props) => {
   const name = useName(path);
+  const schemeColor = fos.useValueColor(path);
+  const coloringBy = useRecoilValue(fos.colorScheme).colorBy;
+  // Coloring by field leaves the dot on the color the entry passed down: an
+  // entry colors every row under it the same, and a nested path can resolve to
+  // a different field color than its own entry does.
+  const valueColor =
+    resultColor ?? (coloringBy === COLOR_BY.VALUE ? schemeColor : undefined);
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const field = useRecoilValue(fos.field(path));
   const { results, showSearch, useSearch } = useSelected(
@@ -144,7 +155,7 @@ const StringFilter = ({
         )}
         <Checkboxes
           color={color}
-          resultColor={resultColor}
+          resultColor={valueColor}
           excludeAtom={excludeAtom}
           modal={modal}
           isMatchingAtom={isMatchingAtom}

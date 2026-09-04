@@ -35,6 +35,12 @@ interface LeRobotGridHoverVideoProps {
     size: BitmapDrawSize,
   ) => void;
   readonly onError: (error: Error) => void;
+  /**
+   * Reports the instant the element is presenting, on its own media clock.
+   * Native playback advances the element rather than the grid's read loop, so
+   * this is the only thing that can keep the tile's published playhead moving.
+   */
+  readonly onPresentedTimeSeconds?: (mediaTimeSeconds: number) => void;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
   readonly playing: boolean;
   readonly video: EpisodePreviewNativeVideo;
@@ -46,6 +52,7 @@ export function LeRobotGridHoverVideo({
   capturePoster,
   onCanvasCommitted,
   onError,
+  onPresentedTimeSeconds,
   onSurfaceRetainedBytesChange,
   playing,
   video,
@@ -56,6 +63,7 @@ export function LeRobotGridHoverVideo({
   const requestRef = useRef<GridNativeVideoLeaseRequest | null>(null);
   const onCanvasCommittedRef = useLatestRef(onCanvasCommitted);
   const onErrorRef = useLatestRef(onError);
+  const onPresentedTimeSecondsRef = useLatestRef(onPresentedTimeSeconds);
   const onSurfaceRetainedBytesChangeRef = useLatestRef(
     onSurfaceRetainedBytesChange,
   );
@@ -184,6 +192,7 @@ export function LeRobotGridHoverVideo({
         try {
           if (!capturePresentedPoster()) schedulePosterRetry();
           setShowingVideo(playing);
+          onPresentedTimeSecondsRef.current?.(element.currentTime);
         } catch (error) {
           fail(error);
         }
@@ -254,6 +263,7 @@ export function LeRobotGridHoverVideo({
       try {
         if (!capturePresentedPoster()) schedulePosterRetry();
         setShowingVideo(playing);
+        onPresentedTimeSecondsRef.current?.(metadata.mediaTime);
         if (playing) scheduleFrame();
       } catch (error) {
         fail(error);
@@ -296,6 +306,7 @@ export function LeRobotGridHoverVideo({
     holderId,
     onCanvasCommittedRef,
     onErrorRef,
+    onPresentedTimeSecondsRef,
     onSurfaceRetainedBytesChangeRef,
     playing,
     sourceUrl,
