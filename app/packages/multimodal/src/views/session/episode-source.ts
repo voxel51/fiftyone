@@ -111,44 +111,6 @@ export function episodeByteSourceFromSample(
   return byteSourceFromSample(sample.sample, media.path);
 }
 
-/** Wraps one physical recording in the multi-asset episode port. */
-export function episodeSourceFromByteSource(
-  source: ByteSourceDescriptor,
-  sourceFactsScope?: SourceFactsScope,
-): EpisodeSource {
-  const hints = getSourceSessionHints(source, SOURCE_FACTS_MCAP_ADAPTER_ID);
-  return {
-    assets: {
-      list: async () => [
-        {
-          id: source.sourceId,
-          role: "recording",
-        },
-      ],
-      resolve: async (assetId) => {
-        if (assetId !== source.sourceId) {
-          throw new Error(`Unknown episode asset: ${assetId}`);
-        }
-        return source;
-      },
-    },
-    episodeId: source.sourceId,
-    ...(hints?.manifestHint ? { manifestHint: hints.manifestHint } : {}),
-    ...(hints?.playbackHint ? { playbackHint: hints.playbackHint } : {}),
-    ...(sourceFactsScope
-      ? {
-          resolveHints: (options) =>
-            resolveSourceFactsHints(
-              source,
-              sourceFactsScope,
-              SOURCE_FACTS_MCAP_ADAPTER_ID,
-              options,
-            ),
-        }
-      : {}),
-  };
-}
-
 /** Builds a lazy multi-asset source from a sample-scoped manifest endpoint. */
 export function episodeSourceFromMediaReference(
   datasetId: string,
