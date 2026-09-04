@@ -49,7 +49,7 @@ beforeEach(() => {
     TYPE_BY_PATH[path] ?? LabelType.Unknown;
 });
 
-describe("useSelectionIsKeyframeable (detections only)", () => {
+describe("useSelectionIsKeyframeable (detections + polylines)", () => {
   it("is false on an empty selection", () => {
     const { result } = renderHook(() => useSelectionIsKeyframeable());
     expect(result.current).toBe(false);
@@ -61,10 +61,15 @@ describe("useSelectionIsKeyframeable (detections only)", () => {
     expect(result.current).toBe(true);
   });
 
-  it("is false for a polyline selection", () => {
+  it("is true for a polyline selection", () => {
+    // Polyline tracks interpolate their vertices, so they are keyframeable —
+    // the toolbar's Mark Keyframe must reach them. Keep in step with
+    // `linearAgentFor` in `useVideoPropagate`: a type that resolves to a linear
+    // agent there has to be keyframeable here, or interpolation works while
+    // keyframe management stays disabled (and the tooltip lies about it).
     const { result } = renderHook(() => useSelectionIsKeyframeable());
     setActive([{ sample: "s1", path: "frames.polylines", instanceId: "p1" }]);
-    expect(result.current).toBe(false);
+    expect(result.current).toBe(true);
   });
 
   it("is false for a temporal-detection selection", () => {
@@ -73,11 +78,21 @@ describe("useSelectionIsKeyframeable (detections only)", () => {
     expect(result.current).toBe(false);
   });
 
-  it("is false for a mixed detection + polyline selection", () => {
+  it("is true for a mixed detection + polyline selection", () => {
+    // both geometries interpolate, so a mixed selection is still keyframeable
     const { result } = renderHook(() => useSelectionIsKeyframeable());
     setActive([
       { sample: "s1", path: "frames.detections", instanceId: "d1" },
       { sample: "s1", path: "frames.polylines", instanceId: "p1" },
+    ]);
+    expect(result.current).toBe(true);
+  });
+
+  it("is false when any selected track is not keyframeable", () => {
+    const { result } = renderHook(() => useSelectionIsKeyframeable());
+    setActive([
+      { sample: "s1", path: "frames.polylines", instanceId: "p1" },
+      { sample: "s1", path: "events", instanceId: "td1" },
     ]);
     expect(result.current).toBe(false);
   });

@@ -424,10 +424,24 @@ const makeTrackIdentityOps = (
       .map((frame) => ({ frame, det: r.read(instanceId, frame) }))
       .filter((s): s is FrameDetection => !!s.det);
 
+  /**
+   * The frame field a selected track actually lives on, from its active
+   * interaction ref — a track can sit on a non-primary field (a polyline does),
+   * where the stream's primary field holds no label for it. Callers that already
+   * know the field (the timeline's context menu) pass it explicitly; the toolbar
+   * doesn't, and defaulting to primary made these ops read the wrong field, find
+   * nothing, and return silently. Mirrors `markKeyframe`'s resolution.
+   */
+  const fieldFor = (instanceId: string, explicit?: string): string =>
+    explicit ??
+    engine.interaction.getActive().find((ref) => ref.instanceId === instanceId)
+      ?.path ??
+    path;
+
   const splitTrack = (
     trackId: string,
     atFrame: number,
-    fieldPath: string = path,
+    explicitPath?: string,
   ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
@@ -435,6 +449,7 @@ const makeTrackIdentityOps = (
       return;
     }
 
+    const fieldPath = fieldFor(instanceId, explicitPath);
     const r = readerFor(fieldPath);
     const tail = snapshot(r, instanceId, (frame) => frame >= atFrame);
 
@@ -444,12 +459,33 @@ const makeTrackIdentityOps = (
 
     const newInstanceId = engine.mintInstanceId();
 
+    // Pin both sides of the cut as keyframes: the head's last frame and the
+    // tail's first. Those two frames are typically interpolated filler, and a
+    // split makes each half an independent track — so without pinning them the
+    // next re-lerp on either half recomputes its boundary frame from that half's
+    // own remaining keyframes and the shape at the cut jumps. Pinning retains
+    // whatever lerp was already there. Idempotent when the frame is already a
+    // keyframe, and skipped for the head when the cut is at the track's first
+    // frame (there is no head to pin).
+    const headFrames = r.trackFrames(instanceId).filter((f) => f < atFrame);
+    const lastHeadFrame = headFrames.at(-1);
+    const firstTailFrame = tail[0].frame;
+
     actions.transaction(() => {
       for (const { frame, det } of tail) {
         actions.deleteLabel({ path: fieldPath, instanceId, frame });
         actions.updateLabel(
           { path: fieldPath, instanceId: newInstanceId, frame },
-          r.content(det),
+          frame === firstTailFrame
+            ? { ...r.content(det), keyframe: true }
+            : r.content(det),
+        );
+      }
+
+      if (lastHeadFrame !== undefined) {
+        actions.updateLabel(
+          { path: fieldPath, instanceId, frame: lastHeadFrame },
+          { keyframe: true },
         );
       }
     });
@@ -465,7 +501,7 @@ const makeTrackIdentityOps = (
   const mergeTracks = (
     sourceTrackId: string,
     targetTrackId: string,
-    fieldPath: string = path,
+    explicitPath?: string,
   ): void => {
     const sourceInstanceId = instanceIdFromTrackId(sourceTrackId);
     const targetInstanceId = instanceIdFromTrackId(targetTrackId);
@@ -478,6 +514,7 @@ const makeTrackIdentityOps = (
       return;
     }
 
+    const fieldPath = fieldFor(sourceInstanceId, explicitPath);
     const r = readerFor(fieldPath);
     const occupied = new Set(r.trackFrames(targetInstanceId));
     const sources = snapshot(r, sourceInstanceId, () => true);

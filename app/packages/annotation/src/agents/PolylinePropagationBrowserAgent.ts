@@ -1,4 +1,7 @@
-import type { SyntheticBox, SyntheticKeyframe } from "@fiftyone/utilities";
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type {
   AnnotationAgent,
   AnnotationAgentLifecycle,
@@ -6,68 +9,42 @@ import type {
   AnnotationAgentLifecycleStatus,
   InferenceResult,
   ModelMetadata,
-  PropagatedDetection,
+  PropagatedPolyline,
   PropagationContext,
   PropagationInferenceResult,
 } from "./types";
 import { AgentTaskType, InferenceCapability } from "./types";
-
-type Bbox = [number, number, number, number];
-
-/** Linear interpolation between `a` and `b` at fraction `t` ∈ [0, 1]. */
-function lerp(a: number, b: number, t: number): number {
-  return a + t * (b - a);
-}
-
-/** Component-wise linear interpolation between two bboxes at fraction `t`. */
-function lerpBbox(left: Bbox, right: Bbox, t: number): Bbox {
-  return [
-    lerp(left[0], right[0], t),
-    lerp(left[1], right[1], t),
-    lerp(left[2], right[2], t),
-    lerp(left[3], right[3], t),
-  ];
-}
+import {
+  objectId,
+  type SyntheticKeyframe,
+  type SyntheticPolyline,
+} from "@fiftyone/utilities";
+import { interpolatePoints, type Ring } from "./polylineInterp";
 
 /** Exclusive integer range `[start, end)` as an array. */
 function range(start: number, end: number): number[] {
   return Array.from({ length: Math.max(0, end - start) }, (_, i) => start + i);
 }
 
-/**
- * Generate a 24-char hex string matching the MongoDB ObjectId format —
- * 4-byte timestamp + 8-byte random. Not a real BSON ObjectId (no machine
- * id / counter), but the wire format is identical and the DB accepts it.
- */
-function generateObjectIdHex(): string {
-  const timestamp = Math.floor(Date.now() / 1000)
-    .toString(16)
-    .padStart(8, "0");
-  const random = Array.from({ length: 16 }, () =>
-    Math.floor(Math.random() * 16).toString(16),
-  ).join("");
-  return timestamp + random;
-}
+/** Narrows a propagation keyframe to the vertex geometry this agent lerps. */
+const isPolylineKeyframe = (
+  keyframe: SyntheticKeyframe,
+): keyframe is SyntheticPolyline =>
+  Array.isArray((keyframe as SyntheticPolyline).points);
 
 /**
- * Linearly interpolates a tracked object's bounding box between two
- * bracketing keyframes, emitting one Detection per in-between frame.
+ * Linearly interpolates a tracked object's `Polyline` geometry between two
+ * bracketing keyframes, emitting one Polyline per in-between frame.
  *
- * Despite the `AnnotationAgent` interface and "inference" naming: this is
- * deterministic math, not AI. The agent abstraction is reused here so
- * future propagation methods (SAM2 tracking, optical flow, spline) can
- * slot into the same registry, lifecycle, and dispatch path under one
- * uniform contract. Linear runs synchronously on the main thread — a
- * worker would add latency for trivial arithmetic.
+ * The sibling of {@link PropagationBrowserAgent}, which does the same for a
+ * `bounding_box`: same registry, lifecycle and dispatch path, and likewise
+ * synchronous on the main thread. The geometry lives in
+ * {@link interpolatePoints}.
  *
- * Each emitted Detection carries `keyframe: false`, the propagation run's
- * provenance blob, and the shared `instance.id` from the source keyframes.
+ * Each emitted Polyline carries `keyframe: false` and the shared `instance.id`
+ * from the source keyframes.
  */
-/** Narrows a propagation keyframe to the box geometry this agent lerps. */
-const isBoxKeyframe = (keyframe: SyntheticKeyframe): keyframe is SyntheticBox =>
-  Array.isArray((keyframe as SyntheticBox).bounding_box);
-
-export class PropagationBrowserAgent implements AnnotationAgent<PropagationInferenceResult> {
+export class PolylinePropagationBrowserAgent implements AnnotationAgent<PropagationInferenceResult> {
   private lifecycleStatus: AnnotationAgentLifecycleStatus = "idle";
   private readonly listeners = new Set<AnnotationAgentLifecycleListener>();
 
@@ -83,36 +60,45 @@ export class PropagationBrowserAgent implements AnnotationAgent<PropagationInfer
     this.setStatus("inferring");
 
     try {
-      // `parentKeyframes` spans both geometries propagation can lerp;
-      // `useVideoPropagate` resolves the agent from the field's label type, so a
-      // box keyframe is what reaches this agent. Narrow explicitly rather than
-      // asserting, so a future dispatch bug surfaces here instead of producing
-      // `undefined` coordinates.
+      // Narrow rather than assert, so a dispatch bug surfaces here instead of
+      // silently interpolating an empty shape.
       const [leftKeyframe, rightKeyframe] = context.parentKeyframes;
 
-      if (!isBoxKeyframe(leftKeyframe) || !isBoxKeyframe(rightKeyframe)) {
+      if (
+        !isPolylineKeyframe(leftKeyframe) ||
+        !isPolylineKeyframe(rightKeyframe)
+      ) {
         throw new Error(
-          "propagate-linear received a keyframe with no bounding box",
+          "propagate-linear-polyline received a keyframe with no points",
         );
       }
 
-      const left: Bbox = leftKeyframe.bounding_box;
-      const right: Bbox = rightKeyframe.bounding_box;
+      const left: Ring[] = leftKeyframe.points;
+      const right: Ring[] = rightKeyframe.points;
       const span: number = context.toFrame - context.fromFrame;
 
+      // `closed` / `filled` come from the left keyframe: a mismatch between the
+      // two keyframes is a labelling error, not motion, so it isn't animated.
+      const closed = leftKeyframe.closed ?? false;
+      const filled = leftKeyframe.filled ?? false;
+
       const perFrame: PropagationInferenceResult["perFrame"] = [];
+
       range(context.fromFrame + 1, context.toFrame).forEach((n) => {
         const t: number = (n - context.fromFrame) / span;
-        const detection: PropagatedDetection = {
-          _id: generateObjectIdHex(),
-          _cls: "Detection",
-          bounding_box: lerpBbox(left, right, t),
+        const polyline: PropagatedPolyline = {
+          _id: objectId(),
+          _cls: "Polyline" as const,
+          points: interpolatePoints(left, right, t, closed),
+          closed,
+          filled,
           label: leftKeyframe.label,
           index: leftKeyframe.index,
           instance: { _cls: "Instance", _id: context.instanceId },
           keyframe: false,
         };
-        perFrame.push({ frameNumber: n, detection });
+
+        perFrame.push({ frameNumber: n, detection: polyline });
       });
 
       return {
@@ -136,7 +122,7 @@ export class PropagationBrowserAgent implements AnnotationAgent<PropagationInfer
 
   async getModelMetadata(task: AgentTaskType): Promise<ModelMetadata | null> {
     if (task === AgentTaskType.PROPAGATE) {
-      return { name: "Linear interpolation" };
+      return { name: "Linear interpolation (polyline)" };
     }
     return null;
   }
