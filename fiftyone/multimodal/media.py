@@ -767,123 +767,6 @@ class _MediaResolver(ABC):
         """Resolves typed asset descriptions for the media reference."""
 
 
-class _RangedAssetRead:
-    """One open, seekable read of an asset, whatever backs it.
-
-    ``source`` is what a reader should be handed: a path where the reader
-    opens files better itself, an open stream where it cannot reach them at
-    all. Closing belongs to the caller and does nothing for a source that
-    holds nothing open.
-    """
-
-    def __init__(self, source, stream=None):
-        self.source = source
-        self._stream = stream
-
-    def close(self):
-        if self._stream is None:
-            return
-
-        try:
-            self._stream.close()
-        finally:
-            self._stream = None
-
-
-class _MediaAssetStorage(ABC):
-    """How the assets on one file system are reached.
-
-    Everything this library does with an asset path that depends on *where*
-    the path is goes through here, so a call site reads the same whatever
-    backs it. One backend is registered per file system, which makes the set
-    of reachable file systems a property of the installation rather than of
-    every call site that handles a path.
-
-    The members are exactly the questions a caller cannot answer from a path
-    alone. Size, listing and path arithmetic are not among them: those are
-    plain storage functions that work the same everywhere.
-    """
-
-    @abstractmethod
-    def open_ranged(self, path):
-        """Opens an asset for reads that seek, such as a Parquet footer.
-
-        Returns a :class:`_RangedAssetRead` the caller owns and closes.
-        """
-
-    @abstractmethod
-    def read_range(self, path, start, end):
-        """Returns the bytes of one inclusive byte range.
-
-        Separate from :meth:`open_ranged` because they answer different
-        questions: that one hands a reader library whatever it opens best,
-        which for a local file is a path and not readable bytes at all.
-        """
-
-    @abstractmethod
-    def resolve_location(self, path):
-        """A URL a reader can fetch these bytes from without this server.
-
-        None where this server is the only way to reach them. Resolved per
-        request rather than published in a manifest, because an authorization
-        is minted for a moment and a manifest outlives it.
-        """
-
-    @abstractmethod
-    def location_max_age(self):
-        """How long a :meth:`resolve_location` URL grants access, in seconds.
-
-        None where such a URL does not expire, so nothing that hands one out
-        has to bound how long it may be reused.
-        """
-
-    @abstractmethod
-    def credential_key(self, path):
-        """What scopes a cache of these bytes to whoever may read them.
-
-        None where every reader of this file system is the same reader, so a
-        cache needs no such scoping.
-        """
-
-    @abstractmethod
-    def is_authorization_failure(self, path, error):
-        """Whether a read failure was really a matter of permission.
-
-        Some storage cannot distinguish "missing" from "not yours", so this
-        answers for the backend rather than being guessed from the error.
-        """
-
-
-class _LocalMediaAssetStorage(_MediaAssetStorage):
-    """The file system this process reads directly."""
-
-    def open_ranged(self, path):
-        # The path, not a stream: a reader opens a local file with its own
-        # reader, which beats anything that could be handed to it here.
-        return _RangedAssetRead(path)
-
-    def read_range(self, path, start, end):
-        with open(path, "rb") as handle:
-            handle.seek(start)
-            return handle.read(end - start + 1)
-
-    def resolve_location(self, path):
-        # This process is the only way to its own disk, so a reader is served
-        # from here rather than sent elsewhere
-        return None
-
-    def location_max_age(self):
-        return None
-
-    def credential_key(self, path):
-        # One reader, so nothing to scope a cache by
-        return None
-
-    def is_authorization_failure(self, path, error):
-        # A local read that failed says so itself, through the error it raised
-        return False
-
-
 @dataclass(frozen=True)
 class _MediaReferenceSerializer:
     kind: str
@@ -897,7 +780,6 @@ _SERIALIZERS_BY_TYPE: Dict[
     Type[MediaReference], _MediaReferenceSerializer
 ] = {}
 _RESOLVERS_BY_KIND: Dict[str, _MediaResolver] = {}
-_ASSET_STORAGE_BY_FILE_SYSTEM: Dict[fos.FileSystem, _MediaAssetStorage] = {}
 _EXPORT_PLANNERS_BY_KIND_AND_FORMAT: Dict[Tuple[str, str], Callable] = {}
 
 
@@ -1015,40 +897,6 @@ def _hydrate_media_reference_binding(descriptor, binding):
         )
 
     return reference
-
-
-def _register_media_asset_storage(
-    file_system: fos.FileSystem, storage: _MediaAssetStorage
-) -> None:
-    """Registers the backend that reaches assets on one file system."""
-    if not isinstance(storage, _MediaAssetStorage):
-        raise TypeError("storage must be a _MediaAssetStorage")
-
-    if file_system in _ASSET_STORAGE_BY_FILE_SYSTEM:
-        raise ValueError(
-            "Media asset storage for '%s' is already registered"
-            % file_system.value
-        )
-
-    _ASSET_STORAGE_BY_FILE_SYSTEM[file_system] = storage
-
-
-def _get_media_asset_storage(path: str) -> _MediaAssetStorage:
-    """Gets the backend that reaches one asset's path.
-
-    Which file systems are reachable is a property of the installation: a
-    backend for one it cannot reach is simply never registered, and a path on
-    it is refused here rather than misread further in.
-    """
-    file_system = fos.get_file_system(path)
-    storage = _ASSET_STORAGE_BY_FILE_SYSTEM.get(file_system)
-    if storage is None:
-        raise UnsupportedMediaReferenceOperation(
-            "Media assets on the '%s' file system cannot be reached by this "
-            "installation" % file_system.value
-        )
-
-    return storage
 
 
 def _register_media_resolver(kind: str, resolver: _MediaResolver) -> None:
@@ -2027,5 +1875,3 @@ _register_media_reference(
     _serialize_lerobot_episode,
     _hydrate_lerobot_episode,
 )
-
-_register_media_asset_storage(fos.FileSystem.LOCAL, _LocalMediaAssetStorage())

@@ -11,6 +11,7 @@ import enum
 import io
 import json
 import logging
+from typing import Any, Optional
 import multiprocessing.dummy
 import ntpath
 import os
@@ -26,6 +27,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.ranged_reader as frr
 import fiftyone.core.utils as fou
 
 logger = logging.getLogger(__name__)
@@ -1084,6 +1086,106 @@ def get_file_metadata(path):
         "etag": None,
         "revision": None,
     }
+
+
+def open_ranged(path):
+    """Opens a file for bounded, seekable reads.
+
+    Returns a seekable binary reader that fetches a range at a time, so a
+    footer or one row group costs its own bytes rather than the whole file's.
+    Deliberately not :func:`open_file` or :func:`read_file`: those hand back
+    whole files, which costs nothing on a disk this process can open and
+    everything where reaching a file is not free.
+
+    The caller owns the reader and closes it.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        a seekable, read-only binary reader
+    """
+    return frr.RangeReader(_ranged_fetcher(path))
+
+
+def read_range(path, start, end):
+    """Returns the bytes of one inclusive byte range.
+
+    For a caller that wants bytes rather than a reader to seek in. Bounded
+    the same way: only the range asked for is read.
+
+    Args:
+        path: the filepath
+        start: the first byte offset, inclusive
+        end: the last byte offset, inclusive
+
+    Returns:
+        the bytes of the range
+    """
+    _, data = _ranged_fetcher(path).fetch(start, end - start + 1)
+    return data
+
+
+def _ranged_fetcher(path):
+    """The fetcher that can reach one path's bytes a range at a time."""
+    return frr.FileFetcher(path)
+
+
+def resolve_location(path) -> Optional[str]:
+    """Returns a URL a reader can fetch a file's bytes from, or None.
+
+    Always None here: this process opens the files it is given, so a reader
+    is served by it rather than sent elsewhere.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        None
+    """
+    return None
+
+
+def location_max_age() -> Optional[int]:
+    """How long a :func:`resolve_location` URL keeps granting access.
+
+    Always None here, because there is no such URL to expire.
+
+    Returns:
+        None
+    """
+    return None
+
+
+def credential_key(path) -> Optional[Any]:
+    """Returns what scopes a cache of a file's bytes to whoever may read it.
+
+    Always None here: every reader of these files is the same reader, so a
+    shared cache needs no such scoping.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        None
+    """
+    return None
+
+
+def is_authorization_failure(path, error):
+    """Whether a read failure was really a matter of permission.
+
+    Always False here: a file this process opens reports its own failure
+    through the error it raised, so nothing has to be inferred.
+
+    Args:
+        path: the filepath
+        error: the exception a read raised
+
+    Returns:
+        False
+    """
+    return False
 
 
 def get_file_size(path_or_file):

@@ -48,7 +48,6 @@ from fiftyone.multimodal.media import (
     UnfinalizedMediaSourceError,
     UnsupportedMediaReferenceOperation,
     UnsupportedLeRobotVersionError,
-    _get_media_asset_storage,
     _get_media_resolver,
 )
 from fiftyone.server import decorators
@@ -708,9 +707,8 @@ def _asset_location(path):
     answer for a file on its own disk. Resolved per request rather than kept
     in a manifest, because an authorization is minted for a moment.
     """
-    storage = _get_media_asset_storage(path)
     try:
-        return storage.resolve_location(path)
+        return fos.resolve_location(path)
     except Exception:  # pylint: disable=broad-except
         logger.warning(
             "Cannot resolve a readable location for a media-reference asset, "
@@ -727,7 +725,8 @@ def _asset_location_max_age(path):
     freshly authorized one, and short regardless because it is also how long
     a reader whose access was revoked can still fetch bytes.
     """
-    lifetime = _get_media_asset_storage(path).location_max_age()
+    # pylint: disable-next=assignment-from-none
+    lifetime = fos.location_max_age()
     if lifetime is None:
         # Nothing about the location expires, so only revocation bounds this
         return _MAX_REDIRECT_AGE_SECONDS
@@ -813,15 +812,13 @@ async def _proxy_response(request, asset):
         return Response(status_code=status_code, headers=headers)
 
     headers["Content-Length"] = str(end - start + 1)
-    storage = _get_media_asset_storage(asset.path)
-
     async def stream():
         position = start
         while position <= end:
             chunk_end = min(end, position + _PROXY_CHUNK_BYTES - 1)
             chunk = await anyio.to_thread.run_sync(
                 functools.partial(
-                    storage.read_range, asset.path, position, chunk_end
+                    fos.read_range, asset.path, position, chunk_end
                 )
             )
             if not chunk:

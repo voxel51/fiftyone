@@ -62,7 +62,6 @@ from fiftyone.multimodal.media import (
     UnsupportedLeRobotVersionError,
     VideoTimestampInterval,
     _build_resolved_media_asset,
-    _get_media_asset_storage,
     _get_media_resolver,
     _get_selected_media_asset_key,
     _MediaAssetManifest,
@@ -1609,8 +1608,8 @@ def _open_parquet(path, role):
     read = None
     opened = None
     try:
-        read = _get_media_asset_storage(path).open_ranged(path)
-        opened = _ParquetSource(papq.ParquetFile(read.source), stream=read)
+        read = fos.open_ranged(path)
+        opened = _ParquetSource(papq.ParquetFile(read), stream=read)
         return opened
     except PermissionError as exc:
         raise MediaSourceAuthorizationError(
@@ -1857,7 +1856,8 @@ def _shared_cache_key(path):
     there is nothing for a shared cache to be scoped by.
     """
     try:
-        credential = _get_media_asset_storage(path).credential_key(path)
+        # pylint: disable-next=assignment-from-none
+        credential = fos.credential_key(path)
     except Exception:  # pylint: disable=broad-except
         return None
 
@@ -1979,7 +1979,7 @@ def _raise_storage_error(path, error):
 
     # Where the backend can tell, a definite "no" is an authorization failure
     # rather than a missing object
-    if _get_media_asset_storage(path).is_authorization_failure(path, error):
+    if fos.is_authorization_failure(path, error):
         raise MediaSourceAuthorizationError(
             "The LeRobot asset '%s' is not readable with the current "
             "credentials" % path
