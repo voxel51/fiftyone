@@ -57,7 +57,7 @@ export function Result<T>({
       className={classNames(...classes)}
       ref={ref}
     >
-      <Component value={result} />
+      <Component value={result} className={style.resultComponent} />
     </div>
   );
 }

@@ -11,7 +11,10 @@
 }
 
 .scrollContainer {
-  overflow: auto;
+  /* a horizontal scrollbar and the vertical one toggle each other at the
+     max-height boundary, oscillating the layer; rows truncate instead */
+  overflow-x: hidden;
+  overflow-y: auto;
   max-height: 250px;
 }
 
@@ -41,6 +44,7 @@
 .resultComponent {
   overflow: hidden;
   white-space: nowrap;
+  min-width: 0;
   max-width: 100%;
   text-overflow: ellipsis;
 }
