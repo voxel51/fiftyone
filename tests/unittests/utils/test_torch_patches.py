@@ -68,6 +68,15 @@ class TestIterSlicesMapping:
         with pytest.raises(ValueError, match="mismatched lengths"):
             list(fou.iter_slices(batch, 2))
 
+    @pytest.mark.parametrize("batch_size", [0, -1, -5])
+    def test_mapping_non_positive_batch_size_raises(self, batch_size):
+        # Previously: batch_size=0 raised a confusing internal
+        # `range() arg 3 must not be zero`, and a negative batch_size
+        # silently dropped all data (0 batches, no error)
+        batch = {"a": torch.zeros(3, 1)}
+        with pytest.raises(ValueError, match="positive integer"):
+            list(fou.iter_slices(batch, batch_size))
+
     def test_numpy_mapping_patches_merged(self):
         patches = [
             {"pixel_values": np.zeros((1, 4, 4, 3))},
@@ -75,3 +84,22 @@ class TestIterSlicesMapping:
         ]
         out = fout._stack_transformed_patches(patches, use_numpy=True)
         assert out["pixel_values"].shape == (2, 4, 4, 3)
+
+
+class TestIterSlicesSequence:
+    def test_sequence_sliced(self):
+        chunks = list(fou.iter_slices([1, 2, 3, 4, 5], 2))
+        assert chunks == [[1, 2], [3, 4], [5]]
+
+    def test_sequence_none_batch_size_passthrough(self):
+        data = [1, 2, 3]
+        chunks = list(fou.iter_slices(data, None))
+        assert len(chunks) == 1
+        assert chunks[0] is data
+
+    @pytest.mark.parametrize("batch_size", [0, -1, -5])
+    def test_sequence_non_positive_batch_size_raises(self, batch_size):
+        # Previously: batch_size<=0 caused an infinite loop (`start` never
+        # advanced), hanging the caller forever with no error
+        with pytest.raises(ValueError, match="positive integer"):
+            list(fou.iter_slices([1, 2, 3], batch_size))
