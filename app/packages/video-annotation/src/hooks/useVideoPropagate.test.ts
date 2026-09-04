@@ -9,12 +9,6 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const emptyResult = async () => ({
-  labelId: "instance-1",
-  type: "sync",
-  response: { perFrame: [] },
-});
-
 // One spy per registered agent: which spy ran IS the dispatch assertion.
 const { inferBox, inferPolyline, applyPropagation, labelTypeRef } = vi.hoisted(
   () => ({
