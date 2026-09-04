@@ -231,6 +231,21 @@ describe("useVideoElementAudio", () => {
     expect(video.muted).toBe(false);
   });
 
+  it("unmutes when play was pressed BEFORE metadata landed", () => {
+    const video = makeVideo();
+    const { result } = renderAudio(video);
+    const { store } = result.current;
+
+    // the order the app actually hits now that nothing blocks the barrier at
+    // startup: play first, `loadedmetadata` after. Subscribing to
+    // `isPlayingAtom` alone misses this, because it never changes again.
+    act(() => store.set(isPlayingAtom, true));
+    act(() => video._fire("loadedmetadata"));
+
+    expect(getMasterMuted(store)).toBe(false);
+    expect(video.muted).toBe(false);
+  });
+
   it("does not spend the automatic unmute on a source with no audio", () => {
     const video = makeVideo();
     const { result } = renderAudio(video, { hasAudio: false });

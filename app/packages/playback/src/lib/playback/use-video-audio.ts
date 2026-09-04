@@ -197,11 +197,21 @@ export function useVideoElementAudio(
     if (!available) {
       return undefined;
     }
-    return store.sub(isPlayingAtom, () => {
+
+    const unmuteIfUntouched = () => {
       if (store.get(isPlayingAtom) && isMasterMuteAtSessionDefault()) {
         setMasterMuted(store, false);
       }
-    });
+    };
+
+    // Read the CURRENT value as well as subscribing, because `available`
+    // gates this effect on `loadedmetadata` — which can land after the
+    // viewer has already pressed play. `store.sub` only fires on changes,
+    // and `isPlayingAtom` does not change again, so subscribing alone misses
+    // that transition and the surface stays silent for the whole session
+    // with no second chance.
+    unmuteIfUntouched();
+    return store.sub(isPlayingAtom, unmuteIfUntouched);
   }, [available, store]);
 
   return { hasAudio };
