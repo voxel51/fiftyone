@@ -3,6 +3,7 @@ import {
   type SampleRendererProps,
   type SampleRendererSampleLike,
 } from "@fiftyone/plugins";
+import { getSampleSrc } from "@fiftyone/state";
 
 import {
   BYTE_SOURCE_READ_PROFILE,
@@ -31,16 +32,6 @@ import {
 } from "../../runtime/episode-manifest-transport";
 import { requestEpisodeManifest } from "../../runtime/episode-manifests";
 
-// teams-only:begin — byte-source derivation lives in runtime/ so the
-// enterprise grid overlay reaches it through the extensions facade;
-// re-exported here for view-side callers. In OSS these functions live in
-// this file directly (not synced).
-export {
-  episodeByteSourceFromContext,
-  episodeByteSourceFromSample,
-} from "../../runtime/episode-byte-source";
-// teams-only:end
-
 /** Builds the format-neutral sample facts used by lazy adapter detection. */
 export function sampleDescriptorFromContext(
   ctx: SampleRendererProps["ctx"],
@@ -64,6 +55,60 @@ export function sampleDescriptorFromSample(
     mediaType: mediaType ?? media.mediaType ?? undefined,
     path: media.path ?? undefined,
   };
+}
+
+/** Wraps one physical recording in the multi-asset episode port. */
+export function episodeSourceFromByteSource(
+  source: ByteSourceDescriptor,
+  sourceFactsScope?: SourceFactsScope,
+): EpisodeSource {
+  const hints = getSourceSessionHints(source, SOURCE_FACTS_MCAP_ADAPTER_ID);
+  return {
+    assets: {
+      list: async () => [
+        {
+          id: source.sourceId,
+          role: "recording",
+        },
+      ],
+      resolve: async (assetId) => {
+        if (assetId !== source.sourceId) {
+          throw new Error(`Unknown episode asset: ${assetId}`);
+        }
+        return source;
+      },
+    },
+    episodeId: source.sourceId,
+    ...(hints?.manifestHint ? { manifestHint: hints.manifestHint } : {}),
+    ...(hints?.playbackHint ? { playbackHint: hints.playbackHint } : {}),
+    ...(sourceFactsScope
+      ? {
+          resolveHints: (options) =>
+            resolveSourceFactsHints(
+              source,
+              sourceFactsScope,
+              SOURCE_FACTS_MCAP_ADAPTER_ID,
+              options,
+            ),
+        }
+      : {}),
+  };
+}
+
+/** Builds a byte-addressable episode source from the active sample. */
+export function episodeByteSourceFromContext(
+  ctx: SampleRendererProps["ctx"],
+): ByteSourceDescriptor | null {
+  return byteSourceFromSample(ctx.sample.sample, ctx.media?.path ?? null);
+}
+
+/** Builds a byte-addressable episode source for an arbitrary sample. */
+export function episodeByteSourceFromSample(
+  sample: SampleRendererSampleLike,
+  mediaField: string,
+): ByteSourceDescriptor | null {
+  const media = createSampleRendererMediaContext(sample, mediaField);
+  return byteSourceFromSample(sample.sample, media.path);
 }
 
 /** Wraps one physical recording in the multi-asset episode port. */
@@ -206,6 +251,25 @@ export function episodeSourceFromMediaReference(
     },
     episodeId: mediaReference.key,
     mediaReference,
+  };
+}
+
+function byteSourceFromSample(
+  sample: SampleRendererSampleLike["sample"],
+  mediaPath: string | null,
+): ByteSourceDescriptor | null {
+  if (!mediaPath) return null;
+  const sizeBytes = sample.metadata?.size_bytes;
+  return {
+    readProfile: /^(https?|s3|gs|gcs|az|abfs|abfss):\/\//i.test(mediaPath)
+      ? BYTE_SOURCE_READ_PROFILE.REMOTE
+      : BYTE_SOURCE_READ_PROFILE.LOCAL,
+    sizeBytes:
+      typeof sizeBytes === "number" && Number.isFinite(sizeBytes)
+        ? Math.max(0, Math.trunc(sizeBytes)).toString()
+        : undefined,
+    sourceId: sample._id,
+    url: getSampleSrc(mediaPath),
   };
 }
 

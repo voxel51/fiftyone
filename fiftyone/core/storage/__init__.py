@@ -27,7 +27,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.ranged_reader as frr
 import fiftyone.core.utils as fou
 
 logger = logging.getLogger(__name__)
@@ -1105,7 +1104,7 @@ def open_ranged(path):
     Returns:
         a seekable, read-only binary reader
     """
-    return frr.RangeReader(_ranged_fetcher(path))
+    return _reader.RangeReader(_ranged_fetcher(path))
 
 
 def read_range(path, start, end):
@@ -1128,7 +1127,7 @@ def read_range(path, start, end):
 
 def _ranged_fetcher(path):
     """The fetcher that can reach one path's bytes a range at a time."""
-    return frr.FileFetcher(path)
+    return _fetcher.FileFetcher(path)
 
 
 def resolve_location(path) -> Optional[str]:
@@ -1213,3 +1212,7 @@ def get_file_size(path_or_file):
             path_or_file.seek(position)
 
     return os.path.getsize(path_or_file)
+
+
+from fiftyone.core.storage import fetcher as _fetcher  # noqa: E402
+from fiftyone.core.storage import reader as _reader  # noqa: E402
