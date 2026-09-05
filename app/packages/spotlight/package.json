@@ -21,6 +21,6 @@
     },
     "type": "module",
     "dependencies": {
-        "@af-utils/scrollend-polyfill": "^0.0.13"
+        "@af-utils/scrollend-polyfill": "^0.0.16"
     }
 }
