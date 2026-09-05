@@ -8,6 +8,7 @@ Base classes for objects that are backed by database documents.
 from copy import deepcopy
 
 from bson import ObjectId
+from mongoengine.base import BaseDict, BaseList
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -166,6 +167,10 @@ class _Document(object):
 
         if isinstance(value, ObjectId):
             value = str(value)
+        elif isinstance(value, (BaseDict, BaseList)):
+            # MongoEngine only weakly references a mutable value's backing
+            # document, so retain it while callers hold the value
+            value._fiftyone_document = self
 
         return value
 
