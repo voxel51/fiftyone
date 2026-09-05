@@ -326,11 +326,76 @@ agent exactly how to perform a task, step by step.
    :alt: fiftyone-agent-skills
    :align: center
 
+Open any skill to read its full definition: the description that tells the
+Agent when to use it, and the step-by-step instructions it follows. Built-in
+skills are read-only, so you can always see exactly what the Agent was told
+to do.
+
+Use the toggle on each skill to control which ones the Agent may use. Turning
+a skill off removes it from the Agent's options without deleting anything.
+
+.. _enterprise-agent-skills-editing:
+
+Creating and editing skills
+___________________________
+
+Admins can extend the Agent with their own skills, directly from the settings
+panel. No plugin packaging or deployment step is required.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/skill_editor.webp
+   :alt: fiftyone-agent-skill-editor
+   :align: center
+
+Click **Create skill** to write a new one. Every skill needs three things:
+
+- **Name**: lowercase and dash-separated, e.g. ``triage-blurry-images``
+- **Description**: when the Agent should reach for this skill. This is the
+  only thing the Agent sees when choosing between skills, so write it as
+  *when to use this*, not *what this is*
+- **Instructions**: the workflow itself, in Markdown, covering what to check
+  first, which operators to call, and the steps to follow
+
+To adapt a built-in skill, open it and click **Duplicate**. This gives you an
+editable copy, leaving the original untouched. The copy needs its own name and
+its own description: two skills that describe themselves the same way make the
+Agent's choice between them arbitrary.
+
+Once your copy is saved, switch the built-in skill **off** using its toggle.
+The Agent then uses your version instead, and you keep the original in place
+to turn back on or duplicate again later.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/skills.webp
+   :alt: fiftyone-agent-skill-toggle
+   :align: center
+
 .. note::
 
-    You can also build and add your own custom skills to extend the agent's
-    capabilities. See :ref:`Developing skills <agents-developing>` for full
-    instructions.
+    Custom skills are stored as a plugin in your deployment, so they can be
+    downloaded and shared like any other plugin. See
+    :ref:`Developing skills <agents-developing>` if you would rather author
+    them as files.
+
+.. _enterprise-agent-skills-ask:
+
+Asking the Agent to write a skill
+_________________________________
+
+You can also ask the Agent to write or improve a skill for you, for example
+*"turn the steps we just worked through into a skill"* or *"add a validation
+step to my triage skill"*.
+
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/skill_agent_authored.webp
+   :alt: fiftyone-agent-skill-toggle
+   :align: center
+
+The Agent never writes a skill on its own. It proposes the change in a review
+card showing exactly what would be added and removed, line by line, against
+the current version. Nothing is saved until you click **Approve**, and
+rejecting leaves the skill exactly as it was.
+
+Built-in skills stay protected here too: if you ask the Agent to change one,
+it will propose a copy instead of modifying the original.
 
 .. customanimatedcta::
     :button_text: Browse Enterprise Skills
