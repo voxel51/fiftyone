@@ -1,6 +1,6 @@
 import {
   type InferenceResult,
-  type PropagatedDetection,
+  type PropagatedLabel,
   type PropagationInferenceResult,
   useActiveSampleId,
   useAnnotationEngine,
@@ -21,13 +21,14 @@ export type PropagationResultHandler = (
 ) => void;
 
 /**
- * Writes a single propagated detection into a 1-based frame. `undoKey`
+ * Writes a single propagated label (box or polyline) into a 1-based frame.
+ * `undoKey`
  * coalesces a streaming run's per-frame writes (which can't share one
  * synchronous transaction) into a single undo unit.
  */
 export type PropagatedDetectionWriter = (
   frameNumber: number,
-  detection: PropagatedDetection,
+  detection: PropagatedLabel,
   opts?: { undoKey?: string; path?: string },
 ) => void;
 

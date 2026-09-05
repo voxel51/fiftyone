@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useStream } from "@fiftyone/playback";
-import { useLighterTileScene } from "../hooks/useLighterTileScene";
+import { useLighterMediaScene } from "../hooks/useLighterMediaScene";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
 import { IMAVID_STREAM_ID } from "../utils/ids";
 import type { ImaVidImageFrame } from "../streams/ImaVidImageStream";
@@ -96,7 +96,7 @@ export const ImaVidLighterTile: React.FC = () => {
   const imageDims = usePaintFrameToCanvas(frame, frameCanvasRef);
 
   // Scene lifecycle: once-per-mount scene; `dims` from the decoded bitmap.
-  const { scene, canonicalMediaReady } = useLighterTileScene({
+  const { scene, canonicalMediaReady } = useLighterMediaScene({
     hostRef: lighterHostRef,
     dims: imageDims,
     sceneIdPrefix: "imavid-anno",

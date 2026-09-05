@@ -99,15 +99,17 @@ test.describe.serial("groups video labels", () => {
     modal,
     eventUtils,
   }) => {
-    // reset to default slice
-    const gridRefresPromise = await grid.armGridRefresh();
-    await grid.sliceSelector.selectSlice("v1");
-    await gridRefresPromise.received;
+    // Reset to the default slice, but only when an earlier test left another
+    // one selected: re-picking the slice already on screen refreshes nothing,
+    // and the armed refresh would never arrive.
+    if ((await grid.sliceSelector.activeSlice()) !== "v1") {
+      const gridRefresPromise = await grid.armGridRefresh();
+      await grid.sliceSelector.selectSlice("v1");
+      await gridRefresPromise.received;
+    }
 
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
-
-    await modal.video.clickUseFrameNumber();
 
     const checkVideo = async (slice: "v1" | "v2") => {
       await modal.assert.verifyModalSamplePluginTitle(slice, { pinned: true });
@@ -120,7 +122,7 @@ test.describe.serial("groups video labels", () => {
       //   animations: "allow",
       // });
 
-      await modal.video.playUntilFrames("5", true);
+      await modal.video.playUntilAdvanced();
       await modal.looker.hover();
 
       // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL

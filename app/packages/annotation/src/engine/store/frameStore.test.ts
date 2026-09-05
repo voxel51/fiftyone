@@ -709,3 +709,77 @@ describe("FrameStore end-to-end with FrameTemporalView + frame-locked bridge", (
     expect(handles.size).toBe(0);
   });
 });
+
+describe("FrameStore + frame-locked bridge: writes to other frames", () => {
+  it("a write to a non-displayed frame does not suppress its later projection", () => {
+    // Regression. `lastApplied` is keyed by TRACK (one handle per track), and the
+    // `isWriting` branch recorded every incoming change into it — including the
+    // fan-out a gesture causes on a track's OTHER frames (keyframe promotion
+    // re-lerps the whole span inside the commit). That claimed the handle already
+    // showed a frame it had never shown, so when the playhead arrived there the
+    // skip-if-unchanged guard suppressed the apply and the handle kept painting
+    // the edited frame's geometry — until it unmounted, which is why leaving the
+    // track and returning "fixed" it.
+    const { clock, seek } = makeClock();
+    const engine = new AnnotationEngine({
+      temporal: (e) => new FrameTemporalView(e, clock, (t) => t),
+    });
+    const store = makeStore();
+    engine.registerStore(store);
+
+    const { handles, bridge, adapters } = makeFrameSurface();
+    registerBridgeLoop(engine, bridge, adapters);
+
+    store.setData({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1])] },
+      2: { [PATH]: [det("doc-2", "A", [0, 0, 1, 1])] },
+    });
+
+    // playhead on frame 1: that is what the handle shows
+    expect(handles.get("A")!.label.bounding_box).toEqual([0, 0, 1, 1]);
+
+    // a gesture writes frame 2 while the surface owns the handle — exactly how a
+    // re-lerp reaches the loop (bridge.isWriting is set for the commit window)
+    bridge.isWriting = true;
+    engine.updateLabel(ref("A", 2), { bounding_box: [9, 9, 1, 1] });
+    bridge.isWriting = false;
+
+    // the handle must not have been touched — the playhead is still on frame 1
+    expect(handles.get("A")!.label.bounding_box).toEqual([0, 0, 1, 1]);
+
+    // now the playhead arrives at frame 2: the handle MUST take frame 2's value
+    seek(2);
+
+    expect(
+      handles.get("A")!.label.bounding_box,
+      "frame 2's geometry should reach the handle when the playhead gets there",
+    ).toEqual([9, 9, 1, 1]);
+  });
+
+  it("still skips a redundant reproject of the displayed frame's own write", () => {
+    // The guard's real purpose: a value the surface just wrote to the frame it is
+    // showing must not echo back onto the handle.
+    const { clock } = makeClock();
+    const engine = new AnnotationEngine({
+      temporal: (e) => new FrameTemporalView(e, clock, (t) => t),
+    });
+    const store = makeStore();
+    engine.registerStore(store);
+
+    const { handles, bridge, adapters } = makeFrameSurface();
+    registerBridgeLoop(engine, bridge, adapters);
+
+    store.setData({ 1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1])] } });
+
+    bridge.isWriting = true;
+    engine.updateLabel(ref("A", 1), { bounding_box: [4, 4, 2, 2] });
+    bridge.isWriting = false;
+
+    // the surface applied that itself; the loop must not have echoed it
+    expect(handles.get("A")!.label.bounding_box).toEqual([0, 0, 1, 1]);
+
+    // and a later engine-driven reproject of the SAME value stays a no-op
+    engine.updateLabel(ref("A", 1), { bounding_box: [4, 4, 2, 2] });
+    expect(handles.get("A")!.label.bounding_box).toEqual([0, 0, 1, 1]);
+  });
+});

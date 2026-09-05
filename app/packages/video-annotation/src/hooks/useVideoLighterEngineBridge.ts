@@ -28,7 +28,14 @@ import { useKeyframePromotionOnEdit } from "./useKeyframePromotionOnEdit";
  * a seeded frame store and the `FrameTemporalView` rather than the degenerate
  * pool view.
  */
-export const useVideoLighterEngineBridge = (): void => {
+export const useVideoLighterEngineBridge = (
+  /**
+   * Projection scope override. Explore supplies its own (see
+   * `useExploreFrameLabelPaths`) because the annotation-schema default below
+   * is empty outside Annotate mode.
+   */
+  pathsOverride?: ReadonlySet<string>,
+): void => {
   const engine = useAnnotationEngine();
   const sample = useActiveSampleId();
   const dataset = useDatasetId();
@@ -38,7 +45,9 @@ export const useVideoLighterEngineBridge = (): void => {
   // its path here, the bridge re-creates, and its overlays clear — the canvas
   // now respects the active schema like the sidebar. Sample-level fields stay
   // scoped too (a still-active temporal-detection field remains present).
-  const paths = useVisibleLabelSchemas();
+  // Called unconditionally to keep hook order stable; the override wins.
+  const annotationPaths = useVisibleLabelSchemas();
+  const paths = pathsOverride ?? annotationPaths;
 
   // referentially stable frame reader — a new identity would re-create the
   // bridge (clear + rehydrate); the playhead value is read live at call time

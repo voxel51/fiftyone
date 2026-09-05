@@ -80,9 +80,10 @@ const AudioSourceRegistrar: React.FC<{
 
 /**
  * Ambient audio registrar for the MCAP scene viewer — mirrors
- * `video-annotation`'s `RegisterTimelineAudio`, which mounts unconditionally
- * alongside the video so native audio plays/mixes regardless of which tile
- * (if any) is open. Without this, `useMcapAudioStream()` only ever ran
+ * `video-annotation`'s `RegisterTimelineAudio`, which mounts alongside the
+ * ImaVid tiles (the `html` tile plays its own sound off the `<video>`; see
+ * `useVideoElementAudio`) so native audio plays/mixes regardless of which
+ * tile (if any) is open. Without this, `useMcapAudioStream()` only ever ran
  * inside a manually-added Audio tile, so a recording with real audio
  * topics would show no volume/mixer controls at all until a user happened
  * to add that tile.
