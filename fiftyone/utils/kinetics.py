@@ -572,7 +572,7 @@ class KineticsDatasetInfo(object):
     def get_incomplete_classes(self):
         incomplete_classes = []
         for c, sample_ids in self._classwise_sample_ids.items():
-            existing_ids = self._classwise_existing_sample_ids[c]
+            existing_ids = self.class_existing_sample_ids(c)
             if len(existing_ids) != len(sample_ids):
                 incomplete_classes.append(c)
 
