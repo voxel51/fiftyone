@@ -364,6 +364,10 @@ Once your copy is saved, switch the built-in skill **off** using its toggle.
 The Agent then uses your version instead, and you keep the original in place
 to turn back on or duplicate again later.
 
+To remove a custom skill for good, open it and click **Delete**. You will be
+asked to confirm, and the skill is gone for everyone in the deployment.
+Built-in skills cannot be deleted, only switched off.
+
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/skills.webp
    :alt: fiftyone-agent-skill-toggle
    :align: center
@@ -372,8 +376,8 @@ to turn back on or duplicate again later.
 
     Custom skills are stored as a plugin in your deployment, so they can be
     downloaded and shared like any other plugin. See
-    :ref:`Developing skills <agents-developing>` if you would rather author
-    them as files.
+    :ref:`Writing a skill <developing-skills-authoring>` if you would rather
+    author them as files.
 
 .. _enterprise-agent-skills-ask:
 
@@ -386,7 +390,7 @@ step to my triage skill"*.
 
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/skill_agent_authored.webp
-   :alt: fiftyone-agent-skill-toggle
+   :alt: fiftyone-agent-skill-review-card
    :align: center
 
 The Agent never writes a skill on its own. It proposes the change in a review
