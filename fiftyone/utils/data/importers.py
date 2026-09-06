@@ -30,7 +30,6 @@ import fiftyone.core.frame as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
-import fiftyone.core.media_assets as foma
 import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.runs as fors
@@ -38,7 +37,6 @@ from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
-import fiftyone.multimodal.media as fmm
 import fiftyone.types as fot
 
 from .parsers import (
@@ -49,7 +47,10 @@ from .parsers import (
     FiftyOneVideoLabelsSampleParser,
 )
 
+
 fota = fou.lazy_import("fiftyone.core.tags")
+foma = fou.lazy_import("fiftyone.multimodal.media_reference.asset_planning")
+fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,10 @@ def import_samples(
 
     def _do_import_samples():
         with dataset_importer:
+            media_sources = dataset_importer.get_media_sources()
+            if media_sources:
+                dataset._record_media_sources(media_sources)
+
             parse_sample, _expand_schema, _dynamic = _build_parse_sample_fcn(
                 dataset,
                 dataset_importer,
@@ -760,6 +765,10 @@ def parse_dataset_info(dataset, info, overwrite=True):
     if app_config is not None:
         dataset.app_config.merge(app_config, overwrite=overwrite)
 
+    media_sources = info.pop("_media_sources", None)
+    if media_sources:
+        dataset._record_media_sources(media_sources, overwrite=overwrite)
+
     if overwrite:
         dataset.info.update(info)
     else:
@@ -944,6 +953,15 @@ class DatasetImporter(object):
         entered, :func:`DatasetImporter.__enter__`.
         """
         pass
+
+    def get_media_sources(self):
+        """Returns the media-source entries the importing dataset records
+        before any sample is added, or None.
+
+        Only importers of media-reference-backed samples provide these; see
+        :class:`fiftyone.utils.lerobot.LeRobotDatasetImporter`.
+        """
+        return None
 
     def get_dataset_info(self):
         """Returns the dataset info for the dataset.
@@ -1830,7 +1848,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._dataset_dict = None
         self._contains_media_references = None
         self._media_source_manifest_sources = None
-        self._reference_bindings = None
         self._reference_asset_plan = None
 
     def setup(self):
@@ -1843,8 +1860,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
 
         self._dataset_dict = foo.import_document(self._metadata_path)
-        self._contains_media_references = (
-            self._dataset_dict.get("media_reference_kind") is not None
+        self._contains_media_references = bool(
+            self._dataset_dict.get("_media_sources")
         )
 
         if self._contains_media_references:
@@ -1860,25 +1877,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             self._media_source_manifest_sources = (
                 foma._load_media_source_manifest(media_source_manifest_path)
             )
-
-            binding_path = os.path.join(
-                self.dataset_dir, fmm._MEDIA_REFERENCE_BINDINGS_FILENAME
-            )
-            if not os.path.isfile(binding_path):
-                raise ValueError(
-                    "Native media-reference dataset is missing its private "
-                    "reference bindings"
-                )
-
-            binding_document = foo.import_document(binding_path)
-            if not isinstance(binding_document, dict) or set(
-                binding_document
-            ) != {"bindings"}:
-                raise ValueError(
-                    "Malformed private media-reference bindings export"
-                )
-
-            self._reference_bindings = binding_document["bindings"]
 
         self._tags_path = os.path.join(
             self.dataset_dir, fota.TAGS_EXPORT_FILENAME
@@ -1905,6 +1903,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
     def import_samples(self, dataset, tags=None, progress=None):
         dataset_dict = self._dataset_dict
+        # A source the dataset already had resolves through the location it
+        # already has, which covers every one of its samples; a bundle's copy
+        # covers only the samples that bundle carried
+        preexisting = set(fmm._media_sources_by_id(dataset))
 
         if len(dataset) > 0 and fomi.needs_migration(
             head=dataset_dict["version"]
@@ -1940,25 +1942,26 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             progress=progress,
         )
 
-        self._bind_imported_media_sources()
+        self._record_bundled_media_sources(dataset, preexisting)
 
         return sample_ids
 
-    def _bind_imported_media_sources(self):
-        if self._media_source_manifest_sources is None:
-            return
-
+    def _record_bundled_media_sources(self, dataset, preexisting):
         if not self._media_source_manifest_sources:
             return
 
-        binding_required = foma._bind_materialized_media_sources(
-            self._media_source_manifest_sources, self.dataset_dir
+        unbound = foma._record_bundled_media_sources(
+            self._media_source_manifest_sources,
+            self.dataset_dir,
+            dataset,
+            preexisting,
         )
-        if binding_required:
+        if unbound:
             logger.warning(
-                "Imported thin media references require %d source "
-                "binding(s) before assets can be resolved",
-                len(binding_required),
+                "Imported media references name %d source(s) this dataset "
+                "does not record; their assets cannot be resolved: %s",
+                len(unbound),
+                ", ".join(source.id for source in unbound),
             )
 
     def _import_samples(
@@ -2026,6 +2029,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             dataset_dict.update(keep_fields)
 
             fod._handle_incoming_media_source(dataset, dataset_dict)
+            # this dict replaces the document wholesale, so its sources are
+            # filed under roots here rather than through the dataset
+            fod._file_dict_media_sources(dataset_dict)
 
             conn = foo.get_db_conn()
             conn.datasets.replace_one({"name": name}, dataset_dict)
@@ -2055,16 +2061,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             self._samples_path, key="samples"
         )
         samples = self._preprocess_list(samples)
-
-        if self._contains_media_references:
-            self._import_media_references(dataset_dict, samples)
-
-            if not isinstance(samples, list):
-                # We already consumed the stream, so we must reestablish it
-                samples, num_samples = foo.import_collection(
-                    self._samples_path, key="samples"
-                )
-                samples = self._preprocess_list(samples)
 
         if self.max_samples is not None:
             num_samples = self.max_samples
@@ -2200,77 +2196,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         dataset._reload(hard=True)
 
         return sample_ids
-
-    def _import_media_references(self, dataset_dict, samples):
-        builder = foma._ReferenceAssetPlanBuilder()
-
-        reference_media_types = {}
-        observed_media_types = {}
-
-        for sample in samples:
-            builder.observe(sample)
-            descriptor = sample.get("media_reference")
-            if descriptor is not None:
-                identity = (descriptor["kind"], descriptor["key"])
-                observed_media_types.setdefault(identity, set()).add(
-                    sample.get("_media_type")
-                )
-
-        if builder.media_mode not in (None, "reference"):
-            raise fmm.MediaReferenceError(
-                "Native media-reference imports must contain reference-"
-                "backed samples"
-            )
-
-        declared_kind = dataset_dict.get("media_reference_kind")
-        if (
-            builder.media_reference_kind is not None
-            and builder.media_reference_kind != declared_kind
-        ):
-            raise ValueError(
-                "Native media-reference import kind does not match its "
-                "dataset metadata"
-            )
-
-        bindings = self._reference_bindings or ()
-        self._reference_asset_plan = builder.finalize(
-            resolve=False,
-            bindings=bindings,
-            allow_unsupported=not bool(self._media_source_manifest_sources),
-        )
-        reference_media_types = {
-            (binding["kind"], binding["_id"]): binding["media_type"]
-            for binding in self._reference_asset_plan.bindings
-        }
-        for identity, media_types in observed_media_types.items():
-            if media_types != {reference_media_types[identity]}:
-                raise ValueError(
-                    "Native media-reference import has inconsistent "
-                    "persisted media type"
-                )
-
-        if self._media_source_manifest_sources is not None:
-            if self.max_samples is not None:
-                source_keys = {
-                    source.key for source in self._reference_asset_plan.sources
-                }
-                self._media_source_manifest_sources = tuple(
-                    entry
-                    for entry in self._media_source_manifest_sources
-                    if entry[0].key in source_keys
-                )
-
-            foma._validate_media_source_manifest(
-                self._reference_asset_plan,
-                self._media_source_manifest_sources,
-            )
-            foma._validate_materialized_reference_assets(
-                self._reference_asset_plan,
-                self._media_source_manifest_sources,
-                self.dataset_dir,
-            )
-
-        fmm._import_media_reference_bindings(bindings, builder.descriptors)
 
     @staticmethod
     def _get_classes(dataset_dir):

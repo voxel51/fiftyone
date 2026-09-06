@@ -10,7 +10,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 import importlib.util
 import os
-import shutil
 import subprocess
 import sys
 
@@ -19,26 +18,32 @@ import numpy as np
 import eta.core.serial as etas
 import eta.core.utils as etau
 import fiftyone.core.utils as fou
-from fiftyone.multimodal.media import (
-    LEROBOT_EPISODE_KIND,
-    LeRobotEpisode,
+from fiftyone.multimodal.media_reference.field_model import (
     MalformedMediaSourceError,
     MediaAssetRole,
     MediaReferenceError,
     StaleMediaReferenceError,
-    UnsupportedLeRobotExportModeError,
     UnsupportedMediaReferenceOperation,
     _get_media_export_planner,
-    _get_media_resolver,
-    _MediaAssetManifest,
+    _resolve_under_root,
     _register_media_export_planner,
+    _resolve_media_references,
 )
+from fiftyone.utils.lerobot import (
+    LEROBOT_EPISODE_KIND,
+    LeRobotEpisodeReference,
+    UnsupportedLeRobotExportModeError,
+)
+import fiftyone.core.storage as fos
 import fiftyone.utils.data.exporters as foue
 from fiftyone.utils.lerobot import (
     _format_source_path,
+    _list_episode_shards,
     _load_info,
     _open_parquet,
-    _resolve_under_root,
+    _select_episodes,
+    _validate_dataset_root,
+    _validate_v3_info,
 )
 
 pa = fou.lazy_import(
@@ -48,12 +53,19 @@ papq = fou.lazy_import(
     "pyarrow.parquet",
     callback=lambda: fou.ensure_package("pyarrow>=10.0.0"),
 )
+pc = fou.lazy_import(
+    "pyarrow.compute",
+    callback=lambda: fou.ensure_package("pyarrow>=10.0.0"),
+)
 
 
 @dataclass(frozen=True)
 class _EpisodeExportSpec:
-    reference: LeRobotEpisode
-    manifest: _MediaAssetManifest
+    reference: LeRobotEpisodeReference
+    assets: tuple
+    #: The episode's stored fields, read with the assets:
+    #: episode_metadata_row, global_rows, length, tasks
+    episode: dict
 
 
 @dataclass(frozen=True)
@@ -99,66 +111,59 @@ class LeRobotDatasetExporter(foue.BatchDatasetExporter):
         self.export_media = True
 
     def export_samples(self, sample_collection, progress=None):
-        references = [
-            sample.media_reference
+        references = {
+            sample.id: sample.media_reference
             for sample in sample_collection.iter_samples(progress=progress)
-        ]
+        }
         if not references:
             raise MediaReferenceError("Cannot export an empty LeRobot dataset")
 
         if not all(
-            isinstance(reference, LeRobotEpisode) for reference in references
+            isinstance(reference, LeRobotEpisodeReference)
+            for reference in references.values()
         ):
             raise UnsupportedMediaReferenceOperation(
-                "LeRobotDataset export requires LeRobotEpisode references"
+                "LeRobotDataset export requires LeRobot episode references"
             )
 
-        source_identities = {
-            reference.source_identity for reference in references
-        }
-        if len(source_identities) != 1:
+        if len({r.source_id for r in references.values()}) != 1:
             raise MediaReferenceError(
-                "LeRobotDataset export cannot mix source_identity values"
-            )
-
-        source_fingerprints = {
-            reference.source_fingerprint for reference in references
-        }
-        if len(source_fingerprints) != 1:
-            raise StaleMediaReferenceError(
-                "LeRobotDataset export cannot mix source fingerprints"
+                "LeRobotDataset export cannot mix episodes from different "
+                "sources"
             )
 
         planner = _get_media_export_planner(LEROBOT_EPISODE_KIND, "lerobot-v3")
-        specs = [planner(reference) for reference in references]
+        specs = planner(sample_collection._root_dataset, references)
         self._write_export(specs)
 
     def _write_export(self, specs):
         _write_lerobot_export(self.export_dir, specs)
         _validate_lerobot_export(self.export_dir, len(specs))
 
-        # Revalidate the original sources after writing the export so stale
-        # inputs are still reported to the caller.
-        for spec in specs:
-            reference = spec.reference
-            _get_media_resolver(reference).resolve_assets(
-                reference, reference.describe_assets()
-            )
 
-
-def _plan_lerobot_export(reference):
-    resolver = _get_media_resolver(reference)
-    manifest = resolver.resolve_assets(reference, reference.describe_assets())
-    return _EpisodeExportSpec(reference=reference, manifest=manifest)
+def _plan_lerobot_export(dataset, references):
+    """Resolves every episode through the dataset's sources: one read per
+    metadata shard touched, in the order the references were given."""
+    resolved = _resolve_media_references(
+        dataset, {key: r.to_mongo() for key, r in references.items()}
+    )
+    return [
+        _EpisodeExportSpec(
+            reference=reference,
+            assets=resolved[key].assets,
+            episode=dict(resolved[key].episode),
+        )
+        for key, reference in references.items()
+    ]
 
 
 def _write_lerobot_export(export_dir, specs):
     first_info_asset = _resolved_asset_by_role(
-        specs[0].manifest, MediaAssetRole.DATASET_INFO
+        specs[0].assets, MediaAssetRole.DATASET_INFO
     )
-    info, _ = _load_info(first_info_asset.path)
+    info = _load_info(first_info_asset.path)
     fps = float(info["fps"])
-    source_tasks = _read_source_tasks(specs[0].manifest)
+    source_tasks = _read_source_tasks(specs[0].assets)
     video_exports = _plan_video_exports(info, specs)
 
     task_indexes = {}
@@ -167,19 +172,17 @@ def _write_lerobot_export(export_dir, specs):
     source_data_tables = {}
     global_index = 0
     for output_episode_index, spec in enumerate(specs):
-        reference = spec.reference
-        locator = reference.locator
         metadata_asset = _resolved_asset_by_role(
-            spec.manifest, MediaAssetRole.EPISODE_METADATA
+            spec.assets, MediaAssetRole.EPISODE_METADATA
         )
         source_episode_row = _read_parquet_row(
-            metadata_asset.path, locator.episode_metadata_row
+            metadata_asset.path, spec.episode["episode_metadata_row"]
         )
         data_asset = _resolved_asset_by_role(
-            spec.manifest, MediaAssetRole.TABULAR_FRAME_DATA
+            spec.assets, MediaAssetRole.TABULAR_FRAME_DATA
         )
         source_table = _read_selected_data_table(
-            data_asset.path, locator, source_data_tables
+            data_asset.path, spec.episode["global_rows"], source_data_tables
         )
         source_rows = source_table.to_pylist()
         tasks = list(source_episode_row.get("tasks") or [])
@@ -245,11 +248,11 @@ def _write_lerobot_export(export_dir, specs):
         episode_row["meta/episodes/file_index"] = 0
         _set_episode_statistics(episode_row, episode_output_rows)
 
-        for asset in spec.manifest.assets:
+        for asset in spec.assets:
             if asset.description.role is not MediaAssetRole.VIDEO_STREAM:
                 continue
 
-            video_export = video_exports[asset.shared_resource_key]
+            video_export = video_exports[asset.asset_id]
             prefix = "videos/%s/" % asset.description.feature_name
             episode_row[prefix + "chunk_index"] = video_export.chunk_index
             episode_row[prefix + "file_index"] = video_export.file_index
@@ -311,18 +314,18 @@ def _write_lerobot_export(export_dir, specs):
             export_dir, video_export.destination_location
         )
         etau.ensure_basedir(output_path)
-        shutil.copy2(video_export.source_asset.path, output_path)
+        fos.copy_file(video_export.source_asset.path, output_path)
 
 
 def _plan_video_exports(info, specs):
     exports = {}
     next_file_index = {}
     for spec in specs:
-        for asset in spec.manifest.assets:
+        for asset in spec.assets:
             if asset.description.role is not MediaAssetRole.VIDEO_STREAM:
                 continue
 
-            key = asset.shared_resource_key
+            key = asset.asset_id
             if key in exports:
                 continue
 
@@ -457,10 +460,8 @@ def _aggregate_episode_statistics(episode_rows, field_name):
     return result
 
 
-def _resolved_asset_by_role(manifest, role):
-    assets = [
-        asset for asset in manifest.assets if asset.description.role is role
-    ]
+def _resolved_asset_by_role(resolved, role):
+    assets = [asset for asset in resolved if asset.description.role is role]
     if len(assets) != 1:
         raise MalformedMediaSourceError(
             "LeRobot export expected exactly one '%s' asset" % role.value
@@ -469,10 +470,10 @@ def _resolved_asset_by_role(manifest, role):
     return assets[0]
 
 
-def _read_source_tasks(manifest):
+def _read_source_tasks(resolved):
     assets = [
         asset
-        for asset in manifest.assets
+        for asset in resolved
         if asset.description.role is MediaAssetRole.TASKS_METADATA
     ]
     if not assets:
@@ -512,7 +513,9 @@ def _read_parquet_row(path, row_index):
     )
 
 
-def _read_selected_data_table(path, locator, source_tables=None):
+def _read_selected_data_table(path, global_rows, source_tables=None):
+    """The episode's frames, selected by the data file's own global ``index``
+    column rather than by a stored file offset."""
     if source_tables is None:
         source_tables = {}
 
@@ -522,28 +525,37 @@ def _read_selected_data_table(path, locator, source_tables=None):
             table = parquet_file.read()
         source_tables[path] = table
 
-    start = locator.parquet_file_rows.start
-    length = locator.parquet_file_rows.end - locator.parquet_file_rows.start
-    selected = table.slice(start, length)
-    if selected.num_rows != length:
+    if "index" not in table.column_names:
+        raise MalformedMediaSourceError(
+            "LeRobot data file '%s' has no 'index' column" % path
+        )
+
+    start, end = global_rows
+    selected = table.filter(
+        pc.and_(
+            pc.greater_equal(table["index"], start),
+            pc.less(table["index"], end),
+        )
+    )
+    if selected.num_rows != end - start:
         raise StaleMediaReferenceError(
-            "LeRobot export data rows no longer match the stored locator"
+            "LeRobot export data rows no longer match the episode's row range"
         )
 
     return selected
 
 
 def _validate_lerobot_export(export_dir, expected_episodes):
-    resolver = _get_media_resolver(LEROBOT_EPISODE_KIND)
-    source = resolver.inspect_local_source(export_dir)
-    if len(source.rows) != expected_episodes:
+    root = _validate_dataset_root(export_dir)
+    info = _load_info(fos.join(root, "meta/info.json"))
+    _validate_v3_info(info)
+    selection = _select_episodes(
+        _list_episode_shards(root), root, info, None, list
+    )
+    if len(selection.episode_indexes) != expected_episodes:
         raise MalformedMediaSourceError(
             "Completed LeRobot export did not preserve the selected episodes"
         )
-
-    source = resolver.prepare_source_assets(source, source.rows)
-    for row in source.rows:
-        resolver.build_locator(source, row)
 
     _validate_with_official_lerobot(export_dir, expected_episodes)
 
@@ -564,14 +576,12 @@ expected_episodes = int(sys.argv[2])
 metadata = LeRobotDatasetMetadata(
     repo_id="fiftyone/local-export",
     root=root,
-    token=False,
 )
 dataset = LeRobotDataset(
     repo_id="fiftyone/local-export",
     root=root,
     episodes=list(range(expected_episodes)),
     download_videos=False,
-    token=False,
 )
 if metadata.total_episodes != expected_episodes:
     raise RuntimeError("unexpected episode count")
