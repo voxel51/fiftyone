@@ -31,6 +31,7 @@ from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
+import fiftyone.multimodal.media_reference.field_model as fmm
 
 import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
@@ -288,6 +289,9 @@ class Dataset:
     default_group_slice: t.Optional[str]
     media_type: t.Optional[str]
     parent_media_type: t.Optional[str]
+    #: Where each media source the browser can address by path is, by
+    #: source id; read once per dataset load
+    media_sources: t.Optional[JSON] = None
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
@@ -387,7 +391,6 @@ class Dataset:
         )
         doc["group_media_types"] = []
         doc["default_skeletons"] = doc.get("default_skeletons", None)
-
         # gql private fields must always be present
         doc.setdefault("frame_collection_name", None)
 
@@ -683,6 +686,7 @@ async def serialize_dataset(
         doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
         data = from_dict(Dataset, doc)
+        data.media_sources = fmm.addressable_media_sources(dataset) or None
         data.view_cls = None
         data.view_name = view_name
         data.saved_view_slug = saved_view_slug
