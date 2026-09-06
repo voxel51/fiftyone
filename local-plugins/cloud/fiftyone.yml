@@ -1,0 +1,19 @@
+name: "@voxel51/cloud"
+version: "0.1.0"
+description: >
+  Push local datasets to FiftyOne Cloud: device pairing, resumable
+  direct-to-store media upload, and idempotent metadata ingest.
+fiftyone:
+  version: "*"
+author: Voxel51, Inc.
+license: Apache 2.0
+tags:
+  - cloud
+  - import-export
+js_bundle: ./js/dist/index.umd.js
+panels:
+  - cloud_panel
+operators:
+  - open_cloud_panel
+  - push_to_cloud
+  - cloud_push_subscription
