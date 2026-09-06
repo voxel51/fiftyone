@@ -190,6 +190,26 @@ def open_file(path, mode="r"):
     return _open_file(path, mode)
 
 
+def open_ranged(path):
+    """Opens a file for bounded, seekable reads, one byte range at a time.
+
+    Unlike :func:`open_file`, nothing beyond the ranges read is transferred.
+    The caller owns the reader and calls ``release()`` when done.
+
+    Args:
+        path: a local path
+
+    Returns:
+        a :class:`fiftyone.core.storage.ranged_reader.RangeReader`
+    """
+    from .fetcher import FileFetcher
+    from .ranged_reader import RangeReader
+
+    ensure_local(path)
+
+    return RangeReader(FileFetcher(path))
+
+
 class FileCollection(list):
     """A list of open file-like objects with a closing context manager"""
 
