@@ -5,11 +5,20 @@ import { parquetReadObjects, type AsyncBuffer } from "hyparquet";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ByteSourceDescriptor } from "../../ir";
-import type {
-  AssetDescriptor,
-  ByteResources,
-  EpisodeSource,
-} from "../../ports";
+import type { AssetDescriptor, ByteResources } from "../../ports";
+interface LeRobotTestSource {
+  assets: {
+    list: () => Promise<readonly AssetDescriptor[]>;
+    resolve: (assetId: string) => Promise<ByteSourceDescriptor>;
+  };
+  episodeId: string;
+  reference: {
+    data: readonly number[];
+    key: string;
+    tasks: readonly string[];
+  };
+}
+
 import type { StateActionScenario } from "../fixture/fixture-state-action";
 import { defineStateActionCapabilityContractTests } from "../../testing/state-action-contract";
 import { createLeRobotFormatAdapter } from "./format-adapter";
@@ -66,10 +75,13 @@ function buildStateActionSource(
       shape: scenario.action.shape,
     };
   }
+  // The adapter declares the episode end as (rows - 1) / fps, so the info a
+  // fixture publishes must carry the cadence its own timestamps were built at
+  const lastTimestamp = scenario.timestampsSeconds.at(-1) ?? 0;
   const info = {
     codebase_version: "v3.0",
     features,
-    fps: 30,
+    fps: lastTimestamp > 0 ? (rowCount - 1) / lastTimestamp : 30,
     robot_type: "test-arm",
   };
   const infoBytes = new TextEncoder().encode(JSON.stringify(info));
@@ -176,12 +188,22 @@ function buildStateActionSource(
     const end = (options.rowEnd ?? intervalStart + rowCount) - intervalStart;
     return dataRows.slice(start, end);
   });
-  const source: EpisodeSource = {
+  const source: LeRobotTestSource = {
     assets: {
       list: async () => assets,
-      resolve: async (assetId) => descriptor(assets, assetId),
+      resolve: async (assetId: string) => descriptor(assets, assetId),
     },
-    episodeId: "episode-0",
+    episodeId: `src/${Number(episodeRow.episode_index)}`,
+    reference: {
+      data: [
+        0,
+        0,
+        Number(episodeRow.dataset_from_index),
+        Number(episodeRow.dataset_to_index),
+      ],
+      key: `src/${Number(episodeRow.episode_index)}`,
+      tasks: episodeRow.tasks,
+    },
   };
   let statsAssetReads = 0;
   const io: ByteResources = {
@@ -688,7 +710,7 @@ async function openRealEpisode(root: string): Promise<{
   episodeLength: number;
   io: ByteResources;
   referenceRows: readonly Record<string, unknown>[];
-  source: EpisodeSource;
+  source: LeRobotTestSource;
   stateNames: readonly (string | undefined)[];
   taskLabels: ReadonlyMap<number, string>;
 }> {
@@ -829,13 +851,23 @@ async function openRealEpisode(root: string): Promise<{
     source: {
       assets: {
         list: async () => assets,
-        resolve: async (assetId) => ({
+        resolve: async (assetId: string) => ({
           sizeBytes: String(sizes.get(assetId)),
           sourceId: assetId,
           url: paths.get(assetId) ?? assetId,
         }),
       },
-      episodeId: "episode-0",
+      episodeId: `src/${Number(episodeRow.episode_index)}`,
+      reference: {
+        data: [
+          0,
+          0,
+          Number(episodeRow.dataset_from_index),
+          Number(episodeRow.dataset_to_index),
+        ],
+        key: `src/${Number(episodeRow.episode_index)}`,
+        tasks: (episodeRow.tasks as readonly string[] | undefined) ?? [],
+      },
     },
     stateNames: dimensionNames(info.features["observation.state"]),
     taskLabels,

@@ -1,5 +1,8 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { setFetchFunction } from "@fiftyone/utilities";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  setFetchFunction,
+  type MediaAssetDescriptor,
+} from "@fiftyone/utilities";
 
 import type {
   ByteSourceDescriptor,
@@ -73,263 +76,120 @@ describe("episodeSourceFromByteSource", () => {
 });
 
 describe("episodeSourceFromMediaReference", () => {
-  it("deduplicates concurrent manifest-backed asset requests", async () => {
+  beforeEach(() => {
     setFetchFunction("http://fiftyone.test", {}, "/proxy");
-    const response = {
-      json: async () => ({
-        assets: [
-          {
-            asset_id: "camera",
-            media_type: "video/mp4",
-            role: "video-stream",
-            feature_name: "observation.images.camera",
-            selector: {
-              from_timestamp: 1.25,
-              kind: "video-timestamp-interval",
-              to_timestamp: 2.5,
-            },
-            size_bytes: 1234,
-            url: "/dataset/d/sample/s/multimodal/assets/camera",
-          },
-        ],
-      }),
-      ok: true,
-      status: 200,
-      statusText: "OK",
-    };
-    let resolveRequest: (value: typeof response) => void = () => undefined;
-    const request = vi.fn().mockImplementation(
-      () =>
-        new Promise<typeof response>((resolve) => {
-          resolveRequest = resolve;
-        }),
-    );
-    vi.stubGlobal("fetch", request);
-
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
-    });
-
-    expect(source.episodeId).toBe("source:17");
-    expect(request).not.toHaveBeenCalled();
-    const listed = source.assets.list();
-    const resolved = source.assets.resolve("camera");
-    expect(request).toHaveBeenCalledTimes(1);
-    expect(request).toHaveBeenCalledWith(
-      "http://fiftyone.test/proxy/dataset/d/sample/s/multimodal/manifest",
-      expect.any(Object),
-    );
-    resolveRequest(response);
-
-    await expect(listed).resolves.toEqual([
-      {
-        featureName: "observation.images.camera",
-        id: "camera",
-        mediaType: "video/mp4",
-        metadata: { sizeBytes: "1234" },
-        role: "video-stream",
-        selector: {
-          fromTimestamp: 1.25,
-          kind: "video-timestamp-interval",
-          toTimestamp: 2.5,
-        },
-      },
-    ]);
-    await expect(resolved).resolves.toMatchObject({
-      sizeBytes: "1234",
-      sourceId: "camera",
-      url: "/dataset/d/sample/s/multimodal/assets/camera",
-    });
-    expect(request).toHaveBeenCalledTimes(1);
   });
 
-  it("retries a manifest request after a failed in-flight fetch", async () => {
-    const request = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        statusText: "Bad Request",
-        url: "/manifest",
-        json: async () => ({}),
-      })
-      .mockResolvedValueOnce({
-        json: async () => ({ assets: [] }),
-        ok: true,
-        status: 200,
-        statusText: "OK",
-      });
-    vi.stubGlobal("fetch", request);
+  const reference = {
+    _cls: "LeRobotEpisodeReference",
+    data: [0, 0, 14, 16],
+    key: "src/7",
+    tasks: ["sort objects"],
+    videos: { "observation.images.camera": [0, 0, 1.25, 2.5] },
+  };
 
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
+  const CAMERA_ASSET =
+    "src/videos/observation.images.camera/chunk-000/file-000.mp4";
+
+  const CAMERA = {
+    featureName: "observation.images.camera",
+    id: CAMERA_ASSET,
+    mediaType: "video/mp4",
+    role: "video-stream",
+    selector: {
+      fromTimestamp: 1.25,
+      kind: "video-timestamp-interval",
+      toTimestamp: 2.5,
+    },
+    src: "https://signed/camera.mp4",
+  };
+  const INFO = {
+    id: "src/meta/info.json",
+    mediaType: "application/json",
+    role: "dataset-info",
+    selector: { kind: "whole-file" },
+    src: "/data/src/meta/info.json",
+  };
+
+  function sourceFor(
+    assets: readonly MediaAssetDescriptor[] = [CAMERA, INFO],
+    sample: Record<string, unknown> = {},
+  ) {
+    return episodeSourceFromMediaReference(reference, {
+      media: { assets, poster: CAMERA_ASSET },
+      tasks: ["sort objects"],
+      ...sample,
     });
+  }
 
-    await expect(source.assets.list()).rejects.toThrow(
-      "Unable to resolve episode assets",
-    );
-    await expect(source.assets.list()).resolves.toEqual([]);
-    expect(request).toHaveBeenCalledTimes(2);
+  it("exposes the assets the page delivered with the sample", async () => {
+    const source = sourceFor();
+
+    expect(source.episodeId).toBe("src/7");
+    expect(source.reference).toBe(reference);
+    await expect(source.assets.list()).resolves.toEqual([CAMERA, INFO]);
   });
 
-  it("rejects unknown manifest selectors before exposing an asset", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => ({
-          assets: [
-            {
-              asset_id: "unsafe",
-              media_type: "application/octet-stream",
-              role: "tabular-frame-data",
-              selector: { kind: "filesystem-path" },
-              size_bytes: 1,
-              url: "/asset",
-            },
-          ],
-        }),
-        ok: true,
-        status: 200,
-        statusText: "OK",
-      }),
-    );
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
-    });
-
-    await expect(source.assets.list()).rejects.toThrow(
-      "unknown asset selector",
-    );
-  });
-
-  it("rejects unknown manifest roles before exposing an asset", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => ({
-          assets: [
-            {
-              asset_id: "unsafe",
-              media_type: "application/octet-stream",
-              role: "filesystem-root",
-              selector: { kind: "whole-file" },
-              size_bytes: 1,
-              url: "/asset",
-            },
-          ],
-        }),
-        ok: true,
-        status: 200,
-        statusText: "OK",
-      }),
-    );
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
-    });
-
-    await expect(source.assets.list()).rejects.toThrow("unknown asset role");
-  });
-
-  it("accepts the auxiliary metadata roles emitted by the server", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => ({
-          assets: [
-            {
-              asset_id: "statistics",
-              media_type: "application/json",
-              role: "dataset-statistics",
-              selector: { kind: "whole-file" },
-              size_bytes: 10,
-              url: "/statistics",
-            },
-            {
-              asset_id: "tasks",
-              media_type: "application/octet-stream",
-              role: "tasks-metadata",
-              selector: { kind: "whole-file" },
-              size_bytes: 20,
-              url: "/tasks",
-            },
-          ],
-        }),
-        ok: true,
-        status: 200,
-        statusText: "OK",
-      }),
-    );
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
-    });
-
-    await expect(source.assets.list()).resolves.toEqual([
-      {
-        id: "statistics",
-        mediaType: "application/json",
-        metadata: { sizeBytes: "10" },
-        role: "dataset-statistics",
-        selector: { kind: "whole-file" },
-      },
-      {
-        id: "tasks",
-        mediaType: "application/octet-stream",
-        metadata: { sizeBytes: "20" },
-        role: "tasks-metadata",
-        selector: { kind: "whole-file" },
-      },
+  it("lists only video streams for a preview open", async () => {
+    await expect(sourceFor().assets.list({ preview: true })).resolves.toEqual([
+      CAMERA,
     ]);
   });
 
-  it("isolates caller cancellation on a shared manifest request", async () => {
-    const response = {
-      json: async () => ({ assets: [] }),
-      ok: true,
-      status: 200,
-      statusText: "OK",
-    };
-    let resolveRequest: (value: typeof response) => void = () => undefined;
-    const request = vi.fn().mockImplementation(
-      () =>
-        new Promise<typeof response>((resolve) => {
-          resolveRequest = resolve;
-        }),
-    );
-    vi.stubGlobal("fetch", request);
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
-    });
-    const controller = new AbortController();
-
-    const aborted = source.assets.list({ signal: controller.signal });
-    const surviving = source.assets.list();
-    controller.abort();
-    resolveRequest(response);
-
-    await expect(aborted).rejects.toMatchObject({ name: "AbortError" });
-    await expect(surviving).resolves.toEqual([]);
-    expect(request).toHaveBeenCalledTimes(1);
+  it("carries the sample's frame rate only when it has a usable one", () => {
+    expect(sourceFor([CAMERA], { fps: 30 }).fps).toBe(30);
+    expect(sourceFor([CAMERA], { fps: 0 })).not.toHaveProperty("fps");
   });
 
-  it("does not fetch for an already-aborted caller", async () => {
+  it("asks the server for nothing, listing or resolving", async () => {
     const request = vi.fn();
     vi.stubGlobal("fetch", request);
-    const source = episodeSourceFromMediaReference("d", "s", {
-      kind: "lerobot-episode",
-      key: "source:17",
+    const source = sourceFor();
+
+    await source.assets.list();
+    await source.assets.list({ preview: true });
+    await source.assets.resolve(INFO.id);
+    await source.assets.resolve(CAMERA_ASSET);
+
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("reads a signed asset directly and a local one through the server", async () => {
+    const source = sourceFor();
+
+    await expect(source.assets.resolve(CAMERA_ASSET)).resolves.toEqual({
+      readProfile: "remote",
+      sourceId: CAMERA_ASSET,
+      url: "https://signed/camera.mp4",
     });
+    await expect(source.assets.resolve(INFO.id)).resolves.toEqual({
+      readProfile: "local",
+      sourceId: INFO.id,
+      url: "http://fiftyone.test/proxy/media?filepath=%2Fdata%2Fsrc%2Fmeta%2Finfo.json",
+    });
+  });
+
+  it("does not offer an asset the page could not locate", async () => {
+    const source = sourceFor([CAMERA, { ...INFO, src: undefined }]);
+
+    await expect(source.assets.list()).resolves.toEqual([CAMERA]);
+    await expect(source.assets.resolve(INFO.id)).rejects.toThrow(
+      "Unknown episode asset",
+    );
+  });
+
+  it("rejects an asset the sample does not carry", async () => {
+    await expect(sourceFor().assets.resolve("src/nope.json")).rejects.toThrow(
+      "Unknown episode asset",
+    );
+  });
+
+  it("refuses a listing whose caller already gave up", async () => {
     const controller = new AbortController();
     controller.abort();
 
     await expect(
-      source.assets.list({ signal: controller.signal }),
+      sourceFor().assets.list({ signal: controller.signal }),
     ).rejects.toMatchObject({ name: "AbortError" });
-    expect(request).not.toHaveBeenCalled();
   });
 });

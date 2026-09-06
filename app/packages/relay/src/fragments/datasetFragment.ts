@@ -8,6 +8,7 @@ export default graphql`
     id
     info
     lastLoadedAt
+    mediaSources
     mediaType
     name
     parentMediaType

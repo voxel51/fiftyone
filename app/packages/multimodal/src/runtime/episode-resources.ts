@@ -6,10 +6,25 @@ import type {
   EpisodeSource,
   SampleDescriptor,
 } from "../ports";
-import { byteSourceAccessKey, createDefaultByteClient } from "../query/bytes";
+import { createMultimodalQueryClient } from "../query";
+import { byteSourceAccessKey } from "../query/bytes";
 import { loadFormatAdapter } from "./adapter-registry";
 
-const episodeByteResources = createDefaultByteClient();
+/** Logs every byte read to the console; set `fiftyone.byteDebug` to enable. */
+function byteReadDebugEnabled(): boolean {
+  try {
+    return globalThis.localStorage?.getItem("fiftyone.byteDebug") === "1";
+  } catch {
+    return false;
+  }
+}
+
+// The cached client: memory + Cache API layers keyed on content, block fill,
+// and single-flighted fills. The raw client puts one request on the wire per
+// demuxer read, which a remote source cannot serve fast enough for playback.
+const episodeByteResources = createMultimodalQueryClient({
+  caches: { bytes: { debug: { enabled: byteReadDebugEnabled() } } },
+}).bytes;
 
 /** Stable identity for one concrete source access path. */
 export function episodeSourceAccessKey(source: ByteSourceDescriptor): string {

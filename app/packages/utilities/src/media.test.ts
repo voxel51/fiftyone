@@ -10,6 +10,7 @@ import {
   isNativeMediaType,
   isPointCloud,
   isWrappableDirect3dSamplePath,
+  withMediaAssetSrcs,
   setContains3d,
   setContainsFo3d,
   setContainsPointCloud,
@@ -274,5 +275,77 @@ describe("media utils", () => {
         false,
       );
     });
+  });
+});
+
+describe("withMediaAssetSrcs", () => {
+  const asset = (id: string) => ({
+    id,
+    role: "video-stream",
+    selector: { kind: "whole-file" },
+  });
+  const sample = (...ids: string[]) => ({
+    _id: "s1",
+    _media: { assets: ids.map(asset), poster: ids[0] ?? null },
+  });
+  const SOURCES = { src1: "/data/sources/one", src2: "gs://bucket/two" };
+
+  const located = (result: {
+    _media: { assets: readonly { src?: string }[] };
+  }) => result._media.assets.map((a) => a.src);
+
+  it("composes a served object's path from where its source is", () => {
+    expect(
+      located(withMediaAssetSrcs(sample("src1/meta/info.json"), SOURCES)),
+    ).toEqual(["/data/sources/one/meta/info.json"]);
+  });
+
+  it("keeps a location the sample arrived with, since a signature cannot be composed", () => {
+    const signed = {
+      _id: "s1",
+      _media: {
+        assets: [
+          { ...asset("src2/videos/a.mp4"), src: "https://signed/a.mp4?sig=x" },
+        ],
+        poster: "src2/videos/a.mp4",
+      },
+    };
+    expect(located(withMediaAssetSrcs(signed, SOURCES))).toEqual([
+      "https://signed/a.mp4?sig=x",
+    ]);
+  });
+
+  it("leaves an asset whose source the dataset does not name unlocated", () => {
+    expect(
+      located(withMediaAssetSrcs(sample("gone/meta/info.json"), SOURCES)),
+    ).toEqual([undefined]);
+  });
+
+  it("does not double a separator when a source location ends in one", () => {
+    expect(
+      located(
+        withMediaAssetSrcs(sample("src1/a.mp4"), {
+          src1: "/data/sources/one/",
+        }),
+      ),
+    ).toEqual(["/data/sources/one/a.mp4"]);
+  });
+
+  it("leaves a sample with no media untouched", () => {
+    const plain = { _id: "s1", filepath: "/a.jpg" };
+    expect(withMediaAssetSrcs(plain, SOURCES)).toBe(plain);
+  });
+
+  it("keeps a path with its own separators whole", () => {
+    expect(
+      located(
+        withMediaAssetSrcs(
+          sample("src1/videos/observation.images.top/chunk-000/file-000.mp4"),
+          SOURCES,
+        ),
+      ),
+    ).toEqual([
+      "/data/sources/one/videos/observation.images.top/chunk-000/file-000.mp4",
+    ]);
   });
 });

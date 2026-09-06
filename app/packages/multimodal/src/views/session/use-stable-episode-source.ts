@@ -1,13 +1,14 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useMemo, useRef } from "react";
 
-import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../../ir";
+import type { ByteSourceDescriptor } from "../../ir";
 import type { EpisodeSource } from "../../ports";
 import { episodeSourceAccessKey } from "../../runtime/episode-resources";
 import {
   OSS_SOURCE_FACTS_CACHE_PARTITION,
   type SourceFactsScope,
 } from "../../runtime/source-facts";
+import { episodeByteSourceFromMediaReference } from "../../runtime/episode-byte-source";
 import {
   episodeByteSourceFromContext,
   episodeManifestSourceFromContext,
@@ -23,16 +24,10 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   const datasetId = ctx.dataset.datasetId;
   const mediaField = ctx.media?.field ?? null;
   const mediaReference = ctx.media?.mediaReference;
+  // A reference-backed tile's byte source is the one video the samples page
+  // delivered with it; a file-backed sample's is its media path
   const next = mediaReference
-    ? {
-        readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
-        sourceId: mediaReference.key,
-        url: `/dataset/${encodeURIComponent(
-          datasetId,
-        )}/sample/${encodeURIComponent(
-          ctx.sample.sample._id,
-        )}/multimodal/manifest`,
-      }
+    ? episodeByteSourceFromMediaReference(ctx)
     : episodeByteSourceFromContext(ctx);
   const sourceFactsScope = useMemo(
     () =>
@@ -45,31 +40,37 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
           },
     [datasetId, mediaField, mediaReference],
   );
-  const sourceKey = mediaReference
-    ? JSON.stringify([
-        "media-reference",
-        datasetId,
-        ctx.sample.sample._id,
-        mediaReference.kind,
-        mediaReference.key,
-      ])
-    : next
-      ? episodeSourceAccessKey(next)
-      : "";
+  // The episode a source serves, and the URL its tile plays, change
+  // independently: a re-signed URL is the same episode, so it must not
+  // rebuild the session that is reading it
+  const episodeKey = mediaReference
+    ? JSON.stringify(["media-reference", datasetId, mediaReference.key])
+    : "";
+  const byteKey = next ? episodeSourceAccessKey(next) : "";
   const ref = useRef<{
-    readonly byteSource: ByteSourceDescriptor | null;
-    readonly episodeSource: EpisodeSource | null;
-    readonly sourceKey: string;
+    byteKey: string;
+    byteSource: ByteSourceDescriptor | null;
+    episodeKey: string;
+    episodeSource: EpisodeSource | null;
   }>();
 
-  if (!ref.current || ref.current.sourceKey !== sourceKey) {
+  const buildEpisodeSource = () =>
+    mediaReference ? episodeManifestSourceFromContext(ctx) : null;
+  if (!ref.current) {
     ref.current = {
+      byteKey,
       byteSource: next,
-      episodeSource: mediaReference
-        ? episodeManifestSourceFromContext(ctx)
-        : null,
-      sourceKey,
+      episodeKey,
+      episodeSource: buildEpisodeSource(),
     };
+  }
+  if (ref.current.byteKey !== byteKey) {
+    ref.current.byteKey = byteKey;
+    ref.current.byteSource = next;
+  }
+  if (ref.current.episodeKey !== episodeKey) {
+    ref.current.episodeKey = episodeKey;
+    ref.current.episodeSource = buildEpisodeSource();
   }
   const byteSource = ref.current.byteSource;
   const manifestSource = ref.current.episodeSource;

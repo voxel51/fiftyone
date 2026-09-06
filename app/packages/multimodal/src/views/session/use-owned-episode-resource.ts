@@ -53,12 +53,11 @@ export function useOwnedEpisodeResource<
   lifecycle: OwnedEpisodeResourceLifecycle<Resource, State>,
 ): State {
   const { mediaReference, mediaType, path } = sample;
-  const mediaReferenceKind = mediaReference?.kind;
-  const mediaReferenceKey = mediaReference?.key;
-  const hasMediaReference = mediaReference != null;
-  const mediaReferenceIdentity = hasMediaReference
-    ? JSON.stringify([mediaReferenceKind, mediaReferenceKey])
-    : undefined;
+  const mediaReferenceIdentity = mediaReference?.key;
+  // The key alone decides when to reopen; the reference is a fresh object on
+  // every render, so it is read rather than depended on
+  const mediaReferenceRef = useRef(mediaReference);
+  mediaReferenceRef.current = mediaReference;
   const liveResourceRef = useRef<Resource | null>(null);
   const [ownedState, setOwnedState] = useState<
     OwnedEpisodeResourceState<Resource, State>
@@ -101,13 +100,7 @@ export function useOwnedEpisodeResource<
     void lifecycle
       .open(
         {
-          mediaReference:
-            mediaReferenceKey !== undefined && mediaReferenceKind !== undefined
-              ? {
-                  key: mediaReferenceKey,
-                  kind: mediaReferenceKind,
-                }
-              : undefined,
+          mediaReference: mediaReferenceRef.current ?? undefined,
           mediaType,
           path,
         },
@@ -176,17 +169,7 @@ export function useOwnedEpisodeResource<
         opened.dispose();
       }
     };
-  }, [
-    enabled,
-    hasMediaReference,
-    lifecycle,
-    mediaReferenceIdentity,
-    mediaReferenceKey,
-    mediaReferenceKind,
-    mediaType,
-    path,
-    source,
-  ]);
+  }, [enabled, lifecycle, mediaReferenceIdentity, mediaType, path, source]);
 
   // React cleans up the previous effect after rendering the new request.
   // Derive ownership here so stale resources are never observable in between.
