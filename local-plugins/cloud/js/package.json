@@ -1,0 +1,51 @@
+{
+    "name": "@voxel51/cloud",
+    "version": "0.1.0",
+    "description": "FiftyOne Cloud panel: pair this machine and upload datasets",
+    "type": "module",
+    "main": "src/index.tsx",
+    "fiftyone": {
+        "script": "dist/index.umd.js"
+    },
+    "scripts": {
+        "build": "FIFTYONE_DIR=${FIFTYONE_DIR:-../../..} vite build",
+        "dev": "nodemon --watch ./src --ext js,jsx,ts,tsx --exec 'yarn build'",
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "author": "Voxel51, Inc.",
+    "license": "Apache 2.0",
+    "dependencies": {
+        "@fiftyone/operators": "link:../../../app/packages/operators",
+        "@fiftyone/plugins": "link:../../../app/packages/plugins",
+        "@fiftyone/spaces": "link:../../../app/packages/spaces",
+        "@fiftyone/state": "link:../../../app/packages/state",
+        "@fiftyone/utilities": "link:../../../app/packages/utilities",
+        "@voxel51/voodo": "^0.1.0",
+        "jotai": "^2.10.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0"
+    },
+    "devDependencies": {
+        "@mui/material": "^5.15.0",
+        "@rollup/plugin-node-resolve": "^15.3.0",
+        "@testing-library/dom": "^10.4.0",
+        "@testing-library/react": "^16.0.0",
+        "@types/node": "^22.7.6",
+        "@types/react": "^18.3.0",
+        "@types/react-dom": "^18.3.0",
+        "@vitejs/plugin-react": "^4.3.2",
+        "@voxel51/fiftyone-js-plugin-build": "^2.0.0",
+        "jsdom": "^25.0.0",
+        "react-is": "^18.3.1",
+        "recoil": "^0.7.7",
+        "typescript": "^5.6.3",
+        "vite": "^5.4.9",
+        "vite-plugin-externalize-deps": "^0.8.0",
+        "vitest": "^2.1.0"
+    },
+    "packageManager": "yarn@4.5.0",
+    "peerDependencies": {
+        "@mui/material": "^5.15.0"
+    }
+}
