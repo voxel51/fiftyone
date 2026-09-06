@@ -2,6 +2,7 @@ import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import { createInlineMcapResourceClient } from "./inline-client";
 import { MCAP_ACTIVE_TIMELINE } from "../contracts/index";
+import type { McapIndexedReaderLike } from "../reader/index";
 import {
   collect,
   createChannel,
@@ -270,11 +271,43 @@ describe("MCAP reader lifecycle", () => {
     expect(readIndexedMessages).toHaveBeenCalledTimes(2);
   });
 
+  it("reuses one cached reader across metadata-only record reads", async () => {
+    const source = createMcapSourceDescriptor();
+    const readerFactory = vi.fn(async () =>
+      createReader({ messages: [createMessage(new Uint8Array([1, 2, 3]))] }),
+    );
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      readerFactory,
+    });
+    const request = {
+      select: "metadata" as const,
+      source,
+      timeNs: 100n,
+      topic: "/topic",
+    };
+
+    const first = await client.readRawMessageRecord(request);
+    const second = await client.readRawMessageRecord(request);
+
+    expect(readerFactory).toHaveBeenCalledOnce();
+    expect(first).toMatchObject({
+      encodedPayloadBytes: 3,
+      status: "ok",
+    });
+    expect(second).toMatchObject({
+      encodedPayloadBytes: 3,
+      status: "ok",
+    });
+    expect(first.root).toBeUndefined();
+    expect(second.root).toBeUndefined();
+  });
+
   it("stops waiting for cached-reader initialization when cancelled", async () => {
-    let resolveReader!: (reader: ReturnType<typeof createReader>) => void;
+    let resolveReader!: (reader: McapIndexedReaderLike) => void;
     const readerFactory = vi.fn(
       () =>
-        new Promise<ReturnType<typeof createReader>>((resolve) => {
+        new Promise<McapIndexedReaderLike>((resolve) => {
           resolveReader = resolve;
         }),
     );
@@ -296,8 +329,11 @@ describe("MCAP reader lifecycle", () => {
     controller.abort();
 
     await expect(read).rejects.toMatchObject({ name: "AbortError" });
-    resolveReader(createReader());
+    const dispose = vi.fn();
+    resolveReader({ ...createReader(), dispose });
     await Promise.resolve();
+    expect(dispose).not.toHaveBeenCalled();
     client.dispose();
+    expect(dispose).toHaveBeenCalledOnce();
   });
 });

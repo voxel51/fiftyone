@@ -3,7 +3,7 @@ name: Pull Request
 on:
   pull_request:
     # `edited` catches base changes — notably GitHub auto-retargeting a stacked
-    # PR to develop when the PR below it merges — so the heavy suite runs before
+    # PR to main when the PR below it merges — so the heavy suite runs before
     # it can land (no `synchronize` fires on an auto-retarget). No `closed`:
     # nothing here runs on it, and its no-op run races the suite still testing
     # the just-merged SHA, leaving a spurious red X on the merged PR.
@@ -39,7 +39,7 @@ jobs:
       heavy: ${{ steps.gate.outputs.heavy }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           sparse-checkout: |
             /*
@@ -85,7 +85,7 @@ jobs:
         shell: bash
         run: |
           # `edited` fires on title/body edits too; only (re)run when the base
-          # changed (e.g. a stacked PR auto-retargeted to develop after the one
+          # changed (e.g. a stacked PR auto-retargeted to main after the one
           # below merged).
           run_ci=true
           if [ "$ACTION" = "edited" ] && [ "$BASE_CHANGED" != "true" ]; then
@@ -93,11 +93,11 @@ jobs:
           fi
           # Heavy jobs (build/test/e2e/windows) only for PRs targeting a
           # long-lived branch. Intra-stack PRs (base = another feature branch)
-          # skip them and are tested when promoted to develop/release.
+          # skip them and are tested when promoted to main/release.
           heavy=false
           if [ "$run_ci" = "true" ]; then
             case "$BASE_REF" in
-              develop|release/*|community) heavy=true ;;
+              main|release/*|community) heavy=true ;;
             esac
           fi
           echo "run-ci=$run_ci" >> "$GITHUB_OUTPUT"
@@ -151,7 +151,7 @@ jobs:
     uses: ./.github/workflows/test.yml
     with:
       python-versions: >-
-        ${{ (github.base_ref == 'develop' ||
+        ${{ (github.base_ref == 'main' ||
         startsWith(github.base_ref, 'feat/'))
         && '["3.10", "3.14"]' || '["3.10", "3.11", "3.12", "3.13", "3.14"]' }}
 
@@ -163,7 +163,7 @@ jobs:
     uses: ./.github/workflows/windows-test.yml
     with:
       python-versions: >-
-        ${{ (github.base_ref == 'develop' ||
+        ${{ (github.base_ref == 'main' ||
         startsWith(github.base_ref, 'feat/'))
         && '["3.10", "3.14"]' || '["3.10", "3.11", "3.12", "3.13", "3.14"]' }}
 
@@ -193,7 +193,7 @@ jobs:
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           sparse-checkout: .github/scripts

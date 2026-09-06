@@ -12,6 +12,7 @@ import {
 } from "@fiftyone/playback";
 import { seekEventAtom } from "@fiftyone/playback/runtime";
 import {
+  type MutableRefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -98,6 +99,22 @@ const LOCAL_STARTUP_BUFFER_SECONDS = 0.1;
 
 const noop = (): void => undefined;
 
+function scheduleOncePerEpoch(
+  scheduleEpochRef: MutableRefObject<number | null>,
+  sourceEpochRef: MutableRefObject<number>,
+  work: () => void,
+): void {
+  const currentEpoch = sourceEpochRef.current;
+  if (scheduleEpochRef.current === currentEpoch) return;
+  scheduleEpochRef.current = currentEpoch;
+  void Promise.resolve().then(() => {
+    if (scheduleEpochRef.current === currentEpoch) {
+      scheduleEpochRef.current = null;
+    }
+    if (sourceEpochRef.current === currentEpoch) work();
+  });
+}
+
 /** Treats cancellation against an already-disposed session as complete. */
 export function cancelIdleReads(
   session: Pick<EpisodeSession, "cancelIdle"> | null,
@@ -131,6 +148,10 @@ export interface UseDataStreamOptions {
   session: EpisodeSession | null;
   /** Called whenever every blocking stream covers the current playhead. */
   onPlayheadDataReady?: () => void;
+  /** Streams eligible for the first independently useful settlement. */
+  firstUsefulSettlementStreams?: readonly string[];
+  /** Stable presentation-first order for authoritative current-tick delivery. */
+  settlementPriorityStreams?: readonly string[];
   source: ByteSourceDescriptor | null;
   allStreams: readonly string[];
   staleWarningStreams: readonly string[];
@@ -158,8 +179,10 @@ export function useRegisterDataStream({
   blockingStreams,
   endBoundedStreams,
   initialSeekTimeNs,
+  firstUsefulSettlementStreams = [],
   session,
   onPlayheadDataReady,
+  settlementPriorityStreams = blockingStreams,
   source,
   allStreams,
   staleWarningStreams,
@@ -272,6 +295,7 @@ export function useRegisterDataStream({
   >(new Map());
   const autoSeekSourceEpochRef = useRef<number | null>(null);
   const autoSeekScheduleEpochRef = useRef<number | null>(null);
+  const currentTickFlushScheduleEpochRef = useRef<number | null>(null);
   const deferredBatchAdmissionRef = useRef(false);
   const lastSeekAtMsRef = useRef<number | null>(null);
   const [startupCushionPlanner] = useState(() => new StartupCushionPlanner());
@@ -279,6 +303,14 @@ export function useRegisterDataStream({
   const byteTimelineRef = useRef<readonly ByteTimelinePoint[] | null>(null);
   const sourceEpochRef = useRef(0);
   indexRef.current = index;
+
+  // Advance the source epoch at commit time, before any subscription microtask
+  // can flush against a playback instance that the new render has replaced.
+  // The passive source effect below still owns the actual cache/session reset.
+  useLayoutEffect(() => {
+    sourceEpochRef.current += 1;
+  }, [playback, source, timelineSamplingRateHz]);
+
   // Hold the most recent `allStreams` / `streamPolicies` in refs so the
   // stable callbacks below read fresh values without listing them as
   // deps (which would invalidate the registered stream every render).
@@ -286,6 +318,8 @@ export function useRegisterDataStream({
   const blockingStreamsRef = useRef<ReadonlySet<string>>(
     new Set(blockingStreams),
   );
+  const firstUsefulSettlementStreamsRef = useRef(firstUsefulSettlementStreams);
+  const settlementPriorityStreamsRef = useRef(settlementPriorityStreams);
   const endBoundedStreamsRef = useRef<ReadonlySet<string>>(
     new Set(endBoundedStreams),
   );
@@ -303,6 +337,12 @@ export function useRegisterDataStream({
   useEffect(() => {
     blockingStreamsRef.current = new Set(blockingStreams);
   }, [blockingStreams]);
+  useEffect(() => {
+    firstUsefulSettlementStreamsRef.current = firstUsefulSettlementStreams;
+  }, [firstUsefulSettlementStreams]);
+  useEffect(() => {
+    settlementPriorityStreamsRef.current = settlementPriorityStreams;
+  }, [settlementPriorityStreams]);
   // This effect keeps the readiness callback current without rebuilding streams.
   useEffect(() => {
     onPlayheadDataReadyRef.current = onPlayheadDataReady;
@@ -337,6 +377,20 @@ export function useRegisterDataStream({
       blockingStreamsRef.current.has(stream),
     );
     return blockingStreams.length > 0 ? blockingStreams : activeStreams;
+  }, [getActiveStreams]);
+  const getActiveSettlementPriorityStreams = useCallback((): string[] => {
+    const activeBlockingStreams = getActiveBlockingStreams();
+    const activeBlockingSet = new Set(activeBlockingStreams);
+    const prioritized = settlementPriorityStreamsRef.current.filter((stream) =>
+      activeBlockingSet.has(stream),
+    );
+    return prioritized.length > 0 ? prioritized : activeBlockingStreams;
+  }, [getActiveBlockingStreams]);
+  const getActiveFirstUsefulSettlementStreams = useCallback((): string[] => {
+    const activeStreams = new Set(getActiveStreams());
+    return firstUsefulSettlementStreamsRef.current.filter((stream) =>
+      activeStreams.has(stream),
+    );
   }, [getActiveStreams]);
 
   const clearPausedIdleWarmupTimer = useCallback(() => {
@@ -480,17 +534,11 @@ export function useRegisterDataStream({
   // auto-seek checks lets the target consider the complete visible set instead
   // of committing to whichever short-skew stream subscribes first.
   const scheduleAutoSeekToFirstData = useCallback(() => {
-    const currentEpoch = sourceEpochRef.current;
-    if (autoSeekScheduleEpochRef.current === currentEpoch) return;
-    autoSeekScheduleEpochRef.current = currentEpoch;
-    void Promise.resolve().then(() => {
-      if (autoSeekScheduleEpochRef.current === currentEpoch) {
-        autoSeekScheduleEpochRef.current = null;
-      }
-      if (sourceEpochRef.current === currentEpoch) {
-        maybeAutoSeekToFirstData();
-      }
-    });
+    scheduleOncePerEpoch(
+      autoSeekScheduleEpochRef,
+      sourceEpochRef,
+      maybeAutoSeekToFirstData,
+    );
   }, [maybeAutoSeekToFirstData]);
 
   // This effect ensures a cache exists for every known stream.
@@ -513,7 +561,6 @@ export function useRegisterDataStream({
   // combine a new timeline with old ticks or stale frames while the async range
   // load is in flight.
   useEffect(() => {
-    sourceEpochRef.current += 1;
     const sourceEpoch = sourceEpochRef.current;
     setIndex(null);
     byteTimelineRef.current = null;
@@ -523,7 +570,6 @@ export function useRegisterDataStream({
     streamStartTimesNsRef.current.clear();
     streamEndTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
-    autoSeekScheduleEpochRef.current = null;
     deferredBatchAdmissionRef.current = false;
     lastSeekAtMsRef.current = null;
     startupCushionPlanner.resetPendingPlan();
@@ -533,8 +579,8 @@ export function useRegisterDataStream({
     // speculative idle work as well so the old cadence stops consuming I/O.
     cancelIdleReads(session);
     for (const cache of streamCachesRef.current.values()) {
+      cache.reset();
       cache.resize(playbackPolicy.streamCacheMaxEntries);
-      cache.clear();
     }
     for (const stream of streamCachesRef.current.keys()) {
       setStreamValue(store, stream, null);
@@ -687,43 +733,47 @@ export function useRegisterDataStream({
     startupCushionPlanner.resetPendingPlan();
   }, [isPlaying, startupCushionPlanner]);
 
-  const publishStreamStatuses = useCallback(() => {
-    publishDataStreamStatuses({
-      activeBlockingStreams: getActiveBlockingStreams(),
-      activeStreams: getActiveStreams(),
-      caches: streamCachesRef.current,
-      failedStreams: fetchState.failedStreams,
-      index: indexRef.current,
-      onPlayheadDataReady: onPlayheadDataReadyRef.current,
-      policy: playbackPolicy,
+  const publishStreamStatuses = useCallback(
+    (updatedStreams?: readonly string[]) => {
+      publishDataStreamStatuses({
+        activeBlockingStreams: getActiveBlockingStreams(),
+        activeStreams: getActiveStreams(),
+        caches: streamCachesRef.current,
+        failedStreams: fetchState.failedStreams,
+        index: indexRef.current,
+        onPlayheadDataReady: onPlayheadDataReadyRef.current,
+        policy: playbackPolicy,
+        publishBufferedRangesNow,
+        pushCurrentTick: (activeStreams, tick) =>
+          pushTickToStore(
+            [...activeStreams],
+            tick,
+            streamCachesRef.current,
+            lastFrameRef.current,
+            store,
+            fetchState.failedStreams,
+          ),
+        resolveStartupCushion,
+        scheduleBufferedRangesPublish,
+        schedulePausedIdleWarmup: (delayMs) =>
+          schedulePausedIdleWarmupRef.current?.(delayMs),
+        staleWarningStreams: staleWarningStreamsRef.current,
+        streamNames: streamNamesRef.current,
+        store,
+        updatedStreams,
+      });
+    },
+    [
+      fetchState,
+      getActiveBlockingStreams,
+      getActiveStreams,
       publishBufferedRangesNow,
-      pushCurrentTick: (activeStreams, tick) =>
-        pushTickToStore(
-          [...activeStreams],
-          tick,
-          streamCachesRef.current,
-          lastFrameRef.current,
-          store,
-          fetchState.failedStreams,
-        ),
+      playbackPolicy,
       resolveStartupCushion,
       scheduleBufferedRangesPublish,
-      schedulePausedIdleWarmup: (delayMs) =>
-        schedulePausedIdleWarmupRef.current?.(delayMs),
-      staleWarningStreams: staleWarningStreamsRef.current,
-      streamNames: streamNamesRef.current,
       store,
-    });
-  }, [
-    fetchState,
-    getActiveBlockingStreams,
-    getActiveStreams,
-    publishBufferedRangesNow,
-    playbackPolicy,
-    resolveStartupCushion,
-    scheduleBufferedRangesPublish,
-    store,
-  ]);
+    ],
+  );
 
   const rebalanceDecodedCaches = useCallback(() => {
     backgroundLookaheadSecondsRef.current = applyDecodedCachePolicy({
@@ -809,8 +859,11 @@ export function useRegisterDataStream({
                 ? byteTimelineRef.current
                 : null,
             getBlockingStreams: () => blockingStreamsRef.current,
+            getFirstUsefulSettlementStreams:
+              getActiveFirstUsefulSettlementStreams,
             getIndex: () => indexRef.current,
             getLastSeekAtMs: () => lastSeekAtMsRef.current,
+            getSettlementPriorityStreams: getActiveSettlementPriorityStreams,
             hasDeferredBatchAdmission: () => deferredBatchAdmissionRef.current,
             isSourceAvailable: () => source !== null,
             lastFrames: lastFrameRef.current,
@@ -826,7 +879,9 @@ export function useRegisterDataStream({
       computeBufferedRanges,
       fetchState,
       getActiveBlockingStreams,
+      getActiveFirstUsefulSettlementStreams,
       getActiveStreams,
+      getActiveSettlementPriorityStreams,
       prefetcher,
       playbackPolicy,
       publishStreamStatuses,
@@ -908,6 +963,15 @@ export function useRegisterDataStream({
     [scheduler],
   );
 
+  // Stream subscriptions mount as one React effect batch. Defer acquisition
+  // until that batch settles, then derive the complete visible demand from
+  // the live caches instead of preserving subscription order as read order.
+  const scheduleCurrentTickFlush = useCallback(() => {
+    scheduleOncePerEpoch(currentTickFlushScheduleEpochRef, sourceEpochRef, () =>
+      prefetchLookaheadFrom(getPlayhead(store)),
+    );
+  }, [prefetchLookaheadFrom, store]);
+
   // This effect registers the engine stream and proactive lookahead subscription.
   useEffect(() => {
     return scheduler?.register(registerStream, subscribeStream);
@@ -941,12 +1005,11 @@ export function useRegisterDataStream({
     });
   }, [rebalanceDecodedCaches, session, startupCushionPlanner, store]);
 
-  // This effect kicks off lookahead so the buffer fills before play or seek.
-  // (May be a no-op if no tile has subscribed yet — subscribeToStream also
-  // triggers this for the same reason.)
+  // Timeline readiness is a flush trigger: an earlier subscription flush may
+  // have observed no index, so derive the live demand again once it exists.
   useEffect(() => {
-    if (index) prefetchLookaheadFrom(getPlayhead(store));
-  }, [index, prefetchLookaheadFrom, store]);
+    if (index) scheduleCurrentTickFlush();
+  }, [index, scheduleCurrentTickFlush]);
 
   // Expose subscribeToStream via the playback store so tiles can subscribe
   // without a React context hierarchy constraint. The first subscription for
@@ -970,7 +1033,7 @@ export function useRegisterDataStream({
       }
       const cleanup = cache.subscribe();
       scheduleAutoSeekToFirstData();
-      prefetchLookaheadFrom(getPlayhead(store));
+      scheduleCurrentTickFlush();
       return () => {
         cleanup();
         if (colorBy) {
@@ -1006,10 +1069,9 @@ export function useRegisterDataStream({
     },
     [
       getActiveStreams,
-      prefetchLookaheadFrom,
       scheduleAutoSeekToFirstData,
+      scheduleCurrentTickFlush,
       session,
-      store,
     ],
   );
 

@@ -5,6 +5,7 @@ import {
 } from "../../../extensions/tiles/registry";
 import type { EpisodeTileAvailability } from "../../../extensions/tiles/types";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
+import AudioTile from "../audio/AudioTile";
 import Scene3dTile from "../scene/tile/Scene3dTile";
 import ImageTile from "../image/ImageTile";
 import LogConsoleTile from "../logs/LogConsoleTile";
@@ -39,6 +40,14 @@ const THREE_D_SOURCE_TYPES = new Set<string>([
 
 /** Built-in tile catalog in explicit product order. */
 const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
+  [TILE_TYPE.AUDIO]: {
+    icon: IconName.VolumeUp,
+    isAvailable: ({ sourceTypes }) =>
+      sourceTypes.includes(SCENE_SOURCE_TYPE.AUDIO),
+    order: 15,
+    Tile: AudioTile,
+    typeLabel: "Audio",
+  },
   [TILE_TYPE.IMAGE]: {
     icon: IconName.GridView,
     isAvailable: ({ sourceTypes }) =>

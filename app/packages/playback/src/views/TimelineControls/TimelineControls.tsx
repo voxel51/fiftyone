@@ -44,8 +44,8 @@ import {
 import type { BufferingStream } from "../../lib/playback/types";
 import LoopBounds from "../Loop/LoopBounds";
 import PlayheadTime from "../Playhead/PlayheadTime";
+import AudioControls from "./AudioControls";
 import SpeedControl from "./SpeedControl";
-import VolumeControl from "./VolumeControl";
 import styles from "./TimelineControls.module.css";
 
 export interface TimelineControlsProps {
@@ -62,11 +62,18 @@ export interface TimelineControlsProps {
    */
   extraControls?: ReactNode;
   /**
-   * Optional content rendered inline after the playhead time / loop bounds,
-   * preceded by its own divider — still part of the left-hand run of
-   * controls. Readouts belong here (the multimodal surface's absolute
-   * timestamp, the temporal tag-mode button). For buttons that should sit
-   * against the right edge instead, use {@link trailingActions}.
+   * Host readouts that belong with the clock — the multimodal surface's
+   * absolute (UTC) timestamp. Rendered inside the speed/time group, after
+   * the playhead, with no divider of its own: it reads as another way of
+   * saying where the playhead is, not as a separate control. Buttons go in
+   * {@link extraActions}.
+   */
+  readouts?: ReactNode;
+  /**
+   * Optional content rendered inline after the clock group, preceded by its
+   * own divider — the last of the left-hand runs (e.g. the temporal
+   * tag-mode button). For buttons that should sit against the right edge
+   * instead, use {@link trailingActions}.
    */
   extraActions?: ReactNode;
   /**
@@ -86,6 +93,7 @@ export interface TimelineControlsProps {
 const TimelineControls: React.FC<TimelineControlsProps> = ({
   onToggle,
   extraControls,
+  readouts,
   extraActions,
   trailingActions,
   expanded = false,
@@ -178,44 +186,59 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         aria-label="Step forward"
         onClick={stepForward}
       />
-      <SpeedControl />
-      <VolumeControl />
-
-      {extraControls}
+      {/* Audio sits with the transport, not off in the trailing group: it is
+          playback, not a host action. Volume then Mixer — the mixer only
+          renders with more than one channel, so on a single-source timeline
+          this collapses to one button. The group draws its own leading
+          divider as a `::before` and hides itself when it has no children,
+          so a timeline with no audio shows no stray separator. */}
+      <AudioControls />
 
       <span
         className={styles.divider}
         data-testid="timeline-controls-divider"
         aria-hidden
       />
+      <SpeedControl />
       <PlayheadTime />
       <LoopBounds />
       <BufferingIndicator />
-      {extraActions ? (
+      {readouts}
+
+      {(extraControls || extraActions) && (
         <>
           <span
             className={styles.divider}
             data-testid="timeline-controls-divider"
             aria-hidden
           />
+          {extraControls}
           {extraActions}
         </>
-      ) : null}
+      )}
       {(trailingActions || onToggle) && (
         <div className={styles.trailing}>
           {trailingActions ? (
             <>
-              <span
-                className={styles.divider}
-                data-testid="timeline-controls-divider"
-                aria-hidden
-              />
               <div
                 className={styles.trailingActions}
                 data-testid="timeline-controls-trailing-actions"
               >
                 {trailingActions}
               </div>
+              {/* After the actions, not before: the rule separates them from
+                  the drawer chevron that sits last, rather than fencing them
+                  off from the readouts on their left. Only when that chevron
+                  is actually there — a timeline with no tracks renders no
+                  toggle (see `TimelineWithTracks`), and the rule would then
+                  hang off the right edge with nothing after it. */}
+              {onToggle ? (
+                <span
+                  className={styles.divider}
+                  data-testid="timeline-controls-divider"
+                  aria-hidden
+                />
+              ) : null}
             </>
           ) : null}
           {onToggle ? (

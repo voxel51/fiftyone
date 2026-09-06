@@ -242,6 +242,9 @@ export interface McapIndexedReaderLike {
    */
   readonly statistics?: McapIndexedReader["statistics"];
 
+  /** Total source size resolved while initializing the indexed reader. */
+  readonly sourceSizeBytes?: bigint;
+
   /**
    * Reads admitted chunks directly instead of delegating an unbounded window
    * to `readMessages()`.

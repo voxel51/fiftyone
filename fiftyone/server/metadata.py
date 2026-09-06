@@ -60,6 +60,7 @@ async def get_metadata(
     url_cache: t.Dict[str, str],
     *,
     additional_media_fields: t.Optional[t.Tuple] = None,
+    skip_metadata_read: bool = False,
 ):
     """Gets the metadata for the given local media file.
 
@@ -70,18 +71,28 @@ async def get_metadata(
         additional_media_fields: pre-computed result of
             ``_get_additional_media_fields(collection)``. If None, will be
             computed (expensive — prefer passing it in).
+        skip_metadata_read (False): whether to return placeholder metadata
+            without reading the media
 
     Returns:
         metadata dict
     """
+    media_reference = sample.get("media_reference")
+    if media_reference is not None:
+        cache_key = media_reference["key"]
+        if cache_key not in metadata_cache:
+            metadata_cache[cache_key] = dict(aspect_ratio=1)
+
+        return dict(urls=[], **metadata_cache[cache_key])
+
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    (
-        opm_field,
-        detections_fields,
-        additional_fields,
-    ) = additional_media_fields if additional_media_fields is not None else _get_additional_media_fields(collection)
+    (opm_field, detections_fields, additional_fields,) = (
+        additional_media_fields
+        if additional_media_fields is not None
+        else _get_additional_media_fields(collection)
+    )
 
     filepath_result, filepath_source, urls = _create_media_urls(
         collection,
@@ -94,6 +105,9 @@ async def get_metadata(
     )
     if filepath_result is not None:
         filepath = filepath_result
+
+    if skip_metadata_read:
+        return dict(urls=urls, aspect_ratio=1)
 
     is_video = media_type == fom.VIDEO
 

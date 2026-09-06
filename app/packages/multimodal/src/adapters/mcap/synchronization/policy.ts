@@ -171,8 +171,8 @@ export function selectCandidatesForTopic<Candidate extends SyncCandidate>(
     case PlaybackSyncMode.STRICT:
       return inWindow
         .filter((candidate) => candidate.timelineTimeNs === timeNs)
-        .slice(0, policy.limit)
-        .sort(compareByTime);
+        .sort(compareByTime)
+        .slice(0, policy.limit);
     case PlaybackSyncMode.LATEST:
       return inWindow
         .filter((candidate) => candidate.timelineTimeNs <= timeNs)

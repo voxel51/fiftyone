@@ -168,6 +168,7 @@ export async function readMcapSynchronizedMessageBatch<
   readSignal,
   request,
   reuseIndexedMessage,
+  onTopicSettlement,
   timeline,
 }: {
   readonly decodeClient: DecodeClient;
@@ -176,6 +177,12 @@ export async function readMcapSynchronizedMessageBatch<
   readonly readSignal?: { readonly current: AbortSignal | null };
   readonly request: McapReadSynchronizedMessageBatchRequest;
   readonly reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>;
+  readonly onTopicSettlement?: (settlement: {
+    readonly topic: string;
+    readonly window: McapSynchronizedMessageWindowWithMessages<
+      McapDecodedMessage | ReusedMessage
+    >;
+  }) => void;
   readonly timeline: McapTimelineStrategy;
 }): Promise<
   readonly McapSynchronizedMessageWindowWithMessages<
@@ -271,6 +278,22 @@ export async function readMcapSynchronizedMessageBatch<
           source: request.source,
           timeline,
         }),
+      settlementPriorityTopics: request.settlementPriorityTopics,
+      firstUsefulSettlementTopics: request.firstUsefulSettlementTopics,
+      estimateCandidateBytes: async (candidate) => {
+        const identity = indexedCandidateReuseIdentity({
+          candidate,
+          pointCloudColorBy:
+            request.pointCloudColorByByTopic?.[candidate.topic],
+          timeline,
+        });
+        if (reusedIndexedMessages.has(identity.recordId)) return 0;
+        const materialized = await selectedRawCandidates;
+        return (
+          materialized?.get(candidate)?.message.data.byteLength ??
+          Number.MAX_SAFE_INTEGER
+        );
+      },
       // Selected candidates name their chunks exactly, so the byte layer can
       // pipeline those chunk fetches while decoding walks them serially.
       onCandidatesSelected: (selected) => {
@@ -296,6 +319,7 @@ export async function readMcapSynchronizedMessageBatch<
           });
         }
       },
+      onTopicSettlement,
       selectTieBreaker: compareIndexedCandidateTieBreaker,
       timeline,
       topics: request.topics,
@@ -330,6 +354,10 @@ export async function readMcapSynchronizedMessageBatch<
         source: request.source,
         timeline,
       }),
+    settlementPriorityTopics: request.settlementPriorityTopics,
+    firstUsefulSettlementTopics: request.firstUsefulSettlementTopics,
+    estimateCandidateBytes: (candidate) => candidate.message.data.byteLength,
+    onTopicSettlement,
     selectTieBreaker: compareRawCandidateTieBreaker,
     timeline,
     topics: request.topics,
@@ -537,7 +565,11 @@ async function decodeWindowsFromCandidates<
 >({
   candidates,
   decodeCandidate,
+  firstUsefulSettlementTopics,
+  settlementPriorityTopics,
+  estimateCandidateBytes,
   onCandidatesSelected,
+  onTopicSettlement,
   selectTieBreaker,
   throwIfAborted,
   timeline,
@@ -546,7 +578,16 @@ async function decodeWindowsFromCandidates<
 }: {
   readonly candidates: ReadonlyMap<string, readonly Candidate[]>;
   readonly decodeCandidate: (candidate: Candidate) => Promise<Message>;
+  readonly firstUsefulSettlementTopics?: readonly string[];
+  readonly settlementPriorityTopics?: readonly string[];
+  readonly estimateCandidateBytes?: (
+    candidate: Candidate,
+  ) => number | Promise<number>;
   readonly onCandidatesSelected?: (selected: readonly Candidate[]) => void;
+  readonly onTopicSettlement?: (settlement: {
+    readonly topic: string;
+    readonly window: McapSynchronizedMessageWindowWithMessages<Message>;
+  }) => void;
   readonly selectTieBreaker: (left: Candidate, right: Candidate) => number;
   readonly throwIfAborted?: () => void;
   readonly timeline: McapTimelineStrategy;
@@ -609,8 +650,27 @@ async function decodeWindowsFromCandidates<
         readonly McapTopicDecodeDiagnostic[]
       > = {};
       const messages: Message[] = [];
+      const settlementTopics = await selectSettlementTopics({
+        estimateCandidateBytes,
+        firstUsefulSettlementTopics,
+        settlementPriorityTopics,
+        selectedByTopic,
+      });
+      const settlementTopicSet = new Set(settlementTopics);
+      const selectedByTopicMap = new Map(selectedByTopic);
+      const decodeOrder = settlementTopics.length
+        ? [
+            ...settlementTopics.flatMap((topic) => {
+              const selected = selectedByTopicMap.get(topic);
+              return selected ? ([[topic, selected]] as const) : [];
+            }),
+            ...selectedByTopic.filter(
+              ([topic]) => !settlementTopicSet.has(topic),
+            ),
+          ]
+        : selectedByTopic;
 
-      for (const [topic, selected] of selectedByTopic) {
+      for (const [topic, selected] of decodeOrder) {
         throwIfAborted?.();
         const settled: readonly McapSettledTopicDecode<Message>[] =
           await Promise.all(
@@ -662,6 +722,19 @@ async function decodeWindowsFromCandidates<
               ),
             ).values(),
           ];
+          onTopicSettlement?.({
+            topic,
+            window: {
+              activeTimeline: timeline.id,
+              decodeErrorsByTopic: { [topic]: decodeErrorsByTopic[topic] },
+              endTimeNs: streamPolicies[topic].endTimeNs,
+              messages: [],
+              messagesByTopic: { [topic]: [] },
+              startTimeNs: streamPolicies[topic].startTimeNs ?? 0n,
+              streamPolicies: { [topic]: streamPolicies[topic] },
+              timeNs,
+            },
+          });
           continue;
         }
         const decoded = settled
@@ -676,6 +749,19 @@ async function decodeWindowsFromCandidates<
           .map((result) => result.decoded);
         messagesByTopic[topic] = decoded;
         messages.push(...decoded);
+
+        onTopicSettlement?.({
+          topic,
+          window: {
+            activeTimeline: timeline.id,
+            endTimeNs: streamPolicies[topic].endTimeNs,
+            messages: decoded,
+            messagesByTopic: { [topic]: decoded },
+            startTimeNs: streamPolicies[topic].startTimeNs ?? 0n,
+            streamPolicies: { [topic]: streamPolicies[topic] },
+            timeNs,
+          },
+        });
       }
 
       messages.sort((left, right) => {
@@ -706,6 +792,58 @@ async function decodeWindowsFromCandidates<
       };
     }),
   );
+}
+
+/** Preserves the caller's stable presentation order ahead of stragglers. */
+export async function selectSettlementTopics<Candidate>({
+  estimateCandidateBytes,
+  firstUsefulSettlementTopics,
+  settlementPriorityTopics,
+  selectedByTopic,
+}: {
+  readonly estimateCandidateBytes?: (
+    candidate: Candidate,
+  ) => number | Promise<number>;
+  readonly firstUsefulSettlementTopics?: readonly string[];
+  readonly settlementPriorityTopics?: readonly string[];
+  readonly selectedByTopic: readonly (readonly [
+    string,
+    readonly Candidate[],
+  ])[];
+}): Promise<readonly string[]> {
+  if (!settlementPriorityTopics?.length) return [];
+  const selectedTopics = new Set(selectedByTopic.map(([topic]) => topic));
+  const explicitOrder = [...new Set(settlementPriorityTopics)].filter((topic) =>
+    selectedTopics.has(topic),
+  );
+  if (!estimateCandidateBytes || !firstUsefulSettlementTopics?.length) {
+    return explicitOrder;
+  }
+
+  const selectedByTopicMap = new Map(selectedByTopic);
+  const firstUsefulSet = new Set(firstUsefulSettlementTopics);
+  const firstUsefulOrder = explicitOrder.filter((topic) =>
+    firstUsefulSet.has(topic),
+  );
+  if (firstUsefulOrder.length === 0) return explicitOrder;
+  const costs = await Promise.all(
+    firstUsefulOrder.map(async (topic) => ({
+      cost: (
+        await Promise.all(
+          (selectedByTopicMap.get(topic) ?? []).map(estimateCandidateBytes),
+        )
+      ).reduce((total, bytes) => total + bytes, 0),
+      topic,
+    })),
+  );
+  costs.sort(
+    (left, right) =>
+      left.cost - right.cost || left.topic.localeCompare(right.topic),
+  );
+  const firstTopic = costs[0]?.topic;
+  return firstTopic
+    ? [firstTopic, ...explicitOrder.filter((topic) => topic !== firstTopic)]
+    : explicitOrder;
 }
 
 async function collectIndexedCandidates({

@@ -4,7 +4,7 @@
 
 import type { Track } from "@fiftyone/playback";
 import clsx from "clsx";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useVideoInteraction } from "../state/useVideoInteraction";
 import { objectTrackPathOf } from "./frameTracks";
 import { temporalDetectionRefOf } from "./temporalDetectionTracks";
@@ -47,37 +47,77 @@ export const useVideoTrackDecorator = (): ((
     hoverLabel,
   } = useVideoInteraction();
 
+  /**
+   * Decoration cache, discarded whenever a write handler changes identity.
+   *
+   * A decoration is a pure function of `(link id, field path, hovered,
+   * selected)` — nothing else on the track reaches it — so that tuple is the
+   * whole key. Keying on a string rather than the `Track` object is deliberate:
+   * a sub-track row decorates through a *synthesized* stand-in for its parent
+   * (`{ ...track, id: parentId }`), which is a fresh object on every call and
+   * would never hit an object-keyed cache.
+   *
+   * The point is reference stability across hover. This hook closes over the
+   * hovered / selected id sets, so it necessarily changes identity whenever
+   * either moves — and hovering the tracks list is the hottest path there is.
+   * Handing back the *same* decoration object for every row whose own state
+   * didn't change is what lets the memoized rows skip re-rendering, leaving
+   * just the one or two rows that actually lit up.
+   */
+  const cache = useMemo(
+    () =>
+      new Map<
+        string,
+        { hovered: boolean; selected: boolean; decoration: TrackDecoration }
+      >(),
+    [hoverTrack, selectTrack, hoverLabel, selectLabel],
+  );
+
   return useCallback(
     (track: Track) => {
       const tdRef = temporalDetectionRefOf(track);
-
-      if (tdRef) {
-        return {
-          className: clsx({
-            [styles.linkHovered]: hoveredTrackIds.has(tdRef.instanceId),
-            [styles.linkSelected]: selectedTrackIds.has(tdRef.instanceId),
-          }),
-          onMouseEnter: () => hoverLabel(tdRef, true),
-          onMouseLeave: () => hoverLabel(tdRef, false),
-          onTrackClick: () => selectLabel(tdRef),
-        };
-      }
-
       // An object row addresses `(path, instanceId)` — the path is the field
       // the track lives on (detections / polylines), carried on its events.
-      const path = objectTrackPathOf(track);
+      const path = tdRef ? tdRef.path : objectTrackPathOf(track);
+      const linkId = tdRef ? tdRef.instanceId : track.id;
 
-      return {
-        className: clsx({
-          [styles.linkHovered]: hoveredTrackIds.has(track.id),
-          [styles.linkSelected]: selectedTrackIds.has(track.id),
-        }),
-        onMouseEnter: () => path && hoverTrack(track.id, path, true),
-        onMouseLeave: () => path && hoverTrack(track.id, path, false),
-        onTrackClick: () => path && selectTrack(track.id, path),
-      };
+      const hovered = hoveredTrackIds.has(linkId);
+      const selected = selectedTrackIds.has(linkId);
+
+      const key = `${tdRef ? "td" : "obj"}\u0000${linkId}\u0000${path ?? ""}`;
+      const cached = cache.get(key);
+      if (
+        cached &&
+        cached.hovered === hovered &&
+        cached.selected === selected
+      ) {
+        return cached.decoration;
+      }
+
+      const className = clsx({
+        [styles.linkHovered]: hovered,
+        [styles.linkSelected]: selected,
+      });
+
+      const decoration: TrackDecoration = tdRef
+        ? {
+            className,
+            onMouseEnter: () => hoverLabel(tdRef, true),
+            onMouseLeave: () => hoverLabel(tdRef, false),
+            onTrackClick: () => selectLabel(tdRef),
+          }
+        : {
+            className,
+            onMouseEnter: () => path && hoverTrack(track.id, path, true),
+            onMouseLeave: () => path && hoverTrack(track.id, path, false),
+            onTrackClick: () => path && selectTrack(track.id, path),
+          };
+
+      cache.set(key, { hovered, selected, decoration });
+      return decoration;
     },
     [
+      cache,
       hoveredTrackIds,
       selectedTrackIds,
       hoverTrack,

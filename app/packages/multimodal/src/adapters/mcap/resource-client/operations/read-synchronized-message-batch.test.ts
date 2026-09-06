@@ -4,6 +4,7 @@ import {
   INDEXED_RECORD_ID_OPTION_PART_COUNT,
   mintIndexedRecordIdentity,
   parseIndexedRecordIdentity,
+  selectSettlementTopics,
 } from "./read-synchronized-message-batch";
 
 describe("indexed record identity", () => {
@@ -43,4 +44,47 @@ describe("indexed record identity", () => {
       ),
     ).toThrow("cannot contain NUL bytes");
   });
+});
+
+describe("synchronized settlement order", () => {
+  it.each([
+    [
+      "forward",
+      [
+        ["/large", [{ bytes: 100 }]],
+        ["/small", [{ bytes: 10 }]],
+        ["/support", [{ bytes: 1 }]],
+      ],
+    ],
+    [
+      "reverse",
+      [
+        ["/support", [{ bytes: 1 }]],
+        ["/small", [{ bytes: 10 }]],
+        ["/large", [{ bytes: 100 }]],
+      ],
+    ],
+  ] as const)(
+    "preserves explicit presentation priority for %s candidate order",
+    async (_direction, selectedByTopic) => {
+      const candidates: readonly (readonly [
+        string,
+        readonly { readonly bytes: number }[],
+      ])[] = selectedByTopic;
+      await expect(
+        selectSettlementTopics({
+          settlementPriorityTopics: ["/small", "/large"],
+          selectedByTopic: candidates,
+        }),
+      ).resolves.toEqual(["/small", "/large"]);
+      await expect(
+        selectSettlementTopics({
+          estimateCandidateBytes: (candidate) => candidate.bytes,
+          firstUsefulSettlementTopics: ["/large", "/small"],
+          settlementPriorityTopics: ["/large", "/small"],
+          selectedByTopic: candidates,
+        }),
+      ).resolves.toEqual(["/small", "/large"]);
+    },
+  );
 });

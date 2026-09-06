@@ -3,7 +3,7 @@ name: Build CI images
 on:
   push:
     branches:
-      - develop
+      - main
     paths:
       - requirements/**
       - setup.py
@@ -39,7 +39,7 @@ jobs:
     name: Build and push e2e image
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Free Disk Space (Ubuntu)
         # the image's dependency tree exceeds the standard runner's
@@ -47,7 +47,7 @@ jobs:
         uses: ./.github/actions/free-disk-space
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
@@ -57,7 +57,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: e2e-pw/ci/Dockerfile
@@ -78,7 +78,7 @@ jobs:
         python: ${{ fromJSON(inputs.python-versions || '["3.10", "3.11", "3.12", "3.13", "3.14"]') }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Free Disk Space (Ubuntu)
         # the image's dependency tree exceeds the standard runner's
@@ -86,7 +86,7 @@ jobs:
         uses: ./.github/actions/free-disk-space
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
@@ -96,7 +96,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: tests/ci/Dockerfile

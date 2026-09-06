@@ -15,6 +15,7 @@ import type {
 import {
   EpisodeReadCancelledError,
   type PlaybackReadCapability,
+  type SynchronizedStreamSettlement,
 } from "../../../ports";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { createTimelineIndex, EpisodeStreamCache } from "../../../runtime";
@@ -165,6 +166,269 @@ describe("data stream prefetcher", () => {
     unsubscribedRead.resolve(windowAt(0n, [frame(IMAGE, 0n)]));
     await settle();
     expect(harness.caches.get(IMAGE)?.has(0n)).toBe(false);
+  });
+
+  it("caches and releases only each authoritatively settled stream", async () => {
+    const terminal = deferred<SynchronizedFrameWindow>();
+    let publishSettlement:
+      | ((settlement: SynchronizedStreamSettlement) => void)
+      | undefined;
+    const harness = createHarness({
+      readSynchronized: vi.fn((request) => {
+        publishSettlement = request.onStreamSettlement;
+        return terminal.promise;
+      }),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+    harness.caches.get(LIDAR)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE, LIDAR], {
+        settlementPriorityStreams: [IMAGE, LIDAR],
+      }),
+    ).toBe(true);
+    expect(publishSettlement).toBeTypeOf("function");
+    if (!publishSettlement) throw new Error("expected settlement callback");
+    const settledImage = frame(IMAGE, 0n);
+    publishSettlement({
+      stream: IMAGE,
+      window: windowAt(0n, [settledImage]),
+    });
+
+    expect(getStreamValue(harness.store, IMAGE)).not.toBeNull();
+    expect(getStreamValue(harness.store, LIDAR)).toBeNull();
+    expect(harness.caches.get(IMAGE)?.get(0n)).toBe(settledImage);
+    expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
+    expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(true);
+    expect(harness.publishStreamStatuses).toHaveBeenLastCalledWith([IMAGE]);
+    expect(harness.rebalanceDecodedCaches).not.toHaveBeenCalled();
+
+    terminal.resolve(windowAt(0n, [frame(IMAGE, 0n), frame(LIDAR, 0n)]));
+    await settle();
+
+    expect(harness.caches.get(IMAGE)?.get(0n)).toBe(settledImage);
+    expect(harness.caches.get(LIDAR)?.has(0n)).toBe(true);
+    expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
+    expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(false);
+    expect(harness.publishStreamStatuses).toHaveBeenLastCalledWith([LIDAR]);
+    expect(harness.rebalanceDecodedCaches).toHaveBeenCalledOnce();
+  });
+
+  it("publishes one authoritative settlement delivery group in one store turn", async () => {
+    const terminal = deferred<SynchronizedFrameWindow>();
+    let publishSettlements:
+      | ((settlements: readonly SynchronizedStreamSettlement[]) => void)
+      | undefined;
+    const harness = createHarness({
+      readSynchronized: vi.fn((request) => {
+        publishSettlements = request.onStreamSettlements;
+        return terminal.promise;
+      }),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+    harness.caches.get(LIDAR)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE, LIDAR], {
+        settlementPriorityStreams: [IMAGE, LIDAR],
+      }),
+    ).toBe(true);
+    expect(publishSettlements).toBeTypeOf("function");
+    publishSettlements?.([
+      { stream: IMAGE, window: windowAt(0n, [frame(IMAGE, 0n)]) },
+      { stream: LIDAR, window: windowAt(0n, [frame(LIDAR, 0n)]) },
+    ]);
+
+    expect(getStreamValue(harness.store, IMAGE)).not.toBeNull();
+    expect(getStreamValue(harness.store, LIDAR)).not.toBeNull();
+    expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
+    expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(false);
+    expect(harness.publishStreamStatuses).toHaveBeenCalledOnce();
+    expect(harness.publishStreamStatuses).toHaveBeenCalledWith([IMAGE, LIDAR]);
+
+    terminal.resolve(windowAt(0n, []));
+    await settle();
+  });
+
+  it("settles remaining blocking ownership before terminal presentation", async () => {
+    const terminal = deferred<SynchronizedFrameWindow>();
+    let publishSettlements:
+      | ((settlements: readonly SynchronizedStreamSettlement[]) => void)
+      | undefined;
+    const harness = createHarness({
+      readSynchronized: vi.fn((request) => {
+        publishSettlements = request.onStreamSettlements;
+        return terminal.promise;
+      }),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+    harness.caches.get(LIDAR)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE, LIDAR], {
+        firstUsefulSettlementStreams: [IMAGE],
+        settlementPriorityStreams: [IMAGE, LIDAR],
+      }),
+    ).toBe(true);
+    publishSettlements?.([
+      { stream: IMAGE, window: windowAt(0n, [frame(IMAGE, 0n)]) },
+    ]);
+    publishSettlements?.([
+      { stream: LIDAR, window: windowAt(0n, [frame(LIDAR, 0n)]) },
+    ]);
+
+    expect(harness.caches.get(LIDAR)?.has(0n)).toBe(true);
+    expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(false);
+    expect(getStreamValue(harness.store, IMAGE)).not.toBeNull();
+    expect(getStreamValue(harness.store, LIDAR)).toBeNull();
+
+    terminal.resolve(windowAt(0n, []));
+    await settle();
+    expect(getStreamValue(harness.store, LIDAR)).not.toBeNull();
+  });
+
+  it("releases later priority presentation after empty first-useful results", async () => {
+    const terminal = deferred<SynchronizedFrameWindow>();
+    let publishSettlements:
+      | ((settlements: readonly SynchronizedStreamSettlement[]) => void)
+      | undefined;
+    const harness = createHarness({
+      readSynchronized: vi.fn((request) => {
+        publishSettlements = request.onStreamSettlements;
+        return terminal.promise;
+      }),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+    harness.caches.get(LIDAR)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE, LIDAR], {
+        firstUsefulSettlementStreams: [IMAGE],
+        settlementPriorityStreams: [IMAGE, LIDAR],
+      }),
+    ).toBe(true);
+    publishSettlements?.([{ stream: IMAGE, window: windowAt(0n, []) }]);
+    expect(getStreamValue(harness.store, IMAGE)).toBeNull();
+
+    publishSettlements?.([
+      { stream: LIDAR, window: windowAt(0n, [frame(LIDAR, 0n)]) },
+    ]);
+    expect(getStreamValue(harness.store, LIDAR)).not.toBeNull();
+
+    terminal.resolve(windowAt(0n, []));
+    await settle();
+  });
+
+  it("does not preview a current-frame result after the playhead moves", async () => {
+    const terminal = deferred<SynchronizedFrameWindow>();
+    let publishSettlement:
+      | ((settlement: SynchronizedStreamSettlement) => void)
+      | undefined;
+    const harness = createHarness({
+      readSynchronized: vi.fn((request) => {
+        publishSettlement = request.onStreamSettlement;
+        return terminal.promise;
+      }),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE], {
+        settlementPriorityStreams: [IMAGE],
+      }),
+    ).toBe(true);
+    const movedTick = harness.index.tickAt(1);
+    if (movedTick === undefined) throw new Error("expected a second tick");
+    harness.store.set(playheadAtom, harness.index.nsToSec(movedTick));
+    expect(publishSettlement).toBeTypeOf("function");
+    if (!publishSettlement) throw new Error("expected settlement callback");
+    publishSettlement({
+      stream: IMAGE,
+      window: windowAt(0n, [frame(IMAGE, 0n)]),
+    });
+    expect(getStreamValue(harness.store, IMAGE)).toBeNull();
+
+    terminal.resolve(windowAt(0n, [frame(IMAGE, 0n)]));
+    await settle();
+    expect(getStreamValue(harness.store, IMAGE)).toBeNull();
+  });
+
+  it("retries only a topic that failed after a sibling settled", async () => {
+    let attempt = 0;
+    const readSynchronized = vi.fn<PlaybackReadCapability["readSynchronized"]>(
+      async (request) => {
+        attempt += 1;
+        if (attempt === 1) {
+          request.onStreamSettlement?.({
+            stream: LIDAR,
+            window: windowAt(request.timeNs, [frame(LIDAR, request.timeNs)]),
+          });
+          request.onStreamSettlement?.({
+            stream: IMAGE,
+            window: windowAt(request.timeNs, [], [IMAGE]),
+          });
+        } else {
+          request.onStreamSettlement?.({
+            stream: IMAGE,
+            window: windowAt(request.timeNs, [frame(IMAGE, request.timeNs)]),
+          });
+        }
+        return windowAt(request.timeNs, []);
+      },
+    );
+    const harness = createHarness({ readSynchronized });
+    harness.caches.get(IMAGE)?.subscribe();
+    harness.caches.get(LIDAR)?.subscribe();
+
+    expect(harness.prefetcher.fetchCurrentFrame(0n, [IMAGE, LIDAR])).toBe(true);
+    await settle();
+    expect(harness.caches.get(LIDAR)?.has(0n)).toBe(true);
+    expect(harness.caches.get(IMAGE)?.has(0n)).toBe(false);
+    expect(harness.fetchState.failureStreaks.get(IMAGE)).toBe(1);
+
+    expect(harness.prefetcher.fetchCurrentFrame(0n, [IMAGE, LIDAR])).toBe(true);
+    await settle();
+    expect(readSynchronized.mock.calls[1]?.[0].streams).toEqual([IMAGE]);
+    expect(harness.caches.get(IMAGE)?.has(0n)).toBe(true);
+    expect(harness.fetchState.failureStreaks.has(IMAGE)).toBe(false);
+  });
+
+  it("keeps a partial settlement authoritative when the union is cancelled", async () => {
+    const terminal = deferred<SynchronizedFrameWindow>();
+    let publishSettlements:
+      | ((settlements: readonly SynchronizedStreamSettlement[]) => void)
+      | undefined;
+    const harness = createHarness({
+      readSynchronized: vi.fn((request) => {
+        publishSettlements = request.onStreamSettlements;
+        return terminal.promise;
+      }),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+    harness.caches.get(LIDAR)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE, LIDAR], {
+        firstUsefulSettlementStreams: [IMAGE],
+        settlementPriorityStreams: [IMAGE, LIDAR],
+      }),
+    ).toBe(true);
+    const image = frame(IMAGE, 0n);
+    const lidar = frame(LIDAR, 0n);
+    publishSettlements?.([{ stream: IMAGE, window: windowAt(0n, [image]) }]);
+    publishSettlements?.([{ stream: LIDAR, window: windowAt(0n, [lidar]) }]);
+    expect(getStreamValue(harness.store, LIDAR)).toBeNull();
+
+    harness.prefetcher.cancel();
+    terminal.reject(new EpisodeReadCancelledError());
+    await settle();
+
+    expect(harness.caches.get(IMAGE)?.get(0n)).toBe(image);
+    expect(harness.caches.get(LIDAR)?.get(0n)).toBe(lidar);
+    expect(getStreamValue(harness.store, LIDAR)).not.toBeNull();
+    expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
+    expect(harness.prefetcher.isStreamPending("0", LIDAR)).toBe(false);
+    expect(harness.fetchState.failureStreaks).toEqual(new Map());
   });
 
   it("returns late loop-continuation reads to ordinary cache ownership", async () => {
@@ -382,13 +646,17 @@ function createHarness({
   const fetchState = createDataStreamFetchState();
   const lastFrames = new Map<string, StreamPlaybackFrame<unknown>>();
   const rebalanceDecodedCaches = vi.fn();
+  const publishStreamStatuses = vi.fn();
+  const index = createTimelineIndex({ endNs: 1_000_000_000n, startNs: 0n }, 2);
   const harness = {
     caches,
     fetchState,
+    index,
     lastFrames,
     prefetcher: undefined as unknown as ReturnType<
       typeof createDataStreamPrefetcher
     >,
+    publishStreamStatuses,
     rebalanceDecodedCaches,
     sourceEpoch: 0,
     store,
@@ -396,8 +664,7 @@ function createHarness({
   harness.prefetcher = createDataStreamPrefetcher({
     caches,
     fetchState,
-    getIndex: () =>
-      createTimelineIndex({ endNs: 1_000_000_000n, startNs: 0n }, 2),
+    getIndex: () => index,
     getSourceEpoch: () => harness.sourceEpoch,
     getStreamPolicies: () => ({}) as StreamSyncPolicies,
     isStreamTimeAvailable,
@@ -406,7 +673,7 @@ function createHarness({
       readSynchronized,
       readSynchronizedBatch,
     },
-    publishStreamStatuses: vi.fn(),
+    publishStreamStatuses,
     rebalanceDecodedCaches,
     shouldAdmitBatch,
     store,

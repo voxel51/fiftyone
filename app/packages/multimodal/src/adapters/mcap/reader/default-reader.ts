@@ -87,6 +87,10 @@ export async function createDefaultMcapReader(
         (chunk.messageStartTime === 0n && chunk.messageEndTime === 0n) ||
         (chunk.messageIndexLength > 0n && chunk.messageIndexOffsets.size > 0),
     );
+  const sourceSizeBytes =
+    readable instanceof ByteClientReadable
+      ? readable.knownSizeBytes()
+      : undefined;
   const adapterReader: McapIndexedReaderLike = {
     attachmentIndexes: reader.attachmentIndexes,
     channelsById: reader.channelsById,
@@ -123,6 +127,7 @@ export async function createDefaultMcapReader(
             readable,
           }),
     schemasById: reader.schemasById,
+    ...(sourceSizeBytes !== undefined ? { sourceSizeBytes } : {}),
     statistics: reader.statistics,
   };
   if (hasMessageIndexes) {

@@ -436,8 +436,8 @@ export function createCachedByteClient(
       return planByteCacheFillRequest(request, resolveBlockSizeBytes(request));
     },
 
-    async stat(source) {
-      return reader.stat?.(source);
+    async stat(source, signal) {
+      return reader.stat?.(source, signal);
     },
 
     async readBytes(request) {

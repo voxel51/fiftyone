@@ -13,12 +13,23 @@ import type {
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapResourceClient,
+  McapSynchronizedMessagesReadOptions,
 } from "../contracts/index";
 import type {
   McapPlaybackWorkerFetchParameters,
   McapPlaybackWorkerSynchronizedWindow,
   McapRetainedDecodedMessageReference,
 } from "./playback-worker-types";
+
+type McapPlaybackWorkerSynchronizedMessagesReadOptions = Omit<
+  McapSynchronizedMessagesReadOptions,
+  "onTopicSettlement" | "onTopicSettlements"
+> & {
+  readonly onTopicSettlement?: (settlement: {
+    readonly topic: string;
+    readonly window: McapPlaybackWorkerSynchronizedWindow;
+  }) => void;
+};
 
 export type McapPlaybackWorkerResourceClient = Omit<
   McapResourceClient,
@@ -29,6 +40,7 @@ export type McapPlaybackWorkerResourceClient = Omit<
   ): Promise<readonly McapPlaybackWorkerSynchronizedWindow[]>;
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
+    options?: McapPlaybackWorkerSynchronizedMessagesReadOptions,
   ): Promise<McapPlaybackWorkerSynchronizedWindow>;
 };
 
@@ -109,11 +121,14 @@ export function createWorkerResourceClient({
         request,
         reuseRetainedDecodedMessage,
       ),
-    readSynchronizedMessages: (request) =>
-      client.readSynchronizedMessagesWithReuse(
+    readSynchronizedMessages: (request, options) => {
+      return client.readSynchronizedMessagesWithReuse(
         request,
         reuseRetainedDecodedMessage,
-      ),
+        options?.onTopicSettlement,
+        options,
+      );
+    },
   };
 }
 

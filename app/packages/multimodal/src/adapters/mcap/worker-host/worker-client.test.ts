@@ -6,6 +6,7 @@ import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerRequest,
   type McapPlaybackWorkerResponse,
+  type McapPlaybackWorkerSynchronizedWindow,
 } from "../worker/playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
 import { dehydrateMcapFrameTransformSet } from "../transforms/wire";
@@ -339,7 +340,7 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     const currentWindow = createSynchronizedWindow(15n);
-    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    respondSynchronizedTerminal(workers[1], 1, currentWindow);
     await expect(current).resolves.toEqual(currentWindow);
 
     workers[0].respond({
@@ -348,6 +349,88 @@ describe("worker-backed MCAP resource client", () => {
       result: structuredClone(dehydrateMcapFrameTransformSet({ samples: [] })),
     });
     await expect(transforms).resolves.toEqual({ samples: [] });
+  });
+
+  it("streams authoritative topic settlements before the terminal union", async () => {
+    const { client, workers } = createClientHarness();
+    const onTopicSettlement = vi.fn();
+    const onTopicSettlements = vi.fn();
+    let settled = false;
+    const current = client
+      .readSynchronizedMessages(
+        {
+          settlementPriorityTopics: ["/camera", "/lidar"],
+          source: createSource("source:1"),
+          timeNs: 15n,
+          topics: ["/camera", "/lidar"],
+        },
+        { onTopicSettlement, onTopicSettlements },
+      )
+      .finally(() => {
+        settled = true;
+      });
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      payload: { settlementPriorityTopics: ["/camera", "/lidar"] },
+      type: "readSynchronizedMessages",
+    });
+
+    const cameraSettlement = createSynchronizedWindow(15n);
+    const lidarSettlement = createSynchronizedWindow(15n);
+    worker.respond({
+      done: false,
+      id: 1,
+      items: [
+        {
+          kind: "topic-settlement",
+          topic: "/camera",
+          window: cameraSettlement,
+        },
+        {
+          kind: "topic-settlement",
+          topic: "/lidar",
+          window: lidarSettlement,
+        },
+      ],
+      ok: true,
+      stream: true,
+    });
+    await vi.waitFor(() => {
+      expect(onTopicSettlement).toHaveBeenCalledTimes(2);
+    });
+    expect(onTopicSettlement.mock.calls).toEqual([
+      [{ topic: "/camera", window: cameraSettlement }],
+      [{ topic: "/lidar", window: lidarSettlement }],
+    ]);
+    expect(onTopicSettlements).toHaveBeenCalledOnce();
+    expect(onTopicSettlements).toHaveBeenCalledWith([
+      { topic: "/camera", window: cameraSettlement },
+      { topic: "/lidar", window: lidarSettlement },
+    ]);
+    expect(settled).toBe(false);
+
+    worker.respond({
+      done: false,
+      id: 1,
+      item: {
+        kind: "topic-settlement",
+        topic: "/camera",
+        window: createSynchronizedWindow(15n),
+      },
+      ok: true,
+      stream: true,
+    });
+
+    const complete = createSynchronizedWindow(15n);
+    respondSynchronizedTerminal(worker, 1, complete);
+    await expect(current).resolves.toEqual({
+      ...complete,
+      messagesByTopic: { "/camera": [], "/lidar": [] },
+    });
+    expect(onTopicSettlement).toHaveBeenCalledTimes(2);
+    expect(onTopicSettlements).toHaveBeenCalledOnce();
+    expect(settled).toBe(true);
   });
 
   it("cancels placement transforms superseded by a newer playhead", async () => {
@@ -519,11 +602,11 @@ describe("worker-backed MCAP resource client", () => {
       timelineTimeNs: decoded.timelineTimeNs,
       topic: decoded.topic,
     };
-    interactiveWorker.respond({
-      id: 1,
-      ok: true,
-      result: createSynchronizedWindowWithMessage(reference),
-    });
+    respondSynchronizedTerminal(
+      interactiveWorker,
+      1,
+      createSynchronizedWindowWithMessage(reference),
+    );
 
     await expect(scrub).resolves.toMatchObject({ messages: [decoded] });
     expect((await scrub).messages[0]).toBe(playbackWindow?.messages[0]);
@@ -827,7 +910,7 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     const currentWindow = createSynchronizedWindow(1n);
-    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    respondSynchronizedTerminal(workers[1], 1, currentWindow);
     await expect(current).resolves.toEqual(currentWindow);
 
     workers[0].respond({ id: 1, ok: true, result: [] });
@@ -877,7 +960,7 @@ describe("worker-backed MCAP resource client", () => {
     ]);
 
     const currentWindow = createSynchronizedWindow(1n);
-    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    respondSynchronizedTerminal(workers[1], 1, currentWindow);
     await expect(current).resolves.toEqual(currentWindow);
 
     workers[0].respond({ id: 1, ok: true, result: [] });
@@ -914,7 +997,7 @@ describe("worker-backed MCAP resource client", () => {
     ]);
 
     const window = createSynchronizedWindow(2n);
-    worker.respond({ id: 2, ok: true, result: window });
+    respondSynchronizedTerminal(worker, 2, window);
     await expect(latest).resolves.toEqual(window);
   });
 
@@ -1465,6 +1548,21 @@ function createTopic(topic: string) {
     },
     streamId: topic,
   });
+}
+
+function respondSynchronizedTerminal(
+  worker: MockWorker,
+  id: number,
+  window: McapPlaybackWorkerSynchronizedWindow,
+) {
+  worker.respond({
+    done: false,
+    id,
+    item: { kind: "terminal", window },
+    ok: true,
+    stream: true,
+  });
+  worker.respond({ done: true, id, ok: true, stream: true });
 }
 
 class MockWorker {

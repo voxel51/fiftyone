@@ -32,6 +32,37 @@ export const TIMELINE_LABEL_WIDTH = 180;
 export const TIMELINE_DEFAULT_DRAWER_SIZE = 220;
 /** Hard ceiling on the timeline drawer height in px (independent of content). */
 export const TIMELINE_DRAWER_MAX_SIZE = 600;
+/**
+ * `TimelineTrack`'s default row height (px). A row can be any height — callers
+ * override it per row, and video annotation's dynamic-attribute sub-rows are
+ * shorter — so this is a default, not a layout contract.
+ */
+export const TIMELINE_TRACK_ROW_HEIGHT = 28;
+/**
+ * What `TimelineWithTracks` assumes a row costs *before anything is measured*:
+ * it sizes the drawer for the first paint and decides how many rows to seed
+ * the virtualizer with. Purely a first-frame guess — every row is measured
+ * once mounted, and the drawer settles onto the real total on the next commit.
+ *
+ * It starts at the standard row height because that is what a typical row is,
+ * not because rows must be that tall. A surface whose rows are mostly shorter
+ * (many expanded sub-rows, say) should say so via
+ * `TimelineWithTracksProps.estimatedRowHeight` rather than wear the drawer
+ * opening too tall and snapping down a frame later.
+ */
+export const TIMELINE_TRACK_ESTIMATED_ROW_HEIGHT = TIMELINE_TRACK_ROW_HEIGHT;
+/**
+ * Extra pixels of rows the virtualizer keeps mounted above and below the
+ * visible tracks region — the trade between blank space on a flick-scroll and
+ * how many rows are mounted at rest.
+ *
+ * Kept deliberately small (~3 rows either side): a row still paints a marker
+ * per event in view, so a wide overscan on an event-dense timeline buys smooth
+ * flick-scrolling with real layout work. Raise it if scrolling shows blank
+ * bands; lower it to 0 to mount strictly what's visible. Overridable per
+ * surface via `TimelineWithTracksProps.overscanPx`.
+ */
+export const TIMELINE_TRACK_OVERSCAN_PX = 96;
 
 export const PLAYHEAD_STATE_PLAYING = "playing";
 export const PLAYHEAD_STATE_PAUSED = "paused";

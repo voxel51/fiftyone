@@ -1,7 +1,7 @@
 /**
- * The color-by control: a dropdown-styled trigger (matching Facet) that turns
- * into a filter box while open, over a single-select combobox list of
- * colorable fields.
+ * The color-by control: a pill naming itself and its current field (matching
+ * the facet pills beside it) that turns into a filter box while open, over a
+ * single-select combobox list of colorable fields.
  *
  * Local rather than VOODO's <Select>, which pins its dropdown to the measured
  * trigger width (9rem here) and so clips the long `imu_signals.*` paths this
@@ -39,11 +39,17 @@ export function ColorByMenu({
   value,
   onChange,
   disabled,
+  loading,
 }: {
   options: ColorByOption[];
   value: string;
   onChange: (id: string) => void;
   disabled?: boolean;
+  /** Options are still resolving. Said in the list rather than left to the
+   * reader: an incomplete list looks exactly like a complete one, and someone
+   * who reads it as "this run has no such fields" closes the menu and does
+   * not look again. */
+  loading?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -75,7 +81,7 @@ export function ColorByMenu({
   // the end of the new list
   useEffect(() => {
     setActiveIndex(0);
-  }, [open, query]);
+  }, [open, filtered]);
 
   const selectedLabel = options.find((o) => o.id === value)?.data.label ?? "";
   const activeOption = filtered[activeIndex] ?? null;
@@ -127,7 +133,13 @@ export function ColorByMenu({
       style={open && openWidthPx !== null ? { width: openWidthPx } : undefined}
     >
       {open ? (
-        <div className="emb-facet-trigger" data-open="true">
+        <div
+          className="emb-facet-trigger emb-facet-trigger--pill"
+          data-open="true"
+        >
+          <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+            Color by
+          </Text>
           <input
             autoFocus
             type="text"
@@ -159,7 +171,7 @@ export function ColorByMenu({
       ) : (
         <button
           type="button"
-          className="emb-facet-trigger"
+          className="emb-facet-trigger emb-facet-trigger--pill"
           data-open="false"
           disabled={disabled}
           aria-haspopup="listbox"
@@ -172,10 +184,18 @@ export function ColorByMenu({
             setOpen(true);
           }}
         >
-          <span className="emb-facet-trigger-label">
-            <Text variant={TextVariant.Md} color={TextColor.Fg}>
-              {selectedLabel}
+          {/* Grouped: the trigger spreads its children, and the name and the
+              field it names read as one phrase — only the caret belongs at
+              the far end */}
+          <span className="emb-facet-trigger-pair">
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+              Color by
             </Text>
+            <span className="emb-facet-trigger-label">
+              <Text variant={TextVariant.Md} color={TextColor.Fg}>
+                {selectedLabel}
+              </Text>
+            </span>
           </span>
           <Icon
             name={IconName.CaretDown}
@@ -217,10 +237,22 @@ export function ColorByMenu({
               </span>
             </button>
           ))}
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !loading && (
             <div className="emb-facet-section">
               <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
                 No matching fields
+              </Text>
+            </div>
+          )}
+          {loading && (
+            <div className="emb-facet-section emb-colorby-loading">
+              <Icon
+                name={IconName.Spinner}
+                size={Size.Sm}
+                color={TextColor.Secondary}
+              />
+              <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
+                Loading fields…
               </Text>
             </div>
           )}

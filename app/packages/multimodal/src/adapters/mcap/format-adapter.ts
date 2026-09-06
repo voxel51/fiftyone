@@ -3,10 +3,10 @@ import {
   STREAM_METADATA,
   STREAM_SYNC_MODE,
   STREAM_KIND,
+  recordingSupportFactsFromStreams,
   type ByteSourceDescriptor,
   type DecodedFrame,
   type EpisodeManifest,
-  type EpisodeRecordingSupportFacts,
   type EpisodePreviewReadResult,
   type StreamDescriptor,
   type StreamKind,
@@ -58,7 +58,6 @@ import { isEpisodeReadCancelledError } from "../../ports";
 import { throwIfAborted } from "../../utils/cancellation";
 import { compareFrameIds } from "../../utils/frame-ids";
 import type { McapGridPreviewResult } from "./resource-client/grid-preview";
-import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {
   acquireSharedMcapResourceClient,
   createMcapResourceClient,
@@ -201,10 +200,6 @@ export function createMcapFormatAdapter(
       const pool = (options.getPreviewPool ?? getMcapGridPreviewPool)();
       pool.acquire();
       return new McapEpisodePreviewSession(asset, source.episodeId, pool);
-    },
-    async prewarm(source, _io, prewarmOptions) {
-      const asset = await resolveMcapAsset(source, prewarmOptions?.signal);
-      await prewarmMcapSource(asset, { signal: prewarmOptions?.signal });
     },
   };
 }
@@ -431,11 +426,11 @@ export function createMcapNumericSeriesCapability({
           absoluteBudget: request.absoluteBudget,
           absoluteMaxChunks: request.absoluteMaxChunks,
           activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          bucketDurationNs: request.bucketDurationNs,
           budget: request.budget,
           continuation: request.continuation,
           endTimeNs: request.window.endNs,
           maxChunks: request.maxChunks,
-          maxPointsPerField: request.maxPointsPerField,
           preferredTimeNs: request.preferredTimeNs,
           selections: request.selections.map((selection) => ({
             fieldPaths: selection.fields,
@@ -448,6 +443,9 @@ export function createMcapNumericSeriesCapability({
       );
       return {
         ...(result.continuation ? { continuation: result.continuation } : {}),
+        ...(result.resumeAtNs !== undefined
+          ? { resumeAtNs: result.resumeAtNs }
+          : {}),
         coverageByStream: new Map(
           [...result.coverageByTopic].map(([topic, windows]) => [
             streamsByTopic.get(topic) ?? topic,
@@ -549,6 +547,7 @@ export function createMcapRawRecordCapability({
             : {}),
           includeFullJson: request.includeFullJson,
           prune: request.prune,
+          select: request.select,
           source,
           timeNs: request.timestampNs,
           topic: rawTarget.topic,
@@ -716,6 +715,11 @@ export function createMcapManifest(
       kind: streamKindForPayload(topic.payload),
       metadata: {
         ...topic.metadata,
+        [STREAM_METADATA.INSPECTABLE]:
+          topic.metadata[STREAM_METADATA.DECODE_STATUS] === "decodable" ||
+          topic.metadata["mcap.exact_browsing"] === "true"
+            ? "true"
+            : "false",
         ...(calibrationSourceName
           ? {
               [SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID]:
@@ -737,7 +741,7 @@ export function createMcapManifest(
     episodeId,
     recordingFacts: {
       ...inventory.recordingFacts,
-      applicationSupport: recordingSupportFacts(streams),
+      applicationSupport: recordingSupportFactsFromStreams(streams),
       durationNs: (range.endTimeNs - range.startTimeNs).toString(),
       endTimeNs: range.endTimeNs.toString(),
       ...(source?.readProfile ? { readProfile: source.readProfile } : {}),
@@ -749,30 +753,6 @@ export function createMcapManifest(
     streams,
     timeDomain: { id: MCAP_ACTIVE_TIMELINE.LOG, kind: "timestamp" },
     timeRange,
-  };
-}
-
-function recordingSupportFacts(
-  streams: readonly StreamDescriptor[],
-): EpisodeRecordingSupportFacts {
-  let inspectableStreamCount = 0;
-  let renderableStreamCount = 0;
-  let unavailableStreamCount = 0;
-  for (const stream of streams) {
-    if (stream.kind !== STREAM_KIND.UNKNOWN) {
-      renderableStreamCount++;
-    } else if (
-      stream.metadata?.[STREAM_METADATA.DECODE_STATUS] === "decodable"
-    ) {
-      inspectableStreamCount++;
-    } else {
-      unavailableStreamCount++;
-    }
-  }
-  return {
-    inspectableStreamCount,
-    renderableStreamCount,
-    unavailableStreamCount,
   };
 }
 
@@ -893,6 +873,7 @@ class McapEpisodeSession implements EpisodeSession {
   private returnedBatches = 0;
   private budgetAllowance?: ReadWorkBudget;
   private budgetLedger?: SourceReadBudgetLedger;
+  private readonly streamIdsBySourceName: ReadonlyMap<string, string>;
   private readonly sourceNamesById: ReadonlyMap<string, string>;
 
   constructor(
@@ -920,6 +901,14 @@ class McapEpisodeSession implements EpisodeSession {
     this.sourceNamesById = new Map(
       manifest.streams.map((stream) => [stream.id, stream.sourceName]),
     );
+    const streamIdsBySourceName = new Map<string, string>();
+    for (const stream of manifest.streams) {
+      // Preserve the former Array.find behavior for duplicate source names.
+      if (!streamIdsBySourceName.has(stream.sourceName)) {
+        streamIdsBySourceName.set(stream.sourceName, stream.id);
+      }
+    }
+    this.streamIdsBySourceName = streamIdsBySourceName;
     this.boundedRead = {
       openAccount: (allowance) => this.openBoundedReadAccount(allowance),
     };
@@ -1230,8 +1219,15 @@ class McapEpisodeSession implements EpisodeSession {
               defaultStreamPolicy: toMcapSyncPolicy(
                 request.defaultStreamPolicy,
               ),
+              firstUsefulSettlementTopics:
+                request.firstUsefulSettlementStreams?.map((stream) =>
+                  this.sourceNameFor(stream),
+                ),
               pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
                 request.pointCloudColorBy,
+              ),
+              settlementPriorityTopics: request.settlementPriorityStreams?.map(
+                (stream) => this.sourceNameFor(stream),
               ),
               source: this.source,
               streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
@@ -1240,7 +1236,25 @@ class McapEpisodeSession implements EpisodeSession {
                 this.sourceNameFor(stream),
               ),
             },
-            { signal: request.signal },
+            {
+              onTopicSettlements: request.onStreamSettlements
+                ? (settlements) =>
+                    request.onStreamSettlements?.(
+                      settlements.map(({ topic, window }) => ({
+                        stream: this.streamIdFor(topic),
+                        window: this.fromMcapWindow(window),
+                      })),
+                    )
+                : undefined,
+              onTopicSettlement: request.onStreamSettlement
+                ? ({ topic, window }) =>
+                    request.onStreamSettlement?.({
+                      stream: this.streamIdFor(topic),
+                      window: this.fromMcapWindow(window),
+                    })
+                : undefined,
+              signal: request.signal,
+            },
           );
           return this.fromMcapWindow(window);
         } catch (error) {
@@ -1542,10 +1556,7 @@ class McapEpisodeSession implements EpisodeSession {
   }
 
   private streamIdFor(sourceName: string): string {
-    return (
-      this.manifest.streams.find((stream) => stream.sourceName === sourceName)
-        ?.id ?? sourceName
-    );
+    return this.streamIdsBySourceName.get(sourceName) ?? sourceName;
   }
 
   private toMcapSyncPolicies(

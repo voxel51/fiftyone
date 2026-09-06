@@ -5,6 +5,7 @@ import {
   type GridPosterCacheEntry,
   type GridPosterCacheKey,
 } from "./grid-poster-cache";
+import { getGridPosterPersistence } from "./grid-poster-persistence";
 
 const WEBP_MIME_TYPE = "image/webp";
 const PNG_MIME_TYPE = "image/png";
@@ -81,6 +82,7 @@ export function createGridPosterEncoder(
             cache.put(job.key, entry)
           ) {
             recordGridPosterDiagnostic("encodesCompleted");
+            void getGridPosterPersistence().put(job.key, entry);
           }
         })
         .catch(() => {

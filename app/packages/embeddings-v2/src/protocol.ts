@@ -355,16 +355,24 @@ export async function fetchSampleInfo(
   );
 }
 
-/** Id -> wire-order-index map over the first `count` (default: all)
- * entries, for styling external selections */
+/** Id -> every wire-order index sharing that id, over the first `count`
+ * (default: all) entries, for styling external selections. One id can
+ * own many points (e.g. every window of an episode in a multimodal
+ * run), so each entry collects all of them rather than the last one seen. */
 export function buildIdIndex(
   ids: IdColumn,
   count?: number,
-): Map<string, number> {
+): Map<string, number[]> {
   const n = count ?? ids.length / 12;
-  const map = new Map<string, number>();
+  const map = new Map<string, number[]>();
   for (let i = 0; i < n; i++) {
-    map.set(idAt(ids, i), i);
+    const id = idAt(ids, i);
+    const existing = map.get(id);
+    if (existing) {
+      existing.push(i);
+    } else {
+      map.set(id, [i]);
+    }
   }
   return map;
 }

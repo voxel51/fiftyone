@@ -234,6 +234,33 @@ export function selectInPolygon(
 }
 
 /**
+ * Where point `index` currently lands on screen (CSS px, viewport-relative),
+ * or null when it is behind the camera or out of range. The same algebra the
+ * hit-tests below run per point — chrome anchored to a point (a ring, a
+ * frozen card) has to re-ask as the camera moves, because the pixel the
+ * point was under at pick time means nothing after a pan.
+ */
+export function projectPoint(
+  cols: Columns,
+  m: ArrayLike<number>,
+  width: number,
+  height: number,
+  index: number,
+): { x: number; y: number } | null {
+  const { n, xs, ys, zs } = cols;
+  if (!Number.isInteger(index) || index < 0 || index >= n) return null;
+  const x = xs[index];
+  const y = ys[index];
+  const z = zs[index];
+  const w = m[3] * x + m[7] * y + m[11] * z + m[15];
+  if (w <= 0) return null;
+  return {
+    x: (((m[0] * x + m[4] * y + m[8] * z + m[12]) / w) * 0.5 + 0.5) * width,
+    y: (0.5 - ((m[1] * x + m[5] * y + m[9] * z + m[13]) / w) * 0.5) * height,
+  };
+}
+
+/**
  * The point nearest to (px, py) within radiusPx of the cursor, or null.
  * Linear scan on purpose: millions of points is single-digit ms and
  * hover hit-tests are debounced — no spatial index at this stage.

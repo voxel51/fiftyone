@@ -101,6 +101,30 @@ describe("useEpisodePreviewSession", () => {
     unmount();
   });
 
+  it("releases the preview session when modal activation disables grid demand", async () => {
+    const session = createPreviewSession();
+    const source = createSource("sample-a");
+    previewHarness.openEpisodePreviewSession.mockResolvedValue(session);
+
+    const { rerender, result } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        useEpisodePreviewSession(
+          { mediaType: "group", path: "sample-a.mcap" },
+          source,
+          enabled,
+        ),
+      { initialProps: { enabled: true } },
+    );
+
+    await waitFor(() => expect(result.current.session).toBe(session));
+
+    rerender({ enabled: false });
+
+    expect(result.current).toMatchObject({ session: null, status: "idle" });
+    expect(session.dispose).toHaveBeenCalledOnce();
+    expect(previewHarness.openEpisodePreviewSession).toHaveBeenCalledOnce();
+  });
+
   it("disposes a preview that resolves after its request loses ownership", async () => {
     const firstOpen = deferred<EpisodePreviewSession>();
     const secondSession = createPreviewSession();

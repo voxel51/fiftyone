@@ -25,10 +25,15 @@ export function createHttpByteClient(
   fetchFunction?: AbortableFetchFunction,
 ): ByteClient {
   return {
-    async stat(source) {
+    async stat(source, signal) {
+      if (signal?.aborted) {
+        throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
+      }
       const fetchBytes: AbortableFetchFunction =
         fetchFunction ?? getFetchFunctionExtended();
       const controller = new AbortController();
+      const onExternalAbort = () => controller.abort();
+      signal?.addEventListener("abort", onExternalAbort, { once: true });
 
       try {
         const { headers } = await withHttpByteReadTimeout(
@@ -40,6 +45,7 @@ export function createHttpByteClient(
               retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
               signal: controller.signal,
               onProgress,
+              browserCache: "no-store",
             }),
           controller,
           DEFAULT_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS,
@@ -59,9 +65,14 @@ export function createHttpByteClient(
             : {}),
         };
       } catch {
+        if (signal?.aborted) {
+          throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
+        }
         // HEAD is only an optimization; object stores and CORS policies often
         // block it even when ranged GETs are allowed.
         return undefined;
+      } finally {
+        signal?.removeEventListener("abort", onExternalAbort);
       }
     },
 
@@ -100,6 +111,10 @@ export function createHttpByteClient(
               retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
               signal: controller.signal,
               onProgress,
+              // The app has its own byte caches; letting the browser HTTP
+              // cache store these blocks risks a cached superset answering a
+              // narrower Range with a mismatched Content-Range.
+              browserCache: "no-store",
             }),
           controller,
           httpByteReadInactivityTimeoutMs(expectedLength),
@@ -113,7 +128,7 @@ export function createHttpByteClient(
       } finally {
         request.signal?.removeEventListener("abort", onExternalAbort);
       }
-      const bytes = new Uint8Array(buffer);
+      let bytes = new Uint8Array(buffer);
 
       // Validate the HTTP range contract before trusting the returned bytes.
       const contentRange = headers?.get("Content-Range");
@@ -133,12 +148,11 @@ export function createHttpByteClient(
       const contentRangeStart = BigInt(contentRangeMatch[1]);
       const contentRangeEnd = BigInt(contentRangeMatch[2]);
       if (
-        contentRangeStart !== request.range.offset ||
-        contentRangeEnd !== request.range.offset + request.range.length - 1n ||
-        safeNumber(contentRangeEnd - contentRangeStart + 1n) !== expectedLength
+        contentRangeStart > request.range.offset ||
+        contentRangeEnd < request.range.offset + request.range.length - 1n
       ) {
         throw new Error(
-          `Expected Content-Range for ${request.range.offset.toString()}-${
+          `Expected Content-Range covering ${request.range.offset.toString()}-${
             request.range.offset + request.range.length - 1n
           } but received '${contentRange}'`,
         );
@@ -149,10 +163,22 @@ export function createHttpByteClient(
       if (totalSizeBytes !== undefined && contentRangeEnd >= totalSizeBytes) {
         throw new Error(`Invalid Content-Range header '${contentRange}'`);
       }
-      if (bytes.byteLength !== expectedLength) {
+
+      const spanLength = safeNumber(contentRangeEnd - contentRangeStart + 1n);
+      if (bytes.byteLength !== spanLength) {
         throw new Error(
-          `Expected ${expectedLength} bytes but received ${bytes.byteLength}`,
+          `Expected ${spanLength} bytes but received ${bytes.byteLength}`,
         );
+      }
+      if (
+        contentRangeStart !== request.range.offset ||
+        spanLength !== expectedLength
+      ) {
+        // Browser HTTP caches may answer a narrow Range with a stored
+        // superset block; a copy of the requested window keeps the oversized
+        // backing buffer collectable.
+        const sliceStart = safeNumber(request.range.offset - contentRangeStart);
+        bytes = bytes.slice(sliceStart, sliceStart + expectedLength);
       }
 
       // Preserve discovered source size and content validator so later cache

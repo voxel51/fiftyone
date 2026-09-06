@@ -805,11 +805,11 @@ refer to the corresponding dataset format when reading the dataset from disk.
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOne Image Labels <FiftyOneImageLabelsDataset-import>`                      | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                                       | stored in `ETA ImageLabels format \                                                |
-    |                                                                                       | <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.        |
+    |                                                                                       | <https://github.com/voxel51/eta/blob/main/docs/image_labels_guide.md>`_.        |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOne Video Labels <FiftyOneVideoLabelsDataset-import>`                      | A labeled dataset consisting of videos and their associated multitask predictions  |
     |                                                                                       | stored in `ETA VideoLabels format \                                                |
-    |                                                                                       | <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.        |
+    |                                                                                       | <https://github.com/voxel51/eta/blob/main/docs/video_labels_guide.md>`_.        |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`Custom formats <custom-dataset-importer>`                                       | Import datasets in custom formats by defining your own |DatasetType| or            |
     |                                                                                       | |DatasetImporter| class.                                                           |
@@ -5518,7 +5518,7 @@ _____________________
 The :class:`fiftyone.types.FiftyOneImageLabelsDataset` type represents a
 labeled dataset consisting of images and their associated multitask predictions
 stored in
-`ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
+`ETA ImageLabels format <https://github.com/voxel51/eta/blob/main/docs/image_labels_guide.md>`_.
 
 Datasets of this type are read in the following format:
 
@@ -5556,7 +5556,7 @@ where `manifest.json` is a JSON file in the following format:
     }
 
 and where each labels JSON file is stored in
-`ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
+`ETA ImageLabels format <https://github.com/voxel51/eta/blob/main/docs/image_labels_guide.md>`_.
 
 For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
@@ -5637,7 +5637,7 @@ _____________________
 
 The :class:`fiftyone.types.FiftyOneVideoLabelsDataset` type represents a
 labeled dataset consisting of videos and their associated labels stored in
-`ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+`ETA VideoLabels format <https://github.com/voxel51/eta/blob/main/docs/video_labels_guide.md>`_.
 
 Datasets of this type are read in the following format:
 
@@ -5675,7 +5675,7 @@ where `manifest.json` is a JSON file in the following format:
     }
 
 and where each labels JSON file is stored in
-`ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+`ETA VideoLabels format <https://github.com/voxel51/eta/blob/main/docs/video_labels_guide.md>`_.
 
 For unlabeled videos, an empty `eta.core.video.VideoLabels` file is written.
 

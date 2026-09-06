@@ -315,6 +315,18 @@ def realpath(path):
     return os.path.realpath(path)
 
 
+def commonpath(paths):
+    """Returns the longest common subpath of the given paths.
+
+    Args:
+        paths: an iterable of paths
+
+    Returns:
+        the longest common subpath
+    """
+    return os.path.commonpath(paths)
+
+
 def isabs(path):
     """Determines whether the given path is absolute.
 

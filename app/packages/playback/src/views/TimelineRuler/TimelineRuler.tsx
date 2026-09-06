@@ -1,4 +1,4 @@
-import { useDragDelta } from "@voxel51/voodo";
+import { ContextMenu, MenuTextItem, useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { type ReactNode, useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
@@ -404,132 +404,156 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       ? "ew-resize"
       : undefined;
 
-  return (
-    <div
-      ref={rulerRef}
-      className={clsx(styles.ruler, className)}
-      data-testid="timeline-ruler"
-      style={{ cursor }}
-      {...lanePointerProps}
+  // Right-click the ruler to set the loop to whatever is on screen. Zooming
+  // in on something and then looping exactly that is the common pair, and
+  // doing it by dragging both loop handles to the edges is fiddly. Mirrors
+  // "Shrink window to fit" on a track event, which does the same thing with
+  // the event's own bounds.
+  const rulerMenu = (
+    <MenuTextItem
+      data-testid="timeline-ruler-loop-to-view"
+      disabled={viewDuration <= 0}
+      onClick={() => setLoop(viewStart, viewEnd)}
     >
-      {labelWidth > 0 && (
-        <div
-          className={styles.labelSpacer}
-          data-testid="timeline-ruler-label-spacer"
-          style={{ width: labelWidth }}
-        />
-      )}
+      Shrink loop to current zoom
+    </MenuTextItem>
+  );
 
-      <div className={styles.lane}>
-        <BufferedLaneShading />
-        {ticks.map((t) => (
-          <span
-            key={t}
-            className={styles.tick}
-            style={{
-              left: `${((t - viewStart) / viewDuration) * 100}%`,
-            }}
-          >
-            {tickLabel(t, mode, displayConversion)}
-          </span>
-        ))}
-      </div>
-
+  return (
+    // `display: contents` on the wrapper: `ContextMenu` renders a real div,
+    // and an extra box here would take the ruler's place as the header's
+    // flex child and change how it sizes. Right-click still reaches it,
+    // because events bubble regardless of layout.
+    <ContextMenu className={styles.contextMenuWrap} menu={rulerMenu}>
       <div
-        className={styles.loopHandle}
-        style={{ left: laneLeft(loopStartRatio) }}
-        {...loopStartDrag.handleProps}
-        onPointerDown={(e) => {
-          // Stop the lane drag from also receiving this event; the lane's
-          // useDragDelta would otherwise steal pointer capture.
-          e.stopPropagation();
-          loopStartDrag.handleProps.onPointerDown(e);
-        }}
-        onPointerUp={(e) => {
-          // pointerup bubbles — without stopPropagation the lane's onDragEnd
-          // fires with maxAbsDelta=0 and triggers an unintended seek.
-          e.stopPropagation();
-          loopStartDrag.handleProps.onPointerUp();
-        }}
-      />
-      <div
-        className={styles.loopHandle}
-        style={{ left: laneLeft(loopEndRatio) }}
-        {...loopEndDrag.handleProps}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          loopEndDrag.handleProps.onPointerDown(e);
-        }}
-        onPointerUp={(e) => {
-          e.stopPropagation();
-          loopEndDrag.handleProps.onPointerUp();
-        }}
-      />
-
-      {hoverTime !== null && isTimeInsideView(hoverTime, viewStart, viewEnd) ? (
-        <div
-          className={styles.hoverCaret}
-          data-testid="timeline-hover-caret"
-          style={{
-            left: laneLeft(clamp((hoverTime - viewStart) / viewDuration, 0, 1)),
-          }}
-        />
-      ) : null}
-
-      {inspectionMarker !== null &&
-      isTimeInsideView(inspectionMarker.timeSec, viewStart, viewEnd) ? (
-        <div
-          aria-label="Inspected message time"
-          className={styles.inspectionCaret}
-          data-testid="timeline-inspection-caret"
-          role="img"
-          style={{
-            left: labelWidth,
-            transform: `translate3d(${
-              clamp(
-                (inspectionMarker.timeSec - viewStart) / viewDuration,
-                0,
-                1,
-              ) * 100
-            }%, 0, 0)`,
-            width: `calc(100% - ${labelWidth}px)`,
-          }}
-        >
-          <div className={styles.inspectionCaretCap} />
-        </div>
-      ) : null}
-
-      {/* Playhead handle + line share one translated wrapper. translate3d
-          on the wrapper is composited (no layout on every tick); the
-          handle and line stay anchored to the wrapper's left edge. */}
-      <div
-        className={styles.playheadGroup}
-        style={{
-          left: labelWidth,
-          width: `calc(100% - ${labelWidth}px)`,
-          transform: `translate3d(${playheadRatio * 100}%, 0, 0)`,
-        }}
+        ref={rulerRef}
+        className={clsx(styles.ruler, className)}
+        data-testid="timeline-ruler"
+        style={{ cursor }}
+        {...lanePointerProps}
       >
-        <div className={styles.playheadLine} />
+        {labelWidth > 0 && (
+          <div
+            className={styles.labelSpacer}
+            data-testid="timeline-ruler-label-spacer"
+            style={{ width: labelWidth }}
+          />
+        )}
+
+        <div className={styles.lane}>
+          <BufferedLaneShading />
+          {ticks.map((t) => (
+            <span
+              key={t}
+              className={styles.tick}
+              style={{
+                left: `${((t - viewStart) / viewDuration) * 100}%`,
+              }}
+            >
+              {tickLabel(t, mode, displayConversion)}
+            </span>
+          ))}
+        </div>
+
         <div
-          className={styles.playheadHandle}
-          data-testid="timeline-playhead-handle"
-          {...playheadDrag.handleProps}
+          className={styles.loopHandle}
+          style={{ left: laneLeft(loopStartRatio) }}
+          {...loopStartDrag.handleProps}
+          onPointerDown={(e) => {
+            // Stop the lane drag from also receiving this event; the lane's
+            // useDragDelta would otherwise steal pointer capture.
+            e.stopPropagation();
+            loopStartDrag.handleProps.onPointerDown(e);
+          }}
+          onPointerUp={(e) => {
+            // pointerup bubbles — without stopPropagation the lane's onDragEnd
+            // fires with maxAbsDelta=0 and triggers an unintended seek.
+            e.stopPropagation();
+            loopStartDrag.handleProps.onPointerUp();
+          }}
+        />
+        <div
+          className={styles.loopHandle}
+          style={{ left: laneLeft(loopEndRatio) }}
+          {...loopEndDrag.handleProps}
           onPointerDown={(e) => {
             e.stopPropagation();
-            playheadDrag.handleProps.onPointerDown(e);
+            loopEndDrag.handleProps.onPointerDown(e);
           }}
           onPointerUp={(e) => {
             e.stopPropagation();
-            playheadDrag.handleProps.onPointerUp();
+            loopEndDrag.handleProps.onPointerUp();
+          }}
+        />
+
+        {hoverTime !== null &&
+        isTimeInsideView(hoverTime, viewStart, viewEnd) ? (
+          <div
+            className={styles.hoverCaret}
+            data-testid="timeline-hover-caret"
+            style={{
+              left: laneLeft(
+                clamp((hoverTime - viewStart) / viewDuration, 0, 1),
+              ),
+            }}
+          />
+        ) : null}
+
+        {inspectionMarker !== null &&
+        isTimeInsideView(inspectionMarker.timeSec, viewStart, viewEnd) ? (
+          <div
+            aria-label="Inspected message time"
+            className={styles.inspectionCaret}
+            data-testid="timeline-inspection-caret"
+            role="img"
+            style={{
+              left: labelWidth,
+              transform: `translate3d(${
+                clamp(
+                  (inspectionMarker.timeSec - viewStart) / viewDuration,
+                  0,
+                  1,
+                ) * 100
+              }%, 0, 0)`,
+              width: `calc(100% - ${labelWidth}px)`,
+            }}
+          >
+            <div className={styles.inspectionCaretCap} />
+          </div>
+        ) : null}
+
+        {/* Playhead handle + line share one translated wrapper. translate3d
+          on the wrapper is composited (no layout on every tick); the
+          handle and line stay anchored to the wrapper's left edge. */}
+        <div
+          className={styles.playheadGroup}
+          style={{
+            left: labelWidth,
+            width: `calc(100% - ${labelWidth}px)`,
+            transform: `translate3d(${playheadRatio * 100}%, 0, 0)`,
           }}
         >
-          <div className={styles.playheadTriangle} />
+          <div className={styles.playheadLine} />
+          <div
+            className={styles.playheadHandle}
+            data-testid="timeline-playhead-handle"
+            {...playheadDrag.handleProps}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              playheadDrag.handleProps.onPointerDown(e);
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              playheadDrag.handleProps.onPointerUp();
+            }}
+          >
+            <div className={styles.playheadTriangle} />
+          </div>
         </div>
-      </div>
 
-      {overlay}
-    </div>
+        {overlay}
+      </div>
+    </ContextMenu>
   );
 };
 

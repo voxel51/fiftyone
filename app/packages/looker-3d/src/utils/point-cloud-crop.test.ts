@@ -38,6 +38,9 @@ const buildDetection = (
     ui: { selected: false },
   }) as ReconciledDetection3D;
 
+const expectCloseToTuple = (values: readonly number[]) =>
+  values.map((value) => expect.closeTo(value, 10));
+
 describe("point-cloud crop", () => {
   it("creates a crop from a selected cuboid", () => {
     const crop = getSelectedCuboidPointCloudCrop({
@@ -46,6 +49,44 @@ describe("point-cloud crop", () => {
     });
 
     expect(crop?.labelId).toBe("detection-1");
+  });
+
+  it("aligns a native selected-cuboid crop with its displayed PCD", () => {
+    const frameQuaternion = new Quaternion().setFromAxisAngle(
+      new Vector3(0, 0, 1),
+      Math.PI / 2,
+    );
+    const crop = getSelectedCuboidPointCloudCrop({
+      renderModel: {
+        detections: [
+          buildDetection({ location: [1, 0, 0], dimensions: [4, 2, 2] }),
+        ],
+        polylines: [],
+      },
+      selectedLabelId: "detection-1",
+      margin: 0,
+      directPcdWorldTransformsBySampleId: {
+        "sample-1": {
+          translation: [10, 0, 0],
+          quaternion: [
+            frameQuaternion.x,
+            frameQuaternion.y,
+            frameQuaternion.z,
+            frameQuaternion.w,
+          ],
+          source_frame: "lidar_top",
+          target_frame: "world",
+        },
+      },
+    });
+
+    expect(crop?.center.toArray()).toEqual(expectCloseToTuple([10, 1, 0]));
+    expect(isPointInsidePointCloudCrop(new Vector3(10, 2.9, 0), crop!)).toBe(
+      true,
+    );
+    expect(isPointInsidePointCloudCrop(new Vector3(11.1, 1, 0), crop!)).toBe(
+      false,
+    );
   });
 
   it("selects an explore cuboid that exists in the render model", () => {
@@ -279,7 +320,6 @@ describe("point-cloud crop", () => {
     });
     const workingDoc: WorkingDoc = {
       labelsById: { [detection.data._id]: detection },
-      deletedIds: new Set(),
     };
     const transient: TransientStore = {
       cuboids: {

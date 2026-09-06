@@ -298,6 +298,7 @@ export function publishDataStreamStatuses({
   staleWarningStreams,
   store,
   streamNames,
+  updatedStreams,
 }: {
   readonly activeBlockingStreams: readonly string[];
   readonly activeStreams: readonly string[];
@@ -317,13 +318,20 @@ export function publishDataStreamStatuses({
   readonly staleWarningStreams: ReadonlySet<string>;
   readonly store: PlaybackStore;
   readonly streamNames: ReadonlyMap<string, string>;
+  /** Streams whose cache ownership changed, or all streams when omitted. */
+  readonly updatedStreams?: readonly string[];
 }): void {
+  const activeStreamSet = new Set(activeStreams);
   const blockingStreamSet = new Set(activeBlockingStreams);
   const coveredBlockingStreams = new Set<string>();
   const tick = index?.nearestTick(getPlayhead(store)) ?? null;
   let blockingCovered = 0;
 
-  for (const stream of activeStreams) {
+  const streamsToPublish =
+    updatedStreams === undefined
+      ? activeStreams
+      : updatedStreams.filter((stream) => activeStreamSet.has(stream));
+  for (const stream of streamsToPublish) {
     const cache = caches.get(stream);
     let status: StreamStatus;
     let staleAgeNs: bigint | null = null;
@@ -331,10 +339,6 @@ export function publishDataStreamStatuses({
     if (tick === null || !cache?.has(tick)) {
       status = failedStreams.has(stream) ? "failed" : "loading";
     } else {
-      if (blockingStreamSet.has(stream)) {
-        blockingCovered += 1;
-        coveredBlockingStreams.add(stream);
-      }
       if (failedStreams.has(stream)) {
         status = "failed";
       } else {
@@ -364,6 +368,24 @@ export function publishDataStreamStatuses({
     }
     if (getStreamStatus(store, stream) !== status) {
       setStreamStatus(store, stream, status);
+    }
+  }
+
+  // Non-blocking settlements still publish their own status and visible frame,
+  // but cannot change buffering or startup readiness. Avoid making every topic
+  // settlement rescan and republish the aggregate playback state.
+  if (
+    updatedStreams !== undefined &&
+    !updatedStreams.some((stream) => blockingStreamSet.has(stream))
+  ) {
+    return;
+  }
+
+  if (tick !== null) {
+    for (const stream of activeBlockingStreams) {
+      if (!caches.get(stream)?.has(tick)) continue;
+      blockingCovered += 1;
+      coveredBlockingStreams.add(stream);
     }
   }
 

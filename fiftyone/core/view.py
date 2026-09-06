@@ -28,6 +28,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 
 fost = fou.lazy_import("fiftyone.core.stages")
+fod = fou.lazy_import("fiftyone.core.dataset")
 
 
 class DatasetView(foc.SampleCollection):
@@ -121,14 +122,23 @@ class DatasetView(foc.SampleCollection):
             query = {"_id": oid}
         except:
             oid = None
-            query = {"filepath": id_filepath_slice}
+            if self._contains_media_references():
+                query = {"media_reference.key": id_filepath_slice}
+            else:
+                query = {"filepath": id_filepath_slice}
 
         view = self.match(query)
 
         try:
             return next(iter(view))
         except StopIteration:
-            field = "ID" if oid is not None else "filepath"
+            if oid is not None:
+                field = "ID"
+            elif self._contains_media_references():
+                field = "media-reference key"
+            else:
+                field = "filepath"
+
             raise KeyError(
                 "No sample found with %s '%s'" % (field, id_filepath_slice)
             )
@@ -224,6 +234,13 @@ class DatasetView(foc.SampleCollection):
             return self.__media_type
 
         return self._dataset.media_type
+
+    @property
+    def media_reference_kind(self):
+        """The kind of media references that this view contains, or None if the
+        view does not contain media references.
+        """
+        return self._dataset.media_reference_kind
 
     @property
     def group_field(self):

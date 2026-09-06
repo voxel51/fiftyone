@@ -7,7 +7,7 @@
  * render in the bubble, and the last shown attribute locks so at least one
  * always renders.
  */
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";

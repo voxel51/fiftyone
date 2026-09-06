@@ -130,6 +130,19 @@ export type McapPlaybackWorkerSynchronizedMessage =
 export type McapPlaybackWorkerSynchronizedWindow =
   McapSynchronizedMessageWindowWithMessages<McapPlaybackWorkerSynchronizedMessage>;
 
+/** Ordered ownership events for one synchronized current-frame union read. */
+export type McapPlaybackWorkerSynchronizedStreamItem =
+  | {
+      readonly kind: "topic-settlement";
+      readonly topic: string;
+      readonly window: McapPlaybackWorkerSynchronizedWindow;
+    }
+  | {
+      /** Contains only payloads for topics not already emitted above. */
+      readonly kind: "terminal";
+      readonly window: McapPlaybackWorkerSynchronizedWindow;
+    };
+
 /**
  * Unary result payloads returned by worker RPC calls.
  */
@@ -145,7 +158,6 @@ export type McapPlaybackWorkerResultByType = {
   readonly readRawMessageAtCursor: McapRawMessageRecordResult;
   readonly readRawMessageRecord: McapRawMessageRecordResult;
   readonly readSynchronizedMessageBatch: readonly McapPlaybackWorkerSynchronizedWindow[];
-  readonly readSynchronizedMessages: McapPlaybackWorkerSynchronizedWindow;
   readonly readTimelineRange: McapTimelineRange;
   readonly readTransformTopology: McapTransformTopologyResult;
   readonly readTopics: McapRecordingInventory;
@@ -157,6 +169,7 @@ export type McapPlaybackWorkerResultByType = {
  */
 export type McapPlaybackWorkerStreamItemByType = {
   readonly readDecodedMessages: McapDecodedMessage;
+  readonly readSynchronizedMessages: McapPlaybackWorkerSynchronizedStreamItem;
 };
 
 /**

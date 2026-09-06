@@ -3,6 +3,10 @@ FiftyOne Installation
 
 .. default-role:: code
 
+.. meta::
+    :description: How to install FiftyOne, set up virtual environments,
+        and troubleshoot common installation issues.
+
 .. note::
 
     Did you know? :ref:`FiftyOne Enterprise <fiftyone-enterprise>` is an open

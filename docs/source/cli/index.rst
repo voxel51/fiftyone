@@ -5,6 +5,10 @@ FiftyOne Command-Line Interface (CLI)
 
 .. default-role:: code
 
+.. meta::
+    :description: Reference for the fiftyone command-line interface,
+        including dataset management, App control, and config commands.
+
 Installing FiftyOne automatically installs `fiftyone`, a command-line interface
 (CLI) for interacting with FiftyOne. This utility provides access to many
 useful features, including creating and inspecting datasets, visualizing

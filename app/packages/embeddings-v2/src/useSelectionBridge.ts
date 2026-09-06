@@ -51,14 +51,34 @@ export interface SelectionBridgeOptions {
 }
 
 /**
+ * A published stage's sample count, when the stage itself knows it: a
+ * Select stage enumerates its sample ids. Any other stage shape (Mongo,
+ * a server-resolved spatial stage) selects samples only the server can
+ * count — null, and the UI falls back to the point count.
+ */
+export function stageSampleCount(
+  stage: Record<string, unknown>,
+): number | null {
+  const kwargs = stage["fiftyone.core.stages.Select"];
+  if (!kwargs || typeof kwargs !== "object") return null;
+  const ids = (kwargs as { sample_ids?: unknown }).sample_ids;
+  // Distinct, not occurrences: a lasso's resolver emits one id per point,
+  // and one sample can own many lassoed points
+  return Array.isArray(ids) ? new Set(ids).size : null;
+}
+
+/**
  * Two-way selection wiring between the plot and the App. Plot -> grid:
  * a lasso resolves to a view stage — client-side when the extension
  * supplies a resolver and the run is fully loaded (zero requests per
  * gesture), otherwise server-side — and lands on the grid via the
- * override stage; a plain click toggles the sample in the App's
- * selection. Grid -> plot: selected sample ids style the plot through a
- * lazily built id -> wire-index map. Esc (and `clearAll`) clears every
- * layer.
+ * override stage. A plain click scopes the grid the same way, through a
+ * Select stage over the clicked samples, but leaves the App's selection
+ * (the grid checkboxes) alone: scoping the grid is not the same as
+ * marking samples for an action taken on them.
+ * Grid -> plot: selected sample ids style the plot through a lazily
+ * built id -> wire-indices map (one id can own many points). Esc (and
+ * `clearAll`) clears every layer.
  */
 export function useSelectionBridge({
   datasetName,
@@ -97,19 +117,44 @@ export function useSelectionBridge({
   // overwrite a newer selection (or resurrect one that was cleared)
   const lassoSeq = useRef(0);
 
+  // The samples clicks have accumulated, in click order — the click layer's
+  // own state, held here rather than in the App's selection so a click can
+  // scope without ticking a checkbox. A ref, mutated synchronously by every
+  // toggle: overlapping async toggles (patches label -> sample resolutions)
+  // would otherwise each build from the same stale render's value, the
+  // second dropping the first
+  const clickedSamples = useRef(new Set<string>());
+  // Invalidates a patches click still resolving server-side. NOT lassoSeq,
+  // which every click bumps — overlapping clicks must still accumulate; only
+  // a clear or a lasso replaces the click layer wholesale.
+  const clickSeq = useRef(0);
+  // Which POINTS the reader clicked, per sample. A click chooses one point,
+  // not everything its sample owns: a multimodal episode owns every window of
+  // itself, so decorating with all of them lit the entire episode's timeline
+  // for a click on one moment of it.
+  const clickedPoints = useRef(new Map<string, Set<number>>());
+  // The clicked points' wire indices, mirrored into state so the plot's
+  // emphasis follows a click that never reaches `selectedSamples`
+  const [clickIndices, setClickIndices] = useState<number[] | null>(null);
+
   // Stable because the Esc effect below depends on it
   const clearAll = useCallback(() => {
     lassoSeq.current++;
+    clickSeq.current++;
     resetExtended();
+    clickedPoints.current.clear();
+    clickedSamples.current.clear();
+    setClickIndices(null);
     setSelectedSamples(new Map());
     setLassoIndices(null);
     setError(null);
     // The extension's artifacts clear in the same commit they were
-    // published in; the count is what the chip and the panel tab's pill
-    // both read
+    // published in; the counts are what the chip and the panel tab's
+    // pill both read, and they clear together so they can never desync
     publishSelection({
       stage: null,
       count: null,
+      sampleCount: null,
       decorate: decorateSelection?.(null) ?? null,
     });
     chart.current?.clearSelection();
@@ -131,33 +176,55 @@ export function useSelectionBridge({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [clearAll]);
 
-  // Grid/checkbox selections style the plot (id -> wire index). The map
-  // is built lazily — only when a grid selection actually exists — and
-  // cached per loaded snapshot
+  // Grid/checkbox selections style the plot (id -> every wire index
+  // sharing that id — one sample can own many points, e.g. every window
+  // of an episode in a multimodal run). The map is built lazily and
+  // cached per loaded snapshot; a plain click resolves through the same
+  // map to name the points its selection decorates.
   const idIndexRef = useRef<{
     token: Loaded;
-    map: Map<string, number>;
+    map: Map<string, number[]>;
   } | null>(null);
+  const resolveIndices = useCallback(
+    (ids: Iterable<string>): number[] => {
+      if (!loaded) return [];
+      if (idIndexRef.current?.token !== loaded) {
+        idIndexRef.current = {
+          token: loaded,
+          map: buildIdIndex(loaded.ids, loaded.points.length),
+        };
+      }
+      const indices: number[] = [];
+      for (const id of ids) {
+        const matches = idIndexRef.current.map.get(id);
+        // Plain loop: spread-push overflows the arg limit past ~100k
+        // matches, and one id can own every window of an episode
+        if (matches) for (const m of matches) indices.push(m);
+      }
+      return indices;
+    },
+    [loaded],
+  );
   const selectedIndices = useMemo(() => {
-    if (!loaded || !selectedSamples.size) return null;
-    if (idIndexRef.current?.token !== loaded) {
-      idIndexRef.current = {
-        token: loaded,
-        map: buildIdIndex(loaded.ids, loaded.points.length),
-      };
+    // Both layers emphasize the same way: grid checkboxes, and the clicks
+    // that deliberately do not tick one
+    const grid = selectedSamples.size
+      ? resolveIndices(selectedSamples.keys())
+      : [];
+    if (!clickIndices?.length) {
+      // No id resolving means the selection is not representable in this
+      // plot's id space (sample selections against a patches run, whose
+      // wire ids are label ids). That is "no selection" (null) — an empty
+      // selection would dim every point and outrank the filter-match
+      // layer in the host's precedence
+      return grid.length ? grid : null;
     }
-    const indices: number[] = [];
-    for (const id of selectedSamples.keys()) {
-      const index = idIndexRef.current.map.get(id);
-      if (index !== undefined) indices.push(index);
-    }
-    // No id resolving means the selection is not representable in this
-    // plot's id space (sample selections against a patches run, whose
-    // wire ids are label ids). That is "no selection" (null) — an empty
-    // selection would dim every point and outrank the filter-match
-    // layer in the host's precedence
-    return indices.length ? indices : null;
-  }, [loaded, selectedSamples]);
+    if (!grid.length) return clickIndices;
+    // Concat, not spread: one grid-selected id can own every window of an
+    // episode, and spread-push overflows the arg limit past ~100k
+    const seen = new Set(grid);
+    return grid.concat(clickIndices.filter((i) => !seen.has(i)));
+  }, [selectedSamples, resolveIndices, clickIndices]);
 
   // Lasso -> view stage -> the grid. The override stage alone drives
   // the grid; the stage builds locally when the extension supplies a
@@ -170,9 +237,16 @@ export function useSelectionBridge({
   ) => {
     if (!datasetName || !brainKey) return;
     const seq = ++lassoSeq.current;
+    clickSeq.current++;
     // A failure banner describes the previous gesture; a new one starts
     // clean (the success path below still resets, as a race safeguard)
     setError(null);
+    // The lasso's stage replaces the click layer's, so its points must go
+    // with it — otherwise they stay lit, and the next click accumulates
+    // onto samples this gesture already scoped away
+    clickedPoints.current.clear();
+    clickedSamples.current.clear();
+    setClickIndices(null);
 
     // Keep only points passing the active filter/view. When something is
     // hidden, a spatial shortcut can't express the filter, so resolve by
@@ -185,6 +259,7 @@ export function useSelectionBridge({
       publishSelection({
         stage: null,
         count: null,
+        sampleCount: null,
         decorate: decorateSelection?.(null) ?? null,
       });
       return;
@@ -206,6 +281,7 @@ export function useSelectionBridge({
         publishSelection({
           stage,
           count: kept.length,
+          sampleCount: stageSampleCount(stage),
           decorate: decorateSelection?.(kept) ?? null,
         });
         return;
@@ -219,39 +295,115 @@ export function useSelectionBridge({
         if (seq !== lassoSeq.current) return;
         // A stale failure banner must not outlive the success after it
         setError(null);
+        const published = { [stage._cls]: stage.kwargs };
         publishSelection({
-          stage: { [stage._cls]: stage.kwargs },
+          stage: published,
           count: stage.count ?? kept.length,
+          sampleCount: stageSampleCount(published),
           decorate: decorateSelection?.(kept) ?? null,
         });
       })
       .catch((e) => seq === lassoSeq.current && setError(String(e)));
   };
 
-  // Plain click toggles the sample in the App's selection. For patches
-  // runs the point id is a label id; the owning sample id resolves
-  // through sample-info (clicks are human-rate)
-  const toggleSample = (sampleId: string) => {
-    setSelectedSamples((current) => {
-      const next = new Map(current);
-      if (next.has(sampleId)) {
-        next.delete(sampleId);
-      } else {
-        next.set(sampleId, "default");
-      }
-      return next;
+  /** The wire indices a click selection lights: exactly the clicked points
+   * where any were named, every point of the sample otherwise. */
+  const decoratedIndices = (samples: Iterable<string>): number[] => {
+    const named: number[] = [];
+    const whole: string[] = [];
+    for (const id of samples) {
+      const points = clickedPoints.current.get(id);
+      if (points?.size) named.push(...points);
+      else whole.push(id);
+    }
+    return whole.length ? named.concat(resolveIndices(whole)) : named;
+  };
+
+  // A click SCOPES the grid, like a lasso: its Select stage is built directly
+  // from the accumulated sample ids — no polygon or index resolution needed,
+  // so (unlike a lasso) this never leaves the client. What it deliberately
+  // does NOT do is tick the samples' grid checkboxes: those mark samples for
+  // an action, and a reader browsing the plot has chosen nothing yet.
+  const publishClickSelection = (samples: Set<string>) => {
+    // The click's stage supersedes any lasso: drop the lasso's indices
+    // (they scope the legend counts) and orphan any still-in-flight lasso
+    // response so it cannot publish over this
+    lassoSeq.current++;
+    setLassoIndices(null);
+    if (!samples.size) {
+      setClickIndices(null);
+      resetExtended();
+      publishSelection({
+        stage: null,
+        count: null,
+        sampleCount: null,
+        decorate: decorateSelection?.(null) ?? null,
+      });
+      return;
+    }
+    const indices = decoratedIndices(samples);
+    setClickIndices(indices.length ? indices : null);
+    publishSelection({
+      stage: {
+        "fiftyone.core.stages.Select": {
+          sample_ids: Array.from(samples),
+          ordered: false,
+        },
+      },
+      // Point count, not sample count — matches what a lasso reports for
+      // the same points, and what the dim layer actually highlights
+      count: indices.length || samples.size,
+      sampleCount: samples.size,
+      decorate: decorateSelection?.(indices.length ? indices : null) ?? null,
     });
+  };
+
+  // Plain click toggles the sample in the click layer, which scopes the grid
+  // and leaves its checkboxes untouched. For patches runs the point id is a
+  // label id; the owning sample id resolves through sample-info (clicks are
+  // human-rate)
+  const toggleSample = (sampleId: string, pointIndex?: number) => {
+    // Mutated in place, then published from the same value: overlapping
+    // async toggles accumulate instead of each rebuilding from a stale one
+    const next = clickedSamples.current;
+    const points = clickedPoints.current;
+    if (pointIndex === undefined) {
+      // No point named — the whole sample, as a grid checkbox means it
+      if (next.has(sampleId)) next.delete(sampleId);
+      else next.add(sampleId);
+      points.delete(sampleId);
+    } else {
+      // Per POINT: clicking a second window of an episode adds it rather than
+      // dropping the episode, and clicking the same one again takes it back
+      const chosen = points.get(sampleId) ?? new Set<number>();
+      if (chosen.has(pointIndex)) chosen.delete(pointIndex);
+      else chosen.add(pointIndex);
+      if (chosen.size) {
+        points.set(sampleId, chosen);
+        next.add(sampleId);
+      } else {
+        points.delete(sampleId);
+        next.delete(sampleId);
+      }
+    }
+    publishClickSelection(next);
   };
 
   const handlePointClick = (hit: HoverHit) => {
     if (!patchesField) {
-      toggleSample(hit.id);
+      toggleSample(hit.id, hit.index);
       return;
     }
     if (!datasetName || !brainKey) return;
     // Patches point: resolve the label to its owning sample, server-side
+    const seq = clickSeq.current;
     fetchSampleInfo(datasetName, brainKey, hit.index, null)
-      .then((info) => toggleSample(info.sampleId))
+      .then((info) => {
+        // A clear or a lasso landed while this resolved; toggling now would
+        // restore a click layer the reader has already replaced
+        if (seq !== clickSeq.current) return;
+        toggleSample(info.sampleId, hit.index);
+      })
       .catch(() => undefined);
   };
 

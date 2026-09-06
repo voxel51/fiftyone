@@ -29,8 +29,9 @@ describe("numeric-series tile cache", () => {
     expect(visible.parts).toHaveLength(1);
     expect([...visible.parts[0].timesSec]).toEqual([3, 4, 5]);
     expect([...visible.parts[0].values]).toEqual([13, 14, 15]);
+    expect([...visible.parts[0].bucketIndexes]).toEqual([3n, 4n, 5n]);
     expect(visible.work.pointsCopied).toBe(3);
-    expect(cache.getStats().retainedBytes).toBe(10 * 2 * 8);
+    expect(cache.getStats().retainedBytes).toBe(10 * 3 * 8);
 
     visible.parts[0].values[0] = 999;
     expect(
@@ -40,6 +41,33 @@ describe("numeric-series tile cache", () => {
         seriesKey: "speed",
       }).parts[0].values[0],
     ).toBe(13);
+  });
+
+  it("assembles cached ranges independently of loading order", () => {
+    const forward = createCache({ maxBytes: 1_000, maxTiles: 10 });
+    const reverse = createCache({ maxBytes: 1_000, maxTiles: 10 });
+    const left = tile({ endSec: 9, timesSec: [2, 8], values: [2, 8] });
+    const right = tile({
+      endSec: 19,
+      startSec: 10,
+      timesSec: [12, 18],
+      values: [12, 18],
+    });
+    forward.put(left);
+    forward.put(right);
+    reverse.put(right);
+    reverse.put(left);
+    const demand = {
+      bucketDurationNs: SECOND,
+      range: secondsRange(0, 19),
+      seriesKey: "speed",
+    } as const;
+
+    expect(
+      forward.assembleVisible(demand).parts.map((part) => [...part.values]),
+    ).toEqual(
+      reverse.assembleVisible(demand).parts.map((part) => [...part.values]),
+    );
   });
 
   it("retains explicit gap bits with mixed finite and NaN values", () => {
@@ -60,7 +88,7 @@ describe("numeric-series tile cache", () => {
 
     expect([...part.values]).toEqual([1, Number.NaN, 3]);
     expect([...part.gapMask]).toEqual([0b00000010]);
-    expect(cache.getStats().retainedBytes).toBe(3 * 2 * 8 + 1);
+    expect(cache.getStats().retainedBytes).toBe(3 * 3 * 8 + 1);
   });
 
   it("uses the coarsest sufficient resolution without using coarse for fine", () => {
@@ -152,10 +180,10 @@ describe("numeric-series tile cache", () => {
   });
 
   it("evicts least-recently used payloads with exact byte accounting", () => {
-    const cache = createCache({ maxBytes: 32, maxTiles: 10 });
+    const cache = createCache({ maxBytes: 48, maxTiles: 10 });
     const first = cache.put(pointTile(0));
     const second = cache.put(pointTile(1));
-    expect(cache.getStats().retainedBytes).toBe(32);
+    expect(cache.getStats().retainedBytes).toBe(48);
 
     cache.assembleVisible(demandAt(0));
     const third = cache.put(pointTile(2));
@@ -164,15 +192,15 @@ describe("numeric-series tile cache", () => {
     expect(cache.has(second)).toBe(false);
     expect(cache.has(third)).toBe(true);
     expect(cache.getStats()).toMatchObject({
-      evictedBytes: 16,
+      evictedBytes: 24,
       evictedTiles: 1,
-      retainedBytes: 32,
+      retainedBytes: 48,
       retainedTiles: 2,
     });
   });
 
   it("pins the tiles selected for visible demand above the byte budget", () => {
-    const cache = createCache({ maxBytes: 16, maxTiles: 1 });
+    const cache = createCache({ maxBytes: 24, maxTiles: 1 });
     const visible = cache.put(pointTile(0));
     cache.setPinnedDemand("plot", demandAt(0));
 
@@ -208,7 +236,7 @@ describe("numeric-series tile cache", () => {
 
     expect(replacementId).toBe(firstId);
     expect(cache.getStats()).toMatchObject({
-      retainedBytes: 16,
+      retainedBytes: 24,
       retainedTiles: 1,
     });
     expect([...cache.assembleVisible(demandAt(0)).parts[0].values]).toEqual([
@@ -218,7 +246,7 @@ describe("numeric-series tile cache", () => {
 
   it("keeps long-session assembly work bounded to the visible tiles", () => {
     const maxTiles = 64;
-    const cache = createCache({ maxBytes: maxTiles * 16, maxTiles });
+    const cache = createCache({ maxBytes: maxTiles * 24, maxTiles });
     const pinned = cache.put(pointTile(0));
     cache.setPinnedDemand("old-viewport", demandAt(0));
 

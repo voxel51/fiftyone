@@ -17,9 +17,9 @@
  * Fit math intentionally matches `imageDisplayRect` in `Base2dScene.tsx`
  * (the `ImagePanel` fit semantics) so swapping a cell between this view
  * and a live panel never shifts pixels. Bitmap lifecycle mirrors the
- * discipline in `image-texture-cache.ts`: a superseded decode never
- * commits, and every bitmap is closed exactly once (on replacement, on
- * cancellation, or on unmount).
+ * discipline in `image-texture-cache.ts`: active work stays live through
+ * input churn, pending work coalesces to the latest request, and every bitmap
+ * is closed exactly once (on replacement, cancellation, or unmount).
  */
 import type { CSSProperties } from "react";
 import {
@@ -42,6 +42,11 @@ import {
   useOptionalVideoPlaybackManager,
   useVideoStreamPresentation,
 } from "../../video/react";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+  type VideoIntentPriority,
+} from "../../video/types";
 import { useLatestRef } from "./use-latest-ref";
 import { fittedImageSize } from "./image-fit";
 import { rawImageRgba } from "./raw-image-rgba";
@@ -135,6 +140,8 @@ export interface BitmapImageFrameViewProps {
     size: BitmapDrawSize,
   ) => void;
   readonly style?: CSSProperties;
+  /** Playback admission priority for encoded-video frames. */
+  readonly videoPriority?: VideoIntentPriority;
   /** Stable source/stream owner key for encoded-video decoder cleanup. */
   readonly videoSessionKey?: string;
 }
@@ -172,16 +179,37 @@ class LatestEncodedBitmapDecoder {
       source,
     };
     if (this.active) {
-      if (this.pending) this.pending.cancelled = true;
+      if (this.pending) {
+        this.cancel(this.pending);
+      }
       this.pending = request;
     } else {
       this.start(request);
     }
 
     return () => {
-      request.cancelled = true;
-      if (this.pending === request) this.pending = null;
+      if (request.cancelled) return;
+      if (this.active === request) return;
+      if (this.pending === request) {
+        this.pending = null;
+        this.cancel(request);
+      }
     };
+  }
+
+  dispose(): void {
+    if (this.active) {
+      this.cancel(this.active);
+    }
+    if (this.pending) {
+      this.cancel(this.pending);
+      this.pending = null;
+    }
+  }
+
+  private cancel(request: EncodedBitmapDecodeRequest): void {
+    if (request.cancelled) return;
+    request.cancelled = true;
   }
 
   private start(request: EncodedBitmapDecodeRequest): void {
@@ -408,6 +436,9 @@ export function BitmapImageView({
   if (decoderRef.current === null) {
     decoderRef.current = new LatestEncodedBitmapDecoder();
   }
+  useEffect(() => {
+    return () => decoderRef.current?.dispose();
+  }, []);
   const onErrorRef = useLatestRef(onError);
   const onImageLoadedRef = useLatestRef(onImageLoaded);
   const onBitmapRetainedBytesChangeRef = useLatestRef(
@@ -415,9 +446,9 @@ export function BitmapImageView({
   );
 
   // This effect decodes the current bytes and commits the resulting
-  // bitmap. The cleanup flag is the out-of-order guard: only the latest
-  // request may commit — a superseded decode (newer bytes arrived, or
-  // unmount) closes its own bitmap and leaves the previous frame drawn.
+  // bitmap. A running browser decode remains eligible to commit when newer
+  // bytes arrive; the queue still coalesces to one latest pending frame. The
+  // decoder lifecycle effect above cancels both slots on actual unmount.
   useEffect(() => {
     if (!decodeSize) {
       return undefined;
@@ -478,6 +509,7 @@ export function BitmapImageFrameView({
   onError,
   onImageLoaded,
   style,
+  videoPriority,
   videoSessionKey,
 }: BitmapImageFrameViewProps) {
   if (frame.kind === "encoded-video") {
@@ -491,6 +523,7 @@ export function BitmapImageFrameView({
         onCanvasCommitted={onCanvasCommitted}
         onImageLoaded={onImageLoaded}
         style={style}
+        videoPriority={videoPriority}
         videoSessionKey={videoSessionKey}
       />
     );
@@ -531,6 +564,7 @@ function BitmapEncodedVideoView({
   onCanvasCommitted,
   onImageLoaded,
   style,
+  videoPriority = "visible",
   videoSessionKey,
 }: Omit<BitmapImageFrameViewProps, "frame"> & {
   readonly frame: EncodedVideoVisualization;
@@ -572,6 +606,7 @@ function BitmapEncodedVideoView({
     ownedManager?.key === previewTextureKey ? ownedManager.manager : null;
   const manager = contextManager ?? localManager;
   const targetTimeNs = frame.timestampNs ?? null;
+  const sharedVideo = isSharedEncodedVideoVisualization(frame);
   const hasPrivateRunway =
     targetTimeNs !== null &&
     (frame.keyframe ||
@@ -583,7 +618,7 @@ function BitmapEncodedVideoView({
     if (
       contextManager ||
       ownedManager?.key !== previewTextureKey ||
-      frame.codec !== "h264" ||
+      !sharedVideo ||
       targetTimeNs === null ||
       !hasPrivateRunway
     ) {
@@ -599,16 +634,17 @@ function BitmapEncodedVideoView({
     hasPrivateRunway,
     ownedManager,
     previewTextureKey,
+    sharedVideo,
     targetTimeNs,
   ]);
   const snapshot = useVideoStreamPresentation({
     enabled:
-      frame.codec === "h264" &&
+      sharedVideo &&
       targetTimeNs !== null &&
       (contextManager !== null || hasPrivateRunway),
-    frame: frame.codec === "h264" ? frame : null,
+    frame: sharedVideo ? frame : null,
     manager,
-    priority: "visible",
+    priority: videoPriority,
     stream: previewTextureKey,
     targetTimeNs,
   });
@@ -657,27 +693,24 @@ function BitmapEncodedVideoView({
   ]);
 
   useEffect(() => {
-    if (frame.codec !== "h264") {
-      onErrorRef.current?.(
-        new Error(`Video codec ${frame.codec} is unsupported`),
-      );
+    if (!sharedVideo) {
+      onErrorRef.current?.(new Error(sharedVideoRejectionMessage(frame)));
       return;
     }
-    if (frame.codec === "h264" && targetTimeNs === null) {
+    if (targetTimeNs === null) {
       onErrorRef.current?.(
-        new Error("H.264 preview frame is missing a presentation timestamp"),
+        new Error("Video preview frame is missing a presentation timestamp"),
       );
       return;
     }
     if (
-      frame.codec === "h264" &&
       targetTimeNs !== null &&
       contextManager === null &&
       localManager !== null &&
       !hasPrivateRunway
     ) {
       onErrorRef.current?.(
-        new Error("H.264 preview is waiting for a keyframe"),
+        new Error("Video preview is waiting for a keyframe"),
       );
       return;
     }
@@ -686,10 +719,11 @@ function BitmapEncodedVideoView({
     }
   }, [
     contextManager,
-    frame.codec,
+    frame,
     hasPrivateRunway,
     localManager,
     onErrorRef,
+    sharedVideo,
     snapshot.diagnostic,
     targetTimeNs,
   ]);

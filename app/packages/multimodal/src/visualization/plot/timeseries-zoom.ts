@@ -8,7 +8,6 @@ type Range = readonly [min: number, max: number];
 interface TouchPosition {
   readonly distance: number;
   readonly x: number;
-  readonly y: number;
 }
 
 interface TouchZoomPanPluginOptions {
@@ -17,9 +16,8 @@ interface TouchZoomPanPluginOptions {
 }
 
 /**
- * Zooms both chart axes around their current midpoint. The x range is
- * constrained to the recording while y remains free so signal offsets can be
- * inspected without losing the time domain.
+ * Zooms the time axis around its current midpoint, constrained to the
+ * recording. The chart independently auto-fits y to the resulting viewport.
  */
 export function zoomTimeseriesChart(
   chart: uPlot,
@@ -31,25 +29,16 @@ export function zoomTimeseriesChart(
   }
 
   const xRange = scaledRange(chart.scales.x, factor, xLimits);
-  const yRange = scaledRange(chart.scales.y, factor);
-  if (!xRange && !yRange) {
-    return;
-  }
-
+  if (!xRange) return;
   chart.batch(() => {
-    if (xRange) {
-      chart.setScale("x", { min: xRange[0], max: xRange[1] });
-    }
-    if (yRange) {
-      chart.setScale("y", { min: yRange[0], max: yRange[1] });
-    }
+    chart.setScale("x", { min: xRange[0], max: xRange[1] });
   });
 }
 
 /**
  * uPlot touch plugin based on its pinch-zoom demo. One finger pans and two
- * fingers pinch uniformly across x/y. Gesture state and document listeners
- * stay outside React so move-frequency work never causes component renders.
+ * fingers pinch the time axis only. Gesture state and document listeners stay
+ * outside React so move-frequency work never causes component renders.
  */
 export function touchZoomPanPlugin({
   onInteraction,
@@ -69,10 +58,8 @@ export function touchZoomPanPlugin({
         let initialPosition: TouchPosition | null = null;
         let currentPosition: TouchPosition | null = null;
         let initialXRange = 0;
-        let initialYRange = 0;
         let rect: DOMRect | null = null;
         let xAnchor = 0;
-        let yAnchor = 0;
         let tracking = false;
 
         const stopTracking = () => {
@@ -99,17 +86,11 @@ export function touchZoomPanPlugin({
           const xSize = initialXRange * factor;
           const xMin = xAnchor - (currentPosition.x / rect.width) * xSize;
           const nextXRange = clampRange([xMin, xMin + xSize], xLimits);
-
-          const ySize = initialYRange * factor;
-          const bottomFraction = 1 - currentPosition.y / rect.height;
-          const yMin = yAnchor - bottomFraction * ySize;
-
           chart.batch(() => {
             chart.setScale("x", {
               min: nextXRange[0],
               max: nextXRange[1],
             });
-            chart.setScale("y", { min: yMin, max: yMin + ySize });
           });
           onInteraction?.();
         };
@@ -122,17 +103,14 @@ export function touchZoomPanPlugin({
 
           const position = touchPosition(event.touches, rect);
           const xScale = finiteScaleRange(chart.scales.x);
-          const yScale = finiteScaleRange(chart.scales.y);
-          if (!position || !xScale || !yScale) {
+          if (!position || !xScale) {
             return;
           }
 
           initialPosition = position;
           currentPosition = position;
           initialXRange = xScale[1] - xScale[0];
-          initialYRange = yScale[1] - yScale[0];
           xAnchor = chart.posToVal(position.x, "x");
-          yAnchor = chart.posToVal(position.y, "y");
 
           if (!tracking) {
             tracking = true;
@@ -207,13 +185,13 @@ function touchPosition(
 
   const first = touches[0];
   const firstX = first.clientX - rect.left;
-  const firstY = first.clientY - rect.top;
   if (touches.length === 1) {
-    return { distance: 1, x: firstX, y: firstY };
+    return { distance: 1, x: firstX };
   }
 
   const second = touches[1];
   const secondX = second.clientX - rect.left;
+  const firstY = first.clientY - rect.top;
   const secondY = second.clientY - rect.top;
   const deltaX = secondX - firstX;
   const deltaY = secondY - firstY;
@@ -221,7 +199,6 @@ function touchPosition(
   return {
     distance: Math.max(Math.hypot(deltaX, deltaY), Number.EPSILON),
     x: (firstX + secondX) / 2,
-    y: (firstY + secondY) / 2,
   };
 }
 

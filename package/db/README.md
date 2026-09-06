@@ -6,9 +6,8 @@ Supporting package for [FiftyOne](https://pypi.org/project/fiftyone).
 
 > [!NOTE] These steps are to be performed by authorized Voxel51 engineers.
 
-The `fiftyone-db` package is usually cut from the `fiftyone:develop` branch.
-The PyPI uploads will be triggered when a release tag is pushed to the
-repository:
+The `fiftyone-db` package is usually cut from the `fiftyone:main` branch. The
+PyPI uploads will be triggered when a release tag is pushed to the repository:
 
 1. Navigate to the
    [releases page](https://github.com/voxel51/fiftyone/releases).
@@ -28,6 +27,6 @@ repository:
 1. Select `Publish release`.
 
 This will create a new tag in the repository and will trigger the
-[build/publish workflow](https://github.com/voxel51/fiftyone/blob/develop/.github/workflows/build-db.yml).
+[build/publish workflow](https://github.com/voxel51/fiftyone/blob/main/.github/workflows/build-db.yml).
 This workflow will build the `.whl` artifacts and publish them to
 [PyPI](https://pypi.org/project/fiftyone-db/).

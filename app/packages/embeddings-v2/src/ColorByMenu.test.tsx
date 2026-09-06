@@ -118,6 +118,43 @@ describe("ColorByMenu", () => {
     );
   });
 
+  it.each([
+    {
+      name: "an incomplete list says so instead of reading as complete",
+      loading: true,
+      shown: true,
+    },
+    {
+      name: "a settled list says nothing",
+      loading: false,
+      shown: false,
+    },
+  ])("$name", ({ loading, shown }) => {
+    render(
+      <ColorByMenu
+        options={[{ id: NONE, data: { label: "None" } }]}
+        value={NONE}
+        onChange={vi.fn()}
+        loading={loading}
+      />,
+    );
+    fireEvent.click(control());
+
+    expect(Boolean(screen.queryByText("Loading fields\u2026"))).toBe(shown);
+  });
+
+  it("says the list is still filling rather than that nothing matched", () => {
+    // Both would be true of an empty filtered list, and only one of them
+    // tells a reader to wait rather than give up
+    render(
+      <ColorByMenu options={[]} value={NONE} onChange={vi.fn()} loading />,
+    );
+    fireEvent.click(control());
+
+    expect(screen.queryByText("No matching fields")).toBeNull();
+    expect(screen.getByText("Loading fields\u2026")).toBeTruthy();
+  });
+
   it("does not open when there is nothing to color by", () => {
     render(
       <ColorByMenu options={[]} value={NONE} onChange={vi.fn()} disabled />,
@@ -180,5 +217,34 @@ describe("ColorByMenu", () => {
     expect(control().getAttribute("aria-activedescendant")).toBe(
       screen.getAllByRole("option")[0].id,
     );
+  });
+});
+
+describe("choices that arrive while the menu is open", () => {
+  it("resets the highlighted option when the options change", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <ColorByMenu
+        options={streamOptions(2)}
+        value={NONE}
+        onChange={onChange}
+        loading
+      />,
+    );
+
+    fireEvent.click(control());
+    fireEvent.keyDown(control(), { key: "ArrowDown" });
+    fireEvent.keyDown(control(), { key: "ArrowDown" });
+
+    rerender(
+      <ColorByMenu
+        options={streamOptions(12)}
+        value={NONE}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.keyDown(control(), { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith(NONE);
   });
 });

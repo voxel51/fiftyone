@@ -9,13 +9,12 @@ import type {
 /**
  * Cross-context single-flight for network block fills.
  *
- * Every worker lane (and the main-thread prewarm client) owns a private
- * in-memory cache and a private in-flight map, so identical block fills
- * racing across contexts each pay a network fetch — the persistent layer
- * only helps after the first fetch has landed. Web Locks are origin-scoped
- * like the Cache API, so an exclusive lock per fill shape turns that race
- * into one fetch plus persistent-cache handoffs, across lanes and even
- * across tabs playing the same source.
+ * Every worker lane owns a private in-memory cache and in-flight map, so
+ * identical block fills racing across contexts each pay a network fetch —
+ * the persistent layer only helps after the first fetch has landed. Web
+ * Locks are origin-scoped like the Cache API, so an exclusive lock per fill
+ * shape turns that race into one fetch plus persistent-cache handoffs,
+ * across lanes and even across tabs playing the same source.
  */
 
 const FILL_LOCK_PREFIX = "fo-multimodal-fill-v1";

@@ -25,6 +25,7 @@ import RadioGroup from "../../Common/RadioGroup";
 import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/recoil";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
+import MultimodalGridFitSetting from "./MultimodalGridFitSetting";
 
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
@@ -354,6 +355,7 @@ const Grid = () => {
 
   return (
     <>
+      <MultimodalGridFitSetting />
       <ActionOption
         id="grid-options"
         href={MANAGING_GRID_MEMORY}

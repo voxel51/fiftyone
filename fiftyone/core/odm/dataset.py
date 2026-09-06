@@ -926,6 +926,7 @@ class DatasetDocument(Document):
     frame_collection_name = StringField()
     persistent = BooleanField(default=False)
     media_type = StringField()
+    media_reference_kind = StringField()
     group_field = StringField()
     group_media_types = DictField(StringField())
     default_group_slice = StringField()

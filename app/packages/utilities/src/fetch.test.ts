@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getFetchFunction,
   getFetchFunctionExtended,
+  getFetchUrl,
+  setFetchParameters,
   setFetchFunction,
+  type BrowserCacheMode,
 } from "./fetch";
 
 describe("fetch", () => {
@@ -43,6 +46,17 @@ describe("fetch", () => {
     });
   });
 
+  it("resolves configured paths and preserves absolute URLs", () => {
+    setFetchFunction("http://localhost:5151", {}, "/proxy");
+
+    expect(getFetchUrl("/dataset/sample/asset")).toBe(
+      "http://localhost:5151/proxy/dataset/sample/asset",
+    );
+    expect(getFetchUrl("https://signed.example/video.mp4?token=secret")).toBe(
+      "https://signed.example/video.mp4?token=secret",
+    );
+  });
+
   it("forwards external abort signals", async () => {
     const mockFetch = vi.fn(
       (_url: string, init: RequestInit) =>
@@ -67,6 +81,45 @@ describe("fetch", () => {
 
     await expect(request).rejects.toMatchObject({ name: "AbortError" });
     expect(mockFetch.mock.calls[0]?.[1].signal).toBe(controller.signal);
+  });
+
+  it("builds URLs from configured transport parameters", () => {
+    setFetchFunction(
+      "http://localhost:3000/",
+      {},
+      "/api/proxy/fiftyone-teams/",
+    );
+    expect(getFetchUrl("/dataset/id")).toBe(
+      "http://localhost:3000/api/proxy/fiftyone-teams/dataset/id",
+    );
+
+    setFetchFunction("http://localhost:8787");
+    expect(getFetchUrl("/dataset/id")).toBe("http://localhost:8787/dataset/id");
+  });
+
+  it("uses the same normalized URL for configured fetches", async () => {
+    const mockFetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", mockFetch);
+    setFetchFunction(
+      "http://localhost:3000/",
+      {},
+      "/api/proxy/fiftyone-teams/",
+    );
+
+    await getFetchFunction()("GET", "/dataset/id", null, "json", 0);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:3000/api/proxy/fiftyone-teams/dataset/id",
+      expect.any(Object),
+    );
+  });
+
+  it("rejects navigation URLs before fetch configuration", () => {
+    setFetchParameters(undefined as never);
+    expect(() => getFetchUrl("/dataset/id")).toThrow(
+      "Fetch parameters are not configured",
+    );
+    setFetchFunction("http://localhost");
   });
 
   it("reports streamed array-buffer progress", async () => {
@@ -161,5 +214,16 @@ describe("fetch", () => {
       ]),
     ).resolves.toEqual(["stream me", "stream me", "stream me", "stream me"]);
     expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("rejects the only-if-cached browser cache mode at compile time", () => {
+    // Every request is sent with mode "cors", where the Request constructor
+    // throws on "only-if-cached" — the type must not admit it
+    // @ts-expect-error -- excluded from BrowserCacheMode
+    const invalid: BrowserCacheMode = "only-if-cached";
+    void invalid;
+
+    const valid: BrowserCacheMode = "no-store";
+    expect(valid).toBe("no-store");
   });
 });

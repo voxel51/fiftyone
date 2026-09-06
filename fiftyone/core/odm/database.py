@@ -6,23 +6,22 @@ Database utilities.
 |
 """
 
+import asyncio
 import atexit
 import dataclasses
 from datetime import datetime
+import json
 import logging
 from multiprocessing.pool import ThreadPool
 import os
 from typing import Tuple
 
-import asyncio
-from bson import json_util, ObjectId
+from bson import ObjectId, json_util
 from bson.codec_options import CodecOptions
 import mongoengine
-
 from packaging.version import Version
 import pymongo
 from pymongo.asynchronous.collection import AsyncCollection
-
 from pymongo.errors import (
     BulkWriteError,
     OperationFailure,
@@ -32,13 +31,12 @@ from pymongo.errors import (
 import pytz
 
 import eta.core.utils as etau
-
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+import fiftyone.migrations as fom
 
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
@@ -950,7 +948,10 @@ def export_collection(
             progress callback function to invoke instead
     """
     if num_docs is None:
-        num_docs = len(docs)
+        try:
+            num_docs = len(docs)
+        except TypeError:
+            pass
 
     if json_dir_or_path.endswith(".json"):
         _export_collection_single(
@@ -971,9 +972,10 @@ def _export_collection_single(docs, json_path, key, num_docs, progress=None):
             total=num_docs, iters_str="docs", progress=progress
         ) as pb:
             for idx, doc in pb(enumerate(docs, 1)):
-                f.write(json_util.dumps(doc))
-                if idx < num_docs:
+                if idx > 1:
                     f.write(",")
+
+                f.write(json_util.dumps(doc))
 
         f.write("]}")
 
@@ -1016,21 +1018,110 @@ def import_collection(json_dir_or_path, key="documents"):
         a tuple of
 
         -   an iterable of BSON documents
-        -   the number of documents
+        -   the number of documents, if this can be known a priori
     """
     if json_dir_or_path.endswith(".json"):
-        return _import_collection_single(json_dir_or_path, key)
+        docs = _import_collection_single(json_dir_or_path, key)
+        return docs, None
 
     return _import_collection_multi(json_dir_or_path)
 
 
 def _import_collection_single(json_path, key):
-    with open(json_path, "r") as f:
-        docs = json_util.loads(f.read()).get(key, [])
+    decoder = json.JSONDecoder(object_hook=json_util.object_hook)
+    chunk_size = 64 * 1024
 
-    num_docs = len(docs)
+    with open(json_path, "r", encoding="utf-8") as file:
+        buffer = ""
+        position = 0
+        eof = False
 
-    return docs, num_docs
+        def _read_more():
+            nonlocal buffer, position, eof
+            if position:
+                buffer = buffer[position:]
+                position = 0
+
+            chunk = file.read(chunk_size)
+            if chunk:
+                buffer += chunk
+            else:
+                eof = True
+
+        def _skip_whitespace():
+            nonlocal position
+            while True:
+                while position < len(buffer) and buffer[position].isspace():
+                    position += 1
+
+                if position < len(buffer) or eof:
+                    return
+
+                _read_more()
+
+        def _consume(expected):
+            nonlocal position
+            _skip_whitespace()
+            if position >= len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            actual = buffer[position]
+            if actual != expected:
+                raise ValueError(
+                    "Malformed JSON collection: expected '%s'" % expected
+                )
+
+            position += 1
+
+        def _decode_value():
+            nonlocal position
+            while True:
+                _skip_whitespace()
+                try:
+                    value, position = decoder.raw_decode(buffer, position)
+                    return value
+                except json.JSONDecodeError as exc:
+                    if eof:
+                        raise ValueError("Malformed JSON collection") from exc
+
+                    _read_more()
+
+        _read_more()
+        _consume("{")
+        imported_key = _decode_value()
+        if imported_key != key:
+            raise ValueError(
+                "JSON collection does not contain the expected '%s' key" % key
+            )
+
+        _consume(":")
+        _consume("[")
+        first = True
+        while True:
+            _skip_whitespace()
+            if position >= len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            if buffer[position] == "]":
+                position += 1
+                break
+
+            if not first:
+                _consume(",")
+
+            yield _decode_value()
+            first = False
+
+        _consume("}")
+        while True:
+            _skip_whitespace()
+            if position < len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            if eof:
+                break
+
+            _read_more()
 
 
 def _import_collection_multi(json_dir):
@@ -1088,7 +1179,9 @@ def insert_documents(
             for batch in batcher:
                 batch = list(batch)
                 res = coll.insert_many(batch, ordered=ordered)
-                ids.extend(b["_id"] for b in batch)
+                batch_ids = [b["_id"] for b in batch]
+                ids.extend(batch_ids)
+
                 if hasattr(res, "nBytes") and hasattr(
                     batcher, "set_encoding_ratio"
                 ):

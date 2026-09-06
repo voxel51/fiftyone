@@ -152,6 +152,42 @@ describe("MCAP decoded messages", () => {
     expect(readBytes.mock.calls[0]?.[0].signal).toBe(controller.signal);
   });
 
+  it("interrupts a blocked cached-reader byte read with the worker signal slot", async () => {
+    const controller = new AbortController();
+    const readSignal = { current: controller.signal as AbortSignal | null };
+    const readBytes = vi.fn(
+      (request: { readonly signal?: AbortSignal }) =>
+        new Promise<never>((_resolve, reject) => {
+          request.signal?.addEventListener(
+            "abort",
+            () => reject(request.signal?.reason ?? new Error("aborted")),
+            { once: true },
+          );
+        }),
+    );
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes },
+      readSignal,
+      readerFactory: vi.fn(async (_source, readable) => {
+        await readable.read(0n, 1n);
+        return createReader();
+      }),
+    });
+    const next = client
+      .readDecodedMessages({
+        source: createMcapSourceDescriptor(),
+        topics: ["/topic"],
+      })
+      .next();
+
+    await vi.waitFor(() => expect(readBytes).toHaveBeenCalledOnce());
+    expect(readBytes.mock.calls[0]?.[0].signal).toBe(controller.signal);
+
+    controller.abort();
+
+    await expect(next).rejects.toSatisfy(isEpisodeReadCancelledError);
+  });
+
   it("aborts between messages without cancelling a concurrent read", async () => {
     const firstController = new AbortController();
     const secondController = new AbortController();

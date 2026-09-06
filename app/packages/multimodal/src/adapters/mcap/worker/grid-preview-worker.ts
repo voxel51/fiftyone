@@ -1,11 +1,15 @@
 import { setFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
+import { throwIfAborted } from "../../../utils/cancellation";
 import { errorMessage } from "../../../utils/errors";
 import {
   decodeGridPreview,
   type McapGridPreviewEntry,
 } from "../resource-client/grid-preview";
-import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
+import {
+  McapPlaybackWorkerScheduler,
+  type McapPlaybackWorkerRunContext,
+} from "./playback-worker-scheduler";
 import { createWorkerResourceClient } from "./worker-resource-client";
 import type {
   McapGridPreviewWorkerRequest,
@@ -31,6 +35,12 @@ type McapGridPreviewWorkerScope = {
 
 const workerScope = self as unknown as McapGridPreviewWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
+// Grid requests are serialized by `scheduler`, so all cached source readers
+// can safely consult one mutable request-signal slot. Cancellation then stops
+// request-owned demand reads without rebuilding the per-source reader cache.
+// The byte cache's bounded autonomous readahead intentionally omits this
+// signal: it remains background-only and reusable by a same-range modal read.
+const activeReadSignal: { current: AbortSignal | null } = { current: null };
 let fillSlotClass: "background" | "priority" | undefined;
 // Each grid preview slot serves many sources (one per visible grid cell), so
 // keep a bounded per-source cache of readers and stream selections.
@@ -69,17 +79,23 @@ workerScope.onmessage = (event: MessageEvent<McapGridPreviewWorkerRequest>) => {
   scheduler.enqueue({
     id: message.id,
     priority: message.priority,
-    run: () => runAndRespond(message),
+    run: (context) => runAndRespond(message, context),
     sourceKey: message.sourceKey,
   });
 };
 
-async function runAndRespond(message: McapGridPreviewWorkerRpcRequest) {
+async function runAndRespond(
+  message: McapGridPreviewWorkerRpcRequest,
+  context: McapPlaybackWorkerRunContext,
+) {
+  activeReadSignal.current = context.signal;
   try {
+    throwIfAborted(context.signal);
     const result = await decodeGridPreview(
       entryForSource(message.sourceKey),
       message.payload,
     );
+    throwIfAborted(context.signal);
 
     postResponse({
       id: message.id,
@@ -92,6 +108,8 @@ async function runAndRespond(message: McapGridPreviewWorkerRpcRequest) {
       id: message.id,
       ok: false,
     });
+  } finally {
+    activeReadSignal.current = null;
   }
 }
 
@@ -102,7 +120,10 @@ function entryForSource(sourceKey: string): McapGridPreviewEntry {
   }
 
   const entry = {
-    client: createWorkerResourceClient(fillSlotClass ? { fillSlotClass } : {}),
+    client: createWorkerResourceClient({
+      ...(fillSlotClass ? { fillSlotClass } : {}),
+      readSignal: activeReadSignal,
+    }),
   };
   entries.set(sourceKey, entry);
 

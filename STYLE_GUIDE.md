@@ -315,7 +315,7 @@ information.
 
 ## App Style Guide
 
-[The App](https://github.com/voxel51/fiftyone/tree/develop/app) is a TypeScript
+[The App](https://github.com/voxel51/fiftyone/tree/main/app) is a TypeScript
 monorepo in which the main package is a React 18 application.
 
 Comprehensive Style guide forthcoming.

@@ -6,6 +6,7 @@ import {
 } from "./playback-worker-types";
 import {
   mcapPlaybackWorkerOperation,
+  runMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerUnaryRequest,
 } from "./playback-worker-rpc";
 import type { McapPlaybackWorkerResourceClient } from "./worker-resource-client";
@@ -13,6 +14,28 @@ import type { McapPlaybackWorkerResourceClient } from "./worker-resource-client"
 const source = { sourceId: "fixture", url: "memory://fixture" };
 
 describe("exact-message playback worker RPC", () => {
+  it("preserves an undefined synchronized stream rejection", async () => {
+    const client = {
+      readSynchronizedMessages: vi.fn(() => Promise.reject(undefined)),
+    } as unknown as McapPlaybackWorkerResourceClient;
+    const request: McapPlaybackWorkerRpcRequest<"readSynchronizedMessages"> = {
+      id: 1,
+      payload: { source, timeNs: 1n, topics: ["/camera"] },
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      sourceKey: "source-key",
+      type: "readSynchronizedMessages",
+    };
+    let rejected = false;
+
+    try {
+      await runMcapPlaybackWorkerStreamRequest(client, request).next();
+    } catch (error) {
+      rejected = true;
+      expect(error).toBeUndefined();
+    }
+    expect(rejected).toBe(true);
+  });
+
   it("dispatches index and exact-record reads on the interactive lane", async () => {
     const indexResult = {
       entries: [{ cursor: "cursor-2", logTimeNs: 2n }],

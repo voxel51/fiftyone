@@ -140,10 +140,10 @@ Note that the install script adds to your `nvm` settings in your `~/.bashrc` or
 ### Upgrading your source installation
 
 To upgrade an existing source installation to the bleeding edge, simply pull
-the latest `develop` branch and rerun the install script:
+the latest `main` branch and rerun the install script:
 
 ```shell
-git checkout develop
+git checkout main
 git pull
 
 # Mac or Linux
@@ -162,7 +162,7 @@ the `./app` directory.
 ### Developer installation
 
 If you would like to
-[contribute to FiftyOne](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md),
+[contribute to FiftyOne](https://github.com/voxel51/fiftyone/blob/main/CONTRIBUTING.md),
 you should perform a developer installation using the `-d` flag of the install
 script:
 
@@ -201,8 +201,8 @@ bash install.sh
 ### Generating documentation
 
 See the
-[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/README.md)
-for information on building and contributing to the documentation.
+[docs guide](https://github.com/voxel51/fiftyone/blob/main/docs/README.md) for
+information on building and contributing to the documentation.
 
 ### Uninstallation
 
@@ -525,7 +525,7 @@ and tag us with @Voxel51 and #FiftyOne** 🎊
 
 FiftyOne and [FiftyOne Brain](https://github.com/voxel51/fiftyone-brain) are
 open source and community contributions are welcome! Check out the
-[contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md)
+[contribution guide](https://github.com/voxel51/fiftyone/blob/main/CONTRIBUTING.md)
 to learn how to get involved.
 
 Special thanks to these amazing people for contributing to FiftyOne!

@@ -90,7 +90,7 @@ describe("currentGroupSliceNames", () => {
       groupId: "group-id",
       groupField: "group",
       groupSlices: ["left", "pcd", "right"],
-      groupSamples: [
+      groupSamples: () => [
         { sample: { group: { name: "pcd" } } },
         { sample: { group: { name: "left" } } },
       ],
@@ -105,7 +105,7 @@ describe("currentGroupSliceNames", () => {
       groupId: null,
       groupField: "group",
       groupSlices: ["left", "pcd", "right"],
-      groupSamples: [{ sample: { group: { name: "pcd" } } }],
+      groupSamples: () => [{ sample: { group: { name: "pcd" } } }],
     });
 
     expect(testCurrentGroupSliceNames()).toStrictEqual([]);

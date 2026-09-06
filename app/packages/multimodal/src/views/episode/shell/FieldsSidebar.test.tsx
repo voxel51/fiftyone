@@ -22,18 +22,29 @@ interface FakeField {
   dbField?: string | null;
 }
 
-const { fakeFields, useActiveModalSample, useSampleFields, useTimeZone } =
-  vi.hoisted(() => ({
-    fakeFields: [] as FakeField[],
-    useActiveModalSample: vi.fn(),
-    useSampleFields: vi.fn(),
-    useTimeZone: vi.fn(),
-  }));
-
-vi.mock("@fiftyone/state", () => ({
+const {
+  fakeFields,
+  fieldVisibilityStageValue,
   useActiveModalSample,
   useSampleFields,
   useTimeZone,
+} = vi.hoisted(() => ({
+  fakeFields: [] as FakeField[],
+  fieldVisibilityStageValue: { current: null as unknown },
+  useActiveModalSample: vi.fn(),
+  useSampleFields: vi.fn(),
+  useTimeZone: vi.fn(),
+}));
+
+vi.mock("@fiftyone/state", () => ({
+  fieldVisibilityStage: "fieldVisibilityStage",
+  useActiveModalSample,
+  useSampleFields,
+  useTimeZone,
+}));
+
+vi.mock("recoil", () => ({
+  useRecoilValue: () => fieldVisibilityStageValue.current,
 }));
 
 import FieldsSidebar from "./FieldsSidebar";
@@ -47,6 +58,7 @@ describe("FieldsSidebar", () => {
   beforeEach(() => {
     useSampleFields.mockImplementation(() => fakeFields);
     useTimeZone.mockReturnValue("UTC");
+    fieldVisibilityStageValue.current = null;
   });
 
   afterEach(() => {
@@ -161,6 +173,26 @@ describe("FieldsSidebar", () => {
     expect(screen.getByTestId("episode-fields-body").textContent).toContain(
       "None",
     );
+  });
+
+  it("filters out fields hidden by the field visibility stage", () => {
+    setFields([
+      { path: "filepath", ftype: "fiftyone.core.fields.StringField" },
+      { path: "secret_field", ftype: "fiftyone.core.fields.StringField" },
+    ]);
+    useActiveModalSample.mockReturnValue({
+      filepath: "/a/b.mcap",
+      secret_field: "hidden",
+    });
+    fieldVisibilityStageValue.current = {
+      kwargs: { field_names: ["secret_field"] },
+    };
+
+    render(<FieldsSidebar />);
+
+    const body = screen.getByTestId("episode-fields-body");
+    expect(body.textContent).toContain("filepath");
+    expect(body.textContent).not.toContain("secret_field");
   });
 
   it("shows a field's description when present", () => {

@@ -43,6 +43,17 @@ const GridStreamSelector = withSuspense(LazyGridStreamSelector);
 const McapExplorer = withSuspense(LazyMcapExplorer);
 const McapExplorerIcon = withSuspense(LazyMcapExplorerIcon);
 
+/**
+ * Lazily registers the LeRobot-only view extensions (the State & Action
+ * tile) as a module side effect. The injection root awaits this alongside
+ * the LeRobot format adapter's own lazy load, so the extension exists
+ * before any session can expose `hasStateAction` and never enters the
+ * initial bundle for non-LeRobot sessions.
+ */
+export async function loadLeRobotViewExtensions(): Promise<void> {
+  await import("./episode/state-action/register-state-action-tile");
+}
+
 let registered = false;
 
 /** Registers lightweight episode view shells whose heavy graphs load on use. */
@@ -56,7 +67,9 @@ export function registerEpisodeViews(): void {
     type: PluginComponentType.SampleRenderer,
     activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
     sampleRendererOptions: {
-      supports: { extensions: ["mcap"] },
+      supports: (ctx) =>
+        ctx.media.extension === "mcap" ||
+        ctx.media.mediaReference?.kind === "lerobot-episode",
       modal: { persistAcrossSamples: true },
       grid: {
         clickBehavior: "passthrough",

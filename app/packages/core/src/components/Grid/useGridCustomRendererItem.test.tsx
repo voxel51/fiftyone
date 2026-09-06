@@ -49,6 +49,10 @@ vi.mock("@fiftyone/plugins", () => ({
   getComponent: (...args: unknown[]) => getComponent(...args),
   getSampleRendererComponent: (...args: unknown[]) =>
     getSampleRendererComponent(...args),
+  hasSampleRendererSource: (media: {
+    mediaReference?: unknown;
+    url?: string | null;
+  }) => Boolean(media.url || media.mediaReference),
   useActivePlugins: (...args: unknown[]) => useActivePlugins(...args),
 }));
 

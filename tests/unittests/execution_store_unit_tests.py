@@ -12,6 +12,8 @@ import unittest
 from unittest.mock import patch, MagicMock, ANY, Mock
 
 from bson import ObjectId
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from fiftyone.operators.store import ExecutionStoreService
 from fiftyone.operators.store.models import KeyDocument
@@ -91,6 +93,92 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
 
         # Options
         self.assertEqual(kwargs, {"upsert": True})
+
+    def test_atomic_key_primitives(self):
+        self.mock_collection.find_one.return_value = {
+            "_id": ObjectId(),
+            "value": {"version": 1},
+        }
+        self.mock_collection.find_one_and_update.return_value = {"key": "job"}
+        self.assertTrue(
+            self.store_repo.set_key_if_absent(
+                "jobs", "job", {"version": 1}, ttl=60
+            )
+        )
+        self.assertTrue(
+            self.store_repo.compare_and_set_key(
+                "jobs",
+                "job",
+                {"version": 1},
+                {"version": 2},
+                ttl=60,
+            )
+        )
+        inserted = self.mock_collection.insert_one.call_args.args[0]
+        self.assertEqual(inserted["value"], {"version": 1})
+        query = self.mock_collection.find_one_and_update.call_args.args[0]
+        self.assertEqual(query["value"], {"version": 1})
+        self.assertEqual(
+            query["_id"], self.mock_collection.find_one.return_value["_id"]
+        )
+        values = self.mock_collection.find_one_and_update.call_args.args[1][
+            "$set"
+        ]
+        self.assertEqual(values["value"], {"version": 2})
+        self.assertEqual(values["policy"], "evict")
+        self.assertIsInstance(values["expires_at"], datetime)
+        self.assertEqual(
+            self.mock_collection.find_one_and_update.call_args.kwargs,
+            {"return_document": ReturnDocument.AFTER},
+        )
+
+    def test_compare_and_set_preserves_ttl_without_new_ttl(self):
+        key_id = ObjectId()
+        self.mock_collection.find_one.return_value = {
+            "_id": key_id,
+            "value": {"first": 1, "second": 2},
+        }
+        self.mock_collection.find_one_and_update.return_value = {"_id": key_id}
+
+        result = self.store_repo.compare_and_set_key(
+            "jobs",
+            "job",
+            {"second": 2, "first": 1},
+            {"version": 2},
+        )
+
+        self.assertTrue(result)
+        query, update = self.mock_collection.find_one_and_update.call_args.args
+        self.assertEqual(query["value"], {"first": 1, "second": 2})
+        self.assertEqual(set(update["$set"]), {"value", "updated_at"})
+
+    def test_compare_and_set_applies_explicit_policy_without_ttl(self):
+        key_id = ObjectId()
+        self.mock_collection.find_one.return_value = {
+            "_id": key_id,
+            "value": {"version": 1},
+        }
+        self.mock_collection.find_one_and_update.return_value = {"_id": key_id}
+
+        result = self.store_repo.compare_and_set_key(
+            "jobs",
+            "job",
+            {"version": 1},
+            {"version": 2},
+            policy="evict",
+        )
+
+        self.assertTrue(result)
+        update = self.mock_collection.find_one_and_update.call_args.args[1]
+        self.assertEqual(update["$set"]["policy"], "evict")
+        self.assertNotIn("expires_at", update["$set"])
+
+    def test_set_if_absent_reports_duplicate_key(self):
+        self.mock_collection.insert_one.side_effect = DuplicateKeyError(
+            "duplicate"
+        )
+
+        self.assertFalse(self.store_repo.set_key_if_absent("jobs", "job", {}))
 
     def test_get_key(self):
         self.mock_collection.find_one.return_value = {

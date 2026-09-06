@@ -322,7 +322,7 @@ describe("MCAP playback worker transport", () => {
     expect(transport.isIdle()).toBe(true);
   });
 
-  it("finishes inactive streams instead of leaving readers pending", async () => {
+  it("cancels inactive streams instead of leaving readers pending", async () => {
     const worker = createWorker();
     const transport = new McapPlaybackWorkerTransport(() => false);
     const stream = transport.stream(worker, "source:1", "readDecodedMessages", {
@@ -339,10 +339,8 @@ describe("MCAP playback worker transport", () => {
       stream: true,
     });
 
-    await expect(next).resolves.toEqual({
-      done: true,
-      value: undefined,
-    });
+    await expect(next).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(transport.isIdle()).toBe(true);
   });
 
   it("yields batched worker stream items in order", async () => {
@@ -373,6 +371,42 @@ describe("MCAP playback worker transport", () => {
       value: secondMessage,
     });
 
+    const done = stream.next();
+    transport.handleResponse({
+      done: true,
+      id: 1,
+      ok: true,
+      stream: true,
+    });
+    await expect(done).resolves.toEqual({ done: true, value: undefined });
+  });
+
+  it("preserves a worker response batch when requested by the owner", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const stream = transport.stream(
+      worker,
+      "source:1",
+      "readDecodedMessages",
+      { source: createSource(), topics: ["/diagnostics"] },
+      undefined,
+      undefined,
+      undefined,
+      [],
+      true,
+    );
+    const items = [createDecodedMessage(1n), createDecodedMessage(2n)];
+    const next = stream.next();
+
+    transport.handleResponse({
+      done: false,
+      id: 1,
+      items,
+      ok: true,
+      stream: true,
+    });
+
+    await expect(next).resolves.toEqual({ done: false, value: items });
     const done = stream.next();
     transport.handleResponse({
       done: true,

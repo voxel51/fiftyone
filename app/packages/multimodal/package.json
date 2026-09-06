@@ -17,9 +17,13 @@
         "./query/decoding": "./src/query/decoding/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./temporal-tags": "./src/temporal-tags/index.ts",
-        "./temporal-tags/grid-overlay": "./src/temporal-tags/TemporalTagGridOverlay.tsx",
+        "./grid-overlay": "./src/grid-overlay/index.ts",
         "./inject": "./src/inject/index.ts",
+        "./extensions/episode-actions": "./src/extensions/episode-actions/index.ts",
+        "./extensions/grid-posters": "./src/extensions/grid-posters/index.ts",
         "./extensions/mcap-explorer": "./src/extensions/mcap-explorer/index.ts",
+        "./extensions/sidebar-tray": "./src/extensions/sidebar-tray/index.ts",
+        "./extensions/episode-intervals": "./src/extensions/episode-intervals/index.ts",
         "./extensions/timeline": "./src/extensions/timeline/index.ts",
         "./extensions/timeline/runtime": "./src/extensions/timeline/runtime.ts",
         "./extensions/tiles": "./src/extensions/tiles/index.ts",
@@ -56,8 +60,8 @@
             "temporal-tags": [
                 "src/temporal-tags/index.ts"
             ],
-            "temporal-tags/grid-overlay": [
-                "src/temporal-tags/TemporalTagGridOverlay.tsx"
+            "grid-overlay": [
+                "src/grid-overlay/index.ts"
             ],
             "query": [
                 "src/query/index.ts"
@@ -71,8 +75,20 @@
             "inject": [
                 "src/inject/index.ts"
             ],
+            "extensions/episode-actions": [
+                "src/extensions/episode-actions/index.ts"
+            ],
+            "extensions/grid-posters": [
+                "src/extensions/grid-posters/index.ts"
+            ],
             "extensions/mcap-explorer": [
                 "src/extensions/mcap-explorer/index.ts"
+            ],
+            "extensions/sidebar-tray": [
+                "src/extensions/sidebar-tray/index.ts"
+            ],
+            "extensions/episode-intervals": [
+                "src/extensions/episode-intervals/index.ts"
             ],
             "extensions/timeline": [
                 "src/extensions/timeline/index.ts"
@@ -151,6 +167,7 @@
         "@types/three": "^0.182.0",
         "babel-plugin-relay": "catalog:",
         "concurrently": "^7.2.1",
+        "fake-indexeddb": "^6.2.5",
         "react": "catalog:",
         "react-dom": "catalog:",
         "react-error-boundary": "catalog:",

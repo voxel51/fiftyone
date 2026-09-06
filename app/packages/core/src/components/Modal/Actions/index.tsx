@@ -105,7 +105,7 @@ export default () => {
         <DragActionsRow />
         <HiddenLabels modal />
         {mode === EXPLORE && <Selected modal lookerRef={activeLookerRef} />}
-        {mode === EXPLORE && <Similarity modal />}
+        {mode === EXPLORE && !isMultimodal && <Similarity modal />}
         <ColorScheme modal />
         {mode === EXPLORE && <Tag modal lookerRef={activeLookerRef} />}
         <Options modal />

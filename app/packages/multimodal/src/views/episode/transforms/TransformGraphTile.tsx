@@ -33,6 +33,7 @@ import {
   type TransformGraphSelection,
 } from "./TransformGraphCanvas";
 import styles from "./TransformGraphTile.module.css";
+import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
 
 type Selection = TransformGraphSelection;
 
@@ -58,6 +59,14 @@ const TransformGraphTile: React.FC<EpisodeTileProps> = () => {
     () => analyzeTransformTopology(scan.edges, scan.frameUses),
     [scan.edges, scan.frameUses],
   );
+  const visibleStreams = useMemo(
+    () => [
+      ...analysis.edges.flatMap((edge) => edge.sourceStreamIds),
+      ...analysis.frames.flatMap((frame) => frame.streamIds),
+    ],
+    [analysis],
+  );
+  usePublishVisibleStreams(visibleStreams);
   const layout = useMemo(() => layoutTransformTopology(analysis), [analysis]);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const matchingFrameIds = useMemo(

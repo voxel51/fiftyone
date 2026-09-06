@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EpisodeSource } from "../ports";
-import { openEpisodePreviewSession } from "./episode-resources";
+import type { EpisodeManifest } from "../ir";
+import type { EpisodeSource, EpisodeSourceHints } from "../ports";
+import {
+  openEpisodePreviewSession,
+  openEpisodeSession,
+} from "./episode-resources";
 
 const resourceHarness = vi.hoisted(() => ({
   byteResources: { read: vi.fn() },
@@ -49,6 +53,74 @@ describe("episode resources", () => {
       { signal: controller.signal },
     );
   });
+
+  it("loads the adapter and durable hints concurrently, then opens once", async () => {
+    let finishAdapter!: (adapter: {
+      id: string;
+      open: ReturnType<typeof vi.fn>;
+    }) => void;
+    let finishHints!: (hints: EpisodeSourceHints) => void;
+    const open = vi.fn().mockResolvedValue({ dispose: vi.fn() });
+    resourceHarness.loadFormatAdapter.mockImplementation(
+      () =>
+        new Promise<{ id: string; open: ReturnType<typeof vi.fn> }>(
+          (resolve) => {
+            finishAdapter = resolve;
+          },
+        ),
+    );
+    const resolveHints = vi.fn(
+      () =>
+        new Promise<EpisodeSourceHints>((resolve) => {
+          finishHints = resolve;
+        }),
+    );
+    const source = { ...createSource(), resolveHints };
+
+    const pending = openEpisodeSession(
+      { mediaType: "multimodal", path: "sample.mcap" },
+      source,
+    );
+
+    expect(resourceHarness.loadFormatAdapter).toHaveBeenCalledTimes(1);
+    expect(resolveHints).toHaveBeenCalledTimes(1);
+    finishAdapter({ id: "mcap", open });
+    finishHints({
+      adapterId: "mcap",
+      manifestHint: createManifest("sample-a"),
+    });
+    await pending;
+
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        episodeId: "sample-a",
+        manifestHint: createManifest("sample-a"),
+      }),
+      resourceHarness.byteResources,
+      undefined,
+    );
+    expect(open.mock.calls[0]?.[0]).not.toHaveProperty("resolveHints");
+  });
+
+  it("discards hint bundles produced for a different adapter", async () => {
+    const open = vi.fn().mockResolvedValue({ dispose: vi.fn() });
+    resourceHarness.loadFormatAdapter.mockResolvedValue({ id: "mcap", open });
+    const source = {
+      ...createSource(),
+      resolveHints: vi.fn(async () => ({
+        adapterId: "fixture",
+        manifestHint: createManifest("wrong-adapter"),
+      })),
+    };
+
+    await openEpisodeSession(
+      { mediaType: "multimodal", path: "sample.mcap" },
+      source,
+    );
+
+    expect(open.mock.calls[0]?.[0]).not.toHaveProperty("manifestHint");
+  });
 });
 
 function createSource(): EpisodeSource {
@@ -58,5 +130,14 @@ function createSource(): EpisodeSource {
       resolve: vi.fn(),
     },
     episodeId: "sample-a",
+  };
+}
+
+function createManifest(episodeId: string): EpisodeManifest {
+  return {
+    episodeId,
+    streams: [],
+    timeDomain: { id: "log", kind: "timestamp" },
+    timeRange: { endNs: 1n, startNs: 0n },
   };
 }

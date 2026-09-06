@@ -13,6 +13,18 @@ export const selectionCountState = atom<number | null>({
 });
 
 /**
+ * The active selection's SAMPLE count, when the publisher knows it.
+ * `selectionCountState` counts points, and one sample can own many
+ * points (every patch of an image, every window of an episode), so
+ * sample-facing chrome reads this and falls back to the point count
+ * when it is null (a server-resolved stage may not enumerate samples).
+ */
+export const selectionSampleCountState = atom<number | null>({
+  key: "embeddings-v2/selection-sample-count",
+  default: null,
+});
+
+/**
  * Clear-selection requests from outside the plot view (the tab pill's
  * dismiss). A monotonic nonce rather than a boolean: the plot view
  * reacts to changes, so repeated requests always fire.

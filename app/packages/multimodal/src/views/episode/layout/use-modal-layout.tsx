@@ -143,6 +143,29 @@ function resolveSemanticImageBindings(
 }
 
 /**
+ * Same idea as {@link resolveSemanticImageBindings} for audio tiles: maps
+ * each tile's persisted semantic key back to whichever runtime source
+ * carries it now. Kept separate from the image map because the image path
+ * feeds `resolveInitialImageBindings`, which reasons about image tiles only.
+ */
+function resolveSemanticAudioBindings(
+  scopeKey: string | null,
+  sources: readonly SceneSource[],
+): Readonly<Record<string, string>> {
+  if (!scopeKey) return {};
+  const sourceIndex = createSemanticSourceIndex(sources);
+  const result: Record<string, string> = {};
+  for (const [tileId, tile] of Object.entries(
+    readSidebarPreferences(scopeKey).tiles,
+  )) {
+    if (!tile.audioSourceKey) continue;
+    const source = sourceIndex.representativeByKey.get(tile.audioSourceKey);
+    if (source) result[tileId] = source.id;
+  }
+  return result;
+}
+
+/**
  * Mount-time layout state for the episode modal: the user's persisted
  * sidebar visibility and tile arrangement when one restores cleanly
  * against the current scene, the resolver's defaults otherwise — a
@@ -196,6 +219,14 @@ export function useModalLayout({
       ),
     [cameraPreferenceField, datasetId, sources],
   );
+  const semanticAudioBindings = useMemo(
+    () =>
+      resolveSemanticAudioBindings(
+        cameraScopeKey(datasetId, cameraPreferenceField),
+        sources,
+      ),
+    [cameraPreferenceField, datasetId, sources],
+  );
   const boundDefaultTiles = useMemo(
     () =>
       buildResolvedTiles(
@@ -203,8 +234,15 @@ export function useModalLayout({
         resolveTile,
         sources,
         semanticImageBindings,
+        semanticAudioBindings,
       ),
-    [resolveTile, resolved.tiles, semanticImageBindings, sources],
+    [
+      resolveTile,
+      resolved.tiles,
+      semanticAudioBindings,
+      semanticImageBindings,
+      sources,
+    ],
   );
 
   const restored = useMemo(
@@ -216,11 +254,13 @@ export function useModalLayout({
         resolveTile,
         persisted?.tileTitles,
         semanticImageBindings,
+        semanticAudioBindings,
       ),
     [
       availableTileTypes,
       persisted,
       resolveTile,
+      semanticAudioBindings,
       semanticImageBindings,
       sources,
     ],
@@ -385,6 +425,7 @@ function buildResolvedTiles(
   resolveTile: TileResolver,
   sources?: readonly SceneSource[],
   imageBindings?: Readonly<Record<string, string>>,
+  audioBindings?: Readonly<Record<string, string>>,
 ): Record<string, TilingTile> {
   const resolvedImageBindings =
     sources && imageBindings
@@ -407,7 +448,9 @@ function buildResolvedTiles(
     if (!definition) continue;
     const Tile = definition.Tile;
     const initialSourceId =
-      resolvedImageBindings?.get(tile.id) ?? tile.initialSourceId;
+      resolvedImageBindings?.get(tile.id) ??
+      audioBindings?.[tile.id] ??
+      tile.initialSourceId;
     result[tile.id] = {
       render: () => <Tile initialSourceId={initialSourceId} />,
       title: tile.title,
@@ -457,6 +500,7 @@ function rebuildTilesFromLayout(
   resolveTile: TileResolver,
   tileTitles?: Readonly<Record<string, string>>,
   imageBindings?: Readonly<Record<string, string>>,
+  audioBindings?: Readonly<Record<string, string>>,
 ): {
   layout: MosaicNode<string>;
   manualTileTitles: Record<string, string>;
@@ -495,7 +539,10 @@ function rebuildTilesFromLayout(
     if (!type) return null;
     const definition = resolveTile(type);
     const Tile = definition?.Tile ?? MissingTile;
-    const initialSourceId = resolvedImageBindings.get(id);
+    // Image tiles resolve through the ranked-fallback pass above; audio
+    // tiles restore straight from their persisted semantic key.
+    const initialSourceId =
+      resolvedImageBindings.get(id) ?? audioBindings?.[id];
     const restoredTitle = tileTitles?.[id];
     const title = restoredTitle ?? definition?.typeLabel ?? "Unavailable tile";
     if (restoredTitle) {

@@ -35,7 +35,7 @@ export type TilingHeaderCaption =
 export interface TilingHeaderProps {
   fileName: string;
   headerCaption?: TilingHeaderCaption;
-  /** Optional compact controls rendered beside the filename/caption stack. */
+  /** Optional compact controls rendered immediately before the layout menu. */
   headerActions?: ReactNode;
   /**
    * Custom content for the add-tile menu (use the voodo Menu*
@@ -107,13 +107,13 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         ) : null}
       </div>
 
-      {headerActions ? (
-        <div className={styles.headerActions}>{headerActions}</div>
-      ) : null}
-
       <div className={styles.spacer} />
 
       <div className={styles.actions}>
+        {headerActions ? (
+          <div className={styles.headerActions}>{headerActions}</div>
+        ) : null}
+
         {tileMenu && (
           <div className={styles.dropdownSlot}>
             <Dropdown

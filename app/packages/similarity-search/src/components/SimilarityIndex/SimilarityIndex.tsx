@@ -18,11 +18,11 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
-import { BrainKeyConfig } from "../../types";
+import { AnnotatedBrainKeyConfig } from "../../types";
 import SimilaritySearchCTA from "../SimilaritySearchCTA";
 
 type SimilarityIndexProps = {
-  brainKeys: BrainKeyConfig[];
+  brainKeys: AnnotatedBrainKeyConfig[];
   onBack: () => void;
 };
 
@@ -41,66 +41,78 @@ export default function SimilarityIndex({
   }, []);
   const listItems = useMemo(
     () =>
-      brainKeys.map((bk) => ({
-        id: bk.key,
-        data: {
-          primaryContent: (
-            <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-              <span style={{ fontWeight: "bold" }}>{bk.key}</span>
-              {bk.model && (
-                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                  Model: {bk.model}
-                </Text>
-              )}
-              {bk.backend && (
-                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                  Backend: {bk.backend}
-                </Text>
-              )}
-              {bk.metric && (
-                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                  Metric: {bk.metric}
-                </Text>
-              )}
-              {bk.identifiers?.map((id) => (
-                <Text
-                  key={id.label}
-                  variant={TextVariant.Md}
-                  color={TextColor.Secondary}
-                >
-                  {id.label}: {id.value}
-                </Text>
-              ))}
-              <Stack
-                orientation={Orientation.Row}
-                spacing={Spacing.Xs}
-                align={Align.Center}
+      brainKeys.map((bk) => {
+        const details = (
+          <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+            <span style={{ fontWeight: "bold" }}>{bk.key}</span>
+            {bk.model && (
+              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                Model: {bk.model}
+              </Text>
+            )}
+            {bk.backend && (
+              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                Backend: {bk.backend}
+              </Text>
+            )}
+            {bk.metric && (
+              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                Metric: {bk.metric}
+              </Text>
+            )}
+            {bk.identifiers?.map((id) => (
+              <Text
+                key={id.label}
+                variant={TextVariant.Md}
+                color={TextColor.Secondary}
               >
-                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                  Supports text queries?
-                </Text>
-                <Icon
-                  name={bk.supports_prompts ? IconName.Check : IconName.Close}
-                  size={Size.Sm}
-                  color={
-                    bk.supports_prompts ? IconColor.Success : IconColor.Error
-                  }
-                />
-              </Stack>
-              {bk.embeddings_field && (
-                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                  Embeddings field: {bk.embeddings_field}
-                </Text>
-              )}
-              {bk.patches_field && (
-                <Text variant={TextVariant.Md} color={TextColor.Muted}>
-                  Patches field: {bk.patches_field}
-                </Text>
-              )}
+                {id.label}: {id.value}
+              </Text>
+            ))}
+            <Stack
+              orientation={Orientation.Row}
+              spacing={Spacing.Xs}
+              align={Align.Center}
+            >
+              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                Supports text queries?
+              </Text>
+              <Icon
+                name={bk.supports_prompts ? IconName.Check : IconName.Close}
+                size={Size.Sm}
+                color={
+                  bk.supports_prompts ? IconColor.Success : IconColor.Error
+                }
+              />
             </Stack>
-          ),
-        },
-      })),
+            {bk.embeddings_field && (
+              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                Embeddings field: {bk.embeddings_field}
+              </Text>
+            )}
+            {bk.patches_field && (
+              <Text variant={TextVariant.Md} color={TextColor.Muted}>
+                Patches field: {bk.patches_field}
+              </Text>
+            )}
+          </Stack>
+        );
+        return {
+          id: bk.key,
+          data: {
+            // Indexes that can't be used in the current view are shown
+            // grayed out with an explanatory tooltip
+            style: bk.compatible ? undefined : { opacity: 0.5 },
+            primaryContent: bk.compatible ? (
+              details
+            ) : (
+              <Tooltip content={bk.incompatibleReason}>
+                <div>{details}</div>
+              </Tooltip>
+            ),
+          },
+        };
+      }),
     [brainKeys],
   );
 

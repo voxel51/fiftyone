@@ -68,7 +68,7 @@ export function serializeCacheKey(parts: readonly (string | null)[]): string {
 /**
  * Estimates nested decoded payload size for cache eviction.
  */
-function estimateFieldSize(
+function estimateStructuralFieldSize(
   value: unknown,
   visited = new WeakSet<object>(),
 ): number {
@@ -76,10 +76,10 @@ function estimateFieldSize(
     return 0;
   }
   if (value instanceof ArrayBuffer) {
-    return value.byteLength;
+    return 0;
   }
   if (ArrayBuffer.isView(value)) {
-    return value.byteLength;
+    return 0;
   }
   if (typeof value === "string") {
     // Cache sizing is an eviction heuristic, not exact encoded-byte accounting.
@@ -102,13 +102,13 @@ function estimateFieldSize(
   }
   if (Array.isArray(value)) {
     return value.reduce(
-      (size, item) => size + estimateFieldSize(item, visited),
+      (size, item) => size + estimateStructuralFieldSize(item, visited),
       0,
     );
   }
   if (typeof value === "object") {
     return Object.values(value).reduce(
-      (size, item) => size + estimateFieldSize(item, visited),
+      (size, item) => size + estimateStructuralFieldSize(item, visited),
       0,
     );
   }
@@ -116,44 +116,60 @@ function estimateFieldSize(
   return ESTIMATED_UNKNOWN_FIELD_SIZE_BYTES;
 }
 
-function measuredBackingStoreBytes(
-  value: unknown,
-  visited = new WeakSet<object>(),
-): number {
-  if (value === undefined || value === null) return 0;
-  if (value instanceof ArrayBuffer) {
-    if (visited.has(value)) return 0;
-    visited.add(value);
-    return value.byteLength;
-  }
-  if (ArrayBuffer.isView(value)) {
-    if (visited.has(value.buffer)) return 0;
-    visited.add(value.buffer);
-    return value.byteLength;
-  }
-  if (typeof value !== "object" || visited.has(value)) return 0;
-  visited.add(value);
-  return Object.values(value).reduce(
-    (size, item) => size + measuredBackingStoreBytes(item, visited),
-    0,
-  );
-}
-
 /** Estimates one decoded output for every cache and retention byte ledger. */
 export function decodedOutputSizeBytes(output: DecodedOutput): number {
-  const hintedBytes = output.resourceHints?.sizeBytes;
+  const hint = output.resourceHints?.sizeBytes;
+  const hintedBytes =
+    typeof hint === "number" && Number.isSafeInteger(hint) && hint >= 0
+      ? hint
+      : undefined;
+  // A decoder hint is not a retained-size contract. Count each underlying
+  // binary store once even when visualization data and transfer hints expose
+  // the same buffer through multiple views.
+  const binaryBytes = estimateUniqueBinaryBytes(output);
+  const payloadBytes = Math.max(hintedBytes ?? 0, binaryBytes);
+  const auxiliaryBytes =
+    estimateStructuralFieldSize(output.attributes) +
+    estimateStructuralFieldSize(output.timing);
   const bytes =
-    hintedBytes === undefined
-      ? estimateFieldSize(output)
-      : Number.isSafeInteger(hintedBytes) && hintedBytes >= 0
-        ? Math.min(
-            Number.MAX_SAFE_INTEGER,
-            hintedBytes +
-              estimateFieldSize(output.attributes) +
-              estimateFieldSize(output.timing),
-          )
-        : measuredBackingStoreBytes(output);
-  return Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0;
+    hint === undefined
+      ? estimateStructuralFieldSize(output) + binaryBytes
+      : hintedBytes === undefined
+        ? binaryBytes + auxiliaryBytes
+        : payloadBytes > 0
+          ? payloadBytes + auxiliaryBytes
+          : 0;
+  if (Number.isNaN(bytes) || bytes <= 0) return 0;
+  return Math.min(Number.MAX_SAFE_INTEGER, Math.ceil(bytes));
+}
+
+function estimateUniqueBinaryBytes(value: unknown): number {
+  const buffers = new Set<ArrayBufferLike>();
+  const visited = new WeakSet<object>();
+  const visit = (candidate: unknown): number => {
+    if (candidate instanceof ArrayBuffer) {
+      if (buffers.has(candidate)) return 0;
+      buffers.add(candidate);
+      return candidate.byteLength;
+    }
+    if (ArrayBuffer.isView(candidate)) {
+      const buffer = candidate.buffer;
+      if (buffers.has(buffer)) return 0;
+      buffers.add(buffer);
+      return buffer.byteLength;
+    }
+    if (!candidate || typeof candidate !== "object") return 0;
+    if (visited.has(candidate)) return 0;
+    visited.add(candidate);
+    if (Array.isArray(candidate)) {
+      return candidate.reduce((bytes, item) => bytes + visit(item), 0);
+    }
+    return Object.values(candidate).reduce(
+      (bytes, item) => bytes + visit(item),
+      0,
+    );
+  };
+  return visit(value);
 }
 
 function normalizeCacheSizeBytes(value: number, minimum: number): number {

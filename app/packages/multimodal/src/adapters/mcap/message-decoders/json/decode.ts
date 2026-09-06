@@ -49,3 +49,92 @@ export function finiteNumberField(
     ? value
     : undefined;
 }
+
+/**
+ * Decodes a base64 string into bytes. JSON-encoded Foxglove messages carry
+ * binary payloads (`data`) this way, per their schema's
+ * `contentEncoding: "base64"`.
+ */
+export function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/** Nanoseconds per second — the upper bound for a Foxglove `Time.nsec`. */
+const NS_PER_SEC = 1_000_000_000;
+
+/**
+ * Converts a Foxglove JSON `{sec, nsec}` record to nanoseconds, or
+ * `undefined` when absent or out of range.
+ *
+ * Foxglove `Time` requires `0 <= nsec < 1e9`, a non-negative `sec`, and
+ * integers for both. A message outside that range would otherwise yield a
+ * timestamp for a different instant, silently shifting audio alignment —
+ * better to report no timestamp than a wrong one. Fractional values are
+ * rejected for the same reason: truncating `sec: 1.9` to `1` moves the
+ * instant by nearly a second without reporting an invalid message.
+ */
+export function jsonTimestampNs(
+  timestamp: Record<string, unknown> | undefined,
+): bigint | undefined {
+  const sec = finiteNumberField(timestamp, "sec");
+  if (sec === undefined || !Number.isInteger(sec) || sec < 0) return undefined;
+  const nsec = finiteNumberField(timestamp, "nsec") ?? 0;
+  if (!Number.isInteger(nsec) || nsec < 0 || nsec >= NS_PER_SEC) {
+    return undefined;
+  }
+  return BigInt(sec) * BigInt(NS_PER_SEC) + BigInt(nsec);
+}
+
+/**
+ * The decode preamble every JSON Foxglove media message shares: parse the
+ * record, require a base64 `data` string, and read the timestamp.
+ *
+ * Returns a `reason` instead of throwing so callers can degrade to
+ * attributes-only output — the synchronized-batch read path has no
+ * per-message error isolation, and one throwing decoder would reject whole
+ * playback windows for every topic in them.
+ */
+export function decodeJsonMediaMessage(
+  bytes: Uint8Array,
+  kind: string,
+):
+  | {
+      ok: true;
+      message: Record<string, unknown>;
+      data: Uint8Array;
+      timestampNs?: bigint;
+    }
+  | { ok: false; reason: string } {
+  let message: Record<string, unknown>;
+  try {
+    message = decodeJsonRecord(bytes);
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : "Invalid JSON message",
+    };
+  }
+
+  if (typeof message.data !== "string") {
+    return { ok: false, reason: `JSON ${kind} message has no base64 data` };
+  }
+
+  let data: Uint8Array;
+  try {
+    data = base64ToBytes(message.data);
+  } catch {
+    return { ok: false, reason: `JSON ${kind} data is not valid base64` };
+  }
+
+  return {
+    ok: true,
+    message,
+    data,
+    timestampNs: jsonTimestampNs(recordField(message, "timestamp")),
+  };
+}
