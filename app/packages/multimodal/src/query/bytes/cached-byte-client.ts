@@ -100,6 +100,32 @@ export function createCachedByteClient(
   reader: ByteClient,
   caches: ByteCacheLayers,
 ): ByteClient {
+  // A ranged response reports the object's total size, so the first read of
+  // a source teaches every read after it how far a fill may widen. Sources
+  // reached by signed URL never carry a size up front.
+  const learnedSizes = new Map<string, string>();
+
+  const withKnownSize = (
+    request: ByteRangeReadRequest,
+  ): ByteRangeReadRequest => {
+    if (request.source.sizeBytes !== undefined) return request;
+
+    const learned = learnedSizes.get(request.source.sourceId);
+    if (learned === undefined) return request;
+
+    return {
+      ...request,
+      source: { ...request.source, sizeBytes: learned },
+    };
+  };
+
+  const learnSize = (result: ByteRangeReadResult) => {
+    const size = result.source.sizeBytes;
+    if (size !== undefined && !learnedSizes.has(result.source.sourceId)) {
+      learnedSizes.set(result.source.sourceId, size);
+    }
+  };
+
   const pendingByteReads = new Map<string, Promise<ByteFillOutcome>>();
   const fillLocks = caches.locks || undefined;
   const fillSlotFloor = byteFillSlotFloor(caches.fillSlotClass);
@@ -116,6 +142,7 @@ export function createCachedByteClient(
     fillRequest: ByteRangeReadRequest,
   ): Promise<ByteFillOutcome> => {
     const result = await reader.readBytes(fillRequest);
+    learnSize(result);
     await caches.memory.put(result);
     return { cacheResult: "fetched", result };
   };
@@ -433,7 +460,8 @@ export function createCachedByteClient(
 
   return {
     planRead(request) {
-      return planByteCacheFillRequest(request, resolveBlockSizeBytes(request));
+      const sized = withKnownSize(request);
+      return planByteCacheFillRequest(sized, resolveBlockSizeBytes(sized));
     },
 
     async stat(source, signal) {
@@ -442,9 +470,10 @@ export function createCachedByteClient(
 
     async readBytes(request) {
       const startMs = byteReadNowMs();
+      const sized = withKnownSize(request);
       const fillRequest = planByteCacheFillRequest(
-        request,
-        resolveBlockSizeBytes(request),
+        sized,
+        resolveBlockSizeBytes(sized),
       );
 
       maybeQueueRemoteReadahead(request, fillRequest);
