@@ -204,6 +204,34 @@ in every conversation, at three scopes:
 
 Configure instructions from the Agent's settings panel.
 
+.. _enterprise-agent-knowledge:
+
+Grounding answers in the documentation
+______________________________________
+
+The Agent can ground its answers in the live FiftyOne documentation. Before
+answering a question about the SDK, an operator, or an API, it searches a
+knowledge base that stays continuously in sync with the docs, so answers
+reflect the current release and cite the sources they came from.
+
+This is powered by a `Kapa <https://www.kapa.ai>`_ knowledge base hosted by
+Voxel51. To enable it, set the ``KAPA_API_KEY`` secret in your deployment.
+Your customer success contact can provide the key.
+
+.. code-block:: shell
+
+    export KAPA_API_KEY=...
+
+The lookup is optional, and the Agent works without it. We strongly recommend
+enabling it: without the key, FiftyOne questions are answered from the model's
+general knowledge, which is not tied to your version and drifts as the product
+evolves.
+
+.. note::
+
+    No dataset content is sent to the knowledge base. Only the search query
+    the Agent formulates is transmitted.
+
 .. _enterprise-agent-using:
 
 Using the agent
