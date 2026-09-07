@@ -162,24 +162,50 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
  * Returns the scene plus whether its canonical media is installed; feed
  * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}.
  */
-export function useLighterTileScene({
+export function useLighterMediaScene({
   hostRef,
   dims,
   sceneIdPrefix,
   sceneIdDeps = [],
+  readOnly = false,
+  multipleSelection = false,
+  filterLabels = false,
 }: {
   hostRef: RefObject<HTMLDivElement | null>;
   dims: Dimensions | null;
   sceneIdPrefix: string;
   sceneIdDeps?: DependencyList;
+  /**
+   * Block geometry mutation while keeping selection and hover. Explore sets
+   * this: it renders labels it has no way to save, so an accidental drag
+   * would otherwise commit a silent edit.
+   */
+  readOnly?: boolean;
+  /**
+   * Let the user build up a selection of several overlays at once, each click
+   * toggling one in or out. Explore sets this: selecting labels IS the
+   * interaction there (it feeds tagging), where on the annotation surfaces a
+   * selection is the target of the next edit and only one can be.
+   */
+  multipleSelection?: boolean;
+  /**
+   * Apply the sidebar's confidence / label / tag filters and hidden-labels
+   * set to the canvas, the way the looker's `Overlay.isShown` did. Off by
+   * default (and for Annotate) for the same reason `useModalLookerOptions`
+   * itself defaults `withFilter` to `false`: computing it costs a Recoil
+   * read on every filter change, worth paying only where a hidden label is
+   * actually meant to disappear rather than stay editable.
+   */
+  filterLabels?: boolean;
 }): {
   scene: LighterScene;
   canonicalMediaReady: boolean;
 } {
   const canvas = useAttachedSingletonCanvas(hostRef);
 
-  // Modal options so activePaths / showOverlays / alpha match the sidebar.
-  const options = useModalLookerOptions();
+  // Modal options so activePaths / showOverlays / alpha (and, for Explore,
+  // the sidebar filter) match the sidebar.
+  const options = useModalLookerOptions(filterLabels);
 
   // Fresh scene id whenever `sceneIdDeps` change, so a new source gets its
   // own scene.
@@ -191,6 +217,31 @@ export function useLighterTileScene({
   );
 
   const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);
+
+  // Applied per scene, so a re-minted scene (new source) comes back read-only
+  // too. Not order-sensitive against overlay installation: `setReadOnly` stores
+  // the flag on the scene, re-walks the overlays already present, and
+  // `Scene2D.addOverlay` applies it to every later arrival. So overlays
+  // installed before this effect (the sync bundles run as child components, and
+  // child effects fire ahead of this one) are still stripped of their move
+  // affordances.
+  useEffect(() => {
+    if (!scene || scene.getSceneId() !== sceneId) {
+      return;
+    }
+    scene.setReadOnly(readOnly);
+  }, [scene, sceneId, readOnly]);
+
+  // Same per-scene application as `readOnly` above, and for the same reason: a
+  // re-minted scene (new source) starts out single-select and has to be told
+  // again. Selection is scene state rather than an overlay affordance, so
+  // unlike read-only this one needs no walk over the overlays.
+  useEffect(() => {
+    if (!scene || scene.getSceneId() !== sceneId) {
+      return;
+    }
+    scene.setMultipleSelection(multipleSelection);
+  }, [scene, sceneId, multipleSelection]);
 
   useSceneColorScheme(scene, sceneId);
   const canonicalMediaReady = useCanonicalMediaInstall(scene, sceneId, dims);

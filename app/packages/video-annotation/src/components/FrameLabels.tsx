@@ -15,6 +15,10 @@ import {
   useLabelSchemasLoaded,
   useVisibleLabelSchemas,
 } from "../state/accessors";
+import {
+  useExploreFrameLabelFields,
+  useExploreTemporalDetectionFieldPaths,
+} from "../state/exploreFrameLabelFields";
 import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
@@ -62,7 +66,6 @@ import {
   type TemporalDetectionLabelLike,
 } from "../tracks/temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
-import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
 
@@ -179,8 +182,31 @@ const toPerFrameField = (field: string): string =>
  */
 export const RegisterFrameLabels: React.FC<{
   sample: ModalSample;
-  children: React.ReactNode;
-}> = ({ sample, children }) => {
+  /**
+   * Optional. Prefer rendering this registrar as a childless SIBLING of the
+   * surface: it swaps its wrapper component when duration lands, and re-keys on
+   * the resolved `frameCount`, so anything nested here is unmounted and rebuilt
+   * on the way to ready. That is ruinous when the subtree owns the `<video>`
+   * the duration comes from. Consumers reach the stream through
+   * `useFrameLabelsStream` (see `usePublishFrameLabelsStream` below) rather
+   * than through position, so nesting buys nothing.
+   */
+  children?: React.ReactNode;
+  /**
+   * Which surface this is registering for, which decides WHICH per-frame
+   * fields get fetched.
+   *
+   * Annotate reads the annotation schemas (`useFrameLabelFields`), which know
+   * only the types the editor can create — Detections and Polylines — and only
+   * the ones activated in the Schema Manager. Explore paints from the
+   * sidebar's active paths instead, across every type the per-frame pipeline
+   * can project. Fetching one set while registering and painting the other is
+   * how `frames.keypoints` and `frames.classifications` ended up never
+   * arriving: the projection asked for them, `/video-labels/window` was never
+   * told to return them.
+   */
+  mode?: "annotate" | "explore";
+}> = ({ sample, children, mode = "annotate" }) => {
   const duration = useDuration();
   const dataset = useDatasetName();
   const view = useView();
@@ -192,7 +218,13 @@ export const RegisterFrameLabels: React.FC<{
   // Every active per-frame field — the stream fetches + seeds all of them so the
   // engine (and the sidebar/canvas/timeline that read it) sees more than just
   // the primary detection field (e.g. polylines, masked detections).
-  const labelFields = useFrameLabelFields();
+  //
+  // Both hooks run unconditionally (hooks cannot be called in a branch) and
+  // the mode picks between them; each is a cheap state read.
+  const annotationLabelFields = useFrameLabelFields();
+  const exploreLabelFields = useExploreFrameLabelFields();
+  const labelFields =
+    mode === "explore" ? exploreLabelFields : annotationLabelFields;
 
   const frameRate = getModalSampleFrameRate(sample);
   const ready =
@@ -318,10 +350,18 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
 function useTemporalDetectionTracks(
   sample: ModalSample | undefined,
   resolveColor: TemporalDetectionColorResolver,
+  /**
+   * Explore's active TD field set. Same override, same reason, as
+   * {@link useTemporalOverlaySync}'s: `useVisibleLabelSchemas()` stays empty
+   * in an Explore-only session, which without this dropped every TD row from
+   * the timeline exactly as it dropped every TD box from the canvas.
+   */
+  exploreVisible?: ReadonlySet<string>,
 ): Track[] {
   const temporalSample = useEngineTemporalSample();
   const frameRate = getModalSampleFrameRate(sample);
-  const visible = useVisibleLabelSchemas();
+  const annotationVisible = useVisibleLabelSchemas();
+  const visible = exploreVisible ?? annotationVisible;
 
   return useMemo(() => {
     if (
@@ -582,9 +622,36 @@ export const FrameLabelsTracks: React.FC<{
   sample?: ModalSample;
   /** Cap on the timeline drawer body (px); it scrolls internally past this. */
   maxSize?: number;
-}> = ({ sample, maxSize }) => {
+  /**
+   * Host content for the controls row, after the playback cluster. Passed
+   * through to `TimelineWithTracks` rather than assumed here: this component
+   * renders the same read-only track data in Explore and in Annotate, and
+   * only Annotate has editing actions to offer.
+   */
+  extraActions?: React.ReactNode;
+  /**
+   * Host content for the controls row's TRAILING group, beside the drawer
+   * chevron. Where a surface's own action cluster belongs — Explore puts its
+   * fit / JSON / help buttons here.
+   */
+  trailingActions?: React.ReactNode;
+  /**
+   * Which surface's per-frame field set the object tracks come from. Same
+   * choice, and for the same reason, as {@link RegisterFrameLabels}' — the
+   * rows have to describe the fields the stream actually fetched.
+   */
+  mode?: "annotate" | "explore";
+}> = ({
+  sample,
+  maxSize,
+  extraActions,
+  trailingActions,
+  mode = "annotate",
+}) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
+
+  const exploreLabelFields = useExploreFrameLabelFields();
 
   // Persisted globally so switching samples keeps the drawer open/closed.
   const [drawerOpen, setDrawerOpen] = useTimelineDrawerOpen();
@@ -604,10 +671,16 @@ export const FrameLabelsTracks: React.FC<{
   const getDynamicAttributeNames = useDynamicAttributeNamesGetter();
 
   const { tracks: frameTracks, resolved: frameTracksResolved } =
-    useFrameDerivedTracks(resolveObjectColor, getDynamicAttributeNames);
+    useFrameDerivedTracks(
+      resolveObjectColor,
+      getDynamicAttributeNames,
+      mode === "explore" ? exploreLabelFields : undefined,
+    );
+  const exploreTdFields = useExploreTemporalDetectionFieldPaths();
   const temporalDetectionTracks = useTemporalDetectionTracks(
     sample,
     resolveTemporalDetectionColor,
+    mode === "explore" ? exploreTdFields : undefined,
   );
 
   // Readiness for the data-timeline-loaded test seam: schemas must have
@@ -679,7 +752,8 @@ export const FrameLabelsTracks: React.FC<{
       <TimelineWithTracks
         decorateTrack={decorateTrack}
         scrollerRef={timelineScroller}
-        extraControls={<VideoAnnotationToolbar />}
+        extraActions={extraActions}
+        trailingActions={trailingActions}
         loaded={timelineLoaded}
         maxSize={maxSize}
         drawerOpen={drawerOpen}

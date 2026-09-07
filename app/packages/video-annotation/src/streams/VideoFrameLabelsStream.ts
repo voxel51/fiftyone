@@ -102,6 +102,20 @@ const MASK_GATE_ENABLED = readMaskGateEnabled();
  * decode-ahead lead. Sized so the pinned set stays small next to any sane cache
  * capacity, since held masks are exempt from eviction.
  */
+/**
+ * Chunks `prefetch` will start in one nudge.
+ *
+ * Enough to stay ahead of real-time playback across a network round-trip
+ * (each chunk is `chunkSize` frames — 2s at 30fps — so this is several
+ * seconds of headroom), while staying far below the browser's per-origin
+ * connection limit so the <video> element's own range requests still get
+ * through.
+ */
+const MAX_CHUNKS_IN_FLIGHT = 4;
+
+/** Seconds of labels to keep fetched ahead of the playhead. */
+const LABEL_LOOKAHEAD_SECONDS = 12;
+
 const MASK_HOLD_AHEAD_FRAMES = 12;
 
 /** Frames kept pinned behind the playhead, so small jitter doesn't re-decode. */
@@ -169,6 +183,12 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       blocking: true,
       duration: opts.frameCount / opts.frameRate,
       nativeStepSeconds: 1 / opts.frameRate,
+      // The engine's 3s default is sized for a stream that is already local.
+      // This one is a network fetch that has to stay ahead of a playhead
+      // consuming a second of labels per second, and it BLOCKS the clock when
+      // it falls behind — so the window has to be deep enough to absorb a
+      // round-trip rather than merely to notice one.
+      lookaheadSeconds: LABEL_LOOKAHEAD_SECONDS,
       lookupPolicy: {
         type: "nearestPrevious",
         thresholdSeconds: 1 / opts.frameRate,
@@ -606,17 +626,39 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       this.holdWindow(startSec);
     }
 
-    // Find the first missing frame in the range and issue one chunk
-    // starting there. The engine calls prefetch again as the playhead
-    // advances — we don't need to fan out multiple requests here.
-    for (let f = startFrame; f <= endFrame; f++) {
+    // Cover the whole requested window rather than stopping at the first
+    // missing chunk.
+    //
+    // One-chunk-per-nudge assumed the engine would call back as the playhead
+    // advanced, which it does — but only while the stream reports NOT ready.
+    // That makes the fetch reactive: it starts a chunk at the moment the
+    // clock has already stalled on it, and since the stream is `blocking`,
+    // every one of those is a visible hitch. A chunk is `chunkSize` frames
+    // (2s at 30fps) and playback consumes a second of labels per second, so
+    // one request deep leaves no room for a round-trip.
+    //
+    // Bounded by `MAX_CHUNKS_IN_FLIGHT` rather than unbounded, which is what
+    // made `warmupAll` pathological: it dispatched every chunk in the clip at
+    // once and crowded the <video>'s own byte fetch off the connection pool.
+    // The point here is to stay a few chunks ahead of the playhead, not to
+    // load the clip.
+    let issued = 0;
+    for (let f = startFrame; f <= endFrame; f += 1) {
       if (this.cache.has(f) || this.isInflight(f)) {
         continue;
       }
 
       void this.fetchChunk(f);
+      issued += 1;
 
-      return;
+      if (issued >= MAX_CHUNKS_IN_FLIGHT) {
+        return;
+      }
+
+      // `fetchChunk` covers `chunkSize` frames from `f`, so the next missing
+      // frame cannot be nearer than that — skip ahead instead of re-testing
+      // every frame it just claimed.
+      f += this.chunkSize - 1;
     }
   }
 

@@ -44,6 +44,15 @@ export const useSampleSchema = () =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
 
 /**
+ * Get the current FRAME field schema — the per-frame fields of a video
+ * dataset, keyed WITHOUT the `frames.` prefix that sidebar paths carry.
+ *
+ * @returns The field schema for the frame space
+ */
+export const useFrameSchema = () =>
+  useRecoilValue(fieldSchema({ space: State.SPACE.FRAME }));
+
+/**
  * Hook to retrieve the selected media field for the grid view.
  *
  * @returns The selected media field state for the grid

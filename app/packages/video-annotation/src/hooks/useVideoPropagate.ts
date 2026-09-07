@@ -13,6 +13,7 @@ import {
   type LabelData,
   LabelType,
   type SyntheticBox,
+  type SyntheticPolyline,
 } from "@fiftyone/utilities";
 import { createElement, useCallback } from "react";
 import { PropagationStatusItem } from "../components/PropagationStatusItem";
@@ -29,6 +30,34 @@ export type PropagationMethod = "sam2" | "linear";
 /** Bbox-bearing detection fields — the only kinds propagation can interpolate. */
 const isBoxFieldType = (type: LabelType): boolean =>
   type === LabelType.Detection || type === LabelType.Detections;
+
+/** Vertex-bearing polyline fields — their vertices interpolate. */
+const isPolylineFieldType = (type: LabelType): boolean =>
+  type === LabelType.Polyline || type === LabelType.Polylines;
+
+/**
+ * Agent id handling linear interpolation for a field's geometry, or `null` when
+ * the field has nothing this pipeline knows how to lerp (keypoints, temporal
+ * detections, classifications).
+ */
+const linearAgentFor = (type: LabelType): string | null => {
+  if (isBoxFieldType(type)) return "propagate-linear";
+  if (isPolylineFieldType(type)) return "propagate-linear-polyline";
+  return null;
+};
+
+/** The engine's stored polyline as the shape the polyline agent consumes. */
+const toSyntheticPolyline = (label: LabelData): SyntheticPolyline => ({
+  id: label._id,
+  _id: label._id,
+  label: (label.label as string) ?? "",
+  points: label.points as SyntheticPolyline["points"],
+  closed: label.closed as boolean | undefined,
+  filled: label.filled as boolean | undefined,
+  index: label.index as number | undefined,
+  instance: label.instance as SyntheticPolyline["instance"],
+  keyframe: (label.keyframe as boolean) ?? false,
+});
 
 /** The engine's stored detection as the `SyntheticBox` the agents consume. */
 const toSyntheticBox = (label: LabelData): SyntheticBox => ({
@@ -92,6 +121,11 @@ interface PropagateArgs {
    * propagate run (SAM2 mints its own per-run key).
    */
   undoKey?: string;
+  /**
+   * Linear agent resolved from the field's label type — `propagate-linear` for
+   * bboxes, `propagate-linear-polyline` for polylines.
+   */
+  linearAgentId?: string;
 }
 
 /**
@@ -228,11 +262,19 @@ const useLinearPropagate = () => {
         return false;
       }
 
-      const agent = await resolveAgent("propagate-linear");
+      // Which linear agent (bbox or polyline) was resolved from the field type
+      // by `useVideoPropagate`; polylines carry `points` instead of a bbox.
+      const agentId = args.linearAgentId ?? "propagate-linear";
+      const agent = await resolveAgent(agentId);
 
       if (!agent) {
         return false;
       }
+
+      const toKeyframe =
+        agentId === "propagate-linear-polyline"
+          ? toSyntheticPolyline
+          : toSyntheticBox;
 
       const context: PropagationContext = {
         sampleDescriptor,
@@ -240,10 +282,7 @@ const useLinearPropagate = () => {
         instanceId,
         fromFrame,
         toFrame,
-        parentKeyframes: [
-          toSyntheticBox(leftKeyframe),
-          toSyntheticBox(rightKeyframe),
-        ],
+        parentKeyframes: [toKeyframe(leftKeyframe), toKeyframe(rightKeyframe)],
       };
 
       const result = await agent.infer(context);
@@ -289,11 +328,13 @@ export const useVideoPropagate = () => {
       const at: FrameReader = (frame) =>
         engine.getLabel({ sample: sampleId, path, instanceId, frame });
 
-      // propagation interpolates a bounding box, so it applies only to detection
-      // fields — a polyline (or any non-box) field has nothing to lerp and would
-      // feed the bbox agent an undefined box. Gate on the schema type, not the
-      // presence of a `bounding_box` on the label.
-      if (!isBoxFieldType(engine.getLabelType(path))) {
+      // Resolve the field's geometry to a linear agent — bboxes lerp their
+      // `bounding_box`, polylines their vertices. Anything else (keypoints, TDs,
+      // classifications) has nothing this pipeline can lerp. Gate on the schema
+      // type, not the presence of geometry on the label.
+      const linearAgentId = linearAgentFor(engine.getLabelType(path));
+
+      if (!linearAgentId) {
         return false;
       }
 
@@ -313,9 +354,22 @@ export const useVideoPropagate = () => {
         leftKeyframe,
         rightKeyframe,
         undoKey,
+        linearAgentId,
       };
 
       if (method === "sam2") {
+        // SAM2 tracks a box: it converts its seed / end keyframes through
+        // `toSyntheticBox` and derives point prompts from the box. Polyline
+        // fields now clear the gate above (they have a linear agent), so keep
+        // them out of this branch explicitly — otherwise the seed converts to an
+        // undefined `bounding_box` and the prompt math reads it. Unreachable
+        // today (auto-interpolate is the only caller and always asks for
+        // "linear"), so fail closed now rather than crash for whoever first
+        // wires SAM2 propagation to a UI.
+        if (!isBoxFieldType(engine.getLabelType(path))) {
+          return false;
+        }
+
         return sam2Propagate(args);
       }
 

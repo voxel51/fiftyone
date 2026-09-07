@@ -298,18 +298,36 @@ const useRegisterPointSelectionFinalizeHandler = ({
 
 /**
  * Track deleted: deleting a track leaves no useful edit/draw state to keep open,
- * so tear detection mode down.
+ * so tear the active create mode down and drop the user back to Select.
+ *
+ * Every create mode, not just detection: deleting a polyline track left polyline
+ * mode nominally active but with its creation handler gone with the overlay, so
+ * the cursor reverted to a pointer and canvas clicks drew nothing — a mode that
+ * looks armed and does nothing. Deactivating matches what deleting a detection
+ * track already did.
  */
 const useRegisterTrackDeletedHandler = ({
   detectionMode,
+  segmentationMode,
+  polylineMode,
 }: {
   detectionMode: DetectionMode;
+  segmentationMode: SegmentationMode;
+  polylineMode: PolylineMode;
 }): void => {
   useAnnotationEventHandler(
     "annotation:trackDeleted",
     useCallback(() => {
       detectionMode.deactivateDetectionMode();
-    }, [detectionMode]),
+
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.deactivateSegmentationMode();
+      }
+
+      if (polylineMode.polylineModeActive) {
+        polylineMode.deactivatePolylineMode();
+      }
+    }, [detectionMode, segmentationMode, polylineMode]),
   );
 };
 
@@ -357,7 +375,11 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     registerHandler,
     segmentationMode,
   });
-  useRegisterTrackDeletedHandler({ detectionMode });
+  useRegisterTrackDeletedHandler({
+    detectionMode,
+    segmentationMode,
+    polylineMode,
+  });
 
   // Polylines self-create through an InteractiveCreationHandler the installer
   // mounts on the scene (the image surface gets this via `useBridge`); without
