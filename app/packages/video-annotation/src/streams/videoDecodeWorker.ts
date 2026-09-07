@@ -65,6 +65,12 @@ interface NativeInitMessage extends InitMessage {
    * Drives the decode-strategy resolver (which then terminates this worker).
    */
   probeOnly?: boolean;
+  /**
+   * Frame-table probe only: stream just far enough to demux the `moov`, post
+   * a `frameTable` message with the presentation-order timestamps, and stop —
+   * no decode. Drives the html-strategy frame clock on dropped-frame videos.
+   */
+  tableOnly?: boolean;
 }
 
 /** The `request` payload the native stream's `buildChunkRequest` produces. */
@@ -163,6 +169,13 @@ async function handleInit(msg: NativeInitMessage): Promise<void> {
     return;
   }
 
+  // Frame-table probe: demux the header only, report the presentation-order
+  // timestamps, and stop.
+  if (msg.tableOnly) {
+    await handleTableProbe(msg);
+    return;
+  }
+
   videoSrc = msg.videoSrc;
   mediaHeaders = msg.headers;
 
@@ -208,6 +221,29 @@ async function initSampleTable(
   }
 
   buildSampleTable(samples, track.timescale);
+}
+
+/**
+ * Frame-table probe: stream just enough of the source to demux its `moov`,
+ * read the sample table's presentation timestamps, and post a single
+ * `frameTable` message — no decode. The fetcher terminates this worker once
+ * it has the answer.
+ */
+async function handleTableProbe(msg: NativeInitMessage): Promise<void> {
+  try {
+    const { file, track } = await streamMoov(msg.videoSrc, msg.headers);
+    const samples = file.getTrackSamplesInfo(track.id);
+    const timesMicros = samples
+      .map((s) => Math.round((s.cts * 1e6) / track.timescale))
+      .sort((a, b) => a - b);
+    post({ type: "frameTable", timesMicros });
+  } catch (error) {
+    post({
+      type: "frameTable",
+      timesMicros: null,
+      reason: errorMessage(error),
+    });
+  }
 }
 
 /**

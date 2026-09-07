@@ -5,7 +5,9 @@
 import { frameAt, useCurrentTime } from "@fiftyone/playback";
 import { useModalSample } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
+import { frameAtTableTime } from "../streams/frameTable";
 import { resolveFrameCount } from "../utils/frameCount";
+import { useFrameTable } from "./frameTableContext";
 import { useModalSampleFrameRate } from "./accessors";
 
 /**
@@ -17,8 +19,7 @@ import { useModalSampleFrameRate } from "./accessors";
  * timeline-state machinery (which is never created here, so its frame number
  * stays frozen). Everything that needs the live frame — the engine clock,
  * the canvas bridge's `frameOf`, timeline select/hover frame-stamping — must
- * read it from here, converting the playhead seconds to a 1-indexed frame via
- * the shared `frameAt`.
+ * read it from here.
  *
  * Clamped to the sample's real frame range: the engine allows the playhead to
  * rest at exactly `duration` (seek/step clamp inclusively), where an unclamped
@@ -34,13 +35,27 @@ export const useCurrentFrame = (): number => {
   // runs ahead while the picture holds the last ready frame — overlays, TD
   // gates, and gesture frame-stamping must hold with it.
   const time = useCurrentTime();
+  const table = useFrameTable();
   const fps = useModalSampleFrameRate(sample);
 
   if (!fps || !Number.isFinite(fps) || fps <= 0) {
     return -1;
   }
 
-  return frameAt(time, fps, resolveFrameCount(sample, fps) ?? undefined);
+  const count = resolveFrameCount(sample, fps) ?? undefined;
+
+  // On the html strategy the surface provides the container's frame table:
+  // frame N is the N-th stored picture, and the table maps the `<video>`
+  // clock's time to the picture actually on glass. `time × fps` assumes the
+  // pictures sit on a uniform grid — a lie on dropped-frame/VFR media, where
+  // it drifts off the labels by the dropped count. The arithmetic remains the
+  // fallback while the table loads or when the header can't be demuxed.
+  if (table?.timesSec.length) {
+    const frame = frameAtTableTime(table, time);
+    return count ? Math.min(frame, count) : frame;
+  }
+
+  return frameAt(time, fps, count);
 };
 
 /**

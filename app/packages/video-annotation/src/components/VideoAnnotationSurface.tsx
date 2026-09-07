@@ -13,6 +13,7 @@ import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameCloc
 import { useDynamicGroupPersistence } from "../hooks/useDynamicGroupPersistence";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
+import { FrameTableContext } from "../state/frameTableContext";
 import {
   useSetTimelineLoaded,
   useSurfaceRevealed,
@@ -20,6 +21,8 @@ import {
 import { useFollowAnchorFrame } from "../state/useVideoInteraction";
 import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useDecodeStrategy } from "../hooks/useDecodeStrategy";
+import { getFrameTable } from "../streams/frameTable";
+import type { FrameTable } from "../streams/frameTable";
 import type { DecodeStrategy } from "../utils/decodeStrategy";
 import { PlaybackProvider, TIMELINE_DRAWER_MAX_SIZE } from "@fiftyone/playback";
 import {
@@ -196,6 +199,38 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     force: isImageDynamicGroupVideo ? "fetch" : undefined,
   });
 
+  // The html strategy's presentation-order frame table (see
+  // `streams/frameTable.ts`): the `<video>` clock's `time × fps` numbering
+  // drifts ahead of the persisted frame labels on dropped-frame media, so the
+  // table restores label-order numbering. Only the html path needs it — the
+  // `extract` stream's times are synthetic `(frame-1)/fps` (already
+  // presentation-ordered) and `fetch` (ImaVid) renders one image per frame —
+  // so consumers see `null` (the `time × fps` fallback) on those strategies,
+  // while the table loads, and when the header can't be demuxed.
+  const [frameTable, setFrameTable] = useState<FrameTable | null>(null);
+  const wantsFrameTable =
+    resolution.status === "resolved" &&
+    resolution.strategy === "html" &&
+    Boolean(videoSrc);
+  useEffect(() => {
+    if (!wantsFrameTable || !videoSrc) {
+      setFrameTable(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    getFrameTable(videoSrc).then((table) => {
+      if (!cancelled) {
+        setFrameTable(table);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      setFrameTable(null);
+    };
+  }, [wantsFrameTable, videoSrc]);
+
   // Metadata gate: without a frame count no strategy can mount, so show an
   // actionable prompt instead of a stream that would throw or blank out.
   // Wrapped in the provider (see the resolved return) — the top bar reads the
@@ -308,12 +343,18 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     // scrub-drag, so the labels snapshot and any keyframe op align to a frame.
     // Scrubbing stays continuous — only the settle position snaps.
     <PlaybackProvider snapToFrameOnSettle>
-      <VideoAnnotationHandlerRegistration />
-      <RegisterTimelineAudio
-        videoSrc={videoSrc}
-        hasAudio={resolution.hasAudio}
-      />
-      {registered}
+      {/* Every `useCurrentFrame` consumer sits under this provider — including
+          the handler registrars — so the frame clock flips to table numbering
+          the moment the table resolves. `frameTable` is only ever non-null on
+          the html strategy (see the loader above). */}
+      <FrameTableContext.Provider value={frameTable}>
+        <VideoAnnotationHandlerRegistration />
+        <RegisterTimelineAudio
+          videoSrc={videoSrc}
+          hasAudio={resolution.hasAudio}
+        />
+        {registered}
+      </FrameTableContext.Provider>
     </PlaybackProvider>
   );
 };
