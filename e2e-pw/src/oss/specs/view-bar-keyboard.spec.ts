@@ -90,14 +90,9 @@ test.describe("view bar keyboard", () => {
     await page.keyboard.press("Enter");
     await viewBar.stageEditor.assert.isOpen();
     await page.keyboard.type("2");
-    // Enter commits AND applies the stage; the keyboard lands on the next
-    // insert slot, where the second stage begins
+    // Enter commits AND applies the stage; the keyboard lands in the next
+    // insert slot's typeahead, where the second stage begins
     await grid.run(() => page.keyboard.press("Enter"));
-    await expect(
-      viewBar.stagesRow.getByLabel("Insert stage").last(),
-    ).toBeFocused();
-
-    await page.keyboard.press("Enter");
     await expect(viewBar.insertTypeahead).toBeFocused();
     await page.keyboard.type("Limit");
     await page.keyboard.press("Enter");

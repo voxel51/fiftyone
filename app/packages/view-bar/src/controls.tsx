@@ -171,7 +171,10 @@ const ParamControl: React.FC<ParamInputProps> = ({
       );
       // A toggle's name is all the row shows; its docstring says what it does
       return param.description ? (
-        <Tooltip portal anchor={Anchor.Bottom} content={param.description}>
+        // Beside the toggle, not below: voodo's Tooltip does not slide back
+        // into view, and a long description centered under a toggle at the
+        // editor's left edge runs off the page
+        <Tooltip portal anchor={Anchor.Right} content={param.description}>
           {toggle}
         </Tooltip>
       ) : (

@@ -33,6 +33,8 @@ export interface InsertSlotProps {
   /** What a stage does, shown inline under its name in the list. */
   describe: (name: string) => string | undefined;
   onInsert: (cls: string, index: number) => void;
+  /** The stage list is opening — the bar folds any open editor away. */
+  onOpen?: () => void;
   /**
    * Render the typeahead input persistently instead of a "+" that opens it —
    * the empty bar's CTA is the real selector, not a button that becomes one.
@@ -46,6 +48,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
   names,
   describe,
   onInsert,
+  onOpen,
   pinned,
 }) => {
   const [open, setOpen] = React.useState(false);
@@ -90,7 +93,10 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
           leadingIcon={IconName.Add}
           aria-label="Insert stage"
           data-cy="view-bar-insert-slot"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            onOpen?.();
+            setOpen(true);
+          }}
         />
       </Tooltip>
     );
@@ -117,6 +123,7 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
       // The bar's gutter clips overflow — the list must escape it
       portal
       onOpenChange={(isOpen) => {
+        if (isOpen) onOpen?.();
         // An unpinned slot folds back to its "+" once its list is dismissed
         // with nothing typed
         if (!isOpen && !pinned && !query.trim()) setOpen(false);

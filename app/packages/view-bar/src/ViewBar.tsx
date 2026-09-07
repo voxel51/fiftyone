@@ -169,6 +169,9 @@ const ViewBarInner: React.FC<{
   // Which stage's editor popover is open, by stage id. Only one at
   // a time; clicking another collapses the previous.
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  // One floating surface at a time: a slot opening its stage list folds the
+  // open editor, or the two stack
+  const closeEditor = useCallback(() => setEditingId(null), []);
   // Modes the user chose explicitly, keyed `${stageId}:${paramName}`. Absent
   // means the mode is inferred from the value, so a hydrated stage opens in the
   // editor matching what is already there.
@@ -209,7 +212,7 @@ const ViewBarInner: React.FC<{
     },
     [],
   );
-  const focusLastSlot = useCallback(() => {
+  const focusLastSlot = useCallback((open = false) => {
     if (focusFrameRef.current !== null) {
       cancelAnimationFrame(focusFrameRef.current);
     }
@@ -230,7 +233,11 @@ const ViewBarInner: React.FC<{
       const slots = row.querySelectorAll<HTMLElement>(
         "[data-cy='view-bar-insert-slot']",
       );
-      slots[slots.length - 1]?.focus();
+      const last = slots[slots.length - 1];
+      // Opening the slot puts the keyboard in its typeahead — a focused "+"
+      // after Enter only shows a focus ring on a button nobody pressed
+      if (open) last?.click();
+      else last?.focus();
     });
   }, []);
 
@@ -674,7 +681,7 @@ const ViewBarInner: React.FC<{
     // canonical `F('x')` — without waiting on any echo from the server
     dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
     // The keyboard moves to where the next stage starts
-    focusLastSlot();
+    focusLastSlot(true);
   }, [
     paramErrors,
     serializeWorking,
@@ -1083,6 +1090,7 @@ const ViewBarInner: React.FC<{
             names={insertableNames}
             describe={describeStage}
             onInsert={insertStage}
+            onOpen={closeEditor}
             // An empty row's slot IS the selector, input and all — a
             // bare "+" alone in the row reads as a rendering failure
             pinned={state.stages.length === 0}
@@ -1143,6 +1151,7 @@ const ViewBarInner: React.FC<{
                   names={insertableNames}
                   describe={describeStage}
                   onInsert={insertStage}
+                  onOpen={closeEditor}
                 />
               </React.Fragment>
             );
