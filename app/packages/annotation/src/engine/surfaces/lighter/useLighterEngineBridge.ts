@@ -360,7 +360,27 @@ export const useLighterEngineBridge = ({
         }
 
         surface.selectHandle((scene as Scene2D).getOverlay(event.id), {
-          additive: event.isShiftPressed,
+          // What an unmodified click MEANS is the scene's own answer, read
+          // here rather than passed in: a multi-select scene is one where a
+          // click adds to a selection (Explore, where the selection is a set
+          // of labels to tag), and a single-select scene is one where it picks
+          // the one label the next edit acts on. Deriving it from the scene
+          // makes the two physically impossible to disagree — a surface that
+          // set only one of them would otherwise get a canvas that collapses
+          // to one highlighted box while the engine's active set grows.
+          //
+          // `additive` is "ensure active" (`toggleActive(ref, true)`), not a
+          // flip, so it stays right however the engine's active set got where
+          // it is: this handler only runs for a click the scene resolved as a
+          // SELECT, and the deselect handler below owns the other half.
+          //
+          // Optional-called because `scene` is duck-typed at this boundary
+          // (surfaces and tests supply their own), and an older scene without
+          // the method is single-select, which is what Annotate wants: a
+          // selection there is the target of the next edit.
+          additive:
+            (scene as Scene2D).isMultipleSelection?.() === true ||
+            event.isShiftPressed,
         });
       },
       [interactionPolicy, scene, surface],

@@ -4,13 +4,17 @@ import {
   type EpisodePosterFrame,
   type EpisodePreviewNativeVideo,
   type EpisodePreviewReadResult,
+  type TimeWindow,
 } from "../../../ir";
 import type { EpisodePreviewSession } from "../../../ports";
 import {
   EpisodePreviewPlaybackScheduler,
   episodePreviewPlaybackDelayMs,
+  publishEpisodePlayhead,
   publishEpisodePreviewBootstrap,
+  publishEpisodeTimeRange,
   recordPreviewSourceFacts,
+  releaseEpisodePlayhead,
   type SourceFactsScope,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
@@ -46,6 +50,12 @@ export interface GridPreviewState extends GridPreviewSnapshot {
   readonly isPlaying: boolean;
   pause(): void;
   play(): void;
+  /**
+   * Reports the instant a native-video surface is presenting, on its own media
+   * clock. Native playback advances a media element rather than the read loop
+   * below, so nothing else can keep the published playhead moving.
+   */
+  presentNativeTimeSeconds(mediaTimeSeconds: number): void;
 }
 
 /**
@@ -56,6 +66,12 @@ export interface UseGridPreviewOptions {
   /** Snapshot for `cacheRequestKey`; keep its identity stable while the key is unchanged. */
   readonly cachedPoster?: GridPosterCacheEntry | null;
   readonly enabled?: boolean;
+  /**
+   * Episode identity the presented frame time is published under, for chrome
+   * outside this tree that draws against the tile's playhead (the interval
+   * lane). Omit to publish nothing.
+   */
+  readonly episodeId?: string | null;
   /** Whether this tile is the user's current interactive target. */
   readonly hovered?: boolean;
   /** Initial forward coverage required by the mounted video decoder. */
@@ -105,6 +121,7 @@ export function useGridPreview({
   cacheRequestKey = null,
   cachedPoster = null,
   enabled = true,
+  episodeId = null,
   hovered = false,
   initialVideoDecodeLookaheadNs,
   onReadResult,
@@ -143,6 +160,101 @@ export function useGridPreview({
     readonly sourceName: string | null;
   } | null>(null);
   const frameTimeNsRef = useRef<bigint | undefined>(undefined);
+  const episodeIdRef = useRef(episodeId);
+  episodeIdRef.current = episodeId;
+  // Which episode currently holds a published playhead. Tracked separately
+  // from `episodeIdRef` because the tile can be pointed at a new episode while
+  // the old one still owns a published value, and only the owner may be
+  // released.
+  const publishedOwnerRef = useRef<string | null>(null);
+  // Every write to the presented-frame time goes through here so the published
+  // playhead cannot drift from the ref the scheduler reads. Publishing to an
+  // external store rather than into state is deliberate: the frame time
+  // changes on every presented frame, and only the chrome that draws it should
+  // re-render, never this tile.
+  const setFrameTimeNs = useCallback((timeNs: bigint | undefined) => {
+    frameTimeNsRef.current = timeNs;
+    const id = episodeIdRef.current;
+    // A stale owner is released here rather than only in the effect below,
+    // because `episodeIdRef` is assigned during render: a frame presented
+    // between the commit that changed the episode and the effect flush already
+    // publishes under the new id, and the old one would otherwise never be
+    // released by anything.
+    const owner = publishedOwnerRef.current;
+    if (owner !== null && owner !== id) {
+      releaseEpisodePlayhead(owner);
+      publishedOwnerRef.current = null;
+    }
+    if (!id) return;
+    if (timeNs === undefined) {
+      releaseEpisodePlayhead(id);
+      publishedOwnerRef.current = null;
+      return;
+    }
+    publishEpisodePlayhead(id, timeNs);
+    publishedOwnerRef.current = id;
+  }, []);
+
+  // The preview read is what learns the episode's extent, so it is also what
+  // publishes it — keyed by episode identity, the way the playhead above is
+  // and the way the overlay and the interval sources read it back.
+  const publishEpisodeRange = useCallback((range: TimeWindow | null) => {
+    const id = episodeIdRef.current;
+    if (!range || !id) return;
+    publishEpisodeTimeRange(id, range);
+  }, []);
+
+  // Native playback (LeRobot MP4) advances a media element rather than the
+  // read loop below, so the element's own clock is the only thing that knows
+  // where the playhead is. The poster read anchors that clock: it presents the
+  // frame the element reports at `startTimeSeconds`, so its absolute instant
+  // plus the element's offset from that mark is the presented instant.
+  const nativeAnchorRef = useRef<{
+    readonly anchorNs: bigint;
+    readonly startTimeSeconds: number;
+  } | null>(null);
+  const presentNativeTimeSeconds = useCallback(
+    (mediaTimeSeconds: number) => {
+      const anchor = nativeAnchorRef.current;
+      if (!anchor) return;
+      const offsetNs = Math.round(
+        (mediaTimeSeconds - anchor.startTimeSeconds) * 1e9,
+      );
+      setFrameTimeNs(anchor.anchorNs + BigInt(offsetNs));
+    },
+    [setFrameTimeNs],
+  );
+
+  // This effect hands the playhead over when the tile is pointed at a new
+  // episode. Without it the previous episode keeps a published instant nothing
+  // is presenting any more, and the unmount cleanup below — which can only
+  // release the current owner — would never reach it.
+  useEffect(() => {
+    const previous = publishedOwnerRef.current;
+    if (previous === episodeId) return;
+    if (previous !== null) {
+      releaseEpisodePlayhead(previous);
+      publishedOwnerRef.current = null;
+    }
+    // A frame retained while the tile had no episode identity still belongs to
+    // the episode it is now pointed at, so the `null -> id` transition publishes
+    // it rather than waiting for the next presented frame.
+    const presented = frameTimeNsRef.current;
+    if (episodeId && presented !== undefined) {
+      publishEpisodePlayhead(episodeId, presented);
+      publishedOwnerRef.current = episodeId;
+    }
+  }, [episodeId]);
+
+  // This effect withdraws the playhead when the tile stops presenting, so the
+  // lane never marks a position nothing is showing.
+  useEffect(
+    () => () => {
+      const owner = publishedOwnerRef.current;
+      if (owner) releaseEpisodePlayhead(owner);
+    },
+    [],
+  );
   const nextStartTimeNsRef = useRef<bigint | undefined>(undefined);
   const {
     finish: finishBuffering,
@@ -177,7 +289,7 @@ export function useGridPreview({
   useEffect(() => {
     initialLoadInFlightRef.current = false;
     loadedRequestRef.current = null;
-    frameTimeNsRef.current = undefined;
+    setFrameTimeNs(undefined);
     nextStartTimeNsRef.current = undefined;
     // A refusal belongs to one source and one stream; carrying it across
     // either would keep falling back for a stream this source does preview
@@ -186,7 +298,13 @@ export function useGridPreview({
     setPlaying(false);
     setStateOwnerKey(cacheRequestKey);
     setState(seededSnapshot(source, cachedPosterRef.current));
-  }, [cacheRequestKey, finishBuffering, selectedSourceName, source]);
+  }, [
+    cacheRequestKey,
+    finishBuffering,
+    selectedSourceName,
+    setFrameTimeNs,
+    source,
+  ]);
 
   // IndexedDB hydration completes after the cache key is already mounted.
   // Adopt that same-key poster in place without resetting a live frame or
@@ -246,7 +364,7 @@ export function useGridPreview({
     let active = true;
     const controller = new AbortController();
     initialLoadInFlightRef.current = true;
-    frameTimeNsRef.current = undefined;
+    setFrameTimeNs(undefined);
     nextStartTimeNsRef.current = undefined;
 
     const request = {
@@ -275,7 +393,7 @@ export function useGridPreview({
             setPosterRefusals((n) => n + 1);
           }
           notifyReadResult(onReadResultRef.current, result);
-          publishEpisodePreviewBootstrap(source, result);
+          publishEpisodeRange(publishEpisodePreviewBootstrap(source, result));
           if (sourceFactsScope) {
             recordPreviewSourceFacts(source, sourceFactsScope, result);
           }
@@ -284,7 +402,14 @@ export function useGridPreview({
             source,
             sourceName: effectiveSourceName,
           };
-          frameTimeNsRef.current = result.frameTimeNs;
+          nativeAnchorRef.current =
+            result.nativeVideo && result.frameTimeNs !== undefined
+              ? {
+                  anchorNs: result.frameTimeNs,
+                  startTimeSeconds: result.nativeVideo.startTimeSeconds,
+                }
+              : null;
+          setFrameTimeNs(result.frameTimeNs);
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState((current) => resultPreservingCachedPoster(current, result));
           setLoadGeneration((g) => g + 1);
@@ -321,6 +446,8 @@ export function useGridPreview({
     posterSourceName,
     posterStartTimeNs,
     previewSession,
+    publishEpisodeRange,
+    setFrameTimeNs,
     source,
     sourceFactsScope,
   ]);
@@ -358,14 +485,14 @@ export function useGridPreview({
       if (!active) return false;
 
       if (!bootstrapPublished) {
-        publishEpisodePreviewBootstrap(source, result);
+        publishEpisodeRange(publishEpisodePreviewBootstrap(source, result));
         if (sourceFactsScope) {
           recordPreviewSourceFacts(source, sourceFactsScope, result);
         }
         bootstrapPublished = true;
       }
 
-      frameTimeNsRef.current = result.frameTimeNs;
+      setFrameTimeNs(result.frameTimeNs);
       nextStartTimeNsRef.current = result.nextStartTimeNs;
       setState((current) => resultPreservingCachedPoster(current, result));
       playbackScheduler.markPresented(result.frameTimeNs, performance.now());
@@ -414,7 +541,7 @@ export function useGridPreview({
               }
               deferredSkippedFrame = null;
             }
-            frameTimeNsRef.current = undefined;
+            setFrameTimeNs(undefined);
             nextStartTimeNsRef.current = undefined;
             playbackScheduler.reset(undefined, performance.now());
             await delayMs(
@@ -468,6 +595,8 @@ export function useGridPreview({
     loadGeneration,
     playing,
     previewSession,
+    publishEpisodeRange,
+    setFrameTimeNs,
     source,
     sourceFactsScope,
     startBuffering,
@@ -485,6 +614,7 @@ export function useGridPreview({
     isPlaying: enabled && stateOwnerKey === cacheRequestKey && playing,
     pause,
     play,
+    presentNativeTimeSeconds,
   };
 }
 

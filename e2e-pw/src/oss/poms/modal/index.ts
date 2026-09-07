@@ -357,10 +357,10 @@ export class ModalPom {
           return true;
         }
 
-        return (
-          document
-            .querySelector(`[data-cy=modal-looker-container] canvas`)
-            ?.getAttribute("canvas-loaded") === "true"
+        // Any surface may raise the marker: the lookers set it on their
+        // canvas, the plain video surface sets it on the `<video>`.
+        return !!document.querySelector(
+          `[data-cy=modal-looker-container] [canvas-loaded="true"]`,
         );
       },
       allowErrorInfo,

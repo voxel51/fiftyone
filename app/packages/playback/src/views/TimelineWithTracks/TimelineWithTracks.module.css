@@ -1,8 +1,14 @@
+/* The timeline docks against whatever sits above it — the media in the modal's
+   video surfaces, a panel elsewhere — and has no drag bar of its own to read
+   as a seam. So it draws its own top edge rather than leaving each host to
+   remember one: without it the ruler's tick marks run straight into the
+   bottom of the content above. `SimplePlaybackBar` owns its edge the same way. */
 .root {
   display: flex;
   flex-direction: column;
   position: relative;
   width: 100%;
+  border-top: 1px solid var(--color-content-border-subtle);
 }
 
 /* Non-scrolling wrapper that acts as the positioning context for the

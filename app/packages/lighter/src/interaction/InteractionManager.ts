@@ -19,6 +19,7 @@ import type { InteractionState } from "../overlay/DetectionOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
+import { resolveSelectionClick } from "./resolveSelectionClick";
 import type { Point, Rect } from "../types";
 import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveCreationHandler } from "./InteractiveCreationHandler";
@@ -232,6 +233,15 @@ export class InteractionManager {
   private emptyCanvasClickHandler?: EmptyCanvasClickHandler;
 
   // Configuration
+  /** See {@link setReadOnly}. */
+  private readOnly = false;
+
+  /**
+   * See {@link setVisibilityPredicate}. `undefined` = every handler is
+   * hit-testable, matching every caller that never sets one.
+   */
+  private visibilityPredicate?: (id: string) => boolean;
+
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
@@ -273,6 +283,42 @@ export class InteractionManager {
    */
   public setCanonicalMediaId(id: string): void {
     this.canonicalMediaId = id;
+  }
+
+  /**
+   * Read-only mode: overlays stay selectable and hoverable, but none of them
+   * can be moved, resized, or drawn.
+   *
+   * Enforced at the single point where a pointer-down would hand control to
+   * an overlay's own handler — the moment an overlay enters a DRAGGING /
+   * RESIZE / PAINTING state. Selection runs BEFORE that point, so it is
+   * unaffected, and `onMove` self-guards on an interaction state the overlay
+   * can now never enter.
+   *
+   * For a surface that renders labels it has no way to save (Explore), where
+   * an accidental drag would otherwise commit a silent edit.
+   */
+  public setReadOnly(readOnly: boolean): void {
+    this.readOnly = readOnly;
+  }
+
+  /** Whether geometry mutation is currently blocked. */
+  public isReadOnly(): boolean {
+    return this.readOnly;
+  }
+
+  /**
+   * Which handlers are currently hit-testable, by id.
+   *
+   * Rendering (`Scene2D.shouldShowOverlay`) and hit-testing are separate
+   * systems by construction — this manager has no reference back to the
+   * scene or its overlays — so a label the scene stops PAINTING (a sidebar
+   * filter, a deactivated field) stays fully clickable at its last drawn
+   * position unless this is set. Scene2D injects a predicate that answers
+   * exactly what it paints, so the two agree without this class knowing why.
+   */
+  public setVisibilityPredicate(predicate?: (id: string) => boolean): void {
+    this.visibilityPredicate = predicate;
   }
 
   /**
@@ -349,6 +395,7 @@ export class InteractionManager {
     this.clickStartPoint = point;
 
     let handler: InteractionHandler | undefined = undefined;
+    // `getInteractiveHandler` already returns undefined when read-only.
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
@@ -373,8 +420,12 @@ export class InteractionManager {
         return;
       }
 
-      // Prevent pan/zoom when target is selectable
-      if (handler && TypeGuards.isSelectable(handler)) {
+      // Prevent pan/zoom when target is selectable, so dragging an overlay
+      // moves/resizes it instead of the camera. Read-only is excluded: it bails
+      // out below rather than entering a move/resize state, so disabling the
+      // drag plugin here would strand the gesture — the press would neither
+      // move the overlay nor pan, and pan is only restored on pointerup.
+      if (!this.readOnly && handler && TypeGuards.isSelectable(handler)) {
         this.renderer.disableZoomPan();
       }
 
@@ -389,17 +440,30 @@ export class InteractionManager {
         return;
       }
 
-      // If clicking an overlay, select it
-      const isUnselectedOverlay =
-        !!handler &&
-        TypeGuards.isSelectable(handler) &&
-        !this.selectionManager.isSelected(handler.id);
+      const isSelectableOverlay = !!handler && TypeGuards.isSelectable(handler);
 
       // the selected overlay still wins the hit test so drag/resize works
       const drawOverOverlay = this.isDrawingOverUnselected(handler);
 
-      if (isUnselectedOverlay && !drawOverOverlay) {
-        this.selectionManager.select(handler!.id);
+      // See `resolveSelectionClick` for the rule. The pointer event rides
+      // along only on the toggle path: it decides the `isShiftPressed` the
+      // select event carries, and no single-select surface should change what
+      // it reports.
+      const selectionAction = resolveSelectionClick({
+        isSelectableOverlay,
+        isSelected: isSelectableOverlay
+          ? this.selectionManager.isSelected(handler!.id)
+          : false,
+        isDrawingOver: drawOverOverlay,
+        multipleSelection: this.selectionManager.isMultipleSelection(),
+      });
+
+      if (selectionAction !== "none") {
+        if (selectionAction === "toggle") {
+          this.selectionManager.toggle(handler!.id, { event });
+        } else {
+          this.selectionManager.select(handler!.id);
+        }
 
         // Select an overlay before issuing any edits. The cursor at this point
         // is a 'pointer' indicating selection, not painting/erasing/keypoint.
@@ -431,6 +495,12 @@ export class InteractionManager {
           return;
         }
       }
+    }
+
+    // Read-only stops here: selection above has already run, but handing the
+    // pointer to the overlay is what puts it into a move/resize/paint state.
+    if (this.readOnly) {
+      return;
     }
 
     if (
@@ -1041,8 +1111,13 @@ export class InteractionManager {
       return;
     }
 
-    // Delete/Backspace: remove sub-selected keypoint
-    if (event.key === "Delete" || event.key === "Backspace") {
+    // Delete/Backspace: remove sub-selected keypoint. Read-only refuses it —
+    // `removePoint` mutates geometry on a surface with no way to save, which
+    // is exactly what read-only promises cannot happen.
+    if (
+      !this.readOnly &&
+      (event.key === "Delete" || event.key === "Backspace")
+    ) {
       const selectedId = this.selectionManager.getSelectedIds()[0];
       if (selectedId) {
         const handler = this.handlers.find((h) => h.id === selectedId);
@@ -1493,6 +1568,14 @@ export class InteractionManager {
   }
 
   private getInteractiveHandler(): InteractionHandler | undefined {
+    // Read-only never yields a draw handler. Entering one is an annotate-only
+    // path, but a shared scene can still have one installed — and this is the
+    // single choke point for that, so pointer-move/right-click/pending-move
+    // are covered too rather than only pointer-down.
+    if (this.readOnly) {
+      return undefined;
+    }
+
     // self-managed handlers take precedence to allow editing on top of
     // other overlays
     const selfManaged = this.handlers.find((h) =>
@@ -1543,6 +1626,10 @@ export class InteractionManager {
       const handler = this.handlers[i];
 
       if (skipCanonicalMedia && handler.id === this.canonicalMediaId) {
+        continue;
+      }
+
+      if (this.visibilityPredicate && !this.visibilityPredicate(handler.id)) {
         continue;
       }
 

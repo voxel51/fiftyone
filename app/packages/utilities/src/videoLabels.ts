@@ -41,6 +41,36 @@ export interface SyntheticBox {
   keyframe: boolean;
 }
 
+/**
+ * A tracked polyline as the propagation path sees it — the sibling of
+ * {@link SyntheticBox} for vertex geometry. Propagation lerps `points` where a
+ * detection's is a `bounding_box`; everything else (identity, track index,
+ * keyframe flag) carries the same meaning.
+ */
+export interface SyntheticPolyline {
+  id: string;
+  /** Real MongoDB `_id` when the polyline has been persisted. */
+  _id?: string;
+  label: string;
+  /** One entry per ring / path; each is normalized [x, y] pairs in [0, 1]. */
+  points: [number, number][][];
+  /** Whether the last vertex connects back to the first. */
+  closed?: boolean;
+  filled?: boolean;
+  /** FiftyOne track index, when present. */
+  index?: number;
+  instance?: { _cls: "Instance"; _id?: string };
+  /** `true` for user-authored / propagation source; `false` for interpolated. */
+  keyframe: boolean;
+}
+
+/**
+ * Either geometry propagation can interpolate between two keyframes. Agents
+ * narrow to the one they handle; `useVideoPropagate` picks the agent from the
+ * field's label type, so the pairing is decided before an agent ever sees it.
+ */
+export type SyntheticKeyframe = SyntheticBox | SyntheticPolyline;
+
 export interface FrameLabelSnapshot {
   frameNumber: number;
   detections: SyntheticBox[];
@@ -76,6 +106,40 @@ export interface RawPolyline {
 
 export interface RawPolylinesField {
   polylines?: RawPolyline[];
+}
+
+export interface RawKeypoint {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  /** Flat list of `[x, y]` vertices in normalized coordinates. */
+  points?: [number, number][];
+  confidence?: number[] | null;
+  instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+}
+
+export interface RawKeypointsField {
+  keypoints?: RawKeypoint[];
+}
+
+/**
+ * Non-spatial: a per-frame classification has no geometry, so the Lighter
+ * `ClassificationOverlay` renders it as a label chip rather than a shape.
+ */
+export interface RawClassification {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  confidence?: number | null;
+  instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+}
+
+export interface RawClassificationsField {
+  classifications?: RawClassification[];
 }
 
 /**

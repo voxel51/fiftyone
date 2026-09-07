@@ -223,6 +223,13 @@
     :tags: 3d,point-cloud,mesh,quickstart
 
 .. customcarditem::
+    :header: RoboLab
+    :description: 4,000 policy rollouts on NVIDIA's RoboLab manipulation benchmark in native MCAP format, with three camera views, depth, calibration, and success labels on every take.
+    :link: datasets/robolab.html
+    :image: ../_images/robolab.png
+    :tags: multimodal,mcap,robotics,depth
+
+.. customcarditem::
     :header: Sama-COCO
     :description: Improved version of COCO-2017 with tighter segmentation masks and better crowd annotations. Large-scale object detection and segmentation dataset with enhanced quality.
     :link: datasets/sama_coco.html

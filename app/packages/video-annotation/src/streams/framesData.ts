@@ -3,7 +3,9 @@ import {
   type LabelData,
   LabelType,
   LIST_LABEL_CHILD,
+  type RawClassification,
   type RawDetection,
+  type RawKeypoint,
   type RawPolyline,
 } from "@fiftyone/utilities";
 
@@ -13,18 +15,37 @@ export interface FrameDocLike {
   [key: string]: unknown;
 }
 
-/** A raw `/frames` list element (detection or polyline). */
-type RawElement = RawDetection | RawPolyline;
+/** A raw `/frames` list element. */
+type RawElement = RawDetection | RawPolyline | RawKeypoint | RawClassification;
 
 /**
  * Singular element `_cls` for each per-frame list label type. The store
  * addresses elements by their track `instance._id` and persists each frame's
  * list by document `_id`, so every element needs the right `_cls` stamped.
+ *
+ * This map is the authority on which per-frame fields can paint: `toFieldSpecs`
+ * skips any type absent here, so a field admitted elsewhere but missing from
+ * this map registers into the store and then silently never renders. Callers
+ * that need to know the renderable set derive it from these keys rather than
+ * restating them — see `PROJECTABLE_FRAME_LABEL_TYPES`.
+ *
+ * Every entry also needs a `LIST_LABEL_CHILD` child key and a Lighter adapter
+ * in `annotation/engine/surfaces/lighter/adapters.ts`; all four below have both.
  */
-const ELEMENT_CLS: Partial<Record<LabelType, string>> = {
+export const ELEMENT_CLS: Partial<Record<LabelType, string>> = {
   [LabelType.Detections]: "Detection",
   [LabelType.Polylines]: "Polyline",
+  [LabelType.Keypoints]: "Keypoint",
+  [LabelType.Classifications]: "Classification",
 };
+
+/**
+ * The per-frame list label types this pipeline can actually seed and paint —
+ * derived from {@link ELEMENT_CLS} so the two cannot drift apart.
+ */
+export const PROJECTABLE_FRAME_LABEL_TYPES = new Set<LabelType>(
+  Object.keys(ELEMENT_CLS) as LabelType[],
+);
 
 /** Per-field projection plan derived from the registered label types. */
 interface FieldSpec {

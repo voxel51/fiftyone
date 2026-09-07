@@ -7,10 +7,10 @@ import { usePlayhead } from "@fiftyone/playback";
 import { resolveFrameCount } from "../utils/frameCount";
 import {
   labelSchemaData,
-  useModalSampleFrameRate,
   useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import {
   useSelectedTemporalDetectionField,
   useSelectedTrackIds,
@@ -94,9 +94,9 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
 
     return active[0] ?? null;
   }, [tdFieldPaths, visible, selectedTdField]);
-  const fps = useModalSampleFrameRate(modalSample);
-  const canCreateTd =
-    !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
+  const fps = getModalSampleFrameRate(modalSample);
+  const hasUsableFps = Number.isFinite(fps) && fps !== undefined && fps > 0;
+  const canCreateTd = !!tdFieldPath && hasUsableFps;
 
   // Default class for a freshly-created TemporalDetection: schema's `default`
   // if set, else the first declared class. Mirrors `buildNewLabelData` in
@@ -130,11 +130,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
 
   // split needs one instance-track (detection / polyline) + a playhead frame
   const canSplit =
-    selectedIds.length === 1 &&
-    selectionIsInstanceTrack &&
-    Number.isFinite(fps) &&
-    !!fps &&
-    fps > 0;
+    selectedIds.length === 1 && selectionIsInstanceTrack && hasUsableFps;
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -146,6 +142,9 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             id: "create-temporal-detection",
             label: "New TD",
             icon: <Icon name={IconName.Add} size={Size.Sm} />,
+            // Disabled with an explanation rather than hidden: on a dataset
+            // with no TemporalDetections field, a button that simply is not
+            // there tells the user nothing about why.
             tooltip: canCreateTd
               ? `Create a TemporalDetection on \`${tdFieldPath}\``
               : "No TemporalDetections field on this dataset",
@@ -174,7 +173,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             tooltip: !hasSelection
               ? "Select a label to mark a keyframe"
               : !selectionIsKeyframeable
-                ? "Keyframes are only available for detections"
+                ? "Keyframes are only available for detections and polylines"
                 : "Toggle keyframe at this frame",
             isDisabled: !canMarkKeyframe,
             onClick: () => {
@@ -188,9 +187,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             icon: <Icon name={IconName.UnfoldMore} size={Size.Sm} />,
             tooltip: canSplit
               ? "Split the selected track at this frame"
-              : selectedIds.length === 1 && !selectionIsInstanceTrack
-                ? "Splitting is only available for detections and polylines"
-                : "Select one track to split it at the playhead",
+              : !hasUsableFps
+                ? "This video has no usable frame rate"
+                : selectedIds.length === 1 && !selectionIsInstanceTrack
+                  ? "Splitting is only available for detections and polylines"
+                  : "Select one track to split it at the playhead",
             isDisabled: !canSplit,
             onClick: () => {
               if (!canSplit || !fps) {
@@ -227,6 +228,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       canSplit,
       fps,
       hasSelection,
+      hasUsableFps,
       isKeyframeAtPlayhead,
       modalSample,
       playhead,

@@ -17,11 +17,17 @@ import { useCurrentFrame, useCurrentFrameGetter } from "./useCurrentFrame";
 
 const SURFACE = "video-timeline";
 
-// Keyframes exist to drive linear propagation, which interpolates a bounding
-// box — so a keyframe is a detection-only concern.
+// Keyframes exist to drive linear propagation, so a type is keyframeable iff
+// propagation can interpolate its geometry: a detection's bounding box, or a
+// polyline's vertices. Keep this in step with `linearAgentFor` in
+// `useVideoPropagate` — a type that resolves to a linear agent there but is
+// missing here has a working interpolation path with no way to manage its
+// keyframes from the toolbar.
 const KEYFRAME_TYPES: ReadonlySet<LabelType> = new Set([
   LabelType.Detection,
   LabelType.Detections,
+  LabelType.Polyline,
+  LabelType.Polylines,
 ]);
 
 // Split is a track-identity op, valid for any frame-level instance geometry we
@@ -114,7 +120,7 @@ const useSelectionTypeGate = (allowed: ReadonlySet<LabelType>): boolean => {
   });
 };
 
-/** True iff every selected track is a detection — gates Mark Keyframe. */
+/** True iff every selected track is keyframeable — gates Mark Keyframe. */
 export const useSelectionIsKeyframeable = (): boolean =>
   useSelectionTypeGate(KEYFRAME_TYPES);
 

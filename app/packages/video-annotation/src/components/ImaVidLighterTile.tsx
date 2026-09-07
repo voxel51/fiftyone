@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useStream } from "@fiftyone/playback";
-import { useLighterTileScene } from "../hooks/useLighterTileScene";
+import { useLighterMediaScene } from "../hooks/useLighterMediaScene";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
 import { IMAVID_STREAM_ID } from "../utils/ids";
 import type { ImaVidImageFrame } from "../streams/ImaVidImageStream";
-import { TileBody } from "./TileBody";
 import styles from "./ImaVidLighterTile.module.css";
 
 interface ImageDimensions {
@@ -97,7 +96,7 @@ export const ImaVidLighterTile: React.FC = () => {
   const imageDims = usePaintFrameToCanvas(frame, frameCanvasRef);
 
   // Scene lifecycle: once-per-mount scene; `dims` from the decoded bitmap.
-  const { scene, canonicalMediaReady, revealed } = useLighterTileScene({
+  const { scene, canonicalMediaReady } = useLighterMediaScene({
     hostRef: lighterHostRef,
     dims: imageDims,
     sceneIdPrefix: "imavid-anno",
@@ -112,12 +111,13 @@ export const ImaVidLighterTile: React.FC = () => {
   });
 
   return (
-    <TileBody revealed={revealed} lighterHostRef={lighterHostRef}>
+    <div className={styles.body}>
       <canvas
         ref={frameCanvasRef}
         className={styles.frame}
         data-cy="imavid-frame-canvas"
       />
-    </TileBody>
+      <div ref={lighterHostRef} className={styles.lighterHost} />
+    </div>
   );
 };
