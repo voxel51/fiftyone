@@ -17,6 +17,28 @@ import {
   episodeSourceFromByteSource,
 } from "./episode-source";
 
+// Keeps grid load from scaling with tiles x sources: every tile needs the same
+// table identified, so identify it once per table instead of once per tile.
+const fingerprints = new WeakMap<object, string>();
+
+export function mediaSourcesFingerprint(
+  mediaSources: Readonly<Record<string, string>> | null,
+): string {
+  if (!mediaSources) return "";
+
+  const cached = fingerprints.get(mediaSources);
+  if (cached !== undefined) return cached;
+
+  const fingerprint = JSON.stringify(
+    Object.entries(mediaSources).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    ),
+  );
+  fingerprints.set(mediaSources, fingerprint);
+
+  return fingerprint;
+}
+
 /** Stable physical and logical source identities for the active episode. */
 export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   readonly byteSource: ByteSourceDescriptor | null;
@@ -45,20 +67,11 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
           },
     [datasetId, mediaField, mediaReference],
   );
-  // A source table arriving after the first render relocates every asset, so
-  // its contents -- not merely how many -- are part of which episode a source
-  // describes. Fingerprinted per table rather than per tile render
-  const mediaSourcesKey = useMemo(
-    () =>
-      mediaSources
-        ? JSON.stringify(
-            Object.entries(mediaSources).sort(([a], [b]) =>
-              a < b ? -1 : a > b ? 1 : 0,
-            ),
-          )
-        : "",
-    [mediaSources],
-  );
+  // An episode source must never outlive the source table it was built from.
+  // Tiles mount before the table arrives, so one built without it locates no
+  // asset; let that source survive the table landing and the tile is blank for
+  // good.
+  const mediaSourcesKey = mediaSourcesFingerprint(mediaSources);
   // The episode a source serves, and the URL its tile plays, change
   // independently: a re-signed URL is the same episode, so it must not
   // rebuild the session that is reading it
