@@ -92,6 +92,8 @@ export interface PlaybackShellProps {
   tracks?: Track[];
   /** Track ids that should start pinned to the timeline. */
   defaultPinnedTrackIds?: string[];
+  /** Scope under which the user's pin choices survive closing the modal. */
+  pinPersistKey?: string;
   /** Per-row behavior composed from shared and registered timeline sources. */
   decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
   /** Ruler overlay composed from registered timeline sources. */
@@ -258,6 +260,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   timelineTrailingActions,
   tracks,
   defaultPinnedTrackIds,
+  pinPersistKey,
   decorateTrack,
   timelineRulerOverlay,
   initialTiles,
@@ -300,6 +303,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
         tracks={tracks}
         initialPinnedIds={defaultPinnedTrackIds}
         autoPinNewTracks={false}
+        persistKey={pinPersistKey}
       >
         <SceneInventoryProvider sources={sceneSources}>
           <TilingProvider
