@@ -16,9 +16,10 @@ import { useFrameLabelsStream } from "../streams/frameLabelsStream";
  * powering the Mark Keyframe toolbar icon's filled / outlined state.
  *
  * Returns `true` only when exactly one track is selected AND the engine has a
- * detection on that track at the playhead frame AND that detection's
- * `keyframe` is `true`. Returns `false` on no selection, multi-selection, or
- * no detection at the current frame.
+ * label on that track at the playhead frame AND that label's `keyframe` is
+ * `true`. Returns `false` on no selection, multi-selection, or no label at the
+ * current frame. The field is the selected track's own (see below), not
+ * necessarily the stream's primary one.
  *
  * Reactivity sources:
  * - selection (`selectedIds`) and playhead (`time`) drive direct re-evaluation
@@ -55,7 +56,16 @@ export const useFrameKeyframeState = (
 
   const instanceId = selectedIds[0];
   const frame = frameAt(time, stream.fps, stream.totalFrames ?? undefined);
-  const path = `frames.${stream.labelsField}`;
+
+  // Resolve the selected track's own field from its active interaction ref — a
+  // track can live on a non-primary frame field (e.g. a polyline), and reading
+  // the stream's primary field there returns the wrong label (or none), so the
+  // toolbar icon's filled state would lie. Mirrors `markKeyframe`'s resolution
+  // in `useVideoSurfaceActions`. Falls back to the primary field.
+  const activePath = engine.interaction
+    .getActive()
+    .find((ref) => ref.instanceId === instanceId)?.path;
+  const path = activePath ?? `frames.${stream.labelsField}`;
 
   const det = engine.getLabel({ sample: sampleId, path, instanceId, frame });
   return det?.keyframe === true;

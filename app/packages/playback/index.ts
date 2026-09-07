@@ -7,6 +7,17 @@ export * from "./src/lib/timeline/use-timeline";
 export * from "./src/lib/timeline/use-timeline-viz-utils";
 export * from "./src/lib/timeline/utils";
 export * from "./src/lib/playback/PlaybackProvider";
+export {
+  useCurrentPublishedFrame,
+  useCurrentPublishedFrameGetter,
+  usePublishCurrentFrame,
+} from "./src/lib/playback/frame-handle";
+export {
+  useIsPlaybackPlaying,
+  usePublishIsPlaying,
+  usePublishPauseHandle,
+  useRequestPlaybackPause,
+} from "./src/lib/playback/pause-handle";
 export * from "./src/lib/playback/playback-store-context";
 export * from "./src/lib/playback/use-playback-state";
 export * from "./src/lib/playback/use-stream";
@@ -47,7 +58,9 @@ export {
   PlaybackProvider,
   useMode,
   usePlayback,
+  useTimelineModeControl,
 } from "./src/lib/playback/PlaybackProvider";
+export type { TimelineModeControl } from "./src/lib/playback/PlaybackProvider";
 export {
   useCurrentTime,
   useDuration,
@@ -64,6 +77,8 @@ export type {
   TimelineDisplayConversion,
   TimelineDisplayValue,
 } from "./src/lib/playback/timeline-display";
+export { laneLeftCalc } from "./src/views/utils/timeline-utils";
+export { formatTime } from "./src/views/TimelineControls/timeline-controls-utils";
 export { usePlaybackStream } from "./src/lib/playback/use-playback-stream";
 export type { AudioAvailability } from "./src/lib/playback/atoms";
 export { useAudioStream } from "./src/lib/playback/use-audio-stream";
@@ -85,6 +100,7 @@ export {
   useVideoStream,
 } from "./src/lib/playback/use-video-stream";
 export { useVideoSync } from "./src/lib/playback/use-video-sync";
+export { useVideoElementAudio } from "./src/lib/playback/use-video-audio";
 export { useActivateStream, useStream } from "./src/lib/playback/use-stream";
 export { frameAt } from "./src/lib/playback/utils";
 export { PlaybackStreamBase } from "./src/lib/playback/stream-base";

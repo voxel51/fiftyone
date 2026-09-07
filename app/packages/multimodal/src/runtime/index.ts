@@ -45,8 +45,16 @@ export {
   getEpisodeTimeRange,
   publishEpisodeTimeRange,
   releaseEpisodeTimeRange,
+  resetEpisodeTimeRangesForTests,
   subscribeEpisodeTimeRange,
 } from "./episode-time-range-registry";
+export {
+  getEpisodePlayhead,
+  publishEpisodePlayhead,
+  releaseEpisodePlayhead,
+  resetEpisodePlayheadsForTests,
+  subscribeEpisodePlayhead,
+} from "./episode-playhead-registry";
 /** Public runtime demand scheduling bridge. */
 export * from "./demand-bridge";
 /** Public lazy format-adapter registry. */

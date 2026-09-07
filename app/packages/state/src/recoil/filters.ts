@@ -4,8 +4,10 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, selectorFamily } from "recoil";
+import { useMemo } from "react";
+import { DefaultValue, selectorFamily, useRecoilValue } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
+import { activeFilterValues } from "./activeFilterValues";
 import { extendedSelection, extendedSelectionOverrideStage } from "./atoms";
 import { pathHasIndexes, queryPerformance } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
@@ -62,6 +64,14 @@ export const filters = (() => {
     },
   );
 })();
+
+export { activeFilterValues } from "./activeFilterValues";
+
+/** Recoil-bound {@link activeFilterValues} for the grid's filter set. */
+export const useActiveFilterValues = (path: string): string[] => {
+  const current = useRecoilValue(filters);
+  return useMemo(() => activeFilterValues(current, path), [current, path]);
+};
 
 export const filter = selectorFamily<
   State.Filter,

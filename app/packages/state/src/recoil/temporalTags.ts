@@ -1,7 +1,7 @@
 import { getFetchFunctionExtended } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
-import { filters } from "./filters";
+import { useActiveFilterValues } from "./filters";
 import { isModalActive } from "./modal";
 import { activeField } from "./schema";
 import { datasetId } from "./selectors";
@@ -159,19 +159,10 @@ export const useTemporalTagValues = (): string[] => {
  * filter — inclusive selections only (empty when the filter is unset or set to
  * exclude). Used to auto-pin the matching timeline tracks when a sample is
  * opened from a temporal-tag-filtered grid.
+ *
+ * Nothing here is tag-specific beyond the path, so the body lives in
+ * `filters.ts` as {@link useActiveFilterValues} and is shared with the other
+ * interval sources that pin the same way.
  */
-export const useActiveTemporalTagFilterValues = (): string[] => {
-  const current = useRecoilValue(filters);
-  return useMemo(() => {
-    const filter = current?.[TEMPORAL_TAGS_FIELD] as
-      | { values?: (string | null)[]; exclude?: boolean }
-      | undefined;
-    if (!filter || filter.exclude) {
-      return NO_VALUES;
-    }
-    const values = (filter.values ?? []).filter(
-      (value): value is string => typeof value === "string",
-    );
-    return values.length ? values : NO_VALUES;
-  }, [current]);
-};
+export const useActiveTemporalTagFilterValues = (): string[] =>
+  useActiveFilterValues(TEMPORAL_TAGS_FIELD);

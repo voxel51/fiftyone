@@ -140,6 +140,8 @@ export interface SourcePlaybackProps {
   readonly defaultPinnedTrackIds?: readonly string[];
   /** Per-row timeline decoration contributed by timeline sources. */
   readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
+  /** Ruler overlay composed from timeline sources. */
+  readonly timelineRulerOverlay?: (labelWidth: number) => React.ReactNode;
   readonly fileName: string;
   /** Present only for the dataset sample modal, never the Explorer. */
   readonly episodeContext?: {
@@ -185,6 +187,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   children,
   defaultPinnedTrackIds,
   decorateTrack,
+  timelineRulerOverlay,
   fileName,
   episodeContext,
   headerActions,
@@ -595,6 +598,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                   key={playbackShellKey}
                                   fileName={fileName}
                                   decorateTrack={decorateTrack}
+                                  timelineRulerOverlay={timelineRulerOverlay}
                                   headerCaption={headerCaption}
                                   headerActions={
                                     <HeaderActions

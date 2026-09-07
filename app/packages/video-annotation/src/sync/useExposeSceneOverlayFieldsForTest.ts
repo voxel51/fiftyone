@@ -17,6 +17,21 @@ declare global {
      * removed when the surface unmounts.
      */
     __FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?: () => string[];
+
+    /**
+     * E2E affordance: the live GEOMETRY of the overlays mounted on the video
+     * annotation scene, as the canvas currently holds it — not as the engine
+     * stores it. The two can disagree (a projection that never reached the
+     * overlay), and PIXI overlays have no DOM a spec could inspect, so this is
+     * the only way to assert what is actually drawn. Read live.
+     */
+    __FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY?: () => Array<{
+      id: string;
+      field: string;
+      type: string;
+      /** Relative [x, y] vertices, for point-bearing overlays. */
+      points?: [number, number][];
+    }>;
   }
 }
 
@@ -34,8 +49,23 @@ export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
     window.__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS = () =>
       Array.from(new Set(scene.getAllOverlays().map((o) => o.field)));
 
+    window.__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY = () =>
+      scene.getAllOverlays().map((overlay) => {
+        const withPoints = overlay as unknown as {
+          getRelativePoints?: () => [number, number][];
+        };
+
+        return {
+          id: overlay.id,
+          field: overlay.field,
+          type: overlay.getOverlayType?.() ?? "unknown",
+          points: withPoints.getRelativePoints?.(),
+        };
+      });
+
     return () => {
       delete window.__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS;
+      delete window.__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY;
     };
   }, [scene]);
 };

@@ -353,7 +353,7 @@ describe("TimelineControls", () => {
   });
 
   describe("trailingActions", () => {
-    it("renders slotted content pinned to the right, behind a divider", () => {
+    it("renders slotted content pinned to the right", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
           <TimelineControls
@@ -364,8 +364,40 @@ describe("TimelineControls", () => {
       expect(
         screen.getByRole("button", { name: "Trailing Action" }),
       ).toBeTruthy();
+    });
+
+    // The rule now sits AFTER the actions, separating them from the drawer
+    // chevron. `TimelineWithTracks` renders no chevron when there are no
+    // tracks while still forwarding `trailingActions` — Explore always
+    // supplies them — so an ungated rule would hang off the right edge with
+    // nothing after it.
+    it("separates the actions from the chevron when one is present", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls
+            onToggle={vi.fn()}
+            trailingActions={<button>Trailing Action</button>}
+          />
+        </PlaybackProvider>,
+      );
+      // The always-on leading rule, plus the one before the chevron.
       expect(screen.getAllByTestId("timeline-controls-divider")).toHaveLength(
         2,
+      );
+    });
+
+    it("omits the trailing rule when there is no chevron", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls
+            trailingActions={<button>Trailing Action</button>}
+          />
+        </PlaybackProvider>,
+      );
+      expect(screen.queryByTestId("timeline-controls-toggle")).toBeNull();
+      // Only the leading rule survives.
+      expect(screen.getAllByTestId("timeline-controls-divider")).toHaveLength(
+        1,
       );
     });
 

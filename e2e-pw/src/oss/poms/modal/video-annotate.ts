@@ -413,6 +413,42 @@ export class VideoAnnotatePom {
         ).__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?.() ?? [],
     );
   }
+
+  /**
+   * The live geometry of the overlays the canvas is painting, as the OVERLAY
+   * holds it — deliberately not what the engine stores. Reads the
+   * `__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY` affordance; use it to catch a
+   * projection that updated the store but never reached the canvas.
+   */
+  async canvasOverlayGeometry(): Promise<
+    Array<{
+      id: string;
+      field: string;
+      type: string;
+      points?: [number, number][];
+    }>
+  > {
+    return this.page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY?: () => Array<{
+              id: string;
+              field: string;
+              type: string;
+              points?: [number, number][];
+            }>;
+          }
+        ).__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY?.() ?? [],
+    );
+  }
+
+  /** The vertices of the single polyline overlay on the canvas, if any. */
+  async canvasPolylinePoints(): Promise<[number, number][] | undefined> {
+    const overlays = await this.canvasOverlayGeometry();
+
+    return overlays.find((o) => o.type === "PolylineOverlay")?.points;
+  }
 }
 
 class VideoAnnotateAsserter {
