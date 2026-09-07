@@ -12134,7 +12134,7 @@ def _validate_media_source_iterable(dataset, samples):
 
     # Read once, checked per sample as it streams past: a batch is only as
     # resolvable as its least resolvable reference
-    recorded = frozenset(fmm._media_sources_by_id(dataset))
+    recorded = fmm._recorded_media_source_ids(dataset)
     yield _validated_media_source(dataset, first, recorded)
     for sample in samples:
         yield _validated_media_source(dataset, sample, recorded)

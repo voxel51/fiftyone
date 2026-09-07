@@ -19,6 +19,7 @@ from typing import (
     Any,
     ClassVar,
     Dict,
+    FrozenSet,
     Iterable,
     Mapping,
     Optional,
@@ -355,6 +356,13 @@ def _load_media_tables(doc) -> None:
     for field in ("_media_sources", "_media_source_layouts"):
         while field in doc._changed_fields:
             doc._changed_fields.remove(field)
+
+
+def _recorded_media_source_ids(dataset) -> FrozenSet[str]:
+    """The ids of the sources the dataset records. Reads the ids alone, so a
+    membership check does not resolve every source's location."""
+    _load_media_tables(dataset._doc)
+    return frozenset(source["id"] for source in dataset._doc._media_sources)
 
 
 def _media_sources_by_id(dataset) -> Dict[str, dict]:

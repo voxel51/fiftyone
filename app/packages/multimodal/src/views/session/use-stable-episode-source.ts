@@ -45,6 +45,20 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
           },
     [datasetId, mediaField, mediaReference],
   );
+  // A source table arriving after the first render relocates every asset, so
+  // its contents -- not merely how many -- are part of which episode a source
+  // describes. Fingerprinted per table rather than per tile render
+  const mediaSourcesKey = useMemo(
+    () =>
+      mediaSources
+        ? JSON.stringify(
+            Object.entries(mediaSources).sort(([a], [b]) =>
+              a < b ? -1 : a > b ? 1 : 0,
+            ),
+          )
+        : "",
+    [mediaSources],
+  );
   // The episode a source serves, and the URL its tile plays, change
   // independently: a re-signed URL is the same episode, so it must not
   // rebuild the session that is reading it
@@ -53,14 +67,7 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
         "media-reference",
         datasetId,
         mediaReference.key,
-        // a source table arriving after the first render relocates every
-        // asset, so its contents -- not merely how many -- are part of
-        // which episode this source describes
-        mediaSources
-          ? Object.entries(mediaSources).sort(([a], [b]) =>
-              a < b ? -1 : a > b ? 1 : 0,
-            )
-          : null,
+        mediaSourcesKey,
       ])
     : "";
   const byteKey = next ? episodeSourceAccessKey(next) : "";
