@@ -89,8 +89,8 @@ function buildStateActionSource(
     ? new TextEncoder().encode(JSON.stringify(build.statistics))
     : null;
   const episodeRow = {
-    dataset_from_index: 0n,
-    dataset_to_index: BigInt(rowCount),
+    dataset_from_index: BigInt(intervalStart),
+    dataset_to_index: BigInt(intervalStart + rowCount),
     episode_index: 0n,
     length: BigInt(rowCount),
     tasks: scenario.episodeTasks ? [...scenario.episodeTasks] : [],
@@ -99,7 +99,7 @@ function buildStateActionSource(
     ...(scenario.action ? { action: scenario.action.rows[offset] } : {}),
     episode_index: 0n,
     frame_index: BigInt(offset),
-    index: BigInt(offset),
+    index: BigInt(intervalStart + offset),
     ...(scenario.state
       ? { "observation.state": scenario.state.rows[offset] }
       : {}),
