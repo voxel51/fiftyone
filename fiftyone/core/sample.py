@@ -514,7 +514,7 @@ class _SampleMixin(object):
             # a view copies into its document class; a sample into its own
             document_cls = getattr(type(self), "_DOCUMENT_CLS", type(self))
             sample = document_cls(
-                media_reference=self.media_reference,
+                media_reference=deepcopy(self.media_reference),
                 **{
                     v: deepcopy(self[k])
                     for k, v in parsed.items()

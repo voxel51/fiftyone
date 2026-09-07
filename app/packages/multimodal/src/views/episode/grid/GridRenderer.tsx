@@ -602,11 +602,6 @@ function useGridRendererVisibility(
   gridActive: boolean,
 ): boolean {
   const [intersecting, setIntersecting] = useState(false);
-  // The grid is hidden behind the modal, so the observer would report every
-  // tile gone. What was visible when the modal opened stays visible until it
-  // closes, which is what keeps posters and sessions alive underneath it.
-  const heldRef = useRef(false);
-  if (gridActive) heldRef.current = intersecting;
 
   // This effect tracks whether the mounted renderer is near the grid viewport.
   useEffect(() => {
@@ -614,6 +609,13 @@ function useGridRendererVisibility(
       setIntersecting(false);
       return undefined;
     }
+    // The grid is hidden behind the modal, so an observer left running would
+    // report every tile gone. Stop watching rather than correct for it after
+    // the fact: what was visible when the modal opened stays visible until it
+    // closes, which is what keeps posters and sessions alive underneath it.
+    // Reading the stale value back on reactivation instead would drop demand
+    // for a render and release the session the modal was holding open.
+    if (!gridActive) return undefined;
     if (typeof IntersectionObserver === "undefined") {
       setIntersecting(element.isConnected);
       return undefined;
@@ -628,9 +630,9 @@ function useGridRendererVisibility(
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [element]);
+  }, [element, gridActive]);
 
-  return gridActive ? intersecting : heldRef.current;
+  return intersecting;
 }
 
 function useElementCssSize(
