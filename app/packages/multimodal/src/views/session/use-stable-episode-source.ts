@@ -1,5 +1,7 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
+import { mediaSources as mediaSourcesState } from "@fiftyone/state";
 import { useMemo, useRef } from "react";
+import { useRecoilValue } from "recoil";
 
 import type { ByteSourceDescriptor } from "../../ir";
 import type { EpisodeSource } from "../../ports";
@@ -24,10 +26,13 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   const datasetId = ctx.dataset.datasetId;
   const mediaField = ctx.media?.field ?? null;
   const mediaReference = ctx.media?.mediaReference;
+  // Read here rather than where a page arrives: the modal fetches its own
+  // sample, so hydrating at the pagers would leave it with unlocated assets
+  const mediaSources = useRecoilValue(mediaSourcesState);
   // A reference-backed tile's byte source is the one video the samples page
   // delivered with it; a file-backed sample's is its media path
   const next = mediaReference
-    ? episodeByteSourceFromMediaReference(ctx)
+    ? episodeByteSourceFromMediaReference(ctx, mediaSources)
     : episodeByteSourceFromContext(ctx);
   const sourceFactsScope = useMemo(
     () =>
@@ -44,7 +49,14 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   // independently: a re-signed URL is the same episode, so it must not
   // rebuild the session that is reading it
   const episodeKey = mediaReference
-    ? JSON.stringify(["media-reference", datasetId, mediaReference.key])
+    ? JSON.stringify([
+        "media-reference",
+        datasetId,
+        mediaReference.key,
+        // a source table arriving after the first render relocates every
+        // asset, so it is part of which episode this source describes
+        mediaSources ? Object.keys(mediaSources).length : 0,
+      ])
     : "";
   const byteKey = next ? episodeSourceAccessKey(next) : "";
   const ref = useRef<{
@@ -55,7 +67,7 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   }>();
 
   const buildEpisodeSource = () =>
-    mediaReference ? episodeManifestSourceFromContext(ctx) : null;
+    mediaReference ? episodeManifestSourceFromContext(ctx, mediaSources) : null;
   if (!ref.current) {
     ref.current = {
       byteKey,

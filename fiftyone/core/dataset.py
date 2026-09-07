@@ -546,14 +546,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         The list is a copy; use an importer to record sources.
         """
-        return [
-            dict(media_source) for media_source in self._doc._media_sources
-        ]
+        return list(fmm._media_sources_by_id(self).values())
 
     def _contains_media_references(self):
         """Whether this dataset's samples are media-reference-backed: it
-        records at least one media source."""
-        return bool(self._doc._media_sources)
+        records at least one media source.
+
+        Read from the roots table, which stays with the document: a source is
+        only ever recorded by interning the root it sits under, so this holds
+        without reading the sources themselves.
+        """
+        return bool(self._doc._media_roots)
 
     def _record_media_sources(self, entries, overwrite=True):
         """Records media sources on this dataset, merged by source id. The
@@ -569,8 +572,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not self._contains_media_references():
             self._adopt_reference_identity()
 
-        entries = [_file_under_root(self._doc, entry) for entry in entries]
+        fmm._load_media_tables(self._doc)
+        entries = fmm._intern_media_sources(self._doc, entries)
         _merge_media_sources(self._doc, entries, overwrite=overwrite)
+        fmm._sweep_media_tables(self._doc)
         self._doc.save()
 
     def _adopt_reference_identity(self):
@@ -8780,7 +8785,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset._apply_frame_field_schema(d.get("frame_fields", {}))
 
         dataset._doc.info = d.get("info", {})
-        dataset._doc._media_sources = list(d.get("_media_sources", []))
+
+        # A serialized entry names where its source is; recording files it
+        # under this dataset's own table of roots, which a raw assignment
+        # would leave unfiled and unresolvable
+        dataset._record_media_sources(d.get("_media_sources") or [])
 
         dataset._doc.classes = d.get("classes", {})
         dataset._doc.default_classes = d.get("default_classes", [])
@@ -10101,7 +10110,14 @@ def _load_dataset(obj, name, virtual=False):
 def _do_load_dataset(obj, name):
     # pylint: disable=no-member
     db = foo.get_db_conn()
-    res = db.datasets.find_one({"name": name})
+    # Media sources and their layouts are read only when something resolves
+    # media, which this document is loaded far too often to pay for. The
+    # roots table stays: it is small and says whether there is anything to
+    # fetch
+    res = db.datasets.find_one(
+        {"name": name},
+        {"_media_sources": 0, "_media_source_layouts": 0},
+    )
     if not res:
         raise DatasetNotFoundError(name)
     dataset_doc = foo.DatasetDocument.from_dict(res)
@@ -10735,26 +10751,6 @@ def _merge_dataset_doc(
             curr_doc.default_skeleton = doc.default_skeleton
 
     curr_doc.save()
-
-
-def _file_under_root(doc, media_source):
-    """Files a source under the root it sits in, interning that root. An
-    entry that already names a root is left alone."""
-    if "loc" not in media_source:
-        return dict(media_source)
-
-    media_source = dict(media_source)
-    root, name = fmm._split_source_location(media_source.pop("loc"))
-    existing = next(
-        (entry for entry in doc._media_roots if entry["loc"] == root), None
-    )
-    if existing is None:
-        existing = {"id": str(ObjectId()), "loc": root}
-        doc._media_roots.append(existing)
-
-    media_source["root"] = existing["id"]
-    media_source["dir"] = name
-    return media_source
 
 
 def _merge_media_sources(doc, sources, overwrite=True):
@@ -12017,37 +12013,33 @@ def _handle_incoming_media_source(dataset, samples):
         )
 
 
-def _file_dict_media_sources(dataset_dict):
-    """Files a document dict's source entries under its own table of roots.
+class _MediaTables:
+    """The tables a document dict files its sources under, for a dict that is
+    written to the database whole rather than through a dataset."""
 
-    A bundle names where each source is; the dataset stores that as a root
-    plus a directory, and this dict is written to the database whole, so the
-    filing has to happen here rather than through the dataset.
+    def __init__(self):
+        self._media_roots = []
+        self._media_source_layouts = []
+
+
+def _file_dict_media_sources(dataset_dict):
+    """Files a document dict's source entries under its own tables.
+
+    A bundle names where each source is and how it is read; the dataset
+    stores each of those once and names it, and this dict is written to the
+    database whole, so the filing has to happen here rather than through the
+    dataset.
     """
     media_sources = dataset_dict.get("_media_sources") or []
     if not any("loc" in media_source for media_source in media_sources):
         return
 
-    roots = []
-    filed = []
-    for media_source in media_sources:
-        media_source = dict(media_source)
-        if "loc" not in media_source:
-            filed.append(media_source)
-            continue
-
-        root, name = fmm._split_source_location(media_source.pop("loc"))
-        entry = next((r for r in roots if r["loc"] == root), None)
-        if entry is None:
-            entry = {"id": str(ObjectId()), "loc": root}
-            roots.append(entry)
-
-        media_source["root"] = entry["id"]
-        media_source["dir"] = name
-        filed.append(media_source)
-
-    dataset_dict["_media_roots"] = roots
-    dataset_dict["_media_sources"] = filed
+    tables = _MediaTables()
+    dataset_dict["_media_sources"] = fmm._intern_media_sources(
+        tables, media_sources
+    )
+    dataset_dict["_media_roots"] = tables._media_roots
+    dataset_dict["_media_source_layouts"] = tables._media_source_layouts
 
 
 def _adopt_media_sources(dataset, samples):
@@ -12096,7 +12088,9 @@ def _get_media_identity_mode(samples):
         return "filepath"
 
     if isinstance(samples, foo.DatasetDocument):
-        return "reference" if samples._media_sources else "filepath"
+        # the roots table stays with a lean-loaded document; its sources are
+        # read only when something resolves media
+        return "reference" if samples._media_roots else "filepath"
 
     if isinstance(samples, dict):
         return "reference" if samples.get("_media_sources") else "filepath"

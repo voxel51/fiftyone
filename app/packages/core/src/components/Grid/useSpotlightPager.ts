@@ -25,7 +25,6 @@ const processSamplePageData = (
   schema: Schema,
   zoom: boolean,
   records: Map<string, number>,
-  mediaSources: Readonly<Record<string, string>> | null,
 ) => {
   if (data.samples.__typename !== "SampleItemStrConnection") {
     throw new Error(
@@ -34,7 +33,7 @@ const processSamplePageData = (
   }
 
   return data.samples.edges.map((edge, i) => {
-    const node = handleNode(edge.node, mediaSources);
+    const node = handleNode(edge.node);
     const id = { description: node.id };
 
     store.set(id, node);
@@ -87,7 +86,6 @@ const useSpotlightPager = ({
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
         );
-        const mediaSources = await snapshot.getPromise(fos.mediaSources);
 
         // if a page has not been requested by this callback, require a network
         // request
@@ -124,7 +122,6 @@ const useSpotlightPager = ({
                 schema,
                 zoom,
                 records,
-                mediaSources,
               );
               for (const item of items) keys.current.add(item.id.description);
 

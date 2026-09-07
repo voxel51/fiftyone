@@ -928,6 +928,7 @@ class DatasetDocument(Document):
     media_type = StringField()
     _media_roots = ListField(DictField())
     _media_sources = ListField(DictField())
+    _media_source_layouts = ListField(DictField())
     group_field = StringField()
     group_media_types = DictField(StringField())
     default_group_slice = StringField()

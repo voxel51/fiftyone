@@ -34,6 +34,7 @@ import fiftyone.multimodal.media_reference.field_model as fmm
 from fiftyone.core.media_reference import MediaReference
 from fiftyone.multimodal.media_reference.field_model import (
     InvalidMediaLocationError,
+    MalformedMediaSourceError,
     MediaReferenceError,
     UnsupportedMediaReferenceOperation,
 )
@@ -114,7 +115,7 @@ def _reference_dataset(kind=LEROBOT_EPISODE_KIND, key=_SOURCE_KEY, **kwargs):
 
 def _dataset_kind(dataset):
     """The kind a dataset records for its media sources."""
-    sources = dataset._doc._media_sources
+    sources = list(fmm._media_sources_by_id(dataset).values())
     return sources[0]["kind"] if sources else None
 
 
@@ -931,7 +932,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         destination = _reference_dataset()
         destination.add_sample(fo.Sample(media_reference=_make_reference(2)))
         destination._doc.reload()
-        entries = [dict(entry) for entry in destination._doc._media_sources]
+        entries = list(fmm._media_sources_by_id(destination).values())
         roots = [dict(root) for root in destination._doc._media_roots]
 
         with tempfile.TemporaryDirectory() as export_dir:
@@ -949,7 +950,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         destination._doc.reload()
         self.assertEqual(len(destination), 2)
         self.assertEqual(
-            [dict(entry) for entry in destination._doc._media_sources], entries
+            list(fmm._media_sources_by_id(destination).values()), entries
         )
         self.assertEqual(
             [dict(root) for root in destination._doc._media_roots], roots
@@ -1307,6 +1308,144 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         )
         self.assertIn("0", output.splitlines())
         self.assertFalse(fo.dataset_exists(clone.name))
+
+    @drop_datasets
+    def test_sources_read_the_same_way_are_stored_once(self):
+        layout = dict(
+            data_path="data/chunk-{chunk_index:03d}/f.parquet",
+            video_path="videos/{video_key}/f.mp4",
+            image_features=[],
+        )
+        source = lambda key, **fields: fmm._media_source(
+            LEROBOT_EPISODE_KIND,
+            key,
+            "/tmp/sources/%s" % key,
+            episode_shards=[{"path": "meta/e.parquet", "episodes": [0, 2]}],
+            statistics=True,
+            tasks=True,
+            **{**layout, **fields},
+        )
+
+        dataset = fo.Dataset()
+        dataset._record_media_sources([source("a"), source("b")])
+        doc = dataset._doc
+        self.assertEqual(len(doc._media_sources), 2)
+        self.assertEqual(len(doc._media_source_layouts), 1)
+        self.assertEqual(len(doc._media_roots), 1)
+
+        # a stored source keeps only what is its own
+        self.assertEqual(
+            set(doc._media_sources[0]),
+            {
+                "id",
+                "root",
+                "dir",
+                "layout",
+                "episode_shards",
+                "statistics",
+                "tasks",
+            },
+        )
+
+        # adding more of the same kind adds sources, not layouts
+        dataset._record_media_sources([source("c"), source("d")])
+        self.assertEqual(len(dataset._doc._media_sources), 4)
+        self.assertEqual(len(dataset._doc._media_source_layouts), 1)
+
+        # one read a different way is filed under its own layout
+        dataset._record_media_sources(
+            [source("e", video_path="videos/chunk-000/{video_key}/f.mp4")]
+        )
+        self.assertEqual(len(dataset._doc._media_source_layouts), 2)
+
+        # and every caller still reads one self-contained description
+        entries = fmm._media_sources_by_id(dataset)
+        self.assertEqual(entries["a"]["loc"], "/tmp/sources/a")
+        self.assertEqual(entries["a"]["data_path"], layout["data_path"])
+        self.assertEqual(entries["a"]["kind"], LEROBOT_EPISODE_KIND)
+        self.assertTrue(entries["a"]["statistics"])
+
+        # re-recording that source the way it is read repoints it, and the
+        # layout nothing names any more goes
+        dataset._record_media_sources([source("e", **layout)], overwrite=True)
+        self.assertEqual(len(dataset._doc._media_source_layouts), 1)
+
+    @drop_datasets
+    def test_a_stored_source_entry_cannot_be_recorded_again(self):
+        dataset = _reference_dataset()
+        stored = dict(dataset._doc._media_sources[0])
+
+        # it names the tables it is filed under rather than carrying them
+        self.assertIn("layout", stored)
+        with self.assertRaises(MalformedMediaSourceError):
+            dataset._record_media_sources([stored])
+
+    @drop_datasets
+    def test_sources_are_read_only_when_something_resolves_media(self):
+        dataset = _reference_dataset()
+        dataset.add_sample(fo.Sample(media_reference=_make_reference(1)))
+        name = dataset.name
+        location = fmm._media_sources_by_id(dataset)[_SOURCE_KEY]["loc"]
+        fo.Dataset._instances.pop(name, None)
+
+        loaded = fo.load_dataset(name)
+
+        # a dataset document is read on nearly every request and does not
+        # carry what only media resolution needs
+        self.assertEqual(loaded._doc._media_sources, [])
+        self.assertEqual(loaded._doc._media_source_layouts, [])
+        # but it still knows its samples are reference-backed, without asking
+        self.assertTrue(loaded._contains_media_references())
+        self.assertFalse(fo.Dataset()._contains_media_references())
+
+        self.assertEqual(
+            fmm._media_sources_by_id(loaded)[_SOURCE_KEY]["loc"], location
+        )
+
+        # what was only read back must not be written out again
+        loaded.description = "touched"
+        loaded.save()
+        fo.Dataset._instances.pop(name, None)
+        self.assertEqual(
+            fmm._media_sources_by_id(fo.load_dataset(name))[_SOURCE_KEY][
+                "loc"
+            ],
+            location,
+        )
+
+    @drop_datasets
+    def test_serialized_round_trip_files_sources_under_the_copy_s_roots(self):
+        dataset = _reference_dataset()
+        _record_source(dataset, key="second-source")
+        dataset.add_sample(fo.Sample(media_reference=_make_reference(1)))
+        locations = {
+            key: entry["loc"]
+            for key, entry in fmm._media_sources_by_id(dataset).items()
+        }
+
+        # a serialized entry names where its source is, not the root id the
+        # exporting dataset filed it under
+        serialized = dataset.to_dict()
+        self.assertTrue(
+            all("loc" in entry for entry in serialized["_media_sources"])
+        )
+
+        copy = fo.Dataset.from_dict(serialized, name=dataset.name + "-copy")
+
+        # the copy has to file them under its own roots, or every reference
+        # it holds resolves to nothing
+        self.assertEqual(
+            {
+                key: entry["loc"]
+                for key, entry in fmm._media_sources_by_id(copy).items()
+            },
+            locations,
+        )
+        self.assertEqual(len(copy._doc._media_roots), 1)
+        self.assertEqual(
+            copy.first().media_reference.key,
+            dataset.first().media_reference.key,
+        )
 
     @drop_datasets
     def test_guarded_file_operations_and_record_only_deletion(self):

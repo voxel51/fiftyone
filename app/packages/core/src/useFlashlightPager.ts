@@ -2,7 +2,7 @@ import { FlashlightConfig, Response } from "@fiftyone/flashlight";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { Schema, withMediaAssetSrcs } from "@fiftyone/utilities";
+import { Schema } from "@fiftyone/utilities";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
@@ -15,7 +15,6 @@ const processSamplePageData = (
   store: fos.LookerStore<fos.Lookers>,
   data: fos.ResponseFrom<foq.paginateSamplesQuery>,
   schema: Schema,
-  mediaSources: Readonly<Record<string, string>> | null,
   zoom?: boolean,
 ) => {
   return data.samples.edges.map((edge, i) => {
@@ -24,10 +23,7 @@ const processSamplePageData = (
     }
 
     const node = edge.node as fos.ModalSample;
-    store.samples.set(node.sample._id, {
-      ...node,
-      sample: withMediaAssetSrcs(node.sample, mediaSources),
-    });
+    store.samples.set(node.sample._id, node);
     store.indices.set(offset + i, node.sample._id);
 
     return {
@@ -62,7 +58,6 @@ const useFlashlightPager = (
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
-  const mediaSources = useRecoilValue(fos.mediaSources);
 
   const pager = useMemo(() => {
     return async (pageNumber: number) => {
@@ -80,7 +75,6 @@ const useFlashlightPager = (
               store,
               data,
               schema,
-              mediaSources,
               zoomValue,
             );
 
@@ -98,7 +92,7 @@ const useFlashlightPager = (
         });
       });
     };
-  }, [environment, handleError, mediaSources, page, schema, store, zoom]);
+  }, [environment, handleError, page, schema, store, zoom]);
 
   const ref = useRef<FlashlightConfig<number>["get"]>(pager);
   ref.current = pager;

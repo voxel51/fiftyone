@@ -30,9 +30,8 @@ from bson import ObjectId
 
 from fiftyone.core.media_reference import MediaReference
 
-#: Written under ``versions.ingest`` on every media source. Bump it when what
-#: ingest records, or how, changes; nothing reads it yet, so no code branches
-#: on it
+#: Written into an export bundle's source manifest. A bundle travels without
+#: the dataset document that would otherwise date it, so it carries its own
 INGEST_VERSION = "v0.1"
 
 logger = logging.getLogger(__name__)
@@ -181,12 +180,7 @@ def _media_source(
     moving a whole tree is one edit and no source's identity depends on
     where it currently sits.
     """
-    media_source = {
-        "id": source_id,
-        "kind": kind,
-        "loc": loc,
-        "versions": {"ingest": INGEST_VERSION},
-    }
+    media_source = {"id": source_id, "kind": kind, "loc": loc}
     media_source.update(media_source_fields)
     return media_source
 
@@ -207,6 +201,68 @@ def _split_source_location(loc: str) -> Tuple[str, str]:
 def _media_roots_by_id(dataset) -> Dict[str, str]:
     """Where each of the dataset's roots points, by root id."""
     return {root["id"]: root["loc"] for root in dataset._doc._media_roots}
+
+
+def _intern(table: list, value: dict) -> str:
+    """The id ``value`` is filed under in ``table``, filing it if new. What
+    every source of a kind shares is stored once and named, so recording a
+    hundred sources of one layout stores that layout once."""
+    for entry in table:
+        if {key: item for key, item in entry.items() if key != "id"} == value:
+            return entry["id"]
+
+    entry = {"id": str(ObjectId()), **value}
+    table.append(entry)
+    return entry["id"]
+
+
+def _intern_media_sources(doc, entries: Iterable[dict]) -> list:
+    """Files source entries under a document's tables of roots and layouts.
+
+    An entry names where its source is and how the source is read; both are
+    shared by every source recorded the same way, so each is interned and the
+    entry keeps only what is its own.
+    """
+    interned = []
+    for entry in entries:
+        entry = dict(entry)
+        if "layout" in entry:
+            # a reader hands back one self-contained description; filing a
+            # stored entry again would file its layout id as a layout
+            raise MalformedMediaSourceError(
+                "Media source '%s' is already filed under a layout; record "
+                "what a reader returns, not what is stored" % entry.get("id")
+            )
+
+        source_fields = _SOURCE_FIELDS_BY_KIND.get(entry.get("kind"), ())
+        layout = {
+            key: entry.pop(key)
+            for key in list(entry)
+            if key not in ("id", "loc", "root", "dir", "layout")
+            and key not in source_fields
+        }
+        if "loc" in entry:
+            root, name = _split_source_location(entry.pop("loc"))
+            entry["root"] = _intern(doc._media_roots, {"loc": root})
+            entry["dir"] = name
+
+        if layout:
+            entry["layout"] = _intern(doc._media_source_layouts, layout)
+
+        interned.append(entry)
+
+    return interned
+
+
+def _sweep_media_tables(doc) -> None:
+    """Drops roots and layouts no source names any more, which a re-import
+    that repoints a source can leave behind."""
+    roots = {entry.get("root") for entry in doc._media_sources}
+    layouts = {entry.get("layout") for entry in doc._media_sources}
+    doc._media_roots = [e for e in doc._media_roots if e["id"] in roots]
+    doc._media_source_layouts = [
+        e for e in doc._media_source_layouts if e["id"] in layouts
+    ]
 
 
 def _media_source_ids(sample_collection) -> list:
@@ -236,11 +292,13 @@ def _media_source_ids(sample_collection) -> list:
 
 def _located_media_sources(doc) -> list:
     """A dataset document's source entries, each naming where its source is
-    rather than the root id that document files it under."""
+    and how it is read, rather than the ids the document files those under."""
+    _load_media_tables(doc)
     roots = {root["id"]: root["loc"] for root in doc._media_roots}
+    layouts = {entry["id"]: entry for entry in doc._media_source_layouts}
     located = []
     for media_source in doc._media_sources:
-        entry = dict(media_source)
+        entry = _with_layout(dict(media_source), layouts)
         root = roots.get(entry.pop("root", None))
         if root is None:
             continue
@@ -251,15 +309,64 @@ def _located_media_sources(doc) -> list:
     return located
 
 
+def _with_layout(entry: dict, layouts: Mapping[str, dict]) -> dict:
+    """A source entry with the layout it names folded back in, so every
+    caller reads one self-contained description."""
+    layout = layouts.get(entry.pop("layout", None))
+    if layout is None:
+        return entry
+
+    return {
+        **{key: item for key, item in layout.items() if key != "id"},
+        **entry,
+    }
+
+
+def _load_media_tables(doc) -> None:
+    """Reads the source tables a dataset load leaves behind.
+
+    A dataset document is read on nearly every request, so what only media
+    resolution needs is fetched when something asks for it. The roots table
+    stays with the document and says whether there is anything to fetch: a
+    source is only ever recorded by interning the root it sits under.
+
+    Takes the document rather than the dataset, so a caller holding only one
+    -- a merge reading the sources it is adopting -- can load them too.
+    """
+    if doc._media_sources or not doc._media_roots:
+        return
+
+    import fiftyone.core.odm as foo
+
+    stored = (
+        foo.get_db_conn().datasets.find_one(
+            {"_id": doc.id},
+            {"_media_sources": 1, "_media_source_layouts": 1},
+        )
+        or {}
+    )
+    doc._media_sources = stored.get("_media_sources") or []
+    doc._media_source_layouts = stored.get("_media_source_layouts") or []
+
+    # read back from the database, so not a change this document should write
+    for field in ("_media_sources", "_media_source_layouts"):
+        while field in doc._changed_fields:
+            doc._changed_fields.remove(field)
+
+
 def _media_sources_by_id(dataset) -> Dict[str, dict]:
     """The dataset's source entries keyed by source id, each with the
     directory its assets are read from. One read of a document every caller
     already holds; the location is composed here so nothing stored has to
     repeat it."""
+    _load_media_tables(dataset._doc)
     roots = _media_roots_by_id(dataset)
+    layouts = {
+        entry["id"]: entry for entry in dataset._doc._media_source_layouts
+    }
     entries = {}
     for media_source in dataset._doc._media_sources:
-        entry = dict(media_source)
+        entry = _with_layout(dict(media_source), layouts)
         root = roots.get(entry.get("root"))
         if root is None:
             raise MissingMediaRootError(
@@ -311,11 +418,19 @@ class _MediaResolver(ABC):
 #: The resolver each kind of media source is read with
 _RESOLVERS_BY_KIND: Dict[str, "_MediaResolver"] = {}
 
+#: The fields each kind stores per source. Everything else a kind records is
+#: the same for every source read the same way, so it is stored once
+_SOURCE_FIELDS_BY_KIND: Dict[str, Tuple[str, ...]] = {}
+
 #: The planner each kind is exported to each destination format with
 _EXPORT_PLANNERS_BY_KIND_AND_FORMAT: Dict[Tuple[str, str], Any] = {}
 
 
-def _register_media_resolver(kind: str, resolver: _MediaResolver) -> None:
+def _register_media_resolver(
+    kind: str, resolver: _MediaResolver, source_fields: Iterable[str] = ()
+) -> None:
+    """Registers how a kind is read, and which of its recorded fields belong
+    to one source rather than to every source read the same way."""
     if not isinstance(resolver, _MediaResolver):
         raise TypeError("resolver must be a _MediaResolver")
 
@@ -325,6 +440,7 @@ def _register_media_resolver(kind: str, resolver: _MediaResolver) -> None:
         )
 
     _RESOLVERS_BY_KIND[kind] = resolver
+    _SOURCE_FIELDS_BY_KIND[kind] = tuple(source_fields)
 
 
 def _get_media_resolver(kind: str) -> _MediaResolver:

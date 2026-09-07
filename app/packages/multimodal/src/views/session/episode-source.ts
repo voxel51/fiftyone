@@ -5,6 +5,7 @@ import {
 } from "@fiftyone/plugins";
 import { getSampleSrc } from "@fiftyone/state";
 import {
+  withMediaAssetSrcs,
   type MediaReferenceDescriptor,
   type SampleMediaDescriptor,
 } from "@fiftyone/utilities";
@@ -179,11 +180,14 @@ export function episodeSourceFromMediaReference(
 /** Builds a manifest source for a reference-backed renderer context. */
 export function episodeManifestSourceFromContext(
   ctx: SampleRendererProps["ctx"],
+  mediaSources: Readonly<Record<string, string>> | null | undefined,
 ): ReferenceEpisodeSource | null {
   const mediaReference = ctx.media?.mediaReference;
   if (!mediaReference) return null;
 
-  const sample = ctx.sample.sample as {
+  // An asset the server serves carries no location of its own; it is composed
+  // from where its source is, which the dataset names once
+  const sample = withMediaAssetSrcs(ctx.sample.sample, mediaSources) as {
     readonly _media?: SampleMediaDescriptor | null;
     readonly fps?: number | null;
     readonly tasks?: readonly string[] | null;

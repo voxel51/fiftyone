@@ -540,20 +540,19 @@ def _lerobot_media_source(source_id, root, info, episode_shards):
     """What the dataset records about a LeRobot source: where it is, and what
     every episode of it shares -- the path templates, the cameras and the
     metadata shards."""
-    fields = {
-        "data_path": info["data_path"],
-        "video_path": info["video_path"],
-        "video_features": _video_features(info),
-        "image_features": _image_features(info),
-        "episode_shards": list(episode_shards),
-    }
-    if fos.isfile(fos.join(root, _STATISTICS_PATH)):
-        fields["statistics_path"] = _STATISTICS_PATH
-
-    if fos.isfile(fos.join(root, _TASKS_PATH)):
-        fields["tasks_path"] = _TASKS_PATH
-
-    return _media_source(LEROBOT_EPISODE_KIND, source_id, root, **fields)
+    return _media_source(
+        LEROBOT_EPISODE_KIND,
+        source_id,
+        root,
+        data_path=info["data_path"],
+        video_path=info["video_path"],
+        image_features=_image_features(info),
+        episode_shards=list(episode_shards),
+        # where these sit is this module's own; only whether the source has
+        # them is a fact about the source
+        statistics=fos.isfile(fos.join(root, _STATISTICS_PATH)),
+        tasks=fos.isfile(fos.join(root, _TASKS_PATH)),
+    )
 
 
 class _LeRobotMediaResolver(_MediaResolver):
@@ -567,7 +566,11 @@ class _LeRobotMediaResolver(_MediaResolver):
         }
 
 
-_register_media_resolver(LEROBOT_EPISODE_KIND, _LeRobotMediaResolver())
+_register_media_resolver(
+    LEROBOT_EPISODE_KIND,
+    _LeRobotMediaResolver(),
+    source_fields=("episode_shards", "statistics", "tasks"),
+)
 
 
 def _shard_for_episode(media_source, episode_index):
@@ -603,21 +606,21 @@ def _describe_episode(media_source, reference):
             media_type="application/json",
         )
     ]
-    if media_source.get("statistics_path"):
+    if media_source.get("statistics"):
         described.append(
             MediaAsset(
                 MediaAssetRole.DATASET_STATISTICS,
-                media_source["statistics_path"],
+                _STATISTICS_PATH,
                 WholeFile(),
                 media_type="application/json",
             )
         )
 
-    if media_source.get("tasks_path"):
+    if media_source.get("tasks"):
         described.append(
             MediaAsset(
                 MediaAssetRole.TASKS_METADATA,
-                media_source["tasks_path"],
+                _TASKS_PATH,
                 WholeFile(),
             )
         )

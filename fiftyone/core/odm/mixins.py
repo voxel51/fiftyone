@@ -148,7 +148,9 @@ class DatasetMixin(object):
 
         dataset = cls._dataset
         doc = getattr(dataset, "_doc", None)
-        reference_mode = doc is not None and bool(doc._media_sources)
+        # the roots table stays with a lean-loaded document; the sources
+        # themselves are fetched only when something resolves media
+        reference_mode = doc is not None and bool(doc._media_roots)
 
         active_field = "media_reference" if reference_mode else "filepath"
         return _filter_media_identity_fields(field_names, active_field)

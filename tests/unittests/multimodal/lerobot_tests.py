@@ -215,8 +215,9 @@ def _source_locs(dataset):
 def _take_sources(dataset):
     """Removes and returns the dataset's media sources: what an unbound
     source looks like to everything downstream."""
-    entries = [dict(entry) for entry in dataset._doc._media_sources]
+    entries = list(fmm._media_sources_by_id(dataset).values())
     dataset._doc._media_sources = []
+    dataset._doc._media_source_layouts = []
     dataset.save()
     return entries
 
@@ -225,8 +226,9 @@ def _put_sources(dataset, entries, loc=None):
     """Restores media sources, relocating them to ``loc`` when given. The id
     is kept: it leads every asset path already on the samples."""
     if loc is None:
-        dataset._doc._media_sources = [dict(entry) for entry in entries]
-        dataset.save()
+        # re-recorded, not re-assigned: a stored entry names the tables it is
+        # filed under, and only a reader hands back a whole description
+        dataset._record_media_sources(entries)
         return
 
     # relocating files the source under a new root, which is the one edit a
@@ -244,7 +246,7 @@ def _put_sources(dataset, entries, loc=None):
 
 def _source_id(dataset):
     """The key the dataset files its one media source under."""
-    return dataset._doc._media_sources[0]["id"]
+    return next(iter(fmm._media_sources_by_id(dataset)))
 
 
 def _keyed_info_path(dataset):
@@ -255,6 +257,14 @@ def _make_route_app():
     return Starlette(
         routes=[Route(path, endpoint) for path, endpoint in SampleRoutes]
     )
+
+
+def _delete_when_done(dataset):
+    """Deletes a dataset the sweep between tests will not: only
+    non-persistent datasets are swept, and this one has to outlive a child
+    process that clears those as it connects."""
+    if fo.dataset_exists(dataset.name):
+        fo.delete_dataset(dataset.name)
 
 
 def _paginate(dataset, first=20):
@@ -342,7 +352,7 @@ class LeRobotImporterTests(unittest.TestCase):
 
             relocated_root = root + "-relocated"
             shutil.copytree(root, relocated_root)
-            entries = [dict(entry) for entry in dataset._doc._media_sources]
+            entries = list(fmm._media_sources_by_id(dataset).values())
             try:
                 _put_sources(dataset, entries, loc=relocated_root)
                 locs = _source_locs(dataset)
@@ -507,8 +517,11 @@ class LeRobotImporterTests(unittest.TestCase):
             _write_v3_source(root)
             dataset = _import(root, max_samples=1)
             # a fresh process clears non-persistent datasets as it connects,
-            # and this one has to still be there when the child reads it
+            # and this one has to still be there when the child reads it.
+            # Restored below, since only non-persistent datasets are swept
+            # between tests
             dataset.persistent = True
+            self.addCleanup(_delete_when_done, dataset)
             script = """
 import asyncio
 import os
@@ -553,7 +566,7 @@ print(os.path.join(sources[source_id], *path.split('/')))
                 os.path.join(os.path.realpath(root), "meta", "info.json"),
             )
 
-            entries = [dict(entry) for entry in dataset._doc._media_sources]
+            entries = list(fmm._media_sources_by_id(dataset).values())
             with tempfile.TemporaryDirectory() as relocation_parent:
                 relocated_root = os.path.join(relocation_parent, "source")
                 shutil.copytree(root, relocated_root)

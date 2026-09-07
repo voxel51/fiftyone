@@ -4,7 +4,10 @@ import {
   type SampleRendererSampleLike,
 } from "@fiftyone/plugins";
 import { getSampleSrc } from "@fiftyone/state";
-import type { SampleMediaDescriptor } from "@fiftyone/utilities";
+import {
+  withMediaAssetSrcs,
+  type SampleMediaDescriptor,
+} from "@fiftyone/utilities";
 
 import {
   BYTE_SOURCE_READ_PROFILE,
@@ -47,9 +50,13 @@ export function episodeByteSourceFromContext(
  */
 export function episodeByteSourceFromMediaReference(
   ctx: SampleRendererProps["ctx"],
+  mediaSources: Readonly<Record<string, string>> | null | undefined,
 ): ByteSourceDescriptor | null {
-  const media = (ctx.sample.sample as { _media?: SampleMediaDescriptor | null })
-    ._media;
+  const media = (
+    withMediaAssetSrcs(ctx.sample.sample, mediaSources) as {
+      _media?: SampleMediaDescriptor | null;
+    }
+  )._media;
   const poster = media?.assets.find((asset) => asset.id === media.poster);
   if (!poster?.src) return null;
 

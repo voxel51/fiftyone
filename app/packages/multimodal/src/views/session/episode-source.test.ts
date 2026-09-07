@@ -14,6 +14,7 @@ import {
   resetSourceBootstrapCacheForTests,
 } from "../../runtime";
 import {
+  episodeManifestSourceFromContext,
   episodeSourceFromByteSource,
   episodeSourceFromMediaReference,
 } from "./episode-source";
@@ -191,5 +192,58 @@ describe("episodeSourceFromMediaReference", () => {
     await expect(
       sourceFor().assets.list({ signal: controller.signal }),
     ).rejects.toMatchObject({ name: "AbortError" });
+  });
+});
+
+describe("episodeManifestSourceFromContext", () => {
+  beforeEach(() => {
+    setFetchFunction("http://fiftyone.test", {}, "/proxy");
+  });
+
+  const reference = { _cls: "LeRobotEpisodeReference", key: "src/7" };
+  const ASSET = "src/videos/observation.images.camera/chunk-000/file-000.mp4";
+
+  // what a sample the server serves itself looks like: an asset names its
+  // source and its path, and carries no location of its own
+  const ctx = {
+    media: { mediaReference: reference },
+    sample: {
+      sample: {
+        _id: "s1",
+        _media: {
+          assets: [
+            {
+              featureName: "observation.images.camera",
+              id: ASSET,
+              mediaType: "video/mp4",
+              role: "video-stream",
+              selector: { kind: "whole-file" },
+            },
+          ],
+          poster: ASSET,
+        },
+      },
+    },
+  } as unknown as Parameters<typeof episodeManifestSourceFromContext>[0];
+
+  it("locates an unlocated asset from the dataset's source table", async () => {
+    const source = episodeManifestSourceFromContext(ctx, {
+      src: "/data/sources/one",
+    });
+
+    await expect(source?.assets.list()).resolves.toHaveLength(1);
+    await expect(source?.assets.resolve(ASSET)).resolves.toMatchObject({
+      readProfile: "local",
+      sourceId: ASSET,
+      url: "http://fiftyone.test/proxy/media?filepath=%2Fdata%2Fsources%2Fone%2Fvideos%2Fobservation.images.camera%2Fchunk-000%2Ffile-000.mp4",
+    });
+  });
+
+  it("offers nothing when the table that would locate it is absent", async () => {
+    // the modal fetches its own sample, so this is what it saw before the
+    // dataset's source table reached it
+    const source = episodeManifestSourceFromContext(ctx, null);
+
+    await expect(source?.assets.list()).resolves.toEqual([]);
   });
 });
