@@ -12141,10 +12141,17 @@ def _validate_media_source_iterable(dataset, samples):
 
 
 def _validated_media_source(dataset, sample, recorded):
-    """The sample, once its reference names a source the dataset records."""
-    source_id = getattr(
-        getattr(sample, "media_reference", None), "source_id", None
-    )
+    """The sample, once it is reference-backed and its reference names a
+    source the dataset records. Only the batch's first sample decided the
+    mode, so a later sample of the other kind is caught here."""
+    reference = getattr(sample, "media_reference", None)
+    if reference is None:
+        raise ValueError(
+            "A dataset cannot mix filepath-backed and "
+            "media-reference-backed samples"
+        )
+
+    source_id = getattr(reference, "source_id", None)
     if source_id is not None and source_id not in recorded:
         raise ValueError(
             "Dataset '%s' does not record media source '%s'. Add the source "
