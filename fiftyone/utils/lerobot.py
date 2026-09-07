@@ -976,7 +976,7 @@ def _open_parquet(path, role):
 
     try:
         try:
-            yield papq.ParquetFile(reader)
+            parquet_file = papq.ParquetFile(reader)
         except pa.ArrowInvalid as exc:
             raise UnfinalizedMediaSourceError(
                 "LeRobot %s Parquet file '%s' has no readable footer; "
@@ -984,6 +984,9 @@ def _open_parquet(path, role):
             ) from exc
         except Exception as exc:  # pylint: disable=broad-except
             _raise_storage_error(exc, role, path)
+
+        # outside the translator: what the caller raises is the caller's
+        yield parquet_file
     finally:
         reader.release()
 

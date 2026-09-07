@@ -234,6 +234,9 @@ def _intern_media_sources(doc, entries: Iterable[dict]) -> list:
                 "what a reader returns, not what is stored" % entry.get("id")
             )
 
+        # the kind registers which fields are a source's own, so it has to
+        # be loaded before the rest are filed away as shared layout
+        _ensure_builtin_media_reference_kind(entry.get("kind"))
         source_fields = _SOURCE_FIELDS_BY_KIND.get(entry.get("kind"), ())
         layout = {
             key: entry.pop(key)

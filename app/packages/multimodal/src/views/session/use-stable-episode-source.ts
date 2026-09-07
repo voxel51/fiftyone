@@ -54,8 +54,13 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
         datasetId,
         mediaReference.key,
         // a source table arriving after the first render relocates every
-        // asset, so it is part of which episode this source describes
-        mediaSources ? Object.keys(mediaSources).length : 0,
+        // asset, so its contents -- not merely how many -- are part of
+        // which episode this source describes
+        mediaSources
+          ? Object.entries(mediaSources).sort(([a], [b]) =>
+              a < b ? -1 : a > b ? 1 : 0,
+            )
+          : null,
       ])
     : "";
   const byteKey = next ? episodeSourceAccessKey(next) : "";

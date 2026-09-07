@@ -121,7 +121,7 @@ export function createCachedByteClient(
 
   const learnSize = (result: ByteRangeReadResult) => {
     const size = result.source.sizeBytes;
-    if (size !== undefined && !learnedSizes.has(result.source.sourceId)) {
+    if (size !== undefined) {
       learnedSizes.set(result.source.sourceId, size);
     }
   };

@@ -12115,21 +12115,44 @@ def _validate_media_source_iterable(dataset, samples):
             "media-reference-backed samples"
         )
 
-    if mode == "reference":
-        src_dataset = getattr(first, "_dataset", None)
-        if src_dataset is not None and src_dataset._doc.id != dataset._doc.id:
-            _adopt_media_sources(dataset, src_dataset)
+    if mode != "reference":
+        yield first
+        yield from samples
+        return
 
-        if not dataset._contains_media_references():
-            raise ValueError(
-                "Dataset '%s' records no media sources. Add a source with "
-                "add_dir(), or add samples from a dataset that records "
-                "theirs; a reference resolves only through a recorded source"
-                % dataset.name
-            )
+    src_dataset = getattr(first, "_dataset", None)
+    if src_dataset is not None and src_dataset._doc.id != dataset._doc.id:
+        _adopt_media_sources(dataset, src_dataset)
 
-    yield first
-    yield from samples
+    if not dataset._contains_media_references():
+        raise ValueError(
+            "Dataset '%s' records no media sources. Add a source with "
+            "add_dir(), or add samples from a dataset that records "
+            "theirs; a reference resolves only through a recorded source"
+            % dataset.name
+        )
+
+    # Read once, checked per sample as it streams past: a batch is only as
+    # resolvable as its least resolvable reference
+    recorded = frozenset(fmm._media_sources_by_id(dataset))
+    yield _validated_media_source(dataset, first, recorded)
+    for sample in samples:
+        yield _validated_media_source(dataset, sample, recorded)
+
+
+def _validated_media_source(dataset, sample, recorded):
+    """The sample, once its reference names a source the dataset records."""
+    source_id = getattr(
+        getattr(sample, "media_reference", None), "source_id", None
+    )
+    if source_id is not None and source_id not in recorded:
+        raise ValueError(
+            "Dataset '%s' does not record media source '%s'. Add the source "
+            "with add_dir() rather than add_samples(), so the dataset records "
+            "where its bytes are" % (dataset.name, source_id)
+        )
+
+    return sample
 
 
 def _validate_media_field_edits(
@@ -12140,11 +12163,7 @@ def _validate_media_field_edits(
         media_identity_mode = _get_media_identity_mode(sample_collection)
 
     reference_mode = media_identity_mode == "reference"
-    if (
-        "media_reference" in roots
-        or "media_reference" in roots
-        or ("filepath" in roots and reference_mode)
-    ):
+    if "media_reference" in roots or ("filepath" in roots and reference_mode):
         raise fmm.UnsupportedMediaReferenceOperation(
             "Media source fields cannot be edited on reference-backed samples"
         )

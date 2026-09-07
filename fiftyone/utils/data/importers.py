@@ -348,6 +348,10 @@ def merge_samples(
     #
 
     with dataset_importer:
+        media_sources = dataset_importer.get_media_sources()
+        if media_sources:
+            dataset._record_media_sources(media_sources)
+
         parse_sample, expand_schema, dynamic = _build_parse_sample_fcn(
             dataset,
             dataset_importer,

@@ -7,7 +7,6 @@ LeRobotDataset v3 importer and episode asset transport tests.
 """
 
 import asyncio
-import errno
 import importlib.util
 import json
 import os
@@ -17,36 +16,23 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
-import uuid
 
-from bson import ObjectId
 from decorators import drop_datasets
 import pytest
-from starlette.applications import Starlette
-from starlette.routing import Route
-from starlette.testclient import TestClient
 
 import fiftyone as fo
-import fiftyone.core.storage as fos
 import fiftyone.multimodal.media_reference.asset_planning as foma
 import fiftyone.multimodal.media_reference.field_model as fmm
 from fiftyone.multimodal.media_reference.field_model import (
-    InvalidMediaLocationError,
     MalformedMediaSourceError,
     MissingMediaRootError,
-    StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
-    UnsupportedMediaReferenceOperation,
 )
 from fiftyone.utils.lerobot import (
     LeRobotEpisodeReference,
     UnsupportedLeRobotExportModeError,
     UnsupportedLeRobotVersionError,
 )
-from fiftyone.server import utils as fosu
-from fiftyone.server.routes.groups import _filter_dict_by_fields
-from fiftyone.server.routes.sample import SampleRoutes, generate_sample_etag
-from fiftyone.server.samples import _create_sample_item
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
 import fiftyone.utils.data.importers as foudi
@@ -60,19 +46,6 @@ pa = pytest.importorskip("pyarrow")
 papq = pytest.importorskip("pyarrow.parquet")
 
 _VIDEO_FEATURE = "observation.images.front"
-# the whole reference now lives in the sample document
-_EPISODE_DESCRIPTOR_KEYS = {
-    "kind",
-    "key",
-    "versions",
-    "episode_index",
-    "data",
-    "episode_metadata",
-    "videos",
-    "images",
-    "statistics_path",
-    "tasks_path",
-}
 
 
 def _write_v3_source(root, version="v3.2", episodes=10):
@@ -244,19 +217,7 @@ def _put_sources(dataset, entries, loc=None):
     dataset._record_media_sources(relocated)
 
 
-def _source_id(dataset):
-    """The key the dataset files its one media source under."""
-    return next(iter(fmm._media_sources_by_id(dataset)))
-
-
-def _keyed_info_path(dataset):
-    return "%s/meta/info.json" % _source_id(dataset)
-
-
-def _make_route_app():
-    return Starlette(
-        routes=[Route(path, endpoint) for path, endpoint in SampleRoutes]
-    )
+_VIDEO_FEATURE = "observation.images.front"
 
 
 def _delete_when_done(dataset):

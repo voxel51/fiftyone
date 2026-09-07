@@ -393,12 +393,14 @@ def _load_media_source_manifest(path):
         if relative_root is not None:
             relative_root = _validate_relative_root(relative_root)
 
-        parsed.append(
-            (
-                _MediaSourceDescriptor(kind=source["kind"], id=source["id"]),
-                relative_root,
+        try:
+            descriptor = _MediaSourceDescriptor(
+                kind=source["kind"], id=source["id"]
             )
-        )
+        except TypeError as exc:
+            raise ValueError("Malformed media-source descriptor") from exc
+
+        parsed.append((descriptor, relative_root))
 
     source_ids = [source.id for source, *_ in parsed]
     if len(set(source_ids)) != len(source_ids):

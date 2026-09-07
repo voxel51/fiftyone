@@ -677,7 +677,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             sample. The path is converted to an absolute path (if necessary)
             via :func:`fiftyone.core.storage.normalize_path`
         media_reference (None): an immutable
-            :class:`fiftyone.multimodal.MediaReference` for a
+            :class:`fiftyone.core.media_reference.MediaReference` for a
             reference-backed sample
         tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance

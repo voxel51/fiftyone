@@ -261,7 +261,7 @@ export function createLeRobotFormatAdapter(
     // A poster needs only the cameras and the frame rate the sample already
     // holds; only the full session reads the source's info.json
     const info = lean
-      ? previewInfo(assets, episode.fps ?? Number.NaN)
+      ? previewInfo(assets, requirePreviewFps(episode.fps))
       : requireInfo(
           await readSourceInfo(
             requireSingleRole(assets, INFO_ROLE),
@@ -358,6 +358,15 @@ function requireEpisode(source: EpisodeSource): ReferenceEpisode {
 }
 
 /** The declaration a poster session needs, from the manifest's cameras. */
+/** The frame rate a poster is timed against, or a clear failure. */
+function requirePreviewFps(fps: number | undefined): number {
+  if (fps === undefined || !Number.isFinite(fps) || fps <= 0) {
+    throw new Error("LeRobot poster open requires a positive source fps");
+  }
+
+  return fps;
+}
+
 function previewInfo(
   assets: readonly AssetDescriptor[],
   fps: number,
