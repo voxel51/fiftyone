@@ -46,7 +46,7 @@ jobs:
           gcloud auth configure-docker "${{ env.GCP_LOCATION }}-docker.pkg.dev" --quiet
       - name: Set Env Vars
         run: |
-          fo_version=$(python3 -c 'import re; f=open("./setup.py").read(); print(re.search(r"VERSION\s*=\s*\"([^\"]+)\"", f).group(1))')
+          fo_version=$(tr -d '\r\n' < VERSION)
           short_sha="$(git rev-parse --short HEAD)"
           echo "fo_version=$fo_version" >> "$GITHUB_ENV"
           echo "pyver=${{ matrix.python }}" >> "$GITHUB_ENV"

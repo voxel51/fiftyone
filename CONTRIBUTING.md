@@ -151,7 +151,7 @@ pylint <file>
 The [FiftyOne API](https://voxel51.com/docs/fiftyone/user_guide/basics.html) is
 implemented in Python and the source code lives in
 [fiftyone/fiftyone](https://github.com/voxel51/fiftyone/tree/main/fiftyone).
-Refer to `setup.py` to see the Python versions that the project supports.
+Refer to `pyproject.toml` to see the Python versions that the project supports.
 
 All Python code contributed to FiftyOne must follow our
 [style guide](STYLE_GUIDE.md#python-style-guide).

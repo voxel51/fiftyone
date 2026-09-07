@@ -78,11 +78,11 @@ def _run(command: Sequence[str]) -> str:
 def get_local_toolchain() -> Toolchain:
     """Gets the local protobuf codegen toolchain."""
 
-    # setup.py owns the Python protobuf runtime pin. Match protoc to it so
-    # generated Python code does not drift across local environments.
+    # pyproject.toml owns the Python protobuf runtime pin. Match protoc to it
+    # so generated Python code does not drift across local environments.
     python_protobuf_version = re.search(
         r"protobuf==([\d.]+)",
-        (REPO_ROOT / "setup.py").read_text(),
+        (REPO_ROOT / "pyproject.toml").read_text(),
     ).group(1)
     required_libprotoc_version = ".".join(
         python_protobuf_version.split(".")[1:]
@@ -96,7 +96,8 @@ def get_local_toolchain() -> Toolchain:
         )
     protoc_path = str(Path(protoc_path).resolve())
 
-    # Keep Python gencode deterministic and aligned with setup.py's protobuf pin.
+    # Keep Python gencode deterministic and aligned with the pyproject.toml
+    # protobuf pin.
     protoc_output = _run([protoc_path, "--version"])
     protoc_match = re.search(r"libprotoc (\S+)", protoc_output)
     if not protoc_match:

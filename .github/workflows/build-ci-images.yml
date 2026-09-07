@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - requirements/**
-      - setup.py
+      - pyproject.toml
       - e2e-pw/yarn.lock
       - e2e-pw/ci/Dockerfile
       - tests/ci/Dockerfile

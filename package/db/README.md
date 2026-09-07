@@ -18,7 +18,7 @@ PyPI uploads will be triggered when a release tag is pushed to the repository:
    `main`.
 
     1. The tag format is `db-v<semantic-version>`. For example, `db-v1.3.0`.
-       This should match the `setup.py` and release branch.
+       This should match `package/db/VERSION` and the release branch.
 
 1. Select `Generate release notes`.
 

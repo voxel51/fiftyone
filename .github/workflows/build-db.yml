@@ -32,13 +32,28 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel build
-      - name: Set environment
+      - name: Set release version
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v[0-9]+.[0-9]+.[0-9]+rc[0-9]+ ]]; then
-             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/db-v//")" >> $GITHUB_ENV
+          # An rc tag overwrites package/db/VERSION for this build only; it
+          # must extend the base version. A stable tag must match it exactly.
+          base_version=$(tr -d '\r\n' < package/db/VERSION)
+          if [[ "$RELEASE_TAG" =~ ^refs/tags/db-v[0-9]+\.[0-9]+\.[0-9]+rc[0-9]+$ ]]; then
+            release_version=${RELEASE_TAG#refs/tags/db-v}
+            if [[ "$release_version" != "$base_version"rc* ]]; then
+              echo "::error::RC tag $release_version does not extend VERSION $base_version"
+              exit 1
+            fi
+            printf '%s\n' "$release_version" > package/db/VERSION
+          elif [[ "$RELEASE_TAG" =~ ^refs/tags/db-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            release_version=${RELEASE_TAG#refs/tags/db-v}
+            if [ "$release_version" != "$base_version" ]; then
+              echo "::error::Stable tag $release_version does not match VERSION $base_version"
+              exit 1
+            fi
           fi
+          echo "Building fiftyone-db $(tr -d '\r\n' < package/db/VERSION)"
       - name: Build Darwin arm64 wheel
         if: ${{ matrix.platform == 'darwin-arm64' }}
         run: |

@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 """
-Installs the ``fiftyone-db`` package.
+Builds the ``fiftyone-db`` wheel.
+
+Package metadata lives in ``pyproject.toml``. This file only provides the
+``bdist_wheel`` command that bundles the platform's MongoDB binaries into
+the wheel.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -17,8 +21,8 @@ import traceback
 import zipfile
 
 from setuptools import setup
+from setuptools.command.bdist_wheel import bdist_wheel
 from urllib.request import urlopen
-from wheel.bdist_wheel import bdist_wheel
 
 DARWIN = "Darwin"
 DARWIN_DOWNLOADS = {
@@ -191,22 +195,6 @@ def _get_download():
 MONGODB_BINARIES = ["mongod"]
 
 
-VERSION = "1.4.1"
-
-
-def get_version():
-    if "RELEASE_VERSION" in os.environ:
-        version = os.environ["RELEASE_VERSION"]
-        if not version.startswith(VERSION):
-            raise ValueError(
-                "Release version does not match version: %s and %s"
-                % (version, VERSION)
-            )
-        return version
-
-    return VERSION
-
-
 class CustomBdistWheel(bdist_wheel):
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
@@ -256,9 +244,10 @@ class CustomBdistWheel(bdist_wheel):
 
         try:
             if not os.path.exists(mongo_zip_dest):
-                with urlopen(mongo_zip_url) as conn, open(
-                    mongo_zip_dest, "wb"
-                ) as dest:
+                with (
+                    urlopen(mongo_zip_url) as conn,
+                    open(mongo_zip_dest, "wb") as dest,
+                ):
                     shutil.copyfileobj(conn, dest)
 
         except:
@@ -306,52 +295,12 @@ class CustomBdistWheel(bdist_wheel):
 
                 tar_entry = mongo_tar.getmember(tar_entry_name)
                 dest_path = os.path.join(bin_dir, filename)
-                with mongo_tar.extractfile(tar_entry) as src, open(
-                    dest_path, "wb"
-                ) as dest:
+                with (
+                    mongo_tar.extractfile(tar_entry) as src,
+                    open(dest_path, "wb") as dest,
+                ):
                     shutil.copyfileobj(src, dest)
                 os.chmod(dest_path, tar_entry.mode)
 
 
-cmdclass = {
-    "bdist_wheel": CustomBdistWheel,
-}
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-setup(
-    name="fiftyone_db",
-    version=get_version(),
-    description="FiftyOne DB",
-    author="Voxel51, Inc.",
-    author_email="info@voxel51.com",
-    url="https://github.com/voxel51/fiftyone",
-    license="Apache",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    packages=["fiftyone.db"],
-    package_dir={"fiftyone.db": "src"},
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Developers",
-        "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: Apache Software License",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        "Topic :: Scientific/Engineering :: Image Processing",
-        "Topic :: Scientific/Engineering :: Image Recognition",
-        "Topic :: Scientific/Engineering :: Information Analysis",
-        "Topic :: Scientific/Engineering :: Visualization",
-        "Operating System :: MacOS :: MacOS X",
-        "Operating System :: POSIX :: Linux",
-        "Operating System :: Microsoft :: Windows",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13",
-        "Programming Language :: Python :: 3.14",
-    ],
-    python_requires=">=3.10",
-    cmdclass=cmdclass,
-)
+setup(cmdclass={"bdist_wheel": CustomBdistWheel})

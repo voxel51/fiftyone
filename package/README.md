@@ -34,9 +34,9 @@ built when the workflow runs, and are downloadable as workflow artifacts.
 Wheels are also published to PyPI under the following circumstances:
 
 - `fiftyone` wheels (and documentation) are published when a tag matching `v*`
-  is pushed. `*` must match the version in `setup.py`.
+  is pushed. `*` must match the version in the top-level `VERSION` file.
 - `fiftyone-db` wheels are published when a tag matching `db-v*` is pushed. `*`
-  must match the version in `package/db/setup.py`.
+  must match the version in `package/db/VERSION`.
 
 It is recommended to:
 
@@ -57,9 +57,9 @@ give `*.whl` files that can be uploaded.
 
 FiftyOne and its related packages can also be built manually. The `package`
 folder contains supporting code to package `fiftyone-db`; the main `fiftyone`
-package is handled by the top-level `setup.py`.
+package is handled by the top-level `pyproject.toml`.
 
-For each package, `python setup.py bdist_wheel` in the appropriate folder will
+For each package, `python -m build --wheel` in the appropriate folder will
 generate a wheel for the current platform. For some packages, this is
 configurable as detailed below.
 
