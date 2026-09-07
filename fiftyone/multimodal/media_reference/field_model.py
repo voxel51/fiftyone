@@ -193,8 +193,15 @@ def _new_media_source_id() -> str:
 
 
 def _split_source_location(loc: str) -> Tuple[str, str]:
-    """A source directory as ``(the root it sits under, its own name)``."""
-    normalized = loc.rstrip("/")
+    """A source directory as ``(the root it sits under, its own name)``.
+
+    Normalized the way a sample's filepath is, so a source cannot name a
+    location a filepath could not: the browser is handed a composed location
+    verbatim when it is one it can fetch.
+    """
+    import fiftyone.core.storage as fos
+
+    normalized = fos.normalize_path(loc).replace("\\", "/").rstrip("/")
     root, _, name = normalized.rpartition("/")
     return root, name
 
@@ -498,8 +505,8 @@ def addressable_media_sources(dataset) -> Dict[str, str]:
 
     Named once per dataset rather than once per object on every page that
     touches the source, since a page repeats the sources its samples share.
-    A source the browser must reach directly is absent: its objects carry a
-    signature of their own and cannot be composed from where the source is.
+    A source whose objects carry a location of their own is absent: nothing
+    about them is composed from where the source is.
     """
     import fiftyone.core.storage as fos
 

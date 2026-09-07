@@ -20,7 +20,7 @@ const REMOTE_URL = /^(https?|s3|gs|gcs|az|abfs|abfss):\/\//i;
 /**
  * How an object's bytes are reached, from where the object is rather than how
  * the app addresses it: media this server reads for the browser is a local
- * read however the request is routed, and a signed object is not.
+ * read however the request is routed, and an object addressed by URL is not.
  */
 export function readProfileOf(src: string): ByteSourceReadProfile {
   return REMOTE_URL.test(src)

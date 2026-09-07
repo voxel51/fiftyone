@@ -73,7 +73,7 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   // good.
   const mediaSourcesKey = mediaSourcesFingerprint(mediaSources);
   // The episode a source serves, and the URL its tile plays, change
-  // independently: a re-signed URL is the same episode, so it must not
+  // independently: a changed URL is the same episode, so it must not
   // rebuild the session that is reading it
   const episodeKey = mediaReference
     ? JSON.stringify([

@@ -56,8 +56,8 @@ export type SampleMediaDescriptor = {
  * An asset id names its source and its path within that source, so an asset
  * the server serves is located from where its source is -- read once per
  * dataset -- rather than from a location repeated on every sample that names
- * it. An object the browser reaches directly arrives carrying its own, since
- * a signature cannot be composed.
+ * it. An asset that already carries a location keeps the one it arrived
+ * with.
  */
 export const withMediaAssetSrcs = <T>(
   sample: T,

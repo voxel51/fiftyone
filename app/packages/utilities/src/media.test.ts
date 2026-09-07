@@ -288,7 +288,7 @@ describe("withMediaAssetSrcs", () => {
     _id: "s1",
     _media: { assets: ids.map(asset), poster: ids[0] ?? null },
   });
-  const SOURCES = { src1: "/data/sources/one", src2: "gs://bucket/two" };
+  const SOURCES = { src1: "/data/sources/one", src2: "/data/sources/two" };
 
   const located = (result: {
     _media: { assets: readonly { src?: string }[] };
@@ -300,18 +300,16 @@ describe("withMediaAssetSrcs", () => {
     ).toEqual(["/data/sources/one/meta/info.json"]);
   });
 
-  it("keeps a location the sample arrived with, since a signature cannot be composed", () => {
-    const signed = {
+  it("keeps a location the sample arrived with", () => {
+    const prelocated = {
       _id: "s1",
       _media: {
-        assets: [
-          { ...asset("src2/videos/a.mp4"), src: "https://signed/a.mp4?sig=x" },
-        ],
+        assets: [{ ...asset("src2/videos/a.mp4"), src: "/elsewhere/a.mp4" }],
         poster: "src2/videos/a.mp4",
       },
     };
-    expect(located(withMediaAssetSrcs(signed, SOURCES))).toEqual([
-      "https://signed/a.mp4?sig=x",
+    expect(located(withMediaAssetSrcs(prelocated, SOURCES))).toEqual([
+      "/elsewhere/a.mp4",
     ]);
   });
 

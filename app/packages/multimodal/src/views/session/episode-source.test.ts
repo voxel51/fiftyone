@@ -102,7 +102,7 @@ describe("episodeSourceFromMediaReference", () => {
       kind: "video-timestamp-interval",
       toTimestamp: 2.5,
     },
-    src: "https://signed/camera.mp4",
+    src: "https://media.example/camera.mp4",
   };
   const INFO = {
     id: "src/meta/info.json",
@@ -155,13 +155,13 @@ describe("episodeSourceFromMediaReference", () => {
     expect(request).not.toHaveBeenCalled();
   });
 
-  it("reads a signed asset directly and a local one through the server", async () => {
+  it("reads an asset addressed by URL directly and a local one through the server", async () => {
     const source = sourceFor();
 
     await expect(source.assets.resolve(CAMERA_ASSET)).resolves.toEqual({
       readProfile: "remote",
       sourceId: CAMERA_ASSET,
-      url: "https://signed/camera.mp4",
+      url: "https://media.example/camera.mp4",
     });
     await expect(source.assets.resolve(INFO.id)).resolves.toEqual({
       readProfile: "local",

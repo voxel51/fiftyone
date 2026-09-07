@@ -101,8 +101,8 @@ export function createCachedByteClient(
   caches: ByteCacheLayers,
 ): ByteClient {
   // A ranged response reports the object's total size, so the first read of
-  // a source teaches every read after it how far a fill may widen. Sources
-  // reached by signed URL never carry a size up front.
+  // a source teaches every read after it how far a fill may widen. Not every
+  // source declares one up front.
   const learnedSizes = new Map<string, string>();
 
   const withKnownSize = (
