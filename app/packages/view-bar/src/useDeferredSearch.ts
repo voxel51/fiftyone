@@ -17,6 +17,10 @@ export interface DeferredSearchOptions {
   submit: (query: string) => void;
   /** The registry loaded without the operator: tell the user why nothing ran. */
   onUnavailable: () => void;
+  /** A query was parked to wait for the registry — show it as in flight. */
+  onHold: () => void;
+  /** A parked query was dropped (no operator): the in-flight state ends. */
+  onDrop: () => void;
 }
 
 export const useDeferredSearch = ({
@@ -24,6 +28,8 @@ export const useDeferredSearch = ({
   registered,
   submit,
   onUnavailable,
+  onHold,
+  onDrop,
 }: DeferredSearchOptions): ((query: string) => void) => {
   // Only the latest query waits — a second Enter replaces the first
   const pending = useRef<string | null>(null);
@@ -32,9 +38,13 @@ export const useDeferredSearch = ({
     if (!loaded || pending.current === null) return;
     const query = pending.current;
     pending.current = null;
-    if (registered) submit(query);
-    else onUnavailable();
-  }, [loaded, registered, submit, onUnavailable]);
+    if (registered) {
+      submit(query);
+    } else {
+      onDrop();
+      onUnavailable();
+    }
+  }, [loaded, registered, submit, onUnavailable, onDrop]);
 
   return useCallback(
     (query: string) => {
@@ -44,7 +54,8 @@ export const useDeferredSearch = ({
         return;
       }
       pending.current = query;
+      onHold();
     },
-    [loaded, registered, submit, onUnavailable],
+    [loaded, registered, submit, onUnavailable, onHold],
   );
 };

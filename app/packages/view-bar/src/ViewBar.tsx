@@ -723,7 +723,7 @@ const ViewBarInner: React.FC<{
     () =>
       notify({
         key: "view-bar-search-unavailable",
-        msg: "Natural language search needs the similarity search plugin, which is not installed here",
+        msg: "Natural language search is not available in this deployment",
       }),
     [notify],
   );
@@ -983,11 +983,23 @@ const ViewBarInner: React.FC<{
   // popover's trigger only in the sense of being what the stages row hangs
   // from; the bar decides when the row opens (the toggle, adding a stage) and
   // the popover reports a press outside everything as leaving.
+  // A held query gets the same in-flight treatment a running one does, so
+  // Enter always answers with something
+  const holdSearch = useCallback(
+    () => setViewChangePending(true),
+    [setViewChangePending],
+  );
+  const dropSearch = useCallback(
+    () => setViewChangePending(false),
+    [setViewChangePending],
+  );
   const submitSearch = useDeferredSearch({
     loaded: registryLoaded,
     registered: searchOperatorRegistered,
     submit: submitLanguageQuery,
     onUnavailable: notifySearchUnavailable,
+    onHold: holdSearch,
+    onDrop: dropSearch,
   });
 
   const gutter = (
