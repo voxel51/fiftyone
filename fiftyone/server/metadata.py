@@ -77,9 +77,8 @@ async def get_metadata(
     Returns:
         metadata dict
     """
-    media_reference = sample.get("media_reference")
-    if media_reference is not None:
-        cache_key = media_reference["key"]
+    cache_key = sample.get("media_reference")
+    if cache_key is not None:
         if cache_key not in metadata_cache:
             metadata_cache[cache_key] = dict(aspect_ratio=1)
 

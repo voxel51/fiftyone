@@ -203,29 +203,21 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
-from .multimodal.media import (
-    DatasetRelativeLocation,
+from .core.media_reference import MediaReference
+from .multimodal.media_reference import (
     InvalidMediaLocationError,
-    LeRobotEpisode,
-    LeRobotImageLocator,
-    LeRobotV3Locator,
-    LeRobotVideoLocator,
     MalformedMediaSourceError,
     MediaAsset,
     MediaAssetRole,
     MediaAssetSelector,
-    MediaReference,
     MediaReferenceError,
     MediaSourceAuthorizationError,
-    MissingMediaReferenceBindingError,
     MissingMediaRootError,
     MovedMediaRootError,
     RowInterval,
     StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
-    UnsupportedLeRobotExportModeError,
     UnsupportedMediaReferenceOperation,
-    UnsupportedLeRobotVersionError,
     VideoTimestampInterval,
     WholeFile,
 )
@@ -337,3 +329,9 @@ from .utils.eval.segmentation import (
     SegmentationResults,
 )
 from .utils.quickstart import quickstart
+
+from .utils.lerobot import (
+    LeRobotEpisodeReference,
+    UnsupportedLeRobotExportModeError,
+    UnsupportedLeRobotVersionError,
+)
