@@ -10,16 +10,6 @@
   background: var(--color-content-bg-card-1);
 }
 
-/* Positioned wrapper for media + timeline so the loading cover can overlay
-   both regions as one container. */
-.content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
 .media {
   flex: 1 1 auto;
   min-height: 0;

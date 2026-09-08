@@ -36,7 +36,7 @@ type MediaMetadataLike = {
  * no `@fiftyone/state` dependency. `frameRate` exists only on the video
  * variant of the sample response.
  */
-export interface AnnotationTopBarSample {
+interface AnnotationTopBarSample {
   sample: { filepath: string; metadata?: MediaMetadataLike };
   frameRate?: number;
 }

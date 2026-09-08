@@ -79,10 +79,6 @@ vi.mock("../propagation/useApplyPropagationResult", () => ({
   useApplyPropagatedDetection: () => vi.fn(),
 }));
 
-vi.mock("../state/videoAnnotationStatus", () => ({
-  useVideoAnnotationStatus: () => ({ begin: vi.fn(), end: vi.fn() }),
-}));
-
 vi.mock("../components/PropagationStatusItem", () => ({
   PropagationStatusItem: () => null,
 }));

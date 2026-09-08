@@ -17,14 +17,12 @@ export class VideoAnnotatePom {
   readonly modal: ModalPom;
   readonly assert: VideoAnnotateAsserter;
   readonly topBar: Locator;
-  readonly statusSlot: Locator;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
     this.assert = new VideoAnnotateAsserter(this);
     this.topBar = page.getByTestId("annotation-top-bar");
-    this.statusSlot = page.getByTestId("annotation-status-slot");
   }
 
   /**

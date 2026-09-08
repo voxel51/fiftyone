@@ -8,7 +8,6 @@ import {
   useLighterEventBus,
   useLighterEventHandler,
   useLighterSetupWithPixi,
-  useViewportInitReveal,
 } from "@fiftyone/lighter";
 import { useModalLookerOptions } from "@fiftyone/state";
 import {
@@ -177,10 +176,7 @@ export function useViewportReset(scene: LighterScene, sceneId: string): void {
  * source; pass nothing for a once-per-mount scene).
  *
  * Returns the scene plus whether its canonical media is installed; feed
- * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}. `revealed`
- * flips true once the initial viewport has settled on-canvas — tiles keep
- * their media + overlay output hidden until then (the same reveal contract as
- * the image modal's `LighterSampleRenderer`).
+ * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}..
  */
 export function useLighterMediaScene({
   hostRef,
@@ -220,7 +216,6 @@ export function useLighterMediaScene({
 }): {
   scene: LighterScene;
   canonicalMediaReady: boolean;
-  revealed: boolean;
 } {
   const canvas = useAttachedSingletonCanvas(hostRef);
 
@@ -267,7 +262,6 @@ export function useLighterMediaScene({
   useSceneColorScheme(scene, sceneId);
   const canonicalMediaReady = useCanonicalMediaInstall(scene, sceneId, dims);
   useViewportReset(scene, sceneId);
-  const revealed = useViewportInitReveal(scene, sceneId);
 
-  return { scene, canonicalMediaReady, revealed };
+  return { scene, canonicalMediaReady };
 }
