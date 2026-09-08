@@ -27,7 +27,6 @@ from fiftyone.server.scalars import BSON, JSON
 from fiftyone.server.utils import meets_type
 from fiftyone.server.view import get_view
 
-
 _TWENTY_FOUR = 24
 
 
@@ -544,9 +543,7 @@ def _first(
                             "input": "$_id" if list_of_lists else f"${path}",
                             "initialValue": None,
                             "in": {
-                                "$min"
-                                if sort == 1
-                                else "$max": [
+                                "$min" if sort == 1 else "$max": [
                                     "$$value",
                                     "$$this",
                                 ]

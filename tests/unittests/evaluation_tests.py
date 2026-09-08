@@ -2066,7 +2066,9 @@ class DetectionsTests(unittest.TestCase):
         # overlap, so its mask IoU is 0 rather than a ZeroDivisionError
         mask = np.ones((10, 10), dtype=bool)
         gts = [fo.Detection(label="x", bounding_box=[0, 0, 0, 0.5], mask=mask)]
-        preds = [fo.Detection(label="x", bounding_box=[0, 0, 0.5, 0.5], mask=mask)]
+        preds = [
+            fo.Detection(label="x", bounding_box=[0, 0, 0.5, 0.5], mask=mask)
+        ]
 
         ious = foui.compute_ious(preds, gts, use_masks=True)
 

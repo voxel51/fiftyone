@@ -5,6 +5,7 @@ Plotly plots.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 import itertools
 import logging
@@ -30,7 +31,6 @@ from .utils import (
     parse_locations,
     parse_scatter_inputs,
 )
-
 
 logger = logging.getLogger(__name__)
 

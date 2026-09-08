@@ -187,9 +187,11 @@ async def paginate_samples(
         # location; the rest are composed from where their source is
         node.sample["_media"] = {
             "assets": [
-                {**asset, "src": media_srcs[asset["id"]]}
-                if asset["id"] in media_srcs
-                else asset
+                (
+                    {**asset, "src": media_srcs[asset["id"]]}
+                    if asset["id"] in media_srcs
+                    else asset
+                )
                 for asset in media.assets
             ],
             "poster": media.poster_id,

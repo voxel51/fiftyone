@@ -17,7 +17,6 @@ from fiftyone.core.ontology import (
     delete_ontology,
 )
 
-
 _ONTOLOGY_NAME = "test_ontology"
 
 

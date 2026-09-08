@@ -27,7 +27,6 @@ from .base import (
     BaseClassificationResults,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
