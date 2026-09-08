@@ -94,15 +94,29 @@ export const useSyncAnnotationVideoStore = (
     // `labelTypes`, but the composite store still owns the sample-level
     // (temporal-detection) labels; tearing it down then would sweep those
     // overlays too. Visibility/activation gates rendering, never the store.
-    const frames = new FrameStore(sampleId, { labelTypes });
+    // Born loading: the cache starts empty, so the first seeds are
+    // provisional — consumers (the sidebar list) treat empty-while-loading as
+    // a spinner, not "no labels". Settled by the first landed chunk or the
+    // whole-clip warmup, whichever comes first.
+    const frames = new FrameStore(sampleId, { labelTypes, loading: true });
     const sampleLevel = new SampleLabelStore(sampleId, getSample(sampleId));
     const store = new VideoLabelStore(sampleId, frames, sampleLevel);
     const unregister = engine.registerStore(store);
     sampleLevelRef.current = sampleLevel;
 
+    let torndown = false;
+    const settle = () => {
+      if (!torndown) {
+        frames.setLoading(false);
+      }
+    };
+
     const seed = () =>
       frames.setData(parseFramesData(stream.cachedFrames(), labelTypes));
-    const unsubscribe = stream.subscribeToEdits(seed);
+    const unsubscribe = stream.subscribeToEdits(() => {
+      seed();
+      settle();
+    });
     seed();
 
     // Restore edits carried from the prior FrameStore (same sample) after the
@@ -123,6 +137,7 @@ export const useSyncAnnotationVideoStore = (
     }
 
     return () => {
+      torndown = true;
       // Carry unsaved edits to the next FrameStore (this same hook stays
       // mounted across a stream re-mount). Overwrites any prior carry, so a
       // different sample's edits can never leak back into this one.

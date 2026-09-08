@@ -23,8 +23,8 @@ export class VideoAnnotatePom {
     this.page = page;
     this.modal = modal;
     this.assert = new VideoAnnotateAsserter(this);
-    this.topBar = page.getByTestId("video-annotation-top-bar");
-    this.statusSlot = page.getByTestId("video-annotation-status-slot");
+    this.topBar = page.getByTestId("annotation-top-bar");
+    this.statusSlot = page.getByTestId("annotation-status-slot");
   }
 
   /**

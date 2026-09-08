@@ -45,6 +45,7 @@ const RIGHT = { ...LEFT, _id: "right" };
 
 vi.mock("@fiftyone/annotation", () => ({
   AgentTaskType: { PROPAGATE: "propagate" },
+  useAnnotationStatus: () => ({ setContent: vi.fn() }),
   useActiveSampleId: () => "sample-1",
   useSampleDescriptor: () => ({ id: "sample-1" }),
   useAgentRegistry: () => ({

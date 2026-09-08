@@ -7,6 +7,7 @@ import {
   Align,
   Anchor,
   Button,
+  IconName,
   Justify,
   Orientation,
   Size,
@@ -141,8 +142,11 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
   const handleClick = onToggle
     ? (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
+        // [data-toggle-exempt] marks control regions whose internals aren't
+        // semantically interactive (e.g. a slider track rendered as bare
+        // divs) — clicks inside them belong to the control, not the drawer.
         const interactive = target.closest(
-          'button, [role="button"], a, input, select, textarea',
+          'button, [role="button"], [role="slider"], a, input, select, textarea, [data-toggle-exempt]',
         );
         if (interactive && interactive !== e.currentTarget) return;
         onToggle();

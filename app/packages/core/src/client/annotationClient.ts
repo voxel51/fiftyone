@@ -34,6 +34,36 @@ export type ErrorResponse = {
   errors: string[];
 };
 
+/** One member's JSON-patch within a dynamic-group write. */
+export type DynamicGroupMemberPatch = {
+  sampleId: string;
+  patch: JSONDeltas;
+};
+
+export type PatchDynamicGroupRequest = {
+  datasetId: string;
+  /** The dynamic group's key value (same shape `/frames` accepts). */
+  dynamicGroup: string;
+  /** Serialized view stages that define the grouping. */
+  view: unknown[];
+  patches: DynamicGroupMemberPatch[];
+  /** The group version token — `"<max last_modified_at ISO>|<count>"`. */
+  versionToken: string;
+};
+
+export type PatchDynamicGroupResponse = {
+  samples: Sample[];
+  versionToken: string;
+};
+
+/**
+ * The fresh group state a dynamic-group 412 carries: the ordered members'
+ * ids and `last_modified_at` values (position i ↔ frame i+1).
+ */
+export type DynamicGroupMismatchBody = {
+  members: { id: string; last_modified_at: string }[];
+};
+
 export type PatchSampleResponse = {
   sample: Sample;
   versionToken: string;
@@ -194,6 +224,54 @@ export const patchSample = async (
 
   return {
     sample: response.response,
+    versionToken: parseETag(response.headers.get("ETag")),
+  };
+};
+
+/**
+ * Patch members of a dynamic group under a single group version token.
+ *
+ * The group — not each member — is the concurrency container: the server
+ * validates the token against the group's current state (max
+ * `last_modified_at` over the members plus the member count) and applies the
+ * per-member patches, so the write carries video's single-ETag semantics
+ * onto a group of samples. A stale token throws {@link VersionMismatchError}
+ * whose `responseBody` is a {@link DynamicGroupMismatchBody} and whose
+ * `versionToken` is fresh.
+ *
+ * @param request Patch dynamic group request
+ */
+export const patchDynamicGroup = async (
+  request: PatchDynamicGroupRequest,
+): Promise<PatchDynamicGroupResponse> => {
+  const patches = request.patches.map(({ sampleId, patch }) => ({
+    sampleId,
+    patch: patch.map((delta) =>
+      "value" in delta
+        ? { ...delta, value: toExtendedJson(delta.value) }
+        : delta,
+    ),
+  }));
+
+  const response = await doFetch<
+    { dynamicGroup: string; view: unknown[]; patches: typeof patches },
+    { samples: Sample[] }
+  >({
+    path: encodeURIPath(["dataset", request.datasetId, "dynamic-group"]),
+    method: "PATCH",
+    body: {
+      dynamicGroup: request.dynamicGroup,
+      view: request.view,
+      patches,
+    },
+    headers: {
+      "Content-Type": "application/json",
+      "If-Match": `"${request.versionToken}"`,
+    },
+  });
+
+  return {
+    samples: response.response.samples,
     versionToken: parseETag(response.headers.get("ETag")),
   };
 };

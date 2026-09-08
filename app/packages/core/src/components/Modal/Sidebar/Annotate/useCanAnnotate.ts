@@ -1,7 +1,10 @@
 import {
   canAnnotate,
   isGeneratedView,
+  isNestedDynamicGroup,
+  isDynamicGroup,
   isPatchesView,
+  isQueryPerformantDynamicGroup,
   mediaType,
   readOnly,
   useGroupSlices,
@@ -23,6 +26,7 @@ export type AnnotationDisabledReason =
   | "groupDatasetNoSupportedSlices"
   | "videoDataset"
   | "multimodalDataset"
+  | "dynamicGroupNotQueryPerformant"
   | null;
 
 export interface CanAnnotateResult {
@@ -42,12 +46,25 @@ export default function useCanAnnotate(): CanAnnotateResult {
   const isUnsupportedGeneratedView = isGenerated && !isPatches;
   const hasSlices = useHasAnnotationSupportedSlices();
   const isGroup = useIsGroupDataset();
+  const isDynamic = useRecoilValue(isDynamicGroup);
+  const isNestedDynamic = useRecoilValue(isNestedDynamicGroup);
+  const isQueryPerformant = useRecoilValue(isQueryPerformantDynamicGroup);
 
   // hide tab entirely if user lacks edit permission or feature disabled
   if (isReadOnlySnapshot || !canAnnotateEnabled) {
     return {
       showAnnotationTab: false,
       disabledReason: null,
+    };
+  }
+
+  // nested dynamic groups fall through to the group dataset logic below
+  if (isDynamic && !isNestedDynamic) {
+    return {
+      showAnnotationTab: true,
+      disabledReason: isQueryPerformant
+        ? null
+        : "dynamicGroupNotQueryPerformant",
     };
   }
 

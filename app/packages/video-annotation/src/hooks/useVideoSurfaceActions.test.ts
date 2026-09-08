@@ -40,7 +40,12 @@ const mockActions = {
 };
 
 const mockBus = { dispatch: vi.fn() };
-const mockStream = { fps: 10, totalFrames: 5, labelsField: "detections" };
+const mockStream = {
+  fps: 10,
+  totalFrames: 5,
+  labelsField: "detections",
+  labelsPath: PATH,
+};
 
 vi.mock("@fiftyone/annotation", () => ({
   useAnnotationEngine: () => mockEngine,

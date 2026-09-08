@@ -7,7 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import React, { useEffect } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type AudioAvailability,
   DEFAULT_AUDIO_VOLUME,
@@ -42,15 +42,17 @@ const Capture: React.FC<{ availability?: AudioAvailability }> = ({
   return null;
 };
 
-function renderControls(opts: { availability?: AudioAvailability } = {}) {
+function renderControls(
+  opts: { availability?: AudioAvailability; onToggle?: () => void } = {},
+) {
   return render(
     <PlaybackProvider duration={10} stepInterval={1 / 30}>
       <Capture availability={opts.availability} />
       {/* TimelineControls renders the audio controls itself now, right after
           the transport buttons — passing one in as well would put two in the
-          row. Rendering the bare row keeps this suite on the integrated
-          shape. */}
-      <TimelineControls />
+          row. The toggle callback aside, rendering the row bare keeps this
+          suite on the integrated shape. */}
+      <TimelineControls onToggle={opts.onToggle} />
     </PlaybackProvider>,
   );
 }
@@ -98,6 +100,29 @@ describe("VolumeControl", () => {
     renderControls();
     expect(screen.getByTestId("timeline-controls-mute")).toBeTruthy();
     expect(muteButton("Unmute").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("clicks on the volume group never toggle the tracks drawer", () => {
+    const onToggle = vi.fn();
+    renderControls({ onToggle });
+    fireEvent.click(screen.getByTestId("timeline-controls-volume-control"));
+    fireEvent.click(screen.getByTestId("timeline-controls-volume"));
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("clicks on bare slider internals never toggle the tracks drawer", () => {
+    // The original bug's path: the slider renders roleless divs, so a click
+    // on its innermost node bubbles to the drawer toggle unless guarded.
+    const onToggle = vi.fn();
+    renderControls({ onToggle });
+
+    let node: Element = screen.getByTestId("timeline-controls-volume");
+    while (node.firstElementChild) {
+      node = node.firstElementChild;
+    }
+
+    fireEvent.click(node);
+    expect(onToggle).not.toHaveBeenCalled();
   });
 
   it("unmuting restores the default volume on first ever use", () => {

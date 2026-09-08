@@ -18,6 +18,13 @@ type VideoLabelsRequestBase = {
   view: unknown[];
   /** Per-frame label fields to read (frame-relative, e.g. `"detections"`). */
   fields: string[];
+  /**
+   * Dynamic-group value, when the clip is a dynamic group rather than a video
+   * sample. The server reads labels off that group's ordered samples (the
+   * ImaVid case for an image dataset grouped into a video). The `fields` are
+   * then resolved at sample level.
+   */
+  dynamicGroup?: string | null;
   /** Optional extended view stages. */
   extended?: unknown;
 };

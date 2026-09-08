@@ -95,6 +95,31 @@ vi.mock("@fiftyone/lighter", async () => {
     useLighterEventBus: (_channelId: string) => ({
       dispatch: mockEventBusDispatch,
     }),
+    // Mirrors the real implementation so tests flushing mockRenderCallbacks
+    // drive the settle exactly as production does.
+    dispatchAfterPaintSettle: (
+      scene: {
+        registerRenderCallback: (cb: {
+          phase: string;
+          callback: () => void;
+        }) => () => void;
+      },
+      dispatch: () => void,
+    ) => {
+      const unregister1 = scene.registerRenderCallback({
+        phase: "after",
+        callback: () => {
+          unregister1();
+          const unregister2 = scene.registerRenderCallback({
+            phase: "after",
+            callback: () => {
+              unregister2();
+              dispatch();
+            },
+          });
+        },
+      });
+    },
     UNDEFINED_LIGHTER_SCENE_ID: "UNDEFINED_LIGHTER_SCENE",
     DEFAULT_ZOOM_PAD: 0.1,
   };

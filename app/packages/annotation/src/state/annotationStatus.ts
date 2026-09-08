@@ -2,18 +2,17 @@ import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import type { ReactElement } from "react";
 import { useMemo } from "react";
 
-export type VideoAnnotationStatusContent = ReactElement | null;
+export type AnnotationStatusContent = ReactElement | null;
 
 /**
- * Module-private content for the top bar's right-hand status slot. A plain
- * module-level atom (not a TilingProvider/Context-scoped store) so writers
- * mounted anywhere in the surface and the bar's reader resolve to the same
- * modal-default jotai store — see the "No TilingProvider" note in
- * {@link VideoAnnotationSurface}.
+ * Module-private content for the annotation top bar's right-hand status slot.
+ * A plain module-level atom (not a Provider/Context-scoped store) so writers
+ * mounted anywhere in an annotation surface and the bar's reader resolve to
+ * the same modal-default jotai store.
  */
-const statusContentAtom = atom<VideoAnnotationStatusContent>(
+const statusContentAtom = atom<AnnotationStatusContent>(
   null,
-) as PrimitiveAtom<VideoAnnotationStatusContent>;
+) as PrimitiveAtom<AnnotationStatusContent>;
 
 /**
  * Programmatic control over the top bar's status slot. Call
@@ -22,17 +21,16 @@ const statusContentAtom = atom<VideoAnnotationStatusContent>(
  * conditional mounting / effect cleanup so at most one writer is live.
  *
  * @example
- * const { setContent } = useVideoAnnotationStatus();
+ * const { setContent } = useAnnotationStatus();
  * useEffect(() => {
  *   setContent(<StatusItem icon={<Spinner />} label={`${pct}%`} />);
  *   return () => setContent(null);
  * }, [pct, setContent]);
  */
-export const useVideoAnnotationStatus = () => {
+export const useAnnotationStatus = () => {
   const setContent = useSetAtom(statusContentAtom);
   return useMemo(() => ({ setContent }), [setContent]);
 };
 
 /** Reads the current status-slot content. Internal to the top bar. */
-export const useVideoAnnotationStatusContent = () =>
-  useAtomValue(statusContentAtom);
+export const useAnnotationStatusContent = () => useAtomValue(statusContentAtom);

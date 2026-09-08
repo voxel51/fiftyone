@@ -19,7 +19,7 @@
  *     { type: "fetchChunk", reqId, request }             // per chunk
  *
  *   worker → main:
- *     { type: "frameReady", reqId, frameNumber, bitmap, width, height, meta: { src } }
+ *     { type: "frameReady", reqId, frameNumber, bitmap, width, height, meta: { src, filepath } }
  *     { type: "chunkDone", reqId, range }                // all frames in chunk processed
  *     { type: "chunkFailed", reqId, error }              // top-level fetch / parse failure
  *
@@ -94,8 +94,13 @@ async function handleFetchChunk(msg: FetchChunkMessage): Promise<void> {
 
   // Kick off every frame's fetch+decode in parallel; post each one as
   // soon as it's ready so the main-thread cache fills incrementally.
+  const mediaField =
+    (msg.request as { mediaField?: string })?.mediaField ?? "filepath";
+
   await Promise.all(
-    frames.frames.map((frame) => decodeAndDispatch(msg.reqId, frame)),
+    frames.frames.map((frame) =>
+      decodeAndDispatch(msg.reqId, frame, mediaField),
+    ),
   );
 
   postOutbound({
@@ -107,19 +112,28 @@ async function handleFetchChunk(msg: FetchChunkMessage): Promise<void> {
 
 async function decodeAndDispatch(
   reqId: number,
-  frame: { frame_number: number; filepath?: string },
+  frame: { frame_number: number; media_url?: string } & Record<string, unknown>,
+  mediaField: string,
 ): Promise<void> {
-  if (!frame.filepath || typeof frame.filepath !== "string") {
+  const mediaPath = frame[mediaField];
+  if (!mediaPath || typeof mediaPath !== "string") {
     return;
   }
 
-  const src = resolveMediaSrc(frame.filepath);
+  // An enterprise server signs cloud media into `media_url`, leaving the
+  // media field's own value untouched for display
+  const src = resolveMediaSrc(
+    typeof frame.media_url === "string" ? frame.media_url : mediaPath,
+  );
 
   let bitmap: ImageBitmap;
   try {
-    // Match `<img src>` semantics for the media GET: no custom
-    // headers, default credentials
-    const r = await fetch(src, { mode: "cors" });
+    // CORS fetch (createImageBitmap needs a readable, non-opaque response).
+    // `cache: "reload"` bypasses any opaque cache entry the same media URL may
+    // already hold from an `<img>` load (e.g. the legacy ImaVid Explore looker
+    // loads frames crossOrigin-less, caching an opaque response); reusing that
+    // here would fail the CORS check with a missing Access-Control-Allow-Origin.
+    const r = await fetch(src, { mode: "cors", cache: "reload" });
 
     if (!r.ok) {
       throw new Error(`image fetch failed: ${r.status}`);
@@ -146,7 +160,10 @@ async function decodeAndDispatch(
       bitmap,
       width: bitmap.width,
       height: bitmap.height,
-      meta: { src },
+      // filepath: each ImaVid "frame" is its own image sample — the header
+      // filename tracks the frame under the playhead, showing the media
+      // field's raw value (never a signed URL).
+      meta: { src, filepath: mediaPath },
     },
     [bitmap],
   );
