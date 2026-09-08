@@ -1,9 +1,10 @@
 /**
  * @fileoverview
  *
- * If a custom grid renderer throws, we mark that dataset as fail-open for the
- * rest of the browser session, reload onto a fresh synced subscription, and
- * then keep that dataset on the built-in grid renderer.
+ * If a custom grid renderer throws, we mark that dataset as fail-open, reload
+ * onto a fresh synced subscription, and then keep that dataset on the built-in
+ * grid renderer. The mark lasts until the next page load, so reloading retries
+ * the renderer rather than stranding the user on the built-in one.
  *
  * Implementation-wise, this is a tiny external store backed by
  * `sessionStorage`: it tracks failed datasets locally, exposes a forced
@@ -18,14 +19,18 @@ export type GridCustomRendererFailure = {
   rendererName: string;
   failedAt: number;
   errorMessage?: string;
+  // Set once the reload this failure triggered has landed. Reloading is the
+  // user's way of saying "try again", so a failure only survives the one
+  // reload it caused.
+  consumed?: boolean;
 };
 
 type GridCustomRendererFailoverSnapshot = {
   // Per-dataset UI state for the warning banner. Dismissing a banner should
   // not clear fail-open mode, so this is tracked separately from `failures`.
   dismissedBanners: Record<string, boolean>;
-  // Per-dataset fail-open decisions for this browser session. If a dataset is
-  // present here, its custom grid renderer stays disabled until the tab ends.
+  // Per-dataset fail-open decisions. If a dataset is present here, its custom
+  // grid renderer stays disabled until the next page load.
   failures: Record<string, GridCustomRendererFailure>;
 };
 
@@ -134,7 +139,7 @@ const getForcedSubscription = (
  * accepted so an existing tab can seamlessly upgrade to the dataset-scoped
  * model without manual storage clearing.
  */
-const readSnapshot = (): GridCustomRendererFailoverSnapshot => {
+const readStoredSnapshot = (): GridCustomRendererFailoverSnapshot => {
   if (!canUseSessionStorage()) {
     return createEmptySnapshot();
   }
@@ -166,6 +171,35 @@ const readSnapshot = (): GridCustomRendererFailoverSnapshot => {
     return createEmptySnapshot();
   }
 };
+
+/**
+ * Drops failures that already served their reload, so the renderer is retried
+ * rather than left disabled with no way back: `sessionStorage` outlives a hard
+ * refresh, and Chrome restores it on tab restore, so a kept failure survives
+ * even quitting the browser and only a brand new tab clears it.
+ */
+const dropSpentFailures = (
+  stored: GridCustomRendererFailoverSnapshot,
+): GridCustomRendererFailoverSnapshot => {
+  const failures: Record<string, GridCustomRendererFailure> = {};
+  const dismissedBanners: Record<string, boolean> = {};
+
+  for (const [datasetName, failure] of Object.entries(stored.failures)) {
+    if (failure.consumed) {
+      continue;
+    }
+
+    failures[datasetName] = failure;
+    if (stored.dismissedBanners[datasetName]) {
+      dismissedBanners[datasetName] = true;
+    }
+  }
+
+  return { dismissedBanners, failures };
+};
+
+const readSnapshot = (): GridCustomRendererFailoverSnapshot =>
+  dropSpentFailures(readStoredSnapshot());
 
 let snapshot = readSnapshot();
 const listeners = new Set<() => void>();
@@ -225,6 +259,30 @@ export const getGridCustomRendererFailoverSnapshot = () => snapshot;
  */
 export const getGridCustomRendererFailoverForcedSubscription = () =>
   getForcedSubscription(snapshot.failures);
+
+/**
+ * Records that the reload these failures triggered has landed. They stay in
+ * force for this page load; the next one drops them and retries the renderer.
+ */
+export const consumeGridCustomRendererFailover = () => {
+  const entries = Object.entries(snapshot.failures);
+  if (
+    entries.length === 0 ||
+    entries.every(([, failure]) => failure.consumed)
+  ) {
+    return;
+  }
+
+  replaceSnapshot({
+    dismissedBanners: snapshot.dismissedBanners,
+    failures: Object.fromEntries(
+      entries.map(([datasetName, failure]) => [
+        datasetName,
+        { ...failure, consumed: true },
+      ]),
+    ),
+  });
+};
 
 /** Returns the recorded failure for a dataset in the current browser session. */
 export const getGridCustomRendererFailover = (

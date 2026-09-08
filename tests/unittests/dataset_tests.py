@@ -475,6 +475,56 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(field.info, {"foo2": "bar2"})
 
     @drop_datasets
+    def test_dataset_field_info_serialization(self):
+        # https://github.com/voxel51/fiftyone/issues/2865
+        #
+        # Untyped `info` dicts must serialize the same value types that are
+        # natively supported by typed fields (dates, numpy arrays, etc),
+        # since untyped dict values otherwise bypass each subfield's own
+        # `to_mongo()`
+        dataset = fo.Dataset()
+
+        today = date.today()
+        arr = np.array([1.0, 2.0, 3.0])
+
+        dataset.add_sample_field(
+            "field1",
+            fo.DateField,
+            info={
+                "date": today,
+                "nested": {"date": today},
+                "list": [today],
+                "arr": arr,
+                "flag": True,
+                "n": 5,
+            },
+        )
+
+        field = dataset.get_field("field1")
+        self.assertEqual(field.info["date"], today)
+        self.assertEqual(field.info["nested"]["date"], today)
+        self.assertEqual(field.info["list"], [today])
+        self.assertTrue(np.array_equal(field.info["arr"], arr))
+        self.assertEqual(field.info["flag"], True)
+        self.assertEqual(field.info["n"], 5)
+
+        dataset.reload()
+
+        # `date` values necessarily round-trip as UTC midnight `datetime`
+        # values, since BSON has no native date-only type
+        field = dataset.get_field("field1")
+        self.assertEqual(
+            field.info["date"], datetime(today.year, today.month, today.day)
+        )
+
+        # The array must round-trip with its values intact, not be mangled
+        # into a list of raw serialized bytes (a regression risk of
+        # `DictField.to_mongo()` delegating to `super().to_mongo()`, which
+        # would recurse back into itself and treat the already-serialized
+        # `Binary` value as an iterable of raw bytes)
+        self.assertTrue(np.array_equal(field.info["arr"], arr))
+
+    @drop_datasets
     def test_dataset_shared_field_metadata(self):
         """Test field metadata for default/shared fields"""
         dataset1 = fo.Dataset()
