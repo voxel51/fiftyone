@@ -195,8 +195,7 @@ def warn_reserved_pk_paths(paths):
             "named 'pk' do not behave correctly in bulk write operations "
             "such as set_field(), and embedded fields named 'pk' may be "
             "silently dropped during serialization. Existing fields can "
-            "be migrated via rename_sample_field()/rename_frame_field()"
-            % bad
+            "be migrated via rename_sample_field()/rename_frame_field()" % bad
         )
 
 
@@ -292,6 +291,12 @@ def create_field(
 
             field_kwargs["field"] = subfield
     elif issubclass(ftype, fof.EmbeddedDocumentField):
+        if embedded_doc_type is None and issubclass(
+            ftype, fof.MediaReferenceField
+        ):
+            # The media identity declares its own type
+            embedded_doc_type = ftype().document_type
+
         if embedded_doc_type is None or not issubclass(
             embedded_doc_type, fooe.BaseEmbeddedDocument
         ):

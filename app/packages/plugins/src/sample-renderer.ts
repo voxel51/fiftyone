@@ -32,7 +32,6 @@ export type SampleRendererSampleLike = {
  */
 export type MatchMedia = {
   extensions?: string[];
-  mediaReferenceKinds?: string[];
   mimeTypes?: string[];
   mediaTypes?: string[];
 };
@@ -233,10 +232,6 @@ export function normalizeMatchMedia(
       matchMedia?.extensions,
       normalizeExtensionValue,
     ),
-    mediaReferenceKinds: normalizeMatcherArray(
-      matchMedia?.mediaReferenceKinds,
-      normalizeMatcherValue,
-    ),
     mimeTypes: normalizeMatcherArray(
       matchMedia?.mimeTypes,
       normalizeMatcherValue,
@@ -260,7 +255,6 @@ export function hasMatchMediaMatchers(matchMedia: MatchMedia | undefined) {
 
   return !!(
     normalized.extensions?.length ||
-    normalized.mediaReferenceKinds?.length ||
     normalized.mimeTypes?.length ||
     normalized.mediaTypes?.length
   );
@@ -283,10 +277,6 @@ export function matchesMatchMedia(
     matchesField(
       normalized.extensions,
       normalizeExtensionValue(media.extension),
-    ) &&
-    matchesField(
-      normalized.mediaReferenceKinds,
-      normalizeMatcherValue(media.mediaReference?.kind),
     ) &&
     matchesField(normalized.mimeTypes, normalizeMatcherValue(media.mimeType)) &&
     matchesField(normalized.mediaTypes, normalizeMatcherValue(media.mediaType))
