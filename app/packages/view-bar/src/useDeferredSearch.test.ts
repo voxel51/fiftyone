@@ -7,15 +7,15 @@ import { describe, expect, it, vi } from "vitest";
 
 import { useDeferredSearch } from "./useDeferredSearch";
 
-const render = (loaded: boolean, registered: boolean) => {
+const render = (settled: boolean, registered: boolean) => {
   const submit = vi.fn();
   const onUnavailable = vi.fn();
   const onHold = vi.fn();
   const onDrop = vi.fn();
   const hook = renderHook(
-    (props: { loaded: boolean; registered: boolean }) =>
+    (props: { settled: boolean; registered: boolean }) =>
       useDeferredSearch({ ...props, submit, onUnavailable, onHold, onDrop }),
-    { initialProps: { loaded, registered } },
+    { initialProps: { settled, registered } },
   );
   return { ...hook, submit, onUnavailable, onHold, onDrop };
 };
@@ -48,12 +48,13 @@ describe("useDeferredSearch", () => {
     expect(onHold).toHaveBeenCalledTimes(1);
     expect(onDrop).not.toHaveBeenCalled();
 
-    rerender({ loaded: true, registered: true });
+    rerender({ settled: true, registered: true });
     expect(submit).toHaveBeenCalledTimes(1);
     expect(submit).toHaveBeenCalledWith("red cars");
     expect(onUnavailable).not.toHaveBeenCalled();
   });
 
+  // Also the failed-listing case: the registry settles without the operator
   it("holds a query, then explains itself if the operator never appears", () => {
     const { result, rerender, submit, onUnavailable, onDrop } = render(
       false,
@@ -61,7 +62,7 @@ describe("useDeferredSearch", () => {
     );
     act(() => result.current("red cars"));
 
-    rerender({ loaded: true, registered: false });
+    rerender({ settled: true, registered: false });
     expect(submit).not.toHaveBeenCalled();
     // The in-flight state ends before the explanation
     expect(onDrop).toHaveBeenCalledTimes(1);
@@ -73,7 +74,7 @@ describe("useDeferredSearch", () => {
     act(() => result.current("red cars"));
     act(() => result.current("blue trucks"));
 
-    rerender({ loaded: true, registered: true });
+    rerender({ settled: true, registered: true });
     expect(submit).toHaveBeenCalledTimes(1);
     expect(submit).toHaveBeenCalledWith("blue trucks");
   });

@@ -18,7 +18,7 @@ import { useTrackEvent } from "@fiftyone/analytics";
 import {
   executeOperator,
   useOperatorAvailability,
-  useOperatorRegistryLoaded,
+  useOperatorRegistryState,
 } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { buildSimilarityRunName } from "@fiftyone/utilities";
@@ -712,18 +712,19 @@ const ViewBarInner: React.FC<{
   // that lists it loads after the bar renders, so until it has, the operator
   // is not missing — only unknown: the field takes the query and
   // `useDeferredSearch` holds it. Known missing (an install without the
-  // plugin) is when a click explains itself instead.
-  const registryLoaded = useOperatorRegistryLoaded();
+  // plugin, or a listing that failed) is when a click explains itself instead.
+  const registryState = useOperatorRegistryState();
   const searchOperatorRegistered = useOperatorAvailability(
     SIMILARITY_SEARCH_OPERATOR,
   );
-  const searchOperatorAvailable = searchOperatorRegistered || !registryLoaded;
+  const searchOperatorAvailable =
+    searchOperatorRegistered || registryState === "loading";
   const notify = fos.useNotification();
   const notifySearchUnavailable = useCallback(
     () =>
       notify({
         key: "view-bar-search-unavailable",
-        msg: "Natural language search is not available in this deployment",
+        msg: "Natural language search is not available",
       }),
     [notify],
   );
@@ -994,7 +995,7 @@ const ViewBarInner: React.FC<{
     [setViewChangePending],
   );
   const submitSearch = useDeferredSearch({
-    loaded: registryLoaded,
+    settled: registryState !== "loading",
     registered: searchOperatorRegistered,
     submit: submitLanguageQuery,
     onUnavailable: notifySearchUnavailable,

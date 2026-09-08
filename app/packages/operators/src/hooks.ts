@@ -17,6 +17,7 @@ import {
   operatorPlacementsAtom,
   operatorThrottledContext,
   operatorsInitializedAtom,
+  operatorsLoadFailedAtom,
   useCurrentSample,
 } from "./state";
 
@@ -191,9 +192,14 @@ export function useOperatorAvailability(uri: string) {
 }
 
 /**
- * Whether the operator registry has loaded from the server. Until it has, an
- * operator's absence from {@link useOperatorAvailability} means nothing yet.
+ * Where the operator registry stands with the server listing. While
+ * `loading`, an operator's absence from {@link useOperatorAvailability} means
+ * nothing yet; `ready` and `error` are both final — after an `error` the
+ * registry will not fill in on its own.
  */
-export function useOperatorRegistryLoaded() {
-  return useRecoilValue(operatorsInitializedAtom);
+export function useOperatorRegistryState(): "loading" | "ready" | "error" {
+  const initialized = useRecoilValue(operatorsInitializedAtom);
+  const failed = useRecoilValue(operatorsLoadFailedAtom);
+  if (initialized) return "ready";
+  return failed ? "error" : "loading";
 }

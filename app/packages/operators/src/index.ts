@@ -2,7 +2,7 @@ export { OPERATOR_PROMPT_AREAS, RiskLevel } from "./constants";
 export {
   useFirstExistingUri,
   useOperatorAvailability,
-  useOperatorRegistryLoaded,
+  useOperatorRegistryState,
 } from "./hooks";
 export { useOperators, useRefreshOperators } from "./loader";
 export { default as OperatorBrowser } from "./OperatorBrowser";

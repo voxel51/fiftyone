@@ -10,8 +10,11 @@
 import { useCallback, useEffect, useRef } from "react";
 
 export interface DeferredSearchOptions {
-  /** The registry has loaded, so `registered` is the truth. */
-  loaded: boolean;
+  /**
+   * The registry has loaded, or failed to and never will — either way
+   * `registered` is the answer.
+   */
+  settled: boolean;
   /** The search operator is in the registry. */
   registered: boolean;
   submit: (query: string) => void;
@@ -24,7 +27,7 @@ export interface DeferredSearchOptions {
 }
 
 export const useDeferredSearch = ({
-  loaded,
+  settled,
   registered,
   submit,
   onUnavailable,
@@ -35,7 +38,7 @@ export const useDeferredSearch = ({
   const pending = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!loaded || pending.current === null) return;
+    if (!settled || pending.current === null) return;
     const query = pending.current;
     pending.current = null;
     if (registered) {
@@ -44,11 +47,11 @@ export const useDeferredSearch = ({
       onDrop();
       onUnavailable();
     }
-  }, [loaded, registered, submit, onUnavailable, onDrop]);
+  }, [settled, registered, submit, onUnavailable, onDrop]);
 
   return useCallback(
     (query: string) => {
-      if (loaded) {
+      if (settled) {
         if (registered) submit(query);
         else onUnavailable();
         return;
@@ -56,6 +59,6 @@ export const useDeferredSearch = ({
       pending.current = query;
       onHold();
     },
-    [loaded, registered, submit, onUnavailable, onHold],
+    [settled, registered, submit, onUnavailable, onHold],
   );
 };
