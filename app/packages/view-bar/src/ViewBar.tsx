@@ -29,7 +29,6 @@ import {
   Icon,
   IconName,
   Orientation,
-  Popover,
   Size,
   Spacing,
   Stack,
@@ -38,7 +37,6 @@ import {
   TextColor,
   TextVariant,
   Tooltip,
-  ZIndex,
 } from "@voxel51/voodo";
 import React, {
   useCallback,
@@ -147,6 +145,19 @@ const LANGUAGE_SEARCH_K = 25;
 /** The Similarity action's server-side search operator. */
 const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
 
+/**
+ * Where a press is still "in the bar": the bar itself (both rows), the stage
+ * editor and search settings popovers, and any portaled popout — a list, a
+ * select menu, a tooltip — that a control in the bar opened.
+ */
+const STILL_IN_BAR = [
+  "[data-cy='view-bar']",
+  "[data-cy='view-stage-editor']",
+  "[data-cy='view-bar-search-settings']",
+  "[data-headlessui-portal]",
+  "[data-floating-ui-portal]",
+].join(", ");
+
 const ViewBarInner: React.FC<{
   /** What this surface may offer; everything, unless the host says less. */
   capabilities?: ViewBarCapabilities;
@@ -223,8 +234,7 @@ const ViewBarInner: React.FC<{
     }
     focusFrameRef.current = requestAnimationFrame(() => {
       focusFrameRef.current = null;
-      // The stages row is portaled, so it is found by its own test id. An
-      // empty row pins its slot open as a typeahead input; otherwise the
+      // An empty row pins its slot open as a typeahead input; otherwise the
       // slots are "+" buttons and the last one is where the next stage goes.
       const row = document.querySelector("[data-cy='view-bar-stages-row']");
       if (!row) return;
@@ -885,10 +895,11 @@ const ViewBarInner: React.FC<{
     ],
   );
 
-  // Unset follows the view: stages present means the row starts visible
   const stagesRowOpen = stagesOpen;
-  // Opening via the toggle lands the keyboard in the row. The popover mounts
-  // its panel in the same commit that opens it, so the slot is there to focus
+  const stagesRowOpenRef = useRef(false);
+  stagesRowOpenRef.current = stagesRowOpen;
+  // Opening via the toggle lands the keyboard in the row. The row mounts in
+  // the same commit that opens it, so the slot is there to focus
   const focusOnOpen = useRef(false);
   useEffect(() => {
     if (stagesRowOpen && focusOnOpen.current) {
@@ -904,10 +915,30 @@ const ViewBarInner: React.FC<{
   // finishes the edit: a working state that differs from the applied view and
   // has nothing left to fill in applies itself. A half-described stage stays
   // as a pill saying what it needs — work in progress, not a mistake to undo.
-  // Leaving is what the stages-row popover reports: a press outside the bar,
-  // the row and every portaled popout, or Escape at the bar level.
+  // A press inside the bar (either row), the stage editor, the search
+  // settings, or any portaled popout is still working; everything else is
+  // leaving, as is Escape at the bar level.
   //
   const applyOnLeaveRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      // A press on something React already removed (a picked option) is not
+      // a press outside
+      if (!target.isConnected) return;
+      const element = target instanceof Element ? target : null;
+      if (element?.closest(STILL_IN_BAR)) return;
+
+      setEditingId(null);
+      applyOnLeaveRef.current();
+      if (stagesRowOpenRef.current) {
+        setStagesOpen(false);
+      }
+    };
+
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, []);
 
   /**
    * Whether the working state differs from what is applied to the view; only
@@ -950,8 +981,7 @@ const ViewBarInner: React.FC<{
   /**
    * The bar's Escape: the editor popover is portaled, so an Escape here means
    * nothing is open — it walks the working state back to what is applied and
-   * hands the keyboard back. Shared by both rows (the stages row is portaled,
-   * so key events there do not bubble here).
+   * hands the keyboard back. Both rows are in the bar, so both bubble here.
    */
   const onBarKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== "Escape") return;
@@ -975,15 +1005,12 @@ const ViewBarInner: React.FC<{
   };
 
   /**
-   * Two rows. The first is the search bar — always present: the similarity
-   * input with its magnifying-glass settings, and the stages toggle at the
-   * right edge. The second is the stages row (slots, pills, editors),
-   * portaled under the bar because the header the bar lives in cannot grow.
+   * Two rows in one frame. The first is the search bar — always present: the
+   * similarity input with its magnifying-glass settings, and the stages
+   * toggle at the right edge. The second is the stages row (slots, pills,
+   * editors), under it while open. Both are in the flow: the header grows
+   * with the bar, and the page below moves down rather than being covered.
    */
-  // The gutter: the bar's own surface — the search row's canvas. It is the
-  // popover's trigger only in the sense of being what the stages row hangs
-  // from; the bar decides when the row opens (the toggle, adding a stage) and
-  // the popover reports a press outside everything as leaving.
   // A held query gets the same in-flight treatment a running one does, so
   // Enter always answers with something
   const holdSearch = useCallback(
@@ -1004,7 +1031,12 @@ const ViewBarInner: React.FC<{
   });
 
   const gutter = (
-    <div className={styles.gutter}>
+    <div
+      className={
+        stagesRowOpen ? `${styles.gutter} ${styles.open}` : styles.gutter
+      }
+      style={{ height: CHROME_CONTROL_HEIGHT }}
+    >
       <LanguageSearch
         key={`search-${searchEpoch}`}
         onHasTextChange={setSearchHasText}
@@ -1077,117 +1109,105 @@ const ViewBarInner: React.FC<{
   );
 
   return (
-    <Popover
-      className={styles.bar}
-      style={{ height: CHROME_CONTROL_HEIGHT }}
-      data-cy="view-bar"
-      onKeyDown={onBarKeyDown}
-      trigger={gutter}
-      open={stagesRowOpen}
-      onOpenChange={(open) => {
-        if (!open && stagesRowOpen) closeStagesRow();
-      }}
-      // The row spans the bar. Its tier is High, which voodo's tooltips share;
-      // the panel class pins it just below them (see .stagesRow)
-      matchTriggerWidth
-      zIndex={ZIndex.High}
-      // Escape belongs to the bar: it walks working state back, and folds the
-      // row itself (onBarKeyDown), so the popover must not also close on it
-      closeOnEscape={false}
-      // Focus is placed by the effect above — on the row's slot, when the
-      // toggle opened it; not on the panel when a stage was added
-      focusOnOpen={false}
-      panelClassName={styles.stagesRow}
-    >
-      <Stack
-        orientation={Orientation.Row}
-        spacing={Spacing.None}
-        align={Align.Center}
-        data-cy="view-bar-stages-row"
-        onKeyDown={onBarKeyDown}
-        style={{ height: CHROME_CONTROL_HEIGHT }}
-      >
+    <div className={styles.bar} data-cy="view-bar" onKeyDown={onBarKeyDown}>
+      {gutter}
+      {stagesRowOpen && (
         <Stack
           orientation={Orientation.Row}
-          spacing={Spacing.Xs}
+          spacing={Spacing.None}
           align={Align.Center}
-          className={styles.scroller}
-          data-cy="view-bar-scroller"
+          data-cy="view-bar-stages-row"
+          className={styles.stagesRow}
+          style={{ height: CHROME_CONTROL_HEIGHT }}
         >
-          <InsertSlot
-            index={0}
-            names={insertableNames}
-            describe={describeStage}
-            onInsert={insertStage}
-            onOpen={closeEditor}
-            // An empty row's slot IS the selector, input and all — a
-            // bare "+" alone in the row reads as a rendering failure
-            pinned={state.stages.length === 0}
-          />
-          {state.stages.map((stage, i) => {
-            const def = defsByName.get(stage.cls);
-            if (!def) return null;
-            return (
-              <React.Fragment key={stage.id}>
-                <StageCard
-                  errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
-                  // A stage holding a rejected value is invalid; one
-                  // merely missing required values is incomplete —
-                  // orange says "finish me", red says "fix me"
-                  invalid={[
-                    ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
-                  ].some((message) => message !== "Required")}
-                  kinds={activeKinds.get(stage.id) ?? NO_KINDS}
-                  onModeChange={(param, kind) => changeMode(stage, param, kind)}
-                  stage={stage}
-                  definition={def}
-                  fieldOptions={
-                    editingId === stage.id ? editingFieldOptions : fieldOptions
-                  }
-                  allPaths={editingId === stage.id ? editingPaths : fieldPaths}
-                  allowedFor={
-                    editingId === stage.id ? editingAllowedFor : allowedFor
-                  }
-                  choicesFor={choicesFor}
-                  operators={operators}
-                  fieldKind={
-                    editingId === stage.id ? editingFieldKind : fieldKind
-                  }
-                  expanded={editingId === stage.id}
-                  onToggle={() =>
-                    setEditingId((id) => (id === stage.id ? null : stage.id))
-                  }
-                  onChange={(name, value) => {
-                    markTouched(stage.id, name);
-                    dispatch({
-                      type: "setKwarg",
-                      id: stage.id,
-                      name,
-                      value,
-                    });
-                  }}
-                  onCommit={commitStage}
-                  onRemove={() => {
-                    if (editingId === stage.id) setEditingId(null);
-                    dispatch({ type: "removeStage", id: stage.id });
-                    // Removing a stage is a finished edit — apply once
-                    // the reducer's state lands (next render)
-                    autoApplyQueued.current = true;
-                  }}
-                />
-                <InsertSlot
-                  index={i + 1}
-                  names={insertableNames}
-                  describe={describeStage}
-                  onInsert={insertStage}
-                  onOpen={closeEditor}
-                />
-              </React.Fragment>
-            );
-          })}
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.Xs}
+            align={Align.Center}
+            className={styles.scroller}
+            data-cy="view-bar-scroller"
+          >
+            <InsertSlot
+              index={0}
+              names={insertableNames}
+              describe={describeStage}
+              onInsert={insertStage}
+              onOpen={closeEditor}
+              // An empty row's slot IS the selector, input and all — a
+              // bare "+" alone in the row reads as a rendering failure
+              pinned={state.stages.length === 0}
+            />
+            {state.stages.map((stage, i) => {
+              const def = defsByName.get(stage.cls);
+              if (!def) return null;
+              return (
+                <React.Fragment key={stage.id}>
+                  <StageCard
+                    errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
+                    // A stage holding a rejected value is invalid; one
+                    // merely missing required values is incomplete —
+                    // orange says "finish me", red says "fix me"
+                    invalid={[
+                      ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
+                    ].some((message) => message !== "Required")}
+                    kinds={activeKinds.get(stage.id) ?? NO_KINDS}
+                    onModeChange={(param, kind) =>
+                      changeMode(stage, param, kind)
+                    }
+                    stage={stage}
+                    definition={def}
+                    fieldOptions={
+                      editingId === stage.id
+                        ? editingFieldOptions
+                        : fieldOptions
+                    }
+                    allPaths={
+                      editingId === stage.id ? editingPaths : fieldPaths
+                    }
+                    allowedFor={
+                      editingId === stage.id ? editingAllowedFor : allowedFor
+                    }
+                    choicesFor={choicesFor}
+                    operators={operators}
+                    fieldKind={
+                      editingId === stage.id ? editingFieldKind : fieldKind
+                    }
+                    expanded={editingId === stage.id}
+                    onToggle={() =>
+                      setEditingId((id) => (id === stage.id ? null : stage.id))
+                    }
+                    onChange={(name, value) => {
+                      markTouched(stage.id, name);
+                      dispatch({
+                        type: "setKwarg",
+                        id: stage.id,
+                        name,
+                        value,
+                      });
+                    }}
+                    onCommit={commitStage}
+                    onRemove={() => {
+                      if (editingId === stage.id) setEditingId(null);
+                      dispatch({ type: "removeStage", id: stage.id });
+                      // Removing a stage is a finished edit — apply once
+                      // the reducer's state lands (next render)
+                      autoApplyQueued.current = true;
+                    }}
+                  />
+                  <InsertSlot
+                    index={i + 1}
+                    names={insertableNames}
+                    describe={describeStage}
+                    onInsert={insertStage}
+                    onOpen={closeEditor}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </Stack>
         </Stack>
-      </Stack>
-    </Popover>
+      )}
+    </div>
   );
 };
 

@@ -124,6 +124,7 @@ const Nav: React.FC<
           orientation={Orientation.Row}
           align={Align.Center}
           spacing={Spacing.Sm}
+          className={styles.actions}
         >
           <Teams />
           <Button

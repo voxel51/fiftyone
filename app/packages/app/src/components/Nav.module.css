@@ -7,3 +7,9 @@
 .spacer {
   flex: 1;
 }
+
+/* The right-side actions share the first row's height so they stay level
+   with the search row when the view bar opens its second row */
+.actions {
+  height: 40px;
+}

@@ -3,11 +3,12 @@
  *
  * Similarity search in the bar: typing a prompt and pressing Enter appends a
  * `SortBySimilarity` stage to the current view. The box always renders —
- * without a prompt-capable index it becomes the on-ramp: its dropdown offers
- * "Configure similarity search", which opens the Similarity Search panel.
+ * without a prompt-capable index it becomes the on-ramp: its dropdown says
+ * search by meaning is off, and its one action opens the Similarity Search
+ * panel to set an index up.
  *
  * The magnifying glass is where the search's settings live (which index, how
- * many matches); focusing the input offers the dataset's previous queries.
+ * many results); focusing the input offers the dataset's previous queries.
  */
 
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
@@ -17,6 +18,7 @@ import {
   Button,
   Combobox,
   type ComboboxOption,
+  Icon,
   IconName,
   LoadingDots,
   Orientation,
@@ -24,6 +26,7 @@ import {
   Size,
   Spacing,
   Stack,
+  Text,
   TextColor,
   TextVariant,
   Variant,
@@ -119,26 +122,30 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       className={styles.root}
     >
       {/* The magnifying glass is where the search's settings live — which
-          index, how many matches, and the hand-off to the Similarity Search
-          panel (or, with no index, the explanation and the on-ramp) */}
-      <SearchSettingsPopover
-        trigger={
-          <Button
-            variant={Variant.Icon}
-            size={Size.Xs}
-            borderless
-            leadingIcon={SearchIcon}
-            aria-label="Similarity search settings"
-            data-cy="view-bar-search-settings-trigger"
-          />
-        }
-        promptKeys={promptKeys}
-        selectedKey={selectedKey}
-        onSelectKey={onSelectKey}
-        k={k}
-        onChangeK={onChangeK}
-        onOpenPanel={onOpenPanel}
-      />
+          index, how many results, and the hand-off to the Similarity Search
+          panel (or, with no index, the explanation and the on-ramp). It
+          floats over the field's leading padding so the field — and the
+          list anchored to it — starts at the bar's left edge. */}
+      <div className={styles.magnifier}>
+        <SearchSettingsPopover
+          trigger={
+            <Button
+              variant={Variant.Icon}
+              size={Size.Xs}
+              borderless
+              leadingIcon={SearchIcon}
+              aria-label="Similarity search settings"
+              data-cy="view-bar-search-settings-trigger"
+            />
+          }
+          promptKeys={promptKeys}
+          selectedKey={selectedKey}
+          onSelectKey={onSelectKey}
+          k={k}
+          onChangeK={onChangeK}
+          onOpenPanel={onOpenPanel}
+        />
+      </div>
       <Combobox
         aria-label={LANGUAGE_SEARCH_LABEL}
         placeholder={LANGUAGE_SEARCH_LABEL}
@@ -168,22 +175,38 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         emptyMessage={
           !available || enabled
             ? null
-            : // Text search needs a similarity index that supports prompts;
-              // the list's one offer is to go make one, and taking it is
-              // leaving the field
+            : // Text search needs a similarity index that supports prompts:
+              // the list says so, and its one action is to go make one —
+              // taking it is leaving the field
               ({ close }) => (
-                <Button
-                  variant={Variant.Secondary}
-                  size={Size.Sm}
-                  className={styles.configure}
-                  leadingIcon={IconName.Settings}
-                  onClick={() => {
-                    close();
-                    onOpenPanel();
-                  }}
+                <div
+                  className={styles.emptyState}
+                  data-cy="view-bar-search-no-index"
                 >
-                  Configure similarity search
-                </Button>
+                  <Icon
+                    name={IconName.Embeddings}
+                    size={Size.Sm}
+                    color={TextColor.Secondary}
+                  />
+                  <div className={styles.emptyCopy}>
+                    <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                      Search by meaning is off
+                    </Text>
+                    <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
+                      No similarity index yet – plain-language search needs one.
+                    </Text>
+                  </div>
+                  <Button
+                    variant={Variant.Borderless}
+                    size={Size.Sm}
+                    onClick={() => {
+                      close();
+                      onOpenPanel();
+                    }}
+                  >
+                    Set up
+                  </Button>
+                </div>
               )
         }
       />

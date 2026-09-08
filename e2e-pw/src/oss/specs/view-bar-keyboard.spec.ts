@@ -139,13 +139,8 @@ test.describe("view bar keyboard", () => {
 
     // Nothing in the bar holds focus once the draft is gone
     const focusedInBar = await page.evaluate(() => {
-      // The stages row is portaled, so "in the bar" spans both containers
       const active = document.activeElement;
-      return Boolean(
-        active?.closest(
-          "[data-cy='view-bar'], [data-cy='view-bar-stages-row']",
-        ),
-      );
+      return Boolean(active?.closest("[data-cy='view-bar']"));
     });
     expect(focusedInBar).toBe(false);
   });
@@ -252,13 +247,8 @@ test.describe("view bar keyboard", () => {
     ).toBeFocused();
     await page.keyboard.press("Escape");
     const focusedInBar = await page.evaluate(() => {
-      // The stages row is portaled, so "in the bar" spans both containers
       const active = document.activeElement;
-      return Boolean(
-        active?.closest(
-          "[data-cy='view-bar'], [data-cy='view-bar-stages-row']",
-        ),
-      );
+      return Boolean(active?.closest("[data-cy='view-bar']"));
     });
     expect(focusedInBar).toBe(false);
     // The row folded away with the Escape; reopening shows the applied

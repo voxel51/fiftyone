@@ -27,7 +27,9 @@ const Header: React.FC<
   return (
     <Stack
       orientation={Orientation.Row}
-      align={Align.Center}
+      // Top-aligned: the view bar grows to two rows, and its neighbours stay
+      // on the first one rather than drifting to the middle of the header
+      align={Align.Start}
       spacing={Spacing.Lg}
       className={style.header}
     >

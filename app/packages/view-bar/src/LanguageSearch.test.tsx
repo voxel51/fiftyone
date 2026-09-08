@@ -51,7 +51,7 @@ describe("LanguageSearch", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  it("offers to configure an index when the operator exists but no index does", () => {
+  it("offers to set an index up when the operator exists but no index does", () => {
     const { onUnavailable, onOpenPanel } = renderSearch({
       available: true,
       enabled: false,
@@ -60,9 +60,8 @@ describe("LanguageSearch", () => {
       screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
     );
     expect(onUnavailable).not.toHaveBeenCalled();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Configure similarity search" }),
-    );
+    expect(screen.getByText("Search by meaning is off")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Set up" }));
     expect(onOpenPanel).toHaveBeenCalledTimes(1);
   });
 

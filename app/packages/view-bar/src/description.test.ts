@@ -9,7 +9,7 @@ describe("tokenize", () => {
     ]);
   });
 
-  it("renders a class role as its bare name linking to the module page", () => {
+  it("renders a class role as its bare name", () => {
     expect(
       tokenize(
         "Filters the :class:`fiftyone.core.labels.Label` field of each sample.",
@@ -19,7 +19,6 @@ describe("tokenize", () => {
       {
         kind: "ref",
         text: "Label",
-        href: "https://docs.voxel51.com/api/fiftyone.core.labels.html#fiftyone.core.labels.Label",
       },
       { kind: "text", text: " field of each sample." },
     ]);
@@ -30,29 +29,26 @@ describe("tokenize", () => {
       {
         kind: "ref",
         text: "Limit",
-        href: "https://docs.voxel51.com/api/fiftyone.core.stages.html#fiftyone.core.stages.Limit",
       },
     ]);
   });
 
-  it("anchors a method role to its full dotted path", () => {
+  it("renders a method role as its bare name", () => {
     expect(
       tokenize(":meth:`fiftyone.core.collections.SampleCollection.exists`"),
     ).toEqual([
       {
         kind: "ref",
         text: "exists",
-        href: "https://docs.voxel51.com/api/fiftyone.core.collections.html#fiftyone.core.collections.SampleCollection.exists",
       },
     ]);
   });
 
-  it("links a module role to its own page", () => {
+  it("renders a module role as its last segment", () => {
     expect(tokenize(":mod:`fiftyone.core.stages`")).toEqual([
       {
         kind: "ref",
         text: "stages",
-        href: "https://docs.voxel51.com/api/fiftyone.core.stages.html",
       },
     ]);
   });
@@ -73,7 +69,6 @@ describe("tokenize", () => {
       {
         kind: "ref",
         text: "Label",
-        href: "https://docs.voxel51.com/api/fiftyone.core.labels.html#fiftyone.core.labels.Label",
       },
       { kind: "text", text: " to " },
       { kind: "code", text: "None" },
@@ -81,12 +76,11 @@ describe("tokenize", () => {
     ]);
   });
 
-  it("falls back to a bare page for a dotless path", () => {
+  it("keeps a dotless path whole", () => {
     expect(tokenize(":class:`Label`")).toEqual([
       {
         kind: "ref",
         text: "Label",
-        href: "https://docs.voxel51.com/api/Label.html",
       },
     ]);
   });

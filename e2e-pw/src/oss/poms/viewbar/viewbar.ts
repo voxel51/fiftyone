@@ -2,7 +2,7 @@ import { Locator, Page, expect } from "src/oss/fixtures";
 
 /**
  * The view bar: a search row in the header, with the stage cards in a
- * portaled second row the stages toggle opens. The popover for the stage
+ * second row the stages toggle opens under it. The popover for the stage
  * being edited is its own POM — {@link StageEditorPom} — returned by
  * `addStage` and `editStage`.
  */
@@ -21,9 +21,9 @@ export class ViewBarPom {
     this.stageEditor = new StageEditorPom(page);
   }
 
-  /** The stages row — portaled to the body, so found at the page level. */
+  /** The stages row: the bar's second row, present while open. */
   get stagesRow() {
-    return this.page.getByTestId("view-bar-stages-row");
+    return this.locator.getByTestId("view-bar-stages-row");
   }
 
   /** The search row's right-edge toggle that opens the stages row. */
@@ -86,7 +86,7 @@ export class ViewBarPom {
   /**
    * Makes the stages row visible. A bar holding stages opens it on its own;
    * an empty bar needs the toggle. The toggle's aria-expanded reflects the
-   * open state synchronously, so this never races the row's portal mount.
+   * open state synchronously, so this never races the row mounting.
    */
   async openStages() {
     const expanded = await this.stagesToggle.getAttribute("aria-expanded");

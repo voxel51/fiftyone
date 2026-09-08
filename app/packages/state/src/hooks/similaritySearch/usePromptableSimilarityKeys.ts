@@ -6,6 +6,8 @@ export interface PromptableSimilarityIndex {
   key: string;
   /** Set when the index is patches-level: the field its patches come from. */
   patchesField: string | null;
+  /** The model the index embeds with, when the run recorded one. */
+  model?: string | null;
 }
 
 /**
@@ -20,13 +22,22 @@ const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
   const brainMethods = useRecoilValue(fos.dataset)?.brainMethods ?? [];
   return useMemo(() => {
     const created = new Map(brainMethods.map((m, i) => [m.key, i]));
+    const models = new Map(brainMethods.map((m) => [m.key, m.config.model]));
     return [
       ...samples
         .filter((method) => method.supportsPrompts === true)
-        .map(({ key }) => ({ key, patchesField: null })),
+        .map(({ key }) => ({
+          key,
+          patchesField: null,
+          model: models.get(key),
+        })),
       ...patches
         .filter(([method]) => method.supportsPrompts === true)
-        .map(([{ key }, field]) => ({ key, patchesField: field })),
+        .map(([{ key }, field]) => ({
+          key,
+          patchesField: field,
+          model: models.get(key),
+        })),
     ].sort((a, b) => (created.get(b.key) ?? -1) - (created.get(a.key) ?? -1));
   }, [samples, patches, brainMethods]);
 };
