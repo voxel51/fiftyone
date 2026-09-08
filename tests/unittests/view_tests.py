@@ -777,6 +777,32 @@ class ViewExpressionTests(unittest.TestCase):
         self.assertListEqual(slices, manual_slices)
 
     @drop_datasets
+    def test_array_slice_mixed_sign(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(filepath="filepath1.jpg", my_int_list=list(range(10)))
+        )
+
+        # Slices where the start and stop bounds have different signs
+        # (eg `x[-a:b]`) previously computed the wrong slice length
+        slices = [
+            (-3, 8),
+            (3, -2),
+            (-8, 9),
+            (-20, 20),
+            (20, -20),
+            (0, -10),
+            (5, 5),
+            (7, 2),
+        ]
+        for start, stop in slices:
+            expected = [list(range(10))[start:stop]]
+            actual = dataset.values(F("my_int_list")[start:stop])
+            self.assertListEqual(
+                actual, expected, "slice [%d:%d]" % (start, stop)
+            )
+
+    @drop_datasets
     def test_str(self):
         special_chars = r"[]{}()*+-?.,\\^$|#"
 

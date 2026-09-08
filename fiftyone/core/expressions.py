@@ -2300,9 +2300,6 @@ class ViewExpression(object):
         # if the `if_else()` calls were replaced by explicit logic when
         # start/stop are numbers, not expressions
 
-        # @todo slices like `x[-a:b]` where sign(a) != sign(b) are not
-        # currently working
-
         if s.start is not None:
             position = s.start
             if s.stop is None:
@@ -2310,13 +2307,35 @@ class ViewExpression(object):
                 expr = ViewExpression({"$slice": [self, position, n]})
                 return self.let_in(expr)
 
-            n = s.stop - position
+            stop = s.stop
+            length = self.length()
 
-            pos_start = ViewExpression({"$slice": [self, position, n]})
-            neg_start = ViewExpression(
-                {"$slice": [self, position + self.length(), n]}
+            # `n` (the number of elements to take) must be computed from
+            # the absolute, length-resolved positions of both bounds,
+            # since `stop - position` is only correct when `position` and
+            # `stop` share the same sign (eg `x[-a:b]` where sign(a) !=
+            # sign(b) would otherwise be wrong)
+            resolved_position = ViewExpression(position >= 0).if_else(
+                position, position + length
             )
-            expr = ViewExpression(n >= 0).if_else(
+            resolved_stop = ViewExpression(stop >= 0).if_else(
+                stop, stop + length
+            )
+            n = resolved_stop - resolved_position
+
+            # MongoDB's `$slice` requires a strictly positive count, so a
+            # non-positive `n` (eg `x[5:5]`, an empty result) must take the
+            # `$literal: []` branch below rather than reach `$slice` with
+            # `n <= 0`, which would raise rather than yield `[]`. The count
+            # passed to `$slice` itself is clamped to be safe to evaluate
+            # even when this branch isn't the one ultimately selected.
+            n_safe = ViewExpression({"$max": [n, 1]})
+
+            pos_start = ViewExpression({"$slice": [self, position, n_safe]})
+            neg_start = ViewExpression(
+                {"$slice": [self, position + length, n_safe]}
+            )
+            expr = ViewExpression(n > 0).if_else(
                 ViewExpression(position >= 0).if_else(pos_start, neg_start),
                 ViewExpression({"$literal": []}),
             )
