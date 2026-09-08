@@ -40,7 +40,7 @@ function resolveTextureDimension(values: unknown[]): number | undefined {
  * generic width/height fields exposed on the underlying image object.
  */
 export function getTextureDimensions(
-  texture: Texture | null | undefined
+  texture: Texture | null | undefined,
 ): TextureDimensions | undefined {
   const image = texture?.image as DimensionBearingImage | undefined;
 
@@ -74,7 +74,7 @@ export function getTextureDimensions(
  */
 export function applyTextureDimensionsToIntrinsics(
   intrinsics: CameraIntrinsics | null,
-  textureDimensions: TextureDimensions | undefined
+  textureDimensions: TextureDimensions | undefined,
 ): CameraIntrinsics | null {
   if (!intrinsics || !textureDimensions) {
     return intrinsics;

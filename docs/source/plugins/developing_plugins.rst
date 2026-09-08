@@ -84,7 +84,7 @@ configurable backend. Operators can even be composed of other operators or be
 used to add functionality to custom panels.
 
 FiftyOne comes with a number of builtin :mod:`Python <plugins.operators>` and
-`JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
+`JavaScript <https://github.com/voxel51/fiftyone/blob/main/app/packages/operators/src/built-in-operators.ts>`_
 operators for common tasks that are intended for either user-facing or internal
 plugin use.
 
@@ -721,6 +721,10 @@ will be available to the operator's `execute()` method via `ctx.hooks`.
 Developing operators
 ____________________
 
+.. customavailablein::
+    :oss_version: 0.21.0
+    :enterprise_version: 1.3.0
+
 Operators allow you to define custom operations that accept parameters via
 input properties, execute some actions based on them, and optionally return
 outputs. They can be :ref:`executed <using-operators>` by users in the App or
@@ -728,7 +732,7 @@ triggered internally by other operators.
 
 Operators can be defined in either Python or JS, and FiftyOne comes with a
 number of builtin :mod:`Python <plugins.operators>` and
-`JS <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
+`JS <https://github.com/voxel51/fiftyone/blob/main/app/packages/operators/src/built-in-operators.ts>`_
 operators for common tasks.
 
 The :mod:`fiftyone.operators.types` module and
@@ -1891,6 +1895,10 @@ values change, but will ignore changes to other parameters.
 Target view __SUB_NEW__
 -----------------------
 
+.. customavailablein::
+    :oss_version: 1.8.0
+    :enterprise_version: 2.11.0
+
 .. versionadded:: 1.8.0
 
 A common pattern when defining operators is to allow users to choose whether an
@@ -2072,7 +2080,7 @@ method via :meth:`ctx.ops <fiftyone.operators.operations.Operations>` and
 
 The :meth:`ctx.ops <fiftyone.operators.operations.Operations>` property of an
 execution context exposes all builtin :mod:`Python <plugins.operators>` and
-`JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
+`JavaScript <https://github.com/voxel51/fiftyone/blob/main/app/packages/operators/src/built-in-operators.ts>`_
 operators in a conveniently documented functional interface. For example, many
 operations involve updating the current state of the App:
 
@@ -2207,6 +2215,10 @@ operation should be delegated or executed immediately.
 
 Execution options
 ~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.23.0
+    :enterprise_version: 1.5.0
 
 You can provide the optional properties described below in the
 :ref:`operator's config <operator-config>` to specify the available execution
@@ -2730,6 +2742,9 @@ performing a cleanup action:
 
 Overriding request parameters per stage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :enterprise_version: 2.19.0
 
 By default, each stage in a pipeline inherits the same execution context as the
 top-level pipeline operator — including its ``view``, ``view_name``, and other
@@ -3777,6 +3792,10 @@ loaded only when the `brain_key` property is modified.
 Execution store
 ---------------
 
+.. customavailablein::
+    :oss_version: 1.1.0
+    :enterprise_version: 2.2.0
+
 Panels can store data in the execution store, which is a key-value store that
 is persisted beyond the lifetime of the panel. This is useful for storing
 information that should persist across panel instances and App sessions, such
@@ -3861,6 +3880,10 @@ that are available to all datasets via the
 
 Execution cache
 ---------------
+
+.. customavailablein::
+    :oss_version: 1.5.0
+    :enterprise_version: 2.8.0
 
 The :mod:`execution cache <fiftyone.operators.cache>` is a decorator-based
 interface for caching function results in the execution store. This is useful

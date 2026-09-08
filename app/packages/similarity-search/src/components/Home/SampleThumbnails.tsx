@@ -1,4 +1,3 @@
-import React from "react";
 import { getSampleSrc } from "@fiftyone/state";
 import { ImageList, Orientation } from "@voxel51/voodo";
 import { THUMB_SIZE, THUMB_GAP, THUMB_SINGLE_ROW_MAX } from "../../constants";

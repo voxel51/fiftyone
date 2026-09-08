@@ -15,7 +15,7 @@ const FieldByValue: React.FC = () => {
 
   const setting = useMemo(
     () => colorScheme.fields?.find((s) => s.path == activePath),
-    [activePath, colorScheme.fields]
+    [activePath, colorScheme.fields],
   );
   const values = useMemo(() => setting?.valueColors ?? [], [setting]);
   const defaultValue = {
@@ -24,10 +24,10 @@ const FieldByValue: React.FC = () => {
   };
   const index = useMemo(
     () => colorScheme.fields?.findIndex((s) => s.path == activePath),
-    [activePath]
+    [activePath],
   );
   const shouldShowAddButton = Boolean(
-    setting?.valueColors && setting.valueColors.length > 0
+    setting?.valueColors && setting.valueColors.length > 0,
   );
 
   const onSyncUpdate = useCallback(
@@ -41,7 +41,7 @@ const FieldByValue: React.FC = () => {
         }
       }
     },
-    [index, colorScheme]
+    [index, colorScheme],
   );
 
   useEffect(() => {

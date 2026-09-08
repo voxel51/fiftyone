@@ -5,9 +5,13 @@ import {
   types,
   useOperatorPlacements,
 } from "@fiftyone/operators";
-import { useItemsWithOrderPersistence } from "@fiftyone/utilities";
+import * as fos from "@fiftyone/state";
+import {
+  MEDIA_TYPE_MULTIMODAL,
+  useItemsWithOrderPersistence,
+} from "@fiftyone/utilities";
 import { Box } from "@mui/material";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import BrowseOperationsAction from "../../Actions/BrowseOperations";
 import ColorSchemeAction from "../../Actions/ColorScheme";
 import OptionsAction from "../../Actions/Options";
@@ -57,11 +61,12 @@ const Options = (props: AdaptiveMenuItemComponentPropsType) => (
 
 export default () => {
   const { placements: primaryPlacements } = useOperatorPlacements(
-    types.Places.SAMPLES_GRID_ACTIONS
+    types.Places.SAMPLES_GRID_ACTIONS,
   );
   const { placements: secondaryPlacements } = useOperatorPlacements(
-    types.Places.SAMPLES_GRID_SECONDARY_ACTIONS
+    types.Places.SAMPLES_GRID_SECONDARY_ACTIONS,
   );
+  const isMultimodal = fos.useIsMediaType(MEDIA_TYPE_MULTIMODAL);
   const initialItems = useMemo(() => {
     return [
       {
@@ -81,10 +86,15 @@ export default () => {
         id: "patches",
         Component: Patches,
       },
-      {
-        id: "similarity",
-        Component: Similarity,
-      },
+      // Similarity panel not currently supported for multimodal
+      ...(isMultimodal
+        ? []
+        : [
+            {
+              id: "similarity",
+              Component: Similarity,
+            },
+          ]),
       {
         id: "save-filters",
         Component: SaveFilters,
@@ -130,10 +140,10 @@ export default () => {
         };
       }),
     ];
-  }, [primaryPlacements, secondaryPlacements]);
+  }, [primaryPlacements, secondaryPlacements, isMultimodal]);
   const { orderedItems, setOrder } = useItemsWithOrderPersistence(
     initialItems,
-    "grid-actions-row"
+    "grid-actions-row",
   );
 
   return (

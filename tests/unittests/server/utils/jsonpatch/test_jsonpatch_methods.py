@@ -10,6 +10,7 @@ from unittest import mock
 
 import pytest
 
+import fiftyone.core.frame as fof
 from fiftyone.server.utils.json.jsonpatch import RootDeleteError
 from fiftyone.server.utils.json.jsonpatch.methods import (
     get,
@@ -56,6 +57,45 @@ class Person:
 
     def __delattr__(self, name):
         raise AttributeError(f"Deletion of '{name}' is not allowed.")
+
+
+class EmbeddedDoc:
+    """Mimics a mongoengine embedded document whose serialized ``_id`` name
+    aliases its ``id`` attribute via a property with no deleter.
+
+    Item access is keyed on declared field *names* (``id``, not ``_id``),
+    matching mongoengine, so ``doc["_id"]`` raises ``KeyError`` while
+    ``getattr``/``setattr`` resolve ``_id`` through the property.
+    """
+
+    _fields = ("id", "label")
+
+    def __init__(self, id="original", label="cat"):
+        self.id = id
+        self.label = label
+
+    @property
+    def _id(self):
+        return self.id
+
+    @_id.setter
+    def _id(self, value):
+        self.id = value
+
+    def __getitem__(self, name):
+        if name in self._fields:
+            return getattr(self, name)
+        raise KeyError(name)
+
+    def __setitem__(self, name, value):
+        if name not in self._fields:
+            raise KeyError(name)
+        setattr(self, name, value)
+
+    def __delitem__(self, name):
+        if name not in self._fields:
+            raise KeyError(name)
+        delattr(self, name)
 
 
 @pytest.fixture(name="person")
@@ -251,6 +291,31 @@ class TestAdd:
         assert person.pets[-1] == value
         assert res == person
 
+    @staticmethod
+    def test_setitem_falls_back_to_setattr_for_aliased_field():
+        """Tests that ``add`` falls back to attribute assignment when item
+        access rejects a serialized field name that resolves as an attribute,
+        e.g. an embedded document's ``_id``."""
+        doc = EmbeddedDoc()
+
+        #####
+        res = add(doc, "/_id", "new")
+        #####
+
+        assert doc.id == "new"
+        assert res is doc
+
+    @staticmethod
+    def test_setitem_keyerror_reraised_without_attribute():
+        """Tests that a ``KeyError`` from item access is re-raised (as
+        ``ValueError``) when there is no matching attribute to fall back to."""
+        doc = EmbeddedDoc()
+
+        with pytest.raises(ValueError):
+            #####
+            add(doc, "/missing", "value")
+            #####
+
 
 class TestRemove:
     """Tests for remove."""
@@ -403,3 +468,133 @@ def test_replace():
 
     assert res is src
     assert src["a"]["b"]["c"] == "new"
+
+
+class _StubFrames(fof.Frames):
+    """Minimal fof.Frames stub.
+
+    fof.Frames keys by integer frame number and rejects string keys via
+    validate_frame_number. The jsonpatch traversal must coerce path parts
+    to int when stepping through a Frames instance; this stub avoids the
+    need for a real fo.Sample / DB connection.
+    """
+
+    def __init__(self):
+        self._data: dict[int, Any] = {}
+
+    def __getitem__(self, frame_number):
+        return self._data[frame_number]
+
+    def __setitem__(self, frame_number, value):
+        self._data[frame_number] = value
+
+    def __delitem__(self, frame_number):
+        del self._data[frame_number]
+
+    def __contains__(self, frame_number):
+        return frame_number in self._data
+
+
+class TestFramesTraversal:
+    """Traversal through fof.Frames should coerce numeric path parts to int."""
+
+    @staticmethod
+    def test_get_through_frames():
+        frames = _StubFrames()
+        frames[42] = {"detections": {"detections": ["box"]}}
+        src = {"frames": frames}
+
+        assert get(src, "/frames/42/detections/detections/0") == "box"
+
+    @staticmethod
+    def test_add_through_frames():
+        frames = _StubFrames()
+        src = {"frames": frames}
+
+        add(src, "/frames/7", {"label": "hello"})
+
+        assert frames[7] == {"label": "hello"}
+
+    @staticmethod
+    def test_remove_through_frames():
+        frames = _StubFrames()
+        frames[3] = {"label": "bye"}
+        src = {"frames": frames}
+
+        remove(src, "/frames/3")
+
+        assert 3 not in frames
+
+    @staticmethod
+    def test_get_into_field_inside_frame():
+        frames = _StubFrames()
+        frames[1] = {"detections": {"detections": [{"label": "car"}]}}
+        src = {"frames": frames}
+
+        assert get(src, "/frames/1/detections/detections/0/label") == "car"
+
+
+def test_replace_list_element():
+    """Tests that replacing a list element overwrites in place (rather than
+    inserting), preserving the list length."""
+
+    src = {"vals": ["a", "b", "c"]}
+
+    #####
+    res = replace(src, "/vals/1", "new")
+    #####
+
+    assert res is src
+    assert src["vals"] == ["a", "new", "c"]
+
+
+def test_replace_aliased_field_does_not_remove_first():
+    """Tests that replacing an object member whose serialized name aliases a
+    read-only property (no deleter), e.g. an embedded document's ``_id``,
+    succeeds by overwriting in place rather than removing first.
+
+    Regression test: deleting a detection with an embedded ``instance`` used to
+    fail with "Unable to remove value with path: .../instance/_id".
+    """
+    doc = EmbeddedDoc(id="original")
+
+    #####
+    res = replace(doc, "/_id", "new")
+    #####
+
+    assert doc.id == "new"
+    assert res is doc
+
+
+def test_replace_detection_mask_decodes_array_string():
+    """A field-level ``replace`` of a Detection ``mask`` carries the wire value
+    as a base64-encoded string; it must be decoded to a numpy array so the
+    field validates.
+
+    Regression test: editing an existing mask (e.g. brushing onto a video
+    frame's detection) produced a bare ``replace /.../mask`` whose string value
+    failed validation with "Only numpy arrays may be used in an array field".
+    """
+    import numpy as np
+
+    import fiftyone.core.labels as fol
+    import fiftyone.core.utils as fou
+
+    original = np.array([[True, False], [False, True]])
+    detection = fol.Detection(
+        label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2], mask=original
+    )
+
+    # the frontend serializes a mask to an ascii base64 string on the wire
+    updated = np.array([[False, True], [True, False]])
+    wire = fou.serialize_numpy_array(updated, ascii=True)
+    assert isinstance(wire, str)
+
+    #####
+    res = replace(detection, "/mask", wire)
+    #####
+
+    assert res is detection
+    assert isinstance(detection.mask, np.ndarray)
+    np.testing.assert_array_equal(detection.mask, updated)
+    detection.validate()

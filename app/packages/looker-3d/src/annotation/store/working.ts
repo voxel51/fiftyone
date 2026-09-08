@@ -2,6 +2,7 @@ import * as fos from "@fiftyone/state";
 import { isEqual } from "lodash";
 import { useEffect, useRef } from "react";
 import {
+  atom,
   atomFamily,
   DefaultValue,
   selector,
@@ -16,7 +17,12 @@ import {
   isPolyline,
   isPolyline3dOverlay,
 } from "../../types";
-import type { ReconciledDetection3D, ReconciledPolyline3D } from "../types";
+import type {
+  Detection3DDocument,
+  Polyline3DDocument,
+  ReconciledDetection3D,
+  ReconciledPolyline3D,
+} from "../types";
 import {
   roundDetection,
   roundPolyline,
@@ -35,7 +41,6 @@ import type { LabelId, WorkingDoc, WorkingState } from "./types";
 const defaultWorkingState: WorkingState = {
   doc: {
     labelsById: {},
-    deletedIds: new Set(),
   },
   initialized: false,
 };
@@ -50,26 +55,62 @@ export const workingAtomFamily = atomFamily<WorkingState, string>({
 });
 
 /**
- * Public facade selector for accessing the working state of the current sample.
- * Automatically keys by the current sample ID.
+ * The 3D scene's stable, non-suspending sample id, mirrored into a synchronous
+ * atom. The working store always holds the SCENE's labels, but the scene's own
+ * id differs from `currentSampleId` in a grouped modal (the selected 2D slice
+ * vs. the pinned 3D scene). The facade must key by the scene id so every
+ * consumer — seed, render, the engine bridge — agrees on one family entry.
+ *
+ * Mirrored rather than read directly: the underlying `sceneSample` selector is
+ * async, and keying this synchronous facade off it would suspend the working
+ * store and hang the 3D render on "Pixelating…". {@link useBindStableSceneSampleId}
+ * (mounted with the annotation bridge) feeds the last settled value here;
+ * `undefined` outside an active 3D annotation session, where the facade falls
+ * back to `currentSampleId` (non-grouped: the two coincide anyway).
+ */
+const stableSceneSampleIdAtom = atom<string | undefined>({
+  key: "fo3d-stableSceneSampleId",
+  default: undefined,
+});
+
+/**
+ * Public facade selector for the working state of the active 3D scene, keyed by
+ * the stable scene id (falling back to `currentSampleId` when no scene is
+ * bound).
  */
 export const workingAtom = selector<WorkingState>({
   key: "fo3d-workingStoreFacade",
   get: ({ get }) => {
-    const sampleId = get(fos.currentSampleId);
+    const sampleId = get(stableSceneSampleIdAtom) ?? get(fos.currentSampleId);
     if (!sampleId) {
       return defaultWorkingState;
     }
     return get(workingAtomFamily(sampleId));
   },
   set: ({ get, set }, newValue) => {
-    const sampleId = get(fos.currentSampleId);
+    const sampleId = get(stableSceneSampleIdAtom) ?? get(fos.currentSampleId);
     if (!sampleId || newValue instanceof DefaultValue) {
       return;
     }
     set(workingAtomFamily(sampleId), newValue);
   },
 });
+
+/**
+ * Mirror the stable scene sample id into {@link stableSceneSampleIdAtom} so the
+ * working-store facade keys off the scene, not the selected slice. Mount with
+ * the annotation bridge (not the 3D viewer) so the binding outlives the
+ * viewer's visibility; resets on unmount.
+ */
+export function useBindStableSceneSampleId(): void {
+  const setSceneId = useSetRecoilState(stableSceneSampleIdAtom);
+  const sceneId = fos.useStableSceneSample3d()?.sample?._id;
+
+  useEffect(() => {
+    setSceneId(sceneId);
+    return () => setSceneId(undefined);
+  }, [sceneId, setSceneId]);
+}
 
 /**
  * Selector that returns just the working document for the current sample.
@@ -89,7 +130,7 @@ export const workingDocSelector = selector<WorkingDoc>({
  * Converts raw overlays to a labelsById map for the working store.
  */
 function mapOverlaysToLabelId(
-  overlays: OverlayLabel[]
+  overlays: OverlayLabel[],
 ): Record<LabelId, ReconciledDetection3D | ReconciledPolyline3D> {
   const labelsById: Record<
     LabelId,
@@ -98,17 +139,17 @@ function mapOverlaysToLabelId(
 
   for (const overlay of overlays) {
     if (isDetection3dOverlay(overlay)) {
-      const detection: ReconciledDetection3D = {
-        ...overlay,
-      };
-      labelsById[overlay._id] = roundDetection(detection);
+      labelsById[overlay.data._id] = roundDetection({ ...overlay });
     } else if (isPolyline3dOverlay(overlay)) {
       const polyline: ReconciledPolyline3D = {
         ...overlay,
-        filled: !!overlay.filled,
-        closed: !!overlay.closed,
+        data: {
+          ...overlay.data,
+          filled: !!overlay.data.filled,
+          closed: !!overlay.data.closed,
+        },
       };
-      labelsById[overlay._id] = roundPolyline(polyline);
+      labelsById[overlay.data._id] = roundPolyline(polyline);
     }
   }
 
@@ -143,11 +184,16 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
     setWorking({
       doc: {
         labelsById,
-        deletedIds: new Set(),
       },
       initialized: true,
     });
-  }, [mode, currentSampleId, rawOverlays, workingState.initialized]);
+  }, [
+    mode,
+    currentSampleId,
+    rawOverlays,
+    workingState.initialized,
+    setWorking,
+  ]);
 
   const prevRawRef = useRef(rawOverlays);
 
@@ -163,7 +209,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
         const rawById = new Map<string, OverlayLabel>();
 
         for (const o of overlays) {
-          rawById.set(o._id, o);
+          rawById.set(o.data._id, o);
         }
 
         const prev = state.doc.labelsById;
@@ -184,8 +230,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
           // Baseline no longer includes this label (e.g. annotationSchemas
           // contracted). User-created labels (isNew) are always kept.
-          // Soft-deleted labels are also kept so their data survives for undo.
-          if (!raw && !label.isNew && !state.doc.deletedIds.has(id)) {
+          if (!raw && !label.ui.isNew) {
             if (!next) next = { ...prev };
             delete next[id];
             changed = true;
@@ -193,10 +238,10 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
           }
 
           // Color drifted (e.g. coloring settings changed).
-          // Only touch `color` — geometry fields are user edits and stay put.
-          if (raw && raw.color !== label.color) {
+          // Only touch `color` — the document is user edits and stays put.
+          if (raw && raw.ui.color !== label.ui.color) {
             if (!next) next = { ...prev };
-            next[id] = { ...label, color: raw.color };
+            next[id] = { ...label, ui: { ...label.ui, color: raw.ui.color } };
             changed = true;
           }
         }
@@ -206,19 +251,22 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
         // that wasn't there at init time.
         for (const overlay of overlays) {
           // Already in working — handled above
-          if (prev[overlay._id]) continue;
+          if (prev[overlay.data._id]) continue;
 
           if (!next) next = { ...prev };
 
           if (isDetection3dOverlay(overlay)) {
-            next[overlay._id] = roundDetection({
+            next[overlay.data._id] = roundDetection({
               ...overlay,
             });
           } else if (isPolyline3dOverlay(overlay)) {
-            next[overlay._id] = roundPolyline({
+            next[overlay.data._id] = roundPolyline({
               ...overlay,
-              filled: !!overlay.filled,
-              closed: !!overlay.closed,
+              data: {
+                ...overlay.data,
+                filled: !!overlay.data.filled,
+                closed: !!overlay.data.closed,
+              },
             });
           }
           changed = true;
@@ -229,10 +277,10 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
         set(workingAtom, {
           ...state,
-          doc: { labelsById: next, deletedIds: state.doc.deletedIds },
+          doc: { labelsById: next },
         });
       },
-    []
+    [],
   );
 
   // Patch the working store whenever rawOverlays changes
@@ -273,18 +321,10 @@ export function useWorkingDoc(): WorkingDoc {
  * Hook that returns a specific label from the working store.
  */
 export function useWorkingLabel(
-  labelId: LabelId
+  labelId: LabelId,
 ): ReconciledDetection3D | ReconciledPolyline3D | undefined {
   const doc = useWorkingDoc();
   return doc.labelsById[labelId];
-}
-
-/**
- * Hook that returns whether a label has been deleted.
- */
-export function useIsLabelDeleted(labelId: LabelId): boolean {
-  const doc = useWorkingDoc();
-  return doc.deletedIds.has(labelId);
 }
 
 /**
@@ -293,8 +333,7 @@ export function useIsLabelDeleted(labelId: LabelId): boolean {
 export function useWorkingDetections(): ReconciledDetection3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
-    (label): label is ReconciledDetection3D =>
-      isDetection(label) && !doc.deletedIds.has(label._id)
+    (label): label is ReconciledDetection3D => isDetection(label),
   );
 }
 
@@ -304,29 +343,8 @@ export function useWorkingDetections(): ReconciledDetection3D[] {
 export function useWorkingPolylines(): ReconciledPolyline3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
-    (label): label is ReconciledPolyline3D =>
-      isPolyline(label) && !doc.deletedIds.has(label._id)
+    (label): label is ReconciledPolyline3D => isPolyline(label),
   );
-}
-
-/**
- * Hook that returns all deleted labels from the working store.
- */
-export function useDeletedWorkingLabels(): (
-  | ReconciledDetection3D
-  | ReconciledPolyline3D
-)[] {
-  const doc = useWorkingDoc();
-  const deletedLabels: (ReconciledDetection3D | ReconciledPolyline3D)[] = [];
-
-  doc.deletedIds.forEach((deletedId) => {
-    const label = doc.labelsById[deletedId];
-    if (label) {
-      deletedLabels.push(label);
-    }
-  });
-
-  return deletedLabels;
 }
 
 // =============================================================================
@@ -341,7 +359,7 @@ export function useUpdateWorkingLabel() {
     ({ set }) =>
       (
         labelId: LabelId,
-        updates: Partial<ReconciledDetection3D> | Partial<ReconciledPolyline3D>
+        updates: Partial<Detection3DDocument> | Partial<Polyline3DDocument>,
       ) => {
         set(workingAtom, (prev): WorkingState => {
           const existingLabel = prev.doc.labelsById[labelId];
@@ -354,13 +372,13 @@ export function useUpdateWorkingLabel() {
           const roundedUpdates: Record<string, unknown> = { ...updates };
 
           if (isDetection(existingLabel)) {
-            const detectionUpdates = updates as Partial<ReconciledDetection3D>;
+            const detectionUpdates = updates as Partial<Detection3DDocument>;
             if (detectionUpdates.location) {
               roundedUpdates.location = roundTuple(detectionUpdates.location);
             }
             if (detectionUpdates.dimensions) {
               roundedUpdates.dimensions = roundTuple(
-                detectionUpdates.dimensions
+                detectionUpdates.dimensions,
               );
             }
             if (detectionUpdates.rotation) {
@@ -368,24 +386,24 @@ export function useUpdateWorkingLabel() {
             }
             if (detectionUpdates.quaternion) {
               roundedUpdates.quaternion = roundTuple(
-                detectionUpdates.quaternion
+                detectionUpdates.quaternion,
               );
             }
           } else if (isPolyline(existingLabel)) {
-            const polylineUpdates = updates as Partial<ReconciledPolyline3D>;
+            const polylineUpdates = updates as Partial<Polyline3DDocument>;
             if (polylineUpdates.points3d) {
               roundedUpdates.points3d = polylineUpdates.points3d.map(
                 (segment) =>
                   segment.map(
-                    (point) => roundTuple(point) as [number, number, number]
-                  )
+                    (point) => roundTuple(point) as [number, number, number],
+                  ),
               );
             }
           }
 
           const updatedLabel = {
             ...existingLabel,
-            ...roundedUpdates,
+            data: { ...existingLabel.data, ...roundedUpdates },
           } as ReconciledDetection3D | ReconciledPolyline3D;
 
           return {
@@ -400,7 +418,7 @@ export function useUpdateWorkingLabel() {
           };
         });
       },
-    []
+    [],
   );
 }
 
@@ -416,71 +434,61 @@ export function useAddWorkingLabel() {
           : roundPolyline(label);
 
         set(workingAtom, (prev) => {
-          // Remove from deletedIds if present
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.delete(roundedLabel._id);
-
           return {
             ...prev,
             doc: {
               ...prev.doc,
               labelsById: {
                 ...prev.doc.labelsById,
-                [roundedLabel._id]: roundedLabel,
+                [roundedLabel.data._id]: roundedLabel,
               },
-              deletedIds: newDeletedIds,
             },
           };
         });
       },
-    []
+    [],
   );
 }
 
 /**
- * Hook that returns a callback to delete a label from the working store.
+ * Hook that returns a callback to HARD-remove a label from the working store
+ * (drops it from `labelsById`). This is the engine
+ * bridge's `unmount`: when a label leaves the engine's scope (a delete, or a
+ * scope contraction), its working entry goes too.
  */
-export function useDeleteWorkingLabel() {
+export function useRemoveWorkingLabel() {
   return useRecoilCallback(
-    ({ set }) =>
+    ({ snapshot, set }) =>
       (labelId: LabelId) => {
-        set(workingAtom, (prev) => {
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.add(labelId);
+        // Resolve the scene key from the sync atom and write the family entry
+        // directly — NOT the facade. The facade's `currentSampleId` fallback is
+        // async on a grouped pcd slice, and a functional-updater set against it
+        // throws while it is pending (the bridge unmount lands here during modal
+        // teardown, after the scene id resets). No scene key = nothing to remove.
+        const sampleId = snapshot
+          .getLoadable(stableSceneSampleIdAtom)
+          .getValue();
 
-          return {
-            ...prev,
-            doc: {
-              ...prev.doc,
-              deletedIds: newDeletedIds,
-            },
-          };
+        if (!sampleId) {
+          return;
+        }
+
+        const prev = snapshot
+          .getLoadable(workingAtomFamily(sampleId))
+          .getValue();
+
+        if (!prev.doc.labelsById[labelId]) {
+          return;
+        }
+
+        const labelsById = { ...prev.doc.labelsById };
+        delete labelsById[labelId];
+
+        set(workingAtomFamily(sampleId), {
+          ...prev,
+          doc: { ...prev.doc, labelsById },
         });
       },
-    []
-  );
-}
-
-/**
- * Hook that returns a callback to restore a deleted label.
- */
-export function useRestoreWorkingLabel() {
-  return useRecoilCallback(
-    ({ set }) =>
-      (labelId: LabelId) => {
-        set(workingAtom, (prev) => {
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.delete(labelId);
-
-          return {
-            ...prev,
-            doc: {
-              ...prev.doc,
-              deletedIds: newDeletedIds,
-            },
-          };
-        });
-      },
-    []
+    [],
   );
 }

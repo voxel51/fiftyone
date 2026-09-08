@@ -3,11 +3,11 @@ import { ExecutionContext, OperatorResult } from "../operators";
 export type ExecutionCallbackOptions = { ctx: ExecutionContext };
 export type ExecutionCallback = (
   result: OperatorResult,
-  options: ExecutionCallbackOptions
+  options: ExecutionCallbackOptions,
 ) => void;
 export type ExecutionErrorCallback = (
   error: OperatorResult,
-  options: ExecutionCallbackOptions
+  options: ExecutionCallbackOptions,
 ) => void;
 
 export type OperatorExecutorOptions = {
@@ -18,7 +18,7 @@ export type OperatorExecutorOptions = {
   skipErrorNotification?: boolean;
 };
 
-export type ParamsType = Record<string, any>;
+export type ParamsType = Record<string, unknown>;
 
 export type ResolvablePropertyOptions = {
   resolver: string;

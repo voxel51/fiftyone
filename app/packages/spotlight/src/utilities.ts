@@ -19,7 +19,7 @@ interface Matches<K, V> {
 }
 
 export const create = <K extends keyof HTMLElementTagNameMap>(
-  tagName: K
+  tagName: K,
 ): HTMLElementTagNameMap[K] => {
   return document.createElement(tagName);
 };

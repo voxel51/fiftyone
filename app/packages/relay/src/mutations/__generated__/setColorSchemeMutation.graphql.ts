@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<aac83d3bf7940af0b5bc557743622bc0>>
+ * @generated SignedSource<<36015550e66963d6bfedabd36c78686e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,7 @@ export type ColorSchemeInput = {
   multicolorKeypoints?: boolean | null;
   opacity?: number | null;
   showSkeletons?: boolean | null;
+  temporalTags?: TemporalTagColorInput | null;
 };
 export type CustomizeColorInput = {
   colorByAttribute?: string | null;
@@ -39,6 +40,10 @@ export type MaskColorInput = {
   intTarget: number;
 };
 export type LabelTagColorInput = {
+  fieldColor?: string | null;
+  valueColors?: ReadonlyArray<ValueColorInput> | null;
+};
+export type TemporalTagColorInput = {
   fieldColor?: string | null;
   valueColors?: ReadonlyArray<ValueColorInput> | null;
 };
@@ -127,6 +132,10 @@ v6 = {
   "storageKey": null
 },
 v7 = [
+  (v3/*: any*/),
+  (v6/*: any*/)
+],
+v8 = [
   {
     "alias": null,
     "args": null,
@@ -136,14 +145,14 @@ v7 = [
   },
   (v4/*: any*/)
 ],
-v8 = {
+v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "name",
   "storageKey": null
 },
-v9 = {
+v10 = {
   "alias": null,
   "args": null,
   "concreteType": "ColorscaleList",
@@ -156,14 +165,14 @@ v9 = {
   ],
   "storageKey": null
 },
-v10 = {
+v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "rgb",
   "storageKey": null
 },
-v11 = {
+v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -266,10 +275,17 @@ return {
             "kind": "LinkedField",
             "name": "labelTags",
             "plural": false,
-            "selections": [
-              (v3/*: any*/),
-              (v6/*: any*/)
-            ],
+            "selections": (v7/*: any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "TemporalTagColor",
+            "kind": "LinkedField",
+            "name": "temporalTags",
+            "plural": false,
+            "selections": (v7/*: any*/),
             "storageKey": null
           },
           {
@@ -279,7 +295,7 @@ return {
             "kind": "LinkedField",
             "name": "defaultMaskTargetsColors",
             "plural": true,
-            "selections": (v7/*: any*/),
+            "selections": (v8/*: any*/),
             "storageKey": null
           },
           {
@@ -290,9 +306,9 @@ return {
             "name": "defaultColorscale",
             "plural": false,
             "selections": [
-              (v8/*: any*/),
               (v9/*: any*/),
-              (v10/*: any*/)
+              (v10/*: any*/),
+              (v11/*: any*/)
             ],
             "storageKey": null
           },
@@ -304,10 +320,10 @@ return {
             "name": "colorscales",
             "plural": true,
             "selections": [
-              (v11/*: any*/),
-              (v8/*: any*/),
+              (v12/*: any*/),
               (v9/*: any*/),
-              (v10/*: any*/)
+              (v10/*: any*/),
+              (v11/*: any*/)
             ],
             "storageKey": null
           },
@@ -327,7 +343,7 @@ return {
                 "storageKey": null
               },
               (v3/*: any*/),
-              (v11/*: any*/),
+              (v12/*: any*/),
               (v6/*: any*/),
               {
                 "alias": null,
@@ -336,7 +352,7 @@ return {
                 "kind": "LinkedField",
                 "name": "maskTargetsColors",
                 "plural": true,
-                "selections": (v7/*: any*/),
+                "selections": (v8/*: any*/),
                 "storageKey": null
               }
             ],
@@ -348,12 +364,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "2d2caec23d7a249290403b4dbfacff58",
+    "cacheID": "ed59b1bb8659a1f2b79464bcef67f212",
     "id": null,
     "metadata": {},
     "name": "setColorSchemeMutation",
     "operationKind": "mutation",
-    "text": "mutation setColorSchemeMutation(\n  $subscription: String!\n  $colorScheme: ColorSchemeInput!\n) {\n  setColorScheme(subscription: $subscription, colorScheme: $colorScheme) {\n    ...colorSchemeFragment\n    id\n  }\n}\n\nfragment colorSchemeFragment on ColorScheme {\n  id\n  colorBy\n  colorPool\n  multicolorKeypoints\n  opacity\n  showSkeletons\n  labelTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  defaultMaskTargetsColors {\n    intTarget\n    color\n  }\n  defaultColorscale {\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  colorscales {\n    path\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  fields {\n    colorByAttribute\n    fieldColor\n    path\n    valueColors {\n      color\n      value\n    }\n    maskTargetsColors {\n      intTarget\n      color\n    }\n  }\n}\n"
+    "text": "mutation setColorSchemeMutation(\n  $subscription: String!\n  $colorScheme: ColorSchemeInput!\n) {\n  setColorScheme(subscription: $subscription, colorScheme: $colorScheme) {\n    ...colorSchemeFragment\n    id\n  }\n}\n\nfragment colorSchemeFragment on ColorScheme {\n  id\n  colorBy\n  colorPool\n  multicolorKeypoints\n  opacity\n  showSkeletons\n  labelTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  temporalTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  defaultMaskTargetsColors {\n    intTarget\n    color\n  }\n  defaultColorscale {\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  colorscales {\n    path\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  fields {\n    colorByAttribute\n    fieldColor\n    path\n    valueColors {\n      color\n      value\n    }\n    maskTargetsColors {\n      intTarget\n      color\n    }\n  }\n}\n"
   }
 };
 })();

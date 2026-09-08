@@ -87,14 +87,14 @@ class PlaybackRateBarElement extends BaseElement<
       ).toFixed(2)} fps`;
       this.element.style.setProperty(
         "--playback",
-        `${(playbackRate / 2) * 100}%`
+        `${(playbackRate / 2) * 100}%`,
       );
       this.element.value = playbackRate.toFixed(4);
       this.playbackRate = playbackRate;
 
       window.localStorage.setItem(
         IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY,
-        playbackRate.toString()
+        playbackRate.toString(),
       );
     }
 

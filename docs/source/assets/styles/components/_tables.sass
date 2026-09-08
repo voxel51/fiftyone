@@ -4,7 +4,14 @@
   width: 100%
   table-layout: fixed
   overflow-wrap: break-word
-  
+
+  td, th
+    white-space: normal
+    overflow-wrap: break-word
+
+    p
+      white-space: normal
+
   .check-icon
     background-color: var(--pst-color-primary)
     display: flex
@@ -23,7 +30,7 @@
       margin: 0 6px
       color: #fff
       filter: brightness(0) saturate(100%) invert(100%)
-  
+
   thead
     tr
       border-bottom: 1px solid var(--pst-color-table-outer-border)

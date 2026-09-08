@@ -36,8 +36,8 @@ const initializeSampleAtom = atom(
     set,
     datasetId: string,
     listValidFields: (
-      request: ListValidAnnotationFieldsRequest
-    ) => Promise<ListValidAnnotationFieldsResponse>
+      request: ListValidAnnotationFieldsRequest,
+    ) => Promise<ListValidAnnotationFieldsResponse>,
   ) => {
     if (get(requestInFlightAtom)[datasetId] || get(isResolvedAtom)[datasetId]) {
       return;
@@ -57,7 +57,7 @@ const initializeSampleAtom = atom(
       set(requestInFlightAtom, (prev) => ({ ...prev, [datasetId]: false }));
       set(isResolvedAtom, (prev) => ({ ...prev, [datasetId]: true }));
     }
-  }
+  },
 );
 
 /**

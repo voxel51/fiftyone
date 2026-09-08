@@ -21,9 +21,12 @@
 .bufferingPath {
   stroke-dasharray: 150, 200;
   stroke-dashoffset: -10;
-  -webkit-animation: dash 1.5s ease-in-out infinite,
+  -webkit-animation:
+    dash 1.5s ease-in-out infinite,
     color 6s ease-in-out infinite;
-  animation: dash 1.5s ease-in-out infinite, color 6s ease-in-out infinite;
+  animation:
+    dash 1.5s ease-in-out infinite,
+    color 6s ease-in-out infinite;
   stroke-linecap: round;
 }
 

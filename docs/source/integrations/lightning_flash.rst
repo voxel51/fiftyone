@@ -5,6 +5,10 @@ Lightning Flash Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.10.0
+    :enterprise_version: 1.0
+
 We've collaborated with the
 `PyTorch Lightning <https://github.com/PyTorchLightning/pytorch-lightning>`_
 team to make it easy to train

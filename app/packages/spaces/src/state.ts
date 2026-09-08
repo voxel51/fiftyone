@@ -48,6 +48,14 @@ export const panelsLoadingStateAtom = atom({
   default: new Map<string, boolean>(),
 });
 
+export const panelLoadingSelector = selectorFamily<boolean, string>({
+  key: "panelLoadingSelector",
+  get:
+    (panelId: string) =>
+    ({ get }) =>
+      Boolean(get(panelsLoadingStateAtom).get(panelId)),
+});
+
 export const panelsStateAtom = atom({
   key: "panelsState",
   default: new Map(),

@@ -1,6 +1,5 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import { maxAtom, minAtom, pathColor } from "@fiftyone/state";
-import React from "react";
 import type { RecoilState } from "recoil";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";

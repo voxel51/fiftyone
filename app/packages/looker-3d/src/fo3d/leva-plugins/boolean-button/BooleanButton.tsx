@@ -27,7 +27,7 @@ export const BooleanButton = () => {
     (v: boolean) => {
       onCheckboxChange?.(v, label.toString());
     },
-    [onCheckboxChange, label]
+    [onCheckboxChange, label],
   );
 
   return (

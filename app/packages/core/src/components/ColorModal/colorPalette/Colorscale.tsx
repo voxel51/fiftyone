@@ -35,7 +35,7 @@ const colorscaleSetting = selectorFamily<
     (path) =>
     ({ get }) => {
       const field = get(fos.colorScheme).colorscales?.find(
-        (field) => path === field.path
+        (field) => path === field.path,
       );
       if (field) {
         const { path: _, ...setting } = field;
@@ -51,7 +51,7 @@ const colorscaleSetting = selectorFamily<
           return {
             ...current,
             colorscales: current?.colorscales?.filter(
-              (item) => item.path !== path
+              (item) => item.path !== path,
             ),
           };
         }
@@ -86,11 +86,11 @@ const Colorscale: React.FC = () => {
     () => ({
       useFieldSetting: Boolean(
         setting &&
-          ((setting?.name && setting?.name !== "") ||
-            (setting?.list && setting?.list.length > 0))
+        ((setting?.name && setting?.name !== "") ||
+          (setting?.list && setting?.list.length > 0)),
       ),
     }),
-    [setting]
+    [setting],
   );
   const colorscaleValues = useMemo(
     () =>
@@ -99,7 +99,7 @@ const Colorscale: React.FC = () => {
         name: null,
         list: null,
       },
-    [colorScheme, activePath]
+    [colorScheme, activePath],
   );
 
   const [input, setInput] = React.useState(colorscaleValues?.name ?? "");
@@ -107,12 +107,12 @@ const Colorscale: React.FC = () => {
     state.useFieldSetting
       ? Boolean(
           (setting?.name || setting?.name !== "") &&
-            setting?.list &&
-            setting?.list.length > 0
+          setting?.list &&
+          setting?.list.length > 0,
         )
         ? "list"
         : "name"
-      : null
+      : null,
   );
 
   const defaultValue = [
@@ -139,25 +139,25 @@ const Colorscale: React.FC = () => {
         }, 1000);
       }
     },
-    [colorscaleValues]
+    [colorscaleValues],
   );
 
   const shouldShowAddButton = Boolean(
     colorscaleValues?.list &&
-      colorscaleValues?.list?.length &&
-      colorscaleValues?.list?.length > 0
+    colorscaleValues?.list?.length &&
+    colorscaleValues?.list?.length > 0,
   );
 
   const index = useMemo(
     () => colorScheme.colorscales?.findIndex((s) => s.path == activePath),
-    [activePath]
+    [activePath],
   );
 
   const onSyncUpdate = useCallback(
     (copy: ColorscaleListInput[]) => {
       if (copy && isValidFloatInput(copy)) {
         const list = copy.sort(
-          (a, b) => (a.value as number) - (b.value as number)
+          (a, b) => (a.value as number) - (b.value as number),
         );
         // a valid list must include 0 and 1
         // if not, we will insert the missing value
@@ -169,7 +169,7 @@ const Colorscale: React.FC = () => {
         }
         const newSetting = cloneDeep(colorScheme.colorscales ?? []);
         const idx = colorScheme.colorscales?.findIndex(
-          (s) => s.path == activePath
+          (s) => s.path == activePath,
         );
         if (idx !== undefined && idx > -1) {
           newSetting[idx].list = list;
@@ -182,7 +182,7 @@ const Colorscale: React.FC = () => {
         }
       }
     },
-    [index, setColorScheme, activePath]
+    [index, setColorScheme, activePath],
   );
 
   useEffect(() => {

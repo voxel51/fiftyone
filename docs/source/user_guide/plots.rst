@@ -5,6 +5,10 @@ Interactive Plots
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.8.0
+    :enterprise_version: 1.0
+
 FiftyOne provides a powerful :mod:`fiftyone.core.plots` framework that contains
 a variety of interactive plotting methods that enable you to visualize your
 datasets and uncover patterns that are not apparent from inspecting either the
@@ -1084,6 +1088,10 @@ wish to perform:
 
 Plot selection modes
 --------------------
+
+.. customavailablein::
+    :oss_version: 0.13.0
+    :enterprise_version: 1.0
 
 When working with :ref:`scatterplots <embeddings-plots>` and
 :ref:`interactive heatmaps <confusion-matrix-plots>` that are linked to frames

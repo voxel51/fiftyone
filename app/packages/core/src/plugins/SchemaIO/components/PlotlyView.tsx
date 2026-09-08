@@ -3,8 +3,9 @@ import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
 import { merge, snakeCase } from "lodash";
-import React, { useEffect, useMemo } from "react";
-import Plot from "react-plotly.js";
+import React, { lazy, Suspense, useEffect, useMemo } from "react";
+
+const Plot = lazy(() => import("react-plotly.js"));
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
@@ -17,7 +18,7 @@ type TraceWithIds = {
 function getIdForTrace(
   point: Plotly.Point,
   trace: TraceWithIds,
-  options: { is2DArray?: boolean } = {}
+  options: { is2DArray?: boolean } = {},
 ) {
   const { is2DArray = false } = options;
   const { data } = point;
@@ -220,15 +221,17 @@ export default function PlotlyView(props: ViewPropsType) {
       sx={{ height: "100%", width: "100%" }}
     >
       <HeaderView {...props} nested />
-      <Plot
-        revision={revision}
-        data={mergedData}
-        style={{ height: plotHeight, width: plotWidth, zIndex: 1 }}
-        config={mergedConfig}
-        layout={mergedLayout}
-        {...eventHandlers}
-        {...getComponentProps(props, "plotly")}
-      />
+      <Suspense fallback={null}>
+        <Plot
+          revision={revision}
+          data={mergedData}
+          style={{ height: plotHeight, width: plotWidth, zIndex: 1 }}
+          config={mergedConfig}
+          layout={mergedLayout}
+          {...eventHandlers}
+          {...getComponentProps(props, "plotly")}
+        />
+      </Suspense>
     </Box>
   );
 }
@@ -275,7 +278,7 @@ function createPlotlyHandlers(handleEvent: any) {
 }
 
 const EventDataMappers = {
-  onClick: ({ event, points }) => {
+  onClick: ({ points }) => {
     const { data, fullData, xaxis, yaxis, ...pointdata } = points[0];
     const { x, y, z, ...metadata } = data;
     const result = {
@@ -286,11 +289,11 @@ const EventDataMappers = {
     return result;
   },
   onSelected: (e) => {
-    const { event, points } = e || { points: [] };
+    const { points } = e || { points: [] };
     const selected = [];
     for (const point of points) {
-      const { data, fullData, xaxis, yaxis, ...pointdata } = point;
-      const { x, y, z, ids, selectedpoints, ...metadata } = data;
+      const { data, fullData } = point;
+      const { x, y, z, ids } = data;
       selected.push({
         trace: fullData.name,
         trace_idx: point.curveNumber,
@@ -304,11 +307,6 @@ const EventDataMappers = {
     return selected;
   },
 };
-
-function getValuesAtIndices(array, indices) {
-  if (!indices || !indices) return null;
-  return indices.map((i) => array[i]);
-}
 
 function mergeData(data, defaults) {
   if (!Array.isArray(data)) {

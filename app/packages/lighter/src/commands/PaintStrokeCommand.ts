@@ -21,7 +21,7 @@ export class PaintStrokeCommand implements Undoable {
     private beforeSnapshot: MaskSnapshot | undefined,
     private beforeBounds: Rect | undefined,
     private afterSnapshot: MaskSnapshot | undefined,
-    private afterBounds: Rect | undefined
+    private afterBounds: Rect | undefined,
   ) {
     this.id = `paint-${overlayId}-${Date.now()}`;
   }

@@ -1,9 +1,13 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import onSelectLabels from "./onSelectLabels";
 import onSelectSamples from "./onSelectSamples";
 import onSetGroupSlice from "./onSetGroupSlice";
+import onSetLabelSelectionStyle from "./onSetLabelSelectionStyle";
 import onSetModalFilters from "./onSetModalFilters";
 import onSetSample from "./onSetSample";
-import onSetLabelSelectionStyle from "./onSetLabelSelectionStyle";
 import onSetSampleSelectionStyle from "./onSetSampleSelectionStyle";
 import onSetSessionSpaces from "./onSetSessionSpaces";
 import { REGISTERED_WRITERS } from "./registerWriter";

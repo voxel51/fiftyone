@@ -5,6 +5,9 @@ FiftyOne Agent
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 2.25.0
+
 The FiftyOne Agent is an AI-powered assistant built into the
 :ref:`FiftyOne Enterprise App <enterprise-app>`. It lets you work with your
 datasets using natural language. You can import data, run model inference,
@@ -30,6 +33,14 @@ _____
    :alt: fiftyone-agent-button-location
    :align: center
 
+.. note::
+
+    The FiftyOne Agent now ships as a built-in feature of the FiftyOne
+    Enterprise App rather than a separately installed plugin. If you
+    installed an earlier standalone version of the Agent plugin, you can
+    remove it once your deployment is upgraded. The built-in version
+    replaces it entirely.
+
 .. _enterprise-agent-providers:
 
 Configuring model providers
@@ -47,10 +58,16 @@ To add a provider, fill in the following fields:
 
 - **Name**: a label for this provider configuration
 - **Provider**: select from the list of supported providers
-- **Endpoint** (optional): use this if your model is hosted at a custom URL
+- **Endpoint** (optional): use this to route requests to a custom URL, such
+  as an internal enterprise gateway or a self-hosted model server
 - **API key**: your provider's API key
 - **Models**: select one or more models to make available
-- **Default**: mark this provider as the default
+- **Custom model names** (optional): enter model identifiers that are not in
+  the standard picker, such as non-standard IDs used by an enterprise gateway.
+  Prefix with the provider slug (e.g. ``openai/my-model-id``) to ensure
+  correct routing when the model name alone is ambiguous
+- **Extra headers** (optional): static key-value HTTP headers sent with every
+  request (e.g. ``User-Agent``, project tokens required by your gateway)
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/provider_more_details.webp
    :alt: fiftyone-agent-provider-details
@@ -58,11 +75,134 @@ To add a provider, fill in the following fields:
 
 You can click **Test connection** to verify your credentials before saving.
 
+To choose which model new users start with, use the **Default model** picker
+at the top of the Connections list.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_default_model.webp
+   :alt: fiftyone-agent-default-model
+   :align: center
+
 .. note::
 
-    Need help configuring a provider? Contact your Customer Success
-    representative, or see :ref:`Secrets <enterprise-secrets>` for how to
-    store API keys securely in your deployment.
+    API keys are automatically stored securely using FiftyOne
+    Enterprise's :ref:`Secrets <enterprise-secrets>` infrastructure. No
+    manual secret configuration is required.
+
+.. _enterprise-agent-permissions:
+
+Permissions
+___________
+
+Any user who can view a dataset can chat with the Agent and ask it to take
+action on that dataset. A few capabilities require additional permissions:
+
+- **Managing connections** (adding, editing, or removing a model provider,
+  or changing the default model) requires the Admin role.
+- **Generating and testing plugins** with the Agent requires the Admin role.
+
+.. image:: https://cdn.voxel51.com/fiftyone-internal-skills/develop_plugin.webp
+   :alt: fiftyone-agent-develop-plugin
+   :align: center
+
+- **Generating and executing SDK code** with the Agent requires a role with
+  API key access enabled. See :ref:`Roles and permissions
+  <enterprise-roles>` for which roles support this by default and how to
+  change it.
+
+.. image:: https://cdn.voxel51.com/fiftyone-internal-skills/write_code.webp
+   :alt: fiftyone-agent-write-code
+   :align: center
+
+.. _enterprise-agent-custom-gateway:
+
+Custom endpoints and enterprise gateways
+_________________________________________
+
+If your organization routes LLM traffic through an internal gateway or proxy,
+you can point the Agent at it using the **Endpoint** and **Extra headers**
+fields on any provider configuration.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/custom_gateway_screenshot.webp
+   :alt: fiftyone-agent-custom-gateway
+   :align: center
+
+**Provider, match the API format, not the model brand**
+
+The **Provider** field controls the request format the Agent uses, not which
+model it calls. Set it to match what your gateway expects:
+
+- If your gateway exposes an OpenAI-compatible API (``/chat/completions``),
+  select ``openai``, even if the underlying model is Claude or Gemini
+- If your gateway exposes the Anthropic Messages API (``/v1/messages``)
+  natively, select ``anthropic``
+
+**Endpoint, base URL only**
+
+Enter only the base URL of your gateway — do not include the API path. The
+Agent appends the correct path automatically based on the provider you
+selected. For example:
+
+.. code-block:: text
+
+   ✓  https://gateway.internal/api/openai/v1
+   ✗  https://gateway.internal/api/openai/v1/chat/completions
+
+**Model names, always prefix with the provider slug**
+
+Use the model identifier your gateway provides, prefixed with the provider
+slug. The prefix prevents the model ID from being misrouted to a cloud
+provider instead of your gateway, and is stripped before the name is sent:
+
+.. code-block:: text
+
+   openai/your-model-id
+   anthropic/your-model-id
+
+This is especially important when your gateway returns model IDs that start
+with a vendor name (e.g. ``anthropic.claude-sonnet``). Without the prefix,
+those IDs may be misrouted to a cloud provider instead of your gateway.
+
+Use **Test connection** to verify the full configuration works before saving.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/custom_gateway_headers_screenshot.webp
+   :alt: fiftyone-agent-extra-headers
+   :align: center
+
+Use **Extra headers** for any additional authentication or routing headers your
+gateway requires, such as project tokens or custom ``User-Agent`` values.
+
+**Per-user attribution**
+
+When a custom endpoint is configured, the Agent automatically adds an
+``X-FiftyOne-User-Email`` header to every request containing the email address
+of the currently logged-in user. Gateways can use this header to attribute
+requests to individual users rather than a shared system account, which is
+useful for enforcing per-user quotas or audit logging.
+
+.. note::
+
+    Admins are responsible for ensuring that the configured endpoint's data
+    handling and retention align with their organization's privacy policy.
+
+.. _enterprise-agent-instructions:
+
+Custom instructions
+____________________
+
+You can give the Agent standing instructions that are automatically included
+in every conversation, at three scopes:
+
+- **Organization**: written by an admin, applied to every conversation for
+  every user in the deployment
+- **User**: personal instructions that apply only to your own conversations
+- **Dataset**: shared instructions that apply to every conversation involving
+  a specific dataset, for everyone with access to it
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_instructions.webp
+   :alt: fiftyone-agent-instructions
+   :align: center
+
+Configure instructions from the Agent's settings panel.
 
 .. _enterprise-agent-using:
 
@@ -93,6 +233,84 @@ To return to a previous conversation, click **History**.
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/conversation_history.webp
    :alt: fiftyone-agent-conversation-history
+   :align: center
+
+.. _enterprise-agent-screenshot:
+
+Asking about the current App state
+___________________________________
+
+Click the screenshot icon next to the attach icon in the message box to
+capture what's currently on screen and attach it to your next message.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_screenshot_location.webp
+   :alt: fiftyone-agent-screenshot-location
+   :align: center
+
+This lets you ask the Agent about exactly what you're looking at, such as a
+specific sample, a plot, or a 3D scene, without describing it in words. Your
+browser will prompt you to choose what to share before the screenshot is
+attached.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_screenshot.webp
+   :alt: fiftyone-agent-screenshot
+   :align: center
+
+If you select one or more samples in the grid first, an additional icon lets
+you attach their images directly, so you can ask the Agent about specific
+samples without describing or searching for them in words. Up to 20 samples
+can be attached at once; if more are selected, only the first 20 are
+attached.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_attach_samples.webp
+   :alt: fiftyone-agent-attach-samples
+   :align: center
+
+.. _enterprise-agent-workspace:
+
+Returning to a previous view
+_____________________________
+
+Whenever the Agent changes what you're looking at, such as applying a
+filter, loading a view, or running an operator, that step gets a
+**Load Workspace** button. Click it any time, even after navigating away, to
+instantly restore the App to that exact state.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_load_workspace_location.webp
+   :alt: fiftyone-agent-load-workspace-location
+   :align: center
+
+.. _enterprise-agent-delegated-ops:
+
+Tracking delegated operations
+______________________________
+
+When the Agent runs a long-running task as a :ref:`delegated operation
+<enterprise-delegated-operations>`, it appears in a tray showing how many are
+queued, running, completed, and failed, so you can keep chatting while it
+runs in the background.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_delegated_ops.webp
+   :alt: fiftyone-agent-delegated-ops
+   :align: center
+
+Click a job in the tray to see its own progress and details.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_delegated_ops_detail.webp
+   :alt: fiftyone-agent-delegated-ops-detail
+   :align: center
+
+.. _enterprise-agent-usage:
+
+Usage
+_____
+
+The Agent's settings panel includes a Usage tab showing your own token and
+request counts for the current period. Admins additionally see usage totals
+for the entire organization.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_usage.webp
+   :alt: fiftyone-agent-usage
    :align: center
 
 .. _enterprise-agent-skills:

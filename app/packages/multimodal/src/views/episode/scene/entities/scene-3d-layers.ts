@@ -1,0 +1,589 @@
+import { Quaternion, Vector3 } from "three";
+import type {
+  CameraCalibrationVisualization,
+  GridVisualization,
+  PointCloudVisualization,
+  SceneEntityVisualization,
+  SceneUpdateVisualization,
+} from "../../../../ir/index";
+import type {
+  CameraFrustumPanelLayer,
+  CameraFrustumParentPosition,
+  GridPanelLayer,
+  PointCloudFrameTransform,
+  PointCloudPanelLayer,
+  SceneAnnotationPanelLayer,
+} from "../../../../visualization/scene-3d/index";
+import type {
+  EpisodeFrameTransformMissingReason,
+  EpisodeHeldFrameTransform,
+} from "../../../../runtime/frame-transform-types";
+import type {
+  StreamContentFrame,
+  StreamPlaybackFrame,
+} from "../../playback/use-stream-values";
+import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
+import type { StalePoseUsage, UnresolvedPoseUsage } from "../../status/health";
+
+/**
+ * Resolution of one source frame into the world frame for placement.
+ * `pending` means "not resolvable yet" (frames/time/window still loading) and
+ * the layer can still render in its source frame; `missing` means the data is
+ * loaded but no usable pose exists and the cloud should be dropped with a
+ * warning.
+ */
+type FrameTransformResolution =
+  | {
+      readonly heldEdges?: readonly EpisodeHeldFrameTransform[];
+      readonly maxInterpolationGapNs?: bigint;
+      readonly status: "resolved";
+      readonly transform: PointCloudFrameTransform;
+    }
+  | { readonly status: "pending" }
+  | {
+      readonly missingReason?: EpisodeFrameTransformMissingReason;
+      readonly status: "missing";
+    };
+
+export interface Scene3dLayerBuildResult {
+  readonly cameraFrustumLayers: readonly CameraFrustumPanelLayer[];
+  readonly gridLayers: readonly GridPanelLayer[];
+  readonly pendingAnnotationFrameIds: readonly string[];
+  readonly pendingFrustumFrameIds: readonly string[];
+  readonly pendingGridFrameIds: readonly string[];
+  readonly pointCloudLayers: readonly PointCloudPanelLayer[];
+  readonly provisionalFrameIds: readonly string[];
+  readonly sceneAnnotationLayers: readonly SceneAnnotationPanelLayer[];
+  readonly stalePoseUsages: readonly StalePoseUsage[];
+  readonly transformedLayerCount: number;
+  readonly unresolvedPoseUsages: readonly UnresolvedPoseUsage[];
+}
+
+/**
+ * Builds the point-cloud layers for the 3D tile, transforming each cloud into
+ * the chosen world frame. Clouds that cannot be placed *yet* (transforms still
+ * loading) render in their own frame when callers choose to draw through
+ * pending state; clouds with no resolvable path to the world frame are dropped
+ * and reported through `unresolvedPoseUsages`.
+ */
+export function build3dLayers({
+  annotationFrames = [],
+  calibrationFrames = [],
+  frameTransforms,
+  frames,
+  gridFrames = [],
+  provisionalStreamId,
+  selectedAnnotationStreams = [],
+  selectedCalibrationStreams = [],
+  selectedGridStreams = [],
+  selectedStreams,
+  worldFrameId,
+}: {
+  readonly annotationFrames?: readonly (StreamPlaybackFrame<SceneUpdateVisualization> | null)[];
+  readonly calibrationFrames?: readonly (StreamPlaybackFrame<CameraCalibrationVisualization> | null)[];
+  readonly frameTransforms: FrameTransformsState;
+  readonly frames: readonly (StreamContentFrame<PointCloudVisualization> | null)[];
+  readonly gridFrames?: readonly (StreamPlaybackFrame<GridVisualization> | null)[];
+  readonly provisionalStreamId?: string | null;
+  readonly selectedAnnotationStreams?: readonly string[];
+  readonly selectedCalibrationStreams?: readonly string[];
+  readonly selectedGridStreams?: readonly string[];
+  readonly selectedStreams: readonly string[];
+  readonly worldFrameId: string;
+}): Scene3dLayerBuildResult {
+  const cameraFrustumLayers: CameraFrustumPanelLayer[] = [];
+  const gridLayers: GridPanelLayer[] = [];
+  const pointCloudLayers: PointCloudPanelLayer[] = [];
+  const sceneAnnotationLayers: SceneAnnotationPanelLayer[] = [];
+  const pendingAnnotationFrameIds = new Set<string>();
+  const pendingFrustumFrameIds = new Set<string>();
+  const pendingGridFrameIds = new Set<string>();
+  const pendingStreamId = provisionalStreamId ?? selectedStreams[0] ?? null;
+  const provisionalFrameIds = new Set<string>();
+  const stalePoseUsagesBySourceId = new Map<string, StalePoseUsage>();
+  let transformedLayerCount = 0;
+  const unresolvedPoseUsagesBySourceId = new Map<string, UnresolvedPoseUsage>();
+  const transformCache = new Map<string, FrameTransformResolution>();
+  const resolveCachedFrameTransform = (
+    sourceFrameId: string,
+    requestedTimeNs: bigint,
+  ) => {
+    const cacheKey = `${sourceFrameId}:${requestedTimeNs.toString()}`;
+    const cached = transformCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const resolution = resolveFrameTransform({
+      frameTransforms,
+      sourceFrameId,
+      timeNs: requestedTimeNs,
+      worldFrameId,
+    });
+    transformCache.set(cacheKey, resolution);
+
+    return resolution;
+  };
+
+  selectedStreams.forEach((stream, index) => {
+    const playbackFrame = frames[index];
+    if (!playbackFrame) {
+      return;
+    }
+
+    const frame = playbackFrame.frame;
+    const layerBase = {
+      contentTimeNs: playbackFrame.contentTimeNs,
+      frame,
+      id: stream,
+    };
+    if (!frame.coordinateFrameId) {
+      // Frameless cloud: nothing to transform, render at the scene origin.
+      pointCloudLayers.push(layerBase);
+      transformedLayerCount += 1;
+      return;
+    }
+
+    const resolution = resolveCachedFrameTransform(
+      frame.coordinateFrameId,
+      playbackFrame.contentTimeNs,
+    );
+    // Drop only genuinely unplaceable clouds (`missing`): the warning explains
+    // why. Pending transforms are truthful provisional placement, so render
+    // only the deterministic provisional source instead of raw-overlapping all
+    // sensors in their own frames.
+    if (resolution.status === "missing") {
+      recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+        ...(resolution.missingReason
+          ? { missingReason: resolution.missingReason }
+          : {}),
+        sourceFrameId: frame.coordinateFrameId,
+        sourceId: stream,
+        targetFrameId: worldFrameId,
+      });
+      return;
+    }
+    if (resolution.status === "pending" && stream !== pendingStreamId) {
+      return;
+    }
+    if (resolution.status === "pending") {
+      provisionalFrameIds.add(frame.coordinateFrameId);
+    } else {
+      transformedLayerCount += 1;
+      recordStalePoseUsage(
+        stalePoseUsagesBySourceId,
+        stream,
+        resolution.heldEdges,
+      );
+    }
+
+    pointCloudLayers.push({
+      ...layerBase,
+      frameTransform:
+        resolution.status === "resolved" ? resolution.transform : undefined,
+    });
+  });
+
+  selectedGridStreams.forEach((stream, index) => {
+    const playbackFrame = gridFrames[index];
+    if (!playbackFrame) {
+      return;
+    }
+
+    const frame = playbackFrame.frame;
+    const layerBase = {
+      contentTimeNs: playbackFrame.contentTimeNs,
+      frame,
+      id: stream,
+    };
+    if (!frame.coordinateFrameId) {
+      // Frameless grid: nothing to transform, render at the scene origin.
+      gridLayers.push(layerBase);
+      transformedLayerCount += 1;
+      return;
+    }
+
+    // Grids are frame-locked: a static map anchored in its frame must track
+    // the world frame at the *playhead*, not at the message's own (possibly
+    // file-start) timestamp — otherwise the map rides along with an
+    // ego-relative world frame.
+    const resolution = resolveCachedFrameTransform(
+      frame.coordinateFrameId,
+      playbackFrame.requestedTimeNs,
+    );
+    if (resolution.status === "missing") {
+      recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+        ...(resolution.missingReason
+          ? { missingReason: resolution.missingReason }
+          : {}),
+        sourceFrameId: frame.coordinateFrameId,
+        sourceId: stream,
+        targetFrameId: worldFrameId,
+      });
+      return;
+    }
+    if (resolution.status === "pending") {
+      // A misplaced ground plane is worse than a late one: hide until the
+      // transform window resolves instead of drawing at a provisional pose.
+      pendingGridFrameIds.add(frame.coordinateFrameId);
+      return;
+    }
+
+    transformedLayerCount += 1;
+    recordStalePoseUsage(
+      stalePoseUsagesBySourceId,
+      stream,
+      resolution.heldEdges,
+    );
+    gridLayers.push({
+      ...layerBase,
+      frameTransform: resolution.transform,
+    });
+  });
+
+  selectedCalibrationStreams.forEach((stream, index) => {
+    const playbackFrame = calibrationFrames[index];
+    if (!playbackFrame) {
+      return;
+    }
+
+    const frame = playbackFrame.frame;
+    const layerBase = {
+      contentTimeNs: playbackFrame.contentTimeNs,
+      frame,
+      id: stream,
+    };
+    if (!frame.coordinateFrameId) {
+      // A frustum without a camera frame has no meaningful placement, but
+      // origin rendering keeps it debuggable rather than silently absent.
+      cameraFrustumLayers.push({
+        ...layerBase,
+        parentPosition: {
+          kind: "unavailable",
+          reason: "Camera frame missing",
+        },
+      });
+      transformedLayerCount += 1;
+      return;
+    }
+
+    // Frustums are frame-locked: the camera rig pose must track the world
+    // frame at the playhead, like grids and frame-locked scene entities.
+    const resolution = resolveCachedFrameTransform(
+      frame.coordinateFrameId,
+      playbackFrame.requestedTimeNs,
+    );
+    if (resolution.status === "missing") {
+      recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+        ...(resolution.missingReason
+          ? { missingReason: resolution.missingReason }
+          : {}),
+        sourceFrameId: frame.coordinateFrameId,
+        sourceId: stream,
+        targetFrameId: worldFrameId,
+      });
+      return;
+    }
+    if (resolution.status === "pending") {
+      pendingFrustumFrameIds.add(frame.coordinateFrameId);
+      return;
+    }
+
+    transformedLayerCount += 1;
+    recordStalePoseUsage(
+      stalePoseUsagesBySourceId,
+      stream,
+      resolution.heldEdges,
+    );
+    cameraFrustumLayers.push({
+      ...layerBase,
+      frameTransform: resolution.transform,
+      parentPosition: resolveCameraParentPosition({
+        frameTransforms,
+        sourceFrameId: frame.coordinateFrameId,
+        timeNs: playbackFrame.requestedTimeNs,
+      }),
+    });
+  });
+
+  selectedAnnotationStreams.forEach((stream, index) => {
+    const playbackFrame = annotationFrames[index];
+    if (!playbackFrame) {
+      return;
+    }
+
+    playbackFrame.frame.entities.forEach((entity, entityIndex) => {
+      if (sceneEntityPrimitiveCount(entity) === 0) {
+        return;
+      }
+
+      const builtLayer = buildSceneAnnotationLayer({
+        entity,
+        entityIndex,
+        playbackFrame,
+        resolveCachedFrameTransform,
+        pendingAnnotationFrameIds,
+        stream,
+        unresolvedPoseUsagesBySourceId,
+        worldFrameId,
+      });
+      if (!builtLayer) {
+        return;
+      }
+
+      transformedLayerCount += 1;
+      recordStalePoseUsage(
+        stalePoseUsagesBySourceId,
+        stream,
+        builtLayer.heldEdges,
+      );
+      sceneAnnotationLayers.push(builtLayer.layer);
+    });
+  });
+
+  return {
+    cameraFrustumLayers,
+    gridLayers,
+    pendingAnnotationFrameIds: [...pendingAnnotationFrameIds].sort(),
+    pendingFrustumFrameIds: [...pendingFrustumFrameIds].sort(),
+    pendingGridFrameIds: [...pendingGridFrameIds].sort(),
+    pointCloudLayers,
+    provisionalFrameIds: [...provisionalFrameIds].sort(),
+    sceneAnnotationLayers,
+    stalePoseUsages: [...stalePoseUsagesBySourceId.values()].sort(
+      (left, right) => left.sourceId.localeCompare(right.sourceId),
+    ),
+    transformedLayerCount,
+    unresolvedPoseUsages: [...unresolvedPoseUsagesBySourceId.values()].sort(
+      (left, right) => left.sourceId.localeCompare(right.sourceId),
+    ),
+  };
+}
+
+function buildSceneAnnotationLayer({
+  entity,
+  entityIndex,
+  pendingAnnotationFrameIds,
+  playbackFrame,
+  resolveCachedFrameTransform,
+  stream,
+  unresolvedPoseUsagesBySourceId,
+  worldFrameId,
+}: {
+  readonly entity: SceneEntityVisualization;
+  readonly entityIndex: number;
+  readonly pendingAnnotationFrameIds: Set<string>;
+  readonly playbackFrame: StreamPlaybackFrame<SceneUpdateVisualization>;
+  readonly resolveCachedFrameTransform: (
+    sourceFrameId: string,
+    requestedTimeNs: bigint,
+  ) => FrameTransformResolution;
+  readonly stream: string;
+  readonly unresolvedPoseUsagesBySourceId: Map<string, UnresolvedPoseUsage>;
+  readonly worldFrameId: string;
+}): {
+  readonly heldEdges?: readonly EpisodeHeldFrameTransform[];
+  readonly layer: SceneAnnotationPanelLayer;
+} | null {
+  const requestedTimeNs = entity.frameLocked
+    ? playbackFrame.requestedTimeNs
+    : (entity.timestampNs ?? playbackFrame.contentTimeNs);
+  const sceneFrame: SceneUpdateVisualization = {
+    ...playbackFrame.frame,
+    deletions: [],
+    entities: [entity],
+  };
+  const id = `${stream}:${entity.id || entityIndex}`;
+
+  if (!entity.frameId) {
+    return { layer: { frame: sceneFrame, id, sourceId: stream } };
+  }
+
+  const resolution = resolveCachedFrameTransform(
+    entity.frameId,
+    requestedTimeNs,
+  );
+  if (resolution.status === "missing") {
+    recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+      ...(resolution.missingReason
+        ? { missingReason: resolution.missingReason }
+        : {}),
+      sourceFrameId: entity.frameId,
+      sourceId: stream,
+      targetFrameId: worldFrameId,
+    });
+    return null;
+  }
+  if (resolution.status === "pending") {
+    pendingAnnotationFrameIds.add(entity.frameId);
+    return null;
+  }
+
+  return {
+    ...(resolution.heldEdges?.length
+      ? { heldEdges: resolution.heldEdges }
+      : {}),
+    layer: {
+      frame: sceneFrame,
+      frameTransform: resolution.transform,
+      id,
+      sourceId: stream,
+    },
+  };
+}
+
+function sceneEntityPrimitiveCount(entity: SceneEntityVisualization) {
+  return (
+    entity.arrowCount +
+    entity.cubeCount +
+    entity.cylinderCount +
+    entity.lineCount +
+    entity.modelCount +
+    entity.sphereCount +
+    entity.textCount +
+    entity.triangleCount
+  );
+}
+
+function resolveFrameTransform({
+  frameTransforms,
+  sourceFrameId,
+  timeNs,
+  worldFrameId,
+}: {
+  readonly frameTransforms: FrameTransformsState;
+  readonly sourceFrameId: string;
+  readonly timeNs: bigint | undefined;
+  readonly worldFrameId: string;
+}): FrameTransformResolution {
+  // No world frame chosen yet (frames still loading). Treat as loading so the
+  // cloud renders in its own frame instead of vanishing.
+  if (!worldFrameId) {
+    return { status: "pending" };
+  }
+
+  if (sourceFrameId === worldFrameId) {
+    return {
+      status: "resolved",
+      transform: {
+        rotation: new Quaternion(),
+        sourceFrameId,
+        targetFrameId: worldFrameId,
+        translation: new Vector3(),
+      },
+    };
+  }
+
+  // Playback time not known yet: loading, not missing.
+  if (timeNs === undefined) {
+    return { status: "pending" };
+  }
+
+  const resolution = frameTransforms.resolve(
+    sourceFrameId,
+    worldFrameId,
+    timeNs,
+  );
+  if (resolution.status === "resolved") {
+    return {
+      ...(resolution.heldEdges?.length
+        ? { heldEdges: resolution.heldEdges }
+        : {}),
+      ...(resolution.maxInterpolationGapNs !== undefined
+        ? { maxInterpolationGapNs: resolution.maxInterpolationGapNs }
+        : {}),
+      status: "resolved",
+      transform: resolution.transform,
+    };
+  }
+  if (resolution.status === "pending") {
+    return { status: "pending" };
+  }
+
+  // The transform window is loaded but no pose can place this frame in the
+  // world frame. Surface it; the caller drops the cloud rather than draw it
+  // wrong.
+  return {
+    ...(resolution.missingReason
+      ? { missingReason: resolution.missingReason }
+      : {}),
+    status: "missing",
+  };
+}
+
+function recordStalePoseUsage(
+  usagesBySourceId: Map<string, StalePoseUsage>,
+  sourceId: string,
+  heldEdges: readonly EpisodeHeldFrameTransform[] | undefined,
+) {
+  if (!heldEdges?.length) {
+    return;
+  }
+
+  let worst: EpisodeHeldFrameTransform | undefined;
+  for (const edge of heldEdges) {
+    if (edge.ageNs <= edge.staleAfterNs) {
+      continue;
+    }
+    if (
+      !worst ||
+      edge.ageNs * worst.staleAfterNs > worst.ageNs * edge.staleAfterNs
+    ) {
+      worst = edge;
+    }
+  }
+  if (!worst) {
+    return;
+  }
+
+  const current = usagesBySourceId.get(sourceId);
+  if (
+    current &&
+    worst.ageNs * current.staleAfterNs <= current.ageNs * worst.staleAfterNs
+  ) {
+    return;
+  }
+
+  usagesBySourceId.set(sourceId, {
+    ageNs: worst.ageNs,
+    sourceFrameId: worst.sourceFrameId,
+    sourceId,
+    sourceTimeNs: worst.sourceTimeNs,
+    staleAfterNs: worst.staleAfterNs,
+    targetFrameId: worst.targetFrameId,
+  });
+}
+
+function resolveCameraParentPosition({
+  frameTransforms,
+  sourceFrameId,
+  timeNs,
+}: {
+  readonly frameTransforms: FrameTransformsState;
+  readonly sourceFrameId: string;
+  readonly timeNs: bigint;
+}): CameraFrustumParentPosition {
+  const resolution = frameTransforms.resolveParent?.(sourceFrameId, timeNs);
+  if (resolution?.status === "resolved") {
+    const { translation } = resolution.transform;
+    return {
+      kind: "resolved",
+      origin: [translation.x, translation.y, translation.z],
+      parentFrameId: resolution.parentFrameId,
+    };
+  }
+  return {
+    kind: "unavailable",
+    reason:
+      resolution?.status === "pending"
+        ? "Parent transform pending"
+        : "Parent frame unavailable",
+  };
+}
+
+function recordUnresolvedPoseUsage(
+  usagesBySourceId: Map<string, UnresolvedPoseUsage>,
+  usage: UnresolvedPoseUsage,
+) {
+  usagesBySourceId.set(usage.sourceId, usage);
+}

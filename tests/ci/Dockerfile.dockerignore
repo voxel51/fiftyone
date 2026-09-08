@@ -1,0 +1,6 @@
+.git
+docs
+app
+**/node_modules
+e2e-pw/test-results
+e2e-pw/playwright-report

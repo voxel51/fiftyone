@@ -11,7 +11,7 @@ const usePrimitiveEntries = (activeFields: string[]): SidebarEntry[] => {
   const primitiveEntries: SidebarEntry[] = useMemo(() => {
     // Use Map for O(1) lookup instead of repeated indexOf calls
     const orderMap = new Map(
-      activeFields.map((field, index) => [field, index])
+      activeFields.map((field, index) => [field, index]),
     );
 
     return samplePrimitives

@@ -1,4 +1,4 @@
-import { ImaVidLooker, VideoLooker } from "@fiftyone/looker";
+import { ImaVidLooker } from "@fiftyone/looker";
 import { getSubscription } from "@fiftyone/looker/src/lookers/imavid/subscribe";
 import { Lookers, useLookerOptions } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
@@ -13,7 +13,7 @@ import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabe
 
 export const useImageModalSelectiveRendering = (
   modalId: string,
-  looker: Lookers
+  looker: Lookers,
 ) => {
   const { getNewFields } = useDetectNewActiveLabelFields({
     modal: true,
@@ -21,7 +21,7 @@ export const useImageModalSelectiveRendering = (
 
   const id = `${modalId}-${getColoringKey(
     looker.state.options.coloring,
-    looker.state.options.colorscale
+    looker.state.options.colorscale,
   )}-image`;
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export const useImageModalSelectiveRendering = (
             o.label?.map_path?.length > 0 ||
             o.label?.mask ||
             o.label?.map) &&
-          newFields.includes(o.field)
+          newFields.includes(o.field),
       );
 
       if (newOverlays?.length) {
@@ -65,7 +65,7 @@ export const useImageModalSelectiveRendering = (
 
 export const useImavidModalSelectiveRendering = (
   id: string,
-  looker: ImaVidLooker
+  looker: ImaVidLooker,
 ) => {
   const lookerRef = useRef(looker);
   lookerRef.current = looker;
@@ -91,29 +91,4 @@ export const useImavidModalSelectiveRendering = (
 
     (looker as ImaVidLooker).pause();
   }, [lookerOptions]);
-};
-
-export const useVideoModalSelectiveRendering = (
-  id: string,
-  looker: VideoLooker
-) => {
-  const { getNewFields } = useDetectNewActiveLabelFields({
-    modal: true,
-  });
-
-  const lookerOptions = useLookerOptions(true);
-
-  useEffect(() => {
-    if (!looker) {
-      return;
-    }
-
-    const newFieldsIfAny = getNewFields(id);
-
-    if (newFieldsIfAny) {
-      // todo: no granular refreshing for video looker
-      // it'd require selective re-processing of frames in the buffer
-      looker?.refreshSample();
-    }
-  }, [id, lookerOptions.activePaths, looker, getNewFields]);
 };

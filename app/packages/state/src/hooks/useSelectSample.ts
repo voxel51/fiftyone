@@ -13,7 +13,7 @@ const useSelectSample = () => {
           : selected.set(sampleId, selectionType);
         set(selectedSamples, selected);
       },
-    []
+    [],
   );
 };
 

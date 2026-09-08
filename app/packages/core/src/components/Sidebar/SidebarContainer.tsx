@@ -2,7 +2,6 @@ import { Resizable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useTheme as useMUITheme } from "@mui/material";
 import type { ReactNode } from "react";
-import React from "react";
 import { useRecoilState, useResetRecoilState } from "recoil";
 
 const SidebarContainer = ({
@@ -23,7 +22,7 @@ const SidebarContainer = ({
       minWidth={260}
       maxWidth={600}
       direction={modal ? "left" : "right"}
-      onResizeStop={(e, direction, ref, { width: delta }) => {
+      onResizeStop={(_e, _direction, _ref, { width: delta }) => {
         setWidth(width + delta);
       }}
       onResizeReset={resetWidth}

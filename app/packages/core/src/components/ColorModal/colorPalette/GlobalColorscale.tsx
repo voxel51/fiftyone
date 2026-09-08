@@ -24,18 +24,18 @@ const GlobalColorscale: React.FC = () => {
         name: "viridis",
         list: [],
       },
-    [colorScheme]
+    [colorScheme],
   );
 
   const [input, setInput] = React.useState(setting?.name ?? "");
   const [tab, setTab] = React.useState(
     Boolean(
       (setting?.name || setting?.name !== "") &&
-        setting?.list &&
-        setting?.list.length > 0
+      setting?.list &&
+      setting?.list.length > 0,
     )
       ? "list"
-      : "name"
+      : "name",
   );
 
   const defaultValue = [
@@ -64,18 +64,18 @@ const GlobalColorscale: React.FC = () => {
         }, 1000);
       }
     },
-    [setting]
+    [setting],
   );
 
   const shouldShowAddButton = Boolean(
-    setting?.list && setting?.list?.length && setting?.list?.length > 0
+    setting?.list && setting?.list?.length && setting?.list?.length > 0,
   );
 
   const onSyncUpdate = useCallback(
     (copy: ColorscaleListInput[]) => {
       if (copy && isValidFloatInput(copy)) {
         const list = copy.sort(
-          (a, b) => (a.value as number) - (b.value as number)
+          (a, b) => (a.value as number) - (b.value as number),
         );
         // a valid list must include 0 and 1
         // if not, we will insert the missing value
@@ -91,7 +91,7 @@ const GlobalColorscale: React.FC = () => {
         }));
       }
     },
-    [setColorScheme]
+    [setColorScheme],
   );
 
   useEffect(() => {

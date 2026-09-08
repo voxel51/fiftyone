@@ -3,10 +3,10 @@ import { ItemData, RowData } from "./state";
 const lastRow = (
   { items }: RowData,
   horizontal: boolean,
-  threshold: number
+  threshold: number,
 ): RowData => {
   const aspectRatios = items.map(({ aspectRatio }) =>
-    horizontal ? 1 / aspectRatio : aspectRatio
+    horizontal ? 1 / aspectRatio : aspectRatio,
   );
   if (aspectRatios.length && new Set(aspectRatios).size === 1) {
     let aspectRatio = aspectRatios[0];
@@ -22,7 +22,7 @@ const lastRow = (
     items,
     aspectRatio: Math.max(
       threshold,
-      aspectRatios.reduce((acc, cur) => acc + cur, 0)
+      aspectRatios.reduce((acc, cur) => acc + cur, 0),
     ),
   };
 };
@@ -31,7 +31,7 @@ export default function tile(
   items: ItemData[],
   horizontal: boolean,
   rowAspectRatioThreshold: number,
-  hasMore: boolean
+  hasMore: boolean,
 ): {
   rows: RowData[];
   remainder: ItemData[];
@@ -78,8 +78,8 @@ export default function tile(
         lastRow(
           { items: currentRow, aspectRatio: currentAR },
           horizontal,
-          rowAspectRatioThreshold
-        )
+          rowAspectRatioThreshold,
+        ),
       );
   } else remainder = currentRow;
 

@@ -45,7 +45,7 @@ export class ListPanels extends Operator {
   }
 
   async execute(
-    ctx: ExecutionContext<ListPanelsParams, ListPanelsHooks>
+    ctx: ExecutionContext<ListPanelsParams, ListPanelsHooks>,
   ): Promise<ListPanelItemType[]> {
     const { hooks, params } = ctx;
     const { panels } = hooks;
@@ -53,7 +53,7 @@ export class ListPanels extends Operator {
 
     if (surface === "modal") {
       return panels.filter((panel) =>
-        panel.panelOptions?.surfaces?.includes("modal")
+        panel.panelOptions?.surfaces?.includes("modal"),
       );
     } else if (surface === "grid") {
       return panels.filter((panel) => {
@@ -91,7 +91,7 @@ export class ListOpenPanels extends Operator {
   }
 
   async execute(
-    ctx: ExecutionContext<void, ListOpenPanelsHooks>
+    ctx: ExecutionContext<void, ListOpenPanelsHooks>,
   ): Promise<ListOpenPanelsItemType[]> {
     const { hooks } = ctx;
     const { isModalOpen, openedGridPanels, openedModalPanels, panels } = hooks;
@@ -150,7 +150,7 @@ export class GetPanelState extends Operator {
   }
 
   async execute(
-    ctx: ExecutionContext<GetPanelStateParams, GetPanelStateHooks>
+    ctx: ExecutionContext<GetPanelStateParams, GetPanelStateHooks>,
   ) {
     const { hooks, params } = ctx;
     const { openedPanels, panelsState } = hooks;

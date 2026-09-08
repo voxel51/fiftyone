@@ -8,7 +8,7 @@ export default function () {
       () => {
         set(queryPerformance, false);
       },
-    []
+    [],
   );
 
   const enable = useRecoilCallback(
@@ -16,7 +16,7 @@ export default function () {
       () => {
         set(queryPerformance, true);
       },
-    []
+    [],
   );
 
   return useMemo(
@@ -24,6 +24,6 @@ export default function () {
       disable,
       enable,
     }),
-    [disable, enable]
+    [disable, enable],
   );
 }

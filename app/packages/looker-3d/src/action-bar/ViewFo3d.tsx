@@ -27,7 +27,7 @@ export const ViewFo3d = (props: {
       e?.preventDefault();
       return false;
     },
-    [fo3dContent, jsonPanel]
+    [fo3dContent, jsonPanel],
   );
 
   useHotkey(
@@ -37,7 +37,7 @@ export const ViewFo3d = (props: {
       jsonPanel.toggle(fo3dContent);
     },
     [fo3dContent, jsonPanel],
-    { useTransaction: false }
+    { useTransaction: false },
   );
 
   fos.useOutsideClick(buttonRef, () => {

@@ -1,0 +1,118 @@
+.graphToolbar {
+  border-bottom: 1px solid var(--color-content-border-default);
+  flex: none;
+  min-height: 44px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.toolbarSearch {
+  min-width: 0;
+}
+
+.searchField {
+  max-width: 260px;
+  min-width: 160px;
+}
+
+.canvas {
+  background: var(--color-content-bg-background);
+  flex: 1;
+  min-height: 180px;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+}
+
+.canvas :global(.react-flow) {
+  background: var(--color-content-bg-background);
+}
+
+.canvas :global(.react-flow__pane) {
+  cursor: grab;
+}
+
+.canvas :global(.react-flow__pane.dragging) {
+  cursor: grabbing;
+}
+
+.canvas :global(.react-flow__node:focus),
+.canvas :global(.react-flow__node:focus-visible) {
+  outline: none;
+}
+
+.canvas :global(.react-flow__node-transform-component) {
+  pointer-events: none;
+}
+
+.canvas :global(.react-flow__node-transform-frame) {
+  cursor: pointer;
+}
+
+.canvas :global(.react-flow__node-transform-frame:hover) .flowNodeCard,
+.canvas :global(.react-flow__node-transform-frame:focus-visible) .flowNodeCard {
+  border-color: var(--color-content-border-focus);
+}
+
+.canvas
+  :global(.react-flow__edge:focus-visible)
+  :global(.react-flow__edge-path) {
+  stroke: var(--color-content-border-focus) !important;
+  stroke-width: 2.5 !important;
+}
+
+.flowComponent {
+  border-style: dashed;
+  box-sizing: border-box;
+  height: 100%;
+  pointer-events: none;
+  position: relative;
+  width: 100%;
+}
+
+.flowNodeCard {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: hidden;
+  width: 100%;
+}
+
+.flowNodeContent,
+.flowNodeText {
+  min-width: 0;
+  width: 100%;
+}
+
+.flowNodeLabel,
+.flowNodeMeta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flowHandle {
+  background: var(--color-content-icon-default) !important;
+  border: 2px solid var(--color-content-bg-card-2) !important;
+  height: 8px !important;
+  min-height: 8px;
+  min-width: 8px;
+  pointer-events: none !important;
+  width: 8px !important;
+}
+
+.flowLoopHandle {
+  opacity: 0;
+}
+
+.filtered {
+  opacity: 0.11;
+  pointer-events: none;
+}
+
+@container (max-width: 430px) {
+  .toolbarSearch,
+  .searchField {
+    max-width: none;
+    width: 100%;
+  }
+}

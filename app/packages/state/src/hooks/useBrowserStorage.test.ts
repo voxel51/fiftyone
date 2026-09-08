@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useBrowserStorage } from "./useBrowserStorage";
 
 // Utility wrapper for cleaner access
@@ -22,7 +22,7 @@ describe("useBrowserStorage", () => {
   describe("undefined value handling", () => {
     it("should remove item from storage when setting undefined (no parseFn)", () => {
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default")
+        useTestableState("test-key", "default"),
       );
 
       act(() => {
@@ -43,7 +43,7 @@ describe("useBrowserStorage", () => {
       };
 
       const { result } = renderHook(() =>
-        useTestableState("test-key", { default: "value" }, false, parseFn)
+        useTestableState("test-key", { default: "value" }, false, parseFn),
       );
 
       act(() => {
@@ -78,7 +78,7 @@ describe("useBrowserStorage", () => {
       localStorage.setItem("test-key", "undefined");
 
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default-value")
+        useTestableState("test-key", "default-value"),
       );
       expect(result.current.value).toBe("default-value");
     });
@@ -92,7 +92,7 @@ describe("useBrowserStorage", () => {
       };
 
       const { result } = renderHook(() =>
-        useTestableState("test-key", { default: "value" }, false, parseFn)
+        useTestableState("test-key", { default: "value" }, false, parseFn),
       );
 
       expect(result.current.value).toEqual({ default: "value" });
@@ -102,7 +102,7 @@ describe("useBrowserStorage", () => {
   describe("sessionStorage support", () => {
     it("should handle undefined values in sessionStorage", () => {
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default", true)
+        useTestableState("test-key", "default", true),
       );
 
       act(() => {
@@ -120,7 +120,7 @@ describe("useBrowserStorage", () => {
       sessionStorage.setItem("test-key", "undefined");
 
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default-value", true)
+        useTestableState("test-key", "default-value", true),
       );
       expect(result.current.value).toBe("default-value");
     });
@@ -129,7 +129,7 @@ describe("useBrowserStorage", () => {
   describe("null value handling", () => {
     it("should handle null values by not removing from storage", () => {
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default")
+        useTestableState("test-key", "default"),
       );
 
       act(() => {
@@ -147,7 +147,7 @@ describe("useBrowserStorage", () => {
   describe("basic functionality", () => {
     it("should work with normal values", () => {
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default")
+        useTestableState("test-key", "default"),
       );
 
       act(() => {
@@ -191,5 +191,69 @@ describe("useBrowserStorage", () => {
       expect(result.current.value).toBe(51);
       expect(localStorage.getItem("test-key")).toBe("51");
     });
+  });
+});
+
+describe("storage failures", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("falls back to the initial value when reads throw", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("NS_ERROR_FAILURE");
+    });
+
+    const { result } = renderHook(() => useTestableState("broken", "default"));
+
+    expect(result.current.value).toBe("default");
+  });
+
+  it("keeps in-memory state when writes throw", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("NS_ERROR_FAILURE");
+    });
+
+    const { result } = renderHook(() => useTestableState("broken", "default"));
+
+    act(() => {
+      result.current.setState("next");
+    });
+
+    expect(result.current.value).toBe("next");
+  });
+
+  it("falls back to the initial value on corrupt stored JSON", () => {
+    localStorage.setItem("corrupt", "{not json");
+
+    const { result } = renderHook(() => useTestableState("corrupt", "default"));
+
+    expect(result.current.value).toBe("default");
+  });
+
+  it("works in-memory when the storage accessor itself throws", () => {
+    const original = Object.getOwnPropertyDescriptor(window, "localStorage");
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("NS_ERROR_FAILURE");
+      },
+    });
+
+    try {
+      const { result } = renderHook(() => useTestableState("gone", "default"));
+
+      expect(result.current.value).toBe("default");
+
+      act(() => {
+        result.current.setState("next");
+      });
+
+      expect(result.current.value).toBe("next");
+    } finally {
+      if (original) {
+        Object.defineProperty(window, "localStorage", original);
+      }
+    }
   });
 });

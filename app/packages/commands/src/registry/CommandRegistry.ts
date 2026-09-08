@@ -32,7 +32,7 @@ export class CommandRegistry {
     execute: CommandFunction,
     enablement: () => boolean,
     label?: string,
-    description?: string
+    description?: string,
   ): Command {
     if (this.getCommand(id)) {
       throw new Error(`The command id ${id} is already registered`);

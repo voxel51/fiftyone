@@ -1,0 +1,52 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--color-content-bg-card-1);
+  border-top: 1px solid var(--color-content-border-default);
+  user-select: none;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.rail,
+.fill {
+  position: absolute;
+  top: 50%;
+  height: 3px;
+  border-radius: 2px;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.rail {
+  left: 0;
+  right: 0;
+  background: var(--color-content-bg-muted);
+}
+
+.fill {
+  left: 0;
+  background: var(--color-brand-primary);
+}
+
+.handle {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: var(--color-brand-primary);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--color-content-bg-card-1);
+}

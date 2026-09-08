@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
-import { SCOPE_VIEW, SCOPE_DATASET } from "../constants";
+import { useViewTargets } from "@fiftyone/operators";
+import {
+  AnnotatedBrainKeyConfig,
+  CloneConfig,
+  QueryType,
+  ViewTarget,
+} from "../types";
 import { UploadedImage } from "../utils";
 import { useSearchSelection } from "./useSearchSelection";
 import { useSearchSubmission } from "./useSearchSubmission";
@@ -12,9 +17,9 @@ import { useSearchSubmission } from "./useSearchSubmission";
  * useSearchSubmission (params building + submit handlers).
  */
 export const useNewSearchForm = (
-  brainKeys: BrainKeyConfig[],
+  brainKeys: AnnotatedBrainKeyConfig[],
   cloneConfig: CloneConfig | null | undefined,
-  onSubmitted: () => void
+  onSubmitted: () => void,
 ) => {
   const {
     selectedLabels,
@@ -25,17 +30,28 @@ export const useNewSearchForm = (
     hasView,
   } = useSearchSelection();
 
+  // Incompatible keys are rendered (grayed out) but never selectable
+  const compatibleKeys = useMemo(
+    () => brainKeys.filter((bk) => bk.compatible),
+    [brainKeys],
+  );
+
   const firstTextKey = useMemo(
-    () => brainKeys.find((bk) => bk.supports_prompts),
-    [brainKeys]
+    () => compatibleKeys.find((bk) => bk.supports_prompts),
+    [compatibleKeys],
   );
 
   const defaultBrainKey = useMemo(() => {
-    if (cloneConfig?.brain_key) return cloneConfig.brain_key;
-    if (hasSamplesSelected) return brainKeys[0]?.key ?? "";
+    if (
+      cloneConfig?.brain_key &&
+      compatibleKeys.some((bk) => bk.key === cloneConfig.brain_key)
+    ) {
+      return cloneConfig.brain_key;
+    }
+    if (hasSamplesSelected) return compatibleKeys[0]?.key ?? "";
     if (firstTextKey) return firstTextKey.key;
-    return brainKeys[0]?.key ?? "";
-  }, [cloneConfig, hasSamplesSelected, firstTextKey, brainKeys]);
+    return compatibleKeys[0]?.key ?? "";
+  }, [cloneConfig, hasSamplesSelected, firstTextKey, compatibleKeys]);
 
   const defaultQueryType = useMemo((): QueryType => {
     if (cloneConfig?.query_type) return cloneConfig.query_type;
@@ -55,13 +71,27 @@ export const useNewSearchForm = (
   const [runName, setRunName] = useState("");
   const [dynamicResults, setDynamicResults] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
-    null
+    null,
   );
-  const [searchScope, setSearchScope] = useState<SearchScope>(SCOPE_DATASET);
+  const { targets, defaultTarget } = useViewTargets({ requireFlat: true });
+  const viewTargetOptions = useMemo(
+    () => targets.filter((meta) => meta.target !== ViewTarget.SELECTED_SAMPLES),
+    [targets],
+  );
+  const [viewTarget, setViewTarget] = useState<ViewTarget>(defaultTarget);
 
   // ─── Derived config ─────────────────────────────────────────────
 
-  const selectedConfig = brainKeys.find((bk) => bk.key === brainKey);
+  // Derived during render rather than via the auto-correct effect so
+  // the frame where a view change invalidates the selected key never
+  // exposes an undefined config (which would flip queryType off Text)
+  const effectiveBrainKey = compatibleKeys.some((bk) => bk.key === brainKey)
+    ? brainKey
+    : (compatibleKeys[0]?.key ?? "");
+
+  const selectedConfig = compatibleKeys.find(
+    (bk) => bk.key === effectiveBrainKey,
+  );
   const supportsPrompts = selectedConfig?.supports_prompts ?? false;
   const supportsLeast = selectedConfig?.supports_least_similarity ?? false;
   const supportsUpload =
@@ -71,10 +101,13 @@ export const useNewSearchForm = (
   // ─── Auto-correct effects ───────────────────────────────────────
 
   useEffect(() => {
-    if (!brainKey && brainKeys.length > 0) {
-      setBrainKey(brainKeys[0].key);
+    // Sync state to the render-derived effective key (covers a
+    // selected key becoming incompatible when the view changes while
+    // the form is open)
+    if (brainKey !== effectiveBrainKey) {
+      setBrainKey(effectiveBrainKey);
     }
-  }, [brainKey, brainKeys]);
+  }, [brainKey, effectiveBrainKey]);
 
   useEffect(() => {
     if (!supportsPrompts && queryType === QueryType.Text) {
@@ -95,6 +128,15 @@ export const useNewSearchForm = (
     }
   }, [supportsUpload, queryType]);
 
+  useEffect(() => {
+    const current = viewTargetOptions.find(
+      (meta) => meta.target === viewTarget,
+    );
+    if (!current || current.unavailableReason !== undefined) {
+      setViewTarget(defaultTarget);
+    }
+  }, [viewTargetOptions, defaultTarget, viewTarget]);
+
   // ─── Submission ─────────────────────────────────────────────────
 
   const {
@@ -106,7 +148,7 @@ export const useNewSearchForm = (
     canSubmit,
     submitting,
   } = useSearchSubmission({
-    brainKey,
+    brainKey: effectiveBrainKey,
     queryType,
     textQuery,
     queryIds,
@@ -114,7 +156,7 @@ export const useNewSearchForm = (
     uploadedImage,
     reverse,
     selectedConfig,
-    searchScope,
+    viewTarget,
     hasView,
     view: view as unknown[],
     k,
@@ -124,19 +166,9 @@ export const useNewSearchForm = (
     onSubmitted,
   });
 
-  // ─── Brain key options ──────────────────────────────────────────
-
-  const brainKeyOptions = brainKeys.map((bk) => ({
-    id: bk.key,
-    data: {
-      label:
-        bk.key + (bk.patches_field ? ` (patches: ${bk.patches_field})` : ""),
-    },
-  }));
-
   return {
     // form state
-    brainKey,
+    brainKey: effectiveBrainKey,
     setBrainKey,
     queryType,
     setQueryType,
@@ -150,8 +182,9 @@ export const useNewSearchForm = (
     setDistField,
     runName,
     setRunName,
-    searchScope,
-    setSearchScope,
+    viewTarget,
+    setViewTarget,
+    viewTargetOptions,
     dynamicResults,
     setDynamicResults,
     uploadedImage,
@@ -168,7 +201,6 @@ export const useNewSearchForm = (
     kError,
     canSubmit,
     submitting,
-    brainKeyOptions,
     executionParams,
 
     // handlers

@@ -46,7 +46,7 @@ export class SetColorScheme extends Operator {
     return { setColorScheme, defaultPool };
   }
   async execute(
-    ctx: ExecutionContext<SetColorSchemeParams, SetColorSchemeHooks>
+    ctx: ExecutionContext<SetColorSchemeParams, SetColorSchemeHooks>,
   ): Promise<void> {
     const { hooks, params } = ctx;
     const { setColorScheme, defaultPool } = hooks;
@@ -135,7 +135,7 @@ export class ResetColorScheme extends Operator {
 
     const { id: _, ...update } = fos.ensureColorScheme(
       datasetDefault,
-      configDefault
+      configDefault,
     );
     return {
       resetColorScheme: () => {
@@ -145,7 +145,7 @@ export class ResetColorScheme extends Operator {
   }
 
   async execute(
-    ctx: ExecutionContext<void, ResetColorSchemeHooks>
+    ctx: ExecutionContext<void, ResetColorSchemeHooks>,
   ): Promise<void> {
     const { hooks } = ctx;
     const { resetColorScheme } = hooks;

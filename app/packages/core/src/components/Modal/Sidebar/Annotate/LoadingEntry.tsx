@@ -1,6 +1,5 @@
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import { animated } from "@react-spring/web";
-import React from "react";
 import styled from "styled-components";
 
 const Container = animated(styled.div`

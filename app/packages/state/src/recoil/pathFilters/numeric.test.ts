@@ -30,10 +30,10 @@ describe("helperFunction tests", () => {
 
   it("handles datetime", () => {
     expect(
-      helperFunction({ _cls: "DateTime", datetime: 0.5 }, false, 0, 1)
+      helperFunction({ _cls: "DateTime", datetime: 0.5 }, false, 0, 1),
     ).toBe(true);
     expect(
-      helperFunction({ _cls: "DateTime", datetime: 1.5 }, false, 0, 1)
+      helperFunction({ _cls: "DateTime", datetime: 1.5 }, false, 0, 1),
     ).toBe(false);
   });
 });

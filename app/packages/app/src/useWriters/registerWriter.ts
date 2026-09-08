@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { Session } from "@fiftyone/state";
 import type { MutableRefObject } from "react";
 import type { Environment } from "react-relay";
@@ -22,7 +26,7 @@ type WriterContext = {
 };
 
 export type RegisteredWriter<K extends WriterKeys> = (
-  ctx: WriterContext
+  ctx: WriterContext,
 ) => (value: Session[K]) => void;
 
 export const REGISTERED_WRITERS: {

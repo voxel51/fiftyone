@@ -13,7 +13,6 @@ import {
   selectionIconThumbsup,
   selectionIconX,
 } from "@fiftyone/looker";
-import React from "react";
 import { useRecoilValue } from "recoil";
 
 interface SelectSampleCheckboxProps {
@@ -44,7 +43,7 @@ export const SelectSampleCheckbox = ({
     selectedSamplesMap,
     style,
     sampleId,
-    isSelected
+    isSelected,
   );
 
   const iconClass = selectionIcon ? ICON_CLASS_MAP[selectionIcon] : undefined;

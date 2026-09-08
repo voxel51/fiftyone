@@ -1,8 +1,8 @@
 import {
   generatedDatasetName as generatedDatasetNameAtom,
   isGeneratedView,
+  useActiveModalSample,
   useCurrentDatasetId,
-  useModalSample,
   useRefreshSample,
 } from "@fiftyone/state";
 import { useCallback } from "react";
@@ -16,6 +16,8 @@ type PatchOptions = {
   labelId?: string;
   labelPath?: string;
   opType?: OpType;
+  /** See DoPatchSampleArgs.attributionSampleId (grouped-modal anchor). */
+  attributionSampleId?: string;
 };
 
 /**
@@ -37,12 +39,12 @@ export const usePatchSampleWith = ({
   generatedDatasetName,
 }: Omit<
   DoPatchSampleArgs,
-  "sampleDeltas" | "labelId" | "labelPath" | "opType"
+  "sampleDeltas" | "labelId" | "labelPath" | "opType" | "attributionSampleId"
 >) => {
   return useCallback(
     (
       sampleDeltas: JSONDeltas,
-      patchOptions?: PatchOptions
+      patchOptions?: PatchOptions,
     ): Promise<boolean> => {
       return doPatchSample({
         sample,
@@ -55,6 +57,7 @@ export const usePatchSampleWith = ({
         labelId: patchOptions?.labelId,
         labelPath: patchOptions?.labelPath,
         opType: patchOptions?.opType,
+        attributionSampleId: patchOptions?.attributionSampleId,
       });
     },
     [
@@ -64,7 +67,7 @@ export const usePatchSampleWith = ({
       isGenerated,
       refreshSample,
       sample,
-    ]
+    ],
   );
 };
 
@@ -74,13 +77,13 @@ export const usePatchSampleWith = ({
  */
 export const usePatchSample = (): ((
   sampleDeltas: JSONDeltas,
-  patchOptions?: PatchOptions
+  patchOptions?: PatchOptions,
 ) => Promise<boolean>) => {
   const isGenerated = useRecoilValue(isGeneratedView);
   const generatedDatasetName = useRecoilValue(generatedDatasetNameAtom);
 
   return usePatchSampleWith({
-    sample: useModalSample()?.sample,
+    sample: useActiveModalSample(),
     datasetId: useCurrentDatasetId(),
     getVersionToken: useGetVersionToken(),
     refreshSample: useRefreshSample(),

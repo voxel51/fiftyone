@@ -1,9 +1,5 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import { useLooker3dSurfaceWrite } from "@fiftyone/annotation";
 import { KnownContexts, usePushUndoable } from "@fiftyone/commands";
-import {
-  useGetSidebarLabels,
-  useLabelsContext,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
@@ -12,6 +8,8 @@ import { isDetection, isPolyline } from "../../types";
 import { quaternionToRadians } from "../../utils";
 import type {
   CuboidTransformData,
+  Detection3DDocument,
+  Polyline3DDocument,
   PolylinePointTransformData,
   ReconciledDetection3D,
   ReconciledPolyline3D,
@@ -21,8 +19,6 @@ import { transientAtom, useEndDrag } from "./transient";
 import type { LabelId } from "./types";
 import {
   useAddWorkingLabel,
-  useDeleteWorkingLabel,
-  useRestoreWorkingLabel,
   useUpdateWorkingLabel,
   workingAtom,
 } from "./working";
@@ -34,18 +30,25 @@ import {
 /**
  * Hook that provides operations for manipulating cuboids in the working store.
  * All operations are undoable and integrate with the undo system.
+ *
+ * The working store is the optimistic-render layer: an edit lands there first
+ * (so the scene updates immediately), then commits through the engine surface
+ * controller for persistence. Two shapes:
+ *   - add/edit a label: optimistic working write + `commit` (origin-suppressed,
+ *     so the read-half bridge never echoes the surface's own write back);
+ *   - remove a label: `remove` (engine delete, NOT suppressed) — the read-half
+ *     drops the working entry, and undo re-adds the captured value.
+ * Undo is a value-inverse on the `ModalAnnotate` command-context stack. Sidebar
+ * rows follow the engine read-half (the engine-complete list mirror), so no
+ * surface bookkeeping is needed: a commit derives the row, a delete drops it.
  */
 export function useCuboidOperations() {
   const { createPushAndExec } = usePushUndoable(KnownContexts.ModalAnnotate);
   const updateLabel = useUpdateWorkingLabel();
   const addLabel = useAddWorkingLabel();
-  const deleteLabel = useDeleteWorkingLabel();
-  const restoreLabel = useRestoreWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const eventBus = useAnnotationEventBus();
-  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
-  const getSidebarLabels = useGetSidebarLabels();
+  const { commit, remove } = useLooker3dSurfaceWrite();
 
   /**
    * Updates cuboid properties.
@@ -54,7 +57,7 @@ export function useCuboidOperations() {
    */
   const updateCuboid = useRecoilCallback(
     ({ snapshot }) =>
-      async (labelId: LabelId, updates: Partial<ReconciledDetection3D>) => {
+      async (labelId: LabelId, updates: Partial<Detection3DDocument>) => {
         const working = await snapshot.getPromise(workingAtom);
         const existingLabel = working.doc.labelsById[labelId];
 
@@ -63,17 +66,17 @@ export function useCuboidOperations() {
         }
 
         // Dynamically capture only the fields being updated for undo
-        const previousState: Partial<ReconciledDetection3D> = {};
+        const previousState: Partial<Detection3DDocument> = {};
         for (const key of Object.keys(updates) as Array<
-          keyof ReconciledDetection3D
+          keyof Detection3DDocument
         >) {
-          if (key in existingLabel) {
+          if (key in existingLabel.data) {
             (previousState as Record<string, unknown>)[key] =
-              existingLabel[key];
+              existingLabel.data[key];
           }
         }
 
-        const roundedUpdates: Partial<ReconciledDetection3D> = { ...updates };
+        const roundedUpdates: Partial<Detection3DDocument> = { ...updates };
         if (updates.location) {
           roundedUpdates.location = roundTuple(updates.location);
         }
@@ -87,23 +90,24 @@ export function useCuboidOperations() {
           roundedUpdates.quaternion = roundTuple(updates.quaternion);
         }
 
+        const nextLabel = {
+          ...existingLabel,
+          data: { ...existingLabel.data, ...roundedUpdates },
+        };
+
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
-          eventBus.dispatch("annotation:labelEdit", {
-            label: { id: labelId, ...roundedUpdates },
-          });
+          commit(nextLabel);
         };
 
         const undoFn = () => {
           updateLabel(labelId, previousState);
-          eventBus.dispatch("annotation:undoLabelEdit", {
-            label: { id: labelId, ...previousState },
-          });
+          commit(existingLabel);
         };
 
         createPushAndExec(`cuboid-update-${labelId}`, execFn, undoFn);
       },
-    [createPushAndExec, updateLabel]
+    [createPushAndExec, updateLabel, commit],
   );
 
   /**
@@ -128,21 +132,22 @@ export function useCuboidOperations() {
           return;
         }
 
-        const newState: Partial<ReconciledDetection3D> = {};
+        const newState: Partial<Detection3DDocument> = {};
+        const doc = existingLabel.data;
 
         if (transient.positionDelta) {
           newState.location = [
-            existingLabel.location[0] + transient.positionDelta[0],
-            existingLabel.location[1] + transient.positionDelta[1],
-            existingLabel.location[2] + transient.positionDelta[2],
+            doc.location[0] + transient.positionDelta[0],
+            doc.location[1] + transient.positionDelta[1],
+            doc.location[2] + transient.positionDelta[2],
           ];
         }
 
         if (transient.dimensionsDelta) {
           newState.dimensions = [
-            existingLabel.dimensions[0] + transient.dimensionsDelta[0],
-            existingLabel.dimensions[1] + transient.dimensionsDelta[1],
-            existingLabel.dimensions[2] + transient.dimensionsDelta[2],
+            doc.dimensions[0] + transient.dimensionsDelta[0],
+            doc.dimensions[1] + transient.dimensionsDelta[1],
+            doc.dimensions[2] + transient.dimensionsDelta[2],
           ];
         }
 
@@ -154,7 +159,7 @@ export function useCuboidOperations() {
         await updateCuboid(labelId, newState);
         endDrag(labelId);
       },
-    [updateCuboid, endDrag]
+    [updateCuboid, endDrag],
   );
 
   /**
@@ -165,40 +170,46 @@ export function useCuboidOperations() {
       labelId: LabelId,
       data: CuboidTransformData,
       path: string,
-      labelClass = ""
+      labelClass = "",
     ) => {
       if (!currentSampleId) return;
 
       const newLabel: ReconciledDetection3D = {
-        _id: labelId,
-        _cls: DETECTION,
-        type: DETECTION,
+        data: {
+          _id: labelId,
+          _cls: DETECTION,
+          location: roundTuple(data.location),
+          dimensions: roundTuple(data.dimensions),
+          rotation: data.rotation
+            ? roundTuple(data.rotation)
+            : data.quaternion
+              ? roundTuple(quaternionToRadians(data.quaternion))
+              : [0, 0, 0],
+          quaternion: data.quaternion ? roundTuple(data.quaternion) : undefined,
+          tags: [],
+          label: labelClass,
+        },
         path,
-        location: roundTuple(data.location),
-        dimensions: roundTuple(data.dimensions),
-        rotation: data.rotation
-          ? roundTuple(data.rotation)
-          : data.quaternion
-          ? roundTuple(quaternionToRadians(data.quaternion))
-          : [0, 0, 0],
-        quaternion: data.quaternion ? roundTuple(data.quaternion) : undefined,
         sampleId: currentSampleId,
-        tags: [],
-        isNew: true,
-        label: labelClass,
+        ui: { selected: false, isNew: true },
       };
 
+      // create collapses into commit: the draft is born with a durable
+      // ObjectId, so the first commit upserts it into the engine
       const execFn = () => {
         addLabel(newLabel);
+        commit(newLabel);
       };
 
+      // undo a create = remove from the scene; the engine delete drives the
+      // read-half to drop the working entry
       const undoFn = () => {
-        deleteLabel(labelId);
+        remove({ path, instanceId: labelId });
       };
 
       createPushAndExec(`create-cuboid-${labelId}`, execFn, undoFn);
     },
-    [createPushAndExec, addLabel, deleteLabel, currentSampleId]
+    [createPushAndExec, addLabel, currentSampleId, commit, remove],
   );
 
   /**
@@ -214,32 +225,18 @@ export function useCuboidOperations() {
           return;
         }
 
-        const sidebarLabel = getSidebarLabels().find(
-          (l) => l.data._id === labelId
-        );
-
         const execFn = () => {
-          deleteLabel(labelId);
-          removeLabelFromSidebar(labelId);
+          remove({ path: existingLabel.path, instanceId: labelId });
         };
 
         const undoFn = () => {
-          restoreLabel(labelId);
-          if (sidebarLabel) {
-            addLabelToSidebar(sidebarLabel);
-          }
+          addLabel(existingLabel);
+          commit(existingLabel);
         };
 
         createPushAndExec(`delete-cuboid-${labelId}`, execFn, undoFn);
       },
-    [
-      createPushAndExec,
-      deleteLabel,
-      restoreLabel,
-      removeLabelFromSidebar,
-      addLabelToSidebar,
-      getSidebarLabels,
-    ]
+    [createPushAndExec, addLabel, commit, remove],
   );
 
   return {
@@ -256,19 +253,16 @@ export function useCuboidOperations() {
 
 /**
  * Hook that provides operations for manipulating polylines in the working store.
- * All operations are undoable and integrate with the undo system.
+ * All operations are undoable and integrate with the undo system. See
+ * {@link useCuboidOperations} for the optimistic-working + engine-commit model.
  */
 export function usePolylineOperations() {
   const { createPushAndExec } = usePushUndoable(KnownContexts.ModalAnnotate);
   const updateLabel = useUpdateWorkingLabel();
   const addLabel = useAddWorkingLabel();
-  const deleteLabel = useDeleteWorkingLabel();
-  const restoreLabel = useRestoreWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const eventBus = useAnnotationEventBus();
-  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
-  const getSidebarLabels = useGetSidebarLabels();
+  const { commit, remove } = useLooker3dSurfaceWrite();
 
   /**
    * Updates polyline properties.
@@ -277,7 +271,7 @@ export function usePolylineOperations() {
    */
   const updatePolyline = useRecoilCallback(
     ({ snapshot }) =>
-      async (labelId: LabelId, updates: Partial<ReconciledPolyline3D>) => {
+      async (labelId: LabelId, updates: Partial<Polyline3DDocument>) => {
         const working = await snapshot.getPromise(workingAtom);
         const existingLabel = working.doc.labelsById[labelId];
 
@@ -286,42 +280,43 @@ export function usePolylineOperations() {
         }
 
         // Dynamically capture only the fields being updated for undo
-        const previousState: Partial<ReconciledPolyline3D> = {};
+        const previousState: Partial<Polyline3DDocument> = {};
         for (const key of Object.keys(updates) as Array<
-          keyof ReconciledPolyline3D
+          keyof Polyline3DDocument
         >) {
-          if (key in existingLabel) {
+          if (key in existingLabel.data) {
             (previousState as Record<string, unknown>)[key] =
-              existingLabel[key];
+              existingLabel.data[key];
           }
         }
 
-        const roundedUpdates: Partial<ReconciledPolyline3D> = { ...updates };
+        const roundedUpdates: Partial<Polyline3DDocument> = { ...updates };
         if (updates.points3d) {
           roundedUpdates.points3d = updates.points3d.map((segment) =>
             segment.map(
-              (point) => roundTuple(point) as [number, number, number]
-            )
+              (point) => roundTuple(point) as [number, number, number],
+            ),
           );
         }
 
+        const nextLabel = {
+          ...existingLabel,
+          data: { ...existingLabel.data, ...roundedUpdates },
+        };
+
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
-          eventBus.dispatch("annotation:labelEdit", {
-            label: { id: labelId, ...roundedUpdates },
-          });
+          commit(nextLabel);
         };
 
         const undoFn = () => {
           updateLabel(labelId, previousState);
-          eventBus.dispatch("annotation:undoLabelEdit", {
-            label: { id: labelId, ...previousState },
-          });
+          commit(existingLabel);
         };
 
         createPushAndExec(`polyline-update-${labelId}`, execFn, undoFn);
       },
-    [createPushAndExec, updateLabel]
+    [createPushAndExec, updateLabel, commit],
   );
 
   /**
@@ -347,7 +342,7 @@ export function usePolylineOperations() {
         }
 
         // Compute new points3d from working + transient deltas
-        let newPoints3d = existingLabel.points3d;
+        let newPoints3d = existingLabel.data.points3d;
 
         if (transient.positionDelta) {
           const delta = transient.positionDelta;
@@ -358,8 +353,8 @@ export function usePolylineOperations() {
                   point[0] + delta[0],
                   point[1] + delta[1],
                   point[2] + delta[2],
-                ] as [number, number, number]
-            )
+                ] as [number, number, number],
+            ),
           );
         }
 
@@ -376,14 +371,14 @@ export function usePolylineOperations() {
                 ];
               }
               return point;
-            })
+            }),
           );
         }
 
         await updatePolyline(labelId, { points3d: newPoints3d });
         endDrag(labelId);
       },
-    [updatePolyline, endDrag]
+    [updatePolyline, endDrag],
   );
 
   /**
@@ -393,7 +388,7 @@ export function usePolylineOperations() {
     (labelId: LabelId, newPoints3d: [number, number, number][][]) => {
       return updatePolyline(labelId, { points3d: newPoints3d });
     },
-    [updatePolyline]
+    [updatePolyline],
   );
 
   /**
@@ -404,33 +399,35 @@ export function usePolylineOperations() {
       if (!currentSampleId) return;
 
       const points3d = data.segments.map((seg) =>
-        seg.points.map((pt) => roundTuple(pt) as [number, number, number])
+        seg.points.map((pt) => roundTuple(pt) as [number, number, number]),
       );
 
       const newLabel: ReconciledPolyline3D = {
-        _id: labelId,
-        _cls: POLYLINE,
-        type: POLYLINE,
+        data: {
+          _id: labelId,
+          _cls: POLYLINE,
+          label: data.label ?? "",
+          points3d,
+          tags: [],
+          ...(data.misc ?? {}),
+        },
         path,
-        label: data.label ?? "",
-        points3d,
         sampleId: currentSampleId,
-        tags: [],
-        isNew: true,
-        ...(data.misc ?? {}),
+        ui: { selected: false, isNew: true },
       };
 
       const execFn = () => {
         addLabel(newLabel);
+        commit(newLabel);
       };
 
       const undoFn = () => {
-        deleteLabel(labelId);
+        remove({ path, instanceId: labelId });
       };
 
       createPushAndExec(`create-polyline-${labelId}`, execFn, undoFn);
     },
-    [createPushAndExec, addLabel, deleteLabel, currentSampleId]
+    [createPushAndExec, addLabel, currentSampleId, commit, remove],
   );
 
   /**
@@ -446,32 +443,18 @@ export function usePolylineOperations() {
           return;
         }
 
-        const sidebarLabel = getSidebarLabels().find(
-          (l) => l.data._id === labelId
-        );
-
         const execFn = () => {
-          deleteLabel(labelId);
-          removeLabelFromSidebar(labelId);
+          remove({ path: existingLabel.path, instanceId: labelId });
         };
 
         const undoFn = () => {
-          restoreLabel(labelId);
-          if (sidebarLabel) {
-            addLabelToSidebar(sidebarLabel);
-          }
+          addLabel(existingLabel);
+          commit(existingLabel);
         };
 
         createPushAndExec(`delete-polyline-${labelId}`, execFn, undoFn);
       },
-    [
-      createPushAndExec,
-      deleteLabel,
-      restoreLabel,
-      removeLabelFromSidebar,
-      addLabelToSidebar,
-      getSidebarLabels,
-    ]
+    [createPushAndExec, addLabel, commit, remove],
   );
 
   return {

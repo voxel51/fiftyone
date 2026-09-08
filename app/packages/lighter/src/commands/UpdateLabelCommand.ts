@@ -21,7 +21,7 @@ export class UpdateLabelCommand implements Undoable {
     private overlay: BaseOverlay,
     private currentLabel: RawLookerLabel,
     nextLabel: RawLookerLabel,
-    private readonly eventBus: EventDispatcher<AnnotationEventGroup>
+    private readonly eventBus: EventDispatcher<AnnotationEventGroup>,
   ) {
     this.id = `update-label-${overlay.id}-${Date.now()}`;
     this.description = `Update label ${overlay.id}`;

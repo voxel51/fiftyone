@@ -1,6 +1,6 @@
 import React from "react";
 
-import { loading } from "./LoadingDots.module.css";
+import styles from "./LoadingDots.module.css";
 
 const LoadingDots = ({
   text,
@@ -13,7 +13,7 @@ const LoadingDots = ({
   return (
     <span style={style ?? {}}>
       {text}
-      <span className={loading} />
+      <span className={styles.loading} />
     </span>
   );
 };

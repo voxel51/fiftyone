@@ -60,12 +60,12 @@ type UseEventHandlerOptions = {
  * for the handler's data parameter, and this pattern doesn't violate the rules of hooks.
  */
 export function createUseEventHandler<T extends EventGroup>(
-  channelId = DEFAULT_CHANNEL_ID
+  channelId = DEFAULT_CHANNEL_ID,
 ) {
   return function useEventHandler<K extends keyof T>(
     event: K,
     handler: EventHandler<T[K]>,
-    { once = false }: UseEventHandlerOptions = {}
+    { once = false }: UseEventHandlerOptions = {},
   ) {
     const bus = useEventBus<T>(channelId);
 

@@ -12,8 +12,9 @@ import unittest
 
 import numpy as np
 import numpy.testing as nptest
-import open3d as o3d
 from PIL import Image
+from pypcd4 import PointCloud
+from scipy.spatial.transform import Rotation
 
 import fiftyone as fo
 import fiftyone.core.threed as fo3d
@@ -61,8 +62,9 @@ class BaseOrthographicProjectionTests(unittest.TestCase):
             -dimensions / 2, dimensions / 2, size=(num_points, 3)
         )
 
-        # rotate points
-        rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(rotation)
+        # rotate points (open3d's `get_rotation_matrix_from_xyz` is equivalent
+        # to an intrinsic "XYZ" Euler rotation)
+        rotation_matrix = Rotation.from_euler("XYZ", rotation).as_matrix()
         points = (
             points @ rotation_matrix.T
         )  # equivalent to (rotation_matrix @ points.T).T
@@ -70,14 +72,16 @@ class BaseOrthographicProjectionTests(unittest.TestCase):
         # translate points
         points = points + location[np.newaxis, :]
 
-        pc = o3d.geometry.PointCloud()
-        pc.points = o3d.utility.Vector3dVector(points)
+        points = points.astype(np.float32)
 
         if pcd_type == "rgb" or pcd_type == "intensity":
             rgb = np.random.rand(points.shape[0], 3)
-            pc.colors = o3d.utility.Vector3dVector(rgb)
+            rgb = PointCloud.encode_rgb((rgb * 255).astype(np.uint8))
+            pc = PointCloud.from_xyzrgb_points(np.column_stack((points, rgb)))
+        else:
+            pc = PointCloud.from_xyz_points(points)
 
-        o3d.io.write_point_cloud(self.test_pcd_path, pc, write_ascii=True)
+        pc.save(self.test_pcd_path)
 
 
 class OrthographicProjectionTests(BaseOrthographicProjectionTests):
@@ -118,6 +122,8 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
             ),
         ]
         dataset.add_samples(group_samples)
+
+        self.write_test_pcd(seed=0)
 
         # if media type is group, in_group_slice should be valid, or omitted to
         # be implicitly derived
@@ -257,13 +263,10 @@ class ParsePointCloudTests(BaseOrthographicProjectionTests):
                 # because the rotation is ambiguous, we can't compare original and rotated arbitrary points
                 # we can only ensure that points along the user specified projection normal vector
                 # will invariably be aligned with the z-axis after rotation
-                points = np.array([projection_normal])
+                points = np.array([projection_normal], dtype=np.float32)
 
-                pc = o3d.geometry.PointCloud()
-                pc.points = o3d.utility.Vector3dVector(points)
-                o3d.io.write_point_cloud(
-                    self.test_pcd_path, pc, write_ascii=True
-                )
+                pc = PointCloud.from_xyz_points(points)
+                pc.save(self.test_pcd_path)
 
                 points_rotated = fou3d._parse_point_cloud(
                     self.test_pcd_path,
@@ -278,6 +281,82 @@ class ParsePointCloudTests(BaseOrthographicProjectionTests):
                     points_rotated[0],
                     atol=1e-15,
                 )
+
+
+class TolerantPointCloudTests(BaseOrthographicProjectionTests):
+    """Tests for malformed ``.pcd`` files that customers have in the wild:
+    empty point clouds and data sections with invalid values.
+    """
+
+    def write_raw_pcd(self, data_rows, num_points=None, data="ascii"):
+        if num_points is None:
+            num_points = len(data_rows)
+
+        header = (
+            "VERSION .7\n"
+            "FIELDS x y z\n"
+            "SIZE 4 4 4\n"
+            "TYPE F F F\n"
+            "COUNT 1 1 1\n"
+            f"WIDTH {num_points}\n"
+            "HEIGHT 1\n"
+            "VIEWPOINT 0 0 0 1 0 0 0\n"
+            f"POINTS {num_points}\n"
+            f"DATA {data}\n"
+        )
+        with open(self.test_pcd_path, "w") as f:
+            f.write(header)
+            f.writelines(f"{row}\n" for row in data_rows)
+
+    def assert_projection_succeeds(self):
+        for shading_mode in (None, "height", "intensity", "rgb"):
+            image, _ = fou3d.compute_orthographic_projection_image(
+                self.test_pcd_path, (32, 32), shading_mode=shading_mode
+            )
+            self.assertEqual(image.shape, (32, 32, 3))
+
+    def test_empty_ascii(self):
+        self.write_raw_pcd([])
+
+        points, colors = fou3d._read_point_cloud(self.test_pcd_path)
+
+        self.assertEqual(points.shape, (0, 3))
+        self.assertEqual(colors.shape, (0, 3))
+        self.assert_projection_succeeds()
+
+    def test_empty_binary(self):
+        self.write_raw_pcd([], data="binary")
+
+        points, _ = fou3d._read_point_cloud(self.test_pcd_path)
+
+        self.assertEqual(points.shape, (0, 3))
+        self.assert_projection_succeeds()
+
+    def test_empty_rgb(self):
+        pc = PointCloud.from_xyzrgb_points(np.zeros((0, 4), dtype=np.float32))
+        pc.save(self.test_pcd_path)
+
+        points, colors = fou3d._read_point_cloud(self.test_pcd_path)
+
+        self.assertEqual(points.shape, (0, 3))
+        self.assertEqual(colors.shape, (0, 3))
+        self.assert_projection_succeeds()
+
+    def test_invalid_values_are_zero_filled(self):
+        self.write_raw_pcd(["1 2 3", "null null null", "4 5 6"])
+
+        points, _ = fou3d._read_point_cloud(self.test_pcd_path)
+
+        nptest.assert_array_equal(points, [[1, 2, 3], [0, 0, 0], [4, 5, 6]])
+        self.assert_projection_succeeds()
+
+    def test_nan_values_are_zero_filled(self):
+        self.write_raw_pcd(["1 2 3", "nan nan nan", "4 5 6"])
+
+        points, _ = fou3d._read_point_cloud(self.test_pcd_path)
+
+        nptest.assert_array_equal(points, [[1, 2, 3], [0, 0, 0], [4, 5, 6]])
+        self.assert_projection_succeeds()
 
 
 class DataModelTests(unittest.TestCase):

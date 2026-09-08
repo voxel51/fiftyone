@@ -7,8 +7,27 @@
 // These are browser APIs that aren't available in jsdom but are required by
 // libraries like plotly.js/mapbox-gl
 if (typeof window !== "undefined") {
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+
   window.URL.createObjectURL = () => "mock-object-url";
   window.URL.revokeObjectURL = () => {};
+
+  // jsdom has no matchMedia; uplot queries it at module load to track
+  // devicePixelRatio changes.
+  window.matchMedia ??= ((query: string) => ({
+    addEventListener: () => {},
+    addListener: () => {},
+    dispatchEvent: () => false,
+    matches: false,
+    media: query,
+    onchange: null,
+    removeEventListener: () => {},
+    removeListener: () => {},
+  })) as unknown as typeof window.matchMedia;
 
   // Mock HTMLCanvasElement.prototype.getContext before any modules load
   // This is required by plotly.js which tries to use canvas during module initialization
@@ -46,4 +65,14 @@ if (typeof window !== "undefined") {
   HTMLCanvasElement.prototype.toDataURL = function () {
     return "";
   };
+
+  // Mock ResizeObserver — jsdom doesn't implement it, but floating UI
+  // (HeadlessUI menus / voodo ContextMenu) instantiates one on open.
+  if (typeof window.ResizeObserver === "undefined") {
+    window.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+  }
 }

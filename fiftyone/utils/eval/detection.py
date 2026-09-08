@@ -5,6 +5,7 @@ Detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import inspect
 import itertools
@@ -65,6 +66,7 @@ def evaluate_detections(
 
     When evaluating keypoints, "IoUs" are computed via
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
+    You can pass ``keypoint_sigmas`` to customize the per-keypoint OKS falloff.
 
     For temporal segment detection, this method uses ActivityNet-style
     evaluation by default.

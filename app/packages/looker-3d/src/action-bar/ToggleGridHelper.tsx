@@ -23,14 +23,12 @@ const GridConfigurator = () => {
 
   const containerRef = useRef(null);
 
-  const theme = useTheme();
-
   const [gridCellSize, setGridCellSize] = useRecoilState(gridCellSizeAtom);
   const [gridSectionSize, setGridSectionSize] =
     useRecoilState(gridSectionSizeAtom);
   const [gridSize, setGridSize] = useRecoilState(gridSizeAtom);
   const [isGridInfinitelyLarge, setIsGridInfinitelyLarge] = useRecoilState(
-    isGridInfinitelyLargeAtom
+    isGridInfinitelyLargeAtom,
   );
   const [shouldGridFade, setShouldGridFade] =
     useRecoilState(shouldGridFadeAtom);
@@ -116,17 +114,15 @@ export const ToggleGridHelper = () => {
 
   const { primary } = useTheme();
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    setIsGridOn((prev) => {
-      if (isFirstLoad) {
-        setIsFirstLoad(false);
-      }
-
-      return !prev;
-    });
-    e.stopPropagation();
-    e.preventDefault();
-  }, []);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      setIsFirstLoad(false);
+      setIsGridOn((prev) => !prev);
+      e.stopPropagation();
+      e.preventDefault();
+    },
+    [setIsGridOn],
+  );
 
   return (
     <>

@@ -34,8 +34,8 @@ export const patchesFields = selector<string[]>({
           path: p,
           ftype: EMBEDDED_DOCUMENT_FIELD,
           embeddedDocType: PATCHES_FIELDS,
-        })
-      )
+        }),
+      ),
     );
   },
 });
@@ -49,14 +49,14 @@ export const clipsFields = selector<string[]>({
           space: fos.State.SPACE.FRAME,
           ftype: EMBEDDED_DOCUMENT_FIELD,
           embeddedDocType: CLIPS_FRAME_FIELDS,
-        })
+        }),
       ),
       ...get(
         fos.fieldPaths({
           space: fos.State.SPACE.SAMPLE,
           ftype: EMBEDDED_DOCUMENT_FIELD,
           embeddedDocType: CLIPS_SAMPLE_FIELDS,
-        })
+        }),
       ),
     ].sort(),
 });
@@ -71,8 +71,8 @@ const evaluationKeys = selector<string[]>({
           path: p,
           ftype: EMBEDDED_DOCUMENT_FIELD,
           embeddedDocType: PATCHES_FIELDS,
-        })
-      )
+        }),
+      ),
     );
 
     return (
@@ -80,7 +80,7 @@ const evaluationKeys = selector<string[]>({
         ?.evaluations.filter(
           (e) =>
             valid.includes(e.config.predField) ||
-            valid.includes(e.config.gtField)
+            valid.includes(e.config.gtField),
         )
         .map(({ key }) => key) ?? []
     );

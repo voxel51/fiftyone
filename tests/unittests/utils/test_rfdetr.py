@@ -304,6 +304,28 @@ class TestRFDETROutputParsing:
         assert len(labels) == 1
         assert labels[0].detections == []
 
+    def test_predict_all_handles_list_class_names(self):
+        # rfdetr >= 1.8 exposes class_names as a list indexed by class id;
+        # earlier versions returned a dict. Both must resolve labels.
+        from fiftyone.utils.rfdetr import RFDETRDetectionModel
+
+        def _fake_predict(images: list[Image.Image], threshold: float):
+            return _FakeSVDets(
+                xyxy=[[0, 0, 2, 2]],
+                confidence=[0.9],
+                class_id=[1],
+            )
+
+        model = _make_model(
+            RFDETRDetectionModel,
+            _fake_predict,
+            class_names=["person", "bicycle", "car"],
+        )
+
+        labels = model.predict_all([Image.new("RGB", (4, 4))])
+
+        assert [d.label for d in labels[0].detections] == ["bicycle"]
+
     def test_segmentation_masks_use_floor_ceil_cropping(self):
         from fiftyone.utils.rfdetr import RFDETRSegmentationModel
 

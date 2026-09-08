@@ -1,3 +1,5 @@
+import type * as THREE from "three";
+
 export type Looker3dSettings = {
   useLegacyCoordinates: boolean;
   defaultUp: THREE.Vector3Tuple;

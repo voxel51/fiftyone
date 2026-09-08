@@ -521,6 +521,18 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.result.error)
         self.assertNotEqual(doc.updated_at, original_updated_at)
 
+    def test_set_failed_null_context(self, mock_get_operator):
+        operator = mock.MagicMock()
+        mock_get_operator.return_value = operator
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            delegation_target="test_target",
+        )
+        self.docs_to_delete.append(doc)
+
+        # Check that we can set failed on an operation with no context
+        self.svc.set_failed(doc.id)
+
     @patch("fiftyone.core.odm.load_dataset")
     def test_sets_progress(self, mock_load_dataset, mock_get_operator):
         mock_load_dataset.return_value = MockDataset()
@@ -958,8 +970,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         completed_doc.run_state = ExecutionRunState.COMPLETED
         completed_doc.result = ExecutionResult(result={"executed": True})
 
-        on_ping = mock.MagicMock(return_value="some log")
-
         with patch.object(
             self.svc, "get", side_effect=[running_doc, completed_doc]
         ), patch(
@@ -971,7 +981,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 operation=doc,
                 log=False,
                 monitor=True,
-                on_monitor_ping=on_ping,
             )
 
             mock_ping.assert_called_once_with(doc.id)
@@ -988,7 +997,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 mock_process,
                 doc.id,
                 check_interval_seconds=0,
-                on_monitor_ping=lambda pid: "",
             )
             mock_ping.assert_called_once_with(doc.id)
 
@@ -1706,6 +1714,31 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.assertEqual(len(ops), 1)
         self.assertTrue(ops[0].archived)
+
+    def test_unarchive_simple_operation(self, mock_get_operator):
+        """Test basic unarchive functionality for a single operation."""
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/unarchive_test",
+            label="unarchive_test",
+            context=ExecutionContext(request_params={"foo": "bar"}),
+        )
+        self.docs_to_delete.append(doc)
+
+        self.svc.archive_operation(doc.id)
+
+        ops = self.svc.list_operations(
+            operator=f"{TEST_DO_PREFIX}/operator/unarchive_test"
+        )
+        self.assertEqual(len(ops), 0)
+
+        doc = self.svc.unarchive_operation(doc.id)
+        self.assertFalse(doc.archived)
+
+        ops = self.svc.list_operations(
+            operator=f"{TEST_DO_PREFIX}/operator/unarchive_test"
+        )
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0].id, doc.id)
 
     @patch("fiftyone.core.odm.load_dataset")
     def test_search(self, mock_load_dataset, mock_get_operator):

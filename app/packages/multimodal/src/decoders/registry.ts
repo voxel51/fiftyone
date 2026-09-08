@@ -1,9 +1,16 @@
-import type { Decoder, PayloadDescriptor } from "./types";
+import type { PayloadDescriptor } from "../ir";
+import type { Decoder } from "./types";
 
 /**
- * Lookup key for a registered decoder.
+ * Stable string key for one encoded payload descriptor.
  */
-export type DecoderKey = PayloadDescriptor;
+export function payloadDescriptorKey(payload: PayloadDescriptor): string {
+  return JSON.stringify([
+    payload.encoding,
+    payload.schemaEncoding ?? null,
+    payload.schema ?? null,
+  ]);
+}
 
 /**
  * Runtime registry of decoders keyed by encoded payload identity.
@@ -15,12 +22,12 @@ export class DecoderRegistry {
    * Registers a decoder instance.
    */
   register(decoder: Decoder): void {
-    const key = payloadKey(decoder.payload);
+    const key = payloadDescriptorKey(decoder.payload);
     const existingDecoder = this.decodersByPayloadKey.get(key);
 
     if (existingDecoder) {
       throw new Error(
-        `Decoder already registered for ${formatDecoderKey(decoder.payload)}`
+        `Decoder already registered for ${formatDecoderKey(decoder.payload)}`,
       );
     }
 
@@ -30,19 +37,9 @@ export class DecoderRegistry {
   /**
    * Returns the decoder registered for a key when one exists.
    */
-  find(key: DecoderKey): Decoder | undefined {
-    return this.decodersByPayloadKey.get(payloadKey(key));
+  find(payload: PayloadDescriptor): Decoder | undefined {
+    return this.decodersByPayloadKey.get(payloadDescriptorKey(payload));
   }
-}
-
-// Todo: construct registry manager, or global singleton registry
-
-function payloadKey(payload: PayloadDescriptor): string {
-  return JSON.stringify([
-    payload.encoding,
-    payload.schemaEncoding ?? null,
-    payload.schema ?? null,
-  ]);
 }
 
 function formatDecoderKey(payload: PayloadDescriptor): string {

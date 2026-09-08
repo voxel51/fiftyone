@@ -44,7 +44,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         for server_version, fc_version in test_cases:
             with self.subTest(
-                server_version=server_version, fc_version=fc_version
+                server_version=str(server_version), fc_version=str(fc_version)
             ), patch("pymongo.MongoClient") as mock_client, patch(
                 "fiftyone.core.odm.database.logger"
             ) as mock_logger:

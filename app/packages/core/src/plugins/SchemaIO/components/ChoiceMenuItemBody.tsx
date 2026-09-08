@@ -1,5 +1,4 @@
 import { Box, ListItemText, Typography } from "@mui/material";
-import React from "react";
 import { getComponentProps } from "../utils";
 
 export default function ChoiceMenuItemBody(props: ChoiceMenuItemBodyPropsType) {

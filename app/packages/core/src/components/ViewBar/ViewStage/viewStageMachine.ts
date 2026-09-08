@@ -24,7 +24,7 @@ export const createParameter = (
   focusOnInit,
   tail,
   active,
-  placeholder
+  placeholder,
 ) => ({
   id: uuid(),
   defaultValue,
@@ -160,14 +160,14 @@ const viewStageMachine = createMachine(
                   stageInfo
                     .map((s) => s.name)
                     .filter((n) =>
-                      n.toLowerCase().startsWith(stage.toLowerCase())
+                      n.toLowerCase().startsWith(stage.toLowerCase()),
                     ),
                 currentResult: null,
                 focusOnInit: true,
                 bestMatch: ({ stageInfo, stage }) =>
                   computeBestMatchString(
                     stageInfo.map((s) => s.name),
-                    stage
+                    stage,
                   ),
               }),
             ],
@@ -213,14 +213,14 @@ const viewStageMachine = createMachine(
                     stageInfo
                       .map((s) => s.name)
                       .filter((n) =>
-                        n.toLowerCase().startsWith(e.value.toLowerCase())
+                        n.toLowerCase().startsWith(e.value.toLowerCase()),
                       ),
                   currentResult: null,
                   errorId: undefined,
                   bestMatch: ({ stageInfo }, { value }) =>
                     computeBestMatchString(
                       stageInfo.map((s) => s.name),
-                      value
+                      value,
                     ),
                 }),
               },
@@ -232,11 +232,11 @@ const viewStageMachine = createMachine(
                       focusOnInit: false,
                       stage: (ctx, { value }) =>
                         ctx.stageInfo.filter((s) =>
-                          s.name.toLowerCase().startsWith(value.toLowerCase())
+                          s.name.toLowerCase().startsWith(value.toLowerCase()),
                         )[0].name,
                       parameters: (ctx, { value }) => {
                         const result = ctx.stageInfo.filter((s) =>
-                          s.name.toLowerCase().startsWith(value.toLowerCase())
+                          s.name.toLowerCase().startsWith(value.toLowerCase()),
                         )[0].params;
                         const parameters = result.map((parameter, i) =>
                           createParameter(
@@ -252,13 +252,13 @@ const viewStageMachine = createMachine(
                             i === 0,
                             i === result.length - 1,
                             ctx.active,
-                            parameter.placeholder
-                          )
+                            parameter.placeholder,
+                          ),
                         );
                         return parameters.map((parameter) => ({
                           ...parameter,
                           ref: spawn(
-                            viewStageParameterMachine.withContext(parameter)
+                            viewStageParameterMachine.withContext(parameter),
                           ),
                         }));
                       },
@@ -270,7 +270,7 @@ const viewStageMachine = createMachine(
                   cond: ({ stageInfo }, { value }) =>
                     getMatch(
                       stageInfo.map((s) => s.name),
-                      value
+                      value,
                     ),
                 },
                 {
@@ -425,7 +425,7 @@ const viewStageMachine = createMachine(
               parameter.ref.send({
                 type: "UPDATE",
                 active: active,
-              })
+              }),
             );
           },
         ],
@@ -480,7 +480,7 @@ const viewStageMachine = createMachine(
               cond: (ctx) =>
                 ctx.parameters.reduce(
                   (acc, cur) => (cur.submitted ? acc : acc + 1),
-                  0
+                  0,
                 ) === 0,
               actions: [
                 assign({
@@ -493,7 +493,7 @@ const viewStageMachine = createMachine(
                     parameter.ref.send({
                       type: "UPDATE",
                       active: false,
-                    })
+                    }),
                   );
                 },
                 sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
@@ -514,7 +514,7 @@ const viewStageMachine = createMachine(
       focusInput: () => {},
       blurInput: () => {},
     },
-  }
+  },
 );
 
 export default viewStageMachine;

@@ -100,7 +100,7 @@ function EvaluationCard(props: EvaluationCardProps) {
 
   const [enable, message] = useMutation(
     hasRenamePermission,
-    "rename evaluation"
+    "rename evaluation",
   );
 
   return (

@@ -19,7 +19,7 @@ import { IconName } from "@voxel51/voodo";
 export const TAB_GUI = "gui" as const;
 export const TAB_JSON = "json" as const;
 export const TAB_IDS = [TAB_GUI, TAB_JSON] as const;
-export type TabId = typeof TAB_IDS[number];
+export type TabId = (typeof TAB_IDS)[number];
 
 // System read-only fields that cannot be edited or scanned
 const SYSTEM_READ_ONLY_FIELDS_ARRAY = [
@@ -32,11 +32,12 @@ const SYSTEM_READ_ONLY_FIELDS_ARRAY = [
 
 export const SYSTEM_READ_ONLY_FIELD_NAME = "system";
 
-export type SystemReadOnlyField = typeof SYSTEM_READ_ONLY_FIELDS_ARRAY[number];
+export type SystemReadOnlyField =
+  (typeof SYSTEM_READ_ONLY_FIELDS_ARRAY)[number];
 
 // Use Set for O(1) lookup
 const SYSTEM_READ_ONLY_FIELDS_SET = new Set<string>(
-  SYSTEM_READ_ONLY_FIELDS_ARRAY
+  SYSTEM_READ_ONLY_FIELDS_ARRAY,
 );
 
 export const isSystemReadOnlyField = (fieldName: string): boolean =>
@@ -58,6 +59,15 @@ export const LABEL_TYPE_OPTIONS_3D = [
   { id: "detections", data: { label: "3D Detections" } },
   { id: "polylines", data: { label: "3D Polylines" } },
   { id: "classification", data: { label: "Classification" } },
+];
+
+// Label type options for sample-level fields on video datasets. Spatial labels
+// (detections/polylines) are frame-level only on video, so a sample-level field
+// is limited to the clip-level label types. Frame fields (a "frames." prefix)
+// use LABEL_TYPE_OPTIONS instead — see getLabelTypeOptions.
+export const LABEL_TYPE_OPTIONS_VIDEO = [
+  { id: "classification", data: { label: "Classification" } },
+  { id: "temporaldetections", data: { label: "Temporal Detections" } },
 ];
 
 // =============================================================================
@@ -112,7 +122,7 @@ export const DEFAULT_POLYLINE_ATTRIBUTES: AttributeConfig[] = [
 // Get default attributes for a label type based on media type
 export const getDefaultAttributesForType = (
   labelType: string,
-  is3dMedia: boolean
+  is3dMedia: boolean,
 ): AttributeConfig[] => {
   switch (labelType) {
     case "detections":
@@ -121,6 +131,11 @@ export const getDefaultAttributesForType = (
         : DEFAULT_DETECTION_ATTRIBUTES_2D;
     case "polylines":
       return DEFAULT_POLYLINE_ATTRIBUTES;
+    case "temporaldetections":
+      // `support` is edited via the timeline drag handles, not as a
+      // primitive sidebar component. Keep it off the schema's editable
+      // attribute list.
+      return BASE_LABEL_ATTRIBUTES;
     case "classification":
     default:
       return DEFAULT_CLASSIFICATION_ATTRIBUTES;
@@ -151,7 +166,7 @@ export const ATTRIBUTE_TYPE_LABELS: Record<string, string> = {
 
 // Derived Select options for the dropdown (voodo Select expects this shape)
 export const ATTRIBUTE_TYPE_OPTIONS = Object.entries(ATTRIBUTE_TYPE_LABELS).map(
-  ([id, label]) => ({ id, data: { label } })
+  ([id, label]) => ({ id, data: { label } }),
 );
 // Component options by type
 // Source: https://github.com/voxel51/fiftyone/blob/1b31fce1b7f24af051ffa278a33c5b02dcc2c8e8/fiftyone/core/annotation/constants.py

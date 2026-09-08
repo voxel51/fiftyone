@@ -50,11 +50,11 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     private readonly eventBus: EventDispatcher<LighterEventGroup>,
     private readonly resolveVariant?: (
       relativePoint: Point,
-      ctx: ClickEventModifiers
+      ctx: ClickEventModifiers,
     ) => string | undefined,
     private readonly resolvePointHit?: (
-      ctx: KeypointPointHitContext
-    ) => KeypointPointHitAction | undefined
+      ctx: KeypointPointHitContext,
+    ) => KeypointPointHitAction | undefined,
   ) {}
 
   containsPoint(): boolean {
@@ -125,7 +125,7 @@ export class InteractiveKeypointHandler implements InteractionHandler {
       this.overlay,
       pointId,
       rp,
-      variant
+      variant,
     );
 
     CommandContextManager.instance().getActiveContext().pushUndoable(command);
@@ -151,6 +151,7 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     const bounds = this.overlay.bounds;
     this.eventBus.dispatch("lighter:overlay-establish", {
       id: this.overlay.id,
+      overlayId: this.overlay.id,
       handler: this,
       startBounds: bounds,
       startPosition: { x: bounds.x, y: bounds.y },

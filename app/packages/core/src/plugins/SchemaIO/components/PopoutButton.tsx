@@ -1,7 +1,7 @@
 import { IconButton, Popout } from "@fiftyone/components";
 import { useOutsideClick } from "@fiftyone/state";
 import { Box } from "@mui/material";
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 // todo: convert to a view
 export default function PopoutButton(props: PopoutButtonProps) {

@@ -93,7 +93,7 @@ function printArgs(args) {
 
 function printToJSON(args) {
   const output = Object.keys(args).map(
-    (a) => `      ['${a}', this.params.${fromPyToJS(a)}]`
+    (a) => `      ['${a}', this.params.${fromPyToJS(a)}]`,
   );
   return `[
 ${output.join(",\n")}

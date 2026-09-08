@@ -24,8 +24,10 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
+import { loadPlugins } from "@fiftyone/plugins";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
+import { useRefreshOperators } from "./loader";
 import registerPanel from "./Panel/register";
 import "./builtin";
 import {
@@ -81,6 +83,26 @@ class ReloadDataset extends Operator {
   }
   async execute({ hooks }) {
     hooks.refresh();
+  }
+}
+class ReloadPlugins extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "reload_plugins",
+      label: "Reload plugins",
+    });
+  }
+  // loadPlugins() only runs once, at mount; a later install needs this.
+  useHooks() {
+    return {
+      refreshOperators: useRefreshOperators(),
+      datasetName: useRecoilValue(fos.datasetName),
+    };
+  }
+  async execute({ hooks }) {
+    await loadPlugins();
+    await hooks.refreshOperators(hooks.datasetName);
   }
 }
 class ClearSelectedSamples extends Operator {
@@ -217,7 +239,7 @@ class OpenPanel extends Operator {
     const surfaces = panel?.panelOptions?.surfaces || PANEL_SURFACE.GRID;
     if (!surfaces.includes(scope)) {
       throw new Error(
-        `Panel with name ${name} cannot be opened in a ${scope} surface`
+        `Panel with name ${name} cannot be opened in a ${scope} surface`,
       );
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
@@ -297,13 +319,13 @@ class ClosePanel extends Operator {
     const { openedPanels, spaces } = hooks;
     const { name, id } = params;
     const panel = openedPanels.find(
-      (panel) => id === panel.id || name === panel.type
+      (panel) => id === panel.id || name === panel.type,
     );
     if (!panel)
       return console.error(
         `Opened panel with ${id ? "id" : "name"} "${
           id || name
-        }" cannot be found`
+        }" cannot be found`,
       );
     if (!panel.pinned) spaces.removeNode(panel);
   }
@@ -456,7 +478,7 @@ class ShowSelectedSamples extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     const selectedSamples = await state.snapshot.getPromise(
-      fos.selectedSamples
+      fos.selectedSamples,
     );
     state.set(fos.extendedSelection, {
       selection: Array.from(selectedSamples.keys()),
@@ -480,7 +502,7 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
   }
   async execute({ hooks, state }: ExecutionContext) {
     const extendedSelection = await state.snapshot.getPromise(
-      fos.extendedSelection
+      fos.extendedSelection,
     );
     const map = new Map<string, fos.SelectionType>();
     for (const id of extendedSelection.selection || []) {
@@ -627,7 +649,7 @@ class SetView extends Operator {
         savedViews.find((view) => slug === view.slug);
       if (!savedView) {
         throw new Error(
-          `Saved view with name or slug "${name}" does not exist`
+          `Saved view with name or slug "${name}" does not exist`,
         );
       }
       hooks.setViewName(slug);
@@ -668,7 +690,7 @@ class ShowSamples extends Operator {
   async execute({ state, hooks, params }: ExecutionContext) {
     if (params.use_extended_selection) {
       state.set(fos.extendedSelection, {
-        selection: params.samples,
+        selection: params.samples as string[],
         scope: "global",
       });
       return;
@@ -934,7 +956,7 @@ class ClearPanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -950,7 +972,7 @@ class ClearPanelData extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -966,7 +988,7 @@ class SetPanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -982,7 +1004,7 @@ class SetPanelData extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -998,7 +1020,7 @@ class PatchPanelData extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1010,7 +1032,7 @@ function useUpdatePanelStatePartial(local?: boolean) {
   const setPanelStateById = useSetPanelStateById(local);
   return (
     ctx,
-    { targetPartial = "state", targetParam, patch, clear, deepMerge, set }
+    { targetPartial = "state", targetParam, patch, clear, deepMerge, set },
   ) => {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
@@ -1031,7 +1053,7 @@ function useUpdatePanelStatePartial(local?: boolean) {
         } else if (patch) {
           updatedState = cloneDeep(currentCustomPanelState);
           // patch = shallow merge OR set by path
-          for (let [path, value] of Object.entries(providedData)) {
+          for (const [path, value] of Object.entries(providedData)) {
             setPathUserUnchanged(path, panelId); // clear user changed flag
             setValue(updatedState, path, value);
           }
@@ -1055,7 +1077,7 @@ class PatchPanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1064,7 +1086,9 @@ class PatchPanelState extends Operator {
 }
 
 function createFunctionFromSource(src) {
-  return eval(src.trim());
+  // indirect eval: the reducer source is self-contained, and global-scope
+  // evaluation lets the bundler minify this module normally
+  return (0, eval)(src.trim());
 }
 
 class ReducePanelState extends Operator {
@@ -1075,7 +1099,7 @@ class ReducePanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     const setPanelStateById = useSetPanelStateById();
     return { setPanelStateById };
   }
@@ -1098,7 +1122,7 @@ class ShowPanelOutput extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1118,7 +1142,7 @@ class RegisterPanel extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(_ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("panel_name", { label: "Panel name", required: true });
     inputs.str("panel_label", { label: "Panel label", required: true });
@@ -1141,7 +1165,7 @@ class RegisterPanel extends Operator {
     return new types.Property(inputs);
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    registerPanel(ctx);
+    registerPanel(ctx.params);
   }
 }
 
@@ -1153,7 +1177,7 @@ class PromptUserForOperation extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(_ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("operator_uri", { label: "Operator URI", required: true });
     inputs.obj("params", { label: "Params" });
@@ -1162,7 +1186,7 @@ class PromptUserForOperation extends Operator {
     inputs.bool("skip_prompt", { label: "Skip prompt", default: false });
     return new types.Property(inputs);
   }
-  useHooks(): {} {
+  useHooks(): object {
     const triggerEvent = usePanelEvent();
     return { triggerEvent };
   }
@@ -1206,7 +1230,7 @@ class Notify extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(_ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("message", { label: "Message", required: true });
     inputs.enum("variant", ["info", "success", "warning", "error"], {
@@ -1215,7 +1239,7 @@ class Notify extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(): {} {
+  useHooks(): object {
     return { notify: fos.useNotification() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1234,14 +1258,14 @@ class SetExtendedSelection extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return {
       setExtendedSelection: useSetRecoilState(fos.extendedSelection),
       clearExtendedSelection: useSetRecoilState(fos.extendedSelection),
       resetExtendedSelection: fos.useResetExtendedSelection(),
     };
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(_ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.list("selection", new types.String(), {
       label: "Selection",
@@ -1283,7 +1307,7 @@ export class SetActiveFields extends Operator {
           async (fields) => {
             const modal = !!(await snapshot.getPromise(fos.modal));
             set(fos.activeFields({ modal }), fields);
-          }
+          },
       ),
     };
   }
@@ -1345,7 +1369,7 @@ export class TrackEvent extends Operator {
     return new types.Property(inputs);
   }
   async execute(
-    ctx: ExecutionContext<TrackEventParams, TrackEventHooks>
+    ctx: ExecutionContext<TrackEventParams, TrackEventHooks>,
   ): Promise<void> {
     const { hooks, params } = ctx;
     const { event, properties } = params;
@@ -1400,7 +1424,7 @@ export class SetPlayheadState extends Operator {
     return new types.Property(inputs);
   }
   useHooks(
-    ctx: ExecutionContext<SetPlayheadStateParams, SetPlayheadStateHooks>
+    ctx: ExecutionContext<SetPlayheadStateParams, SetPlayheadStateHooks>,
   ): SetPlayheadStateHooks {
     const timeline = fop.useTimeline(ctx.params.timeline_name);
     return {
@@ -1586,7 +1610,7 @@ class ShowSidebar extends Operator {
   }
   useHooks(): object {
     const modal = useRecoilValue(fos.modal);
-    const [visible, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    const [, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
     return {
       show: () => setVisible(true),
     };
@@ -1606,7 +1630,7 @@ class HideSidebar extends Operator {
   }
   useHooks(): object {
     const modal = useRecoilValue(fos.modal);
-    const [visible, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    const [, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
     return {
       hide: () => setVisible(false),
     };
@@ -1678,7 +1702,7 @@ class BrowserDownload extends Operator {
 
       if (!response.ok) {
         throw new Error(
-          `Failed to fetch file: ${response.status} ${response.statusText}`
+          `Failed to fetch file: ${response.status} ${response.statusText}`,
         );
       }
 
@@ -1692,7 +1716,7 @@ class BrowserDownload extends Operator {
         const contentDisposition = response.headers.get("Content-Disposition");
         if (contentDisposition) {
           const filenameMatch = contentDisposition.match(
-            /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+            /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
           );
           if (filenameMatch && filenameMatch[1]) {
             downloadFilename = filenameMatch[1].replace(/['"]/g, "");
@@ -1746,6 +1770,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ViewFromJSON);
     _registerBuiltInOperator(ReloadSamples);
     _registerBuiltInOperator(ReloadDataset);
+    _registerBuiltInOperator(ReloadPlugins);
     _registerBuiltInOperator(ClearSelectedSamples);
     _registerBuiltInOperator(OpenAllPanels);
     _registerBuiltInOperator(CloseAllPanels);

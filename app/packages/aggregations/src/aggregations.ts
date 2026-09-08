@@ -16,7 +16,7 @@ export class Bounds extends Aggregation {
         fieldOrExpr: "field_or_expr",
         expr: "expr",
         safe: "safe",
-      })
+      }),
     );
   }
 }
@@ -37,7 +37,7 @@ export class Count extends Aggregation {
         fieldOrExpr: "field_or_expr",
         expr: "expr",
         safe: "safe",
-      })
+      }),
     );
   }
 }
@@ -58,7 +58,7 @@ export class CountValues extends Aggregation {
         fieldOrExpr: "field_or_expr",
         expr: "expr",
         safe: "safe",
-      })
+      }),
     );
   }
 }
@@ -79,7 +79,7 @@ export class Distinct extends Aggregation {
         fieldOrExpr: "field_or_expr",
         expr: "expr",
         safe: "safe",
-      })
+      }),
     );
   }
 }
@@ -104,7 +104,7 @@ export class HistogramValues extends Aggregation {
         bins: "bins",
         range: "range",
         auto: "auto",
-      })
+      }),
     );
   }
 }
@@ -125,7 +125,7 @@ export class Mean extends Aggregation {
         fieldOrExpr: "field_or_expr",
         expr: "expr",
         safe: "safe",
-      })
+      }),
     );
   }
 }
@@ -148,7 +148,7 @@ export class Std extends Aggregation {
         expr: "expr",
         safe: "safe",
         sample: "sample",
-      })
+      }),
     );
   }
 }
@@ -169,7 +169,7 @@ export class Sum extends Aggregation {
         fieldOrExpr: "field_or_expr",
         expr: "expr",
         safe: "safe",
-      })
+      }),
     );
   }
 }
@@ -192,7 +192,7 @@ export class Values extends Aggregation {
         expr: "expr",
         missingValue: "missing_value",
         unwind: "unwind",
-      })
+      }),
     );
   }
 }

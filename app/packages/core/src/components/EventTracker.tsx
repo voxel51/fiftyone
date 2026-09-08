@@ -1,6 +1,5 @@
 import { useRecoilTransactionObserver_UNSTABLE, useRecoilValue } from "recoil";
-import React, { useEffect, useState, useCallback } from "react";
-import { viewAtom, extendedStagesAtom, countAtom } from "./atoms"; // Replace with actual atom imports
+import { useEffect, useState, useCallback } from "react";
 import * as fos from "@fiftyone/state";
 import { analyticsInfo, useTrackEvent } from "@fiftyone/analytics";
 
@@ -15,7 +14,7 @@ const useTrackViewChanges = () => {
       const view = snapshot.getLoadable(fos.view)?.contents;
       const extendedStages = snapshot.getLoadable(fos.extendedStages)?.contents;
       const count = snapshot.getLoadable(
-        fos.count({ path: "", extended: false, modal: false })
+        fos.count({ path: "", extended: false, modal: false }),
       )?.contents;
       const filters = snapshot.getLoadable(fos.filters)?.contents;
 
@@ -36,7 +35,7 @@ const useTrackViewChanges = () => {
         setChanges((prevChanges) => ({ ...prevChanges, ...newChanges }));
       }
     },
-    [changes]
+    [changes],
   );
 
   useRecoilTransactionObserver_UNSTABLE(handleStateChange);
@@ -77,7 +76,7 @@ function getExtendedStageNames(stages: { [key: string]: any }) {
 function getFilterNames(filters: { [path: string]: any }) {
   const names = [];
   filters = filters || {};
-  for (const [path, filter] of Object.entries(filters)) {
+  for (const [, filter] of Object.entries(filters)) {
     if (filter.values) {
       names.push("values");
     }

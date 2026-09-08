@@ -9,7 +9,7 @@ export class HistogramPom {
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils
+    private readonly eventUtils: EventUtils,
   ) {
     this.assert = new HistogramAsserter(this);
 
@@ -18,12 +18,19 @@ export class HistogramPom {
   }
 
   async selectField(field: string) {
-    const promise = this.eventUtils.getEventReceivedPromiseForPredicate(
-      `histogram-${field}`,
-      () => true
-    );
+    const promise = await this.eventUtils.arm(`histogram-${field}`);
     await this.selector.selectResult(field);
-    await promise;
+    await promise.received;
+  }
+
+  // arm BEFORE the action that reloads the histogram (mode switch, panel
+  // foreground); the app fires histograms-loaded on every completed draw.
+  // Pass a path to ignore sibling histograms' draws.
+  async armLoad(path?: string) {
+    return this.eventUtils.arm(
+      "histograms-loaded",
+      (e) => !path || (e.detail as { path?: string })?.path === path,
+    );
   }
 }
 

@@ -5,6 +5,10 @@ COCO Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.11.0
+    :enterprise_version: 1.0
+
 With support from the team behind the `COCO dataset <https://cocodataset.org>`_,
 we've made it easy to download, visualize, and evaluate on the COCO dataset
 natively in FiftyOne!

@@ -38,13 +38,13 @@ documentation. Choose the path that best matches your skills and interests:
     :header: Contribute code
     :description: Fix bugs, implement new features, or improve existing functionality. Our codebase is Python-based with a TypeScript frontend, and we welcome contributions of all sizes.
     :button_text: Contributing Guide
-    :button_link: https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md
+    :button_link: https://github.com/voxel51/fiftyone/blob/main/CONTRIBUTING.md
 
 .. customcalloutitem::
     :header: Improve documentation
     :description: Help make FiftyOne easier to use by improving our docs. Fix typos, add examples, write tutorials, or translate content. Great docs make great software.
     :button_text: Docs README
-    :button_link: https://github.com/voxel51/fiftyone/blob/develop/docs/README.md
+    :button_link: https://github.com/voxel51/fiftyone/blob/main/docs/README.md
 
 .. customcalloutitem::
     :header: Build plugins
@@ -56,7 +56,7 @@ documentation. Choose the path that best matches your skills and interests:
     :header: Contribute to the App
     :description: Help improve the FiftyOne App, our TypeScript frontend. Enhance the user interface, add new visualizations, or improve performance.
     :button_text: App Contributing Guide
-    :button_link: https://github.com/voxel51/fiftyone/blob/develop/app/CONTRIBUTING.md
+    :button_link: https://github.com/voxel51/fiftyone/blob/main/app/CONTRIBUTING.md
 
 .. customcalloutitem::
     :header: Help the community
@@ -114,8 +114,8 @@ development environment:
 
     .. code-block:: shell
 
-        # Create a branch from develop
-        git checkout develop
+        # Create a branch from main
+        git checkout main
         git checkout -b feature/my-feature-branch
 
         # Make changes...
@@ -133,11 +133,11 @@ development environment:
 
         git push -u origin feature/my-feature-branch
 
-        # Open a PR targeting the develop branch on github.com...
+        # Open a PR targeting the main branch on github.com...
 
     Refer to the
-    `contributing guide <https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md>`_
-    and `style guide <https://github.com/voxel51/fiftyone/blob/develop/STYLE_GUIDE.md>`_
+    `contributing guide <https://github.com/voxel51/fiftyone/blob/main/CONTRIBUTING.md>`_
+    and `style guide <https://github.com/voxel51/fiftyone/blob/main/STYLE_GUIDE.md>`_
     for complete guidelines.
 
   .. group-tab:: App
@@ -175,8 +175,8 @@ development environment:
 
     .. code-block:: shell
 
-        # Create a branch from develop
-        git checkout develop
+        # Create a branch from main
+        git checkout main
         git checkout -b feature/my-feature-branch
 
         # Make changes...
@@ -216,10 +216,10 @@ development environment:
 
         git push -u origin feature/my-feature-branch
 
-        # Open a PR targeting the develop branch on github.com...
+        # Open a PR targeting the main branch on github.com...
 
     Refer to the
-    `App contributing guide <https://github.com/voxel51/fiftyone/blob/develop/app/CONTRIBUTING.md>`_
+    `App contributing guide <https://github.com/voxel51/fiftyone/blob/main/app/CONTRIBUTING.md>`_
     for more information.
 
   .. group-tab:: Docs
@@ -261,8 +261,8 @@ development environment:
 
     .. code-block:: shell
 
-        # Create a branch from develop
-        git checkout develop
+        # Create a branch from main
+        git checkout main
         git checkout -b docs/my-docs-branch
 
         # Make changes in docs/source folder...
@@ -281,10 +281,10 @@ development environment:
 
         git push -u origin docs/my-docs-branch
 
-        # Open a PR targeting the develop branch on github.com...
+        # Open a PR targeting the main branch on github.com...
 
     Refer to the
-    `Docs README <https://github.com/voxel51/fiftyone/blob/develop/docs/README.md>`_
+    `Docs README <https://github.com/voxel51/fiftyone/blob/main/docs/README.md>`_
     for more information.
 
   .. group-tab:: Plugins

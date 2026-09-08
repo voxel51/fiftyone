@@ -1,0 +1,52 @@
+{
+    "name": "@fiftyone/video-annotation",
+    "main": "./index.ts",
+    "scripts": {
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "typecheck": "tsc --noEmit -p tsconfig.json"
+    },
+    "dependencies": {
+        "@fiftyone/annotation": "workspace:*",
+        "@fiftyone/command-bus": "workspace:*",
+        "@fiftyone/commands": "workspace:*",
+        "@fiftyone/components": "workspace:*",
+        "@fiftyone/events": "workspace:*",
+        "@fiftyone/lighter": "workspace:*",
+        "@fiftyone/playback": "workspace:*",
+        "@fiftyone/spaces": "workspace:*",
+        "@fiftyone/state": "workspace:*",
+        "@fiftyone/tiling": "workspace:*",
+        "@fiftyone/utilities": "workspace:*",
+        "@voxel51/voodo": "catalog:",
+        "clsx": "^2.1.0",
+        "jotai": "catalog:",
+        "lru-cache": "catalog:",
+        "mp4box": "^2.4.1"
+    },
+    "devDependencies": {
+        "@eslint/compat": "catalog:",
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
+        "@react-spring/web": "catalog:",
+        "@types/dom-webcodecs": "^0.1.18",
+        "@types/react": "catalog:",
+        "eslint": "catalog:eslint9",
+        "eslint-plugin-react": "^7.35.0",
+        "eslint-plugin-react-hooks": "rc",
+        "globals": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-error-boundary": "catalog:",
+        "react-is": "catalog:",
+        "react-relay": "catalog:",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "catalog:",
+        "styled-components": "catalog:",
+        "typescript": "catalog:",
+        "typescript-eslint": "catalog:eslint9",
+        "uuid": "catalog:",
+        "vite": "catalog:"
+    }
+}

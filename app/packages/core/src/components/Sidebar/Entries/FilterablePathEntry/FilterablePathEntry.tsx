@@ -19,7 +19,7 @@ const useOnClick = ({ modal, path }: { modal: boolean; path: string }) => {
         const checked = (event.target as HTMLInputElement).checked;
         set(fos.activeField({ modal, path }), checked);
       },
-    [modal, path]
+    [modal, path],
   );
 };
 
@@ -29,6 +29,7 @@ const useField = (path: string) =>
 const FilterableEntry = ({
   disabled,
   entryKey,
+  group,
   modal,
   path,
   onFocus,
@@ -45,7 +46,7 @@ const FilterableEntry = ({
   trigger?: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
 }) => {
   const active = useRecoilValue(fos.activeField({ modal, path }));
@@ -97,6 +98,7 @@ const FilterableEntry = ({
               color={color}
               expandedPath={expandedPath}
               template={useTitleTemplate({
+                group,
                 modal,
                 path,
               })}

@@ -165,12 +165,14 @@ export const PointCloudMesh = ({
   }, [
     colorMinMax,
     shadeBy,
-    minZ,
     pointSize,
-    boundingBox,
     defaultShadingColor,
     isPointSizeAttenuated,
     customColor,
+    maxAlongUpVector,
+    minAlongUpVector,
+    pcdType,
+    upVector,
   ]);
 
   return (

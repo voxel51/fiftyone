@@ -3,7 +3,11 @@ import { Boolean, Enum, List, Number, Object, Property, String } from "./types";
 import { ParamsType } from "./ts";
 
 export class ValidationError {
-  constructor(public reason, public property, public path) {}
+  constructor(
+    public reason,
+    public property,
+    public path,
+  ) {}
 
   toProps() {
     return { reason: this.reason, property: this.property, path: this.path };
@@ -16,7 +20,11 @@ export class ValidationContext {
   invalid;
   disableSchemaValidation;
 
-  constructor(public ctx, public property, operator) {
+  constructor(
+    public ctx,
+    public property,
+    operator,
+  ) {
     this.params = ctx.params;
     this.disableSchemaValidation = operator.config.disableSchemaValidation;
     this.errors = this.validate();
@@ -53,9 +61,9 @@ export class ValidationContext {
         new ValidationError(
           property.errorMessage || "Invalid property",
           property,
-          path
+          path,
         ),
-        true
+        true,
       );
     } else if (!existsOrNonRequired(property, value)) {
       this.addError(new ValidationError("Required property", property, path));
@@ -97,7 +105,7 @@ export class ValidationContext {
     const minItemsError = new ValidationError(
       `Must have at least ${minItems} ${label}`,
       property,
-      path
+      path,
     );
     if (!Array.isArray(value)) {
       return this.addError(minItemsError);
@@ -113,8 +121,8 @@ export class ValidationContext {
           new ValidationError(
             `Must have at most ${maxItems} items`,
             property,
-            path
-          )
+            path,
+          ),
         );
       }
 
@@ -130,7 +138,7 @@ export class ValidationContext {
     const expectedType = getOperatorTypeName(property.type);
     if (typeof value !== expectedType) {
       return this.addError(
-        new ValidationError("Invalid value type", property, path)
+        new ValidationError("Invalid value type", property, path),
       );
     }
 
@@ -141,13 +149,13 @@ export class ValidationContext {
           new ValidationError(
             `Value must be greater than ${min}`,
             property,
-            path
-          )
+            path,
+          ),
         );
       }
       if (isNumber(max) && value > max) {
         return this.addError(
-          new ValidationError(`Value must be less than ${max}`, property, path)
+          new ValidationError(`Value must be less than ${max}`, property, path),
         );
       }
     }

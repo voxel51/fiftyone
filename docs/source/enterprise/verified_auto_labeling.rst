@@ -5,6 +5,9 @@ Auto-Labeling
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 2.14.0
+
 Auto-Labeling is a feature built into the
 :ref:`FiftyOne Enterprise App <enterprise-app>`
 which allows you to automatically generate
@@ -16,6 +19,10 @@ Auto-Labeling is powered by
 :ref:`delegated operations <enterprise-delegated-operations>`,
 enabling you to perform Auto-Labeling in the background using your existing GPU
 infrastructure.
+
+.. note::
+
+    Check out :ref:`Agentic Labeling <agentic-labeling>` to explore using a VLM for auto-labeling!
 
 .. _verified-auto-labeling-how-it-works:
 

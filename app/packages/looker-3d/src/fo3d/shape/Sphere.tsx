@@ -27,9 +27,9 @@ export const Sphere = ({
         sphere.phiStart,
         sphere.phiLength,
         sphere.thetaStart,
-        sphere.thetaLength
+        sphere.thetaLength,
       ),
-    [sphere]
+    [sphere],
   );
   const { material } = useMeshMaterialControls(name, sphere.defaultMaterial);
 

@@ -23,7 +23,7 @@ type LightHelperConfig = {
 
 export const useLightControls = (
   lights: FoScene["lights"],
-  editingLightRef: React.MutableRefObject<Light>
+  editingLightRef: React.MutableRefObject<Light>,
 ) => {
   const { sceneBoundingBox } = useFo3dContext();
 
@@ -37,7 +37,7 @@ export const useLightControls = (
         lightIndex,
       });
     },
-    []
+    [],
   );
 
   const onLightPositionEditEnd = useCallback(() => {
@@ -104,7 +104,7 @@ export const useLightControls = (
         collapsed: true,
       }),
     }),
-    [lightLevaControls]
+    [lightLevaControls],
   );
 
   const lightHelperSize = useMemo(() => {
@@ -135,14 +135,13 @@ export const useLightControls = (
       default:
         return null;
     }
-  }, [lightHelperConfig, lightHelperSize]);
+  }, [lightHelperConfig, lightHelperSize, theme.primary.main]);
 
   useHelper(
     helperConfig ? editingLightRef : false,
-    // @ts-ignore
+    // @ts-expect-error helper tuple is heterogeneous, drei expects a helper class
     helperConfig?.at(0) ?? DirectionalLightHelper,
-    // @ts-ignore
-    ...(helperConfig ?? []).slice(1)
+    ...(helperConfig ?? []).slice(1),
   );
 
   return [lightConfig, lightHelperConfig] as const;

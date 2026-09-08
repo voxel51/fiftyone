@@ -15,6 +15,7 @@ export default function AutocompleteView(props) {
   const valuesOnly = getValuesOnlySettingFromSchema(schema);
   const allowUserInput = view.allow_user_input !== false;
   const allowClearing = view.allow_clearing !== false;
+  const filterSelected = view.filter_selected_options === true;
   return (
     <FieldWrapper {...props}>
       <Autocomplete
@@ -23,10 +24,11 @@ export default function AutocompleteView(props) {
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
+        filterSelectedOptions={multiple && filterSelected}
         value={getDefaultValue(data, choices, multiple)}
         freeSolo={allowUserInput}
         size="small"
-        onChange={(e, choice) => {
+        onChange={(_e, choice) => {
           if (choice === null) {
             onChange(path, null);
             setUserChanged();
@@ -36,7 +38,7 @@ export default function AutocompleteView(props) {
             schema,
             choice,
             valuesOnly,
-            multiple
+            multiple,
           );
           onChange(path, changedValue);
           setUserChanged();
@@ -98,8 +100,8 @@ function getDefaultValue(defaultValue, choices = [], multiple = false) {
     const values = Array.isArray(defaultValue)
       ? defaultValue
       : defaultValue != null
-      ? [defaultValue]
-      : [];
+        ? [defaultValue]
+        : [];
     return values.map((v) => {
       const choice = choices.find(({ value }) => value === v);
       return choice || { value: v, label: v };

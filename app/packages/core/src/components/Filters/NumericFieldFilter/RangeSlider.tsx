@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { formatPrimitive } from "@fiftyone/utilities";
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import CommonRangeSlider from "../../Common/RangeSlider";

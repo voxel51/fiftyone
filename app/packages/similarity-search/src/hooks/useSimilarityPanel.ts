@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import {
+  AnnotatedBrainKeyConfig,
   CloneConfig,
   RunStatus,
   SimilaritySearchViewProps,
@@ -35,7 +36,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
 
   const allBrainKeys = useMemo(
     () => panelData.brain_keys ?? [],
-    [panelData.brain_keys]
+    [panelData.brain_keys],
   );
   const appliedRunId = (panelData as Record<string, unknown>).applied_run_id as
     | string
@@ -53,36 +54,57 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   const patchesField = useMemo(() => {
     if (!isPatchesView) return undefined;
     const stage = (viewStages as any[])?.find(
-      (s: any) => s._cls === "fiftyone.core.stages.ToPatches"
+      (s: any) => s._cls === "fiftyone.core.stages.ToPatches",
     );
     if (!stage) return undefined;
     return stage.kwargs?.find(
-      ([k]: [string, unknown]) => k === "field"
+      ([k]: [string, unknown]) => k === "field",
     )?.[1] as string | undefined;
   }, [isPatchesView, viewStages]);
 
-  const brainKeys = useMemo(() => {
-    if (isPatchesView) {
-      return allBrainKeys.filter((bk) => bk.patches_field === patchesField);
-    }
-    return allBrainKeys.filter((bk) => !bk.patches_field);
+  // All brain keys are shown in the UI; ones that can't be used in the
+  // current view (patch index in a sample view, and vice versa) are
+  // annotated as incompatible so components can gray them out with an
+  // explanatory tooltip instead of hiding them.
+  const brainKeys = useMemo((): AnnotatedBrainKeyConfig[] => {
+    const annotated = allBrainKeys.map((bk): AnnotatedBrainKeyConfig => {
+      const compatible = isPatchesView
+        ? bk.patches_field === patchesField
+        : !bk.patches_field;
+      if (compatible) {
+        return { ...bk, compatible: true };
+      }
+      return {
+        ...bk,
+        compatible: false,
+        incompatibleReason: bk.patches_field
+          ? "Cannot use a patch index in the current view"
+          : "Cannot use a dataset index in the current view",
+      };
+    });
+    // Usable indexes first; disabled ones sink to the bottom of the
+    // index page list and the new-search dropdown
+    return [
+      ...annotated.filter((bk) => bk.compatible),
+      ...annotated.filter((bk) => !bk.compatible),
+    ];
   }, [allBrainKeys, isPatchesView, patchesField]);
 
-  // Filter runs to only those whose brain_key is in the effective set
+  // Filter runs to only those whose brain_key is usable in this view
   const effectiveBrainKeySet = useMemo(
-    () => new Set(brainKeys.map((bk) => bk.key)),
-    [brainKeys]
+    () => new Set(brainKeys.filter((bk) => bk.compatible).map((bk) => bk.key)),
+    [brainKeys],
   );
   const runs = useMemo(
     () => allRuns.filter((r) => effectiveBrainKeySet.has(r.brain_key)),
-    [allRuns, effectiveBrainKeySet]
+    [allRuns, effectiveBrainKeySet],
   );
 
   // currentUser is null in OSS, populated by FOE via panel data
   const currentUser =
     ((panelData as Record<string, unknown>).current_user as string) ?? null;
   const canManage = Boolean(
-    (panelData as Record<string, unknown>).can_manage ?? true
+    (panelData as Record<string, unknown>).can_manage ?? true,
   );
   const isReadOnly = useRecoilValue(fos.readOnly) as boolean;
 
@@ -126,11 +148,11 @@ type PanelActionsDeps = {
     deleteRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
     bulkDeleteRuns: (
       payload: { run_ids: string[] },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
     renameRun: (
       payload: { run_id: string; new_name: string },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
   };
   setCloneConfig: (config: CloneConfig) => void;
@@ -160,7 +182,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
     (runId: string) => {
       triggers.applyRun({ run_id: runId });
     },
-    [triggers]
+    [triggers],
   );
 
   const handleDelete = useCallback(
@@ -174,15 +196,15 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
             if (result?.error) {
               console.error(
                 "Delete run failed; reconciling from server:",
-                result.error
+                result.error,
               );
               refreshRuns();
             }
           },
-        }
+        },
       );
     },
-    [triggers, removeRun, refreshRuns]
+    [triggers, removeRun, refreshRuns],
   );
 
   const handleBulkDelete = useCallback(
@@ -197,15 +219,15 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
             if (result?.error) {
               console.error(
                 "Bulk delete failed; reconciling from server:",
-                result.error
+                result.error,
               );
               refreshRuns();
             }
           },
-        }
+        },
       );
     },
-    [triggers, removeRuns, clearAndExit, refreshRuns]
+    [triggers, removeRuns, clearAndExit, refreshRuns],
   );
 
   const handleClone = useCallback(
@@ -222,14 +244,14 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
       });
       navigateNewSearch();
     },
-    [runs, setCloneConfig, navigateNewSearch]
+    [runs, setCloneConfig, navigateNewSearch],
   );
 
   const handleRename = useCallback(
     (runId: string, newName: string) => {
       triggers.renameRun({ run_id: runId, new_name: newName });
     },
-    [triggers]
+    [triggers],
   );
 
   const handleNewSearch = useCallback(() => {
@@ -268,7 +290,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
       handleNewSearch,
       handleRename,
       handleSubmitted,
-    ]
+    ],
   );
 };
 
@@ -307,15 +329,15 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     deleteRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
     bulkDeleteRuns: (
       payload: { run_ids: string[] },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
     renameRun: (
       payload: { run_id: string; new_name: string },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
     getSampleMedia: (
       payload: { sample_ids: string[] },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
   }>({
     applyRun: view.apply_run,
@@ -421,7 +443,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
       selectAll,
       deselectAll,
       clearAndExit,
-    ]
+    ],
   );
 
   return {

@@ -5,7 +5,11 @@ Databricks Mosaic AI Integration
 
 .. default-role:: code
 
-`Mosaic AI Vector Search <https://docs.databricks.com/en/generative-ai/vector-search.html>`_ is 
+.. customavailablein::
+    :oss_version: 1.4.0
+    :enterprise_version: 2.7.0
+
+`Mosaic AI Search <https://docs.databricks.com/en/generative-ai/vector-search.html>`_ is
 a vector database that is built into the Databricks Data Intelligence Platform and integrated 
 with its governance and productivity tools, and we've made it easy to
 use Mosaic's vector search capabilities on your computer vision data
@@ -36,7 +40,7 @@ ____________
 The basic workflow to use Mosaic to create a similarity index on your
 FiftyOne datasets and query your data is as follows:
 
-1)  Connect to your databricks workspace and `create a vector search endpoint <https://docs.databricks.com/en/generative-ai/create-query-vector-search.html#create-a-vector-search-endpoint>`_.
+1)  Connect to your databricks workspace and `create an AI search endpoint <https://docs.databricks.com/aws/en/ai-search/create-ai-search#create-a-vector-search-endpoint>`_.
 
 2)  :ref:`Load a dataset <importing-datasets>` into FiftyOne
 
@@ -59,14 +63,14 @@ The example below demonstrates this workflow.
 .. note::
 
     You must have access to a databricks account with 
-    `vector search enabled <https://docs.databricks.com/en/generative-ai/vector-search.html#requirements>`_
+    `AI search enabled <https://docs.databricks.com/aws/en/ai-search/ai-search#requirements>`_
     and install the
-    `Databricks Vector Search Python package <https://api-docs.databricks.com/python/vector-search/databricks.vector_search.html>`_
+    `Databricks AI Search Python package <https://api-docs.databricks.com/python/ai-search/databricks.ai_search.html>`_
     to run this example:
 
     .. code-block:: shell
 
-        pip install databricks-vectorsearch
+        pip install databricks-ai-search
 
     Note that you need to provide credentials as described in :ref:`this section <mosaic-setup>`
     to avoid entering them manually each time you interact with your
@@ -123,24 +127,23 @@ by specifying the `brain_key`:
 Setup
 _____
 
-To get started with Mosaic AI Vector Search, you need to have access to a Databricks workspace which satisfies the 
-`requirements for vector search <https://docs.databricks.com/en/generative-ai/vector-search.html#requirements>`_
-and `create a vector search endpoint <https://docs.databricks.com/en/generative-ai/create-query-vector-search.html#create-a-vector-search-endpoint>`_. 
-You also need to have a catalog and schema in Databricks where you want to create the vector search index.
-
+To get started with Mosaic AI Search, you need to have access to a Databricks workspace which satisfies the
+`requirements for AI Search <https://docs.databricks.com/aws/en/ai-search/ai-search#requirements>`_
+and `create an AI search endpoint <https://docs.databricks.com/aws/en/ai-search/create-ai-search#create-a-vector-search-endpoint>`_.
+You also need to have a catalog and schema in Databricks where you want to create the AI search index.
 
 Installing the Mosaic AI Vector Search client
------------------------------------
+---------------------------------------------
 
 In order to use the Mosaic backend, you must also install the
 `Databricks Vector Search Python package <https://api-docs.databricks.com/python/vector-search/databricks.vector_search.html>`_
 
 .. code-block:: shell
 
-    pip install databricks-vectorsearch
+    pip install databricks-ai-search
 
 Using the Mosaic backend
--------------------------------
+------------------------
 
 By default, calling
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` or
@@ -178,7 +181,7 @@ Authentication
 --------------
 
 You can provide your credentials in a
-`variety of ways <https://docs.databricks.com/en/generative-ai/vector-search.html#data-protection-and-authentication>`_.
+`variety of ways <https://docs.databricks.com/aws/en/ai-search/ai-search#data-protection-and-authentication>`_.
 
 **Environment variables (recommended)**
 
@@ -196,7 +199,7 @@ by FiftyOne whenever a connection to Databricks is made.
 
 This is only one example of variables that can be used to authenticate an
 Mosaic client. Find more information
-`here. <https://docs.databricks.com/en/generative-ai/vector-search.html#data-protection-and-authentication>`_
+`here <https://docs.databricks.com/aws/en/ai-search/ai-search#data-protection-and-authentication>`_.
 
 **FiftyOne Brain config**
 
@@ -260,12 +263,12 @@ when loading an index later via
 .. _mosaic-config-parameters:
 
 Mosaic config parameters
--------------------------------
+------------------------
 
 The Mosaic backend supports the following parameter
 to customize your similarity queries. 
 
--   **index_name** (*None*): the name of the Mosaic vector search index
+-   **index_name** (*None*): the name of the Mosaic AI search index
     to use or create. If not specified, a new unique name is generated automatically
 
 You can specify this parameter via any of the strategies described in the
@@ -587,7 +590,7 @@ to retrieve embeddings from a Mosaic index by ID:
 .. _mosaic-query:
 
 Querying a Mosaic index
-------------------------------
+-----------------------
 
 You can query a Mosaic index by appending a
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
@@ -646,7 +649,7 @@ stage to any dataset or view. The query can be any of the following:
 .. _mosaic-access-client:
 
 Accessing the Mosaic client
-----------------------------------
+---------------------------
 
 You can use the `client` property of a Mosaic index to directly access
 the underlying Mosaic client instance and use its methods as desired:

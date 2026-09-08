@@ -47,8 +47,8 @@ const isFiniteBox = (b: Box3) =>
  */
 export function useFo3dBounds(
   objectRef: React.RefObject<Group>,
-  isReady: boolean = true,
-  opts: Options = {}
+  isReady = true,
+  opts: Options = {},
 ) {
   const {
     stableSamples = DEFAULT_STABLE_SAMPLES,
@@ -143,6 +143,7 @@ export function useFo3dBounds(
 
     const cancel = startLoop();
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup must bump the LATEST token to invalidate in-flight loops
       runToken.current++;
       cancel?.();
     };

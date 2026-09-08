@@ -7,7 +7,7 @@ import { ZOOM_TIMEOUT } from "./constants";
 export default function createScrollReader(
   element: HTMLElement,
   render: (zooming: boolean, dispatchOffset?: boolean) => void,
-  getScrollSpeedThreshold: () => number
+  getScrollSpeedThreshold: () => number,
 ) {
   let animationFrame: ReturnType<typeof requestAnimationFrame>;
   let destroyed = false;

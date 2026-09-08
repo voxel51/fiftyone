@@ -1,25 +1,16 @@
-import {
-  Button,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  Variant,
-} from "@voxel51/voodo";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { AnnotationSaveIndicator } from "@fiftyone/annotation";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
-import { isEditing } from "./Edit";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import GroupEntry from "./GroupEntry";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
 import PrimitiveEntry from "./PrimitiveEntry";
 import useEntries from "./useEntries";
 import { usePrimitivesCount } from "./usePrimitivesCount";
-import { useSchemaManagerModal } from "./SchemaManager/hooks";
-import useCanManageSchema from "./useCanManageSchema";
 
 const EmptyLabelsContainer = styled.div`
   display: flex;
@@ -31,10 +22,8 @@ const EmptyLabelsContainer = styled.div`
 
 export default function AnnotateSidebar() {
   usePrimitivesCount();
-  const isEditingValue = useAtomValue(isEditing);
+  const isEditingValue = useAnnotationContext().isEditing;
   const isGenerated = useRecoilValue(isGeneratedView);
-  const { openSchemaManager } = useSchemaManagerModal();
-  const canManage = useCanManageSchema();
 
   // Don't show label list in edit mode or in generated views (patches/clips/frames)
   // In generated views, only the edit panel should be visible
@@ -42,6 +31,7 @@ export default function AnnotateSidebar() {
 
   const headerStyle = {
     display: "flex",
+    alignItems: "center",
     justifyContent: "space-between",
     marginInline: "1rem",
     paddingBottom: "0.5rem",
@@ -50,19 +40,10 @@ export default function AnnotateSidebar() {
   return (
     <>
       <div style={headerStyle}>
-        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-          Click labels to edit
+        <Text variant={TextVariant.Lg} color={TextColor.Primary}>
+          Edit
         </Text>
-        {canManage && (
-          <Button
-            variant={Variant.Borderless}
-            size={Size.Sm}
-            data-cy="open-schema-manager"
-            onClick={openSchemaManager}
-          >
-            Schema
-          </Button>
-        )}
+        <AnnotationSaveIndicator />
       </div>
       <Sidebar
         isDisabled={() => true}
@@ -72,9 +53,9 @@ export default function AnnotateSidebar() {
           }
 
           if (entry.kind === EntryKind.LABEL) {
-            const { kind: _kind, atom } = entry;
+            const { id, path, frame } = entry;
             return {
-              children: <LabelEntry atom={atom} />,
+              children: <LabelEntry id={id} path={path} frame={frame} />,
               disabled: true,
             };
           }

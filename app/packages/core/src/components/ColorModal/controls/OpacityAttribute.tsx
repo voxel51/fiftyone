@@ -41,7 +41,7 @@ const OpacityAttribute: React.FC<Prop> = ({ fields }) => {
   const [mRef, bounds] = useMeasure();
   const field = useRecoilValue(fos.activeColorField).field as Field;
   const setting = useRecoilValue(fos.colorScheme).fields.find(
-    (f) => f.path === field.path
+    (f) => f.path === field.path,
   );
 
   const options = fields.map((field) => ({

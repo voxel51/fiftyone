@@ -651,11 +651,13 @@ class BaseRun(Configurable):
 
         if run_results is None:
             run_doc.results = None
+            run_doc.results_meta = {}
         else:
             # Write run result to GridFS
             # We use `json_util.dumps` so that run results may contain BSON
             results_bytes = json_util.dumps(run_results.serialize()).encode()
             run_doc.results.put(results_bytes, content_type="application/json")
+            run_doc.results_meta = dict(run_results.get_meta() or {})
 
         # Cache the results for future use in this session
         if cache:
@@ -951,6 +953,21 @@ class BaseRunResults(etas.Serializable):
     def key(self):
         """The run key for these results."""
         return self._key
+
+    def get_meta(self):
+        """Small facts that DESCRIBE these results, stored beside the run so
+        callers can read them without loading the results.
+
+        The results themselves are a blob in GridFS whose arrays can run to
+        hundreds of MB; a count or a path is a few bytes. Anything returned
+        here is written when the results are saved (see
+        :meth:`BaseRun.save_run_results`), so no read path has to load — or
+        write — to answer for it.
+
+        Returns:
+            a JSON-serializable dict
+        """
+        return {}
 
     def save(self):
         """Saves the results to the database."""

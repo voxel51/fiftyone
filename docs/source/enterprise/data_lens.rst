@@ -5,6 +5,9 @@ Data Lens
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 2.2.0
+
 Data Lens is a feature built into the
 :ref:`FiftyOne Enterprise App <enterprise-app>` that allows you to use FiftyOne
 to explore and import samples from external data sources.
@@ -599,6 +602,9 @@ sources.
 Databricks
 ----------
 
+.. customavailablein::
+    :enterprise_version: 2.3.0
+
 Below is an example of a Data Lens connector for Databricks. This example uses
 a schema consistent with the Berkeley DeepDrive dataset format.
 
@@ -1130,6 +1136,9 @@ the data that's needed.
 
 Snippet: Dynamic user inputs
 ----------------------------
+
+.. customavailablein::
+    :enterprise_version: 2.3.0
 
 As the volume and complexity of your data grows, you may want to expose many
 options to Data Lens users, but doing so all at once can be overwhelming for

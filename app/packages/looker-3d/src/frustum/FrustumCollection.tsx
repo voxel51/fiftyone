@@ -18,17 +18,21 @@ import { useFrustums } from "./hooks/public";
  * 3. Computes frustum geometry based on scene bounds
  * 4. Renders individual Frustum components for each slice
  */
-export function FrustumCollection() {
+export function FrustumCollection({
+  isSceneInitialized = true,
+}: {
+  isSceneInitialized?: boolean;
+}) {
   const { isVisible } = useFrustums();
   const { sceneBoundingBox } = useFo3dContext();
 
   const { data: frustumData, isLoading, error } = useFetchFrustumParameters();
   const depth = computeFrustumDepth(sceneBoundingBox);
   const visibleFrustums = frustumData.filter((frustum) =>
-    isValidStaticTransform(frustum.staticTransform)
+    isValidStaticTransform(frustum.staticTransform),
   );
 
-  if (!isVisible) {
+  if (!isSceneInitialized || !isVisible) {
     return null;
   }
 

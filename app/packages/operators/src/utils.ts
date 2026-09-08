@@ -25,11 +25,10 @@ export function stringifyError(error, fallback?) {
 }
 
 export function onEnter(
-  handler: (e: KeyboardEvent) => void
+  handler: (e: KeyboardEvent) => void,
 ): KeyboardEventHandler {
-  // @ts-ignore
-  return (e: KeyboardEvent) => {
-    if (e.key === "Enter") handler(e);
+  return (e) => {
+    if (e.key === "Enter") handler(e as unknown as KeyboardEvent);
   };
 }
 
@@ -84,7 +83,7 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
   const hasValidationErrors = operatorPrompt.validationErrors?.length > 0;
   const { resolving: loading } = operatorPrompt;
   const validationErrorsStr = formatValidationErrors(
-    operatorPrompt.validationErrors
+    operatorPrompt.validationErrors,
   );
   const disableSubmit = hasValidationErrors || loading;
   const disabledReason = hasValidationErrors
@@ -123,13 +122,13 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
 export function memoizedDebounce(
   func,
   wait = 0,
-  options?: MemoizedDebounceOptions
+  options?: MemoizedDebounceOptions,
 ) {
   const memoizedFunc = memoize(function () {
     return debounce(func, wait, options);
   }, options?.resolver);
-  return function () {
-    memoizedFunc.apply(this, arguments).apply(this, arguments);
+  return function (...args: unknown[]) {
+    memoizedFunc.apply(this, args).apply(this, args);
   };
 }
 
@@ -140,7 +139,7 @@ function getPromptTitle(operatorPrompt) {
   return definition?.view?.label;
 }
 
-type MemoizeResolver = (...args) => any;
+type MemoizeResolver = (...args: unknown[]) => unknown;
 
 type MemoizedDebounceOptions = DebounceSettings & {
   resolver: MemoizeResolver;

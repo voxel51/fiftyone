@@ -1,4 +1,3 @@
-import React from "react";
 import RJSF from "./RJSF";
 
 import { SmartFormProps } from "./types";

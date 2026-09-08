@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { Timeline, useCreateTimeline, useTimeline } from "@fiftyone/playback";
+import { useMemo } from "react";
+import { Timeline, useCreateTimeline } from "@fiftyone/playback";
 import { ViewPropsType } from "../utils/types";
 
 const DEFAULT_CONFIG = { loop: false };
@@ -16,7 +16,7 @@ export default function TimelineView(props: ViewPropsType) {
 
   const finalConfig = useMemo(
     () => ({ ...DEFAULT_CONFIG, ...providedConfig }),
-    [providedConfig]
+    [providedConfig],
   );
   if (!timeline_name) {
     throw new Error("Timeline name is required");

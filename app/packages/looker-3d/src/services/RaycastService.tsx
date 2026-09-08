@@ -1,16 +1,26 @@
 import { useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { getPanelElementId } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
-import { activeCursorPanelAtom, raycastResultAtom } from "../state";
+import { useActiveCursorPanel, useSetRaycastResult } from "../state";
+import { EMPTY_RAYCAST_RESULT } from "../types";
 import type { PanelId } from "../types";
-import { precisionToThreshold, toNDCForElement } from "../utils";
-import { getRaycastableObjects } from "../utils/raycast-utils";
+import { toNDCForElement } from "../utils";
+import type { PointCloudCrop } from "../utils/point-cloud-crop";
+import {
+  filterPointIntersectionsByScreenDistance,
+  filterIntersectionsForPointCloudCrop,
+  getIntersectionWorldPosition,
+  getObjectLabelId,
+  getPointCloudRaycastThreshold,
+  getRaycastableObjects,
+} from "../utils/raycast-utils";
+import { getCameraVisibleWorldHeightAtPoint } from "../utils/side-panel-camera-sync";
 
 interface RaycastServiceProps {
   panelId: PanelId;
+  pointCloudCrop?: PointCloudCrop | null;
 }
 
 /**
@@ -20,22 +30,17 @@ interface RaycastServiceProps {
  *
  * @param panelId - The ID of the panel this service belongs to
  */
-export const RaycastService = ({ panelId }: RaycastServiceProps) => {
-  const activeCursorPanel = useRecoilValue(activeCursorPanelAtom);
-  const setRaycastResult = useSetRecoilState(raycastResultAtom);
+export const RaycastService = ({
+  panelId,
+  pointCloudCrop,
+}: RaycastServiceProps) => {
+  const activeCursorPanel = useActiveCursorPanel();
+  const setRaycastResult = useSetRaycastResult();
 
   const { camera, raycaster, gl, events, scene } = useThree();
-  const { raycastPrecision } = useFo3dContext();
+  const { sceneBoundingBox } = useFo3dContext();
 
   const panelElementRef = useRef<HTMLElement | null>(null);
-
-  // This effect applies the configured raycast precision threshold to this panel's raycaster.
-  useEffect(() => {
-    const threshold = precisionToThreshold(raycastPrecision);
-    if (raycaster.params.Points) {
-      raycaster.params.Points.threshold = threshold;
-    }
-  }, [raycaster, raycastPrecision]);
 
   // This effect gets the panel element on mount
   useEffect(() => {
@@ -56,30 +61,41 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
 
       const ndc = toNDCForElement(ev, panelElement);
 
+      if (raycaster.params.Points) {
+        raycaster.params.Points.threshold = getPointCloudRaycastThreshold({
+          camera,
+          panelElement,
+          sceneBoundingBox,
+        });
+      }
+
       raycaster.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
 
       const raycastableObjects = getRaycastableObjects(scene);
       const intersections = raycaster.intersectObjects(
         raycastableObjects,
-        false
+        false,
       );
 
-      if (intersections.length === 0) {
+      const visibleIntersections = filterIntersectionsForPointCloudCrop(
+        filterPointIntersectionsByScreenDistance({
+          intersections,
+          camera,
+          panelElement,
+          ndc,
+        }),
+        pointCloudCrop,
+      );
+
+      if (visibleIntersections.length === 0) {
         // No object hit - clear raycast result
-        setRaycastResult({
-          sourcePanel: null,
-          worldPosition: null,
-          intersectedObjectUuid: null,
-          pointIndex: null,
-          distance: null,
-          timestamp: Date.now(),
-        });
+        setRaycastResult({ ...EMPTY_RAYCAST_RESULT, timestamp: Date.now() });
         return;
       }
 
       // Use the closest intersection
-      const closest = intersections[0];
-      const worldPos = closest.point;
+      const closest = visibleIntersections[0];
+      const worldPos = getIntersectionWorldPosition(closest);
 
       const position: [number, number, number] = [
         worldPos.x,
@@ -88,32 +104,41 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
       ];
 
       const pointIndex = closest.index !== undefined ? closest.index : null;
+      const intersectedLabelId = getObjectLabelId(closest.object);
 
       setRaycastResult({
         sourcePanel: panelId,
         worldPosition: position,
+        visibleWorldHeightAtPoint: getCameraVisibleWorldHeightAtPoint(
+          camera,
+          worldPos,
+        ),
         // Note: Recoil freezes objects so can't store the full intersected object...
         // but we can store the UUID
         intersectedObjectUuid: closest.object.uuid,
+        intersectedLabelId,
+        isPointCloud: closest.object instanceof THREE.Points,
         pointIndex,
         distance: closest.distance,
         timestamp: Date.now(),
       });
     },
-    [activeCursorPanel, panelId, camera, raycaster, scene]
+    [
+      activeCursorPanel,
+      panelId,
+      camera,
+      raycaster,
+      scene,
+      sceneBoundingBox,
+      pointCloudCrop,
+      setRaycastResult,
+    ],
   );
 
   // This effect clears stale raycast result when the cursor leaves all panels
   useEffect(() => {
     if (activeCursorPanel === null) {
-      setRaycastResult({
-        sourcePanel: null,
-        worldPosition: null,
-        intersectedObjectUuid: null,
-        pointIndex: null,
-        distance: null,
-        timestamp: Date.now(),
-      });
+      setRaycastResult({ ...EMPTY_RAYCAST_RESULT, timestamp: Date.now() });
     }
   }, [activeCursorPanel, setRaycastResult]);
 

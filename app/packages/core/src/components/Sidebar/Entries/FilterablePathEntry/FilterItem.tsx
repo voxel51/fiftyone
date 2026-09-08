@@ -23,6 +23,7 @@ export const FILTERS = {
   [fou.OBJECT_ID_FIELD]: filters.StringFieldFilter,
   [fou.STRING_FIELD]: filters.StringFieldFilter,
   _LABEL_TAGS: filters.LabelFieldFilter,
+  _TEMPORAL_TAGS: filters.TemporalTagsFilter,
 };
 
 const FilterItem = ({

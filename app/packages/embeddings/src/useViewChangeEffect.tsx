@@ -12,29 +12,21 @@ import { NetworkError } from "@fiftyone/utilities";
 export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed);
   const datasetName = useRecoilValue(fos.datasetName);
-  const [brainKey, setBrainKey] = useBrainResult();
-  const [pointsField, setPointsField] = usePointsField();
+  const [brainKey] = useBrainResult();
+  const [, setPointsField] = usePointsField();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
   const slices = useRecoilValue(fos.currentSlices(false));
   const filters = useRecoilValue(fos.filters);
-  const [loadedPlot, setLoadedPlot] = usePanelStatePartial(
-    "loadedPlot",
-    null,
-    true
-  );
-  const [loadingPlot, setLoadingPlot] = usePanelStatePartial(
-    "loadingPlot",
-    true,
-    true
-  );
-  const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
+  const [, setLoadedPlot] = usePanelStatePartial("loadedPlot", null, true);
+  const [, setLoadingPlot] = usePanelStatePartial("loadingPlot", true, true);
+  const [, setLoadingPlotError] = usePanelStatePartial(
     "loadingPlotError",
     null,
-    true
+    true,
   );
   const setOverrideStage = useSetRecoilState(
-    fos.extendedSelectionOverrideStage
+    fos.extendedSelectionOverrideStage,
   );
   const warnings = useWarnings();
 
@@ -47,7 +39,7 @@ export function useViewChangeEffect() {
           setLoadingPlotError({
             message: "Network Error",
             stack: [err.stack, "See console for network error details."].join(
-              "\n"
+              "\n",
             ),
           });
         } else {
@@ -87,13 +79,13 @@ export function useViewChangeEffect() {
 
         if (missing > 0) {
           warnings.add(
-            `${missing} ${type} in the current view do not have corresponding embeddings.`
+            `${missing} ${type} in the current view do not have corresponding embeddings.`,
           );
         }
 
         if (notUsed > 0) {
           warnings.add(
-            `${notUsed} embeddings in the index correspond to samples not in the current view`
+            `${notUsed} embeddings in the index correspond to samples not in the current view`,
           );
         }
 

@@ -20,7 +20,7 @@ export const lightningStringResults = selectorFamily<
       const [data] = get(
         lightningQuery([
           { ...params, maxDocumentsSearch: get(queryPerformanceMaxSearch) },
-        ])
+        ]),
       );
 
       if (
@@ -28,7 +28,7 @@ export const lightningStringResults = selectorFamily<
         data.__typename !== "ObjectIdLightningResult"
       ) {
         throw new Error(
-          `unexpected ${data.__typename} for path '${params.path}' in lightningStringResults`
+          `unexpected ${data.__typename} for path '${params.path}' in lightningStringResults`,
         );
       }
 

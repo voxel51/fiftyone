@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { Setter } from "@fiftyone/relay";
 import {
   type Session,
@@ -16,7 +20,7 @@ import { REGISTERED_SETTERS } from "./registerSetter";
 const useSetters = (
   environment: Environment,
   router: RoutingContext<Queries>,
-  sessionRef: MutableRefObject<Session>
+  sessionRef: MutableRefObject<Session>,
 ) => {
   const handleError = useRecoilCallback(
     ({ set: setRecoil }) =>
@@ -24,7 +28,7 @@ const useSetters = (
         setRecoil(snackbarErrors, errors);
         setRecoil(pendingEntry, false);
       },
-    []
+    [],
   );
   const subscription = useRecoilValue(stateSubscription);
   const setter = useSessionSetter();

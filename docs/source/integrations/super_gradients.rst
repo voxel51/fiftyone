@@ -5,6 +5,10 @@ Super Gradients Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.23.3
+    :enterprise_version: 1.5.4
+
 FiftyOne integrates natively with Deci AI's
 `SuperGradients <https://github.com/Deci-AI/super-gradients>`_ library, so you
 can run inference with YOLO-NAS architectures on your FiftyOne datasets with

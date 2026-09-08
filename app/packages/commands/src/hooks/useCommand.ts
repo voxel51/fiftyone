@@ -18,7 +18,7 @@ export type CommandDescriptor = {
  */
 export const useCommand = (
   commandId: string,
-  context?: string | CommandContext
+  context?: string | CommandContext,
 ): CommandHookReturn => {
   const boundContext = useCommandContext(context);
   const [state, setState] = useState<{

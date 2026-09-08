@@ -33,7 +33,7 @@ export const useDeferrer = () => {
     (fn: () => void) => {
       if (initialized.current) fn();
     },
-    [initialized]
+    [initialized],
   );
 
   const init = useCallback(() => {
@@ -53,7 +53,7 @@ export const stringifyObj = (obj) => {
       .map((key) => {
         return [key, obj[key]];
       })
-      .sort((a, b) => a[0] - b[0])
+      .sort((a, b) => a[0] - b[0]),
   );
 };
 
@@ -62,12 +62,12 @@ export const filterView = (stages: State.Stage[]) =>
     stages.map(({ kwargs, _cls }) => ({
       kwargs: kwargs.filter((ka) => !ka[0].startsWith("_")),
       _cls,
-    }))
+    })),
   );
 
 export const viewsAreEqual = (
   viewOne?: string | State.Stage[],
-  viewTwo?: string | State.Stage[]
+  viewTwo?: string | State.Stage[],
 ) => {
   if (viewOne === viewTwo) {
     return true;
@@ -116,7 +116,7 @@ export const getNormalizedUrls = (
   urls:
     | readonly { readonly field: string; readonly url: string }[]
     | { [field: string]: string }
-    | ModalSample["urls"]
+    | ModalSample["urls"],
 ): { [field: string]: string } => {
   if (!Array.isArray(urls)) {
     return urls as { [field: string]: string };
@@ -129,7 +129,7 @@ export const convertTargets = (
   targets: {
     target: string;
     value: string;
-  }[]
+  }[],
 ): { [key: string]: { label: string; intTarget: number } | string } => {
   return Object.fromEntries(
     (targets || []).map(({ target, value }, i) => {
@@ -141,7 +141,7 @@ export const convertTargets = (
       // convert into RGB mask representation
       // offset of 1 in intTarget because 0 has a special significance
       return [target.toUpperCase(), { label: value, intTarget: i + 1 }];
-    })
+    }),
   );
 };
 
@@ -150,7 +150,7 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
     (dataset?.maskTargets || []).map(({ name, targets }) => [
       name,
       convertTargets(targets),
-    ])
+    ]),
   );
 
   const copy: any = clone(dataset);
@@ -181,7 +181,7 @@ type GQLResponse = Omit<GraphQLResponseWithData, "errors"> & {
 
 const fetchRelay: FetchFunction = async (
   params,
-  variables
+  variables,
 ): Promise<GraphQLResponse> => {
   const data = await getFetchFunction()<unknown, GQLResponse>(
     "POST",
@@ -189,7 +189,7 @@ const fetchRelay: FetchFunction = async (
     {
       query: params.text,
       variables,
-    }
+    },
   );
 
   // mutation errors are handled by the calling component or hook

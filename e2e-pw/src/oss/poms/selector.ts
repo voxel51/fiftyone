@@ -10,12 +10,12 @@ export class SelectorPom {
   constructor(
     private readonly parent: Locator | Page,
     private readonly eventUtils: EventUtils,
-    private readonly title: string
+    private readonly title: string,
   ) {
     this.assert = new SelectorAsserter(this);
     this.input = this.parent.getByTestId(`selector-${this.title}`);
     this.resultsContainer = this.parent.getByTestId(
-      `selector-results-container-${this.title}`
+      `selector-results-container-${this.title}`,
     );
     this.results = this.resultsContainer.locator("> div");
   }
@@ -27,14 +27,9 @@ export class SelectorPom {
   }
 
   async openResults() {
-    const promise = this.eventUtils.getEventReceivedPromiseForPredicate(
-      `selector-results-${this.title}`,
-      () => {
-        return true;
-      }
-    );
+    const results = await this.eventUtils.arm(`selector-results-${this.title}`);
     await this.input.focus();
-    await promise;
+    await results.received;
   }
 
   async closeResults() {
@@ -56,8 +51,8 @@ class SelectorAsserter {
     for (let index = 0; index < values.length; index++) {
       await expect(
         this.selectorPom.resultsContainer.getByTestId(
-          `selector-result-${values[index]}`
-        )
+          `selector-result-${values[index]}`,
+        ),
       ).toBeVisible();
     }
   }

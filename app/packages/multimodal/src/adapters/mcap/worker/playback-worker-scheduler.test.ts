@@ -1,0 +1,248 @@
+import { describe, expect, it, vi } from "vitest";
+import { MCAP_PLAYBACK_WORKER_PRIORITY } from "./playback-worker-types";
+import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
+
+describe("MCAP playback worker scheduler", () => {
+  it("orders paused inspection behind playback and ahead of idle work", async () => {
+    const scheduler = new McapPlaybackWorkerScheduler();
+    const firstJob = deferred<void>();
+    const ran: string[] = [];
+
+    scheduler.enqueue({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
+      run: async () => {
+        ran.push("batch-1");
+        await firstJob.promise;
+      },
+      sourceKey: "source",
+    });
+    scheduler.enqueue({
+      id: 2,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
+      run: async () => {
+        ran.push("batch-2");
+      },
+      sourceKey: "source",
+    });
+    scheduler.enqueue({
+      id: 3,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      run: async () => {
+        ran.push("current");
+      },
+      sourceKey: "source",
+    });
+    scheduler.enqueue({
+      id: 4,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
+      run: async () => {
+        ran.push("placement");
+      },
+      sourceKey: "source",
+    });
+    scheduler.enqueue({
+      id: 5,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      run: async () => {
+        ran.push("idle");
+      },
+      sourceKey: "source",
+    });
+    scheduler.enqueue({
+      id: 6,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PAUSED_INSPECTION,
+      run: async () => {
+        ran.push("inspection");
+      },
+      sourceKey: "source",
+    });
+
+    await Promise.resolve();
+    expect(ran).toEqual(["batch-1"]);
+
+    firstJob.resolve();
+    await flushAsync(8);
+
+    expect(ran).toEqual([
+      "batch-1",
+      "current",
+      "placement",
+      "batch-2",
+      "inspection",
+      "idle",
+    ]);
+  });
+
+  it("skips queued jobs that are cancelled before they start", async () => {
+    const scheduler = new McapPlaybackWorkerScheduler();
+    const firstJob = deferred<void>();
+    const ran: string[] = [];
+
+    scheduler.enqueue({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
+      run: async () => {
+        ran.push("first");
+        await firstJob.promise;
+      },
+      sourceKey: "source",
+    });
+    scheduler.enqueue({
+      id: 2,
+      operation: "readBoundedMessages",
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      run: async () => {
+        ran.push("cancelled");
+      },
+      sourceKey: "source",
+    });
+    expect(scheduler.cancel(2)).toEqual({
+      operation: "readBoundedMessages",
+      state: "queued",
+    });
+
+    firstJob.resolve();
+    await flushAsync();
+
+    expect(ran).toEqual(["first"]);
+  });
+
+  it("aborts the running job's signal when it is cancelled", async () => {
+    const scheduler = new McapPlaybackWorkerScheduler();
+    const gate = deferred<void>();
+    const signals: AbortSignal[] = [];
+
+    scheduler.enqueue({
+      id: 7,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      run: async (context) => {
+        signals.push(context.signal);
+        await gate.promise;
+      },
+      sourceKey: "source",
+    });
+    await flushAsync();
+    expect(signals[0]?.aborted).toBe(false);
+
+    expect(scheduler.cancel(7)).toEqual({ state: "running" });
+    expect(signals[0]?.aborted).toBe(true);
+
+    gate.resolve();
+    await flushAsync();
+
+    // The next job gets a fresh, unaborted signal.
+    scheduler.enqueue({
+      id: 8,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      run: async (context) => {
+        signals.push(context.signal);
+      },
+      sourceKey: "source",
+    });
+    await flushAsync();
+    expect(signals[1]?.aborted).toBe(false);
+  });
+
+  it("logs queue wait and run timing when debug is enabled", async () => {
+    const scheduler = new McapPlaybackWorkerScheduler();
+    const consoleLog = vi
+      .spyOn(console, "log")
+      .mockImplementation(() => undefined);
+
+    try {
+      scheduler.setDebug(true);
+      scheduler.enqueue({
+        id: 1,
+        operation: "readSynchronizedMessages",
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+        run: async () => undefined,
+        sourceKey: "source",
+      });
+
+      await flushAsync();
+
+      expect(consoleLog).toHaveBeenCalledWith(
+        "[mcap] worker job",
+        expect.objectContaining({
+          event: "started",
+          jobId: 1,
+          operation: "readSynchronizedMessages",
+          priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+          queueWaitMs: expect.any(Number),
+          sourceKey: "source",
+        }),
+      );
+      expect(consoleLog).toHaveBeenCalledWith(
+        "[mcap] worker job",
+        expect.objectContaining({
+          event: "finished",
+          jobId: 1,
+          operation: "readSynchronizedMessages",
+          runMs: expect.any(Number),
+          sourceKey: "source",
+        }),
+      );
+    } finally {
+      consoleLog.mockRestore();
+    }
+  });
+
+  it("continues draining after a rejected job", async () => {
+    const scheduler = new McapPlaybackWorkerScheduler();
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const ran: string[] = [];
+
+    try {
+      scheduler.enqueue({
+        id: 1,
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+        run: async () => {
+          ran.push("failed");
+          throw new Error("boom");
+        },
+        sourceKey: "source",
+      });
+      scheduler.enqueue({
+        id: 2,
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+        run: async () => {
+          ran.push("next");
+        },
+        sourceKey: "source",
+      });
+
+      await flushAsync();
+
+      expect(ran).toEqual(["failed", "next"]);
+      expect(consoleError).toHaveBeenCalledWith(
+        "MCAP playback worker job failed",
+        expect.objectContaining({
+          jobId: 1,
+          sourceKey: "source",
+        }),
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (error?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, reject, resolve };
+}
+
+async function flushAsync(iterations = 2) {
+  for (let index = 0; index < iterations; index++) {
+    await Promise.resolve();
+  }
+}

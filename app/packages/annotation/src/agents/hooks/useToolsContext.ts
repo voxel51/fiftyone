@@ -51,7 +51,10 @@ export interface ToolsState extends ToolsContext {
 const positivePointsAtom = atom<PointDescriptor[]>([]);
 const negativePointsAtom = atom<PointDescriptor[]>([]);
 const regionsOfInterestAtom = atom<ROI[]>([]);
-const textPromptAtom = atom<string | null>(null);
+// The initial value carries its type rather than `atom<string | null>(null)`: a
+// bare `null` argument matches jotai's read-only `atom(read)` overload under
+// this project's non-strict null checks, which types the setter as `never`.
+const textPromptAtom = atom(null as string | null);
 
 /**
  * Hook which returns the current {@link ToolsContext} (read-only).
@@ -73,7 +76,7 @@ export const useToolsContext = (): ToolsContext => {
       regionsOfInterest,
       textPrompt,
     }),
-    [activeTask, positivePoints, negativePoints, regionsOfInterest, textPrompt]
+    [activeTask, positivePoints, negativePoints, regionsOfInterest, textPrompt],
   );
 };
 
@@ -87,32 +90,32 @@ export const useToolsState = (): ToolsState => {
   const [positivePoints, setPositivePoints] = useAtom(positivePointsAtom);
   const [negativePoints, setNegativePoints] = useAtom(negativePointsAtom);
   const [regionsOfInterest, setRegionsOfInterest] = useAtom(
-    regionsOfInterestAtom
+    regionsOfInterestAtom,
   );
   const [textPrompt, setTextPrompt] = useAtom(textPromptAtom);
 
   const addPositivePoint = useCallback(
     (descriptor: PointDescriptor) =>
       setPositivePoints((prev) => [...prev, descriptor]),
-    [setPositivePoints]
+    [setPositivePoints],
   );
 
   const removePositivePoint = useCallback(
     (id: string) =>
       setPositivePoints((prev) => prev.filter((d) => d.id !== id)),
-    [setPositivePoints]
+    [setPositivePoints],
   );
 
   const addNegativePoint = useCallback(
     (descriptor: PointDescriptor) =>
       setNegativePoints((prev) => [...prev, descriptor]),
-    [setNegativePoints]
+    [setNegativePoints],
   );
 
   const removeNegativePoint = useCallback(
     (id: string) =>
       setNegativePoints((prev) => prev.filter((d) => d.id !== id)),
-    [setNegativePoints]
+    [setNegativePoints],
   );
 
   const updatePoint = useCallback(
@@ -135,14 +138,17 @@ export const useToolsState = (): ToolsState => {
         setNegativePoints((prev) => replacePoint(prev));
       }
     },
-    [positivePoints, setNegativePoints, setPositivePoints]
+    [positivePoints, setNegativePoints, setPositivePoints],
   );
 
+  // Each write keeps the previous value when it's already empty so a reset on
+  // already-clear state doesn't re-render subscribers — callers reset on
+  // recurring signals (every playhead move), not just at session edges.
   const reset = useCallback(() => {
-    setPositivePoints([]);
-    setNegativePoints([]);
-    setRegionsOfInterest([]);
-    setTextPrompt(null);
+    setPositivePoints((prev) => (prev.length > 0 ? [] : prev));
+    setNegativePoints((prev) => (prev.length > 0 ? [] : prev));
+    setRegionsOfInterest((prev) => (prev.length > 0 ? [] : prev));
+    setTextPrompt((prev) => (prev === null ? prev : null));
   }, [
     setPositivePoints,
     setNegativePoints,
@@ -180,6 +186,6 @@ export const useToolsState = (): ToolsState => {
       setRegionsOfInterest,
       setTextPrompt,
       reset,
-    ]
+    ],
   );
 };

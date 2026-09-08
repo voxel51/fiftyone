@@ -27,16 +27,29 @@ export class OssLoader extends AbstractFiftyoneLoader {
   async loadZooDataset(
     zooDatasetName: string,
     id: string,
-    kwargs: Record<string, string> = {}
+    kwargs: Record<string, string> = {},
   ) {
     const kwargsStringified = getStringifiedKwargs(kwargs);
 
     return this.pythonRunner.exec(`
+      import fcntl
+      import os
+
+      import fiftyone as fo
       import fiftyone.zoo as foz
 
-      dataset = foz.load_zoo_dataset(
-        "${zooDatasetName}", dataset_name="${id}"${kwargsStringified}
+      # parallel workers share the zoo download cache; an exclusive lock per
+      # dataset serializes the download, after which loads are cache hits
+      os.makedirs(fo.config.dataset_zoo_dir, exist_ok=True)
+      lock_path = os.path.join(
+        fo.config.dataset_zoo_dir, ".${zooDatasetName}.lock"
       )
+      with open(lock_path, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        dataset = foz.load_zoo_dataset(
+          "${zooDatasetName}", dataset_name="${id}"${kwargsStringified}
+        )
+
       dataset.persistent = True
     `);
   }
@@ -62,7 +75,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     page: Page,
     datasetName: string,
     options?: WaitUntilGridVisibleOptions,
-    isRetry?: boolean
+    isRetry?: boolean,
   ): Promise<void> {
     const { isEmptyDataset, readySelector, searchParams, withGrid } =
       options ?? {
@@ -73,14 +86,10 @@ export class OssLoader extends AbstractFiftyoneLoader {
       };
 
     await page.addInitScript(() => {
-      // eslint-disable-next-line
-      // @ts-ignore storing a page-global init flag on window for Playwright
       if (window.__FO_PLAYWRIGHT_INIT__) {
         return;
       }
 
-      // eslint-disable-next-line
-      // @ts-ignore storing a page-global init flag on window for Playwright
       window.__FO_PLAYWRIGHT_INIT__ = true;
 
       if (!window.name.includes("__FO_PLAYWRIGHT_STORAGE_CLEARED__")) {
@@ -91,14 +100,15 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
       const handleCursorChange = (e: MouseEvent) => {
         const element = document.elementFromPoint(e.clientX, e.clientY);
+        // elementFromPoint may return null (e.g. pointer outside the
+        // viewport); a throw here would silently freeze the cursor flag
+        // at its previous value
+        if (!element) {
+          return;
+        }
         const cursor = window.getComputedStyle(element).cursor;
-        // eslint-disable-next-line
-        // @ts-ignore
         if (cursor !== window.__FO_PLAYWRIGHT_CURRENT_CURSOR) {
-          // eslint-disable-next-line
-          // @ts-ignore
-          window.__FO_PLAYWRIGHT_CURRENT_CURSOR =
-            window.getComputedStyle(element).cursor;
+          window.__FO_PLAYWRIGHT_CURRENT_CURSOR = cursor;
           document.dispatchEvent(new CustomEvent("cursor-change"));
         }
       };
@@ -108,9 +118,19 @@ export class OssLoader extends AbstractFiftyoneLoader {
       document.addEventListener("pointerdown", handleCursorChange);
       document.addEventListener("pointerup", handleCursorChange);
 
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore injecting IS_PLAYWRIGHT into window so that
-      // we can disable 1) analytics, and 2) QA performance toast banners
+      // log-visibility watchdog for every spec; specs asserting on loading
+      // screen counts arm an EventUtils.initCounter for
+      // "global-loading-screen" instead
+      let loadingScreens = 0;
+      document.addEventListener("global-loading-screen", () => {
+        loadingScreens += 1;
+        if (loadingScreens > 1) {
+          throw new Error(
+            "Global loading screen fired more than once — top-level Suspense boundary re-activated after initial page load",
+          );
+        }
+      });
+
       window.IS_PLAYWRIGHT = true;
     });
 
@@ -122,7 +142,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         await page.getByTestId(`selector-result-${datasetName}`).click();
       } else {
         const firstSelectorResult = page.locator(
-          "[data-cy=selector-results-container] > div"
+          "[data-cy=selector-results-container] > div",
         );
         await firstSelectorResult.click();
       }
@@ -161,7 +181,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         }]`,
         {
           state: "visible",
-        }
+        },
       );
     } catch (e) {
       if (isRetry) {
@@ -206,9 +226,16 @@ export class OssLoader extends AbstractFiftyoneLoader {
       return;
     }
 
+    // a grid tile's terminal state depends on its kind: lookers finish
+    // drawing a canvas (or report an error); custom-renderer tiles are
+    // ready once their wrapper commits
     await page.waitForFunction(
       () => {
         if (document.querySelector(`[data-cy=looker-error-info]`)) {
+          return true;
+        }
+
+        if (document.querySelector(`[data-cy=grid-custom-renderer]`)) {
           return true;
         }
 
@@ -218,7 +245,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         );
       },
       {},
-      { timeout: Duration.Seconds(10) }
+      { timeout: Duration.Seconds(10) },
     );
   }
 }

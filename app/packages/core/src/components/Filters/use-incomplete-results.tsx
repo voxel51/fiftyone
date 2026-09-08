@@ -6,7 +6,6 @@ import {
   queryPerformanceMaxSearch,
 } from "@fiftyone/state";
 import { Launch } from "@mui/icons-material";
-import React from "react";
 import { useRecoilValue } from "recoil";
 import { QUERY_PERFORMANCE_RESULTS } from "../../utils/links";
 

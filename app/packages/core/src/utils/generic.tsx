@@ -16,7 +16,7 @@ export const ExternalLink = ({ href, ...props }) => {
 };
 
 export const prettify = (
-  v: boolean | string | null | undefined | number | number[]
+  v: boolean | string | null | undefined | number | number[],
 ): React.ReactNode => {
   const result = pretty(v);
 
@@ -97,7 +97,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
   return (
     timeZone: string,
     d1: number,
-    d2: number
+    d2: number,
   ): { common: Intl.DateTimeFormat | null; diff: Intl.DateTimeFormat } => {
     timeZone = resolveTimeZone(timeZone);
 
@@ -156,5 +156,5 @@ const resolveTimeZone = (tz: string) =>
   tz === "local"
     ? Intl.DateTimeFormat().resolvedOptions().timeZone
     : !tz
-    ? "UTC"
-    : tz;
+      ? "UTC"
+      : tz;

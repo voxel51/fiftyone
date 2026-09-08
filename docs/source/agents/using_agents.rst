@@ -6,6 +6,11 @@ Using Agents
 
 .. default-role:: code
 
+.. meta::
+    :description: How to connect AI assistants to FiftyOne using the MCP
+        server and FiftyOne Skills, with setup instructions for every
+        major AI tool.
+
 .. _using-agents-overview:
 
 What Are Skills and MCP?
@@ -135,6 +140,25 @@ Step 2: Configure Your AI Tool
 
       Or use the one-click install:
       `Install FiftyOne MCP in VS Code <https://insiders.vscode.dev/redirect/mcp/install?name=fiftyone&config=%7B%22command%22%3A%22fiftyone-mcp%22%7D>`_
+
+   .. tab:: GitHub Copilot
+
+      Add to ``.vscode/mcp.json`` in your workspace (create if it doesn't
+      exist):
+
+      .. code-block:: json
+
+          {
+            "servers": {
+              "fiftyone": {
+                "type": "stdio",
+                "command": "fiftyone-mcp"
+              }
+            }
+          }
+
+      Enable **Agent mode** in Copilot Chat. MCP tools appear automatically
+      once the server is configured.
 
    .. tab:: Gemini CLI
 
@@ -313,5 +337,9 @@ _________
      - MCP specification
    * - `PyPI Package <https://pypi.org/project/fiftyone-mcp-server/>`_
      - MCP server on PyPI
+   * - `MCP Discovery Manifest </.well-known/mcp.json>`_
+     - Machine-readable FiftyOne MCP server manifest
+   * - `Skills Manifest </.well-known/skills.json>`_
+     - Pointer to the FiftyOne skills marketplace manifest
    * - `Discord Community <https://discord.gg/fiftyone-community>`_
      - Get help and share ideas

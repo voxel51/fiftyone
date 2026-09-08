@@ -1,7 +1,12 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import {
+  FRAMES_PREFIX,
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import { expandPath, field } from "@fiftyone/state";
+import type { LabelData } from "@fiftyone/utilities";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilCallback } from "recoil";
@@ -10,27 +15,31 @@ import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import type { AttributeConfig } from "../SchemaManager/utils";
 import type { ComponentType, FieldType } from "../useSchemaManager";
 import {
+  applyConditionalOwnerChange,
   evaluateWhen,
   isWhenFulfillable,
-  resolveVisibleAttribute,
 } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
+import type { TrackEditSplit } from "./trackFanOut";
 import {
-  currentData,
-  currentField,
-  currentOverlay,
-  currentSchema,
-} from "./state";
+  buildForwardFill,
+  buildTrackFanOut,
+  splitTrackEdit,
+} from "./trackFanOut";
+import { useAnnotationContext } from "./useAnnotationContext";
+import { current } from "./useAnnotationContext/selectors";
+import { useLivePreview } from "./useLivePreview";
 
 const useSchema = (readOnly: boolean) => {
-  const config = useAtomValue(currentSchema);
-  const data = useAtomValue(currentData);
+  const { selected } = useAnnotationContext();
+  const config = selected?.schema ?? null;
+  const data = selected?.data;
   const isLabelReadOnly = config?.read_only;
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   const allAttributes = useMemo(
     () => (Array.isArray(config?.attributes) ? config.attributes : []),
-    [config]
+    [config],
   );
 
   const visibleAttributes = useMemo(() => {
@@ -48,16 +57,29 @@ const useSchema = (readOnly: boolean) => {
     }, new Map<string, AttributeConfig>());
   }, [allAttributes, data]);
 
-  // Stable string key — only changes when the visible attribute set changes
-  const visibleKey = [...visibleAttributes.keys()].join("\0");
+  // Key on the winning entry's index, not its name: same-name variants must
+  // bust the schema memo when the active one swaps (Toyota model -> Honda).
+  const visibleKey = [...visibleAttributes.values()]
+    .map((attr) => allAttributes.indexOf(attr))
+    .join("\0");
 
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
+    const taxonomy = config?.applied_taxonomy as string | undefined;
+    // An empty class list would emit a 0-item JSON-Schema enum, which RJSF
+    // rejects. Fall back to a free-form text input until the dataset has a
+    // configured class list; taxonomy-backed fields always use a dropdown.
+    const hasClasses = (config?.classes?.length ?? 0) > 0;
     const properties: Record<string, SchemaType | undefined> = {
       label: generatePrimitiveSchema("label", {
         type: "str",
-        component: config?.component || "dropdown",
-        values: config?.classes || [],
+        component: taxonomy
+          ? "dropdown"
+          : hasClasses
+            ? (config?.component as ComponentType) || "dropdown"
+            : undefined,
+        values: taxonomy ? [] : config?.classes || [],
+        taxonomy,
         readOnly: effectiveReadOnly,
       }),
     };
@@ -68,6 +90,7 @@ const useSchema = (readOnly: boolean) => {
         type: attr.type as FieldType,
         component: attr.component as ComponentType | undefined,
         values: attr.values as string[] | number[] | undefined,
+        taxonomy: attr.taxonomy,
         readOnly: effectiveReadOnly || attr.read_only,
       });
     }
@@ -107,38 +130,51 @@ const useParseFieldValue = () => {
 
         return data;
       },
-    []
+    [],
   );
 };
 
 /**
  * Handles form changes: parses field types, clears values for attributes
- * whose visible entry changed, and dispatches the update event.
+ * whose visible entry changed, and commits the edit to the engine — the
+ * read-half reconciles the overlay and the list row; no events. The edit is
+ * one engine transaction, so the engine bridge pushes a single value-based
+ * undo entry — Ctrl-Z ordering with geometry edits is preserved.
  *
  * Volatile atoms (config, data, overlay, field) are read via refs so that
  * the returned callback keeps a stable identity across data changes.
  */
 const useHandleSchemaChange = (readOnly: boolean) => {
-  const config = useAtomValue(currentSchema);
-  const [data] = useAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
-  const eventBus = useAnnotationEventBus();
+  const { selected } = useAnnotationContext();
+  const config = selected?.schema ?? null;
+  const data = selected?.data;
+  const overlay = selected?.overlay;
+  const field = selected?.field ?? null;
+  const editingRef = selected?.ref ?? null;
+  const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
   const parseFieldValue = useParseFieldValue();
-  const field = useAtomValue(currentField);
+  const [currentLabel, setCurrentLabel] = useAtom(current);
 
   const configRef = useRef(config);
   const dataRef = useRef(data);
   const overlayRef = useRef(overlay);
   const fieldRef = useRef(field);
+  const editingRefRef = useRef(editingRef);
+  const currentLabelRef = useRef(currentLabel);
+  const sampleRef = useRef(sample);
   configRef.current = config;
   dataRef.current = data;
   overlayRef.current = overlay;
   fieldRef.current = field;
+  editingRefRef.current = editingRef;
+  currentLabelRef.current = currentLabel;
+  sampleRef.current = sample;
 
   return useCallback(
     async (changes: Record<string, unknown>) => {
       const config = configRef.current;
-      const data = dataRef.current;
+      const data = dataRef.current as Record<string, unknown> | undefined;
       const overlay = overlayRef.current;
       const field = fieldRef.current;
 
@@ -149,53 +185,147 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           Object.entries(changes).map(async ([key, value]) => [
             key,
             await parseFieldValue(field, key, value),
-          ])
-        )
+          ]),
+        ),
       );
 
-      const value = { ...data, ...result };
+      // address the engine in its own namespace: the anchor ref carries the
+      // track `instanceId` and the present `frame` for a video frame label. The
+      // field is already the full path (`frames.<field>` for a frame field) — a
+      // mid-edit field move tracks through it — so name the ref by it directly.
+      // Derive the frame-field flag from `field`, NOT the anchor: a freshly-drawn
+      // label is still a draft, so `editingRef` is null (the anchor binds only
+      // committed labels) yet `field` is correctly `frames.<field>`.
+      const editingRef = editingRefRef.current;
+      const isFrameField = field.startsWith(FRAMES_PREFIX);
+      const instanceId =
+        editingRef?.instanceId ?? (data as { _id?: string })?._id ?? overlay.id;
+      // A frame-field draft has no anchor frame; resolve the playhead occurrence
+      // from the engine's present set (the draft was just drawn at the playhead,
+      // so it is present). Without a frame, `frameStore.writeFrame` silently
+      // drops the edit — no delta, no autosave, no overlay update.
+      const frame =
+        editingRef?.frame ??
+        (isFrameField
+          ? engine.temporal
+              .getPresent()
+              .find((r) => r.path === field && r.instanceId === instanceId)
+              ?.frame
+          : undefined);
+      const ref = {
+        sample: sampleRef.current,
+        path: field,
+        instanceId,
+        frame,
+      };
+
+      // Merge onto ENGINE truth — the committed label can be fresher than
+      // both the form's `data` snapshot and the overlay's label (a 3D draft's
+      // overlay stub is frozen at creation, but its geometry edits commit to
+      // the engine immediately). Pre-commit drafts have no engine entry yet
+      // and fall back to the overlay label. Discard fields owned elsewhere.
+      const engineBase = engine.getLabel(ref) as
+        | Record<string, unknown>
+        | undefined;
+      const { support: _formSupport, ...formResult } = result as Record<
+        string,
+        unknown
+      >;
+      const value = {
+        ...(engineBase ?? (overlay.label as Record<string, unknown>)),
+        ...formResult,
+      };
 
       const allAttributes = Array.isArray(config?.attributes)
         ? config.attributes
         : [];
 
       const uniqueConditionalNames = new Set(
-        allAttributes.filter((a) => a.when).map((a) => a.name)
+        allAttributes.filter((a) => a.when).map((a) => a.name),
       );
 
-      // Iterate over the unique conditional attribute names, obtain the current and
-      // previous owner of the data attribute value, and conditionally delete the
-      // value if the owner has changed or the attribute has become hidden entirely.
+      // Iterate over the unique conditional attribute names and apply
+      // owner-change rules (clear stale value or seed a new default).
       for (const name of uniqueConditionalNames) {
         if (!name) continue;
-
-        const prevOwner = resolveVisibleAttribute(
-          name,
-          allAttributes,
-          (data ?? {}) as Record<string, unknown>
-        );
-        const currentOwner = resolveVisibleAttribute(
-          name,
-          allAttributes,
-          value
-        );
-
-        if (!currentOwner || prevOwner !== currentOwner) {
-          // null, not `delete`: the auto-save delta must carry an explicit
-          // unset, otherwise the existing-detection merge resurrects the value.
-          value[name] = null;
-        }
+        applyConditionalOwnerChange(name, allAttributes, data ?? {}, value);
       }
 
-      if (isEqual(value, overlay.label)) return;
+      // Guard on the form-managed slice only: `value` merges engine truth,
+      // whose geometry drifts from the form's `data` snapshot as gestures
+      // commit — a full-object compare would turn an unchanged blur into a
+      // no-op undoable transaction.
+      const editedKeys = new Set([
+        ...Object.keys(formResult),
+        ...uniqueConditionalNames,
+      ]);
+      const snapshot = (data ?? {}) as Record<string, unknown>;
+      const changed = [...editedKeys].some(
+        (key) => key && !isEqual(value[key], snapshot[key]),
+      );
+      if (!changed) return;
 
-      eventBus.dispatch("annotation:sidebarValueUpdated", {
-        overlayId: overlay.id,
-        currentLabel: overlay.label as any,
-        value,
+      // `value` is already pure label data: every surface keeps view state
+      // outside the document (3D working entries nest it under `ui`), so
+      // schema attributes may use any name — including "type" and "color".
+      const persistableValue = value as Record<string, unknown>;
+
+      // A video frame label belongs to a track. A static track-level edit
+      // (label, index, non-dynamic attributes) applies to EVERY frame the
+      // instance appears on; a schema-declared dynamic attribute carries
+      // per-frame meaning, so it forward-fills from this frame to the track's
+      // next change. Geometry stays on this frame; image / sample-level labels
+      // have no sibling frames, so both are empty for them.
+      const dynamicKeys = new Set(
+        allAttributes
+          .filter((attr) => attr.dynamic && attr.name)
+          .map((attr) => attr.name as string),
+      );
+
+      const { trackPartial, dynamicPartial }: TrackEditSplit =
+        isFrameField && ref.frame != null
+          ? splitTrackEdit(persistableValue, dynamicKeys)
+          : { trackPartial: {}, dynamicPartial: {} };
+
+      // the anchor frame's pre-edit value — `updateLabel` has not run yet, so the
+      // engine still holds the old label; forward-fill boundaries read against it
+      const previous =
+        (engineBase as LabelData | undefined) ?? (data as LabelData);
+
+      const trackWrites = [
+        ...buildTrackFanOut(engine, ref, trackPartial),
+        ...buildForwardFill(
+          engine,
+          ref,
+          dynamicPartial,
+          previous as Record<string, unknown>,
+        ),
+      ];
+
+      // One engine transaction is one undo unit: the engine captures
+      // before-values and the engine bridge pushes the single value-based entry.
+      // The form must NOT push its own undoable (no createPushAndExec) — that
+      // would double-count the edit on the shared command stack.
+      engine.transaction(() => {
+        engine.updateLabel(ref, persistableValue as Partial<LabelData>);
+        for (const write of trackWrites) {
+          engine.updateLabel(write.ref, write.forward as Partial<LabelData>);
+        }
       });
+
+      // the anchor binding rewrites `editing` only for committed labels —
+      // a DRAFT's slot is surface-owned, so the form keeps it in sync
+      // itself (last-used-class tracking and exit policy read it)
+      const live = currentLabelRef.current;
+
+      if (live?.isNew) {
+        setCurrentLabel({
+          ...live,
+          data: value as typeof live.data,
+        } as NonNullable<typeof live>);
+      }
     },
-    [eventBus, parseFieldValue, readOnly]
+    [engine, parseFieldValue, readOnly, setCurrentLabel],
   );
 };
 
@@ -205,10 +335,12 @@ export interface AnnotationSchemaProps {
 
 const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const schema = useSchema(readOnly);
-  const [data] = useAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
-  const field = useAtomValue(currentField);
+  const { selected } = useAnnotationContext();
+  const data = selected?.data;
+  const overlay = selected?.overlay;
+  const field = selected?.field ?? null;
   const onChange = useHandleSchemaChange(readOnly);
+  const onLivePreview = useLivePreview(readOnly);
 
   if (!field) throw new Error("no field");
   if (!overlay) throw new Error("no overlay");
@@ -219,7 +351,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
       Object.entries(data || {}).map(([key, value]) => [
         key,
         Array.isArray(value) ? value.join(", ") : value,
-      ])
+      ]),
     );
   }, [data, readOnly]);
 
@@ -228,7 +360,10 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
       <SchemaIOComponent
         key={overlay.id}
         smartForm={true}
-        smartFormProps={{ liveValidate: "onChange" }}
+        smartFormProps={{
+          liveValidate: "onChange",
+          formContext: { onLivePreview },
+        }}
         schema={schema}
         data={displayData}
         onChange={onChange}

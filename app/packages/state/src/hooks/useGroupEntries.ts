@@ -10,12 +10,12 @@ export const useRenameGroup = (mutable: boolean, group: string) => {
         newName = newName.toLowerCase();
 
         const current = await snapshot.getPromise(
-          fos.sidebarGroupsDefinition(false)
+          fos.sidebarGroupsDefinition(false),
         );
         if (
           !fos.validateGroupName(
             current.map(({ name }) => name).filter((name) => name !== group),
-            newName
+            newName,
           )
         ) {
           return false;
@@ -28,12 +28,12 @@ export const useRenameGroup = (mutable: boolean, group: string) => {
 
         const view = await snapshot.getPromise(fos.view);
         const shown = await snapshot.getPromise(
-          fos.groupShown({ modal: false, group, loading: true })
+          fos.groupShown({ modal: false, group, loading: true }),
         );
 
         set(
           fos.groupShown({ group: newName, modal: false, loading: true }),
-          shown
+          shown,
         );
         set(fos.sidebarGroupsDefinition(false), newGroups);
 
@@ -45,7 +45,7 @@ export const useRenameGroup = (mutable: boolean, group: string) => {
         });
         return true;
       },
-    [group]
+    [group],
   );
 
   if (mutable) {
@@ -61,14 +61,14 @@ export const useDeleteGroup = (mutable: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const groups = await snapshot.getPromise(
-          fos.sidebarGroups({ modal: false, loading: true })
+          fos.sidebarGroups({ modal: false, loading: true }),
         );
         set(
           fos.sidebarGroups({ modal: false, loading: true }),
-          groups.filter(({ name }) => name !== group)
+          groups.filter(({ name }) => name !== group),
         );
       },
-    []
+    [],
   );
 
   if (numFields || !mutable) {
@@ -83,16 +83,16 @@ export const useClearActive = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const paths = await snapshot.getPromise(
-          fos.sidebarGroup({ modal, group, loading: true })
+          fos.sidebarGroup({ modal, group, loading: true }),
         );
         const active = await snapshot.getPromise(fos.activeFields({ modal }));
 
         set(
           fos.activeFields({ modal }),
-          active.filter((p) => !paths.includes(p))
+          active.filter((p) => !paths.includes(p)),
         );
       },
-    [modal, group]
+    [modal, group],
   );
 };
 
@@ -101,18 +101,18 @@ export const useClearFiltered = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const paths = await snapshot.getPromise(
-          fos.sidebarGroup({ modal, group, loading: true })
+          fos.sidebarGroup({ modal, group, loading: true }),
         );
         const filters = await snapshot.getPromise(
-          modal ? fos.modalFilters : fos.filters
+          modal ? fos.modalFilters : fos.filters,
         );
 
         set(
           modal ? fos.modalFilters : fos.filters,
-          removeKeys(filters, paths, true)
+          removeKeys(filters, paths, true),
         );
       },
-    [modal, group]
+    [modal, group],
   );
 };
 
@@ -121,17 +121,17 @@ export const useClearVisibility = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const paths = await snapshot.getPromise(
-          fos.sidebarGroup({ modal, group, loading: true })
+          fos.sidebarGroup({ modal, group, loading: true }),
         );
         const visibility = await snapshot.getPromise(
-          modal ? fos.modalAttributeVisibility : fos.attributeVisibility
+          modal ? fos.modalAttributeVisibility : fos.attributeVisibility,
         );
 
         set(
           modal ? fos.modalAttributeVisibility : fos.attributeVisibility,
-          removeKeys(visibility, paths, true)
+          removeKeys(visibility, paths, true),
         );
       },
-    [modal, group]
+    [modal, group],
   );
 };

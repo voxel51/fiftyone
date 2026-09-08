@@ -144,6 +144,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MODEL_ZOO_MANIFEST_PATHS",
             default=None,
         )
+        self.model_zoo_manifest_cache_enabled = self.parse_bool(
+            d,
+            "model_zoo_manifest_cache_enabled",
+            env_var="FIFTYONE_MODEL_ZOO_MANIFEST_CACHE_ENABLED",
+            default=False,
+        )
         self.default_dataset_dir = self.parse_path(
             d,
             "default_dataset_dir",
@@ -221,6 +227,12 @@ class FiftyOneConfig(EnvConfig):
             "default_app_address",
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
             default="localhost",
+        )
+        self.allowed_origins = self.parse_string(
+            d,
+            "allowed_origins",
+            env_var="FIFTYONE_ALLOWED_ORIGINS",
+            default=None,
         )
         self.logging_destination = self.parse_string(
             d,
@@ -491,6 +503,19 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_LABEL",
             default=True,
         )
+        for key, env_var in (
+            ("show_confidence", "FIFTYONE_APP_SHOW_CONFIDENCE"),
+            ("show_index", "FIFTYONE_APP_SHOW_INDEX"),
+            ("show_label", "FIFTYONE_APP_SHOW_LABEL"),
+        ):
+            if key in d or env_var in os.environ:
+                logger.warning(
+                    "The `%s` App config option has been removed and no "
+                    "longer has any effect. Label attribute visibility is "
+                    "controlled per attribute in the App's sidebar",
+                    key,
+                )
+
         self.show_skeletons = self.parse_bool(
             d,
             "show_skeletons",

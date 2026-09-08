@@ -18,7 +18,7 @@ export default class SpaceNode {
     parent?: SpaceNode,
     type?: SpaceNodeType,
     activeChild?: string,
-    layout?: Layout
+    layout?: Layout,
   ) {
     this.id = id || uuid();
     this.children = children || [];
@@ -66,7 +66,7 @@ export default class SpaceNode {
   remove() {
     if (this.parent) {
       this.parent.children = this.parent.children.filter(
-        (child) => child.id !== this.id
+        (child) => child.id !== this.id,
       );
     } else {
       throw new Error("Cannot remove root node");

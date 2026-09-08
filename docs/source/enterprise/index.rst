@@ -3,6 +3,10 @@
 FiftyOne Enterprise
 ===================
 
+.. meta::
+    :description: FiftyOne Enterprise adds multiuser collaboration, cloud
+        data support, on-demand compute, and more to open-source FiftyOne.
+
 .. Social links ---------------------------------------------------------------
 
 .. raw:: html
@@ -105,6 +109,12 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: verified_auto_labeling.html
 
 .. customcalloutitem::
+    :header: Agentic Labeling __SUB_NEW__
+    :description: Label images with a prompt-driven vision-language model — classify, detect, caption, or label regions for review.
+    :button_text: Label with natural language
+    :button_link: agentic_labeling.html
+
+.. customcalloutitem::
     :header: Data Lens
     :description: Use FiftyOne Enterprise to explore and import samples from external data sources.
     :button_text: Connect your data lake
@@ -133,6 +143,12 @@ pages on this site apply to Enterprise deployments as well.
     :description: Use the AI-powered FiftyOne Agent to work with your data using natural language.
     :button_text: Get started with the Agent
     :button_link: agent.html
+
+.. customcalloutitem::
+    :header: Annotation Workflows  __SUB_NEW__
+    :description: Define annotation and review workflows, run them over a dataset, and track per-sample task progress.
+    :button_text: Build your first workflow
+    :button_link: workflows.html
 
 .. customcalloutitem::
     :header: Plugins
@@ -179,19 +195,10 @@ pages on this site apply to Enterprise deployments as well.
 
     Overview <overview>
     Installation <installation>
-    Getting Started <getting_started>
     API connection <api_connection>
-    Cloud-backed media <cloud_media>
-    Roles and permissions <roles_and_permissions>
-    Dataset Versioning <dataset_versioning>
     App <app>
-    Auto-Labeling <verified_auto_labeling>
-    Data Lens <data_lens>
-    Data Quality <data_quality>
-    Query Performance <query_performance>
-    FiftyOne Agent __SUB_NEW__ <agent>
-    Plugins <plugins>
     Secrets <secrets>
     Management SDK <management_sdk>
     Migrations <migrations>
     Pluggable Auth <pluggable_auth>
+
