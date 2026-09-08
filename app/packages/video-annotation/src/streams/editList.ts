@@ -17,21 +17,15 @@ export interface EditListEntry {
   media_time: number;
 }
 
-/** Media time where presentation begins: the first non-empty edit's `media_time`, else 0. */
+/**
+ * Media time where presentation begins: the first non-empty edit's
+ * `media_time`. `undefined` without an edit list — no boundary, so every
+ * sample is presented, including ones with negative `cts`.
+ */
 export function presentationStart(
   edits: readonly EditListEntry[] | undefined,
-): number {
-  if (!edits) {
-    return 0;
-  }
-
-  for (const edit of edits) {
-    if (edit.media_time >= 0) {
-      return edit.media_time;
-    }
-  }
-
-  return 0;
+): number | undefined {
+  return edits?.find((edit) => edit.media_time >= 0)?.media_time;
 }
 
 /** Sample composition time, in track timescale units. */
@@ -39,10 +33,12 @@ export interface TimedSample {
   cts: number;
 }
 
-/** Samples at or after `start`, in presentation order. Frame `n` is element `n - 1`. */
+/** Samples at or after `start` (all, if none), in presentation order. Frame `n` is element `n - 1`. */
 export function presentedInOrder<T extends TimedSample>(
   samples: readonly T[],
-  start: number,
+  start: number | undefined,
 ): T[] {
-  return samples.filter((s) => s.cts >= start).sort((a, b) => a.cts - b.cts);
+  const presented =
+    start === undefined ? [...samples] : samples.filter((s) => s.cts >= start);
+  return presented.sort((a, b) => a.cts - b.cts);
 }

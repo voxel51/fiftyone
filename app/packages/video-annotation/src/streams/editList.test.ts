@@ -6,9 +6,9 @@ import { describe, expect, it } from "vitest";
 import { presentationStart, presentedInOrder } from "./editList";
 
 describe("presentationStart", () => {
-  it("is 0 without an edit list", () => {
-    expect(presentationStart(undefined)).toBe(0);
-    expect(presentationStart([])).toBe(0);
+  it("is undefined without an edit list", () => {
+    expect(presentationStart(undefined)).toBeUndefined();
+    expect(presentationStart([])).toBeUndefined();
   });
 
   it("is the media_time of the first edit", () => {
@@ -26,10 +26,10 @@ describe("presentationStart", () => {
     ).toBe(96000);
   });
 
-  it("is 0 when every edit is empty", () => {
-    expect(presentationStart([{ segment_duration: 500, media_time: -1 }])).toBe(
-      0,
-    );
+  it("is undefined when every edit is empty", () => {
+    expect(
+      presentationStart([{ segment_duration: 500, media_time: -1 }]),
+    ).toBeUndefined();
   });
 });
 
@@ -39,7 +39,25 @@ describe("presentedInOrder", () => {
   const samples = [0, 1, 2, 3].map((i) => ({ cts: i * FRAME, id: i }));
 
   it("numbers every sample when there is no edit list", () => {
-    expect(presentedInOrder(samples, 0).map((s) => s.id)).toEqual([0, 1, 2, 3]);
+    expect(presentedInOrder(samples, undefined).map((s) => s.id)).toEqual([
+      0, 1, 2, 3,
+    ]);
+  });
+
+  it("keeps negative-cts samples when there is no edit list", () => {
+    // Signed composition offsets without an edit list: no boundary applies.
+    const signed = [
+      { cts: 0, id: "I" },
+      { cts: 2 * FRAME, id: "P" },
+      { cts: -FRAME, id: "B" },
+    ];
+    expect(presentedInOrder(signed, undefined).map((s) => s.id)).toEqual([
+      "B",
+      "I",
+      "P",
+    ]);
+    // An explicit boundary at 0 still drops them.
+    expect(presentedInOrder(signed, 0).map((s) => s.id)).toEqual(["I", "P"]);
   });
 
   it("drops samples before the presentation start as pre-roll", () => {
