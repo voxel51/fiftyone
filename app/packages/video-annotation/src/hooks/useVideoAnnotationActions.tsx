@@ -7,10 +7,10 @@ import { usePlayhead } from "@fiftyone/playback";
 import { resolveFrameCount } from "../utils/frameCount";
 import {
   labelSchemaData,
+  useModalSampleFrameRate,
   useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 import {
   useSelectedTemporalDetectionField,
   useSelectedTrackIds,
@@ -94,7 +94,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
 
     return active[0] ?? null;
   }, [tdFieldPaths, visible, selectedTdField]);
-  const fps = getModalSampleFrameRate(modalSample);
+  const fps = useModalSampleFrameRate(modalSample);
   const hasUsableFps = Number.isFinite(fps) && fps !== undefined && fps > 0;
   const canCreateTd = !!tdFieldPath && hasUsableFps;
 
