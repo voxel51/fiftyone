@@ -8,7 +8,7 @@ const state = {
   fieldActive: false,
 };
 
-const useSampleRendererTemporalTags = vi.fn();
+const useSampleTemporalTagsFromDataset = vi.fn();
 
 vi.mock("@fiftyone/state", () => ({
   useActiveTemporalTagFilterValues: () => state.activeValues,
@@ -17,8 +17,8 @@ vi.mock("@fiftyone/state", () => ({
 }));
 
 vi.mock("../temporal-tags", () => ({
-  useSampleRendererTemporalTags: (ctx: unknown) =>
-    useSampleRendererTemporalTags(ctx),
+  useSampleTemporalTagsFromDataset: (datasetId: unknown, sampleId: unknown) =>
+    useSampleTemporalTagsFromDataset(datasetId, sampleId),
 }));
 
 const { temporalTagIntervalSource } =
@@ -57,8 +57,8 @@ function contribute(): EpisodeIntervalContribution {
 beforeEach(() => {
   state.activeValues = [];
   state.fieldActive = false;
-  useSampleRendererTemporalTags.mockReset();
-  useSampleRendererTemporalTags.mockReturnValue({ temporalTags: [] });
+  useSampleTemporalTagsFromDataset.mockReset();
+  useSampleTemporalTagsFromDataset.mockReturnValue([]);
 });
 
 describe("temporalTagIntervalSource", () => {
@@ -73,14 +73,15 @@ describe("temporalTagIntervalSource", () => {
     const contribution = contribute();
 
     expect(contribution.intervals).toEqual([]);
-    expect(useSampleRendererTemporalTags).not.toHaveBeenCalled();
+    expect(useSampleTemporalTagsFromDataset).not.toHaveBeenCalled();
   });
 
   it("contributes every tag when the field is enabled", () => {
     state.fieldActive = true;
-    useSampleRendererTemporalTags.mockReturnValue({
-      temporalTags: [tag("a", 0, 1), tag("b", 2, 3)],
-    });
+    useSampleTemporalTagsFromDataset.mockReturnValue([
+      tag("a", 0, 1),
+      tag("b", 2, 3),
+    ]);
 
     const contribution = contribute();
 
@@ -92,9 +93,10 @@ describe("temporalTagIntervalSource", () => {
 
   it("narrows to the filtered values when only a filter is active", () => {
     state.activeValues = ["a"];
-    useSampleRendererTemporalTags.mockReturnValue({
-      temporalTags: [tag("a", 0, 1), tag("b", 2, 3)],
-    });
+    useSampleTemporalTagsFromDataset.mockReturnValue([
+      tag("a", 0, 1),
+      tag("b", 2, 3),
+    ]);
 
     const contribution = contribute();
 
@@ -103,9 +105,7 @@ describe("temporalTagIntervalSource", () => {
 
   it("carries the tag's own colour and span", () => {
     state.activeValues = ["a"];
-    useSampleRendererTemporalTags.mockReturnValue({
-      temporalTags: [tag("a", 1, 2)],
-    });
+    useSampleTemporalTagsFromDataset.mockReturnValue([tag("a", 1, 2)]);
 
     expect(contribute().intervals[0]).toMatchObject({
       sourceId: temporalTagIntervalSource.id,
@@ -118,9 +118,10 @@ describe("temporalTagIntervalSource", () => {
 
   it("groups repeated occurrences of one tag as separate intervals", () => {
     state.activeValues = ["a"];
-    useSampleRendererTemporalTags.mockReturnValue({
-      temporalTags: [tag("a", 0, 1), tag("a", 5, 6)],
-    });
+    useSampleTemporalTagsFromDataset.mockReturnValue([
+      tag("a", 0, 1),
+      tag("a", 5, 6),
+    ]);
 
     expect(contribute().intervals).toHaveLength(2);
   });
@@ -129,18 +130,17 @@ describe("temporalTagIntervalSource", () => {
     // Enabling the pseudo-field shows the lane; it is not a request to pin
     // every tag in the modal.
     state.fieldActive = true;
-    useSampleRendererTemporalTags.mockReturnValue({
-      temporalTags: [tag("a", 0, 1), tag("b", 2, 3)],
-    });
+    useSampleTemporalTagsFromDataset.mockReturnValue([
+      tag("a", 0, 1),
+      tag("b", 2, 3),
+    ]);
 
     expect(contribute().pinnedRowKeys).toEqual([]);
   });
 
   it("pins the filtered values", () => {
     state.activeValues = ["a", "b"];
-    useSampleRendererTemporalTags.mockReturnValue({
-      temporalTags: [tag("a", 0, 1)],
-    });
+    useSampleTemporalTagsFromDataset.mockReturnValue([tag("a", 0, 1)]);
 
     expect(contribute().pinnedRowKeys).toEqual(["a", "b"]);
   });
@@ -148,9 +148,10 @@ describe("temporalTagIntervalSource", () => {
   it("reports the extent of every tag, not just the shown ones", () => {
     // Otherwise narrowing a filter would rescale the tile's time axis.
     state.activeValues = ["a"];
-    useSampleRendererTemporalTags.mockReturnValue({
-      temporalTags: [tag("a", 0, 1), tag("b", 8, 9)],
-    });
+    useSampleTemporalTagsFromDataset.mockReturnValue([
+      tag("a", 0, 1),
+      tag("b", 8, 9),
+    ]);
 
     expect(contribute().domainEndNs).toBe(9 * NS);
   });
