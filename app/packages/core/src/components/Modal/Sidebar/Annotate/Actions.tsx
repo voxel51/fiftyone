@@ -17,7 +17,7 @@ import {
 } from "@fiftyone/looker-3d/src/state/accessors";
 import {
   is3DDataset,
-  isDynamicGroup,
+  isNonNestedDynamicGroup,
   isVideoDataset,
   useIs3dPinned,
   useIsGroupDataset,
@@ -508,11 +508,13 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
   // For group datasets the 2D-vs-3D decision depends on the resolved annotation
   // slice, which isn't known until the group's sample data loads. Withhold the
   // slice-dependent tools until then so a 3D sample never flashes 2D tools.
-  // Non-group datasets resolve immediately and don't gate. A dynamic group's
-  // "group" media type is a view artifact — it has no slice picker, so waiting
-  // on one would withhold the tools forever.
+  // Non-group datasets resolve immediately and don't gate. A dynamic group
+  // over a non-group dataset reports the "group" media type as a view
+  // artifact — it has no slices to resolve, so waiting would withhold the
+  // tools forever. A dynamic group over a group dataset does have slices (a
+  // 3D one, possibly) and waits like any other group.
   const isGroupDataset = useIsGroupDataset();
-  const isDynamic = useRecoilValue(isDynamicGroup);
+  const isDynamic = useRecoilValue(isNonNestedDynamicGroup);
   const [groupAnnotationSliceReady] = useGroupAnnotationSliceReady();
   const toolsResolved =
     !isGroupDataset || isDynamic || groupAnnotationSliceReady;
