@@ -83,9 +83,8 @@ import {
 } from "../../utils/bigint";
 import { nsDeltaToSeconds } from "../../utils/nanoseconds";
 
-const INFO_ROLE = "dataset-info";
-const EPISODE_METADATA_ROLE = "episode-metadata";
 const DATA_ROLE = "tabular-frame-data";
+const INFO_ROLE = "dataset-info";
 const IMAGE_ROLE = "image-payload";
 const TASKS_ROLE = "tasks-metadata";
 const STATISTICS_ROLE = "dataset-statistics";
@@ -170,9 +169,21 @@ interface TimelineRow {
   readonly sourceTimeSeconds: number;
 }
 
-interface EpisodeRows {
-  readonly dataAsset: AssetDescriptor;
-  readonly episode: Record<string, unknown>;
+/** What the manifest says about the episode, before any row is read. */
+interface EpisodeFacts {
+  readonly dataset_from_index: number;
+  readonly episode_index: number;
+  readonly length: number;
+  readonly tasks: readonly string[];
+}
+interface EpisodeHeader {
+  /** Absent for a poster session: the grid hands a tile only its stream. */
+  readonly dataAsset: AssetDescriptor | null;
+  readonly episode: EpisodeFacts;
+  readonly rowCount: number;
+}
+/** Per-row timing, read from the data shard by whoever first needs a row. */
+interface EpisodeTimeline {
   readonly originSeconds: number;
   readonly rows: readonly TimelineRow[];
 }
@@ -233,61 +244,173 @@ export function createLeRobotFormatAdapter(
   const readObjects = options.readParquetObjects ?? parquetReadObjects;
   const stateActionSlabLimits =
     options.stateActionSlabLimits ?? DEFAULT_STATE_ACTION_SLAB_LIMITS;
+  // The episode's own summary comes with the manifest; the source's
+  // info.json is one small asset shared by every episode of the source, so it
+  // is read once through the byte cache. Only the per-row timeline is read
+  // from the data shard, and only when something needs a row - a poster comes
+  // off the video and never does.
   const open = async (
     source: EpisodeSource,
     io: ByteResources,
-    openOptions?: EpisodeOpenOptions,
+    openOptions: EpisodeOpenOptions | undefined,
+    lean: boolean,
   ) => {
     throwIfAborted(openOptions?.signal);
+    const episode = requireEpisode(source);
     const assets = await source.assets.list(openOptions);
-    const infoAsset = requireSingleRole(assets, INFO_ROLE);
-    const episodeAsset = requireSingleRole(assets, EPISODE_METADATA_ROLE);
-    const dataAsset = requireSingleRole(assets, DATA_ROLE);
-    const [info, episodeRows] = await Promise.all([
-      readInfo(source, io, infoAsset, openOptions?.signal),
-      readSelectedParquetRows(
-        source,
-        io,
-        episodeAsset,
-        readObjects,
-        undefined,
-        openOptions?.signal,
-      ),
-    ]);
-    if (episodeRows.length !== 1) {
-      throw new Error(
-        "LeRobot episode metadata selector must resolve exactly one row",
-      );
-    }
-    const episode = await readEpisodeRows(
-      source,
-      io,
+    // A poster needs only the cameras and the frame rate the sample already
+    // holds; only the full session reads the source's info.json
+    const info = lean
+      ? previewInfo(assets, requirePreviewFps(episode.fps))
+      : requireInfo(
+          await readSourceInfo(
+            requireSingleRole(assets, INFO_ROLE),
+            source,
+            io,
+            openOptions?.signal,
+          ),
+        );
+    const dataAsset = lean
+      ? (assets.find((asset) => asset.role === DATA_ROLE) ?? null)
+      : requireSingleRole(assets, DATA_ROLE);
+    const header: EpisodeHeader = {
       dataAsset,
-      episodeRows[0],
-      readObjects,
-      openOptions?.signal,
-    );
+      episode: {
+        dataset_from_index: episode.globalRows[0],
+        episode_index: episode.episodeIndex,
+        length: episode.length,
+        tasks: episode.tasks,
+      },
+      rowCount: episode.length,
+    };
+    const timeline = lean
+      ? null
+      : await readEpisodeTimeline(
+          source,
+          io,
+          header,
+          readObjects,
+          openOptions?.signal,
+        );
     throwIfAborted(openOptions?.signal);
     return new LeRobotEpisodeSession({
       assets,
-      episodeRows: episode,
+      header,
       info,
       io,
+      lean,
       readObjects,
       source,
       stateActionSlabLimits,
+      timeline,
     });
   };
 
   return {
     id: "lerobot-v3",
-    open,
+    open: (source, io, openOptions) => open(source, io, openOptions, false),
     async openPreview(source, io, openOptions) {
       return new LeRobotEpisodePreviewSession(
-        await open(source, io, openOptions),
+        await open(source, io, { ...openOptions, preview: true }, true),
       );
     },
   };
+}
+
+/** The episode index a LeRobot reference key names: `<source id>/<index>`. */
+function episodeOf(key: string): number {
+  return Number(key.slice(key.lastIndexOf("/") + 1));
+}
+
+/**
+ * Where one episode sits in its source and how long it is, read straight off
+ * the sample's stored reference.
+ */
+interface ReferenceEpisode {
+  readonly episodeIndex: number;
+  readonly fps?: number;
+  readonly globalRows: readonly [number, number];
+  readonly length: number;
+  readonly tasks: readonly string[];
+}
+
+function requireEpisode(source: EpisodeSource): ReferenceEpisode {
+  const { fps, reference } = source as {
+    fps?: number;
+    reference?: {
+      data?: readonly number[];
+      key: string;
+      tasks?: readonly string[];
+    };
+  };
+  if (!reference) {
+    throw new Error("LeRobot episodes open from a reference-backed source");
+  }
+
+  const [start, end] = reference.data?.slice(2).map(Number) ?? [0, 0];
+  return {
+    episodeIndex: episodeOf(reference.key),
+    ...(fps !== undefined ? { fps } : {}),
+    globalRows: [start, end],
+    length: end - start,
+    tasks: reference.tasks ?? [],
+  };
+}
+
+/** The declaration a poster session needs, from the manifest's cameras. */
+/** The frame rate a poster is timed against, or a clear failure. */
+function requirePreviewFps(fps: number | undefined): number {
+  if (fps === undefined || !Number.isFinite(fps) || fps <= 0) {
+    throw new Error("LeRobot poster open requires a positive source fps");
+  }
+
+  return fps;
+}
+
+function previewInfo(
+  assets: readonly AssetDescriptor[],
+  fps: number,
+): LeRobotInfo {
+  const features: Record<string, LeRobotFeature> = {};
+  for (const asset of assets) {
+    if (asset.role === VIDEO_ROLE && asset.featureName) {
+      features[asset.featureName] = { dtype: "video" };
+    }
+  }
+  return { codebase_version: "v3.0", features, fps };
+}
+
+async function readSourceInfo(
+  asset: AssetDescriptor,
+  source: EpisodeSource,
+  io: ByteResources,
+  signal?: AbortSignal,
+): Promise<Readonly<Record<string, unknown>>> {
+  const bytes = await readWholeAsset(asset, source, io, signal);
+  const value: unknown = JSON.parse(new TextDecoder().decode(bytes));
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Invalid LeRobot meta/info.json");
+  }
+  return value as Readonly<Record<string, unknown>>;
+}
+
+function requireInfo(value: Readonly<Record<string, unknown>>): LeRobotInfo {
+  const info = value as unknown as LeRobotInfo;
+  if (!info.features || !Number.isFinite(info.fps) || info.fps <= 0) {
+    throw new Error("Invalid LeRobot meta/info.json");
+  }
+  const version = info.codebase_version?.trim();
+  const match = version?.match(
+    /^v?(\d+)(?:\.\d+){0,2}(?:[-+][0-9A-Za-z.-]+)?$/i,
+  );
+  if (!match || Number(match[1]) !== 3) {
+    throw new Error(
+      `This viewer supports LeRobotDataset format v3.x; the source declares '${
+        version ?? "missing"
+      }'`,
+    );
+  }
+  return info;
 }
 
 class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
@@ -310,6 +433,8 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
     const previewStreams = this.session.manifest.streams
       .filter(isPreviewableCameraStream)
       .sort(comparePreviewStreams);
+    // A selected stream is a filter: a source without it previews nothing.
+    // Only Auto takes each source's first stream
     const selected = request.sourceName
       ? previewStreams.find(
           (stream) => stream.sourceName === request.sourceName,
@@ -336,8 +461,17 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
           request.decodeLookaheadNs + frameDurationNs,
         ])
       : frameDurationNs;
+    // A stream that declared no codec is routed by its MP4 header: H.264
+    // takes the frame decoder, whose posters are cached; the rest play
+    // natively
+    const decoderPath =
+      isGridFrameDecoderCameraStream(selected) ||
+      (selected.kind === STREAM_KIND.VIDEO &&
+        codecFamily(selected.metadata?.["lerobot.codec"] ?? "") === "unknown" &&
+        (await this.session.videoCodecFamily(selected.id, options.signal)) ===
+          "h264");
     let frames: readonly DecodedFrame[] = [];
-    if (isGridFrameDecoderCameraStream(selected)) {
+    if (decoderPath) {
       for await (const batch of this.session.read({
         priority: options.priority,
         signal: options.signal,
@@ -372,7 +506,11 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
         })
       : undefined;
     const nextStartTimeNs = decoded
-      ? decoded.timestampNs + frameDurationNs
+      ? ((await this.session.nextVideoFrameTimeNs(
+          selected.id,
+          decoded.timestampNs,
+          options.signal,
+        )) ?? decoded.timestampNs + frameDurationNs)
       : undefined;
     return {
       bootstrapManifest: this.session.manifest,
@@ -428,6 +566,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     null;
   private readonly videoIndexCache = new Map<string, Promise<VideoIndex>>();
   private readonly videoSpanCache = new Map<string, VideoSpanCacheEntry>();
+  private timelineFill: Promise<EpisodeTimeline> | null;
   private decodedFrames = 0;
   private disposed = false;
   private generation = 0;
@@ -439,19 +578,27 @@ class LeRobotEpisodeSession implements EpisodeSession {
   constructor(
     private readonly state: {
       readonly assets: readonly AssetDescriptor[];
-      readonly episodeRows: EpisodeRows;
+      readonly header: EpisodeHeader;
       readonly info: LeRobotInfo;
       readonly io: ByteResources;
+      /** A poster session: one random frame, so video reads stay exact. */
+      readonly lean: boolean;
       readonly readObjects: ParquetReader;
       readonly source: EpisodeSource;
       readonly stateActionSlabLimits: StateActionSlabLimits;
+      readonly timeline: EpisodeTimeline | null;
     },
   ) {
     this.info = state.info;
+    this.timelineFill = state.timeline ? Promise.resolve(state.timeline) : null;
     const scalarFeatures = new Map<string, LeRobotFeature>();
     const videoBindings = new Map<string, VideoBinding>();
     const imageBindings = new Map<string, ImageBinding>();
-    const timeRange = episodeTimeRange(state.episodeRows, state.assets);
+    const timeRange = episodeTimeRange(
+      state.header,
+      state.assets,
+      state.info.fps,
+    );
     const streams = Object.entries(state.info.features).flatMap(
       ([name, feature]): StreamDescriptor[] => {
         const streamId = streamIdForFeature(name);
@@ -468,9 +615,11 @@ class LeRobotEpisodeSession implements EpisodeSession {
           const binding = {
             asset,
             feature,
-            fromSeconds: selector.fromTimestamp,
+            // Parquet timestamps carry sub-nanosecond noise; unrounded, a
+            // boundary frame falls outside its own episode's window
+            fromSeconds: toNsResolution(selector.fromTimestamp),
             streamId,
-            toSeconds: selector.toTimestamp,
+            toSeconds: toNsResolution(selector.toTimestamp),
           };
           videoBindings.set(streamId, binding);
           return [
@@ -487,7 +636,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
               feature,
               timeRange,
               state.info.fps,
-              state.episodeRows.rows.length,
+              state.header.rowCount,
             ),
           ];
         }
@@ -499,7 +648,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
               feature,
               timeRange,
               state.info.fps,
-              state.episodeRows.rows.length,
+              state.header.rowCount,
             ),
           ];
         }
@@ -531,20 +680,17 @@ class LeRobotEpisodeSession implements EpisodeSession {
       episodeId: state.source.episodeId,
       metadata: {
         "lerobot.codebaseVersion": state.info.codebase_version ?? "unknown",
-        "lerobot.episodeIndex": integer(
-          state.episodeRows.episode.episode_index,
-          "episode_index",
-        ).toString(),
+        "lerobot.episodeIndex": state.header.episode.episode_index.toString(),
         "lerobot.fps": state.info.fps.toString(),
         "lerobot.robotType": state.info.robot_type ?? "unknown",
-        "lerobot.tasks": JSON.stringify(state.episodeRows.episode.tasks ?? []),
+        "lerobot.tasks": JSON.stringify(state.header.episode.tasks),
       },
       recordingFacts: leRobotRecordingFacts({
-        episode: state.episodeRows.episode,
+        episode: state.header.episode,
         fps: state.info.fps,
         streams,
         features: state.info.features,
-        rowCount: state.episodeRows.rows.length,
+        rowCount: state.header.rowCount,
         codebaseVersion: state.info.codebase_version,
         robotType: state.info.robot_type,
         timeRange,
@@ -565,6 +711,23 @@ class LeRobotEpisodeSession implements EpisodeSession {
 
   activate(): void {
     this.ensureOpen();
+  }
+
+  /** The per-row timeline, read from the data shard on first use. */
+  private timeline(signal?: AbortSignal): Promise<EpisodeTimeline> {
+    if (!this.timelineFill) {
+      const fill = readEpisodeTimeline(
+        this.state.source,
+        this.state.io,
+        this.state.header,
+        this.state.readObjects,
+      );
+      this.timelineFill = fill;
+      void fill.catch(() => {
+        if (this.timelineFill === fill) this.timelineFill = null;
+      });
+    }
+    return waitForSharedRead(this.timelineFill, signal);
   }
 
   cancelIdle(): void {
@@ -628,6 +791,14 @@ class LeRobotEpisodeSession implements EpisodeSession {
     };
   }
 
+  /** The codec family the stream's MP4 header declares. */
+  async videoCodecFamily(streamId: string, signal?: AbortSignal) {
+    const binding = this.videoBindings.get(streamId);
+    if (!binding) return "unknown" as const;
+    const index = await this.readVideoIndex(binding, signal);
+    return codecFamily(index.track.codec);
+  }
+
   async resolveNativePreviewVideo(
     streamId: string,
     signal?: AbortSignal,
@@ -651,21 +822,43 @@ class LeRobotEpisodeSession implements EpisodeSession {
     };
   }
 
+  /**
+   * The camera's next frame time after `afterNs`, from the MP4 index already
+   * read for this asset. A camera need not run at the dataset rate, so a
+   * declared rate can step between real frames.
+   */
+  async nextVideoFrameTimeNs(
+    streamId: string,
+    afterNs: bigint,
+    signal?: AbortSignal,
+  ): Promise<bigint | undefined> {
+    const binding = this.videoBindings.get(streamId);
+    if (!binding) return undefined;
+    const index = await this.readVideoIndex(binding, signal);
+    const next =
+      index.presentationSamples[
+        upperBoundPresentation(
+          index.presentationSamples,
+          binding.fromSeconds + nsToSeconds(afterNs),
+        )
+      ];
+    if (!next || next.presentationSeconds > binding.toSeconds) return undefined;
+    return secondsToNs(next.presentationSeconds - binding.fromSeconds);
+  }
+
   private async readScalarFrames(
     streamId: string,
     feature: LeRobotFeature,
     request: ReadRequest,
   ) {
     const featureName = featureNameForStream(streamId);
-    const range = rowRangeForWindow(
-      this.state.episodeRows.rows,
-      request.window,
-    );
+    const timeline = await this.timeline(request.signal);
+    const range = rowRangeForWindow(timeline.rows, request.window);
     if (!range) return [];
     const rows = await this.readRows(
       ["timestamp", "frame_index", featureName],
       request.signal,
-      this.state.episodeRows.dataAsset,
+      requireDataAsset(this.state.header),
       range,
     );
     return rows
@@ -675,7 +868,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
           featureName,
           feature,
           row,
-          this.state.episodeRows.originSeconds,
+          timeline.originSeconds,
         ),
       )
       .filter(
@@ -690,10 +883,8 @@ class LeRobotEpisodeSession implements EpisodeSession {
     request: ReadRequest,
   ) {
     const featureName = featureNameForStream(streamId);
-    const range = rowRangeForWindow(
-      this.state.episodeRows.rows,
-      request.window,
-    );
+    const timeline = await this.timeline(request.signal);
+    const range = rowRangeForWindow(timeline.rows, request.window);
     if (!range) return [];
     const rows = await this.readRows(
       ["timestamp", "frame_index", featureName],
@@ -703,12 +894,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     );
     return rows
       .map((row) =>
-        imageFrame(
-          streamId,
-          featureName,
-          row,
-          this.state.episodeRows.originSeconds,
-        ),
+        imageFrame(streamId, featureName, row, timeline.originSeconds),
       )
       .filter(
         (frame): frame is DecodedFrame =>
@@ -721,15 +907,17 @@ class LeRobotEpisodeSession implements EpisodeSession {
     binding: VideoBinding,
     request: ReadRequest,
   ) {
-    const declaredCodec = codecFamily(videoCodec(binding.feature));
-    if (declaredCodec !== "h264" && declaredCodec !== "av1") return [];
+    // The MP4 header is the codec's authority; a manifest that declares one
+    // must agree with it, and a poster session declares none
+    const declared = codecFamily(videoCodec(binding.feature));
     const index = await this.readVideoIndex(binding, request.signal);
-    const containerCodec = codecFamily(index.track.codec);
-    if (containerCodec !== declaredCodec) {
+    const declaredCodec = codecFamily(index.track.codec);
+    if (declared !== "unknown" && declared !== declaredCodec) {
       throw new Error(
         `LeRobot video codec mismatch: manifest '${videoCodec(binding.feature)}', MP4 '${index.track.codec}'`,
       );
     }
+    if (declaredCodec !== "h264" && declaredCodec !== "av1") return [];
     const samples = selectVideoSamples(index, binding, request.window);
     if (!samples.length) return [];
     const bytes = await this.readSampleSpan(
@@ -743,6 +931,9 @@ class LeRobotEpisodeSession implements EpisodeSession {
         : undefined;
     const lengthSize = (avc?.lengthSizeMinusOne ?? 3) + 1;
     const parameterSets = avcParameterSets(avc);
+    const rateHz =
+      optionalNumber(binding.feature.info?.["video.fps"]) ?? this.info.fps;
+    const boundaryToleranceNs = secondsToNs(0.5 / rateHz);
     return samples
       .map((sample) => {
         const offset = sample.offset - samples[0].offset;
@@ -751,6 +942,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
           binding,
           index,
           sample,
+          boundaryToleranceNs,
           declaredCodec === "h264"
             ? mp4SampleToAnnexB(
                 bytes.subarray(offset, offset + sample.size),
@@ -920,6 +1112,9 @@ class LeRobotEpisodeSession implements EpisodeSession {
       if (cached && cached.end >= end) return cached;
       const readStart = cached?.end ?? start;
       const result = await this.state.io.readBytes({
+        // A poster is one random GOP: widening it to a fill block buys
+        // nothing and cost 8 MiB per tile. Playback reads keep the fill.
+        ...(this.state.lean ? { cachePolicy: { blockFill: false } } : {}),
         range: {
           length: BigInt(end - readStart),
           offset: BigInt(readStart),
@@ -974,7 +1169,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
   private async readRows(
     columns: readonly string[],
     signal?: AbortSignal,
-    asset = this.state.episodeRows.dataAsset,
+    asset = requireDataAsset(this.state.header),
     range?: { readonly end: number; readonly start: number },
   ) {
     const key = `${asset.id}\n${range?.start ?? "all"}:${
@@ -1057,10 +1252,8 @@ class LeRobotEpisodeSession implements EpisodeSession {
       throw new Error(`Unknown LeRobot numeric stream '${request.stream}'`);
     }
     const featureName = featureNameForStream(request.stream);
-    const range = rowRangeForWindow(
-      this.state.episodeRows.rows,
-      request.window,
-    );
+    const timeline = await this.timeline(request.signal);
+    const range = rowRangeForWindow(timeline.rows, request.window);
     if (!range) {
       return {
         baseTimeNs: this.manifest.timeRange.startNs,
@@ -1077,7 +1270,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     const rows = await this.readRows(
       ["timestamp", "frame_index", featureName],
       request.signal,
-      this.state.episodeRows.dataAsset,
+      requireDataAsset(this.state.header),
       range,
     );
     const frames = rows
@@ -1087,7 +1280,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
           featureName,
           feature,
           row,
-          this.state.episodeRows.originSeconds,
+          timeline.originSeconds,
         ),
       )
       .filter(
@@ -1124,7 +1317,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
   }
 
   private createRawRecordCapability(): RawRecordCapability {
-    const rows = this.state.episodeRows.rows;
+    const rowCount = this.state.header.rowCount;
     const streamBindings = this.rawStreamBindings;
     const requireStream = (stream: string) => {
       const binding = streamBindings.find(
@@ -1144,18 +1337,21 @@ class LeRobotEpisodeSession implements EpisodeSession {
         readonly signal?: AbortSignal;
       },
     ): Promise<RawRecordResult> => {
-      const selected = await readSelectedParquetRows(
-        this.state.source,
-        this.state.io,
-        this.state.episodeRows.dataAsset,
-        this.state.readObjects,
-        binding.kind === "feature"
-          ? ["timestamp", "frame_index", binding.featureName]
-          : undefined,
-        options.signal,
-        rowOffset,
-        rowOffset + 1,
-      );
+      const [selected, { rows }] = await Promise.all([
+        readSelectedParquetRows(
+          this.state.source,
+          this.state.io,
+          requireDataAsset(this.state.header),
+          this.state.readObjects,
+          binding.kind === "feature"
+            ? ["timestamp", "frame_index", binding.featureName]
+            : undefined,
+          options.signal,
+          rowOffset,
+          rowOffset + 1,
+        ),
+        this.timeline(options.signal),
+      ]);
       const row = selected[0];
       const timeline = rows[rowOffset];
       if (!row || !timeline) {
@@ -1201,7 +1397,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
         throwIfAborted(signal);
         return streamBindings.map((binding) => ({
           encoding: "parquet",
-          sampleCount: rows.length,
+          sampleCount: rowCount,
           schemaName: binding.schemaName,
           sourceName: binding.sourceName,
           streamId: binding.streamId,
@@ -1210,6 +1406,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
       },
       readRawRecord: async (request) => {
         const binding = requireStream(request.stream);
+        const { rows } = await this.timeline(request.signal);
         const offset = rowAtOrBefore(rows, request.timestampNs);
         return offset === null
           ? emptyRawRecord(this.manifest.timeRange, binding)
@@ -1218,7 +1415,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
       readRawRecordAtCursor: async (request) => {
         const binding = requireStream(request.stream);
         return readAt(
-          parseRawCursor(request.cursor, rows.length),
+          parseRawCursor(request.cursor, rowCount),
           binding,
           request,
         );
@@ -1226,6 +1423,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
       readRawRecordIndexWindow: async (request) => {
         requireStream(request.stream);
         throwIfAborted(request.signal);
+        const { rows } = await this.timeline(request.signal);
         const selected =
           request.anchorCursor !== undefined
             ? parseRawCursor(request.anchorCursor, rows.length)
@@ -1257,11 +1455,11 @@ class LeRobotEpisodeSession implements EpisodeSession {
       streamIdForFeature(ACTION_FEATURE_NAME),
     );
     if (!stateFeature && !actionFeature) return undefined;
-    const rows = this.state.episodeRows.rows;
+    const rowCount = this.state.header.rowCount;
     const config: StateActionReadConfig = {
       action: actionFeature,
       blockRows: stateActionBlockRowCount(
-        rows.length,
+        rowCount,
         [stateFeature, actionFeature].filter(
           (feature): feature is LeRobotFeature => feature !== undefined,
         ),
@@ -1285,7 +1483,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
             ),
           }
         : {}),
-      rowCount: rows.length,
+      rowCount,
       ...(stateFeature
         ? { state: stateActionFeatureSchema(STATE_FEATURE_NAME, stateFeature) }
         : {}),
@@ -1296,7 +1494,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
         this.ensureOpen();
         throwIfAborted(request.signal);
         return this.readStateActionRow(
-          parseStateActionCursor(request.cursor, rows.length),
+          parseStateActionCursor(request.cursor, rowCount),
           config,
           request.signal,
         );
@@ -1305,6 +1503,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
         this.ensureOpen();
         throwIfAborted(request.signal);
         if (request.timestampNs > this.manifest.timeRange.endNs) return null;
+        const { rows } = await this.timeline(request.signal);
         const offset = rowAtOrBefore(rows, request.timestampNs);
         return offset === null
           ? null
@@ -1335,6 +1534,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
       readIndexWindow: async (request) => {
         this.ensureOpen();
         throwIfAborted(request.signal);
+        const { rows } = await this.timeline(request.signal);
         const selected =
           request.anchorCursor !== undefined
             ? parseStateActionCursor(request.anchorCursor, rows.length)
@@ -1363,13 +1563,14 @@ class LeRobotEpisodeSession implements EpisodeSession {
     signal?: AbortSignal,
   ): Promise<StateActionRow> {
     const blockIndex = Math.floor(offset / config.blockRows);
-    const [block, taskLabels] = await Promise.all([
+    const [block, taskLabels, { rows }] = await Promise.all([
       waitForSharedRead(this.stateActionBlock(blockIndex, config), signal),
       waitForSharedRead(this.stateActionTaskLabels(), signal),
+      this.timeline(signal),
     ]);
     throwIfAborted(signal);
     this.ensureOpen();
-    const timeline = this.state.episodeRows.rows[offset];
+    const timeline = rows[offset];
     const row = block[offset - blockIndex * config.blockRows];
     if (!row || !timeline) {
       throw new Error("LeRobot state/action row is unavailable");
@@ -1384,7 +1585,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     const label =
       taskIndex !== null
         ? (taskLabels?.get(taskIndex) ??
-          singleEpisodeTask(this.state.episodeRows.episode))
+          singleEpisodeTask(this.state.header.episode))
         : undefined;
     return {
       ...(action?.values ? { action: action.values } : {}),
@@ -1414,14 +1615,14 @@ class LeRobotEpisodeSession implements EpisodeSession {
   private stateActionBlock(blockIndex: number, config: StateActionReadConfig) {
     let cached = this.stateActionBlocks.get(blockIndex);
     if (!cached) {
-      const rowCount = this.state.episodeRows.rows.length;
+      const rowCount = this.state.header.rowCount;
       const start = blockIndex * config.blockRows;
       // The shared block fill is deliberately unbound from caller signals so
       // an aborted trigger cannot poison the session-lifetime cache.
       cached = readSelectedParquetRows(
         this.state.source,
         this.state.io,
-        this.state.episodeRows.dataAsset,
+        requireDataAsset(this.state.header),
         this.state.readObjects,
         [...config.columns],
         undefined,
@@ -1483,7 +1684,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     config: StateActionReadConfig,
     schema: StateActionSchema,
   ): Promise<StateActionEpisodeProfile> {
-    const rows = this.state.episodeRows.rows;
+    const { rows } = await this.timeline();
     // Declared statistics only bound the out-of-range counts; their
     // absence must never block the episode-computed profile.
     const declared = await this.stateActionStatsFill(
@@ -1599,62 +1800,26 @@ class LeRobotEpisodeSession implements EpisodeSession {
   }
 }
 
-async function readInfo(
+async function readEpisodeTimeline(
   source: EpisodeSource,
   io: ByteResources,
-  asset: AssetDescriptor,
-  signal?: AbortSignal,
-): Promise<LeRobotInfo> {
-  const buffer = asyncBufferForSource(asset, source, io, signal);
-  const bytes = new Uint8Array(await buffer.slice(0, buffer.byteLength));
-  throwIfAborted(signal);
-  const value = JSON.parse(new TextDecoder().decode(bytes)) as LeRobotInfo;
-  if (!value.features || !Number.isFinite(value.fps) || value.fps <= 0) {
-    throw new Error("Invalid LeRobot meta/info.json");
-  }
-  const version = value.codebase_version?.trim();
-  const match = version?.match(
-    /^v?(\d+)(?:\.\d+){0,2}(?:[-+][0-9A-Za-z.-]+)?$/i,
-  );
-  if (!match || Number(match[1]) !== 3) {
-    throw new Error(
-      `This viewer supports LeRobotDataset format v3.x; the source declares '${
-        version ?? "missing"
-      }'`,
-    );
-  }
-  return value;
-}
-
-async function readEpisodeRows(
-  source: EpisodeSource,
-  io: ByteResources,
-  dataAsset: AssetDescriptor,
-  episode: Record<string, unknown>,
+  header: EpisodeHeader,
   readObjects: ParquetReader,
   signal?: AbortSignal,
-): Promise<EpisodeRows> {
-  const interval = requireRowInterval(dataAsset);
+): Promise<EpisodeTimeline> {
   const rows = await readSelectedParquetRows(
     source,
     io,
-    dataAsset,
+    requireDataAsset(header),
     readObjects,
     ["timestamp", "frame_index", "episode_index", "index", "task_index"],
     signal,
   );
-  const expectedLength = integer(episode.length, "length");
-  if (
-    rows.length !== expectedLength ||
-    interval.end - interval.start !== expectedLength
-  ) {
+  if (rows.length !== header.rowCount) {
     throw new Error("LeRobot selected data rows do not match episode length");
   }
-  const expectedEpisode = integer(episode.episode_index, "episode_index");
-  const expectedGlobalStart = integer(
-    episode.dataset_from_index,
-    "dataset_from_index",
-  );
+  const expectedEpisode = header.episode.episode_index;
+  const expectedGlobalStart = header.episode.dataset_from_index;
   const sourceTimes = rows.map((row, rowOffset) => {
     const timestamp = number(row.timestamp, "timestamp");
     if (integer(row.episode_index, "episode_index") !== expectedEpisode) {
@@ -1692,12 +1857,7 @@ async function readEpisodeRows(
       throw new Error("LeRobot row timestamps must be monotonic");
     }
   }
-  return {
-    dataAsset,
-    episode,
-    originSeconds,
-    rows: timeline,
-  };
+  return { originSeconds, rows: timeline };
 }
 
 async function readSelectedParquetRows(
@@ -1711,20 +1871,27 @@ async function readSelectedParquetRows(
   relativeEnd?: number,
 ): Promise<Record<string, unknown>[]> {
   const interval = requireRowInterval(asset);
-  const rowStart = interval.start + (relativeStart ?? 0);
-  const rowEnd =
-    relativeEnd === undefined ? interval.end : interval.start + relativeEnd;
-  if (
-    rowStart < interval.start ||
-    rowEnd > interval.end ||
-    rowStart >= rowEnd
-  ) {
+  const file = await asyncBufferForSource(asset, source, io, signal);
+  // Rows are selected in the source's global index; the file's own first
+  // index places them within the file, so no stored offset is needed
+  const base =
+    interval.coordinateSystem === "lerobot-v3-global-dataset-row"
+      ? await dataFileBase(asset, file, readObjects, signal)
+      : 0;
+  const fileStart = interval.start - base;
+  const fileEnd = interval.end - base;
+  if (fileStart < 0) {
+    throw new Error("LeRobot data selector starts before its file");
+  }
+  const rowStart = fileStart + (relativeStart ?? 0);
+  const rowEnd = relativeEnd === undefined ? fileEnd : fileStart + relativeEnd;
+  if (rowStart < fileStart || rowEnd > fileEnd || rowStart >= rowEnd) {
     throw new Error("LeRobot row request exceeds the resolved selector");
   }
   throwIfAborted(signal);
   const rows = await readObjects({
     ...(columns ? { columns } : {}),
-    file: asyncBufferForSource(asset, source, io, signal),
+    file,
     rowEnd,
     rowStart,
   });
@@ -1732,33 +1899,80 @@ async function readSelectedParquetRows(
   return rows;
 }
 
-function asyncBufferForSource(
+const dataFileBases = new Map<string, Promise<number>>();
+
+/**
+ * The global index of a data file's first row: one tiny read per file per
+ * session, shared by every episode cut from it.
+ */
+function dataFileBase(
+  asset: AssetDescriptor,
+  file: AsyncBuffer,
+  readObjects: ParquetReader,
+  signal?: AbortSignal,
+): Promise<number> {
+  let base = dataFileBases.get(asset.id);
+  if (!base) {
+    base = (async () => {
+      throwIfAborted(signal);
+      const rows = await readObjects({
+        columns: ["index"],
+        file,
+        rowEnd: 1,
+        rowStart: 0,
+      });
+      const first = rows[0]?.index;
+      const value = typeof first === "bigint" ? Number(first) : first;
+      if (typeof value !== "number" || !Number.isSafeInteger(value)) {
+        throw new Error(`LeRobot data file '${asset.id}' has no index column`);
+      }
+      return value;
+    })();
+    dataFileBases.set(asset.id, base);
+    base.catch(() => dataFileBases.delete(asset.id));
+  }
+  return base;
+}
+
+/**
+ * A Parquet reader needs the file's length before its first read (the footer
+ * sits at the end), and the manifest does not carry one: import records no
+ * sizes. One exact one-byte read learns it from the object itself.
+ */
+async function asyncBufferForSource(
   asset: AssetDescriptor,
   source: EpisodeSource,
   io: ByteResources,
   signal?: AbortSignal,
   onBytes?: (bytes: number) => void,
-): AsyncBuffer {
-  let resolved: ReturnType<EpisodeSource["assets"]["resolve"]> | undefined;
-  const resolve = () =>
-    (resolved ??= source.assets.resolve(asset.id, { signal }));
-  const byteLength = safeByteLength(asset.metadata?.sizeBytes);
+): Promise<AsyncBuffer> {
+  let descriptor = await source.assets.resolve(asset.id, { signal });
+  let byteLength = safeByteLength(descriptor.sizeBytes);
   if (byteLength === null) {
-    throw new Error(
-      `LeRobot asset '${asset.id}' is missing metadata.sizeBytes`,
-    );
+    const probe = await io.readBytes({
+      cachePolicy: { blockFill: false },
+      range: { length: 1n, offset: 0n },
+      signal,
+      source: descriptor,
+    });
+    byteLength = safeByteLength(probe.source.sizeBytes);
+    if (byteLength === null) {
+      throw new Error(`LeRobot asset '${asset.id}' has no readable size`);
+    }
+    descriptor = probe.source;
   }
+  const knownLength = byteLength;
   return {
-    byteLength,
-    async slice(start: number, end = byteLength) {
-      if (start < 0 || end < start || end > byteLength) {
+    byteLength: knownLength,
+    async slice(start: number, end = knownLength) {
+      if (start < 0 || end < start || end > knownLength) {
         throw new RangeError(`Invalid byte range ${start}:${end}`);
       }
       throwIfAborted(signal);
       const result = await io.readBytes({
         range: { length: BigInt(end - start), offset: BigInt(start) },
         signal,
-        source: await resolve(),
+        source: descriptor,
       });
       throwIfAborted(signal);
       onBytes?.(result.bytes.byteLength);
@@ -1767,14 +1981,23 @@ function asyncBufferForSource(
   };
 }
 
+/** Reads a small whole object, learning its size from the first response. */
+async function readWholeAsset(
+  asset: AssetDescriptor,
+  source: EpisodeSource,
+  io: ByteResources,
+  signal?: AbortSignal,
+): Promise<Uint8Array> {
+  const buffer = await asyncBufferForSource(asset, source, io, signal);
+  return new Uint8Array(await buffer.slice(0, buffer.byteLength));
+}
+
 async function parseVideoIndex(
   asset: AssetDescriptor,
   source: EpisodeSource,
   io: ByteResources,
   onBytes: (bytes: number) => void,
 ): Promise<VideoIndex> {
-  const byteLength = safeByteLength(asset.metadata?.sizeBytes);
-  if (byteLength === null) throw new Error("LeRobot video asset has no size");
   const file = createFile(false);
   let track: Track | null = null;
   let failure: Error | null = null;
@@ -1784,20 +2007,32 @@ async function parseVideoIndex(
   file.onReady = (info) => {
     track = info.videoTracks[0] ?? null;
   };
-  const descriptor = await source.assets.resolve(asset.id);
+  let descriptor = await source.assets.resolve(asset.id);
+  // Unknown until the first response's Content-Range says
+  let byteLength =
+    safeByteLength(descriptor.sizeBytes) ?? Number.POSITIVE_INFINITY;
   let offset = 0;
   while (!track && !failure && offset < byteLength) {
     const end = Math.min(byteLength, offset + MP4_INDEX_CHUNK_BYTES);
+    // The header is one exact read at the file's start; a fill block here
+    // would pull megabytes of frames no poster needs
     const result = await io.readBytes({
+      cachePolicy: { blockFill: false },
       range: { length: BigInt(end - offset), offset: BigInt(offset) },
       source: descriptor,
     });
+    descriptor = result.source;
+    byteLength = safeByteLength(result.source.sizeBytes) ?? byteLength;
+    if (!Number.isFinite(byteLength)) {
+      throw new Error("LeRobot video asset has no readable size");
+    }
     onBytes(result.bytes.byteLength);
+    const read = offset + result.bytes.byteLength;
     const next = file.appendBuffer(
       MP4BoxBuffer.fromArrayBuffer(exactArrayBuffer(result.bytes), offset),
-      end === byteLength,
+      read >= byteLength,
     );
-    offset = Number.isSafeInteger(next) && next > offset ? next : end;
+    offset = Number.isSafeInteger(next) && next > offset ? next : read;
   }
   if (failure) throw failure;
   const videoTrack = track as Track | null;
@@ -1873,15 +2108,26 @@ function videoFrame(
   binding: VideoBinding,
   index: VideoIndex,
   sample: Sample,
+  boundaryToleranceNs: bigint,
   bytes: Uint8Array,
   parameterSets: { readonly pps?: Uint8Array; readonly sps?: Uint8Array },
 ): DecodedFrame | null {
   if (index.track.timescale <= 0) return null;
   const presentationSeconds = videoPresentationSeconds(index, sample);
-  // MP4 timestamps and v3 selectors can represent the same frame boundary
-  // with slightly different floats. Compare them in the IR's nanosecond
-  // domain so the opening keyframe is not mistaken for out-of-episode preroll.
-  const timestampNs = secondsToNs(presentationSeconds - binding.fromSeconds);
+  // The selector's from_timestamp is frame_index / fps as a float; the MP4
+  // stores the same frame quantized to its timescale, tens of microseconds
+  // either side. A frame within half a frame of the boundary is that
+  // boundary frame - the episode's opening keyframe - not preroll, and
+  // dropping it leaves the decoder with nothing to start from.
+  let timestampNs = secondsToNs(presentationSeconds - binding.fromSeconds);
+  if (
+    timestampNs <= boundaryToleranceNs &&
+    -timestampNs <= boundaryToleranceNs
+  ) {
+    // Either side of the boundary is the opening frame; at exactly 0 it is
+    // the frame the modal shows before playback starts
+    timestampNs = 0n;
+  }
   const episodeDurationNs = secondsToNs(
     binding.toSeconds - binding.fromSeconds,
   );
@@ -2210,7 +2456,10 @@ function videoStream(
 ): StreamDescriptor {
   const codec = videoCodec(feature);
   const family = codecFamily(codec);
-  const supported = family === "h264" || family === "av1";
+  // A poster session knows no codec until the MP4's own header says it; the
+  // browser-native path reads that header and decides
+  const supported =
+    family === "h264" || family === "av1" || family === "unknown";
   return {
     approxRateHz: optionalNumber(feature.info?.["video.fps"]) ?? fps,
     id: binding.streamId,
@@ -2298,7 +2547,7 @@ function leRobotRecordingFacts({
   timeRange,
 }: {
   readonly codebaseVersion?: string;
-  readonly episode: Record<string, unknown>;
+  readonly episode: EpisodeFacts;
   readonly features: Readonly<Record<string, LeRobotFeature>>;
   readonly fps: number;
   readonly robotType?: string;
@@ -2306,9 +2555,7 @@ function leRobotRecordingFacts({
   readonly streams: readonly StreamDescriptor[];
   readonly timeRange: TimeWindow;
 }) {
-  const tasks = Array.isArray(episode.tasks)
-    ? episode.tasks.filter((task): task is string => typeof task === "string")
-    : [];
+  const tasks = episode.tasks;
   const codecs = [
     ...new Set(
       Object.values(features)
@@ -2320,14 +2567,14 @@ function leRobotRecordingFacts({
   const mediaFeatureCount = Object.values(features).filter(
     (feature) => feature.dtype === "image" || feature.dtype === "video",
   ).length;
-  const episodeIndex = integer(episode.episode_index, "episode_index");
+  const episodeIndex = episode.episode_index;
   return {
     applicationSupport: recordingSupportFactsFromStreams(streams),
     durationNs: (timeRange.endNs - timeRange.startNs).toString(),
     format: "lerobot",
     lerobot: {
       ...(codebaseVersion ? { codebaseVersion } : {}),
-      ...(episodeIndex >= 0n ? { episodeIndex: episodeIndex.toString() } : {}),
+      ...(episodeIndex >= 0 ? { episodeIndex: episodeIndex.toString() } : {}),
       featureCount: Object.keys(features).length,
       fps,
       logicalRowCount: rowCount,
@@ -2340,10 +2587,13 @@ function leRobotRecordingFacts({
 }
 
 function episodeTimeRange(
-  episodeRows: EpisodeRows,
+  header: EpisodeHeader,
   assets: readonly AssetDescriptor[],
+  fps: number,
 ): TimeWindow {
-  const rowEnd = episodeRows.rows.at(-1)?.localTimeNs ?? 0n;
+  // The last row sits (rowCount - 1) frames after the first; the exact
+  // timestamps come with the timeline when something reads it
+  const rowEnd = secondsToNs(Math.max(0, header.rowCount - 1) / fps);
   const videoEnd = assets.reduce((end, asset) => {
     const selector = asset.selector;
     return selector?.kind === "video-timestamp-interval"
@@ -2354,6 +2604,13 @@ function episodeTimeRange(
     endNs: maxBigIntPair(rowEnd, secondsToNs(videoEnd)),
     startNs: 0n,
   };
+}
+
+function requireDataAsset(header: EpisodeHeader): AssetDescriptor {
+  if (!header.dataAsset) {
+    throw new Error("LeRobot rows are not part of a poster session");
+  }
+  return header.dataAsset;
 }
 
 function requireSingleRole(
@@ -2381,14 +2638,13 @@ function requireRowInterval(asset: AssetDescriptor) {
   const selector = asset.selector;
   if (
     selector?.kind !== "row-interval" ||
-    selector.coordinateSystem !== "parquet-file-row" ||
     !Number.isSafeInteger(selector.start) ||
     !Number.isSafeInteger(selector.end) ||
     selector.start < 0 ||
     selector.start >= selector.end
   ) {
     throw new Error(
-      `LeRobot asset '${asset.id}' needs a valid parquet-file-row selector`,
+      `LeRobot asset '${asset.id}' needs a valid row-interval selector`,
     );
   }
   return selector;
@@ -2410,10 +2666,11 @@ function isGridFrameDecoderCameraStream(stream: StreamDescriptor) {
  */
 function isPreviewableCameraStream(stream: StreamDescriptor) {
   if (isGridFrameDecoderCameraStream(stream)) return true;
+  const family = codecFamily(stream.metadata?.["lerobot.codec"] ?? "");
   return (
     stream.kind === STREAM_KIND.VIDEO &&
     stream.metadata?.[SCENE_SOURCE_METADATA.TYPE] === SCENE_SOURCE_TYPE.IMAGE &&
-    codecFamily(stream.metadata?.["lerobot.codec"] ?? "") === "av1"
+    (family === "av1" || family === "unknown")
   );
 }
 
@@ -2671,6 +2928,11 @@ function rowRangeForWindow(
 function secondsToNs(seconds: number) {
   if (!Number.isFinite(seconds)) throw new Error("Invalid LeRobot timestamp");
   return BigInt(Math.round(seconds * NS_PER_SECOND));
+}
+
+/** Rounds a declared time to the nanosecond grid every timestamp uses. */
+function toNsResolution(seconds: number) {
+  return nsToSeconds(secondsToNs(seconds));
 }
 
 function nsToSeconds(timestampNs: bigint) {
@@ -2937,7 +3199,7 @@ function createStateActionTrackingAggregator(dimensionCount: number): {
 }
 
 /**
- * Recorded-cadence facts from the already-loaded timeline rows: median
+ * Recorded-cadence profile from the already-loaded timeline rows: median
  * inter-row interval plus the intervals exceeding 1.5× that median, so a
  * single dropped frame at a steady rate registers while jitter does not.
  */
@@ -2983,15 +3245,8 @@ function parseStateActionCursor(cursor: string, rowCount: number): number {
   }
 }
 
-function singleEpisodeTask(
-  episode: Record<string, unknown>,
-): string | undefined {
-  const tasks = episode.tasks;
-  return Array.isArray(tasks) &&
-    tasks.length === 1 &&
-    typeof tasks[0] === "string"
-    ? tasks[0]
-    : undefined;
+function singleEpisodeTask(episode: EpisodeFacts): string | undefined {
+  return episode.tasks.length === 1 ? episode.tasks[0] : undefined;
 }
 
 async function readTaskLabels(
@@ -3002,7 +3257,7 @@ async function readTaskLabels(
 ): Promise<ReadonlyMap<number, string>> {
   const rows = await readObjects({
     columns: ["task_index", "task"],
-    file: asyncBufferForSource(asset, source, io),
+    file: await asyncBufferForSource(asset, source, io),
   });
   const labels = new Map<number, string>();
   for (const row of rows) {
@@ -3036,8 +3291,7 @@ async function readStateActionStats(
   stateFeature: LeRobotFeature | undefined,
   actionFeature: LeRobotFeature | undefined,
 ): Promise<StateActionStats | null> {
-  const buffer = asyncBufferForSource(asset, source, io);
-  const bytes = new Uint8Array(await buffer.slice(0, buffer.byteLength));
+  const bytes = await readWholeAsset(asset, source, io);
   const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Record<
     string,
     unknown

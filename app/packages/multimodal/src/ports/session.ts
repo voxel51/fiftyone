@@ -31,6 +31,11 @@ export type ReadPriority = "bulk" | "current" | "idle" | "playback";
 
 /** One cloneable byte read request issued by a format adapter. */
 export interface ByteResourceReadRequest {
+  /** How the read may be widened; an exact read for random access. */
+  readonly cachePolicy?: {
+    readonly blockFill?: boolean;
+    readonly readahead?: boolean;
+  };
   readonly range: ByteRange;
   readonly signal?: AbortSignal;
   readonly source: ByteSourceDescriptor;

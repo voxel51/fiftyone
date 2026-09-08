@@ -48,10 +48,10 @@ import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 from fiftyone.internal.docs import hide_from_docs
-import fiftyone.multimodal.media as fmm
+
 
 fod = fou.lazy_import("fiftyone.core.dataset")
-foma = fou.lazy_import("fiftyone.core.media_assets")
+foma = fou.lazy_import("fiftyone.multimodal.media_reference.asset_planning")
 fos = fou.lazy_import("fiftyone.core.stages")
 fota = fou.lazy_import("fiftyone.core.tags")
 fov = fou.lazy_import("fiftyone.core.view")
@@ -60,6 +60,7 @@ foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
 fou3d = fou.lazy_import("fiftyone.utils.utils3d")
 foos = fou.lazy_import("fiftyone.operators.store")
+fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 
 logger = logging.getLogger(__name__)
@@ -459,13 +460,10 @@ class SampleCollection(object):
         """The media type of the collection."""
         raise NotImplementedError("Subclass must implement media_type")
 
-    @property
-    def media_reference_kind(self):
-        """The kind of media references that this collection contains, or None
-        if the collection does not contain media references.
-        """
+    def _contains_media_references(self):
+        """Whether this collection's samples are media-reference-backed."""
         raise NotImplementedError(
-            "Subclass must implement media_reference_kind"
+            "Subclass must implement _contains_media_references()"
         )
 
     @property
@@ -11419,6 +11417,13 @@ class SampleCollection(object):
             d["group_media_types"] = self.group_media_types
             d["default_group_slice"] = self.default_group_slice
 
+        if self._contains_media_references():
+            # Without its sources a reference-backed sample's reference
+            # resolves to nothing, so they travel with the collection. A view
+            # carries only what its samples name; a whole dataset carries its
+            # table, so an empty one stays reference-backed
+            d["_media_sources"] = _selected_media_sources(self)
+
         d["sample_fields"] = self._serialize_field_schema()
 
         if contains_videos:
@@ -12248,9 +12253,6 @@ class SampleCollection(object):
 
         return False
 
-    def _contains_media_references(self):
-        return self.media_reference_kind is not None
-
     def _contains_videos(self, any_slice=False):
         return self._contains_media_type(fom.VIDEO, any_slice=any_slice)
 
@@ -12846,6 +12848,23 @@ def _serialize_value(field_name, field, value, validate=True):
             )
 
     return field.to_mongo(value)
+
+
+def _selected_media_sources(sample_collection):
+    """The media sources a collection carries when it is serialized.
+
+    Each entry names where its source is, so a bundle is readable without the
+    exporting dataset's table of roots."""
+    entries = fmm._media_sources_by_id(sample_collection._root_dataset)
+    for entry in entries.values():
+        entry.pop("root", None)
+        entry.pop("dir", None)
+
+    if sample_collection == sample_collection._root_dataset:
+        return list(entries.values())
+
+    source_ids = set(fmm._media_source_ids(sample_collection))
+    return [entry for entry in entries.values() if entry["id"] in source_ids]
 
 
 def _validate_media_reference_write(

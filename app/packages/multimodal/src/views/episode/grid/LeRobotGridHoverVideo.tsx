@@ -353,6 +353,9 @@ export function LeRobotGridHoverVideo({
       <video
         aria-hidden
         className={classes.nativeVideo}
+        // Without CORS the frame painted from this element taints the poster
+        // canvas and the poster can never be encoded or cached
+        crossOrigin="anonymous"
         data-testid="lerobot-grid-hover-video"
         muted
         playsInline

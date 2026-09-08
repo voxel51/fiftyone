@@ -125,7 +125,11 @@ export function GridRenderer({
     ctx.dataset.datasetId;
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
   const [hovered, setHovered] = useState(false);
+  // Visible tiles keep their poster, video element and session while the
+  // modal is open; only new playback is gated on the grid being active, so
+  // closing the modal rebuilds nothing
   const visible = useGridRendererVisibility(rootElement, isGridActive);
+  const interactive = visible && isGridActive;
   const sampleId = useMemo(() => {
     const sample = ctx.sample.sample as { _id?: string; id?: string };
     return sample._id ?? sample.id;
@@ -152,11 +156,11 @@ export function GridRenderer({
         providerDescriptor.resolved.descriptor.cacheRevision,
       ])
     : undefined;
-  const providerDescriptorSettled =
-    providerDescriptor.status === "hit" || providerDescriptor.status === "miss";
+  // A precomputed poster may exist but is never expected to: the tile opens
+  // its own preview at once and takes a provider's poster only if one arrives
   const previewIdentity = useMemo(
     () =>
-      source && providerDescriptorSettled
+      source
         ? {
             datasetId: ctx.dataset.datasetId,
             mediaField: ctx.media?.field,
@@ -175,7 +179,6 @@ export function GridRenderer({
       firstMatch?.startNs,
       firstMatch?.stream,
       providerCacheScope,
-      providerDescriptorSettled,
       selectedSourceName,
       source,
     ],
@@ -228,7 +231,6 @@ export function GridRenderer({
     [effectivePoster, poseKey, rootSize],
   );
   const coldTierLoading =
-    (visible && !providerDescriptorSettled) ||
     cacheLookupStatus === "loading" ||
     providedPosterLookup.status === "loading";
   const previewSessionDemand = usePreviewSessionDemand({
@@ -285,9 +287,17 @@ export function GridRenderer({
   const playbackIntent = usePlaybackHoverIntent(
     preview.pause,
     preview.play,
-    visible,
+    interactive,
     setHovered,
   );
+  // The modal covers the grid without a mouseleave, so a tile that was
+  // playing when it opened would keep decoding underneath it
+  const pausePreview = preview.pause;
+  useEffect(() => {
+    if (interactive) return;
+    setHovered(false);
+    pausePreview();
+  }, [interactive, pausePreview]);
   const [surfaceRetention, setSurfaceRetention] = useState<{
     readonly bytes: number;
     readonly owner: EpisodePosterFrame | GridPosterCacheEntry;
@@ -367,9 +377,20 @@ export function GridRenderer({
       preview.streamSourceNames,
     ],
   );
+  // An AV1 poster arrives through the native <video>, so "ready with no
+  // decoded frame" is still loading until that element has painted
+  const [nativePosterPainted, setNativePosterPainted] = useState(false);
+  const nativeVideoKey = preview.nativeVideo
+    ? `${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.startTimeSeconds}`
+    : null;
+  useEffect(() => {
+    setNativePosterPainted(false);
+  }, [nativeVideoKey]);
   const handleNativePosterCanvasCommitted = useCallback(
-    (canvas: HTMLCanvasElement, size: BitmapDrawSize) =>
-      handlePosterCanvasCommitted("image", canvas, size),
+    (canvas: HTMLCanvasElement, size: BitmapDrawSize) => {
+      setNativePosterPainted(true);
+      handlePosterCanvasCommitted("image", canvas, size);
+    },
     [handlePosterCanvasCommitted],
   );
   const handleNativeVideoError = useCallback(
@@ -438,11 +459,19 @@ export function GridRenderer({
           mimeType={preview.cachedPoster.mimeType}
           onBitmapRetainedBytesChange={handleSurfaceRetainedBytesChange}
         />
-      ) : (
+      ) : preview.nativeVideo &&
+        nativePosterPainted &&
+        !nativeVideoError ? null : (
         <PreviewStatus
           error={nativeVideoError ?? preview.error}
           hasPreviewStreams={preview.hasPreviewStreams}
-          status={nativeVideoError ? "error" : preview.status}
+          status={
+            nativeVideoError
+              ? "error"
+              : preview.nativeVideo
+                ? "loading"
+                : preview.status
+          }
         />
       )}
       {nativeVideoError && (preview.frame || preview.cachedPoster) ? (
@@ -576,10 +605,17 @@ function useGridRendererVisibility(
 
   // This effect tracks whether the mounted renderer is near the grid viewport.
   useEffect(() => {
-    if (!element || !gridActive) {
+    if (!element) {
       setIntersecting(false);
       return undefined;
     }
+    // The grid is hidden behind the modal, so an observer left running would
+    // report every tile gone. Stop watching rather than correct for it after
+    // the fact: what was visible when the modal opened stays visible until it
+    // closes, which is what keeps posters and sessions alive underneath it.
+    // Reading the stale value back on reactivation instead would drop demand
+    // for a render and release the session the modal was holding open.
+    if (!gridActive) return undefined;
     if (typeof IntersectionObserver === "undefined") {
       setIntersecting(element.isConnected);
       return undefined;
@@ -596,7 +632,7 @@ function useGridRendererVisibility(
     return () => observer.disconnect();
   }, [element, gridActive]);
 
-  return gridActive && intersecting;
+  return intersecting;
 }
 
 function useElementCssSize(
@@ -1239,6 +1275,12 @@ function previewStatusMessage(
 
   if (status === "unavailable") {
     return "No data available for this stream";
+  }
+
+  // A tile whose session never opened is not an episode without streams:
+  // reporting it as one hides every source that failed to resolve
+  if (status === "idle") {
+    return "Preview did not start";
   }
 
   return hasPreviewStreams ? "No preview frames" : "No preview streams";
