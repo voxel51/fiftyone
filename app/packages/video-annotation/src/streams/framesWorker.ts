@@ -97,9 +97,18 @@ async function handleFetchChunk(msg: FetchChunkMessage): Promise<void> {
   const mediaField =
     (msg.request as { mediaField?: string })?.mediaField ?? "filepath";
 
+  // A dynamic group's documents are real samples, served as stored: the
+  // i-th one is frame `range[0] + i`. A video's frame documents carry their
+  // own number.
+  const [rangeStart] = frames.range;
   await Promise.all(
-    frames.frames.map((frame) =>
-      decodeAndDispatch(msg.reqId, frame, mediaField),
+    frames.frames.map((frame, i) =>
+      decodeAndDispatch(
+        msg.reqId,
+        frame,
+        mediaField,
+        msg.request.dynamicGroup ? rangeStart + i : frame.frame_number,
+      ),
     ),
   );
 
@@ -114,6 +123,7 @@ async function decodeAndDispatch(
   reqId: number,
   frame: { frame_number: number; media_url?: string } & Record<string, unknown>,
   mediaField: string,
+  frameNumber: number,
 ): Promise<void> {
   const mediaPath = frame[mediaField];
   if (!mediaPath || typeof mediaPath !== "string") {
@@ -145,7 +155,7 @@ async function decodeAndDispatch(
     // Skip — main-thread treats this frame as missing and the engine
     // re-requests on the next prefetch tick.
     console.error(
-      `[framesWorker] decode failed for frame ${frame.frame_number}`,
+      `[framesWorker] decode failed for frame ${frameNumber}`,
       error,
     );
 
@@ -156,7 +166,7 @@ async function decodeAndDispatch(
     {
       type: "frameReady",
       reqId,
-      frameNumber: frame.frame_number,
+      frameNumber,
       bitmap,
       width: bitmap.width,
       height: bitmap.height,

@@ -136,9 +136,9 @@ export const useDynamicGroupPersistence = ({
           return;
         }
 
-        const frames = [...response.frames].sort(
-          (a, b) => a.frame_number - b.frame_number,
-        );
+        // Served in the group's order, as stored: the i-th document is the
+        // member behind frame i + 1
+        const frames = response.frames;
 
         stateRef.current = {
           index: frames.map((frame) => String(frame._id)),
