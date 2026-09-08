@@ -22,7 +22,9 @@
  * each frame's presentation timestamp (`cts`) to a 1-indexed frame number. We
  * stamp every `EncodedVideoChunk` with that timestamp; the decoder echoes it
  * onto the output `VideoFrame`, so we can assign the correct frame number on
- * the way out regardless of decode order (B-frames) or GOP boundaries.
+ * the way out regardless of decode order (B-frames) or GOP boundaries. Frame
+ * 1 is the first sample at/after the edit list's presentation start — the
+ * same numbering ffmpeg, `to_frames`, and backend inference use.
  *
  * GOP handling lives entirely here (the stream base stays source-agnostic): a
  * chunk request for presentation frames `[start, start+n)` is snapped back to
@@ -44,6 +46,11 @@ import type {
   FrameWorkerOutbound,
   InitMessage,
 } from "./frameWorkerProtocol";
+import {
+  type EditListEntry,
+  presentationStart,
+  presentedInOrder,
+} from "./editList";
 import {
   ByteRangeCache,
   type ByteRange,
@@ -207,7 +214,7 @@ async function initSampleTable(
     throw new Error("demux produced no samples");
   }
 
-  buildSampleTable(samples, track.timescale);
+  buildSampleTable(samples, track.timescale, track.edits);
 }
 
 /**
@@ -319,12 +326,22 @@ async function streamMoov(
 
 /**
  * Turn raw demuxed samples into `decodeOrder` (decode order, as delivered),
- * assign each its 1-indexed presentation frame number (sort by `cts`), and
- * build the µs→frame map + keyframe index list.
+ * assign each presented sample its 1-indexed presentation frame number (sort
+ * by `cts`), and build the µs→frame map + keyframe index list.
+ *
+ * Samples before the edit list's presentation start are pre-roll (see
+ * {@link ./editList}): they stay in `decodeOrder` because the GOP's keyframe
+ * is usually among them, but they get no frame number, so their decoded
+ * output is dropped in {@link onDecoderOutput}. This is ffmpeg's numbering,
+ * which is what `to_frames` and backend inference see.
  */
-function buildSampleTable(samples: Sample[], timescale: number): void {
+function buildSampleTable(
+  samples: Sample[],
+  timescale: number,
+  edits: readonly EditListEntry[] | undefined,
+): void {
   decodeOrder = samples.map((s, decodeIndex) => ({
-    frameNumber: 0, // filled below once we know presentation order
+    frameNumber: 0, // pre-roll samples keep 0
     decodeIndex,
     tsMicros: Math.round((s.cts * 1e6) / timescale),
     durMicros: Math.round((s.duration * 1e6) / timescale),
@@ -333,9 +350,12 @@ function buildSampleTable(samples: Sample[], timescale: number): void {
     size: s.size,
   }));
 
-  // Presentation order = ascending composition timestamp. 1-indexed frame
-  // numbers match `to_frames` / looker's ImaVid numbering (frame 1 = t≈0).
-  byFrameNumber = [...decodeOrder].sort((a, b) => a.tsMicros - b.tsMicros);
+  const presented = presentedInOrder(
+    samples.map((s, decodeIndex) => ({ cts: s.cts, decodeIndex })),
+    presentationStart(edits),
+  );
+
+  byFrameNumber = presented.map((p) => decodeOrder[p.decodeIndex]);
   byFrameNumber.forEach((sample, i) => {
     sample.frameNumber = i + 1;
     microsToFrame.set(sample.tsMicros, sample.frameNumber);
@@ -345,7 +365,7 @@ function buildSampleTable(samples: Sample[], timescale: number): void {
     .filter((s) => s.isSync)
     .map((s) => s.decodeIndex);
 
-  totalFrames = decodeOrder.length;
+  totalFrames = byFrameNumber.length;
 }
 
 /**
