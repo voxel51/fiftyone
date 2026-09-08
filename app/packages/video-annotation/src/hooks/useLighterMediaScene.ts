@@ -122,9 +122,13 @@ function useCanonicalMediaInstall(
  * `useViewport` emits — so tiles can stay hidden until overlays are painted at
  * their final transform.
  */
-function useViewportReset(scene: LighterScene, sceneId: string): void {
-  const [rendererReady, setRendererReady] = useState(false);
-  const [mediaBoundsReady, setMediaBoundsReady] = useState(false);
+export function useViewportReset(scene: LighterScene, sceneId: string): void {
+  // Readiness is recorded per scene id: a re-minted scene starts over, so a
+  // signal the previous scene raised can never open the new one early
+  const [rendererReadyFor, setRendererReadyFor] = useState<string | null>(null);
+  const [mediaBoundsReadyFor, setMediaBoundsReadyFor] = useState<string | null>(
+    null,
+  );
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
@@ -132,23 +136,22 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
-  useEffect(() => {
-    setMediaBoundsReady(false);
-  }, [sceneId]);
-
   useEventHandler(
     "lighter:renderer-ready",
-    useCallback(() => setRendererReady(true), []),
-    { once: true },
+    useCallback(() => setRendererReadyFor(sceneId), [sceneId]),
   );
 
   useEventHandler(
     "lighter:canonical-media-bounds-changed",
-    useCallback(() => setMediaBoundsReady(true), []),
+    useCallback(() => setMediaBoundsReadyFor(sceneId), [sceneId]),
   );
 
   useEffect(() => {
-    if (!scene || !rendererReady || !mediaBoundsReady) {
+    if (
+      !scene ||
+      rendererReadyFor !== sceneId ||
+      mediaBoundsReadyFor !== sceneId
+    ) {
       return;
     }
 
@@ -160,7 +163,7 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
     dispatchAfterPaintSettle(scene, () =>
       eventBus.dispatch("lighter:viewport-init-complete", {}),
     );
-  }, [scene, sceneId, rendererReady, mediaBoundsReady, eventBus]);
+  }, [scene, sceneId, rendererReadyFor, mediaBoundsReadyFor, eventBus]);
 }
 
 /**
