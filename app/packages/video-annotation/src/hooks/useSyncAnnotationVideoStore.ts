@@ -132,8 +132,13 @@ export const useSyncAnnotationVideoStore = (
     // (propagation, interpolation, track ops). The timeline never needed it —
     // it reads the server index — and a read-only surface has no such
     // consumers at all, so it opts out. See `seedWholeClip`.
+    // Resolution settles the loading flag even when no chunk fires the edits
+    // subscription: a clip with no frame labels, or a rebuild against an
+    // already-warm stream (deactivating the last frame field changes
+    // `labelTypes` without changing the fetched set, so the stream stays
+    // mounted).
     if (seedWholeClip) {
-      void stream.warmupAll();
+      stream.warmupAll().then(settle, settle);
     }
 
     return () => {
