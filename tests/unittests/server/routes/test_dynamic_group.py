@@ -336,6 +336,20 @@ class TestDynamicGroupPatch:
         assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_scalar_patch_entry_is_rejected(
+        self, mutator, mock_request, stages
+    ):
+        """A patches entry that is not an object 400s, not 500s."""
+        mock_request.body.return_value = json_payload(
+            _body(stages, ["invalid"])
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await mutator.patch(mock_request)
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
     async def test_missing_if_match_is_rejected(
         self, mutator, mock_request, stages, members
     ):

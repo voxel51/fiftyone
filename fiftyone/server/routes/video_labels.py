@@ -20,6 +20,7 @@ two responsibilities:
 import typing as t
 
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 
@@ -379,6 +380,14 @@ class VideoLabelsWindow(HTTPEndpoint):
     async def post(self, request: Request, data: dict):
         start_frame = int(data.get("startFrame", 1))
         end_frame = int(data.get("endFrame", start_frame))
+        # Frames are 1-indexed and the window is inclusive; anything else
+        # reaches the driver as a negative skip or limit and surfaces as a 500
+        if start_frame < 1 or end_frame < start_frame:
+            raise HTTPException(
+                status_code=400,
+                detail="startFrame must be at least 1 and endFrame at least "
+                "startFrame",
+            )
         dataset = data.get("dataset")
         stages = data.get("view")
         extended = data.get("extended", None)

@@ -7,6 +7,7 @@ FiftyOne Server /frames route
 """
 
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 
@@ -26,6 +27,12 @@ class Frames(HTTPEndpoint):
         start_frame = int(data.get("frameNumber", 1))
         frame_count = int(data.get("frameCount", 1))
         num_frames = int(data.get("numFrames"))
+        # Frames are 1-indexed; a lower start would reach the driver as a
+        # negative skip and surface as a 500
+        if start_frame < 1:
+            raise HTTPException(
+                status_code=400, detail="frameNumber must be at least 1"
+            )
         extended = data.get("extended", None)
         dataset = data.get("dataset")
         stages = data.get("view")

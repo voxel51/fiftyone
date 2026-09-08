@@ -202,6 +202,12 @@ class DynamicGroup(HTTPEndpoint):
         members = set(member_ids)
         samples = []
         for entry in patches:
+            if not isinstance(entry, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="each patches entry must be an object",
+                )
+
             sample_id = entry.get("sampleId")
             ops = entry.get("patch")
 
