@@ -3439,6 +3439,79 @@ class UCF101Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class RTKSLAMAbsoluteAccuracyDataset(FiftyOneDataset):
+    """Handheld LiDAR, camera, IMU and GNSS sequences measured against
+    surveyed checkpoints, as native ``.mcap`` episodes.
+
+    A handheld rig carrying a Livox MID360, a global shutter camera and a
+    GNSS receiver is walked through a public park and a construction hall,
+    both of which block the sky in places, including a 30 m underpass and an
+    indoor hall spanning more than 400 seconds of the route.
+
+    The reference is not the GNSS. A geodetic total station surveyed 87
+    checkpoints along the routes independently, so absolute error can be
+    measured without first fitting the estimate onto the reference. Three
+    published trajectories are carried alongside the sensors, together with
+    each one's distance to every checkpoint.
+
+    Four sequences and 64.6 minutes of walking.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("rtk-slam-absolute-accuracy")
+
+        # Where the sky was hardest to see
+        view = dataset.sort_by("gnss_fix_rate")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        10.85 GB
+    """
+
+    _REPO_ID = "Voxel51/RTK-SLAM-Absolute-Accuracy"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "191fb2b186dfc4f07794a1ccbe13cd0a0192bb6c"
+
+    @property
+    def name(self):
+        return "rtk-slam-absolute-accuracy"
+
+    @property
+    def license(self):
+        return "CC BY 4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "slam", "lidar", "gnss", "ground-truth")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class TIIRATMDroneRacingDataset(FiftyOneDataset):
     """Indoor drone racing flights pairing onboard visual-inertial odometry
     with motion capture ground truth, as native ``.mcap`` episodes.
@@ -3675,6 +3748,7 @@ AVAILABLE_DATASETS = {
     "open-images-v6": OpenImagesV6Dataset,
     "open-images-v7": OpenImagesV7Dataset,
     "places": PlacesDataset,
+    "rtk-slam-absolute-accuracy": RTKSLAMAbsoluteAccuracyDataset,
     "quickstart": QuickstartDataset,
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
