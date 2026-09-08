@@ -41,7 +41,6 @@ def json_payload(payload) -> bytes:
 def fixture_dataset():
     """An image dataset dynamically groupable into ordered scenes."""
     dataset = fo.Dataset()
-    dataset.persistent = True
 
     samples = []
     for scene in (SCENE, OTHER_SCENE):
