@@ -48,7 +48,7 @@ export class CommandDispatcher {
    */
   register<C extends Command<any>>(
     type: CommandCtor<C>,
-    handler: CommandHandler<C>
+    handler: CommandHandler<C>,
   ): void {
     if (this.handlers.has(type)) {
       throw new Error(`Handler already registered for ${type.name}`);

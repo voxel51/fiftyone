@@ -9,6 +9,11 @@ import types
 
 from .service import ExecutionStoreService
 from .store import ExecutionStore
+from .transient_jobs import (
+    TransientJobAlreadyExists,
+    TransientJobConflict,
+    TransientJobCoordinator,
+)
 from .models import StoreDocument, KeyDocument, KeyPolicy
 
 # This tells Sphinx to allow refs to imported objects in this module

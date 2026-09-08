@@ -23,8 +23,8 @@ export default function Difference(props) {
   const numericDifferenceColor = isNumericDifferencePositive
     ? "#8BC18D"
     : isNumericDifferenceNegative
-    ? "#FF6464"
-    : theme.palette.text.tertiary;
+      ? "#FF6464"
+      : theme.palette.text.tertiary;
 
   return (
     <Stack direction="row">

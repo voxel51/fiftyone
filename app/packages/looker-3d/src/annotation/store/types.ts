@@ -24,12 +24,6 @@ export interface WorkingDoc {
    * Contains both existing labels (from baseline sample) and newly created labels.
    */
   labelsById: Record<LabelId, ReconciledDetection3D | ReconciledPolyline3D>;
-
-  /**
-   * Set of label IDs that have been deleted during this session.
-   * Used to generate delete operations when persisting.
-   */
-  deletedIds: Set<LabelId>;
 }
 
 /**

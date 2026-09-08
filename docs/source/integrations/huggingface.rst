@@ -5,6 +5,10 @@ Hugging Face Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.23.3
+    :enterprise_version: 1.5.4
+
 FiftyOne integrates natively with Hugging Face's
 `Transformers <https://huggingface.co/docs/transformers>`_ library, so
 you can load, fine-tune, and run inference with your favorite Transformers
@@ -939,6 +943,10 @@ model:
 
 Hugging Face Hub
 ________________
+
+.. customavailablein::
+    :oss_version: 0.23.8
+    :enterprise_version: 1.5.9
 
 FiftyOne integrates with the
 `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_ to allow you to

@@ -12,7 +12,7 @@ import { getPageQuery } from "./Writer";
 export function loadContext(
   fragment: GraphQLTaggedNode,
   environment: IEnvironment,
-  data: unknown
+  data: unknown,
 ) {
   const node = getFragment(fragment);
   // @ts-ignore
@@ -27,15 +27,51 @@ export function loadContext(
       node,
       data,
       identifier,
-      "graphQLSyncFragmentAtom()"
+      "graphQLSyncFragmentAtom()",
     ),
     FragmentResource,
   };
 }
 
+/**
+ * Resolves a nested Relay fragment chain from operation data.
+ *
+ * The returned context and parent belong to the last successfully resolved
+ * fragment so callers can attach their own live subscription behavior.
+ */
+export function resolveFragmentChain(
+  data: unknown,
+  fragments: GraphQLTaggedNode[],
+  keys: string[] | undefined,
+  environment: IEnvironment,
+) {
+  let context: ReturnType<typeof loadContext> | undefined;
+  let parent: unknown;
+
+  for (let i = 0; i < fragments.length; i++) {
+    const key = keys?.[i];
+    if (key) {
+      data =
+        typeof data === "object" && data !== null
+          ? (data as Record<string, unknown>)[key]
+          : null;
+    }
+
+    if (!data) {
+      return { context, data, missing: true, parent };
+    }
+
+    parent = data;
+    context = loadContext(fragments[i], environment, data);
+    data = context.result.data;
+  }
+
+  return { context, data, missing: false, parent };
+}
+
 export function readFragment<TKey extends KeyType>(
   fragmentInput: GraphQLTaggedNode,
-  fragmentRef: TKey
+  fragmentRef: TKey,
 ): KeyTypeData<TKey> {
   const node = getFragment(fragmentInput);
   const {
@@ -51,6 +87,6 @@ export function readFragment<TKey extends KeyType>(
     node,
     fragmentRef,
     identifier,
-    "readFragment()"
+    "readFragment()",
   ).data;
 }

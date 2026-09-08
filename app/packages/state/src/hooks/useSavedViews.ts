@@ -20,7 +20,7 @@ export default function useSavedViews() {
   const handleDeleteView = useCallback(
     (
       nameValue: string,
-      onDeleteSuccess: (deletedId: string | null) => void
+      onDeleteSuccess: (deletedId: string | null) => void,
     ) => {
       if (nameValue) {
         deleteView({
@@ -40,7 +40,7 @@ export default function useSavedViews() {
         });
       }
     },
-    [datasetNameValue, deleteView, onError, subscription]
+    [datasetNameValue, deleteView, onError, subscription],
   );
 
   const handleCreateSavedView = useRecoilCallback(
@@ -51,8 +51,8 @@ export default function useSavedViews() {
         color: string,
         view: fos.State.Stage[],
         onSuccess: (
-          savedView: foq.createSavedViewMutation$data["createSavedView"]
-        ) => void
+          savedView: foq.createSavedViewMutation$data["createSavedView"],
+        ) => void,
       ) => {
         if (name) {
           saveView({
@@ -64,7 +64,7 @@ export default function useSavedViews() {
               form: {
                 filters: await snapshot.getPromise(fos.filters),
                 sampleIds: Array.from(
-                  (await snapshot.getPromise(fos.selectedSamples)).keys()
+                  (await snapshot.getPromise(fos.selectedSamples)).keys(),
                 ),
                 slice: await snapshot.getPromise(fos.groupSlice),
                 extended: await snapshot.getPromise(fos.extendedStages),
@@ -82,7 +82,7 @@ export default function useSavedViews() {
           });
         }
       },
-    [datasetNameValue, saveView, onError, subscription]
+    [datasetNameValue, saveView, onError, subscription],
   );
 
   const handleUpdateSavedView = useCallback(
@@ -92,8 +92,8 @@ export default function useSavedViews() {
       description: string,
       color: string,
       onSuccess: (
-        savedView: foq.updateSavedViewMutation$data["updateSavedView"]
-      ) => void
+        savedView: foq.updateSavedViewMutation$data["updateSavedView"],
+      ) => void,
     ) => {
       if (initialName) {
         updateView({
@@ -114,7 +114,7 @@ export default function useSavedViews() {
         });
       }
     },
-    [datasetNameValue, updateView, onError, subscription]
+    [datasetNameValue, updateView, onError, subscription],
   );
 
   return {

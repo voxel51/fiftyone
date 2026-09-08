@@ -1,0 +1,29 @@
+.root {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 36px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-content-border-subtle);
+  background: var(--color-content-bg-card-1);
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Thin vertical rule between media facts. */
+.sep {
+  width: 1px;
+  height: 12px;
+  background: var(--color-content-border-default);
+}
+
+/* Right-hand status slot; min-width 0 so its content can truncate rather
+   than push the bar wider than the surface. */
+.status {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}

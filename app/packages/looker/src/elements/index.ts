@@ -81,9 +81,6 @@ export const getFrameElements: GetElements<FrameState> = (params) => {
         node: common.OptionsPanelElement,
         children: [
           { node: common.OnlyShowHoveredOnLabelOptionElement },
-          { node: common.ShowConfidenceOptionElement },
-          { node: common.ShowIndexOptionElement },
-          { node: common.ShowLabelOptionElement },
           { node: common.ShowTooltipOptionElement },
         ],
       },
@@ -130,9 +127,6 @@ export const getImageElements: GetElements<ImageState> = (params) => {
         node: common.OptionsPanelElement,
         children: [
           { node: common.OnlyShowHoveredOnLabelOptionElement },
-          { node: common.ShowConfidenceOptionElement },
-          { node: common.ShowIndexOptionElement },
-          { node: common.ShowLabelOptionElement },
           { node: common.ShowTooltipOptionElement },
         ],
       },
@@ -189,9 +183,6 @@ export const getVideoElements: GetElements<VideoState> = (params) => {
         children: [
           { node: common.LoopVideoOptionElement },
           { node: common.OnlyShowHoveredOnLabelOptionElement },
-          { node: common.ShowConfidenceOptionElement },
-          { node: common.ShowIndexOptionElement },
-          { node: common.ShowLabelOptionElement },
           { node: common.ShowTooltipOptionElement },
           { node: common.UseFrameNumberOptionElement },
         ],
@@ -250,12 +241,9 @@ export const getImaVidElements: GetElements<ImaVidState> = (params) => {
       children: [
         { node: common.LoopVideoOptionElement },
         { node: common.OnlyShowHoveredOnLabelOptionElement },
-        { node: common.ShowConfidenceOptionElement },
-        { node: common.ShowIndexOptionElement },
-        { node: common.ShowLabelOptionElement },
         { node: common.ShowTooltipOptionElement },
       ],
-    }
+    },
   );
 
   const elements = {
@@ -290,9 +278,6 @@ export const get3dElements: GetElements<ThreeDState> = (params) => {
         node: common.OptionsPanelElement,
         children: [
           { node: common.OnlyShowHoveredOnLabelOptionElement },
-          { node: common.ShowConfidenceOptionElement },
-          { node: common.ShowIndexOptionElement },
-          { node: common.ShowLabelOptionElement },
           { node: common.ShowTooltipOptionElement },
         ],
       },

@@ -1,14 +1,14 @@
 import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
+import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
-import { VideoLookerReact } from "./VideoLooker";
+import { VideoTimelineSurface } from "./VideoTimelineSurface";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -23,16 +23,19 @@ export const useClearSelectedLabels = () => {
     ({ set }) =>
       async () =>
         set(fos.selectedLabels, []),
-    []
+    [],
   );
 };
 
 interface LookerProps {
   sample?: fos.ModalSample;
+  sampleTransitioning?: boolean;
   showControls?: boolean;
 }
 
-const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
+type NativeLookerProps = LookerProps & { sample: fos.ModalSample };
+
+const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
   const theme = useTheme();
 
@@ -46,6 +49,7 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
       style={{
         width: "100%",
         height: "100%",
+        minHeight: 0,
         background: theme.background.level2,
         position: "relative",
       }}
@@ -54,13 +58,16 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
 });
 
 export const ModalLooker = React.memo(
-  ({ sample: propsSampleData }: LookerProps) => {
+  ({ sample: propsSampleData, sampleTransitioning }: LookerProps) => {
     return propsSampleData ? (
-      <ModalLookerContent sample={propsSampleData} />
+      <ModalLookerContent
+        sample={propsSampleData}
+        sampleTransitioning={sampleTransitioning}
+      />
     ) : (
       <ModalLookerCurrentSample />
     );
-  }
+  },
 );
 
 const ModalLookerCurrentSample = React.memo(() => {
@@ -70,21 +77,27 @@ const ModalLookerCurrentSample = React.memo(() => {
 });
 
 const ModalLookerContent = React.memo(
-  ({ sample }: { sample: fos.ModalSample }) => {
+  ({
+    sample,
+    sampleTransitioning = false,
+  }: {
+    sample: fos.ModalSample;
+    sampleTransitioning?: boolean;
+  }) => {
     const mode = useAtomValue(fos.modalMode);
     const shouldRenderImavid = useRecoilValue(
-      fos.shouldRenderImaVidLooker(true)
+      fos.shouldRenderImaVidLooker(true),
     );
-    const video = useRecoilValue(fos.isVideoDataset);
-
-    const mediaType =
-      (sample.sample.media_type as unknown as string) ??
-      sample.sample._media_type;
-
-    const isNative = isNativeMediaType(mediaType as string);
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
 
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+    const selectedMedia = fos.resolveMediaFieldLooker({
+      mediaField: modalMediaField,
+      sample: sample.sample,
+      urls: fos.getNormalizedUrls(sample.urls),
+    });
+    const isNative = selectedMedia.nativeLookerType !== null;
+    const isVideo = selectedMedia.nativeLookerType === "video";
 
     if (shouldRenderImavid) {
       return (
@@ -96,8 +109,16 @@ const ModalLookerContent = React.memo(
       );
     }
 
-    if (video) {
-      return <VideoLookerReact sample={sample} showControls={!isAnnotate} />;
+    if (isVideo) {
+      if (isAnnotate) {
+        return <VideoAnnotationSurface sample={sample} />;
+      }
+      return (
+        <VideoTimelineSurface
+          sample={sample}
+          videoPath={selectedMedia.selectedMediaPath}
+        />
+      );
     }
 
     if (isNative) {
@@ -117,7 +138,11 @@ const ModalLookerContent = React.memo(
     }
 
     return (
-      <ModalSampleRenderer sample={sample} modalMediaField={modalMediaField} />
+      <ModalSampleRenderer
+        sample={sample}
+        modalMediaField={modalMediaField}
+        transitioning={sampleTransitioning}
+      />
     );
-  }
+  },
 );

@@ -20,7 +20,7 @@ export const fetchWithLinearBackoff = async (
   retry: RetryOptions = {
     retries: DEFAULT_MAX_RETRIES,
     delay: DEFAULT_BASE_DELAY,
-  }
+  },
 ) => {
   for (let i = 0; i < retry.retries; i++) {
     try {
@@ -30,7 +30,7 @@ export const fetchWithLinearBackoff = async (
       } else {
         if (NON_RETRYABLE_STATUS_CODES.includes(response.status)) {
           throw new NonRetryableError(
-            `Non-retryable HTTP error: ${response.status}`
+            `Non-retryable HTTP error: ${response.status}`,
           );
         } else {
           // retry on other HTTP errors (e.g., 500 Internal Server Error)
@@ -44,12 +44,12 @@ export const fetchWithLinearBackoff = async (
       }
       if (i < retry.retries - 1) {
         await new Promise((resolve) =>
-          setTimeout(resolve, retry.delay * (i + 1))
+          setTimeout(resolve, retry.delay * (i + 1)),
         );
       } else {
         // max retries reached
         throw new Error(
-          "Max retries for fetch reached (linear backoff), error: " + e
+          "Max retries for fetch reached (linear backoff), error: " + e,
         );
       }
     }

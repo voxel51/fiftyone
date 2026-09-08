@@ -5,6 +5,10 @@ PyTorch Hub Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.21.5
+    :enterprise_version: 1.3.5
+
 FiftyOne integrates natively with `PyTorch Hub <https://pytorch.org/hub>`_, so
 you can load any Hub model and run inference on your FiftyOne datasets with
 just a few lines of code!

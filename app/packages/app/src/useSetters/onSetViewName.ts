@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { setView, type setViewMutation } from "@fiftyone/relay";
 import {
   DEFAULT_SELECTION_STYLE,
@@ -14,10 +18,7 @@ const onSetViewName: RegisteredSetter =
   ({ environment, router, sessionRef }) =>
   ({ get, set }, value: string | DefaultValue | null) => {
     set(pendingEntry, true);
-    let slug = value;
-    if (slug instanceof DefaultValue) {
-      slug = null;
-    }
+    const slug = value instanceof DefaultValue ? null : value;
 
     const dataset = get(datasetName);
     if (!dataset) {
@@ -48,7 +49,7 @@ const onSetViewName: RegisteredSetter =
       }),
       {
         view: [],
-      }
+      },
     );
   };
 

@@ -12,18 +12,21 @@ import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 export const use3dAnnotationEventHandlers = () => {
   const updateWorkingLabel = useUpdateWorkingLabel();
   const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
+    selectedLabelForAnnotationAtom,
   );
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
 
   useAnnotationEventHandler(
     "annotation:sidebarLabelSelected",
-    useCallback((payload) => {
-      setSelectedLabelForAnnotation({
-        _id: payload.id,
-        ...payload.data,
-      });
-    }, [])
+    useCallback(
+      (payload) => {
+        setSelectedLabelForAnnotation({
+          _id: payload.id,
+          ...payload.data,
+        });
+      },
+      [setSelectedLabelForAnnotation],
+    ),
   );
 
   useAnnotationEventHandler(
@@ -43,23 +46,26 @@ export const use3dAnnotationEventHandlers = () => {
         const { _id, ...updates } = value;
         updateWorkingLabel(_id, coerceStringBooleans(updates));
       },
-      [updateWorkingLabel]
-    )
+      [updateWorkingLabel],
+    ),
   );
 
   useAnnotationEventHandler(
     "annotation:sidebarLabelHover",
-    useCallback((payload) => {
-      setHoveredLabel({
-        id: payload.id,
-      });
-    }, [])
+    useCallback(
+      (payload) => {
+        setHoveredLabel({
+          id: payload.id,
+        });
+      },
+      [setHoveredLabel],
+    ),
   );
 
   useAnnotationEventHandler(
     "annotation:sidebarLabelUnhover",
     useCallback(() => {
       setHoveredLabel(null);
-    }, [])
+    }, [setHoveredLabel]),
   );
 };

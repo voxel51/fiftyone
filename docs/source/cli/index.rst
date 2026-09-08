@@ -5,6 +5,10 @@ FiftyOne Command-Line Interface (CLI)
 
 .. default-role:: code
 
+.. meta::
+    :description: Reference for the fiftyone command-line interface,
+        including dataset management, App control, and config commands.
+
 Installing FiftyOne automatically installs `fiftyone`, a command-line interface
 (CLI) for interacting with FiftyOne. This utility provides access to many
 useful features, including creating and inspecting datasets, visualizing
@@ -101,6 +105,10 @@ The FiftyOne command-line interface.
 
 FiftyOne quickstart
 -------------------
+
+.. customavailablein::
+    :oss_version: 0.5.2
+    :enterprise_version: 1.0
 
 Launch a FiftyOne quickstart.
 
@@ -405,6 +413,10 @@ Print information about FiftyOne datasets.
 
 Print dataset stats
 ~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.7.4
+    :enterprise_version: 1.0
 
 Print stats about FiftyOne datasets on disk.
 
@@ -2193,6 +2205,10 @@ Tools for working with the FiftyOne App.
 App Config
 ~~~~~~~~~~
 
+.. customavailablein::
+    :oss_version: 0.7.2
+    :enterprise_version: 1.0
+
 Tools for working with your FiftyOne App config.
 
 .. code-block:: text
@@ -2962,6 +2978,10 @@ Deletes the local copy of the zoo dataset on disk.
 FiftyOne Model Zoo
 ------------------
 
+.. customavailablein::
+    :oss_version: 0.7.0
+    :enterprise_version: 1.0
+
 Tools for working with the FiftyOne Model Zoo.
 
 .. code-block:: text
@@ -3209,6 +3229,10 @@ following:
 
 Apply zoo models to datasets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.7.0
+    :enterprise_version: 1.0
 
 Apply zoo models to datasets.
 

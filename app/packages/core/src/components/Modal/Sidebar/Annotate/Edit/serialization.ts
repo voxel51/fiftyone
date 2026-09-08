@@ -1,35 +1,12 @@
 import { isNullish, Primitive } from "@fiftyone/utilities";
 
 /**
- * Problem: user is in EST, server is in UTC. User picks a
- * date-only value, we need to convert it to UTC. This makes the
- * date appear to be a day ahead when it is rendered in the UI back
- * in UTC/server format.
- */
-export function dateOnlyToUTC(date: Date): string {
-  // Extract year, month, day from the date object (in local timezone)
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const day = date.getDate();
-
-  // Create date at noon UTC (avoids timezone boundary issues)
-  return new Date(Date.UTC(year, month, day, 12, 0, 0, 0)).toISOString();
-}
-
-export function serializeDateValue(type: string, date: Date): string {
-  if (type === "date") {
-    return dateOnlyToUTC(date);
-  }
-  return date.toISOString();
-}
-
-/**
  * Serialize a date value from the database back to an ISO string
  * @param value - The value to serialize
  * @returns The serialized value
  */
 export function serializeDatabaseDateValue(
-  value: Primitive | { datetime: number }
+  value: Primitive | { datetime: number },
 ): Primitive {
   if (!isDateInDatabaseFormat(value)) return value;
   return new Date(value.datetime).toISOString();
@@ -41,7 +18,7 @@ export function serializeDatabaseDateValue(
  * @returns True if the value is in the format { _cls: "DateTime", datetime: number }, false otherwise
  */
 export function isDateInDatabaseFormat(
-  value: unknown
+  value: unknown,
 ): value is { datetime: number } {
   return !isNullish(value) && typeof value === "object" && "datetime" in value;
 }
@@ -54,15 +31,11 @@ export function isDateInDatabaseFormat(
  * @returns the processed value of the field
  */
 export function serializeFieldValue(
-  fieldValue: Primitive | Date,
-  type: string
+  fieldValue: Primitive,
+  type: string,
 ): Primitive {
-  if (fieldValue instanceof Date) {
-    return serializeDateValue(type, fieldValue);
-  }
-
   if (type !== "dict") {
-    return fieldValue as Primitive;
+    return fieldValue;
   }
 
   // handle dict fields
@@ -79,23 +52,19 @@ export function serializeFieldValue(
 
 /**
  * Convert raw value into a primitive of the format that we can
- * pass to SmartForm and handle date/dict fields correctly
- * @param type - the type of the field
+ * pass to SmartForm and handle date/dict fields correctly. Date and
+ * datetime values become ISO instant strings; the SmartForm datepicker
+ * widget translates them to and from the displayed date and time.
  * @param value - the value of the field
  * @returns the initial value of the field
  */
-export function parseDatabaseValue(
-  type: string,
-  value: unknown
-): Primitive | Date {
+export function parseDatabaseValue(value: unknown): Primitive {
   /**
    * from the backend we get: { datetime: number, '_cls': 'datetime' }
    */
-  if (value && typeof value === "object" && "datetime" in value) {
-    const timestamp = value.datetime as number;
-    // within editor we use Date objects, parse the timestamp to a Date
-    // and then we will serialize it back on submission to the server
-    return new Date(timestamp);
+  if (isDateInDatabaseFormat(value)) {
+    return new Date(value.datetime).toISOString();
   }
+
   return value as Primitive;
 }

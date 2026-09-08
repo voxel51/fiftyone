@@ -1,9 +1,11 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import { staticTransformToMatrix4 } from "../../frustum/builders";
 import type { CameraIntrinsics, FrustumData } from "../../frustum/types";
+import { getCuboidForwardFaceBasePoint } from "../../utils";
 import type { CuboidTransformData, PolylineTransformData } from "../types";
 import type {
   CuboidProjectionData,
+  ProjectedEdge,
   PolylineProjectionData,
   ProjectedCorner,
 } from "./types";
@@ -27,6 +29,28 @@ export const CUBOID_EDGES: [number, number][] = [
   [3, 7],
 ];
 
+const getCuboidQuaternion = (
+  rotation?: [number, number, number],
+  quaternion?: [number, number, number, number],
+) => {
+  if (quaternion) {
+    return new Quaternion(
+      quaternion[0],
+      quaternion[1],
+      quaternion[2],
+      quaternion[3],
+    ).normalize();
+  }
+
+  if (rotation) {
+    return new Quaternion().setFromEuler(
+      new Euler(rotation[0], rotation[1], rotation[2]),
+    );
+  }
+
+  return new Quaternion();
+};
+
 /**
  * Compute the 8 world-space corners of a cuboid.
  */
@@ -34,7 +58,7 @@ export function getCuboidWorldCorners(
   location: [number, number, number],
   dimensions: [number, number, number],
   rotation?: [number, number, number],
-  quaternion?: [number, number, number, number]
+  quaternion?: [number, number, number, number],
 ): Vector3[] {
   const [w, h, d] = dimensions;
   const hw = w / 2;
@@ -52,23 +76,7 @@ export function getCuboidWorldCorners(
     new Vector3(-hw, +hh, +hd),
   ];
 
-  let q: Quaternion;
-
-  if (quaternion) {
-    q = new Quaternion(
-      quaternion[0],
-      quaternion[1],
-      quaternion[2],
-      quaternion[3]
-    );
-  } else if (rotation) {
-    q = new Quaternion().setFromEuler(
-      new Euler(rotation[0], rotation[1], rotation[2])
-    );
-  } else {
-    q = new Quaternion();
-  }
-
+  const q = getCuboidQuaternion(rotation, quaternion);
   const center = new Vector3(location[0], location[1], location[2]);
 
   return corners.map((c) => {
@@ -84,7 +92,7 @@ export function getCuboidWorldCorners(
 export function projectToPixel(
   worldPoint: Vector3,
   worldToCam: Matrix4,
-  intrinsics: CameraIntrinsics
+  intrinsics: CameraIntrinsics,
 ): ProjectedCorner | null {
   const camPt = worldPoint.clone().applyMatrix4(worldToCam);
 
@@ -97,6 +105,51 @@ export function projectToPixel(
   return { u, v, z: camPt.z };
 }
 
+function computeCuboidOrientationProjection(
+  label: CuboidTransformData,
+  worldToCam: Matrix4,
+  intrinsics: CameraIntrinsics,
+  upVector?: Vector3 | null,
+): ProjectedEdge | null {
+  const headingLength = Math.abs(label.dimensions[0]) / 2;
+
+  if (!Number.isFinite(headingLength) || headingLength <= 0) {
+    return null;
+  }
+
+  const center = new Vector3(...label.location);
+  const orientation = getCuboidQuaternion(label.rotation, label.quaternion);
+  const startLocalPoint = getCuboidForwardFaceBasePoint({
+    dimensions: label.dimensions,
+    orientation,
+    upVector,
+  });
+
+  if (!startLocalPoint) {
+    return null;
+  }
+
+  const endLocalPoint = startLocalPoint.clone().setX(headingLength * 2);
+  const startPoint = startLocalPoint
+    .clone()
+    .applyQuaternion(orientation)
+    .add(center);
+  const endPoint = endLocalPoint.applyQuaternion(orientation).add(center);
+  const start = projectToPixel(startPoint, worldToCam, intrinsics);
+  const end = projectToPixel(endPoint, worldToCam, intrinsics);
+
+  if (!start || !end) {
+    return null;
+  }
+
+  return {
+    x1: start.u,
+    y1: start.v,
+    x2: end.u,
+    y2: end.v,
+  };
+}
+
 /**
  * Compute projected edges and corners for a cuboid label.
  *
@@ -104,7 +157,8 @@ export function projectToPixel(
  */
 export function computeCuboidProjection(
   label: CuboidTransformData,
-  frustumData: FrustumData
+  frustumData: FrustumData,
+  upVector?: Vector3 | null,
 ): CuboidProjectionData | null {
   if (!frustumData.intrinsics || !frustumData.staticTransform) return null;
 
@@ -114,14 +168,14 @@ export function computeCuboidProjection(
     label.location,
     label.dimensions,
     label.rotation,
-    label.quaternion
+    label.quaternion,
   );
 
   const camToWorld = staticTransformToMatrix4(staticTransform);
   const worldToCam = camToWorld.clone().invert();
 
   const projected = corners.map((c) =>
-    projectToPixel(c, worldToCam, intrinsics)
+    projectToPixel(c, worldToCam, intrinsics),
   );
 
   const edges: CuboidProjectionData["edges"] = [];
@@ -135,7 +189,16 @@ export function computeCuboidProjection(
 
   if (edges.length === 0) return null;
 
-  return { edges, corners: projected };
+  return {
+    edges,
+    corners: projected,
+    orientation: computeCuboidOrientationProjection(
+      label,
+      worldToCam,
+      intrinsics,
+      upVector,
+    ),
+  };
 }
 
 /**
@@ -145,7 +208,7 @@ export function computeCuboidProjection(
  */
 export function computePolylineProjection(
   label: PolylineTransformData,
-  frustumData: FrustumData
+  frustumData: FrustumData,
 ): PolylineProjectionData | null {
   if (!frustumData.intrinsics || !frustumData.staticTransform) return null;
 
@@ -159,7 +222,7 @@ export function computePolylineProjection(
 
   for (const segment of label.points3d) {
     const projected = segment.map((pt) =>
-      projectToPixel(new Vector3(pt[0], pt[1], pt[2]), worldToCam, intrinsics)
+      projectToPixel(new Vector3(pt[0], pt[1], pt[2]), worldToCam, intrinsics),
     );
 
     allVertices.push(...projected);

@@ -25,7 +25,7 @@ export default function ColorView(props) {
       onChange(path, color);
       setUserChanged();
     },
-    [onChange, path, setUserChanged]
+    [onChange, path, setUserChanged],
   );
 
   useEffect(() => {

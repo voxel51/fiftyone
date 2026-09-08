@@ -1,8 +1,30 @@
-import { useRecoilValue, useResetRecoilState, useSetRecoilState } from "recoil";
 import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
+import {
+  activeCursorPanelAtom,
+  cuboidLabelLineWidthAtom,
   current3dAnnotationModeAtom,
+  currentArchetypeSelectedForTransformAtom,
+  fo3dPerformanceStatsAtom,
+  headingUpEditorHoverAtom,
+  headingUpPreviewAtom,
+  hoveredHeadingTargetFaceAtom,
   hoveredLabelAtom,
+  isActivelySegmentingSelector,
+  isCreatingCuboidAtom,
+  isCurrentlyTransformingAtom,
+  isFo3dMainPanelPointerDownAtom,
+  mainPanelPanSyncIntentAtom,
+  mainPanelZoomSyncIntentAtom,
+  polylineLabelLineWidthAtom,
+  raycastResultAtom,
   selectedLabelForAnnotationAtom,
+  showCuboidOrientationAtom,
+  transformModeAtom,
 } from "./recoil";
 
 /**
@@ -34,7 +56,7 @@ export const useSetCurrent3dAnnotationMode = () => {
  */
 export const useReset3dAnnotationMode = () => {
   const reset3dAnnotationMode = useResetRecoilState(
-    current3dAnnotationModeAtom
+    current3dAnnotationModeAtom,
   );
 
   return reset3dAnnotationMode;
@@ -65,4 +87,175 @@ export const useResetSelected3dAnnotationLabel = () => {
  */
 export const useHoveredLabel3d = () => {
   return useRecoilValue(hoveredLabelAtom);
+};
+
+/**
+ * Hook to set the currently hovered 3D label in annotation mode.
+ *
+ * @returns A function that accepts the new hovered label (or null to clear)
+ */
+export const useSetHoveredLabel3d = () => {
+  return useSetRecoilState(hoveredLabelAtom);
+};
+
+export const useFo3dPerformanceStats = () => {
+  return useRecoilValue(fo3dPerformanceStatsAtom);
+};
+
+export const useSetFo3dPerformanceStats = () => {
+  return useSetRecoilState(fo3dPerformanceStatsAtom);
+};
+
+/**
+ * Whether any label is mid-transform (gizmo drag, face-pull resize, heading
+ * drag). Components consume this rather than the atom directly.
+ */
+export const useIsCurrentlyTransforming = () => {
+  return useRecoilValue(isCurrentlyTransformingAtom);
+};
+
+export const useSetIsCurrentlyTransforming = () => {
+  return useSetRecoilState(isCurrentlyTransformingAtom);
+};
+
+/**
+ * The active transform gizmo mode (translate/rotate/scale).
+ */
+export const useTransformMode = () => {
+  return useRecoilValue(transformModeAtom);
+};
+
+/**
+ * The candidate face during a heading drag, shared across panels so the
+ * highlight shows wherever the label is drawn.
+ */
+export const useHoveredHeadingTargetFace = () => {
+  return useRecoilValue(hoveredHeadingTargetFaceAtom);
+};
+
+export const useSetHoveredHeadingTargetFace = () => {
+  return useSetRecoilState(hoveredHeadingTargetFaceAtom);
+};
+
+/**
+ * The face being hovered in the sidebar's heading/up face picker, for
+ * whichever label owns it — read by the 3D scene to preview a ghost
+ * arrow/face highlight and suppress other transform controls while hovered.
+ */
+export const useHeadingUpPreview = () => {
+  return useRecoilValue(headingUpPreviewAtom);
+};
+
+/**
+ * Sets/clears the heading/up hover preview. Callers outside the r3f canvas
+ * (the DOM sidebar) reach the 3D scene through this rather than the atom
+ * directly, matching the rest of this module's convention.
+ */
+export const useSetHeadingUpPreview = () => {
+  return useSetRecoilState(headingUpPreviewAtom);
+};
+
+/**
+ * Whether the pointer is anywhere over the heading/up editor UI as a whole,
+ * for whichever label owns it — read by the 3D scene to suppress the gizmo
+ * and face-resize handles without flickering as the pointer crosses gaps
+ * between face buttons (see {@link useHeadingUpPreview} for the per-face
+ * hover that drives the ghost-arrow preview itself).
+ */
+export const useHeadingUpEditorHover = () => {
+  return useRecoilValue(headingUpEditorHoverAtom);
+};
+
+export const useSetHeadingUpEditorHover = () => {
+  return useSetRecoilState(headingUpEditorHoverAtom);
+};
+
+export const useCuboidOrientation = () => {
+  return useRecoilValue(showCuboidOrientationAtom);
+};
+
+export const useCuboidOrientationState = () => {
+  return useRecoilState(showCuboidOrientationAtom);
+};
+
+export const useActiveCursorPanel = () => {
+  return useRecoilValue(activeCursorPanelAtom);
+};
+
+export const useSetActiveCursorPanel = () => {
+  return useSetRecoilState(activeCursorPanelAtom);
+};
+
+export const useFo3dMainPanelPointerDown = () => {
+  return useRecoilValue(isFo3dMainPanelPointerDownAtom);
+};
+
+export const useSetFo3dMainPanelPointerDown = () => {
+  return useSetRecoilState(isFo3dMainPanelPointerDownAtom);
+};
+
+export const useGlobalCursorCoordinatorActions = () => {
+  return {
+    setActiveCursorPanel: useSetActiveCursorPanel(),
+    setIsMainPanelPointerDown: useSetFo3dMainPanelPointerDown(),
+  };
+};
+
+export const useRaycastResult = () => {
+  return useRecoilValue(raycastResultAtom);
+};
+
+export const useSetRaycastResult = () => {
+  return useSetRecoilState(raycastResultAtom);
+};
+
+export const useMainPanelNavigationSyncIntents = () => {
+  return {
+    mainPanelPanSyncIntent: useRecoilValue(mainPanelPanSyncIntentAtom),
+    mainPanelZoomSyncIntent: useRecoilValue(mainPanelZoomSyncIntentAtom),
+  };
+};
+
+export const useMainPanelNavigationSyncEmitterState = () => {
+  return {
+    activeCursorPanel: useRecoilValue(activeCursorPanelAtom),
+    raycastResult: useRecoilValue(raycastResultAtom),
+    setMainPanelPanSyncIntent: useSetRecoilState(mainPanelPanSyncIntentAtom),
+    setMainPanelZoomSyncIntent: useSetRecoilState(mainPanelZoomSyncIntentAtom),
+  };
+};
+
+export const useCuboidTransformCommands = () => {
+  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
+    currentArchetypeSelectedForTransformAtom,
+  );
+  const setTransformMode = useSetRecoilState(transformModeAtom);
+
+  return {
+    selectNewCuboidForTransform: () => {
+      setCurrentArchetypeSelectedForTransform("cuboid");
+    },
+    setTransformMode,
+  };
+};
+
+export const useThreeDLabelState = () => {
+  const [cuboidLineWidth, setCuboidLineWidth] = useRecoilState(
+    cuboidLabelLineWidthAtom,
+  );
+  const [polylineWidth, setPolylineWidth] = useRecoilState(
+    polylineLabelLineWidthAtom,
+  );
+
+  return {
+    cuboidLineWidth,
+    hoveredLabel: useHoveredLabel3d(),
+    isCreatingCuboid: useRecoilValue(isCreatingCuboidAtom),
+    isSegmenting: useRecoilValue(isActivelySegmentingSelector),
+    polylineWidth,
+    selectedLabelForAnnotation: useCurrentSelected3dAnnotationLabel(),
+    setCuboidLineWidth,
+    setPolylineWidth,
+    showCuboidOrientation: useCuboidOrientation(),
+  };
 };

@@ -524,6 +524,7 @@ def make_frames_dataset(
     name=None,
     persistent=False,
     _generated=False,
+    **kwargs,
 ):
     """Creates a dataset that contains one sample per frame in the video
     collection.
@@ -649,6 +650,11 @@ def make_frames_dataset(
         name (None): a name for the dataset
         persistent (False): whether the dataset should persist in the database
             after the session terminates
+        **kwargs: optional keyword arguments for
+            ``eta.core.video.FFmpeg(**kwargs)``. These are forwarded to
+            :func:`fiftyone.utils.video.sample_videos` and only apply when
+            ``sample_frames=True``. Common parameters include ``in_opts`` and
+            ``out_opts`` for fine-grained ffmpeg control
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -724,6 +730,7 @@ def make_frames_dataset(
             force_sample=True,
             save_filepaths=True,
             skip_failures=skip_failures,
+            **kwargs,
         )
 
     #
@@ -927,7 +934,7 @@ def _init_frames(
 
             _id = frame_ids_map.get(fn, None)
             _filepath = images_patt % fn
-            _rand = foos._generate_rand(_filepath)
+            _rand = foos._generate_rand()
             _dataset_id = dataset._doc.id
 
             if missing_fps is not None and fn in missing_fps:

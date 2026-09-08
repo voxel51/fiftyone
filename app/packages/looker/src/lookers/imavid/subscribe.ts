@@ -26,14 +26,14 @@ export const getSubscription = ({
     }-${getColoringKey(
       looker.state.options.coloring,
       looker.state.options.colorscale,
-      `${id}`
+      `${id}`,
     )}`;
 
     // sync key is not variable between frames, unlike LUT id
     const syncKey = getColoringKey(
       looker.state.options.coloring,
       looker.state.options.colorscale,
-      `${id}-${modal ? "modal" : "grid"}`
+      `${id}-${modal ? "modal" : "grid"}`,
     );
 
     const lut = modal ? modalActivePathsLUT : gridActivePathsLUT;
@@ -52,7 +52,7 @@ export const getSubscription = ({
           const newFields = syncAndGetNewLabels(
             id,
             lut,
-            new Set(looker.state.options.activePaths)
+            new Set(looker.state.options.activePaths),
           );
           looker.refreshSample(newFields, 1);
         }
@@ -65,7 +65,7 @@ export const getSubscription = ({
         const newFields = syncAndGetNewLabels(
           id,
           lut,
-          new Set(looker.state.options.activePaths)
+          new Set(looker.state.options.activePaths),
         );
         looker.refreshSample(newFields, 1);
       } else {
@@ -84,7 +84,7 @@ export const getSubscription = ({
       if (
         !(modal && newFrameNumber === 1) &&
         looker.frameStoreController.store.hasAtLeastOneLoadedMask(
-          newFrameNumber
+          newFrameNumber,
         )
       ) {
         lut.delete(thisFrameLutId);
@@ -101,7 +101,7 @@ export const getSubscription = ({
       const newFieldsIfAny = syncAndGetNewLabels(
         thisFrameLutId,
         lut,
-        new Set(looker.state.options.activePaths)
+        new Set(looker.state.options.activePaths),
       );
 
       if (newFieldsIfAny && newFrameNumber > 0) {

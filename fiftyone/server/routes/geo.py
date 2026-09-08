@@ -72,7 +72,7 @@ async def _fetch_geo_points(
 
     results = {}
 
-    async for doc in collection.aggregate(pipeline):
+    async for doc in await collection.aggregate(pipeline):
         try:
             results[str(doc["_id"])] = doc["coordinates"]
         except:

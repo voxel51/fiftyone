@@ -26,6 +26,7 @@
         { "path": "packages/spaces" },
         { "path": "packages/spotlight" },
         { "path": "packages/state" },
+        { "path": "packages/tiling" },
         { "path": "packages/utilities" }
     ]
 }

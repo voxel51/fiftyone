@@ -96,7 +96,7 @@ export const OperatorExecutionTrigger = ({
 
       return operator.execute(executionParams ?? {}, resolvedOptions);
     },
-    [executorOptions, operator, executionParams]
+    [executorOptions, operator, executionParams],
   );
 
   const { executionOptions, requiresOrchestratorSetup } =

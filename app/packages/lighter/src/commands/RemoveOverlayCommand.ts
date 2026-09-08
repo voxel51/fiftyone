@@ -13,7 +13,10 @@ export class RemoveOverlayCommand implements Undoable {
   readonly id: string;
   readonly description: string;
 
-  constructor(private scene: Scene2D, private overlay: BaseOverlay) {
+  constructor(
+    private scene: Scene2D,
+    private overlay: BaseOverlay,
+  ) {
     this.id = `remove-overlay-${overlay.id}-${Date.now()}`;
     this.description = `Remove overlay ${overlay.id}`;
   }

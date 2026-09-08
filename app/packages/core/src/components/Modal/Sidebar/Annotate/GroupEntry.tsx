@@ -5,7 +5,7 @@ import React from "react";
 import styled, { useTheme } from "styled-components";
 import { Column } from "./Components";
 import { Container } from "./Icons";
-import { labels } from "./useLabels";
+import { usePresentLabelCount } from "./usePresentLabelRows";
 import { IconProps } from "@mui/material";
 
 const PlusMinusButton = (props: PlusMinusButtonProps) => {
@@ -89,17 +89,22 @@ const EXPANDED_ATOMS: Record<string, typeof labelsExpanded> = {
   [PRIMITIVES_GROUP_NAME]: primitivesExpanded,
 };
 
-const labelsCount = atom((get) => get(labels).length);
 export const primitivesCount = atom(0);
-
-const COUNT_ATOMS: Record<string, typeof labelsCount> = {
-  [LABELS_GROUP_NAME]: labelsCount,
-  [PRIMITIVES_GROUP_NAME]: primitivesCount,
-};
 
 const Group = React.memo(({ name }: { name: string }) => {
   const theme = useTheme();
-  const count = useAtomValue(COUNT_ATOMS[name]);
+
+  // Count from the same present-rows the list renders, so video shows the
+  // CURRENT-FRAME label count rather than the whole-clip total. Both hooks run
+  // unconditionally; the group name selects which value to show.
+  const presentLabelCount = usePresentLabelCount();
+  const primitives = useAtomValue(primitivesCount);
+  const count =
+    name === LABELS_GROUP_NAME
+      ? presentLabelCount
+      : name === PRIMITIVES_GROUP_NAME
+        ? primitives
+        : null;
 
   return (
     <div

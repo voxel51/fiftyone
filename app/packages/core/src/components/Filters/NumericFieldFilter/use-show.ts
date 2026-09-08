@@ -9,7 +9,7 @@ export default function useShow(modal: boolean, named: boolean, path: string) {
       path,
       modal,
       shouldCalculate: !queryPerformance || modal,
-    })
+    }),
   );
 
   return hasBounds || (queryPerformance && !modal) || !named;

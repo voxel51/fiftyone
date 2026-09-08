@@ -77,6 +77,14 @@ export class KeySequence {
       }
       if (this.key === " ") {
         ret += "space";
+      } else if (this.key === ",") {
+        // "," is the reserved sequence delimiter, so it must be re-escaped
+        // here to survive the parseBinding round-trip in KeyManager.
+        ret += "\\,";
+      } else if (this.key === "+") {
+        // "+" is the reserved key combiner, so it must be re-escaped here for
+        // the same reason.
+        ret += "\\+";
       } else {
         ret += this.key;
       }
@@ -93,8 +101,12 @@ type SequenceModifier = (sequence: KeySequence) => void;
  * You may not use two or more stardard keys in a binding, such as "x+z".
  * Since "+" and "," are reserved in the specifying format, to bind those 2
  * keys you can use:
- *  - for +: "ctrl+\\+" or "ctrl+="
+ *  - for +: "ctrl+\\+"
  *  - for ,: "ctrl+\\,"
+ * Escapes resolve to the literal character, which is matched against
+ * KeyboardEvent.key. That character is what the layout actually produces, so
+ * on a US layout "+" is a shifted press and binds as "shift+\\+", while the
+ * unshifted key on the same cap is the separate binding "=".
  * All keys are case insensitive any use their lowercase representation.
  * Shift is not inferred from key case.
  */
@@ -181,16 +193,16 @@ export class KeyParser {
         } else {
           if (keySequence.key !== "") {
             throw new Error(
-              `Multiple standard keys in keybinding: ${sequence}`
+              `Multiple standard keys in keybinding: ${sequence}`,
             );
           }
           switch (keyLow) {
             case "space":
               keySequence.key = " ";
               break;
-            //unescape \+ (= is the lower case)
+            //unescape \+
             case "\\+":
-              keySequence.key = "=";
+              keySequence.key = "+";
               break;
             //unescape \,
             case "\\,":
@@ -204,7 +216,7 @@ export class KeyParser {
                   throw new Error(`The binding ${binding} is missing a key.`);
                 }
                 throw new Error(
-                  `The binding ${binding} contains an invalid key ${key.trim()}`
+                  `The binding ${binding} contains an invalid key ${key.trim()}`,
                 );
               }
               break;

@@ -1,11 +1,13 @@
 import * as fos from "@fiftyone/state";
 import {
+  getSamplePathExtension,
   isFo3dSamplePath,
   isWrappableDirect3dSamplePath,
 } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import type { FoScene } from "../fo3d/render-types";
+import type { DirectPcdWorldTransforms } from "../fo3d/direct-pcd-world-alignment";
 import {
   buildSyntheticSceneForDirect3dSamples,
   buildSyntheticSceneNodesForDirect3dSamples,
@@ -13,6 +15,7 @@ import {
 import { getFo3dRoot, getMediaPathForFo3dSample } from "../fo3d/utils";
 import type { FiftyoneSceneRawJson } from "../utils";
 import useFo3dFetcher from "./use-fo3d-fetcher";
+import { useGroupedDirectPcdWorldTransforms } from "./use-grouped-direct-pcd-world-transforms";
 import { buildFoScene, getRootAssetCount } from "./use-fo3d-scene-parser";
 
 import { getResolvedUrlForFo3dAsset } from "../fo3d/utils";
@@ -38,7 +41,7 @@ const stripPreTransformedAttributes = (node: FoSceneRawNode) => {
 
 const normalizeFo3dRawData = (
   rawData: FiftyoneSceneRawJson,
-  fo3dRoot: string | null
+  fo3dRoot: string | null,
 ): FiftyoneSceneRawJson => {
   const normalizedData = cloneRawData(rawData);
 
@@ -47,13 +50,13 @@ const normalizeFo3dRawData = (
   if (fo3dRoot && normalizedData.background?.image) {
     normalizedData.background.image = getResolvedUrlForFo3dAsset(
       normalizedData.background.image,
-      fo3dRoot
+      fo3dRoot,
     );
   }
 
   if (fo3dRoot && normalizedData.background?.cube) {
     normalizedData.background.cube = normalizedData.background.cube.map(
-      (cubePath) => getResolvedUrlForFo3dAsset(cubePath, fo3dRoot)
+      (cubePath) => getResolvedUrlForFo3dAsset(cubePath, fo3dRoot),
     ) as [string, string, string, string, string, string];
   }
 
@@ -62,12 +65,12 @@ const normalizeFo3dRawData = (
 
 const getSampleMapForSlices = (
   sampleMap: Record<string, fos.ModalSample>,
-  slices: string[]
+  slices: string[],
 ) => {
   return Object.fromEntries(
     slices
       .map((slice) => [slice, sampleMap[slice]] as const)
-      .filter(([, currentSample]) => Boolean(currentSample))
+      .filter(([, currentSample]) => Boolean(currentSample)),
   );
 };
 
@@ -109,6 +112,7 @@ export const appendDirect3dSamplesToScene = ({
 };
 
 type UseFo3dReturnType = {
+  directPcdWorldTransformsBySampleId: DirectPcdWorldTransforms;
   foScene: FoScene | null;
   isLoading: boolean;
   loadError: Error | null;
@@ -134,26 +138,26 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   const filepath = sample.sample.filepath;
   const mediaPath = useMemo(
     () => getMediaPathForFo3dSample(sample, mediaField),
-    [sample, mediaField]
+    [sample, mediaField],
   );
   const isRealFo3dScene = useMemo(
     () => isFo3dSamplePath(mediaPath) || isFo3dSamplePath(filepath),
-    [mediaPath, filepath]
+    [mediaPath, filepath],
   );
   const fo3dPath = useMemo(
     () => (isFo3dSamplePath(mediaPath) ? mediaPath : filepath),
-    [mediaPath, filepath]
+    [mediaPath, filepath],
   );
   const fo3dRoot = useMemo(
     () => (isRealFo3dScene ? getFo3dRoot(fo3dPath) : null),
-    [fo3dPath, isRealFo3dScene]
+    [fo3dPath, isRealFo3dScene],
   );
   const url = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
   const isWrappableDirectAsset = useMemo(
     () =>
       isWrappableDirect3dSamplePath(mediaPath) ||
       isWrappableDirect3dSamplePath(filepath),
-    [mediaPath, filepath]
+    [mediaPath, filepath],
   );
   const groupedDirectSampleMap = useMemo(() => {
     if (!isGroup) {
@@ -163,15 +167,15 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     if (group3dState.activeSlices.length) {
       return getSampleMapForSlices(
         group3dState.allSampleMap,
-        group3dState.activeDirectSlices
+        group3dState.activeDirectSlices,
       );
     }
 
     const realFo3dSliceSet = new Set(group3dState.realFo3dSlices);
     return Object.fromEntries(
       Object.entries(group3dState.allSampleMap).filter(
-        ([slice]) => !realFo3dSliceSet.has(slice)
-      )
+        ([slice]) => !realFo3dSliceSet.has(slice),
+      ),
     );
   }, [
     group3dState.activeDirectSlices,
@@ -180,6 +184,47 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     isGroup,
     group3dState.realFo3dSlices,
   ]);
+  const groupedDirectPcdSampleMap = useMemo(() => {
+    if (!groupedDirectSampleMap) {
+      return {};
+    }
+
+    return Object.fromEntries(
+      Object.entries(groupedDirectSampleMap).filter(([, currentSample]) => {
+        const path =
+          getMediaPathForFo3dSample(currentSample, mediaField) ??
+          currentSample.sample.filepath;
+        return getSamplePathExtension(path)?.toLowerCase() === ".pcd";
+      }),
+    );
+  }, [groupedDirectSampleMap, mediaField]);
+  const directPcdSliceNames = useMemo(
+    () => Object.keys(groupedDirectPcdSampleMap),
+    [groupedDirectPcdSampleMap],
+  );
+  const directPcdAlignment = useGroupedDirectPcdWorldTransforms({
+    enabled:
+      isGroup &&
+      !group3dState.activeFo3dSlice &&
+      directPcdSliceNames.length > 0,
+    sampleId: sample.sample._id ?? null,
+    sliceNames: directPcdSliceNames,
+  });
+  const directPcdWorldTransformsBySampleId = useMemo(() => {
+    const transforms: Record<string, DirectPcdWorldTransforms[string]> = {};
+
+    for (const [slice, currentSample] of Object.entries(
+      groupedDirectPcdSampleMap,
+    )) {
+      const transform = directPcdAlignment.transformsBySlice[slice];
+      const sampleId = currentSample.sample._id;
+      if (transform && sampleId) {
+        transforms[sampleId] = transform;
+      }
+    }
+
+    return transforms;
+  }, [directPcdAlignment.transformsBySlice, groupedDirectPcdSampleMap]);
   const syntheticRawData = useMemo(() => {
     if (group3dState.activeFo3dSlice || !isWrappableDirectAsset) {
       return null;
@@ -194,6 +239,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
       sample,
       mediaField,
       sampleMap: groupedSampleMap,
+      worldTransformsBySlice: directPcdAlignment.transformsBySlice,
     });
   }, [
     group3dState.activeFo3dSlice,
@@ -204,6 +250,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     groupedDirectSampleMap,
     mediaField,
     sample,
+    directPcdAlignment.transformsBySlice,
   ]);
 
   // This effect fetches fo3d data for the active sample and guards stale updates.
@@ -213,6 +260,20 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     setIsLoading(true);
     setLoadError(null);
     setRawData(null);
+
+    if (directPcdAlignment.isLoading) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    if (directPcdAlignment.error) {
+      setLoadError(directPcdAlignment.error);
+      setIsLoading(false);
+      return () => {
+        isActive = false;
+      };
+    }
 
     if (isRealFo3dScene) {
       fetchFo3d(url, fo3dPath)
@@ -241,7 +302,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
           console.error("Failed to fetch fo3d scene:", error);
           setRawData(null);
           setLoadError(
-            error instanceof Error ? error : new Error(String(error))
+            error instanceof Error ? error : new Error(String(error)),
           );
           setIsLoading(false);
         });
@@ -269,6 +330,8 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     };
   }, [
     fetchFo3d,
+    directPcdAlignment.error,
+    directPcdAlignment.isLoading,
     fo3dPath,
     filepath,
     groupedDirectSampleMap,
@@ -304,6 +367,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
 
   if (isLoading) {
     return {
+      directPcdWorldTransformsBySampleId: {},
       foScene: null,
       isLoading: true,
       loadError: null,
@@ -313,6 +377,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   }
 
   return {
+    directPcdWorldTransformsBySampleId,
     foScene,
     isLoading: false,
     loadError,

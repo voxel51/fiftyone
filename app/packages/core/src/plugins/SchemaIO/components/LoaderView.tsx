@@ -4,7 +4,7 @@
 
 import { Alert, Box, CircularProgress, Typography } from "@mui/material";
 import { get } from "lodash";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { getComponentProps } from "../utils";
 import DynamicIO from "./DynamicIO";
 import {
@@ -33,7 +33,7 @@ export default function LoaderView(props: LoaderViewProps) {
   const dependencyHash = useDependencyHash(params, dependencies);
   const { shouldLoad, markLoaded } = useLoadTrigger(
     state as LoaderState,
-    dependencyHash
+    dependencyHash,
   );
   const executeLoad = useExecuteLoader({ operator, params, path, onChange });
 

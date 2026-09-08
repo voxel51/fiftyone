@@ -20,7 +20,7 @@ import { PanelContainer, PanelTabs, SpaceContainer } from "./StyledElements";
 import Workspaces from "./Workspaces";
 
 export default function Space({ node, id, archetype }: SpaceProps) {
-  const { spaces } = useSpaces(id);
+  const { spaces, updateSpaces } = useSpaces(id);
   const autoPosition = usePanelTabAutoPosition();
   const spaceRef = useRef<AllotmentHandle>(null);
   const previousSizesRef = useRef<number[]>();
@@ -32,9 +32,17 @@ export default function Space({ node, id, archetype }: SpaceProps) {
       currentTotalSize.current = sizes.reduce((total, item) => total + item, 0);
       const relativeSizes = getRelativeSizes(sizes);
       previousSizesRef.current = relativeSizes;
-      spaces.setNodeSizes(node, relativeSizes);
+      // the write lands 500ms after capture: mutate the latest tree, not
+      // this closure's — serializing a stale tree reverts anything written
+      // in between (e.g. a panel activation)
+      updateSpaces((latest) => {
+        const target = latest.findNodeById(node.id);
+        if (target) {
+          latest.setNodeSizes(target, relativeSizes);
+        }
+      });
     }, 500);
-  }, [spaces]);
+  }, [updateSpaces]);
 
   // apply sizes updates from remote session
   useEffect(() => {

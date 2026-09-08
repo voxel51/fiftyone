@@ -5,6 +5,10 @@ Ultralytics Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.22.0
+    :enterprise_version: 1.4.0
+
 FiftyOne integrates natively with
 `Ultralytics <https://github.com/ultralytics/ultralytics>`_, so
 you can load, fine-tune, and run inference with your favorite Ultralytics
@@ -174,6 +178,10 @@ label classes ("coco" for MS COCO or "world" for open-world), followed by
 Instance segmentation
 ---------------------
 
+.. customavailablein::
+    :oss_version: 0.23.8
+    :enterprise_version: 1.5.9
+
 You can directly pass Ultralytics YOLO segmentation models to
 :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
 
@@ -298,6 +306,10 @@ manually convert Ultralytics predictions to :ref:`FiftyOne format <keypoints>`:
 
 Oriented bounding boxes
 -----------------------
+
+.. customavailablein::
+    :oss_version: 0.23.8
+    :enterprise_version: 1.5.9
 
 You can directly pass Ultralytics YOLO oriented bounding box models to
 :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:

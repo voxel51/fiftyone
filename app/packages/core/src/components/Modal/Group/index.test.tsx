@@ -46,7 +46,9 @@ vi.mock("@fiftyone/state", () => ({
   isNestedDynamicGroup: { key: "isNestedDynamicGroup" },
   isOrderedDynamicGroup: { key: "isOrderedDynamicGroup" },
   only3d: { key: "only3d" },
-  useRenderConfig3dState: () => mockState.group3dState,
+  useIs3dVisible: () => mockState.group3dState.is3dVisible,
+  useIs3dVisibleSetting: () => mockState.group3dState.is3dVisibleSetting,
+  useIs3dPinned: () => mockState.group3dState.isPinned,
   useRenderConfig3dActions: () => ({
     setPinned: mockState.setPinned,
   }),

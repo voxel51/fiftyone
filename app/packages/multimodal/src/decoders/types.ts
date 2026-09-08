@@ -1,82 +1,44 @@
-import type { RenderArchetypeKind } from "../archetypes";
-import type { PayloadDescriptor as ContractPayloadDescriptor } from "../schemas/v1";
+import type {
+  DecodedOutput,
+  DecodedSourceTimestamps,
+  PayloadDescriptor,
+  PointCloudRenderChannelPayload,
+} from "../ir";
 
-/**
- * Broad decoded value shape until renderer-specific field contracts are
- * finalized.
- */
-export type DecodedFieldValue =
-  | string
-  | number
-  | boolean
-  | bigint
-  | null
-  | Uint8Array
-  | Float32Array
-  | ArrayBuffer
-  | readonly DecodedFieldValue[]
-  | { readonly [field: string]: DecodedFieldValue };
-
-/**
- * Decoder-owned render data passed to format-agnostic renderers.
- */
-export interface RenderBuffers {
-  readonly kind: RenderArchetypeKind;
-  readonly data: Uint8Array | Float32Array | ArrayBuffer;
-  readonly metadata?: Record<string, DecodedFieldValue>;
-}
-
-/**
- * Encoded payload identity used by frontend decoder selection.
- */
-export type PayloadDescriptor = Readonly<
-  Pick<ContractPayloadDescriptor, "encoding" | "schema" | "schemaEncoding">
->;
-
-/**
- * Time range for decoded data. Point samples may omit endNs; interval or
- * segment outputs can provide a natural end.
- */
-export interface DecodedTimeRange {
-  readonly startNs: bigint;
-  readonly endNs?: bigint;
-}
-
-/**
- * Named timestamps preserved from the source container or message payload.
- */
-export type DecodedSourceTimestamps = Readonly<Record<string, bigint>>;
-
-/**
- * Generic timing metadata for playback, synchronization, and provenance.
- */
-export interface DecodedTiming {
-  readonly timeRange?: DecodedTimeRange;
-  readonly sourceTimestamps?: DecodedSourceTimestamps;
-}
-
-/**
- * Structured decoder output for downstream playback and rendering.
- */
-export interface DecodedOutput {
-  readonly fields: Record<string, DecodedFieldValue>;
-  readonly render: RenderBuffers;
-  readonly timing?: DecodedTiming;
-}
-
-/**
- * Context supplied to decoder implementations at decode time.
- */
+/** Runtime context passed to payload decoders by format adapters. */
 export interface DecodeContext {
-  readonly streamId: string;
-  readonly coordinateFrameId?: string;
+  /** Active point-cloud color source requested by the presentation layer. */
+  readonly pointCloudColorBy?: string;
+  readonly schemaData?: Uint8Array;
+  readonly sourceTimestamps?: DecodedSourceTimestamps;
+  readonly streamId?: string;
+  /** Worker-local cancellation signal; never crosses the worker boundary. */
+  readonly signal?: AbortSignal;
+  readonly timeRangeStartKey?: string;
+  readonly timeRangeStartNs?: bigint;
+  readonly [key: string]: unknown;
 }
 
-/**
- * Frontend decoder implementation for a specific encoded payload.
- */
+/** Frontend decoder implementation for one encoded payload family. */
 export interface Decoder {
+  readonly id: string;
   readonly payload: PayloadDescriptor;
+  readonly version: string;
 
   decode(bytes: Uint8Array, ctx: DecodeContext): DecodedOutput;
+  /** Optional packed-data fast path for replacing one point-cloud channel. */
+  projectPointCloudChannel?(
+    bytes: Uint8Array,
+    ctx: DecodeContext,
+    request: PointCloudChannelProjectionRequest,
+  ): PointCloudRenderChannelPayload;
+}
+
+/** Immutable geometry identity used to project one replacement color channel. */
+export interface PointCloudChannelProjectionRequest {
+  readonly activeColorBy: string;
+  readonly capacity: number;
+  readonly sampledPointCount: number;
+  readonly samplePlanKey: string;
+  readonly sourceIndices: Uint32Array;
 }

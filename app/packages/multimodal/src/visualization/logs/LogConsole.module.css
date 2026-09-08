@@ -1,0 +1,306 @@
+.body {
+  background: var(--plot-surface, #050b12);
+  color: var(--color-content-text-primary);
+  display: flex;
+  flex-direction: column;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.toolbar {
+  align-items: stretch;
+  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  color: var(--color-content-text-secondary);
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 8px 12px;
+  min-height: 34px;
+  padding: 6px 10px;
+}
+
+.toolbarPrimary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+  width: 100%;
+}
+
+.controlGroup {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.filters {
+  display: grid;
+  gap: 8px 12px;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  width: 100%;
+}
+
+.filterField,
+.filterSelect {
+  min-width: 0;
+  width: 100%;
+}
+
+.tabs {
+  align-items: center;
+  background: color-mix(
+    in srgb,
+    var(--color-content-border-default, #383835) 35%,
+    transparent
+  );
+  border: 1px solid var(--color-content-border-default, #383835);
+  border-radius: 5px;
+  display: flex;
+  padding: 2px;
+}
+
+.tab {
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: var(--color-content-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  padding: 3px 8px;
+}
+
+.tab:hover,
+.tab:focus-visible {
+  color: var(--color-content-text-primary);
+  outline: none;
+}
+
+.tabActive {
+  background: color-mix(
+    in srgb,
+    var(--color-primary-plain-color, #ff6d04) 18%,
+    var(--plot-surface, #050b12)
+  );
+  color: var(--color-content-text-primary);
+}
+
+.meta {
+  color: var(--color-content-text-secondary);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.row {
+  align-items: baseline;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid
+    color-mix(
+      in srgb,
+      var(--color-content-border-default, #383835) 45%,
+      transparent
+    );
+  color: inherit;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  grid-template-columns: 74px 54px minmax(120px, 0.28fr) minmax(0, 1fr);
+  gap: 10px;
+  height: 30px;
+  line-height: 1.45;
+  min-height: 30px;
+  padding: 5px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.diagnosticRow {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid
+    color-mix(
+      in srgb,
+      var(--color-content-border-default, #383835) 45%,
+      transparent
+    );
+  box-sizing: border-box;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 10px;
+  grid-template-columns: 64px minmax(140px, 0.3fr) minmax(0, 1fr) 112px;
+  height: 46px;
+  padding: 5px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.diagnosticRow:hover,
+.diagnosticRow:focus-visible {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 8%,
+    transparent
+  );
+  outline: none;
+}
+
+.diagnosticIdentity {
+  color: var(--color-content-text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagnosticIdentity small {
+  color: var(--color-content-text-secondary);
+  display: block;
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusPill {
+  border: 1px solid currentcolor;
+  border-radius: 999px;
+  font-size: 10px;
+  justify-self: start;
+  line-height: 1;
+  max-width: 62px;
+  padding: 4px 6px;
+}
+
+.freshness {
+  font-size: 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.freshness_current {
+  color: #86d88f;
+}
+
+.freshness_stale {
+  color: #f1c75b;
+}
+
+.freshness_unknown {
+  color: var(--color-content-text-secondary);
+}
+
+.virtualSpacer {
+  min-width: 0;
+  position: relative;
+  width: 100%;
+}
+
+.virtualRows {
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.row:hover,
+.row:focus-visible {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 8%,
+    transparent
+  );
+  outline: none;
+}
+
+.time,
+.source,
+.message,
+.level {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  color: var(--color-content-text-secondary);
+}
+
+.source {
+  color: var(--color-content-text-secondary);
+}
+
+.message {
+  color: var(--color-content-text-primary);
+}
+
+.level {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.debug {
+  color: #7eb6ff;
+}
+
+.info {
+  color: #86d88f;
+}
+
+.warn {
+  color: #f1c75b;
+}
+
+.error {
+  color: #ff837a;
+}
+
+.fatal {
+  color: #ff5ea8;
+}
+
+.unknown {
+  color: var(--color-content-text-secondary);
+}
+
+.empty {
+  align-items: center;
+  color: var(--color-content-text-secondary);
+  display: flex;
+  flex: 1;
+  font-size: 12px;
+  justify-content: center;
+  min-height: 0;
+  padding: 16px;
+  text-align: center;
+}
+
+.errorState {
+  align-items: center;
+  color: var(--color-content-text-error, #ff837a);
+  display: flex;
+  flex: 1;
+  font-size: 12px;
+  justify-content: center;
+  min-height: 0;
+  padding: 16px;
+  text-align: center;
+}

@@ -1,7 +1,6 @@
 import { JSONViewer } from "@fiftyone/components";
 import { styles } from "@fiftyone/utilities";
 import { Stack } from "@mui/material";
-import React from "react";
 import styled from "styled-components";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";

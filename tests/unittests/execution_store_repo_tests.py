@@ -67,6 +67,48 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
         fetched_key = self.repo.get_key(store_name, key)
         self.assertEqual(fetched_key.value, value)
 
+    def test_atomic_key_primitives(self):
+        store_name = "atomic_store"
+        key = "job"
+        original = {"version": 1}
+        updated = {"version": 2}
+
+        self.assertTrue(
+            self.repo.set_key_if_absent(store_name, key, original, ttl=60)
+        )
+        self.assertFalse(
+            self.repo.set_key_if_absent(store_name, key, {"version": 99})
+        )
+        self.assertFalse(
+            self.repo.compare_and_set_key(
+                store_name, key, {"version": 0}, updated, ttl=60
+            )
+        )
+        self.assertTrue(
+            self.repo.compare_and_set_key(
+                store_name, key, original, updated, ttl=60
+            )
+        )
+        self.assertEqual(self.repo.get_key(store_name, key).value, updated)
+        expires_at = self.repo.get_key(store_name, key).expires_at
+        self.assertTrue(
+            self.repo.compare_and_set_key(store_name, key, updated, original)
+        )
+        preserved = self.repo.get_key(store_name, key)
+        self.assertEqual(preserved.expires_at, expires_at)
+        self.assertEqual(preserved.policy, KeyPolicy.EVICT)
+        self.assertTrue(
+            self.repo.compare_and_set_key(
+                store_name,
+                key,
+                original,
+                updated,
+                policy="persist",
+            )
+        )
+        explicit = self.repo.get_key(store_name, key)
+        self.assertEqual(explicit.expires_at, expires_at)
+        self.assertEqual(explicit.policy, KeyPolicy.PERSIST)
     def test_update_ttl(self):
         store_name = "ttl_store"
         key = "ttl_key"
@@ -160,12 +202,25 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
 
     def test_clear_cache_with_store_name(self):
         store_name = "specific_cache_store"
+        other_store_name = "other_cache_store"
         key = "key_to_clear_specific"
         self.repo.set_cache_key(store_name, key, "value_to_clear_specific")
+        self.repo.set_cache_key(other_store_name, key, "value_to_keep")
         self.assertTrue(self.repo.has_key(store_name, key))
         self.repo.clear_cache(store_name)
         self.assertFalse(self.repo.has_key(store_name, key))
+        self.assertTrue(self.repo.has_key(other_store_name, key))
         key_count = self.repo.count_keys(store_name)
         self.assertEqual(
             key_count, 0, "Expected no keys to remain after clearing cache."
         )
+
+    def test_clear_cache_removes_ttl_key_with_persist_policy(self):
+        store_name = "ttl_cache_store"
+        key = "ttl_key"
+        self.repo.set_key(store_name, key, "value", ttl=60)
+        self.repo.update_policy(store_name, key, "persist")
+
+        self.repo.clear_cache(store_name)
+
+        self.assertFalse(self.repo.has_key(store_name, key))

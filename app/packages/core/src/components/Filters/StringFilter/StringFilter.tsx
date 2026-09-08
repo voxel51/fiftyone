@@ -1,5 +1,6 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { COLOR_BY } from "@fiftyone/utilities";
 import React from "react";
 import type { RecoilState } from "recoil";
 import { useRecoilValue } from "recoil";
@@ -7,6 +8,7 @@ import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { isInKeypointsField } from "../state";
 import useIncompleteResults from "../use-incomplete-results";
+import useLabelAttributeIcon from "../use-label-attribute-icon";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Checkboxes from "./Checkboxes";
@@ -46,6 +48,14 @@ interface Props {
   named?: boolean;
   resultsAtom: ResultsAtom;
   selectedAtom: RecoilState<(string | null)[]>;
+  /**
+   * Overrides the per-value color of the checkbox dot for fields whose values
+   * are colored by something other than the color scheme's rules for `path`
+   * (temporal tags, which are always colored by their name). Left unset, the
+   * dot follows the color scheme: the field's color when coloring by field,
+   * the value's own color when coloring by value.
+   */
+  resultColor?: (value: string | null) => string;
 }
 
 const useName = (path: string) => {
@@ -53,8 +63,10 @@ const useName = (path: string) => {
   name = path.startsWith("tags")
     ? "sample tag"
     : path.startsWith("_label_tags")
-    ? "label tag"
-    : name;
+      ? "label tag"
+      : path.startsWith("_temporal_tags")
+        ? "temporal tag"
+        : name;
 
   return name;
 };
@@ -68,14 +80,22 @@ const StringFilter = ({
   path,
   resultsAtom,
   selectedAtom,
+  resultColor,
 }: Props) => {
   const name = useName(path);
+  const schemeColor = fos.useValueColor(path);
+  const coloringBy = useRecoilValue(fos.colorScheme).colorBy;
+  // Coloring by field leaves the dot on the color the entry passed down: an
+  // entry colors every row under it the same, and a nested path can resolve to
+  // a different field color than its own entry does.
+  const valueColor =
+    resultColor ?? (coloringBy === COLOR_BY.VALUE ? schemeColor : undefined);
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const field = useRecoilValue(fos.field(path));
   const { results, showSearch, useSearch } = useSelected(
     modal,
     path,
-    resultsAtom
+    resultsAtom,
   );
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
@@ -84,6 +104,7 @@ const StringFilter = ({
 
   const footer = useIncompleteResults(path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
+  const attributeIcon = useLabelAttributeIcon(modal, named, path, color);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
@@ -102,7 +123,10 @@ const StringFilter = ({
           template={({ label, hoverTarget }) => (
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
-              {icon}
+              <span style={{ alignItems: "center", display: "flex" }}>
+                {icon}
+                {attributeIcon}
+              </span>
             </NamedStringFilterHeader>
           )}
         />
@@ -131,6 +155,7 @@ const StringFilter = ({
         )}
         <Checkboxes
           color={color}
+          resultColor={valueColor}
           excludeAtom={excludeAtom}
           modal={modal}
           isMatchingAtom={isMatchingAtom}

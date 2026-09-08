@@ -6,6 +6,8 @@ Sample media utilities.
 |
 """
 
+import os
+
 import eta.core.image as etai
 import eta.core.video as etav
 
@@ -17,6 +19,7 @@ THREE_D = "3d"
 MULTIMODAL = "multimodal"
 UNKNOWN = "unknown"
 MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, THREE_D, MULTIMODAL, UNKNOWN}
+MULTIMODAL_EXTENSIONS = {".mcap", ".bag", ".rrd"}
 
 # Special media types
 GROUP = "group"
@@ -38,13 +41,15 @@ def get_media_type(filepath):
     if etav.is_video_mime_type(filepath):
         return VIDEO
 
-    if filepath.endswith(".pcd"):
+    ext = os.path.splitext(filepath)[1].lower()
+
+    if ext == ".pcd":
         return POINT_CLOUD
 
-    if filepath.endswith(".fo3d"):
+    if ext == ".fo3d":
         return THREE_D
 
-    if filepath.endswith(".mcap"):
+    if ext in MULTIMODAL_EXTENSIONS:
         return MULTIMODAL
 
     return UNKNOWN

@@ -14,7 +14,7 @@ const _SAMPLE_ID = "sample-id";
 const _MEDIA_URL = "https://image-host.com/media-path";
 
 const makeContext = (
-  overrides: Partial<AnnotationContext> = {}
+  overrides: Partial<AnnotationContext> = {},
 ): AnnotationContext => {
   return {
     sampleDescriptor: {
@@ -41,6 +41,7 @@ const makeProvider = () => {
   const mock = {
     initialize: vi.fn().mockResolvedValue(undefined),
     infer: vi.fn(),
+    inferBitmap: vi.fn(),
     abort: vi.fn(),
     dispose: vi.fn(),
     isInitialized: vi.fn().mockReturnValue(false),
@@ -60,11 +61,14 @@ const makeProvider = () => {
   return mock as unknown as BrowserAnnotationProvider & {
     initialize: ReturnType<typeof vi.fn>;
     infer: ReturnType<typeof vi.fn>;
+    inferBitmap: ReturnType<typeof vi.fn>;
     abort: ReturnType<typeof vi.fn>;
     dispose: ReturnType<typeof vi.fn>;
     isInitialized: ReturnType<typeof vi.fn>;
   };
 };
+
+const fakeBitmap = { width: 4, height: 4 } as unknown as ImageBitmap;
 
 describe("SAM2BrowserAnnotationAgent", () => {
   let agent: SAM2BrowserAnnotationAgent;
@@ -103,7 +107,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
             datasetId: _DATASET_ID,
             sampleId: _SAMPLE_ID,
           } as SampleDescriptor,
-        })
+        }),
       ).rejects.toThrow("Missing media url");
     });
 
@@ -113,8 +117,41 @@ describe("SAM2BrowserAnnotationAgent", () => {
       await agent.infer(makeContext());
 
       expect(provider.infer).toHaveBeenCalledWith(
-        expect.objectContaining({ imageUrl: _MEDIA_URL })
+        expect.objectContaining({ imageUrl: _MEDIA_URL }),
       );
+    });
+
+    it("infers on the decoded bitmap (not the URL) when a media bitmap is supplied", async () => {
+      provider.inferBitmap.mockResolvedValue(makeProviderResult());
+
+      await agent.infer(
+        makeContext({
+          getMediaBitmap: async () => ({
+            bitmap: fakeBitmap,
+            cacheKey: "sample-id#frame=3",
+          }),
+        }),
+      );
+
+      expect(provider.inferBitmap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bitmap: fakeBitmap,
+          cacheKey: "sample-id#frame=3",
+          useEmbeddingCache: true,
+        }),
+      );
+      expect(provider.infer).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the URL path when the media bitmap resolver yields null", async () => {
+      provider.infer.mockResolvedValue(makeProviderResult());
+
+      await agent.infer(makeContext({ getMediaBitmap: async () => null }));
+
+      expect(provider.infer).toHaveBeenCalledWith(
+        expect.objectContaining({ imageUrl: _MEDIA_URL }),
+      );
+      expect(provider.inferBitmap).not.toHaveBeenCalled();
     });
 
     it("should convert positive and negative points to PromptPoints", async () => {
@@ -127,7 +164,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
             [0.7, 0.1],
           ],
           negativePoints: [[0.2, 0.8]],
-        })
+        }),
       );
 
       expect(provider.infer).toHaveBeenCalledWith({
@@ -183,11 +220,11 @@ describe("SAM2BrowserAnnotationAgent", () => {
 
     it("should propagate provider initialization errors", async () => {
       provider.initialize.mockRejectedValue(
-        new Error("Missing browser APIs: WASM SIMD")
+        new Error("Missing browser APIs: WASM SIMD"),
       );
 
       await expect(agent.infer(makeContext())).rejects.toThrow(
-        "Missing browser APIs: WASM SIMD"
+        "Missing browser APIs: WASM SIMD",
       );
     });
 
@@ -224,7 +261,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
 
     const expectMaskMatches = async (
       result: Awaited<ReturnType<typeof agent.infer>>,
-      expected: number[]
+      expected: number[],
     ) => {
       const encoded = await encodeMaskData(new Uint8Array(expected), [
         1,
@@ -237,21 +274,21 @@ describe("SAM2BrowserAnnotationAgent", () => {
     it("thresholds values strictly greater than 0.5 to 1", async () => {
       // 0.5 itself is NOT > 0.5, so it becomes 0
       const result = await inferAndDecode(
-        new Float32Array([0.5, 0.50001, 0.499, 0.5])
+        new Float32Array([0.5, 0.50001, 0.499, 0.5]),
       );
       await expectMaskMatches(result, [0, 1, 0, 0]);
     });
 
     it("maps negative values to 0", async () => {
       const result = await inferAndDecode(
-        new Float32Array([-1, -0.0001, -100, -1e-8])
+        new Float32Array([-1, -0.0001, -100, -1e-8]),
       );
       await expectMaskMatches(result, [0, 0, 0, 0]);
     });
 
     it("maps values in (0.5, 1] to 1 and [0, 0.5] to 0", async () => {
       const result = await inferAndDecode(
-        new Float32Array([0, 0.25, 0.5, 0.75, 1.0])
+        new Float32Array([0, 0.25, 0.5, 0.75, 1.0]),
       );
       await expectMaskMatches(result, [0, 0, 0, 1, 1]);
     });
@@ -263,7 +300,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
       provider.infer.mockResolvedValue(providerResult);
 
       await expect(agent.infer(makeContext())).rejects.toThrow(
-        /Invalid float at index 1/
+        /Invalid float at index 1/,
       );
     });
 
@@ -274,7 +311,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
       provider.infer.mockResolvedValue(providerResult);
 
       await expect(agent.infer(makeContext())).rejects.toThrow(
-        /Invalid float at index 2/
+        /Invalid float at index 2/,
       );
     });
 
@@ -285,7 +322,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
       provider.infer.mockResolvedValue(providerResult);
 
       await expect(agent.infer(makeContext())).rejects.toThrow(
-        /Invalid float at index 1/
+        /Invalid float at index 1/,
       );
     });
   });
@@ -308,13 +345,13 @@ describe("SAM2BrowserAnnotationAgent", () => {
 
     it("should return empty for non-SEGMENT tasks", async () => {
       expect(
-        await agent.listInferenceCapabilities(AgentTaskType.DETECT)
+        await agent.listInferenceCapabilities(AgentTaskType.DETECT),
       ).toEqual([]);
       expect(
-        await agent.listInferenceCapabilities(AgentTaskType.CLASSIFY)
+        await agent.listInferenceCapabilities(AgentTaskType.CLASSIFY),
       ).toEqual([]);
       expect(
-        await agent.listInferenceCapabilities(AgentTaskType.INFER)
+        await agent.listInferenceCapabilities(AgentTaskType.INFER),
       ).toEqual([]);
     });
   });
@@ -360,7 +397,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
       provider.initialize.mockReturnValue(
         new Promise<void>((r) => {
           resolveInit = r;
-        })
+        }),
       );
       // Mirror real provider: infer throws when worker is gone
       provider.infer.mockImplementation(() => {
@@ -387,7 +424,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
       provider.initialize.mockReturnValueOnce(
         new Promise<void>((r) => {
           resolveInit = r;
-        })
+        }),
       );
       provider.infer.mockResolvedValue(makeProviderResult());
 
@@ -414,7 +451,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
       provider.initialize.mockReturnValue(
         new Promise<void>((r) => {
           resolveInit = r;
-        })
+        }),
       );
       provider.infer.mockResolvedValue(makeProviderResult());
 

@@ -11,6 +11,12 @@ export function determinePathType(path: string): PathType {
   if (/^\w+:\/\//.test(path)) {
     return PathType.URL;
   }
+  // data: and blob: URLs don't use `//` after the scheme but are URLs in
+  // every other sense — let them through so callers like `getSampleSrc`
+  // don't wrap them in `/media?filepath=...`.
+  if (/^(data|blob):/.test(path)) {
+    return PathType.URL;
+  }
   // backslashes = windows
   if (path?.includes("\\")) {
     return PathType.WINDOWS;
@@ -82,13 +88,14 @@ export function resolveAncestors(path: string): string[] {
   return ancestors;
 }
 
-export function getProtocol(path: string): string {
+export function getProtocol(path: string): string | undefined {
   const pathType = determinePathType(path);
   if (pathType === PathType.URL) {
     if (path.endsWith("://")) return path.slice(0, -3);
     const url = new URL(path);
     return url.protocol.replace(/:$/, "");
   }
+  return undefined;
 }
 
 export function getBasename(path: string) {

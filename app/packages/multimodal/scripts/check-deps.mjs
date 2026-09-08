@@ -1,23 +1,17 @@
-import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { dependencyCruiserGate } from "./dependency-cruiser-gate.mjs";
+import {
+  loadDependencyGraph,
+  reportDependencyCruiserViolations,
+} from "./dependency-cruiser-runner.mjs";
 
-import { bin } from "./process.mjs";
+const gate = dependencyCruiserGate(loadDependencyGraph());
 
-console.log("Checking dependencies integrity for multimodal");
+if (gate.exitCode !== 0) {
+  reportDependencyCruiserViolations();
+  console.error(
+    `Multimodal dependencies failed: ${gate.error} error(s), ${gate.warn} warning(s)`,
+  );
+  process.exit(gate.exitCode);
+}
 
-const appRoot = fileURLToPath(new URL("../../..", import.meta.url));
-
-execFileSync(
-  bin("yarn"),
-  [
-    "exec",
-    "depcruise",
-    "--config",
-    "packages/multimodal/.dependency-cruiser.cjs",
-    "packages/multimodal",
-  ],
-  {
-    cwd: appRoot,
-    stdio: "inherit",
-  }
-);
+console.log("Multimodal dependencies verified");

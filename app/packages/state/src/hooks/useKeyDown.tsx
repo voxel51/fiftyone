@@ -6,7 +6,7 @@ import { DependencyList, useEffect } from "react";
 export default function useKeyDown(
   key: KeyboardEvent["key"],
   handler: (down: boolean, e: KeyboardEvent) => void,
-  deps: DependencyList = []
+  deps: DependencyList = [],
 ) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

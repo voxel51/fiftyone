@@ -120,6 +120,7 @@ from custom_directives import (
     CustomImageLinkDirective,
     CustomGuidesCardDirective,
     CustomAnimatedCTADirective,
+    CustomAvailableInDirective,
 )
 
 project = "FiftyOne"
@@ -164,6 +165,7 @@ def setup(app):
     app.add_directive("customimagelink", CustomImageLinkDirective)
     app.add_directive("customguidescard", CustomGuidesCardDirective)
     app.add_directive("customanimatedcta", CustomAnimatedCTADirective)
+    app.add_directive("customavailablein", CustomAvailableInDirective)
 CONFEOF
 
 sphinx-build -b html "${PREVIEW_DIR}" "${PREVIEW_DIR}/_build"

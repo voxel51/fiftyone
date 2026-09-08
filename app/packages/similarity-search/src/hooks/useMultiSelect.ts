@@ -29,14 +29,14 @@ export const useMultiSelect = () => {
         return next;
       });
     },
-    [setSelectedRunIds]
+    [setSelectedRunIds],
   );
 
   const selectAll = useCallback(
     (visibleRunIds: string[]) => {
       setSelectedRunIds(new Set(visibleRunIds));
     },
-    [setSelectedRunIds]
+    [setSelectedRunIds],
   );
 
   const deselectAll = useCallback(() => {

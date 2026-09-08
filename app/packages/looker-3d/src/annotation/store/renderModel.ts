@@ -1,4 +1,4 @@
-import { useModalMode } from "@fiftyone/state";
+import { ModalMode, useModalMode } from "@fiftyone/state";
 import { useMemo } from "react";
 import { selector, useRecoilValue } from "recoil";
 import { isDetection, isPolyline } from "../../types";
@@ -20,35 +20,35 @@ import { workingAtom, workingDocSelector } from "./working";
  */
 export function applyTransientToCuboid(
   detection: ReconciledDetection3D,
-  transient: TransientCuboidState | undefined
+  transient: TransientCuboidState | undefined,
 ): ReconciledDetection3D {
   if (!transient) {
     return detection;
   }
 
-  let result = { ...detection };
+  const doc = { ...detection.data };
 
   if (transient.positionDelta) {
-    result.location = [
-      detection.location[0] + transient.positionDelta[0],
-      detection.location[1] + transient.positionDelta[1],
-      detection.location[2] + transient.positionDelta[2],
+    doc.location = [
+      doc.location[0] + transient.positionDelta[0],
+      doc.location[1] + transient.positionDelta[1],
+      doc.location[2] + transient.positionDelta[2],
     ];
   }
 
   if (transient.dimensionsDelta) {
-    result.dimensions = [
-      detection.dimensions[0] + transient.dimensionsDelta[0],
-      detection.dimensions[1] + transient.dimensionsDelta[1],
-      detection.dimensions[2] + transient.dimensionsDelta[2],
+    doc.dimensions = [
+      doc.dimensions[0] + transient.dimensionsDelta[0],
+      doc.dimensions[1] + transient.dimensionsDelta[1],
+      doc.dimensions[2] + transient.dimensionsDelta[2],
     ];
   }
 
   if (transient.quaternionOverride) {
-    result.quaternion = transient.quaternionOverride;
+    doc.quaternion = transient.quaternionOverride;
   }
 
-  return result;
+  return { ...detection, data: doc };
 }
 
 /**
@@ -57,13 +57,13 @@ export function applyTransientToCuboid(
  */
 export function applyTransientToPolyline(
   polyline: ReconciledPolyline3D,
-  transient: TransientPolylineState | undefined
+  transient: TransientPolylineState | undefined,
 ): ReconciledPolyline3D {
   if (!transient) {
     return polyline;
   }
 
-  let newPoints3d = polyline.points3d;
+  let newPoints3d = polyline.data.points3d;
 
   // Apply position delta to all vertices
   if (transient.positionDelta) {
@@ -73,7 +73,7 @@ export function applyTransientToPolyline(
         point[0] + delta[0],
         point[1] + delta[1],
         point[2] + delta[2],
-      ])
+      ]),
     );
   }
 
@@ -91,13 +91,13 @@ export function applyTransientToPolyline(
           ];
         }
         return point;
-      })
+      }),
     );
   }
 
   return {
     ...polyline,
-    points3d: newPoints3d,
+    data: { ...polyline.data, points3d: newPoints3d },
   };
 }
 
@@ -112,27 +112,22 @@ export function applyTransientToPolyline(
  */
 export function deriveRenderModel(
   workingDoc: WorkingDoc,
-  transient: TransientStore
+  transient: TransientStore,
 ): RenderModel {
   const detections: ReconciledDetection3D[] = [];
   const polylines: ReconciledPolyline3D[] = [];
 
   for (const [labelId, label] of Object.entries(workingDoc.labelsById)) {
-    // Skip deleted labels
-    if (workingDoc.deletedIds.has(labelId)) {
-      continue;
-    }
-
     if (isDetection(label)) {
       const withTransient = applyTransientToCuboid(
         label,
-        transient.cuboids[labelId]
+        transient.cuboids[labelId],
       );
       detections.push(withTransient);
     } else if (isPolyline(label)) {
       const withTransient = applyTransientToPolyline(
         label,
-        transient.polylines[labelId]
+        transient.polylines[labelId],
       );
       polylines.push(withTransient);
     }
@@ -177,7 +172,7 @@ export function useRenderModel(): RenderModel {
 
   // In explore mode, we return an empty model since rendering
   // uses the loader directly via ThreeDLabels
-  if (mode !== "annotate") {
+  if (mode !== ModalMode.ANNOTATE) {
     return { detections: [], polylines: [] };
   }
 
@@ -188,13 +183,13 @@ export function useRenderModel(): RenderModel {
  * Hook that returns a specific detection from the render model.
  */
 export function useRenderDetection(
-  labelId: LabelId
+  labelId: LabelId,
 ): ReconciledDetection3D | undefined {
   const renderModel = useRenderModel();
 
   return useMemo(
-    () => renderModel.detections.find((d) => d._id === labelId),
-    [renderModel.detections, labelId]
+    () => renderModel.detections.find((d) => d.data._id === labelId),
+    [renderModel.detections, labelId],
   );
 }
 
@@ -202,13 +197,13 @@ export function useRenderDetection(
  * Hook that returns a specific polyline from the render model.
  */
 export function useRenderPolyline(
-  labelId: LabelId
+  labelId: LabelId,
 ): ReconciledPolyline3D | undefined {
   const renderModel = useRenderModel();
 
   return useMemo(
-    () => renderModel.polylines.find((p) => p._id === labelId),
-    [renderModel.polylines, labelId]
+    () => renderModel.polylines.find((p) => p.data._id === labelId),
+    [renderModel.polylines, labelId],
   );
 }
 

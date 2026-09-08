@@ -23,7 +23,7 @@ import type {
 const annotateNoOp = (
   title: string,
   detail: string,
-  shortcut: string
+  shortcut: string,
 ): Control => ({
   title,
   shortcut,
@@ -34,79 +34,79 @@ const annotateNoOp = (
 const navigateToPreviousNextSample = annotateNoOp(
   "Navigate to previous/next sample",
   "Switch between samples in the modal",
-  "← / →"
+  "← / →",
 );
 const toggleFullscreen = annotateNoOp(
   "Toggle fullscreen",
   "Enter or exit fullscreen",
-  "f"
+  "f",
 );
 const deleteLabelInstance = annotateNoOp(
   "Delete label instance",
   "Remove the selected label instance",
-  "Del"
+  "Del",
 );
 const undo = annotateNoOp("Undo", "Undo the last action", "Ctrl+Z / Cmd+Z");
 const redo = annotateNoOp(
   "Redo",
   "Redo the last undone action",
-  "Ctrl+Y / Cmd+Y"
+  "Ctrl+Y / Cmd+Y",
 );
 const moveCameraToEgoView = annotateNoOp(
   "Move camera to ego view",
   "Align camera to ego view",
-  "e"
+  "e",
 );
 const moveCameraToFrontBackView = annotateNoOp(
   "Move camera to front/back view",
   "Align camera to front or back",
-  "3 / Ctrl+3 / Cmd+3"
+  "3 / Ctrl+3 / Cmd+3",
 );
 const moveCameraToRightLeftView = annotateNoOp(
   "Move camera to right/left view",
   "Align camera to right or left",
-  "2 / Ctrl+2 / Cmd+2"
+  "2 / Ctrl+2 / Cmd+2",
 );
 const moveCameraToTopDownView = annotateNoOp(
   "Move camera to top-down view",
   "Align camera to top-down view",
-  "t"
+  "t",
 );
 const moveCameraToTopBelowAnnotationPlane = annotateNoOp(
   "Move camera above/below annotation plane",
   "Position camera above or below the annotation plane",
-  "4 / Ctrl+4 / Cmd+4"
+  "4 / Ctrl+4 / Cmd+4",
 );
 const moveCameraToTopBottomView = annotateNoOp(
   "Move camera to top/bottom view",
   "Align camera to top or bottom",
-  "1 / Ctrl+1 / Cmd+1"
+  "1 / Ctrl+1 / Cmd+1",
 );
 const translateCamera = annotateNoOp(
   "Translate camera",
   "Pan the camera",
-  "Shift+Click"
+  "Shift+Click",
 );
 const toggleBackground = annotateNoOp(
   "Toggle background",
   "Show or hide the background",
-  "b"
+  "b",
 );
 const toggleGrid = annotateNoOp("Toggle grid", "Show or hide the grid", "g");
 const toggleRenderPreferences = annotateNoOp(
   "Toggle render preferences",
   "Show or hide render preferences panel",
-  "r"
+  "r",
 );
 const toggleFo3dJsonView = annotateNoOp(
   "Toggle FO3D JSON view",
   "View or hide FO3D JSON",
-  "i"
+  "i",
 );
 const zoomInOut = annotateNoOp(
   "Zoom in/out",
   "Zoom in or out on the sample",
-  "Ctrl+Left drag / Wheel"
+  "Ctrl+Left drag / Wheel",
 );
 
 /**

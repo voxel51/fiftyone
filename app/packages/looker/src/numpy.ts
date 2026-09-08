@@ -79,14 +79,14 @@ const DATA_TYPES = {
  * should be a safe assumption for our purposes.
  */
 function convert64to32Array(
-  TargetArrayType: typeof Uint32Array | typeof Int32Array
+  TargetArrayType: typeof Uint32Array | typeof Int32Array,
 ) {
   // we only need the 3-argument constructor to be implemented. For details:
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
   const makeArray = function (
     buffer: ArrayBuffer,
     byteOffset: number,
-    length: number
+    length: number,
   ) {
     // view buffer as 32-bit type and copy the 4 lowest bytes out of every 8
     // bytes into a new array (assumes little-endian)
@@ -137,7 +137,7 @@ function parse(array: Uint8Array): OverlayMask {
       .replace(/True|False/g, (s) => s.toLowerCase())
       .replace(/\s+/g, "")
       .replace(/,}/, "}")
-      .replace(/,\]/, "]")
+      .replace(/,\]/, "]"),
   );
 
   if (header.fortran_order) {
@@ -157,7 +157,7 @@ function parse(array: Uint8Array): OverlayMask {
       : new ArrayType(
           rawData.buffer,
           rawData.byteOffset,
-          rawData.byteLength / ArrayType.BYTES_PER_ELEMENT
+          rawData.byteLength / ArrayType.BYTES_PER_ELEMENT,
         );
 
   return {

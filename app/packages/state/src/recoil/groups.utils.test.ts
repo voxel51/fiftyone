@@ -39,7 +39,7 @@ const buildSamples = (paths: Record<string, string>) => {
           filepath,
         },
       },
-    ])
+    ]),
   ) as Record<string, ModalSample>;
 };
 
@@ -60,7 +60,7 @@ describe("groups.utils", () => {
           "pcd-right": "/tmp/right.pcd",
           "pcd-top": "/tmp/top.pcd",
         }),
-      })
+      }),
     ).toBe("pcd-right");
   });
 
@@ -74,7 +74,7 @@ describe("groups.utils", () => {
           fo3d: "/tmp/scene.fo3d",
           pcd: "/tmp/lidar.pcd",
         }),
-      })
+      }),
     ).toBe("pcd");
   });
 
@@ -84,7 +84,7 @@ describe("groups.utils", () => {
         activeSlices: ["scene-a", "lidar", "scene-b"],
         preferredFo3dSlice: "scene-b",
         realFo3dSlices: ["scene-a", "scene-b"],
-      })
+      }),
     ).toEqual(["lidar", "scene-b"]);
   });
 
@@ -99,7 +99,7 @@ describe("groups.utils", () => {
           fo3d: "/tmp/scene.fo3d",
           pcd: "/tmp/lidar.pcd",
         }),
-      })
+      }),
     ).toEqual({
       nextActive3dSlices: ["pcd"],
       nextPinnedSlice: "pcd",
@@ -114,7 +114,7 @@ describe("groups.utils", () => {
         pinnedSlice: null,
         realFo3dSlices: ["fo3d"],
         samples: {},
-      })
+      }),
     ).toEqual({
       nextActive3dSlices: [],
       nextPinnedSlice: null,
@@ -133,7 +133,7 @@ describe("groups.utils", () => {
         all3dSlices: ["missing", "lidar", "scene"],
         pinnedSlice: "missing",
         samples,
-      })
+      }),
     ).toBe("lidar");
 
     expect(
@@ -143,7 +143,7 @@ describe("groups.utils", () => {
         pinnedSlice: "missing",
         realFo3dSlices: ["scene"],
         samples,
-      })
+      }),
     ).toEqual({
       nextActive3dSlices: ["lidar"],
       nextPinnedSlice: "lidar",
@@ -159,7 +159,7 @@ describe("groups.utils", () => {
           "scene-b": "/tmp/scene-b.fo3d",
         }),
         pinnedSlice: "scene-a",
-      })
+      }),
     ).toBe("scene-a");
   });
 
@@ -174,7 +174,7 @@ describe("groups.utils", () => {
         activeSlices: ["scene-b", "scene-a"],
         sampleMap,
         pinnedSlice: "missing",
-      })
+      }),
     ).toBe("scene-b");
 
     expect(
@@ -182,7 +182,7 @@ describe("groups.utils", () => {
         activeSlices: [],
         sampleMap,
         pinnedSlice: "missing",
-      })
+      }),
     ).toBe("scene-a");
   });
 
@@ -216,7 +216,7 @@ describe("groups.utils", () => {
           }),
         },
         pinnedSlice: "lidar",
-      })
+      }),
     ).toEqual({
       sampleMap: activeSampleMap,
       representativeSlice: "lidar",
@@ -242,7 +242,7 @@ describe("groups.utils", () => {
           scene: "/tmp/scene.fo3d",
         }),
         pinnedSlice: "scene",
-      })
+      }),
     ).toEqual({
       sampleMap: { default: modalSample },
       representativeSlice: null,
@@ -261,8 +261,8 @@ describe("groups.utils", () => {
             { field: "filepath", url: "/tmp/file.png" },
           ],
         }),
-        "filepath"
-      )
+        "filepath",
+      ),
     ).toBe("/tmp/file.png");
 
     expect(
@@ -275,8 +275,8 @@ describe("groups.utils", () => {
             thumbnail_path: "/tmp/thumb.png",
           },
         }),
-        "thumbnail_path"
-      )
+        "thumbnail_path",
+      ),
     ).toBe("/tmp/thumb.png");
   });
 });

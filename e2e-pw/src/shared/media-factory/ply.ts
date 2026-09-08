@@ -121,7 +121,7 @@ export const createPly = (options: {
     throw new Error(
       `PLY generation failed with exit code ${proc.status}: ${
         stderr || "unknown error"
-      }`
+      }`,
     );
   }
 

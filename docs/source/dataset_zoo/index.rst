@@ -5,6 +5,15 @@ Dataset Zoo
 
 .. default-role:: code
 
+.. meta::
+    :description: Browse the FiftyOne Dataset Zoo, a collection of
+        popular public datasets you can download and load into FiftyOne
+        in one line of code.
+
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
+
 Welcome to the FiftyOne Dataset Zoo! 🚀
 
 Here you'll discover dozens of popular benchmark datasets, ready to download

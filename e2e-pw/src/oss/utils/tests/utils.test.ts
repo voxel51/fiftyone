@@ -10,7 +10,7 @@ describe("getStringifiedKwargs", () => {
     expect(
       getStringifiedKwargs({
         dataset_name: "quickstart",
-      })
+      }),
     ).toEqual(`, dataset_name="quickstart"`);
   });
 
@@ -19,7 +19,7 @@ describe("getStringifiedKwargs", () => {
       getStringifiedKwargs({
         dataset_name: "quickstart",
         other_kwarg: "other_value",
-      })
+      }),
     ).toEqual(`, dataset_name="quickstart", other_kwarg="other_value"`);
   });
 
@@ -29,7 +29,7 @@ describe("getStringifiedKwargs", () => {
         dataset_name: "quickstart",
         int_kwarg: 20,
         bool_kwarg: true,
-      })
+      }),
     ).toEqual(`, dataset_name="quickstart", int_kwarg=20, bool_kwarg=True`);
   });
 });

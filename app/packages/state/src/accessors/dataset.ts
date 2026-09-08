@@ -1,9 +1,12 @@
+import { is3d } from "@fiftyone/utilities";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   dataset,
   datasetId,
   datasetName,
   fieldSchema,
+  groupMediaTypes,
+  isGroup,
   selectedMediaField,
   skeleton,
   State,
@@ -41,6 +44,15 @@ export const useSampleSchema = () =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
 
 /**
+ * Get the current FRAME field schema — the per-frame fields of a video
+ * dataset, keyed WITHOUT the `frames.` prefix that sidebar paths carry.
+ *
+ * @returns The field schema for the frame space
+ */
+export const useFrameSchema = () =>
+  useRecoilValue(fieldSchema({ space: State.SPACE.FRAME }));
+
+/**
  * Hook to retrieve the selected media field for the grid view.
  *
  * @returns The selected media field state for the grid
@@ -48,6 +60,17 @@ export const useSampleSchema = () =>
 export const useSelectedMediaFieldGrid = () => {
   return useRecoilValue(selectedMediaField(false));
 };
+
+/**
+ * Whether the current dataset is a grouped dataset.
+ *
+ * @returns True if the current dataset is a group dataset
+ */
+export const useIsGroupDataset = () => {
+  return useRecoilValue(isGroup);
+};
+
+export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
 
 /**
  * Hook which provides a function to get the default keypoint skeleton for a
@@ -58,6 +81,27 @@ export const useGetKeypointSkeleton = () => {
     ({ snapshot }) =>
       (field: string) =>
         snapshot.getLoadable(skeleton(field)).getValue(),
-    []
+    [],
   );
+};
+
+/**
+ * Returns the names of dataset-level group slices whose media type matches
+ * any of the provided types.
+ *
+ * @param mediaTypes - The media types to filter by. "3d" matches all 3D
+ *   types (fo3d, point-cloud, etc.).
+ * @returns Slice names matching the requested media types, in dataset order.
+ */
+export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
+  const slices = useRecoilValue(groupMediaTypes);
+
+  return slices
+    .filter(({ mediaType }) =>
+      mediaTypes.some((type) => {
+        if (type === "3d") return is3d(mediaType);
+        return mediaType === type;
+      }),
+    )
+    .map(({ name }) => name);
 };

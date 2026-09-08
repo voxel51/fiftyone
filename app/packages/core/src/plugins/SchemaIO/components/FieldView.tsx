@@ -1,4 +1,3 @@
-import React from "react";
 import TextFieldView from "./TextFieldView";
 
 export default function FieldView(props) {

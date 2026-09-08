@@ -8,7 +8,7 @@ import { BaseElement, Events } from "../base";
 import commonControls from "../common/controls.module.css";
 
 export class ImaVidControlsElement<
-  State extends BaseState
+  State extends BaseState,
 > extends BaseElement<State> {
   getEvents(): Events<State> {
     return {

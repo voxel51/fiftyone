@@ -5,6 +5,7 @@ FiftyOne dataset types.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import eta.core.utils as etau
 
 
@@ -662,7 +663,7 @@ class CVATVideoDataset(VideoLabelsDataset):
 class FiftyOneImageLabelsDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in
-    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
+    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/main/docs/image_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneImageLabelsDataset-import>` for importing
     datasets of this type, and see
@@ -684,7 +685,7 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
 class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
     """A labeled dataset consisting of videos and their associated labels
     stored in
-    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/main/docs/video_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneVideoLabelsDataset-import>` for importing
     datasets of this type, and see
@@ -822,6 +823,20 @@ class FiftyOneDataset(Dataset):
         import fiftyone.utils.data as foud
 
         return foud.FiftyOneDatasetExporter
+
+
+class LeRobotDataset(Dataset):
+    """A LeRobotDataset v3 represented by logical episode samples."""
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.lerobot as foul
+
+        return foul.LeRobotDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.lerobot_export as foule
+
+        return foule.LeRobotDatasetExporter
 
 
 class LegacyFiftyOneDataset(Dataset):

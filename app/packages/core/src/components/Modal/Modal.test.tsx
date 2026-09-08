@@ -2,6 +2,19 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { shouldShowClassicSidebar } from "./utils";
+
+describe("shouldShowClassicSidebar", () => {
+  it("is false for a multimodal viewer, regardless of sidebar visibility", () => {
+    expect(shouldShowClassicSidebar(true, true)).toBe(false);
+    expect(shouldShowClassicSidebar(false, true)).toBe(false);
+  });
+
+  it("follows sidebar visibility for a non-multimodal viewer", () => {
+    expect(shouldShowClassicSidebar(true, false)).toBe(true);
+    expect(shouldShowClassicSidebar(false, false)).toBe(false);
+  });
+});
 
 describe("Modal keyboard shortcuts handler", () => {
   let mockHandlers: {
@@ -57,7 +70,9 @@ describe("Modal keyboard shortcuts handler", () => {
   afterEach(() => {
     vi.clearAllMocks();
     // Clean up any created elements
-    document.querySelectorAll("[data-test-element]").forEach((el) => el.remove());
+    document
+      .querySelectorAll("[data-test-element]")
+      .forEach((el) => el.remove());
   });
 
   describe("when no form field is focused", () => {
@@ -210,7 +225,7 @@ describe("Modal keyboard shortcuts handler", () => {
       keysHandler(new KeyboardEvent("keydown", { key: "x" }));
       keysHandler(new KeyboardEvent("keydown", { key: "Escape" }));
       keysHandler(
-        new KeyboardEvent("keydown", { code: "Space", altKey: true })
+        new KeyboardEvent("keydown", { code: "Space", altKey: true }),
       );
 
       expect(mockHandlers.toggleSidebar).not.toHaveBeenCalled();

@@ -65,13 +65,18 @@ from .core.annotation.attributes import (
     WhenOperator,
     WhenOr,
 )
+from .core.annotation.nodes import (
+    Node,
+)
 from .core.ontology import (
     AnnotationOntology,
+    Taxonomy,
     apply_ontology,
     delete_ontology,
     list_ontologies,
     load_ontology,
     ontology_exists,
+    save_ontology,
 )
 from .core.fields import (
     flatten_schema,
@@ -198,6 +203,32 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
+from .multimodal.media import (
+    DatasetRelativeLocation,
+    InvalidMediaLocationError,
+    LeRobotEpisode,
+    LeRobotImageLocator,
+    LeRobotV3Locator,
+    LeRobotVideoLocator,
+    MalformedMediaSourceError,
+    MediaAsset,
+    MediaAssetRole,
+    MediaAssetSelector,
+    MediaReference,
+    MediaReferenceError,
+    MediaSourceAuthorizationError,
+    MissingMediaReferenceBindingError,
+    MissingMediaRootError,
+    MovedMediaRootError,
+    RowInterval,
+    StaleMediaReferenceError,
+    UnfinalizedMediaSourceError,
+    UnsupportedLeRobotExportModeError,
+    UnsupportedMediaReferenceOperation,
+    UnsupportedLeRobotVersionError,
+    VideoTimestampInterval,
+    WholeFile,
+)
 from .core.threed import (
     BoxGeometry,
     CylinderGeometry,
@@ -205,9 +236,11 @@ from .core.threed import (
     SphereGeometry,
     FbxMesh,
     GltfMesh,
+    MirisStream,
     ObjMesh,
     PlyMesh,
     StlMesh,
+    GaussianSplat,
     PerspectiveCamera,
     PointLight,
     DirectionalLight,

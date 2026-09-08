@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ModalSample } from "../recoil/modal";
 import {
@@ -77,7 +77,7 @@ vi.mock("recoil", async () => {
         callback: (interfaceArgs: {
           snapshot: { getPromise: (node: { key: string }) => Promise<unknown> };
           set: (node: { key: string }, value: unknown) => void;
-        }) => (...args: unknown[]) => unknown
+        }) => (...args: unknown[]) => unknown,
       ) =>
       (...args: unknown[]) =>
         callback({

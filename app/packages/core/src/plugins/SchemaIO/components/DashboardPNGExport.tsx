@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Box, Typography } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 import DynamicIO from "./DynamicIO";
-import { ObjectSchemaType, ViewPropsType } from "../utils/types";
-import { getPath, getProps } from "../utils";
+import { ObjectSchemaType } from "../utils/types";
+import { getPath } from "../utils";
 
 interface DashboardPNGExportProps {
   schema: ObjectSchemaType;
@@ -52,13 +52,13 @@ export default function DashboardPNGExport({
   let COLS = autoLayout
     ? Math.floor(GRID_WIDTH / TARGET_ITEM_WIDTH) || 1
     : layoutMode === "columns"
-    ? numCols
-    : Math.ceil(NUM_ITEMS / numRows);
+      ? numCols
+      : Math.ceil(NUM_ITEMS / numRows);
   let ROWS = autoLayout
     ? Math.ceil(NUM_ITEMS / COLS) || 1
     : layoutMode === "rows"
-    ? numRows
-    : Math.ceil(NUM_ITEMS / numCols);
+      ? numRows
+      : Math.ceil(NUM_ITEMS / numCols);
   const ROW_HEIGHT = Math.min(GRID_HEIGHT, TARGET_ITEM_HEIGHT);
 
   if (propertiesAsArray.length === 1) {
@@ -69,7 +69,7 @@ export default function DashboardPNGExport({
   // Sort properties by custom layout (same as DashboardView)
   const orderedProperties = sortPropertiesByCustomLayout(
     propertiesAsArray,
-    customLayout
+    customLayout,
   );
 
   const defaultLayout = orderedProperties.map((property, index) => {

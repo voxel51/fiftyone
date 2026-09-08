@@ -28,12 +28,12 @@ export type DispatchEvent = (eventType: string, details?: any) => void;
 
 type ElementConstructor<
   State extends BaseState,
-  Element extends BaseElement<State>
+  Element extends BaseElement<State>,
 > = new () => Element;
 
 export interface ElementsTemplate<
   State extends BaseState,
-  Element extends BaseElement<State> = BaseElement<State>
+  Element extends BaseElement<State> = BaseElement<State>,
 > {
   node: ElementConstructor<State, Element>;
   children?: ElementsTemplate<State>[];
@@ -41,7 +41,7 @@ export interface ElementsTemplate<
 
 export function createElementsTree<
   State extends BaseState,
-  Element extends BaseElement<State> = BaseElement<State>
+  Element extends BaseElement<State> = BaseElement<State>,
 >(params: {
   abortController: AbortController;
   batchUpdate?: (cb: () => unknown) => void;
@@ -60,7 +60,7 @@ export function createElementsTree<
   let children = new Array<BaseElement<State>>();
   children = params.root.children
     ? params.root.children.map((child) =>
-        createElementsTree<State>({ ...params, root: child })
+        createElementsTree<State>({ ...params, root: child }),
       )
     : children;
 
@@ -84,7 +84,7 @@ const stringifyNumber = (number: number, pad = false): string => {
 export const getFrameNumber = (
   time: number,
   duration: number,
-  frameRate: number
+  frameRate: number,
 ): number => {
   let stamp = time;
   const frameDuration = 1 / frameRate;
@@ -99,7 +99,7 @@ export const getFrameNumber = (
 export const getClampedTime = (
   currentTime: number,
   duration: number,
-  frameRate: number
+  frameRate: number,
 ) => {
   return getTime(getFrameNumber(currentTime, duration, frameRate), frameRate);
 };
@@ -112,7 +112,7 @@ export const getTime = (frameNumber: number, frameRate: number): number => {
 export const getFrameString = (
   frameNumber: number,
   duration: number,
-  frameRate: number
+  frameRate: number,
 ) => {
   const total = getFrameNumber(duration, duration, frameRate);
   return `${frameNumber} / ${total}`;
@@ -121,7 +121,7 @@ export const getFrameString = (
 export const getTimeString = (
   frameNumber: number,
   frameRate: number,
-  duration: number
+  duration: number,
 ): string => {
   const renderHours = Math.floor(duration / 3600) > 0;
   let hours = 0;
@@ -151,21 +151,21 @@ export const getTimeString = (
 export const getFullTimeString = (
   frameNumber: number,
   frameRate: number,
-  duration: number
+  duration: number,
 ): string => {
   return `${getTimeString(frameNumber, frameRate, duration)} / ${getTimeString(
     getFrameNumber(duration, duration, frameRate),
     frameRate,
-    duration
+    duration,
   )}`;
 };
 
 export function withEvents<
   State extends BaseState,
-  Element extends BaseElement<State>
+  Element extends BaseElement<State>,
 >(
   Base: ElementConstructor<State, Element>,
-  addEvents: () => Events<State>
+  addEvents: () => Events<State>,
 ): ElementConstructor<State, Element> {
   // @ts-ignore
   class WithElement<State> extends Base {
@@ -191,7 +191,7 @@ export function withEvents<
 }
 
 const makeAcquirer = (
-  maxVideos: number
+  maxVideos: number,
 ): [() => Promise<[HTMLVideoElement, () => void]>, () => void] => {
   let VIDEOS: HTMLVideoElement[] = [];
   let QUEUE = [];

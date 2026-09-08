@@ -14,7 +14,7 @@ export type ResultsAtom = RecoilValue<{
 export default function (
   modal: boolean,
   path: string,
-  resultsAtom: ResultsAtom
+  resultsAtom: ResultsAtom,
 ) {
   const resultsLoadable = useRecoilValueLoadable(resultsAtom);
   const boolean = useRecoilValue(isBooleanField(path));

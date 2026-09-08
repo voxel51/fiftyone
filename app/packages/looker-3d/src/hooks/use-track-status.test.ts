@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { LoadingManager } from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoadingStatus } from "../types";
@@ -94,7 +94,7 @@ describe("useTrackStatus", () => {
       ({ manager }: { manager: LoadingManager }) => useTrackStatus(manager),
       {
         initialProps: { manager: managerA },
-      }
+      },
     );
 
     await act(async () => {
@@ -139,7 +139,7 @@ describe("useTrackStatus", () => {
       ({ manager }: { manager: LoadingManager }) => useTrackStatus(manager),
       {
         initialProps: { manager: managerA },
-      }
+      },
     );
 
     await act(async () => {
@@ -172,7 +172,7 @@ describe("useTrackStatus", () => {
       }) => useTrackStatus(currentManager, isSceneReady),
       {
         initialProps: { currentManager: manager, isSceneReady: false },
-      }
+      },
     );
 
     await act(async () => {

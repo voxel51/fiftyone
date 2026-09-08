@@ -1,6 +1,12 @@
 import * as fos from "@fiftyone/state";
 import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
-import React, { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -24,7 +30,7 @@ function useLooker<L extends fos.Lookers>({
 
   const lookerOptions = React.useMemo(
     () => ({ ...baseLookerOptions }),
-    [baseLookerOptions]
+    [baseLookerOptions],
   );
 
   const createLooker = fos.useCreateLooker(
@@ -32,7 +38,7 @@ function useLooker<L extends fos.Lookers>({
     false,
     lookerOptions,
     undefined,
-    true
+    true,
   );
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
   const colorScheme = useRecoilValue(fos.colorScheme);
@@ -79,7 +85,7 @@ function useLooker<L extends fos.Lookers>({
 
   useEffect(() => {
     ref.current?.dispatchEvent(
-      new CustomEvent("looker-attached", { bubbles: true })
+      new CustomEvent("looker-attached", { bubbles: true }),
     );
   }, []);
 
@@ -112,9 +118,9 @@ function useLooker<L extends fos.Lookers>({
       }
 
       updateLookerOptions({}, (updatedOptions) =>
-        looker.updateOptions(updatedOptions)
+        looker.updateOptions(updatedOptions),
       );
-    }
+    },
   );
 
   useKeyEvents(initialRef, sample.sample._id, looker);
@@ -144,7 +150,7 @@ export default useLooker;
  */
 function useSyncViewport<L extends fos.Lookers>(
   looker: L,
-  sampleRef: RefObject<fos.ModalSample>
+  sampleRef: RefObject<fos.ModalSample>,
 ) {
   const setViewportState = useSaveModalViewport();
 
@@ -152,7 +158,11 @@ function useSyncViewport<L extends fos.Lookers>(
   // so the position can be restored when EXPLORE mode (Looker) remounts.
   useLayoutEffect(() => {
     return () => {
-      if (looker?.state?.loaded && looker.state.dimensions && sampleRef.current) {
+      if (
+        looker?.state?.loaded &&
+        looker.state.dimensions &&
+        sampleRef.current
+      ) {
         setViewportState({
           sampleId: sampleRef.current.sample._id,
           ...looker.getViewportState(),
@@ -165,7 +175,10 @@ function useSyncViewport<L extends fos.Lookers>(
   // unmounting component's useLayoutEffect cleanup has already written to the atom.
   useLayoutEffect(() => {
     const savedViewport = modalBridge.getModalViewport();
-    if (sampleRef.current && savedViewport?.sampleId === sampleRef.current.sample._id) {
+    if (
+      sampleRef.current &&
+      savedViewport?.sampleId === sampleRef.current.sample._id
+    ) {
       looker.updateOptions({ initialViewport: savedViewport }, true);
     }
   }, [looker]);

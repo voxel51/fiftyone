@@ -698,8 +698,6 @@ def _get_metadata(
             skip_failures=skip_failures,
             warn_failures=warn_failures,
         )
-    elif media_type == fom.MULTIMODAL:
-        metadata = multimodal_metadata.MultimodalMetadata.build_for(filepath)
     else:
         metadata = Metadata.build_for(filepath)
 

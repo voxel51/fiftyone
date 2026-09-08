@@ -13,7 +13,7 @@ import { use3dAnnotationFields } from "../use3dAnnotationFields";
 
 export const FieldSelection = () => {
   const [currentActiveField, setCurrentActiveField] = useRecoilState(
-    currentActiveAnnotationField3dAtom
+    currentActiveAnnotationField3dAtom,
   );
 
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
@@ -42,12 +42,12 @@ export const FieldSelection = () => {
         fieldType === POLYLINES.toLocaleLowerCase()
       );
     },
-    [isPolylineAnnotateActive, isCuboidAnnotateActive]
+    [isPolylineAnnotateActive, isCuboidAnnotateActive],
   );
 
   const schemaFields = use3dAnnotationFields(predicate);
 
-  const theme = useTheme() as any;
+  const theme = useTheme();
 
   useEffect(() => {
     if (currentActiveField === null && schemaFields.length > 0) {
@@ -62,14 +62,14 @@ export const FieldSelection = () => {
     ) {
       setCurrentActiveField(schemaFields[0]);
     }
-  }, [currentActiveField, schemaFields]);
+  }, [currentActiveField, schemaFields, setCurrentActiveField]);
 
   if (schemaFields.length === 0) {
     return null;
   }
 
   return (
-    <div style={{ minWidth: "40px", maxWidth: "80px" }}>
+    <div style={{ maxWidth: "120px" }}>
       <select
         value={currentActiveField || ""}
         onChange={(e) => setCurrentActiveField(e.target.value)}

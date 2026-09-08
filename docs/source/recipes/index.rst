@@ -5,6 +5,10 @@ FiftyOne Recipes
 
 .. default-role:: code
 
+.. meta::
+    :description: Short, focused FiftyOne recipes for common workflows
+        like merging datasets, custom embeddings, and batch processing.
+
 FiftyOne turbocharges your current workflows, transforming hours of scripting
 into minutes so that you can focus on your models. Browse the recipes below to
 see how you can leverage FiftyOne to enhance key parts of your machine learning
@@ -50,8 +54,8 @@ workflows.
     :tags: Torch,Training,Datasets
 
 .. customcarditem::
-    :header: Speeding up with cached fields
-    :description: Improve training performance by preloading specific fields into memory using the `SimpleGetItem` wrapper class with `vectorize=True` in `FiftyOneTorchDataset`.
+    :header: Speed Up FiftyOneTorchDataset with Vectorize Mode
+    :description: Eliminate database query overhead during training by enabling vectorize mode in `FiftyOneTorchDataset`, preloading all required fields into memory before the training loop begins.
     :link: torch-dataset-examples/the_cache_field_names_argument.html
     :image: https://cdn.voxel51.com/recipes_fiftyone_torch_cache_fields/notebook_cache_field_names/fiftyone_torch_cache_fields.webp
     :tags: Torch,Performance,Data-Loading
@@ -157,12 +161,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
-   Data Loading with Torch Datasets <fiftyone_torch_dataloader.ipynb>
-   Training on MNIST with Torch <torch-dataset-examples/simple_training_example.ipynb>
-   Speeding up with cached fields <torch-dataset-examples/the_cache_field_names_argument.ipynb>
    Creating views <creating_views.ipynb>
-   Removing duplicate images <image_deduplication.ipynb>
-   Removing duplicate objects <remove_duplicate_annos.ipynb>
    Adding classifier predictions <adding_classifications.ipynb>
    Adding object detections <adding_detections.ipynb>
    Draw labels on samples <draw_labels.ipynb>

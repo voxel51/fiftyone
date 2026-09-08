@@ -12,6 +12,7 @@ import { attributeVisibility } from "./attributeVisibility";
 import * as colorAtoms from "./color";
 import { dataset } from "./dataset";
 import { filters, modalFilters } from "./filters";
+import { resolvedShownLabelAttributes } from "./labelAttributes";
 import { pathFilter } from "./pathFilters";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
@@ -30,10 +31,10 @@ export const lookerOptions = selectorFamily<
     ({ modal, withFilter }) =>
     ({ get }) => {
       const globalMediaFallback = Boolean(
-        get(selectors.appConfigOption({ modal: true, key: "mediaFallback" }))
+        get(selectors.appConfigOption({ modal: true, key: "mediaFallback" })),
       );
       const datasetMediaFallback = Boolean(
-        get(selectors.datasetAppConfig)?.mediaFallback
+        get(selectors.datasetAppConfig)?.mediaFallback,
       );
       const mediaFallback = globalMediaFallback || datasetMediaFallback;
 
@@ -41,7 +42,7 @@ export const lookerOptions = selectorFamily<
         ? {
             loop: modal
               ? get(
-                  selectors.appConfigOption({ modal: true, key: "loopVideos" })
+                  selectors.appConfigOption({ modal: true, key: "loopVideos" }),
                 )
               : true,
           }
@@ -66,22 +67,13 @@ export const lookerOptions = selectorFamily<
       if (modal) {
         const panels = get(atoms.lookerPanels);
         extra = {
-          showConfidence: get(
-            selectors.appConfigOption({ modal: true, key: "showConfidence" })
-          ),
           showTooltip: get(
-            selectors.appConfigOption({ modal: true, key: "showTooltip" })
+            selectors.appConfigOption({ modal: true, key: "showTooltip" }),
           ),
           showHelp: panels.help.isOpen,
-          showIndex: get(
-            selectors.appConfigOption({ modal: true, key: "showIndex" })
-          ),
           showJSON: panels.json.isOpen,
-          showLabel: get(
-            selectors.appConfigOption({ modal: true, key: "showLabel" })
-          ),
           useFrameNumber: get(
-            selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
+            selectors.appConfigOption({ modal: true, key: "useFrameNumber" }),
           ),
           ...get(atoms.savedLookerOptions),
         };
@@ -102,17 +94,19 @@ export const lookerOptions = selectorFamily<
         selectedLabelTags: getActiveLabelTags(
           isLabelTagActive,
           activeFilter,
-          activeVisibility
+          activeVisibility,
         ),
         filter: withFilter ? get(pathFilter(modal)) : undefined,
         zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(modal)),
+        showPatchLabels: get(viewAtoms.isPatchesView),
+        shownLabelAttributes: get(resolvedShownLabelAttributes),
         timeZone: get(selectors.timeZone),
         showOverlays: modal ? get(atoms.showOverlays) : true,
         alpha: get(atoms.colorScheme).opacity,
         showSkeletons: get(atoms.colorScheme).showSkeletons,
         defaultSkeleton: get(dataset)?.defaultSkeleton,
         skeletons: Object.fromEntries(
-          get(dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
+          get(dataset)?.skeletons.map(({ name, ...rest }) => [name, rest]),
         ),
         pointFilter: get(skeletonFilter(modal)),
         mediaFallback,
@@ -122,10 +116,10 @@ export const lookerOptions = selectorFamily<
 });
 
 export const useLookerOptions = (
-  modal: boolean
+  modal: boolean,
 ): Partial<Omit<FrameOptions | ImageOptions | VideoOptions, "selected">> => {
   const loaded = useRecoilValueLoadable(
-    lookerOptions({ modal, withFilter: true })
+    lookerOptions({ modal, withFilter: true }),
   );
 
   const loading = useRecoilValue(lookerOptions({ modal, withFilter: false }));
@@ -136,7 +130,7 @@ export const useLookerOptions = (
 const getActiveLabelTags = (
   isLabelTagActive: boolean,
   activeFilter: State.Filters,
-  activeVisibility: State.Filters
+  activeVisibility: State.Filters,
 ) => {
   if (!isLabelTagActive) return null;
   const labelTagFilters = activeFilter["_label_tags"]?.values ?? [];

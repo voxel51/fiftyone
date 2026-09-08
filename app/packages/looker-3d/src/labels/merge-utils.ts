@@ -1,4 +1,3 @@
-import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import type {
   CuboidTransformData,
   PolylinePointTransformData,
@@ -14,27 +13,31 @@ import type { OverlayLabel } from "./loader";
  */
 export function reconcileDetection(
   overlay: OverlayLabel,
-  stagedTransform?: CuboidTransformData
+  stagedTransform?: CuboidTransformData,
 ): ReconciledDetection3D {
   return {
     ...overlay,
-    ...(stagedTransform ?? {}),
+    data: {
+      ...overlay.data,
+      ...(stagedTransform ?? {}),
+    },
   } as ReconciledDetection3D;
 }
 
 /**
  * Reconciles a raw polyline overlay with staged transform data.
  * Staged segments override the original points3d.
- * Also coerces string booleans from misc data.
  */
 export function reconcilePolyline(
-  overlay: OverlayLabel & { points3d: [number, number, number][][] },
-  stagedTransform?: PolylinePointTransformData
+  overlay: OverlayLabel & {
+    data: { points3d: [number, number, number][][] };
+  },
+  stagedTransform?: PolylinePointTransformData,
 ): ReconciledPolyline3D {
   // Staged segments take precedence over original points3d
   let finalPoints3d = stagedTransform?.segments
     ? stagedTransform.segments.map((seg) => seg.points)
-    : overlay.points3d;
+    : overlay.data.points3d;
 
   // Filter out invalid segments
   if (finalPoints3d) {
@@ -43,8 +46,14 @@ export function reconcilePolyline(
 
   return {
     ...overlay,
-    ...coerceStringBooleans(stagedTransform?.misc ?? {}),
-    points3d: finalPoints3d,
+    data: {
+      ...overlay.data,
+      ...(stagedTransform?.misc ?? {}),
+      // structural fields are never `misc`'s to write
+      _id: overlay.data._id,
+      _cls: overlay.data._cls,
+      points3d: finalPoints3d,
+    },
   } as ReconciledPolyline3D;
 }
 
@@ -56,21 +65,21 @@ export function createNewDetection(
   labelId: string,
   transformData: CuboidTransformData,
   currentSampleId: string,
-  path: string
+  path: string,
 ): ReconciledDetection3D {
   return {
-    _id: labelId,
-    _cls: "Detection",
-    type: "Detection",
+    data: {
+      _id: labelId,
+      _cls: "Detection",
+      ...(transformData ?? {}),
+      location: transformData.location,
+      dimensions: transformData.dimensions,
+      rotation: transformData.rotation ?? [0, 0, 0],
+      tags: [],
+    },
     path,
-    ...coerceStringBooleans(transformData ?? {}),
-    location: transformData.location,
-    dimensions: transformData.dimensions,
-    rotation: transformData.rotation ?? [0, 0, 0],
-    selected: false,
     sampleId: currentSampleId,
-    tags: [],
-    isNew: true,
+    ui: { selected: false, isNew: true },
   } as ReconciledDetection3D;
 }
 
@@ -82,7 +91,7 @@ export function createNewDetection(
 export function createNewPolyline(
   labelId: string,
   transformData: PolylinePointTransformData,
-  currentSampleId: string
+  currentSampleId: string,
 ): ReconciledPolyline3D | null {
   if (!transformData.segments || transformData.segments.length === 0) {
     return null;
@@ -97,16 +106,18 @@ export function createNewPolyline(
   }
 
   return {
-    _id: labelId,
-    _cls: "Polyline",
-    type: "Polyline",
+    data: {
+      // `misc` first: extras (closed/filled/…) apply, but the structural and
+      // validated fields below are never `misc`'s to write
+      ...(transformData.misc ?? {}),
+      _id: labelId,
+      _cls: "Polyline",
+      label: transformData.label,
+      tags: [],
+      points3d: validPoints3d,
+    },
     path: transformData.path ?? "",
-    label: transformData.label,
-    selected: false,
     sampleId: currentSampleId,
-    tags: [],
-    points3d: validPoints3d,
-    ...coerceStringBooleans(transformData.misc ?? {}),
-    isNew: true,
+    ui: { selected: false, isNew: true },
   } as ReconciledPolyline3D;
 }

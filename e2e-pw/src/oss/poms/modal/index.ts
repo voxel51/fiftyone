@@ -2,13 +2,16 @@ import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
+import { EpisodePom } from "../multimodal/episode";
 import { ModalPanelPom } from "../panels/modal-panel";
 import { UrlPom } from "../url";
+import { ModalAnnotate3dPom } from "./annotate-3d";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalImaAsVideoControlsPom } from "./imavid-controls";
 import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { SampleCanvasPom } from "./sample-canvas";
+import { VideoAnnotatePom } from "./video-annotate";
 import { ModalVideoControlsPom } from "./video-controls";
 
 const SAMPLE_LOAD_TIMEOUT = Duration.Seconds(20);
@@ -19,6 +22,7 @@ export class ModalPom {
   readonly groupCarousel: Locator;
   readonly locator: Locator;
   readonly looker: Locator;
+  readonly modalContent: Locator;
   readonly modalContainer: Locator;
 
   readonly group: ModalGroupActionsPom;
@@ -30,16 +34,20 @@ export class ModalPom {
   readonly tagger: ModalTaggerPom;
   readonly url: UrlPom;
   readonly video: ModalVideoControlsPom;
+  readonly videoAnnotate: VideoAnnotatePom;
+  readonly annotate3d: ModalAnnotate3dPom;
+  readonly episode: EpisodePom;
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils
+    private readonly eventUtils: EventUtils,
   ) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
 
     this.groupCarousel = this.locator.getByTestId("group-carousel");
     this.looker = this.locator.getByTestId("looker").last();
+    this.modalContent = this.locator.getByTestId("modal-content");
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
     this.group = new ModalGroupActionsPom(page, this);
@@ -51,6 +59,9 @@ export class ModalPom {
     this.tagger = new ModalTaggerPom(page, this);
     this.url = new UrlPom(page, eventUtils);
     this.video = new ModalVideoControlsPom(page, this);
+    this.videoAnnotate = new VideoAnnotatePom(page, this);
+    this.annotate3d = new ModalAnnotate3dPom(page, this);
+    this.episode = new EpisodePom(page, this.locator);
   }
 
   get modalSamplePluginTitle() {
@@ -82,16 +93,13 @@ export class ModalPom {
     return this.locator.getByTestId("action-display-options");
   }
 
-  getLookerAttachedEvent() {
-    return this.eventUtils.getEventReceivedPromiseForPredicate(
-      "looker-attached",
-      () => true
-    );
+  armLookerAttached() {
+    return this.eventUtils.arm("looker-attached");
   }
 
   getSampleNavigation(direction: "forward" | "backward") {
     return this.locator.getByTestId(
-      `nav-${direction === "forward" ? "right" : "left"}-button`
+      `nav-${direction === "forward" ? "right" : "left"}-button`,
     );
   }
 
@@ -144,9 +152,17 @@ export class ModalPom {
     await this.locator.getByTestId("select-sample-checkbox").click();
   }
 
+  async selectMediaField(field: string) {
+    const radio = this.page.getByTestId(`radio-button-${field}`);
+    if (!(await radio.isVisible())) {
+      await this.toggleDisplayOptionsButton.click();
+    }
+    await radio.click();
+  }
+
   async navigateSample(
     direction: "forward" | "backward",
-    allowErrorInfo = false
+    allowErrorInfo = false,
   ) {
     const currentSampleId = await this.sidebar.getSampleId();
 
@@ -157,7 +173,7 @@ export class ModalPom {
     // wait for sample id to change
     await this.page.waitForFunction((currentSampleId) => {
       const sampleId = document.querySelector(
-        "[data-cy=sidebar-entry-id]"
+        "[data-cy=sidebar-entry-id]",
       )?.textContent;
       return sampleId !== currentSampleId;
     }, currentSampleId);
@@ -205,12 +221,12 @@ export class ModalPom {
 
   async panSample(
     direction: "left" | "right" | "up" | "down",
-    offsetPixels = 100
+    offsetPixels = 100,
   ) {
     const modalBoundingBox = await this.modalContainer.boundingBox();
     await this.page.mouse.move(
       modalBoundingBox.width / 2,
-      modalBoundingBox.height / 2
+      modalBoundingBox.height / 2,
     );
     await this.page.mouse.down();
 
@@ -250,7 +266,7 @@ export class ModalPom {
   async navigateSlice(
     groupField: string,
     slice: string,
-    allowErrorInfo = false
+    allowErrorInfo = false,
   ) {
     const currentSlice = await this.sidebar.getSidebarEntryText(groupField);
     const lookers = this.groupCarousel.getByTestId("looker");
@@ -262,19 +278,36 @@ export class ModalPom {
     await this.page.waitForFunction(
       ({ currentSlice, groupField }) => {
         const slice = document.querySelector(
-          `[data-cy="sidebar-entry-${groupField}"]`
+          `[data-cy="sidebar-entry-${groupField}"]`,
         )?.textContent;
         return slice !== currentSlice;
       },
       { currentSlice, groupField },
-      { timeout: SAMPLE_LOAD_TIMEOUT }
+      { timeout: SAMPLE_LOAD_TIMEOUT },
     );
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
+  }
+
+  async enterFullscreen() {
+    await this.modalContent.waitFor({ state: "visible" });
+    if (!(await this.isFullscreen())) {
+      await this.locator.getByTestId("action-toggle-fullscreen").click();
+    }
+    await expect.poll(() => this.isFullscreen()).toBe(true);
   }
 
   async close({ ignoreError } = { ignoreError: false }) {
     // close by clicking outside of modal
     try {
+      if (!(await this.locator.isVisible())) {
+        return;
+      }
+
+      if (await this.isFullscreen()) {
+        await this.locator.getByTestId("action-toggle-fullscreen").click();
+        await expect.poll(() => this.isFullscreen()).toBe(false);
+      }
+
       await this.page.click("body", { position: { x: 0, y: 0 } });
       await this.locator.waitFor({ state: "hidden" });
     } catch (e) {
@@ -318,20 +351,20 @@ export class ModalPom {
         if (
           allowErrorInfo &&
           document.querySelector(
-            "[data-cy=modal-looker-container] [data-cy=looker-error-info]"
+            "[data-cy=modal-looker-container] [data-cy=looker-error-info]",
           )
         ) {
           return true;
         }
 
-        return (
-          document
-            .querySelector(`[data-cy=modal-looker-container] canvas`)
-            ?.getAttribute("canvas-loaded") === "true"
+        // Any surface may raise the marker: the lookers set it on their
+        // canvas, the plain video surface sets it on the `<video>`.
+        return !!document.querySelector(
+          `[data-cy=modal-looker-container] [canvas-loaded="true"]`,
         );
       },
       allowErrorInfo,
-      { timeout: SAMPLE_LOAD_TIMEOUT }
+      { timeout: SAMPLE_LOAD_TIMEOUT },
     );
   }
 
@@ -340,11 +373,19 @@ export class ModalPom {
       () =>
         (
           document.querySelector(
-            `[data-cy=lighter-sample-renderer]`
+            `[data-cy=lighter-sample-renderer]`,
           ) as HTMLElement | null
         )?.style.visibility === "visible",
       undefined,
-      { timeout: Duration.Seconds(20) }
+      { timeout: Duration.Seconds(20) },
+    );
+  }
+
+  private async isFullscreen() {
+    return this.modalContent.evaluate(
+      (element) =>
+        (element as HTMLElement).style.width === "100%" &&
+        (element as HTMLElement).style.height === "100%",
     );
   }
 }
@@ -353,11 +394,11 @@ class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
   async isClosed() {
-    await expect(this.modalPom.modalContainer).toBeHidden();
+    await expect(this.modalPom.locator).toBeHidden();
   }
 
   async isOpen() {
-    await expect(this.modalPom.modalContainer).toBeVisible();
+    await expect(this.modalPom.locator).toBeVisible();
   }
 
   async verifyModalOpenedSuccessfully() {
@@ -367,7 +408,7 @@ class ModalAsserter {
 
   async verifyHasNoViewerError() {
     await expect(
-      this.modalPom.modalContainer.getByTestId("looker-error-info")
+      this.modalPom.modalContainer.getByTestId("looker-error-info"),
     ).toHaveCount(0);
   }
 
@@ -398,7 +439,7 @@ class ModalAsserter {
 
   async verifyModalSamplePluginTitle(
     title: string,
-    { pinned }: { pinned: boolean } = { pinned: false }
+    { pinned }: { pinned: boolean } = { pinned: false },
   ) {
     await expect
       .poll(async () => this.modalPom.modalSamplePluginTitle, {

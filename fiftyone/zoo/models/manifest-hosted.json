@@ -1,0 +1,77 @@
+{
+    "models": [
+        {
+            "base_name": "twelvelabs-marengo3.0",
+            "base_filename": null,
+            "version": null,
+            "description": "An enhanced multimodal embedding model that extends the capabilities of Marengo 2.7 with support for text and image interleaved input modality. This model generates high-quality vector representations of video, text, audio, image, and interleaved text-image content for similarity search, clustering, and other machine learning tasks",
+            "source": "https://www.twelvelabs.io",
+            "author": "Twelve Labs, Inc.",
+            "license": "https://www.twelvelabs.io/legal/tos",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.twelvelabs.TwelveLabsModel",
+                "config": {
+                    "operation": "embed",
+                    "embedding_model": "marengo3.0"
+                }
+            },
+            "requirements": {
+                "packages": ["twelvelabs>=1.2.8"]
+            },
+            "tags": ["video", "embeddings", "official"],
+            "training_data": null,
+            "date_added": "2026-06-25 10:31:00"
+        },
+        {
+            "base_name": "twelvelabs-pegasus1.2",
+            "base_filename": null,
+            "version": null,
+            "description": "A multimodal model that provides comprehensive video understanding and analysis capabilities, including content recognition, scene detection, and contextual understanding",
+            "source": "https://www.twelvelabs.io",
+            "author": "Twelve Labs, Inc.",
+            "license": "https://www.twelvelabs.io/legal/tos",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.twelvelabs.TwelveLabsModel",
+                "config": {
+                    "operation": "caption",
+                    "analysis_model": "pegasus1.2",
+                    "prompt": "Describe what happens in this video.",
+                    "max_tokens": 512
+                }
+            },
+            "requirements": {
+                "packages": ["twelvelabs>=1.2.8"]
+            },
+            "tags": ["video", "caption", "official"],
+            "training_data": null,
+            "date_added": "2026-06-25 10:31:00"
+        },
+        {
+            "base_name": "twelvelabs-pegasus1.5",
+            "base_filename": null,
+            "version": null,
+            "description": "A multimodal model that provides comprehensive video understanding and analysis capabilities, including video-to-text generation, structured video segmentation, image-guided prompting, and timestamp-level temporal grounding",
+            "source": "https://www.twelvelabs.io",
+            "author": "Twelve Labs, Inc.",
+            "license": "https://www.twelvelabs.io/legal/tos",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.twelvelabs.TwelveLabsModel",
+                "config": {
+                    "operation": "caption",
+                    "analysis_model": "pegasus1.5",
+                    "prompt": "Describe what happens in this video.",
+                    "max_tokens": 512
+                }
+            },
+            "requirements": {
+                "packages": ["twelvelabs>=1.2.8"]
+            },
+            "tags": ["video", "caption", "official"],
+            "training_data": null,
+            "date_added": "2026-06-25 10:31:00"
+        }
+    ]
+}

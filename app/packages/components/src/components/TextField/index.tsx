@@ -5,7 +5,6 @@ import {
   TextFieldProps,
   Typography,
 } from "@mui/material";
-import React from "react";
 
 export default function TextField(props: TextFieldProps) {
   const { label, ...otherProps } = props;

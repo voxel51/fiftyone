@@ -1,0 +1,58 @@
+.available-in
+  display: inline-block
+  padding: 8px 12px
+  margin: 12px 0
+  border: 1px solid var(--pst-border-color)
+  border-radius: $border-radius
+  background: var(--color-background)
+  font-family: $font-family-base
+
+  .available-in-row
+    display: flex
+    align-items: center
+    gap: 6px
+    flex-wrap: wrap
+
+    &:not(:last-child)
+      margin-bottom: 4px
+
+  .available-in-label
+    color: var(--pst-color-text-secondary)
+    font-size: 13px
+
+  .available-in-pill
+    display: inline-block
+    padding: 1px 10px
+    border-radius: $border-radius-button
+    font-size: 12px
+    font-weight: $font-weight-medium
+    line-height: 1.5
+
+  .available-in-pill--oss
+    background: transparent
+    border: 1px solid var(--pst-color-text-base)
+    color: var(--pst-color-text-base)
+
+  .available-in-pill--enterprise
+    background: var(--enterprise-badge-bg)
+    border: 1px solid var(--enterprise-badge-bg)
+    color: $white
+
+  .available-in-versions
+    color: var(--pst-color-text-secondary)
+    font-size: 13px
+
+    a
+      font-weight: $font-weight-medium
+
+  .available-in-cta
+    margin-top: 6px
+
+    .available-in-cta-link
+      font-size: 12px
+      color: var(--pst-color-text-secondary)
+      text-decoration: underline
+      text-underline-offset: 2px
+
+      &:hover
+        color: $voxel-primary

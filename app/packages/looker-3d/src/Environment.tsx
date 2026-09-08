@@ -32,12 +32,12 @@ export const Environment = ({
 
   const upNormalized = useMemo(
     () => new Vector3(...settings.defaultUp).normalize(),
-    [settings]
+    [settings],
   );
 
   const gridHelperQuarternion = useMemo(
     () => getGridQuaternionFromUpVector(upNormalized),
-    [upNormalized]
+    [upNormalized],
   );
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export const Environment = ({
     const handleCameraChange = () => {
       window?.localStorage.setItem(
         CAMERA_POSITION_KEY,
-        JSON.stringify(camera.position.toArray())
+        JSON.stringify(camera.position.toArray()),
       );
     };
 
@@ -61,22 +61,22 @@ export const Environment = ({
 
   const isDefaultUpZ = useMemo(
     () => upNormalized.equals(new Vector3(0, 0, 1)),
-    [upNormalized]
+    [upNormalized],
   );
 
   const isDefaultUpY = useMemo(
     () => upNormalized.equals(new Vector3(0, 1, 0)),
-    [upNormalized]
+    [upNormalized],
   );
 
   const isDefaultUpX = useMemo(
     () => upNormalized.equals(new Vector3(1, 0, 0)),
-    [upNormalized]
+    [upNormalized],
   );
 
   const isDefaultUpOrthoNormal = useMemo(
     () => isDefaultUpX || isDefaultUpY || isDefaultUpZ,
-    [isDefaultUpX, isDefaultUpY, isDefaultUpZ]
+    [isDefaultUpX, isDefaultUpY, isDefaultUpZ],
   );
 
   const gridSize = useMemo(() => {
@@ -85,17 +85,17 @@ export const Environment = ({
     if (isDefaultUpX) {
       maxInProjectionPlane = Math.max(
         bounds?.max?.y - bounds?.min?.y,
-        bounds?.max?.z - bounds?.min?.z
+        bounds?.max?.z - bounds?.min?.z,
       );
     } else if (isDefaultUpY) {
       maxInProjectionPlane = Math.max(
         bounds?.max?.x - bounds?.min?.x,
-        bounds?.max?.z - bounds?.min?.z
+        bounds?.max?.z - bounds?.min?.z,
       );
     } else if (isDefaultUpZ) {
       maxInProjectionPlane = Math.max(
         bounds?.max?.x - bounds?.min?.x,
-        bounds?.max?.y - bounds?.min?.y
+        bounds?.max?.y - bounds?.min?.y,
       );
     } else {
       return 100; // arbitrary number for non-orthonormal up vectors

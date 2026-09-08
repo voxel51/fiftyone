@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  getMimeType,
   getSamplePathExtension,
   is3d,
   isDirect3dSamplePath,
   isFo3d,
   isFo3dSamplePath,
+  isMultimodal,
+  isNativeMediaType,
   isPointCloud,
   isWrappableDirect3dSamplePath,
   setContains3d,
@@ -12,11 +15,40 @@ import {
   setContainsPointCloud,
 } from "./media";
 
-const pointCloudTypes = ["point-cloud", "point_cloud"];
+const pointCloudTypes = ["pcd", "point-cloud", "point_cloud"];
 const fo3dTypes = ["3d", "three_d"];
 const otherTypes = ["image", "video", "other", undefined];
 
 describe("media utils", () => {
+  describe("getMimeType", () => {
+    const sample = {
+      filepath: "/tmp/episode.mcap",
+      metadata: { mime_type: "application/mcap" },
+    };
+
+    it("uses root sample metadata by default", () => {
+      expect(getMimeType(sample)).toBe("application/mcap");
+    });
+
+    it("infers alternate media paths independently of root metadata", () => {
+      expect(getMimeType(sample, "/tmp/preview.webp")).toBe("image/webp");
+      expect(getMimeType(sample, "/tmp/preview.mp4")).toBe("video/mp4");
+    });
+
+    it("infers extensions from proxied media URLs", () => {
+      expect(
+        getMimeType(
+          sample,
+          "/media?filepath=%2Ftmp%2Fpreview.WEBP&X-Amz-Signature=abc",
+        ),
+      ).toBe("image/webp");
+    });
+
+    it("does not reuse root metadata for an unknown alternate path", () => {
+      expect(getMimeType(sample, "/tmp/preview")).toBeNull();
+    });
+  });
+
   describe("isFo3d", () => {
     it("should return true for FO3D types", () => {
       fo3dTypes.forEach((mt) => expect(isFo3d(mt)).toBeTruthy());
@@ -47,6 +79,34 @@ describe("media utils", () => {
 
     it("should return false for other types", () => {
       otherTypes.forEach((mt) => expect(is3d(mt)).toBeFalsy());
+    });
+  });
+
+  describe("isMultimodal", () => {
+    it("should return true for multimodal media types", () => {
+      expect(isMultimodal("multimodal")).toBeTruthy();
+    });
+
+    it("should return false for other media types", () => {
+      [...fo3dTypes, ...pointCloudTypes, ...otherTypes, null].forEach((mt) =>
+        expect(isMultimodal(mt)).toBeFalsy(),
+      );
+    });
+  });
+
+  describe("isNativeMediaType", () => {
+    it("should return true for native media types", () => {
+      [null, undefined, "image", "video", "group"].forEach((mt) =>
+        expect(isNativeMediaType(mt)).toBeTruthy(),
+      );
+      fo3dTypes.forEach((mt) => expect(isNativeMediaType(mt)).toBeTruthy());
+      pointCloudTypes.forEach((mt) =>
+        expect(isNativeMediaType(mt)).toBeTruthy(),
+      );
+    });
+
+    it("should return false for multimodal media types", () => {
+      expect(isNativeMediaType("multimodal")).toBeFalsy();
     });
   });
 
@@ -92,34 +152,34 @@ describe("media utils", () => {
     it("extracts extension from signed URLs", () => {
       expect(
         getSamplePathExtension(
-          "https://example.com/path/to/file.PLY?X-Amz-Signature=abc123"
-        )
+          "https://example.com/path/to/file.PLY?X-Amz-Signature=abc123",
+        ),
       ).toBe(".ply");
     });
 
     it("extracts extension from media filepath query parameter", () => {
       expect(
-        getSamplePathExtension("/media?filepath=/tmp/assets/model.glTF")
+        getSamplePathExtension("/media?filepath=/tmp/assets/model.glTF"),
       ).toBe(".gltf");
 
       expect(
         getSamplePathExtension(
-          "http://localhost:5151/media?filepath=%2FUsers%2Fsashankaryal%2Ffiftyone%2Fdata%2Fdirect-3d%2Fpcd_dataset%2Fcube_1.pcd"
-        )
+          "http://localhost:5151/media?filepath=%2FUsers%2Fsashankaryal%2Ffiftyone%2Fdata%2Fdirect-3d%2Fpcd_dataset%2Fcube_1.pcd",
+        ),
       ).toBe(".pcd");
 
       expect(
         getSamplePathExtension(
-          "/media?filepath=%2Ftmp%2Fassets%2Fmesh.STL%3Fversion%3D1"
-        )
+          "/media?filepath=%2Ftmp%2Fassets%2Fmesh.STL%3Fversion%3D1",
+        ),
       ).toBe(".stl");
     });
 
     it("prefers the URL path when the asset is already encoded there", () => {
       expect(
         getSamplePathExtension(
-          "https://storage.googleapis.com/example-bucket/meshes/cube_1.glb?filepath=%2Ftmp%2Fother-file.txt&X-Goog-Signature=abc123"
-        )
+          "https://storage.googleapis.com/example-bucket/meshes/cube_1.glb?filepath=%2Ftmp%2Fother-file.txt&X-Goog-Signature=abc123",
+        ),
       ).toBe(".glb");
     });
 
@@ -142,10 +202,15 @@ describe("media utils", () => {
         "/tmp/example/file.glb",
         "/tmp/example/file.fbx",
         "/tmp/example/file.stl",
+        "/tmp/example/file.spz",
+        "/tmp/example/file.splat",
+        "/tmp/example/file.ksplat",
+        "/tmp/example/file.sog",
+        "/tmp/example/file.rad",
       ];
 
       direct3dPaths.forEach((path) =>
-        expect(isDirect3dSamplePath(path)).toBeTruthy()
+        expect(isDirect3dSamplePath(path)).toBeTruthy(),
       );
     });
 
@@ -161,8 +226,8 @@ describe("media utils", () => {
       expect(isFo3dSamplePath("/tmp/example/file.fo3d")).toBe(true);
       expect(
         isFo3dSamplePath(
-          "https://example.com/assets/scene.FO3D?X-Amz-Signature=abc123"
-        )
+          "https://example.com/assets/scene.FO3D?X-Amz-Signature=abc123",
+        ),
       ).toBe(true);
     });
 
@@ -182,26 +247,31 @@ describe("media utils", () => {
         "/tmp/example/file.glb",
         "/tmp/example/file.fbx",
         "/tmp/example/file.stl",
+        "/tmp/example/file.spz",
+        "/tmp/example/file.splat",
+        "/tmp/example/file.ksplat",
+        "/tmp/example/file.sog",
+        "/tmp/example/file.rad",
         "/media?filepath=/tmp/example/file.PCD",
       ];
 
       wrappablePaths.forEach((path) =>
-        expect(isWrappableDirect3dSamplePath(path)).toBeTruthy()
+        expect(isWrappableDirect3dSamplePath(path)).toBeTruthy(),
       );
     });
 
     it("returns false for excluded or unsupported extensions", () => {
       expect(isWrappableDirect3dSamplePath("/tmp/example/file.fo3d")).toBe(
-        false
+        false,
       );
       expect(isWrappableDirect3dSamplePath("/tmp/example/file.obj")).toBe(
-        false
+        false,
       );
       expect(isWrappableDirect3dSamplePath("/tmp/example/file.mtl")).toBe(
-        false
+        false,
       );
       expect(isWrappableDirect3dSamplePath("/tmp/example/file.jpg")).toBe(
-        false
+        false,
       );
     });
   });

@@ -13,7 +13,7 @@ import { v4 } from "uuid";
 async function fetchGraphQL(
   text: string | null | undefined,
   variables: object,
-  params?: string
+  params?: string,
 ): Promise<GraphQLResponse> {
   const data = await getFetchFunction()<unknown, GraphQLResponse>(
     "POST",
@@ -21,7 +21,7 @@ async function fetchGraphQL(
     {
       query: text,
       variables,
-    }
+    },
   );
 
   if ("errors" in data && data.errors) {
@@ -49,7 +49,7 @@ export const createEnvironment = () => {
       `/graphql?subscription=${subscription}`,
       undefined,
       "json",
-      0
+      0,
     ).then((a) => {
       a.data.messages.forEach((m) => {
         if (m.type === "next") {
@@ -73,7 +73,7 @@ export const createEnvironment = () => {
           new URLSearchParams({
             operation: operationId,
             subscription,
-          }).toString()
+          }).toString(),
         ).then((...all) => {
           console.log(all);
         });

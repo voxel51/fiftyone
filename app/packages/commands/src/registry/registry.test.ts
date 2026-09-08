@@ -22,7 +22,7 @@ describe("CommandRegistry", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     command = registry.registerCommand(
@@ -34,7 +34,7 @@ describe("CommandRegistry", () => {
         return true;
       },
       "fo",
-      "test fo command"
+      "test fo command",
     );
     expect(command.isEnabled()).toBe(true);
     expect(registry.getCommand(cmdOne)).toBeDefined();
@@ -49,7 +49,7 @@ describe("CommandRegistry", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     command = registry.registerCommand(
@@ -61,7 +61,7 @@ describe("CommandRegistry", () => {
         return true;
       },
       "fo",
-      "test fo command"
+      "test fo command",
     );
     expect(command).toBeDefined();
 
@@ -89,7 +89,7 @@ describe("CommandRegistry", () => {
         return true;
       },
       "fo",
-      "test fo command"
+      "test fo command",
     );
     expect(registry.getCommand(cmdOne)).toBeDefined();
     expect(await registry.executeCommand(cmdOne)).toEqual(true);
@@ -109,7 +109,7 @@ describe("CommandRegistry", () => {
         return false;
       },
       "fo",
-      "test fo command"
+      "test fo command",
     );
     expect(registry.getCommand(cmdOne)).toBeDefined();
     expect(await registry.executeCommand(cmdOne)).toEqual(false);
@@ -130,7 +130,7 @@ describe("CommandRegistry", () => {
         return false;
       },
       "fo",
-      "test fo command"
+      "test fo command",
     );
     //ensure listeners fire on register/unregister
     expect(listener).toBeCalledTimes(1);
@@ -146,7 +146,7 @@ describe("CommandRegistry", () => {
         return false;
       },
       "fo",
-      "test fo command"
+      "test fo command",
     );
     expect(listener).toBeCalledTimes(2);
     registry.unregisterCommand(cmdOne);

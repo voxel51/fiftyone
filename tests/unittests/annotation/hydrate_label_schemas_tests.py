@@ -9,7 +9,7 @@ FiftyOne annotation unit tests.
 import unittest
 from unittest.mock import MagicMock, patch
 
-from fiftyone.core.annotation.attributes import AttributeSpec
+from fiftyone.core.annotation.attributes import AttributeSpec, WhenEquals
 from fiftyone.core.annotation.hydrate_label_schemas import (
     dehydrate_applied_ontology,
     hydrate_applied_ontology,
@@ -120,6 +120,95 @@ class HydrateLabelSchemasTests(unittest.TestCase):
 
     @drop_datasets
     @drop_ontologies
+    def test_same_name_conditional_variants_all_preserved(self):
+        AnnotationOntology(
+            name="my_ontology",
+            attributes=[
+                AttributeSpec(
+                    name="make",
+                    type="str",
+                    component="dropdown",
+                    values=["Honda", "Toyota"],
+                ),
+                AttributeSpec(
+                    name="model",
+                    type="str",
+                    component="dropdown",
+                    values=["Civic", "Accord"],
+                    when=WhenEquals(field="make", value="Honda"),
+                ),
+                AttributeSpec(
+                    name="model",
+                    type="str",
+                    component="dropdown",
+                    values=["Camry", "Corolla"],
+                    when=WhenEquals(field="make", value="Toyota"),
+                ),
+            ],
+        ).save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "attributes": [],
+        }
+        result = hydrate_applied_ontology(schema)
+        names = [a["name"] for a in result["attributes"]]
+        # Both "model" variants survive rather than collapsing to the last.
+        self.assertEqual(names, ["make", "model", "model"])
+
+        models = [a for a in result["attributes"] if a["name"] == "model"]
+        self.assertEqual(
+            [m["values"] for m in models],
+            [["Civic", "Accord"], ["Camry", "Corolla"]],
+        )
+        self.assertEqual(
+            [m["when"]["value"] for m in models], ["Honda", "Toyota"]
+        )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_ontology_variants_replace_local_attr_in_place(self):
+        AnnotationOntology(
+            name="my_ontology",
+            attributes=[
+                AttributeSpec(
+                    name="model",
+                    type="str",
+                    component="dropdown",
+                    values=["Civic"],
+                    when=WhenEquals(field="make", value="Honda"),
+                ),
+                AttributeSpec(
+                    name="model",
+                    type="str",
+                    component="dropdown",
+                    values=["Camry"],
+                    when=WhenEquals(field="make", value="Toyota"),
+                ),
+            ],
+        ).save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "attributes": [
+                {"name": "color", "type": "str", "component": "text"},
+                {"name": "model", "type": "str", "component": "text"},
+                {"name": "note", "type": "str", "component": "text"},
+            ],
+        }
+        result = hydrate_applied_ontology(schema)
+        names = [a["name"] for a in result["attributes"]]
+        # Local "model" is overridden by both ontology variants, anchored to
+        # the local "model" slot; the surrounding local attrs are untouched.
+        self.assertEqual(names, ["color", "model", "model", "note"])
+        models = [a for a in result["attributes"] if a["name"] == "model"]
+        self.assertEqual([m["component"] for m in models], ["dropdown"] * 2)
+        self.assertTrue(all(m["_source"] == "my_ontology" for m in models))
+
+    @drop_datasets
+    @drop_ontologies
     def test_dangling_reference_strips_applied_ontology(self):
         schema = {
             "type": "detections",
@@ -154,6 +243,43 @@ class HydrateLabelSchemasTests(unittest.TestCase):
             result = hydrate_applied_ontology(schema)
         self.assertNotIn("applied_ontology", result)
         self.assertEqual(schema["applied_ontology"], "some_taxonomy")
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_taxonomy_surfaces_when_ao_bundles_taxonomy(self):
+        from fiftyone.core.annotation.nodes import Node
+        from fiftyone.core.ontology import Taxonomy
+
+        tax = Taxonomy(
+            name="vehicle_classes",
+            root=Node(name="root", values=[Node(name="car")]),
+        )
+        tax.save()
+        AnnotationOntology(name="my_ontology", taxonomy=tax).save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "attributes": [],
+        }
+        result = hydrate_applied_ontology(schema)
+        # Surfaced as the taxonomy's slug.
+        self.assertEqual(result["applied_taxonomy"], "vehicle-classes")
+        # Not persisted on the input.
+        self.assertNotIn("applied_taxonomy", schema)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_taxonomy_omitted_when_ao_has_no_taxonomy(self):
+        AnnotationOntology(name="my_ontology").save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "attributes": [],
+        }
+        result = hydrate_applied_ontology(schema)
+        self.assertNotIn("applied_taxonomy", result)
 
 
 class DehydrateLabelSchemasTests(unittest.TestCase):
@@ -243,6 +369,22 @@ class DehydrateLabelSchemasTests(unittest.TestCase):
         }
         result = dehydrate_applied_ontology(schema)
         self.assertEqual(result, schema)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_taxonomy_stripped_on_dehydrate(self):
+        AnnotationOntology(name="my_ontology").save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "applied_taxonomy": "vehicle_classes",
+            "attributes": [
+                {"name": "local", "type": "str", "component": "text"},
+            ],
+        }
+        result = dehydrate_applied_ontology(schema)
+        self.assertNotIn("applied_taxonomy", result)
 
     @drop_datasets
     @drop_ontologies

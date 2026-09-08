@@ -10,13 +10,12 @@ from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from datetime import datetime
-from operator import itemgetter
 import fnmatch
 import itertools
 import logging
 import operator
+from operator import itemgetter
 import os
-from packaging.version import Version
 import random
 import string
 import threading
@@ -24,11 +23,11 @@ import timeit
 import warnings
 
 from bson import ObjectId
+from packaging.version import Version
 from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
@@ -48,13 +47,18 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from fiftyone.internal.docs import hide_from_docs
+import fiftyone.multimodal.media as fmm
 
 fod = fou.lazy_import("fiftyone.core.dataset")
+foma = fou.lazy_import("fiftyone.core.media_assets")
 fos = fou.lazy_import("fiftyone.core.stages")
+fota = fou.lazy_import("fiftyone.core.tags")
 fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+fou3d = fou.lazy_import("fiftyone.utils.utils3d")
 foos = fou.lazy_import("fiftyone.operators.store")
 
 
@@ -370,6 +374,12 @@ class SampleCollection(object):
         return self.concat(samples)
 
     @property
+    @hide_from_docs
+    def temporal_tags(self):
+        """The multimodal temporal tags for this collection."""
+        return fota.TemporalTags(self)
+
+    @property
     def _dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` that serves the samples
         in this collection.
@@ -448,6 +458,15 @@ class SampleCollection(object):
     def media_type(self):
         """The media type of the collection."""
         raise NotImplementedError("Subclass must implement media_type")
+
+    @property
+    def media_reference_kind(self):
+        """The kind of media references that this collection contains, or None
+        if the collection does not contain media references.
+        """
+        raise NotImplementedError(
+            "Subclass must implement media_reference_kind"
+        )
 
     @property
     def group_field(self):
@@ -1981,6 +2000,7 @@ class SampleCollection(object):
             for field in fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 1)[0]
+                _validate_media_identity_read(self, field_name)
                 if field_name not in existing_fields:
                     raise ValueError("Field '%s' does not exist" % field_name)
 
@@ -2724,6 +2744,12 @@ class SampleCollection(object):
                 use the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
         """
+        _validate_media_reference_write(
+            self,
+            field_name,
+            "Cannot assign filepath values to reference-backed samples",
+        )
+
         self._set_values(
             field_name,
             values,
@@ -3617,6 +3643,12 @@ class SampleCollection(object):
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
         """
+        if self._contains_media_references():
+            raise fmm.UnsupportedMediaReferenceOperation(
+                "Generic file metadata is unavailable for media-reference-"
+                "backed samples; use the registered episode resolver"
+            )
+
         fomt.compute_metadata(
             self,
             overwrite=overwrite,
@@ -3625,6 +3657,108 @@ class SampleCollection(object):
             warn_failures=warn_failures,
             progress=progress,
         )
+
+    def _get_media_paths(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+        flat=True,
+    ):
+        if self._contains_media_references():
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+            else:
+                view = self
+
+            if not include_assets:
+                if flat:
+                    return []
+
+                return [[] for _ in range(view.count())]
+
+            plan = foma._build_reference_asset_plan(view, resolve=True)
+            return foma._get_reference_asset_paths(plan, flat=flat)
+
+        if media_fields is None:
+            media_fields = list(self._get_media_fields().keys())
+        elif etau.is_container(media_fields):
+            media_fields = list(media_fields)
+        else:
+            media_fields = [media_fields]
+
+        media_fields = [self._parse_media_field(f)[0] for f in media_fields]
+
+        if flat:
+            # Generate flat list of all media paths
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+            else:
+                view = self
+
+            filepaths = view.values(media_fields, unwind=True)
+
+            if len(media_fields) > 1:
+                filepaths = list(itertools.chain.from_iterable(filepaths))
+            else:
+                filepaths = filepaths[0]
+        else:
+            # Generate lists of lists of media paths, one per sample
+            filepaths = []
+
+            if self.media_type == fom.GROUP:
+                id_field = self.group_field + ".id"
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+                group_ids, *paths = view.values([id_field] + media_fields)
+                paths_map = defaultdict(list)
+                for _id, _paths in zip(group_ids, zip(*paths)):
+                    paths_map[_id].extend(_merge_paths(_paths))
+
+                # Intentionally only includes paths for groups in active slice
+                for _id in self.values(id_field):
+                    filepaths.append(paths_map[_id])
+            else:
+                for p in zip(*self.values(media_fields)):
+                    filepaths.append(_merge_paths(p))
+
+        if (
+            include_assets
+            and "filepath" in media_fields
+            and self._contains_media_type(fom.THREE_D, any_slice=True)
+        ):
+            self._inject_fo3d_asset_paths(filepaths, flat=flat)
+
+        return filepaths
+
+    def _inject_fo3d_asset_paths(self, filepaths, flat=True):
+        if flat:
+            _filepaths = filepaths
+        else:
+            _filepaths = itertools.chain.from_iterable(filepaths)
+
+        scene_paths = [p for p in _filepaths if p and p.endswith(".fo3d")]
+        asset_map = fou3d.get_scene_asset_paths(
+            scene_paths, abs_paths=True, skip_failures=True
+        )
+
+        if flat:
+            asset_paths = itertools.chain.from_iterable(asset_map.values())
+            filepaths.extend(set(asset_paths))
+        else:
+            for sample_paths in filepaths:
+                asset_paths = set()
+                for path in sample_paths:
+                    _asset_paths = asset_map.get(path, None)
+                    if _asset_paths is not None:
+                        asset_paths.update(_asset_paths)
+
+                sample_paths.extend(asset_paths)
 
     def generate_label_schemas(self, fields=None, scan_samples=True):
         """Generates label schemas for the
@@ -4312,6 +4446,8 @@ class SampleCollection(object):
 
         When evaluating keypoints, "IoUs" are computed via
         `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
+        You can pass ``keypoint_sigmas`` to customize the per-keypoint OKS
+        falloff.
 
         For temporal segment detection, this method uses ActivityNet-style
         evaluation by default.
@@ -6823,6 +6959,12 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
+        _validate_media_reference_write(
+            self,
+            field,
+            "Cannot derive a filepath for reference-backed samples",
+        )
+
         return self._add_view_stage(
             fos.SetField(field, expr, _allow_missing=_allow_missing)
         )
@@ -7188,6 +7330,51 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
+
+    @hide_from_docs
+    def match_temporal_tags(
+        self,
+        tags=None,
+        *,
+        anchors=None,
+        index_type=None,
+        start=None,
+        end=None,
+        bool=True,
+    ):
+        """Returns a view containing samples that match temporal tags.
+
+        Args:
+            tags (None): an optional temporal tag or iterable of tags
+            anchors (None): an optional anchor or iterable of anchors
+            index_type (None): an optional temporal tag index type
+            start (None): an optional inclusive lower bound for range overlap
+            end (None): an optional exclusive upper bound for range overlap
+            bool (True): whether to include (True) or exclude (False) matching
+                samples
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        tag_filter = fota.TemporalTagFilter(
+            tags=tags,
+            anchors=anchors,
+            index_type=index_type,
+            start=start,
+            end=end,
+        )
+        if bool is None:
+            bool = True
+
+        sample_ids = {
+            tag.sample_id
+            for tag in self.temporal_tags.values(filter=tag_filter)
+        }
+
+        if bool:
+            return self.select(sample_ids)
+
+        return self.exclude(sample_ids)
 
     @view_stage
     def mongo(self, pipeline, _needs_frames=None, _group_slices=None):
@@ -10030,6 +10217,9 @@ class SampleCollection(object):
 
         # @todo consider supporting non-default fields that are indexed
         # @todo can we support some non-full collections?
+        if field == "filepath" and self._contains_media_references():
+            return None
+
         if field in ("id", "_id", "filepath") and self._is_full_collection():
             return field
         return None
@@ -10361,6 +10551,8 @@ class SampleCollection(object):
     def to_torch(
         self,
         get_item,
+        *,
+        index_field="id",
         vectorize=False,
         skip_failures=False,
         local_process_group=None,
@@ -10371,6 +10563,11 @@ class SampleCollection(object):
 
         Args:
             get_item: a :class:`fiftyone.utils.torch.GetItem`
+            index_field ("id"): the dotted field path that defines the
+                dataset's rows. The default ``"id"`` yields one row per
+                sample. Use a list-valued path such as ``"frames.id"`` or
+                ``"ground_truth.detections.id"`` to fan out into one row per
+                frame, detection, etc.
             vectorize (False): whether to load and cache the required fields
                 from the sample collection upfront (True) or lazily load the
                 values from each sample when items are retrieved (False).
@@ -10393,6 +10590,7 @@ class SampleCollection(object):
         return FiftyOneTorchDataset(
             self,
             get_item,
+            index_field=index_field,
             vectorize=vectorize,
             skip_failures=skip_failures,
             local_process_group=local_process_group,
@@ -10959,9 +11157,11 @@ class SampleCollection(object):
                 return _existing_name
 
             # Handle default indexes
-            if (
-                _index_name in self._get_default_indexes(frames=is_frame_index)
-                and index_name != "filepath"  # allow 'filepath' to be modified
+            if _index_name in self._get_default_indexes(
+                frames=is_frame_index
+            ) and index_name not in (
+                "filepath",
+                "media_reference.key",
             ):
                 raise ValueError(f"Cannot modify default index '{index_name}'")
 
@@ -11101,10 +11301,16 @@ class SampleCollection(object):
 
             return []
 
+        identity_indexes = (
+            ["media_reference.key"]
+            if self._contains_media_references()
+            else ["filepath"]
+        )
+
         if self._is_patches:
             names = [
                 "id",
-                "filepath",
+                *identity_indexes,
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11117,7 +11323,7 @@ class SampleCollection(object):
         if self._is_frames:
             return [
                 "id",
-                "filepath",
+                *identity_indexes,
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11127,7 +11333,7 @@ class SampleCollection(object):
         if self._is_clips:
             return [
                 "id",
-                "filepath",
+                *identity_indexes,
                 "created_at",
                 "last_modified_at",
                 "sample_id",
@@ -11137,7 +11343,7 @@ class SampleCollection(object):
             gf = self.group_field
             return [
                 "id",
-                "filepath",
+                *identity_indexes,
                 "created_at",
                 "last_modified_at",
                 gf + ".id",
@@ -11146,7 +11352,7 @@ class SampleCollection(object):
 
         return [
             "id",
-            "filepath",
+            *identity_indexes,
             "created_at",
             "last_modified_at",
         ]
@@ -11264,7 +11470,8 @@ class SampleCollection(object):
                 frames_path = os.path.join(frame_labels_dir, filename)
                 etas.write_json(frames, frames_path, pretty_print=pretty_print)
 
-            if rel_dir and sd["filepath"].startswith(rel_dir):
+            filepath = sd.get("filepath", None)
+            if rel_dir and filepath and filepath.startswith(rel_dir):
                 sd["filepath"] = sd["filepath"][len(rel_dir) :]
 
             samples.append(sd)
@@ -12041,6 +12248,9 @@ class SampleCollection(object):
 
         return False
 
+    def _contains_media_references(self):
+        return self.media_reference_kind is not None
+
     def _contains_videos(self, any_slice=False):
         return self._contains_media_type(fom.VIDEO, any_slice=any_slice)
 
@@ -12638,6 +12848,33 @@ def _serialize_value(field_name, field, value, validate=True):
     return field.to_mongo(value)
 
 
+def _validate_media_reference_write(
+    sample_collection, field_name, filepath_error_message
+):
+    root_field = field_name.split(".", 1)[0]
+    if root_field == "media_reference":
+        raise fmm.UnsupportedMediaReferenceOperation(
+            "Collection-level media-reference mutation is not supported; "
+            "assign a complete MediaReference to each Sample and save it"
+        )
+
+    if root_field != "filepath":
+        return
+
+    if sample_collection._contains_media_references():
+        raise fmm.UnsupportedMediaReferenceOperation(filepath_error_message)
+
+
+def _validate_media_identity_read(sample_collection, field_name):
+    if field_name != "filepath":
+        return
+
+    if sample_collection._contains_media_references():
+        raise fmm.UnsupportedMediaReferenceOperation(
+            "Filepath operations are not supported on reference-backed datasets"
+        )
+
+
 def _unwind_values(values, level=0):
     if not values:
         return values
@@ -13096,9 +13333,11 @@ def _parse_field_name(
     else:
         prefix = ""
 
-    if not allow_missing and not is_id_field:
-        root_field_name = field_name.split(".", 1)[0]
+    root_field_name = field_name.split(".", 1)[0]
+    if not is_frame_field:
+        _validate_media_identity_read(sample_collection, root_field_name)
 
+    if not allow_missing and not is_id_field:
         if sample_collection.get_field(prefix + root_field_name) is None:
             ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
@@ -13393,16 +13632,6 @@ def _export(
             "Either `dataset_type` or `dataset_exporter` must be provided"
         )
 
-    # Overwrite existing directories or warn if files will be merged
-    _handle_existing_dirs(
-        dataset_exporter=dataset_exporter,
-        export_dir=export_dir,
-        data_path=data_path,
-        labels_path=labels_path,
-        export_media=export_media,
-        overwrite=overwrite,
-    )
-
     # If no dataset exporter was provided, construct one
     if dataset_exporter is None:
         dataset_exporter, kwargs = foud.build_dataset_exporter(
@@ -13415,6 +13644,28 @@ def _export(
             rel_dir=rel_dir,
             **kwargs,
         )
+
+    if sample_collection._contains_media_references() and not getattr(
+        dataset_exporter, "supports_media_references", False
+    ):
+        raise fmm.UnsupportedMediaReferenceOperation(
+            "The requested exporter does not support media-reference-backed "
+            "samples; use FiftyOneDataset for thin references or a registered "
+            "kind-specific exporter"
+        )
+
+    if getattr(dataset_exporter, "_manages_existing_export_dir", False):
+        dataset_exporter.overwrite = overwrite
+
+    # Overwrite existing directories or warn if files will be merged
+    _handle_existing_dirs(
+        dataset_exporter=dataset_exporter,
+        export_dir=export_dir,
+        data_path=data_path,
+        labels_path=labels_path,
+        export_media=export_media,
+        overwrite=overwrite,
+    )
 
     # Get label field(s) to export
     if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
@@ -13531,6 +13782,9 @@ def _handle_existing_dirs(
     export_media=False,
     overwrite=False,
 ):
+    if getattr(dataset_exporter, "_manages_existing_export_dir", False):
+        return
+
     if dataset_exporter is not None:
         try:
             export_dir = dataset_exporter.export_dir
@@ -13610,6 +13864,17 @@ def _add_db_fields_to_schema(schema):
             additions[field.db_field] = field
 
     schema.update(additions)
+
+
+def _merge_paths(values):
+    flat = []
+    for v in values:
+        if isinstance(v, str):
+            flat.append(v)
+        elif v is not None:
+            flat.extend(v)
+
+    return flat
 
 
 def _none_max(*args, default=None):

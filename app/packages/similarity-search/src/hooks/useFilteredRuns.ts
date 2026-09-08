@@ -24,18 +24,18 @@ export const DEFAULT_FILTER_STATE: RunFilterState = {
  */
 export const usePanelFilterState = (): [
   RunFilterState,
-  (state: RunFilterState) => void
+  (state: RunFilterState) => void,
 ] => {
   const [state, setState] = usePanelStatePartial<RunFilterState>(
     FILTER_STATE_KEY,
     DEFAULT_FILTER_STATE,
-    true // local-only; filters are UI state, not server-persisted
+    true, // local-only; filters are UI state, not server-persisted
   );
   return [state as RunFilterState, setState as (s: RunFilterState) => void];
 };
 
 export const useFilteredRuns = (
-  runs: SimilarityRun[]
+  runs: SimilarityRun[],
 ): {
   filteredRuns: SimilarityRun[];
   filterState: RunFilterState;

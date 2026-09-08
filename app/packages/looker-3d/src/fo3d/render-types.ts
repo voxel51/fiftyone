@@ -1,5 +1,7 @@
+import { GAUSSIAN_SPLAT_EXTENSIONS } from "@fiftyone/utilities";
 import type { Quaternion, Vector3 } from "three";
 import type { FiftyoneSceneRawJson } from "../utils";
+import { DEFAULT_SPLAT_OPACITY, DEFAULT_SPLAT_TINT } from "./splat/settings";
 
 export const Fo3dSupportedExtensions = [
   ".pcd",
@@ -10,6 +12,7 @@ export const Fo3dSupportedExtensions = [
   ".gltf",
   ".glb",
   ".fbx",
+  ...GAUSSIAN_SPLAT_EXTENSIONS,
 ] as const;
 
 export class BoxGeometryAsset {
@@ -17,7 +20,7 @@ export class BoxGeometryAsset {
     readonly width: number,
     readonly height: number,
     readonly depth: number,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -31,7 +34,7 @@ export class CylinderGeometryAsset {
     readonly openEnded: boolean,
     readonly thetaStart: number,
     readonly thetaLength: number,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -39,7 +42,7 @@ export class PlaneGeometryAsset {
   constructor(
     readonly width: number,
     readonly height: number,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -52,7 +55,7 @@ export class SphereGeometryAsset {
     readonly phiLength: number,
     readonly thetaStart: number,
     readonly thetaLength: number,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -60,7 +63,7 @@ export class FbxAsset {
   constructor(
     readonly fbxPath: string,
     readonly preTransformedFbxPath?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -68,7 +71,19 @@ export class GltfAsset {
   constructor(
     readonly gltfPath: string,
     readonly preTransformedGltfPath?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
+  ) {}
+}
+
+/** Parsed render configuration for a Gaussian splat scene asset. */
+export class GaussianSplatAsset {
+  constructor(
+    readonly splatPath: string,
+    readonly preTransformedSplatPath?: string,
+    readonly format?: string,
+    readonly centerGeometry?: boolean,
+    readonly opacity: number = DEFAULT_SPLAT_OPACITY,
+    readonly tint: string = DEFAULT_SPLAT_TINT,
   ) {}
 }
 
@@ -78,7 +93,7 @@ export class ObjAsset {
     readonly mtlPath?: string,
     readonly preTransformedObjPath?: string,
     readonly preTransformedMtlPath?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -87,7 +102,7 @@ export class PcdAsset {
     readonly pcdPath?: string,
     readonly preTransformedPcdPath?: string,
     readonly defaultMaterial?: FoPointcloudMaterialProps,
-    readonly centerGeometry?: boolean
+    readonly centerGeometry?: boolean,
   ) {}
 }
 
@@ -97,7 +112,7 @@ export class PlyAsset {
     readonly preTransformedPlyPath?: string,
     readonly defaultMaterial?: FoMeshMaterial,
     readonly isPcd?: boolean,
-    readonly centerGeometry?: boolean
+    readonly centerGeometry?: boolean,
   ) {}
 }
 
@@ -105,12 +120,20 @@ export class StlAsset {
   constructor(
     readonly stlPath?: string,
     readonly preTransformedStlPath?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
+  ) {}
+}
+
+export class MirisStreamAsset {
+  constructor(
+    readonly assetUuid: string,
+    readonly viewerKey?: string,
   ) {}
 }
 
 export type MeshAsset =
   | FbxAsset
+  | GaussianSplatAsset
   | GltfAsset
   | ObjAsset
   | PcdAsset
@@ -119,7 +142,8 @@ export type MeshAsset =
   | BoxGeometryAsset
   | CylinderGeometryAsset
   | PlaneGeometryAsset
-  | SphereGeometryAsset;
+  | SphereGeometryAsset
+  | MirisStreamAsset;
 
 export type FoMaterial3D = {
   opacity: number;
@@ -182,6 +206,7 @@ export type FoPointcloudMaterialProps = FoMaterial3D & {
 };
 
 export type FoSceneNode = {
+  uuid?: string;
   name: string;
   asset?: MeshAsset;
   position: Vector3;

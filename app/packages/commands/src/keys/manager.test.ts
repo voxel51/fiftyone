@@ -23,7 +23,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -34,7 +34,7 @@ describe("KeyManager", () => {
     expect(() => {
       keyManager.bindKey("ctrl+s", "fo.unregistered");
     }).toThrowError(
-      "The command id fo.unregistered is not registered for binding ctrl+s"
+      "The command id fo.unregistered is not registered for binding ctrl+s",
     );
   });
   it("can match a single sequence command binding", async () => {
@@ -46,7 +46,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -65,7 +65,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -87,7 +87,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -110,7 +110,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -130,7 +130,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -153,7 +153,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -181,7 +181,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command1).toBeDefined();
     const command2 = commandRegistry.registerCommand(
@@ -191,7 +191,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command2).toBeDefined();
     //The start sequence ctrl+s is the same for both commands, one is User the other Core
@@ -226,7 +226,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -254,7 +254,7 @@ describe("KeyManager", () => {
     expect(state.full).toBeDefined();
   });
 
-  it("will not register the same binding in the same scope", async () => {
+  it("matches the earliest enabled command for duplicate bindings", async () => {
     const command1 = commandRegistry.registerCommand(
       "fo.test.command1",
       async () => {
@@ -262,7 +262,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command1).toBeDefined();
     const command2 = commandRegistry.registerCommand(
@@ -272,7 +272,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     const binding = "ctrl+s, alt+d";
     expect(() => {
@@ -280,7 +280,183 @@ describe("KeyManager", () => {
     }).not.toThrow();
     expect(() => {
       keyManager.bindKey(binding, "fo.test.command2");
-    }).toThrowError(`The binding ${binding} is already bound in this context`);
+    }).not.toThrow();
     expect(command2).toBeDefined();
+
+    let state = keyManager.match(
+      new KeyboardEvent("keydown", { ctrlKey: true, key: "s" }),
+    );
+    expect(state.partial).toBe(true);
+    state = keyManager.match(
+      new KeyboardEvent("keydown", { altKey: true, key: "d" }),
+    );
+    expect(state.full?.id).toBe("fo.test.command1");
+  });
+
+  it("falls back to an older duplicate binding when the latest is disabled", async () => {
+    commandRegistry.registerCommand(
+      "fo.test.command1",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+    commandRegistry.registerCommand(
+      "fo.test.command2",
+      async () => {
+        return;
+      },
+      () => {
+        return false;
+      },
+    );
+
+    keyManager.bindKey("s", "fo.test.command1");
+    keyManager.bindKey("s", "fo.test.command2");
+
+    const state = keyManager.match(new KeyboardEvent("keydown", { key: "s" }));
+    expect(state.full?.id).toBe("fo.test.command1");
+  });
+
+  it("matches the highest-priority enabled duplicate binding", async () => {
+    commandRegistry.registerCommand(
+      "fo.test.command1",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+    commandRegistry.registerCommand(
+      "fo.test.command2",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+
+    keyManager.bindKey("s", "fo.test.command1", 100);
+    keyManager.bindKey("s", "fo.test.command2");
+
+    const state = keyManager.match(new KeyboardEvent("keydown", { key: "s" }));
+    expect(state.full?.id).toBe("fo.test.command1");
+  });
+
+  /**
+   * The "ladder" a surface builds on a shared key: a high-priority rung that
+   * only applies sometimes, over a default that always does. Video Explore
+   * binds Escape this way — clear the selected labels when there are any,
+   * otherwise let the modal's own Escape close it — which only works if a
+   * DISABLED high-priority rung falls through instead of swallowing the key.
+   */
+  it("falls through a disabled high-priority binding to the enabled default", async () => {
+    let rungApplies = false;
+
+    commandRegistry.registerCommand(
+      "fo.test.rung",
+      async () => {
+        return;
+      },
+      () => rungApplies,
+    );
+    commandRegistry.registerCommand(
+      "fo.test.default",
+      async () => {
+        return;
+      },
+      () => true,
+    );
+
+    keyManager.bindKey("Escape", "fo.test.rung", 1);
+    keyManager.bindKey("Escape", "fo.test.default");
+
+    const press = () =>
+      keyManager.match(new KeyboardEvent("keydown", { key: "Escape" })).full
+        ?.id;
+
+    // rung does not apply -> the default runs untouched
+    expect(press()).toBe("fo.test.default");
+
+    rungApplies = true;
+
+    // rung applies -> it takes the key, and the default does NOT also run
+    expect(press()).toBe("fo.test.rung");
+  });
+
+  /**
+   * The same ladder, bound in PRODUCTION order.
+   *
+   * Every priority test above registers the high-priority rung FIRST, so an
+   * implementation that merely preferred the earliest binding would satisfy
+   * them. Video Explore is the other way round: `ModalClose` binds Escape at
+   * modal mount, and the clear-selection rung re-registers on every selection
+   * change — so the rung is always the LATER registration. Bind them in that
+   * order here, so priority has to be what decides.
+   */
+  it("prefers the higher priority even when it is bound LAST", async () => {
+    let rungApplies = true;
+
+    commandRegistry.registerCommand(
+      "fo.test.default",
+      async () => {
+        return;
+      },
+      () => true,
+    );
+    commandRegistry.registerCommand(
+      "fo.test.rung",
+      async () => {
+        return;
+      },
+      () => rungApplies,
+    );
+
+    // production order: the always-on default first, the rung after
+    keyManager.bindKey("Escape", "fo.test.default");
+    keyManager.bindKey("Escape", "fo.test.rung", 1);
+
+    const press = () =>
+      keyManager.match(new KeyboardEvent("keydown", { key: "Escape" })).full
+        ?.id;
+
+    expect(press()).toBe("fo.test.rung");
+
+    // and it still falls through when the rung stops applying — the half that
+    // keeps Escape able to close the modal once the selection is cleared
+    rungApplies = false;
+    expect(press()).toBe("fo.test.default");
+  });
+
+  it("can unbind one duplicate binding without removing the fallback", async () => {
+    commandRegistry.registerCommand(
+      "fo.test.command1",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+    commandRegistry.registerCommand(
+      "fo.test.command2",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+
+    keyManager.bindKey("s", "fo.test.command1");
+    keyManager.bindKey("s", "fo.test.command2");
+    keyManager.unbindKey("s", "fo.test.command2");
+
+    const state = keyManager.match(new KeyboardEvent("keydown", { key: "s" }));
+    expect(state.full?.id).toBe("fo.test.command1");
   });
 });

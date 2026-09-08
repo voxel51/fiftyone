@@ -1,5 +1,5 @@
 """
-Validation for :class:`fiftyone.core.ontology.AnnotationOntology`.
+Validation for :mod:`fiftyone.core.ontology` SDK classes.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -11,7 +11,8 @@ from fiftyone.core.annotation.attributes import (
     WhenOperator,
     collect_leaf_conditions,
 )
-from fiftyone.core.ontology import AnnotationOntology
+from fiftyone.core.annotation.nodes import Node
+from fiftyone.core.ontology import AnnotationOntology, Taxonomy
 
 
 _ALLOWED_THEN_KEYS = {"values", "component"}
@@ -32,16 +33,13 @@ def validate_annotation_ontology(ontology: AnnotationOntology) -> None:
     # TODO: `When.field` resolution is deferred — `field` may reference
     # an attribute in another label-schema layer, so it needs the full
     # label-schema context. Enforce at resolution time or in the frontend.
-    #
-    # TODO: taxonomy-reference resolution is deferred until Phase 2 ships
-    # `Taxonomy` documents; validate that each `ontology.taxonomies` name
-    # resolves to a `Taxonomy` in the DB once the type exists.
     errors: list[str] = [
         *_validate_when_operators(ontology),
         *_validate_types(ontology),
         *_validate_components(ontology),
         *_validate_no_cycles(ontology),
         *_validate_then_keys(ontology),
+        *_validate_taxonomy_ref(ontology),
     ]
 
     if errors:
@@ -49,6 +47,27 @@ def validate_annotation_ontology(ontology: AnnotationOntology) -> None:
         raise ValueError(
             f"Invalid AnnotationOntology {ontology.name!r}:\n{bullet_list}"
         )
+
+
+def validate_taxonomy(taxonomy: Taxonomy) -> None:
+    """Validates a :class:`Taxonomy`.
+
+    Aggregates all taxonomy-level failures into a single error.
+
+    Args:
+        taxonomy: the taxonomy to validate
+
+    Raises:
+        ValueError: if any rule fails
+    """
+    errors: list[str] = [
+        *_validate_no_node_cycles(taxonomy),
+        *_validate_unique_node_names(taxonomy),
+    ]
+
+    if errors:
+        bullet_list = "\n".join(f"  - {e}" for e in errors)
+        raise ValueError(f"Invalid Taxonomy {taxonomy.name!r}:\n{bullet_list}")
 
 
 def _validate_when_operators(ontology: AnnotationOntology) -> list[str]:
@@ -159,3 +178,83 @@ def _validate_no_cycles(ontology: AnnotationOntology) -> list[str]:
             seen.add(node)
             to_visit.extend(graph[node])
     return errors
+
+
+def _validate_taxonomy_ref(ontology: AnnotationOntology) -> list[str]:
+    """Confirms ``ontology.taxonomy`` (if set) resolves to a saved
+    :class:`Taxonomy`.
+    """
+    # Late import to dodge a circular import via the SDK entry points.
+    from fiftyone.core.ontology import load_ontology
+
+    errors: list[str] = []
+    if ontology.taxonomy is None:
+        return errors
+
+    try:
+        ref = load_ontology(ontology.taxonomy)
+    except ValueError:
+        errors.append(
+            f"taxonomy reference {ontology.taxonomy!r} does not resolve "
+            f"to a saved ontology"
+        )
+        return errors
+
+    if not ref.is_taxonomy:
+        errors.append(
+            f"taxonomy reference {ontology.taxonomy!r} resolves to a "
+            f"non-taxonomy ontology"
+        )
+
+    return errors
+
+
+def _validate_no_node_cycles(taxonomy: Taxonomy) -> list[str]:
+    """Detects cycles in the node tree.
+
+    Pathological — Node trees built via ``from_dict`` or normal Python
+    construction can't cycle, but a caller mutating ``values`` after
+    construction could create one. Catch it before downstream code
+    (serialization, traversal) recurses forever.
+    """
+    path_ids: set[int] = set()
+    cycles: list[str] = []
+
+    def visit(node: Node) -> None:
+        if id(node) in path_ids:
+            cycles.append(f"cycle detected at node {node.name!r}")
+            return
+        path_ids.add(id(node))
+        for child in node.values or []:
+            visit(child)
+        path_ids.remove(id(node))
+
+    visit(taxonomy.root)
+    return cycles
+
+
+def _validate_unique_node_names(taxonomy: Taxonomy) -> list[str]:
+    """Per the proposal, node names are unique within the taxonomy.
+
+    Uses an id-based visited set so a cyclic tree (which
+    ``_validate_no_node_cycles`` reports separately) doesn't loop forever
+    here.
+    """
+    seen_names: set[str] = set()
+    duplicates: set[str] = set()
+    visited_ids: set[int] = set()
+
+    def visit(node: Node) -> None:
+        if id(node) in visited_ids:
+            return
+        visited_ids.add(id(node))
+        if node.name in seen_names:
+            duplicates.add(node.name)
+        seen_names.add(node.name)
+        for child in node.values or []:
+            visit(child)
+
+    visit(taxonomy.root)
+    if duplicates:
+        return [f"duplicate node name(s): {sorted(duplicates)}"]
+    return []

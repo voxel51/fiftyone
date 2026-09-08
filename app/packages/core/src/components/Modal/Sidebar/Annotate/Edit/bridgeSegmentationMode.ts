@@ -85,7 +85,7 @@ export const segmentationModeBridge = {
   getToolState(scale = 1): SegmentationToolState {
     const cursorSize = Math.min(
       MAX_CURSOR_SIZE,
-      Math.max(MIN_CURSOR_SIZE, Math.round(this.getToolSize() * scale))
+      Math.max(MIN_CURSOR_SIZE, Math.round(this.getToolSize() * scale)),
     );
 
     return {

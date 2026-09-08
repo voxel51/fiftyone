@@ -1,0 +1,32 @@
+.embeddings-renderer-tooltip {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: #16181d;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.embeddings-renderer-tooltip img {
+  display: block;
+  width: 160px;
+  height: 120px;
+  border-radius: 3px;
+  /* Visible while the thumbnail request is in flight */
+  background: #14161a;
+}
+
+.embeddings-renderer-tooltip-meta {
+  max-width: 160px;
+  font-family: monospace;
+  font-size: 11px;
+  color: rgb(134, 140, 148);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

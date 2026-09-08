@@ -1,6 +1,5 @@
 import { useTheme } from "@fiftyone/components";
 import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
-import React from "react";
 
 type Props = {
   onClose: () => void;

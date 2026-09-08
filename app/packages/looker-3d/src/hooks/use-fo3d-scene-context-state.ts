@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Box3, LoadingManager } from "three";
 import type { Fo3dCameraLifecycleState } from "../fo3d/camera-lifecycle";
+import type { DirectPcdWorldTransforms } from "../fo3d/direct-pcd-world-alignment";
 import { FoScene } from "../fo3d/render-types";
 import type { Looker3dSettings } from "../settings";
 import type { HoverMetadata } from "../types";
@@ -18,6 +19,7 @@ interface UseFo3dSceneContextStateArgs {
   loadingManager: LoadingManager | null;
   cameraLifecycleState: Fo3dCameraLifecycleState;
   isSceneReady: boolean;
+  directPcdWorldTransformsBySampleId: DirectPcdWorldTransforms;
 }
 
 /**
@@ -33,10 +35,11 @@ export const useFo3dSceneContextState = ({
   loadingManager,
   cameraLifecycleState,
   isSceneReady,
+  directPcdWorldTransformsBySampleId,
 }: UseFo3dSceneContextStateArgs) => {
   const [upVector, setUpVectorVal] = useFo3dUpVector(
     foScene,
-    settings?.defaultUp
+    settings?.defaultUp,
   );
 
   const {
@@ -44,12 +47,10 @@ export const useFo3dSceneContextState = ({
     setAutoRotate,
     pointCloudSettings,
     setPointCloudSettings,
-    raycastPrecision,
-    setRaycastPrecision,
   } = useFo3dPersistentPreferences();
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
-    null
+    null,
   );
 
   const { effectiveSceneBoundingBox, cursorBounds, lookAt } =
@@ -72,11 +73,10 @@ export const useFo3dSceneContextState = ({
       setAutoRotate,
       pointCloudSettings,
       setPointCloudSettings,
-      raycastPrecision,
-      setRaycastPrecision,
       hoverMetadata,
       setHoverMetadata,
       pluginSettings: settings ?? null,
+      directPcdWorldTransformsBySampleId,
     }),
     [
       cameraLifecycleState,
@@ -94,12 +94,11 @@ export const useFo3dSceneContextState = ({
       setAutoRotate,
       pointCloudSettings,
       setPointCloudSettings,
-      raycastPrecision,
-      setRaycastPrecision,
       hoverMetadata,
       setHoverMetadata,
       settings,
-    ]
+      directPcdWorldTransformsBySampleId,
+    ],
   );
 
   return {

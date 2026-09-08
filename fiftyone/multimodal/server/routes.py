@@ -23,7 +23,7 @@ PROTOBUF_MEDIA_TYPE = "application/x-protobuf"
 class SceneInventoryEndpoint(HTTPEndpoint):
     """Scene inventory query endpoint."""
 
-    @decorators.route(parse_body=False)
+    @decorators.route
     async def get(self, request: Request) -> Response:
         """Returns a serialized SceneInventory protobuf."""
 
@@ -57,11 +57,6 @@ class PlaybackPlanEndpoint(HTTPEndpoint):
 
 def _get_required_path_param(request: Request, field: str) -> str:
     value = request.path_params.get(field)
-
-    return _require_string(value, field)
-
-
-def _require_string(value, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise HTTPException(
             status_code=400,

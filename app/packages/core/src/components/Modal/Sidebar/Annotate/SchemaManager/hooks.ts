@@ -84,10 +84,18 @@ export const useSetCurrentField = () => {
  * Hook to control the schema manager modal visibility
  */
 export const useSchemaManagerModal = () => {
-  const [schemaManagerDisplayed, setSchemaManagerDisplayed] = useAtom(schemaManagerDisplayedAtom);
+  const [schemaManagerDisplayed, setSchemaManagerDisplayed] = useAtom(
+    schemaManagerDisplayedAtom,
+  );
 
-  const openSchemaManager = useCallback(() => setSchemaManagerDisplayed(true), [setSchemaManagerDisplayed]);
-  const closeSchemaManager = useCallback(() => setSchemaManagerDisplayed(false), [setSchemaManagerDisplayed]);
+  const openSchemaManager = useCallback(
+    () => setSchemaManagerDisplayed(true),
+    [setSchemaManagerDisplayed],
+  );
+  const closeSchemaManager = useCallback(
+    () => setSchemaManagerDisplayed(false),
+    [setSchemaManagerDisplayed],
+  );
 
   return { schemaManagerDisplayed, openSchemaManager, closeSchemaManager };
 };
@@ -175,7 +183,9 @@ export const useActiveFieldsList = () => {
   const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
 
   // Use new system fields if available, fall back to legacy
-  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
+  const fields = fieldsFromNew?.length
+    ? fieldsFromNew
+    : (fieldsFromLegacy ?? []);
 
   // Set both atom systems to keep them in sync
   const setFields = useCallback(
@@ -183,7 +193,7 @@ export const useActiveFieldsList = () => {
       setFieldsNew(newFields);
       setFieldsLegacy(newFields);
     },
-    [setFieldsNew, setFieldsLegacy]
+    [setFieldsNew, setFieldsLegacy],
   );
 
   return { fields, setFields };
@@ -219,7 +229,7 @@ export const useAddToExploreActiveFields = () => {
       (field: string) => {
         set(activeField({ modal: true, path: field }), true);
       },
-    []
+    [],
   );
 };
 
@@ -247,7 +257,7 @@ export const useFieldType = (field: string) => {
  */
 export const useGetFieldType = () =>
   useAtomCallback(
-    useCallback((get, _set, field: string) => get(fieldType(field)), [])
+    useCallback((get, _set, field: string) => get(fieldType(field)), []),
   );
 
 /**
@@ -268,7 +278,7 @@ export const useIsPrimitiveField = () => {
 
   return useCallback(
     (field: string) => PRIMITIVE_FIELD_TYPES.has(getFieldType(field)),
-    [getFieldType]
+    [getFieldType],
   );
 };
 
@@ -301,7 +311,7 @@ export const useFieldIsReadOnly = (field: string) => {
  */
 export const useIsFieldReadOnly = () =>
   useAtomCallback(
-    useCallback((get, _set, field: string) => get(fieldIsReadOnly(field)), [])
+    useCallback((get, _set, field: string) => get(fieldIsReadOnly(field)), []),
   );
 
 /**
@@ -489,7 +499,7 @@ export const useFullSchemaEditor = () => {
 
   const originalJson = useMemo(
     () => JSON.stringify(schemasData, null, 2),
-    [schemasData]
+    [schemasData],
   );
 
   const currentJson = draftJson ?? originalJson;
@@ -553,7 +563,7 @@ export const useFullSchemaEditor = () => {
         setIsValidating(false);
       }
     },
-    [setDraftJson, validateSchemas, setErrors]
+    [setDraftJson, validateSchemas, setErrors],
   );
 
   const save = useCallback(async () => {
@@ -579,7 +589,7 @@ export const useFullSchemaEditor = () => {
             updateSchemaOp({
               field,
               label_schema: labelSchema,
-            } as UpdateSchemaRequest)
+            } as UpdateSchemaRequest),
           );
         }
       }

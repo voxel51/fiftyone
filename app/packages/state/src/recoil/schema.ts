@@ -47,11 +47,11 @@ export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
 
 export const filterPaths = (
   paths: string[] | null,
-  schema: Schema
+  schema: Schema,
 ): string[] => {
   return paths
     ? paths.filter((path) => {
-        if (path === "_label_tags") return true;
+        if (path === "_label_tags" || path === "_temporal_tags") return true;
 
         const keys = path.split(".");
         let fields = schema;
@@ -68,7 +68,7 @@ export const filterPaths = (
 
 export const buildSchema = (
   sampleFields: StrictField[],
-  frameFields: StrictField[]
+  frameFields: StrictField[],
 ): Schema => {
   const schema = sampleFields.reduce(schemaReduce, {});
 
@@ -113,7 +113,11 @@ export const pathIsShown = selectorFamily<boolean, string>({
   get:
     (path) =>
     ({ get }) => {
-      if (path.startsWith("tags.") || path.startsWith("_label_tags.")) {
+      if (
+        path.startsWith("tags.") ||
+        path.startsWith("_label_tags.") ||
+        path.startsWith("_temporal_tags.")
+      ) {
         return true;
       }
 
@@ -201,7 +205,7 @@ export const fieldPaths = selectorFamily<
 
       const f = (paths) =>
         paths.filter(
-          (p) => !ftype || get(meetsType({ path: p, ftype, embeddedDocType }))
+          (p) => !ftype || get(meetsType({ path: p, ftype, embeddedDocType })),
         );
 
       if (space === State.SPACE.SAMPLE) {
@@ -225,7 +229,7 @@ export const fieldPaths = selectorFamily<
       return Object.entries(fieldValue.fields)
         .filter(
           ([_, field]) =>
-            !ftype || meetsFieldType(field, { ftype, embeddedDocType })
+            !ftype || meetsFieldType(field, { ftype, embeddedDocType }),
         )
         .map(([name]) => name);
     },
@@ -251,7 +255,7 @@ export const fields = selectorFamily<
       return [...get(fieldPaths(params))]
         .sort()
         .map((name) =>
-          get(field(params.path ? [params.path, name].join(".") : name))
+          get(field(params.path ? [params.path, name].join(".") : name)),
         );
     },
 });
@@ -368,7 +372,7 @@ export const defaultActiveFields = selector<string[]>({
       frameSchema,
       allSampleLabels,
       allFrameLabels,
-      config
+      config,
     );
   },
 });
@@ -463,7 +467,7 @@ export const activeLabels = selectorFamily<LabelData[], { expanded?: boolean }>(
         accumulate(sample);
         return results;
       },
-  }
+  },
 );
 
 export const expandPath = selectorFamily<string, string>({
@@ -550,13 +554,13 @@ export const _activeFields = (() => {
               current = newValue;
               sessionStorage.setItem(
                 "activeFields",
-                JSON.stringify({ datasetId, activeFields: current })
+                JSON.stringify({ datasetId, activeFields: current }),
               );
             }
           });
         },
       ],
-    }
+    },
   );
 })();
 
@@ -570,7 +574,7 @@ export const activeFields = selectorFamily<
     ({ get }) => {
       const paths = filterPaths(
         get(_activeFields({ modal })) || get(defaultActiveFields),
-        buildSchema(get(atoms.sampleFields), get(atoms.frameFields))
+        buildSchema(get(atoms.sampleFields), get(atoms.frameFields)),
       );
 
       if (expanded) {
@@ -621,7 +625,7 @@ export const activeField: ActiveFieldSelector = selectorFamily<
       const fields = get(activeFields({ modal }));
       set(
         activeFields({ modal }),
-        active ? [path, ...fields] : fields.filter((field) => field !== path)
+        active ? [path, ...fields] : fields.filter((field) => field !== path),
       );
     },
 });
@@ -791,7 +795,7 @@ export const isInListField = selectorFamily({
       return (
         parent?.ftype === LIST_FIELD &&
         [EMBEDDED_DOCUMENT_FIELD, DYNAMIC_EMBEDDED_DOCUMENT_FIELD].includes(
-          parent.subfield
+          parent.subfield,
         )
       );
     },

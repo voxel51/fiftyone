@@ -66,4 +66,5 @@ operators:
   - validate_label_schemas
 
   # dataset
+  - delete_brain_run
   - get_field_schema

@@ -44,7 +44,7 @@ export function getConfigLabel({ config, type, dashed }) {
       ? CLASS_PERFORMANCE_SORT_OPTIONS
       : CONFUSION_MATRIX_SORT_OPTIONS;
   const sortByLabel = sortByLabels.find(
-    (option) => option.value === sortBy
+    (option) => option.value === sortBy,
   )?.label;
   return dashed ? ` - ${sortByLabel}` : sortByLabel;
 }

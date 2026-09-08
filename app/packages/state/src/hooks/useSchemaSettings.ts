@@ -22,7 +22,7 @@ const viewSchemaSelector = foq.graphQLSyncFragmentAtom<
     fragments: [foq.viewSchemaFragment],
     default: null,
   },
-  { key: "viewSchemeSelector" }
+  { key: "viewSchemeSelector" },
 );
 
 export default function useSchemaSettings() {
@@ -38,7 +38,7 @@ export default function useSchemaSettings() {
   const [filters, setFilters] = useRecoilState(fos.filters);
   const [modalFilters, setModalFilters] = useRecoilState(fos.modalFilters);
   const [attributeVisibility, setAttributeVisibility] = useRecoilState(
-    fos.attributeVisibility
+    fos.attributeVisibility,
   );
   const [modalAttributeVisibility, setModalAttributeVisibility] =
     useRecoilState(fos.modalAttributeVisibility);
@@ -55,16 +55,16 @@ export default function useSchemaSettings() {
   const setViewSchema = useSetRecoilState(fos.viewSchemaState);
   const setFieldSchema = useSetRecoilState(fos.fieldSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
-    fos.schemaSearchTerm
+    fos.schemaSearchTerm,
   );
-  const isVideo = dataset.mediaType === "video";
+  const isVideo = dataset?.mediaType === "video";
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
-    fos.allFieldsCheckedState
+    fos.allFieldsCheckedState,
   );
 
   const [includeNestedFields, setIncludeNestedFieldsRaw] = useRecoilState(
-    fos.includeNestedFieldsState
+    fos.includeNestedFieldsState,
   );
 
   const fieldVisibilityStage = useRecoilValue(fos.fieldVisibilityStage);
@@ -76,7 +76,7 @@ export default function useSchemaSettings() {
   const isClipsView = useRecoilValue(fos.isClipsView);
 
   const [expandedPaths, setExpandedPaths] = useRecoilState(
-    fos.expandedPathsState
+    fos.expandedPathsState,
   );
 
   const data = useRecoilValue(viewSchemaSelector);
@@ -122,17 +122,17 @@ export default function useSchemaSettings() {
   }, [viewSchema, fieldSchema, setViewSchema, setFieldSchema]);
 
   const [showNestedFields, setShowNestedFields] = useRecoilState<boolean>(
-    fos.showNestedFieldsState
+    fos.showNestedFieldsState,
   );
 
   const [selectedTab, setSelectedTab] = useRecoilState(
-    fos.schemaSelectedSettingsTab
+    fos.schemaSelectedSettingsTab,
   );
   const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;
 
   const mergedSchema = useMemo(
     () => ({ ...viewSchema, ...fieldSchema }),
-    [viewSchema, fieldSchema]
+    [viewSchema, fieldSchema],
   );
 
   const {
@@ -169,8 +169,8 @@ export default function useSchemaSettings() {
             ? `frames.${path}`
             : path
           : isVideo && viewSchema?.[rawPath]
-          ? `frames.${pathLabel[pathLabel.length - 1]}`
-          : pathLabel[pathLabel.length - 1];
+            ? `frames.${pathLabel[pathLabel.length - 1]}`
+            : pathLabel[pathLabel.length - 1];
 
         const skip = skipField(path, finalSchemaKeyByPath);
         const disabled =
@@ -181,7 +181,7 @@ export default function useSchemaSettings() {
             isFrameView,
             isClipsView,
             isVideo,
-            isPatchesView
+            isPatchesView,
           ) || filterRuleTab;
 
         const fullPath =
@@ -222,14 +222,14 @@ export default function useSchemaSettings() {
             ? -1
             : 1
           : !showNestedFields
-          ? item.disabled
-            ? 1
-            : -1
-          : item.path > item2.path
-          ? 1
-          : item.disabled
-          ? 1
-          : -1
+            ? item.disabled
+              ? 1
+              : -1
+            : item.path > item2.path
+              ? 1
+              : item.disabled
+                ? 1
+                : -1,
       );
 
     return [resSchema, finalSchemaKeyByPath];
@@ -258,7 +258,7 @@ export default function useSchemaSettings() {
         setIncludeNestedFieldsRaw(val);
       }
     },
-    [searchMetaFilter, searchSchemaFields, setIncludeNestedFieldsRaw]
+    [searchMetaFilter, searchSchemaFields, setIncludeNestedFieldsRaw],
   );
 
   const resetExcludedPaths = useCallback(() => {
@@ -273,8 +273,8 @@ export default function useSchemaSettings() {
       const pathAndSubPaths = getSubPaths(
         rawPath,
         fieldSchema,
-        dataset.mediaType,
-        viewSchema
+        dataset?.mediaType,
+        viewSchema,
       );
       if (!pathAndSubPaths.size) {
         return;
@@ -302,12 +302,12 @@ export default function useSchemaSettings() {
     [
       datasetName,
       fieldSchema,
-      dataset.mediaType,
+      dataset?.mediaType,
       viewSchema,
       setAllFieldsChecked,
       excludedPaths,
       setExcludedPaths,
-    ]
+    ],
   );
 
   const setAllFieldsCheckedWrapper = useCallback(
@@ -321,7 +321,7 @@ export default function useSchemaSettings() {
         const topLevelPaths = (allPaths || []).filter((path) =>
           path.startsWith("frames.")
             ? !path.replace("frames.", "").includes(".")
-            : !path.includes(".")
+            : !path.includes("."),
         );
         setExcludedPaths({
           [datasetName]: val ? new Set() : new Set(topLevelPaths),
@@ -334,7 +334,7 @@ export default function useSchemaSettings() {
       datasetName,
       includeNestedFields,
       allPaths,
-    ]
+    ],
   );
 
   return {

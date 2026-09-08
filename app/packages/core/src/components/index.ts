@@ -1,8 +1,13 @@
 export * from "./ActivityToast";
 export { default as Checkbox } from "./Common/Checkbox";
 export { default as Dataset } from "./Dataset";
+export { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
 export { default as EmptySamples } from "./EmptySamples";
 export { default as FieldLabelAndInfo } from "./FieldLabelAndInfo";
+export {
+  GatedDynamicImports,
+  type GatedDynamicImport,
+} from "./GatedDynamicImports";
 export { default as Loading } from "./Loading";
 export { default as QueryPerformanceToast } from "./QueryPerformanceToast";
 export { default as ResourceCount } from "./ResourceCount";

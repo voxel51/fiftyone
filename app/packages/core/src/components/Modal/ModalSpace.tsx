@@ -12,7 +12,7 @@ const ModalSpaceImpl = React.memo(
   ({ defaultSpaces }: { defaultSpaces: SpaceNodeJSON }) => {
     const { spaces: modalSpaces } = useSpaces(
       FIFTYONE_MODAL_SPACES_ID,
-      defaultSpaces
+      defaultSpaces,
     );
 
     useEffect(() => {
@@ -27,7 +27,7 @@ const ModalSpaceImpl = React.memo(
         archetype="modal"
       />
     );
-  }
+  },
 );
 
 export const ModalSpace = () => {

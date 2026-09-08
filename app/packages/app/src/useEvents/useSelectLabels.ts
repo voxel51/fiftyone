@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { type State, useSessionSetter } from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
 import { useCallback } from "react";
@@ -10,10 +14,10 @@ const useSelectLabels: EventHandlerHook = () => {
     (payload) => {
       setter(
         "selectedLabels",
-        toCamelCase(payload.labels) as State.SelectedLabel[]
+        toCamelCase(payload.labels) as State.SelectedLabel[],
       );
     },
-    [setter]
+    [setter],
   );
 };
 

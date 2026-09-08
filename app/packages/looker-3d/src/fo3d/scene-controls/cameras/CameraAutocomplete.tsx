@@ -72,7 +72,7 @@ export const CameraAutocomplete = ({
   const [searchValue, setSearchValue] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">(
-    "down"
+    "down",
   );
 
   const selectedOption = useMemo(() => {
@@ -111,7 +111,7 @@ export const CameraAutocomplete = ({
 
   const filteredOptions = useMemo(
     () => filterCameraControlOptions(options, searchValue),
-    [options, searchValue]
+    [options, searchValue],
   );
 
   // This effect determines whether the dropdown opens upward or downward based on available viewport space
@@ -206,7 +206,7 @@ export const CameraAutocomplete = ({
             event.preventDefault();
             setIsOpen(true);
             setActiveIndex((current) =>
-              Math.min(current + 1, Math.max(filteredOptions.length - 1, 0))
+              Math.min(current + 1, Math.max(filteredOptions.length - 1, 0)),
             );
             return;
           }

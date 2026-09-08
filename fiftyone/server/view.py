@@ -19,6 +19,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
+import fiftyone.core.tags as fotags
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -27,6 +28,18 @@ from fiftyone.server.scalars import BSONArray, JSON
 
 
 _LABEL_TAGS = "_label_tags"
+_TEMPORAL_TAGS = "_temporal_tags"
+
+
+def _make_group_field_stage(view):
+    group_by = next(
+        (s for s in view._stages if isinstance(s, fosg.GroupBy)), None
+    )
+    if group_by is None:
+        return None
+    return fosg.Mongo(
+        [{"$addFields": {"_group": group_by._get_group_expr(view)[0]}}]
+    )
 
 
 @gql.input
@@ -130,7 +143,11 @@ def get_view(
             view = dataset.view()
 
         if dynamic_group is not None:
+            group_stage = _make_group_field_stage(view)
             view = view.get_dynamic_group(dynamic_group)
+            if group_stage is not None:
+                # inject _group so relay store records are consistent with modal
+                view = view.add_stage(group_stage)
 
         media_types = None
         if sample_filter is not None:
@@ -211,6 +228,10 @@ def get_extended_view(
         label_tags = filters.get(_LABEL_TAGS, None)
         if label_tags:
             view = _match_label_tags(view, label_tags)
+
+        temporal_tags = filters.get(_TEMPORAL_TAGS, None)
+        if temporal_tags:
+            view = _match_temporal_tags(view, temporal_tags)
 
         stages = []
         match_stage = _make_match_stage(view, filters)
@@ -313,10 +334,18 @@ def handle_group_filter(
                     {group_field + ".name": {"$in": filter.slices}}
                 )
 
-                # add dynamic group value
-                _group, _ = stage._get_group_expr(view)
+                # modal: inject _group so the relay store record carries the
+                # dynamic group value for the sample being viewed
                 view = view._add_view_stage(
-                    fosg.Mongo([{"$addFields": {"_group": _group}}])
+                    fosg.Mongo(
+                        [
+                            {
+                                "$addFields": {
+                                    "_group": stage._get_group_expr(view)[0]
+                                }
+                            }
+                        ]
+                    )
                 )
 
             if isinstance(
@@ -333,6 +362,24 @@ def handle_group_filter(
 
     elif filter.id:
         view = fov.make_optimized_select_view(view, filter.id, groups=True)
+
+        for stage in stages:
+            # inject _group so modal sample records stay consistent with
+            # slice-filtered requests, which also carry the dynamic group
+            # value
+            if isinstance(stage, fosg.GroupBy):
+                view = view._add_view_stage(
+                    fosg.Mongo(
+                        [
+                            {
+                                "$addFields": {
+                                    "_group": stage._get_group_expr(view)[0]
+                                }
+                            }
+                        ]
+                    ),
+                    validate=False,
+                )
 
     if not group_by and filter.slices:
         # use 'match' to select requested slices, and avoid media type
@@ -367,7 +414,12 @@ def _project_pagination_paths(
 
     selected_fields = ["_group"]  # store dynamic group values
     for path in schema:
-        if any(path.startswith(exclude) for exclude in excluded):
+        # exclude the field and its children, but not sibling fields that
+        # share a name prefix (e.g. `clip` must not exclude `clip-pred`)
+        if any(
+            path == exclude or path.startswith(exclude + ".")
+            for exclude in excluded
+        ):
             continue
 
         selected_fields.append(path)
@@ -767,6 +819,7 @@ def _make_keypoint_list_filter(args, view, path, field):
     if isinstance(field.field, fof.BooleanField):
         true, false = args["true"], args["false"]
         f = F(name)
+        expr = None
         if true and false:
             expr = f.is_in([True, False])
 
@@ -843,6 +896,35 @@ def _apply_none(expr, f, none):
         expr |= ~(f.exists())
 
     return expr
+
+
+def _match_temporal_tags(
+    view: foc.SampleCollection, temporal_tags
+) -> foc.SampleCollection:
+    values = temporal_tags.get("values")
+    if not values:
+        return view
+
+    exclude = temporal_tags.get("exclude", False)
+
+    # Temporal tags are stored in a dedicated collection keyed by sample id,
+    # not as sample fields. Resolve the sample ids carrying any of the
+    # requested tag values at the dataset level (tags are sparse, so this set
+    # stays small, and we avoid enumerating the view's sample ids on every
+    # grid load), then select / exclude within the current view -- the
+    # select/exclude intersects, so out-of-view tag hits can't leak in.
+    dataset = view._dataset if isinstance(view, fov.DatasetView) else view
+    tags = fotags.list_temporal_tags(
+        dataset, fotags.TemporalTagFilter(tags=values)
+    )
+    sample_ids = {str(tag.sample_id) for tag in tags}
+
+    if exclude:
+        # Excluding with no matches leaves the view untouched.
+        return view.exclude(sample_ids) if sample_ids else view
+
+    # Matching with no matches yields an empty view.
+    return view.select(sample_ids)
 
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):

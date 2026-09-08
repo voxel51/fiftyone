@@ -5,6 +5,10 @@ Label Studio Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.16.6
+    :enterprise_version: 1.0
+
 `Label Studio <https://labelstud.io/>`_ is a popular open-source data labeling
 tool with a friendly UI. The integration between FiftyOne and Label Studio
 allows you to easily upload your data directly from FiftyOne to Label Studio
@@ -339,6 +343,10 @@ following ways:
 
 Configuring local file storage
 ------------------------------
+
+.. customavailablein::
+    :oss_version: 0.23.6
+    :enterprise_version: 1.5.7
 
 If you are using FiftyOne on the same machine that is hosting Label Studio,
 then you can make use of the

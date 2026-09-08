@@ -5,7 +5,7 @@ import { getOperatorPromptConfigs } from "./utils";
 describe("getOperatorPromptConfigs", () => {
   it("show is false when nothing is active", () => {
     const { show, showResultOrError } = getOperatorPromptConfigs(
-      createOperatorPromptOptions()
+      createOperatorPromptOptions(),
     );
     expect(show).toBe(false);
     expect(showResultOrError).toBeFalsy();
@@ -13,7 +13,7 @@ describe("getOperatorPromptConfigs", () => {
 
   it("show is true when hasResultOrError is true", () => {
     const { show, showResultOrError } = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ hasResultOrError: true })
+      createOperatorPromptOptions({ hasResultOrError: true }),
     );
     expect(showResultOrError).toBe(true);
     expect(show).toBe(true);
@@ -23,7 +23,7 @@ describe("getOperatorPromptConfigs", () => {
     const { show, showResultOrError } = getOperatorPromptConfigs(
       createOperatorPromptOptions({
         executorError: new Error("Executor error"),
-      })
+      }),
     );
     expect(showResultOrError).toBeTruthy();
     expect(show).toBeTruthy();
@@ -33,7 +33,7 @@ describe("getOperatorPromptConfigs", () => {
     const { show } = getOperatorPromptConfigs(
       createOperatorPromptOptions({
         resolveError: new Error("Resolve error"),
-      })
+      }),
     );
     expect(show).toBeTruthy();
   });
@@ -43,28 +43,28 @@ describe("getOperatorPromptConfigs", () => {
       createOperatorPromptOptions({
         showPrompt: true,
         inputFields: { view: {} },
-      })
+      }),
     );
     expect(show).toBe(true);
   });
 
   it("show is true when isExecuting is true", () => {
     const { show } = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ isExecuting: true })
+      createOperatorPromptOptions({ isExecuting: true }),
     );
     expect(show).toBe(true);
   });
 
   it("submitButtonText defaults to Execute", () => {
     const { submitButtonText } = getOperatorPromptConfigs(
-      createOperatorPromptOptions()
+      createOperatorPromptOptions(),
     );
     expect(submitButtonText).toBe("Execute");
   });
 
   it("cancelButtonText defaults to Cancel", () => {
     const { cancelButtonText } = getOperatorPromptConfigs(
-      createOperatorPromptOptions()
+      createOperatorPromptOptions(),
     );
     expect(cancelButtonText).toBe("Cancel");
   });
@@ -77,7 +77,7 @@ describe("getOperatorPromptConfigs", () => {
           submit_button_label: "Run!",
           label: "My prompt",
         },
-      })
+      }),
     );
     expect(submitButtonText).toBe("Run!");
   });
@@ -86,7 +86,7 @@ describe("getOperatorPromptConfigs", () => {
     const { submitButtonText } = getOperatorPromptConfigs(
       createOperatorPromptOptions({
         promptView: { name: "PromptView", label: "My prompt" },
-      })
+      }),
     );
     expect(submitButtonText).toBe("Execute");
   });
@@ -100,7 +100,7 @@ describe("getOperatorPromptConfigs", () => {
         onSubmit,
         cancel,
         inputFields: { view: {} },
-      })
+      }),
     );
     expect(configs.onSubmit).toBe(onSubmit);
     expect(configs.onCancel).toBe(cancel);
@@ -110,7 +110,7 @@ describe("getOperatorPromptConfigs", () => {
   it("sets onCancel to close and cancelButtonText to Close when showing result or error", () => {
     const close = vi.fn();
     const configs = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ hasResultOrError: true, close })
+      createOperatorPromptOptions({ hasResultOrError: true, close }),
     );
     expect(configs.onCancel).toBe(close);
     expect(configs.cancelButtonText).toBe("Close");
@@ -118,7 +118,7 @@ describe("getOperatorPromptConfigs", () => {
 
   it("returns onSubmit as undefined when neither showPrompt nor showResultOrError", () => {
     const { onSubmit } = getOperatorPromptConfigs(
-      createOperatorPromptOptions()
+      createOperatorPromptOptions(),
     );
     expect(onSubmit).toBeUndefined();
   });
@@ -126,7 +126,7 @@ describe("getOperatorPromptConfigs", () => {
   it("falls back to close when onCancel is not set", () => {
     const close = vi.fn();
     const { onClose } = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ close })
+      createOperatorPromptOptions({ close }),
     );
     expect(onClose).toBe(close);
   });
@@ -140,14 +140,14 @@ describe("getOperatorPromptConfigs", () => {
         cancel,
         close,
         inputFields: { view: {} },
-      })
+      }),
     );
     expect(onClose).toBe(cancel);
   });
 
   it("hasValidationErrors is false when array is empty", () => {
     const { hasValidationErrors, disableSubmit } = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ validationErrors: [] })
+      createOperatorPromptOptions({ validationErrors: [] }),
     );
     expect(hasValidationErrors).toBe(false);
     expect(disableSubmit).toBe(false);
@@ -165,15 +165,15 @@ describe("getOperatorPromptConfigs", () => {
           { path: "foo", reason: "required" },
           { path: "bar", reason: "invalid" },
         ],
-      })
+      }),
     );
     expect(hasValidationErrors).toBe(true);
     expect(disableSubmit).toBe(true);
     expect(validationErrorsStr).toBe(
-      "params.foo: required\nparams.bar: invalid"
+      "params.foo: required\nparams.bar: invalid",
     );
     expect(disabledReason).toContain(
-      "Cannot execute operator with validation errors"
+      "Cannot execute operator with validation errors",
     );
   });
 
@@ -181,7 +181,7 @@ describe("getOperatorPromptConfigs", () => {
     const { disabledReason } = getOperatorPromptConfigs(
       createOperatorPromptOptions({
         validationErrors: [{ path: "x", reason: "bad" }],
-      })
+      }),
     );
     expect(disabledReason).toContain("validation errors");
     expect(disabledReason).toContain("params.x: bad");
@@ -189,21 +189,21 @@ describe("getOperatorPromptConfigs", () => {
 
   it("disabledReason mentions validating when resolving and there are no validation errors", () => {
     const { disabledReason } = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ resolving: true })
+      createOperatorPromptOptions({ resolving: true }),
     );
     expect(disabledReason).toContain("validating");
   });
 
   it("loading is true when resolving", () => {
     const { loading } = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ resolving: true })
+      createOperatorPromptOptions({ resolving: true }),
     );
     expect(loading).toBe(true);
   });
 
   it("disableSubmit is true when resolving", () => {
     const { disableSubmit } = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ resolving: true })
+      createOperatorPromptOptions({ resolving: true }),
     );
     expect(disableSubmit).toBe(true);
   });
@@ -218,7 +218,7 @@ describe("getOperatorPromptConfigs", () => {
           hasOptions: true,
           requiresOrchestratorSetup: true,
         },
-      })
+      }),
     );
     expect(configs.submitButtonOptions).toBe(options);
     expect(configs.submitButtonLoading).toBe(true);
@@ -231,7 +231,7 @@ describe("getOperatorPromptConfigs", () => {
       createOperatorPromptOptions({
         showPrompt: true,
         inputFields: { view: { label: "My Input" } },
-      })
+      }),
     );
     expect(title).toBe("My Input");
   });
@@ -241,7 +241,7 @@ describe("getOperatorPromptConfigs", () => {
       createOperatorPromptOptions({
         showPrompt: false,
         outputFields: { view: { label: "My Output" } },
-      })
+      }),
     );
     expect(title).toBe("My Output");
   });
@@ -254,7 +254,7 @@ describe("getOperatorPromptConfigs", () => {
   it("exposes customPrompt and customPromptName from promptView", () => {
     const promptView = { name: "PromptView", label: "test" };
     const { customPrompt, customPromptName } = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ promptView })
+      createOperatorPromptOptions({ promptView }),
     );
     expect(customPrompt).toBe(promptView);
     expect(customPromptName).toBe("PromptView");
@@ -262,7 +262,7 @@ describe("getOperatorPromptConfigs", () => {
 
   it("customPrompt and customPromptName are null/undefined when promptView is null", () => {
     const { customPrompt, customPromptName } = getOperatorPromptConfigs(
-      createOperatorPromptOptions({ promptView: null })
+      createOperatorPromptOptions({ promptView: null }),
     );
     expect(customPrompt).toBeNull();
     expect(customPromptName).toBeUndefined();
@@ -270,7 +270,7 @@ describe("getOperatorPromptConfigs", () => {
 });
 
 function createOperatorPromptOptions(
-  overrides: Partial<OperatorPromptForConfig> = {}
+  overrides: Partial<OperatorPromptForConfig> = {},
 ): OperatorPromptForConfig {
   return {
     hasResultOrError: false,

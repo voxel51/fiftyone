@@ -14,7 +14,7 @@ type HelpPanelState = {
 export default function useHelpPanel() {
   const { containerRef, open, close, toggle, state } = usePanel(
     "help",
-    fos.lookerPanels
+    fos.lookerPanels,
   );
 
   const { isOpen, items } = state || {};
