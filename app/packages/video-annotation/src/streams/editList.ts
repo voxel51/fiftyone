@@ -3,35 +3,21 @@
  */
 
 /**
- * Edit-list (`elst`) handling for the native decode path.
- *
- * An mp4 edit list tells players where in the stored media presentation
- * begins. Encoders commonly write one to absorb start-up latency, so the first
- * stored picture(s) sit before the presentation start. ffmpeg (and therefore
- * OpenCV, `to_frames`, and any downstream pipeline that decodes with them)
- * treats such samples as pre-roll: they are decoded for reference but never
- * emitted, and frame 1 is the first sample at or after the edit start. Frame
- * numbers written by Annotate must follow the same rule or they land one
- * frame off in every consumer's decode.
- *
- * Pure functions — no mp4box, no workers — so the rule is unit-testable.
+ * mp4 edit-list (`elst`) numbering. Samples before the edit list's media start
+ * are pre-roll: ffmpeg decodes them for reference and never emits them, so
+ * frame 1 is the first sample at or after the start. `to_frames`, OpenCV, and
+ * backend inference inherit that numbering; Annotate must match it.
  */
 
-/** One `elst` entry as mp4box exposes it on `Track.edits`. */
+/** One `elst` entry, as mp4box exposes it on `Track.edits`. */
 export interface EditListEntry {
-  /** Duration of the edit in the presentation, in movie timescale units. */
+  /** Movie timescale units. */
   segment_duration: number;
-  /**
-   * Media time where this edit starts, in track timescale units. `-1` marks an
-   * empty edit (a gap in the presentation with no media).
-   */
+  /** Track timescale units; `-1` marks an empty edit. */
   media_time: number;
 }
 
-/**
- * Media time (track timescale units) at which presentation begins: the
- * `media_time` of the first non-empty edit, or `0` when there is no edit list.
- */
+/** Media time where presentation begins: the first non-empty edit's `media_time`, else 0. */
 export function presentationStart(
   edits: readonly EditListEntry[] | undefined,
 ): number {
@@ -48,17 +34,12 @@ export function presentationStart(
   return 0;
 }
 
-/** The composition timestamp of a sample, in track timescale units. */
+/** Sample composition time, in track timescale units. */
 export interface TimedSample {
   cts: number;
 }
 
-/**
- * The samples that receive frame numbers, in presentation order: every sample
- * whose composition time is at or after `start`, sorted ascending by `cts`.
- * Samples before `start` are pre-roll — decoded when a GOP needs them, never
- * numbered. Frame `n` is `presentedInOrder(...)[n - 1]`.
- */
+/** Samples at or after `start`, in presentation order. Frame `n` is element `n - 1`. */
 export function presentedInOrder<T extends TimedSample>(
   samples: readonly T[],
   start: number,

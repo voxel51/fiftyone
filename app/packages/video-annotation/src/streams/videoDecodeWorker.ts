@@ -23,8 +23,7 @@
  * stamp every `EncodedVideoChunk` with that timestamp; the decoder echoes it
  * onto the output `VideoFrame`, so we can assign the correct frame number on
  * the way out regardless of decode order (B-frames) or GOP boundaries. Frame
- * 1 is the first sample at/after the edit list's presentation start — the
- * same numbering ffmpeg, `to_frames`, and backend inference use.
+ * 1 is the first sample at or after the edit list's start, as in ffmpeg.
  *
  * GOP handling lives entirely here (the stream base stays source-agnostic): a
  * chunk request for presentation frames `[start, start+n)` is snapped back to
@@ -325,15 +324,10 @@ async function streamMoov(
 }
 
 /**
- * Turn raw demuxed samples into `decodeOrder` (decode order, as delivered),
- * assign each presented sample its 1-indexed presentation frame number (sort
- * by `cts`), and build the µs→frame map + keyframe index list.
- *
- * Samples before the edit list's presentation start are pre-roll (see
- * {@link ./editList}): they stay in `decodeOrder` because the GOP's keyframe
- * is usually among them, but they get no frame number, so their decoded
- * output is dropped in {@link onDecoderOutput}. This is ffmpeg's numbering,
- * which is what `to_frames` and backend inference see.
+ * Build `decodeOrder` (as delivered), number the presented samples 1..N by
+ * `cts`, and index keyframes. Pre-roll samples stay in `decodeOrder` — the GOP
+ * keyframe is usually one — but get no frame number, so {@link onDecoderOutput}
+ * drops their output.
  */
 function buildSampleTable(
   samples: Sample[],
@@ -341,7 +335,7 @@ function buildSampleTable(
   edits: readonly EditListEntry[] | undefined,
 ): void {
   decodeOrder = samples.map((s, decodeIndex) => ({
-    frameNumber: 0, // pre-roll samples keep 0
+    frameNumber: 0,
     decodeIndex,
     tsMicros: Math.round((s.cts * 1e6) / timescale),
     durMicros: Math.round((s.duration * 1e6) / timescale),

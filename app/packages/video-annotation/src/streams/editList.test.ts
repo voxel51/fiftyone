@@ -43,8 +43,7 @@ describe("presentedInOrder", () => {
   });
 
   it("drops samples before the presentation start as pre-roll", () => {
-    // An edit list starting 0.08s in: picture 1 (cts 0) precedes it and is
-    // pre-roll; frame 1 is picture 2 — what ffmpeg and OpenCV emit first.
+    // Edit list starts 0.08 s in: picture 1 (cts 0) is pre-roll, frame 1 is picture 2.
     expect(presentedInOrder(samples, 96000).map((s) => s.id)).toEqual([
       1, 2, 3,
     ]);
