@@ -20,6 +20,13 @@
     :tags: image,multilabel,automotive,manual
 
 .. customcarditem::
+    :header: BoilingBench Multimodal
+    :description: Seven pool-boiling and immersion-cooling experiments in native MCAP format, pairing high-speed or infrared video with surface temperature, heat flux and hydrophone, microphone and acoustic-emission sensing on one clock.
+    :link: datasets/boilingbench_multimodal.html
+    :image: ../_images/boilingbench-multimodal.png
+    :tags: multimodal,mcap,heat-transfer,acoustic,thermal
+
+.. customcarditem::
     :header: Caltech-101
     :description: Classic object recognition dataset with 101 object classes plus background clutter. Contains ~9,000 images of variable sizes (200-300px typical). Image-level labels only.
     :link: datasets/caltech101.html
