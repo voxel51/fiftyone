@@ -189,3 +189,11 @@ export function useFirstExistingUri(uris: string[]) {
 export function useOperatorAvailability(uri: string) {
   return useFirstExistingUri([uri]).exists;
 }
+
+/**
+ * Whether the operator registry has loaded from the server. Until it has, an
+ * operator's absence from {@link useOperatorAvailability} means nothing yet.
+ */
+export function useOperatorRegistryLoaded() {
+  return useRecoilValue(operatorsInitializedAtom);
+}

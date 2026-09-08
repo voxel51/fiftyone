@@ -43,9 +43,10 @@ export interface LanguageSearchProps {
    */
   onHasTextChange?: (hasText: boolean) => void;
   /**
-   * Whether the similarity search operator is registered at all. Without it
-   * the field still shows, and a click explains itself through `onUnavailable`
-   * instead of offering anything.
+   * Whether the similarity search operator may exist — registered, or not yet
+   * known to be missing while the registry loads. Known missing, the field
+   * still shows, and a click explains itself through `onUnavailable` instead
+   * of offering anything.
    */
   available: boolean;
   onUnavailable: () => void;

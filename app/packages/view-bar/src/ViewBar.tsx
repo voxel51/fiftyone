@@ -15,7 +15,11 @@
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
-import { executeOperator, useOperatorAvailability } from "@fiftyone/operators";
+import {
+  executeOperator,
+  useOperatorAvailability,
+  useOperatorRegistryLoaded,
+} from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { buildSimilarityRunName } from "@fiftyone/utilities";
 import {
@@ -93,6 +97,7 @@ import {
   workingStagesFromView,
 } from "./state";
 import { usePrefixSchema } from "./prefix-schema";
+import { useDeferredSearch } from "./useDeferredSearch";
 import type { SerializedStage } from "./state";
 import type { WorkingStage } from "./state";
 
@@ -703,12 +708,16 @@ const ViewBarInner: React.FC<{
   // ----- Collapsed bar: summary chip + language search -----
 
   const promptKeys = fos.usePromptableSimilarityKeys();
-  // The search runs through the similarity_search operator — a deployment
-  // whose plugins never registered (or an install without them) must not
-  // offer a box whose Enter goes nowhere
-  const searchOperatorAvailable = useOperatorAvailability(
+  // The search runs through the similarity_search operator. The registry
+  // that lists it loads after the bar renders, so until it has, the operator
+  // is not missing — only unknown: the field takes the query and
+  // `useDeferredSearch` holds it. Known missing (an install without the
+  // plugin) is when a click explains itself instead.
+  const registryLoaded = useOperatorRegistryLoaded();
+  const searchOperatorRegistered = useOperatorAvailability(
     SIMILARITY_SEARCH_OPERATOR,
   );
+  const searchOperatorAvailable = searchOperatorRegistered || !registryLoaded;
   const notify = fos.useNotification();
   const notifySearchUnavailable = useCallback(
     () =>
@@ -974,12 +983,19 @@ const ViewBarInner: React.FC<{
   // popover's trigger only in the sense of being what the stages row hangs
   // from; the bar decides when the row opens (the toggle, adding a stage) and
   // the popover reports a press outside everything as leaving.
+  const submitSearch = useDeferredSearch({
+    loaded: registryLoaded,
+    registered: searchOperatorRegistered,
+    submit: submitLanguageQuery,
+    onUnavailable: notifySearchUnavailable,
+  });
+
   const gutter = (
     <div className={styles.gutter}>
       <LanguageSearch
         key={`search-${searchEpoch}`}
         onHasTextChange={setSearchHasText}
-        onSubmit={submitLanguageQuery}
+        onSubmit={submitSearch}
         available={searchOperatorAvailable}
         onUnavailable={notifySearchUnavailable}
         enabled={searchEnabled}
