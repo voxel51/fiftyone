@@ -11159,7 +11159,7 @@ class SampleCollection(object):
                 frames=is_frame_index
             ) and index_name not in (
                 "filepath",
-                "media_reference",
+                "media_reference.key",
             ):
                 raise ValueError(f"Cannot modify default index '{index_name}'")
 
@@ -11300,7 +11300,7 @@ class SampleCollection(object):
             return []
 
         identity_indexes = (
-            ["media_reference"]
+            ["media_reference.key"]
             if self._contains_media_references()
             else ["filepath"]
         )

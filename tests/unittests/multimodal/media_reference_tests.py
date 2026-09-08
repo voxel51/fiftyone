@@ -584,7 +584,7 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         self.assertNotIn("filepath", dataset.get_index_information())
         self.assertNotIn("filepath", dataset._get_default_indexes())
         with self.assertRaises(ValueError):
-            dataset.drop_index("media_reference")
+            dataset.drop_index("media_reference.key")
         with self.assertRaises(ValueError):
             dataset.rename_sample_field("media_reference", "renamed")
         with self.assertRaises(ValueError):
@@ -830,6 +830,45 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
         self.assertEqual(_reference_keys(imported), expected_keys)
         self.assertEqual(_private_values(imported, "_rand"), expected_rand)
+
+    @drop_datasets
+    def test_native_import_records_a_bundles_own_media_sources(self):
+        bundled_key = "f1b2c3d4e5f6"
+        dataset = _reference_dataset(key=bundled_key)
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    media_reference=_make_reference(index, source=bundled_key)
+                )
+                for index in range(2)
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as export_dir:
+            native_dir = os.path.join(export_dir, "native")
+            dataset.export(
+                export_dir=native_dir,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=False,
+            )
+
+            # a non-empty destination records a source of its own, so the
+            # bundle's source is one it has never seen
+            destination = _reference_dataset()
+            destination.add_sample(
+                fo.Sample(media_reference=_make_reference(99))
+            )
+            importer, _ = foud.build_dataset_importer(
+                fot.FiftyOneDataset, dataset_dir=native_dir
+            )
+            destination.add_importer(importer)
+
+        self.assertEqual(len(destination), 3)
+        recorded = fmm._media_sources_by_id(destination)
+        self.assertEqual(set(recorded), {_SOURCE_KEY, bundled_key})
+        self.assertEqual(
+            recorded[bundled_key]["loc"], "/tmp/media-source-%s" % bundled_key
+        )
 
     @drop_datasets
     def test_native_thin_does_not_require_a_media_resolver(self):

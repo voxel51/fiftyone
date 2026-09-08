@@ -310,11 +310,15 @@ def _located_media_sources(doc) -> list:
     located = []
     for media_source in doc._media_sources:
         entry = _with_layout(dict(media_source), layouts)
-        root = roots.get(entry.pop("root", None))
-        if root is None:
-            continue
+        # a bundle's document travels without the table of roots a stored
+        # entry's location is composed from, so it names each outright
+        if "loc" not in entry:
+            root = roots.get(entry.pop("root", None))
+            if root is None:
+                continue
 
-        entry["loc"] = "%s/%s" % (root, entry.pop("dir"))
+            entry["loc"] = "%s/%s" % (root, entry.pop("dir"))
+
         located.append(entry)
 
     return located
