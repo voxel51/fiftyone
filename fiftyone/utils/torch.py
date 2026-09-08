@@ -1384,7 +1384,12 @@ class ClassifierOutputProcessor(OutputProcessor):
         logits = output.detach().cpu().numpy()
 
         predictions = np.argmax(logits, axis=1)
-        odds = np.exp(logits)
+        # Shift by the row maximum before exponentiating, and do it in at least
+        # float32. Half-precision logits, which any model that runs under
+        # `torch.amp.autocast` produces, overflow `np.exp` and leave every
+        # confidence NaN; the shift also keeps large float32 logits finite
+        scaled = logits.astype(np.float32, copy=False)
+        odds = np.exp(scaled - np.max(scaled, axis=1, keepdims=True))
         odds /= np.sum(odds, axis=1, keepdims=True)
         scores = np.max(odds, axis=1)
 
